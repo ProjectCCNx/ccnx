@@ -48,6 +48,7 @@ main(int argc, char **argv)
 {
     struct ccn *h = NULL;
     struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *null_name = NULL;
     struct ccn_charbuf *name_prefix = NULL;
     struct ccn_charbuf *newface = NULL;
     struct ccn_charbuf *prefixreg = NULL;
@@ -81,11 +82,13 @@ main(int argc, char **argv)
                 usage(progname);
         }
     }
+
+    /* Sanity check the URI and argument count */
     arg = argv[optind];
     if (arg == NULL)
         usage(progname);
     name = ccn_charbuf_create();
-    CHKRES(res = ccn_name_from_uri(name, arg));
+    res = ccn_name_from_uri(name, arg);
     if (res < 0) {
         fprintf(stderr, "%s: bad ccn URI: %s\n", progname, arg);
         exit(1);
@@ -101,12 +104,13 @@ main(int argc, char **argv)
     }
 
     newface = ccn_charbuf_create();
-    name = ccn_charbuf_create();
     temp = ccn_charbuf_create();
     templ = ccn_charbuf_create();
     signed_info = ccn_charbuf_create();
     resultbuf = ccn_charbuf_create();
     name_prefix = ccn_charbuf_create();
+    null_name = ccn_charbuf_create();
+    CHKRES(ccn_name_init(null_name));
 
     keystore = ccn_keystore_create();
         
@@ -126,15 +130,14 @@ main(int argc, char **argv)
                             ccn_charbuf_as_string(temp),
                             "Th1s1sn0t8g00dp8ssw0rd.");
     CHKRES(res);
-    CHKRES(ccn_name_init(name));
+
     /* Construct a key locator containing the key itself */
     keylocator = ccn_charbuf_create();
     ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG);
     ccn_charbuf_append_tt(keylocator, CCN_DTAG_Key, CCN_DTAG);
-    CHKRES(res = ccn_append_pubkey_blob(keylocator, ccn_keystore_public_key(keystore)));
+    CHKRES(ccn_append_pubkey_blob(keylocator, ccn_keystore_public_key(keystore)));
     ccn_charbuf_append_closer(keylocator);	/* </Key> */
     ccn_charbuf_append_closer(keylocator);	/* </KeyLocator> */
-    signed_info->length = 0;
     res = ccn_signed_info_create(signed_info,
                                  /* pubkeyid */ ccn_keystore_public_key_digest(keystore),
                                  /* publisher_key_id_size */ ccn_keystore_public_key_digest_length(keystore),
@@ -150,7 +153,7 @@ main(int argc, char **argv)
     
     temp->length = 0;
     res = ccn_encode_ContentObject(temp,
-                                   name,
+                                   null_name,
                                    signed_info,
                                    newface->buf,
                                    newface->length,
@@ -212,14 +215,14 @@ main(int argc, char **argv)
     CHKRES(res = ccnb_append_forwarding_entry(prefixreg, forwarding_entry));
     temp->length = 0;
     res = ccn_encode_ContentObject(temp,
-                                   name,
+                                   null_name,
                                    signed_info,
                                    prefixreg->buf,
                                    prefixreg->length,
                                    NULL,
                                    ccn_keystore_private_key(keystore));
     CHKRES(res);
-        CHKRES(ccn_name_init(name));
+    CHKRES(ccn_name_init(name));
     CHKRES(ccn_name_append(name, "ccn", 3));
     CHKRES(ccn_name_append(name, ccndid, ccndid_size));
     CHKRES(ccn_name_append_str(name, "prefixreg"));
