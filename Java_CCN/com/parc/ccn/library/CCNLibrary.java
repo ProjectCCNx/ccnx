@@ -159,7 +159,7 @@ public class CCNLibrary extends CCNBase {
 
 	/**
 	 * Return data the specified number of levels below us in the
-	 * hierarchy
+	 * hierarchy, with order preference of leftmost.
 	 * 
 	 * @param name
 	 * @param level
@@ -168,23 +168,6 @@ public class CCNLibrary extends CCNBase {
 	 * @throws IOException
 	 */
 	public ContentObject getLower(ContentName name, int level, long timeout) throws IOException {
-		Interest interest = new Interest(name);
-		interest.maxSuffixComponents(level);
-		interest.minSuffixComponents(level);
-		return get(interest, timeout);
-	}
-	
-	/**
-	 * Return data the specified number of levels below us in the
-	 * hierarchy, with order preference leftmost.
-	 * DKS -- this might need to move to Interest.
-	 * @param name
-	 * @param level
-	 * @param timeout
-	 * @return
-	 * @throws IOException
-	 */
-	public ContentObject getLeftmostLower(ContentName name, int level, long timeout) throws IOException {
 		Interest interest = new Interest(name);
 		interest.maxSuffixComponents(level);
 		interest.minSuffixComponents(level);
