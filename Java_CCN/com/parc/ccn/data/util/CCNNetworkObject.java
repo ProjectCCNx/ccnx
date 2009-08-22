@@ -281,7 +281,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		// Look for first segment of version after ours, or first version if we have none.
 		ContentObject firstSegment = 
-			VersioningProfile.getFirstBlockOfLatestVersion(getCurrentVersionName(), null, timeout, _library.defaultVerifier(), _library);
+			VersioningProfile.getFirstBlockOfLatestVersionAfter(getCurrentVersionName(), null, timeout, _library.defaultVerifier(), _library);
 		if (null != firstSegment) {
 			return update(firstSegment);
 		}

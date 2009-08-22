@@ -22,8 +22,22 @@ import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 
 /**
- * Versions, when present, occupy the penultimate component of the CCN name, 
- * not counting the digest component. They may be chosen based on time.
+ * Versions, when present, usually occupy the penultimate component of the CCN name, 
+ * not counting the digest component. A name may actually incorporate multiple
+ * versions, where the rightmost version is the version of "this" object, if it
+ * has one, and previous (parent) versions are the versions of the objects of
+ * which this object is a part. The most common location of a version, if present,
+ * is in the next to last component of the name, where the last component is a
+ * segment number (which is generally always present; versions themselves are
+ * optional). More complicated segmentation profiles occur, where a versioned
+ * object has components that are structured and named in ways other than segments --
+ * and may themselves have individual versions (e.g. if the components of such
+ * a composite object are written as CCNNetworkObjects and automatically pick
+ * up an (unnecessary) version in their own right). Versioning operations therefore
+ * take context from their caller about where to expect to find a version,
+ * and attempt to ignore other versions in the name.
+ * 
+ * Versions may be chosen based on time.
  * The first byte of the version component is 0xFD. The remaining bytes are a
  * big-endian binary number. If based on time they are expressed in units of
  * 2**(-12) seconds since the start of Unix time, using the minimum number of
@@ -410,7 +424,8 @@ public class VersioningProfile implements CCNProfile {
 	 * DKS TODO -- doesn't use publisher
 	 * DKS TODO -- specify separately latest version known?
 	 */
-	public static ContentObject getLatestVersionAfter(ContentName name, PublisherPublicKeyDigest publisher, long timeout, CCNLibrary library) throws IOException {
+	public static ContentObject getLatestVersionAfter(ContentName name, PublisherPublicKeyDigest publisher, 
+													  long timeout, CCNLibrary library) throws IOException {
 		
 		if (hasTerminalVersion(name)) {
 			// Has a version. Make sure it doesn't have a segment; find a version after this one.
@@ -453,14 +468,14 @@ public class VersioningProfile implements CCNProfile {
 	 * 							find of desiredName.
 	 * 					  If desiredName has a terminal version, will try to find the first block of content whose
 	 * 						    version is *after* desiredName (i.e. getLatestVersion starting from desiredName).
-	 * @param startingBlockIndex The desired block number, or SegmentationProfile.baseSegment if null.
+	 * @param startingSegmentNumber The desired block number, or SegmentationProfile.baseSegment if null.
 	 * @param timeout
 	 * @param verifier Cannot be null.
 	 * @return 			  The first block of a stream with a version later than desiredName, or null if timeout is reached.
 	 * @throws IOException
 	 */
-	public static ContentObject getFirstBlockOfLatestVersion(ContentName startingVersion, 
-															 Long startingBlockIndex, 
+	public static ContentObject getFirstBlockOfLatestVersionAfter(ContentName startingVersion, 
+															 Long startingSegmentNumber, 
 															 long timeout, 
 															 ContentVerifier verifier, 
 															 CCNLibrary library) throws IOException {
@@ -478,7 +493,7 @@ public class VersioningProfile implements CCNProfile {
 			}
 			
 			// Now we know the version. Did we luck out and get first block?
-			if (CCNVersionedInputStream.isFirstSegment(startingVersion, result, startingBlockIndex)) {
+			if (CCNVersionedInputStream.isFirstSegment(startingVersion, result, startingSegmentNumber)) {
 				Library.logger().info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
 				return result;
 			}
@@ -491,7 +506,7 @@ public class VersioningProfile implements CCNProfile {
 			// right, that should be the right thing.
 			startingVersion = result.name().cut(prefixLength);
 			Library.logger().info("getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
-			return SegmentationProfile.getSegment(startingVersion, startingBlockIndex, null, timeout, verifier, library); // now that we have the latest version, go back for the first block.
+			return SegmentationProfile.getSegment(startingVersion, startingSegmentNumber, null, timeout, verifier, library); // now that we have the latest version, go back for the first block.
 		} else {
 			Library.logger().info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
 		}
@@ -509,6 +524,6 @@ public class VersioningProfile implements CCNProfile {
 	 * @throws IOException
 	 */
 	public static ContentObject getFirstBlockOfLatestVersion(ContentName startingVersion, PublisherPublicKeyDigest publisher, long timeout, CCNLibrary library) throws IOException {
-		return getFirstBlockOfLatestVersion(startingVersion, null, timeout, new ContentObject.SimpleVerifier(publisher), library);
+		return getFirstBlockOfLatestVersionAfter(startingVersion, null, timeout, new ContentObject.SimpleVerifier(publisher), library);
 	}
 }
