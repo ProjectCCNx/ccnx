@@ -67,7 +67,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		/* (non-Javadoc)
 		 * @see com.parc.ccn.data.security.ContentVerifier#verifyBlock(com.parc.ccn.data.ContentObject)
 		 */
-		public boolean verifySegment(ContentObject block) {
+		public boolean verify(ContentObject block) {
 			if (null == block)
 				return false;
 			if (null != _publisher) {
