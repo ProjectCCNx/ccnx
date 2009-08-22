@@ -351,7 +351,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	/**
 	 * TODO -- check to see if it matches desired publisher.
 	 */
-	public boolean verifySegment(ContentObject segment) {
+	public boolean verify(ContentObject segment) {
 
 		// First we verify. 
 		// Low-level verify just checks that signer actually signed.

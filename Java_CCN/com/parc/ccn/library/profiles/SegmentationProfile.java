@@ -233,7 +233,7 @@ public class SegmentationProfile implements CCNProfile {
 		}
 		
 		// So for the segment, we assume we have a potential document.
-		if (!verifier.verifySegment(segment)) {
+		if (!verifier.verify(segment)) {
 			// TODO eventually try to go and look for another option
 			Library.logger().info("Retrieved segment " + segment.name() + ", but it didn't verify.");
 			return null;

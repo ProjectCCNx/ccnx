@@ -14,10 +14,10 @@ import com.parc.ccn.data.ContentObject;
 public interface ContentVerifier {
 	
 	/**
-	 * Verify this block, perhaps in the context of other data held by the verifier.
+	 * Verify this content object, perhaps in the context of other data held by the verifier.
 	 * @param block Should we rename this?
 	 * @return
 	 */
-	public boolean verifySegment(ContentObject block);
+	public boolean verify(ContentObject content);
 
 }
