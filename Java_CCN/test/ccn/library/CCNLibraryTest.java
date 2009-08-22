@@ -6,11 +6,15 @@ package test.ccn.library;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
+
+import javax.xml.stream.XMLStreamException;
 
 import junit.framework.Assert;
 
@@ -208,15 +212,21 @@ public class CCNLibraryTest extends LibraryTestBase {
 		f.put(cos[1]);
 		// java lacks nested functions, so use a class here...
 		class t {
-			void check(ContentObject o, int i) {
+			void check(ContentObject o, int i) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
 				System.out.println("Got content: " + o.name());
 				System.out.println("Original value: " + i + " returned value: " + Byte.toString(o.content()[0]));
+				Assert.assertTrue(o.verify(null));
 				Assert.assertTrue(DataUtils.arrayEquals(o.content(), data[i]));
 			}
 			/**
 			 * Make sure the data is written to ccnd by reading it
+			 * @throws InterruptedException 
+			 * @throws XMLStreamException 
+			 * @throws NoSuchAlgorithmException 
+			 * @throws SignatureException 
+			 * @throws InvalidKeyException 
 			 */
-			void readAndCheck(ContentName name, int index) throws IOException {
+			void readAndCheck(ContentName name, int index) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
 				System.out.println("Getting content: " + name);
 				check(getLibrary.get(name, 2000), index);
 			}
@@ -307,7 +317,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		ContentObject latestVersion =
 			VersioningProfile.getLatestVersionAfter(docName, null, CCNLibrary.NO_TIMEOUT, getLibrary);
-
+		Assert.assertTrue(latestVersion.verify(null));
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
 		System.out.println("Latest version name: " + latestVersion.name());
 
@@ -319,6 +329,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		ContentObject newLatestVersion = 
 			VersioningProfile.getLatestVersionAfter(docName, null, CCNLibrary.NO_TIMEOUT, getLibrary);
+		Assert.assertTrue(newLatestVersion.verify(null));
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
 		System.out.println("Latest version name: " + newLatestVersion.name());
 
