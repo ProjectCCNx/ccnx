@@ -219,23 +219,25 @@ public class SegmentationProfile implements CCNProfile {
 			desiredSegmentNumber = baseSegment();
 		}
 		
-		ContentName blockName = segmentName(desiredContent, desiredSegmentNumber);
+		ContentName segmentName = segmentName(desiredContent, desiredSegmentNumber);
 	
 		// TODO use better exclude filters to ensure we're only getting segments.
-		Library.logger().info("getBlock: getting block " + blockName);
-		ContentObject block = library.getLower(blockName, 1, publisher, timeout);
+		Library.logger().info("getSegment: getting segment " + segmentName);
+		ContentObject segment = library.getLower(segmentName, 1, publisher, timeout);
 	
-		if (null == block) {
-			Library.logger().info("Cannot get block " + desiredSegmentNumber + " of file " + desiredContent + " expected block: " + blockName);
-			throw new IOException("Cannot get block " + desiredSegmentNumber + " of file " + desiredContent + " expected block: " + blockName);
+		if (null == segment) {
+			Library.logger().info("Cannot get segment " + desiredSegmentNumber + " of file " + desiredContent + " expected segment: " + segmentName);
+			throw new IOException("Cannot get segment " + desiredSegmentNumber + " of file " + desiredContent + " expected segment: " + segmentName);
 		} else {
-			Library.logger().info("getBlock: retrieved block " + block.name());
+			Library.logger().info("getsegment: retrieved segment " + segment.name());
 		}
 		
-		// So for the block, we assume we have a potential document.
-		if (!verifier.verifySegment(block)) {
+		// So for the segment, we assume we have a potential document.
+		if (!verifier.verifySegment(segment)) {
+			// TODO eventually try to go and look for another option
+			Library.logger().info("Retrieved segment " + segment.name() + ", but it didn't verify.");
 			return null;
 		}
-		return block;
+		return segment;
 	}
 }
