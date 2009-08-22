@@ -385,6 +385,9 @@ public class VersioningProfile implements CCNProfile {
 	 * 		- if no version given, gets the first segment of the latest version
 	 * 		- if a starting version given, gets the latest version available *after* that version or times out
 	 *    Will ensure that what it returns is a segment of a version of that object.
+	 *    
+	 * - generate an interest designed to find the first segment of the latest version
+	 *   of a name, in the above form; caller is responsible for checking and re-issuing
 	 */
 
 	/**
