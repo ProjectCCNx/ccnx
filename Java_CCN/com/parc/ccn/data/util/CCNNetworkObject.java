@@ -26,7 +26,6 @@ import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.CCNVersionedOutputStream;
 import com.parc.ccn.library.io.repo.RepositoryFlowControl;
 import com.parc.ccn.library.profiles.SegmentationProfile;
-import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
@@ -646,15 +645,18 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		for (ContentObject co : results) {
 			try {
 				Library.logger().info("handleContent: " + _currentInterest + " retrieved " + co.name());
-				if (VersioningProfile.isLaterVersionOf(co.name(), _currentInterest.name())) {
+				if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
 					// OK, we have something that is a later version of our desired object.
 					// We're not sure it's actually the first content block.
 					if (CCNVersionedInputStream.isFirstBlock(_currentInterest.name(), co, null)) {
 						Library.logger().info("Background updating of " + getCurrentVersionName() + ", got first block: " + co.name());
 						update(co);
 					} else {
-						// Have a later segment. Caching problem. Go back for first segment.
-						update(SegmentationProfile.segmentRoot(co.name()), co.signedInfo().getPublisherKeyID());
+						// Have something that is not the first segment, like a repo write or a later segment. Go back
+						// for first segment.
+						ContentName latestVersionName = co.name().cut(_currentInterest.name().count() + 1);
+						Library.logger().info("handleContent (network object): Have version information, now querying first segment of " + latestVersionName);
+						update(latestVersionName, co.signedInfo().getPublisherKeyID());
 					}
 					_excludeList.clear();
 					_currentInterest = null;
@@ -673,9 +675,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			} catch (XMLStreamException ex) {
 				Library.logger().info("Exception " + ex.getClass().getName() + ": " + ex.getMessage() + " attempting to update based on object : " + co.name());
 				// alright, that one didn't work, try to go on.
-			} catch (VersionMissingException ex) {
-				Library.logger().info("Unexpected: got a version missing exception when comparing content object name " + co.name() + " with known versioned interest name " + _currentInterest.name());
-			}
+			} 
 
 			_excludeList.add(co.name().component(_currentInterest.name().count() - 1));  
 			Library.logger().info("handleContent: got content for " + _currentInterest.name() + " that doesn't match: " + co.name());
