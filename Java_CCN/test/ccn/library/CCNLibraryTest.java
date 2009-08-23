@@ -27,6 +27,7 @@ import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.BasicInterestListener;
 import com.parc.ccn.data.query.Interest;
+import com.parc.ccn.data.security.ContentVerifier;
 import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
@@ -233,12 +234,13 @@ public class CCNLibraryTest extends LibraryTestBase {
 		} t test = new t();
 		test.readAndCheck(base, 0);
 		test.readAndCheck(cos[1].name(), 1);
-		test.check(VersioningProfile.getLatestVersionAfter(base, putLibrary.getDefaultPublisher(), 2000, getLibrary), 1);
+		ContentVerifier putVerifier = new ContentObject.SimpleVerifier(putLibrary.getDefaultPublisher());
+		test.check(VersioningProfile.getLatestVersionAfter(base, putLibrary.getDefaultPublisher(), 2000, putVerifier, getLibrary), 1);
 		// Beef this up a bit...
 		for (int i=2; i < testCount; ++i) {
 			f.put(cos[i]);
 			System.out.println("Wrote content: " + cos[i].name());
-			test.check(VersioningProfile.getLatestVersionAfter(cos[i-1].name(), putLibrary.getDefaultPublisher(), 2000, getLibrary), i);
+			test.check(VersioningProfile.getLatestVersionAfter(cos[i-1].name(), putLibrary.getDefaultPublisher(), 2000, putVerifier, getLibrary), i);
 		}
 	}
 
@@ -315,8 +317,9 @@ public class CCNLibraryTest extends LibraryTestBase {
 		System.out.println("Inserted first version as: " + version1);
 		Assert.assertNotNull("New version is null!", version1);
 
+		ContentVerifier putVerifier = new ContentObject.SimpleVerifier(putLibrary.getDefaultPublisher());
 		ContentObject latestVersion =
-			VersioningProfile.getLatestVersionAfter(docName, null, CCNLibrary.NO_TIMEOUT, getLibrary);
+			VersioningProfile.getLatestVersionAfter(docName, null, CCNLibrary.NO_TIMEOUT, putVerifier, getLibrary);
 		Assert.assertTrue(latestVersion.verify(null));
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
 		System.out.println("Latest version name: " + latestVersion.name());
@@ -328,7 +331,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		System.out.println("Inserted second version as: " + version2);
 
 		ContentObject newLatestVersion = 
-			VersioningProfile.getLatestVersionAfter(docName, null, CCNLibrary.NO_TIMEOUT, getLibrary);
+			VersioningProfile.getLatestVersionAfter(docName, null, CCNLibrary.NO_TIMEOUT, putVerifier, getLibrary);
 		Assert.assertTrue(newLatestVersion.verify(null));
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
 		System.out.println("Latest version name: " + newLatestVersion.name());
