@@ -111,14 +111,14 @@ public class InterestTest {
 	public void testProfileInterests() throws Exception {
 		// Should test the interests used for segments (getLower) as well.
 		Interest lv = 
-			VersioningProfile.latestVersionAfterInterest(
+			VersioningProfile.latestVersionInterest(
 					ContentName.fromNative("/test/InterestTest/testProfileInterests"), 
 					null, KeyManager.getDefaultKeyManager().getDefaultKeyID());
 		Interest lvDec = new Interest();
 		Interest lvBDec = new Interest();
 		XMLEncodableTester.encodeDecodeTest("LatestVersionInterest", lv, lvDec, lvBDec);
 		Interest lvs = 
-			VersioningProfile.latestVersionAfterInterest(
+			VersioningProfile.latestVersionInterest(
 					ContentName.fromNative("/test/InterestTest/testProfileInterests"), 
 					2, KeyManager.getDefaultKeyManager().getDefaultKeyID());
 		Interest lvsDec = new Interest();
