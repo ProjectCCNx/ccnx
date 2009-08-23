@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import com.parc.ccn.Library;
 import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.BloomFilter;
 import com.parc.ccn.data.query.ExcludeAny;
 import com.parc.ccn.data.query.ExcludeComponent;
 import com.parc.ccn.data.query.ExcludeFilter;
@@ -476,7 +475,9 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static ContentObject getLatestVersionAfter(ContentName startingVersion, 
 													  PublisherPublicKeyDigest publisher, 
-													  long timeout, CCNLibrary library) throws IOException {
+													  long timeout, 
+ 													  ContentVerifier verifier,
+													  CCNLibrary library) throws IOException {
 		
 		ContentName latestVersionFound = startingVersion;
 		
@@ -494,7 +495,11 @@ public class VersioningProfile implements CCNProfile {
 			if (startsWithLaterVersionOf(co.name(), startingVersion)) {
 				// we got a valid version! 
 				Library.logger().info("Got latest version: " + co.name());
-				return co;
+				// Now need to verify the block we got
+				if (verifier.verify(co)) {
+					return co;
+				}
+				Library.logger().warning("VERIFICATION FAILURE: " + co.name() + ", need to find better way to decide what to do next.");
 			} else {
 				Library.logger().info("Rejected potential candidate version: " + co.name() + " not a later version of " + startingVersion);
 			}
@@ -523,19 +528,16 @@ public class VersioningProfile implements CCNProfile {
 															 Long startingSegmentNumber, 
 															 PublisherPublicKeyDigest publisher, 
 															 long timeout, 
+															 ContentVerifier verifier,
 															 CCNLibrary library) throws IOException {
 		
 		Library.logger().info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
 		
 		int prefixLength = hasTerminalVersion(startingVersion) ? startingVersion.count() : startingVersion.count() + 1;
-		ContentObject result =  getLatestVersionAfter(startingVersion, null, timeout, library);
+		ContentObject result =  getLatestVersionAfter(startingVersion, null, timeout, verifier, library);
 		
 		if (null != result){
 			Library.logger().info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
-			// Now need to verify the block we got
-			if (!verifier.verify(result)) {
-				return null;
-			}
 			
 			// Now we know the version. Did we luck out and get first block?
 			if (CCNVersionedInputStream.isFirstSegment(startingVersion, result, startingSegmentNumber)) {
