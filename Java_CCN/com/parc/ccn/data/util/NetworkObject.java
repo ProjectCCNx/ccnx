@@ -35,7 +35,8 @@ public abstract class NetworkObject<E> {
 	public NetworkObject(Class<E> type, E data) {
 		this(type);
 		_data = data;
-		_available = true;
+		// we don't mark data as available till we've called update or save
+		_available = false;
 	}
 
 	protected E factory() throws IOException {

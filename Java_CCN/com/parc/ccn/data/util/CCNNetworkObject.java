@@ -494,6 +494,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_currentVersionComponent = name.lastComponent();
 		_currentVersionName = null;
 		setPotentiallyDirty(false);
+		_available = true;
 		return true;
 	}
 	
@@ -549,7 +550,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
 		_data = null;
-		_available = true;
 		return saveInternal(null, true);
 	}
 
