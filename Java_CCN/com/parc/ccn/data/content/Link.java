@@ -159,8 +159,9 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	 * and otherwise it'll probably assume that what is below here is either a version and
 	 * segments (get latest version) or that this is versioned and it wants segments.
 	 * 
-	 * @return Returns a child object. Does not verify it, other than to ensure it matches
-	 *   the requirements of the Link.
+	 * @return Returns a child object. Verifies that it meets the requirement of the link,
+	 *   and that it is signed by who it claims. Could allow caller to pass in verifier
+	 *   to verify higher-level trust and go look for another block on failure.
 	 * @throws IOException 
 	 */
 	public ContentObject dereference(long timeout, CCNLibrary library) throws IOException {
@@ -171,8 +172,9 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 			return library.get(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
 		}
 		// Don't know if we are referencing a particular object, so don't look for segments.
+		PublisherPublicKeyDigest desiredPublisher = (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null;
 		return VersioningProfile.getLatestVersionAfter(targetName(), 
-				(null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout, library);
+				desiredPublisher, timeout, new ContentObject.SimpleVerifier(desiredPublisher), library);
 	}
 	
 	/**
