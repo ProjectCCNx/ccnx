@@ -14,12 +14,12 @@ import junit.framework.Assert;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
 import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.security.access.AccessControlManager;
 import com.parc.ccn.security.access.GroupManager;

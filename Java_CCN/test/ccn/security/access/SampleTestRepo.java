@@ -7,11 +7,11 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.io.RepositoryOutputStream;
+import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.library.EnumeratedNameList;
 
 public class SampleTestRepo {
 	static final String base = "/parc.com/csl/ccn/repositories/SampleTestRepo";

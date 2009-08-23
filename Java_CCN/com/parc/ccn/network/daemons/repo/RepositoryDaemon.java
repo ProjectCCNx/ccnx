@@ -21,12 +21,12 @@ import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.CommandMarkers;
+import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ExcludeFilter;
 import org.ccnx.ccn.protocol.Interest;
 
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.network.daemons.Daemon;
 import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 

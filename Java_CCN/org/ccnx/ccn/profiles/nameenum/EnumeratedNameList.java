@@ -1,4 +1,4 @@
-package com.parc.ccn.library;
+package org.ccnx.ccn.profiles.nameenum;
 
 import java.io.IOException;
 import java.sql.Timestamp;
@@ -14,7 +14,6 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 
 public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	

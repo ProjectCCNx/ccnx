@@ -20,6 +20,8 @@ import org.ccnx.ccn.Library;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
+import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -30,8 +32,6 @@ import com.parc.ccn.apps.containerApp.IconCellRenderer;
 import com.parc.ccn.apps.containerApp.IconData;
 import com.parc.ccn.apps.containerApp.Name;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.query.BasicNameEnumeratorListener;
-import com.parc.ccn.library.CCNNameEnumerator;
 
 public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,ActionListener{
 

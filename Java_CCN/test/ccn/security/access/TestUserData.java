@@ -9,12 +9,12 @@ import java.util.SortedSet;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
 
 import test.ccn.data.util.Flosser;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 
 import com.parc.ccn.security.access.AccessControlManager;

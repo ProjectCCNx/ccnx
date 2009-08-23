@@ -1,4 +1,4 @@
-package com.parc.ccn.library;
+package org.ccnx.ccn.profiles.nameenum;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -17,7 +17,6 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
-import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 
 
 

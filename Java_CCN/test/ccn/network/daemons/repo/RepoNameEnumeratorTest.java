@@ -8,14 +8,14 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
 import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
+import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.query.BasicNameEnumeratorListener;
-import com.parc.ccn.library.CCNNameEnumerator;
 
 
 public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
