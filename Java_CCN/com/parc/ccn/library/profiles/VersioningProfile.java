@@ -417,7 +417,7 @@ public class VersioningProfile implements CCNProfile {
 	public static Interest getFirstBlockLatestVersionAfterInterest(ContentName startingVersion, PublisherPublicKeyDigest publisher) {
 		// by the time we look for extra components we will have a version on our name if it
 		// doesn't have one already, so look for names with 2 extra components -- segment and digest.
-		return getLatestVersionAfterInterest(startingVersion, 2, publisher);
+		return latestVersionAfterInterest(startingVersion, 2, publisher);
 	}
 	
 	/**
@@ -429,7 +429,7 @@ public class VersioningProfile implements CCNProfile {
 	 * length limitations, can be used to find segments of the latest version (though that
 	 * will work more effectively with appropriate segment numbering).
 	 */
-	public static Interest getLatestVersionAfterInterest(ContentName startingVersion, Integer additionalNameComponents, PublisherPublicKeyDigest publisher) {
+	public static Interest latestVersionAfterInterest(ContentName startingVersion, Integer additionalNameComponents, PublisherPublicKeyDigest publisher) {
 		
 		if (hasTerminalVersion(startingVersion)) {
 			// Has a version. Make sure it doesn't have a segment; find a version after this one.
@@ -483,7 +483,7 @@ public class VersioningProfile implements CCNProfile {
 		
 		while (true) {
 			
-			Interest getLatestInterest = getLatestVersionAfterInterest(latestVersionFound, null, publisher);
+			Interest getLatestInterest = latestVersionAfterInterest(latestVersionFound, null, publisher);
 			ContentObject co = library.get(getLatestInterest, timeout);
 			if (co == null) {
 				Library.logger().info("Null returned from getLatest for name: " + startingVersion);
