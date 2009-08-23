@@ -37,16 +37,12 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			PublisherPublicKeyDigest publisher, CCNLibrary library)
 			throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, library);
-		// Asynchronously attempt to retrieve a header block, if one exists.
-		requestHeader(_baseName, publisher);
 	}
 
 	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
 			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNLibrary library)
 			throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, keys, library);
-		// Asynchronously attempt to retrieve a header block, if one exists.
-		requestHeader(_baseName, publisher);
 	}
 
 	public CCNFileInputStream(ContentName name, PublisherPublicKeyDigest publisher,
@@ -57,15 +53,11 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	public CCNFileInputStream(ContentName name) throws XMLStreamException,
 			IOException {
 		super(name);
-		// Asynchronously attempt to retrieve a header block, if one exists.
-		requestHeader(_baseName, null);
 	}
 
 	public CCNFileInputStream(ContentName name, CCNLibrary library)
 			throws XMLStreamException, IOException {
 		super(name, library);
-		// Asynchronously attempt to retrieve a header block, if one exists.
-		requestHeader(_baseName, null);
 	}
 
 	public CCNFileInputStream(ContentName name, long startingBlockIndex)
@@ -76,8 +68,6 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	public CCNFileInputStream(ContentObject starterBlock, CCNLibrary library)
 			throws XMLStreamException, IOException {
 		super(starterBlock, library);
-		// Asynchronously attempt to retrieve a header block, if one exists.
-		requestHeader(_baseName, null);
 	}
 
 	protected boolean headerRequested() {
@@ -177,6 +167,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		if (null == result) {
 			throw new IOException("Cannot retrieve first block of " + _baseName + "!");
 		}
+		// Have to wait to request the header till we know what version we're looking for.
 		if (!headerRequested()) {
 			try {
 				requestHeader(_baseName, result.signedInfo().getPublisherKeyID());
