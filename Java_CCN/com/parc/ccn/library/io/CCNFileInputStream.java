@@ -190,7 +190,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		}
 		
 		if (!hasHeader()){
-			super.skip(n);
+			return super.skip(n);
 		}
 		
 		int[] toGetBlockAndOffset = null;
@@ -260,16 +260,16 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	
 	@Override
 	protected int blockCount() {
-		if (!hasHeader()) {
-			return super.blockCount();
+		if (hasHeader()) {
+			return _header.blockCount();
 		}
-		return _header.blockCount();
+		return super.blockCount();
 	}
 
 	@Override
 	public long seek(long position) throws IOException {
-		Library.logger().info("Seeking stream to " + position + ": have header? " + ((_header == null) ? "no." : "yes."));
-		if (!hasHeader()) {
+		Library.logger().info("Seeking stream to " + position + ": have header? " + hasHeader());
+		if (hasHeader()) {
 			int [] blockAndOffset = _header.positionToBlockLocation(position);
 			Library.logger().info("seek:  position: " + position + " block: " + blockAndOffset[0] + " offset: " + blockAndOffset[1]);
 			Library.logger().info("currently have block "+ currentBlockNumber());
@@ -317,7 +317,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 
 	@Override
 	public long tell() {
-		if (!hasHeader()) {
+		if (hasHeader()) {
 			return _header.blockLocationToPosition(blockIndex(), (int)super.tell());
 		} else {
 			return super.tell();
@@ -326,7 +326,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	
 	@Override
 	public long length() {
-		if (!hasHeader()) {
+		if (hasHeader()) {
 			return _header.length();
 		}
 		return super.length();
