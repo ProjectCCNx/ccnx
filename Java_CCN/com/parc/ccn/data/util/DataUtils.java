@@ -296,5 +296,36 @@ public class DataUtils {
 	    // Close the input stream and return bytes
 	    is.close();
 	    return bytes;
+	}
+
+	/**
+	 * @param count Lexicographically compare two byte arrays, looking at at most count bytes.
+	 * @return
+	 */
+	public static int bytencmp(byte[] arr1, byte[] arr2, int count) {
+		if (null == arr1) {
+			if (null == arr2)
+				return 0;
+			return 1;
+		}
+		if (null == arr2)
+			return -1;
+		
+		int cmpcount = Math.min(Math.min(count, arr1.length), arr2.length);
+		for (int i=0; i < cmpcount; ++i) {
+			if (arr1[i] < arr2[i])
+				return -1;
+			if (arr2[i] > arr1[i])
+				return 1;
+		}
+		if (cmpcount == count)
+			return 0;
+		// OK, they match up to the length of the shortest one, which is shorter
+		// than count. Whichever is shorter is less.
+		if (arr1.length > arr2.length)
+			return 1;
+		if (arr1.length < arr2.length)
+			return -1;
+		return 0;
 	}	
 }

@@ -20,7 +20,9 @@ import com.parc.ccn.data.query.ExcludeFilter;
 import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.Signature;
+import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
+import com.parc.ccn.security.keys.KeyManager;
 
 public class InterestTest {
 	
@@ -103,6 +105,25 @@ public class InterestTest {
 		Interest opMinSCDec = new Interest();
 		Interest opMinSCBDec = new Interest();
 		XMLEncodableTester.encodeDecodeTest("MinSuffixComponentsInterest", opMinSC, opMinSCDec, opMinSCBDec);
+	}
+	
+	@Test
+	public void testProfileInterests() throws Exception {
+		// Should test the interests used for segments (getLower) as well.
+		Interest lv = 
+			VersioningProfile.latestVersionInterest(
+					ContentName.fromNative("/test/InterestTest/testProfileInterests"), 
+					null, KeyManager.getDefaultKeyManager().getDefaultKeyID());
+		Interest lvDec = new Interest();
+		Interest lvBDec = new Interest();
+		XMLEncodableTester.encodeDecodeTest("LatestVersionInterest", lv, lvDec, lvBDec);
+		Interest lvs = 
+			VersioningProfile.latestVersionInterest(
+					ContentName.fromNative("/test/InterestTest/testProfileInterests"), 
+					2, KeyManager.getDefaultKeyManager().getDefaultKeyID());
+		Interest lvsDec = new Interest();
+		Interest lvsBDec = new Interest();
+		XMLEncodableTester.encodeDecodeTest("LatestVersionInterest - Short", lvs, lvsDec, lvsBDec);
 	}
 		
 	@Test

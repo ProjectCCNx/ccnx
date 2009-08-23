@@ -321,6 +321,7 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		return result;
 	}
 	
+	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
 			return true;

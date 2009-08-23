@@ -7,6 +7,7 @@ import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
 
+import com.parc.ccn.Library;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncoder;
@@ -120,6 +121,10 @@ public class BloomFilter extends ExcludeFilter.Filler implements Comparable<Bloo
 	    return(s & 0x7FFFFFFF);
 	}
 	
+	private int usedBits() {
+		return 1 << (_lgBits - 3);
+	}
+	
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		ByteArrayInputStream bais = new ByteArrayInputStream(decoder.readBinaryElement(BLOOM));
 		_lgBits = bais.read();
@@ -131,8 +136,12 @@ public class BloomFilter extends ExcludeFilter.Filler implements Comparable<Bloo
 		for (int i = 0; i < _seed.length; i++)
 			_seed[i] = (short)((_seed[i]) & 0xff);
 		int i = 0;
-		while (bais.available() > 0)
-			_bloom[i++] = (byte)bais.read();	
+		while (bais.available() > 0) 
+			_bloom[i++] = (byte)bais.read();
+		// DKS decoding check
+		if (i != usedBits()) {
+			Library.logger().warning("Unexpected result in decoding BloomFilter: expecting " + usedBits() + " bytes, got " + i);
+		}
 	}
 	
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
@@ -143,7 +152,7 @@ public class BloomFilter extends ExcludeFilter.Filler implements Comparable<Bloo
 		baos.write(0);		// "reserved" - must be 0 for now
 		for (int i = 0; i < _seed.length; i++)
 			baos.write((byte)_seed[i]);
-		int size = 1 << (_lgBits - 3);
+		int size = usedBits();
 		for (int i = 0; i < size; i++)
 			baos.write(_bloom[i]);
 		encoder.writeElement(BLOOM, baos.toByteArray());
@@ -171,12 +180,37 @@ public class BloomFilter extends ExcludeFilter.Filler implements Comparable<Bloo
 	}
 
 	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + Arrays.hashCode(_bloom);
+		result = prime * result + _lgBits;
+		result = prime * result + _nHash;
+		result = prime * result + Arrays.hashCode(_seed);
+		return result;
+	}
+
+	@Override
 	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
 		if (obj == null)
 			return false;
-		if (!(obj instanceof BloomFilter))
+		if (getClass() != obj.getClass())
 			return false;
-		BloomFilter bl = (BloomFilter) obj;
-		return Arrays.equals(_bloom, bl._bloom);
+		BloomFilter other = (BloomFilter) obj;
+		if (_lgBits != other._lgBits)
+			return false;
+		if (_nHash != other._nHash)
+			return false;
+		// Only compare the number of bytes of _bloom in use. Decoder
+		// may make _bloom array a different length than was set.
+		if (0 != DataUtils.bytencmp(_bloom, other._bloom, usedBits())) {
+			return false;
+		}
+		if (!Arrays.equals(_seed, other._seed))
+			return false;
+		return true;
 	}
+
 }

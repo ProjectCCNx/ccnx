@@ -36,7 +36,16 @@ public class ExcludeAny extends ExcludeFilter.Filler implements Comparable<Exclu
 		return 0;	// always equal
 	}
 	
-	public boolean equals(Object o) {
-		return true;
+	/**
+     * All ExcludeAny's are equal to each other (but only to ExcludeAnys). 
+	 * Without overriding equals we get Object's ==, which isn't what we want.
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (obj == null)
+			return false;
+		if (!(obj instanceof ExcludeAny))
+			return false;
+		return true; // match any ExcludeAny
 	}
 }
