@@ -1,10 +1,12 @@
-package com.parc.ccn.data.util;
+package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
 import javax.xml.stream.XMLStreamException;
+
+import com.parc.ccn.data.util.XMLEncodable;
 
 /**
  * Prototypical wrapper around an XMLEncodable object. Expand to variants

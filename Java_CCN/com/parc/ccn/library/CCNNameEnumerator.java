@@ -10,13 +10,13 @@ import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
-import com.parc.ccn.data.content.Collection;
-import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.content.Collection.CollectionObject;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 
 

@@ -9,13 +9,13 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.io.content.HeaderData;
+import org.ccnx.ccn.io.content.HeaderData.HeaderObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
-import com.parc.ccn.data.content.HeaderData;
-import com.parc.ccn.data.content.HeaderData.HeaderObject;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.CCNFlowControl.Shape;

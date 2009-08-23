@@ -3,13 +3,13 @@ package test.ccn.security.access;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.security.keys.KeyManager;
 
 public class TestUserDataTestRepo {

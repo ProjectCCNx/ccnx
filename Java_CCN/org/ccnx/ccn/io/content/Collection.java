@@ -1,4 +1,4 @@
-package com.parc.ccn.data.content;
+package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -14,7 +14,6 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;

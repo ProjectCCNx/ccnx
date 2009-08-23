@@ -1,4 +1,4 @@
-package com.parc.ccn.data.util;
+package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,6 +12,8 @@ import java.util.Arrays;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.Library;
+
+import com.parc.ccn.data.util.NullOutputStream;
 
 
 /**

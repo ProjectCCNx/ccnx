@@ -4,12 +4,12 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
-import com.parc.ccn.data.content.Collection;
-import com.parc.ccn.data.content.Link;
 
 /**
  * Designed to contain all methods that talk to the repository

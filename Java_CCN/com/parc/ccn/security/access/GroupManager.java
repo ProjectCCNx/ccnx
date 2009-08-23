@@ -15,13 +15,13 @@ import javax.xml.stream.XMLStreamException;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.content.Collection;
-import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;

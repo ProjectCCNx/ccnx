@@ -20,6 +20,7 @@ import org.bouncycastle.jce.spec.ECParameterSpec;
 import org.bouncycastle.jce.spec.ElGamalParameterSpec;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -29,7 +30,6 @@ import org.junit.Test;
 import test.ccn.data.util.Flosser;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.security.PublicKeyObject;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 

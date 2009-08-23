@@ -4,12 +4,12 @@ package test.ccn.security.access;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
+import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.data.content.Link;
 import com.parc.ccn.security.access.ACL;
 import com.parc.ccn.security.access.ACL.ACLOperation;
 

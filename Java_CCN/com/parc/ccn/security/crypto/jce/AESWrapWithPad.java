@@ -8,8 +8,8 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 
 import org.bouncycastle.jce.provider.WrapCipherSpi;
+import org.ccnx.ccn.io.content.WrappedKey;
 
-import com.parc.ccn.data.security.WrappedKey;
 
 
 public class AESWrapWithPad extends WrapCipherSpi {

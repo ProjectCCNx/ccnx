@@ -1,4 +1,4 @@
-package com.parc.ccn.data.util;
+package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,6 +15,7 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 import com.parc.ccn.config.ConfigurationException;
+import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.library.CCNFlowControl;
 
 /**

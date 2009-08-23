@@ -3,7 +3,8 @@ package test.ccn.data.util;
 import java.io.Serializable;
 import java.security.PublicKey;
 
-import com.parc.ccn.data.util.SerializableObject;
+import org.ccnx.ccn.io.content.SerializableObject;
+
 
 /**
  * Used in SerializableObjectTest.

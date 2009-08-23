@@ -1,4 +1,4 @@
-package com.parc.ccn.data.security;
+package org.ccnx.ccn.io.content;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -21,7 +21,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.util.CCNNetworkObject;
 import com.parc.ccn.security.crypto.util.CryptoUtil;
 
 /**

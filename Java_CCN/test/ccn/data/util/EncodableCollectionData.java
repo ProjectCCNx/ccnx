@@ -1,7 +1,8 @@
 package test.ccn.data.util;
 
-import com.parc.ccn.data.content.Collection;
-import com.parc.ccn.data.util.EncodableObject;
+import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.EncodableObject;
+
 
 
 public class EncodableCollectionData extends EncodableObject<Collection> {

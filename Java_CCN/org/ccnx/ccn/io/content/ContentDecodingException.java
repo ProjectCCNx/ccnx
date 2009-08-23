@@ -1,4 +1,4 @@
-package com.parc.ccn.data;
+package org.ccnx.ccn.io.content;
 
 import org.ccnx.ccn.CCNException;
 

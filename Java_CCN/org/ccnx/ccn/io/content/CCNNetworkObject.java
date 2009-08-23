@@ -1,4 +1,4 @@
-package com.parc.ccn.data.util;
+package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
 import java.io.InvalidObjectException;
@@ -22,6 +22,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 import com.parc.ccn.config.ConfigurationException;
+import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.DataUtils.Tuple;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNFlowControl.Shape;

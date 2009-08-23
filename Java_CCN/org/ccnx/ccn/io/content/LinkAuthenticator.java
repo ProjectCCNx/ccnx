@@ -1,4 +1,4 @@
-package com.parc.ccn.data.security;
+package org.ccnx.ccn.io.content;
 
 import java.sql.Timestamp;
 import java.util.Arrays;
