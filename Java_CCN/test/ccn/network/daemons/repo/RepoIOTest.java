@@ -6,6 +6,10 @@ import java.io.InputStreamReader;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.io.CCNInputStream;
+import org.ccnx.ccn.io.CCNVersionedInputStream;
+import org.ccnx.ccn.io.RepositoryFileOutputStream;
+import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
@@ -15,10 +19,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.library.io.CCNInputStream;
-import com.parc.ccn.library.io.CCNVersionedInputStream;
-import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
-import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.network.daemons.repo.Repository;
 

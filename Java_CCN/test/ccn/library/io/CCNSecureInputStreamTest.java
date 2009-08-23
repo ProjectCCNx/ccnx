@@ -19,6 +19,12 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.io.CCNFileInputStream;
+import org.ccnx.ccn.io.CCNFileOutputStream;
+import org.ccnx.ccn.io.CCNInputStream;
+import org.ccnx.ccn.io.CCNOutputStream;
+import org.ccnx.ccn.io.CCNVersionedInputStream;
+import org.ccnx.ccn.io.CCNVersionedOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -31,12 +37,6 @@ import org.junit.Test;
 import test.ccn.data.util.Flosser;
 
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.library.io.CCNFileInputStream;
-import com.parc.ccn.library.io.CCNFileOutputStream;
-import com.parc.ccn.library.io.CCNInputStream;
-import com.parc.ccn.library.io.CCNOutputStream;
-import com.parc.ccn.library.io.CCNVersionedInputStream;
-import com.parc.ccn.library.io.CCNVersionedOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
 import com.parc.ccn.security.crypto.UnbufferedCipherInputStream;

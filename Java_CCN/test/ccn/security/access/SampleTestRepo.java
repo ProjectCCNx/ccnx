@@ -6,12 +6,12 @@ import java.util.SortedSet;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.parc.ccn.library.EnumeratedNameList;
-import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 
 public class SampleTestRepo {
 	static final String base = "/parc.com/csl/ccn/repositories/SampleTestRepo";

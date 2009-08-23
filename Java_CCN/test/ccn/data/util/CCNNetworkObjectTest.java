@@ -12,6 +12,7 @@ import javax.xml.stream.XMLStreamException;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.SignedInfo;
@@ -28,7 +29,6 @@ import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.util.CCNNetworkObject;
 import com.parc.ccn.data.util.CCNStringObject;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.util.DigestHelper;
 

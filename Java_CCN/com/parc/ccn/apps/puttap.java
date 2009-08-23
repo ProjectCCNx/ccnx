@@ -7,6 +7,7 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -14,7 +15,6 @@ import org.ccnx.ccn.protocol.Interest;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.data.util.TextXMLCodec;
-import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.network.CCNNetworkManager;
 
 /**

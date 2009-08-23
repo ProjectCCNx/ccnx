@@ -137,7 +137,7 @@ public class BinaryXMLCodec  {
 			next = istream.read();
 			
 			if (next < 0) {
-				if (istream instanceof com.parc.ccn.library.io.CCNInputStream) {
+				if (istream instanceof org.ccnx.ccn.io.CCNInputStream) {
 					Library.logger().info("Reached EOF in decodeTypeAndVal.");
 				}
 				return null; // at EOF

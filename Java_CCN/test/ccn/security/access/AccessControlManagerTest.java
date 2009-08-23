@@ -2,12 +2,12 @@ package test.ccn.security.access;
 
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 import test.ccn.data.util.Flosser;

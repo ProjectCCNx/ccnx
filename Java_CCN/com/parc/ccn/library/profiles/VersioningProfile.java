@@ -8,6 +8,7 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.ExcludeAny;
@@ -21,7 +22,6 @@ import org.ccnx.ccn.protocol.SignedInfo;
 import com.parc.ccn.data.security.ContentVerifier;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.DataUtils.Tuple;
-import com.parc.ccn.library.io.CCNVersionedInputStream;
 
 /**
  * Versions, when present, usually occupy the penultimate component of the CCN name, 

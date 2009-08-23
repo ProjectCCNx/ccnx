@@ -9,12 +9,12 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.io.CCNFileInputStream;
+import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.library.io.CCNFileInputStream;
-import com.parc.ccn.library.io.CCNInputStream;
 
 public class get_file {
 	

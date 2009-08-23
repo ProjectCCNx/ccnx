@@ -14,14 +14,14 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.io.CCNFileInputStream;
+import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.io.CCNFileInputStream;
-import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 
 /**

@@ -1,4 +1,4 @@
-package com.parc.ccn.library.io.repo;
+package org.ccnx.ccn.io;
 
 import java.io.IOException;
 
@@ -7,7 +7,8 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
-import com.parc.ccn.library.io.CCNOutputStream;
+import com.parc.ccn.library.io.repo.RepositoryFlowControl;
+
 
 /**
  * Set up a CCNOutputStream that can talk to a repository

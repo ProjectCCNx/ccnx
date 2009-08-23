@@ -8,6 +8,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -15,7 +16,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.io.CCNInputStream;
 
 /**
  * Takes a class E, and backs it securely to CCN.

@@ -8,14 +8,14 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.io.CCNVersionedInputStream;
+import org.ccnx.ccn.io.CCNVersionedOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.config.UserConfiguration;
-import com.parc.ccn.library.io.CCNVersionedInputStream;
-import com.parc.ccn.library.io.CCNVersionedOutputStream;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**

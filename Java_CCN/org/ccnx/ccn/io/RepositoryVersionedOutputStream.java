@@ -1,4 +1,4 @@
-package com.parc.ccn.library.io.repo;
+package org.ccnx.ccn.io;
 
 import java.io.IOException;
 
@@ -10,7 +10,8 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
-import com.parc.ccn.library.io.CCNVersionedOutputStream;
+import com.parc.ccn.library.io.repo.RepositoryFlowControl;
+
 
 public class RepositoryVersionedOutputStream extends CCNVersionedOutputStream {
 

@@ -5,6 +5,10 @@ import java.security.MessageDigest;
 import java.util.Random;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.io.CCNOutputStream;
+import org.ccnx.ccn.io.CCNVersionedInputStream;
+import org.ccnx.ccn.io.CCNVersionedOutputStream;
+import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -12,10 +16,6 @@ import org.junit.Test;
 
 import test.ccn.data.util.Flosser;
 
-import com.parc.ccn.library.io.CCNOutputStream;
-import com.parc.ccn.library.io.CCNVersionedInputStream;
-import com.parc.ccn.library.io.CCNVersionedOutputStream;
-import com.parc.ccn.library.io.repo.RepositoryVersionedOutputStream;
 
 public class FastFlossTestSlow {
 	

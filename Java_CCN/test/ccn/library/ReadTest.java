@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.protocol.BloomFilter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -17,7 +18,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**

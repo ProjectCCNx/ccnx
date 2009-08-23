@@ -7,14 +7,14 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.io.CCNFileOutputStream;
+import org.ccnx.ccn.io.CCNOutputStream;
+import org.ccnx.ccn.io.RepositoryFileOutputStream;
+import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.library.io.CCNFileOutputStream;
-import com.parc.ccn.library.io.CCNOutputStream;
-import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
-import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 
 public class put_file {
 	

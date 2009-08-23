@@ -1,4 +1,4 @@
-package com.parc.ccn.library.io;
+package org.ccnx.ccn.io;
 
 import java.io.IOException;
 

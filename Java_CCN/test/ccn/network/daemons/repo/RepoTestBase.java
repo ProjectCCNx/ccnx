@@ -3,14 +3,14 @@ package test.ccn.network.daemons.repo;
 import java.io.File;
 import java.io.IOException;
 
+import org.ccnx.ccn.io.CCNInputStream;
+import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
 import test.ccn.library.LibraryTestBase;
 
-import com.parc.ccn.library.io.CCNInputStream;
-import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
 
 /**
  * 

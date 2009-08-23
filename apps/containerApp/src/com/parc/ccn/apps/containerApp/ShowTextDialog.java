@@ -13,10 +13,10 @@ import javax.swing.JScrollPane;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
-import com.parc.ccn.library.io.CCNFileInputStream;
 
 public class ShowTextDialog extends JDialog implements ActionListener{
 /**
