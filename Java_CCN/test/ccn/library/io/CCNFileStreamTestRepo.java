@@ -78,9 +78,9 @@ public class CCNFileStreamTestRepo {
 		System.out.println("Read file from repository: " + fis.getBaseName() + " has header? " + 
 				fis.hasHeader());
 		Assert.assertTrue(fis.hasHeader());
-		System.out.println("Read file size: " + readDigest.count() + " written size: " + fileSize + " header size " + fis.header().count());
+		System.out.println("Read file size: " + readDigest.count() + " written size: " + fileSize + " header file size " + fis.header().length());
 		Assert.assertEquals(readDigest.count(), fileSize);
-		Assert.assertEquals(fileSize, fis.header().count());		
+		Assert.assertEquals(fileSize, fis.header().length());		
 		System.out.println("Read digest: " + DataUtils.printBytes(readDigest.digest()) + " wrote digest: " + digest);
 		Assert.assertArrayEquals(digest, readDigest.digest());
 		
@@ -90,9 +90,9 @@ public class CCNFileStreamTestRepo {
 		System.out.println("Read file from repository again: " + fis2.getBaseName() + " has header? " + 
 				fis2.hasHeader());
 		Assert.assertTrue(fis2.hasHeader());
-		System.out.println("Read file size: " + readDigest2.count() + " written size: " + fileSize + " header size " + fis.header().count());
+		System.out.println("Read file size: " + readDigest2.count() + " written size: " + fileSize + " header file size " + fis.header().length());
 		Assert.assertEquals(readDigest2.count(), fileSize);
-		Assert.assertEquals(fileSize, fis2.header().count());		
+		Assert.assertEquals(fileSize, fis2.header().length());		
 		System.out.println("Read digest: " + DataUtils.printBytes(readDigest2.digest()) + " wrote digest: " + digest);
 		Assert.assertArrayEquals(digest, readDigest2.digest());
 
@@ -129,7 +129,8 @@ public class CCNFileStreamTestRepo {
 			int read = 0;
 			while (read >= 0) {
 				read = dis.read(buf);
-				count += read;
+				if (read > 0)
+				 count += read;
 			}
 			return new CountAndDigest(count, dis.getMessageDigest().digest());
 			
