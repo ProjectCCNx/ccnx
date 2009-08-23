@@ -379,7 +379,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_currentInterest = 
             Interest.last(latestVersionKnown, 
                           VersioningProfile.acceptVersions(latestVersionKnown.lastComponent()),
-                          latestVersionKnown.count());
+                          latestVersionKnown.count()-1);
 		Library.logger().info("UpdateInBackground: interest: " + _currentInterest);
 		_library.expressInterest(_currentInterest, this);
 	}
@@ -645,6 +645,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// DKS TODO timeout?
 		for (ContentObject co : results) {
 			try {
+				Library.logger().info("handleContent: " + _currentInterest + " retrieved " + co.name());
 				if (VersioningProfile.isLaterVersionOf(co.name(), _currentInterest.name())) {
 					// OK, we have something that is a later version of our desired object.
 					// We're not sure it's actually the first content block.
