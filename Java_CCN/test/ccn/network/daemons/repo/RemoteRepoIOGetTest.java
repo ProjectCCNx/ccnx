@@ -2,13 +2,13 @@ package test.ccn.network.daemons.repo;
 
 import java.util.Arrays;
 
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * For now to run this you need to first run the RepoIoPutTest, then restart

@@ -14,11 +14,11 @@ import javax.xml.stream.XMLStreamException;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.io.content.HeaderData;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.junit.Test;
 
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * @author briggs, rasmusse, smetters

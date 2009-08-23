@@ -14,6 +14,8 @@ import org.ccnx.ccn.Library;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
+import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -27,8 +29,6 @@ import com.parc.ccn.data.util.DataUtils.Tuple;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNFlowControl.Shape;
 import com.parc.ccn.library.io.repo.RepositoryFlowControl;
-import com.parc.ccn.library.profiles.SegmentationProfile;
-import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
  * Extends a NetworkObject to add specifics for using a CCN based backing store.

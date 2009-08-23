@@ -1,4 +1,4 @@
-package com.parc.ccn.library.profiles;
+package org.ccnx.ccn.profiles;
 
 /**
  * Thrown when a version field is expected and can't be found

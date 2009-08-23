@@ -8,6 +8,7 @@ import java.security.SignatureException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
@@ -17,7 +18,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNSegmenter;
-import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
  * Simple "bag o bytes" putter. Puts blocks of data, optionally

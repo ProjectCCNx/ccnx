@@ -5,12 +5,12 @@ import java.io.OutputStream;
 import java.sql.Timestamp;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 import com.parc.ccn.library.CCNSegmenter;
-import com.parc.ccn.library.profiles.VersioningProfile;
 
 public abstract class CCNAbstractOutputStream extends OutputStream {
 

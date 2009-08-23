@@ -7,6 +7,7 @@ import java.util.Random;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
 import org.ccnx.ccn.io.RepositoryOutputStream;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Assert;
@@ -15,7 +16,6 @@ import org.junit.Test;
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 import com.parc.ccn.library.CCNNameEnumerator;
-import com.parc.ccn.library.profiles.VersioningProfile;
 
 
 public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{

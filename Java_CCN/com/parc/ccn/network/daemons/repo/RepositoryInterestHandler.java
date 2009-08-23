@@ -9,13 +9,13 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.library.CCNNameEnumerator;
-import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
 /**

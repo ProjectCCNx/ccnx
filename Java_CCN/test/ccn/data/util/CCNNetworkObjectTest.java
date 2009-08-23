@@ -18,6 +18,7 @@ import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.SignedInfo;
@@ -29,7 +30,6 @@ import org.junit.Test;
 
 import com.parc.ccn.data.util.CCNStringObject;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.util.DigestHelper;
 
 /**

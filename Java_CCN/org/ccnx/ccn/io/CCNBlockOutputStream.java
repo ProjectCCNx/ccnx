@@ -8,6 +8,8 @@ import java.security.SignatureException;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.SegmentationProfile.SegmentNumberType;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -16,8 +18,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNSegmenter;
-import com.parc.ccn.library.profiles.SegmentationProfile;
-import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
 import com.parc.ccn.security.crypto.CCNBlockSigner;
 import com.parc.ccn.security.crypto.ContentKeys;
 

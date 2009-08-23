@@ -8,6 +8,7 @@ import java.security.SignatureException;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.io.content.HeaderData.FragmentationType;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -16,7 +17,6 @@ import org.ccnx.ccn.protocol.Signature;
 import org.ccnx.ccn.protocol.SignedInfo;
 
 import com.parc.ccn.data.util.XMLDecoder;
-import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
  * Mapping from a sequence to the underlying XML representation.

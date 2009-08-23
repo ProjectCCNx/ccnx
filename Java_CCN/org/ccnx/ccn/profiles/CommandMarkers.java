@@ -1,4 +1,4 @@
-package com.parc.ccn.library.profiles;
+package org.ccnx.ccn.profiles;
 
 /**
  * A place for now to place command markers

@@ -17,6 +17,7 @@ import org.bouncycastle.jce.spec.ElGamalParameterSpec;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.junit.Assert;
@@ -26,7 +27,6 @@ import org.junit.Test;
 import test.ccn.data.util.Flosser;
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.jce.CCNCryptoProvider;
 
 public class WrappedKeyTest {

@@ -4,6 +4,7 @@ package test.ccn.data.query;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.BloomFilter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -20,7 +21,6 @@ import org.junit.Test;
 
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.keys.KeyManager;
 

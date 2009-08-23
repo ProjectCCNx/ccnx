@@ -10,13 +10,13 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNNameEnumerator;
-import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
 public class ContentTree {

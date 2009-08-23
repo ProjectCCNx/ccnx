@@ -8,11 +8,11 @@ import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.profiles.VersionMissingException;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 
 import com.parc.ccn.library.profiles.AccessControlProfile;
-import com.parc.ccn.library.profiles.VersionMissingException;
-import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.KeyDerivationFunction;
 

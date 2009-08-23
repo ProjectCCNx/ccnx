@@ -12,6 +12,7 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -20,7 +21,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNNameEnumerator;
-import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.network.daemons.repo.RepositoryInfo;
 
 /**

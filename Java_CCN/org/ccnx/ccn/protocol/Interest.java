@@ -7,13 +7,13 @@ import java.util.Random;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.profiles.CommandMarkers;
 
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
-import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.security.keys.TrustManager;
 
 /**

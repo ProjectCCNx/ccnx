@@ -4,6 +4,7 @@ package test.ccn.security.access;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.Test;
@@ -21,7 +22,6 @@ import javax.crypto.KeyGenerator;
 import java.lang.reflect.Method;
 
 import com.parc.ccn.data.query.ByteArrayCompare;
-import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.access.KeyDirectory;
 import com.parc.ccn.security.access.AccessControlManager;
 import com.parc.ccn.security.crypto.CCNDigestHelper;

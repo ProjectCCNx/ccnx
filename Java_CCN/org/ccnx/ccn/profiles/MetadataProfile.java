@@ -1,4 +1,4 @@
-package com.parc.ccn.library.profiles;
+package org.ccnx.ccn.profiles;
 
 import org.ccnx.ccn.protocol.ContentName;
 
