@@ -9,9 +9,10 @@ import javax.crypto.ShortBufferException;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.data.util.XMLEncodable;
 
 /**

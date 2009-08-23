@@ -6,16 +6,18 @@ import java.util.LinkedList;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
+import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.Collection.CollectionObject;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
-import com.parc.ccn.data.query.CCNFilterListener;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
 
 
 
@@ -43,7 +45,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	public static final byte NAME_ENUMERATION_MARKER = (byte)0xFE;
 	public static final byte [] NEMARKER = new byte []{NAME_ENUMERATION_MARKER};
 	
-	protected CCNLibrary _library = null;
+	protected CCNHandle _library = null;
 	//protected ArrayList<ContentName> _registeredPrefixes = new ArrayList<ContentName>();
 	protected BasicNameEnumeratorListener callback; 
 	protected ArrayList<ContentName> _registeredNames = new ArrayList<ContentName>();
@@ -103,13 +105,13 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	protected ArrayList<NEResponse> _handledResponses = new ArrayList<NEResponse>();
 	protected ArrayList<NERequest>  _currentRequests = new ArrayList<NERequest>();
 	
-	public CCNNameEnumerator(ContentName prefix, CCNLibrary library, BasicNameEnumeratorListener c) throws IOException {
+	public CCNNameEnumerator(ContentName prefix, CCNHandle library, BasicNameEnumeratorListener c) throws IOException {
 		_library = library;
 		callback = c;
 		registerPrefix(prefix);
 	}
 	
-	public CCNNameEnumerator(CCNLibrary library, BasicNameEnumeratorListener c) {
+	public CCNNameEnumerator(CCNHandle library, BasicNameEnumeratorListener c) {
 		_library = library;
 		callback = c;
 	}

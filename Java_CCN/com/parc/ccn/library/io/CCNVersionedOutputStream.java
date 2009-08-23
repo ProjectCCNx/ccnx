@@ -4,12 +4,13 @@ import java.io.IOException;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
@@ -17,13 +18,13 @@ import com.parc.ccn.security.crypto.ContentKeys;
 public class CCNVersionedOutputStream extends CCNOutputStream {
 
 	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
-			PublisherPublicKeyDigest publisher, CCNLibrary library)
+			PublisherPublicKeyDigest publisher, CCNHandle library)
 			throws IOException {
 		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
 
 	public CCNVersionedOutputStream(ContentName name, KeyLocator locator,
-			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNLibrary library)
+			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNHandle library)
 			throws IOException {
 		/*
 		 * The Flow Controller must register a Filter above the version no. for someone else's
@@ -33,7 +34,7 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 				new CCNFlowControl(VersioningProfile.cutTerminalVersion(name).first(), library), null, keys));
 	}
 
-	public CCNVersionedOutputStream(ContentName name, CCNLibrary library)
+	public CCNVersionedOutputStream(ContentName name, CCNHandle library)
 			throws IOException {
 		this(name, null, null, library);
 	}

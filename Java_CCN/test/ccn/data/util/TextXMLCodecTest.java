@@ -6,10 +6,10 @@ import java.util.logging.Level;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.Library;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.data.util.TextXMLCodec;
 
 public class TextXMLCodecTest {

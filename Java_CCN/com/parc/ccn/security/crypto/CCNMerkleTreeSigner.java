@@ -6,8 +6,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentObject;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentObject;
+
 
 public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 	

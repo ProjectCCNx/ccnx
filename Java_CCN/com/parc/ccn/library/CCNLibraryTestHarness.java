@@ -5,14 +5,16 @@ import java.util.ArrayList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNFilterListener;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.InterestTable;
 
-public class CCNLibraryTestHarness extends CCNLibrary {
+public class CCNLibraryTestHarness extends CCNHandle {
 	
 	private ConcurrentLinkedQueue<ContentObject> _outputQueue = new ConcurrentLinkedQueue<ContentObject>();
 	private InterestTable<CCNFilterListener> _listeners = new InterestTable<CCNFilterListener>();

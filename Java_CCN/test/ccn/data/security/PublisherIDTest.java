@@ -2,13 +2,13 @@ package test.ccn.data.security;
 
 import java.util.Arrays;
 
+import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.PublisherID.PublisherType;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherID.PublisherType;
 
 public class PublisherIDTest {
 

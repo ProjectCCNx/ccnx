@@ -2,7 +2,8 @@ package com.parc.ccn.data.query;
 
 import java.util.ArrayList;
 
-import com.parc.ccn.data.ContentName;
+import org.ccnx.ccn.protocol.ContentName;
+
 
 
 public interface BasicNameEnumeratorListener {

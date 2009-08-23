@@ -4,6 +4,15 @@ package test.ccn.data.query;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 
+import org.ccnx.ccn.protocol.BloomFilter;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.ExcludeComponent;
+import org.ccnx.ccn.protocol.ExcludeFilter;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.Signature;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -11,15 +20,6 @@ import org.junit.Test;
 
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.BloomFilter;
-import com.parc.ccn.data.query.ExcludeComponent;
-import com.parc.ccn.data.query.ExcludeFilter;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.Signature;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.keys.KeyManager;

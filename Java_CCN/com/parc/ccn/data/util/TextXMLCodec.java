@@ -9,7 +9,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+
 
 public class TextXMLCodec {
 

@@ -3,17 +3,17 @@ package test.ccn.data.query;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Assert;
 import org.junit.Test;
 
 import test.ccn.library.LibraryTestBase;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.CCNFilterListener;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
 
 /**
  * Test sending interests across ccnd

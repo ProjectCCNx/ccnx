@@ -17,17 +17,17 @@ import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.PublicKeyObject;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
@@ -201,7 +201,7 @@ public class AccessControlManager {
 	private HashSet<ContentName> _myIdentities = new HashSet<ContentName>();
 	
 	private KeyCache _keyCache = new KeyCache();
-	private CCNLibrary _library;
+	private CCNHandle _library;
 	private SecureRandom _random = new SecureRandom();
 	
 	public AccessControlManager(ContentName namespace) throws ConfigurationException, IOException {
@@ -211,7 +211,7 @@ public class AccessControlManager {
 	public AccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws ConfigurationException, IOException {
 		_namespace = namespace;
 		_userStorage = userStorage;
-		_library = CCNLibrary.open();
+		_library = CCNHandle.open();
 		// start enumerating users in the background
 		userList();
 		_groupManager = new GroupManager(this, groupStorage, _library);
@@ -260,7 +260,7 @@ public class AccessControlManager {
 		return NODE_KEY_LABEL;
 	}
 	
-	CCNLibrary library() { return _library; }
+	CCNHandle library() { return _library; }
 	
 	KeyCache keyCache() { return _keyCache; }
 	

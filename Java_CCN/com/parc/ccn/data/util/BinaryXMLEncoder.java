@@ -11,7 +11,8 @@ import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+
 
 public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	

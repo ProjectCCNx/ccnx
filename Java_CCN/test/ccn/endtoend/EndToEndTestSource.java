@@ -5,11 +5,11 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 
+import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.Interest;
 import org.junit.Test;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.query.CCNFilterListener;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.io.CCNWriter;
 
 //NOTE: This test requires ccnd to be running and complementary sink process 

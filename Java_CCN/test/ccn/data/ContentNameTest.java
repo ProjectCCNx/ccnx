@@ -7,6 +7,8 @@ import java.io.ByteArrayOutputStream;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;

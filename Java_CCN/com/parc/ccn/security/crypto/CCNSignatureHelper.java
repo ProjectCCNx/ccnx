@@ -8,7 +8,8 @@ import java.security.SignatureException;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.security.crypto.util.SignatureHelper;
 

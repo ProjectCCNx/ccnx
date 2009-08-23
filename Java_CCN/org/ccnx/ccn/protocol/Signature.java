@@ -1,4 +1,4 @@
-package com.parc.ccn.data.security;
+package org.ccnx.ccn.protocol;
 
 import java.security.cert.CertificateEncodingException;
 import java.util.Arrays;
@@ -6,8 +6,8 @@ import java.util.Arrays;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.asn1.x509.DigestInfo;
+import org.ccnx.ccn.Library;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;

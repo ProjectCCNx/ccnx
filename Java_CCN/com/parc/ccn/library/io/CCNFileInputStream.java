@@ -5,15 +5,16 @@ import java.util.ArrayList;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.data.content.HeaderData;
 import com.parc.ccn.data.content.HeaderData.HeaderObject;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
 
@@ -34,19 +35,19 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	protected HeaderObject _header = null;
 	
 	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
-			PublisherPublicKeyDigest publisher, CCNLibrary library)
+			PublisherPublicKeyDigest publisher, CCNHandle library)
 			throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, library);
 	}
 
 	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
-			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNLibrary library)
+			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNHandle library)
 			throws XMLStreamException, IOException {
 		super(name, startingBlockIndex, publisher, keys, library);
 	}
 
 	public CCNFileInputStream(ContentName name, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws XMLStreamException, IOException {
+			CCNHandle library) throws XMLStreamException, IOException {
 		this(name, null, publisher, library);
 	}
 
@@ -55,7 +56,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		super(name);
 	}
 
-	public CCNFileInputStream(ContentName name, CCNLibrary library)
+	public CCNFileInputStream(ContentName name, CCNHandle library)
 			throws XMLStreamException, IOException {
 		super(name, library);
 	}
@@ -65,7 +66,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		this(name, startingBlockIndex, null, null);
 	}
 
-	public CCNFileInputStream(ContentObject starterBlock, CCNLibrary library)
+	public CCNFileInputStream(ContentObject starterBlock, CCNHandle library)
 			throws XMLStreamException, IOException {
 		super(starterBlock, library);
 	}

@@ -7,9 +7,10 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.MalformedContentNameStringException;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 import com.parc.ccn.data.util.BinaryXMLDictionary;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;

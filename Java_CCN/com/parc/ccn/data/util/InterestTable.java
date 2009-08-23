@@ -8,10 +8,11 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.Interest;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+
 
 /**
  * Table of Interests, holding an arbitrary value for any  

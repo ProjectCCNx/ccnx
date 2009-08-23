@@ -1,6 +1,6 @@
 package com.parc.ccn.data;
 
-import com.parc.ccn.CCNException;
+import org.ccnx.ccn.CCNException;
 
 public class ContentDecodingException extends CCNException {
 

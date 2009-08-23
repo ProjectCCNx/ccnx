@@ -8,13 +8,14 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNOutputStream;
 import com.parc.ccn.network.daemons.repo.RFSLogImpl;
 import com.parc.ccn.network.daemons.repo.Repository;
@@ -34,7 +35,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 		
 		private Repository _repo = null;
 		
-		public TestFlowControl(String repoName, ContentName name, CCNLibrary library)
+		public TestFlowControl(String repoName, ContentName name, CCNHandle library)
 				throws MalformedContentNameStringException, RepositoryException, IOException {
 			super(name, library);
 			if (repoName != null) {
@@ -57,7 +58,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 	
 	public RepoPerformanceTester() {}
 	
-	public RepoPerformanceTester(String repoName, ContentName name, CCNLibrary library)
+	public RepoPerformanceTester(String repoName, ContentName name, CCNHandle library)
 			throws XMLStreamException, IOException, MalformedContentNameStringException, RepositoryException {
 		super(name, null, null, _rpt.new TestFlowControl(repoName, name, library));
 	}
@@ -67,7 +68,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 		super(name, null, null, cf);
 	}
 	
-	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNLibrary library) throws MalformedContentNameStringException, XMLStreamException, IOException, RepositoryException {
+	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle library) throws MalformedContentNameStringException, XMLStreamException, IOException, RepositoryException {
 		return new RepoPerformanceTester(repoName, name, library);
 	}
 	
@@ -77,7 +78,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 		Library.logger().setLevel(Level.SEVERE);	// turn off logging
 		try {
 			argName = ContentName.fromURI(args[0]);
-			CCNLibrary library = CCNLibrary.open();
+			CCNHandle library = CCNHandle.open();
 			
 			File theFile = new File(args[1]);
 			if (!theFile.exists()) {

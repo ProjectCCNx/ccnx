@@ -1,4 +1,4 @@
-package com.parc.ccn.data;
+package org.ccnx.ccn.protocol;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -7,9 +7,9 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;

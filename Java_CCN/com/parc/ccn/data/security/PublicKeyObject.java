@@ -11,13 +11,16 @@ import java.security.spec.InvalidKeySpecException;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.CCNNetworkObject;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.security.crypto.util.CryptoUtil;
 
@@ -42,11 +45,11 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
-	public PublicKeyObject(ContentName name, PublicKey data, CCNLibrary library) throws IOException {
+	public PublicKeyObject(ContentName name, PublicKey data, CCNHandle library) throws IOException {
 		super(PublicKey.class, name, data, library);
 	}
 	
-	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNLibrary library) throws IOException {
+	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNHandle library) throws IOException {
 		super(PublicKey.class, name, data, publisher, locator, library);
 	}
 
@@ -58,15 +61,15 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
-	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
+	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) throws IOException, XMLStreamException {
 		super(PublicKey.class, name, publisher, library);
 	}
 	
-	public PublicKeyObject(ContentName name, CCNLibrary library) throws IOException, XMLStreamException {
+	public PublicKeyObject(ContentName name, CCNHandle library) throws IOException, XMLStreamException {
 		super(PublicKey.class, name, (PublisherPublicKeyDigest)null, library);
 	}
 	
-	public PublicKeyObject(ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
+	public PublicKeyObject(ContentObject firstBlock, CCNHandle library) throws IOException, XMLStreamException {
 		super(PublicKey.class, firstBlock, library);
 	}
 	

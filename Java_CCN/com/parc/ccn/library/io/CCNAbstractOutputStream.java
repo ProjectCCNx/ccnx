@@ -4,16 +4,17 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.sql.Timestamp;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.library.CCNLibrary;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 public abstract class CCNAbstractOutputStream extends OutputStream {
 
-	protected CCNLibrary _library = null;
+	protected CCNHandle _library = null;
 	protected CCNSegmenter _segmenter = null;
 	/** 
 	 * The name for the content fragments, up to just before the sequence number.
@@ -38,7 +39,7 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 		_segmenter = segmenter;
 		_library = _segmenter.getLibrary();
 		if (null == _library) {
-			_library = CCNLibrary.getLibrary();
+			_library = CCNHandle.getLibrary();
 		}
 
 		// If these are null, the library defaults will be used.

@@ -8,14 +8,15 @@ import java.security.SignatureException;
 import java.sql.Timestamp;
 import java.util.Arrays;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.CCNFlowControl.Shape;
 import com.parc.ccn.library.profiles.SegmentationProfile;
@@ -66,28 +67,28 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	public CCNOutputStream(ContentName name, 
 			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,
-			ContentKeys keys, CCNLibrary library) throws IOException {
+			ContentKeys keys, CCNHandle library) throws IOException {
 		this(name, locator, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library),
 				null, keys));
 	}
 
 	public CCNOutputStream(ContentName name,
 			PublisherPublicKeyDigest publisher, ContentType type,
-			CCNLibrary library) throws IOException {
+			CCNHandle library) throws IOException {
 		this(name, null, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
 
 	public CCNOutputStream(ContentName name,
 			PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws IOException {
+			CCNHandle library) throws IOException {
 		this(name, null, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
 	}
 
-	public CCNOutputStream(ContentName name, CCNLibrary library) throws IOException {
+	public CCNOutputStream(ContentName name, CCNHandle library) throws IOException {
 		this(name, null, null, library);
 	}
 
-	public CCNOutputStream(ContentName name, ContentType type, CCNLibrary library) throws IOException {
+	public CCNOutputStream(ContentName name, ContentType type, CCNHandle library) throws IOException {
 		this(name, null, type, library);
 	}
 	

@@ -4,12 +4,13 @@ import java.io.IOException;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.CCNBase;
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.library.CCNLibrary;
+import org.ccnx.ccn.CCNBase;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.security.crypto.ContentKeys;
 
 /**
@@ -23,18 +24,18 @@ import com.parc.ccn.security.crypto.ContentKeys;
 public class CCNBlockInputStream extends CCNAbstractInputStream {
 
 	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber, 
-			   PublisherPublicKeyDigest publisher, ContentKeys keys, CCNLibrary library) throws XMLStreamException, IOException {
+			   PublisherPublicKeyDigest publisher, ContentKeys keys, CCNHandle library) throws XMLStreamException, IOException {
 		super(baseName, startingSegmentNumber, publisher, keys, library);
 		setTimeout(CCNBase.NO_TIMEOUT);
 	}
 
 	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber,
-							   PublisherPublicKeyDigest publisher, CCNLibrary library) throws XMLStreamException, IOException {
+							   PublisherPublicKeyDigest publisher, CCNHandle library) throws XMLStreamException, IOException {
 		super(baseName, startingSegmentNumber, publisher, null, library);
 		setTimeout(CCNBase.NO_TIMEOUT);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, PublisherPublicKeyDigest publisher, CCNLibrary library) 
+	public CCNBlockInputStream(ContentName baseName, PublisherPublicKeyDigest publisher, CCNHandle library) 
 															throws XMLStreamException, IOException {
 		this(baseName, null, publisher, library);
 	}
@@ -43,7 +44,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		this(baseName, null, null, null);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, CCNLibrary library) throws XMLStreamException, IOException {
+	public CCNBlockInputStream(ContentName baseName, CCNHandle library) throws XMLStreamException, IOException {
 		this(baseName, null, null, library);
 	}
 
@@ -51,7 +52,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		this(baseName, segmentNumber, null, null);
 	}
 	
-	public CCNBlockInputStream(ContentObject firstSegment, CCNLibrary library) throws XMLStreamException, IOException {
+	public CCNBlockInputStream(ContentObject firstSegment, CCNHandle library) throws XMLStreamException, IOException {
 		super(firstSegment, null, library);
 	}
 

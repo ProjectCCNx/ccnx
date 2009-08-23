@@ -11,14 +11,14 @@ import java.util.SortedSet;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.Library;
 
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Link;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.security.access.AccessControlManager;
@@ -34,14 +34,14 @@ public class GroupTestRepo {
 	static ContentName userStore = null;
 	
 	static EnumeratedNameList _userList = null;
-	static CCNLibrary _library = null;
+	static CCNHandle _library = null;
 	
 	/**
 	 * Have to make a bunch of users.
 	 * @throws Exception
 	 */
 	static TestUserData users = null;
-	static CCNLibrary userLibrary = null;
+	static CCNHandle userLibrary = null;
 	static AccessControlManager _acm = null;
 	static GroupManager _gm = null;
 
@@ -52,7 +52,7 @@ public class GroupTestRepo {
 			testStorePrefix = ContentName.fromNative("/parc/");
 			userStore = ContentName.fromNative(testStorePrefix, "Users");
 			
-			_library = CCNLibrary.open();
+			_library = CCNHandle.open();
 			System.out.println("group store: " + AccessControlProfile.groupNamespaceName(testStorePrefix));
 			_acm = new AccessControlManager(testStorePrefix, AccessControlProfile.groupNamespaceName(testStorePrefix), userStore);
 			_userList = _acm.userList();

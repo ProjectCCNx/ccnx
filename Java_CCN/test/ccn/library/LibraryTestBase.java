@@ -15,20 +15,20 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.CCNBase;
+import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import com.parc.ccn.CCNBase;
-import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.CCNFilterListener;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNWriter;
 
 public class LibraryTestBase {
@@ -49,15 +49,15 @@ public class LibraryTestBase {
 	
 	protected HashSet<Integer> _resultSet = new HashSet<Integer>();
 	
-	protected static CCNLibrary putLibrary = null;
-	protected static CCNLibrary getLibrary = null;
+	protected static CCNHandle putLibrary = null;
+	protected static CCNHandle getLibrary = null;
 	
 	protected static ArrayList<Integer> usedIds = new ArrayList<Integer>();
 
 	static {
 		try {
-			putLibrary = CCNLibrary.open();
-			getLibrary = CCNLibrary.open();
+			putLibrary = CCNHandle.open();
+			getLibrary = CCNHandle.open();
 		} catch (ConfigurationException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -137,7 +137,7 @@ public class LibraryTestBase {
 	 * @throws InvalidKeyException 
 	 * @throws XMLStreamException 
 	 */
-	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNHandle library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
 		Random rand = new Random();
 	//	boolean done = false;
 		System.out.println("getResults: getting children of " + baseName);
@@ -180,7 +180,7 @@ public class LibraryTestBase {
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
-	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
+	public void doPuts(ContentName baseName, int count, CCNHandle library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
 
 		CCNWriter writer = new CCNWriter(baseName, library);
 		Random rand = new Random();
@@ -203,16 +203,16 @@ public class LibraryTestBase {
 	}
 	
 	public class GetThread implements Runnable {
-		protected CCNLibrary library = null;
+		protected CCNHandle library = null;
 		int count = 0;
 		int id = 0;
 		public GetThread(int n, int id) throws ConfigurationException, IOException {
-			library = CCNLibrary.open();
+			library = CCNHandle.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
+					((CCNHandle)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
 				} catch (IOException ie) {
 				}
 			}
@@ -230,16 +230,16 @@ public class LibraryTestBase {
 	}
 	
 	public class PutThread implements Runnable {
-		protected CCNLibrary library = null;
+		protected CCNHandle library = null;
 		int count = 0;
 		int id = 0;
 		public PutThread(int n, int id) throws ConfigurationException, IOException {
-			library = CCNLibrary.open();
+			library = CCNHandle.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
+					((CCNHandle)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
 				} catch (IOException ie) {
 				}
 			}
@@ -260,7 +260,7 @@ public class LibraryTestBase {
 	}
 	
 	public class GetServer implements Runnable, CCNInterestListener {
-		protected CCNLibrary library = null;
+		protected CCNHandle library = null;
 		int count = 0;
 		int next = 0;
 		Semaphore sema = new Semaphore(0);
@@ -268,12 +268,12 @@ public class LibraryTestBase {
 		int id;
 		
 		public GetServer(int n, int id) throws ConfigurationException, IOException {
-			library = CCNLibrary.open();
+			library = CCNHandle.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
+					((CCNHandle)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
 				} catch (IOException ie) {
 				}
 			}
@@ -324,7 +324,7 @@ public class LibraryTestBase {
 	}
 	
 	public class PutServer implements Runnable, CCNFilterListener {
-		protected CCNLibrary library = null;
+		protected CCNHandle library = null;
 		int count = 0;
 		int next = 0;
 		Semaphore sema = new Semaphore(0);
@@ -335,12 +335,12 @@ public class LibraryTestBase {
 		CCNWriter writer = null;
 		
 		public PutServer(int n, int id) throws ConfigurationException, IOException {
-			library = CCNLibrary.open();
+			library = CCNHandle.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNLibrary)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
+					((CCNHandle)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
 				} catch (IOException ie) {
 				}
 			}

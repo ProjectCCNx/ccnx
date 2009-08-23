@@ -6,20 +6,21 @@ import java.security.InvalidParameterException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.ExcludeAny;
-import com.parc.ccn.data.query.ExcludeComponent;
-import com.parc.ccn.data.query.ExcludeFilter;
-import com.parc.ccn.data.query.Interest;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.ExcludeAny;
+import org.ccnx.ccn.protocol.ExcludeComponent;
+import org.ccnx.ccn.protocol.ExcludeFilter;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo;
+
 import com.parc.ccn.data.security.ContentVerifier;
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.DataUtils.Tuple;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 
 /**
@@ -477,7 +478,7 @@ public class VersioningProfile implements CCNProfile {
 											     PublisherPublicKeyDigest publisher, 
 												 long timeout, 
  												 ContentVerifier verifier,
-												 CCNLibrary library) throws IOException {
+												 CCNHandle library) throws IOException {
 		
 		ContentName latestVersionFound = startingVersion;
 		
@@ -529,7 +530,7 @@ public class VersioningProfile implements CCNProfile {
 															 PublisherPublicKeyDigest publisher, 
 															 long timeout, 
 															 ContentVerifier verifier,
-															 CCNLibrary library) throws IOException {
+															 CCNHandle library) throws IOException {
 		
 		Library.logger().info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
 		

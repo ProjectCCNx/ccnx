@@ -8,19 +8,19 @@ import java.security.Security;
 import java.util.Random;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import test.ccn.data.util.Flosser;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.keys.KeyManager;
 import com.parc.ccn.security.keys.KeyRepository;
@@ -66,7 +66,7 @@ public class KeyManagerTest {
 			// I'm actually about to add a bunch of lower-level write stuff
 			// for the access control, but that's not in place now.
 			Flosser flosser = new Flosser(testprefix);
-			CCNFlowControl fc = new CCNFlowControl(testprefix, CCNLibrary.open());
+			CCNFlowControl fc = new CCNFlowControl(testprefix, CCNHandle.open());
 			
 			KeyManager km = KeyManager.getDefaultKeyManager();
 			

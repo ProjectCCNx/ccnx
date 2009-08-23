@@ -4,21 +4,21 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Test;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 
 import junit.framework.Assert;
 
 public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	
-	CCNLibrary putLibrary;
-	CCNLibrary getLibrary;
+	CCNHandle putLibrary;
+	CCNHandle getLibrary;
 	CCNNameEnumerator putne;
 	CCNNameEnumerator getne;
 
@@ -298,8 +298,8 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	 */
 	public void setLibraries(){
 		try{
-			putLibrary = CCNLibrary.open();
-			getLibrary = CCNLibrary.open();
+			putLibrary = CCNHandle.open();
+			getLibrary = CCNHandle.open();
 			putne = new CCNNameEnumerator(putLibrary, this);
 			getne = new CCNNameEnumerator(getLibrary, this);
 		}

@@ -11,7 +11,8 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+
 
 /**
  * A NetworkObject provides support for storing an object in a network based backing store.

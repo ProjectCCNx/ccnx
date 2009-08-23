@@ -4,21 +4,22 @@ import java.io.IOException;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
-import com.parc.ccn.library.CCNLibrary;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.library.io.CCNVersionedOutputStream;
 
 public class RepositoryVersionedOutputStream extends CCNVersionedOutputStream {
 
-	public RepositoryVersionedOutputStream(ContentName name, CCNLibrary library) throws XMLStreamException, IOException {
+	public RepositoryVersionedOutputStream(ContentName name, CCNHandle library) throws XMLStreamException, IOException {
 		this(name, null, null, null, library);
 	}
 	
 	public RepositoryVersionedOutputStream(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type, CCNLibrary library)
+			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type, CCNHandle library)
 			throws XMLStreamException, IOException {
 
 		super(name, locator, publisher, null, new RepositoryFlowControl(name, library));

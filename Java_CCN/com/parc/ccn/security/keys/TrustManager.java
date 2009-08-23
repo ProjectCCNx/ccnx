@@ -1,9 +1,10 @@
 package com.parc.ccn.security.keys;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 
 /**
  * Front-end for key repository, both our keys

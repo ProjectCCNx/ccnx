@@ -12,7 +12,8 @@ import java.security.spec.InvalidKeySpecException;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.ContentObject;
+import org.ccnx.ccn.protocol.ContentObject;
+
 import com.parc.ccn.security.crypto.util.CryptoUtil;
 
 public class ccn_verify {

@@ -6,15 +6,15 @@ import java.util.ArrayList;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.protocol.BloomFilter;
+import org.ccnx.ccn.protocol.ExcludeAny;
+import org.ccnx.ccn.protocol.ExcludeComponent;
+import org.ccnx.ccn.protocol.ExcludeFilter;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.data.query.BloomFilter;
-import com.parc.ccn.data.query.ExcludeAny;
-import com.parc.ccn.data.query.ExcludeComponent;
-import com.parc.ccn.data.query.ExcludeFilter;
 
 public class ExcludeFilterTest {
 

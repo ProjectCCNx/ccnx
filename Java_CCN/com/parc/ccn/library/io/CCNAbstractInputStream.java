@@ -11,15 +11,16 @@ import java.util.Arrays;
 import javax.crypto.Cipher;
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.data.security.ContentVerifier;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.ContentKeys;
@@ -29,7 +30,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	protected static final int MAX_TIMEOUT = 5000;
 
-	protected CCNLibrary _library;
+	protected CCNHandle _library;
 
 	protected ContentObject _currentSegment = null;
 	protected ContentObject _goneSegment = null;
@@ -73,7 +74,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 */
 	public CCNAbstractInputStream(
 			ContentName baseName, Long startingSegmentNumber,
-			PublisherPublicKeyDigest publisher, CCNLibrary library) 
+			PublisherPublicKeyDigest publisher, CCNHandle library) 
 					throws XMLStreamException, IOException {
 		super();
 		
@@ -82,7 +83,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		}
 		_library = library; 
 		if (null == _library) {
-			_library = CCNLibrary.getLibrary();
+			_library = CCNHandle.getLibrary();
 		}
 		_publisher = publisher;	
 		
@@ -109,7 +110,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	public CCNAbstractInputStream(
 			ContentName baseName, Long startingSegmentNumber,
 			PublisherPublicKeyDigest publisher,
-			ContentKeys keys, CCNLibrary library) 
+			ContentKeys keys, CCNHandle library) 
 					throws XMLStreamException, IOException {
 		
 		this(baseName, startingSegmentNumber, publisher, library);
@@ -127,14 +128,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * @throws IOException
 	 */
 	public CCNAbstractInputStream(ContentObject firstSegment, 			
-			CCNLibrary library) throws IOException  {
+			CCNHandle library) throws IOException  {
 		super();
 		if (null == firstSegment) {
 			throw new IllegalArgumentException("starterSegment cannot be null!");
 		}
 		_library = library; 
 		if (null == _library) {
-			_library = CCNLibrary.getLibrary();
+			_library = CCNHandle.getLibrary();
 		}
 		setFirstSegment(firstSegment);
 		_baseName = SegmentationProfile.segmentRoot(firstSegment.name());
@@ -147,7 +148,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	public CCNAbstractInputStream(ContentObject firstSegment, 			
 			ContentKeys keys,
-			CCNLibrary library) throws IOException {
+			CCNHandle library) throws IOException {
 
 		this(firstSegment, library);
 		

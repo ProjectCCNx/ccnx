@@ -9,17 +9,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.ExcludeComponent;
+import org.ccnx.ccn.protocol.ExcludeFilter;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.ExcludeComponent;
-import com.parc.ccn.data.query.ExcludeFilter;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.CCNLibrary;
 
 /**
  *  A class to help write tests without a repo. Pulls things
@@ -36,7 +37,7 @@ import com.parc.ccn.library.CCNLibrary;
  */
 public class Flosser implements CCNInterestListener {
 	
-	CCNLibrary _library;
+	CCNHandle _library;
 	Map<ContentName, Interest> _interests = new HashMap<ContentName, Interest>();
 	Map<ContentName, Set<ContentName>> _subInterests = new HashMap<ContentName, Set<ContentName>>();
 	HashSet<ContentObject> _processedObjects = new HashSet<ContentObject>();
@@ -47,7 +48,7 @@ public class Flosser implements CCNInterestListener {
 	 * @throws IOException
 	 */
 	public Flosser() throws ConfigurationException, IOException {
-		_library = CCNLibrary.open();
+		_library = CCNHandle.open();
 	}
 	
 	public Flosser(ContentName namespace) throws ConfigurationException, IOException {

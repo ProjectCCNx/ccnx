@@ -11,18 +11,18 @@ import javax.xml.stream.XMLStreamException;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.Link.LinkObject;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.CCNStringObject;
-import com.parc.ccn.library.CCNLibrary;
 
 /**
  * @author smetters
@@ -31,8 +31,8 @@ import com.parc.ccn.library.CCNLibrary;
 public class LinkObjectTestRepo {
 
 	static ContentName baseName;
-	static CCNLibrary getLibrary;
-	static CCNLibrary putLibrary;
+	static CCNHandle getLibrary;
+	static CCNHandle putLibrary;
 	static Random random;
 	/**
 	 * @throws java.lang.Exception
@@ -41,8 +41,8 @@ public class LinkObjectTestRepo {
 	public static void setUpBeforeClass() throws Exception {
 		random = new Random();
 		baseName = ContentName.fromNative("/libraryTest/LinkObjectTestRepo-" + random.nextInt(10000));
-		putLibrary = CCNLibrary.open();
-		getLibrary = CCNLibrary.open();
+		putLibrary = CCNHandle.open();
+		getLibrary = CCNHandle.open();
 	}
 	
 	@Test

@@ -1,15 +1,15 @@
 package test.ccn.security.access;
 
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.PublicKeyObject;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.security.keys.KeyManager;
 
 public class TestUserDataTestRepo {
@@ -30,7 +30,7 @@ public class TestUserDataTestRepo {
 	public void testUserCreation() throws Exception {
 		TestUserData td = new TestUserData(testPrefix, userCount,
 				true,
-				"password".toCharArray(), CCNLibrary.open());
+				"password".toCharArray(), CCNHandle.open());
 		StringBuffer sb = new StringBuffer("Users: ");
 		for (String s : td.friendlyNames()) {
 			sb.append(" " + s);
@@ -40,7 +40,7 @@ public class TestUserDataTestRepo {
 		// and such defaults correctly.
 		// Should we pick randomly?
 		String testUser = td.friendlyNames().iterator().next();
-		CCNLibrary userLibrary = td.getLibraryForUser(testUser);
+		CCNHandle userLibrary = td.getLibraryForUser(testUser);
 		KeyManager userKeyManager = userLibrary.keyManager();
 		
 		Assert.assertNotNull(userKeyManager.getDefaultKeyID());
@@ -48,7 +48,7 @@ public class TestUserDataTestRepo {
 		System.out.println("Attempting to recover stored users.");
 		TestUserData td2 = new TestUserData(testPrefix, userCount,
 				true,
-				"password".toCharArray(), CCNLibrary.open());
+				"password".toCharArray(), CCNHandle.open());
 		Assert.assertEquals(td.friendlyNames(), td2.friendlyNames());
 
 		KeyManager userKeyManager2 = userLibrary.keyManager();
@@ -56,7 +56,7 @@ public class TestUserDataTestRepo {
 		Assert.assertNotNull(userKeyManager.getDefaultKeyID());
 		Assert.assertNotNull(userKeyManager2.getDefaultKeyID());
 
-		CCNLibrary standardLibrary = CCNLibrary.open();
+		CCNHandle standardLibrary = CCNHandle.open();
 		KeyManager standardKeyManager = standardLibrary.keyManager();
 
 		System.out.println("Default key locator: " + standardKeyManager.getDefaultKeyLocator());

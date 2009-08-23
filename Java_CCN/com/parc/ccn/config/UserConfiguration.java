@@ -1,8 +1,9 @@
 package com.parc.ccn.config;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.MalformedContentNameStringException;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 
 public class UserConfiguration {
 	

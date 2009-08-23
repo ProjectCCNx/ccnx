@@ -5,7 +5,8 @@ import java.security.PrivateKey;
 import java.util.TreeMap;
 import java.util.Comparator;
 
-import com.parc.ccn.data.ContentName;
+import org.ccnx.ccn.protocol.ContentName;
+
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.keys.KeyManager;
 import com.parc.ccn.data.query.ByteArrayCompare;

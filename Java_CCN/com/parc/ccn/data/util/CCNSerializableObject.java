@@ -8,13 +8,14 @@ import java.io.Serializable;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 
 /**
  * Takes a class E, and backs it securely to CCN.
@@ -32,16 +33,16 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 	 * @param library
 	 * @throws IOException
 	 */
-	public CCNSerializableObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws IOException {
+	public CCNSerializableObject(Class<E> type, ContentName name, E data, CCNHandle library) throws IOException {
 		super(type, name, data, library);
 	}
 
-	public CCNSerializableObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+	public CCNSerializableObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
 		super(type, name, data, publisher, keyLocator, library);
 	}
 
 	public CCNSerializableObject(Class<E> type, ContentName name, E data,
-			boolean raw, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+			boolean raw, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
 		super(type, name, data, raw, publisher, keyLocator, library);
 	}
 
@@ -60,17 +61,17 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 	 * @throws ClassNotFoundException 
 	 */
 	public CCNSerializableObject(Class<E> type, ContentName name, 
-			CCNLibrary library) throws IOException, XMLStreamException {
+			CCNHandle library) throws IOException, XMLStreamException {
 		super(type, name, (PublisherPublicKeyDigest)null, library);
 	}
 	
 	public CCNSerializableObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws IOException, XMLStreamException {
+			CCNHandle library) throws IOException, XMLStreamException {
 		super(type, name, publisher, library);
 	}
 	
 	public CCNSerializableObject(Class<E> type, ContentName name,
-			PublisherPublicKeyDigest publisher, boolean raw, CCNLibrary library)
+			PublisherPublicKeyDigest publisher, boolean raw, CCNHandle library)
 			throws IOException, XMLStreamException {
 		super(type, name, publisher, raw, library);
 	}
@@ -82,12 +83,12 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 	}
 
 	public CCNSerializableObject(Class<E> type, ContentObject firstBlock,
-			CCNLibrary library) throws IOException, XMLStreamException {
+			CCNHandle library) throws IOException, XMLStreamException {
 		super(type, firstBlock, library);
 	}
 
 	public CCNSerializableObject(Class<E> type, ContentObject firstBlock,
-			boolean raw, CCNLibrary library) throws IOException,
+			boolean raw, CCNHandle library) throws IOException,
 			XMLStreamException {
 		super(type, firstBlock, raw, library);
 	}

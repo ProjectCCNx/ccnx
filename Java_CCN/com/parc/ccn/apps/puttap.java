@@ -5,14 +5,15 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.data.util.TextXMLCodec;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.network.CCNNetworkManager;
 
@@ -59,7 +60,7 @@ public class puttap implements CCNInterestListener {
 			}
 			
 			// Get writing library 
-			CCNLibrary library = CCNLibrary.open();
+			CCNHandle library = CCNHandle.open();
 			manager = library.getNetworkManager();
 			// Set up tap so packets get written to file
 			manager.setTap(tapName);
@@ -71,7 +72,7 @@ public class puttap implements CCNInterestListener {
 			// appears that there is an interest from a separate app
 			// because interest from the same app as the writer will 
 			// not consume the data and therefore will block
-			CCNLibrary reader = CCNLibrary.open();
+			CCNHandle reader = CCNHandle.open();
 			reader.expressInterest(new Interest(ccnName), this);
 			
 			// Remove automatic verification at this level. Can put it back in at

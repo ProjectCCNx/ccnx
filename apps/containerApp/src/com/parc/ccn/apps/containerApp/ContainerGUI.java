@@ -15,18 +15,19 @@ import javax.swing.tree.*;
 import javax.swing.event.*;
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
 
-import com.parc.ccn.Library;
+
 import com.parc.ccn.apps.containerApp.IconCellRenderer;
 import com.parc.ccn.apps.containerApp.IconData;
 import com.parc.ccn.apps.containerApp.Name;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.CCNFileInputStream;
 import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
@@ -36,7 +37,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 	
 	private CCNNameEnumerator _nameEnumerator = null;
-	protected static CCNLibrary _library = null;
+	protected static CCNHandle _library = null;
     private static boolean useSystemLookAndFeel = false;
     
 	private static final long serialVersionUID = 1L;
@@ -823,7 +824,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 	
 	private void setupNameEnumerator(){
 		try {
-			_library = CCNLibrary.open();
+			_library = CCNHandle.open();
 			_nameEnumerator = new CCNNameEnumerator(_library, this);
 		} catch (ConfigurationException e1) {
 	

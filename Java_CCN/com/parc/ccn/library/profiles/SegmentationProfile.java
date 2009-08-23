@@ -4,12 +4,13 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Arrays;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.data.security.ContentVerifier;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.library.CCNLibrary;
 
 /**
  * We speak in terms of segments, not fragments, as this profile
@@ -211,7 +212,7 @@ public class SegmentationProfile implements CCNProfile {
 	 * @return
 	 * @throws IOException
 	 */
-	public static ContentObject getSegment(ContentName desiredContent, Long desiredSegmentNumber, PublisherPublicKeyDigest publisher, long timeout, ContentVerifier verifier, CCNLibrary library) throws IOException {
+	public static ContentObject getSegment(ContentName desiredContent, Long desiredSegmentNumber, PublisherPublicKeyDigest publisher, long timeout, ContentVerifier verifier, CCNHandle library) throws IOException {
 		
 	    // Block name requested should be interpreted literally, not taken
 	    // relative to baseSegment().

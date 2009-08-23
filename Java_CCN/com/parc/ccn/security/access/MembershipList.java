@@ -4,13 +4,14 @@ import java.io.IOException;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Collection;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
-import com.parc.ccn.library.CCNLibrary;
 
 /**
  * Eventually should extend Collection, when that moves onto encodable objects.
@@ -19,12 +20,12 @@ import com.parc.ccn.library.CCNLibrary;
  */
 public class MembershipList extends CCNEncodableObject<Collection> {
 
-	public MembershipList(ContentName name, Collection data, CCNLibrary library) throws ConfigurationException, IOException {
+	public MembershipList(ContentName name, Collection data, CCNHandle library) throws ConfigurationException, IOException {
 		super(Collection.class, name, data, library);
 	}
 	
 	public MembershipList(ContentName name, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
 		super(Collection.class, name, publisher, library);
 	}
 	
@@ -38,12 +39,12 @@ public class MembershipList extends CCNEncodableObject<Collection> {
 	 * @throws ClassNotFoundException 
 	 */
 	public MembershipList(ContentName name, 
-			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
 		super(Collection.class, name, (PublisherPublicKeyDigest)null, library);
 	}
 	
 	public MembershipList(ContentObject firstBlock,
-			CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+			CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
 		super(Collection.class, firstBlock, library);
 	}
 	

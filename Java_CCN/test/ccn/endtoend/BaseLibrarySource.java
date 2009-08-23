@@ -6,18 +6,18 @@ import java.util.Random;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.BinaryXMLCodec;
-import com.parc.ccn.library.CCNLibrary;
 
 //NOTE: This test requires ccnd to be running and complementary sink process 
 
 public class BaseLibrarySource {
 	public static int count = 43;
-	protected static CCNLibrary library = null;
+	protected static CCNHandle library = null;
 	ContentName name = null;
 	int next = 0;
 	protected static Throwable error = null; // for errors in callback
@@ -27,7 +27,7 @@ public class BaseLibrarySource {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		library = CCNLibrary.open();
+		library = CCNHandle.open();
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		Library.logger().setLevel(Level.INFO);
 		rand = new Random();

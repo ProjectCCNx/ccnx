@@ -3,12 +3,13 @@ package com.parc.ccn.network.daemons.repo;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNLibrary;
 
 /**
  * Designed to contain all methods that talk to the repository
@@ -88,7 +89,7 @@ public interface Repository {
 	 * @param args - user arguments to the repository
 	 * @return
 	 */
-	public String[] initialize(String[] args, CCNLibrary library) throws RepositoryException;
+	public String[] initialize(String[] args, CCNHandle library) throws RepositoryException;
 	
 	/**
 	 * Save the specified content in the repository.  If content is added to a name that has

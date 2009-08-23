@@ -1,4 +1,4 @@
-package com.parc.ccn.data.security;
+package org.ccnx.ccn.protocol;
 
 import java.security.PublicKey;
 import java.util.Arrays;

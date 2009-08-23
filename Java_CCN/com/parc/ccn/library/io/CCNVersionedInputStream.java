@@ -5,12 +5,13 @@ import java.sql.Timestamp;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
-import com.parc.ccn.library.CCNLibrary;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -43,19 +44,19 @@ public class CCNVersionedInputStream extends CCNInputStream {
 
 	public CCNVersionedInputStream(ContentName name,
 			Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
-			ContentKeys keys, CCNLibrary library)
+			ContentKeys keys, CCNHandle library)
 			throws XMLStreamException, IOException {
 		super(name, startingSegmentNumber, publisher, keys, library);
 	}
 
 	public CCNVersionedInputStream(ContentName name,
 			Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws XMLStreamException, IOException {
+			CCNHandle library) throws XMLStreamException, IOException {
 		super(name, startingSegmentNumber, publisher, library);
 	}
 
 	public CCNVersionedInputStream(ContentName name, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws XMLStreamException, IOException {
+			CCNHandle library) throws XMLStreamException, IOException {
 		super(name, publisher, library);
 	}
 
@@ -64,7 +65,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		super(name);
 	}
 
-	public CCNVersionedInputStream(ContentName name, CCNLibrary library)
+	public CCNVersionedInputStream(ContentName name, CCNHandle library)
 			throws XMLStreamException, IOException {
 		super(name, library);
 	}
@@ -75,7 +76,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	}
 
 	public CCNVersionedInputStream(ContentObject firstSegment,
-			CCNLibrary library) throws XMLStreamException, IOException {
+			CCNHandle library) throws XMLStreamException, IOException {
 		super(firstSegment, library);
 	}
 	

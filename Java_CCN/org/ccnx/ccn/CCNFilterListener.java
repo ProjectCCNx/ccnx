@@ -1,6 +1,9 @@
-package com.parc.ccn.data.query;
+package org.ccnx.ccn;
 
 import java.util.ArrayList;
+
+import org.ccnx.ccn.protocol.Interest;
+
 
 public interface CCNFilterListener {
 

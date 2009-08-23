@@ -12,9 +12,10 @@ import javax.swing.JLabel;
 import javax.swing.JScrollPane;
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.library.CCNLibrary;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 import com.parc.ccn.library.io.CCNFileInputStream;
 
 public class ShowTextDialog extends JDialog implements ActionListener{
@@ -33,7 +34,7 @@ private JButton finishedButton;
 		}
 		
 	}
-	public ShowTextDialog(Name name,CCNLibrary library) {	
+	public ShowTextDialog(Name name,CCNHandle library) {	
 		super();
 		
 		
@@ -85,7 +86,7 @@ private JButton finishedButton;
 	 * a content name object that points to an existing file in the repo to be displayed
 	 *@param library
 	 * */
-	private void displayText(ContentName fileName, CCNLibrary library) {
+	private void displayText(ContentName fileName, CCNHandle library) {
 		try {
 			
 			CCNFileInputStream fis = new CCNFileInputStream(fileName, library);

@@ -8,7 +8,8 @@ import java.io.Serializable;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+
 
 /**
  * Prototypical wrapper around a Serializable object. Expand to variants

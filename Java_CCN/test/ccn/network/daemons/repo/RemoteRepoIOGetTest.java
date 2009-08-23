@@ -2,12 +2,12 @@ package test.ccn.network.daemons.repo;
 
 import java.util.Arrays;
 
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**

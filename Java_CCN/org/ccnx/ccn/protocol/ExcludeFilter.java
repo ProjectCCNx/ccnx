@@ -1,4 +1,4 @@
-package com.parc.ccn.data.query;
+package org.ccnx.ccn.protocol;
 
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
@@ -6,7 +6,8 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.ContentName;
+
+import com.parc.ccn.data.query.ByteArrayCompare;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;

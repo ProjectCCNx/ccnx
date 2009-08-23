@@ -8,14 +8,14 @@ import java.security.SignatureException;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.asn1.DEROctetString;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Signature;
+import org.ccnx.ccn.protocol.SignedInfo;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.Signature;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
 
 /**

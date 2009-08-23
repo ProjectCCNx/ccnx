@@ -5,6 +5,7 @@ package test.ccn.library;
 
 import static org.junit.Assert.*;
 
+import org.ccnx.ccn.protocol.ContentName;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -14,7 +15,6 @@ import java.sql.Timestamp;
 
 import junit.framework.Assert;
 
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
@@ -63,7 +63,7 @@ public class VersioningProfileTest {
 	}
 	
 	/**
-	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#addVersion(com.parc.ccn.data.ContentName, long)}.
+	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#addVersion(org.ccnx.ccn.protocol.ContentName, long)}.
 	 */
 	@Test
 	public void testVersionNameContentNameLong() {
@@ -81,7 +81,7 @@ public class VersioningProfileTest {
 	}
 
 	/**
-	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#addVersion(com.parc.ccn.data.ContentName, java.sql.Timestamp)}.
+	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#addVersion(org.ccnx.ccn.protocol.ContentName, java.sql.Timestamp)}.
 	 */
 	@Test
 	public void testVersionNameContentNameTimestamp() {
@@ -95,7 +95,7 @@ public class VersioningProfileTest {
 	}
 
 	/**
-	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#addVersion(com.parc.ccn.data.ContentName)}.
+	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#addVersion(org.ccnx.ccn.protocol.ContentName)}.
 	 * @throws InterruptedException 
 	 */
 	@Test
@@ -121,7 +121,7 @@ public class VersioningProfileTest {
 	}
 
 	/**
-	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#hasTerminalVersion(com.parc.ccn.data.ContentName)}.
+	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#hasTerminalVersion(org.ccnx.ccn.protocol.ContentName)}.
 	 */
 	@Test
 	public void testhasTerminalVersion() {
@@ -144,7 +144,7 @@ public class VersioningProfileTest {
 	}
 
 	/**
-	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#cutTerminalVersion(com.parc.ccn.data.ContentName)}.
+	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#cutTerminalVersion(org.ccnx.ccn.protocol.ContentName)}.
 	 */
 	@Test
 	public void testCutTerminalVersion() {
@@ -160,7 +160,7 @@ public class VersioningProfileTest {
 	}
 
 	/**
-	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#isVersionOf(com.parc.ccn.data.ContentName, com.parc.ccn.data.ContentName)}.
+	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#isVersionOf(org.ccnx.ccn.protocol.ContentName, org.ccnx.ccn.protocol.ContentName)}.
 	 */
 	@Test
 	public void testIsVersionOf() {
@@ -173,7 +173,7 @@ public class VersioningProfileTest {
 	}
 
 	/**
-	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#getLastVersionAsLong(com.parc.ccn.data.ContentName)}.
+	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#getLastVersionAsLong(org.ccnx.ccn.protocol.ContentName)}.
 	 * @throws VersionMissingException 
 	 */
 	@Test
@@ -201,7 +201,7 @@ public class VersioningProfileTest {
 	}
 
 	/**
-	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#getLastVersionAsTimestamp(com.parc.ccn.data.ContentName)}.
+	 * Test method for {@link com.parc.ccn.library.profiles.VersioningProfile#getLastVersionAsTimestamp(org.ccnx.ccn.protocol.ContentName)}.
 	 * @throws VersionMissingException 
 	 */
 	@Test

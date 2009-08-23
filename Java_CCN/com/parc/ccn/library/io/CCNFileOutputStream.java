@@ -7,15 +7,16 @@ import java.security.SignatureException;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.data.content.HeaderData;
 import com.parc.ccn.data.content.HeaderData.HeaderObject;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.CCNFlowControl.Shape;
 import com.parc.ccn.library.profiles.SegmentationProfile;
@@ -25,18 +26,18 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 
 	public CCNFileOutputStream(ContentName name,
 			PublisherPublicKeyDigest publisher, ContentKeys keys,
-			CCNLibrary library)
+			CCNHandle library)
 			throws IOException {
 		super(name, null, publisher, keys, library);
 	}
 
 	public CCNFileOutputStream(ContentName name,
-			PublisherPublicKeyDigest publisher, CCNLibrary library)
+			PublisherPublicKeyDigest publisher, CCNHandle library)
 			throws IOException {
 		super(name, null, publisher, library);
 	}
 
-	public CCNFileOutputStream(ContentName name, CCNLibrary library)
+	public CCNFileOutputStream(ContentName name, CCNHandle library)
 			throws IOException {
 		super(name, library);
 	}

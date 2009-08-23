@@ -13,19 +13,20 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.config.UserConfiguration;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNFilterListener;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.crypto.util.CryptoUtil;
 

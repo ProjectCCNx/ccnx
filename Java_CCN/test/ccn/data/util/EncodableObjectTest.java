@@ -11,17 +11,17 @@ import java.sql.Timestamp;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.util.Arrays;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.SignedInfo;
+import org.ccnx.ccn.protocol.PublisherID.PublisherType;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.LinkAuthenticator;
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.data.security.PublisherID.PublisherType;
 import com.parc.ccn.data.util.NullOutputStream;
 
 public class EncodableObjectTest {

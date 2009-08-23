@@ -1,8 +1,10 @@
-package com.parc.ccn.data.query;
+package org.ccnx.ccn;
 
 import java.util.ArrayList;
 
-import com.parc.ccn.data.ContentObject;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+
 
 public interface CCNInterestListener {
 	

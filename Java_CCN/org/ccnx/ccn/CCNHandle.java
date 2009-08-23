@@ -1,4 +1,4 @@
-package com.parc.ccn.library;
+package org.ccnx.ccn;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
@@ -6,18 +6,16 @@ import java.security.Security;
 import java.util.ArrayList;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.ExcludeFilter;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
 
-import com.parc.ccn.CCNBase;
-import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.ContentObject.SimpleVerifier;
-import com.parc.ccn.data.query.ExcludeFilter;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentVerifier;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.keys.KeyManager;
 
@@ -47,23 +45,23 @@ import com.parc.ccn.security.keys.KeyManager;
  * can getLink to get link info
  *
  */
-public class CCNLibrary extends CCNBase {
+public class CCNHandle extends CCNBase {
 	
 	static {
 		Security.addProvider(new BouncyCastleProvider());
 	}
 	
-	protected static CCNLibrary _library = null;
+	protected static CCNHandle _library = null;
 
 	/**
 	 * Do we want to do this this way, or everything static?
 	 */
 	protected KeyManager _userKeyManager = null;
 	
-	public static CCNLibrary open() throws ConfigurationException, IOException { 
-		synchronized (CCNLibrary.class) {
+	public static CCNHandle open() throws ConfigurationException, IOException { 
+		synchronized (CCNHandle.class) {
 			try {
-				return new CCNLibrary();
+				return new CCNHandle();
 			} catch (ConfigurationException e) {
 				Library.logger().severe("Configuration exception initializing CCN library: " + e.getMessage());
 				throw e;
@@ -74,13 +72,13 @@ public class CCNLibrary extends CCNBase {
 		}
 	}
 	
-	public static CCNLibrary open(KeyManager keyManager) { 
-		synchronized (CCNLibrary.class) {
-			return new CCNLibrary(keyManager);
+	public static CCNHandle open(KeyManager keyManager) { 
+		synchronized (CCNHandle.class) {
+			return new CCNHandle(keyManager);
 		}
 	}
 	
-	public static CCNLibrary getLibrary() { 
+	public static CCNHandle getLibrary() { 
 		if (null != _library) 
 			return _library;
 		try {
@@ -96,15 +94,15 @@ public class CCNLibrary extends CCNBase {
 		}
 	}
 
-	protected static synchronized CCNLibrary 
+	protected static synchronized CCNHandle 
 				createCCNLibrary() throws ConfigurationException, IOException {
 		if (null == _library) {
-			_library = new CCNLibrary();
+			_library = new CCNHandle();
 		}
 		return _library;
 	}
 
-	protected CCNLibrary(KeyManager keyManager) {
+	protected CCNHandle(KeyManager keyManager) {
 		_userKeyManager = keyManager;
 		// force initialization of network manager
 		try {
@@ -116,14 +114,14 @@ public class CCNLibrary extends CCNBase {
 		}
 	}
 
-	protected CCNLibrary() throws ConfigurationException, IOException {
+	protected CCNHandle() throws ConfigurationException, IOException {
 		this(KeyManager.getDefaultKeyManager());
 	}
 	
 	/*
 	 * For testing only
 	 */
-	protected CCNLibrary(boolean useNetwork) {}
+	protected CCNHandle(boolean useNetwork) {}
 	
 	public void setKeyManager(KeyManager keyManager) {
 		if (null == keyManager) {

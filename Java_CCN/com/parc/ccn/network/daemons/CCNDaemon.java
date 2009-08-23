@@ -5,7 +5,8 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.logging.Level;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+
 import com.parc.ccn.network.CCNNetworkManager;
 
 /**

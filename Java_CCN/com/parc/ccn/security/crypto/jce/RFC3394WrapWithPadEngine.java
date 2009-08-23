@@ -7,8 +7,8 @@ import org.bouncycastle.crypto.Wrapper;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.crypto.params.ParametersWithIV;
 import org.bouncycastle.crypto.params.ParametersWithRandom;
+import org.ccnx.ccn.Library;
 
-import com.parc.ccn.Library;
 
 /**
  * RFC3394 requires that the key to be wrapped be a multiple of 8 bytes

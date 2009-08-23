@@ -5,11 +5,12 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.logging.Level;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNFileOutputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
 import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
@@ -79,7 +80,7 @@ public class put_file {
 			// with random version.
 			ContentName argName = ContentName.fromURI(args[startArg]);
 			
-			CCNLibrary library = CCNLibrary.open();
+			CCNHandle library = CCNHandle.open();
 			
 			if (args.length == (startArg + 2)) {
 				

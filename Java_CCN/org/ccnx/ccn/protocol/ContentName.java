@@ -1,4 +1,4 @@
-package com.parc.ccn.data;
+package org.ccnx.ccn.protocol;
 
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
@@ -9,7 +9,8 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;

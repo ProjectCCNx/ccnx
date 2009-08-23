@@ -4,14 +4,14 @@ package test.ccn.library.io;
 import java.security.MessageDigest;
 import java.util.Random;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import test.ccn.data.util.Flosser;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNOutputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.CCNVersionedOutputStream;
@@ -22,13 +22,13 @@ public class FastFlossTestSlow {
 	public static final int BUF_SIZE = 1024;
 	public static final int FILE_SIZE = 1024*1024; // bytes
 	public static Random random = new Random();
-	public static CCNLibrary readLibrary;
-	public static CCNLibrary writeLibrary;
+	public static CCNHandle readLibrary;
+	public static CCNHandle writeLibrary;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		readLibrary = CCNLibrary.open();
-		writeLibrary = CCNLibrary.open();
+		readLibrary = CCNHandle.open();
+		writeLibrary = CCNHandle.open();
 	}
 	
 	@Test

@@ -10,24 +10,24 @@ import java.util.logging.Level;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.util.Arrays;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.SignedInfo;
+import org.ccnx.ccn.protocol.PublisherID.PublisherType;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.Collection.CollectionObject;
 import com.parc.ccn.data.security.LinkAuthenticator;
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.data.security.PublisherID.PublisherType;
 import com.parc.ccn.data.util.CCNNetworkObject;
 import com.parc.ccn.data.util.CCNStringObject;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.util.DigestHelper;
@@ -61,7 +61,7 @@ public class CCNNetworkObjectTestRepo {
 	static Collection small2;
 	static Collection empty;
 	static Collection big;
-	static CCNLibrary library;
+	static CCNHandle library;
 	static String [] numbers = new String[]{"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"};
 	
 	static Level oldLevel;
@@ -83,7 +83,7 @@ public class CCNNetworkObjectTestRepo {
 		oldLevel = Library.logger().getLevel();
 		Library.logger().setLevel(Level.INFO);
 		
-		library = CCNLibrary.open();
+		library = CCNHandle.open();
 		namespace = ContentName.fromNative("/parc/test/data/CCNNetworkObjectTestRepo-" + + new Random().nextInt(10000));
 		stringObjName = ContentName.fromNative(namespace, "StringObject");
 		collectionObjName = ContentName.fromNative(namespace, "CollectionObject");
@@ -131,8 +131,8 @@ public class CCNNetworkObjectTestRepo {
 	public void testVersioning() throws Exception {
 		// Testing problem of disappearing versions, inability to get latest. Use simpler
 		// object than a collection.
-		CCNLibrary lput = CCNLibrary.open();
-		CCNLibrary lget = CCNLibrary.open();
+		CCNHandle lput = CCNHandle.open();
+		CCNHandle lget = CCNHandle.open();
 		
 		ContentName testName = ContentName.fromNative(stringObjName, "testVersioning");
 		setupNamespace(testName);
@@ -175,8 +175,8 @@ public class CCNNetworkObjectTestRepo {
 	public void testSaveToVersion() throws Exception {
 		// Testing problem of disappearing versions, inability to get latest. Use simpler
 		// object than a collection.
-		CCNLibrary lput = CCNLibrary.open();
-		CCNLibrary lget = CCNLibrary.open();
+		CCNHandle lput = CCNHandle.open();
+		CCNHandle lget = CCNHandle.open();
 		ContentName testName = ContentName.fromNative(stringObjName, "testSaveToVersion");
 		setupNamespace(testName);
 		
@@ -222,7 +222,7 @@ public class CCNNetworkObjectTestRepo {
 		
 		ContentName testName = ContentName.fromNative(collectionObjName, "testStreamUpdate");
 		setupNamespace(testName);
-		CollectionObject testCollectionObject = new CollectionObject(testName, small1, CCNLibrary.open());
+		CollectionObject testCollectionObject = new CollectionObject(testName, small1, CCNHandle.open());
 		
 		saveAndLog("testStreamUpdate", testCollectionObject, null, small1);
 		System.out.println("testCollectionObject name: " + testCollectionObject.getCurrentVersionName());
@@ -277,7 +277,7 @@ public class CCNNetworkObjectTestRepo {
 		CollectionObject c0 = new CollectionObject(testName, empty, library);
 		Timestamp t0 = saveAndLog("Empty", c0, null, empty);
 		
-		CollectionObject c1 = new CollectionObject(testName2, small1, CCNLibrary.open());
+		CollectionObject c1 = new CollectionObject(testName2, small1, CCNHandle.open());
 		Timestamp t1 = saveAndLog("Small", c1, null, small1);
 		Assert.assertTrue("First version should come before second", t0.before(t1));
 		
@@ -299,7 +299,7 @@ public class CCNNetworkObjectTestRepo {
 		CollectionObject c0 = new CollectionObject(testName, empty, library);
 		Timestamp t0 = saveAndLog("Empty", c0, null, empty);
 		
-		CollectionObject c1 = new CollectionObject(testName2, small1, CCNLibrary.open());
+		CollectionObject c1 = new CollectionObject(testName2, small1, CCNHandle.open());
 		Timestamp t1 = saveAndLog("Small", c1, null, small1);
 		Assert.assertTrue("First version should come before second", t0.before(t1));
 		
@@ -335,7 +335,7 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertFalse("Should not be gone", c0.isGone());
 		Assert.assertTrue(t1.after(t0));
 		
-		CollectionObject c1 = new CollectionObject(testName, CCNLibrary.open());
+		CollectionObject c1 = new CollectionObject(testName, CCNHandle.open());
 		Timestamp t2 = waitForDataAndLog(testName.toString(), c1);
 		Assert.assertFalse("Read back should not be gone", c1.isGone());
 		Assert.assertEquals(t2, t1);
@@ -348,7 +348,7 @@ public class CCNNetworkObjectTestRepo {
 		t0 = saveAsGoneAndLog("GoneAgain", c0);
 		Assert.assertTrue("Should be gone", c0.isGone());
 		
-		CollectionObject c2 = new CollectionObject(testName, CCNLibrary.open());
+		CollectionObject c2 = new CollectionObject(testName, CCNHandle.open());
 		Timestamp t4 = waitForDataAndLog(testName.toString(), c2);
 		Assert.assertTrue("Read back of " + c0.getCurrentVersionName() + " should be gone, got " + c2.getCurrentVersionName(), c2.isGone());
 		Assert.assertEquals(t4, t0);

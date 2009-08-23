@@ -1,11 +1,12 @@
-package com.parc.ccn.data.query;
+package org.ccnx.ccn;
 
 import java.io.IOException;
 import java.util.Set;
 import java.util.TreeSet;
 
-import com.parc.ccn.CCNBase;
-import com.parc.ccn.Library;
+import org.ccnx.ccn.protocol.Interest;
+
+
 
 /**
  * A base class handling standard query listener
@@ -22,7 +23,7 @@ public abstract class BasicInterestListener implements CCNInterestListener {
 	
 	/**
 	 * This allows the same basic class to handle interests
-	 * expressed at the CCNLibrary level or directly to
+	 * expressed at the CCNHandle level or directly to
 	 * a CCNRepository.
 	 */
 	protected CCNBase _interestProvider = null;

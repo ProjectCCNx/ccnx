@@ -10,13 +10,13 @@ import java.util.concurrent.Semaphore;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNDescriptor;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
@@ -37,7 +37,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	}
 
 	@Override
-	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNHandle library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
 		CCNDescriptor desc = new CCNDescriptor(thisName, null, library);
@@ -75,7 +75,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	 * @throws InvalidKeyException 
 	 */
 	@Override
-	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
+	public void doPuts(ContentName baseName, int count, CCNHandle library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		CCNDescriptor desc = new CCNDescriptor(thisName, null, null, library);
 		desc.setTimeout(5000);

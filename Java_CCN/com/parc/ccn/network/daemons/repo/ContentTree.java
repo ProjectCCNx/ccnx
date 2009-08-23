@@ -9,10 +9,11 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.Interest;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.profiles.VersioningProfile;

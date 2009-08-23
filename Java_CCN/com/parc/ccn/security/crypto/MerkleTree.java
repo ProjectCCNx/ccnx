@@ -4,8 +4,8 @@ import java.security.NoSuchAlgorithmException;
 
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.ccnx.ccn.Library;
 
-import com.parc.ccn.Library;
 
 /**
  * Modified to match Knuth, Vol 1 2.3.4.5. We represent

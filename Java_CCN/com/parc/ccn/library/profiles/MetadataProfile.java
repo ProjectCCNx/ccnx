@@ -1,6 +1,6 @@
 package com.parc.ccn.library.profiles;
 
-import com.parc.ccn.data.ContentName;
+import org.ccnx.ccn.protocol.ContentName;
 
 public class MetadataProfile implements CCNProfile {
 

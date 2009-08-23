@@ -6,13 +6,14 @@ import java.security.KeyStore;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.config.UserConfiguration;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.CCNVersionedOutputStream;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -29,10 +30,10 @@ public class NetworkKeyManager extends BasicKeyManager {
 	
 	ContentName _keystoreName;
 	PublisherPublicKeyDigest _publisher;
-	CCNLibrary _library;
+	CCNHandle _library;
 
 	public NetworkKeyManager(String userName, ContentName keystoreName, PublisherPublicKeyDigest publisher,
-							char [] password, CCNLibrary library) throws ConfigurationException, IOException {
+							char [] password, CCNHandle library) throws ConfigurationException, IOException {
 		// key repository created by default superclass constructor
 		if (null != userName)
 			_userName = userName; // otherwise default for actual user

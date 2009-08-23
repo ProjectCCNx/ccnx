@@ -13,18 +13,18 @@ import java.util.ArrayList;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherID;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.Link.LinkObject;
 import com.parc.ccn.data.security.LinkAuthenticator;
 import com.parc.ccn.data.security.PublicKeyObject;
-import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.WrappedKey;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -46,10 +46,10 @@ public class Group {
 	private PublicKeyObject _groupPublicKey;
 	private MembershipList _groupMembers; 
 	private String _groupFriendlyName;
-	private CCNLibrary _library;
+	private CCNHandle _library;
 	private GroupManager _groupManager;
 	
-	public Group(ContentName namespace, String groupFriendlyName, CCNLibrary library,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
+	public Group(ContentName namespace, String groupFriendlyName, CCNHandle library,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
 		_library = library;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
@@ -58,7 +58,7 @@ public class Group {
 		_groupManager = manager;
 	}
 	
-	public Group(ContentName groupName, CCNLibrary library,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
+	public Group(ContentName groupName, CCNHandle library,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
 		this(groupName.parent(), AccessControlProfile.groupNameToFriendlyName(groupName), library,manager);
 	}
 	
@@ -67,7 +67,7 @@ public class Group {
 	 * @return
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
-		  PublicKeyObject publicKey, CCNLibrary library,GroupManager manager) {
+		  PublicKeyObject publicKey, CCNHandle library,GroupManager manager) {
 		_library = library;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
@@ -85,7 +85,7 @@ public class Group {
 	 * @throws InvalidKeyException 
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
-					CCNLibrary library, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {		
+					CCNHandle library, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {		
 		this(namespace, groupFriendlyName, members, null, library,manager);
 		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _library);
 		createGroupPublicKey(manager, members);		

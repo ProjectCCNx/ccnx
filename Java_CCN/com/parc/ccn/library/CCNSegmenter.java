@@ -14,15 +14,17 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.Signature;
+import org.ccnx.ccn.protocol.SignedInfo;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.Signature;
-import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.SegmentationProfile.SegmentNumberType;
 import com.parc.ccn.security.crypto.CCNAggregatedSigner;
@@ -89,7 +91,7 @@ public class CCNSegmenter {
 	protected int _byteScale = SegmentationProfile.DEFAULT_SCALE;
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
 	
-	protected CCNLibrary _library;
+	protected CCNHandle _library;
 	// Eventually may not contain this; callers may access it exogenously.
 	protected CCNFlowControl _flowControl;
 	
@@ -108,18 +110,18 @@ public class CCNSegmenter {
 	 * @throws ConfigurationException 
 	 */
 	public CCNSegmenter() throws ConfigurationException, IOException {
-		this(CCNLibrary.open());
+		this(CCNHandle.open());
 	}
 	
 	public CCNSegmenter(ContentKeys keys) throws ConfigurationException, IOException {
-		this(CCNLibrary.open(), keys);
+		this(CCNHandle.open(), keys);
 	}
 
-	public CCNSegmenter(CCNLibrary library) throws IOException {
+	public CCNSegmenter(CCNHandle library) throws IOException {
 		this(new CCNFlowControl(library));
 	}
 
-	public CCNSegmenter(CCNLibrary library, ContentKeys keys) throws IOException {
+	public CCNSegmenter(CCNHandle library, ContentKeys keys) throws IOException {
 		this(new CCNFlowControl(library), null, keys);
 	}
 	/**
@@ -186,7 +188,7 @@ public class CCNSegmenter {
 		return getScaledByteCountSegmenter(1, flowControl);
 	}
 	
-	public CCNLibrary getLibrary() { return _library; }
+	public CCNHandle getLibrary() { return _library; }
 	
 	public CCNFlowControl getFlowControl() { return _flowControl; }
 

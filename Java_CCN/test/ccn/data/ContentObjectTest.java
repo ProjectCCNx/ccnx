@@ -10,18 +10,18 @@ import java.util.Arrays;
 import java.util.Date;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.Signature;
+import org.ccnx.ccn.protocol.SignedInfo;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.Signature;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
 
 public class ContentObjectTest {

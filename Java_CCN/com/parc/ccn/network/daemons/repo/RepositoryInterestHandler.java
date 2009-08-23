@@ -6,13 +6,14 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNFilterListener;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
@@ -25,7 +26,7 @@ import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
 public class RepositoryInterestHandler implements CCNFilterListener {
 	private RepositoryDaemon _daemon;
-	private CCNLibrary _library;
+	private CCNHandle _library;
 	
 	public RepositoryInterestHandler(RepositoryDaemon daemon) {
 		_daemon = daemon;

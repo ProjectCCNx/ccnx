@@ -6,15 +6,16 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNSegmenter;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
@@ -28,15 +29,15 @@ public class CCNWriter {
 	
 	protected CCNSegmenter _segmenter;
 	
-	public CCNWriter(ContentName namespace, CCNLibrary library) throws IOException {
+	public CCNWriter(ContentName namespace, CCNHandle library) throws IOException {
 		this(new CCNFlowControl(namespace, library));
 	}
 	
-	public CCNWriter(String namespace, CCNLibrary library) throws MalformedContentNameStringException, IOException {
+	public CCNWriter(String namespace, CCNHandle library) throws MalformedContentNameStringException, IOException {
 		this(new CCNFlowControl(ContentName.fromNative(namespace), library));
 	}
 
-	public CCNWriter(CCNLibrary library) throws IOException {
+	public CCNWriter(CCNHandle library) throws IOException {
 		this(new CCNFlowControl(library));
 	}
 

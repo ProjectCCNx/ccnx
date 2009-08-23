@@ -4,14 +4,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.network.daemons.repo.RepositoryException;
 public class RepoInitialReadTest extends RepoTestBase {
 	

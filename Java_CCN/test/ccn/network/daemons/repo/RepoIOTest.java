@@ -6,15 +6,15 @@ import java.io.InputStreamReader;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
 import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;

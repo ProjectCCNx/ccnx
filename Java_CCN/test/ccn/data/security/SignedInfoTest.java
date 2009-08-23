@@ -13,16 +13,16 @@ import javax.security.auth.x500.X500Principal;
 import junit.framework.Assert;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.security.crypto.util.MinimalCertificateGenerator;
 
 public class SignedInfoTest {

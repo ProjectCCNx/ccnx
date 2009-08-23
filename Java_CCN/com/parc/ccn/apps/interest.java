@@ -2,10 +2,11 @@ package com.parc.ccn.apps;
 
 import java.io.IOException;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNLibrary;
 
 public class interest {
 	
@@ -19,7 +20,7 @@ public class interest {
 		}
 		
 		try {
-			CCNLibrary library = CCNLibrary.open();
+			CCNHandle library = CCNHandle.open();
 			// List contents under all names given
 			for (int i=0; i < args.length; ++i) {
 				Interest interest = new Interest(args[i]);

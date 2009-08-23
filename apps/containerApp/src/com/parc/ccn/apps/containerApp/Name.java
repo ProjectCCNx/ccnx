@@ -1,7 +1,8 @@
 package com.parc.ccn.apps.containerApp;
 
 import java.net.URL;
-import com.parc.ccn.data.ContentName;
+
+import org.ccnx.ccn.protocol.ContentName;
 
 public class Name {
 	public String name;

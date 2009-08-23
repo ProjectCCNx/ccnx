@@ -8,18 +8,19 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.DataUtils.Tuple;
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNFlowControl.Shape;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
@@ -67,7 +68,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	protected PublisherPublicKeyDigest _currentPublisher;
 	protected KeyLocator _currentPublisherKeyLocator;
-	protected CCNLibrary _library;
+	protected CCNHandle _library;
 	protected CCNFlowControl _flowControl;
 	protected boolean _disableFlowControlRequest = false;
 	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use library defaults
@@ -88,7 +89,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws IOException {
+	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNHandle library) throws IOException {
 		this(type, name, data, DEFAULT_RAW, null, null, library);
 	}
 		
@@ -101,7 +102,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param library
 	 * @throws IOException
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNLibrary library) throws IOException {
+	public CCNNetworkObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNHandle library) throws IOException {
 		this(type, name, data, DEFAULT_RAW, publisher, locator, library);
 	}
 		
@@ -118,13 +119,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, 
 							PublisherPublicKeyDigest publisher, KeyLocator locator,
-							CCNLibrary library) throws IOException {
+							CCNHandle library) throws IOException {
 		// Don't start pulling a namespace till we actually write something. We may never write
 		// anything on this object. In fact, don't make a flow controller at all till we need one.
 		super(type, data);
 		if (null == library) {
 			try {
-				library = CCNLibrary.open();
+				library = CCNHandle.open();
 			} catch (ConfigurationException e) {
 				throw new IllegalArgumentException("Library null, and cannot create one: " + e.getMessage(), e);
 			}
@@ -167,12 +168,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws XMLStreamException
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, 
-			CCNLibrary library) throws IOException, XMLStreamException {
+			CCNHandle library) throws IOException, XMLStreamException {
 		this(type, name, (PublisherPublicKeyDigest)null, library);
 	}
 
 	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws IOException, XMLStreamException {
+			CCNHandle library) throws IOException, XMLStreamException {
 		this(type, name, publisher, DEFAULT_RAW, library);
 	}
 
@@ -199,11 +200,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
+			boolean raw, CCNHandle library) throws IOException, XMLStreamException {
 		super(type);
 		if (null == library) {
 			try {
-				library = CCNLibrary.open();
+				library = CCNHandle.open();
 			} catch (ConfigurationException e) {
 				throw new IllegalArgumentException("Library null, and cannot create one: " + e.getMessage(), e);
 			}
@@ -222,15 +223,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException
 	 * @throws XMLStreamException
 	 */
-	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, CCNLibrary library) throws IOException, XMLStreamException {
+	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, CCNHandle library) throws IOException, XMLStreamException {
 		this(type, firstSegment, DEFAULT_RAW, library);
 	}
 	
-	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, boolean raw, CCNLibrary library) throws IOException, XMLStreamException {
+	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, boolean raw, CCNHandle library) throws IOException, XMLStreamException {
 		super(type);
 		if (null == library) {
 			try {
-				library = CCNLibrary.open();
+				library = CCNHandle.open();
 			} catch (ConfigurationException e) {
 				throw new IllegalArgumentException("Library null, and cannot create one: " + e.getMessage(), e);
 			}

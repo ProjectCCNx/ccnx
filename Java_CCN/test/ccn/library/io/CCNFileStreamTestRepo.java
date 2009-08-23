@@ -13,13 +13,13 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNFileInputStream;
 import com.parc.ccn.library.io.repo.RepositoryFileOutputStream;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
@@ -33,8 +33,8 @@ public class CCNFileStreamTestRepo {
 	static ContentName baseName;
 	static ContentName fileName;
 	static Random random = new Random();
-	static CCNLibrary writeLib;
-	static CCNLibrary readLib;
+	static CCNHandle writeLib;
+	static CCNHandle readLib;
 	
 	static final int BUF_SIZE = 1024;
 	
@@ -56,8 +56,8 @@ public class CCNFileStreamTestRepo {
 	 */
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		writeLib = CCNLibrary.open();
-		readLib = CCNLibrary.open();
+		writeLib = CCNHandle.open();
+		readLib = CCNHandle.open();
 		baseName = ContentName.fromNative("/test/CCNFileStreamTestRepo-" + random.nextInt(10000));
 	}
 	

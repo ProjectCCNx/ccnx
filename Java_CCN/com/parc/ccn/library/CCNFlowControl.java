@@ -8,13 +8,15 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.CCNFilterListener;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.InterestTable;
 import com.parc.ccn.data.util.InterestTable.Entry;
 
@@ -45,7 +47,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	public enum Shape {STREAM, STREAM_WITH_HEADER};
 	
-	protected CCNLibrary _library = null;
+	protected CCNHandle _library = null;
 	
 	// Temporarily default to very high timeout so that puts have a good
 	// chance of going through.  We actually may want to keep this.
@@ -72,7 +74,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param name
 	 * @param library
 	 */
-	public CCNFlowControl(ContentName name, CCNLibrary library) throws IOException {
+	public CCNFlowControl(ContentName name, CCNHandle library) throws IOException {
 		this(library);
 		if (name != null) {
 			Library.logger().finest("adding namespace: " + name);
@@ -84,16 +86,16 @@ public class CCNFlowControl implements CCNFilterListener {
 		_unmatchedInterests.setHighWater(INTEREST_HIGHWATER_DEFAULT);
 	}
 	
-	public CCNFlowControl(String name, CCNLibrary library) 
+	public CCNFlowControl(String name, CCNHandle library) 
 				throws MalformedContentNameStringException, IOException {
 		this(ContentName.fromNative(name), library);
 	}
 	
-	public CCNFlowControl(CCNLibrary library) throws IOException {
+	public CCNFlowControl(CCNHandle library) throws IOException {
 		if (null == library) {
 			// Could make this create a library.
 			try {
-				library = CCNLibrary.open();
+				library = CCNHandle.open();
 			} catch (ConfigurationException e) {
 				Library.logger().info("Got ConfigurationException attempting to create a library. Rethrowing it as an IOException. Message: " + e.getMessage());
 				throw new IOException("ConfigurationException creating a library: " + e.getMessage());
@@ -412,7 +414,7 @@ public class CCNFlowControl implements CCNFilterListener {
 		_library.getNetworkManager().shutdown();
 	}
 	
-	public CCNLibrary getLibrary() {
+	public CCNHandle getLibrary() {
 		return _library;
 	}
 	

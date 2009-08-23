@@ -6,14 +6,15 @@ import java.io.OutputStream;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
 
 /**
@@ -33,16 +34,16 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
-	public CCNEncodableObject(Class<E> type, ContentName name, E data, CCNLibrary library) throws IOException {
+	public CCNEncodableObject(Class<E> type, ContentName name, E data, CCNHandle library) throws IOException {
 		super(type, name, data, null, null, library);
 	}
 	
-	public CCNEncodableObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+	public CCNEncodableObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
 		super(type, name, data, publisher, keyLocator, library);
 	}
 
 	public CCNEncodableObject(Class<E> type, ContentName name, E data,
-			boolean raw, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+			boolean raw, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
 		super(type, name, data, raw, publisher, keyLocator, library);
 	}
 
@@ -61,17 +62,17 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	 * @throws ClassNotFoundException 
 	 */
 	public CCNEncodableObject(Class<E> type, ContentName name, 
-			CCNLibrary library) throws IOException, XMLStreamException {
+			CCNHandle library) throws IOException, XMLStreamException {
 		super(type, name, (PublisherPublicKeyDigest)null, library);
 	}
 	
 	public CCNEncodableObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNLibrary library) throws IOException, XMLStreamException {
+			CCNHandle library) throws IOException, XMLStreamException {
 		super(type, name, publisher, library);
 	}
 
 	public CCNEncodableObject(Class<E> type, ContentName name,
-			PublisherPublicKeyDigest publisher, boolean raw, CCNLibrary library)
+			PublisherPublicKeyDigest publisher, boolean raw, CCNHandle library)
 			throws IOException, XMLStreamException {
 		super(type, name, publisher, raw, library);
 	}
@@ -83,12 +84,12 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	}
 
 	public CCNEncodableObject(Class<E> type, ContentObject firstBlock,
-			CCNLibrary library) throws IOException, XMLStreamException {
+			CCNHandle library) throws IOException, XMLStreamException {
 		super(type, firstBlock, library);
 	}
 
 	public CCNEncodableObject(Class<E> type, ContentObject firstBlock,
-			boolean raw, CCNLibrary library) throws IOException,
+			boolean raw, CCNHandle library) throws IOException,
 			XMLStreamException {
 		super(type, firstBlock, raw, library);
 	}

@@ -1,4 +1,4 @@
-package com.parc.ccn.data.security;
+package org.ccnx.ccn.protocol;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -21,9 +21,8 @@ import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.ccnx.ccn.Library;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;

@@ -5,11 +5,11 @@ import java.util.SortedSet;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 
@@ -22,7 +22,7 @@ public class SampleTestRepo {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		ContentName name = ContentName.fromNative(base + file_name);
-		RepositoryOutputStream os = new RepositoryOutputStream(name, CCNLibrary.getLibrary());
+		RepositoryOutputStream os = new RepositoryOutputStream(name, CCNHandle.getLibrary());
 		
 		os.write(txt.getBytes(UTF8));
 		os.close();

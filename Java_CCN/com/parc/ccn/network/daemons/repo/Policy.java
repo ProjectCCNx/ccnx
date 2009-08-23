@@ -6,9 +6,10 @@ import java.util.ArrayList;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 
 /**
  * 

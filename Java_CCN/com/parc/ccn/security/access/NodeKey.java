@@ -7,8 +7,9 @@ import java.sql.Timestamp;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;

@@ -10,15 +10,15 @@ import javax.xml.stream.XMLStreamException;
 import junit.framework.Assert;
 
 import org.bouncycastle.util.Arrays;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.util.CCNStringObject;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 
 /**
@@ -42,7 +42,7 @@ public class EnumeratedNameListTestRepo {
 	static ContentName name1;
 	static ContentName name2;
 	static ContentName name3;
-	static CCNLibrary putLibrary;
+	static CCNHandle putLibrary;
 		
 	static String prefix1StringError = "/park.com/csl/ccn/repositories";
 	ArrayList<ContentName> names;
@@ -64,7 +64,7 @@ public class EnumeratedNameListTestRepo {
 		name2 = ContentName.fromNative(directory, name2String);
 		name3 = ContentName.fromNative(directory, name3String);
 		brokenPrefix = ContentName.fromNative(prefix1StringError);
-		putLibrary = CCNLibrary.open();
+		putLibrary = CCNHandle.open();
 	}
 	
 	@Test
@@ -73,7 +73,7 @@ public class EnumeratedNameListTestRepo {
 		System.out.println("Starting Enumerated Name Test");
 		
 		try {
-			CCNLibrary library = CCNLibrary.open();
+			CCNHandle library = CCNHandle.open();
 		
 			Library.logger().info("*****************Starting Enumerated Name Test");
 
@@ -256,7 +256,7 @@ public class EnumeratedNameListTestRepo {
 	 * Adds data to the repo for testing
 	 * DKS -- previous version that used repo streams somehow wasn't getting data in.
 	 * */
-	private ContentName addContentToRepo(ContentName name, CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+	private ContentName addContentToRepo(ContentName name, CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
 		//method to load something to repo for testing
 		// DKS -- don't know why this wasn't working
 		/*

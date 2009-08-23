@@ -13,16 +13,16 @@ import java.util.HashSet;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherID;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.PublicKeyObject;
-import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
@@ -35,10 +35,10 @@ public class GroupManager {
 	private EnumeratedNameList _groupList;
 	private HashMap<String, Group> _groupCache = new HashMap<String, Group>();
 	private HashSet<String> _myGroupMemberships = new HashSet<String>();
-	private CCNLibrary _library;
+	private CCNHandle _library;
 
 	public GroupManager(AccessControlManager accessManager,
-						ContentName groupStorage, CCNLibrary library) throws IOException {
+						ContentName groupStorage, CCNHandle library) throws IOException {
 		_library = library;
 		_accessManager = accessManager;
 		_groupStorage = groupStorage;

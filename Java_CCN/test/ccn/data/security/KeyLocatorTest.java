@@ -9,14 +9,14 @@ import java.util.Date;
 import javax.security.auth.x500.X500Principal;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherID;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.security.crypto.util.MinimalCertificateGenerator;
 
 public class KeyLocatorTest {

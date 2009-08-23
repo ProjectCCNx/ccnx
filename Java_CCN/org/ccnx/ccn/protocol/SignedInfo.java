@@ -1,4 +1,4 @@
-package com.parc.ccn.data.security;
+package org.ccnx.ccn.protocol;
 
 import java.sql.Timestamp;
 import java.util.Arrays;
@@ -7,7 +7,8 @@ import java.util.Map.Entry;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;

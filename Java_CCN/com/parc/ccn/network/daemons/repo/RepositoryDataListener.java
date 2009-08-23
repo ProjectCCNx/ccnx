@@ -8,13 +8,14 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
@@ -33,7 +34,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private ContentName _versionedName;
 	private TreeMap<ContentName, Interest> _interests = new TreeMap<ContentName, Interest>();
 	private RepositoryDaemon _daemon;
-	private CCNLibrary _library;
+	private CCNHandle _library;
 	private long _currentBlock = 0;
 	
 	public Interest _headerInterest = null;

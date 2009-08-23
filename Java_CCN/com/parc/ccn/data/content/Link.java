@@ -4,18 +4,19 @@ import java.io.IOException;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.KeyLocator;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.data.security.LinkAuthenticator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 /**
@@ -42,11 +43,11 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		 * @throws ConfigurationException
 		 * @throws IOException
 		 */
-		public LinkObject(ContentName name, Link data, CCNLibrary library) throws IOException {
+		public LinkObject(ContentName name, Link data, CCNHandle library) throws IOException {
 			super(Link.class, name, data, library);
 		}
 		
-		public LinkObject(ContentName name, Link data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+		public LinkObject(ContentName name, Link data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
 			super(Link.class, name, data, publisher, keyLocator, library);
 		}
 
@@ -58,15 +59,15 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		 * @throws IOException
 		 * @throws ClassNotFoundException 
 		 */
-		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
+		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) throws IOException, XMLStreamException {
 			super(Link.class, name, publisher, library);
 		}
 		
-		public LinkObject(ContentName name, CCNLibrary library) throws IOException, XMLStreamException {
+		public LinkObject(ContentName name, CCNHandle library) throws IOException, XMLStreamException {
 			super(Link.class, name, (PublisherPublicKeyDigest)null, library);
 		}
 		
-		public LinkObject(ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
+		public LinkObject(ContentObject firstBlock, CCNHandle library) throws IOException, XMLStreamException {
 			super(Link.class, firstBlock, library);
 		}
 		
@@ -164,7 +165,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	 *   to verify higher-level trust and go look for another block on failure.
 	 * @throws IOException 
 	 */
-	public ContentObject dereference(long timeout, CCNLibrary library) throws IOException {
+	public ContentObject dereference(long timeout, CCNHandle library) throws IOException {
 		
 		// getLatestVersion will return the latest version of an unversioned name, or the
 		// latest version after a given version. So if given a specific version, get that one.

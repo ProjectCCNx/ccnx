@@ -1,4 +1,4 @@
-package com.parc.ccn.data;
+package org.ccnx.ccn.protocol;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -14,15 +14,12 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import com.parc.ccn.data.security.ContentVerifier;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.Signature;
-import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.data.util.BinaryXMLCodec;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;

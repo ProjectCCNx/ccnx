@@ -7,18 +7,19 @@ import java.util.HashMap;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 
 /**
@@ -45,11 +46,11 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 		 * @param library
 		 * @throws IOException
 		 */
-		public HeaderObject(ContentName name, HeaderData data, CCNLibrary library) throws IOException {
+		public HeaderObject(ContentName name, HeaderData data, CCNHandle library) throws IOException {
 			super(HeaderData.class, name, data, library);
 		}
 		
-		public HeaderObject(ContentName name, HeaderData data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+		public HeaderObject(ContentName name, HeaderData data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
 			super(HeaderData.class, name, data, publisher, keyLocator, library);
 		}
 
@@ -67,15 +68,15 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 		 * @throws IOException
 		 * @throws ClassNotFoundException 
 		 */
-		public HeaderObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
+		public HeaderObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) throws IOException, XMLStreamException {
 			super(HeaderData.class, name, publisher, library);
 		}
 		
-		public HeaderObject(ContentName name, CCNLibrary library) throws IOException, XMLStreamException {
+		public HeaderObject(ContentName name, CCNHandle library) throws IOException, XMLStreamException {
 			super(HeaderData.class, name, (PublisherPublicKeyDigest)null, library);
 		}
 		
-		public HeaderObject(ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
+		public HeaderObject(ContentObject firstBlock, CCNHandle library) throws IOException, XMLStreamException {
 			super(HeaderData.class, firstBlock, library);
 		}
 		

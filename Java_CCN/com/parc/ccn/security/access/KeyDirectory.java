@@ -15,19 +15,19 @@ import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.util.Arrays;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherID;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.content.Link.LinkObject;
 import com.parc.ccn.data.query.ByteArrayCompare;
 import com.parc.ccn.data.security.LinkAuthenticator;
-import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
@@ -76,7 +76,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @param library
 	 * @throws IOException
 	 */
-	public KeyDirectory(AccessControlManager manager, ContentName directoryName, CCNLibrary library) 
+	public KeyDirectory(AccessControlManager manager, ContentName directoryName, CCNHandle library) 
 					throws IOException {
 		super(directoryName, library);
 		if (null == manager) {
@@ -536,7 +536,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws InvalidKeyException 
 	 */
 	public static void addSupersededByBlock(ContentName oldKeySupersededBlockName, Key oldKeyToBeSuperseded, 
-											ContentName supersedingKeyName, Key supersedingKey, CCNLibrary library) throws IOException, InvalidKeyException {
+											ContentName supersedingKeyName, Key supersedingKey, CCNHandle library) throws IOException, InvalidKeyException {
 		
 		WrappedKey wrappedKey = WrappedKey.wrapKey(oldKeyToBeSuperseded, null, null, supersedingKey);
 		wrappedKey.setWrappingKeyIdentifier(supersedingKey);

@@ -1,4 +1,4 @@
-package com.parc.ccn.data.query;
+package org.ccnx.ccn.protocol;
 
 import javax.xml.stream.XMLStreamException;
 

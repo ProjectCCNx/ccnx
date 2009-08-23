@@ -5,17 +5,17 @@ import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 
@@ -33,16 +33,16 @@ public class NetworkTest {
 	
 	protected static final int WAIT_MILLIS = 8000;
 	
-	protected static CCNLibrary putLibrary = null;
-	protected static CCNLibrary getLibrary = null;
+	protected static CCNHandle putLibrary = null;
+	protected static CCNHandle getLibrary = null;
 	private Semaphore sema = new Semaphore(0);
 	private boolean gotData = false;
 	Interest testInterest = null;
 	
 	static {
 		try {
-			putLibrary = CCNLibrary.open();
-			getLibrary = CCNLibrary.open();
+			putLibrary = CCNHandle.open();
+			getLibrary = CCNHandle.open();
 		} catch (ConfigurationException e) {
 			e.printStackTrace();
 		} catch (IOException e) {

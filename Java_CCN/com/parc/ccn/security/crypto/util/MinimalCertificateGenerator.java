@@ -34,8 +34,8 @@ import org.bouncycastle.asn1.x509.SubjectKeyIdentifier;
 import org.bouncycastle.asn1.x509.X509Extensions;
 import org.bouncycastle.asn1.x509.X509Name;
 import org.bouncycastle.x509.X509V3CertificateGenerator;
+import org.ccnx.ccn.Library;
 
-import com.parc.ccn.Library;
 
 /**
  * @author smetters

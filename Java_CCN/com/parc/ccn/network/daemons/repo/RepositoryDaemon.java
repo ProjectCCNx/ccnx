@@ -14,15 +14,16 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ExcludeFilter;
+import org.ccnx.ccn.protocol.Interest;
+
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Collection.CollectionObject;
-import com.parc.ccn.data.query.CCNFilterListener;
-import com.parc.ccn.data.query.ExcludeFilter;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.library.profiles.CommandMarkers;
@@ -52,7 +53,7 @@ import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 public class RepositoryDaemon extends Daemon {
 	
 	private Repository _repo = null;
-	private CCNLibrary _library = null;
+	private CCNHandle _library = null;
 	private ArrayList<NameAndListener> _repoFilters = new ArrayList<NameAndListener>();
 	private ArrayList<RepositoryDataListener> _currentListeners = new ArrayList<RepositoryDataListener>();
 	private ExcludeFilter _markerFilter;
@@ -173,7 +174,7 @@ public class RepositoryDaemon extends Daemon {
 		Library.logger().setLevel(Level.INFO);
 		boolean useLogging = false;
 		try {
-			_library = CCNLibrary.open();
+			_library = CCNHandle.open();
 			_writer = new CCNWriter(_library);
 
 			 // At some point we may want to refactor the code to
@@ -331,7 +332,7 @@ public class RepositoryDaemon extends Daemon {
 		}
 	}
 	
-	public CCNLibrary getLibrary() {
+	public CCNHandle getLibrary() {
 		return _library;
 	}
 	

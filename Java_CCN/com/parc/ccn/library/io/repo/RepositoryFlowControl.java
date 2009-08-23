@@ -9,15 +9,16 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.profiles.CommandMarkers;
 import com.parc.ccn.network.daemons.repo.RepositoryInfo;
@@ -114,16 +115,16 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		public Shape shape() { return _shape; }
 	}
 
-	public RepositoryFlowControl(CCNLibrary library) throws IOException {
+	public RepositoryFlowControl(CCNHandle library) throws IOException {
 		super(library);
 	}
 
-	public RepositoryFlowControl(ContentName name, CCNLibrary library) throws IOException {
+	public RepositoryFlowControl(ContentName name, CCNHandle library) throws IOException {
 		this(library);
 		addNameSpace(name);
 	}
 	
-	public RepositoryFlowControl(ContentName name, CCNLibrary library, Shape shape) throws IOException {
+	public RepositoryFlowControl(ContentName name, CCNHandle library, Shape shape) throws IOException {
 		this(library);
 		addNameSpace(name);
 		startWrite(name, shape);

@@ -9,7 +9,8 @@ import java.nio.ByteBuffer;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+
 
 /**
  * Helper class for objects that use the JAXP stream

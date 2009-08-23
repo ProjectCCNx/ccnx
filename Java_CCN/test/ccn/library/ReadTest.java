@@ -6,16 +6,16 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.protocol.BloomFilter;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.ExcludeComponent;
+import org.ccnx.ccn.protocol.ExcludeFilter;
+import org.ccnx.ccn.protocol.Interest;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.BloomFilter;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.ExcludeComponent;
-import com.parc.ccn.data.query.ExcludeFilter;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.library.profiles.SegmentationProfile;

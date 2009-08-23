@@ -10,14 +10,14 @@ import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
 import com.parc.ccn.library.io.CCNVersionedInputStream;
@@ -40,8 +40,8 @@ public class CCNVersionedInputStreamTest {
 	static int latestVersionLength;
 	static int latestVersionMaxSegment;
 	static byte [] latestVersionDigest;
-	static CCNLibrary outputLibrary;
-	static CCNLibrary inputLibrary;
+	static CCNHandle outputLibrary;
+	static CCNHandle inputLibrary;
 	static final int MAX_FILE_SIZE = 1024*1024; // 1 MB
 	static final int BUF_SIZE = 4096;
 	
@@ -49,8 +49,8 @@ public class CCNVersionedInputStreamTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		Random randBytes = new Random(); // doesn't need to be secure
-		outputLibrary = CCNLibrary.open();
-		inputLibrary = CCNLibrary.open();
+		outputLibrary = CCNHandle.open();
+		inputLibrary = CCNHandle.open();
 		
 		// Write a set of output
 		defaultStreamName = ContentName.fromNative("/test/stream/versioning/LongOutput.bin");

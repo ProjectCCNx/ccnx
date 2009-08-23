@@ -5,13 +5,13 @@ import static org.junit.Assert.assertEquals;
 import java.util.ArrayList;
 import java.util.Random;
 
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 import org.junit.Test;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNLibrary;
 
 // NOTE: This test requires ccnd to be running and complementary source process
 
@@ -23,7 +23,7 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 		Random rand = new Random();
 		for (int i = 0; i < BaseLibrarySource.count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			ContentObject contents = library.get(ContentName.fromNative("/BaseLibraryTest/gets/" + i), CCNLibrary.NO_TIMEOUT);
+			ContentObject contents = library.get(ContentName.fromNative("/BaseLibraryTest/gets/" + i), CCNHandle.NO_TIMEOUT);
 			int value = contents.content()[0];
 			// Note that we cannot be guaranteed to pick up every value:
 			// due to timing we may miss a value that arrives while we are not

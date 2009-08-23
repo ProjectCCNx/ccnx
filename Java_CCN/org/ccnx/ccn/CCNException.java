@@ -1,4 +1,4 @@
-package com.parc.ccn;
+package org.ccnx.ccn;
 
 public class CCNException extends Exception {
 

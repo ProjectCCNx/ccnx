@@ -10,15 +10,16 @@ import java.util.TreeSet;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
 import com.parc.ccn.data.content.Collection;
 import com.parc.ccn.data.content.Link;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 
@@ -105,12 +106,12 @@ public class ACL extends Collection {
 
 	public static class ACLObject extends CCNEncodableObject<ACL> {
 
-		public ACLObject(ContentName name, ACL data, CCNLibrary library) throws ConfigurationException, IOException {
+		public ACLObject(ContentName name, ACL data, CCNHandle library) throws ConfigurationException, IOException {
 			super(ACL.class, name, data, library);
 		}
 		
 		public ACLObject(ContentName name, PublisherPublicKeyDigest publisher,
-				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+				CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
 			super(ACL.class, name, publisher, library);
 		}
 		
@@ -124,12 +125,12 @@ public class ACL extends Collection {
 		 * @throws ClassNotFoundException 
 		 */
 		public ACLObject(ContentName name, 
-				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+				CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
 			super(ACL.class, name, (PublisherPublicKeyDigest)null, library);
 		}
 		
 		public ACLObject(ContentObject firstBlock,
-				CCNLibrary library) throws ConfigurationException, IOException, XMLStreamException {
+				CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
 			super(ACL.class, firstBlock, library);
 		}
 		

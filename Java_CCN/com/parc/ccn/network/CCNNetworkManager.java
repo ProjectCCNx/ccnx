@@ -20,14 +20,15 @@ import java.util.concurrent.TimeUnit;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.CCNBase;
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.WirePacket;
-import com.parc.ccn.data.query.CCNFilterListener;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
+import org.ccnx.ccn.CCNBase;
+import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.WirePacket;
+
 import com.parc.ccn.data.util.InterestTable;
 import com.parc.ccn.data.util.InterestTable.Entry;
 import com.parc.ccn.security.keys.KeyManager;

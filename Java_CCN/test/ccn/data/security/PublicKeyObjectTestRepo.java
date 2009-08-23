@@ -18,6 +18,9 @@ import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ECParameterSpec;
 import org.bouncycastle.jce.spec.ElGamalParameterSpec;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -25,11 +28,8 @@ import org.junit.Test;
 
 import test.ccn.data.util.Flosser;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.security.PublicKeyObject;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.VersionMissingException;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
@@ -46,7 +46,7 @@ public class PublicKeyObjectTestRepo {
 	static Level oldLevel;
 	
 	static Flosser flosser = null;
-	public static CCNLibrary library = null;
+	public static CCNHandle library = null;
 	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
@@ -55,7 +55,7 @@ public class PublicKeyObjectTestRepo {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		library = CCNLibrary.open();
+		library = CCNHandle.open();
 		oldLevel = Library.logger().getLevel();
 		Library.logger().setLevel(Level.FINEST);
 		Security.addProvider(new BouncyCastleProvider());

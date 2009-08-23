@@ -5,6 +5,10 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo;
+
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;

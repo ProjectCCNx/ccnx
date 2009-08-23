@@ -19,17 +19,18 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.library.CCNLibrary;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo;
+
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.network.daemons.repo.ContentTree.ContentFileRef;
-import com.parc.ccn.Library;
 
 /**
  * 
@@ -198,7 +199,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		return new Integer(max);
 	}
 	
-	public String[] initialize(String[] args, CCNLibrary library) throws RepositoryException {
+	public String[] initialize(String[] args, CCNHandle library) throws RepositoryException {
 		boolean policyFromFile = false;
 		boolean nameFromArgs = false;
 		boolean globalFromArgs = false;
@@ -400,7 +401,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	 * TODO - Co Should be signed with the "repository's" signature.
 	 * @throws RepositoryException
 	 */
-	private String checkFile(String fileName, String contents, CCNLibrary library, boolean forceWrite) throws RepositoryException {
+	private String checkFile(String fileName, String contents, CCNHandle library, boolean forceWrite) throws RepositoryException {
 		byte[][] components = new byte[3][];
 		components[0] = META_DIR.getBytes();
 		components[1] = REPO_PRIVATE.getBytes();

@@ -8,12 +8,13 @@ import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.spec.InvalidKeySpecException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 
 /**
  * Front-end for key repository, both our keys

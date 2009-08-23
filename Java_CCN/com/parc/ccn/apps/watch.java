@@ -4,21 +4,22 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.CCNInterestListener;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNLibrary;
 
 public class watch extends Thread implements CCNInterestListener {
 	
 	protected boolean _stop = false;
 	protected ArrayList<Interest> _interests = new ArrayList<Interest>();
-	protected CCNLibrary _library = null;
+	protected CCNHandle _library = null;
 	
-	public watch(CCNLibrary library) {_library = library;}
+	public watch(CCNHandle library) {_library = library;}
 	
 	public void initialize() {}
 	public void work() {}
@@ -74,7 +75,7 @@ public class watch extends Thread implements CCNInterestListener {
 		}
 		
 		try {
-			CCNLibrary library = CCNLibrary.open();
+			CCNHandle library = CCNHandle.open();
 			// Watches content, prints out what it sees.
 			
 			watch listener = new watch(library);

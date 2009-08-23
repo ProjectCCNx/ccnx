@@ -7,16 +7,16 @@ import java.util.Queue;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.Signature;
+import org.ccnx.ccn.protocol.SignedInfo;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.data.security.Signature;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.library.CCNLibraryTestHarness;
 import com.parc.ccn.library.profiles.SegmentationProfile;

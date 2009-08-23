@@ -11,13 +11,13 @@ import java.security.SignatureException;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNInputStream;
 import com.parc.ccn.library.io.CCNOutputStream;
 import com.parc.ccn.library.profiles.SegmentationProfile;
@@ -42,7 +42,7 @@ public class StreamTest extends BlockReadWriteTest {
 	}
 	
 	@Override
-	public void getResults(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNHandle library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
 		CCNInputStream istream = new CCNInputStream(thisName, library);
@@ -84,7 +84,7 @@ public class StreamTest extends BlockReadWriteTest {
 	 * @throws InvalidKeyException 
 	 */
 	@Override
-	public void doPuts(ContentName baseName, int count, CCNLibrary library) throws InterruptedException, 
+	public void doPuts(ContentName baseName, int count, CCNHandle library) throws InterruptedException, 
 				SignatureException, MalformedContentNameStringException, IOException, InvalidKeyException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		CCNOutputStream ostream = new CCNOutputStream(thisName, null, null, library);

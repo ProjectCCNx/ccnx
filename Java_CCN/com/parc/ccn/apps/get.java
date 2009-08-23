@@ -3,11 +3,12 @@ package com.parc.ccn.apps;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.library.CCNLibrary;
 
 public class get {
 
@@ -27,12 +28,12 @@ public class get {
 			// with random version.
 			ContentName argName = ContentName.fromURI(args[0]);
 			
-			CCNLibrary library = CCNLibrary.open();
+			CCNHandle library = CCNHandle.open();
 			
 			if (args.length == 2) {
 				// Adjust to use defragmenting interface, find latest
 				// version, etc...
-				ContentObject object = library.get(argName, CCNLibrary.NO_TIMEOUT);
+				ContentObject object = library.get(argName, CCNHandle.NO_TIMEOUT);
 				
 				System.out.println("Retrieved an object named: " + argName);
 				System.out.println("Writing to file " + args[1]);

@@ -19,17 +19,18 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.KeyName;
+import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.config.UserConfiguration;
 import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.KeyName;
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.security.crypto.util.MinimalCertificateGenerator;
 
 public class BasicKeyManager extends KeyManager {

@@ -18,21 +18,21 @@ import javax.xml.stream.XMLStreamException;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.BasicInterestListener;
+import org.ccnx.ccn.CCNBase;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo;
 import org.junit.Test;
 
-import com.parc.ccn.CCNBase;
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.BasicInterestListener;
-import com.parc.ccn.data.query.Interest;
 import com.parc.ccn.data.security.ContentVerifier;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo;
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNWriter;
 import com.parc.ccn.library.profiles.SegmentationProfile;
 import com.parc.ccn.library.profiles.VersionMissingException;
@@ -81,7 +81,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			}
 			
 			ArrayList<ContentObject> availableNames =
-				getLibrary.enumerate(new Interest("/CPOF"), CCNLibrary.NO_TIMEOUT);
+				getLibrary.enumerate(new Interest("/CPOF"), CCNHandle.NO_TIMEOUT);
 
 			Iterator<ContentObject> nameIt = availableNames.iterator();
 
@@ -319,7 +319,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		ContentVerifier putVerifier = new ContentObject.SimpleVerifier(putLibrary.getDefaultPublisher());
 		ContentObject latestVersion =
-			VersioningProfile.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT, putVerifier, getLibrary);
+			VersioningProfile.getLatestVersion(docName, null, CCNHandle.NO_TIMEOUT, putVerifier, getLibrary);
 		Assert.assertTrue(latestVersion.verify(null));
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
 		System.out.println("Latest version name: " + latestVersion.name());
@@ -331,7 +331,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		System.out.println("Inserted second version as: " + version2);
 
 		ContentObject newLatestVersion = 
-			VersioningProfile.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT, putVerifier, getLibrary);
+			VersioningProfile.getLatestVersion(docName, null, CCNHandle.NO_TIMEOUT, putVerifier, getLibrary);
 		Assert.assertTrue(newLatestVersion.verify(null));
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
 		System.out.println("Latest version name: " + newLatestVersion.name());

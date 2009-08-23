@@ -3,7 +3,8 @@ package com.parc.ccn.data.util;
 import java.util.HashMap;
 import java.util.logging.Level;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+
 import com.parc.ccn.config.SystemConfiguration;
 
 public class XMLCodecFactory {

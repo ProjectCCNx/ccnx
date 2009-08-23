@@ -1,8 +1,9 @@
 package com.parc.ccn.security.keys;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 
 public class BasicTrustManager extends TrustManager {
 

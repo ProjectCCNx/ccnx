@@ -4,7 +4,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+
 
 public class BinaryXMLCodec  {
 	

@@ -17,20 +17,20 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import test.ccn.data.util.Flosser;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNFileInputStream;
 import com.parc.ccn.library.io.CCNFileOutputStream;
 import com.parc.ccn.library.io.CCNInputStream;
@@ -190,8 +190,8 @@ public class CCNSecureInputStreamTest {
 	}
 
 	static ContentName defaultStreamName;
-	static CCNLibrary outputLibrary;
-	static CCNLibrary inputLibrary;
+	static CCNHandle outputLibrary;
+	static CCNHandle inputLibrary;
 	static Flosser flosser;
 	static final int BUF_SIZE = 4096;
 
@@ -203,8 +203,8 @@ public class CCNSecureInputStreamTest {
 	public static void setUpBeforeClass() throws Exception {
 		Library.logger().setLevel(Level.FINEST);
 		SystemConfiguration.setDebugFlag(SystemConfiguration.DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
-		outputLibrary = CCNLibrary.open();
-		inputLibrary = CCNLibrary.open();
+		outputLibrary = CCNHandle.open();
+		inputLibrary = CCNHandle.open();
 		
 		// Write a set of output
 		defaultStreamName = ContentName.fromNative("/test/stream");

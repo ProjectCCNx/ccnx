@@ -14,6 +14,9 @@ import javax.crypto.spec.SecretKeySpec;
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ElGamalParameterSpec;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherID;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -21,11 +24,8 @@ import org.junit.Test;
 import test.ccn.data.util.Flosser;
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.PublisherID;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.crypto.jce.CCNCryptoProvider;
 
@@ -239,14 +239,14 @@ public class WrappedKeyTest {
 		
 		Flosser flosser = null;
 		try {
-			CCNLibrary library = CCNLibrary.open();
+			CCNHandle library = CCNHandle.open();
 			flosser = new Flosser();
 			flosser.handleNamespace(storedKeyName);
 			WrappedKeyObject wko = new WrappedKeyObject(storedKeyName, wks, library);
 			wko.save();
 			Assert.assertTrue(VersioningProfile.hasTerminalVersion(wko.getCurrentVersionName()));
 			// should update in another thread
-			WrappedKeyObject wkoread = new WrappedKeyObject(storedKeyName, CCNLibrary.open()); // new library
+			WrappedKeyObject wkoread = new WrappedKeyObject(storedKeyName, CCNHandle.open()); // new library
 			Assert.assertTrue(wkoread.available());
 			Assert.assertEquals(wkoread.getCurrentVersionName(), wko.getCurrentVersionName());
 			Assert.assertEquals(wkoread.wrappedKey(), wko.wrappedKey());

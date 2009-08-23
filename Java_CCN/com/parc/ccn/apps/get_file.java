@@ -7,11 +7,12 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.io.CCNFileInputStream;
 import com.parc.ccn.library.io.CCNInputStream;
 
@@ -76,7 +77,7 @@ public class get_file {
 			// with random version.
 			ContentName argName = ContentName.fromURI(args[startArg]);
 			
-			CCNLibrary library = CCNLibrary.open();
+			CCNHandle library = CCNHandle.open();
 
 			File theFile = new File(args[startArg + 1]);
 			if (theFile.exists()) {

@@ -2,10 +2,10 @@ package test.ccn.network.daemons.repo;
 
 import java.io.IOException;
 
+import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.parc.ccn.data.ContentName;
 
 /**
  * Test to insure repo is up before continuing

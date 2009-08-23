@@ -3,7 +3,8 @@ package test.ccn.network.daemons.repo;
 import java.io.File;
 import java.io.IOException;
 
-import com.parc.ccn.data.ContentName;
+import org.ccnx.ccn.protocol.ContentName;
+
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.network.daemons.repo.RepositoryException;
 

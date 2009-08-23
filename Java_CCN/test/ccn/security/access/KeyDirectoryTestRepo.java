@@ -1,6 +1,8 @@
 package test.ccn.security.access;
 
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.BeforeClass;
@@ -16,11 +18,9 @@ import java.util.Random;
 import javax.crypto.KeyGenerator;
 import java.lang.reflect.Method;
 
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.query.ByteArrayCompare;
 import com.parc.ccn.data.security.WrappedKey;
 import com.parc.ccn.data.security.WrappedKey.WrappedKeyObject;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.profiles.VersioningProfile;
 import com.parc.ccn.security.access.KeyDirectory;
 import com.parc.ccn.security.access.AccessControlManager;
@@ -54,7 +54,7 @@ public class KeyDirectoryTestRepo {
 	@Test
 	public void testKeyDirectoryCreation() throws Exception {
 		ContentName versionDirectoryName = VersioningProfile.addVersion(keyDirectoryName);
-		CCNLibrary library = CCNLibrary.open();
+		CCNHandle library = CCNHandle.open();
 		acm = new AccessControlManager(versionDirectoryName);
 		kd = new KeyDirectory(acm, versionDirectoryName, library);
 		// verify that the keyDirectory is created
@@ -131,7 +131,7 @@ public class KeyDirectoryTestRepo {
 	 */
 	@Test
 	public void testGetWrappedKeyForKeyID() throws Exception {
-		CCNLibrary library = CCNLibrary.open();
+		CCNHandle library = CCNHandle.open();
 		// Use unversioned constructor so KeyDirectory returns the latest version
 		kd = new KeyDirectory(acm, keyDirectoryName, library);
 		kd.getNewData();		

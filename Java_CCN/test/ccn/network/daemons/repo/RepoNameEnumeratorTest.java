@@ -4,22 +4,22 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.MalformedContentNameStringException;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.CCNNameEnumerator;
 import com.parc.ccn.library.io.repo.RepositoryOutputStream;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
 
 public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
-	CCNLibrary getLibrary;
+	CCNHandle getLibrary;
 	CCNNameEnumerator getne;
 	
 	String prefix1String = RepoTestBase._globalPrefix+"/nameEnumerate";
@@ -28,7 +28,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	
 	Random rand = new Random();
 	
-	CCNLibrary putLibrary;
+	CCNHandle putLibrary;
 	
 	ArrayList<ContentName> names1 = null;
 	ArrayList<ContentName> names2 = null;
@@ -132,10 +132,10 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	 */
 	public void setLibraries(){
 		try {
-			getLibrary = CCNLibrary.open();
+			getLibrary = CCNHandle.open();
 			getne = new CCNNameEnumerator(getLibrary, this);
 			
-			putLibrary = CCNLibrary.open();
+			putLibrary = CCNHandle.open();
 		} catch (ConfigurationException e) {
 			e.printStackTrace();
 			Assert.fail("Failed to open libraries for tests");

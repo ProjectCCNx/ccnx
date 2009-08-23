@@ -2,11 +2,12 @@ package com.parc.ccn.network.daemons.repo;
 
 import java.util.ArrayList;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.query.Interest;
-import com.parc.ccn.library.CCNLibrary;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 
 public class BitBucketRepository implements Repository {
 	
@@ -39,7 +40,7 @@ public class BitBucketRepository implements Repository {
 		return null;
 	}
 
-	public String[] initialize(String[] args, CCNLibrary library) throws RepositoryException {
+	public String[] initialize(String[] args, CCNHandle library) throws RepositoryException {
 		// TODO Auto-generated method stub
 		return null;
 	}

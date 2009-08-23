@@ -7,12 +7,13 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.SortedSet;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
+
 import test.ccn.data.util.Flosser;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.library.EnumeratedNameList;
 import com.parc.ccn.library.profiles.AccessControlProfile;
 
@@ -25,7 +26,7 @@ import com.parc.ccn.security.keys.RepositoryKeyManager;
  * Creates and loads a set of simulated users. Will store them into
  * a repository if asked, and then will reload them from there the next time.
  * 
- * As long as you are careful to create your CCNLibrary objects pointing at these
+ * As long as you are careful to create your CCNHandle objects pointing at these
  * users' keystores, you can create data as any of these users.
  * @author smetters
  *
@@ -61,7 +62,7 @@ public class TestUserData {
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
-	public TestUserData(ContentName testStorePrefix, int userCount, boolean storeInRepo, char [] password, CCNLibrary library) throws ConfigurationException, IOException, InvalidKeyException {
+	public TestUserData(ContentName testStorePrefix, int userCount, boolean storeInRepo, char [] password, CCNHandle library) throws ConfigurationException, IOException, InvalidKeyException {
 	
 		ContentName childName = null;
 		String friendlyName = null;
@@ -110,7 +111,7 @@ public class TestUserData {
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
-	public TestUserData(ContentName userKeystoreDataPrefix, char [] password, CCNLibrary library) throws IOException, ConfigurationException, InvalidKeyException {
+	public TestUserData(ContentName userKeystoreDataPrefix, char [] password, CCNHandle library) throws IOException, ConfigurationException, InvalidKeyException {
 		
 		EnumeratedNameList userDirectory = new EnumeratedNameList(userKeystoreDataPrefix, library);
 		userDirectory.waitForData(); // will block
@@ -160,11 +161,11 @@ public class TestUserData {
 		return _userData.get(userName);
 	}
 	
-	public CCNLibrary getLibraryForUser(String friendlyName) {
+	public CCNHandle getLibraryForUser(String friendlyName) {
 		KeyManager km = getUser(friendlyName);
 		if (null == km)
 			return null;
-		return CCNLibrary.open(km);
+		return CCNHandle.open(km);
 	}
 
 	public Set<String> friendlyNames() {
@@ -207,7 +208,7 @@ public class TestUserData {
 			}
 			td = new TestUserData(userNamespace, Integer.valueOf(args[arg+1]),
 									useRepo,
-									args[arg+2].toCharArray(), CCNLibrary.open());
+									args[arg+2].toCharArray(), CCNHandle.open());
 			System.out.println("Generated/retrieved " + td.count() + " user keystores, for users : " + td.friendlyNames());
 
 		} catch (Exception e) {

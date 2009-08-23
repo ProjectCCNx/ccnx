@@ -1,9 +1,9 @@
 /**
  * 
  */
-package com.parc.ccn.data;
+package org.ccnx.ccn.protocol;
 
-import com.parc.ccn.CCNException;
+import org.ccnx.ccn.CCNException;
 
 /**
  * @author briggs

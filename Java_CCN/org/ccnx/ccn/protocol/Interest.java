@@ -1,4 +1,4 @@
-package com.parc.ccn.data.query;
+package org.ccnx.ccn.protocol;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -6,12 +6,8 @@ import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.Library;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
+import org.ccnx.ccn.Library;
+
 import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;

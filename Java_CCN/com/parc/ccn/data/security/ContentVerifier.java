@@ -3,7 +3,7 @@
  */
 package com.parc.ccn.data.security;
 
-import com.parc.ccn.data.ContentObject;
+import org.ccnx.ccn.protocol.ContentObject;
 
 /**
  * @author smetters

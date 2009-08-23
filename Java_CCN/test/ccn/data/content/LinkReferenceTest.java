@@ -3,17 +3,17 @@ package test.ccn.data.content;
 import java.sql.Timestamp;
 import java.util.Arrays;
 
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.SignedInfo;
+import org.ccnx.ccn.protocol.PublisherID.PublisherType;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.content.Link;
 import com.parc.ccn.data.security.LinkAuthenticator;
-import com.parc.ccn.data.security.PublisherID;
-import com.parc.ccn.data.security.SignedInfo;
-import com.parc.ccn.data.security.PublisherID.PublisherType;
 
 public class LinkReferenceTest {
 

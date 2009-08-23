@@ -2,27 +2,28 @@ package com.parc.ccn.library.io.repo;
 
 import java.io.IOException;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
-import com.parc.ccn.data.security.SignedInfo.ContentType;
-import com.parc.ccn.library.CCNLibrary;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+
 import com.parc.ccn.library.io.CCNFileOutputStream;
 
 public class RepositoryFileOutputStream extends CCNFileOutputStream {
 
-	public RepositoryFileOutputStream(ContentName name, CCNLibrary library) throws IOException {
+	public RepositoryFileOutputStream(ContentName name, CCNHandle library) throws IOException {
 		this(name, null, null, null, library);
 	}
 	
 	public RepositoryFileOutputStream(ContentName name,
-			PublisherPublicKeyDigest publisher, CCNLibrary library)
+			PublisherPublicKeyDigest publisher, CCNHandle library)
 			throws IOException {
 		this(name, null, publisher, null, library);
 	}
 
 	public RepositoryFileOutputStream(ContentName name, KeyLocator locator,
-			PublisherPublicKeyDigest publisher, ContentType type, CCNLibrary library)
+			PublisherPublicKeyDigest publisher, ContentType type, CCNHandle library)
 			throws IOException {
 		super(name, locator, publisher, type, new RepositoryFlowControl(name, library));
 	}

@@ -6,7 +6,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
 
-import com.parc.ccn.data.ContentObject;
+import org.ccnx.ccn.protocol.ContentObject;
+
 
 /**
  * An unaggregating aggregated signer. Signs each block individually.

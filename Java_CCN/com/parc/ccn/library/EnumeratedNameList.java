@@ -8,10 +8,11 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.bouncycastle.util.Arrays;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.Library;
+import org.ccnx.ccn.protocol.ContentName;
 
-import com.parc.ccn.Library;
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
 import com.parc.ccn.data.query.BasicNameEnumeratorListener;
 import com.parc.ccn.library.profiles.VersioningProfile;
 
@@ -31,25 +32,25 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * Creates an EnumerateNameList object
 	 * <p>
 	 * The namePrefix argument is a content name object that refers to ??
-	 * The library CCNLibrary argument is the current CCN environment where
+	 * The library CCNHandle argument is the current CCN environment where
 	 * the names are being iterated. 
 	 *<p>
 	 * this constructor creates a new CCN Library if the one passed in is null
 	 * Registers the namePrefix on the CCN network 
 	 *  
-	 * @param  CCNLibrary  an absolute URL giving the base location of the image
+	 * @param  CCNHandle  an absolute URL giving the base location of the image
 	 * @param  namePrefix the location of the image, relative to the url argument
 	 * @return      
 	 * @see
 	 */
 
-	public EnumeratedNameList(ContentName namePrefix, CCNLibrary library) throws IOException {
+	public EnumeratedNameList(ContentName namePrefix, CCNHandle library) throws IOException {
 		if (null == namePrefix) {
 			throw new IllegalArgumentException("namePrefix cannot be null!");
 		}
 		if (null == library) {
 			try {
-				library = CCNLibrary.open();
+				library = CCNHandle.open();
 			} catch (ConfigurationException e) {
 				throw new IOException("ConfigurationException attempting to open a library: " + e.getMessage());
 			}
@@ -266,7 +267,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @return
 	 * @throws IOException
 	 */
-	public static ContentName getLatestVersionName(ContentName name, CCNLibrary library) throws IOException {
+	public static ContentName getLatestVersionName(ContentName name, CCNHandle library) throws IOException {
 		EnumeratedNameList enl = new EnumeratedNameList(name, library);
 		enl.waitForData();
 		ContentName childLatestVersion = enl.getLatestVersionChildName();
@@ -289,7 +290,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @return
 	 * @throws IOException 
 	 */
-	public static EnumeratedNameList exists(ContentName childName, ContentName prefixKnownToExist, CCNLibrary library) throws IOException {
+	public static EnumeratedNameList exists(ContentName childName, ContentName prefixKnownToExist, CCNHandle library) throws IOException {
 		if ((null == prefixKnownToExist) || (null == childName) || (!prefixKnownToExist.isPrefixOf(childName))) {
 			Library.logger().info("Child " + childName + " must be prefixed by name " + prefixKnownToExist);
 			throw new IllegalArgumentException("Child " + childName + " must be prefixed by name " + prefixKnownToExist);

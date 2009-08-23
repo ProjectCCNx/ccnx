@@ -7,17 +7,18 @@ import java.util.LinkedList;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.security.KeyLocator;
-import com.parc.ccn.data.security.PublisherPublicKeyDigest;
 import com.parc.ccn.data.util.CCNEncodableObject;
 import com.parc.ccn.data.util.GenericXMLEncodable;
 import com.parc.ccn.data.util.XMLDecoder;
 import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.data.util.XMLEncoder;
-import com.parc.ccn.library.CCNLibrary;
 
 /**
  * Mapping from a collection to the underlying XML representation.
@@ -43,27 +44,27 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable {
 		 * @throws ConfigurationException
 		 * @throws IOException
 		 */
-		public CollectionObject(ContentName name, Collection data, CCNLibrary library) throws IOException {
+		public CollectionObject(ContentName name, Collection data, CCNHandle library) throws IOException {
 			super(Collection.class, name, data, library);
 		}
 		
-		public CollectionObject(ContentName name, java.util.Collection<Link> contents, CCNLibrary library) throws IOException {
+		public CollectionObject(ContentName name, java.util.Collection<Link> contents, CCNHandle library) throws IOException {
 			this(name, new Collection(contents), library);
 		}
 		
-		public CollectionObject(ContentName name, Link [] contents, CCNLibrary library) throws IOException {
+		public CollectionObject(ContentName name, Link [] contents, CCNHandle library) throws IOException {
 			this(name, new Collection(contents), library);			
 		}
 
-		public CollectionObject(ContentName name, Collection data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+		public CollectionObject(ContentName name, Collection data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
 			super(Collection.class, name, data, publisher, keyLocator, library);
 		}
 
-		public CollectionObject(ContentName name, java.util.Collection<Link> contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+		public CollectionObject(ContentName name, java.util.Collection<Link> contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
 			this(name, new Collection(contents), publisher, keyLocator, library);
 		}
 		
-		public CollectionObject(ContentName name, Link [] contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNLibrary library) throws IOException {
+		public CollectionObject(ContentName name, Link [] contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
 			this(name, new Collection(contents), publisher, keyLocator, library);			
 		}
 
@@ -75,15 +76,15 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable {
 		 * @throws IOException
 		 * @throws ClassNotFoundException 
 		 */
-		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNLibrary library) throws IOException, XMLStreamException {
+		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) throws IOException, XMLStreamException {
 			super(Collection.class, name, publisher, library);
 		}
 		
-		public CollectionObject(ContentName name, CCNLibrary library) throws IOException, XMLStreamException {
+		public CollectionObject(ContentName name, CCNHandle library) throws IOException, XMLStreamException {
 			super(Collection.class, name, (PublisherPublicKeyDigest)null, library);
 		}
 		
-		public CollectionObject(ContentObject firstBlock, CCNLibrary library) throws IOException, XMLStreamException {
+		public CollectionObject(ContentObject firstBlock, CCNHandle library) throws IOException, XMLStreamException {
 			super(Collection.class, firstBlock, library);
 		}
 		

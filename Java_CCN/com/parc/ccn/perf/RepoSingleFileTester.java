@@ -6,12 +6,13 @@ import java.io.IOException;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.ContentName;
-import com.parc.ccn.data.ContentObject;
-import com.parc.ccn.data.MalformedContentNameStringException;
-import com.parc.ccn.data.WirePacket;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.WirePacket;
+
 import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNLibrary;
 import com.parc.ccn.network.daemons.repo.RepositoryException;
 
 public class RepoSingleFileTester extends RepoPerformanceTester {
@@ -23,7 +24,7 @@ public class RepoSingleFileTester extends RepoPerformanceTester {
 		
 		private FileOutputStream _fos = null;
 		
-		public TestFlowControl(String repoName, ContentName name, CCNLibrary library)
+		public TestFlowControl(String repoName, ContentName name, CCNHandle library)
 				throws MalformedContentNameStringException, RepositoryException, IOException {
 			super(name, library);
 			_tfc = this;
@@ -58,12 +59,12 @@ public class RepoSingleFileTester extends RepoPerformanceTester {
 	
 	public RepoSingleFileTester() {}
 	
-	public RepoSingleFileTester(String repoName, ContentName name, CCNLibrary library)
+	public RepoSingleFileTester(String repoName, ContentName name, CCNHandle library)
 			throws XMLStreamException, IOException, MalformedContentNameStringException, RepositoryException {
 		super(name, _rpt.new TestFlowControl(repoName, name, library));
 	}
 	
-	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNLibrary library) throws MalformedContentNameStringException, XMLStreamException, IOException, RepositoryException {
+	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle library) throws MalformedContentNameStringException, XMLStreamException, IOException, RepositoryException {
 		return new RepoSingleFileTester(repoName, name, library);
 	}
 	

@@ -25,7 +25,8 @@ import java.util.TimerTask;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.parc.ccn.Library;
+import org.ccnx.ccn.Library;
+
 import com.parc.ccn.network.CCNNetworkManager;
 
 /**
