@@ -414,7 +414,7 @@ public class VersioningProfile implements CCNProfile {
 	 * @param startingVersion
 	 * @return
 	 */
-	public static Interest getFirstBlockLatestVersionAfterInterest(ContentName startingVersion, PublisherPublicKeyDigest publisher) {
+	public static Interest firstBlockLatestVersionInterest(ContentName startingVersion, PublisherPublicKeyDigest publisher) {
 		// by the time we look for extra components we will have a version on our name if it
 		// doesn't have one already, so look for names with 2 extra components -- segment and digest.
 		return latestVersionAfterInterest(startingVersion, 2, publisher);
