@@ -488,7 +488,7 @@ public class VersioningProfile implements CCNProfile {
 		if (null != result){
 			Library.logger().info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			// Now need to verify the block we got
-			if (!verifier.verifySegment(result)) {
+			if (!verifier.verify(result)) {
 				return null;
 			}
 			
