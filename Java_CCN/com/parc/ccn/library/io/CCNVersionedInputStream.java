@@ -87,7 +87,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		}
 		Library.logger().info("getFirstSegment: getting latest version of " + _baseName);
 		ContentObject result = 
-			VersioningProfile.getFirstBlockOfLatestVersionAfter(_baseName, _startingSegmentNumber, _publisher, _timeout, this, _library);
+			VersioningProfile.getFirstBlockOfLatestVersion(_baseName, _startingSegmentNumber, _publisher, _timeout, this, _library);
 		if (null != result){
 			Library.logger().info("getFirstSegment: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			_baseName = result.name().cut(_baseName.count() + 1);

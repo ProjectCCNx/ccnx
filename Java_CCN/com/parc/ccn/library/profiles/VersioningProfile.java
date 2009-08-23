@@ -473,11 +473,11 @@ public class VersioningProfile implements CCNProfile {
 	 * DKS TODO -- doesn't use publisher
 	 * DKS TODO -- specify separately latest version known?
 	 */
-	public static ContentObject getLatestVersionAfter(ContentName startingVersion, 
-													  PublisherPublicKeyDigest publisher, 
-													  long timeout, 
- 													  ContentVerifier verifier,
-													  CCNLibrary library) throws IOException {
+	public static ContentObject getLatestVersion(ContentName startingVersion, 
+											     PublisherPublicKeyDigest publisher, 
+												 long timeout, 
+ 												 ContentVerifier verifier,
+												 CCNLibrary library) throws IOException {
 		
 		ContentName latestVersionFound = startingVersion;
 		
@@ -524,7 +524,7 @@ public class VersioningProfile implements CCNProfile {
 	 *   		This block is *unverified*.
 	 * @throws IOException
 	 */
-	public static ContentObject getFirstBlockOfLatestVersionAfter(ContentName startingVersion, 
+	public static ContentObject getFirstBlockOfLatestVersion(ContentName startingVersion, 
 															 Long startingSegmentNumber, 
 															 PublisherPublicKeyDigest publisher, 
 															 long timeout, 
@@ -534,7 +534,7 @@ public class VersioningProfile implements CCNProfile {
 		Library.logger().info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
 		
 		int prefixLength = hasTerminalVersion(startingVersion) ? startingVersion.count() : startingVersion.count() + 1;
-		ContentObject result =  getLatestVersionAfter(startingVersion, null, timeout, verifier, library);
+		ContentObject result =  getLatestVersion(startingVersion, null, timeout, verifier, library);
 		
 		if (null != result){
 			Library.logger().info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());

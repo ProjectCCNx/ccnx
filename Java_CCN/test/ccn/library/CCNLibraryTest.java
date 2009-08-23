@@ -235,12 +235,12 @@ public class CCNLibraryTest extends LibraryTestBase {
 		test.readAndCheck(base, 0);
 		test.readAndCheck(cos[1].name(), 1);
 		ContentVerifier putVerifier = new ContentObject.SimpleVerifier(putLibrary.getDefaultPublisher());
-		test.check(VersioningProfile.getLatestVersionAfter(base, putLibrary.getDefaultPublisher(), 2000, putVerifier, getLibrary), 1);
+		test.check(VersioningProfile.getLatestVersion(base, putLibrary.getDefaultPublisher(), 2000, putVerifier, getLibrary), 1);
 		// Beef this up a bit...
 		for (int i=2; i < testCount; ++i) {
 			f.put(cos[i]);
 			System.out.println("Wrote content: " + cos[i].name());
-			test.check(VersioningProfile.getLatestVersionAfter(cos[i-1].name(), putLibrary.getDefaultPublisher(), 2000, putVerifier, getLibrary), i);
+			test.check(VersioningProfile.getLatestVersion(cos[i-1].name(), putLibrary.getDefaultPublisher(), 2000, putVerifier, getLibrary), i);
 		}
 	}
 
@@ -319,7 +319,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		ContentVerifier putVerifier = new ContentObject.SimpleVerifier(putLibrary.getDefaultPublisher());
 		ContentObject latestVersion =
-			VersioningProfile.getLatestVersionAfter(docName, null, CCNLibrary.NO_TIMEOUT, putVerifier, getLibrary);
+			VersioningProfile.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT, putVerifier, getLibrary);
 		Assert.assertTrue(latestVersion.verify(null));
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
 		System.out.println("Latest version name: " + latestVersion.name());
@@ -331,7 +331,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		System.out.println("Inserted second version as: " + version2);
 
 		ContentObject newLatestVersion = 
-			VersioningProfile.getLatestVersionAfter(docName, null, CCNLibrary.NO_TIMEOUT, putVerifier, getLibrary);
+			VersioningProfile.getLatestVersion(docName, null, CCNLibrary.NO_TIMEOUT, putVerifier, getLibrary);
 		Assert.assertTrue(newLatestVersion.verify(null));
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
 		System.out.println("Latest version name: " + newLatestVersion.name());

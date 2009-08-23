@@ -64,7 +64,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 		ContentObject keystoreObject = null;
 		try {
 			keystoreObject = 
-				VersioningProfile.getFirstBlockOfLatestVersionAfter(_keystoreName, null, _publisher, DEFAULT_TIMEOUT, new ContentObject.SimpleVerifier(_publisher),  _library);
+				VersioningProfile.getFirstBlockOfLatestVersion(_keystoreName, null, _publisher, DEFAULT_TIMEOUT, new ContentObject.SimpleVerifier(_publisher),  _library);
 			if (null == keystoreObject) {
 				Library.logger().info("Creating new CCN key store..." + _keystoreName);
 				_keystore = createKeyStore();	
