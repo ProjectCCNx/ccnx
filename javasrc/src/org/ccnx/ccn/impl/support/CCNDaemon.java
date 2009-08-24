@@ -124,7 +124,7 @@ public class CCNDaemon extends Daemon {
 			// impl usage and allow for differences 
 			String msg = "usage: " + this.getClass().getName() + "[-start | -stop | -interactive | -signal <signal>] [-command <command>]";
 			System.out.println(msg);
-			Log.logger().severe(msg);
+			Log.severe(msg);
 		} catch (Exception e) {
 			e.printStackTrace();
 			Log.logStackTrace(Level.SEVERE, e);
@@ -141,7 +141,7 @@ public class CCNDaemon extends Daemon {
 			runDaemon(daemon, args);
 		} catch (Exception e) {
 			System.err.println("Error attempting to start daemon.");
-			Log.logger().warning("Error attempting to start daemon.");
+			Log.warning("Error attempting to start daemon.");
 			Log.warningStackTrace(e);
 		}
 	}

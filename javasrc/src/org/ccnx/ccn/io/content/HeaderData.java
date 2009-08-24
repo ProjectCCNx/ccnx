@@ -387,8 +387,8 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 
 	public int[] positionToSegmentLocation(long position) {
 		int [] blockLocation = new int[2];
-		Log.logger().info("Header: " + this);
-		Log.logger().info("position: " + position + " blockSize " + blockSize() + " position/blockSize " + position/blockSize() + " start: " + start());
+		Log.info("Header: " + this);
+		Log.info("position: " + position + " blockSize " + blockSize() + " position/blockSize " + position/blockSize() + " start: " + start());
 		blockLocation[0] = (int)(Math.floor(1.0*position/blockSize()));
 		blockLocation[1] = (int)(1.0*position % blockSize());
 		return blockLocation;

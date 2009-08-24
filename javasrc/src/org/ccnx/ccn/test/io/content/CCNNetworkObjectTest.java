@@ -79,7 +79,7 @@ public class CCNNetworkObjectTest {
 
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
-		Log.logger().setLevel(oldLevel);
+		Log.setLevel(oldLevel);
 		if (flosser != null) {
 			flosser.stop();
 			flosser = null;
@@ -89,8 +89,8 @@ public class CCNNetworkObjectTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		System.out.println("Making stuff.");
-		oldLevel = Log.logger().getLevel();
-		Log.logger().setLevel(Level.FINE);
+		oldLevel = Log.getLevel();
+		Log.setLevel(Level.FINE);
 		
 		library = CCNHandle.open();
 		namespace = ContentName.fromNative("/parc/test/data/CCNNetworkObjectTest-" + + new Random().nextInt(10000));
@@ -400,28 +400,28 @@ public class CCNNetworkObjectTest {
 	public <T> Timestamp saveAndLog(String name, CCNNetworkObject<T> ecd, Timestamp version, T data) throws XMLStreamException, IOException {
 		Timestamp oldVersion = ecd.getCurrentVersion();
 		ecd.save(version, data);
-		Log.logger().info("Saved " + name + ": " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+		Log.info("Saved " + name + ": " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getCurrentVersion();
 	}
 	
 	public <T> Timestamp saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws XMLStreamException, IOException {
 		Timestamp oldVersion = ecd.getCurrentVersion();
 		ecd.saveAsGone();
-		Log.logger().info("Saved " + name + ": " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+		Log.info("Saved " + name + ": " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getCurrentVersion();
 	}
 	
 	public Timestamp waitForDataAndLog(String name, CCNNetworkObject<?> ecd) throws XMLStreamException, IOException {
 		ecd.waitForData();
-		Log.logger().info("Initial read " + name + ", name: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+		Log.info("Initial read " + name + ", name: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getCurrentVersion();
 	}
 
 	public Timestamp updateAndLog(String name, CCNNetworkObject<?> ecd, ContentName updateName) throws XMLStreamException, IOException {
 		if (((null == updateName) && ecd.update()) || (ecd.update(updateName, null)))
-			Log.logger().info("Updated " + name + ", to name: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+			Log.info("Updated " + name + ", to name: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		else 
-			Log.logger().info("No update found for " + name + ((null != updateName) ? (" at name " + updateName) : "") + ", still: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+			Log.info("No update found for " + name + ((null != updateName) ? (" at name " + updateName) : "") + ", still: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getCurrentVersion();
 	}
 

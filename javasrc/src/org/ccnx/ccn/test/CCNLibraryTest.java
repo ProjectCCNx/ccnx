@@ -291,7 +291,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 					time.equals(new Timestamp(new BigInteger(1, result.content()).longValue()))) {
 				System.out.println("Got back name we inserted.");
 			} else {
-				Log.logger().warning("Didn't get back data we just inserted:\n  result: " + result.name() + 
+				Log.warning("Didn't get back data we just inserted:\n  result: " + result.name() + 
 								" (write time: " + result.signedInfo().getTimestamp() + 
 								   " content time: " + new Timestamp(new BigInteger(1, result.content()).longValue()) +
 										")\n   orig: " + name + 

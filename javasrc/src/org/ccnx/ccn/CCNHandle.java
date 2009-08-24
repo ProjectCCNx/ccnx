@@ -62,10 +62,10 @@ public class CCNHandle extends CCNBase {
 			try {
 				return new CCNHandle();
 			} catch (ConfigurationException e) {
-				Log.logger().severe("Configuration exception initializing CCN library: " + e.getMessage());
+				Log.severe("Configuration exception initializing CCN library: " + e.getMessage());
 				throw e;
 			} catch (IOException e) {
-				Log.logger().severe("IO exception initializing CCN library: " + e.getMessage());
+				Log.severe("IO exception initializing CCN library: " + e.getMessage());
 				throw e;
 			}
 		}
@@ -83,11 +83,11 @@ public class CCNHandle extends CCNBase {
 		try {
 			return createCCNLibrary();
 		} catch (ConfigurationException e) {
-			Log.logger().warning("Configuration exception attempting to create library: " + e.getMessage());
+			Log.warning("Configuration exception attempting to create library: " + e.getMessage());
 			Log.warningStackTrace(e);
 			throw new RuntimeException("Error in system configuration. Cannot create library.",e);
 		} catch (IOException e) {
-			Log.logger().warning("IO exception attempting to create library: " + e.getMessage());
+			Log.warning("IO exception attempting to create library: " + e.getMessage());
 			Log.warningStackTrace(e);
 			throw new RuntimeException("Error in system IO. Cannot create library.",e);
 		}
@@ -107,7 +107,7 @@ public class CCNHandle extends CCNBase {
 		try {
 			_networkManager = new CCNNetworkManager();
 		} catch (IOException ex){
-			Log.logger().warning("IOException instantiating network manager: " + ex.getMessage());
+			Log.warning("IOException instantiating network manager: " + ex.getMessage());
 			ex.printStackTrace();
 			_networkManager = null;
 		}
@@ -124,7 +124,7 @@ public class CCNHandle extends CCNBase {
 	
 	public void setKeyManager(KeyManager keyManager) {
 		if (null == keyManager) {
-			Log.logger().warning("StandardCCNLibrary::setKeyManager: Key manager cannot be null!");
+			Log.warning("StandardCCNLibrary::setKeyManager: Key manager cannot be null!");
 			throw new IllegalArgumentException("Key manager cannot be null!");
 		}
 		_userKeyManager = keyManager;
@@ -190,7 +190,7 @@ public class CCNHandle extends CCNBase {
 			co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
 			if (co == null)
 				break;
-			Log.logger().info("enumerate: retrieved " + co.name() + 
+			Log.info("enumerate: retrieved " + co.name() + 
 					" digest: " + ContentName.componentPrintURI(co.contentDigest()) + " on query: " + query.name());
 			result.add(co);
 			for (int i = co.name().count() - 1; i > count; i--) {
@@ -198,7 +198,7 @@ public class CCNHandle extends CCNBase {
 			}
 			query = Interest.next(co, count);
 		}
-		Log.logger().info("enumerate: retrieved " + result.size() + " objects.");
+		Log.info("enumerate: retrieved " + result.size() + " objects.");
 		return result;
 	}
 	

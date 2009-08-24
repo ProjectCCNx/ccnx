@@ -39,7 +39,7 @@ public class SerializableObject<E extends Serializable> extends NetworkObject<E>
 		try {
 			newData = ois.genericReadObject();
 		} catch (ClassNotFoundException e) {
-			Log.logger().warning("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
+			Log.warning("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
 			throw new IOException("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
 		}
 		return newData;

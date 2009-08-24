@@ -142,7 +142,7 @@ public class CCNVersionedInputStreamTest {
 		try {
 			dis = new DigestInputStream(inputStream, MessageDigest.getInstance("SHA1"));
 		} catch (NoSuchAlgorithmException e) {
-			Log.logger().severe("No SHA1 available!");
+			Log.severe("No SHA1 available!");
 			Assert.fail("No SHA1 available!");
 		}
 		int elapsed = 0;

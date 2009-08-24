@@ -285,14 +285,14 @@ public class AccessControlManager {
 	 */
 	public PublicKeyObject getLatestKeyForPrincipal(Link principal) throws IOException, XMLStreamException, ConfigurationException {
 		if (null == principal) {
-			Log.logger().info("Cannot retrieve key for empty principal.");
+			Log.info("Cannot retrieve key for empty principal.");
 			return null;
 		}
 		PublicKeyObject pko = null;
 		if (_groupManager.isGroup(principal)) {
 			pko = _groupManager.getLatestPublicKeyForGroup(principal);
 		} else {
-			Log.logger().info("Retrieving latest key for user: " + principal.targetName());
+			Log.info("Retrieving latest key for user: " + principal.targetName());
 			pko = new PublicKeyObject(principal.targetName(), principal.targetAuthenticator().publisher(), library());
 		}
 		return pko;
@@ -313,7 +313,7 @@ public class AccessControlManager {
 		// Find the closest node that has a non-gone ACL
 		ACLObject aclo = findAncestorWithACL(nodeName);
 		if (null == aclo) {
-			Log.logger().warning("Unexpected: cannot find an ancestor of node " + nodeName + " that has an ACL.");
+			Log.warning("Unexpected: cannot find an ancestor of node " + nodeName + " that has an ACL.");
 			throw new IOException("Unexpected: cannot find an ancestor of node " + nodeName + " that has an ACL.");	
 		}
 		return aclo;
@@ -327,7 +327,7 @@ public class AccessControlManager {
 		while (null == ancestorACLObject) {
 			ancestorACLObject = getACLObjectForNodeIfExists(parentName);
 			if ((null != ancestorACLObject) && (ancestorACLObject.isGone())) {
-				Log.logger().info("Found an ACL object at " + ancestorACLObject.getCurrentVersionName() + " but its GONE.");
+				Log.info("Found an ACL object at " + ancestorACLObject.getCurrentVersionName() + " but its GONE.");
 				ancestorACLObject = null;
 			}
 			nextParentName = parentName.parent();
@@ -340,7 +340,7 @@ public class AccessControlManager {
 		if (null == ancestorACLObject) {
 			throw new IllegalStateException("No ACL available in ancestor tree for node : " + dataNodeName);
 		}
-		Log.logger().info("Found ACL for " + dataNodeName + " at ancestor :" + ancestorACLObject.getCurrentVersionName());
+		Log.info("Found ACL for " + dataNodeName + " at ancestor :" + ancestorACLObject.getCurrentVersionName());
 		return ancestorACLObject;
 	}
 
@@ -373,14 +373,14 @@ public class AccessControlManager {
 		if (null != aclNameList) {
 			ContentName aclName = new ContentName(AccessControlProfile.aclName(aclNodeName),
 												  aclNameList.getLatestVersionChildName().lastComponent());
-			Log.logger().info("Found latest version of acl for " + aclNodeName + " at " + aclName);
+			Log.info("Found latest version of acl for " + aclNodeName + " at " + aclName);
 			ACLObject aclo = new ACLObject(aclName, library());
 			aclo.update();
 			if (aclo.isGone())
 				return null;
 			return aclo;
 		}
-		Log.logger().info("No ACL found on node: " + aclNodeName);
+		Log.info("No ACL found on node: " + aclNodeName);
 		return null;
 	}
 	
@@ -440,10 +440,10 @@ public class AccessControlManager {
 		// First, find ACL at this node if one exists.
 		ACLObject thisNodeACL = getACLObjectForNodeIfExists(nodeName);
 		if (null == thisNodeACL) {
-			Log.logger().info("Asked to delete ACL for node " + nodeName + " that doesn't have one. Doing nothing.");
+			Log.info("Asked to delete ACL for node " + nodeName + " that doesn't have one. Doing nothing.");
 			return;
 		}
-		Log.logger().info("Deleting ACL for node " + nodeName + " latest version: " + thisNodeACL.getCurrentVersionName());
+		Log.info("Deleting ACL for node " + nodeName + " latest version: " + thisNodeACL.getCurrentVersionName());
 		
 		// Then, find the latest node key. This should not be a derived node key.
 		NodeKey nk = getEffectiveNodeKey(nodeName);
@@ -483,7 +483,7 @@ public class AccessControlManager {
 		if (null != currentACL) {
 			newACL = currentACL.acl();
 		}else{
-			Log.logger().info("Adding brand new ACL to node: " + nodeName);
+			Log.info("Adding brand new ACL to node: " + nodeName);
 			//TODO: if no operations is specified, then a new empty ACL is created...
 			newACL = new ACL();
 		}
@@ -507,7 +507,7 @@ public class AccessControlManager {
 			// Better be a node key here... and we'd better be allowed to read it.
 			NodeKey latestNodeKey = getLatestNodeKeyForNode(nodeName);
 			if (null == latestNodeKey) {
-				Log.logger().info("Cannot read the latest node key for " + nodeName);
+				Log.info("Cannot read the latest node key for " + nodeName);
 				throw new AccessDeniedException("Cannot read the latest node key for " + nodeName);
 			}
 			
@@ -523,15 +523,15 @@ public class AccessControlManager {
 					// do nothing
 				}
 				if (latestKey.available()) {
-					Log.logger().info("Adding wrapped key block for reader: " + latestKey.getCurrentVersionName());
+					Log.info("Adding wrapped key block for reader: " + latestKey.getCurrentVersionName());
 					try {
 						keyDirectory.addWrappedKeyBlock(latestNodeKey.nodeKey(), latestKey.getCurrentVersionName(), latestKey.publicKey());
 					} catch (VersionMissingException e) {
-						Log.logger().warning("UNEXPECTED: latest key for prinicpal: " + latestKey.getCurrentVersionName() + " has no version? Skipping.");
+						Log.warning("UNEXPECTED: latest key for prinicpal: " + latestKey.getCurrentVersionName() + " has no version? Skipping.");
 					}
 				} else {
 					// Do we use an old key or give up?
-					Log.logger().info("No key for " + principal + " found. Skipping.");
+					Log.info("No key for " + principal + " found. Skipping.");
 				}
 			}
 		} finally {
@@ -592,10 +592,10 @@ public class AccessControlManager {
 		// if it isn't, call read-side routine to figure out how to decrypt it
 		ACLObject effectiveACL = findAncestorWithACL(nodeName);
 		if (null == effectiveACL) {
-			Log.logger().warning("Unexpected: could not find effective ACL for node: " + nodeName);
+			Log.warning("Unexpected: could not find effective ACL for node: " + nodeName);
 			throw new IOException("Unexpected: could not find effective ACL for node: " + nodeName);
 		}
-		Log.logger().info("Got ACL named: " + effectiveACL.getCurrentVersionName() + " attempting to retrieve node key from " + AccessControlProfile.accessRoot(effectiveACL.getCurrentVersionName()));
+		Log.info("Got ACL named: " + effectiveACL.getCurrentVersionName() + " attempting to retrieve node key from " + AccessControlProfile.accessRoot(effectiveACL.getCurrentVersionName()));
 		return getLatestNodeKeyForNode(AccessControlProfile.accessRoot(effectiveACL.getCurrentVersionName()));
 	}
 	
@@ -649,7 +649,7 @@ public class AccessControlManager {
 		// wrapped key copy we can decrypt. 
 		NodeKey nk = getNodeKeyByVersionedName(nodeKeyName, nodeKeyIdentifier);
 		if (null == nk) {
-			Log.logger().warning("No decryptable node key available at " + nodeKeyName + ", access denied.");
+			Log.warning("No decryptable node key available at " + nodeKeyName + ", access denied.");
 			return null;
 		}
 	
@@ -710,9 +710,9 @@ public class AccessControlManager {
 		if (null == nodeKey) {
 			throw new AccessDeniedException("Cannot retrieve node key for node: " + nodeName + ".");
 		}
-		Log.logger().info("Found node key at " + nodeKey.storedNodeKeyName());
+		Log.info("Found node key at " + nodeKey.storedNodeKeyName());
 		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
-		Log.logger().info("Computing effective node key for " + nodeName + " using stored node key " + effectiveNodeKey.storedNodeKeyName());
+		Log.info("Computing effective node key for " + nodeName + " using stored node key " + effectiveNodeKey.storedNodeKeyName());
 		return effectiveNodeKey;
 	}
 	
@@ -733,15 +733,15 @@ public class AccessControlManager {
 		}
 		// This should be the latest node key; i.e. not superseded.
 		if (nodeKeyIsDirty(nodeKey.storedNodeKeyName())) {
-			Log.logger().info("Found node key at " + nodeKey.storedNodeKeyName() + ", updating.");
+			Log.info("Found node key at " + nodeKey.storedNodeKeyName() + ", updating.");
 			ContentName nodeKeyNodeName = AccessControlProfile.accessRoot(nodeKey.storedNodeKeyName());
 			ACLObject acl = getACLObjectForNode(nodeKeyNodeName);
 			nodeKey = generateNewNodeKey(nodeKeyNodeName, nodeKey, acl.acl());
 		} else {
-			Log.logger().info("Found node key at " + nodeKey.storedNodeKeyName());
+			Log.info("Found node key at " + nodeKey.storedNodeKeyName());
 		}
 		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
-		Log.logger().info("Computing effective node key for " + nodeName + " using stored node key " + effectiveNodeKey.storedNodeKeyName());
+		Log.info("Computing effective node key for " + nodeName + " using stored node key " + effectiveNodeKey.storedNodeKeyName());
 		return effectiveNodeKey;
 	}
 	
@@ -799,7 +799,7 @@ public class AccessControlManager {
 					}
 				} else {
 					// DKS TODO -- for now, don't handle versioning of non-group keys
-					Log.logger().info("User key for " + principal.friendlyName() + ", not checking version.");
+					Log.info("User key for " + principal.friendlyName() + ", not checking version.");
 					// Technically, we're not handling versioning for user keys, but be nice. Start
 					// by seeing if we have a link to the key in our user space.
 					// If the principal isn't available in our enumerated list, have to go get its key
@@ -853,13 +853,13 @@ public class AccessControlManager {
 		ACLObject nearestACL = findAncestorWithACL(dataNodeName);
 		
 		if (null == nearestACL) {
-			Log.logger().warning("Unexpected -- node with no ancestor ACL: " + dataNodeName);
+			Log.warning("Unexpected -- node with no ancestor ACL: " + dataNodeName);
 			// no dice
 			return null;
 		}
 		
 		if (nearestACL.equals(AccessControlProfile.accessRoot(wrappingKeyName))) {
-			Log.logger().info("Node key: " + wrappingKeyName + " is the nearest ACL to " + dataNodeName);
+			Log.info("Node key: " + wrappingKeyName + " is the nearest ACL to " + dataNodeName);
 			return null;
 		}
 		
@@ -882,7 +882,7 @@ public class AccessControlManager {
 					throws IOException, ConfigurationException, XMLStreamException, InvalidKeyException {
 		// Get the name of the key directory; this is unversioned. Make a new version of it.
 		ContentName nodeKeyDirectoryName = VersioningProfile.addVersion(AccessControlProfile.nodeKeyName(nodeName));
-		Log.logger().info("Generating new node key " + nodeKeyDirectoryName);
+		Log.info("Generating new node key " + nodeKeyDirectoryName);
 		
 		// Now, generate the node key.
 		if (effectiveACL.publiclyReadable()) {
@@ -936,11 +936,11 @@ public class AccessControlManager {
 			} else {
 				try {
 					if (!VersioningProfile.isLaterVersionOf(nodeKeyDirectoryName, oldEffectiveNodeKey.storedNodeKeyName())) {
-						Log.logger().warning("Unexpected: replacing node key stored at " + oldEffectiveNodeKey.storedNodeKeyName() + " with new node key " + 
+						Log.warning("Unexpected: replacing node key stored at " + oldEffectiveNodeKey.storedNodeKeyName() + " with new node key " + 
 								nodeKeyDirectoryName + " but latter is not later version of the former.");
 					}
 				} catch (VersionMissingException vex) {
-					Log.logger().warning("Very unexpected version missing exception when replacing node key : " + vex);
+					Log.warning("Very unexpected version missing exception when replacing node key : " + vex);
 				}
 				// Add a previous key link to the old version of the key.
 				// TODO do we need to add publisher?
@@ -1007,7 +1007,7 @@ public class AccessControlManager {
 		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), library());
 		wdko.update();
 		if (null == wdko.wrappedKey()) {
-			Log.logger().warning("Could not retrieve data key for node: " + dataNodeName);
+			Log.warning("Could not retrieve data key for node: " + dataNodeName);
 			return null;
 		}
 		NodeKey enk = getNodeKeyForObject(dataNodeName, wdko);
@@ -1040,7 +1040,7 @@ public class AccessControlManager {
 		if (null == effectiveNodeKey) {
 			throw new AccessDeniedException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
 		}
-		Log.logger().info("Wrapping data key for node: " + dataNodeName + " with effective node key for node: " + 
+		Log.info("Wrapping data key for node: " + dataNodeName + " with effective node key for node: " + 
 							  effectiveNodeKey.nodeName() + " derived from stored node key for node: " + 
 							  effectiveNodeKey.storedNodeKeyName());
 		// DKS TODO another case where we're wrapping in an effective node key but labeling it with

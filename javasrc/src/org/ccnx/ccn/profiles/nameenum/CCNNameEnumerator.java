@@ -120,38 +120,38 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			NERequest r = getCurrentRequest(prefix);
 			if (r!=null) {
 				//this prefix is already registered...
-				Log.logger().info("prefix "+prefix.toString()+" is already registered...  returning");
+				Log.info("prefix "+prefix.toString()+" is already registered...  returning");
 			}
 			else{
 				r = new NERequest(prefix);
 				_currentRequests.add(r);
 			}
 			
-			Log.logger().info("Registered Prefix: "+prefix.toString());
-			//Library.logger().info("creating Interest");
+			Log.info("Registered Prefix: "+prefix.toString());
+			//Library.info("creating Interest");
 			
 			ContentName prefixMarked = new ContentName(prefix, NEMARKER);
 			
 			Interest pi = new Interest(prefixMarked);
 			
-			//Library.logger().info("interest name: "+pi.name().toString()+" prefix: "+pi.name().prefixCount()+" order preference "+pi.orderPreference());
+			//Library.info("interest name: "+pi.name().toString()+" prefix: "+pi.name().prefixCount()+" order preference "+pi.orderPreference());
 			r.addInterest(pi);
 		
 			_library.expressInterest(pi, this);
 			
-			//Library.logger().info("expressed Interest: "+prefixMarked.toString());
+			//Library.info("expressed Interest: "+prefixMarked.toString());
 		}
 	}
 	
 	
 	public boolean cancelPrefix(ContentName prefix) {
-		Log.logger().info("cancel prefix: "+prefix.toString());
+		Log.info("cancel prefix: "+prefix.toString());
 		synchronized(_currentRequests) {
 			//cancel the behind the scenes interests and remove from the local ArrayList
 			NERequest r = getCurrentRequest(prefix);
 			if (r != null) {
 				ArrayList<Interest> is = r.getInterests();
-				Log.logger().fine("we have "+is.size()+" interests to cancel");
+				Log.fine("we have "+is.size()+" interests to cancel");
 				Interest i;
 				while(!r.getInterests().isEmpty()) {
 					i=r.getInterests().remove(0);
@@ -167,13 +167,13 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		
-		//Library.logger().info("we received a Collection matching our prefix...");
+		//Library.info("we received a Collection matching our prefix...");
 		
 		if (interest.name().contains(NEMARKER)) {
 			//the NEMarker is in the name...  good!
 		} else {
 			//NEMARKER missing...  we have a problem
-			Log.logger().warning("the name enumeration marker is missing...  shouldn't have gotten this callback");
+			Log.warning("the name enumeration marker is missing...  shouldn't have gotten this callback");
 			//_library.cancelInterest(interest, this);
 			return null;
 		}
@@ -199,7 +199,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			//TODO  integrate handling for multiple responders, for now, just handles one result properly
 			if (results != null) {
 				for (ContentObject c: results) {
-					//Library.logger().info("we have a match on "+interest.name());
+					//Library.info("we have a match on "+interest.name());
 
 					newInterest = Interest.last(c.name(), c.name().containsWhere(NEMARKER) + 1);
 					try {
@@ -207,7 +207,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						ner.addInterest(newInterest);
 					} catch (IOException e1) {
 						// error registering new interest
-						Log.logger().warning("error registering new interest in handleContent");
+						Log.warning("error registering new interest in handleContent");
 						Log.warningStackTrace(e1);
 					}
 				
@@ -216,15 +216,15 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						links = collection.contents();
 						for (Link l: links) {
 							names.add(l.targetName());
-							//Library.logger().info("names: "+l.targetName());
+							//Library.info("names: "+l.targetName());
 						}
 						//strip off NEMarker before passing through callback
 						callback.handleNameEnumerator(interest.name().cut(NEMARKER), names);
 					} catch(XMLStreamException e) {
-						Log.logger().warning("Error getting Collection from ContentObject in CCNNameEnumerator");
+						Log.warning("Error getting Collection from ContentObject in CCNNameEnumerator");
 						Log.warningStackTrace(e);
 					} catch(IOException e) {
-						Log.logger().warning("error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");
+						Log.warning("error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");
 						Log.warningStackTrace(e);
 					}
 				}
@@ -240,13 +240,13 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	// temporary workaround to test the callback without actually processing ContentObjects
 	public int handleContent(ArrayList<ContentName> results, ContentName p) {
 		
-		//Library.logger().info("we recieved content matching our prefix...");
+		//Library.info("we recieved content matching our prefix...");
 		
 		//Need to make sure the response has the NEMarker in it
 		if (!p.contains(NEMARKER)) {
-			Library.logger().warning("something is wrong...  we should have had the Name Enumeration Marker in the name");
+			Library.warning("something is wrong...  we should have had the Name Enumeration Marker in the name");
 		} else {
-			//Library.logger().info("we have a match on "+p.toString()+" and the NEMarker is in there!");
+			//Library.info("we have a match on "+p.toString()+" and the NEMarker is in there!");
 			NERequest r = getCurrentRequest(p);
 			if (r != null) {
 				callback.handleNameEnumerator(p, results);
@@ -258,7 +258,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	
 	
 	public int handleInterests(ArrayList<Interest> interests) {
-		//Library.logger().info("Received Interests matching my filter!");
+		//Library.info("Received Interests matching my filter!");
 		
 		ContentName collectionName = null;
 		Link match;
@@ -269,7 +269,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		NEResponse r = null;
 		for (Interest i: interests) {
 			name = i.name().clone();
-			//Library.logger().info("processing interest: "+name.toString());
+			//Library.info("processing interest: "+name.toString());
 			//collectionName = i.name().clone();
 			
 			cd = new Collection();
@@ -277,7 +277,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			if (!name.contains(NEMARKER)) {
 				//Skip...  we don't handle these
 			} else {
-				//Library.logger().info("this interest contains the NE marker!");
+				//Library.info("this interest contains the NE marker!");
 				name = name.cut(NEMARKER);
 				collectionName = new ContentName(name, NEMARKER);
 				
@@ -289,24 +289,24 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						//we have handled this before!
 						if (r.isDirty()) {
 							//this has updates to send back!!
-							//Library.logger().info("the marker is dirty!  we have new names to send back!");
+							//Library.info("the marker is dirty!  we have new names to send back!");
 						} else {
 							//nothing new to send back...  go ahead and skip to next interest
 							skip = true;
-							//Library.logger().info("no new names to report...  skipping");
+							//Library.info("no new names to report...  skipping");
 						}
 					} else {
 						//this is a new one...
-						//Library.logger().info("adding new handled response: "+name.toString());
+						//Library.info("adding new handled response: "+name.toString());
 						r = new NEResponse(name);
 						_handledResponses.add(r);
 					} if (!skip) {
 						for (ContentName n: _registeredNames) {
-							//Library.logger().info("checking registered name: "+n.toString());
+							//Library.info("checking registered name: "+n.toString());
 							if(name.isPrefixOf(n)) {
 								ContentName tempName = n.clone();
-								//Library.logger().info("we have a match! ("+tempName.toString()+")");
-								//Library.logger().info("prefix size "+name.count()+" registered name size "+n.count());
+								//Library.info("we have a match! ("+tempName.toString()+")");
+								//Library.info("prefix size "+name.count()+" registered name size "+n.count());
 								byte[] tn = n.component(name.count());
 								byte[][] na = new byte[1][tn.length];
 								na[0] = tn;
@@ -315,7 +315,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 								//names.add(match);
 								if (!cd.contents().contains(match)) {
 									cd.add(match);
-									//Library.logger().info("added name to response: "+tempName);
+									//Library.info("added name to response: "+tempName);
 								}
 							}
 						}
@@ -326,18 +326,18 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 
 							CollectionObject collobj = new CollectionObject(collectionName, cd, _library);
 							collobj.save();
-							Log.logger().info("Saved collection object in name enumeration: " + collobj.getCurrentVersionName());
+							Log.info("Saved collection object in name enumeration: " + collobj.getCurrentVersionName());
 							System.out.println("saved collection object");
 							
 							r.clean();
 
 						} catch(IOException e) {
-							Log.logger().warning("error processing an incoming interest..  dropping and returning");
+							Log.warning("error processing an incoming interest..  dropping and returning");
 							Log.warningStackTrace(e);
 							return 0;
 						}
 					}
-					Log.logger().finer("this interest did not have any matching names...  not returning anything.");
+					Log.finer("this interest did not have any matching names...  not returning anything.");
 					if (r != null)
 						r.clean();
 				} //end of synchronized
@@ -364,7 +364,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		synchronized(_handledResponses) {
 			if (!_registeredNames.contains(name)) {
 				_registeredNames.add(name);
-				//Library.logger().info("registered "+ name.toString()+" as namespace");
+				//Library.info("registered "+ name.toString()+" as namespace");
 				_library.registerFilter(name, this);
 			}
 		}
@@ -384,7 +384,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 				// DKS - if we don't care about order, could use a Set instead of an ArrayList,
 				// then just call add as duplicates suppressed
 				_registeredNames.add(name);
-				//Library.logger().info("registered "+ name.toString()+") for responses");		  
+				//Library.info("registered "+ name.toString()+") for responses");		  
 			}
 			//check prefixes that were handled...  if so, mark them dirty
 			updateHandledResponses(name);
@@ -392,10 +392,10 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	}
 	
 	protected NEResponse getHandledResponse(ContentName n) {
-		//Library.logger().info("checking handled responses...");
+		//Library.info("checking handled responses...");
 		synchronized (_handledResponses) {
 			for (NEResponse t: _handledResponses) {
-				//Library.logger().info("getHandledResponse: "+t.prefix.toString());
+				//Library.info("getHandledResponse: "+t.prefix.toString());
 				if (t.prefix.equals(n))
 					return t;
 			}
@@ -414,7 +414,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	}
 	
 	protected NERequest getCurrentRequest(ContentName n) {
-		//Library.logger().info("checking current requests...");
+		//Library.info("checking current requests...");
 		synchronized (_currentRequests) {
 			for (NERequest r: _currentRequests) {
 				if (r.prefix.equals(n))

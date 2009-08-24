@@ -74,7 +74,7 @@ public class TestUserData {
 		for (int i=0; i < userCount; ++i) {
 			friendlyName = USER_NAMES[i % USER_NAMES.length] + Integer.toString(1 + i/USER_NAMES.length);
 			childName = ContentName.fromNative(userKeystoreDataPrefix, friendlyName);
-			Log.logger().info("Loading user: " + friendlyName + " from " + childName);
+			Log.info("Loading user: " + friendlyName + " from " + childName);
 			
 			if (storeInRepo) {
 				// This only matters the first time through, when we save the user's data.
@@ -118,7 +118,7 @@ public class TestUserData {
 		
 		SortedSet<ContentName> availableChildren = userDirectory.getChildren();
 		if ((null == availableChildren) || (availableChildren.size() == 0)) {
-			Log.logger().warning("No available user keystore data in directory " + userKeystoreDataPrefix + ", giving up.");
+			Log.warning("No available user keystore data in directory " + userKeystoreDataPrefix + ", giving up.");
 			throw new IOException("No available user keystore data in directory " + userKeystoreDataPrefix + ", giving up.");
 		}
 		String friendlyName;
@@ -128,11 +128,11 @@ public class TestUserData {
 			for (ContentName child : availableChildren) {
 				friendlyName = ContentName.componentPrintNative(child.lastComponent());
 				if (null != getUser(friendlyName)) {
-					Log.logger().info("Already loaded data for user: " + friendlyName + " from name: " + _userFriendlyNames.get(friendlyName));
+					Log.info("Already loaded data for user: " + friendlyName + " from name: " + _userFriendlyNames.get(friendlyName));
 					continue;
 				}
 				childName = new ContentName(userKeystoreDataPrefix, child.lastComponent());
-				Log.logger().info("Loading user: " + friendlyName + " from " + childName);
+				Log.info("Loading user: " + friendlyName + " from " + childName);
 				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password, library);
 				userKeyManager.initialize();
 				_userData.put(childName, userKeyManager);

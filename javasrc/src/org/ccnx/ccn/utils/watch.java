@@ -29,14 +29,14 @@ public class watch extends Thread implements CCNInterestListener {
 		initialize();
 		
 		System.out.println("Watching: " + new Date().toString() +".");
-		Log.logger().info("Watching: " + new Date().toString() +".");
+		Log.info("Watching: " + new Date().toString() +".");
 
 		do {
 
 			try {
 				work();
 			} catch (Exception e) {
-				Log.logger().warning("Error in watcher thread: " + e.getMessage());
+				Log.warning("Error in watcher thread: " + e.getMessage());
 				Log.warningStackTrace(e);
 			}
 

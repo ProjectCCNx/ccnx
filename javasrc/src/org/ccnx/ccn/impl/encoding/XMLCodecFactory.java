@@ -44,7 +44,7 @@ public class XMLCodecFactory {
 
 	public static void setDefaultCodec(String name) {
 		if ((null == getEncoderClass(name)) || (null == getDecoderClass(name))) {
-			Log.logger().warning("Cannot set unknown codec " + name + " as default XML codec.");
+			Log.warning("Cannot set unknown codec " + name + " as default XML codec.");
 			throw new IllegalArgumentException(name + " must be a registered codec!");
 		}
 		_defaultCodec = name;
@@ -87,7 +87,7 @@ public class XMLCodecFactory {
 		try {
 			encoder = encoderClass.newInstance();
 		} catch (Exception e) {
-			Log.logger().warning("Unexpected error: cannot create instance of encoder class " + encoderClass.getName());
+			Log.warning("Unexpected error: cannot create instance of encoder class " + encoderClass.getName());
 			Log.logStackTrace(Level.WARNING, e);
 			throw new RuntimeException("Unexpected error: cannot create instance of encoder class " + encoderClass.getName(), e);
 		}
@@ -118,7 +118,7 @@ public class XMLCodecFactory {
 		try {
 			decoder = decoderClass.newInstance();
 		} catch (Exception e) {
-			Log.logger().warning("Unexpected error: cannot create instance of decoder class " + decoderClass.getName());
+			Log.warning("Unexpected error: cannot create instance of decoder class " + decoderClass.getName());
 			Log.logStackTrace(Level.WARNING, e);
 			throw new RuntimeException("Unexpected error: cannot create instance of decoder class " + decoderClass.getName(), e);
 		}

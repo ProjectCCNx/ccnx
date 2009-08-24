@@ -224,7 +224,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		_currentSegment = null;
 		_segmentReadStream = null;
 		if (null == newSegment) {
-			Log.logger().info("Setting current segment to null! Did a segment fail to verify?");
+			Log.info("Setting current segment to null! Did a segment fail to verify?");
 			return;
 		}
 		
@@ -245,16 +245,16 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				_cipher = _keys.getSegmentDecryptionCipher(
 						SegmentationProfile.getSegmentNumber(_currentSegment.name()));
 			} catch (InvalidKeyException e) {
-				Log.logger().warning("InvalidKeyException: " + e.getMessage());
+				Log.warning("InvalidKeyException: " + e.getMessage());
 				throw new IOException("InvalidKeyException: " + e.getMessage());
 			} catch (InvalidAlgorithmParameterException e) {
-				Log.logger().warning("InvalidAlgorithmParameterException: " + e.getMessage());
+				Log.warning("InvalidAlgorithmParameterException: " + e.getMessage());
 				throw new IOException("InvalidAlgorithmParameterException: " + e.getMessage());
 			}
 			_segmentReadStream = new UnbufferedCipherInputStream(_segmentReadStream, _cipher);
 		} else {
 			if (_currentSegment.signedInfo().getType().equals(ContentType.ENCR)) {
-				Log.logger().warning("Asked to read encrypted content, but not given a key to decrypt it. Decryption happening at higher level?");
+				Log.warning("Asked to read encrypted content, but not given a key to decrypt it. Decryption happening at higher level?");
 			}
 		}
 	}
@@ -286,7 +286,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		
 		// We're looking at content marked GONE
 		if (null != _goneSegment) {
-			Log.logger().info("getNextSegment: We have a gone segment, no next segment. Gone segment: " + _goneSegment.name());
+			Log.info("getNextSegment: We have a gone segment, no next segment. Gone segment: " + _goneSegment.name());
 			return null;
 		}
 		
@@ -297,13 +297,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		// Normally by the time they write that segment, they either know they're done or not.
 		if (null != _currentSegment.signedInfo().getFinalBlockID()) {
 			if (Arrays.equals(_currentSegment.signedInfo().getFinalBlockID(), _currentSegment.name().lastComponent())) {
-				Log.logger().info("getNextSegment: there is no next segment. We have segment: " + 
+				Log.info("getNextSegment: there is no next segment. We have segment: " + 
 						DataUtils.printHexBytes(_currentSegment.name().lastComponent()) + " which is marked as the final segment.");
 				return null;
 			}
 		}
 		
-		Log.logger().info("getNextSegment: getting segment after " + _currentSegment.name());
+		Log.info("getNextSegment: getting segment after " + _currentSegment.name());
 		return getSegment(nextSegmentNumber());
 	}
 	
@@ -312,10 +312,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			ContentObject firstSegment = getSegment(_startingSegmentNumber);
 			if ((null != firstSegment) && (firstSegment.signedInfo().getType().equals(ContentType.GONE))) {
 				_goneSegment = firstSegment;
-				Log.logger().info("getFirstSegment: got gone segment: " + _goneSegment.name());
+				Log.info("getFirstSegment: got gone segment: " + _goneSegment.name());
 				return null;
 			}
-			Log.logger().info("getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " + 
+			Log.info("getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " + 
 					((null == firstSegment) ? "no " : firstSegment.name()));
 			return firstSegment;
 		} else {
@@ -331,13 +331,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 */
 	protected boolean isFirstSegment(ContentName desiredName, ContentObject segment) {
 		if ((null != segment) && (SegmentationProfile.isSegment(segment.name()))) {
-			Log.logger().info("is " + segment.name() + " a first segment of " + desiredName);
+			Log.info("is " + segment.name() + " a first segment of " + desiredName);
 			// In theory, the segment should be at most a versioning component different from desiredName.
 			// In the case of complex segmented objects (e.g. a KeyDirectory), where there is a version,
 			// then some name components, then a segment, desiredName should contain all of those other
 			// name components -- you can't use the usual versioning mechanisms to pull first segment anyway.
 			if (!desiredName.equals(SegmentationProfile.segmentRoot(segment.name()))) {
-				Log.logger().info("Desired name :" + desiredName + " is not a prefix of segment: " + segment.name());
+				Log.info("Desired name :" + desiredName + " is not a prefix of segment: " + segment.name());
 				return false;
 			}
 			if (null != _startingSegmentNumber) {
@@ -375,8 +375,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			// signature, the proxy ought to match as well.
 			if ((null != _verifiedRootSignature) && (Arrays.equals(_verifiedRootSignature, segment.signature().signature()))) {
 				if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
-					Log.logger().warning("Found segment: " + segment.name() + " whose digest fails to verify; segment length: " + segment.contentLength());
-					Log.logger().info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
+					Log.warning("Found segment: " + segment.name() + " whose digest fails to verify; segment length: " + segment.contentLength());
+					Log.info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
 							" content digest: " + DataUtils.printBytes(segment.contentDigest()) + " proxy: " + 
 							DataUtils.printBytes(proxy) + " expected proxy: " + DataUtils.printBytes(_verifiedProxy));
 	 				return false;
@@ -385,7 +385,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				// Verifying a new segment. See if the signature verifies, otherwise store the signature
 				// and proxy.
 				if (!ContentObject.verify(proxy, segment.signature().signature(), segment.signedInfo(), segment.signature().digestAlgorithm(), null)) {
-					Log.logger().warning("Found segment: " + segment.name().toString() + " whose signature fails to verify; segment length: " + segment.contentLength() + ".");
+					Log.warning("Found segment: " + segment.name().toString() + " whose signature fails to verify; segment length: " + segment.contentLength() + ".");
 					return false;
 				} else {
 					// Remember current verifiers
@@ -393,9 +393,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					_verifiedProxy = proxy;
 				}
 			} 
-			Log.logger().info("Got segment: " + segment.name().toString() + ", verified.");
+			Log.info("Got segment: " + segment.name().toString() + ", verified.");
 		} catch (Exception e) {
-			Log.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify segment: " + segment.name().toString() + ", treat as failure to verify.");
+			Log.warning("Got an " + e.getClass().getName() + " exception attempting to verify segment: " + segment.name().toString() + ", treat as failure to verify.");
 			Log.warningStackTrace(e);
 			return false;
 		}

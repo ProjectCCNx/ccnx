@@ -86,7 +86,7 @@ public class LinkObjectTestRepo {
 		if (null == firstBlock) {
 			Assert.fail("Cannot read first block of link target: " + readLink.getTargetName());
 		}
-		Log.logger().info("Got block of target: " + firstBlock.name());
+		Log.info("Got block of target: " + firstBlock.name());
 		
 		// TODO -- not a good test; does dereference get us back the first block? What about the
 		// first block of the latest version? What if thing isn't versioned? (e.g. intermediate node)

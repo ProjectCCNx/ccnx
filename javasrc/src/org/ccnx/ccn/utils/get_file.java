@@ -55,7 +55,7 @@ public class get_file {
 				} catch (NumberFormatException nfe) {
 					usage();
 				}
-				Log.logger().setLevel(level);
+				Log.setLevel(level);
 				if (startArg <= i)
 					startArg = i + 1;
 			} else {

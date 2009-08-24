@@ -237,7 +237,7 @@ public class MinimalCertificateGenerator {
 		
 		String signatureAlgorithm = OIDLookup.getSignatureAlgorithm(digestAlgorithm, signingKey.getAlgorithm());
 		if (null == signatureAlgorithm) {
-			Log.logger().warning("Cannot find signature algorithm for digest " + digestAlgorithm + " and key " + signingKey.getAlgorithm() + ".");
+			Log.warning("Cannot find signature algorithm for digest " + digestAlgorithm + " and key " + signingKey.getAlgorithm() + ".");
 		}
 		_generator.setSignatureAlgorithm(signatureAlgorithm);
 		

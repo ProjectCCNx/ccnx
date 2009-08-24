@@ -54,7 +54,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		
 		Interest interestToReturn = null;
 		for (ContentObject co : results) {
-			Log.logger().info("handleContent: got potential repo message: " + co.name());
+			Log.info("handleContent: got potential repo message: " + co.name());
 			if (co.signedInfo().getType() != ContentType.DATA)
 				continue;
 			RepositoryInfo repoInfo = new RepositoryInfo();
@@ -75,7 +75,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 					break;
 				}
 			} catch (XMLStreamException e) {
-				Log.logger().info("XMLStreamException parsing RepositoryInfo: " + e.getMessage() + " from content object " + co.name() + ", skipping.");
+				Log.info("XMLStreamException parsing RepositoryInfo: " + e.getMessage() + " from content object " + co.name() + ", skipping.");
 			}
 		}
 		// So far, we seem never to have anything to return.
@@ -93,7 +93,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	private class RepoAckHandler implements BasicNameEnumeratorListener {
 
 		public int handleNameEnumerator(ContentName prefix, ArrayList<ContentName> names) {
-			Log.logger().info("Enumeration response for " + names.size() + " children of " + prefix + ".");
+			Log.info("Enumeration response for " + names.size() + " children of " + prefix + ".");
 			for (ContentName name : names)
 				ack(new ContentName(prefix, name.component(0)));
 			return names.size();
@@ -160,7 +160,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			} while (interrupted);
 		}
 		if (!client._initialized) {
-			Log.logger().finest("No response from a repository, cannot add name space : " + name);
+			Log.finest("No response from a repository, cannot add name space : " + name);
 			throw new IOException("No response from a repository for " + name);
 		}
 	}
@@ -171,10 +171,10 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 */
 	public void ack(ContentName name) {
 		synchronized (_holdingArea) {
-			Log.logger().fine("Handling ACK " + name);
+			Log.fine("Handling ACK " + name);
 			if (_holdingArea.get(name) != null) {
 				ContentObject co = _holdingArea.get(name);
-				Log.logger().fine("CO " + co.name() + " acked");
+				Log.fine("CO " + co.name() + " acked");
 				_holdingArea.remove(co.name());
 				if (_holdingArea.size() < _highwater)
 					_holdingArea.notify();

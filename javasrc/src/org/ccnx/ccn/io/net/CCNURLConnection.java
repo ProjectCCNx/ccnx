@@ -30,10 +30,10 @@ public class CCNURLConnection extends URLConnection {
 			thisName = ContentName.fromURI(this.url.toString());
 			return new CCNInputStream(thisName);
 		} catch (MalformedContentNameStringException e) {
-			Log.logger().info("Cannot parse URI: " + this.url);
+			Log.info("Cannot parse URI: " + this.url);
 			throw new IOException("Cannot parse URI: " + this.url + ": " + e.getMessage());
 		} catch (XMLStreamException e) {
-			Log.logger().info("Cannot parse XML: " + e.getMessage());
+			Log.info("Cannot parse XML: " + e.getMessage());
 			throw new IOException("Cannot parse XML.: " + e.getMessage());
 		}
 	}

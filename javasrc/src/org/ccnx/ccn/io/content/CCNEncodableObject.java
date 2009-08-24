@@ -107,7 +107,7 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 		try {
 			newData.decode(input);	
 		} catch (XMLStreamException xe) {
-			Log.logger().info("XML exception parsing data in block: " + ((CCNInputStream)input).currentSegmentName());
+			Log.info("XML exception parsing data in block: " + ((CCNInputStream)input).currentSegmentName());
 			throw xe;
 		}
 		return newData;

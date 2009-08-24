@@ -36,7 +36,7 @@ public class BinaryXMLDictionary {
 		try {
 			loadDictionaryFile(DEFAULT_DICTIONARY_RESNAME);
 		} catch (IOException fe) {
-			Log.logger().warning("Cannot parse default CCN encoding dictionary: " + DEFAULT_DICTIONARY_RESNAME + ":" + 
+			Log.warning("Cannot parse default CCN encoding dictionary: " + DEFAULT_DICTIONARY_RESNAME + ":" + 
 					fe.getMessage());
 			
 		}
@@ -89,7 +89,7 @@ public class BinaryXMLDictionary {
 			// Format: <num>,<name>[,<modifier>]  where <modifier> is one of Deprecated or Obsolete
 			if (parts.length > 3) {
 				if (parts.length != 0) // if 0, just empty line
-					Log.logger().info("Dictionary: " + dictionaryFile + ":  Cannot parse dictionary line: " + line);
+					Log.info("Dictionary: " + dictionaryFile + ":  Cannot parse dictionary line: " + line);
 				continue;
 			} 
 			

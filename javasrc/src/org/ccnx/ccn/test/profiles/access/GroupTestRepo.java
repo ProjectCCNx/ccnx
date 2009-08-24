@@ -60,7 +60,7 @@ public class GroupTestRepo {
 
 	//		users = new TestUserData(userStore, NUM_USERS, USE_REPO, USER_PASSWORD, userLibrary);
 		} catch (Exception e) {
-			Log.logger().warning("Exception in setupBeforeClass: " + e);
+			Log.warning("Exception in setupBeforeClass: " + e);
 			Log.warningStackTrace(e);
 			throw e;
 		}
@@ -73,7 +73,7 @@ public class GroupTestRepo {
 			Assert.assertNotNull(_userList);
 			ContentName prefixTest = _userList.getName();
 			Assert.assertNotNull(prefixTest);
-			Library.logger().info("***************** Prefix is "+ prefixTest.toString());
+			Library.info("***************** Prefix is "+ prefixTest.toString());
 			Assert.assertEquals(prefixTest, userStore);
 			
 			_userList.waitForData();

@@ -40,37 +40,37 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 		prefix1String += "-" + rand.nextInt(10000);
 		
-		Log.logger().info("adding name1 to repo");
+		Log.info("adding name1 to repo");
 		addContentToRepo(prefix1String+"/name1");
 		
-		Log.logger().info("test register prefix");
+		Log.info("test register prefix");
 		testRegisterPrefix();
 		
-		Log.logger().info("checking for first response");
+		Log.info("checking for first response");
 		testGetResponse(1);
 		
-		Log.logger().info("adding second name to repo");
+		Log.info("adding second name to repo");
 		addContentToRepo(prefix1String+"/name2");
 		
 		//make sure we get the new thing
-		Log.logger().info("checking for second name added");
+		Log.info("checking for second name added");
 		testGetResponse(2);
 		
 		//make sure nothing new came in
-		Log.logger().info("check to make sure nothing new came in");
+		Log.info("check to make sure nothing new came in");
 		testGetResponse(3);
 		
-		Log.logger().info("test a cancelPrefix");
+		Log.info("test a cancelPrefix");
 		testCancelPrefix();
 		
-		Log.logger().info("now add third thing");
+		Log.info("now add third thing");
 		addContentToRepo(prefix1String+"/name3");
 		
 		//make sure we don't hear about this one
-		Log.logger().info("called cancel, shouldn't hear about the third item");
+		Log.info("called cancel, shouldn't hear about the third item");
 		testGetResponse(3);
 		
-		Log.logger().info("now testing with a version in the prefix");
+		Log.info("now testing with a version in the prefix");
 		ContentName versionedName = getVersionedName(prefix1String);
 		addContentToRepo(new ContentName(versionedName, "versionNameTest".getBytes()));
 		registerPrefix(versionedName);
@@ -114,7 +114,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	
 	
 	public int handleNameEnumerator(ContentName prefix, ArrayList<ContentName> names) {
-		Log.logger().info("I got a response from the name enumerator, with " + names.size() + " entries.");
+		Log.info("I got a response from the name enumerator, with " + names.size() + " entries.");
 		if (names1 == null)
 			names1 = names;
 		else if (names2 == null)
@@ -199,9 +199,9 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 		if (count == 1) {
 			Assert.assertNotNull(names1);
-			Log.logger().info("names1 size = "+names1.size());
+			Log.info("names1 size = "+names1.size());
 			for (ContentName s: names1)
-				Log.logger().info(s.toString());
+				Log.info(s.toString());
 				
 			Assert.assertTrue(names1.size()==1);
 			Assert.assertTrue(names1.get(0).toString().equals("/name1"));
@@ -209,9 +209,9 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 			Assert.assertNull(names3);
 		} else if (count == 2) {
 			Assert.assertNotNull(names2);
-			Log.logger().info("names2 size = "+names2.size());
+			Log.info("names2 size = "+names2.size());
 			for (ContentName s: names2)
-				Log.logger().info(s.toString());
+				Log.info(s.toString());
 			Assert.assertTrue(names2.size()==2);
 			Assert.assertTrue((names2.get(0).toString().equals("/name1") && names2.get(1).toString().equals("/name2")) || (names2.get(0).toString().equals("/name2") && names2.get(1).toString().equals("/name1")));
 			//not guaranteed to be in this order!
@@ -222,9 +222,9 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 			Assert.assertNull(names3);
 		} else if (count==4) {
 			Assert.assertNotNull(names3);
-			Log.logger().info("names3 size = "+names3.size());
+			Log.info("names3 size = "+names3.size());
 			for (ContentName s: names3)
-				Log.logger().info(s.toString());
+				Log.info(s.toString());
 		}
 	}
 }

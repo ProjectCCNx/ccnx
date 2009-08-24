@@ -190,7 +190,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 			return generateCertificateDigest(PUBLISHER_ID_DIGEST_ALGORITHM, cert);
 		} catch (NoSuchAlgorithmException e) {
 			// DKS --big configuration problem
-			Log.logger().warning("Fatal Error: cannot find default algorithm " + PUBLISHER_ID_DIGEST_ALGORITHM);
+			Log.warning("Fatal Error: cannot find default algorithm " + PUBLISHER_ID_DIGEST_ALGORITHM);
 			throw new RuntimeException("Error: can't find default algorithm " + PUBLISHER_ID_DIGEST_ALGORITHM + "!  " + e.toString());
 		}
 	}
@@ -203,7 +203,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
             byte [] encoding = cert.getEncoded();
             id = CCNDigestHelper.digest(digestAlg, encoding);
         } catch (CertificateEncodingException e) {
-			Log.logger().warning("Cannot encode certificate in PublisherID.generateCertificateID: " + e.getMessage());
+			Log.warning("Cannot encode certificate in PublisherID.generateCertificateID: " + e.getMessage());
 			Log.warningStackTrace(e);
 			throw e;
 		}

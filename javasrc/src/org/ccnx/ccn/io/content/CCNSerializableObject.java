@@ -107,7 +107,7 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 		try {
 			newData = ois.genericReadObject();
 		} catch (ClassNotFoundException e) {
-			Log.logger().warning("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
+			Log.warning("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
 			throw new IOException("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
 		}
 		return newData;

@@ -92,13 +92,13 @@ public class CCNWriter {
 								  true, type, freshnessSeconds, null, publisher);
 			return name;
 		} catch (InvalidKeyException e) {
-			Log.logger().info("InvalidKeyException using key for publisher " + publisher + ".");
+			Log.info("InvalidKeyException using key for publisher " + publisher + ".");
 			throw new SignatureException(e);
 		} catch (SignatureException e) {
-			Log.logger().info("SignatureException using key for publisher " + publisher + ".");
+			Log.info("SignatureException using key for publisher " + publisher + ".");
 			throw e;
 		} catch (NoSuchAlgorithmException e) {
-			Log.logger().info("NoSuchAlgorithmException using key for publisher " + publisher + ".");
+			Log.info("NoSuchAlgorithmException using key for publisher " + publisher + ".");
 			throw new SignatureException(e);
 		} catch (InvalidAlgorithmParameterException e) {
 			throw new IOException("Cannot encrypt content -- bad algorithm parameter!: " + e.getMessage());

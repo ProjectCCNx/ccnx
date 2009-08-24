@@ -662,7 +662,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			decodedName = new byte[result.limit()];
 			System.arraycopy(result.array(), 0, decodedName, 0, result.limit());
 		} catch (UnsupportedEncodingException e) {
-			Log.logger().severe("UTF-8 not supported.");
+			Log.severe("UTF-8 not supported.");
 			throw new RuntimeException("UTF-8 not supported", e);
 		}
 		return decodedName;
@@ -682,7 +682,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		try {
 		return name.getBytes("UTF-8");
 		} catch (UnsupportedEncodingException e) {
-			Log.logger().severe("UTF-8 not supported.");
+			Log.severe("UTF-8 not supported.");
 			throw new RuntimeException("UTF-8 not supported", e);
 		}
 	}
@@ -736,7 +736,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 //			decodedName = new byte[result.limit()];
 //			System.arraycopy(result.array(), 0, decodedName, 0, result.limit());
 //		} catch (UnsupportedEncodingException e) {
-//			Library.logger().severe("UTF-8 not supported.");
+//			Library.severe("UTF-8 not supported.");
 //			throw new RuntimeException("UTF-8 not supported", e);
 //		}
 //		return decodedName;

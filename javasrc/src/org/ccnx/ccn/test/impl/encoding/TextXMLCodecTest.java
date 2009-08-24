@@ -18,7 +18,7 @@ public class TextXMLCodecTest {
 	public static void setUpBeforeClass() throws Exception {
 	
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Log.logger().setLevel(Level.INFO);
+		Log.setLevel(Level.INFO);
 	}
 	
 	@Test

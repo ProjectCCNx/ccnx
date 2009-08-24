@@ -136,7 +136,7 @@ public class InterestTable<V> {
 		if (null == interest.name()) {
 			throw new NullPointerException("InterestTable may not contain Interest with null name");
 		}
-		Log.logger().finest("adding interest " + interest);
+		Log.finest("adding interest " + interest);
 		Holder<V> holder = new InterestHolder<V>(interest, value);
 		add(holder);
 	}
@@ -145,7 +145,7 @@ public class InterestTable<V> {
 		if (null == name) {
 			throw new NullPointerException("InterestTable may not contain null name");
 		}
-		Log.logger().finest("adding name " + name);
+		Log.finest("adding name " + name);
 		Holder<V> holder = new NameHolder<V>(name, value);
 		add(holder);
 	}
@@ -187,7 +187,7 @@ public class InterestTable<V> {
 	
 	protected Holder<V> getMatchByName(ContentName name, ContentObject target) {
 		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
-		Log.logger().finest("name: " + name + " target: " + target.name() + " possible matches: " + ((null == list) ? 0 : list.size()));
+		Log.finest("name: " + name + " target: " + target.name() + " possible matches: " + ((null == list) ? 0 : list.size()));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -204,7 +204,7 @@ public class InterestTable<V> {
 	// Internal: return all the entries having exactly the specified name,
 	// useful once you have found the matching names to collect entries from them
 	protected List<Holder<V>> getAllMatchByName(ContentName name, ContentObject target) {
-		Log.logger().finest("name: " + name + " target: " + target.name());
+		Log.finest("name: " + name + " target: " + target.name());
 		List<Holder<V>> matches = new ArrayList<Holder<V>>();
 		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
 		if (null != list) {
@@ -221,7 +221,7 @@ public class InterestTable<V> {
 	}
 
 	protected Holder<V> removeMatchByName(ContentName name, ContentObject target) {
-		Log.logger().finest("name: " + name + " target: " + target.name());
+		Log.finest("name: " + name + " target: " + target.name());
 		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
@@ -363,7 +363,7 @@ public class InterestTable<V> {
 	 * compares I'm not so sure how much of an optimization it is anyway...
 	 */
 	public Entry<V> getMatch(ContentObject target) {
-		Log.logger().finest("target: " + target.name());
+		Log.finest("target: " + target.name());
 		Entry<V> match = null;
 		for (LongestFirstContentName name : _contents.keySet()) {
 			Entry<V> found = getMatchByName(name, target);
@@ -379,7 +379,7 @@ public class InterestTable<V> {
 	 * ignored by this operation and any null values will be ignored.
 	 */
 	public List<V> getValues(ContentObject target) {
-		Log.logger().finest("target: " + target.name());
+		Log.finest("target: " + target.name());
 
 		List<V> result = new ArrayList<V>();
 		List<Entry<V>> matches = getMatches(target);
@@ -401,7 +401,7 @@ public class InterestTable<V> {
 	 * @return List of matches, empty if no match
 	 */
 	public List<Entry<V>> getMatches(ContentObject target) {
-		Log.logger().finest("target object name: " + target.name());
+		Log.finest("target object name: " + target.name());
 
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		if (null != target) {
@@ -423,7 +423,7 @@ public class InterestTable<V> {
 	 * @return Entry of longest match if any, null if no match
 	 */
 	public V getValue(ContentName target) {
-		Log.logger().finest("target: " + target);
+		Log.finest("target: " + target);
 
 		Entry<V> match = getMatch(target);
 		if (null != match) {
@@ -441,7 +441,7 @@ public class InterestTable<V> {
 	 * @return
 	 */
 	public Entry<V> getMatch(ContentName target) {
-		Log.logger().finest("target: " + target);
+		Log.finest("target: " + target);
 
 		Entry<V> match = null;
 		for (LongestFirstContentName name : _contents.keySet()) {
@@ -453,7 +453,7 @@ public class InterestTable<V> {
 	}
 	
 	public List<V> getValues(ContentName target) {
-		Log.logger().finest("target: " + target);
+		Log.finest("target: " + target);
 
 		List<V> result = new ArrayList<V>();
 		List<Entry<V>> matches = getMatches(target);
@@ -473,7 +473,7 @@ public class InterestTable<V> {
 	 * @return List of matches ordered from longest match to shortest, empty if no match
 	 */
 	public List<Entry<V>> getMatches(ContentName target) {
-		Log.logger().finest("target: " + target);
+		Log.finest("target: " + target);
 
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		for (LongestFirstContentName name : _contents.keySet()) {
@@ -530,7 +530,7 @@ public class InterestTable<V> {
 		Entry<V> match = null;
 		if (null != target) {
 			ContentName matchName = null;
-			Log.logger().finest("removeMatch: looking for match to target " + target.name() +
+			Log.finest("removeMatch: looking for match to target " + target.name() +
 					" among " + _contents.keySet().size() + " possibilities.");				
 			for (LongestFirstContentName name : _contents.keySet()) {
 				Entry<V> found = getMatchByName(name, target);

@@ -33,7 +33,7 @@ public class CCNBase {
 					try {
 						_networkManager = new CCNNetworkManager();
 					} catch (IOException ex){
-						Log.logger().warning("IOException instantiating network manager: " + ex.getMessage());
+						Log.warning("IOException instantiating network manager: " + ex.getMessage());
 						ex.printStackTrace();
 						_networkManager = null;
 					}
@@ -54,7 +54,7 @@ public class CCNBase {
 		boolean interrupted = false;
 		do {
 			try {
-				Log.logger().finest("Putting content on wire: " + co.name());
+				Log.finest("Putting content on wire: " + co.name());
 				return getNetworkManager().put(co);
 				
 					// DKS -- total hack, but we're dropping stuff on the floor all over
@@ -65,11 +65,11 @@ public class CCNBase {
 					//	Interest readBackInterest = new Interest(co.name());
 					//	ContentObject readBack = get(readBackInterest, CONFIRMATION_TIMEOUT);
 					//	while (null == readBack) {
-					//		Library.logger().info("Put failed, resubmitting " + co.name() + ".");
+					//		Library.info("Put failed, resubmitting " + co.name() + ".");
 					//		getNetworkManager().put(co);
 					//		readBack = get(readBackInterest, CONFIRMATION_TIMEOUT);
 					//	}
-					//	Library.logger().finer("Confirmed put, retrieived " + readBack.name());
+					//	Library.finer("Confirmed put, retrieived " + readBack.name());
 					//}
 			} catch (InterruptedException e) {
 				interrupted = true;

@@ -26,7 +26,7 @@ public class DigestHelper {
 			_md = MessageDigest.getInstance(getDefaultDigest());
 		} catch (java.security.NoSuchAlgorithmException ex) {
 			// DKS --big configuration problem
-			Log.logger().warning("Fatal Error: cannot find default algorithm " + getDefaultDigest());
+			Log.warning("Fatal Error: cannot find default algorithm " + getDefaultDigest());
 			throw new RuntimeException("Error: can't find default algorithm " + getDefaultDigest() + "!  " + ex.toString());
 		}
 	}
@@ -146,7 +146,7 @@ public class DigestHelper {
 		try {
 			return CryptoUtil.encode(info);
 		} catch (CertificateEncodingException e) {
-			Log.logger().warning("Exception encoding digest as digest info using standard algorithms: " + e.getMessage());
+			Log.warning("Exception encoding digest as digest info using standard algorithms: " + e.getMessage());
 			Log.warningStackTrace(e);
 			// DKS TODO what to actually throw
 			return new byte[0];

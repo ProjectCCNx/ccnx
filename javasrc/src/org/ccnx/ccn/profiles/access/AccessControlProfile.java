@@ -229,7 +229,7 @@ public class AccessControlProfile implements CCNProfile {
 				break;
 		}
 		if (sepIndex == childName.length) {
-			Log.logger().warning("Unexpected principal name format - no separator: " + 
+			Log.warning("Unexpected principal name format - no separator: " + 
 					ContentName.componentPrintURI(childName, PRINCIPAL_PREFIX.length, childName.length-PRINCIPAL_PREFIX.length));
 			return null;
 		}

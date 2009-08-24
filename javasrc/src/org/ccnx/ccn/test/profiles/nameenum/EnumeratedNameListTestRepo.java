@@ -69,13 +69,13 @@ public class EnumeratedNameListTestRepo {
 	
 	@Test
 	public void testEnumeratedName() throws Exception {
-		//Library.logger().setLevel(Level.FINEST);
+		//Library.setLevel(Level.FINEST);
 		System.out.println("Starting Enumerated Name Test");
 		
 		try {
 			CCNHandle library = CCNHandle.open();
 		
-			Log.logger().info("*****************Starting Enumerated Name Test");
+			Log.info("*****************Starting Enumerated Name Test");
 
 			Assert.assertNotNull(directory);
 			Assert.assertNotNull(name1);
@@ -83,20 +83,20 @@ public class EnumeratedNameListTestRepo {
 			Assert.assertNotNull(name3);
 			Assert.assertNotNull(brokenPrefix);
 
-			Log.logger().info("*****************Creating Enumerated Name List Object");
+			Log.info("*****************Creating Enumerated Name List Object");
 			//creates Enumerated Name List
 			testList = new EnumeratedNameList(directory, putLibrary);
 
-			Log.logger().info("*****************assert creation of library and enumeratednamelist object");
+			Log.info("*****************assert creation of library and enumeratednamelist object");
 			//verify that the class and library is setup
 			Assert.assertNotNull(putLibrary);
 			Assert.assertNotNull(testList);
 
-			Log.logger().info("*****************assert creation of prefix");
+			Log.info("*****************assert creation of prefix");
 			//Verify that the object has been created with the right prefix
 			ContentName prefixTest = testList.getName();
 			Assert.assertNotNull(prefixTest);
-			Log.logger().info("***************** Prefix is "+ prefixTest.toString());
+			Log.info("***************** Prefix is "+ prefixTest.toString());
 			Assert.assertEquals(prefixTest, directory);
 			Assert.assertFalse(brokenPrefix.equals(prefixTest));
 
@@ -107,12 +107,12 @@ public class EnumeratedNameListTestRepo {
 			// appears.
 			//testList.waitForData();
 
-			Log.logger().info("****************** adding name1 to repo");
+			Log.info("****************** adding name1 to repo");
 
 			// adding content to repo
 			ContentName latestName = addContentToRepo(name1, library);
 			testList.waitForData();
-			Log.logger().info("Added data to repo: " + latestName);
+			Log.info("Added data to repo: " + latestName);
 
 			//testing that the enumerator has new data
 			Assert.assertTrue(testList.hasNewData());
@@ -218,7 +218,7 @@ public class EnumeratedNameListTestRepo {
 			// This will add new versions
 			for (int i=0; i < 5; ++i) {
 				latestName = addContentToRepo(name1, library);
-				Log.logger().info("Added data to repo: " + latestName);
+				Log.info("Added data to repo: " + latestName);
 			}
 			
 			EnumeratedNameList versionList = new EnumeratedNameList(name1, library);

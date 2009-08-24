@@ -96,13 +96,13 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		try {
 			return CryptoUtil.getPublicKey(baos.toByteArray());
 		} catch (CertificateEncodingException e) {
-			Log.logger().warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
+			Log.warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 		} catch (InvalidKeySpecException e) {
-			Log.logger().warning("Cannot decode public key from block: " + ((CCNInputStream)input).currentSegmentName() + "  " + e.getClass().getName() + ": " + e.getMessage());
+			Log.warning("Cannot decode public key from block: " + ((CCNInputStream)input).currentSegmentName() + "  " + e.getClass().getName() + ": " + e.getMessage());
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
-			Log.logger().warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
+			Log.warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 		}
 	}

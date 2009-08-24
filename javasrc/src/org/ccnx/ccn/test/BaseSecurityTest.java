@@ -30,7 +30,7 @@ public class BaseSecurityTest extends BasePutGetTest {
 				}
 				assertTrue(verifySig);
 			} catch (Exception e) {
-				Log.logger().info("Exception in checkGetResults for name: " + getResults.get(i).name() +": " + e.getClass().getName() + " " + e.getMessage());
+				Log.info("Exception in checkGetResults for name: " + getResults.get(i).name() +": " + e.getClass().getName() + " " + e.getMessage());
 				Log.infoStackTrace(e);
 				fail();			
 			}
@@ -51,7 +51,7 @@ public class BaseSecurityTest extends BasePutGetTest {
 				SystemConfiguration.logObject("checkPutResults: verification succeeded", co);
 			}
 		} catch (Exception e) {
-			Log.logger().info("Exception in checkPutResults for name: " + putResult.name() +": " + e.getClass().getName() + " " + e.getMessage());
+			Log.info("Exception in checkPutResults for name: " + putResult.name() +": " + e.getClass().getName() + " " + e.getMessage());
 			Log.infoStackTrace(e);
 			fail();			
 		}

@@ -34,7 +34,7 @@ public abstract class BasicInterestListener implements CCNInterestListener {
 	}
 	
 	public void cancelInterest(Interest interest) throws IOException {
-		Log.logger().info("Interest cancelled: " + interest.name());
+		Log.info("Interest cancelled: " + interest.name());
 		// What happens if we do this in the middle of cancel interests?
 		_interestProvider.cancelInterest(interest, this);
 		_interests.remove(interest);

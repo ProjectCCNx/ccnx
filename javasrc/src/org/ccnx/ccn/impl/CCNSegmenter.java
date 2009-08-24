@@ -163,10 +163,10 @@ public class CCNSegmenter {
 		if (null != blockString) {
 			try {
 				_blockSize = new Integer(blockString).intValue();
-				Log.logger().info("Using specified fragmentation block size " + _blockSize);
+				Log.info("Using specified fragmentation block size " + _blockSize);
 			} catch (NumberFormatException e) {
 				// Do nothing
-				Log.logger().warning("Error: malformed property value " + PROP_BLOCK_SIZE + ": " + blockString + " should be an integer.");
+				Log.warning("Error: malformed property value " + PROP_BLOCK_SIZE + ": " + blockString + " should be an integer.");
 			}
 		}
 	}
@@ -272,7 +272,7 @@ public class CCNSegmenter {
 		// Remove existing segmentation markers on end of name, at point right
 		// before put. If do it sooner, have to re-do it just to be sure.
 		if (SegmentationProfile.isSegment(name)) {
-			Log.logger().info("Asked to store fragments under fragment name: " + name + ". Stripping fragment information");
+			Log.info("Asked to store fragments under fragment name: " + name + ". Stripping fragment information");
 		}
 
 		// DKS TODO -- take encryption overhead into account
@@ -290,7 +290,7 @@ public class CCNSegmenter {
 						Long.valueOf(SegmentationProfile.baseSegment()), 
 						locator, publisher);
 			} catch (IOException e) {
-				Log.logger().warning("This should not happen: put failed with an IOException.");
+				Log.warning("This should not happen: put failed with an IOException.");
 				Log.warningStackTrace(e);
 				throw e;
 			}
@@ -543,10 +543,10 @@ public class CCNSegmenter {
 				type = ContentType.ENCR; 
 				
 			} catch (IllegalBlockSizeException e) {
-				Log.logger().warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
+				Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
 				throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
 			} catch (BadPaddingException e) {
-				Log.logger().warning("Unexpected BadPaddingException for an algorithm we have already used!");
+				Log.warning("Unexpected BadPaddingException for an algorithm we have already used!");
 				throw new InvalidAlgorithmParameterException("Unexpected BadPaddingException for an algorithm we have already used!", e);
 			}
 		}
@@ -559,7 +559,7 @@ public class CCNSegmenter {
 							freshnessSeconds, 
 							finalBlockID), 
 							content, offset, length, signingKey);
-		Log.logger().info("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
+		Log.info("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
 		_flowControl.put(co);
 		
 		return nextSegmentIndex(segmentNumber, co.contentLength());
@@ -583,7 +583,7 @@ public class CCNSegmenter {
 
 				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
 				Cipher thisCipher = _keys.getSegmentEncryptionCipher(nextSegmentIndex);
-				Log.logger().finest("Created new encryption cipher "+thisCipher);
+				Log.finest("Created new encryption cipher "+thisCipher);
 				// Override content type to mark encryption.
 				// Note: we don't require that writers use our facilities for encryption, so
 				// content previously encrypted may not be marked as type ENCR. So on the decryption
@@ -598,7 +598,7 @@ public class CCNSegmenter {
 						SegmentationProfile.segmentName(rootName, nextSegmentIndex),
 						signedInfo,
 						dataStream, blockWidth);
-			Log.logger().finest("Created content object - segment "+nextSegmentIndex+" before encr="+content[offset]+" after encr="+blocks[i].content()[0]);
+			Log.finest("Created content object - segment "+nextSegmentIndex+" before encr="+content[offset]+" after encr="+blocks[i].content()[0]);
 
 			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, 
 												blocks[i].contentLength());
@@ -659,10 +659,10 @@ public class CCNSegmenter {
 					signedInfo.setType(ContentType.ENCR);
 					
 				} catch (IllegalBlockSizeException e) {
-					Log.logger().warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
+					Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
 					throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
 				} catch (BadPaddingException e) {
-					Log.logger().warning("Unexpected BadPaddingException for an algorithm we have already used!");
+					Log.warning("Unexpected BadPaddingException for an algorithm we have already used!");
 					throw new InvalidAlgorithmParameterException("Unexpected BadPaddingException for an algorithm we have already used!", e);
 				}
 
@@ -682,10 +682,10 @@ public class CCNSegmenter {
 				lastBlockLength = blockContent.length;
 				
 			} catch (IllegalBlockSizeException e) {
-				Log.logger().warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
+				Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
 				throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
 			} catch (BadPaddingException e) {
-				Log.logger().warning("Unexpected BadPaddingException for an algorithm we have already used!");
+				Log.warning("Unexpected BadPaddingException for an algorithm we have already used!");
 				throw new InvalidAlgorithmParameterException("Unexpected BadPaddingException for an algorithm we have already used!", e);
 			}
 		}
@@ -711,7 +711,7 @@ public class CCNSegmenter {
 		} else if (SegmentNumberType.SEGMENT_BYTE_COUNT == _sequenceType) {
 			return lastSegmentNumber + (getByteScale() * lastSegmentLength);
 		} else {
-			Log.logger().warning("Unknown segmentation type: " + _sequenceType);
+			Log.warning("Unknown segmentation type: " + _sequenceType);
 			return lastSegmentNumber + 1;
 		}
 	}
@@ -731,7 +731,7 @@ public class CCNSegmenter {
 			// don't want this, want number of bytes prior to last block
 			return currentSegmentNumber + (getByteScale() * bytesIntervening);
 		} else {
-			Log.logger().warning("Unknown segmentation type: " + _sequenceType);
+			Log.warning("Unknown segmentation type: " + _sequenceType);
 			return currentSegmentNumber + (blocksRemaining - 1);
 		}
 	}

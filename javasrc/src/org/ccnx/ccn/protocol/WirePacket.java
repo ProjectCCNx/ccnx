@@ -58,7 +58,7 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 				}
 			}
 		}
-		Log.logger().finest("Finished decoding wire packet.");
+		Log.finest("Finished decoding wire packet.");
 	}
 
 	public void encode(XMLEncoder encoder) throws XMLStreamException {

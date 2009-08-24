@@ -141,7 +141,7 @@ public class BloomFilter extends ExcludeFilter.Filler implements Comparable<Bloo
 			_bloom[i++] = (byte)bais.read();
 		// DKS decoding check
 		if (i != usedBits()) {
-			Log.logger().warning("Unexpected result in decoding BloomFilter: expecting " + usedBits() + " bytes, got " + i);
+			Log.warning("Unexpected result in decoding BloomFilter: expecting " + usedBits() + " bytes, got " + i);
 		}
 	}
 	

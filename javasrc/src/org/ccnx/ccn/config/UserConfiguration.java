@@ -52,7 +52,7 @@ public class UserConfiguration {
 			
 			CCN_DIR = USER_DIR + FILE_SEP + CCN_DIR_NAME;
 		} catch (MalformedContentNameStringException e) {
-			Log.logger().warning("This should not happen. MalformedContentNameStringException in system-generated name: " + e.getMessage());
+			Log.warning("This should not happen. MalformedContentNameStringException in system-generated name: " + e.getMessage());
 			Log.warningStackTrace(e);
 		}
 	}

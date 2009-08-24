@@ -59,11 +59,11 @@ public abstract class KeyManager {
 		try {
 			return getDefaultKeyManager();
 		} catch (ConfigurationException e) {
-			Log.logger().warning("Configuration exception attempting to get KeyManager: " + e.getMessage());
+			Log.warning("Configuration exception attempting to get KeyManager: " + e.getMessage());
 			Log.warningStackTrace(e);
 			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",e);
 		} catch (IOException e) {
-			Log.logger().warning("IO exception attempting to get KeyManager: " + e.getMessage());
+			Log.warning("IO exception attempting to get KeyManager: " + e.getMessage());
 			Log.warningStackTrace(e);
 			throw new RuntimeException("Error in system IO. Cannot get KeyManager.",e);
 		}

@@ -66,7 +66,7 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		try {
 			putHeader(_baseName, lengthWritten(), getBlockSize(), _dh.digest(), null);
 		} catch (XMLStreamException e) {
-			Log.logger().fine("XMLStreamException in writing header: " + e.getMessage());
+			Log.fine("XMLStreamException in writing header: " + e.getMessage());
 			// TODO throw nested exception
 			throw new IOException("Exception in writing header: " + e);
 		}
@@ -105,6 +105,6 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		// the segmenter. For now, use our own.
 		HeaderObject header = new HeaderObject(headerName, headerData, this._publisher, this._locator, this.getSegmenter().getFlowControl());
 		header.save();
-		Log.logger().info("Wrote header: " + header.getCurrentVersionName());
+		Log.info("Wrote header: " + header.getCurrentVersionName());
 	}
 }

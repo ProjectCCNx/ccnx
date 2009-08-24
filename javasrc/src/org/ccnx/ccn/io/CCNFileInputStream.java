@@ -92,19 +92,19 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		/*
 		Interest headerInterest = new Interest(SegmentationProfile.headerName(baseName), publisher);
 		headerInterest.maxSuffixComponents(1);
-		Library.logger().info("retrieveHeader: base name " + baseName);
-		Library.logger().info("retrieveHeader: header name " + SegmentationProfile.headerName(baseName));
+		Library.info("retrieveHeader: base name " + baseName);
+		Library.info("retrieveHeader: header name " + SegmentationProfile.headerName(baseName));
 		_library.expressInterest(headerInterest, this);
 		*/
 		// Ask for the header, but update it in the background, as it may not be there yet.
 		_header = new HeaderObject(SegmentationProfile.headerName(baseName), null, publisher, null, _library);
-		Log.logger().info("Retrieving header : " + _header.getBaseName() + " in background.");
+		Log.info("Retrieving header : " + _header.getBaseName() + " in background.");
 		_header.updateInBackground();
 	}
 
 	public Interest handleContent(ArrayList<ContentObject> results,
 								  Interest interest) {
-		Log.logger().warning("Unexpected: shouldn't be in handleContent, object should handle this.");
+		Log.warning("Unexpected: shouldn't be in handleContent, object should handle this.");
 		if (null != _header) {
 			// Already have header so should not have reached here
 			// and do not need to renew interest
@@ -112,7 +112,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		}
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
 		for (ContentObject co : results) {
-			Log.logger().info("CCNInputStream: retrieved possible header: " + co.name() + " type: " + co.signedInfo().getTypeName());
+			Log.info("CCNInputStream: retrieved possible header: " + co.name() + " type: " + co.signedInfo().getTypeName());
 			if (SegmentationProfile.isHeader(_baseName, co.name()) &&
 					addHeader(co)) {
 				// Low-level verify is done in addHeader
@@ -144,17 +144,17 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	protected boolean addHeader(ContentObject headerObject) {
 		try {
 			if (!headerObject.verify(null)) {
-				Log.logger().warning("Found header: " + headerObject.name().toString() + " that fails to verify.");
+				Log.warning("Found header: " + headerObject.name().toString() + " that fails to verify.");
 				return false;
 			} else {
 				// DKS TODO -- use HeaderObject to read
-				Log.logger().info("Got header object in handleContent, loading into _header. Name: " + headerObject.name());
+				Log.info("Got header object in handleContent, loading into _header. Name: " + headerObject.name());
 				_header.update(headerObject);
-				Log.logger().fine("Found header specifies " + _header.segmentCount() + " blocks");
+				Log.fine("Found header specifies " + _header.segmentCount() + " blocks");
 				return true; // done
 			}
 		} catch (Exception e) {
-			Log.logger().warning("Got an " + e.getClass().getName() + " exception attempting to verify or decode header: " + headerObject.name().toString() + ", treat as failure to verify.");
+			Log.warning("Got an " + e.getClass().getName() + " exception attempting to verify or decode header: " + headerObject.name().toString() + ", treat as failure to verify.");
 			Log.warningStackTrace(e);
 			return false; // try again
 		}
@@ -173,7 +173,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			try {
 				requestHeader(_baseName, result.signedInfo().getPublisherKeyID());
 			} catch (XMLStreamException e) {
-				Log.logger().fine("XMLStreamException in processing header: " + e.getMessage());
+				Log.fine("XMLStreamException in processing header: " + e.getMessage());
 				// TODO -- throw nested exception in 1.6
 				throw new IOException("Exception in processing header: " + e);
 			}
@@ -184,7 +184,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	@Override
 	public long skip(long n) throws IOException {
 		
-		Log.logger().info("in skip("+n+")");
+		Log.info("in skip("+n+")");
 		
 		if (n < 0) {
 			return 0;
@@ -269,11 +269,11 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 
 	@Override
 	public long seek(long position) throws IOException {
-		Log.logger().info("Seeking stream to " + position + ": have header? " + hasHeader());
+		Log.info("Seeking stream to " + position + ": have header? " + hasHeader());
 		if (hasHeader()) {
 			int [] blockAndOffset = _header.positionToSegmentLocation(position);
-			Log.logger().info("seek:  position: " + position + " block: " + blockAndOffset[0] + " offset: " + blockAndOffset[1]);
-			Log.logger().info("currently have block "+ currentSegmentNumber());
+			Log.info("seek:  position: " + position + " block: " + blockAndOffset[0] + " offset: " + blockAndOffset[1]);
+			Log.info("currently have block "+ currentSegmentNumber());
 			if (currentSegmentNumber() == blockAndOffset[0]) {
 				//already have the correct block
 				if (super.tell() == blockAndOffset[1]){
@@ -297,19 +297,19 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 				setCurrentSegment(getSegment(blockAndOffset[0]));
 			super.skip(blockAndOffset[1]);
 			long check = _header.segmentLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
-			Log.logger().info("current position: block "+blockAndOffset[0]+" _blockOffset "+super.tell()+" ("+check+")");
+			Log.info("current position: block "+blockAndOffset[0]+" _blockOffset "+super.tell()+" ("+check+")");
 
 			if (_currentSegment != null) {
 				_atEOF=false;
 			}
 			// Might be at end of stream, so different value than came in...
 			//long check = _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
-			//Library.logger().info("return val check: "+check);
+			//Library.info("return val check: "+check);
 			
 			//return _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
 			//skip(check);
 			
-			//Library.logger().info(" _blockOffset "+_blockOffset);
+			//Library.info(" _blockOffset "+_blockOffset);
 			return check;
 		} else {
 			return super.seek(position);

@@ -32,7 +32,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	public static void setUpBeforeClass() throws Exception {
 	
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		//Library.logger().setLevel(Level.FINEST);
+		//Library.setLevel(Level.FINEST);
 		//SystemConfiguration.setDebugFlag("DEBUG_SIGNATURES");
 	}
 
@@ -42,7 +42,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 		sema.acquire(); // Block until puts started
 		CCNDescriptor desc = new CCNDescriptor(thisName, null, library);
 		desc.setTimeout(5000);
-		Log.logger().info("Opened descriptor for reading: " + thisName);
+		Log.info("Opened descriptor for reading: " + thisName);
 
 		FileOutputStream os = new FileOutputStream(fileName + "_testout.txt");
 		byte[] compareBytes = TEST_LONG_CONTENT.getBytes();
@@ -52,15 +52,15 @@ public class BlockReadWriteTest extends BasePutGetTest {
         // if you ask for more data than you can hold, it's an error, even if you
         // know that not that much will come back
         while ((buflen = desc.read(bytes, slot, Math.min(CHUNK_SIZE * 3, bytes.length - slot))) > 0) {
-        	Log.logger().info("Read " + buflen + " bytes from CCNDescriptor.");
+        	Log.info("Read " + buflen + " bytes from CCNDescriptor.");
         	os.write(bytes, 0, (int)buflen);
         	if (desc.available() == 0) {
-        		Log.logger().info("Descriptor claims 0 bytes available.");
+        		Log.info("Descriptor claims 0 bytes available.");
         	}
         	slot += buflen;
         }
         desc.close();
-        Log.logger().info("Closed CCN reading CCNDescriptor.");
+        Log.info("Closed CCN reading CCNDescriptor.");
         Assert.assertArrayEquals(bytes, compareBytes);  
 	}
 	
@@ -81,7 +81,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 		desc.setTimeout(5000);
 		sema.release();	// put channel open
 		
-		Log.logger().info("Opened descriptor for writing: " + thisName);
+		Log.info("Opened descriptor for writing: " + thisName);
 		
 		// Dump the file in small packets
 		InputStream is = new ByteArrayInputStream(TEST_LONG_CONTENT.getBytes());
@@ -89,11 +89,11 @@ public class BlockReadWriteTest extends BasePutGetTest {
         int buflen = 0;
         while ((buflen = is.read(bytes)) >= 0) {
         	desc.write(bytes, 0, buflen);
-        	Log.logger().info("Wrote " + buflen + " bytes to CCNDescriptor.");
+        	Log.info("Wrote " + buflen + " bytes to CCNDescriptor.");
         }
-        Log.logger().info("Finished writing. Closing CCN writing CCNDescriptor.");
+        Log.info("Finished writing. Closing CCN writing CCNDescriptor.");
         desc.close();
-        Log.logger().info("Closed CCN writing CCNDescriptor.");
+        Log.info("Closed CCN writing CCNDescriptor.");
 	}
 	
 	@Override

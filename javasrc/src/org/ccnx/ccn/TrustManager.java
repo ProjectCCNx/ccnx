@@ -31,7 +31,7 @@ public abstract class TrustManager {
 		try {
 			return getDefaultTrustManager();
 		} catch (ConfigurationException e) {
-			Log.logger().warning("Configuration exception attempting to get TrustManager: " + e.getMessage());
+			Log.warning("Configuration exception attempting to get TrustManager: " + e.getMessage());
 			Log.warningStackTrace(e);
 			throw new RuntimeException("Error in system configuration. Cannot get TrustManager.",e);
 		}

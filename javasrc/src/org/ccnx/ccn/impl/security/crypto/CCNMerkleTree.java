@@ -77,7 +77,7 @@ public class CCNMerkleTree extends MerkleTree {
 		initializeTree(contentObjects);
 		_rootSignature = computeRootSignature(root(), signingKey);
 		setSignatures();
-		Log.logger().info("CCNMerkleTree: built a tree of " + contentObjects.length + " objects.");
+		Log.info("CCNMerkleTree: built a tree of " + contentObjects.length + " objects.");
 	}
 
 	public byte [] rootSignature() { return _rootSignature; }
@@ -185,12 +185,12 @@ public class CCNMerkleTree extends MerkleTree {
 																 blockSignedInfo(leafIndex),
 																 content, offset, length));
 			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-				Log.logger().info("offset: " + offset + " block length: " + length + " blockDigest " + 
+				Log.info("offset: " + offset + " block length: " + length + " blockDigest " + 
 						DataUtils.printBytes(blockDigest) + " content digest: " + 
 						DataUtils.printBytes(CCNDigestHelper.digest(content, offset, length)));
 			}
 		} catch (XMLStreamException e) {
-			Log.logger().info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
+			Log.info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
 			// DKS todo -- what to throw?
 		} 
 

@@ -171,7 +171,7 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 			MerklePath mp = new MerklePath(info.getDigest());
 			proxy = mp.root(nodeContent, isDigest);
 		} else {
-			Log.logger().warning("Unexpected witness type: " + info.getAlgorithmId().toString());
+			Log.warning("Unexpected witness type: " + info.getAlgorithmId().toString());
 		}
 		return proxy;
 	}

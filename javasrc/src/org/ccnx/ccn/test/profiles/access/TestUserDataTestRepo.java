@@ -83,7 +83,7 @@ public class TestUserDataTestRepo {
 
 		PublicKeyObject pkr = new PublicKeyObject(pko.getCurrentVersionName(), standardLibrary);
 		if (!pkr.available()) {
-			Library.logger().info("Can't read back object " + pko.getCurrentVersionName());
+			Library.info("Can't read back object " + pko.getCurrentVersionName());
 		} else {
 			System.out.println("Retrieved object key locator: " + pkr.publisherKeyLocator());
 			System.out.println("Retrieved object key ID: " + pkr.contentPublisher());

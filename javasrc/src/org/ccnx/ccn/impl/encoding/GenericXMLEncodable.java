@@ -63,7 +63,7 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 		byte[] tmp = new byte[8];
 		System.arraycopy(array, buf.position(), tmp, 0, (buf.remaining() > tmp.length) ? tmp.length : buf.remaining());
 		BigInteger tmpBuf = new BigInteger(1,tmp);
-		Log.logger().finest("decode (buf.pos: " + buf.position() + " remaining: " + buf.remaining() + ") start: " + tmpBuf.toString(16));
+		Log.finest("decode (buf.pos: " + buf.position() + " remaining: " + buf.remaining() + ") start: " + tmpBuf.toString(16));
 		
 		ByteArrayInputStream bais = new ByteArrayInputStream(array, buf.position(), buf.remaining());
 		decode(bais, codec);
@@ -102,7 +102,7 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 		try {
 			encoded = encode(TextXMLCodec.codecName());
 		} catch (XMLStreamException e) {
-			Log.logger().info("GenericXMLEncodable.toString(): cannot encode: " + e.getMessage());
+			Log.info("GenericXMLEncodable.toString(): cannot encode: " + e.getMessage());
 			return new String();
 		}
 		return new String(encoded);

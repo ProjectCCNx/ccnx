@@ -248,21 +248,21 @@ public class ACL extends Collection {
 				addManager(op);
 			}else if (ACLOperation.LABEL_DEL_READER.equals(op.targetLabel())){
 				if(levelOld != LEVEL_READ){
-					Log.logger().info("trying to remove a non-existent reader, ignoring this operation..."); 
+					Log.info("trying to remove a non-existent reader, ignoring this operation..."); 
 					continue;
 				}
 
 				removeLabeledLink(op, LABEL_READER);	
 			}else if (ACLOperation.LABEL_DEL_WRITER.equals(op.targetLabel())){
 				if(levelOld != LEVEL_WRITE){ 
-					Log.logger().info("trying to remove a non-existent writer, ignoring this operation...");
+					Log.info("trying to remove a non-existent writer, ignoring this operation...");
 					continue;
 				}
 
 				removeLabeledLink(op, LABEL_WRITER);
 			}else if (ACLOperation.LABEL_DEL_MANAGER.equals(op.targetLabel())){
 				if(levelOld != LEVEL_MANAGE){
-					Log.logger().info("trying to remove a non-existent manager, ignoring this operation...");
+					Log.info("trying to remove a non-existent manager, ignoring this operation...");
 					continue;
 				}
 
@@ -374,7 +374,7 @@ public class ACL extends Collection {
 		} else if (LABEL_MANAGER.equals(link.targetLabel())) {
 			_managers.add(link);
 		} else {
-			Log.logger().info("Unexpected: attempt to index ACL entry with unknown label: " + link.targetLabel());
+			Log.info("Unexpected: attempt to index ACL entry with unknown label: " + link.targetLabel());
 		}
 	}
 	
@@ -386,7 +386,7 @@ public class ACL extends Collection {
 		} else if (LABEL_MANAGER.equals(label)) {
 			_managers.remove(link);
 		} else {
-			Log.logger().info("Unexpected: attempt to index ACL entry with unknown label: " + label);
+			Log.info("Unexpected: attempt to index ACL entry with unknown label: " + label);
 		}				
 	}
 	

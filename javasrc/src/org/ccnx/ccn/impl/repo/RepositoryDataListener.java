@@ -51,14 +51,14 @@ public class RepositoryDataListener implements CCNInterestListener {
 		
 		private DataHandler(ContentObject co) {
 			if (SystemConfiguration.getLogging("repo"))
-				Log.logger().info("Saw data: " + co.name());
+				Log.info("Saw data: " + co.name());
 			_content = co;
 		}
 	
 		public void run() {
 			try {
 				if (SystemConfiguration.getLogging("repo"))
-					Log.logger().finer("Saving content in: " + _content.name().toString());
+					Log.finer("Saving content in: " + _content.name().toString());
 				NameEnumerationResponse ner = _daemon.getRepository().saveContent(_content);		
 				if (_daemon.getRepository().checkPolicyUpdate(_content)) {
 					_daemon.resetNameSpaceFromHandler();
@@ -79,7 +79,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_daemon = daemon;
 		_library = daemon.getLibrary();
 		_timer = new Date().getTime();
-		Log.logger().info("Starting up repository listener on original interest: " + origInterest + " interest " + interest);
+		Log.info("Starting up repository listener on original interest: " + origInterest + " interest " + interest);
 	}
 	
 	public Interest handleContent(ArrayList<ContentObject> results,

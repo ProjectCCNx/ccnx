@@ -240,7 +240,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	
 	public static final String typeToName(ContentType type) {
 		if (ContentTypeNames.get(type) == null) {
-			Log.logger().warning("Cannot find name for type: " + type);
+			Log.warning("Cannot find name for type: " + type);
 		}
 		return ContentTypeNames.get(type);
 	}
@@ -253,7 +253,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	
 	public static final byte [] typeToValue(ContentType type) {
 		if (ContentTypeValues.get(type) == null) {
-			Log.logger().warning("Cannot find name for type: " + type);
+			Log.warning("Cannot find name for type: " + type);
 		}
 		return ContentTypeValues.get(type);
 	}

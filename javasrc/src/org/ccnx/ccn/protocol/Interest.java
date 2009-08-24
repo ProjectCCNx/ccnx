@@ -202,33 +202,33 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			int nameCount = name.count();
 			int lengthDiff = nameCount + (digestIncluded?0:1) - name().count();
 			if (null != maxSuffixComponents() && lengthDiff > maxSuffixComponents()) {
-				Log.logger().fine("Interest match failed: " + lengthDiff + " more than the " + maxSuffixComponents() + " components between expected " +
+				Log.fine("Interest match failed: " + lengthDiff + " more than the " + maxSuffixComponents() + " components between expected " +
 						name() + " and tested " + name);
 				return false;
 			}
 			if (null != minSuffixComponents() && lengthDiff < minSuffixComponents()) {
-				Log.logger().fine("Interest match failed: " + lengthDiff + " less than the " + minSuffixComponents() + " components between expected " +
+				Log.fine("Interest match failed: " + lengthDiff + " less than the " + minSuffixComponents() + " components between expected " +
 						name() + " and tested " + name);
 				return false;
 			}
 		}
 		if (null != excludeFilter()) {
 			if (excludeFilter().match(name.component(name().count()))) {
-				Log.logger().finest("Interest match failed. " + name + " has been excluded");
+				Log.finest("Interest match failed. " + name + " has been excluded");
 				return false;
 			}
 		}
 		if (null != publisherID()) {
 			if (null == resultPublisherKeyID) {
-				Log.logger().finest("Interest match failed, target " + name + " doesn't specify a publisherID and we require a particular one.");
+				Log.finest("Interest match failed, target " + name + " doesn't specify a publisherID and we require a particular one.");
 				return false; 
 			}
 			// Should this be more general?
 			// TODO DKS handle issuer
-			Log.logger().finest("Interest match handed off to trust manager for name: " + name);
+			Log.finest("Interest match handed off to trust manager for name: " + name);
 			return TrustManager.getTrustManager().matchesRole(publisherID(), resultPublisherKeyID);
 		} 
-		Log.logger().finest("Interest match succeeded to name: " + name);
+		Log.finest("Interest match succeeded to name: " + name);
 		return true;
 	}
 	
@@ -448,7 +448,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			decoder.readEndElement();
 		} catch (XMLStreamException e) {
 			// DKS TODO -- get Michael to update schema!
-			Log.logger().info("Catching exception reading interest end element, and moving on. Waiting for schema updates...");
+			Log.info("Catching exception reading interest end element, and moving on. Waiting for schema updates...");
 		}
 	}
 

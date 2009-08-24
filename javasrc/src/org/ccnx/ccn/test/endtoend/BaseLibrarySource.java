@@ -29,7 +29,7 @@ public class BaseLibrarySource {
 	public static void setUpBeforeClass() throws Exception {
 		library = CCNHandle.open();
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Log.logger().setLevel(Level.INFO);
+		Log.setLevel(Level.INFO);
 		rand = new Random();
 	}
 

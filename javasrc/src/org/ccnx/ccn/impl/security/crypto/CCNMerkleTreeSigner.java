@@ -22,7 +22,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 		// DKS TODO remove side effect behavior.
 		CCNMerkleTree tree = 
 			new CCNMerkleTree(contentObjects, signingKey);
-		Log.logger().info("Signed tree of " + tree.numLeaves() + " leaves, " + tree.nodeCount() + " nodes.");
+		Log.info("Signed tree of " + tree.numLeaves() + " leaves, " + tree.nodeCount() + " nodes.");
 	}
 
 }

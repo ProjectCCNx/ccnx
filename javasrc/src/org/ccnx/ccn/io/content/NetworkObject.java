@@ -47,10 +47,10 @@ public abstract class NetworkObject<E> {
 		try {
 			newE = _type.newInstance();
 		} catch (InstantiationException e) {
-			Log.logger().warning("Cannot wrap class " + _type.getName() + " -- impossible to construct instances!");
+			Log.warning("Cannot wrap class " + _type.getName() + " -- impossible to construct instances!");
 			throw new IOException("Cannot wrap class " + _type.getName() + " -- impossible to construct instances!");
 		} catch (IllegalAccessException e) {
-			Log.logger().warning("Cannot wrap class " + _type.getName() + " -- cannot access default constructor!");
+			Log.warning("Cannot wrap class " + _type.getName() + " -- cannot access default constructor!");
 			throw new IOException("Cannot wrap class " + _type.getName() + " -- cannot access default constructor!");
 		}
 		return newE;
@@ -61,22 +61,22 @@ public abstract class NetworkObject<E> {
 		E newData = readObjectImpl(input);
 		
 		if (!_available) {
-			Log.logger().info("Update -- first initialization.");
+			Log.info("Update -- first initialization.");
 			_data = newData;
 			_available = true;
 			_potentiallyDirty = false;
 		}
 		if (null == _data) {
 			if (null != newData) {
-				Log.logger().info("Update -- got new non-null " + newData.getClass().getName());
+				Log.info("Update -- got new non-null " + newData.getClass().getName());
 				_data = merge(input, newData);
 			} else {
-				Log.logger().info("Update -- value still null.");
+				Log.info("Update -- value still null.");
 			}
 		} else if (_data.equals(newData)) {
-			Log.logger().info("Update -- value hasn't changed.");
+			Log.info("Update -- value hasn't changed.");
 		} else {
-			Log.logger().info("Update -- got new " + newData.getClass().getName());
+			Log.info("Update -- got new " + newData.getClass().getName());
 			_data = merge(input, newData);
 		}
 	}
@@ -170,14 +170,14 @@ public abstract class NetworkObject<E> {
 			byte [] currentValue = dos.getMessageDigest().digest();
 
 			if (Arrays.equals(currentValue, _lastSaved)) {
-				Log.logger().info("Last saved value for object still current.");
+				Log.info("Last saved value for object still current.");
 				return false;
 			} else {
-				Log.logger().info("Last saved value for object not current -- object changed.");
+				Log.info("Last saved value for object not current -- object changed.");
 				return true;
 			}
 		} catch (NoSuchAlgorithmException e) {
-			Log.logger().warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
+			Log.warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
 			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
 		} catch (XMLStreamException e) {
 			// XMLStreamException should never happen, since our code should always write good XML
@@ -199,7 +199,7 @@ public abstract class NetworkObject<E> {
 			_lastSaved = dos.getMessageDigest().digest();
 			setPotentiallyDirty(false);
 		} catch (NoSuchAlgorithmException e) {
-			Log.logger().warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
+			Log.warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
 			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
 		} catch (XMLStreamException e) {
 			// XMLStreamException should never happen, since our code should always write good XML

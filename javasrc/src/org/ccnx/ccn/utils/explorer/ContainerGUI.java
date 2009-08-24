@@ -650,7 +650,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 	
 	
 	public static void main(String argv[]) {
-		Log.logger().setLevel(Level.INFO);
+		Log.setLevel(Level.INFO);
 
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
             public void run() {

@@ -157,7 +157,7 @@ public class LibraryTestBase {
 				_resultSet.add(val);
 
 			} catch (NumberFormatException nfe) {
-				Log.logger().info("BaseLibraryTest: unexpected content - not integer. Name: " + contents.content());
+				Log.info("BaseLibraryTest: unexpected content - not integer. Name: " + contents.content());
 			}
 			//assertEquals(i, Integer.parseInt(new String(contents.get(0).content())));
 			checkGetResults(contents);
@@ -253,7 +253,7 @@ public class LibraryTestBase {
 				//cf.shutdown();
 			} catch (Throwable ex) {
 				error = ex;
-				Log.logger().warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Log.warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
 				Log.logStackTrace(Level.WARNING, ex);
 			}
 		}
@@ -310,7 +310,7 @@ public class LibraryTestBase {
 					ContentName newName = new ContentName(contentObject.name(), contentObject.contentDigest());
 					newInterest = Interest.next(newName, contentObject.name().count() - 2);
 				} catch (NumberFormatException nfe) {
-					Log.logger().info("Unexpected content, " + contentObject.name() + " is not an integer!");
+					Log.info("Unexpected content, " + contentObject.name() + " is not an integer!");
 				}
 			}
 			checkGetResults(results.get(0));
@@ -378,7 +378,7 @@ public class LibraryTestBase {
 							accumulatedResults.add(val);
 						}
 					} catch (NumberFormatException nfe) {
-						Log.logger().info("Unexpected interest, " + interest.name() + " does not end in an integer!");
+						Log.info("Unexpected interest, " + interest.name() + " does not end in an integer!");
 					}
 				}
 				if (accumulatedResults.size() >= count) {

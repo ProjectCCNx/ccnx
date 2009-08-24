@@ -153,7 +153,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 						//is = new BufferedInputStream(fis);
 						//FileChannel fc = fis.getChannel();
 					
-						Log.logger().fine("Creating index for " + filenames[i]);
+						Log.fine("Creating index for " + filenames[i]);
 						while (true) {
 							ContentFileRef ref = _index.new ContentFileRef();
 							ref.id = index.intValue();
@@ -167,7 +167,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 									tmp.decode(is);
 								}
 								else{
-									Log.logger().info("at the end of the file");
+									Log.info("at the end of the file");
 									rfile.openFile.close();
 									rfile.openFile = null;
 									break;
@@ -187,11 +187,11 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 						_files.put(index, rfile);
 					} catch (NumberFormatException e) {
 						// Not valid file
-						Log.logger().warning("Invalid file name " + filenames[i]);
+						Log.warning("Invalid file name " + filenames[i]);
 					} catch (FileNotFoundException e) {
-						Log.logger().warning("Unable to open file to create index: " + filenames[i]);
+						Log.warning("Unable to open file to create index: " + filenames[i]);
 					} catch (IOException e) {
-						Log.logger().warning("IOException reading file to create index: " + filenames[i]);
+						Log.warning("IOException reading file to create index: " + filenames[i]);
 					}
 				}
 			}
@@ -271,7 +271,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			}
 			
 		} catch (FileNotFoundException e) {
-			Log.logger().warning("Error opening content output file index " + maxFileIndex);
+			Log.warning("Error opening content output file index " + maxFileIndex);
 		}
 		
 		String version = checkFile(VERSION, CURRENT_VERSION, library, false);
@@ -301,7 +301,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		 */
 		if (!policyFromFile) {
 			try {
-				Log.logger().info(REPO_NAMESPACE+"/" + _info.getLocalName() + "/" + REPO_POLICY);
+				Log.info(REPO_NAMESPACE+"/" + _info.getLocalName() + "/" + REPO_POLICY);
 				ContentObject policyObject = getContent(
 						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY)));
 				if (policyObject != null) {
@@ -351,9 +351,9 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
 				_index.insert(content, ref, System.currentTimeMillis(), this, ner);
 				if(ner==null || ner.getPrefix()==null){
-					Log.logger().fine("new content did not trigger an interest flag");
+					Log.fine("new content did not trigger an interest flag");
 				} else {
-					Log.logger().fine("new content was added where there was a name enumeration response interest flag");
+					Log.fine("new content was added where there was a name enumeration response interest flag");
 				}
 				return ner;
 			}
@@ -433,13 +433,13 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		// Debug: dump names tree to file
 		File namesFile = new File(_repositoryFile, DEBUG_TREEDUMP_FILE);
 		try {
-			Log.logger().info("Dumping names to " + namesFile.getAbsolutePath() + " (len " + nodelen + ")");
+			Log.info("Dumping names to " + namesFile.getAbsolutePath() + " (len " + nodelen + ")");
 			PrintStream namesOut = new PrintStream(namesFile);
 			if (null != _index) {
 				_index.dumpNamesTree(namesOut, nodelen);
 			}
 		} catch (FileNotFoundException ex) {
-			Log.logger().warning("Unable to dump names to " + namesFile.getAbsolutePath());
+			Log.warning("Unable to dump names to " + namesFile.getAbsolutePath());
 		}
 	}
 

@@ -75,7 +75,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 	public void doTest(String[] args) {
 		ContentName argName;
 		long startTime = new Date().getTime();
-		Log.logger().setLevel(Level.SEVERE);	// turn off logging
+		Log.setLevel(Level.SEVERE);	// turn off logging
 		try {
 			argName = ContentName.fromURI(args[0]);
 			CCNHandle library = CCNHandle.open();
@@ -85,7 +85,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 				System.out.println("No such file: " + args[1]);
 				return;
 			}
-			Log.logger().info("repo_test: putting file " + args[1] + " bytes: " + theFile.length());
+			Log.info("repo_test: putting file " + args[1] + " bytes: " + theFile.length());
 			RepoPerformanceTester ostream = getTester(args.length > 2 ? args[2] : null, argName, library);
 			do_write(ostream, theFile);
 			
@@ -126,13 +126,13 @@ public class RepoPerformanceTester extends CCNOutputStream {
 		int size = BLOCK_SIZE;
 		byte [] buffer = new byte[BLOCK_SIZE];
 		do {
-			Log.logger().info("do_write: " + fis.available() + " bytes left.");
+			Log.info("do_write: " + fis.available() + " bytes left.");
 			if (size > fis.available())
 				size = fis.available();
 			if (size > 0) {
 				fis.read(buffer, 0, size);
 				ostream.write(buffer, 0, size);
-				Log.logger().info("do_write: wrote " + size + " bytes.");
+				Log.info("do_write: wrote " + size + " bytes.");
 			}
 		} while (fis.available() > 0);
 		ostream.close();
