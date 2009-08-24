@@ -12,9 +12,9 @@ import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.DigestInfo;
+import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
+import org.ccnx.ccn.impl.security.crypto.util.OIDLookup;
 
-import com.parc.ccn.security.crypto.util.CryptoUtil;
-import com.parc.ccn.security.crypto.util.OIDLookup;
 
 public class MerklePath {
 	

@@ -6,9 +6,9 @@ import java.security.cert.CertificateEncodingException;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
+import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
 import org.ccnx.ccn.impl.support.Library;
 
-import com.parc.ccn.security.crypto.util.DigestHelper;
 
 public class CCNDigestHelper extends DigestHelper {
 

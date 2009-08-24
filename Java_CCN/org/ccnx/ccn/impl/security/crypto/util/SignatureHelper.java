@@ -1,4 +1,4 @@
-package com.parc.ccn.security.crypto.util;
+package org.ccnx.ccn.impl.security.crypto.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;

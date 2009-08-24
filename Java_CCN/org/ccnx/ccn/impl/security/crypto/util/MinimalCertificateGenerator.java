@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.parc.ccn.security.crypto.util;
+package org.ccnx.ccn.impl.security.crypto.util;
 
 import java.io.IOException;
 import java.math.BigInteger;

@@ -11,6 +11,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
@@ -30,7 +31,6 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.security.crypto.util.DigestHelper;
 
 /**
  * Works. Currently very slow, as it's timing
