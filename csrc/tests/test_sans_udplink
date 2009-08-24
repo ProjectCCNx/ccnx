@@ -14,7 +14,7 @@ trap "WithCCND 5 ccndsmoketest kill" 0
 until CheckForCCND 5; do :; done
 
 WithCCND 5 ccnls /test > before_inject.out || SkipTest FIXME
-WithCCND 5 ccndc -f local9000.cf &
+WithCCND 5 ccndc-inject -f local9000.cf &
 WithCCND 5 ccnls /test
 sleep 2
 WithCCND 5 ccnls /test
