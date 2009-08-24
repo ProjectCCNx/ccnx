@@ -1,6 +1,6 @@
 # Top level Makefile for ccn
 
-SUBDIRS = csrc schema Java_CCN apps/containerApp doc/technical
+SUBDIRS = csrc schema javasrc apps/containerApp doc/technical
 PACKLIST = Makefile build.xml README configure doc/index.txt $(SUBDIRS)
 
 default all: _always
@@ -66,7 +66,7 @@ distfile: tar
 	ls -l ccn-$(VERSION).tar.gz
 
 fixupversions: _always
-	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 Java_CCN/Doxyfile
+	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 javasrc/Doxyfile
 
 MD5: _always
 	openssl dgst `cat MANIFEST` > MD5

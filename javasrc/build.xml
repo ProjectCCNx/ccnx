@@ -31,7 +31,7 @@
 	<!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
 	<property name="DEBUG_OPTIONS" value=""/>
-	<property name="TOP_DIR" value=".."/>
+	<property name="TOP_DIR" value="../src"/>
 	<!-- TEST_PORT is alternative ccnd port so we can run tests
         with an isolated ccnd rather than the "live" ccnd on the machine.
         Port 9 (discard) would be ideal but this needs to be a non-privileged
@@ -67,16 +67,16 @@
 
 	<target name="compile">
 		<mkdir dir="${build}"/>
-		<depend srcdir="." destdir="${build}" closure="yes"/>
+		<depend srcdir="src" destdir="${build}" closure="yes"/>
 		<javac destdir="${build}"
-              srcdir="." excludes="${build-excludes}"
+              srcdir="src" excludes="${build-excludes}"
               debug="on">
 			<classpath>
 				<path refid="classpath"/>
 			</classpath>
 		</javac>
 		<copy todir="${build}">
-			<fileset dir="." excludes="${build-excludes}, **/*.java"/>
+			<fileset dir="src" excludes="${build-excludes}, **/*.java"/>
 		</copy>
 	</target>
 
