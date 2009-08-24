@@ -1,4 +1,4 @@
-package com.parc.ccn.perf;
+package org.ccnx.ccn.test.repo;
 
 import java.io.File;
 import java.io.FileInputStream;
