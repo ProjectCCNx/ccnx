@@ -1,4 +1,4 @@
-package test.ccn.data.security;
+package org.ccnx.ccn.test.protocol;
 
 import java.util.Arrays;
 
