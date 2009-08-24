@@ -46,13 +46,13 @@ else
   	  fi
   done
   if [ "$1" = "stop" ]; then
-	  $JAVA -cp $CLASSPATH $LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -stop $2
+	  $JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -stop $2
   elif [ "$1" = "signal" ]; then
-          $JAVA -cp $CLASSPATH $LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -signal $2 $3
+          $JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -signal $2 $3
   elif [ "$1" = "interactive" ]; then
           shift
-	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY $DEBUG_PORT $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -interactive -root $*
+	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY $DEBUG_PORT $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -interactive -root $*
   else
-	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY $DEBUG_PORT $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT com.parc.ccn.network.daemons.repo.RepositoryDaemon -start -root $*
+	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY $DEBUG_PORT $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -start -root $*
   fi
 fi
