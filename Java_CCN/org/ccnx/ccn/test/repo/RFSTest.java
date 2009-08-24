@@ -298,15 +298,15 @@ public class RFSTest extends RepoTestBase {
 	public void testPolicy() throws Exception {
 		Repository repo = new RFSLogImpl();
 		try {	// Test no version
-			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/test/ccn/network/daemons/repo/badPolicyTest1.xml"}, putLibrary);
+			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"}, putLibrary);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
 		try {	// Test bad version
-			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/test/ccn/network/daemons/repo/badPolicyTest2.xml"}, putLibrary);
+			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"}, putLibrary);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
 		repo.initialize(new String[] {"-root", _fileTestDir, "-policy", 
-					_topdir + "/test/ccn/network/daemons/repo/policyTest.xml", "-local", _repoName, "-global", _globalPrefix}, putLibrary);
+					_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml", "-local", _repoName, "-global", _globalPrefix}, putLibrary);
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
 		repo.saveContent(content);
@@ -317,7 +317,7 @@ public class RFSTest extends RepoTestBase {
 		ContentObject testContent = repo.getContent(new Interest(outOfNameSpaceName));
 		Assert.assertTrue(testContent == null);
 		repo.initialize(new String[] {"-root", _fileTestDir, "-policy", 
-				_topdir + "/test/ccn/network/daemons/repo/origPolicy.xml", "-local", _repoName, "-global", _globalPrefix}, putLibrary);
+				_topdir + "/org/ccnx/ccn/test/repo/origPolicy.xml", "-local", _repoName, "-global", _globalPrefix}, putLibrary);
 		repo.saveContent(oonsContent);
 		checkData(repo, outOfNameSpaceName, "Shouldn't see this");	
 	}

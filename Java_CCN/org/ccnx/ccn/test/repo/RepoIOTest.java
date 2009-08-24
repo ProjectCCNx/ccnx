@@ -61,10 +61,10 @@ public class RepoIOTest extends RepoTestBase {
 	public void testPolicyViaCCN() throws Exception {
 		System.out.println("Testing namespace policy setting");
 		checkNameSpace("/repoTest/data2", true);
-		changePolicy("/test/ccn/network/daemons/repo/policyTest.xml");
+		changePolicy("/org/ccnx/ccn/test/repo/policyTest.xml");
 		checkNameSpace("/repoTest/data3", false);
 		checkNameSpace("/testNameSpace/data1", true);
-		changePolicy("/test/ccn/network/daemons/repo/origPolicy.xml");
+		changePolicy("/org/ccnx/ccn/test/repo/origPolicy.xml");
 		checkNameSpace("/repoTest/data4", true);
 	}
 	
