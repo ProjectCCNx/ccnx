@@ -17,10 +17,10 @@ import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.Signature;
 import org.ccnx.ccn.protocol.SignedInfo;
+import org.ccnx.ccn.test.CCNLibraryTestHarness;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.parc.ccn.library.CCNLibraryTestHarness;
 
 /**
  * 

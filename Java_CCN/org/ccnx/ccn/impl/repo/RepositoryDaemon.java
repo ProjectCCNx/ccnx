@@ -28,8 +28,8 @@ import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ExcludeFilter;
 import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.test.BitBucketRepository;
 
-import com.parc.ccn.network.daemons.repo.BitBucketRepository;
 
 /**
  * High level repository implementation. Handles communication with

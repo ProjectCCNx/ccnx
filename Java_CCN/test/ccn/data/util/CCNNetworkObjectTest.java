@@ -26,6 +26,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.PublisherID.PublisherType;
+import org.ccnx.ccn.test.Flosser;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;

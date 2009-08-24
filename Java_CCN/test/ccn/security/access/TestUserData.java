@@ -17,8 +17,8 @@ import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.profiles.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.Flosser;
 
-import test.ccn.data.util.Flosser;
 
 
 

@@ -21,11 +21,11 @@ import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.test.Flosser;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.util.Flosser;
 import test.ccn.data.util.XMLEncodableTester;
 
 

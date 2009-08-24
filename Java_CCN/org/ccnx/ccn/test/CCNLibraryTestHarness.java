@@ -1,4 +1,4 @@
-package com.parc.ccn.library;
+package org.ccnx.ccn.test;
 
 import java.io.IOException;
 import java.util.ArrayList;

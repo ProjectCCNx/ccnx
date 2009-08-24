@@ -6,11 +6,11 @@ import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.test.Flosser;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-import test.ccn.data.util.Flosser;
 
 public class AccessControlManagerTest {
 

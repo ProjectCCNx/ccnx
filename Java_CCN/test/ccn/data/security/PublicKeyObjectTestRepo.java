@@ -25,12 +25,12 @@ import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.Flosser;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.util.Flosser;
 
 
 public class PublicKeyObjectTestRepo {

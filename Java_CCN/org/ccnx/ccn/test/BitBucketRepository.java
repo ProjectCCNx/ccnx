@@ -1,4 +1,4 @@
-package com.parc.ccn.network.daemons.repo;
+package org.ccnx.ccn.test;
 
 import java.util.ArrayList;
 

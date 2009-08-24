@@ -10,11 +10,11 @@ import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.Flosser;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.util.Flosser;
 
 
 public class FastFlossTestSlow {
