@@ -1,4 +1,4 @@
-package test.ccn.security.crypto;
+package org.ccnx.ccn.test.security.crypto;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
