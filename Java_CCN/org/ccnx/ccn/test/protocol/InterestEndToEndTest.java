@@ -1,4 +1,4 @@
-package test.ccn.data.query;
+package org.ccnx.ccn.test.protocol;
 
 import java.io.IOException;
 import java.util.ArrayList;

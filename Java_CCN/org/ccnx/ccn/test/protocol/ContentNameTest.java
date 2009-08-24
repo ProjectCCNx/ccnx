@@ -1,4 +1,4 @@
-package test.ccn.data;
+package org.ccnx.ccn.test.protocol;
 
 import static org.junit.Assert.*;
 
