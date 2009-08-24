@@ -1,4 +1,4 @@
-package test.ccn.endtoend;
+package org.ccnx.ccn.test.endtoend;
 
 
 import java.util.ArrayList;

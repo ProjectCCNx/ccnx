@@ -1,4 +1,4 @@
-package test.ccn.endtoend;
+package org.ccnx.ccn.test.endtoend;
 
 import static org.junit.Assert.assertEquals;
 
