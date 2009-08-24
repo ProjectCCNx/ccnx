@@ -1,4 +1,4 @@
-package test.ccn.library;
+package org.ccnx.ccn.test.io;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -21,6 +21,8 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+
+import test.ccn.library.BlockReadWriteTest;
 
 
 /**
