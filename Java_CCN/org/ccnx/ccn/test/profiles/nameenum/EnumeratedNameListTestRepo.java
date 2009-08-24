@@ -1,4 +1,4 @@
-package test.ccn.library;
+package org.ccnx.ccn.test.profiles.nameenum;
 
 import java.io.IOException;
 import java.util.ArrayList;
