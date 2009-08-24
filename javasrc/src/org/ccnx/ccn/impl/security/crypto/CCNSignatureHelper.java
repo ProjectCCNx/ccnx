@@ -10,7 +10,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.security.crypto.util.SignatureHelper;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 /** 
@@ -33,7 +33,7 @@ public class CCNSignatureHelper extends SignatureHelper {
 							   PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
 		
 		if (null == toBeSigned) {
-			Library.logger().info("Value to be signed must not be null.");
+			Log.logger().info("Value to be signed must not be null.");
 			throw new SignatureException("Cannot sign null content!");
 		}
 		return sign(digestAlgorithm, 
@@ -47,7 +47,7 @@ public class CCNSignatureHelper extends SignatureHelper {
 							   PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
 		
 		if (null == toBeSigneds) {
-			Library.logger().info("Value to be signed must not be null.");
+			Log.logger().info("Value to be signed must not be null.");
 			throw new SignatureException("Cannot sign null content!");
 		}
 		byte [][] encodedData = new byte [toBeSigneds.length + ((null != additionalToBeSigneds) ? additionalToBeSigneds.length : 0)][];
@@ -79,7 +79,7 @@ public class CCNSignatureHelper extends SignatureHelper {
 			PublicKey verificationKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
 
 		if ((null == xmlData) || (null == signature)) {
-			Library.logger().info("Value to be verified and signature must not be null.");
+			Log.logger().info("Value to be verified and signature must not be null.");
 			throw new SignatureException("verify: Value to be verified and signature must not be null.");
 		}
 		return verify(
@@ -96,7 +96,7 @@ public class CCNSignatureHelper extends SignatureHelper {
 								 PublicKey verificationKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
 
 		if ((null == xmlData) || (null == signature)) {
-			Library.logger().info("Value to be verified and signature must not be null.");
+			Log.logger().info("Value to be verified and signature must not be null.");
 			throw new SignatureException("verify: Value to be verified and signature must not be null.");
 		}
 		byte [][] encodedData = new byte [xmlData.length + ((null != binaryData) ? binaryData.length : 0)][];

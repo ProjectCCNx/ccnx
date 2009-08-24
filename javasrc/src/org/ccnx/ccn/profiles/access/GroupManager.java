@@ -16,7 +16,7 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.PublicKeyObject;
@@ -57,7 +57,7 @@ public class GroupManager {
 	
 	public Group getGroup(String groupFriendlyName) throws IOException, ConfigurationException, XMLStreamException {
 		if ((null == groupFriendlyName) || (groupFriendlyName.length() == 0)) {
-			Library.logger().info("Asked to retrieve group with empty name.");
+			Log.logger().info("Asked to retrieve group with empty name.");
 			return null;
 		}
 		Group theGroup = _groupCache.get(groupFriendlyName);
@@ -92,7 +92,7 @@ public class GroupManager {
 	
 	public Group getGroup(Link theGroup) throws IOException, ConfigurationException, XMLStreamException {
 		if (null == theGroup) {
-			Library.logger().info("Asked to retrieve group with empty link.");
+			Log.logger().info("Asked to retrieve group with empty link.");
 			return null;
 		}
 		if (!isGroup(theGroup))
@@ -137,10 +137,10 @@ public class GroupManager {
 		
 		// DKS we really want to be sure we get the group if it's out there...
 		if (null != existingGroup) {
-			Library.logger().info("Got existing group to delete: " + existingGroup);
+			Log.logger().info("Got existing group to delete: " + existingGroup);
 			existingGroup.delete();
 		} else {
-			Library.logger().warning("No existing group: " + friendlyName + ", ignoring delete request.");
+			Log.logger().warning("No existing group: " + friendlyName + ", ignoring delete request.");
 		}
 	}
 	
@@ -220,7 +220,7 @@ public class GroupManager {
 	public PrivateKey getGroupPrivateKey(String groupFriendlyName, Timestamp privateKeyVersion) throws InvalidKeyException, InvalidCipherTextException, IOException, XMLStreamException, AccessDeniedException, ConfigurationException {
 		// Heuristic check
 		if (!amKnownGroupMember(groupFriendlyName)) {
-			Library.logger().info("Unexpected: we don't think we're a group member of group " + groupFriendlyName);
+			Log.logger().info("Unexpected: we don't think we're a group member of group " + groupFriendlyName);
 		}
 		// Need to get the KeyDirectory for this version of the private key, or the 
 		// latest if no version given.
@@ -243,7 +243,7 @@ public class GroupManager {
 			theGroupPublicKey = thisPublicKey.publicKey();
 		}
 		if (null == privateKeyDirectory) {
-			Library.logger().info("Unexpected: null private key directory for group " + groupFriendlyName + " version " + privateKeyVersion + " as stamp " + 
+			Log.logger().info("Unexpected: null private key directory for group " + groupFriendlyName + " version " + privateKeyVersion + " as stamp " + 
 					DataUtils.printHexBytes(DataUtils.timestampToBinaryTime12(privateKeyVersion)));
 			return null;
 		}
@@ -277,12 +277,12 @@ public class GroupManager {
 					XMLStreamException, ConfigurationException {
 		PrincipalInfo pi = keyDirectory.getPrincipals().get(principal);
 		if (null == pi) {
-			Library.logger().info("No key available for principal : " + principal + " on node " + keyDirectory.getName());
+			Log.logger().info("No key available for principal : " + principal + " on node " + keyDirectory.getName());
 			return null;
 		}
 		Key privateKey = getGroupPrivateKey(principal, pi.versionTimestamp());
 		if (null == privateKey) {
-			Library.logger().info("Unexpected: we beleive we are a member of group " + principal + " but cannot retrieve private key version: " + keyDirectory.getPrincipals().get(principal) + " our membership revoked?");
+			Log.logger().info("Unexpected: we beleive we are a member of group " + principal + " but cannot retrieve private key version: " + keyDirectory.getPrincipals().get(principal) + " our membership revoked?");
 			// Check to see if we are a current member.
 			if (!amCurrentGroupMember(principal)) {
 				// Removes this group from my list of known groups, adds it to my

@@ -7,7 +7,7 @@ import java.net.URLConnection;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
@@ -30,10 +30,10 @@ public class CCNURLConnection extends URLConnection {
 			thisName = ContentName.fromURI(this.url.toString());
 			return new CCNInputStream(thisName);
 		} catch (MalformedContentNameStringException e) {
-			Library.logger().info("Cannot parse URI: " + this.url);
+			Log.logger().info("Cannot parse URI: " + this.url);
 			throw new IOException("Cannot parse URI: " + this.url + ": " + e.getMessage());
 		} catch (XMLStreamException e) {
-			Library.logger().info("Cannot parse XML: " + e.getMessage());
+			Log.logger().info("Cannot parse XML: " + e.getMessage());
 			throw new IOException("Cannot parse XML.: " + e.getMessage());
 		}
 	}

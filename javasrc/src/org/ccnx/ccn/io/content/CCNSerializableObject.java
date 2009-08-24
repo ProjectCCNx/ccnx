@@ -10,7 +10,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.GenericObjectInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -107,7 +107,7 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 		try {
 			newData = ois.genericReadObject();
 		} catch (ClassNotFoundException e) {
-			Library.logger().warning("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
+			Log.logger().warning("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
 			throw new IOException("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
 		}
 		return newData;

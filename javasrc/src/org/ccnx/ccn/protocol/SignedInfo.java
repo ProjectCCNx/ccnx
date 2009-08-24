@@ -12,7 +12,7 @@ import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 /**
@@ -240,7 +240,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	
 	public static final String typeToName(ContentType type) {
 		if (ContentTypeNames.get(type) == null) {
-			Library.logger().warning("Cannot find name for type: " + type);
+			Log.logger().warning("Cannot find name for type: " + type);
 		}
 		return ContentTypeNames.get(type);
 	}
@@ -253,7 +253,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	
 	public static final byte [] typeToValue(ContentType type) {
 		if (ContentTypeValues.get(type) == null) {
-			Library.logger().warning("Cannot find name for type: " + type);
+			Log.logger().warning("Cannot find name for type: " + type);
 		}
 		return ContentTypeValues.get(type);
 	}

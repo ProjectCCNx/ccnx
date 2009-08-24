@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 public class XMLCodecFactory {
@@ -44,7 +44,7 @@ public class XMLCodecFactory {
 
 	public static void setDefaultCodec(String name) {
 		if ((null == getEncoderClass(name)) || (null == getDecoderClass(name))) {
-			Library.logger().warning("Cannot set unknown codec " + name + " as default XML codec.");
+			Log.logger().warning("Cannot set unknown codec " + name + " as default XML codec.");
 			throw new IllegalArgumentException(name + " must be a registered codec!");
 		}
 		_defaultCodec = name;
@@ -87,8 +87,8 @@ public class XMLCodecFactory {
 		try {
 			encoder = encoderClass.newInstance();
 		} catch (Exception e) {
-			Library.logger().warning("Unexpected error: cannot create instance of encoder class " + encoderClass.getName());
-			Library.logStackTrace(Level.WARNING, e);
+			Log.logger().warning("Unexpected error: cannot create instance of encoder class " + encoderClass.getName());
+			Log.logStackTrace(Level.WARNING, e);
 			throw new RuntimeException("Unexpected error: cannot create instance of encoder class " + encoderClass.getName(), e);
 		}
 		
@@ -118,8 +118,8 @@ public class XMLCodecFactory {
 		try {
 			decoder = decoderClass.newInstance();
 		} catch (Exception e) {
-			Library.logger().warning("Unexpected error: cannot create instance of decoder class " + decoderClass.getName());
-			Library.logStackTrace(Level.WARNING, e);
+			Log.logger().warning("Unexpected error: cannot create instance of decoder class " + decoderClass.getName());
+			Log.logStackTrace(Level.WARNING, e);
 			throw new RuntimeException("Unexpected error: cannot create instance of decoder class " + decoderClass.getName(), e);
 		}
 		

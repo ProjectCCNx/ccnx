@@ -12,7 +12,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
@@ -248,21 +248,21 @@ public class ACL extends Collection {
 				addManager(op);
 			}else if (ACLOperation.LABEL_DEL_READER.equals(op.targetLabel())){
 				if(levelOld != LEVEL_READ){
-					Library.logger().info("trying to remove a non-existent reader, ignoring this operation..."); 
+					Log.logger().info("trying to remove a non-existent reader, ignoring this operation..."); 
 					continue;
 				}
 
 				removeLabeledLink(op, LABEL_READER);	
 			}else if (ACLOperation.LABEL_DEL_WRITER.equals(op.targetLabel())){
 				if(levelOld != LEVEL_WRITE){ 
-					Library.logger().info("trying to remove a non-existent writer, ignoring this operation...");
+					Log.logger().info("trying to remove a non-existent writer, ignoring this operation...");
 					continue;
 				}
 
 				removeLabeledLink(op, LABEL_WRITER);
 			}else if (ACLOperation.LABEL_DEL_MANAGER.equals(op.targetLabel())){
 				if(levelOld != LEVEL_MANAGE){
-					Library.logger().info("trying to remove a non-existent manager, ignoring this operation...");
+					Log.logger().info("trying to remove a non-existent manager, ignoring this operation...");
 					continue;
 				}
 
@@ -374,7 +374,7 @@ public class ACL extends Collection {
 		} else if (LABEL_MANAGER.equals(link.targetLabel())) {
 			_managers.add(link);
 		} else {
-			Library.logger().info("Unexpected: attempt to index ACL entry with unknown label: " + link.targetLabel());
+			Log.logger().info("Unexpected: attempt to index ACL entry with unknown label: " + link.targetLabel());
 		}
 	}
 	
@@ -386,7 +386,7 @@ public class ACL extends Collection {
 		} else if (LABEL_MANAGER.equals(label)) {
 			_managers.remove(link);
 		} else {
-			Library.logger().info("Unexpected: attempt to index ACL entry with unknown label: " + label);
+			Log.logger().info("Unexpected: attempt to index ACL entry with unknown label: " + label);
 		}				
 	}
 	

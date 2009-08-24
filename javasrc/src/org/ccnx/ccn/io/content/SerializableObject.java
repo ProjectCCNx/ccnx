@@ -8,7 +8,7 @@ import java.io.Serializable;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.GenericObjectInputStream;
 
 
@@ -39,7 +39,7 @@ public class SerializableObject<E extends Serializable> extends NetworkObject<E>
 		try {
 			newData = ois.genericReadObject();
 		} catch (ClassNotFoundException e) {
-			Library.logger().warning("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
+			Log.logger().warning("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
 			throw new IOException("Unexpected ClassNotFoundException in SerializedObject<" + _type.getName() + ">: " + e.getMessage());
 		}
 		return newData;

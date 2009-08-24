@@ -21,7 +21,7 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -157,7 +157,7 @@ public class LibraryTestBase {
 				_resultSet.add(val);
 
 			} catch (NumberFormatException nfe) {
-				Library.logger().info("BaseLibraryTest: unexpected content - not integer. Name: " + contents.content());
+				Log.logger().info("BaseLibraryTest: unexpected content - not integer. Name: " + contents.content());
 			}
 			//assertEquals(i, Integer.parseInt(new String(contents.get(0).content())));
 			checkGetResults(contents);
@@ -253,8 +253,8 @@ public class LibraryTestBase {
 				//cf.shutdown();
 			} catch (Throwable ex) {
 				error = ex;
-				Library.logger().warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
-				Library.logStackTrace(Level.WARNING, ex);
+				Log.logger().warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Log.logStackTrace(Level.WARNING, ex);
 			}
 		}
 	}
@@ -310,7 +310,7 @@ public class LibraryTestBase {
 					ContentName newName = new ContentName(contentObject.name(), contentObject.contentDigest());
 					newInterest = Interest.next(newName, contentObject.name().count() - 2);
 				} catch (NumberFormatException nfe) {
-					Library.logger().info("Unexpected content, " + contentObject.name() + " is not an integer!");
+					Log.logger().info("Unexpected content, " + contentObject.name() + " is not an integer!");
 				}
 			}
 			checkGetResults(results.get(0));
@@ -378,7 +378,7 @@ public class LibraryTestBase {
 							accumulatedResults.add(val);
 						}
 					} catch (NumberFormatException nfe) {
-						Library.logger().info("Unexpected interest, " + interest.name() + " does not end in an integer!");
+						Log.logger().info("Unexpected interest, " + interest.name() + " does not end in an integer!");
 					}
 				}
 				if (accumulatedResults.size() >= count) {

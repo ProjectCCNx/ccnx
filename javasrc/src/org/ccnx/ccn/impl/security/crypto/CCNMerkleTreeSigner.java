@@ -6,7 +6,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
 
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentObject;
 
 
@@ -22,7 +22,7 @@ public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 		// DKS TODO remove side effect behavior.
 		CCNMerkleTree tree = 
 			new CCNMerkleTree(contentObjects, signingKey);
-		Library.logger().info("Signed tree of " + tree.numLeaves() + " leaves, " + tree.nodeCount() + " nodes.");
+		Log.logger().info("Signed tree of " + tree.numLeaves() + " leaves, " + tree.nodeCount() + " nodes.");
 	}
 
 }

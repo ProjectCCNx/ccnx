@@ -17,7 +17,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
@@ -650,7 +650,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 	
 	
 	public static void main(String argv[]) {
-		Library.logger().setLevel(Level.INFO);
+		Log.logger().setLevel(Level.INFO);
 
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
             public void run() {

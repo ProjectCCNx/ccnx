@@ -12,7 +12,7 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.Repository.NameEnumerationResponse;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -51,14 +51,14 @@ public class RepositoryDataListener implements CCNInterestListener {
 		
 		private DataHandler(ContentObject co) {
 			if (SystemConfiguration.getLogging("repo"))
-				Library.logger().info("Saw data: " + co.name());
+				Log.logger().info("Saw data: " + co.name());
 			_content = co;
 		}
 	
 		public void run() {
 			try {
 				if (SystemConfiguration.getLogging("repo"))
-					Library.logger().finer("Saving content in: " + _content.name().toString());
+					Log.logger().finer("Saving content in: " + _content.name().toString());
 				NameEnumerationResponse ner = _daemon.getRepository().saveContent(_content);		
 				if (_daemon.getRepository().checkPolicyUpdate(_content)) {
 					_daemon.resetNameSpaceFromHandler();
@@ -68,7 +68,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
-				Library.logStackTrace(Level.WARNING, e);
+				Log.logStackTrace(Level.WARNING, e);
 			}
 		}
 	}
@@ -79,7 +79,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_daemon = daemon;
 		_library = daemon.getLibrary();
 		_timer = new Date().getTime();
-		Library.logger().info("Starting up repository listener on original interest: " + origInterest + " interest " + interest);
+		Log.logger().info("Starting up repository listener on original interest: " + origInterest + " interest " + interest);
 	}
 	
 	public Interest handleContent(ArrayList<ContentObject> results,
@@ -122,7 +122,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 						_library.expressInterest(newInterest, this);
 						_interests.put(name, newInterest);
 					} catch (IOException e) {
-						Library.logStackTrace(Level.WARNING, e);
+						Log.logStackTrace(Level.WARNING, e);
 						e.printStackTrace();
 					}
 				}

@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.protocol.ContentName;
@@ -314,7 +314,7 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static boolean isLaterVersionOf(ContentName laterVersion, ContentName earlierVersion) throws VersionMissingException {
 		// TODO -- remove temporary warning
-		Library.logger().warning("SEMANTICS CHANGED: if experiencing unexpected behavior, check to see if you want to call isLaterVerisionOf or startsWithLaterVersionOf");
+		Log.logger().warning("SEMANTICS CHANGED: if experiencing unexpected behavior, check to see if you want to call isLaterVerisionOf or startsWithLaterVersionOf");
 		Tuple<ContentName, byte []>earlierVersionParts = cutTerminalVersion(earlierVersion);
 		Tuple<ContentName, byte []>laterVersionParts = cutTerminalVersion(laterVersion);
 		if (!laterVersionParts.first().equals(earlierVersionParts.first())) {
@@ -487,7 +487,7 @@ public class VersioningProfile implements CCNProfile {
 			Interest getLatestInterest = latestVersionInterest(latestVersionFound, null, publisher);
 			ContentObject co = library.get(getLatestInterest, timeout);
 			if (co == null) {
-				Library.logger().info("Null returned from getLatest for name: " + startingVersion);
+				Log.logger().info("Null returned from getLatest for name: " + startingVersion);
 				return null;
 			}
 			// What we get should be a block representing a later version of name. It might
@@ -495,14 +495,14 @@ public class VersioningProfile implements CCNProfile {
 			// object - e.g. a repo message -- which starts with a particular version of name.
 			if (startsWithLaterVersionOf(co.name(), startingVersion)) {
 				// we got a valid version! 
-				Library.logger().info("Got latest version: " + co.name());
+				Log.logger().info("Got latest version: " + co.name());
 				// Now need to verify the block we got
 				if (verifier.verify(co)) {
 					return co;
 				}
-				Library.logger().warning("VERIFICATION FAILURE: " + co.name() + ", need to find better way to decide what to do next.");
+				Log.logger().warning("VERIFICATION FAILURE: " + co.name() + ", need to find better way to decide what to do next.");
 			} else {
-				Library.logger().info("Rejected potential candidate version: " + co.name() + " not a later version of " + startingVersion);
+				Log.logger().info("Rejected potential candidate version: " + co.name() + " not a later version of " + startingVersion);
 			}
 			latestVersionFound = new ContentName(getLatestInterest.name().count(), co.name().components());
 		}
@@ -532,17 +532,17 @@ public class VersioningProfile implements CCNProfile {
 															 ContentVerifier verifier,
 															 CCNHandle library) throws IOException {
 		
-		Library.logger().info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
+		Log.logger().info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
 		
 		int prefixLength = hasTerminalVersion(startingVersion) ? startingVersion.count() : startingVersion.count() + 1;
 		ContentObject result =  getLatestVersion(startingVersion, null, timeout, verifier, library);
 		
 		if (null != result){
-			Library.logger().info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
+			Log.logger().info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			
 			// Now we know the version. Did we luck out and get first block?
 			if (CCNVersionedInputStream.isFirstSegment(startingVersion, result, startingSegmentNumber)) {
-				Library.logger().info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
+				Log.logger().info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
 				return result;
 			}
 			// This isn't the first block. Might be simply a later (cached) segment, or might be something
@@ -553,10 +553,10 @@ public class VersioningProfile implements CCNProfile {
 			// So chop off the new name just after the (first) version, and use that. If getLatestVersion is working
 			// right, that should be the right thing.
 			startingVersion = result.name().cut(prefixLength);
-			Library.logger().info("getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
+			Log.logger().info("getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
 			return SegmentationProfile.getSegment(startingVersion, startingSegmentNumber, null, timeout, verifier, library); // now that we have the latest version, go back for the first block.
 		} else {
-			Library.logger().info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
+			Log.logger().info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
 		}
 		return result;
 	}

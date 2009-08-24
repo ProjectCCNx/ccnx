@@ -7,7 +7,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -86,19 +86,19 @@ public class CCNVersionedInputStream extends CCNInputStream {
 			// Get exactly this version
 			return super.getFirstSegment();
 		}
-		Library.logger().info("getFirstSegment: getting latest version of " + _baseName);
+		Log.logger().info("getFirstSegment: getting latest version of " + _baseName);
 		ContentObject result = 
 			VersioningProfile.getFirstBlockOfLatestVersion(_baseName, _startingSegmentNumber, _publisher, _timeout, this, _library);
 		if (null != result){
-			Library.logger().info("getFirstSegment: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
+			Log.logger().info("getFirstSegment: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			_baseName = result.name().cut(_baseName.count() + 1);
 			if (result.signedInfo().getType().equals(ContentType.GONE)) {
 				_goneSegment = result;
-				Library.logger().info("getFirstSegment: got gone segment: " + _goneSegment.name());
+				Log.logger().info("getFirstSegment: got gone segment: " + _goneSegment.name());
 				return null;
 			}
 		} else {
-			Library.logger().info("getFirstSegment: no segment available for latest version of " + _baseName);
+			Log.logger().info("getFirstSegment: no segment available for latest version of " + _baseName);
 		}
 		return result;
 	}
@@ -109,24 +109,24 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	 */
 	public static boolean isFirstSegment(ContentName desiredName, ContentObject potentialFirstSegment, Long startingSegmentNumber) {
 		if ((null != potentialFirstSegment) && (SegmentationProfile.isSegment(potentialFirstSegment.name()))) {
-			Library.logger().info("is " + potentialFirstSegment.name() + " a first segment of " + desiredName);
+			Log.logger().info("is " + potentialFirstSegment.name() + " a first segment of " + desiredName);
 			// In theory, the segment should be at most a versioning component different from desiredName.
 			// In the case of complex segmented objects (e.g. a KeyDirectory), where there is a version,
 			// then some name components, then a segment, desiredName should contain all of those other
 			// name components -- you can't use the usual versioning mechanisms to pull first segment anyway.
 			if (!desiredName.isPrefixOf(potentialFirstSegment.name())) {
-				Library.logger().info("Desired name :" + desiredName + " is not a prefix of segment: " + potentialFirstSegment.name());
+				Log.logger().info("Desired name :" + desiredName + " is not a prefix of segment: " + potentialFirstSegment.name());
 				return false;
 			}
 			int difflen = potentialFirstSegment.name().count() - desiredName.count();
 			if (difflen > 2) {
-				Library.logger().info("Have " + difflen + " extra components between " + potentialFirstSegment.name() + " and desired " + desiredName);
+				Log.logger().info("Have " + difflen + " extra components between " + potentialFirstSegment.name() + " and desired " + desiredName);
 				return false;
 			}
 			// Now need to make sure that if the difference is more than 1, that difference is
 			// a version component.
 			if ((difflen == 2) && (!VersioningProfile.isVersionComponent(potentialFirstSegment.name().component(potentialFirstSegment.name().count()-2)))) {
-				Library.logger().info("The " + difflen + " extra component between " + potentialFirstSegment.name() + " and desired " + desiredName + " is not a version.");
+				Log.logger().info("The " + difflen + " extra component between " + potentialFirstSegment.name() + " and desired " + desiredName + " is not a version.");
 				
 			}
 			if (null != startingSegmentNumber) {

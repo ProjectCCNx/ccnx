@@ -14,7 +14,7 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -96,13 +96,13 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		try {
 			return CryptoUtil.getPublicKey(baos.toByteArray());
 		} catch (CertificateEncodingException e) {
-			Library.logger().warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
+			Log.logger().warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 		} catch (InvalidKeySpecException e) {
-			Library.logger().warning("Cannot decode public key from block: " + ((CCNInputStream)input).currentSegmentName() + "  " + e.getClass().getName() + ": " + e.getMessage());
+			Log.logger().warning("Cannot decode public key from block: " + ((CCNInputStream)input).currentSegmentName() + "  " + e.getClass().getName() + ": " + e.getMessage());
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
-			Library.logger().warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
+			Log.logger().warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 		}
 	}

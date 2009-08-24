@@ -26,7 +26,7 @@ import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.util.OIDLookup;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
@@ -146,10 +146,10 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 				// This is a DER-encoded SubjectPublicKeyInfo.
 				_key = decodeKey(encodedKey);
 			} catch (IOException e) {
-				Library.logger().warning("Cannot parse stored key: error: " + e.getMessage());
+				Log.logger().warning("Cannot parse stored key: error: " + e.getMessage());
 				throw new XMLStreamException("Cannot parse key: ", e);
 			} catch (InvalidKeySpecException e) {
-				Library.logger().warning("Cannot turn stored key " + " into key of appropriate type.");
+				Log.logger().warning("Cannot turn stored key " + " into key of appropriate type.");
 				throw new XMLStreamException("Cannot turn stored key " + " into key of appropriate type.");
 			}
 			if (null == _key) {
@@ -178,8 +178,8 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 		try {
 			encode(baos);
 		} catch (XMLStreamException e) {
-			Library.logger().log(Level.WARNING, "This should not happen: cannot encode KeyLocator to byte array.");
-			Library.warningStackTrace(e);
+			Log.logger().log(Level.WARNING, "This should not happen: cannot encode KeyLocator to byte array.");
+			Log.warningStackTrace(e);
 			// DKS currently returning invalid byte array...
 		}
 		return baos.toByteArray();
@@ -196,7 +196,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 			try {
 				encoder.writeElement(PUBLISHER_CERTIFICATE_ELEMENT, certificate().getEncoded());
 			} catch (CertificateEncodingException e) {
-				Library.logger().warning("CertificateEncodingException attempting to write key locator: " + e.getMessage());
+				Log.logger().warning("CertificateEncodingException attempting to write key locator: " + e.getMessage());
 				throw new XMLStreamException("CertificateEncodingException attempting to write key locator: " + e.getMessage(), e);
 			}
 		} else if (type() == KeyLocatorType.NAME) {
@@ -224,7 +224,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 		SubjectPublicKeyInfo keyInfo = new SubjectPublicKeyInfo((ASN1Sequence)object);
 		String keyType = OIDLookup.getCipherName(keyInfo.getAlgorithmId().getObjectId().toString());
 		if (null == keyType) {
-			Library.logger().info("Cannot find key type corresponding to OID: " + keyInfo.getAlgorithmId().getObjectId().toString());
+			Log.logger().info("Cannot find key type corresponding to OID: " + keyInfo.getAlgorithmId().getObjectId().toString());
 		}
 		KeyFactory keyFactory = null;
 		PublicKey key = null;
@@ -232,7 +232,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 			keyFactory = KeyFactory.getInstance(keyType);
 			key = keyFactory.generatePublic(keySpec);
 		} catch (NoSuchAlgorithmException e) {
-			Library.logger().warning("Unknown key type " + keyType + " in stored key.");
+			Log.logger().warning("Unknown key type " + keyType + " in stored key.");
 			throw new InvalidKeySpecException("Unknown key type " + keyType + " in stored key.");
 		}
 		return key;

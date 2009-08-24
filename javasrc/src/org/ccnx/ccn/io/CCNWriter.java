@@ -9,7 +9,7 @@ import java.security.SignatureException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNSegmenter;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -92,13 +92,13 @@ public class CCNWriter {
 								  true, type, freshnessSeconds, null, publisher);
 			return name;
 		} catch (InvalidKeyException e) {
-			Library.logger().info("InvalidKeyException using key for publisher " + publisher + ".");
+			Log.logger().info("InvalidKeyException using key for publisher " + publisher + ".");
 			throw new SignatureException(e);
 		} catch (SignatureException e) {
-			Library.logger().info("SignatureException using key for publisher " + publisher + ".");
+			Log.logger().info("SignatureException using key for publisher " + publisher + ".");
 			throw e;
 		} catch (NoSuchAlgorithmException e) {
-			Library.logger().info("NoSuchAlgorithmException using key for publisher " + publisher + ".");
+			Log.logger().info("NoSuchAlgorithmException using key for publisher " + publisher + ".");
 			throw new SignatureException(e);
 		} catch (InvalidAlgorithmParameterException e) {
 			throw new IOException("Cannot encrypt content -- bad algorithm parameter!: " + e.getMessage());

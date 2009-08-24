@@ -4,7 +4,7 @@ import java.security.NoSuchAlgorithmException;
 
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 /**
@@ -92,7 +92,7 @@ public class MerkleTree {
 			initializeTree(content, offset, length, blockWidth);
 		} catch (NoSuchAlgorithmException e) {
 			// DKS --big configuration problem
-			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			Log.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
 			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
 		}
 	}
@@ -110,7 +110,7 @@ public class MerkleTree {
 			initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockLength);
 		} catch (NoSuchAlgorithmException e) {
 			// DKS --big configuration problem
-			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			Log.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
 			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
 		}
 	}
@@ -449,7 +449,7 @@ public class MerkleTree {
 			return computeBlockDigest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, block);
 		} catch (NoSuchAlgorithmException e) {
 			// DKS --big configuration problem
-			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			Log.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
 			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
 		}		
 	}
@@ -468,7 +468,7 @@ public class MerkleTree {
 			return computeNodeDigest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, left, right);
 		} catch (NoSuchAlgorithmException e) {
 			// DKS --big configuration problem
-			Library.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			Log.logger().warning("Fatal Error: cannot find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
 			throw new RuntimeException("Error: can't find default algorithm " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM + "!  " + e.toString());
 		}		
 	}

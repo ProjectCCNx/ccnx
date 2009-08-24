@@ -12,7 +12,7 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.security.keys.NetworkKeyManager;
 import org.ccnx.ccn.impl.security.keys.RepositoryKeyManager;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.profiles.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
@@ -74,7 +74,7 @@ public class TestUserData {
 		for (int i=0; i < userCount; ++i) {
 			friendlyName = USER_NAMES[i % USER_NAMES.length] + Integer.toString(1 + i/USER_NAMES.length);
 			childName = ContentName.fromNative(userKeystoreDataPrefix, friendlyName);
-			Library.logger().info("Loading user: " + friendlyName + " from " + childName);
+			Log.logger().info("Loading user: " + friendlyName + " from " + childName);
 			
 			if (storeInRepo) {
 				// This only matters the first time through, when we save the user's data.
@@ -118,7 +118,7 @@ public class TestUserData {
 		
 		SortedSet<ContentName> availableChildren = userDirectory.getChildren();
 		if ((null == availableChildren) || (availableChildren.size() == 0)) {
-			Library.logger().warning("No available user keystore data in directory " + userKeystoreDataPrefix + ", giving up.");
+			Log.logger().warning("No available user keystore data in directory " + userKeystoreDataPrefix + ", giving up.");
 			throw new IOException("No available user keystore data in directory " + userKeystoreDataPrefix + ", giving up.");
 		}
 		String friendlyName;
@@ -128,11 +128,11 @@ public class TestUserData {
 			for (ContentName child : availableChildren) {
 				friendlyName = ContentName.componentPrintNative(child.lastComponent());
 				if (null != getUser(friendlyName)) {
-					Library.logger().info("Already loaded data for user: " + friendlyName + " from name: " + _userFriendlyNames.get(friendlyName));
+					Log.logger().info("Already loaded data for user: " + friendlyName + " from name: " + _userFriendlyNames.get(friendlyName));
 					continue;
 				}
 				childName = new ContentName(userKeystoreDataPrefix, child.lastComponent());
-				Library.logger().info("Loading user: " + friendlyName + " from " + childName);
+				Log.logger().info("Loading user: " + friendlyName + " from " + childName);
 				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password, library);
 				userKeyManager.initialize();
 				_userData.put(childName, userKeyManager);

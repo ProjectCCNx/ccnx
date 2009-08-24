@@ -1,6 +1,6 @@
 package org.ccnx.ccn.config;
 
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -52,8 +52,8 @@ public class UserConfiguration {
 			
 			CCN_DIR = USER_DIR + FILE_SEP + CCN_DIR_NAME;
 		} catch (MalformedContentNameStringException e) {
-			Library.logger().warning("This should not happen. MalformedContentNameStringException in system-generated name: " + e.getMessage());
-			Library.warningStackTrace(e);
+			Log.logger().warning("This should not happen. MalformedContentNameStringException in system-generated name: " + e.getMessage());
+			Log.warningStackTrace(e);
 		}
 	}
 	

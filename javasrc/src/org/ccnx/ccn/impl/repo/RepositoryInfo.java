@@ -12,7 +12,7 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -73,7 +73,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		try {
 			_dictionary = new BinaryXMLDictionary(DEFAULT_DICTIONARY_RESNAME);
 		} catch (IOException e) {
-			Library.logStackTrace(Level.WARNING, e);
+			Log.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 		}
 	}

@@ -9,7 +9,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -83,7 +83,7 @@ public class NodeKey {
 	
 	public NodeKey computeDescendantNodeKey(ContentName descendantNodeName, String keyLabel) throws InvalidKeyException, XMLStreamException {
 		if (nodeName().equals(descendantNodeName)) {
-			Library.logger().info("Asked to compute ourselves as our own descendant (node key " + nodeName() +"), returning this.");
+			Log.logger().info("Asked to compute ourselves as our own descendant (node key " + nodeName() +"), returning this.");
 			return this;
 		}
 		if (!nodeName().isPrefixOf(descendantNodeName)) {
@@ -110,7 +110,7 @@ public class NodeKey {
 		try {
 			return VersioningProfile.getLastVersionAsTimestamp(storedNodeKeyName());
 		} catch (VersionMissingException e) {
-			Library.logger().warning("Unexpected: name that was confirmed to have a version on construction throws a VersionMissingException: " + storedNodeKeyName());
+			Log.logger().warning("Unexpected: name that was confirmed to have a version on construction throws a VersionMissingException: " + storedNodeKeyName());
 			throw new IllegalStateException("Unexpected: name that was confirmed to have a version on construction throws a VersionMissingException: " + storedNodeKeyName());
 		}
 	}

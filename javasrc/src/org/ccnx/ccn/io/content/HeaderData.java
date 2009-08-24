@@ -13,7 +13,7 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -387,8 +387,8 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 
 	public int[] positionToSegmentLocation(long position) {
 		int [] blockLocation = new int[2];
-		Library.logger().info("Header: " + this);
-		Library.logger().info("position: " + position + " blockSize " + blockSize() + " position/blockSize " + position/blockSize() + " start: " + start());
+		Log.logger().info("Header: " + this);
+		Log.logger().info("position: " + position + " blockSize " + blockSize() + " position/blockSize " + position/blockSize() + " start: " + start());
 		blockLocation[0] = (int)(Math.floor(1.0*position/blockSize()));
 		blockLocation[1] = (int)(1.0*position % blockSize());
 		return blockLocation;

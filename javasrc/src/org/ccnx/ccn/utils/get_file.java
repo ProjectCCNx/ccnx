@@ -9,7 +9,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
@@ -55,7 +55,7 @@ public class get_file {
 				} catch (NumberFormatException nfe) {
 					usage();
 				}
-				Library.logger().setLevel(level);
+				Log.logger().setLevel(level);
 				if (startArg <= i)
 					startArg = i + 1;
 			} else {

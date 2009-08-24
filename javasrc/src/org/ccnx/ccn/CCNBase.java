@@ -3,7 +3,7 @@ package org.ccnx.ccn;
 import java.io.IOException;
 
 import org.ccnx.ccn.impl.CCNNetworkManager;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -33,7 +33,7 @@ public class CCNBase {
 					try {
 						_networkManager = new CCNNetworkManager();
 					} catch (IOException ex){
-						Library.logger().warning("IOException instantiating network manager: " + ex.getMessage());
+						Log.logger().warning("IOException instantiating network manager: " + ex.getMessage());
 						ex.printStackTrace();
 						_networkManager = null;
 					}
@@ -54,7 +54,7 @@ public class CCNBase {
 		boolean interrupted = false;
 		do {
 			try {
-				Library.logger().finest("Putting content on wire: " + co.name());
+				Log.logger().finest("Putting content on wire: " + co.name());
 				return getNetworkManager().put(co);
 				
 					// DKS -- total hack, but we're dropping stuff on the floor all over

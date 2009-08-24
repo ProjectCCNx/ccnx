@@ -9,7 +9,7 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
@@ -120,14 +120,14 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			NERequest r = getCurrentRequest(prefix);
 			if (r!=null) {
 				//this prefix is already registered...
-				Library.logger().info("prefix "+prefix.toString()+" is already registered...  returning");
+				Log.logger().info("prefix "+prefix.toString()+" is already registered...  returning");
 			}
 			else{
 				r = new NERequest(prefix);
 				_currentRequests.add(r);
 			}
 			
-			Library.logger().info("Registered Prefix: "+prefix.toString());
+			Log.logger().info("Registered Prefix: "+prefix.toString());
 			//Library.logger().info("creating Interest");
 			
 			ContentName prefixMarked = new ContentName(prefix, NEMARKER);
@@ -145,13 +145,13 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	
 	
 	public boolean cancelPrefix(ContentName prefix) {
-		Library.logger().info("cancel prefix: "+prefix.toString());
+		Log.logger().info("cancel prefix: "+prefix.toString());
 		synchronized(_currentRequests) {
 			//cancel the behind the scenes interests and remove from the local ArrayList
 			NERequest r = getCurrentRequest(prefix);
 			if (r != null) {
 				ArrayList<Interest> is = r.getInterests();
-				Library.logger().fine("we have "+is.size()+" interests to cancel");
+				Log.logger().fine("we have "+is.size()+" interests to cancel");
 				Interest i;
 				while(!r.getInterests().isEmpty()) {
 					i=r.getInterests().remove(0);
@@ -173,7 +173,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			//the NEMarker is in the name...  good!
 		} else {
 			//NEMARKER missing...  we have a problem
-			Library.logger().warning("the name enumeration marker is missing...  shouldn't have gotten this callback");
+			Log.logger().warning("the name enumeration marker is missing...  shouldn't have gotten this callback");
 			//_library.cancelInterest(interest, this);
 			return null;
 		}
@@ -207,8 +207,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						ner.addInterest(newInterest);
 					} catch (IOException e1) {
 						// error registering new interest
-						Library.logger().warning("error registering new interest in handleContent");
-						Library.warningStackTrace(e1);
+						Log.logger().warning("error registering new interest in handleContent");
+						Log.warningStackTrace(e1);
 					}
 				
 					try {
@@ -221,11 +221,11 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						//strip off NEMarker before passing through callback
 						callback.handleNameEnumerator(interest.name().cut(NEMARKER), names);
 					} catch(XMLStreamException e) {
-						Library.logger().warning("Error getting Collection from ContentObject in CCNNameEnumerator");
-						Library.warningStackTrace(e);
+						Log.logger().warning("Error getting Collection from ContentObject in CCNNameEnumerator");
+						Log.warningStackTrace(e);
 					} catch(IOException e) {
-						Library.logger().warning("error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");
-						Library.warningStackTrace(e);
+						Log.logger().warning("error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");
+						Log.warningStackTrace(e);
 					}
 				}
 			}
@@ -326,18 +326,18 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 
 							CollectionObject collobj = new CollectionObject(collectionName, cd, _library);
 							collobj.save();
-							Library.logger().info("Saved collection object in name enumeration: " + collobj.getCurrentVersionName());
+							Log.logger().info("Saved collection object in name enumeration: " + collobj.getCurrentVersionName());
 							System.out.println("saved collection object");
 							
 							r.clean();
 
 						} catch(IOException e) {
-							Library.logger().warning("error processing an incoming interest..  dropping and returning");
-							Library.warningStackTrace(e);
+							Log.logger().warning("error processing an incoming interest..  dropping and returning");
+							Log.warningStackTrace(e);
 							return 0;
 						}
 					}
-					Library.logger().finer("this interest did not have any matching names...  not returning anything.");
+					Log.logger().finer("this interest did not have any matching names...  not returning anything.");
 					if (r != null)
 						r.clean();
 				} //end of synchronized

@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 public class BinaryXMLCodec  {
@@ -108,7 +108,7 @@ public class BinaryXMLCodec  {
 			--i;
 		}
 		if (val != 0) {
-			Library.logger().info("This should not happen: miscalculated encoding length, have " + val + " left.");
+			Log.logger().info("This should not happen: miscalculated encoding length, have " + val + " left.");
 		}
 		
 		return numEncodingBytes;
@@ -138,7 +138,7 @@ public class BinaryXMLCodec  {
 			
 			if (next < 0) {
 				if (istream instanceof org.ccnx.ccn.io.CCNInputStream) {
-					Library.logger().info("Reached EOF in decodeTypeAndVal.");
+					Log.logger().info("Reached EOF in decodeTypeAndVal.");
 				}
 				return null; // at EOF
 			}
@@ -168,7 +168,7 @@ public class BinaryXMLCodec  {
 	
 	public static TypeAndVal peekTypeAndVal(InputStream istream) throws IOException {
 		if (!istream.markSupported()) {
-			Library.logger().info("Cannot peek -- stream without marking ability!");
+			Log.logger().info("Cannot peek -- stream without marking ability!");
 			throw new IOException("No lookahead in stream!");
 		}
 
@@ -206,7 +206,7 @@ public class BinaryXMLCodec  {
 	 */
 	public static byte [] decodeBlob(InputStream istream) throws IOException {
 		if (!istream.markSupported()) {
-			Library.logger().info("Cannot peek -- stream without marking ability!");
+			Log.logger().info("Cannot peek -- stream without marking ability!");
 			throw new IOException("No lookahead in stream!");
 		}
 
@@ -214,7 +214,7 @@ public class BinaryXMLCodec  {
 		
 		TypeAndVal tv = decodeTypeAndVal(istream);
 		if ((null == tv) || (XML_BLOB != tv.type())) { // if we just have closers left, will get back null
-			Library.logger().finest("Expected BLOB, got " + ((null == tv) ? " not a tag " : tv.type()) + ", assuming elided 0-length blob.");
+			Log.logger().finest("Expected BLOB, got " + ((null == tv) ? " not a tag " : tv.type()) + ", assuming elided 0-length blob.");
 			istream.reset();
 			return new byte[0];
 		}
@@ -252,7 +252,7 @@ public class BinaryXMLCodec  {
 	 */
 	public static String decodeUString(InputStream istream) throws IOException {
 		if (!istream.markSupported()) {
-			Library.logger().info("Cannot peek -- stream without marking ability!");
+			Log.logger().info("Cannot peek -- stream without marking ability!");
 			throw new IOException("No lookahead in stream!");
 		}
 
@@ -260,7 +260,7 @@ public class BinaryXMLCodec  {
 		
 		TypeAndVal tv = decodeTypeAndVal(istream);
 		if ((null == tv) || (XML_UDATA != tv.type())) { // if we just have closers left, will get back null
-			Library.logger().finest("Expected UDATA, got " + ((null == tv) ? " not a tag " : tv.type()) + ", assuming elided 0-length blob.");
+			Log.logger().finest("Expected UDATA, got " + ((null == tv) ? " not a tag " : tv.type()) + ", assuming elided 0-length blob.");
 			istream.reset();
 			return new String("");
 		}
@@ -308,7 +308,7 @@ public class BinaryXMLCodec  {
 		
 		// We elide the encoding of a 0-length UString
 		if ((null == ustring) || (ustring.length() == 0)) {
-			Library.logger().finer("Eliding 0-length UString.");
+			Log.logger().finer("Eliding 0-length UString.");
 			return;
 		}
 		
@@ -328,7 +328,7 @@ public class BinaryXMLCodec  {
 	public static void encodeBlob(OutputStream ostream, byte [] blob, int offset, int length) throws IOException {
 		// We elide the encoding of a 0-length blob
 		if ((null == blob) || (length == 0)) {
-			Library.logger().finer("Eliding 0-length blob.");
+			Log.logger().finer("Eliding 0-length blob.");
 			return;
 		}
 		

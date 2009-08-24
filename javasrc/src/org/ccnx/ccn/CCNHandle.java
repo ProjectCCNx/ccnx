@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNNetworkManager;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.ExcludeFilter;
@@ -62,10 +62,10 @@ public class CCNHandle extends CCNBase {
 			try {
 				return new CCNHandle();
 			} catch (ConfigurationException e) {
-				Library.logger().severe("Configuration exception initializing CCN library: " + e.getMessage());
+				Log.logger().severe("Configuration exception initializing CCN library: " + e.getMessage());
 				throw e;
 			} catch (IOException e) {
-				Library.logger().severe("IO exception initializing CCN library: " + e.getMessage());
+				Log.logger().severe("IO exception initializing CCN library: " + e.getMessage());
 				throw e;
 			}
 		}
@@ -83,12 +83,12 @@ public class CCNHandle extends CCNBase {
 		try {
 			return createCCNLibrary();
 		} catch (ConfigurationException e) {
-			Library.logger().warning("Configuration exception attempting to create library: " + e.getMessage());
-			Library.warningStackTrace(e);
+			Log.logger().warning("Configuration exception attempting to create library: " + e.getMessage());
+			Log.warningStackTrace(e);
 			throw new RuntimeException("Error in system configuration. Cannot create library.",e);
 		} catch (IOException e) {
-			Library.logger().warning("IO exception attempting to create library: " + e.getMessage());
-			Library.warningStackTrace(e);
+			Log.logger().warning("IO exception attempting to create library: " + e.getMessage());
+			Log.warningStackTrace(e);
 			throw new RuntimeException("Error in system IO. Cannot create library.",e);
 		}
 	}
@@ -107,7 +107,7 @@ public class CCNHandle extends CCNBase {
 		try {
 			_networkManager = new CCNNetworkManager();
 		} catch (IOException ex){
-			Library.logger().warning("IOException instantiating network manager: " + ex.getMessage());
+			Log.logger().warning("IOException instantiating network manager: " + ex.getMessage());
 			ex.printStackTrace();
 			_networkManager = null;
 		}
@@ -124,7 +124,7 @@ public class CCNHandle extends CCNBase {
 	
 	public void setKeyManager(KeyManager keyManager) {
 		if (null == keyManager) {
-			Library.logger().warning("StandardCCNLibrary::setKeyManager: Key manager cannot be null!");
+			Log.logger().warning("StandardCCNLibrary::setKeyManager: Key manager cannot be null!");
 			throw new IllegalArgumentException("Key manager cannot be null!");
 		}
 		_userKeyManager = keyManager;
@@ -190,7 +190,7 @@ public class CCNHandle extends CCNBase {
 			co = get(query, timeout == NO_TIMEOUT ? 5000 : timeout);
 			if (co == null)
 				break;
-			Library.logger().info("enumerate: retrieved " + co.name() + 
+			Log.logger().info("enumerate: retrieved " + co.name() + 
 					" digest: " + ContentName.componentPrintURI(co.contentDigest()) + " on query: " + query.name());
 			result.add(co);
 			for (int i = co.name().count() - 1; i > count; i--) {
@@ -198,7 +198,7 @@ public class CCNHandle extends CCNBase {
 			}
 			query = Interest.next(co, count);
 		}
-		Library.logger().info("enumerate: retrieved " + result.size() + " objects.");
+		Log.logger().info("enumerate: retrieved " + result.size() + " objects.");
 		return result;
 	}
 	

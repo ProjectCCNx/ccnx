@@ -12,7 +12,7 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 /**
@@ -78,7 +78,7 @@ public class ContentKeys {
 			String err = "Right now the only encryption algorithm we support is: " + 
 			ContentKeys.DEFAULT_CIPHER_ALGORITHM + ", " + encryptionAlgorithm + 
 			" will come later.";
-			Library.logger().severe(err);
+			Log.logger().severe(err);
 			throw new UnsupportedOperationException(err);
 		}
 	}
@@ -90,11 +90,11 @@ public class ContentKeys {
 			return Cipher.getInstance(encryptionAlgorithm);
 		} catch (NoSuchAlgorithmException e) {
 			String err = "Unexpected NoSuchAlgorithmException for an algorithm we have already used!";
-			Library.logger().severe(err);
+			Log.logger().severe(err);
 			throw new RuntimeException(err, e);
 		} catch (NoSuchPaddingException e) {
 			String err = "Unexpected NoSuchPaddingException for an algorithm we have already used!";
-			Library.logger().severe(err);
+			Log.logger().severe(err);
 			throw new RuntimeException(err, e);
 		}
 	}
@@ -161,7 +161,7 @@ public class ContentKeys {
 
 		// Construct the IV/initial counter.
 		if (0 == cipher.getBlockSize()) {
-			Library.logger().warning(encryptionAlgorithm + " is not a block cipher!");
+			Log.logger().warning(encryptionAlgorithm + " is not a block cipher!");
 			throw new InvalidAlgorithmParameterException(encryptionAlgorithm + " is not a block cipher!");
 		}
 
@@ -170,7 +170,7 @@ public class ContentKeys {
 		}
 
 		IvParameterSpec iv_ctrSpec = buildIVCtr(masterIV, segmentNumber, cipher.getBlockSize());
-		Library.logger().finest(encryption?"En":"De"+"cryption Key: "+DataUtils.printHexBytes(encryptionKey.getEncoded())+" iv="+DataUtils.printHexBytes(iv_ctrSpec.getIV()));
+		Log.logger().finest(encryption?"En":"De"+"cryption Key: "+DataUtils.printHexBytes(encryptionKey.getEncoded())+" iv="+DataUtils.printHexBytes(iv_ctrSpec.getIV()));
 		cipher.init(encryption?Cipher.ENCRYPT_MODE:Cipher.DECRYPT_MODE, encryptionKey, iv_ctrSpec);
 
 		return cipher;
@@ -178,7 +178,7 @@ public class ContentKeys {
 
 	public static IvParameterSpec buildIVCtr(IvParameterSpec masterIV, long segmentNumber, int ivLen) {
 
-		Library.logger().finest("Thread="+Thread.currentThread()+" Building IV - master="+DataUtils.printHexBytes(masterIV.getIV())+" segment="+segmentNumber+" ivLen="+ivLen);
+		Log.logger().finest("Thread="+Thread.currentThread()+" Building IV - master="+DataUtils.printHexBytes(masterIV.getIV())+" segment="+segmentNumber+" ivLen="+ivLen);
 		
 		byte [] iv_ctr = new byte[ivLen];
 		
@@ -189,7 +189,7 @@ public class ContentKeys {
 				iv_ctr.length - BLOCK_COUNTER_LENGTH, BLOCK_COUNTER_LENGTH);
 		
 		IvParameterSpec iv_ctrSpec = new IvParameterSpec(iv_ctr);
-		Library.logger().finest("ivParameterSpec source="+DataUtils.printHexBytes(iv_ctr)+"ivParameterSpec.getIV()="+DataUtils.printHexBytes(masterIV.getIV()));
+		Log.logger().finest("ivParameterSpec source="+DataUtils.printHexBytes(iv_ctr)+"ivParameterSpec.getIV()="+DataUtils.printHexBytes(masterIV.getIV()));
 		return iv_ctrSpec;
 	}
 	

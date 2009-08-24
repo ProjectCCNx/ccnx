@@ -12,7 +12,7 @@ import javax.xml.stream.XMLStreamException;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Link.LinkObject;
@@ -86,7 +86,7 @@ public class LinkObjectTestRepo {
 		if (null == firstBlock) {
 			Assert.fail("Cannot read first block of link target: " + readLink.getTargetName());
 		}
-		Library.logger().info("Got block of target: " + firstBlock.name());
+		Log.logger().info("Got block of target: " + firstBlock.name());
 		
 		// TODO -- not a good test; does dereference get us back the first block? What about the
 		// first block of the latest version? What if thing isn't versioned? (e.g. intermediate node)

@@ -14,7 +14,7 @@ import org.ccnx.ccn.impl.CCNSegmenter;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -222,11 +222,11 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			_blockOffset += toWriteNow; // write offset into current block buffer
 			offset += toWriteNow; // read offset into input buffer
 			_totalLength += toWriteNow; // increment here so we can write log entries on partial writes
-			Library.logger().finest("write: added " + toWriteNow + " bytes to buffer. blockOffset: " + _blockOffset + "( " + (thisBufAvail - toWriteNow) + " left in block), " + _totalLength + " written.");
+			Log.logger().finest("write: added " + toWriteNow + " bytes to buffer. blockOffset: " + _blockOffset + "( " + (thisBufAvail - toWriteNow) + " left in block), " + _totalLength + " written.");
 
 			if (_blockOffset >= _buffer.length) {
 				// We're out of buffers. Time to flush to the network.
-				Library.logger().info("write: about to sync one tree's worth of blocks (" + BLOCK_BUF_COUNT +") to the network.");
+				Log.logger().info("write: about to sync one tree's worth of blocks (" + BLOCK_BUF_COUNT +") to the network.");
 				flush(); // will reset _blockIndex and _blockOffset
 			}
 		}
@@ -238,7 +238,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// small data objects (written as single blocks without headers); instead
 		// write them as single-fragment files. Subclasses will determine whether or not
 		// to write a header.
-		Library.logger().info("closeNetworkData: final flush, wrote " + _totalLength + " bytes.");
+		Log.logger().info("closeNetworkData: final flush, wrote " + _totalLength + " bytes.");
 		flush(true); // true means write out the partial last block, if there is one
 	}
 
@@ -320,13 +320,13 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// discussion about holding back partial or even a single full block till
 			// forced flush/close in order to set finalBlockID).
 
-			Library.logger().info("flush: asked to put a single block to the network, are we finishing the file? " + flushLastBlock + ".");
+			Log.logger().info("flush: asked to put a single block to the network, are we finishing the file? " + flushLastBlock + ".");
 
 			// DKS TODO -- think about types, freshness, fix markers for impending last block/first block
 			if ((_blockOffset - saveBytes) < getBlockSize()) {
-				Library.logger().warning("flush(): writing hanging partial last block of file: " + (_blockOffset-saveBytes) + " bytes, block total is " + getBlockSize() + ", holding back " + saveBytes + " bytes, called by close? " + flushLastBlock);
+				Log.logger().warning("flush(): writing hanging partial last block of file: " + (_blockOffset-saveBytes) + " bytes, block total is " + getBlockSize() + ", holding back " + saveBytes + " bytes, called by close? " + flushLastBlock);
 			} else {
-				Library.logger().warning("flush(): writing single full block of file: " + _baseName + ", holding back " + saveBytes + " bytes.");
+				Log.logger().warning("flush(): writing single full block of file: " + _baseName + ", holding back " + saveBytes + " bytes.");
 			}
 			_baseNameIndex = 
 				_segmenter.putFragment(_baseName, _baseNameIndex, 
@@ -334,7 +334,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 					_type, _timestamp, null, (flushLastBlock ? _baseNameIndex : null), 
 					_locator, _publisher);
 		} else {
-			Library.logger().info("flush: putting merkle tree to the network, baseName " + _baseName +
+			Log.logger().info("flush: putting merkle tree to the network, baseName " + _baseName +
 					" basenameindex " + ContentName.componentPrintURI(SegmentationProfile.getSegmentID(_baseNameIndex)) + "; " 
 					+ _blockOffset + 
 					" bytes written, holding back " + saveBytes + " flushing final blocks? " + flushLastBlock + ".");

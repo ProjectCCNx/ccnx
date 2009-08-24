@@ -7,7 +7,7 @@ import java.util.logging.Level;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.impl.encoding.TextXMLCodec;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -18,7 +18,7 @@ public class TextXMLCodecTest {
 	public static void setUpBeforeClass() throws Exception {
 	
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Library.logger().setLevel(Level.INFO);
+		Log.logger().setLevel(Level.INFO);
 	}
 	
 	@Test

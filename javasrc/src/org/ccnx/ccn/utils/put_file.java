@@ -7,7 +7,7 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileOutputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
@@ -59,7 +59,7 @@ public class put_file {
 				} catch (NumberFormatException nfe) {
 					usage();
 				}
-				Library.logger().setLevel(level);
+				Log.logger().setLevel(level);
 				if (startArg <= i)
 					startArg = i + 1;
 			} else {
@@ -89,7 +89,7 @@ public class put_file {
 					System.out.println("No such file: " + args[startArg + 1]);
 					usage();
 				}
-				Library.logger().info("put_file: putting file " + args[startArg + 1] + " bytes: " + theFile.length());
+				Log.logger().info("put_file: putting file " + args[startArg + 1] + " bytes: " + theFile.length());
 				
 				CCNOutputStream ostream;
 				if (rawMode) {
@@ -174,7 +174,7 @@ public class put_file {
 		int readLen = 0;
 		byte [] buffer = new byte[BLOCK_SIZE];
 		//do {
-		Library.logger().info("do_write: " + fis.available() + " bytes left.");
+		Log.logger().info("do_write: " + fis.available() + " bytes left.");
 		while((readLen = fis.read(buffer, 0, size)) != -1){	
 			//if (size > fis.available())
 			//	size = fis.available();
@@ -182,12 +182,12 @@ public class put_file {
 			//	fis.read(buffer, 0, size);
 			//	ostream.write(buffer, 0, size);
 			ostream.write(buffer, 0, readLen);
-			Library.logger().info("do_write: wrote " + size + " bytes.");
-			Library.logger().info("do_write: " + fis.available() + " bytes left.");
+			Log.logger().info("do_write: wrote " + size + " bytes.");
+			Log.logger().info("do_write: " + fis.available() + " bytes left.");
 		}
 		//} while (fis.available() > 0);
 		ostream.close();
-		Library.logger().info("finished write: "+(System.currentTimeMillis() - time));
+		Log.logger().info("finished write: "+(System.currentTimeMillis() - time));
 	}
 	
 	public static void usage() {

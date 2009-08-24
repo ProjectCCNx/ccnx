@@ -20,7 +20,7 @@ import org.bouncycastle.jce.spec.ECParameterSpec;
 import org.bouncycastle.jce.spec.ElGamalParameterSpec;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -51,14 +51,14 @@ public class PublicKeyObjectTestRepo {
 	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
-		Library.logger().setLevel(oldLevel);
+		Log.logger().setLevel(oldLevel);
 	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		library = CCNHandle.open();
-		oldLevel = Library.logger().getLevel();
-		Library.logger().setLevel(Level.FINEST);
+		oldLevel = Log.logger().getLevel();
+		Log.logger().setLevel(Level.FINEST);
 		Security.addProvider(new BouncyCastleProvider());
 		// generate key pair
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -135,7 +135,7 @@ public class PublicKeyObjectTestRepo {
 		Assert.assertTrue(pkoread.available());
 		Assert.assertEquals(pkoread.getCurrentVersionName(), pko.getCurrentVersionName());
 		if (!pkoread.publicKey().equals(pko.publicKey())) {
-			Library.logger().info("Mismatched public keys, chance provider doesn't implement equals()." );
+			Log.logger().info("Mismatched public keys, chance provider doesn't implement equals()." );
 			Assert.assertArrayEquals(pkoread.publicKey().getEncoded(), pko.publicKey().getEncoded());
 		} else {
 			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
@@ -165,14 +165,14 @@ public class PublicKeyObjectTestRepo {
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, library);
 		pko.saveToRepository();
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getCurrentVersionName()));
-		Library.logger().info("Saved " + pko.getCurrentVersionName() + " to repo, now trying to read.");
+		Log.logger().info("Saved " + pko.getCurrentVersionName() + " to repo, now trying to read.");
 		// should update in another thread
 
 		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new library
 		Assert.assertTrue(pkoread.available());
 		Assert.assertEquals(pkoread.getCurrentVersionName(), pko.getCurrentVersionName());
 		if (!pkoread.publicKey().equals(pko.publicKey())) {
-			Library.logger().info("Mismatched public keys, chance provider doesn't implement equals()." );
+			Log.logger().info("Mismatched public keys, chance provider doesn't implement equals()." );
 			Assert.assertArrayEquals(pkoread.publicKey().getEncoded(), pko.publicKey().getEncoded());
 		} else {
 			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());

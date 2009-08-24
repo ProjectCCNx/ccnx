@@ -5,7 +5,7 @@ import java.sql.Timestamp;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -229,7 +229,7 @@ public class AccessControlProfile implements CCNProfile {
 				break;
 		}
 		if (sepIndex == childName.length) {
-			Library.logger().warning("Unexpected principal name format - no separator: " + 
+			Log.logger().warning("Unexpected principal name format - no separator: " + 
 					ContentName.componentPrintURI(childName, PRINCIPAL_PREFIX.length, childName.length-PRINCIPAL_PREFIX.length));
 			return null;
 		}

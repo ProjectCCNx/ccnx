@@ -12,7 +12,7 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
@@ -128,7 +128,7 @@ public class SystemConfiguration {
 			DEBUGGING_FLAGS df = DEBUGGING_FLAGS.valueOf(debugFlag);
 			setDebugFlag(df, value);
 		} catch (IllegalArgumentException ax) {
-			Library.logger().info("Cannot set debugging flag, no known flag: " + debugFlag + ". Choices are: " + debugFlagList());
+			Log.logger().info("Cannot set debugging flag, no known flag: " + debugFlag + ". Choices are: " + debugFlagList());
 		}
 	}
 	
@@ -152,7 +152,7 @@ public class SystemConfiguration {
 			byte [] encoded = data.encode();
 			outputDebugData(name, encoded);
 		} catch (XMLStreamException ex) {
-			Library.logger().warning("Cannot encode object : " + name + " to output for debug.");
+			Log.logger().warning("Cannot encode object : " + name + " to output for debug.");
 		}
 	}
 	
@@ -162,14 +162,14 @@ public class SystemConfiguration {
 			File dataDir = new File(DEBUG_DATA_DIRECTORY);
 			if (!dataDir.exists()) {
 				if (!dataDir.mkdirs()) {
-					Library.logger().warning("outputDebugData: Cannot create default debug data directory: " + dataDir.getAbsolutePath());
+					Log.logger().warning("outputDebugData: Cannot create default debug data directory: " + dataDir.getAbsolutePath());
 					return;
 				}
 			}
 			File outputParent = new File(dataDir, name.toString());
 			if (!outputParent.exists()) {
 				if (!outputParent.mkdirs()) {
-					Library.logger().warning("outputDebugData: cannot create data parent directory: " + outputParent);
+					Log.logger().warning("outputDebugData: cannot create data parent directory: " + outputParent);
 				}
 			}
 			
@@ -177,13 +177,13 @@ public class SystemConfiguration {
 			String contentName = new BigInteger(1, contentDigest).toString(DEBUG_RADIX);
 			File outputFile = new File(outputParent, contentName);
 			
-			Library.logger().finest("Attempting to output debug data for name " + name.toString() + " to file " + outputFile.getAbsolutePath());
+			Log.logger().finest("Attempting to output debug data for name " + name.toString() + " to file " + outputFile.getAbsolutePath());
 			
 			FileOutputStream fos = new FileOutputStream(outputFile);
 			fos.write(data);
 			fos.close();
 		} catch (Exception e) {
-			Library.logger().warning("Exception attempting to log debug data for name: " + name.toString() + " " + e.getClass().getName() + ": " + e.getMessage());
+			Log.logger().warning("Exception attempting to log debug data for name: " + name.toString() + " " + e.getClass().getName() + ": " + e.getMessage());
 		}
 	}
 	
@@ -195,9 +195,9 @@ public class SystemConfiguration {
 		try {
 			byte [] coDigest = CCNDigestHelper.digest(co.encode());
 			byte [] tbsDigest = CCNDigestHelper.digest(ContentObject.prepareContent(co.name(), co.signedInfo(), co.content()));
-			Library.logger().log(level, message + " name: " + co.name() +  " timestamp: " + co.signedInfo().getTimestamp() + " digest: " + CCNDigestHelper.printBytes(coDigest, DEBUG_RADIX) + " tbs: " + CCNDigestHelper.printBytes(tbsDigest, DEBUG_RADIX));
+			Log.logger().log(level, message + " name: " + co.name() +  " timestamp: " + co.signedInfo().getTimestamp() + " digest: " + CCNDigestHelper.printBytes(coDigest, DEBUG_RADIX) + " tbs: " + CCNDigestHelper.printBytes(tbsDigest, DEBUG_RADIX));
 		} catch (XMLStreamException xs) {
-			Library.logger().log(level, "Cannot encode object for logging: " + co.name());
+			Log.logger().log(level, "Cannot encode object for logging: " + co.name());
 		}
 		
 	}

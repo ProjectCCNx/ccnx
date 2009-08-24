@@ -12,7 +12,7 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
@@ -54,7 +54,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		
 		Interest interestToReturn = null;
 		for (ContentObject co : results) {
-			Library.logger().info("handleContent: got potential repo message: " + co.name());
+			Log.logger().info("handleContent: got potential repo message: " + co.name());
 			if (co.signedInfo().getType() != ContentType.DATA)
 				continue;
 			RepositoryInfo repoInfo = new RepositoryInfo();
@@ -75,7 +75,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 					break;
 				}
 			} catch (XMLStreamException e) {
-				Library.logger().info("XMLStreamException parsing RepositoryInfo: " + e.getMessage() + " from content object " + co.name() + ", skipping.");
+				Log.logger().info("XMLStreamException parsing RepositoryInfo: " + e.getMessage() + " from content object " + co.name() + ", skipping.");
 			}
 		}
 		// So far, we seem never to have anything to return.
@@ -93,7 +93,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	private class RepoAckHandler implements BasicNameEnumeratorListener {
 
 		public int handleNameEnumerator(ContentName prefix, ArrayList<ContentName> names) {
-			Library.logger().info("Enumeration response for " + names.size() + " children of " + prefix + ".");
+			Log.logger().info("Enumeration response for " + names.size() + " children of " + prefix + ".");
 			for (ContentName name : names)
 				ack(new ContentName(prefix, name.component(0)));
 			return names.size();
@@ -160,7 +160,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			} while (interrupted);
 		}
 		if (!client._initialized) {
-			Library.logger().finest("No response from a repository, cannot add name space : " + name);
+			Log.logger().finest("No response from a repository, cannot add name space : " + name);
 			throw new IOException("No response from a repository for " + name);
 		}
 	}
@@ -171,10 +171,10 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 */
 	public void ack(ContentName name) {
 		synchronized (_holdingArea) {
-			Library.logger().fine("Handling ACK " + name);
+			Log.logger().fine("Handling ACK " + name);
 			if (_holdingArea.get(name) != null) {
 				ContentObject co = _holdingArea.get(name);
-				Library.logger().fine("CO " + co.name() + " acked");
+				Log.logger().fine("CO " + co.name() + " acked");
 				_holdingArea.remove(co.name());
 				if (_holdingArea.size() < _highwater)
 					_holdingArea.notify();

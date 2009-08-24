@@ -21,7 +21,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.security.crypto.UnbufferedCipherInputStream;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.CCNFileOutputStream;
 import org.ccnx.ccn.io.CCNInputStream;
@@ -201,7 +201,7 @@ public class CCNSecureInputStreamTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Library.logger().setLevel(Level.FINEST);
+		Log.logger().setLevel(Level.FINEST);
 		SystemConfiguration.setDebugFlag(SystemConfiguration.DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
 		outputLibrary = CCNHandle.open();
 		inputLibrary = CCNHandle.open();

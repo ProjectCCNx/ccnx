@@ -12,7 +12,7 @@ import java.util.TreeMap;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 
@@ -118,7 +118,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 			long dictionaryVal = _dictionary.peek().encodeTag(tag);
 			
 			if (dictionaryVal < 0) {
-				Library.logger().info("Unexpected: tag found that is not in our dictionary: " + tag);
+				Log.logger().info("Unexpected: tag found that is not in our dictionary: " + tag);
 				// not in dictionary
 				// compressed format wants length of tag represented as length-1
 				// to save that extra bit, as tag cannot be 0 length.
@@ -156,7 +156,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 			}
 			
 		} catch (UnsupportedEncodingException e) {
-			Library.logger().severe("We don't understand UTF-8! Giving up!");
+			Log.logger().severe("We don't understand UTF-8! Giving up!");
 			throw new RuntimeException("Do not know UTF-8 charset! Significant configuration error!");
 		} catch (IOException e) {
 			throw new XMLStreamException(e.getMessage(),e);

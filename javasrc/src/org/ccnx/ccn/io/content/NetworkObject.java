@@ -11,7 +11,7 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.NullOutputStream;
 
 
@@ -47,10 +47,10 @@ public abstract class NetworkObject<E> {
 		try {
 			newE = _type.newInstance();
 		} catch (InstantiationException e) {
-			Library.logger().warning("Cannot wrap class " + _type.getName() + " -- impossible to construct instances!");
+			Log.logger().warning("Cannot wrap class " + _type.getName() + " -- impossible to construct instances!");
 			throw new IOException("Cannot wrap class " + _type.getName() + " -- impossible to construct instances!");
 		} catch (IllegalAccessException e) {
-			Library.logger().warning("Cannot wrap class " + _type.getName() + " -- cannot access default constructor!");
+			Log.logger().warning("Cannot wrap class " + _type.getName() + " -- cannot access default constructor!");
 			throw new IOException("Cannot wrap class " + _type.getName() + " -- cannot access default constructor!");
 		}
 		return newE;
@@ -61,22 +61,22 @@ public abstract class NetworkObject<E> {
 		E newData = readObjectImpl(input);
 		
 		if (!_available) {
-			Library.logger().info("Update -- first initialization.");
+			Log.logger().info("Update -- first initialization.");
 			_data = newData;
 			_available = true;
 			_potentiallyDirty = false;
 		}
 		if (null == _data) {
 			if (null != newData) {
-				Library.logger().info("Update -- got new non-null " + newData.getClass().getName());
+				Log.logger().info("Update -- got new non-null " + newData.getClass().getName());
 				_data = merge(input, newData);
 			} else {
-				Library.logger().info("Update -- value still null.");
+				Log.logger().info("Update -- value still null.");
 			}
 		} else if (_data.equals(newData)) {
-			Library.logger().info("Update -- value hasn't changed.");
+			Log.logger().info("Update -- value hasn't changed.");
 		} else {
-			Library.logger().info("Update -- got new " + newData.getClass().getName());
+			Log.logger().info("Update -- got new " + newData.getClass().getName());
 			_data = merge(input, newData);
 		}
 	}
@@ -170,14 +170,14 @@ public abstract class NetworkObject<E> {
 			byte [] currentValue = dos.getMessageDigest().digest();
 
 			if (Arrays.equals(currentValue, _lastSaved)) {
-				Library.logger().info("Last saved value for object still current.");
+				Log.logger().info("Last saved value for object still current.");
 				return false;
 			} else {
-				Library.logger().info("Last saved value for object not current -- object changed.");
+				Log.logger().info("Last saved value for object not current -- object changed.");
 				return true;
 			}
 		} catch (NoSuchAlgorithmException e) {
-			Library.logger().warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
+			Log.logger().warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
 			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
 		} catch (XMLStreamException e) {
 			// XMLStreamException should never happen, since our code should always write good XML
@@ -199,7 +199,7 @@ public abstract class NetworkObject<E> {
 			_lastSaved = dos.getMessageDigest().digest();
 			setPotentiallyDirty(false);
 		} catch (NoSuchAlgorithmException e) {
-			Library.logger().warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
+			Log.logger().warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
 			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
 		} catch (XMLStreamException e) {
 			// XMLStreamException should never happen, since our code should always write good XML

@@ -13,7 +13,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class Library {
+public class Log {
 
 	/**
 	 * Allow override on command line or from configuration file.
@@ -110,7 +110,7 @@ public class Library {
 	}
 	
 	public static void abort() {
-		Library.logger().warning("Unrecoverable error. Exiting data collection.");
+		Log.logger().warning("Unrecoverable error. Exiting data collection.");
 		exitApplication(); // save partial results?
 	}
 	
@@ -132,7 +132,7 @@ public class Library {
 	
 	public static void logException(String message, 
 			Exception e) {
-		Library.logger().warning(message);
-		Library.warningStackTrace(e);
+		Log.logger().warning(message);
+		Log.warningStackTrace(e);
 	}
 }

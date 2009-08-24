@@ -7,7 +7,7 @@ import java.util.Date;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
@@ -29,15 +29,15 @@ public class watch extends Thread implements CCNInterestListener {
 		initialize();
 		
 		System.out.println("Watching: " + new Date().toString() +".");
-		Library.logger().info("Watching: " + new Date().toString() +".");
+		Log.logger().info("Watching: " + new Date().toString() +".");
 
 		do {
 
 			try {
 				work();
 			} catch (Exception e) {
-				Library.logger().warning("Error in watcher thread: " + e.getMessage());
-				Library.warningStackTrace(e);
+				Log.logger().warning("Error in watcher thread: " + e.getMessage());
+				Log.warningStackTrace(e);
 			}
 
 			try {
