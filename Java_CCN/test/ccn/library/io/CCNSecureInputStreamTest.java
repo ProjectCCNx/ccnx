@@ -18,6 +18,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.security.crypto.UnbufferedCipherInputStream;
 import org.ccnx.ccn.impl.support.Library;
@@ -39,7 +40,6 @@ import org.junit.Test;
 
 import test.ccn.data.util.Flosser;
 
-import com.parc.ccn.config.SystemConfiguration;
 
 public class CCNSecureInputStreamTest {
 	

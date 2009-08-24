@@ -1,4 +1,4 @@
-package com.parc.ccn.config;
+package org.ccnx.ccn.config;
 
 import java.io.File;
 import java.io.FileOutputStream;

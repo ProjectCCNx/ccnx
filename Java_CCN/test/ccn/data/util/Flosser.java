@@ -11,6 +11,7 @@ import java.util.Map.Entry;
 
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.ContentName;
@@ -20,7 +21,6 @@ import org.ccnx.ccn.protocol.ExcludeFilter;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
-import com.parc.ccn.config.ConfigurationException;
 
 /**
  *  A class to help write tests without a repo. Pulls things

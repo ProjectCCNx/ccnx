@@ -1,4 +1,4 @@
-package com.parc.ccn.config;
+package org.ccnx.ccn.config;
 
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.ContentName;

@@ -16,6 +16,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.Repository.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.Daemon;
 import org.ccnx.ccn.impl.support.Library;
@@ -28,7 +29,6 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ExcludeFilter;
 import org.ccnx.ccn.protocol.Interest;
 
-import com.parc.ccn.config.SystemConfiguration;
 import com.parc.ccn.network.daemons.repo.BitBucketRepository;
 
 /**

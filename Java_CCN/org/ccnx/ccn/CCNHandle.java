@@ -6,6 +6,7 @@ import java.security.Security;
 import java.util.ArrayList;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.ContentName;
@@ -16,7 +17,6 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
 
-import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.security.ContentVerifier;
 
 /**

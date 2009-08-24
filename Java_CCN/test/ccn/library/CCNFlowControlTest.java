@@ -7,6 +7,7 @@ import java.util.Queue;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -19,7 +20,6 @@ import org.ccnx.ccn.protocol.SignedInfo;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.library.CCNLibraryTestHarness;
 
 /**

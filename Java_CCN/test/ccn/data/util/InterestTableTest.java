@@ -11,6 +11,7 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Random;
 
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.InterestTable;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -26,7 +27,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.config.ConfigurationException;
 
 public class InterestTableTest {
 

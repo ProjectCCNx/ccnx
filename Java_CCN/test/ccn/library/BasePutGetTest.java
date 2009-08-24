@@ -1,8 +1,8 @@
 package test.ccn.library;
 
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.junit.Test;
 
-import com.parc.ccn.config.SystemConfiguration;
 
 public class BasePutGetTest extends LibraryTestBase {
 	

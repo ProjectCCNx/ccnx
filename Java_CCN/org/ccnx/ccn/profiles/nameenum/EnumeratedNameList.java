@@ -9,11 +9,11 @@ import java.util.TreeSet;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 
-import com.parc.ccn.config.ConfigurationException;
 
 public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	

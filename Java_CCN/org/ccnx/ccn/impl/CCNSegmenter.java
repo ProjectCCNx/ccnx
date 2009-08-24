@@ -15,6 +15,7 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.security.crypto.CCNAggregatedSigner;
 import org.ccnx.ccn.impl.security.crypto.CCNMerkleTree;
 import org.ccnx.ccn.impl.security.crypto.CCNMerkleTreeSigner;
@@ -31,7 +32,6 @@ import org.ccnx.ccn.protocol.Signature;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
-import com.parc.ccn.config.ConfigurationException;
 
 /**
  * This class combines basic segmentation, signing and encryption; 

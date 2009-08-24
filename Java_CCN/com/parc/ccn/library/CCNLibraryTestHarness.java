@@ -7,12 +7,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.InterestTable;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
-import com.parc.ccn.config.ConfigurationException;
 
 public class CCNLibraryTestHarness extends CCNHandle {
 	

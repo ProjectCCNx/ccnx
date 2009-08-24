@@ -5,12 +5,12 @@ import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
-import com.parc.ccn.config.SystemConfiguration;
 
 public class BaseSecurityTest extends BasePutGetTest {
 	

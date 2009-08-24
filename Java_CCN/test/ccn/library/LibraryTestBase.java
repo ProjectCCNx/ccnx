@@ -19,6 +19,7 @@ import org.ccnx.ccn.CCNBase;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.io.CCNWriter;
@@ -29,7 +30,6 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import com.parc.ccn.config.ConfigurationException;
 
 public class LibraryTestBase {
 

@@ -1,11 +1,11 @@
 package org.ccnx.ccn;
 
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.security.keys.BasicTrustManager;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
-import com.parc.ccn.config.ConfigurationException;
 
 /**
  * Front-end for key repository, both our keys

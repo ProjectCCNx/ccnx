@@ -3,9 +3,9 @@ package org.ccnx.ccn.impl.encoding;
 import java.util.HashMap;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Library;
 
-import com.parc.ccn.config.SystemConfiguration;
 
 public class XMLCodecFactory {
 	

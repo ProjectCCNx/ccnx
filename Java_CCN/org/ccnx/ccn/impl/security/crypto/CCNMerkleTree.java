@@ -8,6 +8,8 @@ import java.security.SignatureException;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.asn1.DEROctetString;
+import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.ContentName;
@@ -15,8 +17,6 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Signature;
 import org.ccnx.ccn.protocol.SignedInfo;
 
-import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 
 /**
  * This class extends your basic Merkle tree to 

@@ -16,6 +16,7 @@ import javax.swing.event.*;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
@@ -31,7 +32,6 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import com.parc.ccn.apps.containerApp.IconCellRenderer;
 import com.parc.ccn.apps.containerApp.IconData;
 import com.parc.ccn.apps.containerApp.Name;
-import com.parc.ccn.config.ConfigurationException;
 
 public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,ActionListener{
 

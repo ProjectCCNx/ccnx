@@ -9,6 +9,7 @@ import java.util.SortedSet;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.security.keys.NetworkKeyManager;
 import org.ccnx.ccn.impl.security.keys.RepositoryKeyManager;
 import org.ccnx.ccn.impl.support.Library;
@@ -19,7 +20,6 @@ import org.ccnx.ccn.protocol.ContentName;
 
 import test.ccn.data.util.Flosser;
 
-import com.parc.ccn.config.ConfigurationException;
 
 
 /**

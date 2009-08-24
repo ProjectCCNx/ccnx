@@ -9,8 +9,8 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import org.bouncycastle.util.encoders.Base64;
+import org.ccnx.ccn.config.SystemConfiguration;
 
-import com.parc.ccn.config.SystemConfiguration;
 
 public class DataUtils {
 	
