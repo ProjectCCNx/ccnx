@@ -21,6 +21,7 @@ import junit.framework.Assert;
 import org.ccnx.ccn.BasicInterestListener;
 import org.ccnx.ccn.CCNBase;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Library;
@@ -36,7 +37,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.junit.Test;
 
-import com.parc.ccn.data.security.ContentVerifier;
 
 
 /**

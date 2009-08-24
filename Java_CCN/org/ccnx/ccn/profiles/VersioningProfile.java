@@ -7,6 +7,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
@@ -21,7 +22,6 @@ import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo;
 
-import com.parc.ccn.data.security.ContentVerifier;
 
 /**
  * Versions, when present, usually occupy the penultimate component of the CCN name, 

@@ -5,12 +5,12 @@ import java.math.BigInteger;
 import java.util.Arrays;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
-import com.parc.ccn.data.security.ContentVerifier;
 
 /**
  * We speak in terms of segments, not fragments, as this profile

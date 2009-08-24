@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.parc.ccn.data.security;
+package org.ccnx.ccn;
 
 import org.ccnx.ccn.protocol.ContentObject;
 

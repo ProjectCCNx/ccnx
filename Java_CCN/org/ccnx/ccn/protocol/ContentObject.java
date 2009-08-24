@@ -14,6 +14,7 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
@@ -29,7 +30,6 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
-import com.parc.ccn.data.security.ContentVerifier;
 
 /**
  * Utility class for grouping all of the bits associated

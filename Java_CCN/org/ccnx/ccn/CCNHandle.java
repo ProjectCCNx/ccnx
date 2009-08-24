@@ -17,7 +17,6 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
 
-import com.parc.ccn.data.security.ContentVerifier;
 
 /**
  * An implementation of the basic CCN library.
