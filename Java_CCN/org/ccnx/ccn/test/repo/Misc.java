@@ -1,4 +1,4 @@
-package test.ccn.data.util;
+package org.ccnx.ccn.test.repo;
 
 
 import java.util.Comparator;

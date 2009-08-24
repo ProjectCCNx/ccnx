@@ -1,4 +1,4 @@
-package test.ccn.network.daemons.repo;
+package org.ccnx.ccn.test.repo;
 
 import java.io.FileInputStream;
 import java.io.IOException;
