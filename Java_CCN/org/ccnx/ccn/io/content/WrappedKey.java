@@ -22,14 +22,14 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.security.crypto.jce.AESWrapWithPad;
+import org.ccnx.ccn.impl.security.crypto.jce.AESWrapWithPadEngine;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
-import com.parc.ccn.security.crypto.CCNDigestHelper;
-import com.parc.ccn.security.crypto.jce.AESWrapWithPad;
-import com.parc.ccn.security.crypto.jce.AESWrapWithPadEngine;
 
 public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 

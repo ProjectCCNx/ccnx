@@ -5,11 +5,11 @@ import java.security.PrivateKey;
 import java.util.TreeMap;
 import java.util.Comparator;
 
+import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.protocol.ContentName;
 
-import com.parc.ccn.security.crypto.CCNDigestHelper;
-import com.parc.ccn.security.keys.KeyManager;
 
 /**
  * A cache for decrypted symmetric keys for access control.

@@ -4,6 +4,8 @@ package test.ccn.data.query;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 
+import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.BloomFilter;
 import org.ccnx.ccn.protocol.ContentName;
@@ -21,8 +23,6 @@ import org.junit.Test;
 
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.security.crypto.CCNDigestHelper;
-import com.parc.ccn.security.keys.KeyManager;
 
 public class InterestTest {
 	

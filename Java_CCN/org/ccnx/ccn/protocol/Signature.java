@@ -10,11 +10,11 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.security.crypto.MerklePath;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Library;
 
-import com.parc.ccn.security.crypto.CCNDigestHelper;
-import com.parc.ccn.security.crypto.MerklePath;
 import com.parc.ccn.security.crypto.util.OIDLookup;
 
 public class Signature extends GenericXMLEncodable implements XMLEncodable,

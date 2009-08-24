@@ -12,6 +12,8 @@ import javax.crypto.Cipher;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys;
+import org.ccnx.ccn.impl.security.crypto.UnbufferedCipherInputStream;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.SegmentationProfile;
@@ -23,8 +25,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 import com.parc.ccn.data.security.ContentVerifier;
-import com.parc.ccn.security.crypto.ContentKeys;
-import com.parc.ccn.security.crypto.UnbufferedCipherInputStream;
 
 public abstract class CCNAbstractInputStream extends InputStream implements ContentVerifier {
 

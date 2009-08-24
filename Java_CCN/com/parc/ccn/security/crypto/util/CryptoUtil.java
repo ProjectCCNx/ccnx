@@ -23,8 +23,8 @@ import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.DEROutputStream;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.asn1.x509.X509Extensions;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 
-import com.parc.ccn.security.crypto.CCNDigestHelper;
 
 
 /**

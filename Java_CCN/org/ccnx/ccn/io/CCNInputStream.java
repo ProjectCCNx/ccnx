@@ -5,12 +5,12 @@ import java.io.IOException;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
-import com.parc.ccn.security.crypto.ContentKeys;
 
 /**
  * Perform sequential reads on any block-oriented CCN content, namely that

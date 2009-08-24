@@ -18,7 +18,6 @@ import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.security.ContentVerifier;
-import com.parc.ccn.security.keys.KeyManager;
 
 /**
  * An implementation of the basic CCN library.

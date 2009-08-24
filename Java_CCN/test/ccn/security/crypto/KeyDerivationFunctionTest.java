@@ -6,6 +6,8 @@ import javax.crypto.spec.SecretKeySpec;
 
 import junit.framework.AssertionFailedError;
 
+import org.ccnx.ccn.impl.security.crypto.ContentKeys;
+import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -13,8 +15,6 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.security.crypto.ContentKeys;
-import com.parc.ccn.security.crypto.KeyDerivationFunction;
 
 public class KeyDerivationFunctionTest {
 

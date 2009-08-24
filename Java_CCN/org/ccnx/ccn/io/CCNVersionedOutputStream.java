@@ -7,13 +7,13 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNSegmenter;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
-import com.parc.ccn.security.crypto.ContentKeys;
 
 public class CCNVersionedOutputStream extends CCNOutputStream {
 

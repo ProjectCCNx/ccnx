@@ -2,6 +2,7 @@ package test.ccn.security.access;
 
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
@@ -24,7 +25,6 @@ import java.util.Random;
 import javax.crypto.KeyGenerator;
 import java.lang.reflect.Method;
 
-import com.parc.ccn.security.crypto.CCNDigestHelper;
 
 
 public class KeyDirectoryTestRepo {

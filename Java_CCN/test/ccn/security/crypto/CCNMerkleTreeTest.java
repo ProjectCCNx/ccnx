@@ -6,6 +6,8 @@ import java.security.Security;
 import java.util.Random;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.security.crypto.CCNMerkleTree;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -19,8 +21,6 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.security.crypto.CCNDigestHelper;
-import com.parc.ccn.security.crypto.CCNMerkleTree;
 
 public class CCNMerkleTreeTest {
 

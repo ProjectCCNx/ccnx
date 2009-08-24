@@ -15,6 +15,11 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.security.crypto.CCNAggregatedSigner;
+import org.ccnx.ccn.impl.security.crypto.CCNMerkleTree;
+import org.ccnx.ccn.impl.security.crypto.CCNMerkleTreeSigner;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys;
+import org.ccnx.ccn.impl.security.crypto.UnbufferedCipherInputStream;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.SegmentationProfile.SegmentNumberType;
@@ -27,11 +32,6 @@ import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.security.crypto.CCNAggregatedSigner;
-import com.parc.ccn.security.crypto.CCNMerkleTree;
-import com.parc.ccn.security.crypto.CCNMerkleTreeSigner;
-import com.parc.ccn.security.crypto.ContentKeys;
-import com.parc.ccn.security.crypto.UnbufferedCipherInputStream;
 
 /**
  * This class combines basic segmentation, signing and encryption; 

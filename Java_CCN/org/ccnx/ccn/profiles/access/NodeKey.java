@@ -7,13 +7,13 @@ import java.sql.Timestamp;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 
-import com.parc.ccn.security.crypto.CCNDigestHelper;
-import com.parc.ccn.security.crypto.KeyDerivationFunction;
 
 public class NodeKey {
 	

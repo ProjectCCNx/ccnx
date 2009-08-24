@@ -8,6 +8,9 @@ import java.util.Set;
 import java.util.SortedSet;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.impl.security.keys.NetworkKeyManager;
+import org.ccnx.ccn.impl.security.keys.RepositoryKeyManager;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.profiles.access.AccessControlProfile;
@@ -18,9 +21,6 @@ import test.ccn.data.util.Flosser;
 
 import com.parc.ccn.config.ConfigurationException;
 
-import com.parc.ccn.security.keys.KeyManager;
-import com.parc.ccn.security.keys.NetworkKeyManager;
-import com.parc.ccn.security.keys.RepositoryKeyManager;
 
 /**
  * Creates and loads a set of simulated users. Will store them into

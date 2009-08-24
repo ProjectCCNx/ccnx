@@ -1,8 +1,10 @@
-package com.parc.ccn.security.keys;
+package org.ccnx.ccn.impl.security.keys;
 
+import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 
 
 public class BasicTrustManager extends TrustManager {

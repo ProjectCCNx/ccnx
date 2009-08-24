@@ -23,6 +23,7 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.CCNBase;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.ContentName;
@@ -30,7 +31,6 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.WirePacket;
 
-import com.parc.ccn.security.keys.KeyManager;
 
 /**
  * Interface to the ccnd.  Most clients,

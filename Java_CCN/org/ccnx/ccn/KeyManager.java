@@ -1,4 +1,4 @@
-package com.parc.ccn.security.keys;
+package org.ccnx.ccn;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -8,6 +8,8 @@ import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.spec.InvalidKeySpecException;
 
+import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
+import org.ccnx.ccn.impl.security.keys.KeyRepository;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;

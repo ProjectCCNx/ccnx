@@ -6,6 +6,7 @@ import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -14,7 +15,6 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.CommandMarkers;
 
-import com.parc.ccn.security.keys.TrustManager;
 
 /**
  * This class represents all the allowed specializations

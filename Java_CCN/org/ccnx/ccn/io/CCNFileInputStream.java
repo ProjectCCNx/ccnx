@@ -7,6 +7,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.io.content.HeaderData;
 import org.ccnx.ccn.io.content.HeaderData.HeaderObject;
@@ -16,7 +17,6 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
-import com.parc.ccn.security.crypto.ContentKeys;
 
 /**
  * This class takes a versioned input stream and adds the expectation

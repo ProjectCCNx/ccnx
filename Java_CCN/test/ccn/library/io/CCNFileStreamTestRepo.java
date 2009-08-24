@@ -14,6 +14,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
@@ -22,7 +23,6 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.security.crypto.CCNDigestHelper;
 
 /**
  * @author smetters

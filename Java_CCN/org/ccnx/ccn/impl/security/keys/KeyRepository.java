@@ -1,4 +1,4 @@
-package com.parc.ccn.security.keys;
+package org.ccnx.ccn.impl.security.keys;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -15,6 +15,7 @@ import java.util.Iterator;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.ContentName;

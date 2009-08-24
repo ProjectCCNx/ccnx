@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
@@ -15,7 +16,6 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
-import com.parc.ccn.security.crypto.ContentKeys;
 
 /**
  * A CCNInputStream that embodies the Versioning profile. If you

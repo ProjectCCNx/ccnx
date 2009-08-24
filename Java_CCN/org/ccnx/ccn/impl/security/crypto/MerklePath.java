@@ -1,4 +1,4 @@
-package com.parc.ccn.security.crypto;
+package org.ccnx.ccn.impl.security.crypto;
 
 import java.security.cert.CertificateEncodingException;
 import java.util.Arrays;

@@ -15,6 +15,7 @@ import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ElGamalParameterSpec;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.security.crypto.jce.CCNCryptoProvider;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -27,7 +28,6 @@ import org.junit.Test;
 import test.ccn.data.util.Flosser;
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.security.crypto.jce.CCNCryptoProvider;
 
 public class WrappedKeyTest {
 

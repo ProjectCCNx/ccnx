@@ -1,4 +1,4 @@
-package com.parc.ccn.security.crypto.jce;
+package org.ccnx.ccn.impl.security.crypto.jce;
 
 import org.bouncycastle.crypto.BlockCipher;
 import org.bouncycastle.crypto.CipherParameters;

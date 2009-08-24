@@ -5,14 +5,14 @@ import java.util.Arrays;
 import java.util.Random;
 
 import org.bouncycastle.asn1.x509.DigestInfo;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.security.crypto.MerklePath;
+import org.ccnx.ccn.impl.security.crypto.MerkleTree;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.security.crypto.CCNDigestHelper;
-import com.parc.ccn.security.crypto.MerklePath;
-import com.parc.ccn.security.crypto.MerkleTree;
 
 public class MerkleTreeTest {
 

@@ -1,4 +1,4 @@
-package com.parc.ccn.security.keys;
+package org.ccnx.ccn.impl.security.keys;
 
 import java.io.IOException;
 import java.io.OutputStream;

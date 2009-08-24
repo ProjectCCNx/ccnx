@@ -1,4 +1,4 @@
-package com.parc.ccn.security.keys;
+package org.ccnx.ccn.impl.security.keys;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -19,6 +19,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
