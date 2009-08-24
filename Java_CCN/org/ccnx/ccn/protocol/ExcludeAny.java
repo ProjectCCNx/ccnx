@@ -2,8 +2,9 @@ package org.ccnx.ccn.protocol;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.util.XMLDecoder;
-import com.parc.ccn.data.util.XMLEncoder;
+import org.ccnx.ccn.impl.encoding.XMLDecoder;
+import org.ccnx.ccn.impl.encoding.XMLEncoder;
+
 
 /**
  * This element in an #ExcludeFilter matches all components.

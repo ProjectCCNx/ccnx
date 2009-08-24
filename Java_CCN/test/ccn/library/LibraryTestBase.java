@@ -20,6 +20,7 @@ import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -29,7 +30,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.library.CCNFlowControl;
 
 public class LibraryTestBase {
 

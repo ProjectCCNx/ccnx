@@ -1,4 +1,4 @@
-package com.parc.ccn.data.util;
+package org.ccnx.ccn.impl.encoding;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -12,6 +12,8 @@ import java.util.TreeMap;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.Library;
+
+import com.parc.ccn.data.util.DataUtils;
 
 
 public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {

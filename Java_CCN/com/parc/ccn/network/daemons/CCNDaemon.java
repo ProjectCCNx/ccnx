@@ -6,8 +6,8 @@ import java.util.Map;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.CCNNetworkManager;
 
-import com.parc.ccn.network.CCNNetworkManager;
 
 /**
  * Start a ccnd that we can control for testing

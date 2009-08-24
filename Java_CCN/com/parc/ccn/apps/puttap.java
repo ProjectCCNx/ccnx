@@ -7,15 +7,15 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNNetworkManager;
+import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
+import org.ccnx.ccn.impl.encoding.TextXMLCodec;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.data.util.BinaryXMLCodec;
-import com.parc.ccn.data.util.TextXMLCodec;
-import com.parc.ccn.network.CCNNetworkManager;
 
 /**
  * Low-level writing of packets to file.  This program is designed to 

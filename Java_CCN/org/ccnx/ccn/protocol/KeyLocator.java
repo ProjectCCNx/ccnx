@@ -22,11 +22,11 @@ import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLDecoder;
+import org.ccnx.ccn.impl.encoding.XMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLEncoder;
 
-import com.parc.ccn.data.util.GenericXMLEncodable;
-import com.parc.ccn.data.util.XMLDecoder;
-import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.security.crypto.util.OIDLookup;
 
 public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {

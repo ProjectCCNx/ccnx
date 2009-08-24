@@ -22,6 +22,7 @@ import org.ccnx.ccn.BasicInterestListener;
 import org.ccnx.ccn.CCNBase;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
@@ -36,7 +37,6 @@ import org.junit.Test;
 
 import com.parc.ccn.data.security.ContentVerifier;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.CCNFlowControl;
 
 
 /**

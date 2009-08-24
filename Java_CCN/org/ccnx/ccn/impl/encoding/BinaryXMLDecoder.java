@@ -1,4 +1,4 @@
-package com.parc.ccn.data.util;
+package org.ccnx.ccn.impl.encoding;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -11,6 +11,8 @@ import java.util.TreeMap;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.Library;
+
+import com.parc.ccn.data.util.DataUtils;
 
 
 public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {

@@ -7,12 +7,12 @@ import java.io.IOException;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.WirePacket;
 
-import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.network.daemons.repo.RepositoryException;
 
 public class RepoSingleFileTester extends RepoPerformanceTester {

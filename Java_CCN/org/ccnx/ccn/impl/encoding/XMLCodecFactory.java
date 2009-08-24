@@ -1,4 +1,4 @@
-package com.parc.ccn.data.util;
+package org.ccnx.ccn.impl.encoding;
 
 import java.util.HashMap;
 import java.util.logging.Level;

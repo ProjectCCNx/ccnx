@@ -6,6 +6,7 @@ import java.security.Security;
 import java.util.ArrayList;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.ExcludeFilter;
@@ -16,7 +17,6 @@ import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.security.ContentVerifier;
-import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**

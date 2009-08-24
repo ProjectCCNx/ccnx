@@ -1,4 +1,4 @@
-package com.parc.ccn.data.util;
+package org.ccnx.ccn.impl.encoding;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -10,6 +10,8 @@ import java.util.Date;
 import java.util.TimeZone;
 
 import org.ccnx.ccn.Library;
+
+import com.parc.ccn.data.util.DataUtils;
 
 
 public class TextXMLCodec {

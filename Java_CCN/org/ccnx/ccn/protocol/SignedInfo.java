@@ -8,12 +8,12 @@ import java.util.Map.Entry;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLDecoder;
+import org.ccnx.ccn.impl.encoding.XMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLEncoder;
 
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.data.util.GenericXMLEncodable;
-import com.parc.ccn.data.util.XMLDecoder;
-import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLEncoder;
 
 /**
  * SignedInfo is the metadata portion of a ContentObject that contains information about that

@@ -9,6 +9,7 @@ import java.util.Random;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -20,7 +21,6 @@ import org.junit.Test;
 
 import test.ccn.data.util.Flosser;
 
-import com.parc.ccn.library.CCNFlowControl;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.keys.KeyManager;
 import com.parc.ccn.security.keys.KeyRepository;

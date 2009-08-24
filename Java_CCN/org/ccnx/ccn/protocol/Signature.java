@@ -7,12 +7,12 @@ import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.asn1.x509.DigestInfo;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLDecoder;
+import org.ccnx.ccn.impl.encoding.XMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLEncoder;
 
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.data.util.GenericXMLEncodable;
-import com.parc.ccn.data.util.XMLDecoder;
-import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLEncoder;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.MerklePath;
 import com.parc.ccn.security.crypto.util.OIDLookup;

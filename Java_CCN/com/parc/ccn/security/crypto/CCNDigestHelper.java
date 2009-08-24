@@ -6,8 +6,8 @@ import java.security.cert.CertificateEncodingException;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.encoding.XMLEncodable;
 
-import com.parc.ccn.data.util.XMLEncodable;
 import com.parc.ccn.security.crypto.util.DigestHelper;
 
 public class CCNDigestHelper extends DigestHelper {

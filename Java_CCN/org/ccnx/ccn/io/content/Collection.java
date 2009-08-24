@@ -8,16 +8,16 @@ import java.util.LinkedList;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLDecoder;
+import org.ccnx.ccn.impl.encoding.XMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.util.GenericXMLEncodable;
-import com.parc.ccn.data.util.XMLDecoder;
-import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLEncoder;
 
 /**
  * Mapping from a collection to the underlying XML representation.

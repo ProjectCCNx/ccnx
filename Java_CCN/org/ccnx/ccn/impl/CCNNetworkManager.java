@@ -1,4 +1,4 @@
-package com.parc.ccn.network;
+package org.ccnx.ccn.impl;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -24,13 +24,12 @@ import org.ccnx.ccn.CCNBase;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.WirePacket;
 
-import com.parc.ccn.data.util.InterestTable;
-import com.parc.ccn.data.util.InterestTable.Entry;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**

@@ -8,12 +8,12 @@ import java.util.logging.Level;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLDecoder;
+import org.ccnx.ccn.impl.encoding.XMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLEncoder;
 
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.data.util.GenericXMLEncodable;
-import com.parc.ccn.data.util.XMLDecoder;
-import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLEncoder;
 
 public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 	

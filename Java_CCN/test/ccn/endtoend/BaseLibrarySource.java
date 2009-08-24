@@ -8,10 +8,10 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 
-import com.parc.ccn.data.util.BinaryXMLCodec;
 
 //NOTE: This test requires ccnd to be running and complementary sink process 
 

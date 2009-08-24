@@ -6,12 +6,13 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLDecoder;
+import org.ccnx.ccn.impl.encoding.XMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLEncoder;
+
 
 import com.parc.ccn.data.query.ByteArrayCompare;
-import com.parc.ccn.data.util.GenericXMLEncodable;
-import com.parc.ccn.data.util.XMLDecoder;
-import com.parc.ccn.data.util.XMLEncodable;
-import com.parc.ccn.data.util.XMLEncoder;
 
 /**
  * The exclude filters are used with Interest matching to exclude content with components

@@ -26,8 +26,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.CCNNetworkManager;
 
-import com.parc.ccn.network.CCNNetworkManager;
 
 /**
  * Wrapper class for things that run as daemons. Based

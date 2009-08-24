@@ -1,4 +1,4 @@
-package com.parc.ccn.library;
+package org.ccnx.ccn.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,14 +11,13 @@ import java.util.TreeMap;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.util.InterestTable;
-import com.parc.ccn.data.util.InterestTable.Entry;
 
 /**
  * Implements rudimentary flow control by matching content objects

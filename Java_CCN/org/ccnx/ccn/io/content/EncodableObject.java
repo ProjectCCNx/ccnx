@@ -6,7 +6,8 @@ import java.io.OutputStream;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.util.XMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLEncodable;
+
 
 /**
  * Prototypical wrapper around an XMLEncodable object. Expand to variants

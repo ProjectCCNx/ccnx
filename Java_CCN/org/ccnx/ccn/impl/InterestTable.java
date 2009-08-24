@@ -1,4 +1,4 @@
-package com.parc.ccn.data.util;
+package org.ccnx.ccn.impl;
 
 import java.util.ArrayList;
 import java.util.Collection;

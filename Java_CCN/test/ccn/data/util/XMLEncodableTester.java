@@ -7,9 +7,10 @@ import java.io.ByteArrayOutputStream;
 
 import javax.xml.stream.XMLStreamException;
 
-import com.parc.ccn.data.util.BinaryXMLCodec;
-import com.parc.ccn.data.util.TextXMLCodec;
-import com.parc.ccn.data.util.XMLEncodable;
+import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
+import org.ccnx.ccn.impl.encoding.TextXMLCodec;
+import org.ccnx.ccn.impl.encoding.XMLEncodable;
+
 
 public class XMLEncodableTester {
 

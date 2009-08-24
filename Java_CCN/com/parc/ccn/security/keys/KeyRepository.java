@@ -16,6 +16,7 @@ import java.util.Iterator;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -27,7 +28,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.config.UserConfiguration;
-import com.parc.ccn.network.CCNNetworkManager;
 import com.parc.ccn.security.crypto.util.CryptoUtil;
 
 public class KeyRepository implements CCNFilterListener, CCNInterestListener {

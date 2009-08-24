@@ -2,9 +2,10 @@ package org.ccnx.ccn.protocol;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.impl.encoding.XMLDecoder;
+import org.ccnx.ccn.impl.encoding.XMLEncoder;
+
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.data.util.XMLDecoder;
-import com.parc.ccn.data.util.XMLEncoder;
 
 /**
  * This represents a Component with an ExcludeFilter

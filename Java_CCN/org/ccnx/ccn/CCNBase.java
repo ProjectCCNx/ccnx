@@ -2,11 +2,11 @@ package org.ccnx.ccn;
 
 import java.io.IOException;
 
+import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
-import com.parc.ccn.network.CCNNetworkManager;
 
 /**
  * DKS TODO this should change to reflect only the core CCN network

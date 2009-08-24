@@ -9,6 +9,9 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.CCNSegmenter;
+import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.io.content.HeaderData;
 import org.ccnx.ccn.io.content.HeaderData.HeaderObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
@@ -17,9 +20,6 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
-import com.parc.ccn.library.CCNFlowControl;
-import com.parc.ccn.library.CCNSegmenter;
-import com.parc.ccn.library.CCNFlowControl.Shape;
 import com.parc.ccn.security.crypto.ContentKeys;
 
 public class CCNFileOutputStream extends CCNVersionedOutputStream {

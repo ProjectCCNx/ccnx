@@ -1,4 +1,4 @@
-package com.parc.ccn.library;
+package org.ccnx.ccn.impl;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
