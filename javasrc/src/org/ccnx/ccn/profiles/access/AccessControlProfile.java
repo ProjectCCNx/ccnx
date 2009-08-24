@@ -140,7 +140,7 @@ public class AccessControlProfile implements CCNProfile {
 			String userName) {
 		return ContentName.fromNative(userNamespace, userName);
 	}
-
+	
 	public static ContentName groupNamespaceName(ContentName namespace) {
 		return new ContentName(accessRoot(namespace), ACCESS_CONTROL_MARKER_BYTES, GROUP_PREFIX_BYTES);
 	}

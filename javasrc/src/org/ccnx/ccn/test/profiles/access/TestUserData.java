@@ -13,6 +13,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.security.keys.NetworkKeyManager;
 import org.ccnx.ccn.impl.security.keys.RepositoryKeyManager;
 import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.profiles.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
@@ -62,18 +63,17 @@ public class TestUserData {
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
-	public TestUserData(ContentName testStorePrefix, int userCount, boolean storeInRepo, char [] password, CCNHandle library) throws ConfigurationException, IOException, InvalidKeyException {
+	public TestUserData(ContentName userKeyStorePrefix,
+			int userCount, boolean storeInRepo, char [] password, CCNHandle library) throws ConfigurationException, IOException, InvalidKeyException {
 	
 		ContentName childName = null;
 		String friendlyName = null;
 		KeyManager userKeyManager = null;
 		
-		AccessControlManager _acm = new AccessControlManager(testStorePrefix);
-		ContentName userKeystoreDataPrefix = AccessControlProfile.userNamespaceName(testStorePrefix);
-		
+				
 		for (int i=0; i < userCount; ++i) {
 			friendlyName = USER_NAMES[i % USER_NAMES.length] + Integer.toString(1 + i/USER_NAMES.length);
-			childName = ContentName.fromNative(userKeystoreDataPrefix, friendlyName);
+			childName = ContentName.fromNative(userKeyStorePrefix, friendlyName);
 			Library.logger().info("Loading user: " + friendlyName + " from " + childName);
 			
 			if (storeInRepo) {
@@ -87,18 +87,6 @@ public class TestUserData {
 			_userData.put(childName, userKeyManager);
 			_userFriendlyNames.put(friendlyName, childName);
 			
-			_acm.publishUserIdentity(friendlyName, userKeyManager.getDefaultPublicKey());
-			
-/*			KeyPairGenerator kpg = null;
-			try {
-				kpg = KeyPairGenerator.getInstance(AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM);
-			} catch (NoSuchAlgorithmException e) {
-				throw new ConfigurationException("Specified user public key algorithm " +  AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + " not found. " + e.getMessage());
-			}
-			kpg.initialize(AccessControlManager.DEFAULT_GROUP_KEY_LENGTH);
-			KeyPair pair = kpg.generateKeyPair();
-			PublicKeyObject pko = new PublicKeyObject(childName, pair.getPublic(), library);
-			pko.saveToRepository();*/
 		}
 	}
 	

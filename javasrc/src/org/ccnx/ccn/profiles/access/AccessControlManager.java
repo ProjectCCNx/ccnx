@@ -33,6 +33,7 @@ import org.ccnx.ccn.profiles.access.ACL.ACLObject;
 import org.ccnx.ccn.profiles.access.ACL.ACLOperation;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
@@ -233,9 +234,9 @@ public class AccessControlManager {
 		publishMyIdentity(AccessControlProfile.userNamespaceName(_userStorage, userName), myPublicKey);
 	}
 	
-	public void publishUserIdentity(String userName, PublicKey userPublicKey) throws ConfigurationException, IOException {
-		PublicKeyObject pko = new PublicKeyObject(AccessControlProfile.userNamespaceName(_userStorage, userName), userPublicKey, library());
-		System.out.println("saving user pubkey to repo:" + AccessControlProfile.userNamespaceName(_userStorage, userName));
+	public void publishUserIdentity(String userName, PublicKey userPublicKey) throws ConfigurationException, IOException, MalformedContentNameStringException {
+		PublicKeyObject pko = new PublicKeyObject(ContentName.fromNative(userName), userPublicKey, library());
+		System.out.println("saving user pubkey to repo:" + userName);
 		pko.saveToRepository();
 	}
 	

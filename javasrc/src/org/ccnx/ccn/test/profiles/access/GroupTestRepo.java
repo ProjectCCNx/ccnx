@@ -32,6 +32,7 @@ public class GroupTestRepo {
 	
 	static ContentName testStorePrefix = null;
 	static ContentName userStore = null;
+	static ContentName groupStore = null;
 	
 	static EnumeratedNameList _userList = null;
 	static CCNHandle _library = null;
@@ -49,12 +50,13 @@ public class GroupTestRepo {
 	public static void setUpBeforeClass() throws Exception { 
 		try {
 			
-			testStorePrefix = ContentName.fromNative("/parc/");
+			testStorePrefix = ContentName.fromNative("/parc/test");
 			userStore = ContentName.fromNative(testStorePrefix, "Users");
+			groupStore = AccessControlProfile.groupNamespaceName(testStorePrefix);
 			
 			_library = CCNHandle.open();
-			System.out.println("group store: " + AccessControlProfile.groupNamespaceName(testStorePrefix));
-			_acm = new AccessControlManager(testStorePrefix, AccessControlProfile.groupNamespaceName(testStorePrefix), userStore);
+			System.out.println("group store: " + groupStore);
+			_acm = new AccessControlManager(testStorePrefix, groupStore, userStore);
 			_userList = _acm.userList();
 			_gm = _acm.groupManager();
 
@@ -66,7 +68,7 @@ public class GroupTestRepo {
 		}
 	}
 
-	/* Elaine: comment out things that dont work for java major reorg
+	
 	@Test
 	public void testCreateGroup() {
 		try {
@@ -89,7 +91,7 @@ public class GroupTestRepo {
 			System.out.println();
 			
 			ArrayList<Link> newMembers = new ArrayList<Link>();
-			assertTrue(returnedBytes.size() > 3);
+			assertTrue(returnedBytes.size() >= 3);
 			Iterator<ContentName> it = returnedBytes.iterator();
 			
 			for(int i = 0; i <3; i++){
@@ -108,7 +110,5 @@ public class GroupTestRepo {
 			e.printStackTrace();
 		}
 	}
-	*/
-	
 	
 }

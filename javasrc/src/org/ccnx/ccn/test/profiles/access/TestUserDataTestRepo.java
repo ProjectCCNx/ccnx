@@ -15,20 +15,20 @@ import org.junit.Test;
 public class TestUserDataTestRepo {
 	
 	static ContentName testPrefix = null;
-	static ContentName dataNamespace = null;
+	static ContentName userNamespace = null;
+	static ContentName userKeyStorePrefix = null;
 	static int userCount = 3;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		testPrefix = ContentName.fromNative("/parc/test");
-		dataNamespace = ContentName.fromNative("/parc/test/data");
+		userKeyStorePrefix = ContentName.fromNative("/parc/test/_access_/Users");
+		userNamespace = ContentName.fromNative("/parc/test/Users/");
 	}
 	
-/*	Elaine: commented out tests that fail for java major reorg
- * 
- * @Test
+   @Test
 	public void testUserCreation() throws Exception {
-		TestUserData td = new TestUserData(testPrefix, userCount,
+		TestUserData td = new TestUserData(userKeyStorePrefix, userCount,
 				true,
 				"password".toCharArray(), CCNHandle.open());
 		StringBuffer sb = new StringBuffer("Users: ");
@@ -46,7 +46,7 @@ public class TestUserDataTestRepo {
 		Assert.assertNotNull(userKeyManager.getDefaultKeyID());
 		
 		System.out.println("Attempting to recover stored users.");
-		TestUserData td2 = new TestUserData(testPrefix, userCount,
+		TestUserData td2 = new TestUserData(userKeyStorePrefix, userCount,
 				true,
 				"password".toCharArray(), CCNHandle.open());
 		Assert.assertEquals(td.friendlyNames(), td2.friendlyNames());
@@ -71,25 +71,33 @@ public class TestUserDataTestRepo {
 		Assert.assertTrue(userKeyManager2.getDefaultKeyLocator().equals(userKeyManager.getDefaultKeyLocator()));
 		Assert.assertTrue(userKeyManager2.getDefaultKeyID().equals(userKeyManager.getDefaultKeyID()));
 
-		ContentName keyName = ContentName.fromNative(dataNamespace, "PublicKey:" + userKeyManager.getDefaultKeyID());
-		PublicKeyObject pko = new PublicKeyObject(keyName, userKeyManager.getDefaultPublicKey(), userLibrary);
-		pko.saveToRepository();
+		for (String friendlyName: td.friendlyNames()){
+			CCNHandle uLibrary = td.getLibraryForUser(friendlyName);
+			KeyManager uKeyManager = uLibrary.keyManager();
+			//ContentName keyName = ContentName.fromNative(userNamespace, "PublicKey:" + userKeyManager.getDefaultKeyID());
+			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
+			PublicKeyObject pko = new PublicKeyObject(keyName, uKeyManager.getDefaultPublicKey(), uLibrary);
+			pko.saveToRepository();
+			
+			System.out.println("Object key locator: " + pko.publisherKeyLocator());
+			System.out.println("Object key ID: " + pko.contentPublisher());
 
-		System.out.println("Object key locator: " + pko.publisherKeyLocator());
-		System.out.println("Object key ID: " + pko.contentPublisher());
+			// Canaries -- things getting altered somehow.
+			Assert.assertTrue("Checkpoint 2", userKeyManager2.getDefaultKeyID().equals(userKeyManager.getDefaultKeyID()));
 
-		// Canaries -- things getting altered somehow.
-		Assert.assertTrue("Checkpoint 2", userKeyManager2.getDefaultKeyID().equals(userKeyManager.getDefaultKeyID()));
+			PublicKeyObject pkr = new PublicKeyObject(pko.getCurrentVersionName(), standardLibrary);
+			if (!pkr.available()) {
+				Library.logger().info("Can't read back object " + pko.getCurrentVersionName());
+			} else {
+				System.out.println("Retrieved object key locator: " + pkr.publisherKeyLocator());
+				System.out.println("Retrieved object key ID: " + pkr.contentPublisher());
+				Assert.assertEquals(pkr.contentPublisher(), uKeyManager.getDefaultKeyID());
+				Assert.assertEquals(pkr.publisherKeyLocator(), uKeyManager.getDefaultKeyLocator());
+			}
 
-		PublicKeyObject pkr = new PublicKeyObject(pko.getCurrentVersionName(), standardLibrary);
-		if (!pkr.available()) {
-			Library.logger().info("Can't read back object " + pko.getCurrentVersionName());
-		} else {
-			System.out.println("Retrieved object key locator: " + pkr.publisherKeyLocator());
-			System.out.println("Retrieved object key ID: " + pkr.contentPublisher());
-			Assert.assertEquals(pkr.contentPublisher(), userKeyManager.getDefaultKeyID());
-			Assert.assertEquals(pkr.publisherKeyLocator(), userKeyManager.getDefaultKeyLocator());
 		}
+		
+
 
 		// Canaries -- things getting altered somehow.
 		Assert.assertTrue("Checkpoint 3", userKeyManager2.getDefaultKeyID().equals(userKeyManager.getDefaultKeyID()));
@@ -103,6 +111,6 @@ public class TestUserDataTestRepo {
 		}
 
 		System.out.println("Success.");
-	}*/
+	}
 
 }

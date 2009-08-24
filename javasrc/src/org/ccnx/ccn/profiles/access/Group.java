@@ -86,7 +86,7 @@ public class Group {
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
 					CCNHandle library, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {		
 		this(namespace, groupFriendlyName, members, null, library,manager);
-		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _library);
+//		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _library);
 		createGroupPublicKey(manager, members);		
 	}
 	
@@ -269,6 +269,7 @@ public class Group {
 		for (Link lr : ml.membershipList().contents()) {
 			try {
 				// DKS TODO verify target public key against publisher, etc in link
+				System.out.println("retrieving pub key from:..." + lr.targetName());
 				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
 				if (!latestPublicKey.available()) {
 					Library.logger().warning("Could not retrieve public key for " + lr.targetName());
