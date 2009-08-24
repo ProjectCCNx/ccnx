@@ -1,4 +1,4 @@
-package test.ccn.data.util;
+package org.ccnx.ccn.test.io.content;
 
 import java.io.Serializable;
 import java.security.PublicKey;

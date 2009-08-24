@@ -1,7 +1,8 @@
-package test.ccn.data.util;
+package org.ccnx.ccn.test.io.content;
 
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.EncodableObject;
+
 
 
 

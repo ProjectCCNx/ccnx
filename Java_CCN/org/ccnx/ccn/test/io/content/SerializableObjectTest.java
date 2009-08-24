@@ -1,4 +1,4 @@
-package test.ccn.data.util;
+package org.ccnx.ccn.test.io.content;
 
 import static org.junit.Assert.fail;
 
@@ -16,6 +16,7 @@ import org.ccnx.ccn.io.NullOutputStream;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 
 
 public class SerializableObjectTest {

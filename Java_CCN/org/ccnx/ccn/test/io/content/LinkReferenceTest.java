@@ -1,4 +1,4 @@
-package test.ccn.data.content;
+package org.ccnx.ccn.test.io.content;
 
 import java.sql.Timestamp;
 import java.util.Arrays;

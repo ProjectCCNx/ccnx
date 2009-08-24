@@ -1,7 +1,7 @@
 /**
  * 
  */
-package test.ccn.data.content;
+package org.ccnx.ccn.test.io.content;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;

@@ -1,4 +1,4 @@
-package test.ccn.data.security;
+package org.ccnx.ccn.test.io.content;
 
 
 import static org.junit.Assert.fail;
@@ -30,6 +30,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 
 
 

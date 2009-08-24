@@ -1,7 +1,7 @@
 /**
  * 
  */
-package test.ccn.data.content;
+package org.ccnx.ccn.test.io.content;
 
 
 import java.io.IOException;
