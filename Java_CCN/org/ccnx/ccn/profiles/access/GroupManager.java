@@ -1,4 +1,4 @@
-package com.parc.ccn.security.access;
+package org.ccnx.ccn.profiles.access;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -20,13 +20,12 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.access.AccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.profiles.AccessControlProfile;
-import com.parc.ccn.library.profiles.AccessControlProfile.PrincipalInfo;
 
 public class GroupManager {
 	

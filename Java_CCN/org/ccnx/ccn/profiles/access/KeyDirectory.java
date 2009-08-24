@@ -1,4 +1,4 @@
-package com.parc.ccn.security.access;
+package org.ccnx.ccn.profiles.access;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -25,14 +25,13 @@ import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.access.AccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 
 import com.parc.ccn.config.ConfigurationException;
 import com.parc.ccn.data.query.ByteArrayCompare;
 import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.library.profiles.AccessControlProfile;
-import com.parc.ccn.library.profiles.AccessControlProfile.PrincipalInfo;
 
 /**
  * A key directory holds a set of keys, wrapped under different

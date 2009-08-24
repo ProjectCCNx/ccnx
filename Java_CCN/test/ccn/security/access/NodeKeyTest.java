@@ -4,13 +4,13 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.access.AccessControlProfile;
+import org.ccnx.ccn.profiles.access.NodeKey;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.library.profiles.AccessControlProfile;
-import com.parc.ccn.security.access.NodeKey;
 
 public class NodeKeyTest {
 	static ContentName testPrefix = null;

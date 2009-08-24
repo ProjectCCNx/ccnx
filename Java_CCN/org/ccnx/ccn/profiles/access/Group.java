@@ -1,4 +1,4 @@
-package com.parc.ccn.security.access;
+package org.ccnx.ccn.profiles.access;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -27,7 +27,6 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.security.keys.KeyManager;
 
 /**

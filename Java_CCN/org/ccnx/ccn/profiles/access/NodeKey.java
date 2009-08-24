@@ -1,4 +1,4 @@
-package com.parc.ccn.security.access;
+package org.ccnx.ccn.profiles.access;
 
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -12,7 +12,6 @@ import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 
-import com.parc.ccn.library.profiles.AccessControlProfile;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.KeyDerivationFunction;
 

@@ -1,4 +1,4 @@
-package com.parc.ccn.security.access;
+package org.ccnx.ccn.profiles.access;
 
 import java.io.IOException;
 

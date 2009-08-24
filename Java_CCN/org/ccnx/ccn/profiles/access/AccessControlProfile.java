@@ -1,4 +1,4 @@
-package com.parc.ccn.library.profiles;
+package org.ccnx.ccn.profiles.access;
 
 import java.io.IOException;
 import java.sql.Timestamp;
