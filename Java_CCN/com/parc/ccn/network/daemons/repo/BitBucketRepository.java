@@ -3,6 +3,10 @@ package com.parc.ccn.network.daemons.repo;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.repo.Policy;
+import org.ccnx.ccn.impl.repo.Repository;
+import org.ccnx.ccn.impl.repo.RepositoryException;
+import org.ccnx.ccn.impl.repo.RepositoryInfo;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;

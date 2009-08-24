@@ -5,6 +5,10 @@ import java.security.InvalidParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
+import org.ccnx.ccn.impl.repo.RFSLogImpl;
+import org.ccnx.ccn.impl.repo.Repository;
+import org.ccnx.ccn.impl.repo.RepositoryException;
+import org.ccnx.ccn.impl.repo.Repository.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -21,10 +25,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.network.daemons.repo.RFSLogImpl;
-import com.parc.ccn.network.daemons.repo.Repository;
-import com.parc.ccn.network.daemons.repo.RepositoryException;
-import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
 /**
  * 

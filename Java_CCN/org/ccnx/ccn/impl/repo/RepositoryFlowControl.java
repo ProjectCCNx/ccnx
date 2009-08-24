@@ -1,4 +1,4 @@
-package com.parc.ccn.library.io.repo;
+package org.ccnx.ccn.impl.repo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -21,7 +21,6 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
-import com.parc.ccn.network.daemons.repo.RepositoryInfo;
 
 /**
  * Handle repo specialty start/end protocol. Currently this handles only the

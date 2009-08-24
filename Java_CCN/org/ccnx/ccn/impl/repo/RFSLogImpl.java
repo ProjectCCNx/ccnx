@@ -1,4 +1,4 @@
-package com.parc.ccn.network.daemons.repo;
+package org.ccnx.ccn.impl.repo;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
@@ -20,6 +20,7 @@ import java.util.logging.Level;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.repo.ContentTree.ContentFileRef;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -30,7 +31,6 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo;
 
-import com.parc.ccn.network.daemons.repo.ContentTree.ContentFileRef;
 
 /**
  * 

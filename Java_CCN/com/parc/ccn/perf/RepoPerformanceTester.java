@@ -10,6 +10,9 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.repo.RFSLogImpl;
+import org.ccnx.ccn.impl.repo.Repository;
+import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
@@ -17,9 +20,6 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.network.daemons.repo.RFSLogImpl;
-import com.parc.ccn.network.daemons.repo.Repository;
-import com.parc.ccn.network.daemons.repo.RepositoryException;
 
 /**
  * 

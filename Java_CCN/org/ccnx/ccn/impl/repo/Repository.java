@@ -1,4 +1,4 @@
-package com.parc.ccn.network.daemons.repo;
+package org.ccnx.ccn.impl.repo;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;

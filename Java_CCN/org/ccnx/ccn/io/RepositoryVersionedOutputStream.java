@@ -5,12 +5,12 @@ import java.io.IOException;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
-import com.parc.ccn.library.io.repo.RepositoryFlowControl;
 
 
 public class RepositoryVersionedOutputStream extends CCNVersionedOutputStream {

@@ -3,11 +3,11 @@ package org.ccnx.ccn.io;
 import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
-import com.parc.ccn.library.io.repo.RepositoryFlowControl;
 
 
 /**

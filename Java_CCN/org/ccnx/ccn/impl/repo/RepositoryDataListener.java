@@ -1,4 +1,4 @@
-package com.parc.ccn.network.daemons.repo;
+package org.ccnx.ccn.impl.repo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -10,6 +10,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.repo.Repository.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -18,7 +19,6 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
 /**
  * Handle incoming data in the repository. Currently only handles

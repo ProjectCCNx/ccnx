@@ -1,4 +1,4 @@
-package com.parc.ccn.network.daemons.repo;
+package org.ccnx.ccn.impl.repo;
 
 import java.io.IOException;
 import java.io.OutputStream;

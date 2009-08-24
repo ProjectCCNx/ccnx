@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -12,7 +13,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.parc.ccn.network.daemons.repo.RepositoryException;
 public class RepoInitialReadTest extends RepoTestBase {
 	
 	@Test
