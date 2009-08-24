@@ -1,4 +1,4 @@
-package com.parc.ccn.apps.containerApp;
+package org.ccnx.ccn.utils.explorer;
 
 import java.io.File;
 import java.util.Vector;
@@ -6,8 +6,9 @@ import java.util.Vector;
 import javax.swing.JOptionPane;
 import javax.swing.tree.DefaultMutableTreeNode;
 
-import com.parc.ccn.apps.containerApp.ContainerGUI;
-import com.parc.ccn.apps.containerApp.IconData;
+import org.ccnx.ccn.utils.explorer.ContainerGUI;
+import org.ccnx.ccn.utils.explorer.IconData;
+
 
 public class FileNode {
 

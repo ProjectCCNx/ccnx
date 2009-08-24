@@ -1,4 +1,4 @@
-package com.parc.ccn.apps.containerApp;
+package org.ccnx.ccn.utils.explorer;
 
 import java.util.ArrayList;
 import java.util.Arrays;

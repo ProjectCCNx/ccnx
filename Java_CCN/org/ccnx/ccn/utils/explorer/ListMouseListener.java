@@ -1,4 +1,4 @@
-package com.parc.ccn.apps.containerApp;
+package org.ccnx.ccn.utils.explorer;
 
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;

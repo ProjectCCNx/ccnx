@@ -728,5 +728,13 @@ an accident of test reordering rather than caused by reorg.  JDT -->
 		<!-- <delete dir="${REPO_ROOT}"/> -->
 	</target>
 
+    <target name="run-explorer" depends="jar"> 
+		<!-- Not a unit test, this is to run the utility -->
+		<java classname="org.ccnx.ccn.utils.explorer.ContainerGUI" fork="true">
+                   <classpath>
+                     <path refid="classpath-run"/>
+                   </classpath>
+        </java>
+	</target>
 </project>
 

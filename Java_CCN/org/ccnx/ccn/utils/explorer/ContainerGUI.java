@@ -1,4 +1,4 @@
-package com.parc.ccn.apps.containerApp;
+package org.ccnx.ccn.utils.explorer;
 
 
 //import FileNode;
@@ -25,13 +25,13 @@ import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.utils.explorer.IconCellRenderer;
+import org.ccnx.ccn.utils.explorer.IconData;
+import org.ccnx.ccn.utils.explorer.Name;
 
 
 
 
-import com.parc.ccn.apps.containerApp.IconCellRenderer;
-import com.parc.ccn.apps.containerApp.IconData;
-import com.parc.ccn.apps.containerApp.Name;
 
 public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,ActionListener{
 
