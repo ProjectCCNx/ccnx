@@ -1,4 +1,4 @@
-package test.ccn.library;
+package org.ccnx.ccn.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;

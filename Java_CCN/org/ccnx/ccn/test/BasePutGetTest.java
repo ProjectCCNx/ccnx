@@ -1,4 +1,4 @@
-package test.ccn.library;
+package org.ccnx.ccn.test;
 
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.junit.Test;

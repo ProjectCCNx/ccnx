@@ -19,10 +19,10 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.test.BlockReadWriteTest;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
-import test.ccn.library.BlockReadWriteTest;
 
 
 /**

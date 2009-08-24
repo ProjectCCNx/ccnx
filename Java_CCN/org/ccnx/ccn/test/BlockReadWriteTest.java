@@ -1,4 +1,4 @@
-package test.ccn.library;
+package org.ccnx.ccn.test;
 
 import java.io.ByteArrayInputStream;
 import java.io.FileOutputStream;

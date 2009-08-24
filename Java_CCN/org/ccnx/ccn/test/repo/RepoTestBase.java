@@ -6,10 +6,10 @@ import java.io.IOException;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.LibraryTestBase;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
-import test.ccn.library.LibraryTestBase;
 
 
 /**
