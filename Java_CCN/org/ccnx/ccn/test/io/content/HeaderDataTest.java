@@ -15,9 +15,9 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.io.content.HeaderData;
 import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.Test;
 
-import test.ccn.data.util.XMLEncodableTester;
 
 
 /**

@@ -13,10 +13,10 @@ import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.util.XMLEncodableTester;
 
 
 public class KeyLocatorTest {

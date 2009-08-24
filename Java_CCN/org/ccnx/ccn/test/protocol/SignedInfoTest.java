@@ -19,10 +19,10 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.util.XMLEncodableTester;
 
 
 public class SignedInfoTest {

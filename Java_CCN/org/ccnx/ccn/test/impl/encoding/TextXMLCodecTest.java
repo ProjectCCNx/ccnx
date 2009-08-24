@@ -1,4 +1,4 @@
-package test.ccn.data.util;
+package org.ccnx.ccn.test.impl.encoding;
 
 import java.sql.Timestamp;
 import java.text.ParseException;

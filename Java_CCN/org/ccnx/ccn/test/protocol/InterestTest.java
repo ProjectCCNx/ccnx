@@ -16,12 +16,12 @@ import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.Signature;
+import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.util.XMLEncodableTester;
 
 
 public class InterestTest {

@@ -11,11 +11,11 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.PublisherID.PublisherType;
+import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.util.XMLEncodableTester;
 
 
 public class CollectionDataTest {

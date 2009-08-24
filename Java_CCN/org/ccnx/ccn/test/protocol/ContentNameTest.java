@@ -9,13 +9,13 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import test.ccn.data.util.XMLEncodableTester;
 
 
 public class ContentNameTest {
