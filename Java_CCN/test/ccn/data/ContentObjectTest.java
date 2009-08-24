@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Date;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -22,7 +23,6 @@ import org.junit.Test;
 
 import test.ccn.data.util.XMLEncodableTester;
 
-import com.parc.ccn.data.util.DataUtils;
 
 public class ContentObjectTest {
 

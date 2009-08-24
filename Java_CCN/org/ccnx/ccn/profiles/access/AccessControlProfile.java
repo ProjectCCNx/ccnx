@@ -4,13 +4,13 @@ import java.io.IOException;
 import java.sql.Timestamp;
 
 import org.bouncycastle.util.Arrays;
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 
-import com.parc.ccn.data.util.DataUtils;
 
 public class AccessControlProfile implements CCNProfile {
 	

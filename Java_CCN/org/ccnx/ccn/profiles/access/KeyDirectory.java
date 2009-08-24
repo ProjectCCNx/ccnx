@@ -16,7 +16,9 @@ import javax.xml.stream.XMLStreamException;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.ByteArrayCompare;
+import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.io.content.WrappedKey;
@@ -30,8 +32,6 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.query.ByteArrayCompare;
-import com.parc.ccn.data.util.DataUtils;
 
 /**
  * A key directory holds a set of keys, wrapped under different

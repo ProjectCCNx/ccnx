@@ -10,9 +10,9 @@ import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Library;
 
-import com.parc.ccn.data.util.DataUtils;
 
 
 public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {

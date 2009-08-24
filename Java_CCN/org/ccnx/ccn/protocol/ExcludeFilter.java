@@ -10,9 +10,9 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.support.ByteArrayCompare;
 
 
-import com.parc.ccn.data.query.ByteArrayCompare;
 
 /**
  * The exclude filters are used with Interest matching to exclude content with components

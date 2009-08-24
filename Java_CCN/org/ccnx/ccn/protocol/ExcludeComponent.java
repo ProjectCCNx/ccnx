@@ -4,8 +4,8 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.support.DataUtils;
 
-import com.parc.ccn.data.util.DataUtils;
 
 /**
  * This represents a Component with an ExcludeFilter

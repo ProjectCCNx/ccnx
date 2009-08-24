@@ -9,13 +9,13 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.Library;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Library;
 
-import com.parc.ccn.data.util.DataUtils;
 
 public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName> {
 

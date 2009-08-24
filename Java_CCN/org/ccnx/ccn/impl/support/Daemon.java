@@ -1,4 +1,4 @@
-package com.parc.ccn.network.daemons;
+package org.ccnx.ccn.impl.support;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -25,7 +25,6 @@ import java.util.TimerTask;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.ccnx.ccn.Library;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 
 

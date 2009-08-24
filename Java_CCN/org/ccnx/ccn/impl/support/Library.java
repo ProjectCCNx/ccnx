@@ -1,4 +1,4 @@
-package org.ccnx.ccn;
+package org.ccnx.ccn.impl.support;
 
 import java.io.File;
 import java.io.IOException;

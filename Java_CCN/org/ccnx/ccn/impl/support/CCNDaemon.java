@@ -1,11 +1,10 @@
-package com.parc.ccn.network.daemons;
+package org.ccnx.ccn.impl.support;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Map;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.Library;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 
 

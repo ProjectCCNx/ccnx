@@ -2,6 +2,7 @@ package test.ccn.security.access;
 
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -23,7 +24,6 @@ import java.util.Random;
 import javax.crypto.KeyGenerator;
 import java.lang.reflect.Method;
 
-import com.parc.ccn.data.query.ByteArrayCompare;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 
 

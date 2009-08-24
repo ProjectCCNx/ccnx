@@ -1,6 +1,6 @@
 package com.parc.ccn.config;
 
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 

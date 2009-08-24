@@ -1,4 +1,4 @@
-package com.parc.ccn.data.util;
+package org.ccnx.ccn.impl.support;
 
 import java.io.File;
 import java.io.FileInputStream;

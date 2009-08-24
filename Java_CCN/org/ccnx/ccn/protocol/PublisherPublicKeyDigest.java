@@ -9,8 +9,8 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.support.DataUtils;
 
-import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 
 /**

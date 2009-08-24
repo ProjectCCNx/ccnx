@@ -12,7 +12,7 @@ import javax.xml.stream.XMLStreamException;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.protocol.ContentName;

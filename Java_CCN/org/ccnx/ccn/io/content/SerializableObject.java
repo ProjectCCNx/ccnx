@@ -8,7 +8,7 @@ import java.io.Serializable;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.Library;
 
 import com.parc.ccn.data.util.GenericObjectInputStream;
 

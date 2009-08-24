@@ -11,9 +11,9 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Library;
 
-import com.parc.ccn.data.util.DataUtils;
 
 /**
  * Specifies encryption algorithm and keys to use for encrypting content.

@@ -1,8 +1,8 @@
-package com.parc.ccn.data.query;
+package org.ccnx.ccn.impl.support;
 
 import java.util.Comparator;
 
-import com.parc.ccn.data.util.DataUtils;
+
 
 /**
  * 

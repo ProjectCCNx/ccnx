@@ -6,7 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.Library;
 
 
 public class BinaryXMLDictionary {

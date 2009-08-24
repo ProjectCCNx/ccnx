@@ -16,7 +16,8 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.Daemon;
+import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
@@ -27,7 +28,6 @@ import org.ccnx.ccn.protocol.ExcludeFilter;
 import org.ccnx.ccn.protocol.Interest;
 
 import com.parc.ccn.config.SystemConfiguration;
-import com.parc.ccn.network.daemons.Daemon;
 import com.parc.ccn.network.daemons.repo.Repository.NameEnumerationResponse;
 
 /**

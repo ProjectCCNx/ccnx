@@ -6,8 +6,8 @@ import java.util.logging.Level;
 
 import junit.framework.Assert;
 
-import org.ccnx.ccn.Library;
 import org.ccnx.ccn.impl.encoding.TextXMLCodec;
+import org.ccnx.ccn.impl.support.Library;
 import org.junit.BeforeClass;
 import org.junit.Test;
 

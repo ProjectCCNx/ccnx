@@ -18,7 +18,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.CCNFileOutputStream;
 import org.ccnx.ccn.io.CCNInputStream;

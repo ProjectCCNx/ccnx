@@ -7,9 +7,9 @@ import java.io.OutputStream;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.Library;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
+import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;

@@ -11,7 +11,7 @@ import junit.framework.Assert;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;

@@ -7,12 +7,12 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.Library;
 import org.ccnx.ccn.impl.encoding.BinaryXMLDictionary;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 

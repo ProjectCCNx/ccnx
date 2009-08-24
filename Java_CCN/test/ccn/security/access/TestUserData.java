@@ -8,7 +8,7 @@ import java.util.Set;
 import java.util.SortedSet;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.profiles.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;

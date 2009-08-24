@@ -4,7 +4,7 @@ import java.security.NoSuchAlgorithmException;
 
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.Library;
 
 
 /**

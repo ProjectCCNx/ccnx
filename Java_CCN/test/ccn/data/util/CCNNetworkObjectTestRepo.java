@@ -11,7 +11,8 @@ import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.content.CCNNetworkObject;
 import org.ccnx.ccn.io.content.Collection;
@@ -29,7 +30,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.parc.ccn.data.util.CCNStringObject;
-import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.security.crypto.util.DigestHelper;
 
 /**

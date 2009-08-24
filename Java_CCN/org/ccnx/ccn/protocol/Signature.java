@@ -6,13 +6,13 @@ import java.util.Arrays;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.asn1.x509.DigestInfo;
-import org.ccnx.ccn.Library;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Library;
 
-import com.parc.ccn.data.util.DataUtils;
 import com.parc.ccn.security.crypto.CCNDigestHelper;
 import com.parc.ccn.security.crypto.MerklePath;
 import com.parc.ccn.security.crypto.util.OIDLookup;

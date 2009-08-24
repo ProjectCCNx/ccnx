@@ -7,9 +7,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.Library;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNSegmenter;
+import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;

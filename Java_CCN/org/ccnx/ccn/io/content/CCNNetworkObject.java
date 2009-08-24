@@ -10,9 +10,11 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.Library;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
+import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
@@ -26,8 +28,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 import com.parc.ccn.config.ConfigurationException;
-import com.parc.ccn.data.util.DataUtils;
-import com.parc.ccn.data.util.DataUtils.Tuple;
 import com.parc.ccn.library.io.repo.RepositoryFlowControl;
 
 /**

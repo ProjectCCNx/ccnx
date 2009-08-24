@@ -7,7 +7,7 @@ import org.bouncycastle.crypto.Wrapper;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.crypto.params.ParametersWithIV;
 import org.bouncycastle.crypto.params.ParametersWithRandom;
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.Library;
 
 
 /**

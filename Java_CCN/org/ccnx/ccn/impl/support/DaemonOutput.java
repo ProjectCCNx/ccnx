@@ -1,4 +1,4 @@
-package com.parc.ccn.network.daemons;
+package org.ccnx.ccn.impl.support;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;

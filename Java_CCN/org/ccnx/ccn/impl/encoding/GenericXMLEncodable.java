@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.Library;
+import org.ccnx.ccn.impl.support.Library;
 
 
 /**

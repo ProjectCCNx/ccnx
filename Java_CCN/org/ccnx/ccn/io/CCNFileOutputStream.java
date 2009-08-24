@@ -8,10 +8,10 @@ import java.security.SignatureException;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.Library;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNSegmenter;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
+import org.ccnx.ccn.impl.support.Library;
 import org.ccnx.ccn.io.content.HeaderData;
 import org.ccnx.ccn.io.content.HeaderData.HeaderObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
