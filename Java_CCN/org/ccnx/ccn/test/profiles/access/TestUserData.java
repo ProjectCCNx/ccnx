@@ -1,4 +1,4 @@
-package test.ccn.security.access;
+package org.ccnx.ccn.test.profiles.access;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
