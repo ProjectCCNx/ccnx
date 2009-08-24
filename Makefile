@@ -1,6 +1,6 @@
 # Top level Makefile for ccn
 
-SUBDIRS = csrc schema javasrc apps/containerApp doc/technical
+SUBDIRS = csrc schema javasrc doc/technical
 PACKLIST = Makefile build.xml README configure doc/index.txt $(SUBDIRS)
 
 default all: _always
