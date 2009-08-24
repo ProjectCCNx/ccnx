@@ -14,6 +14,7 @@ import javax.xml.stream.XMLStreamException;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.protocol.ContentName;
@@ -21,7 +22,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-import com.parc.ccn.data.util.CCNStringObject;
 
 /**
  * @author smetters

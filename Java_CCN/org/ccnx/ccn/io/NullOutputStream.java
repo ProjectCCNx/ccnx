@@ -1,4 +1,4 @@
-package com.parc.ccn.data.util;
+package org.ccnx.ccn.io;
 
 import java.io.IOException;
 import java.io.OutputStream;

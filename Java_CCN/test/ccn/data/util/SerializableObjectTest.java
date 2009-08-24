@@ -12,11 +12,11 @@ import java.security.KeyPairGenerator;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.util.Arrays;
+import org.ccnx.ccn.io.NullOutputStream;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.data.util.NullOutputStream;
 
 public class SerializableObjectTest {
 	

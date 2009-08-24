@@ -11,6 +11,7 @@ import java.sql.Timestamp;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.util.Arrays;
+import org.ccnx.ccn.io.NullOutputStream;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
@@ -22,7 +23,6 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.parc.ccn.data.util.NullOutputStream;
 
 public class EncodableObjectTest {
 	
