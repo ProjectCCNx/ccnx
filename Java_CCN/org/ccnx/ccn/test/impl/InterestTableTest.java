@@ -1,4 +1,4 @@
-package test.ccn.data.util;
+package org.ccnx.ccn.test.impl;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;

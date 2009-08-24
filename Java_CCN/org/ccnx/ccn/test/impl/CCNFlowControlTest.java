@@ -1,4 +1,4 @@
-package test.ccn.library;
+package org.ccnx.ccn.test.impl;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
