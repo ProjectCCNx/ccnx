@@ -418,7 +418,7 @@ public class VersioningProfile implements CCNProfile {
 	public static Interest firstBlockLatestVersionInterest(ContentName startingVersion, PublisherPublicKeyDigest publisher) {
 		// by the time we look for extra components we will have a version on our name if it
 		// doesn't have one already, so look for names with 2 extra components -- segment and digest.
-		return latestVersionInterest(startingVersion, 2, publisher);
+		return latestVersionInterest(startingVersion, 3, publisher);
 	}
 	
 	/**
@@ -535,14 +535,21 @@ public class VersioningProfile implements CCNProfile {
 		Log.info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
 		
 		int prefixLength = hasTerminalVersion(startingVersion) ? startingVersion.count() : startingVersion.count() + 1;
-		ContentObject result =  getLatestVersion(startingVersion, null, timeout, verifier, library);
 		
+		Interest getLatestInterest = firstBlockLatestVersionInterest(startingVersion, publisher);
+		ContentObject result = library.get(getLatestInterest, timeout);
 		if (null != result){
 			Log.info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			
 			// Now we know the version. Did we luck out and get first block?
 			if (CCNVersionedInputStream.isFirstSegment(startingVersion, result, startingSegmentNumber)) {
 				Log.info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
+				// Now need to verify the block we got
+				if (!verifier.verify(result)) {
+					// TODO rework to allow retries
+					Library.logger().info("Block failed to verify! Need to robustify method!");
+					return null;
+				}
 				return result;
 			}
 			// This isn't the first block. Might be simply a later (cached) segment, or might be something
@@ -554,6 +561,7 @@ public class VersioningProfile implements CCNProfile {
 			// right, that should be the right thing.
 			startingVersion = result.name().cut(prefixLength);
 			Log.info("getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
+			// this will verify
 			return SegmentationProfile.getSegment(startingVersion, startingSegmentNumber, null, timeout, verifier, library); // now that we have the latest version, go back for the first block.
 		} else {
 			Log.info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
