@@ -35,6 +35,8 @@ import org.ccnx.ccn.utils.explorer.Name;
 
 public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,ActionListener{
 
+	private static ContentName root;
+	private static boolean accessControlOn = false;
 	
 	private CCNNameEnumerator _nameEnumerator = null;
 	protected static CCNHandle _library = null;
@@ -76,15 +78,16 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 	private DefaultMutableTreeNode usableRoot = null;
 	
 	
+	
 	public ContainerGUI() {
-		super("CCN Tree");
+		super("CCN Repository Explorer");
 		
 		setupNameEnumerator();
 
 		setSize(400, 300);
 
 		DefaultMutableTreeNode top = new DefaultMutableTreeNode(new IconData(
-				ICON_COMPUTER, null, "/parc.com"));
+				ICON_COMPUTER, null, root));
 
 		DefaultMutableTreeNode node = null;
 		// get whatever things I need at this point
@@ -237,7 +240,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 		openACL = new JButton("Manage Permissions");
 		openACL.addActionListener(this);
-		
+
 		openGroup = new JButton("Open Group Manager");
 		openGroup.addActionListener(this);
 		
@@ -268,12 +271,14 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		c.fill = GridBagConstraints.BOTH;
 		c.gridx = 0;
         c.gridy = 1;
-		getContentPane().add(openACL,  c);
+        if(accessControlOn)
+        	getContentPane().add(openACL,  c);
 
 		c.fill = GridBagConstraints.BOTH;
 		c.gridx = 1;
         c.gridy = 1;
-		getContentPane().add(openGroup, c);
+        if(accessControlOn)
+        	getContentPane().add(openGroup, c);
 
 		c.fill = GridBagConstraints.BOTH;
 		c.gridwidth = 2;
@@ -649,8 +654,39 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 	
 	
-	public static void main(String argv[]) {
-		Log.setLevel(Level.INFO);
+	public static void main(String[] args) {
+		Log.setLevel(Level.FINER);
+		
+		if (args.length > 0) {
+			// we have some options
+			for (int i = 0; i < args.length; i++) {
+				String s = args[i];
+				if (s.equalsIgnoreCase("-root")) {
+					i++;
+					try {
+						root = ContentName.fromNative(args[i]);
+					} catch (MalformedContentNameStringException e) {
+						System.err.println("Could not parse root path: "
+								+ args[i] + " (exiting)");
+						System.exit(1);
+					}
+				} else if (s.equals("-accessControl"))
+					accessControlOn = true;
+				else {
+					usage();
+					System.exit(1);
+				}
+			}
+		}
+
+		if (root == null) {
+			try {
+				root = ContentName.fromNative("/");
+			} catch (MalformedContentNameStringException e) {
+				System.err.println("Could not parse root path: / (exiting)");
+				System.exit(1);
+			}
+		}
 
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
             public void run() {
@@ -660,6 +696,10 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 //		new ContainerGUI();
 	}
 
+	public static void usage(){
+		System.out.println("Repository Explorer usage: [-root /pathToExplore] [-accessControl]");
+	}
+	
     public String getNodes(Name fnode) {
     	System.out.println("fnode: "+fnode.name+" full name "+fnode.path.toString());
     	String p = fnode.path.toString() + "/"+fnode.name;
