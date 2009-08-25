@@ -154,7 +154,10 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			do {
 				try {
 					interrupted = false;
-					wait(getTimeout());
+					long timeout = getTimeout() - (System.currentTimeMillis() - startTime);
+					if (timeout <= 0)
+						break;
+					wait(timeout);
 				} catch (InterruptedException e) {
 					interrupted = true;
 				}
