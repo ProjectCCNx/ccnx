@@ -150,6 +150,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		 */
 		synchronized (this) {
 			boolean interrupted;
+			long startTime = System.currentTimeMillis();
 			do {
 				try {
 					interrupted = false;
@@ -157,7 +158,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 				} catch (InterruptedException e) {
 					interrupted = true;
 				}
-			} while (interrupted);
+			} while (interrupted || (!client._initialized && ((getTimeout() + startTime) > System.currentTimeMillis())));
 		}
 		if (!client._initialized) {
 			Log.finest("No response from a repository, cannot add name space : " + name);
