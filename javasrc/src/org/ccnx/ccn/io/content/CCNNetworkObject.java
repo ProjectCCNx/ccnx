@@ -8,8 +8,8 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
