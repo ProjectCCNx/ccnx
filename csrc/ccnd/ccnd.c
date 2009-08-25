@@ -1749,55 +1749,52 @@ ccnd_req_newface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     reqface = face_from_faceid(h, h->interest_faceid);
     if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
         goto Finish;
-    if (face_instance->descr.source_address == NULL &&
-        face_instance->descr.mcast_ttl == -1) {
-        hints.ai_flags |= AI_NUMERICHOST;
-        hints.ai_protocol = face_instance->descr.ipproto;
-        hints.ai_socktype = (hints.ai_protocol == IPPROTO_UDP) ? SOCK_DGRAM : SOCK_STREAM;
-        res = getaddrinfo(face_instance->descr.address,
-                          face_instance->descr.port,
-                          &hints,
-                          &addrinfo);
-        if (res != 0 || (h->debug & 128) != 0)
-            ccnd_msg(h, "ccnd_req_newface from %u: getaddrinfo(%s, %s, ...) returned %d",
-                     h->interest_faceid,
-                     face_instance->descr.address,
-                     face_instance->descr.port,
-                     res);
-        if (res != 0 || addrinfo == NULL)
+    hints.ai_flags |= AI_NUMERICHOST;
+    hints.ai_protocol = face_instance->descr.ipproto;
+    hints.ai_socktype = (hints.ai_protocol == IPPROTO_UDP) ? SOCK_DGRAM : SOCK_STREAM;
+    res = getaddrinfo(face_instance->descr.address,
+                      face_instance->descr.port,
+                      &hints,
+                      &addrinfo);
+    if (res != 0 || (h->debug & 128) != 0)
+        ccnd_msg(h, "ccnd_req_newface from %u: getaddrinfo(%s, %s, ...) returned %d",
+                 h->interest_faceid,
+                 face_instance->descr.address,
+                 face_instance->descr.port,
+                 res);
+    if (res != 0 || addrinfo == NULL)
+        goto Finish;
+    if (addrinfo->ai_next != NULL)
+        ccnd_msg(h, "ccnd_req_newface: (addrinfo->ai_next != NULL) ? ?");
+    if (face_instance->descr.ipproto == IPPROTO_UDP) {
+        fd = -1;
+        mcast = 0;
+        if (addrinfo->ai_family == AF_INET) {
+            fd = h->udp4_fd;
+            mcast = IN_MULTICAST(ntohl(((struct sockaddr_in *)(addrinfo->ai_addr))->sin_addr.s_addr));
+        }
+        else if (addrinfo->ai_family == AF_INET6) {
+            fd = h->udp6_fd;
+            mcast = IN6_IS_ADDR_MULTICAST(&((struct sockaddr_in6 *)addrinfo->ai_addr)->sin6_addr);
+        }
+        if (fd == -1)
             goto Finish;
-        if (addrinfo->ai_next != NULL)
-            ccnd_msg(h, "ccnd_req_newface: (addrinfo->ai_next != NULL) ? ?");
-        if (face_instance->descr.ipproto == IPPROTO_UDP) {
-            fd = -1;
-            mcast = 0;
-            if (addrinfo->ai_family == AF_INET) {
-                fd = h->udp4_fd;
-                mcast = IN_MULTICAST(ntohl(((struct sockaddr_in *)(addrinfo->ai_addr))->sin_addr.s_addr));
-            }
-            else if (addrinfo->ai_family == AF_INET6) {
-                fd = h->udp6_fd;
-                mcast = IN6_IS_ADDR_MULTICAST(&((struct sockaddr_in6 *)addrinfo->ai_addr)->sin6_addr);
-            }
-            if (fd == -1)
-                goto Finish;
-            if (mcast)
-                face = setup_multicast(h, face_instance,
-                                       addrinfo->ai_addr,
-                                       addrinfo->ai_addrlen);
-            else
-                face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
-            if (face == NULL)
-                goto Finish;
-            newface = get_dgram_source(h, face,
-                                       addrinfo->ai_addr,
-                                       addrinfo->ai_addrlen);
-        }
-        else if (addrinfo->ai_socktype == SOCK_STREAM) {
-            newface = make_connection(h,
-                                      addrinfo->ai_addr,
-                                      addrinfo->ai_addrlen);
-        }
+        if (mcast)
+            face = setup_multicast(h, face_instance,
+                                   addrinfo->ai_addr,
+                                   addrinfo->ai_addrlen);
+        else
+            face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
+        if (face == NULL)
+            goto Finish;
+        newface = get_dgram_source(h, face,
+                                   addrinfo->ai_addr,
+                                   addrinfo->ai_addrlen);
+    }
+    else if (addrinfo->ai_socktype == SOCK_STREAM) {
+        newface = make_connection(h,
+                                  addrinfo->ai_addr,
+                                  addrinfo->ai_addrlen);
     }
     if (newface != NULL) {
         newface->flags |= CCN_FACE_PERMANENT;
