@@ -16,7 +16,7 @@ import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 /**
@@ -190,7 +190,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 			return generateCertificateDigest(PUBLISHER_ID_DIGEST_ALGORITHM, cert);
 		} catch (NoSuchAlgorithmException e) {
 			// DKS --big configuration problem
-			Library.logger().warning("Fatal Error: cannot find default algorithm " + PUBLISHER_ID_DIGEST_ALGORITHM);
+			Log.warning("Fatal Error: cannot find default algorithm " + PUBLISHER_ID_DIGEST_ALGORITHM);
 			throw new RuntimeException("Error: can't find default algorithm " + PUBLISHER_ID_DIGEST_ALGORITHM + "!  " + e.toString());
 		}
 	}
@@ -203,8 +203,8 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
             byte [] encoding = cert.getEncoded();
             id = CCNDigestHelper.digest(digestAlg, encoding);
         } catch (CertificateEncodingException e) {
-			Library.logger().warning("Cannot encode certificate in PublisherID.generateCertificateID: " + e.getMessage());
-			Library.warningStackTrace(e);
+			Log.warning("Cannot encode certificate in PublisherID.generateCertificateID: " + e.getMessage());
+			Log.warningStackTrace(e);
 			throw e;
 		}
         return id;

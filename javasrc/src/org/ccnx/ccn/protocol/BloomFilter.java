@@ -10,7 +10,7 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 /**
@@ -141,7 +141,7 @@ public class BloomFilter extends ExcludeFilter.Filler implements Comparable<Bloo
 			_bloom[i++] = (byte)bais.read();
 		// DKS decoding check
 		if (i != usedBits()) {
-			Library.logger().warning("Unexpected result in decoding BloomFilter: expecting " + usedBits() + " bytes, got " + i);
+			Log.warning("Unexpected result in decoding BloomFilter: expecting " + usedBits() + " bytes, got " + i);
 		}
 	}
 	

@@ -16,7 +16,7 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
@@ -112,7 +112,7 @@ public class Group {
 		if (_groupPublicKey.available())
 			return new KeyDirectory(manager, 
 					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getCurrentVersionName()), _library);
-		Library.logger().info("Public key not ready for group: " + friendlyName());
+		Log.info("Public key not ready for group: " + friendlyName());
 		return null;
 	}
 	
@@ -149,7 +149,7 @@ public class Group {
 			try {
 				return VersioningProfile.getLastVersionAsTimestamp(name);
 			} catch (VersionMissingException e) {
-				Library.logger().warning("Should not happen: VersionMissingException on name where isVersioned is true: " + name + ": " + e.getMessage());
+				Log.warning("Should not happen: VersionMissingException on name where isVersioned is true: " + name + ": " + e.getMessage());
 			}
 		}
 		return null;
@@ -178,7 +178,7 @@ public class Group {
 			try {
 				return VersioningProfile.getLastVersionAsTimestamp(name);
 			} catch (VersionMissingException e) {
-				Library.logger().warning("Should not happen: VersionMissingException on name where isVersioned is true: " + name + ": " + e.getMessage());
+				Log.warning("Should not happen: VersionMissingException on name where isVersioned is true: " + name + ": " + e.getMessage());
 			}
 		}
 		return null;
@@ -239,7 +239,7 @@ public class Group {
 			kpg = KeyPairGenerator.getInstance(manager.getGroupKeyAlgorithm());
 		} catch (NoSuchAlgorithmException e) {
 			if (manager.getGroupKeyAlgorithm().equals(AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM)) {
-				Library.logger().severe("Cannot find default group public key algorithm: " + AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
+				Log.severe("Cannot find default group public key algorithm: " + AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
 				throw new RuntimeException("Cannot find default group public key algorithm: " + AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
 			}
 			throw new ConfigurationException("Specified group public key algorithm " + manager.getGroupKeyAlgorithm() + " not found. " + e.getMessage());
@@ -261,7 +261,7 @@ public class Group {
 			// write the private key
 			newPrivateKeyDirectory.addPrivateKeyBlock(pair.getPrivate(), privateKeyWrappingKey);
 		} catch (InvalidKeyException e) {
-			Library.logger().warning("Unexpected -- InvalidKeyException wrapping key with keys we just generated! " + e.getMessage());
+			Log.warning("Unexpected -- InvalidKeyException wrapping key with keys we just generated! " + e.getMessage());
 			throw e;
 		}
 		
@@ -272,7 +272,7 @@ public class Group {
 				System.out.println("retrieving pub key from:..." + lr.targetName());
 				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
 				if (!latestPublicKey.available()) {
-					Library.logger().warning("Could not retrieve public key for " + lr.targetName());
+					Log.warning("Could not retrieve public key for " + lr.targetName());
 					continue;
 				}
 				// Need to write wrapped key block and linking principal name.
@@ -281,9 +281,9 @@ public class Group {
 						latestPublicKey.getCurrentVersionName(), 
 						latestPublicKey.publicKey());
 			} catch (XMLStreamException e) {
-				Library.logger().warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
+				Log.warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
 			} catch (VersionMissingException e) {
-				Library.logger().warning("Unexpected: public key name not versioned! " + latestPublicKey.getCurrentVersionName() + ", unable to retrieve principal's public key. Skipping.");
+				Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getCurrentVersionName() + ", unable to retrieve principal's public key. Skipping.");
 			}
 		}
 		return privateKeyWrappingKey;
@@ -321,7 +321,7 @@ public class Group {
 				// DKS TODO verify target public key against publisher, etc in link
 				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
 				if (!latestPublicKey.available()) {
-					Library.logger().warning("Could not retrieve public key for " + lr.targetName());
+					Log.warning("Could not retrieve public key for " + lr.targetName());
 					continue;
 				}
 				// Need to write wrapped key block and linking principal name.
@@ -330,9 +330,9 @@ public class Group {
 						latestPublicKey.getCurrentVersionName(), 
 						latestPublicKey.publicKey());
 			} catch (XMLStreamException e) {
-				Library.logger().warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
+				Log.warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
 			} catch (VersionMissingException e) {
-				Library.logger().warning("Unexpected: public key name not versioned! " + latestPublicKey.getCurrentVersionName() + ", unable to retrieve principal's public key. Skipping.");
+				Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getCurrentVersionName() + ", unable to retrieve principal's public key. Skipping.");
 			}
 		}
 	}
@@ -357,7 +357,7 @@ public class Group {
 			try {
 				sb.append(membershipListName());
 			} catch (Exception e) {
-				Library.logger().warning("Unexpected " + e.getClass().getName() + " exception in getMembershipListName(): " + e.getMessage());
+				Log.warning("Unexpected " + e.getClass().getName() + " exception in getMembershipListName(): " + e.getMessage());
 				sb.append("Membership list name unavailable!");
 			} 
 		}

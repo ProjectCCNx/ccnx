@@ -20,7 +20,7 @@ import org.bouncycastle.asn1.DERUnknownTag;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 /** 
@@ -35,12 +35,12 @@ public class SignatureHelper {
 							   PrivateKey signingKey) throws SignatureException, 
 							   			NoSuchAlgorithmException, InvalidKeyException {
 		if (null == toBeSigned) {
-			Library.logger().info("sign: null content to be signed!");
+			Log.info("sign: null content to be signed!");
 			throw new SignatureException("Cannot sign null content!");
 		}
 		if (null == signingKey) {
-			Library.logger().info("sign: Signing key cannot be null.");
-			Library.logger().info("Temporarily generating fake signature.");
+			Log.info("sign: Signing key cannot be null.");
+			Log.info("Temporarily generating fake signature.");
 			return DigestHelper.digest(digestAlgorithm, toBeSigned);
 		}
 		String sigAlgName =
@@ -70,13 +70,13 @@ public class SignatureHelper {
 							   PrivateKey signingKey) throws SignatureException,
 							   	NoSuchAlgorithmException, InvalidKeyException {
 		if (null == toBeSigneds) {
-			Library.logger().info("sign: null content to be signed!");
+			Log.info("sign: null content to be signed!");
 			throw new SignatureException("Cannot sign null content!");
 		}
 		
 		if (null == signingKey) {
-			Library.logger().info("sign: Signing key cannot be null.");
-			Library.logger().info("Temporarily generating fake signature.");
+			Log.info("sign: Signing key cannot be null.");
+			Log.info("Temporarily generating fake signature.");
 			return DigestHelper.digest(digestAlgorithm, toBeSigneds);
 		}
 		String sigAlgName =
@@ -100,7 +100,7 @@ public class SignatureHelper {
 			PublicKey verificationKey) throws SignatureException, 
 						NoSuchAlgorithmException, InvalidKeyException {
 		if (null == verificationKey) {
-			Library.logger().info("verify: Verifying key cannot be null.");
+			Log.info("verify: Verifying key cannot be null.");
 			throw new IllegalArgumentException("verify: Verifying key cannot be null.");
 		}
 
@@ -146,7 +146,7 @@ public class SignatureHelper {
 	InvalidAlgorithmParameterException
 	{
 		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-			Library.logger().warning(
+			Log.warning(
 					"SignatureHelper: getSignatureAlgorithm, hash: " +
 					hashAlgorithm + " key alg: " + signingKey.getAlgorithm());
 		}
@@ -155,7 +155,7 @@ public class SignatureHelper {
 	
 		if (signatureAlgorithmOID == null) {
 			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-				Library.logger().warning("Error: got no signature algorithm!");
+				Log.warning("Error: got no signature algorithm!");
 			}
 			throw new NoSuchAlgorithmException(
 					"Cannot determine OID for hash algorithm "+ hashAlgorithm + " and encryption alg " + signingKey.getAlgorithm());
@@ -230,7 +230,7 @@ public class SignatureHelper {
 	{
 		String signatureAlgorithm = OIDLookup.getSignatureAlgorithm(hashAlgorithm,
 				keyAlgorithm);
-		//Library.logger().info("getSignatureName: combining " +
+		//Library.info("getSignatureName: combining " +
 		//			hashAlgorithm  + " and " + keyAlgorithm +
 		//			" results in: " + signatureAlgorithm);
 		return signatureAlgorithm;
@@ -252,7 +252,7 @@ public class SignatureHelper {
 	{
 		String signatureAlgorithm = OIDLookup.getSignatureAlgorithmOID(hashAlgorithm,
 				keyAlgorithm);
-	//	Library.logger().info("getSignatureAlgorithmOID: combining " +
+	//	Library.info("getSignatureAlgorithmOID: combining " +
 	//				hashAlgorithm  + " and " + keyAlgorithm +
 	//				" results in: " + signatureAlgorithm);
 		return signatureAlgorithm;

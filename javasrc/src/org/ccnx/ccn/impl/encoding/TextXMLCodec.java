@@ -10,7 +10,7 @@ import java.util.Date;
 import java.util.TimeZone;
 
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 
@@ -84,7 +84,7 @@ public class TextXMLCodec {
 			}
 			date = date.replace("Z", ns) + "Z";
 		}
-		//Library.logger().finest("Timestamp: " + dateTime + " formatted timestamp: " + date);
+		//Library.finest("Timestamp: " + dateTime + " formatted timestamp: " + date);
 		return date;
 	}
 	
@@ -114,12 +114,12 @@ public class TextXMLCodec {
 															(nanostr);
 				nanos = Integer.valueOf(nanostr.toString());
 				ts.setNanos(nanos);
-				Library.logger().finest("Nanostr: " + nanostr + " originally: " + dateParts[1] + " nanos: " + nanos + " pre-nano ts parse: " + ts);
+				Log.finest("Nanostr: " + nanostr + " originally: " + dateParts[1] + " nanos: " + nanos + " pre-nano ts parse: " + ts);
 			} catch (NumberFormatException nfe) {
-				Library.logger().info("Exception in parsing nanoseconds from time: " + strDateTime);
+				Log.info("Exception in parsing nanoseconds from time: " + strDateTime);
 			}
 		}
-		//Library.logger().finest("Parsed timestamp: " + ts + " from string: " + strDateTime);
+		//Library.finest("Parsed timestamp: " + ts + " from string: " + strDateTime);
 		
 		return ts;
 	}

@@ -71,7 +71,7 @@ public class Daemon {
 		@Override
 		public void run() {
 			System.out.println("Attempt to contact daemon " + _daemonName + " timed out");
-			Library.logger().info("Attempt to contact daemon " + _daemonName + " timed out");
+			Log.info("Attempt to contact daemon " + _daemonName + " timed out");
 			cleanupDaemon(_daemonName, _pid);
 			System.exit(1);
 		}
@@ -96,20 +96,20 @@ public class Daemon {
 			_keepGoing = true;		
 
 			System.out.println("Initializing daemon thread " + new Date().toString() +".");
-			Library.logger().info("Initializing daemon thread " + new Date().toString() +".");
+			Log.info("Initializing daemon thread " + new Date().toString() +".");
 
 			initialize();
 			
 			System.out.println("Daemon thread started " + new Date().toString() +".");
-			Library.logger().info("Daemon thread started " + new Date().toString() +".");
+			Log.info("Daemon thread started " + new Date().toString() +".");
 
 			do {
 
 				try {
 					work();
 				} catch (Exception e) {
-					Library.logger().warning("Error in daemon thread: " + e.getMessage());
-					Library.warningStackTrace(e);
+					Log.warning("Error in daemon thread: " + e.getMessage());
+					Log.warningStackTrace(e);
 				}
 
 				if (_keepGoing) {
@@ -121,7 +121,7 @@ public class Daemon {
 
 			// ok, we were asked to shut down
 			System.out.println("Shutting down the daemon.");	
-			Library.logger().info("Shutting down the daemon.");	
+			Log.info("Shutting down the daemon.");	
 
 			try {
 				UnicastRemoteObject.unexportObject(_daemonListener, true);
@@ -143,16 +143,16 @@ public class Daemon {
 		 *
 		 */
 		public void work() {
-			Library.logger().info("Should not be here, in WorkerThread.work().");			
+			Log.info("Should not be here, in WorkerThread.work().");			
 		}
 		public void initialize() {
-			Library.logger().info("Should not be here, in WorkerThread.initialize().");
+			Log.info("Should not be here, in WorkerThread.initialize().");
 		}
 		public void finish() {
-			Library.logger().info("Should not be here, in WorkerThread.finish().");
+			Log.info("Should not be here, in WorkerThread.finish().");
 		}
 		public boolean signal(String name) {
-			Library.logger().info("Should not be here, in WorkerThread.signal().");
+			Log.info("Should not be here, in WorkerThread.signal().");
 			return false;			
 		}
 
@@ -174,7 +174,7 @@ public class Daemon {
 		public String startLoop() throws RemoteException {
 
 			System.out.println("Starting the daemon loop.");
-			Library.logger().info("Starting the daemon loop.");
+			Log.info("Starting the daemon loop.");
 
 			try {
 				_daemonThread.start();
@@ -193,7 +193,7 @@ public class Daemon {
 		}
 
 		public boolean signal(String name) throws RemoteException {
-			Library.logger().info("Signal " + name);
+			Log.info("Signal " + name);
 			try {
 				return _daemonThread.signal(name);
 			} catch (Exception e) {
@@ -374,7 +374,7 @@ public class Daemon {
 		fos.write(cmd.getBytes());
 		fos.flush();
 		fos.close();
-		Library.logger().info("Starting daemon with command line: " + cmd);
+		Log.info("Starting daemon with command line: " + cmd);
 		
 		ProcessBuilder pb = new ProcessBuilder(argList);
 		pb.redirectErrorStream(true);
@@ -398,7 +398,7 @@ public class Daemon {
 					InputStream childMsgs = child.getErrorStream();
 					int exitValue = child.exitValue();
 					// if we get here, the child has exited
-					Library.logger().warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
+					Log.warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
 					System.err.println("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
 					byte[] childMsgBytes = new byte[childMsgs.available()];
 					childMsgs.read(childMsgBytes);;
@@ -418,7 +418,7 @@ public class Daemon {
 		String childpid = null;
 		childpid = l.startLoop();
 		System.out.println("Started daemon " + daemonName + "." + (null == childpid ? "" : " PID " + childpid));
-		Library.logger().info("Started daemon " + daemonName + "." + (null == childpid ? "" : " PID " + childpid));
+		Log.info("Started daemon " + daemonName + "." + (null == childpid ? "" : " PID " + childpid));
 		
 		/*
 		 * To log output at this level we have to keep running until the daemon exits
@@ -443,7 +443,7 @@ public class Daemon {
 		String daemonName = daemon.daemonName();
 		if (!getRMIFile(daemonName, pid).exists()) {
 			System.out.println("Daemon " + daemonName + " does not appear to be running.");
-			Library.logger().info("Daemon " + daemonName + " does not appear to be running.");
+			Log.info("Daemon " + daemonName + " does not appear to be running.");
 			return;
 		}
 		
@@ -459,7 +459,7 @@ public class Daemon {
 		try {
 			l.shutDown();
 			System.out.println("Daemon " + daemonName + " is shut down.");
-			Library.logger().info("Daemon " + daemonName + " is shut down.");
+			Log.info("Daemon " + daemonName + " is shut down.");
 		} catch(RemoteException e) {
 			cleanupDaemon(daemonName, pid);
 		}
@@ -468,14 +468,14 @@ public class Daemon {
 	protected static void cleanupDaemon(String daemonName, String pid) {
 		// looks like the RMI file is still here, but the daemon is gone. let's delete the file, then,
 		System.out.println("Daemon " + daemonName + " seems to have died some other way, cleaning up state...");
-		Library.logger().info("Daemon " + daemonName + " seems to have died some other way, cleaning up state...");
+		Log.info("Daemon " + daemonName + " seems to have died some other way, cleaning up state...");
 		getRMIFile(daemonName, pid).delete();
 	}
 
 	protected static void signalDaemon(String daemonName, String sigName, String pid) throws FileNotFoundException, IOException, ClassNotFoundException {
 		if (!getRMIFile(daemonName, pid).exists()) {
 			System.out.println("Daemon " + daemonName + " does not appear to be running.");
-			Library.logger().info("Daemon " + daemonName + " does not appear to be running.");
+			Log.info("Daemon " + daemonName + " does not appear to be running.");
 			return;
 		}
 
@@ -488,15 +488,15 @@ public class Daemon {
 		try {
 			if (l.signal(sigName)) {
 				System.out.println("Signal " + sigName + " delivered.");
-				Library.logger().info("Signal " + sigName + " delivered.");
+				Log.info("Signal " + sigName + " delivered.");
 			} else {
 				System.out.println("Signal " + sigName + " not delivered: unrecognized or signal failed");
-				Library.logger().info("Daemon " + daemonName + " not delivered: unrecognized or signal failed.");
+				Log.info("Daemon " + daemonName + " not delivered: unrecognized or signal failed.");
 			}
 		} catch(RemoteException e) {
 			// looks like the RMI file is still here, but the daemon is gone.  We won't clean up on signal.
 			System.out.println("Daemon " + daemonName + " seems to have died somehow.");
-			Library.logger().info("Daemon " + daemonName + " seems to have died somehow.");
+			Log.info("Daemon " + daemonName + " seems to have died somehow.");
 		}
 	}
 
@@ -563,7 +563,7 @@ public class Daemon {
 			  case MODE_INTERACTIVE:
 				String pid = getPID();
 				daemon.initialize(args, daemon);
-				Library.logger().info("Running " + daemon.daemonName() + " in the foreground." + (null == pid ? "" : " PID " + pid));
+				Log.info("Running " + daemon.daemonName() + " in the foreground." + (null == pid ? "" : " PID " + pid));
 				WorkerThread wt = daemon.createWorkerThread();
 				// Set up remote access when interactive also to enable signals
 				setupRemoteAccess(daemon, wt);
@@ -585,7 +585,7 @@ public class Daemon {
 				System.exit(0);
 			  case MODE_DAEMON:
 				daemon.initialize(args, daemon);
-				Library.logger().info(daemon.daemonName() + " started in background " + new Date());
+				Log.info(daemon.daemonName() + " started in background " + new Date());
 				// This will create daemon thread and RMI server to receive startLoop command 
 				// from controller process that launched this process
 				setupRemoteAccess(daemon, null);
@@ -600,8 +600,8 @@ public class Daemon {
 			}
 			
 		} catch (Exception e) {
-			Library.logger().warning(e.getClass().getName() + " in daemon startup: " + e.getMessage());
-			Library.warningStackTrace(e);
+			Log.warning(e.getClass().getName() + " in daemon startup: " + e.getMessage());
+			Log.warningStackTrace(e);
 			if (mode == Mode.MODE_DAEMON) {
 				// Make sure to terminate if there is an uncaught
 				// exception trying to run as daemon so that 
@@ -611,7 +611,7 @@ public class Daemon {
 				System.exit(1);
 			}
 		}							
-		Library.logger().info("Daemon runner finished.");
+		Log.info("Daemon runner finished.");
 	}
 	
 	public void setInteractive() {
@@ -626,8 +626,8 @@ public class Daemon {
 			daemon = new Daemon();
 			runDaemon(daemon, args);
 		} catch (Exception e) {
-			Library.logger().warning("Error attempting to start daemon.");
-			Library.warningStackTrace(e);
+			Log.warning("Error attempting to start daemon.");
+			Log.warningStackTrace(e);
 			System.err.println("Error attempting to start daemon.");
 		}
 	}

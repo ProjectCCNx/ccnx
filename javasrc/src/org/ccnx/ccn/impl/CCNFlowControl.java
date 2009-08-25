@@ -12,7 +12,7 @@ import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.InterestTable.Entry;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -76,7 +76,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	public CCNFlowControl(ContentName name, CCNHandle library) throws IOException {
 		this(library);
 		if (name != null) {
-			Library.logger().finest("adding namespace: " + name);
+			Log.finest("adding namespace: " + name);
 			// don't call full addNameSpace, in order to allow subclasses to 
 			// override. just do minimal part
 			_filteredNames.add(name);
@@ -96,7 +96,7 @@ public class CCNFlowControl implements CCNFilterListener {
 			try {
 				library = CCNHandle.open();
 			} catch (ConfigurationException e) {
-				Library.logger().info("Got ConfigurationException attempting to create a library. Rethrowing it as an IOException. Message: " + e.getMessage());
+				Log.info("Got ConfigurationException attempting to create a library. Rethrowing it as an IOException. Message: " + e.getMessage());
 				throw new IOException("ConfigurationException creating a library: " + e.getMessage());
 			}
 		}
@@ -116,7 +116,7 @@ public class CCNFlowControl implements CCNFilterListener {
 		while (it.hasNext()) {
 			ContentName filteredName = it.next();
 			if (filteredName.isPrefixOf(name)) {
-				Library.logger().info("addNameSpace: not adding name: " + name + " already monitoring prefix: " + filteredName);
+				Log.info("addNameSpace: not adding name: " + name + " already monitoring prefix: " + filteredName);
 				return;		// Already part of filter
 			}
 			if (name.isPrefixOf(filteredName)) {
@@ -124,7 +124,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				it.remove();
 			}
 		}
-		Library.logger().info("addNameSpace: adding namespace: " + name);
+		Log.info("addNameSpace: adding namespace: " + name);
 		_filteredNames.add(name);
 		_library.registerFilter(name, this);
 	}
@@ -164,7 +164,7 @@ public class CCNFlowControl implements CCNFilterListener {
 			if (all || filteredName.equals(name)) {
 				_library.unregisterFilter(filteredName, this);
 				it.remove();
-				Library.logger().finest("removing namespace: " + name);
+				Log.finest("removing namespace: " + name);
 				break;
 			}
 		}
@@ -243,11 +243,11 @@ public class CCNFlowControl implements CCNFilterListener {
 		if (_flowControlEnabled) {
 			synchronized (_holdingArea) {
 				Entry<UnmatchedInterest> match = null;
-				Library.logger().finest("Holding " + co.name());
+				Log.finest("Holding " + co.name());
 				_holdingArea.put(co.name(), co);
 				match = _unmatchedInterests.removeMatch(co);
 				if (match != null) {
-					Library.logger().finest("Found pending matching interest for " + co.name() + ", putting to network.");
+					Log.finest("Found pending matching interest for " + co.name() + ", putting to network.");
 					_library.put(co);
 					afterPutAction(co);
 				}
@@ -269,7 +269,7 @@ public class CCNFlowControl implements CCNFilterListener {
 					do {
 						interrupted = false;
 						try {
-							Library.logger().finest("Waiting for drain");
+							Log.finest("Waiting for drain");
 							_holdingArea.wait(_timeout);
 						if (_holdingArea.size() >= _highwater)
 							throw new IOException("Flow control buffer full and not draining");
@@ -287,20 +287,20 @@ public class CCNFlowControl implements CCNFilterListener {
 	public int handleInterests(ArrayList<Interest> interests) {
 		synchronized (_holdingArea) {
 			for (Interest interest : interests) {
-				Library.logger().fine("Flow controller: got interest: " + interest);
+				Log.fine("Flow controller: got interest: " + interest);
 				ContentObject co = getBestMatch(interest);
 				if (co != null) {
-					Library.logger().finest("Found content " + co.name() + " matching interest: " + interest);
+					Log.finest("Found content " + co.name() + " matching interest: " + interest);
 					try {
 						_library.put(co);
 						afterPutAction(co);
 					} catch (IOException e) {
-						Library.logger().warning("IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
-						Library.warningStackTrace(e);
+						Log.warning("IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
+						Log.warningStackTrace(e);
 					}
 					
 				} else {
-					Library.logger().finest("No content matching pending interest: " + interest + ", holding.");
+					Log.finest("No content matching pending interest: " + interest + ", holding.");
 					_unmatchedInterests.add(interest, new UnmatchedInterest());
 				}
 			}
@@ -343,7 +343,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	private ContentObject getBestMatch(Interest interest, Set<ContentName> set) {
 		ContentObject bestMatch = null;
-		Library.logger().finest("Looking for best match to " + interest + " among " + set.size() + " options.");
+		Log.finest("Looking for best match to " + interest + " among " + set.size() + " options.");
 		for (ContentName name : set) {
 			ContentObject result = _holdingArea.get(name);
 			
@@ -387,7 +387,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				
 				if (_holdingArea.size() == startSize) {
 					for(ContentName co : _holdingArea.keySet()) {
-						Library.logger().warning("FlowController: still holding: " + co.toString());
+						Log.warning("FlowController: still holding: " + co.toString());
 					}
 					throw new IOException("Put(s) with no matching interests - size is " + _holdingArea.size());
 				}
@@ -418,7 +418,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	public void clearUnmatchedInterests() {
-		Library.logger().info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
+		Log.info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
 		_unmatchedInterests.clear();
 	}
 	

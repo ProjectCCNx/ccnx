@@ -19,7 +19,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.io.content.WrappedKey;
@@ -91,11 +91,11 @@ public class KeyDirectory extends EnumeratedNameList {
 			getNewData();
 			ContentName latestVersionName = getLatestVersionChildName();
 			if (null == latestVersionName) {
-				Library.logger().info("Unexpected: can't get a latest version for key directory name : " + _namePrefix);
+				Log.info("Unexpected: can't get a latest version for key directory name : " + _namePrefix);
 				getNewData();
 				latestVersionName = getLatestVersionChildName();
 				if (null == latestVersionName) {
-					Library.logger().info("Unexpected: really can't get a latest version for key directory name : " + _namePrefix);
+					Log.info("Unexpected: really can't get a latest version for key directory name : " + _namePrefix);
 					throw new IOException("Unexpected: really can't get a latest version for key directory name : " + _namePrefix);
 				}
 			}
@@ -104,7 +104,7 @@ public class KeyDirectory extends EnumeratedNameList {
 				_children.clear();
 				_newChildren = null;
 				if (latestVersionName.count() > 1) {
-					Library.logger().warning("Unexpected: NE protocol gave back more than one component!");
+					Log.warning("Unexpected: NE protocol gave back more than one component!");
 				}
 				_namePrefix = new ContentName(_namePrefix, latestVersionName.component(0));
 				_enumerator.registerPrefix(_namePrefix);
@@ -127,7 +127,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					keyid = AccessControlProfile.getTargetKeyIDFromNameComponent(wkChildName);
 					_keyIDs.add(keyid);
 				} catch (IOException e) {
-					Library.logger().info("Unexpected " + e.getClass().getName() + " parsing key id " + DataUtils.printHexBytes(wkChildName) + ": " + e.getMessage());
+					Log.info("Unexpected " + e.getClass().getName() + " parsing key id " + DataUtils.printHexBytes(wkChildName) + ": " + e.getMessage());
 					// ignore and go on
 				}
 			} else if (AccessControlProfile.isPrincipalNameComponent(wkChildName)) {
@@ -169,14 +169,14 @@ public class KeyDirectory extends EnumeratedNameList {
 		
 		PrincipalInfo pi = _principals.get(principalName);
 		if (null == pi) {
-			Library.logger().info("No block available for principal: " + principalName);
+			Log.info("No block available for principal: " + principalName);
 			return null;
 		}
 		ContentName principalLinkName = getWrappedKeyNameForPrincipal(pi.isGroup(), pi.friendlyName(), pi.versionTimestamp());
 		// This should be a link to the actual key block
 		// TODO DKS should wait on link data...
 		LinkObject principalLink = new LinkObject(principalLinkName, _manager.library());
-		Library.logger().info("Retrieving wrapped key for principal " + principalName + " at " + principalLink.getTargetName());
+		Log.info("Retrieving wrapped key for principal " + principalName + " at " + principalLink.getTargetName());
 		ContentName wrappedKeyName = principalLink.getTargetName();
 		return getWrappedKey(wrappedKeyName);
 	}
@@ -261,7 +261,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		LinkObject previousKey = new LinkObject(getPreviousKeyBlockName(), _manager.library());
 		previousKey.waitForData(); // TODO timeout?
 		if (!previousKey.available()) {
-			Library.logger().info("Unexpected: no previous key link at " + getPreviousKeyBlockName());
+			Log.info("Unexpected: no previous key link at " + getPreviousKeyBlockName());
 			return null;
 		}
 		return previousKey.link();
@@ -331,7 +331,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					// decrypted keys. Or we could attempt to jump all the way to the end and then
 					// walk back. Not sure there is a significant win in doing the latter, so start
 					// with the former... have to touch intervening versions in both cases.
-					Library.logger().info("Attempting to retrieve key " + getName() + " by retrieving superseding key " + supersededKeyBlock.wrappedKey().wrappingKeyName());
+					Log.info("Attempting to retrieve key " + getName() + " by retrieving superseding key " + supersededKeyBlock.wrappedKey().wrappingKeyName());
 					
 					Key unwrappedSupersedingKey = null;
 					KeyDirectory supersedingKeyDirectory = null;
@@ -346,13 +346,13 @@ public class KeyDirectory extends EnumeratedNameList {
 						_manager.keyCache().addKey(supersedingKeyDirectory.getName(), unwrappedSupersedingKey);
 						unwrappedKey = supersededKeyBlock.wrappedKey().unwrapKey(unwrappedSupersedingKey);
 					} else {
-						Library.logger().info("Unable to retrieve superseding key " + supersededKeyBlock.wrappedKey().wrappingKeyName());
+						Log.info("Unable to retrieve superseding key " + supersededKeyBlock.wrappedKey().wrappingKeyName());
 					}
 				}
 
 			} else {
 				// This is the current key. Enumerate principals and see if we can get a key to unwrap.
-				Library.logger().info("At latest version of key " + getName() + ", attempting to unwrap.");
+				Log.info("At latest version of key " + getName() + ", attempting to unwrap.");
 				// Assumption: if this key was encrypted directly for me, I would have had a cache
 				// hit already. The assumption is that I pre-load my cache with my own private key(s).
 				// So I don't care about principal entries if I get here, I only care about groups.
@@ -392,11 +392,11 @@ public class KeyDirectory extends EnumeratedNameList {
 								Key principalKey = _manager.groupManager().getVersionedPrivateKeyForGroup(this, principal);
 								unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
 								if (null == unwrappedKey) {
-									Library.logger().warning("Unexpected: we are a member of group " + principal + " but get a null key.");
+									Log.warning("Unexpected: we are a member of group " + principal + " but get a null key.");
 									continue;
 								}
 							} catch (AccessDeniedException aex) {
-								Library.logger().warning("Unexpected: we are a member of group " + principal + " but get an access denied exception when we try to get its key: " + aex.getMessage());
+								Log.warning("Unexpected: we are a member of group " + principal + " but get an access denied exception when we try to get its key: " + aex.getMessage());
 								continue;
 							}
 						}
@@ -411,7 +411,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			if (null != expectedKeyID) {
 				retrievedKeyID = NodeKey.generateKeyID(unwrappedKey);
 				if (!Arrays.areEqual(expectedKeyID, retrievedKeyID)) {
-					Library.logger().warning("Retrieved and decrypted wrapped key, but it was the wrong key. We wanted " + 
+					Log.warning("Retrieved and decrypted wrapped key, but it was the wrong key. We wanted " + 
 							DataUtils.printBytes(expectedKeyID) + ", we got " + DataUtils.printBytes(retrievedKeyID));
 				}
 			}
@@ -425,14 +425,14 @@ public class KeyDirectory extends EnumeratedNameList {
 		
 		Key unwrappedKey = null;
 		if (null == unwrappingKey) {
-			Library.logger().info("Null unwrapping key. Cannot unwrap.");
+			Log.info("Null unwrapping key. Cannot unwrap.");
 			return null;
 		}
 		WrappedKeyObject wko = getWrappedKeyForPrincipal(principal);
 		if (null != wko.wrappedKey()) {
 			unwrappedKey = wko.wrappedKey().unwrapKey(unwrappingKey);
 		} else {
-			Library.logger().info("Unexpected: retrieved version " + getPrincipals().get(principal) + " of " + principal + " group key, but cannot retrieve wrapped key object.");
+			Log.info("Unexpected: retrieved version " + getPrincipals().get(principal) + " of " + principal + " group key, but cannot retrieve wrapped key object.");
 		}
 		return unwrappedKey;
 	}
@@ -452,26 +452,26 @@ public class KeyDirectory extends EnumeratedNameList {
 	public PrivateKey getPrivateKey() throws IOException, XMLStreamException, 
 				InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
 		if (!hasPrivateKeyBlock()) {
-			Library.logger().info("No private key block exists with name " + getPrivateKeyBlockName());
+			Log.info("No private key block exists with name " + getPrivateKeyBlockName());
 			return null;
 		}
 		WrappedKeyObject wko = getPrivateKeyObject();
 		if ((null == wko) || (null == wko.wrappedKey())) {
-			Library.logger().info("Cannot retrieve wrapped private key for " + getPrivateKeyBlockName());
+			Log.info("Cannot retrieve wrapped private key for " + getPrivateKeyBlockName());
 			return null;
 		}
 		// This should throw AccessDeniedException...
 		Key wrappingKey = getUnwrappedKey(wko.wrappedKey().wrappingKeyIdentifier());
 		if (null == wrappingKey) {
-			Library.logger().info("Cannot get key to unwrap private key " + getPrivateKeyBlockName());
+			Log.info("Cannot get key to unwrap private key " + getPrivateKeyBlockName());
 			throw new AccessDeniedException("Cannot get key to unwrap private key " + getPrivateKeyBlockName());
 		}
 		
 		Key unwrappedPrivateKey = wko.wrappedKey().unwrapKey(wrappingKey);
 		if (!(unwrappedPrivateKey instanceof PrivateKey)) {
-			Library.logger().info("Unwrapped private key is not an instance of PrivateKey! Its an " + unwrappedPrivateKey.getClass().getName());
+			Log.info("Unwrapped private key is not an instance of PrivateKey! Its an " + unwrappedPrivateKey.getClass().getName());
 		} else {
-			Library.logger().info("Unwrapped private key is a private key, in fact it's a " + unwrappedPrivateKey.getClass().getName());
+			Log.info("Unwrapped private key is a private key, in fact it's a " + unwrappedPrivateKey.getClass().getName());
 		}
 		return (PrivateKey)unwrappedPrivateKey;
 	}
@@ -555,7 +555,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	public void addPreviousKeyLink(ContentName previousKey, PublisherID previousKeyPublisher) throws XMLStreamException, IOException, ConfigurationException {
 		
 		if (hasPreviousKeyBlock()) {
-			Library.logger().warning("Unexpected, already have previous key block : " + getPreviousKeyBlockName());
+			Log.warning("Unexpected, already have previous key block : " + getPreviousKeyBlockName());
 		}
 		LinkAuthenticator la = (null != previousKeyPublisher) ? new LinkAuthenticator(previousKeyPublisher) : null;
 		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new Link(previousKey,la), _manager.library());

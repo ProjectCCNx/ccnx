@@ -14,7 +14,7 @@ import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.MerklePath;
 import org.ccnx.ccn.impl.security.crypto.util.OIDLookup;
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 public class Signature extends GenericXMLEncodable implements XMLEncodable,
@@ -171,7 +171,7 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 			MerklePath mp = new MerklePath(info.getDigest());
 			proxy = mp.root(nodeContent, isDigest);
 		} else {
-			Library.logger().warning("Unexpected witness type: " + info.getAlgorithmId().toString());
+			Log.warning("Unexpected witness type: " + info.getAlgorithmId().toString());
 		}
 		return proxy;
 	}

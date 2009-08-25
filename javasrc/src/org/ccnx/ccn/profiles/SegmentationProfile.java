@@ -6,7 +6,7 @@ import java.util.Arrays;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -223,20 +223,20 @@ public class SegmentationProfile implements CCNProfile {
 		ContentName segmentName = segmentName(desiredContent, desiredSegmentNumber);
 	
 		// TODO use better exclude filters to ensure we're only getting segments.
-		Library.logger().info("getSegment: getting segment " + segmentName);
+		Log.info("getSegment: getting segment " + segmentName);
 		ContentObject segment = library.getLower(segmentName, 1, publisher, timeout);
 	
 		if (null == segment) {
-			Library.logger().info("Cannot get segment " + desiredSegmentNumber + " of file " + desiredContent + " expected segment: " + segmentName);
+			Log.info("Cannot get segment " + desiredSegmentNumber + " of file " + desiredContent + " expected segment: " + segmentName);
 			throw new IOException("Cannot get segment " + desiredSegmentNumber + " of file " + desiredContent + " expected segment: " + segmentName);
 		} else {
-			Library.logger().info("getsegment: retrieved segment " + segment.name());
+			Log.info("getsegment: retrieved segment " + segment.name());
 		}
 		
 		// So for the segment, we assume we have a potential document.
 		if (!verifier.verify(segment)) {
 			// TODO eventually try to go and look for another option
-			Library.logger().info("Retrieved segment " + segment.name() + ", but it didn't verify.");
+			Log.info("Retrieved segment " + segment.name() + ", but it didn't verify.");
 			return null;
 		}
 		return segment;

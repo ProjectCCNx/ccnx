@@ -9,7 +9,7 @@ public class BasePutGetTest extends LibraryTestBase {
 	@Test
 	public void testGetPut() throws Throwable {
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		// Library.logger().setLevel(Level.FINEST);
+		// Library.setLevel(Level.FINEST);
 		SystemConfiguration.setDebugFlag(SystemConfiguration.DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
 		System.out.println("TEST: PutThread/GetThread");
 		int id = getUniqueId();
@@ -23,7 +23,7 @@ public class BasePutGetTest extends LibraryTestBase {
 		System.out.println("TEST: PutThread/GetServer");
 		int id = getUniqueId();
 
-		//Library.logger().setLevel(Level.FINEST);
+		//Library.setLevel(Level.FINEST);
 		Thread putter = new Thread(new PutThread(count, id));
 		Thread getter = new Thread(new GetServer(count, id));
 		genericGetPut(putter, getter);

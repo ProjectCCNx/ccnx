@@ -7,7 +7,7 @@ import org.bouncycastle.crypto.Wrapper;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.crypto.params.ParametersWithIV;
 import org.bouncycastle.crypto.params.ParametersWithRandom;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 /**
@@ -70,14 +70,14 @@ public class RFC3394WrapWithPadEngine implements Wrapper {
 		
 		int n = length / 8;
 
-		Library.logger().info("wrap: wrapping key of length " + length + ", "+ n + " blocks.");
+		Log.info("wrap: wrapping key of length " + length + ", "+ n + " blocks.");
 		
 		if ((n * 8) != length) {
 			// pad up to a multiple of 8 bytes
 			n++;
 			byte [] paddedinput = new byte[n*8];
 			System.arraycopy(input, offset, paddedinput, 0, length);
-			Library.logger().info("RFC3394WrapWithPadEngine: adding padding of " + (paddedinput.length - input.length) + " bytes.");
+			Log.info("RFC3394WrapWithPadEngine: adding padding of " + (paddedinput.length - input.length) + " bytes.");
 			// this leaves the last bytes of padded input containing sufficient 0 bytes to pad to 
 			// a multiple of 64 bits
 			input = paddedinput;

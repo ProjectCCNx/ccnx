@@ -19,7 +19,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.Repository.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.Daemon;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
@@ -97,11 +97,11 @@ public class RepositoryDaemon extends Daemon {
 				}
 			
 				if (_currentListeners.size() == 0 && _pendingNameSpaceChange) {
-					Library.logger().finer("InterestTimer - resetting nameSpace");
+					Log.finer("InterestTimer - resetting nameSpace");
 					try {
 						resetNameSpace();
 					} catch (IOException e) {
-						Library.logStackTrace(Level.WARNING, e);
+						Log.logStackTrace(Level.WARNING, e);
 						e.printStackTrace();
 					}
 					_pendingNameSpaceChange = false;
@@ -136,7 +136,7 @@ public class RepositoryDaemon extends Daemon {
 			try {
 				resetNameSpace();
 			} catch (Exception e) {
-				Library.logStackTrace(Level.WARNING, e);
+				Log.logStackTrace(Level.WARNING, e);
 				e.printStackTrace();
 			}
 			
@@ -171,8 +171,8 @@ public class RepositoryDaemon extends Daemon {
 	}
 	
 	public void initialize(String[] args, Daemon daemon) {
-		Library.logger().info("Starting " + _daemonName + "...");				
-		Library.logger().setLevel(Level.INFO);
+		Log.info("Starting " + _daemonName + "...");				
+		Log.setLevel(Level.INFO);
 		boolean useLogging = false;
 		try {
 			_library = CCNHandle.open();
@@ -195,7 +195,7 @@ public class RepositoryDaemon extends Daemon {
 					try {
 						SystemConfiguration.setLogging("repo", true);
 						Level level = Level.parse(args[i + 1]);
-						Library.logger().setLevel(level);
+						Log.setLevel(level);
 						useLogging = level.intValue() < Level.INFO.intValue();
 					} catch (IllegalArgumentException iae) {
 						usage();
@@ -226,7 +226,7 @@ public class RepositoryDaemon extends Daemon {
 			usage();
 		} catch (Exception e) {
 			e.printStackTrace();
-			Library.logStackTrace(Level.SEVERE, e);
+			Log.logStackTrace(Level.SEVERE, e);
 			System.exit(1);
 		}
 	}
@@ -238,10 +238,10 @@ public class RepositoryDaemon extends Daemon {
 			String msg = "usage: " + this.getClass().getName() + " -start | -stop <pid> | -interactive | -signal <signal> <pid>" +
 			" [-log <level>] [-singlefile | -bb] " + RFSLogImpl.getUsage() + " | <repoimpl-args>";
 			System.out.println(msg);
-			Library.logger().severe(msg);
+			Log.severe(msg);
 		} catch (Exception e) {
 			e.printStackTrace();
-			Library.logStackTrace(Level.SEVERE, e);
+			Log.logStackTrace(Level.SEVERE, e);
 		}
 		System.exit(1);
 	}
@@ -262,7 +262,7 @@ public class RepositoryDaemon extends Daemon {
 				resetNameSpace();
 			else
 				_pendingNameSpaceChange = true;
-			Library.logger().finer("ResetNameSpaceFromHandler: pendingNameSpaceChange is " + _pendingNameSpaceChange);
+			Log.finer("ResetNameSpaceFromHandler: pendingNameSpaceChange is " + _pendingNameSpaceChange);
 		}	
 	}
 	
@@ -278,12 +278,12 @@ public class RepositoryDaemon extends Daemon {
 				getUnMatched(_repoFilters, newNameSpace, unMatchedOld, unMatchedNew);
 				for (NameAndListener oldName : unMatchedOld) {
 					_library.unregisterFilter(oldName.name, oldName.listener);
-					Library.logger().info("Dropping namespace " + oldName.name);
+					Log.info("Dropping namespace " + oldName.name);
 				}
 				for (ContentName newName : unMatchedNew) {
 					RepositoryInterestHandler iHandler = new RepositoryInterestHandler(this);
 					_library.registerFilter(newName, iHandler);
-					Library.logger().info("Adding namespace " + newName);
+					Log.info("Adding namespace " + newName);
 					newIL.add(new NameAndListener(newName, iHandler));
 				}
 				_repoFilters = newIL;
@@ -385,22 +385,22 @@ public class RepositoryDaemon extends Daemon {
 		if(ner!=null && ner.getPrefix()!=null && ner.hasNames()){
 			CollectionObject co = null;
 			try{
-				Library.logger().finer("returning names for prefix: "+ner.getPrefix());
+				Log.finer("returning names for prefix: "+ner.getPrefix());
 
 				for (int x = 0; x < ner.getNames().size(); x++) {
-					Library.logger().finer("name: "+ner.getNames().get(x));
+					Log.finer("name: "+ner.getNames().get(x));
 				}
 				if (ner.getTimestamp()==null)
-					Library.logger().info("node.timestamp was null!!!");
+					Log.info("node.timestamp was null!!!");
 				Collection cd = ner.getNamesInCollectionData();
 				co = new CollectionObject(ner.getPrefix(), cd, _library);
 				co.disableFlowControl();
 				co.save(ner.getTimestamp());
-				Library.logger().finer("saved collection object: "+co.getCurrentVersionName());
+				Log.finer("saved collection object: "+co.getCurrentVersionName());
 				return;
 
 			} catch(IOException e){
-				Library.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+co.getCurrentVersion()+")", e);
+				Log.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+co.getCurrentVersion()+")", e);
 			}
 
 		}
@@ -415,8 +415,8 @@ public class RepositoryDaemon extends Daemon {
 			
 		} catch (Exception e) {
 			System.err.println("Error attempting to start daemon.");
-			Library.logger().warning("Error attempting to start daemon.");
-			Library.warningStackTrace(e);
+			Log.warning("Error attempting to start daemon.");
+			Log.warningStackTrace(e);
 		}
 	}
 }

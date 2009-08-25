@@ -9,7 +9,7 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -67,30 +67,30 @@ public class NetworkKeyManager extends BasicKeyManager {
 			keystoreObject = 
 				VersioningProfile.getFirstBlockOfLatestVersion(_keystoreName, null, _publisher, DEFAULT_TIMEOUT, new ContentObject.SimpleVerifier(_publisher),  _library);
 			if (null == keystoreObject) {
-				Library.logger().info("Creating new CCN key store..." + _keystoreName);
+				Log.info("Creating new CCN key store..." + _keystoreName);
 				_keystore = createKeyStore();	
 			}
 		} catch (IOException e) {
-			Library.logger().warning("Cannot get first block of existing key store: " + _keystoreName);
+			Log.warning("Cannot get first block of existing key store: " + _keystoreName);
 			throw new ConfigurationException("Cannot get first block of existing key store: " + _keystoreName + ": " + e.getMessage(), e);
 		} 
 		if ((null == _keystore) && (null != keystoreObject)){
 			CCNVersionedInputStream in = null;
-			Library.logger().info("Loading CCN key store from " + _keystoreName + "...");
+			Log.info("Loading CCN key store from " + _keystoreName + "...");
 			try {
 				in = new CCNVersionedInputStream(keystoreObject, _library);
 				readKeyStore(in);
 			} catch (XMLStreamException e) {
-				Library.logger().warning("Cannot open existing key store: " + _keystoreName);
+				Log.warning("Cannot open existing key store: " + _keystoreName);
 				throw new ConfigurationException("Cannot open existing key store: " + _keystoreName + ": " + e.getMessage(), e);
 			} catch (IOException e) {
-				Library.logger().warning("Cannot open existing key store: " + _keystoreName);
+				Log.warning("Cannot open existing key store: " + _keystoreName);
 				throw new ConfigurationException("Cannot open existing key store: " + _keystoreName + ": " + e.getMessage(), e);
 			} 
 		}
 		
 		if (!loadValuesFromKeystore(_keystore)) {
-			Library.logger().warning("Cannot process keystore!");
+			Log.warning("Cannot process keystore!");
 		}
 	}
 
@@ -100,10 +100,10 @@ public class NetworkKeyManager extends BasicKeyManager {
 		try {
 			out = createKeyStoreWriteStream();
 		} catch (XMLStreamException e) {
-			Library.logger().warning("Cannot create key store: " + _keystoreName);
+			Log.warning("Cannot create key store: " + _keystoreName);
 			throw new ConfigurationException("Cannot create key store: " + _keystoreName + ": " + e.getMessage(), e);
 		} catch (IOException e) {
-			Library.logger().warning("Cannot create key store: " + _keystoreName);
+			Log.warning("Cannot create key store: " + _keystoreName);
 			throw new ConfigurationException("Cannot create key store: " + _keystoreName + ": " + e.getMessage(), e);
 		} 
 	    return createKeyStore(out);	    

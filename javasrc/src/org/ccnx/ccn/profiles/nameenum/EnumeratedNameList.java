@@ -10,7 +10,7 @@ import java.util.TreeSet;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 
@@ -86,7 +86,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 					_childLock.wait(CHILD_WAIT_INTERVAL);
 				} catch (InterruptedException e) {
 				}
-				Library.logger().info("Waiting for new data on prefix: " + _namePrefix + " got " + ((null == _newChildren) ? 0 : _newChildren.size())
+				Log.info("Waiting for new data on prefix: " + _namePrefix + " got " + ((null == _newChildren) ? 0 : _newChildren.size())
 						+ ".");
 			}
 			if (null != _newChildren) {
@@ -149,7 +149,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 					_childLock.wait(CHILD_WAIT_INTERVAL);
 				} catch (InterruptedException e) {
 				}
-				Library.logger().info("Waiting for data on prefix: " + _namePrefix + " got " + ((null == _newChildren) ? 0 : _newChildren.size())
+				Log.info("Waiting for data on prefix: " + _namePrefix + " got " + ((null == _newChildren) ? 0 : _newChildren.size())
 						+ ".");
 			}
 		}
@@ -168,11 +168,11 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	public int handleNameEnumerator(ContentName prefix,
 								    ArrayList<ContentName> names) {
 		
-		Library.logger().info(names.size() + " new name enumeration results: our prefix: " + _namePrefix + " returned prefix: " + prefix);
+		Log.info(names.size() + " new name enumeration results: our prefix: " + _namePrefix + " returned prefix: " + prefix);
 		if (!prefix.equals(_namePrefix)) {
-			Library.logger().warning("Returned data doesn't match requested prefix!");
+			Log.warning("Returned data doesn't match requested prefix!");
 		}
-		Library.logger().info("Handling Name Iteration " + prefix +" ");
+		Log.info("Handling Name Iteration " + prefix +" ");
 		// the name enumerator hands off names to us, we own it now
 		// DKS -- want to keep listed as new children we previously had
 		synchronized (_childLock) {
@@ -192,7 +192,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 					_newChildren = thisRoundNew;
 				}
 				_children.addAll(thisRoundNew);
-				Library.logger().info("New children found: " + thisRoundNew.size() + " total children " + _children.size());
+				Log.info("New children found: " + thisRoundNew.size() + " total children " + _children.size());
 				processNewChildren(thisRoundNew);
 				_childLock.notifyAll();
 			}
@@ -291,7 +291,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 */
 	public static EnumeratedNameList exists(ContentName childName, ContentName prefixKnownToExist, CCNHandle library) throws IOException {
 		if ((null == prefixKnownToExist) || (null == childName) || (!prefixKnownToExist.isPrefixOf(childName))) {
-			Library.logger().info("Child " + childName + " must be prefixed by name " + prefixKnownToExist);
+			Log.info("Child " + childName + " must be prefixed by name " + prefixKnownToExist);
 			throw new IllegalArgumentException("Child " + childName + " must be prefixed by name " + prefixKnownToExist);
 		}
 		if (childName.count() == prefixKnownToExist.count()) {

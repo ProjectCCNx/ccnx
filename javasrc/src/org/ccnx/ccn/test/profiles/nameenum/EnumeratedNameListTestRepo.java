@@ -12,7 +12,7 @@ import junit.framework.Assert;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
@@ -69,13 +69,13 @@ public class EnumeratedNameListTestRepo {
 	
 	@Test
 	public void testEnumeratedName() throws Exception {
-		//Library.logger().setLevel(Level.FINEST);
+		//Library.setLevel(Level.FINEST);
 		System.out.println("Starting Enumerated Name Test");
 		
 		try {
 			CCNHandle library = CCNHandle.open();
 		
-			Library.logger().info("*****************Starting Enumerated Name Test");
+			Log.info("*****************Starting Enumerated Name Test");
 
 			Assert.assertNotNull(directory);
 			Assert.assertNotNull(name1);
@@ -83,20 +83,20 @@ public class EnumeratedNameListTestRepo {
 			Assert.assertNotNull(name3);
 			Assert.assertNotNull(brokenPrefix);
 
-			Library.logger().info("*****************Creating Enumerated Name List Object");
+			Log.info("*****************Creating Enumerated Name List Object");
 			//creates Enumerated Name List
 			testList = new EnumeratedNameList(directory, putLibrary);
 
-			Library.logger().info("*****************assert creation of library and enumeratednamelist object");
+			Log.info("*****************assert creation of library and enumeratednamelist object");
 			//verify that the class and library is setup
 			Assert.assertNotNull(putLibrary);
 			Assert.assertNotNull(testList);
 
-			Library.logger().info("*****************assert creation of prefix");
+			Log.info("*****************assert creation of prefix");
 			//Verify that the object has been created with the right prefix
 			ContentName prefixTest = testList.getName();
 			Assert.assertNotNull(prefixTest);
-			Library.logger().info("***************** Prefix is "+ prefixTest.toString());
+			Log.info("***************** Prefix is "+ prefixTest.toString());
 			Assert.assertEquals(prefixTest, directory);
 			Assert.assertFalse(brokenPrefix.equals(prefixTest));
 
@@ -107,12 +107,12 @@ public class EnumeratedNameListTestRepo {
 			// appears.
 			//testList.waitForData();
 
-			Library.logger().info("****************** adding name1 to repo");
+			Log.info("****************** adding name1 to repo");
 
 			// adding content to repo
 			ContentName latestName = addContentToRepo(name1, library);
 			testList.waitForData();
-			Library.logger().info("Added data to repo: " + latestName);
+			Log.info("Added data to repo: " + latestName);
 
 			//testing that the enumerator has new data
 			Assert.assertTrue(testList.hasNewData());
@@ -218,7 +218,7 @@ public class EnumeratedNameListTestRepo {
 			// This will add new versions
 			for (int i=0; i < 5; ++i) {
 				latestName = addContentToRepo(name1, library);
-				Library.logger().info("Added data to repo: " + latestName);
+				Log.info("Added data to repo: " + latestName);
 			}
 			
 			EnumeratedNameList versionList = new EnumeratedNameList(name1, library);
@@ -247,7 +247,7 @@ public class EnumeratedNameListTestRepo {
 			Assert.assertTrue(Arrays.areEqual(latestName.lastComponent(), latestReturnName.lastComponent()));
 			
 		} catch (Exception e) {
-			Library.logException("Failed test with exception " + e.getMessage(), e);
+			Log.logException("Failed test with exception " + e.getMessage(), e);
 			Assert.fail("Failed test with exception " + e.getMessage());
 		}			
 	}

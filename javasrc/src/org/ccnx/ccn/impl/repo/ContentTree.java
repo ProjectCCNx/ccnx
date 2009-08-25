@@ -11,7 +11,7 @@ import java.util.TreeSet;
 
 import org.ccnx.ccn.impl.repo.Repository.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
@@ -130,17 +130,17 @@ public class ContentTree {
 	 */
 	public boolean insert(ContentObject content, ContentFileRef ref, long ts, ContentGetter getter, NameEnumerationResponse ner) {
 		final ContentName name = new ContentName(content.name(), content.contentDigest());
-		Library.logger().fine("inserting content: "+name.toString());
+		Log.fine("inserting content: "+name.toString());
 		TreeNode node = root; // starting point
 		assert(null != root);
 		boolean added = false;
 		
 		for (byte[] component : name.components()) {
 			synchronized(node) {
-				//Library.logger().finest("getting node for component: "+new String(component));
+				//Library.finest("getting node for component: "+new String(component));
 				TreeNode child = node.getChild(component);
 				if (null == child) {
-					Library.logger().finest("child was null: adding here");
+					Log.finest("child was null: adding here");
 					// add it
 					added = true;
 					child = new TreeNode();
@@ -163,13 +163,13 @@ public class ContentTree {
 					if (node.interestFlag && (ner==null || ner.getPrefix()==null)){
 						//we have added something to this node and someone was interested
 						//we need to get the child names and the prefix to send back
-						Library.logger().info("we added at least one child, need to send a name enumeration response");
+						Log.info("we added at least one child, need to send a name enumeration response");
 						ContentName prefix = name.cut(component);
 	
 						prefix = new ContentName(prefix, CCNNameEnumerator.NEMARKER);
 						//prefix = VersioningProfile.addVersion(prefix, new Timestamp(node.timestamp));
-						Library.logger().info("prefix for FastNEResponse: "+prefix);
-						Library.logger().info("response name will be: "+ VersioningProfile.addVersion(new ContentName(prefix, CCNNameEnumerator.NEMARKER), new Timestamp(node.timestamp)));
+						Log.info("prefix for FastNEResponse: "+prefix);
+						Log.info("response name will be: "+ VersioningProfile.addVersion(new ContentName(prefix, CCNNameEnumerator.NEMARKER), new Timestamp(node.timestamp)));
 	
 						ArrayList<ContentName> names = new ArrayList<ContentName>();
 						// the parent has children we need to return
@@ -186,12 +186,12 @@ public class ContentTree {
 						ner.setPrefix(prefix);
 						ner.setNameList(names);
 						ner.setTimestamp(new Timestamp(node.timestamp));
-						Library.logger().info("resetting interestFlag to false");
+						Log.info("resetting interestFlag to false");
 						node.interestFlag = false;
 					}
 				}
 				
-				//Library.logger().finest("child was not null: moving down the tree");
+				//Library.finest("child was not null: moving down the tree");
 				node = child;
 			}
 		}
@@ -226,7 +226,7 @@ public class ContentTree {
 			node.content.add(ref);
 			node.oneContent = null;
 		}
-		Library.logger().fine("Inserted: " + content.name());
+		Log.fine("Inserted: " + content.name());
 		return true;
 	}
 
@@ -460,16 +460,16 @@ public class ContentTree {
 		//first chop off NE marker
 		ContentName prefix = interest.name().cut(CCNNameEnumerator.NEMARKER);
 
-		Library.logger().fine("checking for content names under: "+prefix);
+		Log.fine("checking for content names under: "+prefix);
 		
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
 		    ContentName potentialCollectionName = VersioningProfile.addVersion(new ContentName(prefix, CCNNameEnumerator.NEMARKER), new Timestamp(parent.timestamp));
 			//check if we should respond...
 			if (interest.matches(potentialCollectionName, null)) {
-				Library.logger().info("the new version is a match with the interest!  we should respond: interest = "+interest.name()+" potentialCollectionName = "+potentialCollectionName);
+				Log.info("the new version is a match with the interest!  we should respond: interest = "+interest.name()+" potentialCollectionName = "+potentialCollectionName);
 			} else {
-				Library.logger().info("the new version doesn't match, no response needed: interest = "+interest.name()+" would be collection name: "+potentialCollectionName);
+				Log.info("the new version doesn't match, no response needed: interest = "+interest.name()+" would be collection name: "+potentialCollectionName);
 				parent.interestFlag = true;
 				return null;
 			}
@@ -486,7 +486,7 @@ public class ContentTree {
 			}
 			
 			if (names.size()>0)
-				Library.logger().finer("sending back "+names.size()+" names in the enumeration response for prefix "+prefix);
+				Log.finer("sending back "+names.size()+" names in the enumeration response for prefix "+prefix);
 			parent.interestFlag = false;
 			
 			return new NameEnumerationResponse(new ContentName(prefix, CCNNameEnumerator.NEMARKER), names, new Timestamp(parent.timestamp));
@@ -515,7 +515,7 @@ public class ContentTree {
 			//TreeNode prefixRoot = lookupNode(interest.name(), interest.nameComponentCount());
 			TreeNode prefixRoot = lookupNode(interest.name(), ncc);
 			if (prefixRoot == null) {
-				//Library.logger().info("For: " + interest.name() + " the prefix root is null...  returning null");
+				//Library.info("For: " + interest.name() + " the prefix root is null...  returning null");
 				return null;
 			}
 			

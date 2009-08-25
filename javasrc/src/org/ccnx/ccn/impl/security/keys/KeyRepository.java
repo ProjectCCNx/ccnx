@@ -20,7 +20,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -123,7 +123,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		File keyDir = new File(UserConfiguration.keyRepositoryDirectory());
 		if (!keyDir.exists()) {
 			if (!keyDir.mkdirs()) {
-				Library.logger().warning("recordKeyToFile: Cannot create user CCN key repository directory: " + keyDir.getAbsolutePath());
+				Log.warning("recordKeyToFile: Cannot create user CCN key repository directory: " + keyDir.getAbsolutePath());
 				return;
 			}
 		}
@@ -132,7 +132,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		// TODO DKS when switch to 1.6, add permission settings.
 		File keyFile  = new File(keyDir, id.toString() + ".ccnb");
 		if (keyFile.exists()) {
-			Library.logger().info("Already stored key " + id.toString() + " to file.");
+			Log.info("Already stored key " + id.toString() + " to file.");
 			// return; // temporarily store it anyway, to overwrite old-format data.
 		}
 		
@@ -141,10 +141,10 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			keyObject.encode(fos);
 			fos.close();
 		} catch (Exception e) {
-			Library.logger().info("recordKeyToFile: cannot record key: " + id.toString() + " to file " + keyFile.getAbsolutePath() + " error: " + e.getClass().getName() + ": " + e.getMessage());
+			Log.info("recordKeyToFile: cannot record key: " + id.toString() + " to file " + keyFile.getAbsolutePath() + " error: " + e.getClass().getName() + ": " + e.getMessage());
 			return;
 		}
-		Library.logger().info("Logged key " + id.toString() + " to file: " + keyFile.getAbsolutePath());
+		Log.info("Logged key " + id.toString() + " to file: " + keyFile.getAbsolutePath());
 	}
 	
 	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) throws IOException {
@@ -163,13 +163,13 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 				try {
 					theKey = CryptoUtil.getPublicKey(keyObject.content());
 				} catch (CertificateEncodingException e) {
-					Library.logger().warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+					Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 					throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 				} catch (InvalidKeySpecException e) {
-					Library.logger().warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+					Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 					throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 				} catch (NoSuchAlgorithmException e) {
-					Library.logger().warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+					Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 					throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 				}
 			}
@@ -187,7 +187,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		
 		ContentObject keyObject = null;
 		if (locator.type() != KeyLocator.KeyLocatorType.NAME) {
-			Library.logger().info("This is silly: asking the repository to retrieve for me a key I already have...");
+			Log.info("This is silly: asking the repository to retrieve for me a key I already have...");
 			if (locator.type() == KeyLocator.KeyLocatorType.KEY) {
 				PublicKey key = locator.key();
 				remember(key);
@@ -207,33 +207,33 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			}			
 			//  it would be really good to know how many additional name components to expect...
 			try {
-				Library.logger().info("Trying network retrieval of key: " + keyInterest.name());
+				Log.info("Trying network retrieval of key: " + keyInterest.name());
 				keyObject = _networkManager.get(keyInterest, timeout);
 			} catch (IOException e) {
-				Library.logger().warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
-				Library.warningStackTrace(e);
+				Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
+				Log.warningStackTrace(e);
 			} catch (InterruptedException e) {
-				Library.logger().warning("Interrupted attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
+				Log.warning("Interrupted attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 			}
 			if (null != keyObject) {
 				if (keyObject.signedInfo().getType().equals(ContentType.KEY)) {
 					try {
-						Library.logger().info("Retrieved public key using name: " + locator.name().name());
+						Log.info("Retrieved public key using name: " + locator.name().name());
 						PublicKey theKey = CryptoUtil.getPublicKey(keyObject.content());
 						remember(theKey, keyObject);
 						return theKey;
 					} catch (CertificateEncodingException e) {
-						Library.logger().warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 					} catch (InvalidKeySpecException e) {
-						Library.logger().warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 					} catch (NoSuchAlgorithmException e) {
-						Library.logger().warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 					}
 				} else {
-					Library.logger().warning("Retrieved an object when looking for key " + locator.name().name() + " at " + keyObject.name() + ", but type is " + keyObject.signedInfo().getTypeName());
+					Log.warning("Retrieved an object when looking for key " + locator.name().name() + " at " + keyObject.name() + ", but type is " + keyObject.signedInfo().getTypeName());
 				}
 			}
 		}
@@ -289,8 +289,8 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 					ContentObject co = new ContentObject(keyObject.name(), keyObject.signedInfo(), keyObject.content(), keyObject.signature()); 
 					_networkManager.put(co);
 				} catch (Exception e) {
-					Library.logger().info("KeyRepository::handleInterests, exception in put: " + e.getClass().getName() + " message: " + e.getMessage());
-					Library.infoStackTrace(e);
+					Log.info("KeyRepository::handleInterests, exception in put: " + e.getClass().getName() + " message: " + e.getMessage());
+					Log.infoStackTrace(e);
 				}
 			}
 		}

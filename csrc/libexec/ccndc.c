@@ -63,6 +63,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *signed_info = NULL;
     struct ccn_charbuf *keylocator = NULL;
     struct ccn_keystore *keystore = NULL;
+    const char *arg = NULL;
     long expire = -1;
     unsigned char ccndid_storage[32] = {0};
     const unsigned char *ccndid = NULL;

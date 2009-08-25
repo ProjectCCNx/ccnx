@@ -7,7 +7,7 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.CCNBase;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -59,7 +59,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 	@Override
 	protected int readInternal(byte [] buf, int offset, int len) throws IOException {
 		
-		Library.logger().info("CCNBlockInputStream: reading " + len + " bytes into buffer of length " + 
+		Log.info("CCNBlockInputStream: reading " + len + " bytes into buffer of length " + 
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentSegment) {
@@ -89,7 +89,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		} else {
 			readCount = _segmentReadStream.skip(len);
 		}
-		Library.logger().info("CCNBlockInputStream: read " + readCount + " bytes from block " + _currentSegment.name());
+		Log.info("CCNBlockInputStream: read " + readCount + " bytes from block " + _currentSegment.name());
 		return (int)readCount;
 	}
 }

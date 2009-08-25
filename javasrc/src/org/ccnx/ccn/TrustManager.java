@@ -2,7 +2,7 @@ package org.ccnx.ccn;
 
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.security.keys.BasicTrustManager;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -31,8 +31,8 @@ public abstract class TrustManager {
 		try {
 			return getDefaultTrustManager();
 		} catch (ConfigurationException e) {
-			Library.logger().warning("Configuration exception attempting to get TrustManager: " + e.getMessage());
-			Library.warningStackTrace(e);
+			Log.warning("Configuration exception attempting to get TrustManager: " + e.getMessage());
+			Log.warningStackTrace(e);
 			throw new RuntimeException("Error in system configuration. Cannot get TrustManager.",e);
 		}
 	}

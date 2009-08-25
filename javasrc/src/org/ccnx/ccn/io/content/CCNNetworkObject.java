@@ -8,14 +8,14 @@ import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
@@ -304,7 +304,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws ClassNotFoundException 
 	 */
 	public boolean update(ContentName name, PublisherPublicKeyDigest publisher) throws XMLStreamException, IOException {
-		Library.logger().info("Updating object to " + name);
+		Log.info("Updating object to " + name);
 		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, _library);
 		return update(is);
 	}
@@ -369,20 +369,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	public void updateInBackground(ContentName latestVersionKnown, boolean continuousUpdates) throws IOException {
 		
-		Library.logger().info("updateInBackground: getting latest version after " + latestVersionKnown + " in background.");
-		if (!VersioningProfile.hasTerminalVersion(latestVersionKnown)) {
-			latestVersionKnown = VersioningProfile.addVersion(latestVersionKnown, VersioningProfile.baseVersion());
-		}
+		Log.info("updateInBackground: getting latest version after " + latestVersionKnown + " in background.");
 		// DKS TODO locking?
 		cancelInterest();
 		// express this
 		// DKS TODO better versioned interests, a la library.getlatestVersion
 		_continuousUpdates = continuousUpdates;
-		_currentInterest = 
-            Interest.last(latestVersionKnown, 
-                          VersioningProfile.acceptVersions(latestVersionKnown.lastComponent()),
-                          latestVersionKnown.count()-1);
-		Library.logger().info("UpdateInBackground: interest: " + _currentInterest);
+		_currentInterest = VersioningProfile.firstBlockLatestVersionInterest(latestVersionKnown, null);
+		Log.info("UpdateInBackground: interest: " + _currentInterest);
 		_library.expressInterest(_currentInterest, this);
 	}
 	
@@ -438,7 +432,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// parent behavior just write, put the dirty check higher in the state.
 
 		if (_data != null && !isDirty()) { // Should we check potentially dirty?
-			Library.logger().info("Object not dirty. Not saving.");
+			Log.info("Object not dirty. Not saving.");
 			return false;
 		}
 		
@@ -647,18 +641,18 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// DKS TODO timeout?
 		for (ContentObject co : results) {
 			try {
-				Library.logger().info("handleContent: " + _currentInterest + " retrieved " + co.name());
+				Log.info("handleContent: " + _currentInterest + " retrieved " + co.name());
 				if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
 					// OK, we have something that is a later version of our desired object.
 					// We're not sure it's actually the first content segment.
 					if (CCNVersionedInputStream.isFirstSegment(_currentInterest.name(), co, null)) {
-						Library.logger().info("Background updating of " + getCurrentVersionName() + ", got first segment: " + co.name());
+						Log.info("Background updating of " + getCurrentVersionName() + ", got first segment: " + co.name());
 						update(co);
 					} else {
 						// Have something that is not the first segment, like a repo write or a later segment. Go back
 						// for first segment.
 						ContentName latestVersionName = co.name().cut(_currentInterest.name().count() + 1);
-						Library.logger().info("handleContent (network object): Have version information, now querying first segment of " + latestVersionName);
+						Log.info("handleContent (network object): Have version information, now querying first segment of " + latestVersionName);
 						update(latestVersionName, co.signedInfo().getPublisherKeyID());
 					}
 					_excludeList.clear();
@@ -673,15 +667,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 					return null; // implicit cancel of interest
 				}
 			} catch (IOException ex) {
-				Library.logger().info("Exception " + ex.getClass().getName() + ": " + ex.getMessage() + " attempting to update based on object : " + co.name());
+				Log.info("Exception " + ex.getClass().getName() + ": " + ex.getMessage() + " attempting to update based on object : " + co.name());
 				// alright, that one didn't work, try to go on.    				
 			} catch (XMLStreamException ex) {
-				Library.logger().info("Exception " + ex.getClass().getName() + ": " + ex.getMessage() + " attempting to update based on object : " + co.name());
+				Log.info("Exception " + ex.getClass().getName() + ": " + ex.getMessage() + " attempting to update based on object : " + co.name());
 				// alright, that one didn't work, try to go on.
 			} 
 
 			_excludeList.add(co.name().component(_currentInterest.name().count() - 1));  
-			Library.logger().info("handleContent: got content for " + _currentInterest.name() + " that doesn't match: " + co.name());
+			Log.info("handleContent: got content for " + _currentInterest.name() + " that doesn't match: " + co.name());
 		}
 		byte [][] excludes = new byte[_excludeList.size()][];
 		_excludeList.toArray(excludes);

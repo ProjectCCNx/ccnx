@@ -34,7 +34,7 @@ import org.bouncycastle.asn1.x509.SubjectKeyIdentifier;
 import org.bouncycastle.asn1.x509.X509Extensions;
 import org.bouncycastle.asn1.x509.X509Name;
 import org.bouncycastle.x509.X509V3CertificateGenerator;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 /**
@@ -237,7 +237,7 @@ public class MinimalCertificateGenerator {
 		
 		String signatureAlgorithm = OIDLookup.getSignatureAlgorithm(digestAlgorithm, signingKey.getAlgorithm());
 		if (null == signatureAlgorithm) {
-			Library.logger().warning("Cannot find signature algorithm for digest " + digestAlgorithm + " and key " + signingKey.getAlgorithm() + ".");
+			Log.warning("Cannot find signature algorithm for digest " + digestAlgorithm + " and key " + signingKey.getAlgorithm() + ".");
 		}
 		_generator.setSignatureAlgorithm(signatureAlgorithm);
 		

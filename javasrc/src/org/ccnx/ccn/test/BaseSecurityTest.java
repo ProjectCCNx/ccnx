@@ -6,7 +6,7 @@ import static org.junit.Assert.fail;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -30,8 +30,8 @@ public class BaseSecurityTest extends BasePutGetTest {
 				}
 				assertTrue(verifySig);
 			} catch (Exception e) {
-				Library.logger().info("Exception in checkGetResults for name: " + getResults.get(i).name() +": " + e.getClass().getName() + " " + e.getMessage());
-				Library.infoStackTrace(e);
+				Log.info("Exception in checkGetResults for name: " + getResults.get(i).name() +": " + e.getClass().getName() + " " + e.getMessage());
+				Log.infoStackTrace(e);
 				fail();			
 			}
 		} 
@@ -51,8 +51,8 @@ public class BaseSecurityTest extends BasePutGetTest {
 				SystemConfiguration.logObject("checkPutResults: verification succeeded", co);
 			}
 		} catch (Exception e) {
-			Library.logger().info("Exception in checkPutResults for name: " + putResult.name() +": " + e.getClass().getName() + " " + e.getMessage());
-			Library.infoStackTrace(e);
+			Log.info("Exception in checkPutResults for name: " + putResult.name() +": " + e.getClass().getName() + " " + e.getMessage());
+			Log.infoStackTrace(e);
 			fail();			
 		}
 	}

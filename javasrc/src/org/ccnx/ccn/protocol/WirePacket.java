@@ -12,7 +12,7 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
@@ -58,7 +58,7 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 				}
 			}
 		}
-		Library.logger().finest("Finished decoding wire packet.");
+		Log.finest("Finished decoding wire packet.");
 	}
 
 	public void encode(XMLEncoder encoder) throws XMLStreamException {

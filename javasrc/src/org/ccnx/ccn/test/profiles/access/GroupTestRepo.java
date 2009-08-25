@@ -12,7 +12,7 @@ import java.util.SortedSet;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.profiles.access.AccessControlProfile;
@@ -62,8 +62,8 @@ public class GroupTestRepo {
 
 	//		users = new TestUserData(userStore, NUM_USERS, USE_REPO, USER_PASSWORD, userLibrary);
 		} catch (Exception e) {
-			Library.logger().warning("Exception in setupBeforeClass: " + e);
-			Library.warningStackTrace(e);
+			Log.warning("Exception in setupBeforeClass: " + e);
+			Log.warningStackTrace(e);
 			throw e;
 		}
 	}
@@ -75,7 +75,7 @@ public class GroupTestRepo {
 			Assert.assertNotNull(_userList);
 			ContentName prefixTest = _userList.getName();
 			Assert.assertNotNull(prefixTest);
-			Library.logger().info("***************** Prefix is "+ prefixTest.toString());
+			Log.info("***************** Prefix is "+ prefixTest.toString());
 			Assert.assertEquals(prefixTest, userStore);
 			
 			_userList.waitForData();

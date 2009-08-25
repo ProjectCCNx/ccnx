@@ -3,7 +3,7 @@ package org.ccnx.ccn.test.profiles.access;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -87,16 +87,14 @@ public class TestUserDataTestRepo {
 
 			PublicKeyObject pkr = new PublicKeyObject(pko.getCurrentVersionName(), standardLibrary);
 			if (!pkr.available()) {
-				Library.logger().info("Can't read back object " + pko.getCurrentVersionName());
+				Log.info("Can't read back object " + pko.getCurrentVersionName());
 			} else {
 				System.out.println("Retrieved object key locator: " + pkr.publisherKeyLocator());
 				System.out.println("Retrieved object key ID: " + pkr.contentPublisher());
 				Assert.assertEquals(pkr.contentPublisher(), uKeyManager.getDefaultKeyID());
 				Assert.assertEquals(pkr.publisherKeyLocator(), uKeyManager.getDefaultKeyLocator());
 			}
-
 		}
-		
 
 
 		// Canaries -- things getting altered somehow.

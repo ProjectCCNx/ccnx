@@ -11,7 +11,7 @@ import java.util.Random;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
@@ -142,7 +142,7 @@ public class CCNVersionedInputStreamTest {
 		try {
 			dis = new DigestInputStream(inputStream, MessageDigest.getInstance("SHA1"));
 		} catch (NoSuchAlgorithmException e) {
-			Library.logger().severe("No SHA1 available!");
+			Log.severe("No SHA1 available!");
 			Assert.fail("No SHA1 available!");
 		}
 		int elapsed = 0;

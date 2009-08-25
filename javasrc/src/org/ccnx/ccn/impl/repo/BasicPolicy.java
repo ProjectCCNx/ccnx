@@ -12,7 +12,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.XMLEvent;
 
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
@@ -87,7 +87,7 @@ public class BasicPolicy implements Policy {
 			return false;	// Wasn't really an update stream (probably a header)
 		}
 		
-		Library.logger().info("Policy file update requested");
+		Log.info("Policy file update requested");
 		XMLEvent event = reader.nextEvent();
 		_version = null;
 		_localNameMatched = false;
@@ -134,7 +134,7 @@ public class BasicPolicy implements Policy {
 				Attribute idAttr = event.asStartElement().getAttributeByName(id);
 				if (idAttr != null) {
 					if (!idAttr.getValue().trim().equals(_repoVersion)) {
-						Library.logger().warning("Bad version in policy file: " + idAttr.getValue().trim());
+						Log.warning("Bad version in policy file: " + idAttr.getValue().trim());
 						throw new XMLStreamException("Bad version in policy file");
 					}
 					_version = value;
@@ -170,7 +170,7 @@ public class BasicPolicy implements Policy {
 					switch (PolicyValue.valueFromString(value)) {
 					case NAMESPACE:
 						String charValue = event.asCharacters().getData();
-						Library.logger().fine("New namespace requested: " + charValue);
+						Log.fine("New namespace requested: " + charValue);
 						// Note - need to synchronize on "this" to synchronize with events reading
 						// the name space in the policy clients which have access only to this object
 						synchronized (this) {
@@ -195,7 +195,7 @@ public class BasicPolicy implements Policy {
 							String localName = charValue.trim();
 							if (fromNet) {
 									if (!ContentName.fromNative(fixSlash(localName)).equals(_localName)) {
-										Library.logger().warning("Repository local name doesn't match: request = " + localName);
+										Log.warning("Repository local name doesn't match: request = " + localName);
 										throw new RepositoryException("Repository local name doesn't match");
 									}
 								
@@ -212,7 +212,7 @@ public class BasicPolicy implements Policy {
 						try {
 						if (fromNet) {
 							if (!ContentName.fromNative(fixSlash(globalName)).equals(_globalPrefix)) {
-								Library.logger().warning("Repository local name doesn't match: request = " + globalName);
+								Log.warning("Repository local name doesn't match: request = " + globalName);
 								throw new RepositoryException("Repository global name doesn't match");
 							}
 						} else {
@@ -251,7 +251,7 @@ public class BasicPolicy implements Policy {
 			// shouldn't happen 
 			// TODO DKS: if it shouldn't happen, throw a big warning if it does -- don't silently
 			// return null, which could cause all sorts of cascading problems. 
-			Library.logger().severe("SHOULD NOT HAPPEN: Unexpected MalformedContentNameStringException: " + e.getMessage());
+			Log.severe("SHOULD NOT HAPPEN: Unexpected MalformedContentNameStringException: " + e.getMessage());
 			return null;
 		}	
 	}

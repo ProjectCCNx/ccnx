@@ -13,7 +13,7 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.ExcludeComponent;
@@ -81,7 +81,7 @@ public class Flosser implements CCNInterestListener {
 			// Remove the top-level interest.
 			removeInterest(namespace);
 			_subInterests.remove(namespace);
-			Library.logger().info("FLOSSER: no longer monitoring namespace: " + namespace);
+			Log.info("FLOSSER: no longer monitoring namespace: " + namespace);
 		}
 	}
 	
@@ -93,7 +93,7 @@ public class Flosser implements CCNInterestListener {
 			Interest interest = _interests.get(namespace);
 			_library.cancelInterest(interest, this);
 			_interests.remove(namespace);
-			Library.logger().fine("Cancelled interest in " + namespace);
+			Log.fine("Cancelled interest in " + namespace);
 		}
 	}
 	
@@ -105,10 +105,10 @@ public class Flosser implements CCNInterestListener {
 	public void handleNamespace(ContentName namespace) throws IOException {
 		synchronized(_interests) {
 			if (_interests.containsKey(namespace)) {
-				Library.logger().fine("Already handling namespace: " + namespace);
+				Log.fine("Already handling namespace: " + namespace);
 				return;
 			}
-			Library.logger().info("Flosser: handling namespace: " + namespace);
+			Log.info("Flosser: handling namespace: " + namespace);
 			Interest namespaceInterest = new Interest(namespace);
 			_interests.put(namespace, namespaceInterest);
 			_library.expressInterest(namespaceInterest, this);
@@ -116,7 +116,7 @@ public class Flosser implements CCNInterestListener {
 			if (null == subNamespaces) {
 				subNamespaces = new HashSet<ContentName>();
 				_subInterests.put(namespace, subNamespaces);
-				Library.logger().info("FLOSSER: setup parent namespace: " + namespace);
+				Log.info("FLOSSER: setup parent namespace: " + namespace);
 			}			
 		}
 	}
@@ -124,10 +124,10 @@ public class Flosser implements CCNInterestListener {
 	public void handleNamespace(ContentName namespace, ContentName parent) throws IOException {
 		synchronized(_interests) {
 			if (_interests.containsKey(namespace)) {
-				Library.logger().fine("Already handling child namespace: " + namespace);
+				Log.fine("Already handling child namespace: " + namespace);
 				return;
 			}
-			Library.logger().info("FLOSSER: handling child namespace: " + namespace + " expected parent: " + parent);
+			Log.info("FLOSSER: handling child namespace: " + namespace + " expected parent: " + parent);
 			Interest namespaceInterest = new Interest(namespace);
 			_interests.put(namespace, namespaceInterest);
 			_library.expressInterest(namespaceInterest, this);
@@ -138,15 +138,15 @@ public class Flosser implements CCNInterestListener {
 			while ((subNamespace == null) && (!parentNamespace.equals(ContentName.ROOT))) {
 				parentNamespace = parentNamespace.parent();
 				subNamespace = _subInterests.get(parentNamespace);
-				Library.logger().info("FLOSSER: initial parent not found in map, looked up " + parentNamespace + " found in map? " + ((null == subNamespace) ? "no" : "yes"));
+				Log.info("FLOSSER: initial parent not found in map, looked up " + parentNamespace + " found in map? " + ((null == subNamespace) ? "no" : "yes"));
 			}
 			if (null != subNamespace) {
-				Library.logger().info("FLOSSER: Adding subnamespace: " + namespace + " to ancestor " + parentNamespace);
+				Log.info("FLOSSER: Adding subnamespace: " + namespace + " to ancestor " + parentNamespace);
 				subNamespace.add(namespace);
 			} else {
-				Library.logger().info("FLOSSER: Cannot find ancestor namespace for " + namespace);
+				Log.info("FLOSSER: Cannot find ancestor namespace for " + namespace);
 				for (ContentName n : _subInterests.keySet()) {
-					Library.logger().info("FLOSSER: 		available ancestor: " + n);
+					Log.info("FLOSSER: 		available ancestor: " + n);
 				}
 			}
 		}
@@ -154,15 +154,15 @@ public class Flosser implements CCNInterestListener {
 
 	public Interest handleContent(ArrayList<ContentObject> results,
 								  Interest interest) {
-		Library.logger().finest("Interests registered: " + _interests.size() + " content objects returned: "+results.size());
+		Log.finest("Interests registered: " + _interests.size() + " content objects returned: "+results.size());
 		// Parameterized behavior that subclasses can override.
 		ContentName interestName = null;
 		for (ContentObject result : results) {
 			if (_processedObjects.contains(result)) {
-				Library.logger().fine("Got repeated content for interest: " + interest + " content: " + result.name());
+				Log.fine("Got repeated content for interest: " + interest + " content: " + result.name());
 				continue;
 			}
-			Library.logger().finest("Got new content for interest " + interest + " content name: " + result.name());
+			Log.finest("Got new content for interest " + interest + " content name: " + result.name());
 			processContent(result);
 			// update the interest. follow process used by ccnslurp.
             // exclude the next component of this object, and set up a
@@ -186,34 +186,34 @@ public class Flosser implements CCNInterestListener {
               		ArrayList<ExcludeFilter.Element> excludes = new ArrayList<ExcludeFilter.Element>();
                		excludes.add(new ExcludeComponent(result.contentDigest()));
             		interest.excludeFilter(new ExcludeFilter(excludes));
-            		Library.logger().finest("Creating new exclude filter for interest " + interest.name());
+            		Log.finest("Creating new exclude filter for interest " + interest.name());
             	} else {
             		if (interest.excludeFilter().match(result.contentDigest())) {
-            			Library.logger().fine("We should have already excluded content digest: " + DataUtils.printBytes(result.contentDigest()));
+            			Log.fine("We should have already excluded content digest: " + DataUtils.printBytes(result.contentDigest()));
             		} else {
             			// Has to be in order...
-            			Library.logger().finest("Adding child component to exclude.");
+            			Log.finest("Adding child component to exclude.");
             			interest.excludeFilter().add(new byte [][] { result.contentDigest() });
             		}
             	}
-            	Library.logger().finer("Excluding content digest: " + DataUtils.printBytes(result.contentDigest()) + " onto interest " + interest.name() + " total excluded: " + interest.excludeFilter().size());
+            	Log.finer("Excluding content digest: " + DataUtils.printBytes(result.contentDigest()) + " onto interest " + interest.name() + " total excluded: " + interest.excludeFilter().size());
             } else {
                	if (null == interest.excludeFilter()) {
                		ArrayList<ExcludeFilter.Element> excludes = new ArrayList<ExcludeFilter.Element>();
                		excludes.add(new ExcludeComponent(result.name().component(prefixCount)));
             		interest.excludeFilter(new ExcludeFilter(excludes));
-            		Library.logger().finest("Creating new exclude filter for interest " + interest.name());
+            		Log.finest("Creating new exclude filter for interest " + interest.name());
                	} else {
                     if (interest.excludeFilter().match(result.name().component(prefixCount))) {
-            			Library.logger().fine("We should have already excluded child component: " + ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
+            			Log.fine("We should have already excluded child component: " + ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
                     } else {
                     	// Has to be in order...
-                    	Library.logger().finest("Adding child component to exclude.");
+                    	Log.finest("Adding child component to exclude.");
             			interest.excludeFilter().add(
             					new byte [][] { result.name().component(prefixCount) });
                     }
             	}
-               	Library.logger().finer("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.excludeFilter().size());
+               	Log.finer("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.excludeFilter().size());
                 // DKS TODO might need to split to matchedComponents like ccnslurp
                 ContentName newNamespace = null;
                 try {
@@ -223,10 +223,10 @@ public class Flosser implements CCNInterestListener {
                 		newNamespace = new ContentName(interest.name(), 
                 			result.name().component(interest.name().count()));
                 	}
-                	Library.logger().info("Adding new namespace: " + newNamespace);
+                	Log.info("Adding new namespace: " + newNamespace);
                 	handleNamespace(newNamespace, interest.name());
                 } catch (IOException ioex) {
-                	Library.logger().warning("IOException picking up namespace: " + newNamespace);
+                	Log.warning("IOException picking up namespace: " + newNamespace);
                 }
             }
 		}
@@ -238,10 +238,10 @@ public class Flosser implements CCNInterestListener {
 	}
 	
 	public void stop() {
-		Library.logger().info("Stop flossing.");
+		Log.info("Stop flossing.");
 		synchronized (_interests) {
 			for (Interest interest : _interests.values()) {
-				Library.logger().info("Cancelling pending interest: " + interest);
+				Log.info("Cancelling pending interest: " + interest);
 				_library.cancelInterest(interest, this);
 			}
 		}
@@ -251,7 +251,7 @@ public class Flosser implements CCNInterestListener {
 		
 		ContentName [] namespaces = getNamespaces().toArray(new ContentName[getNamespaces().size()]);
 		for (ContentName name : namespaces) {
-			Library.logger().info("Flosser: monitoring namespace: " + name);
+			Log.info("Flosser: monitoring namespace: " + name);
 		}
 	}
 	public Set<ContentName> getNamespaces() {
@@ -265,7 +265,7 @@ public class Flosser implements CCNInterestListener {
 	 * @param result
 	 */
 	protected void processContent(ContentObject result) {
-		Library.logger().info("Flosser got: " + result.name() + " Digest: " + 
+		Log.info("Flosser got: " + result.name() + " Digest: " + 
 				DataUtils.printBytes(result.contentDigest()));
 	}
 	

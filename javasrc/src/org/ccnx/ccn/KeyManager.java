@@ -11,7 +11,7 @@ import java.security.spec.InvalidKeySpecException;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.KeyRepository;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherID;
@@ -59,12 +59,12 @@ public abstract class KeyManager {
 		try {
 			return getDefaultKeyManager();
 		} catch (ConfigurationException e) {
-			Library.logger().warning("Configuration exception attempting to get KeyManager: " + e.getMessage());
-			Library.warningStackTrace(e);
+			Log.warning("Configuration exception attempting to get KeyManager: " + e.getMessage());
+			Log.warningStackTrace(e);
 			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",e);
 		} catch (IOException e) {
-			Library.logger().warning("IO exception attempting to get KeyManager: " + e.getMessage());
-			Library.warningStackTrace(e);
+			Log.warning("IO exception attempting to get KeyManager: " + e.getMessage());
+			Log.warningStackTrace(e);
 			throw new RuntimeException("Error in system IO. Cannot get KeyManager.",e);
 		}
 	}

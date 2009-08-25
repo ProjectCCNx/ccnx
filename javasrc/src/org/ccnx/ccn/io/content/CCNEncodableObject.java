@@ -10,7 +10,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -107,7 +107,7 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 		try {
 			newData.decode(input);	
 		} catch (XMLStreamException xe) {
-			Library.logger().info("XML exception parsing data in block: " + ((CCNInputStream)input).currentSegmentName());
+			Log.info("XML exception parsing data in block: " + ((CCNInputStream)input).currentSegmentName());
 			throw xe;
 		}
 		return newData;

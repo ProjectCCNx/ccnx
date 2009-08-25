@@ -11,7 +11,7 @@ import java.util.TreeMap;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 
@@ -67,7 +67,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 			String decodedTag = null;
 			
 			if (tv.type() == BinaryXMLCodec.XML_TAG) {
-				Library.logger().info("Unexpected: got tag in readStartElement; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
+				Log.info("Unexpected: got tag in readStartElement; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
 				// Tag value represents length-1 as tags can never be empty.
 				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
 				
@@ -129,7 +129,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 
 	public String peekStartElement() throws XMLStreamException {
 		if (!_istream.markSupported()) {
-			Library.logger().info("Cannot peek -- stream without marking ability!");
+			Log.info("Cannot peek -- stream without marking ability!");
 			throw new XMLStreamException("No lookahead in stream!");
 		}
 
@@ -151,7 +151,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 					// Tag value represents length-1 as tags can never be empty.
 					decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
 					
-					Library.logger().info("Unexpected: got text tag in peekStartElement; length: " + (int)tv.val()+1 + " decoded tag = " + decodedTag);
+					Log.info("Unexpected: got text tag in peekStartElement; length: " + (int)tv.val()+1 + " decoded tag = " + decodedTag);
 
 				} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
 					decodedTag = _dictionary.peek().decodeTag(tv.val());					
@@ -173,16 +173,16 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 				}
 				fos.close();
 				_istream.reset();
-				Library.logger().info("BinaryXMLDecoder: exception in peekStartElement, dumping offending object to file: " + tempFile.getAbsolutePath());
+				Log.info("BinaryXMLDecoder: exception in peekStartElement, dumping offending object to file: " + tempFile.getAbsolutePath());
 				throw e;
 				
 			} catch (IOException ie) {
-				Library.logger().info("IOException in BinaryXMLDecoder error handling: " + e.getMessage());
+				Log.info("IOException in BinaryXMLDecoder error handling: " + e.getMessage());
 				throw new XMLStreamException("peekStartElement", e);
 
 			}
 		} catch (IOException e) {
-			Library.logger().info("IOException in BinaryXMLDecoder: " + e.getMessage());
+			Log.info("IOException in BinaryXMLDecoder: " + e.getMessage());
 			throw new XMLStreamException("peekStartElement", e);
 
 		} finally {

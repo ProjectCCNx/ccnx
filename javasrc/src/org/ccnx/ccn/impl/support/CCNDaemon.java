@@ -69,7 +69,7 @@ public class CCNDaemon extends Daemon {
 			try {
 				_ccndProcess = pb.start();
 			} catch (IOException e) {
-				Library.logStackTrace(Level.WARNING, e);
+				Log.logStackTrace(Level.WARNING, e);
 				e.printStackTrace();
 			}
 			String outputFile = System.getProperty(PROP_DAEMON_OUTPUT);
@@ -77,7 +77,7 @@ public class CCNDaemon extends Daemon {
 				try {
 					new DaemonOutput(_ccndProcess.getInputStream(), outputFile, true);
 				} catch (FileNotFoundException e) {
-					Library.logStackTrace(Level.WARNING, e);
+					Log.logStackTrace(Level.WARNING, e);
 					e.printStackTrace();
 				}
 			}
@@ -124,10 +124,10 @@ public class CCNDaemon extends Daemon {
 			// impl usage and allow for differences 
 			String msg = "usage: " + this.getClass().getName() + "[-start | -stop | -interactive | -signal <signal>] [-command <command>]";
 			System.out.println(msg);
-			Library.logger().severe(msg);
+			Log.severe(msg);
 		} catch (Exception e) {
 			e.printStackTrace();
-			Library.logStackTrace(Level.SEVERE, e);
+			Log.logStackTrace(Level.SEVERE, e);
 		}
 		System.exit(1);
 	}
@@ -141,8 +141,8 @@ public class CCNDaemon extends Daemon {
 			runDaemon(daemon, args);
 		} catch (Exception e) {
 			System.err.println("Error attempting to start daemon.");
-			Library.logger().warning("Error attempting to start daemon.");
-			Library.warningStackTrace(e);
+			Log.warning("Error attempting to start daemon.");
+			Log.warningStackTrace(e);
 		}
 	}
 }

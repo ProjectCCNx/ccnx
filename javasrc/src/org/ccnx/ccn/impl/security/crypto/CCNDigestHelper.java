@@ -7,7 +7,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 
 
 public class CCNDigestHelper extends DigestHelper {
@@ -19,7 +19,7 @@ public class CCNDigestHelper extends DigestHelper {
 	public CCNDigestHelper() {
 		super();
 		if (!_md.getAlgorithm().equals(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM)) {
-			Library.logger().severe("Incorrect constructor in CCNDigestHelper -- picking up wrong digest algorithm!");
+			Log.severe("Incorrect constructor in CCNDigestHelper -- picking up wrong digest algorithm!");
 		}
 	}
 		
@@ -38,7 +38,7 @@ public class CCNDigestHelper extends DigestHelper {
 			byte [][] additionalToBeSigneds) throws XMLStreamException, NoSuchAlgorithmException {
 		
 		if (null == toBeSigneds) {
-			Library.logger().info("Value to be signed must not be null.");
+			Log.info("Value to be signed must not be null.");
 			throw new XMLStreamException("Unexpected null content in digestLeaf!");
 		}
 		byte [][] encodedData = new byte [toBeSigneds.length + ((null != additionalToBeSigneds) ? additionalToBeSigneds.length : 0)][];

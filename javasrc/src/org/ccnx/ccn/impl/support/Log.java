@@ -13,7 +13,10 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class Library {
+/**
+ * Our own wrapper for the standard java.util Logging classes.
+ */
+public class Log {
 
 	/**
 	 * Allow override on command line or from configuration file.
@@ -105,21 +108,60 @@ public class Library {
 	
 	public static void exitApplication() {
 		// Clean up and get out, we've had an unrecovereable error.
-		logger().severe("Exiting application.");
+		_systemLogger.severe("Exiting application.");
 		System.exit(-1);
 	}
 	
 	public static void abort() {
-		Library.logger().warning("Unrecoverable error. Exiting data collection.");
+		_systemLogger.warning("Unrecoverable error. Exiting data collection.");
 		exitApplication(); // save partial results?
 	}
 	
-	public static Logger logger() { return _systemLogger; }
-	
+	// These following methods duplicate methods provided by java.util.Logger
+	// but add varargs functionality which allows args to only have .toString()
+	// called when logging is enabled.
+	public static void info(String msg, Object... params) {
+		_systemLogger.log(Level.INFO, msg, params);
+	}
+
+	public static void warning(String msg, Object... params) {
+		_systemLogger.log(Level.WARNING, msg, params);
+	}
+
+	public static void severe(String msg, Object... params) {
+		_systemLogger.log(Level.SEVERE, msg, params);
+	}
+
+	public static void fine(String msg, Object... params) {
+		_systemLogger.log(Level.FINE, msg, params);
+	}
+
+	public static void finer(String msg, Object... params) {
+		_systemLogger.log(Level.FINER, msg, params);
+	}
+
+	public static void finest(String msg, Object... params) {
+		_systemLogger.log(Level.FINEST, msg, params);
+	}
+
+	// pass these methods on to the java.util.Logger for convenience
+	public static void setLevel(Level l) {
+		_systemLogger.setLevel(l);
+	}
+
+	public static Level getLevel() {
+		return _systemLogger.getLevel();
+	}
+
+	public static void log(Level l, String msg, Object... params) {
+		_systemLogger.log(l, msg, params);
+	}
+
+
 	public static void warningStackTrace(Throwable t) {
 		logStackTrace(Level.WARNING, t);
 	}
-	
+
 	public static void infoStackTrace(Throwable t) {
 		logStackTrace(Level.INFO, t);
 	}
@@ -127,12 +169,12 @@ public class Library {
 	public static void logStackTrace(Level level, Throwable t) {
 		 StringWriter sw = new StringWriter();
 	     t.printStackTrace(new PrintWriter(sw));
-	     logger().log(level, sw.toString());
+	     _systemLogger.log(level, sw.toString());
 	}
 	
 	public static void logException(String message, 
 			Exception e) {
-		Library.logger().warning(message);
-		Library.warningStackTrace(e);
+		_systemLogger.warning(message);
+		Log.warningStackTrace(e);
 	}
 }

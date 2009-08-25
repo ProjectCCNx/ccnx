@@ -10,7 +10,7 @@ import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -115,7 +115,7 @@ public class KeyDerivationFunction {
 			throw new IllegalArgumentException("Ancestor node name must be prefix of node name!");
 		}
 		if (ancestorNodeName.equals(nodeName)) {
-			Library.logger().info("We're at the correct node already, will return the original node key.");
+			Log.info("We're at the correct node already, will return the original node key.");
 		}
 		
 		ContentName descendantNodeName = ancestorNodeName;
@@ -208,13 +208,13 @@ public class KeyDerivationFunction {
 			}
 		}
 		if (allzeros) {
-			Library.logger().warning("Warning: DeriveKey called with all 0's key of length " + masterKeyBytes.length);
+			Log.warning("Warning: DeriveKey called with all 0's key of length " + masterKeyBytes.length);
 		}
 		Mac hmac;
 		try {
 			hmac = Mac.getInstance("HmacSHA256");
 		} catch (NoSuchAlgorithmException e1) {
-			Library.logger().severe("No HMAC-SHA256 available! Serious configuration issue!");
+			Log.severe("No HMAC-SHA256 available! Serious configuration issue!");
 			throw new RuntimeException("No HMAC-SHA256 available! Serious configuration issue!");
 		}
 		hmac.init(new SecretKeySpec(masterKeyBytes, hmac.getAlgorithm()));
@@ -232,7 +232,7 @@ public class KeyDerivationFunction {
 		// Number of rounds
 		int n = (int)Math.ceil(outputLengthInBytes/(1.0 * hmac.getMacLength()));
 		if (n < 1) {
-			Library.logger().warning("Unexpected: 0 block key derivation: want " + outputLengthInBits + 
+			Log.warning("Unexpected: 0 block key derivation: want " + outputLengthInBits + 
 					" bits (" + outputLengthInBytes + " bytes).");
 		}
 
@@ -247,7 +247,7 @@ public class KeyDerivationFunction {
 				try {
 					hmac.update(label.getBytes("UTF-8"));
 				} catch (UnsupportedEncodingException e) {
-					Library.logger().severe("No UTF-8 encoding available! Serious configuration issue!");
+					Log.severe("No UTF-8 encoding available! Serious configuration issue!");
 					throw new RuntimeException("No UTF-8 encoding available! Serious configuration issue!");
 				}
 				// a 0 byte
@@ -266,12 +266,12 @@ public class KeyDerivationFunction {
 					System.arraycopy(finalBlock, 0, outputBytes, (i-1)*hmac.getMacLength(), outputBytes.length - (i-1)*hmac.getMacLength());
 				}
 			} catch (IllegalStateException ex) {
-				Library.logger().severe("Unexpected IllegalStateException in DeriveKey: hmac should have been initialized!");
-				Library.warningStackTrace(ex);
+				Log.severe("Unexpected IllegalStateException in DeriveKey: hmac should have been initialized!");
+				Log.warningStackTrace(ex);
 				throw new RuntimeException("Unexpected IllegalStateException in DeriveKey: hmac should have been initialized!");
 			} catch (ShortBufferException sx) {
-				Library.logger().severe("Unexpected ShortBufferException in DeriveKey: buffer should be sufficient!");
-				Library.warningStackTrace(sx);
+				Log.severe("Unexpected ShortBufferException in DeriveKey: buffer should be sufficient!");
+				Log.warningStackTrace(sx);
 				throw new RuntimeException("Unexpected ShortBufferException in DeriveKey: buffer should be sufficient!");
 			}
 		}

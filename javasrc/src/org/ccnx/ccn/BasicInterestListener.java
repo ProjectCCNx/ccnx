@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.Interest;
 
 
@@ -34,7 +34,7 @@ public abstract class BasicInterestListener implements CCNInterestListener {
 	}
 	
 	public void cancelInterest(Interest interest) throws IOException {
-		Library.logger().info("Interest cancelled: " + interest.name());
+		Log.info("Interest cancelled: " + interest.name());
 		// What happens if we do this in the middle of cancel interests?
 		_interestProvider.cancelInterest(interest, this);
 		_interests.remove(interest);

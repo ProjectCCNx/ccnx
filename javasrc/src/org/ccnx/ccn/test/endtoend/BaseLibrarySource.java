@@ -8,7 +8,7 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 
@@ -29,7 +29,7 @@ public class BaseLibrarySource {
 	public static void setUpBeforeClass() throws Exception {
 		library = CCNHandle.open();
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Library.logger().setLevel(Level.INFO);
+		Log.setLevel(Level.INFO);
 		rand = new Random();
 	}
 

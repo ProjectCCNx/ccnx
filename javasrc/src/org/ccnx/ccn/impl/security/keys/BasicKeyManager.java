@@ -25,7 +25,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
-import org.ccnx.ccn.impl.support.Library;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -77,25 +77,25 @@ public class BasicKeyManager extends KeyManager {
 	protected void loadKeyStore() throws ConfigurationException {
 		File keyStoreFile = new File(UserConfiguration.keystoreFileName());
 		if (!keyStoreFile.exists()) {
-			Library.logger().info("Creating new CCN key store..." + UserConfiguration.keystoreFileName());
+			Log.info("Creating new CCN key store..." + UserConfiguration.keystoreFileName());
 			_keystore = createKeyStore();
 			System.out.println("created key store.");
 		}
 		if (null == _keystore) {
 			FileInputStream in = null;
-			Library.logger().info("Loading CCN key store from " + UserConfiguration.keystoreFileName() + "...");
+			Log.info("Loading CCN key store from " + UserConfiguration.keystoreFileName() + "...");
 			try {
 				_password = UserConfiguration.keystorePassword().toCharArray();
 				in = new FileInputStream(UserConfiguration.keystoreFileName());
 				readKeyStore(in);
 			} catch (FileNotFoundException e) {
-				Library.logger().warning("Cannot open existing key store file: " + UserConfiguration.keystoreFileName());
+				Log.warning("Cannot open existing key store file: " + UserConfiguration.keystoreFileName());
 				throw new ConfigurationException("Cannot open existing key store file: " + UserConfiguration.keystoreFileName());
 			} 
 		}
 		// Overriding classes must call this.
 		if (!loadValuesFromKeystore(_keystore)) {
-			Library.logger().warning("Cannot process keystore!");
+			Log.warning("Cannot process keystore!");
 		}
 	}
 	
@@ -107,17 +107,17 @@ public class BasicKeyManager extends KeyManager {
 	protected void readKeyStore(InputStream in) throws ConfigurationException {
 		if (null == _keystore) {
 			try {
-				Library.logger().info("Loading CCN key store...");
+				Log.info("Loading CCN key store...");
 				_keystore = KeyStore.getInstance(UserConfiguration.defaultKeystoreType());
 				_keystore.load(in, _password);
 			} catch (NoSuchAlgorithmException e) {
-				Library.logger().warning("Cannot load keystore: " + e);
+				Log.warning("Cannot load keystore: " + e);
 				throw new ConfigurationException("Cannot load default keystore: " + e);
 			} catch (CertificateException e) {
-				Library.logger().warning("Cannot load keystore with no certificates.");
+				Log.warning("Cannot load keystore with no certificates.");
 				throw new ConfigurationException("Cannot load keystore with no certificates.");
 			} catch (IOException e) {
-				Library.logger().warning("Cannot open existing key store: " + e);
+				Log.warning("Cannot open existing key store: " + e);
 				try {
 					in.reset();
 					java.io.FileOutputStream bais = new java.io.FileOutputStream("KeyDump.p12");
@@ -129,20 +129,20 @@ public class BasicKeyManager extends KeyManager {
 					bais.flush();
 					bais.close();
 				} catch (IOException e1) {
-					Library.logger().info("Another exception: " + e1);
+					Log.info("Another exception: " + e1);
 				}
 				throw new ConfigurationException(e);
 			} catch (KeyStoreException e) {
-				Library.logger().warning("Cannot create instance of preferred key store type: " + UserConfiguration.defaultKeystoreType() + " " + e.getMessage());
-				Library.warningStackTrace(e);
+				Log.warning("Cannot create instance of preferred key store type: " + UserConfiguration.defaultKeystoreType() + " " + e.getMessage());
+				Log.warningStackTrace(e);
 				throw new ConfigurationException("Cannot create instance of default key store type: " + UserConfiguration.defaultKeystoreType() + " " + e.getMessage());
 			} finally {
 				if (null != in)
 					try {
 						in.close();
 					} catch (IOException e) {
-						Library.logger().warning("IOException closing key store file after load.");
-						Library.warningStackTrace(e);
+						Log.warning("IOException closing key store file after load.");
+						Log.warningStackTrace(e);
 					}
 			}
 		}
@@ -161,12 +161,12 @@ public class BasicKeyManager extends KeyManager {
 		try {
 			entry = (KeyStore.PrivateKeyEntry)_keystore.getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
 			if (null == entry) {
-				Library.logger().warning("Cannot get default key entry: " + _defaultAlias);
+				Log.warning("Cannot get default key entry: " + _defaultAlias);
 			}
 		    _privateKey = entry.getPrivateKey();
 		    _certificate = (X509Certificate)entry.getCertificate();
 		    _defaultKeyID = new PublisherPublicKeyDigest(_certificate.getPublicKey());
-			Library.logger().info("Default key ID for user " + _userName + ": " + _defaultKeyID);
+			Log.info("Default key ID for user " + _userName + ": " + _defaultKeyID);
 
 		    // Check to make sure we've published information about
 		    // this key. (e.g. in testing, we may frequently
@@ -175,7 +175,7 @@ public class BasicKeyManager extends KeyManager {
 		    // time we load this keystore, we need to publish.
 		    ContentName keyName = getDefaultKeyName(_defaultKeyID.digest());
 		    _keyLocator = new KeyLocator(keyName, new PublisherID(_defaultKeyID));
-			Library.logger().info("Default key locator for user " + _userName + ": " + _keyLocator);
+			Log.info("Default key locator for user " + _userName + ": " + _keyLocator);
 
 		    if (null == getKey(_defaultKeyID, _keyLocator, KeyRepository.SHORT_KEY_TIMEOUT)) {
 		    	boolean resetFlag = false;
@@ -275,8 +275,8 @@ public class BasicKeyManager extends KeyManager {
 	            try {
 					out.close();
 				} catch (IOException e) {
-					Library.logger().warning("IOException closing key store file after load.");
-					Library.warningStackTrace(e);
+					Log.warning("IOException closing key store file after load.");
+					Log.warningStackTrace(e);
 				}
 	        }
 	    }
@@ -284,8 +284,8 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	static void generateConfigurationException(String message, Exception e) throws ConfigurationException {
-		Library.logger().warning(message + " " + e.getClass().getName() + ": " + e.getMessage());
-		Library.warningStackTrace(e);
+		Log.warning(message + " " + e.getClass().getName() + ": " + e.getMessage());
+		Log.warningStackTrace(e);
 		throw new ConfigurationException(message, e);
 	}
 
@@ -308,7 +308,7 @@ public class BasicKeyManager extends KeyManager {
 		if (null != keyObject) {
 			return new KeyLocator(new KeyName(keyObject.fullName(), new PublisherID(keyObject.signedInfo().getPublisherKeyID())));
 		}
-		Library.logger().info("Cannot find key locator for key: " + key);
+		Log.info("Cannot find key locator for key: " + key);
 		return null;
 	}
 	
@@ -334,7 +334,7 @@ public class BasicKeyManager extends KeyManager {
 		try {
 			cert = _keystore.getCertificate(alias);
 		} catch (KeyStoreException e) {
-			Library.logger().info("No certificate for alias " + alias + " in BasicKeymManager keystore.");
+			Log.info("No certificate for alias " + alias + " in BasicKeymManager keystore.");
 			return null;
 		}
 		return cert.getPublicKey();
@@ -345,7 +345,7 @@ public class BasicKeyManager extends KeyManager {
 		try {
 			key = (PrivateKey)_keystore.getKey(alias, _password);
 		} catch (Exception e) {
-			Library.logger().info("No key for alias " + alias + " in BasicKeymManager keystore. " + 
+			Log.info("No key for alias " + alias + " in BasicKeymManager keystore. " + 
 						e.getClass().getName() + ": " + e.getMessage());
 			return null;
 		}
@@ -391,7 +391,7 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws IOException {
 		// TODO Auto-generated method stub
-		Library.logger().finer("getPublicKey: retrieving key: " + publisher);
+		Log.finer("getPublicKey: retrieving key: " + publisher);
 		
 		if (_defaultKeyID.equals(publisher))
 			return _certificate.getPublicKey();
@@ -401,7 +401,7 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public PrivateKey getSigningKey(PublisherID publisher) {
 		// TODO Auto-generated method stub
-		Library.logger().finer("getSigningKey: retrieving key: " + publisher);
+		Log.finer("getSigningKey: retrieving key: " + publisher);
 		if (_defaultKeyID.equals(publisher))
 			return _privateKey;
 		return null;
@@ -410,7 +410,7 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public PrivateKey getSigningKey(PublisherPublicKeyDigest publisher) {
 		// TODO Auto-generated method stub
-		Library.logger().finer("getSigningKey: retrieving key: " + publisher);
+		Log.finer("getSigningKey: retrieving key: " + publisher);
 		if (_defaultKeyID.equals(publisher))
 			return _privateKey;
 		return null;
@@ -418,7 +418,7 @@ public class BasicKeyManager extends KeyManager {
 
 	@Override
 	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherID, KeyLocator keyLocator, long timeout) throws IOException, InterruptedException {		
-		Library.logger().finer("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
+		Log.finer("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
