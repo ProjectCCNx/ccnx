@@ -17,6 +17,8 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
+import com.sun.jdi.InvalidStackFrameException;
+
 
 /**
  * This class takes a versioned input stream and adds the expectation
@@ -77,6 +79,12 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	
 	public boolean hasHeader() {
 		return (headerRequested() && _header.available());
+	}
+	
+	public void waitForHeader() {
+		if (!headerRequested())
+			throw new IllegalStateException("Not enough information available to request header!");
+		_header.waitForData(); // should take timeout
 	}
 	
 	public HeaderData header() {

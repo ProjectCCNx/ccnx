@@ -77,6 +77,10 @@ public class CCNFileStreamTestRepo {
 		
 		System.out.println("Read file from repository: " + fis.getBaseName() + " has header? " + 
 				fis.hasHeader());
+		if (!fis.hasHeader()) {
+			System.out.println("No header yet, waiting..");
+			fis.waitForHeader();
+		}
 		Assert.assertTrue(fis.hasHeader());
 		System.out.println("Read file size: " + readDigest.count() + " written size: " + fileSize + " header file size " + fis.header().length());
 		Assert.assertEquals(readDigest.count(), fileSize);
@@ -89,6 +93,10 @@ public class CCNFileStreamTestRepo {
 		
 		System.out.println("Read file from repository again: " + fis2.getBaseName() + " has header? " + 
 				fis2.hasHeader());
+		if (!fis2.hasHeader()) {
+			System.out.println("No header yet, waiting..");
+			fis2.waitForHeader();
+		}
 		Assert.assertTrue(fis2.hasHeader());
 		System.out.println("Read file size: " + readDigest2.count() + " written size: " + fileSize + " header file size " + fis.header().length());
 		Assert.assertEquals(readDigest2.count(), fileSize);
