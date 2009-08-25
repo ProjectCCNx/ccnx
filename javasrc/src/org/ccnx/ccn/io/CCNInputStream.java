@@ -7,6 +7,7 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -184,10 +185,12 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	@Override
 	public synchronized void reset() throws IOException {
 		// TODO: when first block is read in constructor this check can be removed
-		if (_currentSegment == null)
+		if (_currentSegment == null) {
 			setFirstSegment(getSegment(_markBlock));
-		else
+		} else {
+			// getSegment doesn't pull segment if we already have the right one
 			setCurrentSegment(getSegment(_markBlock));
+		}
 		_segmentReadStream.skip(_markOffset);
 		_atEOF = false;
 		Log.finer("reset: block: " + segmentNumber() + " offset: " + _markOffset + " eof? " + _atEOF);
@@ -202,7 +205,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 			return 0;
 		}
 		
-		return readInternal(null,0, (int)n);
+		return readInternal(null, 0, (int)n);
 	}
 	
 	protected int segmentCount() {
@@ -212,10 +215,14 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	public long seek(long position) throws IOException {
 		Log.info("Seeking stream to " + position);
 		// TODO: when first block is read in constructor this check can be removed
-		if (_currentSegment == null)
+		if ((_currentSegment == null) || (!SegmentationProfile.isFirstSegment(_currentSegment.name()))) {
 			setFirstSegment(getFirstSegment());
-		else
-			setCurrentSegment(getFirstSegment());
+		} else {
+			// we just need to go forward... but there is no good way to rewind or
+			// to figure out where we are. but don't refetch current segment
+			// TODO -- optimize for small local seeks
+			setCurrentSegment(_currentSegment);
+		}
 		return skip(position);
 	}
 
