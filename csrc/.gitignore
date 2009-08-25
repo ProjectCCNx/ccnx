@@ -15,7 +15,9 @@ cmd/Makefile
 cmd/ccn_ccnbtoxml
 cmd/ccn_splitccnb
 cmd/ccn_xmltoccnb
+cmd/ccnbasicconfig
 cmd/ccnbuzz
+cmd/ccnbx
 cmd/ccncat
 cmd/ccncatchunks
 cmd/ccncatchunks2
@@ -42,6 +44,7 @@ lib/skel_decode_test
 lib/smoketestclientlib
 libexec/Makefile
 libexec/ccndc
+libexec/ccndc-inject
 libexec/udplink
 tests/Makefile
 tests/FAILING
