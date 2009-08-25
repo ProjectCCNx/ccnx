@@ -59,27 +59,27 @@ struct ccnd_handle {
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *propagating_tab; /**< keyed by nonce */
     struct ccn_indexbuf *skiplinks; /**< skiplist for content-ordered ops */
-    unsigned face_gen;
-    unsigned face_rover;            /**< for faceid allocation */
-    unsigned face_limit;
     unsigned forward_to_gen;        /**< for forward_to updates */
+    unsigned face_gen;              /**< faceid generation number */
+    unsigned face_rover;            /**< for faceid allocation */
+    unsigned face_limit;            /**< current number of face slots */
     struct face **faces_by_faceid;  /**< array with face_limit elements */
     struct ccn_scheduled_event *reaper;
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;
     struct ccn_scheduled_event *age_forwarding;
     const char *portstr;            /**< "main" port number */
-    int local_listener_fd;
+    int local_listener_fd;          /**< listener for unix-domain connections */
     int tcp4_fd;                    /**< listener for IPv4 tcp connections */
     int tcp6_fd;                    /**< listener for IPv6 tcp connections */
     int udp4_fd;                    /**< common fd for IPv4 unicast */
     int udp6_fd;                    /**< common fd for IPv6 unicast */
-    nfds_t nfds;
-    struct pollfd *fds;
-    struct ccn_gettime ticktock;
-    struct ccn_schedule *sched;
-    struct ccn_charbuf *scratch_charbuf;
-    struct ccn_indexbuf *scratch_indexbuf;
+    nfds_t nfds;                    /**< number of entries in fds array */
+    struct pollfd *fds;             /**< used for poll system call */
+    struct ccn_gettime ticktock;    /**< our time generator */
+    struct ccn_schedule *sched;     /**< our schedule */
+    struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
+    struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
     /** Next three fields are used for direct accession-to-content table */
     ccn_accession_t accession_base;
     unsigned content_by_accession_window;
@@ -143,12 +143,12 @@ enum cq_delay_class {
  * One of our active interfaces
  */
 struct face {
-    int recv_fd;                /* socket for receiving */
-    int send_fd;                /* socket for sending (maybe same as recv_fd) */
-    int flags;                  /* CCN_FACE_* below */
-    unsigned faceid;            /* internal face id */
-    unsigned recvcount;         /* for activity level monitoring */
-    struct content_queue *q[CCN_CQ_N]; /* outgoing content, per delay class */
+    int recv_fd;                /**< socket for receiving */
+    int send_fd;                /**< socket for sending (maybe == recv_fd) */
+    int flags;                  /**< CCN_FACE_* face flags */
+    unsigned faceid;            /**< internal face id */
+    unsigned recvcount;         /**< for activity level monitoring */
+    struct content_queue *q[CCN_CQ_N]; /**< outgoing content, per delay class */
     struct ccn_charbuf *inbuf;
     struct ccn_skeleton_decoder decoder;
     size_t outbufindex;
@@ -169,6 +169,7 @@ struct face {
 #define CCN_FACE_DC     (1 << 7) /**< Face sends Inject messages */
 #define CCN_FACE_NOSEND (1 << 8) /**< Don't send anymore */
 #define CCN_FACE_UNDECIDED (1 << 9) /**< Might not be talking ccn */
+#define CCN_FACE_PERMANENT (1 << 10) /**< No timeout for inactivity */
 
 /**
  *  The content hash table is keyed by the initial portion of the ContentObject

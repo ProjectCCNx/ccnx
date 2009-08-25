@@ -1,7 +1,7 @@
 /**
  * @file ccnd.c
  * 
- * CCN Daemon
+ * ccnd - CCN Daemon
  */  
 
 /*-
@@ -1244,10 +1244,13 @@ check_dgram_faces(struct ccnd_handle *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int count = 0;
+    int checkflags = CCN_FACE_DGRAM | CCN_FACE_PERMANENT;
+    int wantflags = CCN_FACE_DGRAM;
+    
     hashtb_start(h->dgram_faces, e);
     while (e->data != NULL) {
         struct face *face = e->data;
-        if ((face->flags & CCN_FACE_DGRAM) != 0 && face->addr != NULL) {
+        if (face->addr != NULL && (face->flags & checkflags) == wantflags) {
             if (face->recvcount == 0) {
                 count += 1;
                 hashtb_delete(e);
@@ -1794,10 +1797,10 @@ ccnd_req_newface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
             newface = make_connection(h,
                                       addrinfo->ai_addr,
                                       addrinfo->ai_addrlen);
-            
         }
     }
     if (newface != NULL) {
+        newface->flags |= CCN_FACE_PERMANENT;
         result = ccn_charbuf_create();
         face_instance->action = NULL;
         face_instance->ccnd_id = h->ccnd_id;

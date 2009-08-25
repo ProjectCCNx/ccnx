@@ -1,6 +1,6 @@
 /**
  * @file ccndsmoketest.c
- * Simple program for smoke-test of ccnd
+ * Simple program for smoke-test of ccnd.
  */
 /*-
  * Copyright 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.

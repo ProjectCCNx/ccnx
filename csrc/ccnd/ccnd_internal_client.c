@@ -1,5 +1,6 @@
 /**
  * @file ccnd_internal_client.c
+ * Dispatch requests to the ccnd using ccn protocols.
  */
 /*-  
  * Copyright (C) 2009 Palo Alto Research Center, Inc. All rights reserved.
