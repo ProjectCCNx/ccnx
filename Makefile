@@ -1,7 +1,7 @@
 # Top level Makefile for ccn
 
 SUBDIRS = csrc schema javasrc doc/technical
-PACKLIST = Makefile build.xml README configure doc/index.txt $(SUBDIRS)
+PACKLIST = Makefile build.xml README configure doc/index.txt $(SUBDIRS) experiments
 
 default all: _always
 	for i in $(SUBDIRS); do         \
