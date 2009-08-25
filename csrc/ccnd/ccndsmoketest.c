@@ -1,7 +1,9 @@
-/*
- * Copyright 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
+/**
+ * @file ccndsmoketest.c
  * Simple program for smoke-test of ccnd
- * Author: Michael Plass
+ */
+/*-
+ * Copyright 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 #include <errno.h>
 #include <fcntl.h>
@@ -22,8 +24,8 @@
 #include <sys/un.h>
 
 #if defined(NEED_GETADDRINFO_COMPAT)
-    #include "getaddrinfo.h"
-    #include "dummyin6.h"
+#include "getaddrinfo.h"
+#include "dummyin6.h"
 #endif
 
 #include <ccn/ccnd.h>
@@ -55,10 +57,10 @@ setup_sockaddr_un(const char *portstr, struct sockaddr_un *result)
     sa->sun_family = AF_UNIX;
     if (portstr != NULL && atoi(portstr) > 0 && atoi(portstr) != 4485)
         snprintf(sa->sun_path, sizeof(sa->sun_path),
-            CCN_DEFAULT_LOCAL_SOCKNAME ".%s", portstr);
+                 CCN_DEFAULT_LOCAL_SOCKNAME ".%s", portstr);
     else
         snprintf(sa->sun_path, sizeof(sa->sun_path),
-            CCN_DEFAULT_LOCAL_SOCKNAME);
+                 CCN_DEFAULT_LOCAL_SOCKNAME);
 }
 
 static int
@@ -94,7 +96,7 @@ open_socket(const char *host, const char *portstr, int sock_type)
     struct addrinfo *addrinfo = NULL;
     struct addrinfo *myai = NULL;
     struct addrinfo hints = {0};
-
+    
     if (portstr == NULL || portstr[0] == 0)
         portstr = "4485";
     hints.ai_family = AF_UNSPEC;
@@ -112,7 +114,7 @@ open_socket(const char *host, const char *portstr, int sock_type)
                 host, portstr, gai_strerror(res));
         exit(1);
     }
-
+    
     res = getnameinfo(addrinfo->ai_addr, addrinfo->ai_addrlen,
                       canonical_remote, sizeof(canonical_remote), NULL, 0, 0);
     
@@ -183,7 +185,7 @@ send_ccnb_file(int sock, FILE *msgs, const char *filename, int is_dgram)
             break;
     }
     if (fd != 0)
-            close(fd);
+        close(fd);
 }
 
 static int
@@ -216,30 +218,30 @@ int main(int argc, char **argv)
                 binout = 1;
                 msgs = stderr;
                 break;
-	    case 't':
-		msec = atoi(optarg);
-		break;
-	    case 'u':
-		udp = 1;
+            case 't':
+                msec = atoi(optarg);
+                break;
+            case 'u':
+                udp = 1;
                 host = optarg;
-		break;
-	    case 'T':
-		tcp = 1;
+                break;
+            case 'T':
+                tcp = 1;
                 host = optarg;
-		break;
+                break;
             case 'h':
             default:
                 fprintf(stderr, "Usage %s %s\n", argv[0],
-                            " [-b(inaryout)] "
-                            " [-u udphost] "
-                            " [-T tcphost] "
-                            " [-t millisconds] "
-                            " ( send <filename>"
-                            " | <sendfilename>.ccnb"
-                            " | recv"
-                            " | kill"
-                            " | timeo <millisconds>"
-                            " ) ...");
+                        " [-b(inaryout)] "
+                        " [-u udphost] "
+                        " [-T tcphost] "
+                        " [-t millisconds] "
+                        " ( send <filename>"
+                        " | <sendfilename>.ccnb"
+                        " | recv"
+                        " | kill"
+                        " | timeo <millisconds>"
+                        " ) ...");
                 exit(1);
         }
     }
@@ -262,7 +264,7 @@ int main(int argc, char **argv)
                 filename = "-";
             else
                 argp++;
-        send_ccnb_file(sock, msgs, filename, udp);
+            send_ccnb_file(sock, msgs, filename, udp);
         }
         else if (is_ccnb_name(argv[argp])) {
             filename = argv[argp];

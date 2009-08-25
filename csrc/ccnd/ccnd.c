@@ -50,36 +50,40 @@
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
 static int create_local_listener(const char *sockname, int backlog);
-static void accept_new_local_client(struct ccnd *h);
-static void process_input_message(struct ccnd *h, struct face *face,
+static void accept_new_local_client(struct ccnd_handle *h);
+static void process_input_message(struct ccnd_handle *h, struct face *face,
                                   unsigned char *msg, size_t size, int pdu_ok);
-static void process_input(struct ccnd *h, int fd);
-static int ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c);
-static void do_write(struct ccnd *h, struct face *face,
+static void process_input(struct ccnd_handle *h, int fd);
+static int ccn_stuff_interest(struct ccnd_handle *h,
+                              struct face *face, struct ccn_charbuf *c);
+static void do_write(struct ccnd_handle *h, struct face *face,
                      unsigned char *data, size_t size);
-static void do_deferred_write(struct ccnd *h, int fd);
-static void run(struct ccnd *h);
-static void clean_needed(struct ccnd *h);
-static struct face *get_dgram_source(struct ccnd *h, struct face *face,
-                              struct sockaddr *addr, socklen_t addrlen);
-static void content_skiplist_insert(struct ccnd *h, struct content_entry *content);
-static void content_skiplist_remove(struct ccnd *h, struct content_entry *content);
-static void mark_stale(struct ccnd *h, struct content_entry *content);
-static ccn_accession_t
-            content_skiplist_next(struct ccnd *h, struct content_entry *content);
-static void reap_needed(struct ccnd *h, int init_delay_usec);
-static void check_comm_file(struct ccnd *h);
+static void do_deferred_write(struct ccnd_handle *h, int fd);
+static void run(struct ccnd_handle *h);
+static void clean_needed(struct ccnd_handle *h);
+static struct face *get_dgram_source(struct ccnd_handle *h, struct face *face,
+                                     struct sockaddr *addr, socklen_t addrlen);
+static void content_skiplist_insert(struct ccnd_handle *h,
+                                    struct content_entry *content);
+static void content_skiplist_remove(struct ccnd_handle *h,
+                                    struct content_entry *content);
+static void mark_stale(struct ccnd_handle *h,
+                       struct content_entry *content);
+static ccn_accession_t content_skiplist_next(struct ccnd_handle *h,
+                                             struct content_entry *content);
+static void reap_needed(struct ccnd_handle *h, int init_delay_usec);
+static void check_comm_file(struct ccnd_handle *h);
 static const char *unlink_this_at_exit = NULL;
-static int nameprefix_longest_match(struct ccnd *h,
+static int nameprefix_longest_match(struct ccnd_handle *h,
                                     const unsigned char *msg,
                                     struct ccn_indexbuf *comps,
                                     int ncomps);
-static int nameprefix_seek(struct ccnd *h,
+static int nameprefix_seek(struct ccnd_handle *h,
                            struct hashtb_enumerator *e,
                            const unsigned char *msg,
                            struct ccn_indexbuf *comps,
                            int ncomps);
-static void register_new_face(struct ccnd *h, struct face *face);
+static void register_new_face(struct ccnd_handle *h, struct face *face);
 
 static void
 cleanup_at_exit(void)
@@ -130,7 +134,7 @@ fatal_err(const char *msg)
 }
 
 static struct ccn_charbuf *
-charbuf_obtain(struct ccnd *h)
+charbuf_obtain(struct ccnd_handle *h)
 {
     struct ccn_charbuf *c = h->scratch_charbuf;
     if (c == NULL)
@@ -141,7 +145,7 @@ charbuf_obtain(struct ccnd *h)
 }
 
 static void
-charbuf_release(struct ccnd *h, struct ccn_charbuf *c)
+charbuf_release(struct ccnd_handle *h, struct ccn_charbuf *c)
 {
     c->length = 0;
     if (h->scratch_charbuf == NULL)
@@ -151,7 +155,7 @@ charbuf_release(struct ccnd *h, struct ccn_charbuf *c)
 }
 
 static struct ccn_indexbuf *
-indexbuf_obtain(struct ccnd *h)
+indexbuf_obtain(struct ccnd_handle *h)
 {
     struct ccn_indexbuf *c = h->scratch_indexbuf;
     if (c == NULL)
@@ -162,7 +166,7 @@ indexbuf_obtain(struct ccnd *h)
 }
 
 static void
-indexbuf_release(struct ccnd *h, struct ccn_indexbuf *c)
+indexbuf_release(struct ccnd_handle *h, struct ccn_indexbuf *c)
 {
     c->n = 0;
     if (h->scratch_indexbuf == NULL)
@@ -172,7 +176,7 @@ indexbuf_release(struct ccnd *h, struct ccn_indexbuf *c)
 }
 
 static struct face *
-face_from_faceid(struct ccnd *h, unsigned faceid)
+face_from_faceid(struct ccnd_handle *h, unsigned faceid)
 {
     unsigned slot = faceid & MAXFACES;
     struct face *face = NULL;
@@ -185,7 +189,7 @@ face_from_faceid(struct ccnd *h, unsigned faceid)
 }
 
 static int
-enroll_face(struct ccnd *h, struct face *face)
+enroll_face(struct ccnd_handle *h, struct face *face)
 {
     unsigned i;
     unsigned n = h->face_limit;
@@ -235,7 +239,7 @@ content_queue_create(unsigned usec)
 }
 
 static void
-content_queue_destroy(struct ccnd *h, struct content_queue **pq)
+content_queue_destroy(struct ccnd_handle *h, struct content_queue **pq)
 {
     struct content_queue *q;
     if (*pq != NULL) {
@@ -253,7 +257,7 @@ content_queue_destroy(struct ccnd *h, struct content_queue **pq)
 static void
 finalize_face(struct hashtb_enumerator *e)
 {
-    struct ccnd *h = hashtb_get_param(e->ht, NULL);
+    struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
     struct face *face = e->data;
     unsigned i = face->faceid & MAXFACES;
     enum cq_delay_class c;
@@ -281,7 +285,7 @@ finalize_face(struct hashtb_enumerator *e)
 }
 
 static struct content_entry *
-content_from_accession(struct ccnd *h, ccn_accession_t accession)
+content_from_accession(struct ccnd_handle *h, ccn_accession_t accession)
 {
     struct content_entry *ans = NULL;
     if (accession < h->accession_base) {
@@ -300,7 +304,7 @@ content_from_accession(struct ccnd *h, ccn_accession_t accession)
 }
 
 static void
-cleanout_stragglers(struct ccnd *h)
+cleanout_stragglers(struct ccnd_handle *h)
 {
     ccn_accession_t accession;
     struct hashtb_enumerator ee;
@@ -340,7 +344,7 @@ cleanout_stragglers(struct ccnd *h)
 }
 
 static int
-cleanout_empties(struct ccnd *h)
+cleanout_empties(struct ccnd_handle *h)
 {
     unsigned i = 0;
     unsigned j = 0;
@@ -362,7 +366,7 @@ cleanout_empties(struct ccnd *h)
 }
 
 static void
-enroll_content(struct ccnd *h, struct content_entry *content)
+enroll_content(struct ccnd_handle *h, struct content_entry *content)
 {
     unsigned new_window;
     struct content_entry **new_array;
@@ -397,10 +401,11 @@ enroll_content(struct ccnd *h, struct content_entry *content)
 static void
 finalize_content(struct hashtb_enumerator *content_enumerator)
 {
-    struct ccnd *h = hashtb_get_param(content_enumerator->ht, NULL);
+    struct ccnd_handle *h = hashtb_get_param(content_enumerator->ht, NULL);
     struct content_entry *entry = content_enumerator->data;
     unsigned i = entry->accession - h->accession_base;
-    if (i < h->content_by_accession_window && h->content_by_accession[i] == entry) {
+    if (i < h->content_by_accession_window &&
+          h->content_by_accession[i] == entry) {
         content_skiplist_remove(h, entry);
         h->content_by_accession[i] = NULL;
     }
@@ -408,7 +413,8 @@ finalize_content(struct hashtb_enumerator *content_enumerator)
         struct hashtb_enumerator ee;
         struct hashtb_enumerator *e = &ee;
         hashtb_start(h->sparse_straggler_tab, e);
-        if (hashtb_seek(e, &entry->accession, sizeof(entry->accession), 0) == HT_NEW_ENTRY) {
+        if (hashtb_seek(e, &entry->accession, sizeof(entry->accession), 0) ==
+              HT_NEW_ENTRY) {
             ccnd_msg(h, "orphaned content %llu",
                      (unsigned long long)(entry->accession));
             hashtb_delete(e);
@@ -427,7 +433,7 @@ finalize_content(struct hashtb_enumerator *content_enumerator)
 
 
 static int
-content_skiplist_findbefore(struct ccnd *h,
+content_skiplist_findbefore(struct ccnd_handle *h,
                             const unsigned char *key,
                             size_t keysize,
                             struct content_entry *wanted_old,
@@ -468,7 +474,7 @@ content_skiplist_findbefore(struct ccnd *h,
 
 #define CCN_SKIPLIST_MAX_DEPTH 30
 static void
-content_skiplist_insert(struct ccnd *h, struct content_entry *content)
+content_skiplist_insert(struct ccnd_handle *h, struct content_entry *content)
 {
     int d;
     int i;
@@ -495,7 +501,7 @@ content_skiplist_insert(struct ccnd *h, struct content_entry *content)
 }
 
 static void
-content_skiplist_remove(struct ccnd *h, struct content_entry *content)
+content_skiplist_remove(struct ccnd_handle *h, struct content_entry *content)
 {
     int i;
     int d;
@@ -518,7 +524,7 @@ content_skiplist_remove(struct ccnd *h, struct content_entry *content)
 
 
 static struct content_entry *
-find_first_match_candidate(struct ccnd *h,
+find_first_match_candidate(struct ccnd_handle *h,
     const unsigned char *interest_msg,
     const struct ccn_parsed_interest *pi)
 {
@@ -534,7 +540,7 @@ find_first_match_candidate(struct ccnd *h,
 }
 
 static int
-content_matches_interest_prefix(struct ccnd *h,
+content_matches_interest_prefix(struct ccnd_handle *h,
                                 struct content_entry *content,
                                 const unsigned char *interest_msg,
                                 struct ccn_indexbuf *comps,
@@ -557,9 +563,11 @@ content_matches_interest_prefix(struct ccnd *h,
 }
 
 static ccn_accession_t
-content_skiplist_next(struct ccnd *h, struct content_entry *content)
+content_skiplist_next(struct ccnd_handle *h, struct content_entry *content)
 {
-    if (content == NULL || content->skiplinks == NULL || content->skiplinks->n < 1)
+    if (content == NULL)
+        return(0);
+    if (content->skiplinks == NULL || content->skiplinks->n < 1)
         return(0);
     return(content->skiplinks->buf[0]);
 }
@@ -571,7 +579,7 @@ finished_propagating(struct propagating_entry *pe)
 }
 
 static void
-consume(struct ccnd *h, struct propagating_entry *pe)
+consume(struct ccnd_handle *h, struct propagating_entry *pe)
 {
     struct face *face = NULL;
     finished_propagating(pe);
@@ -593,7 +601,7 @@ consume(struct ccnd *h, struct propagating_entry *pe)
 static void
 finalize_nameprefix(struct hashtb_enumerator *e)
 {
-    struct ccnd *h = hashtb_get_param(e->ht, NULL);
+    struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
     struct nameprefix_entry *npe = e->data;
     if (npe->propagating_head != NULL) {
         consume(h, npe->propagating_head);
@@ -613,7 +621,7 @@ finalize_nameprefix(struct hashtb_enumerator *e)
 }
 
 static void
-link_propagating_interest_to_interest_entry(struct ccnd *h,
+link_propagating_interest_to_interest_entry(struct ccnd_handle *h,
     struct propagating_entry *pe, struct nameprefix_entry *npe)
 {
     struct propagating_entry *head = npe->propagating_head;
@@ -632,7 +640,7 @@ link_propagating_interest_to_interest_entry(struct ccnd *h,
 static void
 finalize_propagating(struct hashtb_enumerator *e)
 {
-    struct ccnd *h = hashtb_get_param(e->ht, NULL);
+    struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
     consume(h, e->data);
 }
 
@@ -672,7 +680,7 @@ create_local_listener(const char *sockname, int backlog)
 }
 
 static void
-accept_new_local_client(struct ccnd *h)
+accept_new_local_client(struct ccnd_handle *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -701,7 +709,7 @@ accept_new_local_client(struct ccnd *h)
 }
 
 static struct face *
-record_connection(struct ccnd *h, int fd,
+record_connection(struct ccnd_handle *h, int fd,
                   struct sockaddr *who, socklen_t wholen)
 {
     struct hashtb_enumerator ee;
@@ -732,7 +740,7 @@ record_connection(struct ccnd *h, int fd,
 }
 
 static void
-accept_connection(struct ccnd *h, int listener_fd)
+accept_connection(struct ccnd_handle *h, int listener_fd)
 {
     struct sockaddr who[4];
     socklen_t wholen = sizeof(who);
@@ -752,7 +760,7 @@ accept_connection(struct ccnd *h, int listener_fd)
 }
 
 static struct face *
-make_connection(struct ccnd *h, struct sockaddr *who, socklen_t wholen)
+make_connection(struct ccnd_handle *h, struct sockaddr *who, socklen_t wholen)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -795,7 +803,7 @@ make_connection(struct ccnd *h, struct sockaddr *who, socklen_t wholen)
 
 typedef void (*loggerproc)(void *, const char *, ...);
 static struct face *
-setup_multicast(struct ccnd *h, struct ccn_face_instance *face_instance,
+setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
                 struct sockaddr *who, socklen_t wholen)
 {
     struct hashtb_enumerator ee;
@@ -839,7 +847,7 @@ setup_multicast(struct ccnd *h, struct ccn_face_instance *face_instance,
 }
 
 void
-shutdown_client_fd(struct ccnd *h, int fd)
+shutdown_client_fd(struct ccnd_handle *h, int fd)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -863,7 +871,7 @@ shutdown_client_fd(struct ccnd *h, int fd)
 }
 
 static void
-send_content(struct ccnd *h, struct face *face, struct content_entry *content)
+send_content(struct ccnd_handle *h, struct face *face, struct content_entry *content)
 {
     struct ccn_charbuf *c = charbuf_obtain(h);
     int n, a, b, size;
@@ -893,7 +901,7 @@ send_content(struct ccnd *h, struct face *face, struct content_entry *content)
 }
 
 static int
-choose_face_delay(struct ccnd *h, struct face *face, enum cq_delay_class c)
+choose_face_delay(struct ccnd_handle *h, struct face *face, enum cq_delay_class c)
 {
     int shift = (c == CCN_CQ_SLOW) ? 2 : 0;
     if (c == CCN_CQ_ASAP)
@@ -906,7 +914,7 @@ choose_face_delay(struct ccnd *h, struct face *face, enum cq_delay_class c)
 }
 
 static enum cq_delay_class
-choose_content_delay_class(struct ccnd *h, unsigned faceid, int content_flags)
+choose_content_delay_class(struct ccnd_handle *h, unsigned faceid, int content_flags)
 {
     struct face *face = face_from_faceid(h, faceid);
     if (face == NULL)
@@ -919,7 +927,7 @@ choose_content_delay_class(struct ccnd *h, unsigned faceid, int content_flags)
 }
 
 static unsigned
-randomize_content_delay(struct ccnd *h, unsigned usec)
+randomize_content_delay(struct ccnd_handle *h, unsigned usec)
 {
     if (usec < 2)
         return(1);
@@ -935,7 +943,7 @@ content_sender(struct ccn_schedule *sched,
     int flags)
 {
     int i, j;
-    struct ccnd *h = clienth;
+    struct ccnd_handle *h = clienth;
     struct content_entry *content = NULL;
     struct face *face = face_from_faceid(h, ev->evint);
     struct content_queue *q = ev->evdata;
@@ -978,7 +986,8 @@ Bail:
 }
 
 static int
-face_send_queue_insert(struct ccnd *h, struct face *face, struct content_entry *content)
+face_send_queue_insert(struct ccnd_handle *h,
+                       struct face *face, struct content_entry *content)
 {
     int ans;
     int delay;
@@ -1011,7 +1020,7 @@ face_send_queue_insert(struct ccnd *h, struct face *face, struct content_entry *
  * Returns number of matches found.
  */
 static int
-consume_matching_interests(struct ccnd *h,
+consume_matching_interests(struct ccnd_handle *h,
                            struct nameprefix_entry *npe,
                            struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
@@ -1051,7 +1060,7 @@ consume_matching_interests(struct ccnd *h,
 }
 
 static void
-adjust_ipe_predicted_response(struct ccnd *h,
+adjust_ipe_predicted_response(struct ccnd_handle *h,
                               struct nameprefix_entry *npe, int up)
 {
     unsigned t = npe->usec;
@@ -1067,7 +1076,8 @@ adjust_ipe_predicted_response(struct ccnd *h,
 }
 
 static void
-adjust_predicted_response(struct ccnd *h, struct propagating_entry *pe, int up)
+adjust_predicted_response(struct ccnd_handle *h,
+                          struct propagating_entry *pe, int up)
 {
     struct ccn_indexbuf *comps = indexbuf_obtain(h);
     struct ccn_parsed_interest parsed_interest = {0};
@@ -1101,7 +1111,7 @@ adjust_predicted_response(struct ccnd *h, struct propagating_entry *pe, int up)
  * Keep a little history about where matching content comes from.
  */
 static void
-note_content_from(struct ccnd *h,
+note_content_from(struct ccnd_handle *h,
                   struct nameprefix_entry *npe,
                   unsigned from_faceid)
 {
@@ -1126,7 +1136,7 @@ note_content_from(struct ccnd *h,
  * Returns number of matches.
  */
 static int
-match_interests(struct ccnd *h, struct content_entry *content,
+match_interests(struct ccnd_handle *h, struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
                            struct face *face, struct face *from_face)
 {
@@ -1156,7 +1166,7 @@ match_interests(struct ccnd *h, struct content_entry *content,
  * stuff_and_write:
  */
 static void
-stuff_and_write(struct ccnd *h, struct face *face,
+stuff_and_write(struct ccnd_handle *h, struct face *face,
              unsigned char *data, size_t size) {
     struct ccn_charbuf *c;
     c = charbuf_obtain(h);
@@ -1177,7 +1187,8 @@ stuff_and_write(struct ccnd *h, struct face *face,
 }
 
 static int
-ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c)
+ccn_stuff_interest(struct ccnd_handle *h,
+                   struct face *face, struct ccn_charbuf *c)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1228,7 +1239,7 @@ ccn_stuff_interest(struct ccnd *h, struct face *face, struct ccn_charbuf *c)
  * Returns number of faces that have gone away.
  */
 static int
-check_dgram_faces(struct ccnd *h)
+check_dgram_faces(struct ccnd_handle *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1254,7 +1265,7 @@ check_dgram_faces(struct ccnd *h)
  * Remove expired faces from npe->forward_to
  */
 static void
-check_forward_to(struct ccnd *h, struct nameprefix_entry *npe)
+check_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
 {
     struct ccn_indexbuf *ft = npe->forward_to;
     int i;
@@ -1279,7 +1290,7 @@ check_forward_to(struct ccnd *h, struct nameprefix_entry *npe)
  * Also ages src info and retires unused nameprefix entries.
  */
 static int
-check_propagating(struct ccnd *h)
+check_propagating(struct ccnd_handle *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1323,7 +1334,7 @@ check_propagating(struct ccnd *h)
 }
 
 static void
-check_comm_file(struct ccnd *h)
+check_comm_file(struct ccnd_handle *h)
 {
     if (!comm_file_ok()) {
         ccnd_msg(h, "exiting (%s gone)", unlink_this_at_exit);
@@ -1338,7 +1349,7 @@ reap(
     struct ccn_scheduled_event *ev,
     int flags)
 {
-    struct ccnd *h = clienth;
+    struct ccnd_handle *h = clienth;
     (void)(sched);
     (void)(ev);
     if ((flags & CCN_SCHEDULE_CANCEL) == 0) {
@@ -1352,14 +1363,14 @@ reap(
 }
 
 static void
-reap_needed(struct ccnd *h, int init_delay_usec)
+reap_needed(struct ccnd_handle *h, int init_delay_usec)
 {
     if (h->reaper == NULL)
         h->reaper = ccn_schedule_event(h->sched, init_delay_usec, reap, NULL, 0);
 }
 
 static int
-remove_content(struct ccnd *h, struct content_entry *content)
+remove_content(struct ccnd_handle *h, struct content_entry *content)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1388,7 +1399,7 @@ clean_deamon(struct ccn_schedule *sched,
              struct ccn_scheduled_event *ev,
              int flags)
 {
-    struct ccnd *h = clienth;
+    struct ccnd_handle *h = clienth;
     (void)(sched);
     (void)(ev);
     unsigned long n;
@@ -1472,7 +1483,7 @@ clean_deamon(struct ccn_schedule *sched,
 }
 
 static void
-clean_needed(struct ccnd *h)
+clean_needed(struct ccnd_handle *h)
 {
     if (h->clean == NULL)
         h->clean = ccn_schedule_event(h->sched, 1000000, clean_deamon, NULL, 0);
@@ -1487,7 +1498,7 @@ age_forwarding(struct ccn_schedule *sched,
              struct ccn_scheduled_event *ev,
              int flags)
 {
-    struct ccnd *h = clienth;
+    struct ccnd_handle *h = clienth;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct ccn_forwarding *f;
@@ -1524,7 +1535,7 @@ age_forwarding(struct ccn_schedule *sched,
 }
 
 static void
-age_forwarding_needed(struct ccnd *h)
+age_forwarding_needed(struct ccnd_handle *h)
 {
     if (h->age_forwarding == NULL)
         h->age_forwarding = ccn_schedule_event(h->sched,
@@ -1534,7 +1545,8 @@ age_forwarding_needed(struct ccnd *h)
 }
 
 static struct ccn_forwarding *
-seek_forwarding(struct ccnd *h, struct nameprefix_entry *npe, unsigned faceid)
+seek_forwarding(struct ccnd_handle *h,
+                struct nameprefix_entry *npe, unsigned faceid)
 {
     struct ccn_forwarding *f;
     
@@ -1553,7 +1565,7 @@ seek_forwarding(struct ccnd *h, struct nameprefix_entry *npe, unsigned faceid)
 }
 
 int
-ccnd_reg_prefix(struct ccnd *h,
+ccnd_reg_prefix(struct ccnd_handle *h,
                 const unsigned char *msg,
                 struct ccn_indexbuf *comps,
                 int ncomps,
@@ -1591,7 +1603,7 @@ ccnd_reg_prefix(struct ccnd *h,
 }
 
 int
-ccnd_reg_uri(struct ccnd *h,
+ccnd_reg_uri(struct ccnd_handle *h,
                 const char *uri,
                 unsigned faceid,
                 int flags,
@@ -1620,7 +1632,7 @@ ccnd_reg_uri(struct ccnd *h,
 }
 
 static void
-register_new_face(struct ccnd *h, struct face *face)
+register_new_face(struct ccnd_handle *h, struct face *face)
 {
     int res;
     if (h->flood && face->faceid != 0 &&
@@ -1631,7 +1643,7 @@ register_new_face(struct ccnd *h, struct face *face)
 }
 
 struct ccn_charbuf *
-ccnd_reg_self(struct ccnd *h, const unsigned char *msg, size_t size)
+ccnd_reg_self(struct ccnd_handle *h, const unsigned char *msg, size_t size)
 {
     struct ccn_parsed_ContentObject pco = {0};
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
@@ -1685,7 +1697,7 @@ ccnd_reg_self(struct ccnd *h, const unsigned char *msg, size_t size)
  * receive any traffic.
  */
 struct ccn_charbuf *
-ccnd_req_newface(struct ccnd *h, const unsigned char *msg, size_t size)
+ccnd_req_newface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
 {
     struct ccn_parsed_ContentObject pco = {0};
     int res;
@@ -1816,7 +1828,7 @@ Finish:
  *
  */
 struct ccn_charbuf *
-ccnd_req_prefixreg(struct ccnd *h, const unsigned char *msg, size_t size)
+ccnd_req_prefixreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
 {
     struct ccn_parsed_ContentObject pco = {0};
     int res;
@@ -1891,7 +1903,7 @@ Finish:
  * Add all the active, inheritable faceids of npe and its ancestors to x
  */
 static void
-update_inherited(struct ccnd *h,
+update_inherited(struct ccnd_handle *h,
                  struct nameprefix_entry *npe, struct ccn_indexbuf *x)
 {
     struct ccn_forwarding *f;
@@ -1913,7 +1925,7 @@ update_inherited(struct ccnd *h,
  * npe and all of its ancestors
  */
 static void
-update_forward_to(struct ccnd *h, struct nameprefix_entry *npe)
+update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
 {
     struct ccn_forwarding *f;
     struct ccn_indexbuf *x = npe->forward_to;
@@ -1945,7 +1957,7 @@ update_forward_to(struct ccnd *h, struct nameprefix_entry *npe)
  * @result Newly allocated set of outgoing faceids
  */
 static struct ccn_indexbuf *
-get_outbound_faces(struct ccnd *h,
+get_outbound_faces(struct ccnd_handle *h,
     struct face *from,
     unsigned char *msg,
     struct ccn_parsed_interest *pi,
@@ -1979,7 +1991,7 @@ get_outbound_faces(struct ccnd *h,
 }
 
 static int
-pe_next_usec(struct ccnd *h,
+pe_next_usec(struct ccnd_handle *h,
              struct propagating_entry *pe, int next_delay, int lineno)
 {
     if (next_delay > pe->usec)
@@ -2007,7 +2019,7 @@ do_propagate(struct ccn_schedule *sched,
              struct ccn_scheduled_event *ev,
              int flags)
 {
-    struct ccnd *h = clienth;
+    struct ccnd_handle *h = clienth;
     struct propagating_entry *pe = ev->evdata;
     (void)(sched);
     int next_delay = 1;
@@ -2078,7 +2090,7 @@ do_propagate(struct ccn_schedule *sched,
 }
 
 static int
-adjust_outbound_for_existing_interests(struct ccnd *h, struct face *face,
+adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                                        unsigned char *msg,
                                        struct ccn_parsed_interest *pi,
                                        struct nameprefix_entry *npe,
@@ -2107,7 +2119,8 @@ adjust_outbound_for_existing_interests(struct ccnd *h, struct face *face,
                 // XXX - If we had actual forwarding tables, would need to take that into account since the outbound set could differ in non-trivial ways
                 // XXX - newly arrived faces might miss a few interests because of this tactic, but those will get repaired as interests time out.
                 if (h->debug & 32)
-                    ccnd_debug_ccnb(h, __LINE__, "similar_interest", face_from_faceid(h, p->faceid),
+                    ccnd_debug_ccnb(h, __LINE__, "similar_interest",
+                                    face_from_faceid(h, p->faceid),
                                     p->interest_msg, p->size);
                 if (face->faceid == p->faceid) {
                     /*
@@ -2155,7 +2168,7 @@ adjust_outbound_for_existing_interests(struct ccnd *h, struct face *face,
 }
 
 static void
-reorder_outbound_using_history(struct ccnd *h,
+reorder_outbound_using_history(struct ccnd_handle *h,
                                struct nameprefix_entry *npe,
                                struct ccn_indexbuf *outbound)
 {
@@ -2169,7 +2182,7 @@ reorder_outbound_using_history(struct ccnd *h,
  * Schedules the propagation of an Interest message.
  */
 static int
-propagate_interest(struct ccnd *h, struct face *face,
+propagate_interest(struct ccnd_handle *h, struct face *face,
                       unsigned char *msg,
                       struct ccn_parsed_interest *pi,
                       struct nameprefix_entry *npe,
@@ -2275,7 +2288,7 @@ propagate_interest(struct ccnd *h, struct face *face,
  * the duplicate arrived on from the outbound set of the original.
  */
 static int
-is_duplicate_flooded(struct ccnd *h, unsigned char *msg,
+is_duplicate_flooded(struct ccnd_handle *h, unsigned char *msg,
                      struct ccn_parsed_interest *pi, unsigned faceid)
 {
     struct propagating_entry *pe = NULL;
@@ -2296,7 +2309,7 @@ is_duplicate_flooded(struct ccnd *h, unsigned char *msg,
  * Finds the longest matching nameprefix, returns the component count or -1 for error.
  */
 static int
-nameprefix_longest_match(struct ccnd *h, const unsigned char *msg,
+nameprefix_longest_match(struct ccnd_handle *h, const unsigned char *msg,
                          struct ccn_indexbuf *comps, int ncomps)
 {
     int i;
@@ -2323,7 +2336,7 @@ nameprefix_longest_match(struct ccnd *h, const unsigned char *msg,
  * with all of its parents.
  */
 static int
-nameprefix_seek(struct ccnd *h, struct hashtb_enumerator *e,
+nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
                 const unsigned char *msg, struct ccn_indexbuf *comps, int ncomps)
 {
     int i;
@@ -2362,7 +2375,7 @@ nameprefix_seek(struct ccnd *h, struct hashtb_enumerator *e,
 }
 
 static void
-process_incoming_interest(struct ccnd *h, struct face *face,
+process_incoming_interest(struct ccnd_handle *h, struct face *face,
                           unsigned char *msg, size_t size)
 {
     struct hashtb_enumerator ee;
@@ -2517,7 +2530,7 @@ process_incoming_interest(struct ccnd *h, struct face *face,
 }
 
 static void
-mark_stale(struct ccnd *h, struct content_entry *content)
+mark_stale(struct ccnd_handle *h, struct content_entry *content)
 {
     ccn_accession_t accession = content->accession;
     if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
@@ -2538,7 +2551,7 @@ expire_content(struct ccn_schedule *sched,
                struct ccn_scheduled_event *ev,
                int flags)
 {
-    struct ccnd *h = clienth;
+    struct ccnd_handle *h = clienth;
     ccn_accession_t accession = ev->evint;
     struct content_entry *content = NULL;
     int res;
@@ -2561,7 +2574,7 @@ expire_content(struct ccn_schedule *sched,
 }
 
 static void
-set_content_timer(struct ccnd *h, struct content_entry *content,
+set_content_timer(struct ccnd_handle *h, struct content_entry *content,
                   struct ccn_parsed_ContentObject *pco)
 {
     int seconds;
@@ -2585,7 +2598,7 @@ set_content_timer(struct ccnd *h, struct content_entry *content,
 }
 
 static void
-process_incoming_content(struct ccnd *h, struct face *face,
+process_incoming_content(struct ccnd_handle *h, struct face *face,
                          unsigned char *wire_msg, size_t wire_size)
 {
     unsigned char *msg;
@@ -2733,7 +2746,7 @@ Bail:
 }
 
 static void
-process_incoming_inject(struct ccnd *h, struct face *face,
+process_incoming_inject(struct ccnd_handle *h, struct face *face,
                         unsigned char *inject_msg, size_t wire_size)
 {
     /*
@@ -2795,7 +2808,7 @@ process_incoming_inject(struct ccnd *h, struct face *face,
 }
 
 static void
-process_input_message(struct ccnd *h, struct face *face,
+process_input_message(struct ccnd_handle *h, struct face *face,
                       unsigned char *msg, size_t size, int pdu_ok)
 {
     struct ccn_skeleton_decoder decoder = {0};
@@ -2839,7 +2852,7 @@ process_input_message(struct ccnd *h, struct face *face,
 }
 
 static struct face *
-get_dgram_source(struct ccnd *h, struct face *face,
+get_dgram_source(struct ccnd_handle *h, struct face *face,
            struct sockaddr *addr, socklen_t addrlen)
 {
     struct face *source = NULL;
@@ -2887,7 +2900,9 @@ get_dgram_source(struct ccnd *h, struct face *face,
             if (peer == NULL)
                 peer = "(unknown)";
             res = enroll_face(h, source);
-            ccnd_msg(h, "accepted datagram client id=%d (flags=0x%x) %s port %d", res, source->flags, peer, port);
+            ccnd_msg(h,
+                     "accepted datagram client id=%d (flags=0x%x) %s port %d",
+                     res, source->flags, peer, port);
             reap_needed(h, CCN_INTEREST_LIFETIME_MICROSEC);
         }
         source->recvcount++;
@@ -2897,7 +2912,7 @@ get_dgram_source(struct ccnd *h, struct face *face,
 }
 
 static void
-process_input(struct ccnd *h, int fd)
+process_input(struct ccnd_handle *h, int fd)
 {
     struct face *face = NULL;
     struct face *source = NULL;
@@ -2985,7 +3000,7 @@ process_input(struct ccnd *h, int fd)
 }
 
 static void
-process_internal_client_buffer(struct ccnd *h)
+process_internal_client_buffer(struct ccnd_handle *h)
 {
     struct ccn_charbuf *buf = ccn_grab_buffered_output(h->internal_client);
     if (buf != NULL) {
@@ -2995,7 +3010,8 @@ process_internal_client_buffer(struct ccnd *h)
 }
 
 static void
-do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
+do_write(struct ccnd_handle *h,
+         struct face *face, unsigned char *data, size_t size)
 {
     ssize_t res;
     if ((face->flags & CCN_FACE_NOSEND) != 0)
@@ -3041,7 +3057,7 @@ do_write(struct ccnd *h, struct face *face, unsigned char *data, size_t size)
 }
 
 static void
-do_deferred_write(struct ccnd *h, int fd)
+do_deferred_write(struct ccnd_handle *h, int fd)
 {
     /* This only happens on connected sockets */
     ssize_t res;
@@ -3076,7 +3092,7 @@ do_deferred_write(struct ccnd *h, int fd)
 }
 
 static void
-run(struct ccnd *h)
+run(struct ccnd_handle *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -3157,7 +3173,7 @@ run(struct ccnd *h)
 }
 
 static void
-ccnd_reseed(struct ccnd *h)
+ccnd_reseed(struct ccnd_handle *h)
 {
     int fd;
     ssize_t res;
@@ -3200,7 +3216,7 @@ ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
     result->micros = now.tv_usec;
 }
 
-static struct ccnd *
+static struct ccnd_handle *
 ccnd_create(const char *progname)
 {
     struct hashtb_enumerator ee;
@@ -3215,7 +3231,7 @@ ccnd_create(const char *progname)
     int fd;
     int res;
     int whichpf;
-    struct ccnd *h;
+    struct ccnd_handle *h;
     struct addrinfo hints = {0};
     struct addrinfo *addrinfo = NULL;
     struct addrinfo *a;
@@ -3387,7 +3403,7 @@ ccnd_create(const char *progname)
 int
 main(int argc, char **argv)
 {
-    struct ccnd *h;
+    struct ccnd_handle *h;
     signal(SIGPIPE, SIG_IGN);
     h = ccnd_create(argv[0]);
     enroll_face(h, h->face0);

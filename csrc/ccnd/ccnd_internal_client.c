@@ -1,6 +1,7 @@
-/*
- * ccnd_internal_client.c
- *  
+/**
+ * @file ccnd_internal_client.c
+ */
+/*-  
  * Copyright (C) 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
@@ -44,7 +45,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
     struct ccn_charbuf *keylocator = NULL;
     struct ccn_charbuf *signed_info = NULL;
     struct ccn_charbuf *reply_body = NULL;
-    struct ccnd *ccnd = NULL;
+    struct ccnd_handle *ccnd = NULL;
     struct ccn_keystore *keystore = NULL;
     int res = 0;
     int start = 0;
@@ -65,7 +66,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
         default:
             return(CCN_UPCALL_RESULT_ERR);
     }
-    ccnd = (struct ccnd *)selfp->data;
+    ccnd = (struct ccnd_handle *)selfp->data;
     if ((ccnd->debug & 128) != 0)
         ccnd_debug_ccnb(ccnd, __LINE__, "ccnd_answer_req", NULL,
                         info->interest_ccnb, info->pi->offset[CCN_PI_E]);
@@ -166,7 +167,7 @@ ccnd_internal_client_refresh(struct ccn_schedule *sched,
                struct ccn_scheduled_event *ev,
                int flags)
 {
-    struct ccnd *ccnd = clienth;
+    struct ccnd_handle *ccnd = clienth;
     int microsec;
     if ((flags & CCN_SCHEDULE_CANCEL) != 0)
         return(0);
@@ -181,7 +182,7 @@ ccnd_internal_client_refresh(struct ccn_schedule *sched,
 #define CCND_ID_TEMPL "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 static void
-ccnd_uri_listen(struct ccnd *ccnd, const char *uri,
+ccnd_uri_listen(struct ccnd_handle *ccnd, const char *uri,
                 ccn_handler p, intptr_t intdata)
 {
     struct ccn_charbuf *name;
@@ -238,7 +239,7 @@ ccnd_uri_listen(struct ccnd *ccnd, const char *uri,
 #endif
 
 int
-ccnd_init_internal_keystore(struct ccnd *ccnd)
+ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
 {
     struct ccn_charbuf *temp = NULL;
     struct ccn_charbuf *cmd = NULL;
@@ -315,7 +316,7 @@ Finish:
 }
 
 int
-ccnd_internal_client_start(struct ccnd *ccnd)
+ccnd_internal_client_start(struct ccnd_handle *ccnd)
 {
     struct ccn *h;
     if (ccnd->internal_client != NULL)
@@ -343,7 +344,7 @@ ccnd_internal_client_start(struct ccnd *ccnd)
 }
 
 void
-ccnd_internal_client_stop(struct ccnd *ccnd)
+ccnd_internal_client_stop(struct ccnd_handle *ccnd)
 {
     ccn_destroy(&ccnd->internal_client);
     if (ccnd->internal_client_refresh != NULL) {

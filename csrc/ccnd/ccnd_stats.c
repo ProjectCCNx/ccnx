@@ -44,14 +44,14 @@ struct ccnd_stats {
 };
 
 int
-ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
+ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     long sum;
     unsigned i;
     for (sum = 0, hashtb_start(h->nameprefix_tab, e);
-                                         e->data != NULL; hashtb_next(e)) {
+         e->data != NULL; hashtb_next(e)) {
         struct nameprefix_entry *ipe = e->data;
         struct propagating_entry *head = ipe->propagating_head;
         struct propagating_entry *p;
@@ -64,7 +64,7 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
     ans->total_interest_counts = sum;
     hashtb_end(e);
     for (sum = 0, hashtb_start(h->propagating_tab, e);
-                                      e->data != NULL; hashtb_next(e)) {
+         e->data != NULL; hashtb_next(e)) {
         struct propagating_entry *pi = e->data;
         if (pi->interest_msg == NULL)
             sum += 1;
@@ -79,12 +79,12 @@ ccnd_collect_stats(struct ccnd *h, struct ccnd_stats *ans)
     }
     if (sum != ans->total_interest_counts)
         ccnd_msg(h, "ccnd_collect_stats found inconsistency %ld != %ld\n",
-            (long)sum, (long)ans->total_interest_counts);
+                 (long)sum, (long)ans->total_interest_counts);
     return(0);
 }
 
 static void
-collect_faces_html(struct ccnd *h, struct ccn_charbuf *b)
+collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
 {
     int i;
     char node[104];
@@ -125,7 +125,7 @@ collect_faces_html(struct ccnd *h, struct ccn_charbuf *b)
 }
 
 static void
-collect_forwarding_html(struct ccnd *h, struct ccn_charbuf *b)
+collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -153,7 +153,10 @@ collect_forwarding_html(struct ccnd *h, struct ccn_charbuf *b)
                 res = ccn_name_append_components(name, e->key, 0, e->keysize);
                 ccn_charbuf_putf(b, "<li>");
                 ccn_uri_append(b, name->buf, name->length, 1);
-                ccn_charbuf_putf(b, " <b>face:</b> %u <b>flags:</b> 0x%x <b>expires:</b> %d",
+                ccn_charbuf_putf(b,
+                                 " <b>face:</b> %u"
+                                 " <b>flags:</b> 0x%x"
+                                 " <b>expires:</b> %d",
                                  f->faceid, f->flags, f->expires);
                 ccn_charbuf_putf(b, "</li>");
             }
@@ -165,7 +168,7 @@ collect_forwarding_html(struct ccnd *h, struct ccn_charbuf *b)
 }
 
 static char *
-collect_stats_html(struct ccnd *h)
+collect_stats_html(struct ccnd_handle *h)
 {
     char *ans;
     struct ccnd_stats stats = {0};
@@ -192,9 +195,12 @@ collect_stats_html(struct ccnd *h)
         "</head>"
         "<body>"
         "<p class='header' width='100%%'>%s ccnd[%d] local port %s</p>"
-        "<div><b>Content items:</b> %llu accessioned, %d stored, %d sparse, %lu duplicate, %lu sent</div>"
-        "<div><b>Interests:</b> %d names, %ld pending, %ld propagating, %ld noted</div>"
-        "<div><b>Interest totals:</b> %lu accepted, %lu dropped, %lu sent, %lu stuffed</div>",
+        "<div><b>Content items:</b> %llu accessioned,"
+        " %d stored, %d sparse, %lu duplicate, %lu sent</div>"
+        "<div><b>Interests:</b> %d names,"
+        " %ld pending, %ld propagating, %ld noted</div>"
+        "<div><b>Interest totals:</b> %lu accepted,"
+        " %lu dropped, %lu sent, %lu stuffed</div>",
         pid,
         un.nodename,
         pid,
@@ -232,7 +238,7 @@ static const char *resp405 =
     "Connection: close" CRLF CRLF;
 
 int
-ccnd_stats_handle_http_connection(struct ccnd *h, struct face *face)
+ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
 {
     int res;
     int hdrlen;

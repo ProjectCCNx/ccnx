@@ -37,7 +37,7 @@ struct hashtb;
 /*
  * These are defined in this header.
  */
-struct ccnd;
+struct ccnd_handle;
 struct face;
 struct content_entry;
 struct nameprefix_entry;
@@ -51,7 +51,7 @@ typedef unsigned ccn_accession_t;
 /*
  * We pass this handle almost everywhere within ccnd
  */
-struct ccnd {
+struct ccnd_handle {
     unsigned char ccnd_id[32];      /**< sha256 digest of our public key */
     struct hashtb *faces_by_fd;     /**< keyed by fd */
     struct hashtb *dgram_faces;     /**< keyed by sockaddr */
@@ -157,6 +157,7 @@ struct face {
     socklen_t addrlen;
     int pending_interests;
 };
+
 /** face flags */
 #define CCN_FACE_LINK   (1 << 0) /**< Elements wrapped by CCNProtocolDataUnit */
 #define CCN_FACE_DGRAM  (1 << 1) /**< Datagram interface, respect packets */
@@ -268,16 +269,16 @@ struct propagating_entry {
  * The internal client is for communication between the ccnd and other
  * components, using (of course) ccn protocols.
  */
-int ccnd_init_internal_keystore(struct ccnd *);
-int ccnd_internal_client_start(struct ccnd *);
-void ccnd_internal_client_stop(struct ccnd *);
+int ccnd_init_internal_keystore(struct ccnd_handle *);
+int ccnd_internal_client_start(struct ccnd_handle *);
+void ccnd_internal_client_stop(struct ccnd_handle *);
 
 /**
  * The internal client calls this with the argument portion ARG of
  * a self-registration request (/ccn/reg/self/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
  */
-struct ccn_charbuf *ccnd_reg_self(struct ccnd *h,
+struct ccn_charbuf *ccnd_reg_self(struct ccnd_handle *h,
                                   const unsigned char *msg, size_t size);
 
 /**
@@ -285,7 +286,7 @@ struct ccn_charbuf *ccnd_reg_self(struct ccnd *h,
  * a face-creation request (/ccn/CCNDID/newface/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
  */
-struct ccn_charbuf *ccnd_req_newface(struct ccnd *h,
+struct ccn_charbuf *ccnd_req_newface(struct ccnd_handle *h,
                                      const unsigned char *msg, size_t size);
 
 /**
@@ -293,11 +294,11 @@ struct ccn_charbuf *ccnd_req_newface(struct ccnd *h,
  * a prefix-registration request (/ccn/CCNDID/prefixreg/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
  */
-struct ccn_charbuf *ccnd_req_prefixreg(struct ccnd *h,
+struct ccn_charbuf *ccnd_req_prefixreg(struct ccnd_handle *h,
                                        const unsigned char *msg, size_t size);
 
 
-int ccnd_reg_prefix(struct ccnd *h,
+int ccnd_reg_prefix(struct ccnd_handle *h,
                     const unsigned char *msg,
                     struct ccn_indexbuf *comps,
                     int ncomps,
@@ -305,21 +306,21 @@ int ccnd_reg_prefix(struct ccnd *h,
                     int flags,
                     int expires);
 
-int ccnd_reg_uri(struct ccnd *h,
+int ccnd_reg_uri(struct ccnd_handle *h,
                  const char *uri,
                  unsigned faceid,
                  int flags,
                  int expires);
 
 /* Consider a separate header for these */
-int ccnd_stats_handle_http_connection(struct ccnd *, struct face *);
-void ccnd_msg(struct ccnd *, const char *, ...);
-void ccnd_debug_ccnb(struct ccnd *h,
+int ccnd_stats_handle_http_connection(struct ccnd_handle *, struct face *);
+void ccnd_msg(struct ccnd_handle *, const char *, ...);
+void ccnd_debug_ccnb(struct ccnd_handle *h,
                      int lineno,
                      const char *msg,
                      struct face *face,
                      const unsigned char *ccnb,
                      size_t ccnb_size);
-void shutdown_client_fd(struct ccnd *h, int fd);
+void shutdown_client_fd(struct ccnd_handle *h, int fd);
 
 #endif
