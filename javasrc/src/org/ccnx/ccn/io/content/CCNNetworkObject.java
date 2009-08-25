@@ -370,18 +370,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public void updateInBackground(ContentName latestVersionKnown, boolean continuousUpdates) throws IOException {
 		
 		Log.info("updateInBackground: getting latest version after " + latestVersionKnown + " in background.");
-		if (!VersioningProfile.hasTerminalVersion(latestVersionKnown)) {
-			latestVersionKnown = VersioningProfile.addVersion(latestVersionKnown, VersioningProfile.baseVersion());
-		}
 		// DKS TODO locking?
 		cancelInterest();
 		// express this
 		// DKS TODO better versioned interests, a la library.getlatestVersion
 		_continuousUpdates = continuousUpdates;
-		_currentInterest = 
-            Interest.last(latestVersionKnown, 
-                          VersioningProfile.acceptVersions(latestVersionKnown.lastComponent()),
-                          latestVersionKnown.count()-1);
+		_currentInterest = VersioningProfile.firstBlockLatestVersionInterest(latestVersionKnown, null);
 		Log.info("UpdateInBackground: interest: " + _currentInterest);
 		_library.expressInterest(_currentInterest, this);
 	}
