@@ -98,9 +98,9 @@ public class RepositoryDataListener implements CCNInterestListener {
 				long thisBlock = SegmentationProfile.getSegmentNumber(co.name());
 				if (thisBlock >= _currentBlock)
 					_currentBlock = thisBlock + 1;
-				synchronized (_interests) {
-					_interests.remove(co.name());
-				}
+			}
+			synchronized (_interests) {
+				_interests.remove(co.name());
 			}
 			
 			/*
@@ -152,5 +152,9 @@ public class RepositoryDataListener implements CCNInterestListener {
 	
 	public ContentName getVersionedName() {
 		return _versionedName;
+	}
+	
+	public TreeMap<ContentName, Interest> getInterests() {
+		return _interests;
 	}
 }
