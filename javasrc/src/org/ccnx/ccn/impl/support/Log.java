@@ -121,27 +121,27 @@ public class Log {
 	// but add varargs functionality which allows args to only have .toString()
 	// called when logging is enabled.
 	public static void info(String msg, Object... params) {
-		_systemLogger.log(Level.INFO, msg, params);
+		doLog(Level.INFO, msg, params);
 	}
 
 	public static void warning(String msg, Object... params) {
-		_systemLogger.log(Level.WARNING, msg, params);
+		doLog(Level.WARNING, msg, params);
 	}
 
 	public static void severe(String msg, Object... params) {
-		_systemLogger.log(Level.SEVERE, msg, params);
+		doLog(Level.SEVERE, msg, params);
 	}
 
 	public static void fine(String msg, Object... params) {
-		_systemLogger.log(Level.FINE, msg, params);
+		doLog(Level.FINE, msg, params);
 	}
 
 	public static void finer(String msg, Object... params) {
-		_systemLogger.log(Level.FINER, msg, params);
+		doLog(Level.FINER, msg, params);
 	}
 
 	public static void finest(String msg, Object... params) {
-		_systemLogger.log(Level.FINEST, msg, params);
+		doLog(Level.FINEST, msg, params);
 	}
 
 	// pass these methods on to the java.util.Logger for convenience
@@ -154,9 +154,23 @@ public class Log {
 	}
 
 	public static void log(Level l, String msg, Object... params) {
-		_systemLogger.log(l, msg, params);
+		// we must call doLog() to ensure caller is in right place on stack
+		doLog(l, msg, params);
 	}
 
+	@SuppressWarnings("unchecked")
+	protected static void doLog(Level l, String msg, Object... params) {
+		if (l.intValue() > _systemLogger.getLevel().intValue())
+			return;
+		StackTraceElement ste = Thread.currentThread().getStackTrace()[3];
+		Class c;
+		try {
+			c = Class.forName(ste.getClassName());
+		} catch (ClassNotFoundException e) {
+			throw new RuntimeException(e);
+		}
+		_systemLogger.logp(l, c.getCanonicalName(), ste.getMethodName(), msg, params);
+	}
 
 	public static void warningStackTrace(Throwable t) {
 		logStackTrace(Level.WARNING, t);
