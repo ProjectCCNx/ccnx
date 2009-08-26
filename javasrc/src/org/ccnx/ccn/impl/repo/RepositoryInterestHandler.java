@@ -89,7 +89,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			RepositoryDataListener listener = _daemon.addListener(interest, readInterest);
 			_daemon.getWriter().put(interest.name(), _daemon.getRepository().getRepoInfo(null), null, null,
 					_daemon.getFreshness());
-			listener.getInterests().put(interest.name(), readInterest);
+			listener.getInterests().add(readInterest, null);
 			_library.expressInterest(readInterest, listener);
 		} catch (Exception e) {
 			Log.logStackTrace(Level.WARNING, e);
