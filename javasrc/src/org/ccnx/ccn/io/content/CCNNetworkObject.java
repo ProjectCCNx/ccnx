@@ -484,6 +484,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_flowControl.addNameSpace(name);
 			_flowControl.startWrite(name, Shape.STREAM);
 			_flowControl.put(goneObject);
+			_flowControl.beforeClose();
+			_flowControl.afterClose();
 			_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
 			_currentPublisherKeyLocator = goneObject.signedInfo().getKeyLocator();
 		}
