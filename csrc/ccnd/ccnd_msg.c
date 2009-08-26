@@ -25,7 +25,7 @@
  *  @param      fmt  printf-like format string
  */
 void
-ccnd_msg(struct ccnd *h, const char *fmt, ...)
+ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
 {
     struct timeval t;
     va_list ap;
@@ -63,7 +63,7 @@ ccnd_msg(struct ccnd *h, const char *fmt, ...)
  *  @param      ccnb_size   is in bytes
  */
 void
-ccnd_debug_ccnb(struct ccnd *h,
+ccnd_debug_ccnb(struct ccnd_handle *h,
                 int lineno,
                 const char *msg,
                 struct face *face,

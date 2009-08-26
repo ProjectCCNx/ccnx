@@ -41,6 +41,8 @@ main(int argc, char **argv)
     const unsigned char *ptr;
     size_t length;
     int resolve_version = 0;
+    const char *env_timeout = getenv("CCN_LINGER");
+    int timeout_ms = 3000;
     
     while ((ch = getopt(argc, argv, "hacv")) != -1) {
         switch (ch) {
@@ -79,6 +81,8 @@ main(int argc, char **argv)
         fprintf(stderr, "%s: bad ccn URI: %s\n", argv[0], arg);
         exit(1);
     }
+    if (env_timeout != NULL && (res = atoi(env_timeout)) > 0)
+    timeout_ms = res * 1000;
     if (allow_stale) {
         templ = ccn_charbuf_create();
         ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
@@ -100,7 +104,7 @@ main(int argc, char **argv)
             resultbuf->length = 0;
         }
     }
-    res = ccn_get(h, name, -1, templ, 3000, resultbuf, &pcobuf, NULL);
+    res = ccn_get(h, name, -1, templ, timeout_ms, resultbuf, &pcobuf, NULL);
     if (res >= 0) {
         ptr = resultbuf->buf;
         length = resultbuf->length;
