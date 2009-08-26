@@ -26,10 +26,9 @@ ccn_indexbuf_destroy(struct ccn_indexbuf **cbp)
     }
 }
 
-/*
- * ccn_indexbuf_reserve:
+/**
  * expand buffer as necessary to hold at least n more values
- * return pointer to reserved space
+ * @returns pointer to reserved space
  */
 ELEMENT *
 ccn_indexbuf_reserve(struct ccn_indexbuf *c, size_t n)
@@ -99,9 +98,8 @@ ccn_indexbuf_remove_element(struct ccn_indexbuf *x, ELEMENT val)
         }
 }
 
-/*
- * Returns index at which the element was found or appended,
- * or -1 in case of error.
+/**
+ * @returns index at which the element was found or appended, or -1 in case of error.
  */
 int
 ccn_indexbuf_set_insert(struct ccn_indexbuf *x, ELEMENT val)

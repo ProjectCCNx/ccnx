@@ -227,7 +227,8 @@ content_queue_create(unsigned usec)
     struct content_queue *q;
     q = calloc(1, sizeof(*q));
     if (q != NULL) {
-        q->usec = usec;
+        q->min_usec = usec;
+        q->rand_usec = 2 * usec;
         q->send_queue = ccn_indexbuf_create();
         if (q->send_queue == NULL) {
             free(q);
@@ -906,11 +907,17 @@ choose_face_delay(struct ccnd_handle *h, struct face *face, enum cq_delay_class 
     int shift = (c == CCN_CQ_SLOW) ? 2 : 0;
     if (c == CCN_CQ_ASAP)
         return(1);
-    if ((face->flags & CCN_FACE_DGRAM) != 0)
-        return(100 << shift); /* udp, delay just a little */
     if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
         return((h->data_pause_microsec) << shift);
-    return(10); /* local stream, answer quickly */
+    if ((face->flags & CCN_FACE_LOCAL) != 0)
+        return(5); /* local stream, answer quickly */
+    if ((face->flags & CCN_FACE_MCAST) != 0)
+        return((h->data_pause_microsec) << shift); /* multicast, delay more */
+    if ((face->flags & CCN_FACE_GG) != 0)
+        return(100 << shift); /* localhost, delay just a little */
+    if ((face->flags & CCN_FACE_DGRAM) != 0)
+        return(500 << shift); /* udp, delay just a little */
+    return(100); /* probably tcp to a different machine */
 }
 
 static enum cq_delay_class
@@ -921,19 +928,27 @@ choose_content_delay_class(struct ccnd_handle *h, unsigned faceid, int content_f
         return(CCN_CQ_ASAP); /* Going nowhere, get it over with */
     if ((face->flags & CCN_FACE_DGRAM) != 0)
         return(CCN_CQ_NORMAL); /* udp, delay just a little */
-    if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
+    if ((face->flags & (CCN_FACE_GG | CCN_FACE_LOCAL)) != 0)
+        return(CCN_CQ_ASAP); /* localhost, answer quickly */
+    if ((face->flags & (CCN_FACE_LINK | CCN_FACE_MCAST)) != 0) /* udplink or such, delay more */
         return((content_flags & CCN_CONTENT_ENTRY_SLOWSEND) ? CCN_CQ_SLOW : CCN_CQ_NORMAL);
-    return(CCN_CQ_ASAP); /* local stream, answer quickly */
+    return(CCN_CQ_NORMAL); /* default */
 }
 
 static unsigned
-randomize_content_delay(struct ccnd_handle *h, unsigned usec)
+randomize_content_delay(struct ccnd_handle *h, struct content_queue *q)
 {
+    unsigned usec;
+    
+    usec = q->min_usec + q->rand_usec;
     if (usec < 2)
         return(1);
-    if (usec <= 20) // XXX - what is a good value for this?
+    if (usec <= 20 || q->rand_usec < 2) // XXX - what is a good value for this?
         return(usec); /* small value, don't bother to randomize */
-    return(nrand48(h->seed) % (2 * usec - 1) + 1);
+    usec = q->min_usec + (nrand48(h->seed) % q->rand_usec);
+    if (usec < 2)
+        return(1);
+    return(usec);
 }
 
 static int
@@ -943,6 +958,7 @@ content_sender(struct ccn_schedule *sched,
     int flags)
 {
     int i, j;
+    int delay;
     struct ccnd_handle *h = clienth;
     struct content_entry *content = NULL;
     struct face *face = face_from_faceid(h, ev->evint);
@@ -967,17 +983,35 @@ content_sender(struct ccn_schedule *sched,
             /* face may have vanished, bail out if it did */
             if (face_from_faceid(h, ev->evint) == NULL)
                 goto Bail;
+            if ((face->flags & CCN_FACE_MCAST) != 0) {
+                i++;
+                break;
+            }
         }
     }
+    if (q->ready < i) abort();
+    q->ready -= i;
     /* Update queue */
     for (j = 0; i < q->send_queue->n; i++, j++)
         q->send_queue->buf[j] = q->send_queue->buf[i];
-    q->send_queue->n = q->ready = j;
+    q->send_queue->n = j;
+    /* Do a poll before going on to allow others to preempt send. */
+    if (q->ready > 0) {
+        if (h->debug & 8)
+            ccnd_msg(h, "face %u ready %u", (unsigned)ev->evint, q->ready);
+        return(1);
+    }
+    q->ready = j;
     /* Determine when to run again */
     for (i = 0; i < q->send_queue->n; i++) {
         content = content_from_accession(h, q->send_queue->buf[i]);
-        if (content != NULL)
-            return(randomize_content_delay(h, q->usec));
+        if (content != NULL) {
+            delay = randomize_content_delay(h, q);
+            if (h->debug & 8)
+                ccnd_msg(h, "face %u queued %u delay %i",
+                         (unsigned)ev->evint, q->ready, delay);
+            return(delay);
+        }
     }
     q->send_queue->n = q->ready = 0;
 Bail:
@@ -992,6 +1026,7 @@ face_send_queue_insert(struct ccnd_handle *h,
     int ans;
     int delay;
     enum cq_delay_class c;
+    enum cq_delay_class k;
     struct content_queue *q;
     if (face == NULL || content == NULL || (face->flags & CCN_FACE_NOSEND) != 0)
         return(-1);
@@ -1001,12 +1036,26 @@ face_send_queue_insert(struct ccnd_handle *h,
     q = face->q[c];
     if (q == NULL)
         return(-1);
+    /* Check the other queues first, it might be in one of them */
+    for (k = 0; k < CCN_CQ_N; k++) {
+        if (k != c && face->q[k] != NULL) {
+            ans = ccn_indexbuf_member(face->q[k]->send_queue, content->accession);
+            if (ans >= 0) {
+                if (h->debug & 8)
+                    ccnd_debug_ccnb(h, __LINE__, "content_otherq", face,
+                                    content->key, content->size);
+                return(ans);
+            }
+        }
+    }
     ans = ccn_indexbuf_set_insert(q->send_queue, content->accession);
     if (q->sender == NULL) {
-        delay = randomize_content_delay(h, q->usec);
+        delay = randomize_content_delay(h, q);
         q->ready = q->send_queue->n;
         q->sender = ccn_schedule_event(h->sched, delay,
                                        content_sender, q, face->faceid);
+        if (h->debug & 8)
+            ccnd_msg(h, "face %u q %d delay %d usec", face->faceid, c, delay);
     }
     return (ans);
 }
@@ -1803,7 +1852,7 @@ ccnd_req_newface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
         face_instance->ccnd_id = h->ccnd_id;
         face_instance->ccnd_id_size = sizeof(h->ccnd_id);
         face_instance->faceid = newface->faceid;
-        face_instance->lifetime = 42; // XXX - 
+        face_instance->lifetime = 0x7FFFFFFF;
         res = ccnb_append_face_instance(result, face_instance);
         if (res < 0)
             ccn_charbuf_destroy(&result);
@@ -2107,6 +2156,9 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
     int i;
     int n;
     struct face *otherface;
+    
+    if ((face->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
+        max_redundant = 0;
     if (head != NULL && outbound != NULL) {
         for (p = head->next; p != head; p = p->next) {
             if (p->size > minsize &&
@@ -2149,8 +2201,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                 n = outbound->n;
                 outbound->n = 0;
                 otherface = face_from_faceid(h, p->faceid);
-                // XXX - should have a specific flag for this, for now CCN_FACE_LINK will have to do.
-                if (otherface == NULL || (otherface->flags & CCN_FACE_LINK) != 0)
+                if (otherface == NULL || (otherface->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
                     return(1);
                 for (i = 0; i < n; i++) {
                     if (p->faceid == outbound->buf[i]) {
@@ -3266,7 +3317,7 @@ ccnd_create(const char *progname)
     h->sched = ccn_schedule_create(h, &h->ticktock);
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
-    h->data_pause_microsec = 2000;
+    h->data_pause_microsec = 10000;
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "4485";

@@ -48,7 +48,7 @@ struct ccn_forwarding;
 //typedef uint_least64_t ccn_accession_t;
 typedef unsigned ccn_accession_t;
 
-/*
+/**
  * We pass this handle almost everywhere within ccnd
  */
 struct ccnd_handle {
@@ -126,7 +126,8 @@ struct ccnd_handle {
 #define MAXFACES ((1U << FACESLOTBITS) - 1)
 
 struct content_queue {
-    unsigned usec;                   /**< mean delay for this queue */
+    unsigned min_usec;               /**< minimum delay for this queue */
+    unsigned rand_usec;              /**< randomization range */
     unsigned ready;                  /**< # that have waited enough */
     struct ccn_indexbuf *send_queue; /**< accession numbers of pending content */
     struct ccn_scheduled_event *sender;
@@ -191,6 +192,7 @@ struct content_entry {
     int size;                   /**< Size of ContentObject */
     struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
 };
+
 /**
  * content_entry flags
  */
@@ -217,7 +219,7 @@ struct nameprefix_entry {
     struct nameprefix_entry *parent; /**< link to next-shorter prefix */
     int children;                /**< number of children */
     int fgen;                    /**< used to decide when forward_to is stale */
-    unsigned src;                /**< faceid of recent matching content */
+    unsigned src;                /**< faceid of recent content source */
     unsigned osrc;               /**< and of older matching content */
     unsigned usec;               /**< response-time prediction */
 };
@@ -227,7 +229,7 @@ struct nameprefix_entry {
  * forwarded to.
  */
 struct ccn_forwarding {
-    unsigned faceid;
+    unsigned faceid;             /**< locally unique number identifying face */
     unsigned flags;              /**< CCN_FORW_* - c.f. <ccn/reg_mgnt.h> */
     int expires;                 /**< time remaining, in seconds */
     struct ccn_forwarding *next;
