@@ -361,9 +361,6 @@
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/io/**/*TestRepo.class"/>
-					<!-- NOTE: temporary disable the CCNFileStreamTestRepo since it is failing in new class organization but the failure appears to be 
-an accident of test reordering rather than caused by reorg.  JDT -->
-					<exclude name="org/ccnx/ccn/test/io/CCNFileStreamTestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>

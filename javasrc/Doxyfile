@@ -93,7 +93,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = com/parc/ccn/
+INPUT                  = src/org/ccnx/ccn/
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.java
 RECURSIVE              = YES

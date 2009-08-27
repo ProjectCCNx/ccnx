@@ -2,15 +2,18 @@ package org.ccnx.ccn.impl.repo;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
-import java.util.TreeMap;
+import java.util.Iterator;
 import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.InterestTable;
+import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.repo.Repository.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
@@ -32,7 +35,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private long _timer;
 	private Interest _origInterest;
 	private ContentName _versionedName;
-	private TreeMap<ContentName, Interest> _interests = new TreeMap<ContentName, Interest>();
+	private InterestTable<Object> _interests = new InterestTable<Object>();
 	private RepositoryDaemon _daemon;
 	private CCNHandle _library;
 	private long _currentBlock = 0;
@@ -98,18 +101,16 @@ public class RepositoryDataListener implements CCNInterestListener {
 				long thisBlock = SegmentationProfile.getSegmentNumber(co.name());
 				if (thisBlock >= _currentBlock)
 					_currentBlock = thisBlock + 1;
-				synchronized (_interests) {
-					_interests.remove(co.name());
-				}
+			}
+			synchronized (_interests) {
+				_interests.remove(interest, null);
 			}
 			
 			/*
 			 * Compute next interests to ask for and ask for them
 			 */
 			synchronized (_interests) {
-				long firstInterestToRequest = _interests.size() > 0 
-						? SegmentationProfile.getSegmentNumber(_interests.lastKey()) + 1
-						: _currentBlock;
+				long firstInterestToRequest = getNextBlockID();
 				if (_currentBlock > firstInterestToRequest) // Can happen if last requested interest precedes all others
 															// out of order
 					firstInterestToRequest = _currentBlock;
@@ -120,7 +121,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 					Interest newInterest = new Interest(name);
 					try {
 						_library.expressInterest(newInterest, this);
-						_interests.put(name, newInterest);
+						_interests.add(newInterest, null);
 					} catch (IOException e) {
 						Log.logStackTrace(Level.WARNING, e);
 						e.printStackTrace();
@@ -131,26 +132,70 @@ public class RepositoryDataListener implements CCNInterestListener {
 		return null;
 	}
 	
+	private long getNextBlockID() {
+		long value = 0;
+		Collection<Entry<Object>> values = _interests.values();
+		Iterator<Entry<Object>> it = values.iterator();
+		while (it.hasNext()) {
+			Entry<?> entry = it.next();
+			if (SegmentationProfile.isSegment(entry.interest().name())) {
+				long tmpValue = SegmentationProfile.getSegmentNumber(entry.interest().name());
+				if (tmpValue >= value)
+					value = tmpValue + 1;
+			}
+		}
+		Log.info("Value is: " + value);
+		return value;
+	}
+	
+	/**
+	 * 
+	 */
 	public void cancelInterests() {
-		for (ContentName name : _interests.keySet())
-			_library.cancelInterest(_interests.get(name), this);
+		for (Entry<Object> entry : _interests.values())
+			_library.cancelInterest(entry.interest(), this);
 		if (null != _headerInterest)
 			_library.cancelInterest(_headerInterest, this);
 	}
 	
+	/**
+	 * 
+	 * @return
+	 */
 	public long getTimer() {
 		return _timer;
 	}
 	
+	/**
+	 * 
+	 * @param time
+	 */
 	public void setTimer(long time) {
 		_timer = time;
 	}
 	
+	/**
+	 * 
+	 * @return
+	 */
 	public Interest getOrigInterest() {
 		return _origInterest;
 	}
 	
+	/**
+	 * 
+	 * @return
+	 */
 	public ContentName getVersionedName() {
 		return _versionedName;
 	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public InterestTable<Object> getInterests() {
+		return _interests;
+	}
+	
 }

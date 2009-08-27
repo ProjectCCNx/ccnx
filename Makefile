@@ -1,17 +1,17 @@
 # Top level Makefile for ccn
 
-SUBDIRS = csrc schema javasrc doc/technical
-PACKLIST = Makefile build.xml README configure doc/index.txt $(SUBDIRS)
+TOPSUBDIRS = csrc schema javasrc doc/technical
+PACKLIST = Makefile build.xml README configure doc/index.txt $(TOPSUBDIRS) experiments
 
 default all: _always
-	for i in $(SUBDIRS); do         \
+	for i in $(TOPSUBDIRS); do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	mkdir -p ./lib ./bin ./include
 	$(MAKE) install INSTALL_BASE=`pwd`
 
 clean depend test check shared documentation testinstall install uninstall: checkdirs _always
-	for i in $(SUBDIRS); do         \
+	for i in $(TOPSUBDIRS); do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	@rm -f _always
