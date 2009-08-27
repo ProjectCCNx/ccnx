@@ -35,6 +35,7 @@ public class Log {
 	public static final String DEFAULT_LOG_LEVEL_PROPERTY = "com.parc.ccn.LogLevel";
 	
 	static Logger _systemLogger = null;
+	static int _level;
 	
 	static {
 		// Can add an append=true argument to generate appending behavior.
@@ -99,7 +100,7 @@ public class Log {
 
 		// We also have to set our logger to log finer-grained
 		// messages
-		_systemLogger.setLevel(logLevel);
+		setLevel(logLevel);
 	}
 
 	public static String getApplicationClass() {
@@ -147,6 +148,7 @@ public class Log {
 	// pass these methods on to the java.util.Logger for convenience
 	public static void setLevel(Level l) {
 		_systemLogger.setLevel(l);
+		_level = l.intValue();
 	}
 
 	public static Level getLevel() {
@@ -160,7 +162,7 @@ public class Log {
 
 	@SuppressWarnings("unchecked")
 	protected static void doLog(Level l, String msg, Object... params) {
-		if (l.intValue() > _systemLogger.getLevel().intValue())
+		if (l.intValue() > _level)
 			return;
 		StackTraceElement ste = Thread.currentThread().getStackTrace()[3];
 		Class c;
@@ -168,6 +170,11 @@ public class Log {
 			c = Class.forName(ste.getClassName());
 		} catch (ClassNotFoundException e) {
 			throw new RuntimeException(e);
+		}
+		for(Object o : params) {
+			if (o == null) {
+				o = "(null)";
+			}
 		}
 		_systemLogger.logp(l, c.getCanonicalName(), ste.getMethodName(), msg, params);
 	}
