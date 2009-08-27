@@ -26,7 +26,7 @@ import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ExcludeFilter;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.BitBucketRepository;
 
@@ -57,7 +57,7 @@ public class RepositoryDaemon extends Daemon {
 	private CCNHandle _library = null;
 	private ArrayList<NameAndListener> _repoFilters = new ArrayList<NameAndListener>();
 	private ArrayList<RepositoryDataListener> _currentListeners = new ArrayList<RepositoryDataListener>();
-	private ExcludeFilter _markerFilter;
+	private Exclude _markerFilter;
 	private CCNWriter _writer;
 	private boolean _pendingNameSpaceChange = false;
 	private int _windowSize = WINDOW_SIZE;
@@ -143,7 +143,7 @@ public class RepositoryDaemon extends Daemon {
 			byte[][]markerOmissions = new byte[2][];
 			markerOmissions[0] = CommandMarkers.REPO_START_WRITE;
 			markerOmissions[1] = CCNNameEnumerator.NEMARKER;
-			_markerFilter = new ExcludeFilter(markerOmissions);
+			_markerFilter = new Exclude(markerOmissions);
 			
 			Timer periodicTimer = new Timer(true);
 			periodicTimer.scheduleAtFixedRate(new InterestTimer(), PERIOD, PERIOD);
@@ -341,7 +341,7 @@ public class RepositoryDaemon extends Daemon {
 		return _repo;
 	}
 	
-	public ExcludeFilter getExcludes() {
+	public Exclude getExcludes() {
 		return _markerFilter;
 	}
 	

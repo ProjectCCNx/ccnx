@@ -9,16 +9,16 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.protocol.BloomFilter;
 import org.ccnx.ccn.protocol.ExcludeAny;
 import org.ccnx.ccn.protocol.ExcludeComponent;
-import org.ccnx.ccn.protocol.ExcludeFilter;
+import org.ccnx.ccn.protocol.Exclude;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-public class ExcludeFilterTest {
+public class ExcludeTest {
 
-	static ArrayList<ExcludeFilter.Element> al;
+	static ArrayList<Exclude.Element> al;
 	static final byte [] b0 = "0".getBytes();
 	static final byte [] b1 = "1".getBytes();
 	static final byte [] b3 = "3".getBytes();
@@ -29,14 +29,14 @@ public class ExcludeFilterTest {
 	static ExcludeComponent c06 = new ExcludeComponent(b06);
 	static ExcludeAny any = new ExcludeAny();
 	static BloomFilter bloom;
-	static ExcludeFilter ef;
+	static Exclude ef;
 	static byte [][] array = { b1, b06 };
 	
 	private static byte [] bloomSeed = "test".getBytes();
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		al = new ArrayList<ExcludeFilter.Element>();
+		al = new ArrayList<Exclude.Element>();
 		bloom = new BloomFilter(13, bloomSeed);
 		bloom.insert(b3);
 	}
@@ -51,43 +51,43 @@ public class ExcludeFilterTest {
 	}
 
 	@Test (expected=IllegalArgumentException.class)
-	public void testExcludeFilterArrayListOfElementFails() {
+	public void testExcludeArrayListOfElementFails() {
 		al.add(c06);
 		al.add(c1);
-		new ExcludeFilter(al);
+		new Exclude(al);
 	}
 
 	@Test (expected=IllegalArgumentException.class)
-	public void testExcludeFilterArrayListOfElementFails2() {
+	public void testExcludeArrayListOfElementFails2() {
 		al.add(c1);
 		al.add(c06);
 		al.add(bloom);
 		al.add(any);
-		new ExcludeFilter(al);
+		new Exclude(al);
 	}
 
 	@Test (expected=IllegalArgumentException.class)
-	public void testExcludeFilterArrayListOfElementFails3() {
+	public void testExcludeArrayListOfElementFails3() {
 		al.add(c1);
 		al.add(any);
 		al.add(bloom);
 		al.add(c06);
-		new ExcludeFilter(al);
+		new Exclude(al);
 	}
 
 	@Test
-	public void testExcludeFilterArrayListOfElement() {
+	public void testExcludeArrayListOfElement() {
 		al.add(c1);
 		al.add(any);
 		al.add(c3);
 		al.add(c06);
 		al.add(bloom);
-		new ExcludeFilter(al);
+		new Exclude(al);
 	}
 
 	@Test
-	public void testExcludeFilterByteArrayArray() {
-		ef = new ExcludeFilter(array);
+	public void testExcludeByteArrayArray() {
+		ef = new Exclude(array);
 		assertTrue(ef.match(b1));
 		assertFalse(ef.match(b3));
 		assertTrue(ef.match(b06));
@@ -95,7 +95,7 @@ public class ExcludeFilterTest {
 
 	@Test
 	public void testUptoFactory() {
-		ef = ExcludeFilter.uptoFactory(b3);
+		ef = Exclude.uptoFactory(b3);
 		assertTrue(ef.match(b1));
 		assertTrue(ef.match(b3));
 		assertFalse(ef.match(b06));
@@ -103,9 +103,9 @@ public class ExcludeFilterTest {
 
 	@Test
 	public void testFactory() {
-		ef = ExcludeFilter.factory(null);
+		ef = Exclude.factory(null);
 		assertNull(ef);
-		ef = ExcludeFilter.factory(array);
+		ef = Exclude.factory(array);
 		assertTrue(ef.match(b1));
 		assertFalse(ef.match(b3));
 		assertTrue(ef.match(b06));
@@ -116,7 +116,7 @@ public class ExcludeFilterTest {
 		al.add(c1);
 		al.add(bloom);
 		al.add(c06);
-		ef = new ExcludeFilter(al);
+		ef = new Exclude(al);
 		assertFalse(ef.match(b0));
 		assertTrue(ef.match(b3));
 		assertTrue(ef.match(b06));
@@ -125,7 +125,7 @@ public class ExcludeFilterTest {
 
 	@Test
 	public void testAdd() {
-		ef = ExcludeFilter.uptoFactory(b0);
+		ef = Exclude.uptoFactory(b0);
 		assertFalse(ef.match(b1));
 		ef.add(array);
 		assertTrue(ef.match(b0));
@@ -135,10 +135,10 @@ public class ExcludeFilterTest {
 
 	@Test
 	public void testEmpty() {
-		ef = ExcludeFilter.uptoFactory(b0);
+		ef = Exclude.uptoFactory(b0);
 		assertFalse(ef.empty());
-		ArrayList<ExcludeFilter.Element> empty = new ArrayList<ExcludeFilter.Element>();
-		ef = new ExcludeFilter(empty);
+		ArrayList<Exclude.Element> empty = new ArrayList<Exclude.Element>();
+		ef = new Exclude(empty);
 		assertTrue(ef.empty());
 	}
 
@@ -149,16 +149,16 @@ public class ExcludeFilterTest {
 
 	@Test
 	public void testEqualsObject() {
-		ef = ExcludeFilter.uptoFactory(b1);
-		ArrayList<ExcludeFilter.Element> a = new ArrayList<ExcludeFilter.Element>();
+		ef = Exclude.uptoFactory(b1);
+		ArrayList<Exclude.Element> a = new ArrayList<Exclude.Element>();
 		a.add(any);
 		a.add(c1);
-		assertEquals(ef, new ExcludeFilter(a));
+		assertEquals(ef, new Exclude(a));
 	}
 
 	@Test
 	public void testSize() {
-		ef = ExcludeFilter.uptoFactory(b1);
+		ef = Exclude.uptoFactory(b1);
 		assertTrue(ef.size() == 2);
 	}
 
@@ -169,8 +169,8 @@ public class ExcludeFilterTest {
 		al.add(c3);
 		al.add(c06);
 		al.add(bloom);
-		ef = new ExcludeFilter(al);
-		ExcludeFilter ef2 = new ExcludeFilter();
+		ef = new Exclude(al);
+		Exclude ef2 = new Exclude();
 		ef2.decode(ef.encode());
 		assertTrue(ef.equals(ef2));
 	}

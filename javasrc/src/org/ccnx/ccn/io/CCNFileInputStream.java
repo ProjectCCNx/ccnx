@@ -141,7 +141,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 				excludes = new byte[excludeList.size()][];
 				excludeList.toArray(excludes);
 			}
-			interest.excludeFilter().add(excludes);
+			interest.exclude().add(excludes);
 			return interest;
 		}
 		return null;

@@ -16,7 +16,7 @@ import org.ccnx.ccn.impl.support.Log;
 /**
  * Implement bloom filter operations
  */
-public class BloomFilter extends ExcludeFilter.Filler implements Comparable<BloomFilter> {
+public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilter> {
 	public static final String BLOOM = "Bloom";
 
 	private int _lgBits;

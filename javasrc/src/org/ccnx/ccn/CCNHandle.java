@@ -11,7 +11,7 @@ import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.ExcludeFilter;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -210,7 +210,7 @@ public class CCNHandle extends CCNBase {
 	 * @param name - ContentName for base of get
 	 * @param prefixCount - next follows components of the name
 	 * 						through this count.
-	 * @param omissions - ExcludeFilter
+	 * @param omissions - Exclude
 	 * @param timeout - milliseconds
 	 * @return
 	 * @throws MalformedContentNameStringException
@@ -249,7 +249,7 @@ public class CCNHandle extends CCNBase {
 	 * @throws IOException
 	 * @throws InvalidParameterException
 	 */
-	public ContentObject getLatest(ContentName name, ExcludeFilter exclude, long timeout) 
+	public ContentObject getLatest(ContentName name, Exclude exclude, long timeout) 
 			throws IOException, InvalidParameterException {
 		return get(Interest.last(name, exclude, name.count() - 1), timeout);
 	}

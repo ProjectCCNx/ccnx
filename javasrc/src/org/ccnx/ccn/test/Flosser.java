@@ -17,7 +17,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.ExcludeComponent;
-import org.ccnx.ccn.protocol.ExcludeFilter;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -182,38 +182,38 @@ public class Flosser implements CCNInterestListener {
             int prefixCount = interest.name().count();
             // DKS TODO should the count above be count()-1 and this just prefixCount?
             if (prefixCount == result.name().count()) {
-            	if (null == interest.excludeFilter()) {
-              		ArrayList<ExcludeFilter.Element> excludes = new ArrayList<ExcludeFilter.Element>();
+            	if (null == interest.exclude()) {
+              		ArrayList<Exclude.Element> excludes = new ArrayList<Exclude.Element>();
                		excludes.add(new ExcludeComponent(result.contentDigest()));
-            		interest.excludeFilter(new ExcludeFilter(excludes));
+            		interest.exclude(new Exclude(excludes));
             		Log.finest("Creating new exclude filter for interest " + interest.name());
             	} else {
-            		if (interest.excludeFilter().match(result.contentDigest())) {
+            		if (interest.exclude().match(result.contentDigest())) {
             			Log.fine("We should have already excluded content digest: " + DataUtils.printBytes(result.contentDigest()));
             		} else {
             			// Has to be in order...
             			Log.finest("Adding child component to exclude.");
-            			interest.excludeFilter().add(new byte [][] { result.contentDigest() });
+            			interest.exclude().add(new byte [][] { result.contentDigest() });
             		}
             	}
-            	Log.finer("Excluding content digest: " + DataUtils.printBytes(result.contentDigest()) + " onto interest " + interest.name() + " total excluded: " + interest.excludeFilter().size());
+            	Log.finer("Excluding content digest: " + DataUtils.printBytes(result.contentDigest()) + " onto interest " + interest.name() + " total excluded: " + interest.exclude().size());
             } else {
-               	if (null == interest.excludeFilter()) {
-               		ArrayList<ExcludeFilter.Element> excludes = new ArrayList<ExcludeFilter.Element>();
+               	if (null == interest.exclude()) {
+               		ArrayList<Exclude.Element> excludes = new ArrayList<Exclude.Element>();
                		excludes.add(new ExcludeComponent(result.name().component(prefixCount)));
-            		interest.excludeFilter(new ExcludeFilter(excludes));
+            		interest.exclude(new Exclude(excludes));
             		Log.finest("Creating new exclude filter for interest " + interest.name());
                	} else {
-                    if (interest.excludeFilter().match(result.name().component(prefixCount))) {
+                    if (interest.exclude().match(result.name().component(prefixCount))) {
             			Log.fine("We should have already excluded child component: " + ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
                     } else {
                     	// Has to be in order...
                     	Log.finest("Adding child component to exclude.");
-            			interest.excludeFilter().add(
+            			interest.exclude().add(
             					new byte [][] { result.name().component(prefixCount) });
                     }
             	}
-               	Log.finer("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.excludeFilter().size());
+               	Log.finer("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.exclude().size());
                 // DKS TODO might need to split to matchedComponents like ccnslurp
                 ContentName newNamespace = null;
                 try {
