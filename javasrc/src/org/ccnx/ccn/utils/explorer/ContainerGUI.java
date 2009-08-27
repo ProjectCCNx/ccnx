@@ -21,6 +21,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
@@ -115,7 +116,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		for(int i = 0; i < root.count(); i++){
 			System.out.println("adding component: "+root.stringComponent(i));
 			//add each component to the tree
-			newNode = new DefaultMutableTreeNode(new IconData(ICON_FOLDER, null, new Name("/"+root.stringComponent(i), root.copy(i), true)));
+			newNode = new DefaultMutableTreeNode(new IconData(ICON_FOLDER, null, new Name(root.component(i), root.copy(i), true)));
 			if(top == null){
 				top = newNode;
 			} else {
@@ -126,7 +127,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		}
 		
 		if(top == null){
-			top = new DefaultMutableTreeNode(new IconData(ICON_FOLDER, null, new Name(root.toString(), null, true)));
+			top = new DefaultMutableTreeNode(new IconData(ICON_FOLDER, null, new Name(root.component(0), null, true)));
 			newNode = top;
 			node = top;
 		}
@@ -164,9 +165,10 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 			private void myDoubleClick(int selRow, TreePath selPath) {
 				final Name node = getNameNode((DefaultMutableTreeNode)selPath.getLastPathComponent());
-				String name = node.name;
-				String[] items = name.split("\\."); //make this a regex later
-				if(items.length > 1 && items[1].equalsIgnoreCase("txt")){ //have a file
+				byte[] name = node.name;
+				//String[] items = name.split("\\."); //make this a regex later
+				//if(items.length > 1 && items[1].equalsIgnoreCase("txt")){ //have a file
+				if(name.toString().endsWith(".txt") || name.toString().endsWith(".text")){
 					retrieveFromRepo(node.path.toString()+"/"+node.name);
 					EventQueue.invokeLater(new Runnable() {
 						public void run() {
@@ -183,7 +185,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 				}else
 				{
 					//Can't handle filetype
-					JOptionPane.showMessageDialog(ContainerGUI.this, "Cannot Open file "+ name+" Unable to open file types "+items[1], "Unable to Open File Type "+ items[1],JOptionPane.ERROR_MESSAGE);
+					JOptionPane.showMessageDialog(ContainerGUI.this, "Cannot Open file "+ name+" Currently only opens .txt and .text files.", "Only handles .txt and .text files at this time.", JOptionPane.ERROR_MESSAGE);
 					
 				}
 			}
@@ -740,29 +742,29 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
     	//String p = fnode.path.toString() + "/"+fnode.name;
     	ContentName toExpand = null;
     	if(fnode.path == null) {
-			try {
-				toExpand = ContentName.fromNative(fnode.name);
-			} catch (MalformedContentNameStringException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
+			//try {
+				toExpand = ContentName.fromNative(new ContentName(), fnode.name);
+			//} catch (MalformedContentNameStringException e1) {
+			//	// TODO Auto-generated catch block
+			//	e1.printStackTrace();
+			//}
     	} else {
     		toExpand = ContentName.fromNative(fnode.path, fnode.name);
     	}
     	ContentName toExpandAlt = null;
-    	try {
-			toExpandAlt =ContentName.fromNative(fnode.name);
+    	//try {
+			toExpandAlt =ContentName.fromNative(new ContentName(), fnode.name);
 			if(fnode.path!=null)
 				toExpandAlt = ContentName.fromNative(fnode.path, toExpandAlt.toString().replace("/",""));
 			
-		} catch (MalformedContentNameStringException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		//} catch (MalformedContentNameStringException e) {
+		//	// TODO Auto-generated catch block
+		//	e.printStackTrace();
+		//}
     	String p = toExpandAlt.toString();
     	System.out.println("toExpand: "+toExpand+" p: "+p+" tEA: "+toExpandAlt);
  
-    	if (fnode.name.endsWith(".txt") || fnode.name.endsWith(".text")) {
+    	if (fnode.name.toString().endsWith(".txt") || fnode.name.toString().endsWith(".text")) {
 			// get the file from the repo
 			
     		System.out.println("Retrieve from Repo: " + p);
@@ -847,11 +849,26 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 					else{
 						if(temp.getUserObject() instanceof IconData){
 							IconData id = (IconData)temp.getUserObject();
-							System.out.println("check names: "+((Name)(id.m_data)).toString()+" "+cn.toString());
-							if(((Name)(id.m_data)).toString().equals(cn.toString())){
+							ContentName nodeName = ContentName.fromNative(new ContentName(), ((Name)id.m_data).name);
+							System.out.println("check names: "+nodeName+" "+cn.toString());
+							//if(((Name)(id.m_data)).toString().equals(cn.toString())){
 							//if(temp.toString().equals(cn.toString().substring(1))){
+							//check if already there...
+							if(cn.compareTo(nodeName) == 0){
 								addToParent = false;
 							}
+							else
+								System.out.println("name not already there");
+							//check if a version marker
+							if(VersioningProfile.containsVersion(cn))
+								addToParent = false;
+							else
+								System.out.println("name is not a version");
+							//check if a segment marker
+							if(SegmentationProfile.isSegment(cn))
+								addToParent = false;
+							else
+								System.out.println("name is not a segment marker");
 						}
 					}
 				}
@@ -867,11 +884,11 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 				if (((cn.toString()).split("\\.")).length > 1) {
 			
 					node = new DefaultMutableTreeNode(new IconData(ICON_DOCUMENT,
-							null, new Name(cn.toString(), prefix,false)));
+							null, new Name(cn.component(0), prefix,false)));
 				} else {
 					
 					node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
-							null, new Name(cn.toString(), prefix,true)));
+							null, new Name(cn.component(0), prefix,true)));
 					//This is the "Retrieving Data" node (gets rendered in IconCell Renderer
 					//node.add(new DefaultMutableTreeNode(new Boolean(true)));
 				}
