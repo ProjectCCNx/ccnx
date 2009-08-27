@@ -220,17 +220,18 @@ public class AccessControlManager {
 	
 	public GroupManager groupManager() { return _groupManager; }
 	
-	public void publishMyIdentity(ContentName identity, PublisherPublicKeyDigest myPublicKey) throws InvalidKeyException, IOException, ConfigurationException, XMLStreamException {
+	public void publishMyIdentity(ContentName identity, PublicKey myPublicKey) throws InvalidKeyException, IOException, ConfigurationException, XMLStreamException {
 		KeyManager km = KeyManager.getKeyManager();
 		if (null == myPublicKey) {
-			myPublicKey = km.getDefaultKeyID();
+			myPublicKey = km.getDefaultPublicKey();
 		}
 		PublicKeyObject pko = new PublicKeyObject(identity, myPublicKey, library());
 		pko.saveToRepository();
 		_myIdentities.add(identity);
 	}
 	
-	public void publishMyIdentity(String userName, PublisherPublicKeyDigest myPublicKey) throws InvalidKeyException, IOException, ConfigurationException, XMLStreamException {
+	public void publishMyIdentity(String userName, PublicKey myPublicKey) throws InvalidKeyException, IOException, ConfigurationException, XMLStreamException {
+		Log.finest("publishing my identity" + AccessControlProfile.userNamespaceName(_userStorage, userName));
 		publishMyIdentity(AccessControlProfile.userNamespaceName(_userStorage, userName), myPublicKey);
 	}
 	
