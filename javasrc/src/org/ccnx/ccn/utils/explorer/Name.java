@@ -29,6 +29,8 @@ public class Name {
 	}
 
 	public String toString() {
+		if(name==null)
+			return new String("/");
         return new String(name);
     }
 	
