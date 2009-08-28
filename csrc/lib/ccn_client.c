@@ -1002,20 +1002,20 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                                                  interest->interest_msg,
                                                                  interest->size,
                                                                  info.pi)) {
-                                    enum ccn_upcall_kind upcall_kind; /* KEYS */
+                                    enum ccn_upcall_kind upcall_kind = CCN_UPCALL_CONTENT;
+#if CCN_SKIP_VERIFY
                                     struct ccn_pkey *pubkey = NULL;
                                     int type = ccn_get_content_type(msg, info.pco);
-                                    if (type == CCN_CONTENT_KEY) {
+                                    if (type == CCN_CONTENT_KEY)
                                         res = ccn_cache_key(h, msg, size, info.pco);
-                                    }
                                     res = ccn_locate_key(h, msg, size, info.pco, &pubkey);
                                     if (res == 0) {
                                         /* we have the pubkey, use it to verify the msg */
                                         res = ccn_verify_signature(msg, size, info.pco, pubkey);
                                         upcall_kind = (res == 1) ? CCN_UPCALL_CONTENT : CCN_UPCALL_CONTENT_BAD;
-                                    } else {
+                                    } else
                                         upcall_kind = CCN_UPCALL_CONTENT_UNVERIFIED;
-                                    }
+#endif
                                     interest->outstanding -= 1;
                                     info.interest_ccnb = interest->interest_msg;
                                     info.matched_comps = i;
