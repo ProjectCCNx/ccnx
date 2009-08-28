@@ -126,9 +126,11 @@ struct ccnd_handle {
 #define MAXFACES ((1U << FACESLOTBITS) - 1)
 
 struct content_queue {
+    unsigned burst_nsec;             /**< nsec per KByte, limits burst rate */
     unsigned min_usec;               /**< minimum delay for this queue */
     unsigned rand_usec;              /**< randomization range */
     unsigned ready;                  /**< # that have waited enough */
+    unsigned nrun;                   /**< # sent since last randomized delay */
     struct ccn_indexbuf *send_queue; /**< accession numbers of pending content */
     struct ccn_scheduled_event *sender;
 };

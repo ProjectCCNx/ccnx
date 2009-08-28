@@ -221,14 +221,37 @@ use_i:
     return (face->faceid);
 }
 
+static int
+choose_face_delay(struct ccnd_handle *h, struct face *face, enum cq_delay_class c)
+{
+    int shift = (c == CCN_CQ_SLOW) ? 2 : 0;
+    if (c == CCN_CQ_ASAP)
+        return(1);
+    if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
+        return((h->data_pause_microsec) << shift);
+    if ((face->flags & CCN_FACE_LOCAL) != 0)
+        return(5); /* local stream, answer quickly */
+    if ((face->flags & CCN_FACE_MCAST) != 0)
+        return((h->data_pause_microsec) << shift); /* multicast, delay more */
+    if ((face->flags & CCN_FACE_GG) != 0)
+        return(100 << shift); /* localhost, delay just a little */
+    if ((face->flags & CCN_FACE_DGRAM) != 0)
+        return(500 << shift); /* udp, delay just a little */
+    return(100); /* probably tcp to a different machine */
+}
+
 static struct content_queue *
-content_queue_create(unsigned usec)
+content_queue_create(struct ccnd_handle *h, struct face *face, enum cq_delay_class c)
 {
     struct content_queue *q;
+    unsigned usec;
     q = calloc(1, sizeof(*q));
     if (q != NULL) {
+        usec = choose_face_delay(h, face, c);
+        q->burst_nsec = (usec <= 500 ? 500 : 200000); // XXX - needs a knob
         q->min_usec = usec;
         q->rand_usec = 2 * usec;
+        q->nrun = 0;
         q->send_queue = ccn_indexbuf_create();
         if (q->send_queue == NULL) {
             free(q);
@@ -901,25 +924,6 @@ send_content(struct ccnd_handle *h, struct face *face, struct content_entry *con
     charbuf_release(h, c);
 }
 
-static int
-choose_face_delay(struct ccnd_handle *h, struct face *face, enum cq_delay_class c)
-{
-    int shift = (c == CCN_CQ_SLOW) ? 2 : 0;
-    if (c == CCN_CQ_ASAP)
-        return(1);
-    if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
-        return((h->data_pause_microsec) << shift);
-    if ((face->flags & CCN_FACE_LOCAL) != 0)
-        return(5); /* local stream, answer quickly */
-    if ((face->flags & CCN_FACE_MCAST) != 0)
-        return((h->data_pause_microsec) << shift); /* multicast, delay more */
-    if ((face->flags & CCN_FACE_GG) != 0)
-        return(100 << shift); /* localhost, delay just a little */
-    if ((face->flags & CCN_FACE_DGRAM) != 0)
-        return(500 << shift); /* udp, delay just a little */
-    return(100); /* probably tcp to a different machine */
-}
-
 static enum cq_delay_class
 choose_content_delay_class(struct ccnd_handle *h, unsigned faceid, int content_flags)
 {
@@ -959,6 +963,9 @@ content_sender(struct ccn_schedule *sched,
 {
     int i, j;
     int delay;
+    int nsec;
+    int burst_nsec;
+    int burst_max;
     struct ccnd_handle *h = clienth;
     struct content_entry *content = NULL;
     struct face *face = face_from_faceid(h, ev->evint);
@@ -974,19 +981,27 @@ content_sender(struct ccn_schedule *sched,
     if ((face->flags & CCN_FACE_NOSEND) != 0)
         goto Bail;
     /* Send the content at the head of the queue */
-    if (q->ready > q->send_queue->n)
+    if (q->ready > q->send_queue->n ||
+        (q->ready == 0 && q->nrun >= 8 && q->nrun < 200))
         q->ready = q->send_queue->n;
-    for (i = 0; i < q->ready; i++) {
+    nsec = 0;
+    burst_nsec = q->burst_nsec;
+    burst_max = 2;
+    if (q->ready < burst_max)
+        burst_max = q->ready;
+    if (burst_max == 0)
+        q->nrun = 0;
+    for (i = 0; i < burst_max && nsec < 1000000; i++) {
         content = content_from_accession(h, q->send_queue->buf[i]);
-        if (content != NULL) {
+        if (content == NULL)
+            q->nrun = 0;
+        else {
             send_content(h, face, content);
             /* face may have vanished, bail out if it did */
             if (face_from_faceid(h, ev->evint) == NULL)
                 goto Bail;
-            if ((face->flags & CCN_FACE_MCAST) != 0) {
-                i++;
-                break;
-            }
+            nsec += burst_nsec * (unsigned)((content->size + 1023) / 1024);
+            q->nrun++;
         }
     }
     if (q->ready < i) abort();
@@ -996,16 +1011,26 @@ content_sender(struct ccn_schedule *sched,
         q->send_queue->buf[j] = q->send_queue->buf[i];
     q->send_queue->n = j;
     /* Do a poll before going on to allow others to preempt send. */
+    delay = (nsec + 499) / 1000 + 1;
     if (q->ready > 0) {
         if (h->debug & 8)
-            ccnd_msg(h, "face %u ready %u", (unsigned)ev->evint, q->ready);
-        return(1);
+            ccnd_msg(h, "face %u ready %u delay %i nrun %u", (unsigned)ev->evint, q->ready, delay, q->nrun);
+        return(delay);
     }
     q->ready = j;
+    if (q->nrun >= 8 && q->nrun < 200) {
+        /* We seem to be a preferred provider, forgo the randomized delay */
+        if (j == 0)
+            delay += burst_nsec / 50;
+        if (h->debug & 8)
+            ccnd_msg(h, "face %u ready %u delay %i nrun %u", (unsigned)ev->evint, q->ready, delay, q->nrun);
+        return(delay);
+    }
     /* Determine when to run again */
     for (i = 0; i < q->send_queue->n; i++) {
         content = content_from_accession(h, q->send_queue->buf[i]);
         if (content != NULL) {
+            q->nrun = 0;
             delay = randomize_content_delay(h, q);
             if (h->debug & 8)
                 ccnd_msg(h, "face %u queued %u delay %i",
@@ -1032,7 +1057,7 @@ face_send_queue_insert(struct ccnd_handle *h,
         return(-1);
     c = choose_content_delay_class(h, face->faceid, content->flags);
     if (face->q[c] == NULL)
-        face->q[c] = content_queue_create(choose_face_delay(h, face, c));
+        face->q[c] = content_queue_create(h, face, c);
     q = face->q[c];
     if (q == NULL)
         return(-1);
