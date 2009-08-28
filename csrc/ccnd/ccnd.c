@@ -968,12 +968,14 @@ content_sender(struct ccn_schedule *sched,
     int burst_max;
     struct ccnd_handle *h = clienth;
     struct content_entry *content = NULL;
-    struct face *face = face_from_faceid(h, ev->evint);
+    unsigned faceid = ev->evint;
+    struct face *face = NULL;
     struct content_queue *q = ev->evdata;
     (void)sched;
     
     if ((flags & CCN_SCHEDULE_CANCEL) != 0)
         goto Bail;
+    face = face_from_faceid(h, faceid);
     if (face == NULL)
         goto Bail;
     if (q->send_queue == NULL)
@@ -998,7 +1000,7 @@ content_sender(struct ccn_schedule *sched,
         else {
             send_content(h, face, content);
             /* face may have vanished, bail out if it did */
-            if (face_from_faceid(h, ev->evint) == NULL)
+            if (face_from_faceid(h, faceid) == NULL)
                 goto Bail;
             nsec += burst_nsec * (unsigned)((content->size + 1023) / 1024);
             q->nrun++;
@@ -1014,7 +1016,8 @@ content_sender(struct ccn_schedule *sched,
     delay = (nsec + 499) / 1000 + 1;
     if (q->ready > 0) {
         if (h->debug & 8)
-            ccnd_msg(h, "face %u ready %u delay %i nrun %u", (unsigned)ev->evint, q->ready, delay, q->nrun);
+            ccnd_msg(h, "face %u ready %u delay %i nrun %u",
+                     faceid, q->ready, delay, q->nrun, face->surplus);
         return(delay);
     }
     q->ready = j;
@@ -1023,7 +1026,8 @@ content_sender(struct ccn_schedule *sched,
         if (j == 0)
             delay += burst_nsec / 50;
         if (h->debug & 8)
-            ccnd_msg(h, "face %u ready %u delay %i nrun %u", (unsigned)ev->evint, q->ready, delay, q->nrun);
+            ccnd_msg(h, "face %u ready %u delay %i nrun %u surplus %u",
+                    (unsigned)ev->evint, q->ready, delay, q->nrun, face->surplus);
         return(delay);
     }
     /* Determine when to run again */
@@ -2163,6 +2167,12 @@ do_propagate(struct ccn_schedule *sched,
     return(next_delay);
 }
 
+/**
+ * Adjust the outbound face list for a new Interest, based upon 
+ * existing similar interests.
+ * @result besides possibly updating the outbound set, returns
+ *         an extra delay time before propagation.
+ */
 static int
 adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                                        unsigned char *msg,
@@ -2181,20 +2191,18 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
     int i;
     int n;
     struct face *otherface;
-    
+    int extra_delay = 0;
+
     if ((face->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
         max_redundant = 0;
     if (head != NULL && outbound != NULL) {
-        for (p = head->next; p != head; p = p->next) {
+        for (p = head->next; p != head && outbound->n > 0; p = p->next) {
             if (p->size > minsize &&
                 p->interest_msg != NULL &&
                 p->usec > 0 &&
                 0 == memcmp(msg, p->interest_msg, presize) &&
                 0 == memcmp(post, p->interest_msg + p->size - postsize, postsize)) {
                 /* Matches everything but the Nonce */
-                // XXX - Count will come into play when implemented
-                // XXX - If we had actual forwarding tables, would need to take that into account since the outbound set could differ in non-trivial ways
-                // XXX - newly arrived faces might miss a few interests because of this tactic, but those will get repaired as interests time out.
                 if (h->debug & 32)
                     ccnd_debug_ccnb(h, __LINE__, "similar_interest",
                                     face_from_faceid(h, p->faceid),
@@ -2204,13 +2212,17 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                      * This is one we've already seen before from the same face,
                      * but dropping it unconditionally would lose resiliency
                      * against dropped packets. Thus allow a few of them.
+                     * Add some delay, though.
                      * XXX c.f. bug #13
                      */
+                    extra_delay += npe->usec + 20000;
                     if ((++k) < max_redundant)
                         continue;
                     outbound->n = 0;
-                    return(1);
+                    return(0);
                 }
+                // XXX - If we had actual forwarding tables, would need to take that into account since the outbound set could differ in non-trivial ways
+                // XXX - newly arrived faces might miss a few interests because of this tactic, but those will get repaired as interests time out.
                 /*
                  * The existing interest from another face will serve for us,
                  * but we still need to send this interest there or we
@@ -2219,28 +2231,28 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                  * this one completely.
                  * This assumes a unicast link.  If there are multiple
                  * parties on this face (broadcast or multicast), we
-                 * do not want to send, because it is highly likely that
-                 * we've seen an interest that one of the other parties
+                 * do not want to send right away, because it is highly likely
+                 * that we've seen an interest that one of the other parties
                  * is going to answer, and we'll see the answer, too.
                  */
+                otherface = face_from_faceid(h, p->faceid);
+                if (otherface == NULL)
+                    continue;
                 n = outbound->n;
                 outbound->n = 0;
-                otherface = face_from_faceid(h, p->faceid);
-                if (otherface == NULL || (otherface->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
-                    return(1);
                 for (i = 0; i < n; i++) {
                     if (p->faceid == outbound->buf[i]) {
                         outbound->buf[0] = p->faceid;
                         outbound->n = 1;
+                        if ((otherface->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
+                            extra_delay += npe->usec + 10000;
                         break;
                     }
                 }
-                if (outbound->n == 0)
-                    return(1);
             }
         }
     }
-    return(0);
+    return(extra_delay);
 }
 
 static void
@@ -2275,8 +2287,9 @@ propagate_interest(struct ccnd_handle *h, struct face *face,
     size_t msg_out_size = pi->offset[CCN_PI_E];
     int usec;
     int delaymask;
+    int extra_delay = 0;
     if (outbound != NULL) {
-        adjust_outbound_for_existing_interests(h, face, msg, pi, npe, outbound);
+        extra_delay = adjust_outbound_for_existing_interests(h, face, msg, pi, npe, outbound);
         if (outbound->n == 0)
             ccn_indexbuf_destroy(&outbound);
         else
@@ -2329,7 +2342,8 @@ propagate_interest(struct ccnd_handle *h, struct face *face,
             pe->usec = CCN_INTEREST_LIFETIME_MICROSEC;
             delaymask = 0xFFF;
             if (outbound != NULL && outbound->n > 0 &&
-                  outbound->buf[outbound->n - 1] == npe->src) {
+                  outbound->buf[outbound->n - 1] == npe->src &&
+                  extra_delay == 0) {
                 pe->flags = CCN_PR_UNSENT;
                 delaymask = 0xFF;
             }
@@ -2340,7 +2354,7 @@ propagate_interest(struct ccnd_handle *h, struct face *face,
             if (pe->outbound == NULL)
                 usec = pe->usec;
             else
-                usec = (nrand48(h->seed) & delaymask) + 1;
+                usec = (nrand48(h->seed) & delaymask) + 1 + extra_delay;
             usec = pe_next_usec(h, pe, usec, __LINE__);
             ccn_schedule_event(h->sched, usec, do_propagate, pe, npe->usec);
         }
@@ -3000,6 +3014,9 @@ process_input(struct ccnd_handle *h, int fd)
     struct sockaddr_storage sstor;
     socklen_t addrlen = sizeof(sstor);
     struct sockaddr *addr = (struct sockaddr *)&sstor;
+    int err = 0;
+    socklen_t err_sz;
+    
     face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
     if (face == NULL)
         return;
@@ -3009,15 +3026,20 @@ process_input(struct ccnd_handle *h, int fd)
     if (face->inbuf->length == 0)
         memset(d, 0, sizeof(*d));
     buf = ccn_charbuf_reserve(face->inbuf, 8800);
+    err_sz = sizeof(err);
+    res = getsockopt(face->recv_fd, SOL_SOCKET, SO_ERROR, &err, &err_sz);
+    if (res >= 0 && err != 0)
+        ccnd_msg(h, "error on face %u :%s", face->faceid, strerror(err));
     res = recvfrom(face->recv_fd, buf, face->inbuf->limit - face->inbuf->length,
             /* flags */ 0, addr, &addrlen);
     if (res == -1)
-        perror("ccnd: recvfrom");
+        ccnd_msg(h, "recvfrom face %u :%s", face->faceid, strerror(errno));
     else if (res == 0 && (face->flags & CCN_FACE_DGRAM) == 0)
         shutdown_client_fd(h, fd);
     else {
         source = get_dgram_source(h, face, addr, addrlen);
         source->recvcount++;
+        source->surplus = 0;
         if (res <= 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
             ccnd_msg(h, "%d-byte heartbeat on %d", (int)res, source->faceid);
             return;
@@ -3092,6 +3114,7 @@ do_write(struct ccnd_handle *h,
     ssize_t res;
     if ((face->flags & CCN_FACE_NOSEND) != 0)
         return;
+    face->surplus++;
     if (face->outbuf != NULL) {
         ccn_charbuf_append(face->outbuf, data, size);
         return;
@@ -3117,7 +3140,8 @@ do_write(struct ccnd_handle *h,
             return;
         }
         else {
-            perror("ccnd: send");
+            ccnd_msg(h, "send to face %u failed: %s",
+                     face->faceid, strerror(errno));
             return;
         }
     }
@@ -3404,7 +3428,11 @@ ccnd_create(const char *progname)
                     const char *af = "";
                     int yes = 1;
                     struct face *face;
+                    int rcvbuf = 0;
+                    socklen_t rcvbuf_sz;
 		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+                    rcvbuf_sz = sizeof(rcvbuf);
+                    getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
 		    res = bind(fd, a->ai_addr, a->ai_addrlen);
                     if (res != 0) {
                         close(fd);
@@ -3430,7 +3458,7 @@ ccnd_create(const char *progname)
                         af = "ipv6";
                     }
                     hashtb_end(e);
-                    ccnd_msg(h, "accepting %s datagrams on fd %d", af, fd);
+                    ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d", af, fd, rcvbuf);
                 }
             }
             for (a = addrinfo; a != NULL; a = a->ai_next) {

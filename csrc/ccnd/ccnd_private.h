@@ -143,12 +143,13 @@ enum cq_delay_class {
 };
 
 /**
- * One of our active interfaces
+ * One of our active faces
  */
 struct face {
     int recv_fd;                /**< socket for receiving */
     int send_fd;                /**< socket for sending (maybe == recv_fd) */
     int flags;                  /**< CCN_FACE_* face flags */
+    int surplus;                /**< sends since last successful recv */
     unsigned faceid;            /**< internal face id */
     unsigned recvcount;         /**< for activity level monitoring */
     struct content_queue *q[CCN_CQ_N]; /**< outgoing content, per delay class */
