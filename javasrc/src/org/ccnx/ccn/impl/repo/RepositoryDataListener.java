@@ -132,6 +132,10 @@ public class RepositoryDataListener implements CCNInterestListener {
 		return null;
 	}
 	
+	/**
+	 * Much match implementation of nextSegmentNumber in input streams, segmenters.
+	 * @return
+	 */
 	private long getNextBlockID() {
 		long value = 0;
 		Collection<Entry<Object>> values = _interests.values();
