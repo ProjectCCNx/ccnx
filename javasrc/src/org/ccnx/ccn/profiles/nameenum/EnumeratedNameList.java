@@ -10,6 +10,7 @@ import java.util.TreeSet;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -84,10 +85,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		SortedSet<ContentName> childArray = null;
 		synchronized(_childLock) {
 			long timeRemaining = timeout;
-			while ((null == _newChildren) && ((timeout == 0) || (timeRemaining > 0))) {
+			while ((null == _newChildren) && ((timeout == SystemConfiguration.TIMEOUT_FOREVER) || (timeRemaining > 0))) {
 				try {
-					_childLock.wait((timeout > 0) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
-					if (timeout > 0)
+					_childLock.wait((timeout != SystemConfiguration.TIMEOUT_FOREVER) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
+					if (timeout != SystemConfiguration.TIMEOUT_FOREVER)
 						timeRemaining -= CHILD_WAIT_INTERVAL;
 				} catch (InterruptedException e) {
 				}
@@ -151,10 +152,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			return;
 		synchronized(_childLock) {
 			long timeRemaining = timeout;
-			while (((null == _children) || (_children.size() == 0)) && ((timeout == 0) || (timeRemaining > 0))) {
+			while (((null == _children) || (_children.size() == 0)) && ((timeout == SystemConfiguration.TIMEOUT_FOREVER) || (timeRemaining > 0))) {
 				try {
-					_childLock.wait((timeout > 0) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
-					if (timeout > 0)
+					_childLock.wait((timeout != SystemConfiguration.TIMEOUT_FOREVER) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
+					if (timeout != SystemConfiguration.TIMEOUT_FOREVER)
 						timeRemaining -= CHILD_WAIT_INTERVAL;
 				} catch (InterruptedException e) {
 				}

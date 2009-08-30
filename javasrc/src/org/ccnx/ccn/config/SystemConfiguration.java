@@ -34,6 +34,11 @@ public class SystemConfiguration {
 	protected static final String DEFAULT_DEBUG_DATA_DIRECTORY = "./CCN_DEBUG_DATA";
 	protected static String DEBUG_DATA_DIRECTORY = null;
 	
+	/** 
+	 * Tunable timeouts as well as timeout defaults.
+	 */
+	public static long TIMEOUT_FOREVER = 0;
+	
 	/**
 	 * Can set compile-time default encoding here. Choices are
 	 * currently "Text" and "Binary", or better yet
