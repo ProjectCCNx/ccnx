@@ -611,7 +611,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	/**
 	 * Will return immediately if this object already has data, otherwise
-	 * will wait for new data to appear.
+	 * will wait for timeout msec for new data to appear.
 	 */
 	public void waitForData() {
 		if (available())
@@ -622,6 +622,24 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 					wait();
 				} catch (InterruptedException e) {
 				}
+			}
+		}
+	}
+	
+	/**
+	 * Will wait for timeout msec for data to arrive. Callers should use
+	 * available() to determine whether data has arrived or not.
+	 * If data already available, will return immediately.
+	 * @param timeout
+	 */
+	public void waitForData(long timeout) {
+		
+		if (available())
+			return;
+		synchronized (this) {
+			try {
+				wait(timeout);
+			} catch (InterruptedException e) {
 			}
 		}
 	}
