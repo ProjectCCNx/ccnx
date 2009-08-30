@@ -22,9 +22,6 @@ public class SystemConfiguration {
 	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
 
-	protected static final int DEFAULT_REPO2TRANSPORT_PORT = 43567;
-	protected static final int DEFAULT_TRANSPORT2REPO_PORT = 43568;
-	
 	/**
 	 * Property to set debug flags.
 	 */
