@@ -19,6 +19,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.protocol.ContentName;
@@ -33,6 +34,8 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  *
  */
 public class CCNChat extends JFrame implements ActionListener {
+
+	private static final long serialVersionUID = -8779269133035264361L;
 
 	protected ContentName _namespace;
 	// Separate read and write libraries so we will read our own updates,
@@ -113,7 +116,7 @@ public class CCNChat extends JFrame implements ActionListener {
         _typedText.requestFocusInWindow();
 	}
 	
-	public void listen() {
+	public void listen() throws ConfigurationException, IOException {
 		_readString = new CCNStringObject(_namespace, (String)null, CCNHandle.open());
 		_readString.updateInBackground(true);
 		
@@ -123,12 +126,19 @@ public class CCNChat extends JFrame implements ActionListener {
 		
 		// Need to do synchronization for updates that come in while we're processing last one.
 		while (!_finished) {
-			_readString.wait(CYCLE_TIME);
+			try {
+				synchronized(_readString) {
+					_readString.wait(CYCLE_TIME);
+				}
+			} catch (InterruptedException e) {
+			}
 			if (_readString.available()) {
 				Timestamp thisUpdate = _readString.getCurrentVersion();
 				if ((null == _lastUpdate) || thisUpdate.after(_lastUpdate)) {
+					System.out.println("Got an update: " + _readString.getCurrentVersion());
 					_lastUpdate = thisUpdate;
 					showMessage(_readString.contentPublisher(), _readString.publisherKeyLocator(), thisUpdate, _readString.string());
+				} else {
 				}
 			}
 		}
@@ -144,7 +154,8 @@ public class CCNChat extends JFrame implements ActionListener {
 	}
 	
 	protected void showMessage(PublisherPublicKeyDigest publisher, KeyLocator keyLocator, Timestamp time, String message) {
-		
+		// Start with key fingerprints. Move up to user names.
+		showMessage(publisher.shortFingerprint(), time, message);
 	}
 	
     public static void usage() {
@@ -165,6 +176,12 @@ public class CCNChat extends JFrame implements ActionListener {
 			client.listen();
 		} catch (MalformedContentNameStringException e) {
 			System.err.println("Not a valid ccn URI: " + args[0] + ": " + e.getMessage());
+			e.printStackTrace();
+		} catch (ConfigurationException e) {
+			System.err.println("Configuration exception running ccnChat: " + e.getMessage());
+			e.printStackTrace();
+		} catch (IOException e) {
+			System.err.println("IOException handling chat messages: " + e.getMessage());
 			e.printStackTrace();
 		}
 	}
