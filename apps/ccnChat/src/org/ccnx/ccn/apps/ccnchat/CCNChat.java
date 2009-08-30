@@ -12,6 +12,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
@@ -47,6 +48,7 @@ public class CCNChat extends JFrame implements ActionListener {
 	
 	protected static final long CYCLE_TIME = 1000;
 	protected static final String SYSTEM = "System";
+	protected static SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("HH:mm");
 
     // Chat window
     protected JTextArea  _messagePane = new JTextArea(10, 32);
@@ -70,9 +72,11 @@ public class CCNChat extends JFrame implements ActionListener {
             }
         );
         
+        
         // Make window
         _messagePane.setEditable(false);
         _messagePane.setBackground(Color.LIGHT_GRAY);
+        _messagePane.setLineWrap(true);
         _typedText.addActionListener(this);
 
         Container content = getContentPane();
@@ -149,13 +153,13 @@ public class CCNChat extends JFrame implements ActionListener {
 	 * @param message
 	 */
 	protected void showMessage(String sender, Timestamp time, String message) {
-		_messagePane.insert("[" + sender + "]: " + message + "\n", _messagePane.getText().length());
+		_messagePane.insert("[" + sender + " " + DATE_FORMAT.format(time) + "]: " + message + "\n", _messagePane.getText().length());
         _messagePane.setCaretPosition(_messagePane.getText().length());
 	}
 	
 	protected void showMessage(PublisherPublicKeyDigest publisher, KeyLocator keyLocator, Timestamp time, String message) {
 		// Start with key fingerprints. Move up to user names.
-		showMessage(publisher.shortFingerprint(), time, message);
+		showMessage(publisher.shortFingerprint().substring(0, 8), time, message);
 	}
 	
     public static void usage() {
