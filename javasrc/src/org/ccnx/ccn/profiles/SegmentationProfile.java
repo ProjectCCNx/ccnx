@@ -153,7 +153,6 @@ public class SegmentationProfile implements CCNProfile {
 	 * @return
 	 */
 	public static boolean isHeader(ContentName baseName, ContentName headerName) {
-		// TODO update to new header naming
 		if (!baseName.isPrefixOf(headerName)) {
 			return false;
 		}
