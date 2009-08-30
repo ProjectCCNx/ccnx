@@ -477,11 +477,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			byte [] empty = new byte[0];
 			ContentObject goneObject = 
 				ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty, _publisher, _keyLocator, null, null);
-			// DKS TODO -- start write
+
 			// The segmenter in the stream does an addNameSpace of the versioned name. Right now
 			// this not only adds the prefix (ignored) but triggers the repo start write.
 			_flowControl.addNameSpace(name);
-			_flowControl.startWrite(name, Shape.STREAM);
+			_flowControl.startWrite(name, Shape.STREAM); // Streams take care of this for the non-gone case.
 			_flowControl.put(goneObject);
 			_flowControl.beforeClose();
 			_flowControl.afterClose();
@@ -629,7 +629,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Will wait for timeout msec for data to arrive. Callers should use
 	 * available() to determine whether data has arrived or not.
 	 * If data already available, will return immediately.
-	 * @param timeout
+	 * @param timeout If 0, will wait forever (if data does not arrive).
 	 */
 	public void waitForData(long timeout) {
 		
