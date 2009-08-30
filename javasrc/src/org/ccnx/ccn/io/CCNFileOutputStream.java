@@ -54,13 +54,6 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		super(name, locator, publisher, type, flowControl);
 	}
 	
-	@Override
-	protected void startWrite() throws IOException {
-		// Won't need this if header is its own stream
-	//	_segmenter.getFlowControl().startWrite(_baseName, Shape.STREAM_WITH_HEADER);		
-		_segmenter.getFlowControl().startWrite(_baseName, Shape.STREAM);		
-	}
-
 	protected void writeHeader() throws IOException {
 		// What do we put in the header if we have multiple merkle trees?
 		try {
