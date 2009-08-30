@@ -116,20 +116,20 @@ public class SegmentationProfile implements CCNProfile {
 		return segmentNumberNameComponent;
 	}
 	
-	public static long getSegmentNumber(byte [] segmentID) {
+	public static long getSegmentNumber(byte [] segmentNumberNameComponent) {
 		
-		if (isSegmentMarker(segmentID)) {
+		if (isSegmentMarker(segmentNumberNameComponent)) {
 			// Will behave properly with everything but first fragment of fragmented content.
-			if (segmentID.length == 1)
+			if (segmentNumberNameComponent.length == 1)
 				return 0;
-			byte [] ftemp = new byte[segmentID.length-1];
-			System.arraycopy(segmentID, 1, ftemp, 0, segmentID.length-1);
-			segmentID = ftemp;
+			byte [] ftemp = new byte[segmentNumberNameComponent.length-1];
+			System.arraycopy(segmentNumberNameComponent, 1, ftemp, 0, segmentNumberNameComponent.length-1);
+			segmentNumberNameComponent = ftemp;
 		} 
 		// If this isn't formatted as one of our segment numbers, suspect it might
 		// be a sequence (e.g. a packet stream), and attempt to read the last name
 		// component as a number.
-		BigInteger value = new BigInteger(1, segmentID);
+		BigInteger value = new BigInteger(1, segmentNumberNameComponent);
 		return value.longValue();
 	}
 
