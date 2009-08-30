@@ -13,8 +13,8 @@ import org.ccnx.ccn.impl.CCNSegmenter;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.HeaderData;
-import org.ccnx.ccn.io.content.HeaderData.HeaderObject;
+import org.ccnx.ccn.io.content.Header;
+import org.ccnx.ccn.io.content.Header.HeaderObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -90,7 +90,7 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 
 
 		ContentName headerName = SegmentationProfile.headerName(name);
-		HeaderData headerData = new HeaderData(contentLength, contentDigest, contentTreeAuthenticator, blockSize);
+		Header headerData = new Header(contentLength, contentDigest, contentTreeAuthenticator, blockSize);
 		// DKS TODO -- deal with header encryption, making sure it has same publisher as
 		// rest of file via the segmenter
 		// The segmenter contains the flow controller. Should do the right thing whether this

@@ -25,18 +25,15 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * Mapping from a sequence to the underlying XML representation.
  * A Header is a content object giving a compact description of a
  * sequence of named blocks.
- * @author briggs
- * TODO: these need to be subtypes of ContentObjects
- * and give it a type.   see schema, make it choice of ...
- * and, root hash of hash tree, hash of reconstructed content
+ * @author briggs, smetters
  *
  */
-public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
+public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	
 	/**
 	 * This should eventually be called Header, and the Header class deleted.
 	 */
-	public static class HeaderObject extends CCNEncodableObject<HeaderData> {
+	public static class HeaderObject extends CCNEncodableObject<Header> {
 		
 		/**
 		 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
@@ -45,18 +42,18 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 		 * @param library
 		 * @throws IOException
 		 */
-		public HeaderObject(ContentName name, HeaderData data, CCNHandle library) throws IOException {
-			super(HeaderData.class, name, data, library);
+		public HeaderObject(ContentName name, Header data, CCNHandle library) throws IOException {
+			super(Header.class, name, data, library);
 		}
 		
-		public HeaderObject(ContentName name, HeaderData data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
-			super(HeaderData.class, name, data, publisher, keyLocator, library);
+		public HeaderObject(ContentName name, Header data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
+			super(Header.class, name, data, publisher, keyLocator, library);
 		}
 
 		public HeaderObject(ContentName name,
-				HeaderData data, PublisherPublicKeyDigest publisher,
+				Header data, PublisherPublicKeyDigest publisher,
 				KeyLocator keyLocator, CCNFlowControl flowControl) throws IOException, XMLStreamException {
-			super(HeaderData.class, name, data, publisher, keyLocator, flowControl);
+			super(Header.class, name, data, publisher, keyLocator, flowControl);
 		}
 	
 		/**
@@ -68,102 +65,102 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 		 * @throws ClassNotFoundException 
 		 */
 		public HeaderObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) throws IOException, XMLStreamException {
-			super(HeaderData.class, name, publisher, library);
+			super(Header.class, name, publisher, library);
 		}
 		
 		public HeaderObject(ContentName name, CCNHandle library) throws IOException, XMLStreamException {
-			super(HeaderData.class, name, (PublisherPublicKeyDigest)null, library);
+			super(Header.class, name, (PublisherPublicKeyDigest)null, library);
 		}
 		
 		public HeaderObject(ContentObject firstBlock, CCNHandle library) throws IOException, XMLStreamException {
-			super(HeaderData.class, firstBlock, library);
+			super(Header.class, firstBlock, library);
 		}
 		
 		public long start() { 
-			HeaderData h = header();
+			Header h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.start(); 
 		}
 
 		public long count() { 
-			HeaderData h = header();
+			Header h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.count(); 
 		}
 		
 		public int blockSize() { 
-			HeaderData h = header();
+			Header h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.blockSize(); 
 		}
 		
 		public long length() { 
-			HeaderData h = header();
+			Header h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.length(); 
 		}
 		
 		public byte [] rootDigest() { 
-			HeaderData h = header();
+			Header h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.rootDigest(); 
 		}
 		
 		public byte [] contentDigest() {
-			HeaderData h = header();
+			Header h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.contentDigest(); 
 		}
 		
 		public FragmentationType type() {
-			HeaderData h = header();
+			Header h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.type(); 
 		}
 
 		public String typeName() {
-			HeaderData h = header();
+			Header h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.typeName(); 
 		}
 		
 		public int[] positionToSegmentLocation(long position) {
-			HeaderData h = header();
+			Header h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.positionToSegmentLocation(position);
 		}
 
 		public long segmentLocationToPosition(long block, int offset) {
-			HeaderData h = header();
+			Header h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.segmentLocationToPosition(block, offset);
 		}
 
 		public int segmentCount() {
-			HeaderData h = header();
+			Header h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.segmentCount();
 		}
 		
 		public int segmentRemainder() {
-			HeaderData h = header();
+			Header h = header();
 			if (null == h)
 				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.segmentRemainder();
 		}
 
-		public HeaderData header() { 
+		public Header header() { 
 			if (null == data())
 				return null;
 			return data(); 
@@ -218,7 +215,7 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 	 * @param blockSize
 	 * @param length
 	 */
-	public HeaderData(long start, long count, 
+	public Header(long start, long count, 
 				  int blockSize, long length,
 				  byte [] contentDigest,
 				  byte [] rootDigest) {
@@ -231,7 +228,7 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 		_type = FragmentationType.SIMPLE_BLOCK;
 	}
 	
-	public HeaderData(long length,
+	public Header(long length,
 			byte [] contentDigest,
 			byte [] rootDigest, int blockSize
 	) throws XMLStreamException {
@@ -243,7 +240,7 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 	/**
 	 * For decoders
 	 */
-	public HeaderData() {}
+	public Header() {}
 	
 	public long start() { 
 		return _start;
@@ -283,8 +280,8 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 	 */
 	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(HeaderData.HEADER_ELEMENT);
-		_start = Integer.valueOf(decoder.readUTF8Element(HeaderData.START_ELEMENT));
+		decoder.readStartElement(Header.HEADER_ELEMENT);
+		_start = Integer.valueOf(decoder.readUTF8Element(Header.START_ELEMENT));
 		_count = Integer.valueOf(decoder.readUTF8Element(COUNT_ELEMENT));
 		_blockSize = Integer.valueOf(decoder.readUTF8Element(BLOCKSIZE_ELEMENT));
 		_length = Integer.valueOf(decoder.readUTF8Element(LENGTH_ELEMENT));
@@ -364,7 +361,7 @@ public class HeaderData extends GenericXMLEncodable implements XMLEncodable  {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		HeaderData other = (HeaderData) obj;
+		Header other = (Header) obj;
 		if (_blockSize != other._blockSize)
 			return false;
 		if (!Arrays.equals(_contentDigest, other._contentDigest))

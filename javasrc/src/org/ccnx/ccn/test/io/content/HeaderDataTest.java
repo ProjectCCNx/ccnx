@@ -13,7 +13,7 @@ import javax.xml.stream.XMLStreamException;
 
 import junit.framework.Assert;
 
-import org.ccnx.ccn.io.content.HeaderData;
+import org.ccnx.ccn.io.content.Header;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.Test;
@@ -23,14 +23,14 @@ import org.junit.Test;
 /**
  * @author briggs, rasmusse, smetters
  *
- * DKS - Make this back into the HeaderData test it ought to be.
+ * DKS - Make this back into the Header test it ought to be.
  */
 public class HeaderDataTest {
 	
 	@Test
 	public void testHeaderConstructor() throws Exception {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		HeaderData seq = new HeaderData(1, 1, 8192, 2, digest, digest);
+		Header seq = new Header(1, 1, 8192, 2, digest, digest);
 		assertNotNull(seq);
 		assertEquals(1, seq.start());
 		assertEquals(1, seq.count());
@@ -42,7 +42,7 @@ public class HeaderDataTest {
 	public void testHeaderConstructor2() throws Exception {
 		int length = 77295;
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		HeaderData seq = new HeaderData(length, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE);
+		Header seq = new Header(length, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE);
 		assertNotNull(seq);
 		assertEquals(SegmentationProfile.baseSegment(), seq.start());
 		assertEquals(length, seq.length());
@@ -53,7 +53,7 @@ public class HeaderDataTest {
 	public void testHeaderConstructor3() throws Exception {
 		int length = SegmentationProfile.DEFAULT_BLOCKSIZE;
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		HeaderData seq = new HeaderData(length, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE);
+		Header seq = new Header(length, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE);
 		assertNotNull(seq);
 		assertEquals(SegmentationProfile.baseSegment(), seq.start());
 		assertEquals(length, seq.length());
@@ -63,34 +63,34 @@ public class HeaderDataTest {
 	@Test
 	public void testEncodeOutputStream() throws Exception {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		HeaderData seq = new HeaderData(1, 37, 8192, 2, digest, digest);
+		Header seq = new Header(1, 37, 8192, 2, digest, digest);
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		System.out.println("Encoding HeaderData...");
+		System.out.println("Encoding Header...");
 		try {
 			seq.encode(baos);
 		} catch (XMLStreamException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
 		}
-		System.out.println("Encoded HeaderData: " );
+		System.out.println("Encoded Header: " );
 		System.out.println(baos.toString());
-		HeaderData dec = new HeaderData();
+		Header dec = new Header();
 		dec.decode(baos.toByteArray());
 		seq.equals(dec);
 		Assert.assertEquals(seq, dec);
 		
-		HeaderData dt = new HeaderData();
-		HeaderData db = new HeaderData();
+		Header dt = new Header();
+		Header db = new Header();
 		
-		XMLEncodableTester.encodeDecodeTest("HeaderData", seq, dt, db);
+		XMLEncodableTester.encodeDecodeTest("Header", seq, dt, db);
 	}
 
 	@Test
 	public void testDecodeInputStream() throws Exception {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
-		HeaderData seqIn = new HeaderData(83545, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE);
-		HeaderData seqOut = new HeaderData();
+		Header seqIn = new Header(83545, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE);
+		Header seqOut = new Header();
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {

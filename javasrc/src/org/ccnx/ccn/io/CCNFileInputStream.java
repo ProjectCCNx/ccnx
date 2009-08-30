@@ -9,8 +9,8 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.HeaderData;
-import org.ccnx.ccn.io.content.HeaderData.HeaderObject;
+import org.ccnx.ccn.io.content.Header;
+import org.ccnx.ccn.io.content.Header.HeaderObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -85,7 +85,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		_header.waitForData(); // should take timeout
 	}
 	
-	public HeaderData header() {
+	public Header header() {
 		if (null == _header)
 			return null;
 		return _header.header();
