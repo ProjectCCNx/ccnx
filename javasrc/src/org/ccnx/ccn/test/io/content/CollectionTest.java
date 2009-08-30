@@ -18,7 +18,7 @@ import org.junit.Test;
 
 
 
-public class CollectionDataTest {
+public class CollectionTest {
 
 	static final  String baseName = "test";
 	static final  String subName = "smetters";
