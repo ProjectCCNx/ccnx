@@ -2,7 +2,6 @@ package org.ccnx.ccn.impl.repo;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
@@ -16,7 +15,6 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.repo.Repository.NameEnumerationResponse;
-import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -153,9 +151,11 @@ public class RepositoryDataListener implements CCNInterestListener {
 				int nOutput = _interests.size() >= _daemon.getWindowSize() ? 0 : _daemon.getWindowSize() - _interests.size();
 				
 				// Make sure we don't go past prospective last block.
-				if (_finalBlockID > 0) {
+				if (_finalBlockID >= 0) {
 					nOutput = (int)Math.min(nOutput, _finalBlockID - _currentBlock);
 				}
+				
+				Log.finest("REPO: Got block: " + co.name() + " expressing " + nOutput + " more interests, current block " + _currentBlock + " final block " + _finalBlockID + " last block? " + isFinalBlock);
 				for (int i = 0; i < nOutput; i++) {
 					ContentName name = SegmentationProfile.segmentName(co.name(), firstInterestToRequest + i);
 					// DKS - should use better interest generation to only get segments (TBD, in SegmentationProfile)
