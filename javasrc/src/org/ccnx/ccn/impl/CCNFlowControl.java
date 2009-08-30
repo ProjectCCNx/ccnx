@@ -44,7 +44,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 public class CCNFlowControl implements CCNFilterListener {
 	
-	public enum Shape {STREAM, STREAM_WITH_HEADER};
+	public enum Shape {STREAM};
 	
 	protected CCNHandle _library = null;
 	
