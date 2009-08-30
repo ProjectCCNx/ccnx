@@ -334,7 +334,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 					_locator, _publisher);
 		} else {
 			Log.info("flush: putting merkle tree to the network, baseName " + _baseName +
-					" basenameindex " + ContentName.componentPrintURI(SegmentationProfile.getSegmentID(_baseNameIndex)) + "; " 
+					" basenameindex " + ContentName.componentPrintURI(SegmentationProfile.getSegmentNumberNameComponent(_baseNameIndex)) + "; " 
 					+ _blockOffset + 
 					" bytes written, holding back " + saveBytes + " flushing final blocks? " + flushLastBlock + ".");
 			// Generate Merkle tree (or other auth structure) and signedInfos and put contents.

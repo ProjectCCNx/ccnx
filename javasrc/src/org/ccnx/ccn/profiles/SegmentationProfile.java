@@ -98,22 +98,22 @@ public class SegmentationProfile implements CCNProfile {
 		if (isSegment(name)) {
 			baseName = segmentRoot(name);
 		}
-		return new ContentName(baseName, getSegmentID(index));
+		return new ContentName(baseName, getSegmentNumberNameComponent(index));
 	}
 	
-	public static byte [] getSegmentID(long segmentNumber) {
+	public static byte [] getSegmentNumberNameComponent(long segmentNumber) {
 		
-		byte [] segmentID = null;
+		byte [] segmentNumberNameComponent = null;
 		if (baseSegment() == segmentNumber) {
-			segmentID = FIRST_SEGMENT_MARKER;
+			segmentNumberNameComponent = FIRST_SEGMENT_MARKER;
 		} else {
 			byte [] iarr = BigInteger.valueOf(segmentNumber).toByteArray();
-			segmentID = new byte[iarr.length + ((0 == iarr[0]) ? 0 : 1)];
-			segmentID[0] = SEGMENT_MARKER;
+			segmentNumberNameComponent = new byte[iarr.length + ((0 == iarr[0]) ? 0 : 1)];
+			segmentNumberNameComponent[0] = SEGMENT_MARKER;
 			int offset = ((0 == iarr[0]) ? 1 : 0);
-			System.arraycopy(iarr, offset, segmentID, 1, iarr.length-offset);
+			System.arraycopy(iarr, offset, segmentNumberNameComponent, 1, iarr.length-offset);
 		}
-		return segmentID;
+		return segmentNumberNameComponent;
 	}
 	
 	public static long getSegmentNumber(byte [] segmentID) {

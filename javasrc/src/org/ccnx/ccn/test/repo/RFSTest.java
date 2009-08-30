@@ -204,7 +204,7 @@ public class RFSTest extends RepoTestBase {
 		versionedNameNormal = VersioningProfile.addVersion(versionedNameNormal);
 		repo.saveContent(ContentObject.buildContentObject(versionedNameNormal, "version-normal".getBytes()));
 		checkData(repo, versionedNameNormal, "version-normal");
-		byte[] finalBlockID = SegmentationProfile.getSegmentID(4);
+		byte[] finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(4);
 		for (Long i=SegmentationProfile.baseSegment(); i<5; i++) {
 			ContentName segmented = SegmentationProfile.segmentName(versionedNameNormal, i);
 			String segmentContent = "segment"+ new Long(i).toString();
