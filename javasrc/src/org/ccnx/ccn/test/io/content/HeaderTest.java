@@ -25,7 +25,7 @@ import org.junit.Test;
  *
  * DKS - Make this back into the Header test it ought to be.
  */
-public class HeaderDataTest {
+public class HeaderTest {
 	
 	@Test
 	public void testHeaderConstructor() throws Exception {
