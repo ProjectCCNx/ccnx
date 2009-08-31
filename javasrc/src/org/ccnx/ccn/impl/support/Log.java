@@ -162,7 +162,7 @@ public class Log {
 
 	@SuppressWarnings("unchecked")
 	protected static void doLog(Level l, String msg, Object... params) {
-		if (l.intValue() > _level)
+		if (l.intValue() < _level)
 			return;
 		StackTraceElement ste = Thread.currentThread().getStackTrace()[3];
 		Class c;
