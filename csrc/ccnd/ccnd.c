@@ -879,7 +879,7 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
                            (void *)h, &socks);
     if (res < 0)
         return(NULL);
-    establish_min_recv_bufsize(h, socks.recving, 128*1024);
+    establish_min_recv_bufsize(h, socks.recving, 256*1024);
     face = record_connection(h, socks.recving, who, wholen);
     if (face == NULL) {
         close(socks.recving);
