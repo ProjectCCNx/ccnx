@@ -217,7 +217,7 @@ public class Group {
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getCurrentVersionName(), new LinkAuthenticator(new PublisherID(KeyManager.getKeyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _library);
-		precededByBlock.save();
+		precededByBlock.saveToRepository();
 	}
 	
 	/**
@@ -429,7 +429,7 @@ public class Group {
 		}
 		// Don't actually save the new membership list till we're sure we can update the
 		// key.
-		_groupMembers.save();
+		_groupMembers.saveToRepository();
 	}
 
 	public void delete() throws IOException {
