@@ -15,7 +15,7 @@ import org.junit.Test;
 
 
 
-public class LinkReferenceTest {
+public class LinkTest {
 
 	static final  String baseName = "test";
 	static final  String linkBaseName = "link";

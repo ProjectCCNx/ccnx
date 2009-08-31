@@ -38,7 +38,8 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private InterestTable<Object> _interests = new InterestTable<Object>();
 	private RepositoryDaemon _daemon;
 	private CCNHandle _library;
-	private long _currentBlock = 0;
+	private long _currentBlock = 0; // latest block we're looking for
+	private long _finalBlockID = -1; // expected last block of the stream
 	
 	public Interest _headerInterest = null;
 	
@@ -93,6 +94,8 @@ public class RepositoryDataListener implements CCNInterestListener {
 		for (ContentObject co : results) {
 			_daemon.getThreadPool().execute(new DataHandler(co));
 			
+			boolean isFinalBlock = false;
+			
 			if (VersioningProfile.hasTerminalVersion(co.name()) && !VersioningProfile.hasTerminalVersion(_versionedName)) {
 				_versionedName = co.name().cut(VersioningProfile.findLastVersionComponent(co.name()) + 1);
 			}
@@ -101,9 +104,39 @@ public class RepositoryDataListener implements CCNInterestListener {
 				long thisBlock = SegmentationProfile.getSegmentNumber(co.name());
 				if (thisBlock >= _currentBlock)
 					_currentBlock = thisBlock + 1;
+				
+				// For now, only set _finalBlockID when we *know* we have the correct final
+				// block number -- i.e. we get a block whose segment number matches the encoded
+				// final block. A pipelining stream may help us by setting the finalBlockID in several
+				// blocks prior to the last one, to let us know when to slow down -- but it's allowed
+				// to be wrong, and keep going if it hasn't yet hit a block which is itself marked
+				// as the last one (whose own segment number matches its own finalBlockID value).
+				// Taking into account incorrect ramp-down finalBlockIDs, recovering, and knowing we
+				// have more to get requires a bit more sophisticated tweaking of the pipelining code.
+				// Basically if we think we know the finalBlockID, we get that block, and it isn't
+				// marked as the final block, we open the window back up.
+				if (null != co.signedInfo().getFinalBlockID()) {
+					// Alright, either we didn't know a final block id before, in which case
+					// we just believe this one, or we did, in which case this one is later than
+					// the one we knew, or earlier. If it's later, we just store it and open up
+					// the window somewhat. If it's earlier, we shorten the window, but don't bother
+					// canceling already expressed interests for blocks past the window till we finish
+					// the stream. So just update our notion of finalBlockID.
+					// So in other words, the only time we use this value to actually cancel outstanding
+					// interests is when we have hit the end of the stream.
+					_finalBlockID = SegmentationProfile.getSegmentNumber(co.signedInfo().getFinalBlockID());
+					if (_finalBlockID == thisBlock) {
+						// only set this for a block that has finalBlockID set
+						isFinalBlock = true;
+					} 
+				}
 			}
 			synchronized (_interests) {
 				_interests.remove(interest, null);
+				if (isFinalBlock) {
+					if (_interests.size() > 0)
+						Log.info("Have last block of stream, need to remove up to " + _interests.size() + " additional interests.");
+				}
 			}
 			
 			/*
@@ -114,10 +147,18 @@ public class RepositoryDataListener implements CCNInterestListener {
 				if (_currentBlock > firstInterestToRequest) // Can happen if last requested interest precedes all others
 															// out of order
 					firstInterestToRequest = _currentBlock;
+				
 				int nOutput = _interests.size() >= _daemon.getWindowSize() ? 0 : _daemon.getWindowSize() - _interests.size();
-	
+				
+				// Make sure we don't go past prospective last block.
+				if (_finalBlockID >= 0) {
+					nOutput = (int)Math.min(nOutput, _finalBlockID - _currentBlock);
+				}
+				
+				Log.finest("REPO: Got block: " + co.name() + " expressing " + nOutput + " more interests, current block " + _currentBlock + " final block " + _finalBlockID + " last block? " + isFinalBlock);
 				for (int i = 0; i < nOutput; i++) {
 					ContentName name = SegmentationProfile.segmentName(co.name(), firstInterestToRequest + i);
+					// DKS - should use better interest generation to only get segments (TBD, in SegmentationProfile)
 					Interest newInterest = new Interest(name);
 					try {
 						_library.expressInterest(newInterest, this);
@@ -132,6 +173,10 @@ public class RepositoryDataListener implements CCNInterestListener {
 		return null;
 	}
 	
+	/**
+	 * Much match implementation of nextSegmentNumber in input streams, segmenters.
+	 * @return
+	 */
 	private long getNextBlockID() {
 		long value = 0;
 		Collection<Entry<Object>> values = _interests.values();

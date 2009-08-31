@@ -1,15 +1,11 @@
 package org.ccnx.ccn.test.profiles.access;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.SortedSet;
-
-
-
-import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
@@ -19,6 +15,7 @@ import org.ccnx.ccn.profiles.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.access.GroupManager;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 

@@ -314,7 +314,7 @@ public class CCNSecureInputStreamTest {
 		ContentName rootName = SegmentationProfile.segmentRoot(basic.name);
 		PublisherPublicKeyDigest publisher = outputLibrary.getDefaultPublisher();
 		PrivateKey signingKey = outputLibrary.keyManager().getSigningKey(publisher);
-		byte [] finalBlockID = SegmentationProfile.getSegmentID(1);
+		byte [] finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(1);
 		ContentObject co = new ContentObject(SegmentationProfile.segmentName(rootName, 0),
 				new SignedInfo(publisher, null, ContentType.ENCR, outputLibrary.keyManager().getKeyLocator(signingKey), new Integer(300), finalBlockID),
 				is, 4096);

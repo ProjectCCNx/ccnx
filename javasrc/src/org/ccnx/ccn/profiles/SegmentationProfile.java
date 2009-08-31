@@ -98,38 +98,38 @@ public class SegmentationProfile implements CCNProfile {
 		if (isSegment(name)) {
 			baseName = segmentRoot(name);
 		}
-		return new ContentName(baseName, getSegmentID(index));
+		return new ContentName(baseName, getSegmentNumberNameComponent(index));
 	}
 	
-	public static byte [] getSegmentID(long segmentNumber) {
+	public static byte [] getSegmentNumberNameComponent(long segmentNumber) {
 		
-		byte [] segmentID = null;
+		byte [] segmentNumberNameComponent = null;
 		if (baseSegment() == segmentNumber) {
-			segmentID = FIRST_SEGMENT_MARKER;
+			segmentNumberNameComponent = FIRST_SEGMENT_MARKER;
 		} else {
 			byte [] iarr = BigInteger.valueOf(segmentNumber).toByteArray();
-			segmentID = new byte[iarr.length + ((0 == iarr[0]) ? 0 : 1)];
-			segmentID[0] = SEGMENT_MARKER;
+			segmentNumberNameComponent = new byte[iarr.length + ((0 == iarr[0]) ? 0 : 1)];
+			segmentNumberNameComponent[0] = SEGMENT_MARKER;
 			int offset = ((0 == iarr[0]) ? 1 : 0);
-			System.arraycopy(iarr, offset, segmentID, 1, iarr.length-offset);
+			System.arraycopy(iarr, offset, segmentNumberNameComponent, 1, iarr.length-offset);
 		}
-		return segmentID;
+		return segmentNumberNameComponent;
 	}
 	
-	public static long getSegmentNumber(byte [] segmentID) {
+	public static long getSegmentNumber(byte [] segmentNumberNameComponent) {
 		
-		if (isSegmentMarker(segmentID)) {
+		if (isSegmentMarker(segmentNumberNameComponent)) {
 			// Will behave properly with everything but first fragment of fragmented content.
-			if (segmentID.length == 1)
+			if (segmentNumberNameComponent.length == 1)
 				return 0;
-			byte [] ftemp = new byte[segmentID.length-1];
-			System.arraycopy(segmentID, 1, ftemp, 0, segmentID.length-1);
-			segmentID = ftemp;
+			byte [] ftemp = new byte[segmentNumberNameComponent.length-1];
+			System.arraycopy(segmentNumberNameComponent, 1, ftemp, 0, segmentNumberNameComponent.length-1);
+			segmentNumberNameComponent = ftemp;
 		} 
 		// If this isn't formatted as one of our segment numbers, suspect it might
 		// be a sequence (e.g. a packet stream), and attempt to read the last name
 		// component as a number.
-		BigInteger value = new BigInteger(1, segmentID);
+		BigInteger value = new BigInteger(1, segmentNumberNameComponent);
 		return value.longValue();
 	}
 
@@ -153,7 +153,6 @@ public class SegmentationProfile implements CCNProfile {
 	 * @return
 	 */
 	public static boolean isHeader(ContentName baseName, ContentName headerName) {
-		// TODO update to new header naming
 		if (!baseName.isPrefixOf(headerName)) {
 			return false;
 		}

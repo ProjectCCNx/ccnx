@@ -14,7 +14,6 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
-import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.CCNInputStream;
@@ -478,11 +477,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			byte [] empty = new byte[0];
 			ContentObject goneObject = 
 				ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty, _publisher, _keyLocator, null, null);
-			// DKS TODO -- start write
+
 			// The segmenter in the stream does an addNameSpace of the versioned name. Right now
 			// this not only adds the prefix (ignored) but triggers the repo start write.
 			_flowControl.addNameSpace(name);
-			_flowControl.startWrite(name, Shape.STREAM);
+			_flowControl.startWrite(name, Shape.STREAM); // Streams take care of this for the non-gone case.
 			_flowControl.put(goneObject);
 			_flowControl.beforeClose();
 			_flowControl.afterClose();
@@ -611,7 +610,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	/**
 	 * Will return immediately if this object already has data, otherwise
-	 * will wait for new data to appear.
+	 * will wait for timeout msec for new data to appear.
 	 */
 	public void waitForData() {
 		if (available())
@@ -622,6 +621,24 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 					wait();
 				} catch (InterruptedException e) {
 				}
+			}
+		}
+	}
+	
+	/**
+	 * Will wait for timeout msec for data to arrive. Callers should use
+	 * available() to determine whether data has arrived or not.
+	 * If data already available, will return immediately.
+	 * @param timeout If 0, will wait forever (if data does not arrive).
+	 */
+	public void waitForData(long timeout) {
+		
+		if (available())
+			return;
+		synchronized (this) {
+			try {
+				wait(timeout);
+			} catch (InterruptedException e) {
 			}
 		}
 	}

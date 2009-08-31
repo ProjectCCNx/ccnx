@@ -1,5 +1,6 @@
 package org.ccnx.ccn.protocol;
 
+import java.math.BigInteger;
 import java.security.PublicKey;
 import java.util.Arrays;
 
@@ -112,5 +113,14 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XML
 	public String toString() {
 		// 	16 would be the most familiar option, but 32 is shorter
 		return CCNDigestHelper.printBytes(digest(), 32);
+	}
+	
+	/**
+	 * A short string representation of the key. Really want PGP fingerprints.
+	 * @return
+	 */
+	public String shortFingerprint() {
+		long lf = new BigInteger(1, _publisherPublicKeyDigest).longValue();
+		return Long.toHexString(lf);
 	}
 }

@@ -22,9 +22,6 @@ public class SystemConfiguration {
 	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
 
-	protected static final int DEFAULT_REPO2TRANSPORT_PORT = 43567;
-	protected static final int DEFAULT_TRANSPORT2REPO_PORT = 43568;
-	
 	/**
 	 * Property to set debug flags.
 	 */
@@ -36,6 +33,11 @@ public class SystemConfiguration {
 	public static final String DEBUG_DATA_DIRECTORY_PROPERTY = "com.parc.ccn.DebugDataDirectory";
 	protected static final String DEFAULT_DEBUG_DATA_DIRECTORY = "./CCN_DEBUG_DATA";
 	protected static String DEBUG_DATA_DIRECTORY = null;
+	
+	/** 
+	 * Tunable timeouts as well as timeout defaults.
+	 */
+	public static long TIMEOUT_FOREVER = 0;
 	
 	/**
 	 * Can set compile-time default encoding here. Choices are

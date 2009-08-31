@@ -1,6 +1,5 @@
 package org.ccnx.ccn.test.profiles.access;
 
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.support.Log;
