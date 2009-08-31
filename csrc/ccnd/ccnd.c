@@ -732,6 +732,27 @@ accept_new_local_client(struct ccnd_handle *h)
     ccnd_msg(h, "accepted client fd=%d id=%d", fd, res);
 }
 
+static int
+establish_min_recv_bufsize(struct ccnd_handle *h, int fd, int minsize)
+{
+    int res;
+    int rcvbuf;
+    socklen_t rcvbuf_sz;
+
+    rcvbuf_sz = sizeof(rcvbuf);
+    res = getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
+    if (res == -1)
+        return (res);
+    if (rcvbuf < minsize) {
+        rcvbuf = minsize;
+        res = setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
+        if (res == -1)
+            return(res);
+    }
+    ccnd_msg(h, "SO_RCVBUF for fd %d is %d", fd, rcvbuf);
+    return(rcvbuf);
+}
+
 static struct face *
 record_connection(struct ccnd_handle *h, int fd,
                   struct sockaddr *who, socklen_t wholen)
@@ -747,7 +768,7 @@ record_connection(struct ccnd_handle *h, int fd,
         perror("fcntl");
     hashtb_start(h->faces_by_fd, e);
     if (hashtb_seek(e, &fd, sizeof(fd), wholen) != HT_NEW_ENTRY)
-        fatal_err("ccnd: record_stream_connection");
+        fatal_err("ccnd: record_connection");
     face = e->data;
     face->recv_fd = face->send_fd = fd;
     if (who->sa_family == AF_INET)
@@ -858,6 +879,7 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
                            (void *)h, &socks);
     if (res < 0)
         return(NULL);
+    establish_min_recv_bufsize(h, socks.recving, 128*1024);
     face = record_connection(h, socks.recving, who, wholen);
     if (face == NULL) {
         close(socks.recving);
@@ -867,6 +889,8 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
     }
     face->send_fd = socks.sending;
     face->flags |= CCN_FACE_MCAST;
+    ccnd_msg(h, "multicast on fd=%d,%d id=%u",
+             face->recv_fd, face->send_fd, face->faceid);
     return(face);
 }
 
