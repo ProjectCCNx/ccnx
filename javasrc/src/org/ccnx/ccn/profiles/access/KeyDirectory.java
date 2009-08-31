@@ -10,6 +10,8 @@ import java.util.TreeSet;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.SortedSet;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -65,9 +67,11 @@ public class KeyDirectory extends EnumeratedNameList {
 	
 	AccessControlManager _manager; // to get at key cache
 	HashMap<String, PrincipalInfo> _principals = new HashMap<String, PrincipalInfo>();
+	private final ReadWriteLock _principalsLock = new ReentrantReadWriteLock();
 	TreeSet<byte []> _keyIDs = new TreeSet<byte []>(byteArrayComparator);
+	private final ReadWriteLock _keyIDLock = new ReentrantReadWriteLock();
 	TreeSet<byte []> _otherNames = new TreeSet<byte []>(byteArrayComparator);
-	
+	private final ReadWriteLock _otherNamesLock = new ReentrantReadWriteLock();
 	/**
 	 * Directory name should be versioned, else we pull the latest version
 	 * @param manager
@@ -125,7 +129,12 @@ public class KeyDirectory extends EnumeratedNameList {
 				byte[] keyid;
 				try {
 					keyid = AccessControlProfile.getTargetKeyIDFromNameComponent(wkChildName);
-					_keyIDs.add(keyid);
+					try{
+						_keyIDLock.writeLock().lock();
+						_keyIDs.add(keyid);
+					}finally{
+						_keyIDLock.writeLock().unlock();
+					}
 				} catch (IOException e) {
 					Log.info("Unexpected " + e.getClass().getName() + " parsing key id " + DataUtils.printHexBytes(wkChildName) + ": " + e.getMessage());
 					// ignore and go on
@@ -133,25 +142,46 @@ public class KeyDirectory extends EnumeratedNameList {
 			} else if (AccessControlProfile.isPrincipalNameComponent(wkChildName)) {
 				addPrincipal(wkChildName);
 			} else {
-				_otherNames.add(wkChildName);
+				try{
+					_otherNamesLock.writeLock().lock();
+					_otherNames.add(wkChildName);
+				}finally{
+					_otherNamesLock.writeLock().unlock();
+				}
 			}
 		}
 	}
 	
+	public ReadWriteLock getKeyIDLock(){ return _keyIDLock;}
+	//Elaine: caller should lock
 	public TreeSet<byte []> getWrappingKeyIDs() { return _keyIDs; }
 	
+	public ReadWriteLock getPrincipalsLock(){ return _principalsLock;}
+	//Elaine: caller should lock
 	public HashMap<String, PrincipalInfo> getPrincipals() { return _principals; }
 	
+	public ReadWriteLock getOtherNamesLock(){ return _otherNamesLock;}
+	//Elaine: caller should lock
 	public TreeSet<byte []> otherNames() { return _otherNames; }
 	
 	protected void addPrincipal(byte [] wkChildName) {
 		PrincipalInfo pi = AccessControlProfile.parsePrincipalInfoFromNameComponent(wkChildName);
-		_principals.put(pi.friendlyName(), pi);
+		try{
+				_principalsLock.writeLock().lock();
+				_principals.put(pi.friendlyName(), pi);
+		}finally{
+			_principalsLock.writeLock().unlock();
+		}
 	}
 	
 	public WrappedKeyObject getWrappedKeyForKeyID(byte [] keyID) throws XMLStreamException, IOException, ConfigurationException {
-		if (!_keyIDs.contains(keyID)) {
-			return null;
+		try{
+			_keyIDLock.readLock().lock();
+			if (!_keyIDs.contains(keyID)) {
+				return null;
+			}
+		}finally{
+			_keyIDLock.readLock().unlock();
 		}
 		ContentName wrappedKeyName = getWrappedKeyNameForKeyID(keyID);
 		return getWrappedKey(wrappedKeyName);
@@ -163,11 +193,16 @@ public class KeyDirectory extends EnumeratedNameList {
 	
 	public WrappedKeyObject getWrappedKeyForPrincipal(String principalName) throws IOException, XMLStreamException, ConfigurationException {
 		
-		if (!_principals.containsKey(principalName)) {
-			return null;
+		PrincipalInfo pi = null;
+		try{
+			_principalsLock.readLock().lock();
+			if (!_principals.containsKey(principalName)) {
+				return null;
+			}
+			pi = _principals.get(principalName);
+		}finally{
+			_principalsLock.readLock().unlock();
 		}
-		
-		PrincipalInfo pi = _principals.get(principalName);
 		if (null == pi) {
 			Log.info("No block available for principal: " + principalName);
 			return null;
@@ -196,7 +231,14 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public boolean hasSupersededBlock() {
-		return _otherNames.contains(AccessControlProfile.SUPERSEDED_MARKER.getBytes());
+		boolean b = false;
+		try{
+			_otherNamesLock.readLock().lock();
+			b = _otherNames.contains(AccessControlProfile.SUPERSEDED_MARKER.getBytes());
+		}finally{
+			_otherNamesLock.readLock().unlock();
+		}
+		return b;
 	}
 	
 	public ContentName getSupersededBlockName() {
@@ -236,7 +278,14 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public boolean hasPreviousKeyBlock() {
-		return _otherNames.contains(AccessControlProfile.PREVIOUS_KEY_NAME.getBytes());
+		boolean b;
+		try{
+			_otherNamesLock.readLock().lock();
+			b = _otherNames.contains(AccessControlProfile.PREVIOUS_KEY_NAME.getBytes());
+		}finally{
+			_otherNamesLock.readLock().unlock();
+		}
+		return b;
 	}
 
 	public ContentName getPreviousKeyBlockName() {
@@ -275,7 +324,14 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @return
 	 */
 	public boolean hasPrivateKeyBlock() {
-		return _otherNames.contains(AccessControlProfile.GROUP_PRIVATE_KEY_NAME.getBytes());
+		boolean b;
+		try{
+			_otherNamesLock.readLock().lock();
+			b = _otherNames.contains(AccessControlProfile.GROUP_PRIVATE_KEY_NAME.getBytes());
+		}finally{
+			_otherNamesLock.readLock().unlock();
+		}
+		return b;
 	}
 
 	public ContentName getPrivateKeyBlockName() {
@@ -310,14 +366,24 @@ public class KeyDirectory extends EnumeratedNameList {
 		// (This list will be empty only if this key is GONE. If it is, we'll move on
 		// to a superseding key below if there is one.)
 		// Do we have one of the wrapping keys in our cache?
-		for (byte [] keyid : getWrappingKeyIDs()) {
-			if (_manager.keyCache().containsKey(keyid)) {
-				// We have it, pull the block, unwrap the node key.
-				wko = getWrappedKeyForKeyID(keyid);
-				if (null != wko.wrappedKey()) {
-					unwrappedKey = wko.wrappedKey().unwrapKey(_manager.keyCache().getPrivateKey(keyid));
+		
+		//elaine: getNewData does not necessarily return all the data needed...
+		try{
+			_keyIDLock.readLock().lock();
+			if(getWrappingKeyIDs().size()==0){
+				getNewData(1000);
+			}
+			for (byte [] keyid : getWrappingKeyIDs()) {
+				if (_manager.keyCache().containsKey(keyid)) {
+					// We have it, pull the block, unwrap the node key.
+					wko = getWrappedKeyForKeyID(keyid);
+					if (null != wko.wrappedKey()) {
+						unwrappedKey = wko.wrappedKey().unwrapKey(_manager.keyCache().getPrivateKey(keyid));
+					}
 				}
 			}
+		}finally{
+			_keyIDLock.readLock().unlock();
 		}
 		
 		if (null == unwrappedKey) {
@@ -360,46 +426,56 @@ public class KeyDirectory extends EnumeratedNameList {
 				// particular key version for, ones I don't know anything about, and ones I believe
 				// I'm not a member of but someone might have added me.
 				if (_manager.groupManager().haveKnownGroupMemberships()) {
-					for (String principal : getPrincipals().keySet()) {
-						if ((!_manager.groupManager().isGroup(principal)) || (!_manager.groupManager().amKnownGroupMember(principal))) {
-							// On this pass, only do groups that I think I'm a member of. Do them
-							// first as it is likely faster.
-							continue;
-						}
-						// I know I am a member of this group, or at least I was last time I checked.
-						// Attempt to get this version of the group private key as I don't have it in my cache.
-						try {
-							Key principalKey = _manager.groupManager().getVersionedPrivateKeyForGroup(this, principal);
-							unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
-							if (null == unwrappedKey)
+					try{
+						_principalsLock.readLock().lock();
+						for (String principal : getPrincipals().keySet()) {
+							if ((!_manager.groupManager().isGroup(principal)) || (!_manager.groupManager().amKnownGroupMember(principal))) {
+								// On this pass, only do groups that I think I'm a member of. Do them
+								// first as it is likely faster.
 								continue;
-						} catch (AccessDeniedException aex) {
-							// we're not a member
-							continue;
+							}
+							// I know I am a member of this group, or at least I was last time I checked.
+							// Attempt to get this version of the group private key as I don't have it in my cache.
+							try {
+								Key principalKey = _manager.groupManager().getVersionedPrivateKeyForGroup(this, principal);
+								unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
+								if (null == unwrappedKey)
+									continue;
+							} catch (AccessDeniedException aex) {
+								// we're not a member
+								continue;
+							}
 						}
+					}finally{
+						_principalsLock.readLock().unlock();
 					}
 				}
 				if (null == unwrappedKey) {
 					// OK, we don't have any groups we know we are a member of. Do the other ones.
 					// Slower, as we crawl the groups tree.
-					for (String principal : getPrincipals().keySet()) {
-						if ((!_manager.groupManager().isGroup(principal)) || (_manager.groupManager().amKnownGroupMember(principal))) {
-							// On this pass, only do groups that I don't think I'm a member of
-							continue;
-						}
-						if (_manager.groupManager().amCurrentGroupMember(principal)) {
-							try {
-								Key principalKey = _manager.groupManager().getVersionedPrivateKeyForGroup(this, principal);
-								unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
-								if (null == unwrappedKey) {
-									Log.warning("Unexpected: we are a member of group " + principal + " but get a null key.");
+					try{
+							_principalsLock.readLock().lock();
+							for (String principal : getPrincipals().keySet()) {
+								if ((!_manager.groupManager().isGroup(principal)) || (_manager.groupManager().amKnownGroupMember(principal))) {
+									// On this pass, only do groups that I don't think I'm a member of
 									continue;
 								}
-							} catch (AccessDeniedException aex) {
-								Log.warning("Unexpected: we are a member of group " + principal + " but get an access denied exception when we try to get its key: " + aex.getMessage());
-								continue;
+								if (_manager.groupManager().amCurrentGroupMember(principal)) {
+									try {
+										Key principalKey = _manager.groupManager().getVersionedPrivateKeyForGroup(this, principal);
+										unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
+										if (null == unwrappedKey) {
+											Log.warning("Unexpected: we are a member of group " + principal + " but get a null key.");
+											continue;
+										}
+									} catch (AccessDeniedException aex) {
+										Log.warning("Unexpected: we are a member of group " + principal + " but get an access denied exception when we try to get its key: " + aex.getMessage());
+										continue;
+									}
+								}
 							}
-						}
+					}finally{
+						_principalsLock.readLock().unlock();
 					}
 				}
 			}
@@ -432,7 +508,12 @@ public class KeyDirectory extends EnumeratedNameList {
 		if (null != wko.wrappedKey()) {
 			unwrappedKey = wko.wrappedKey().unwrapKey(unwrappingKey);
 		} else {
-			Log.info("Unexpected: retrieved version " + getPrincipals().get(principal) + " of " + principal + " group key, but cannot retrieve wrapped key object.");
+			try{
+				_principalsLock.readLock().lock();
+				Log.info("Unexpected: retrieved version " + getPrincipals().get(principal) + " of " + principal + " group key, but cannot retrieve wrapped key object.");
+			}finally{
+				_principalsLock.readLock().unlock();
+			}
 		}
 		return unwrappedKey;
 	}
