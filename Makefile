@@ -8,7 +8,7 @@ default all: _always
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	mkdir -p ./lib ./bin ./include
-	$(MAKE) install INSTALL_BASE=`pwd`
+	(cd csrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
 
 clean depend test check shared documentation testinstall install uninstall: checkdirs _always
 	for i in $(TOPSUBDIRS); do         \
