@@ -1003,7 +1003,6 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                                                  interest->size,
                                                                  info.pi)) {
                                     enum ccn_upcall_kind upcall_kind = CCN_UPCALL_CONTENT;
-#if CCN_SKIP_VERIFY
                                     struct ccn_pkey *pubkey = NULL;
                                     int type = ccn_get_content_type(msg, info.pco);
                                     if (type == CCN_CONTENT_KEY)
@@ -1015,7 +1014,6 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                         upcall_kind = (res == 1) ? CCN_UPCALL_CONTENT : CCN_UPCALL_CONTENT_BAD;
                                     } else
                                         upcall_kind = CCN_UPCALL_CONTENT_UNVERIFIED;
-#endif
                                     interest->outstanding -= 1;
                                     info.interest_ccnb = interest->interest_msg;
                                     info.matched_comps = i;
