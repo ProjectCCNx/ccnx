@@ -367,12 +367,8 @@ public class KeyDirectory extends EnumeratedNameList {
 		// to a superseding key below if there is one.)
 		// Do we have one of the wrapping keys in our cache?
 		
-		//elaine: getNewData does not necessarily return all the data needed...
 		try{
 			_keyIDLock.readLock().lock();
-			if(getWrappingKeyIDs().size()==0){
-				getNewData(300);
-			}
 			for (byte [] keyid : getWrappingKeyIDs()) {
 				if (_manager.keyCache().containsKey(keyid)) {
 					// We have it, pull the block, unwrap the node key.
