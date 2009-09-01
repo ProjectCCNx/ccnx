@@ -1,7 +1,7 @@
 /**
  * @file ccnd.c
  * 
- * ccnd - CCN Daemon
+ * Main progam of ccnd - the CCN Daemon
  */  
 
 /*-

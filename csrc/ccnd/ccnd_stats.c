@@ -1,11 +1,10 @@
-/*
- * ccnd_stats.c
- *  
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
- */
-
 /**
- * @file Statistics presentation for ccnd
+ * @file ccnd_stats.c
+ *
+ * Statistics presentation for ccnd
+ */
+/*-
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
 #include <sys/types.h>
