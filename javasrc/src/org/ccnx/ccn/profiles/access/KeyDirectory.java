@@ -371,7 +371,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		try{
 			_keyIDLock.readLock().lock();
 			if(getWrappingKeyIDs().size()==0){
-				getNewData(1000);
+				getNewData(300);
 			}
 			for (byte [] keyid : getWrappingKeyIDs()) {
 				if (_manager.keyCache().containsKey(keyid)) {

@@ -48,6 +48,8 @@ public class Group {
 	private CCNHandle _library;
 	private GroupManager _groupManager;
 	
+	private KeyDirectory _privKeyDirectory = null;
+	
 	public Group(ContentName namespace, String groupFriendlyName, CCNHandle library,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
 		_library = library;
 		_groupNamespace = namespace;
@@ -87,7 +89,8 @@ public class Group {
 					CCNHandle library, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {		
 		this(namespace, groupFriendlyName, members, null, library,manager);
 //		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _library);
-		createGroupPublicKey(manager, members);		
+		createGroupPublicKey(manager, members);
+		_groupMembers.saveToRepository();
 	}
 	
 	
@@ -109,11 +112,28 @@ public class Group {
 	}
 	
 	public KeyDirectory privateKeyDirectory(AccessControlManager manager) throws IOException {
-		if (_groupPublicKey.available())
-			return new KeyDirectory(manager, 
+		if(_privKeyDirectory != null){
+			return _privKeyDirectory;
+		}
+		if (_groupPublicKey.available()){
+			_privKeyDirectory = new KeyDirectory(manager, 
 					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getCurrentVersionName()), _library);
+			return _privKeyDirectory;
+		}
 		Log.info("Public key not ready for group: " + friendlyName());
 		return null;
+	}
+	
+	protected void stopPrivateKeyDirectoryEnumeration(AccessControlManager manager) throws IOException{
+		if(_privKeyDirectory != null){
+			_privKeyDirectory.stopEnumerating();
+		}
+	}
+	
+	public void restartPrivateKeyDirectoryEnumeration(AccessControlManager manager) throws IOException{
+		stopPrivateKeyDirectoryEnumeration(manager);
+		_privKeyDirectory = null;
+		privateKeyDirectory(manager);
 	}
 	
 	public String friendlyName() { return _groupFriendlyName; }
@@ -203,6 +223,8 @@ public class Group {
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
+		}else{
+			stopPrivateKeyDirectoryEnumeration(manager.getAccessManager());
 		}
 		
 		// Generate key pair
@@ -253,6 +275,10 @@ public class Group {
 					pair.getPublic(),
 					_library);
 		_groupPublicKey.saveToRepository();
+		
+		stopPrivateKeyDirectoryEnumeration(manager.getAccessManager());
+		_privKeyDirectory = null;
+		
 		KeyDirectory newPrivateKeyDirectory = privateKeyDirectory(manager.getAccessManager()); // takes from new public key
 		
 		Key privateKeyWrappingKey = WrappedKey.generateNonceKey();
@@ -313,6 +339,8 @@ public class Group {
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
+		}else{
+			stopPrivateKeyDirectoryEnumeration(manager.getAccessManager());
 		}
 		
 		PublicKeyObject latestPublicKey = null;
@@ -390,6 +418,17 @@ public class Group {
 		
 		if (((null == membersToAdd) || (membersToAdd.size() == 0)) && ((null == membersToRemove) || (membersToRemove.size() == 0))) {
 			return; // nothing to do
+		}
+		
+		//elaine: you don't want to modify membership list if you dont have permission. 
+		//assume no concurrent writer.  
+		
+		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
+		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
+		if (null == privateKeyWrappingKey) {
+			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
+		}else{
+			stopPrivateKeyDirectoryEnumeration(_groupManager.getAccessManager());
 		}
 
 		// Do we need to wait for data to come in? We use this to create new groups as well...
