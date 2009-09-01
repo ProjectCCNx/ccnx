@@ -1,6 +1,10 @@
-/*
- * ccnd_msg.c
- *  
+/**
+ * @file ccnd_msg.c
+ *
+ * Logging support for ccnd.
+ */
+
+/*-  
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
