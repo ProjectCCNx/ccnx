@@ -793,20 +793,25 @@ public class AccessControlManager {
 			if (nodeKeyDirectory.hasSupersededBlock()) {
 				return true;
 			}
-			for (PrincipalInfo principal : nodeKeyDirectory.getPrincipals().values()) {
-				if (principal.isGroup()) {
-					Group theGroup = groupManager().getGroup(principal.friendlyName());
-					if (theGroup.publicKeyVersion().after(principal.versionTimestamp())) {
-						return true;
+			try{
+				nodeKeyDirectory.getPrincipalsLock().readLock().lock();
+				for (PrincipalInfo principal : nodeKeyDirectory.getPrincipals().values()) {
+					if (principal.isGroup()) {
+						Group theGroup = groupManager().getGroup(principal.friendlyName());
+						if (theGroup.publicKeyVersion().after(principal.versionTimestamp())) {
+							return true;
+						}
+					} else {
+						// DKS TODO -- for now, don't handle versioning of non-group keys
+						Log.info("User key for " + principal.friendlyName() + ", not checking version.");
+						// Technically, we're not handling versioning for user keys, but be nice. Start
+						// by seeing if we have a link to the key in our user space.
+						// If the principal isn't available in our enumerated list, have to go get its key
+						// from the wrapped key object.
 					}
-				} else {
-					// DKS TODO -- for now, don't handle versioning of non-group keys
-					Log.info("User key for " + principal.friendlyName() + ", not checking version.");
-					// Technically, we're not handling versioning for user keys, but be nice. Start
-					// by seeing if we have a link to the key in our user space.
-					// If the principal isn't available in our enumerated list, have to go get its key
-					// from the wrapped key object.
 				}
+			}finally{
+				nodeKeyDirectory.getPrincipalsLock().readLock().unlock();
 			}
 			return false;
 			

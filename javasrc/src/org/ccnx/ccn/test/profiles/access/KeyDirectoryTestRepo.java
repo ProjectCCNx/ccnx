@@ -137,10 +137,15 @@ public class KeyDirectoryTestRepo {
 		kd.getNewData();		
 
 		// check the ID of the wrapping key
-		TreeSet<byte[]> wkid = kd.getWrappingKeyIDs();
-		Assert.assertEquals(1, wkid.size());
-		Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
-		Assert.assertEquals(0, byteArrayComparator.compare(wkid.first(), wrappingPKID));
+		try{
+			kd.getKeyIDLock().readLock().lock();
+			TreeSet<byte[]> wkid = kd.getWrappingKeyIDs();
+			Assert.assertEquals(1, wkid.size());
+			Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
+			Assert.assertEquals(0, byteArrayComparator.compare(wkid.first(), wrappingPKID));
+		}finally{
+			kd.getKeyIDLock().readLock().unlock();
+		}
 
 		// unwrap the key and check that the unwrapped secret key is correct
 		WrappedKeyObject wko = kd.getWrappedKeyForKeyID(wrappingPKID);

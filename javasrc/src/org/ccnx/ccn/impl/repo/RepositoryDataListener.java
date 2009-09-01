@@ -125,23 +125,15 @@ public class RepositoryDataListener implements CCNInterestListener {
 					// So in other words, the only time we use this value to actually cancel outstanding
 					// interests is when we have hit the end of the stream.
 					_finalBlockID = SegmentationProfile.getSegmentNumber(co.signedInfo().getFinalBlockID());
-					if (_finalBlockID == thisBlock) {
-						// only set this for a block that has finalBlockID set
-						isFinalBlock = true;
-					} 
 				}
 			}
 			synchronized (_interests) {
 				_interests.remove(interest, null);
-				if (isFinalBlock) {
-					if (_interests.size() > 0)
-						Log.info("Have last block of stream, need to remove up to " + _interests.size() + " additional interests.");
-				}
 			}
 			
-			/*
-			 * Compute next interests to ask for and ask for them
-			 */
+			// Compute next interests to ask for and ask for them
+			// Note that this should only ask for 1 interest except for the first time through this code when it
+			// should ask for "windowSize" interests.
 			synchronized (_interests) {
 				long firstInterestToRequest = getNextBlockID();
 				if (_currentBlock > firstInterestToRequest) // Can happen if last requested interest precedes all others
@@ -151,8 +143,11 @@ public class RepositoryDataListener implements CCNInterestListener {
 				int nOutput = _interests.size() >= _daemon.getWindowSize() ? 0 : _daemon.getWindowSize() - _interests.size();
 				
 				// Make sure we don't go past prospective last block.
-				if (_finalBlockID >= 0) {
-					nOutput = (int)Math.min(nOutput, _finalBlockID - _currentBlock);
+				if (_finalBlockID >= 0 && _finalBlockID < firstInterestToRequest) {
+					nOutput -= (firstInterestToRequest - _finalBlockID);
+					cancelHigherInterests(_finalBlockID);
+					if (nOutput < 0)
+						nOutput = 0;
 				}
 				
 				Log.finest("REPO: Got block: " + co.name() + " expressing " + nOutput + " more interests, current block " + _currentBlock + " final block " + _finalBlockID + " last block? " + isFinalBlock);
@@ -174,23 +169,77 @@ public class RepositoryDataListener implements CCNInterestListener {
 	}
 	
 	/**
+	 * Since the interest table doesn't have a defined order for values with the same length we
+	 * must explicitly go through all the values to decide whether we want to take some action
+	 * based on the "value" (i.e. segment #) of some particular interest
+	 */
+	
+	/**
 	 * Much match implementation of nextSegmentNumber in input streams, segmenters.
 	 * @return
 	 */
+	private class GetNextBlockIDAction extends InterestActionClass {
+		@Override
+		protected void action(long value, Entry<?> entry, Iterator<Entry<Object>> it) {
+			if (value >= _value)
+				_value = value;
+		}
+		
+		private long getValue() {
+			return _value;
+		}
+		
+	}
 	private long getNextBlockID() {
-		long value = 0;
+		GetNextBlockIDAction gnbia = new GetNextBlockIDAction();
+		interestsAction(gnbia);
+		return gnbia.getValue();
+	}
+	
+	/**
+	 * Cancel all interests for segments higher than "value"
+	 * @param value
+	 */
+	private class CancelInterestsAction extends InterestActionClass {
+		CCNInterestListener _listener;
+		
+		private CancelInterestsAction(long startValue, CCNInterestListener listener) {
+			_value = startValue;
+			_listener = listener;
+		}
+
+		@Override
+		protected void action(long value, Entry<?> entry, Iterator<Entry<Object>> it) {
+			if (value > _value) {
+				_library.cancelInterest(entry.interest(), _listener);
+				it.remove();
+			}
+		}
+	}
+	private void cancelHigherInterests(long value) {
+		CancelInterestsAction cia = new CancelInterestsAction(value, this);
+		interestsAction(cia);
+	}
+	
+	/**
+	 * Perform the specified action for all values in the interest table
+	 * @param value
+	 * @param action
+	 */
+	private abstract class InterestActionClass {
+		protected long _value = 0;
+		protected abstract void action(long value, Entry<?> entry, Iterator<Entry<Object>> it);
+	}
+	private void interestsAction(InterestActionClass action) {
 		Collection<Entry<Object>> values = _interests.values();
 		Iterator<Entry<Object>> it = values.iterator();
 		while (it.hasNext()) {
 			Entry<?> entry = it.next();
 			if (SegmentationProfile.isSegment(entry.interest().name())) {
-				long tmpValue = SegmentationProfile.getSegmentNumber(entry.interest().name());
-				if (tmpValue >= value)
-					value = tmpValue + 1;
+				long value = SegmentationProfile.getSegmentNumber(entry.interest().name());
+				action.action(value, entry, it);
 			}
 		}
-		Log.info("Value is: " + value);
-		return value;
 	}
 	
 	/**
