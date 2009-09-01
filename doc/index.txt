@@ -3,7 +3,7 @@ CCN Documentation Index
 
 == Technical Documentation
  - link:technical/InterestMessage.html[Interest Message]
- - link:technical/[All technical docs]
+ - link:technical/index.html[All technical docs]
 
 == Documentation derived from the code
  - link:ccode/html/index.html[Content-Centric Networking in C]
