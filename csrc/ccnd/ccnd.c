@@ -645,7 +645,7 @@ finalize_nameprefix(struct hashtb_enumerator *e)
 }
 
 static void
-link_propagating_interest_to_interest_entry(struct ccnd_handle *h,
+link_propagating_interest_to_nameprefix(struct ccnd_handle *h,
     struct propagating_entry *pe, struct nameprefix_entry *npe)
 {
     struct propagating_entry *head = npe->propagating_head;
@@ -1389,22 +1389,20 @@ check_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
         ft->n = i;
 }
 
-/*
- * This checks for expired propagating interests.
- * Returns number that have gone away.
- * Also ages src info and retires unused nameprefix entries.
+/**
+ * Check for expired propagating interests.
+ * @returns number that have gone away.
  */
 static int
 check_propagating(struct ccnd_handle *h)
 {
+    int count = 0;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    int count = 0;
-    struct nameprefix_entry *npe;
-    struct propagating_entry *head;
+    struct propagating_entry *pe;
+    
     hashtb_start(h->propagating_tab, e);
-    while (e->data != NULL) {
-        struct propagating_entry *pe = e->data;
+    for (pe = e->data; pe != NULL; pe = e->data) {
         if (pe->interest_msg == NULL) {
             if (pe->size == 0) {
                 count += 1;
@@ -1416,6 +1414,23 @@ check_propagating(struct ccnd_handle *h)
         hashtb_next(e);
     }
     hashtb_end(e);
+    return(count);
+}
+
+/**
+ * Check for expired propagating interests.
+ * Ages src info and retires unused nameprefix entries.
+ * @returns number that have gone away.
+ */
+static int
+check_nameprefix_entries(struct ccnd_handle *h)
+{
+    int count = 0;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct propagating_entry *head;
+    struct nameprefix_entry *npe;    
+
     hashtb_start(h->nameprefix_tab, e);
     for (npe = e->data; npe != NULL; npe = e->data) {
         if (npe->forward_to != NULL)
@@ -1426,6 +1441,7 @@ check_propagating(struct ccnd_handle *h)
               npe->forwarding == NULL) {
             head = npe->propagating_head;
             if ((head == NULL || head == head->next)) {
+                count += 1;
                 hashtb_delete(e);
                 continue;
             }
@@ -1447,6 +1463,9 @@ check_comm_file(struct ccnd_handle *h)
     }
 }
 
+/**
+ * Scheduled reap event for retiring expired structures.
+ */
 static int
 reap(
     struct ccn_schedule *sched,
@@ -1457,14 +1476,15 @@ reap(
     struct ccnd_handle *h = clienth;
     (void)(sched);
     (void)(ev);
-    if ((flags & CCN_SCHEDULE_CANCEL) == 0) {
-        check_dgram_faces(h);
-        check_propagating(h);
-        check_comm_file(h);
-        return(2 * CCN_INTEREST_LIFETIME_MICROSEC);
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
+        h->reaper = NULL;
+        return(0);
     }
-    h->reaper = NULL;
-    return(0);
+    check_dgram_faces(h);
+    check_propagating(h);
+    check_nameprefix_entries(h);
+    check_comm_file(h);
+    return(2 * CCN_INTEREST_LIFETIME_MICROSEC);
 }
 
 static void
@@ -2373,7 +2393,7 @@ propagate_interest(struct ccnd_handle *h, struct face *face,
             }
             pe->outbound = outbound;
             outbound = NULL;
-            link_propagating_interest_to_interest_entry(h, pe, npe);
+            link_propagating_interest_to_nameprefix(h, pe, npe);
             res = 0;
             if (pe->outbound == NULL)
                 usec = pe->usec;
