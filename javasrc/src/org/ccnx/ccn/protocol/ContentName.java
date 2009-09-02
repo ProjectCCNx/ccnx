@@ -382,36 +382,26 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 	
 	public static ContentName fromNative(ContentName parent, String name1, String name2) {
-		ContentName result = new ContentName(parent.count(), parent.components());
-		if (null != name1) {
-			byte[] decodedName = componentParseNative(name1);
-			if (null != decodedName) {
-				result._components.add(decodedName);
-			}
-		}
-		if (null != name2) {
-			byte[] decodedName = componentParseNative(name2);
-			if (null != decodedName) {
-				result._components.add(decodedName);
-			}
-		}
-		return result;
+		return fromNative(parent, new String[]{name1, name2});
+	}
+	
+	public static ContentName fromNative(String [] parts) {
+		return fromNative(new ContentName(), parts);
 	}
 
-	public static ContentName fromNative(String parts[]) {
-		ContentName result = new ContentName();
+	public static ContentName fromNative(ContentName parent, String [] parts) {
 		if ((parts == null) || (parts.length == 0)) {
-			result._components = null;
+			parent._components = null;
 		} else {
-			result._components = new ArrayList<byte []>(parts.length);
+			parent._components = new ArrayList<byte []>(parts.length);
 			for (int i=0; i < parts.length; ++i) {
 				byte[] component = componentParseNative(parts[i]);
 				if (null != component) {
-					result._components.add(component);
+					parent._components.add(component);
 				}
 			}
 		}
-		return result;
+		return parent;
 	}
 
 	public ContentName clone() {
