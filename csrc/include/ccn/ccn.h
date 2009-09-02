@@ -605,11 +605,12 @@ int ccn_name_comp_strcmp(const unsigned char *data,
  * ccn_name_comp_get: return a pointer to and size of component at
  * given index i.  The first component is index 0.
  */
-int
-ccn_name_comp_get(const unsigned char *data,
-                  const struct ccn_indexbuf *indexbuf,
-                  unsigned int i,
-                  const unsigned char **comp, size_t *size);
+int ccn_name_comp_get(const unsigned char *data,
+                      const struct ccn_indexbuf *indexbuf,
+                      unsigned int i,
+                      const unsigned char **comp, size_t *size);
+
+int ccn_name_next_sibling(struct ccn_charbuf *c);
 
 /***********************************
  * Reading content objects
