@@ -290,7 +290,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		globalPrefix = checkName != null ? checkName : globalPrefix;
 		
 		try {
-			_info = new RepositoryInfo(localName, globalPrefix, CURRENT_VERSION);
+			_info = new RepositoryInfo(CURRENT_VERSION, globalPrefix, localName);
 		} catch (MalformedContentNameStringException e1) {
 			throw new RepositoryException(e1.getMessage());
 		}

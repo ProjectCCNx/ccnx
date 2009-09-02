@@ -79,7 +79,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		}
 	}
 	
-	public RepositoryInfo(String localName, String globalPrefix, String version) throws MalformedContentNameStringException {
+	public RepositoryInfo(String version, String globalPrefix, String localName) throws MalformedContentNameStringException {
 		_localName = localName;
 		_repoVersion = version;
 		_globalPrefix = globalPrefix;
@@ -89,7 +89,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 				+ '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY);
 	}
 	
-	public RepositoryInfo(String localName, String globalPrefix, String version, ArrayList<ContentName> names) throws MalformedContentNameStringException {
+	public RepositoryInfo(String version, String globalPrefix, String localName, ArrayList<ContentName> names) throws MalformedContentNameStringException {
 		this(localName, globalPrefix, version);
 		for (ContentName name : names) {
 			_names.add(name.clone());
