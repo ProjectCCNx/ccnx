@@ -323,9 +323,6 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			getPublisherKeyID().encode(encoder);
 		}
 
-		// TODO DKS - make match correct XML timestamp format
-		// dateTime	1999-05-31T13:20:00.000-05:00
-		// currently writing 2007-10-23 21:36:05.828
 		if (!emptyTimestamp()) {
 			encoder.writeDateTime(TIMESTAMP_ELEMENT, getTimestamp());
 		}
