@@ -4,10 +4,10 @@
 <!ENTITY % commonattrs
 	"xmlns %URI; #FIXED 'http://www.parc.com/ccn'">
 
-<!ELEMENT RepositoryInfo (Type, Version, RepositoryVersion, GlobalPrefix, LocalName, Name*)>
+<!ELEMENT RepositoryInfo (Version, Type, RepositoryVersion, GlobalPrefix, LocalName, Name*)>
 <!ATTLIST RepositoryInfo %commonattrs;>
 
-<!ELEMENT Type		(#PCDATA)>	<!-- INFO, DATA, UNKNOWN -->
+<!ELEMENT Type		(#PCDATA)>	<!-- INFO, DATA -->
 <!ATTLIST Type      ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT Version	(#PCDATA)>	<!-- UTF-8 -->
