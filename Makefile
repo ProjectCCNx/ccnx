@@ -9,6 +9,7 @@ default all: _always
 	done
 	mkdir -p ./lib ./bin ./include
 	(cd csrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
+	(cd javasrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
 
 clean depend test check shared documentation testinstall install uninstall: _always
 	for i in $(TOPSUBDIRS); do         \
