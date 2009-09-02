@@ -123,7 +123,7 @@ ccn-bad11.xml: ccn-test11.xml
 	sed -e 's/<\/Bloom>/<\/Bloom><Bloom\/>/' $? > $@
 
 check: repository-bad01.xml
-ccn-bad06.xml: repository-test01.xml
+repository-bad01.xml: repository-test01.xml
 	sed -e 's/GlobalPrefix/GlobalProofix/g' $? > $@
 
 check: ccn-schemabad12.xml
