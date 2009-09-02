@@ -32,7 +32,7 @@ public class ACL extends Collection {
 	public static final String [] ROLE_LABELS = {LABEL_READER, LABEL_WRITER, LABEL_MANAGER};
 	
 	public static class ACLOperation extends Link {
-		public static final String ACL_OPERATION_ELEMENT - "ACLOperation";
+		public static final String ACL_OPERATION_ELEMENT = "ACLOperation";
 		
 		public static final String LABEL_ADD_READER = "+r";
 		public static final String LABEL_ADD_WRITER = "+rw";
