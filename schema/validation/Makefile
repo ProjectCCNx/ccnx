@@ -75,7 +75,7 @@ check: ccn.xsd ccn.dtd security.xsd security.dtd repository.xsd repository.dtd $
 	ls repository-schemabad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --schema repository.xsd "$$i"; do :; done
 	ls ccn-dtdbad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid ccn.dtd "$$i"; do :; done
 	ls security-dtdbad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid security.dtd "$$i"; do :; done
-	ls repository-dtdbad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid repository.dtd "$$i"; do :; done
+	ls repository-dtdbad??.xml repository-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid repository.dtd "$$i"; do :; done
 	@diff expectedfailures.ref expectedfailures.out || echo "***" $(LECTURE)
 	: --------------------------- :
 	: Schema validation complete  :
