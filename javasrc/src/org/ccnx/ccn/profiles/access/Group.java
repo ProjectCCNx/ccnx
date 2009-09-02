@@ -295,10 +295,15 @@ public class Group {
 		for (Link lr : ml.membershipList().contents()) {
 			try {
 				// DKS TODO verify target public key against publisher, etc in link
-				System.out.println("retrieving pub key from:..." + lr.targetName());
-				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
+				ContentName pkName = lr.targetName();
+				if (manager.isGroup(lr)){
+					pkName = AccessControlProfile.groupPublicKeyName(pkName);
+				}
+				System.out.println("retrieving pub key from:..." + pkName);
+				
+				latestPublicKey = new PublicKeyObject(pkName, _library);
 				if (!latestPublicKey.available()) {
-					Log.warning("Could not retrieve public key for " + lr.targetName());
+					Log.warning("Could not retrieve public key for " + pkName);
 					continue;
 				}
 				// Need to write wrapped key block and linking principal name.

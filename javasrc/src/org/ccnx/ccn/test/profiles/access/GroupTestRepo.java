@@ -2,14 +2,21 @@ package org.ccnx.ccn.test.profiles.access;
 
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.SortedSet;
 
+import javax.xml.stream.XMLStreamException;
+
+import org.bouncycastle.crypto.CryptoException;
+import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
@@ -74,6 +81,21 @@ public class GroupTestRepo {
 		}
 	}
 
+	private void testRemoveUsers(ArrayList<Link> removeMembers, Group grp) throws InvalidKeyException, CryptoException, XMLStreamException, IOException, ConfigurationException{
+		boolean succeed = false;
+		int retries = 0;
+		while(!succeed){
+			retries ++;
+			System.out.print("................trying to remove user...........");
+			try{
+					grp.removeUsers(removeMembers);
+					succeed = true;
+			}catch(AccessDeniedException e){
+				succeed = false;
+			}
+		}
+		System.out.println(".....................removed user, number of retries:..............." + retries);
+	}
 	
 	@Test
 	public void testCreateGroup() {
@@ -116,6 +138,9 @@ public class GroupTestRepo {
 			String randomGroupName = "testGroup" + random.nextInt();
 			Group newGroup = _gm.createGroup(randomGroupName, newMembers);
 			
+			Assert.assertTrue(_gm.haveKnownGroupMemberships());
+			Assert.assertTrue(_gm.amCurrentGroupMember(newGroup));
+			Assert.assertTrue(_gm.amCurrentGroupMember(randomGroupName));
 
 			ContentName name = it.next();
 			String fullname = _userList.getName().toString() + name.toString();
@@ -141,20 +166,19 @@ public class GroupTestRepo {
 			ArrayList<Link> removeMembers = new ArrayList<Link>();
 			System.out.println("removing user:.................." + newMembers.get(2).targetName());
 			removeMembers.add(newMembers.get(2));
-			succeed = false;
-			retries = 0;
-			while(!succeed){
-				retries ++;
-				System.out.print("................trying to remove user...........");
-				try{
-						newGroup.removeUsers(removeMembers);
-						succeed = true;
-				}catch(AccessDeniedException e){
-					succeed = false;
-				}
-			}
-			System.out.println(".....................removed user, number of retries:..............." + retries);
+			testRemoveUsers(removeMembers, newGroup);
 			
+			Assert.assertTrue(_gm.haveKnownGroupMemberships());
+			Assert.assertTrue(_gm.amCurrentGroupMember(newGroup));
+			Assert.assertTrue(_gm.amCurrentGroupMember(randomGroupName));
+			
+			removeMembers.clear();
+			//try removing myself
+			removeMembers.add(new Link(UserConfiguration.defaultUserNamespace()));
+			System.out.println("removing myself:.................." );
+			testRemoveUsers(removeMembers, newGroup);
+			
+			//Assert.assertFalse(_gm.haveKnownGroupMemberships());
 			
 			//isGroup sometimes fails, there's a timing issue. 
 			Assert.assertTrue(_gm.isGroup(randomGroupName));
@@ -162,6 +186,21 @@ public class GroupTestRepo {
 			System.out.println("new group's pk name is " + pkName);
 			Assert.assertTrue(_gm.isGroup(pkName));
 
+			//test groups of group
+			String randomParentGroupName = "parentGroup" + random.nextInt();
+			newMembers.clear();
+			ContentName parentGroupNamespace = AccessControlProfile.groupName(testStorePrefix, randomGroupName);
+			System.out.println("parent group namespace = " + parentGroupNamespace);
+			newMembers.add(new Link(parentGroupNamespace));
+			Group newParentGroup = _gm.createGroup(randomParentGroupName, newMembers);
+			
+//			System.out.println("adding users to parent group.........");
+//			newParentGroup.addUsers(addMembers);
+			
+			//test deletion of group
+			_gm.deleteGroup(randomGroupName);			
+//			Assert.assertFalse(_gm.isGroup(randomGroupName));
+			
 			
 		} catch (Exception e) {
 			System.out.println("Exception : " + e.getClass().getName() + ": " + e.getMessage());

@@ -40,7 +40,7 @@ public class SegmentationProfile implements CCNProfile {
 	 * Is it fragmented, and what is its fragment number?
 	 */
 	public static final long BASE_SEGMENT = 0;
-	public static final byte SEGMENT_MARKER = (byte)0xF8;
+	public static final byte SEGMENT_MARKER = (byte)0x00;
 	public static final byte NO_SEGMENT_POSTFIX = 0x00;
 	public static final byte [] FIRST_SEGMENT_MARKER = new byte[]{SEGMENT_MARKER};
 	public static final byte [] NO_SEGMENT_MARKER = new byte[]{SEGMENT_MARKER, NO_SEGMENT_POSTFIX};

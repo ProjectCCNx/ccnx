@@ -1,8 +1,10 @@
-/*
+/**
  * ccn_name_util.c
- *  
- * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
- * $Id$
+ * 
+ * Utilities for manipulating ccnb-encoded Names
+ */
+/*-
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
  */
 
 #include <string.h>
@@ -12,6 +14,10 @@
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
 
+/**
+ * Reset charbuf to represent an empty Name in binary format.
+ * @returns 0, or -1 for error.
+ */
 int
 ccn_name_init(struct ccn_charbuf *c)
 {
@@ -23,6 +29,12 @@ ccn_name_init(struct ccn_charbuf *c)
     return(res);
 }
 
+/**
+ * Add a Component to a Name.
+ *
+ * The component is an arbitrary string of n octets, no escaping required.
+ * @returns 0, or -1 for error.
+ */
 int
 ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n)
 {
@@ -42,12 +54,27 @@ ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n)
     return(res);
 }
 
+/**
+ * Add a Component that is a NUL-terminated string.
+ *
+ * The component added consists of the bytes of the string without the \0.
+ * This function is convenient for those applications that construct 
+ * component names from simple strings.
+ * @returns 0, or -1 for error
+ */
 int 
 ccn_name_append_str(struct ccn_charbuf *c, const char *s)
 {
     return (ccn_name_append(c, s, strlen(s)));
 }
 
+/**
+ * Add a binary Component to a ccnb-encoded Name
+ *
+ * These are special components used for marking versions, fragments, etc.
+ * @returns 0, or -1 for error
+ * see doc/technical/NameConventions.html
+ */
 int
 ccn_name_append_numeric(struct ccn_charbuf *c,
                         enum ccn_marker marker, uintmax_t value)
@@ -65,6 +92,12 @@ ccn_name_append_numeric(struct ccn_charbuf *c,
     return (ccn_name_append(c, b + i, sizeof(b) - i));
 }
 
+/**
+ * Add sequence of ccnb-encoded Components to a ccnb-encoded Name.
+ *
+ * start and stop are offsets from ccnb
+ * @returns 0, or -1 for obvious error
+ */
 int
 ccn_name_append_components(struct ccn_charbuf *c,
                            const unsigned char *ccnb,
@@ -81,6 +114,11 @@ ccn_name_append_components(struct ccn_charbuf *c,
     return(res);
 }
 
+/**
+ * Extract a pointer to and size of component at
+ * given index i.  The first component is index 0.
+ * @returns 0, or -1 for error.
+ */
 int
 ccn_name_comp_get(const unsigned char *data,
                   const struct ccn_indexbuf *indexbuf,
@@ -128,6 +166,14 @@ ccn_name_comp_strcmp(const unsigned char *data,
     return(1);
 }
 
+/**
+ * Find Component boundaries in a ccnb-encoded Name.
+ *
+ * Thin veneer over ccn_parse_Name().
+ * components arg may be NULL to just do a validity check
+ *
+ * @returns -1 for error, otherwise the number of Components.
+ */
 int
 ccn_name_split(struct ccn_charbuf *c, struct ccn_indexbuf *components)
 {
@@ -137,6 +183,16 @@ ccn_name_split(struct ccn_charbuf *c, struct ccn_indexbuf *components)
     return(ccn_parse_Name(d, components));
 }
 
+/**
+ * Chop the name down to n components.
+ * @param c contains a ccnb-encoded Name
+ * @param components may be NULL; if provided it must be consistent with
+ *        some prefix of the name, and is updated accordingly.
+ * @param n is the number or components to leave, or, if negative, specifies
+ *        how many components to remove,
+          e.g. -1 will remove just the last component.
+ * @returns -1 for error, otherwise the new number of Components
+ */
 int
 ccn_name_chop(struct ccn_charbuf *c, struct ccn_indexbuf *components, int n)
 {
@@ -168,3 +224,48 @@ ccn_name_chop(struct ccn_charbuf *c, struct ccn_indexbuf *components, int n)
     return(-1);
 }
 
+/**
+ * Advance the last Component of a Name to the next possible value.
+ * @param c contains a ccnb-encoded Name to be updated.
+ * @returns -1 for error, otherwise the number of Components
+ */
+int
+ccn_name_next_sibling(struct ccn_charbuf *c)
+{
+    int res;
+    struct ccn_indexbuf *ndx;
+    unsigned char *lastcomp = NULL;
+    size_t lastcompsize = 0;
+    size_t i;
+    int carry;
+    struct ccn_charbuf *newcomp;
+
+    ndx = ccn_indexbuf_create();
+    if (ndx == NULL) goto Finish;
+    res = ccn_name_split(c, ndx);
+    if (res <= 0) {
+        res = -1;
+        goto Finish;
+    }
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, c->buf,
+        ndx->buf[res-1], ndx->buf[res],
+        (const unsigned char **)&lastcomp,
+        &lastcompsize);
+    if (res < 0) goto Finish;
+    for (carry = 1, i = lastcompsize; carry && i > 0; i--) {
+        carry = (((++lastcomp[i-1]) & 0xFF) == 0x00);
+    }
+    if (carry) {
+        newcomp = ccn_charbuf_create();
+        res |= ccn_charbuf_append_value(newcomp, 0, 1);
+        res |= ccn_charbuf_append(newcomp, lastcomp, lastcompsize);
+        res |= ccn_name_chop(c, ndx, ndx->n - 2);
+        res |= ccn_name_append(c, newcomp->buf, newcomp->length);
+        ccn_charbuf_destroy(&newcomp);
+        if (res < 0) goto Finish;
+    }
+    res = ndx->n - 1;
+Finish:
+    ccn_indexbuf_destroy(&ndx);
+    return(res);
+}

@@ -1,11 +1,24 @@
-/*
+/**
+ * @file ccnrm.c
  * Mark as stale any local items a matching given prefixes
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <ccn/ccn.h>
 #include <ccn/uri.h>
+
+static void
+usage(const char *progname)
+{
+    fprintf(stderr,
+            "%s [-o outfile] ccn:/a/b ...\n"
+            "   Remove (mark stale) content matching the given ccn URIs\n"
+            "   -o outfile - write the ccnb-encoded content to the named file\n",
+            progname);
+    exit(1);
+}
 
 /***********
 <Interest>
@@ -21,14 +34,9 @@ local_scope_rm_template(void)
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
     ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
     ccn_charbuf_append_closer(templ); /* </Name> */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, 2, CCN_UDATA);
-    ccn_charbuf_putf(templ, "%2d", (CCN_AOK_EXPIRE | CCN_AOK_DEFAULT));
-    ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Scope, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-    ccn_charbuf_append(templ, "0", 1);
-    ccn_charbuf_append_closer(templ); /* </Scope> */
+    ccnb_tagged_putf(templ, CCN_DTAG_AnswerOriginKind, "%2d",
+                     (CCN_AOK_EXPIRE | CCN_AOK_DEFAULT));
+    ccnb_tagged_putf(templ, CCN_DTAG_Scope, "0");
     ccn_charbuf_append_closer(templ); /* </Interest> */
     return(templ);
 }
@@ -36,7 +44,8 @@ local_scope_rm_template(void)
 static
 struct mydata {
     int nseen;
-} mydata = {0};
+    FILE *output;
+} mydata = {0, NULL};
 
 enum ccn_upcall_res
 incoming_content(
@@ -48,11 +57,15 @@ incoming_content(
 
     if (kind == CCN_UPCALL_FINAL)
         return(CCN_UPCALL_RESULT_OK);
+    if (md == NULL)
+        return(CCN_UPCALL_RESULT_ERR);
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(CCN_UPCALL_RESULT_REEXPRESS);
-    if ((kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED) || md == NULL)
+    if ((kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED))
         return(CCN_UPCALL_RESULT_ERR);
     md->nseen++;
+    if (md->output != NULL)
+        fwrite(info->content_ccnb, info->pco->offset[CCN_PCO_E], 1, md->output);
     return(CCN_UPCALL_RESULT_REEXPRESS);
 }
 
@@ -70,6 +83,26 @@ main(int argc, char **argv)
     struct ccn_charbuf *templ = NULL;
     int i;
     int res;
+    int ch;
+    FILE* closethis = NULL;
+    
+    while ((ch = getopt(argc, argv, "ho:")) != -1) {
+        switch (ch) {
+            case 'o':
+                if (strcmp(optarg, "-") == 0)
+                    mydata.output = stdout;
+                else
+                    mydata.output = closethis = fopen(optarg, "wb");
+                if (mydata.output == NULL) {
+                    perror(optarg);
+                    exit(1);
+                }
+                break;
+            case 'h': /* FALLTHRU */
+            default: usage(argv[0]);
+        }
+    }
+    
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
         perror("Could not connect to ccnd");
@@ -78,7 +111,7 @@ main(int argc, char **argv)
     c = ccn_charbuf_create();
     /* set scope to only address ccnd, expire anything we get */
     templ = local_scope_rm_template();
-    for (i = 1; argv[i] != NULL; i++) {
+    for (i = optind; argv[i] != NULL; i++) {
         c->length = 0;
         res = ccn_name_from_uri(c, argv[i]);
         if (res < 0) {
@@ -87,10 +120,8 @@ main(int argc, char **argv)
         }
         ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
     }
-    if (i == 1) {
-        fprintf(stderr, "%s: expecting ccn URIs to mark stale\n", argv[0]);
-        exit(1);
-    }
+    if (i == optind)
+        usage(argv[0]);
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&c);
     for (i = 0;; i++) {
@@ -99,6 +130,8 @@ main(int argc, char **argv)
         if (res == mydata.nseen)
             break;
     }
+    if (closethis != NULL)
+        fclose(closethis);
     ccn_destroy(&ccn);
     fprintf(stderr, "marked stale: %d\n", mydata.nseen);
     exit(0);

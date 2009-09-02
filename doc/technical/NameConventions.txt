@@ -27,21 +27,19 @@ February 13, 2009 3:31:30 PM PST = 1234567890.000 seconds since January 1, 1970 
 <Component ccnbencoding="base64Binary">/QSZYC0gAA==</Component>
 .........
 
-== Sequencing F8, FB, 00
+== Sequencing 00, FB
 Sequence numbers occupy the final component of the CCN name (again, not counting the digest component).
-For consecutive numbering, the first byte of the sequence component is 0xF8.
+For consecutive numbering, the first byte of the sequence component is 0x00.
 The remaining bytes hold the sequence number in big-endian binary, using the minimum number of bytes.
-Thus sequence number 0 is encoded in just one byte, `%F8`, and sequence number 1 is `%F8%01`.
-Note that this encoding is not quite dense - `%F8%00` is unused, as are other components that start with these two bytes.
+Thus sequence number 0 is encoded in just one byte, `%00`, and sequence number 1 is `%00%01`.
+Note that this encoding is not quite dense - `%00%00` is unused, as are other components that start with these two bytes.
 For non-consecutive numbering (e.g, using byte offsets) the value 0xFB may be used as a marker.
-
-_We may soon be switching to 00 instead of F8_
 
 .Example: Sequence 257 is
 .......................................................
-<Component ccnbencoding="hexBinary">F80101</Component>
+<Component ccnbencoding="hexBinary">000101</Component>
 or
-<Component ccnbencoding="base64Binary">+AEB</Component>
+<Component ccnbencoding="base64Binary">AAEB</Component>
 .......................................................
 
 == Headers and unfragmented content
@@ -57,6 +55,9 @@ In the case that versioning is used, it is desirable to preserve the position of
 ....
 as the name for either the header or the single leaf.
 
-== More Examples
-   * Name Enumeration Protocol FE
-   * more needed...
+== Extensible Command Markers C0
+
+In a variety of situations we need components that represent commands or annotations that can appear at arbitrary levels in the name hierarchy, intermixed with the human readable components analogous to pieces of file names.   In these cases, the position in the name is not able to distinguish the component's role and we must rely on the marker and that apps will follow these overall conventions so as to make the markers unambiguous.
+
+Multiple separate indications may be needed within a command protocol and future extensibility is also required, so we cannot simply allocate each special UTF-8 non-value to a single function.  The first byte of a generic command marker is %C0, the next several bytes identify the command protocol which for common protocols will be chosen to be human readable, and the remaining bytes will be defined within the command protocol.  Note that the Name Enumeration protocol is an example of such a command protocol.
+

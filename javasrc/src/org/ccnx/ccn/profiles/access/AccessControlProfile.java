@@ -133,7 +133,7 @@ public class AccessControlProfile implements CCNProfile {
 	 * @return
 	 */
 	public static ContentName userNamespaceName(ContentName namespace) {
-		return new ContentName(accessRoot(namespace), ACCESS_CONTROL_MARKER_BYTES, USER_PREFIX_BYTES);
+		return new ContentName(accessRoot(namespace), USER_PREFIX_BYTES);
 	}
 
 	public static ContentName userNamespaceName(ContentName userNamespace,
@@ -142,7 +142,7 @@ public class AccessControlProfile implements CCNProfile {
 	}
 	
 	public static ContentName groupNamespaceName(ContentName namespace) {
-		return new ContentName(accessRoot(namespace), ACCESS_CONTROL_MARKER_BYTES, GROUP_PREFIX_BYTES);
+		return new ContentName(accessRoot(namespace), GROUP_PREFIX_BYTES);
 	}
 	
 	public static ContentName groupName(ContentName namespace, String groupFriendlyName) {
@@ -159,6 +159,10 @@ public class AccessControlProfile implements CCNProfile {
 	 */
 	public static ContentName groupPublicKeyName(ContentName namespace, String groupFriendlyName) {
 		return ContentName.fromNative(groupName(namespace, groupFriendlyName),  GROUP_PUBLIC_KEY_NAME);
+	}
+	
+	public static ContentName groupPublicKeyName(ContentName groupFullName) {
+		return ContentName.fromNative(groupFullName,  GROUP_PUBLIC_KEY_NAME);
 	}
 	
 	public static ContentName groupMembershipListName(ContentName namespace, String groupFriendlyName) {

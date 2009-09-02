@@ -5,13 +5,12 @@ EXPATLIBS = -lexpat
 CCNLIBDIR = ../lib
 
 INSTALLED_PROGRAMS = \
-    ccn_ccnbtoxml ccn_splitccnb ccntimestamps ccndumpnames ccnrm \
+    ccn_ccnbtoxml ccn_splitccnb ccndumpnames ccnrm \
     ccnls ccnslurp ccnbx ccncat ccnbasicconfig \
     ccnsendchunks ccncatchunks ccncatchunks2 \
     ccnput ccnget ccnhexdumpdata $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
-    ccndump  \
     ccnbuzz  \
     dataresponsetest  \
     $(PCAP_PROGRAMS)
@@ -19,7 +18,7 @@ PROGRAMS = $(INSTALLED_PROGRAMS) \
 EXPAT_PROGRAMS = ccn_xmltoccnb
 #PCAP_PROGRAMS = ccndumppcap
 BROKEN_PROGRAMS =
-DEBRIS = 
+DEBRIS = ccntimestamps ccndump
 SCRIPTSRC = ccn_initkeystore.sh
 CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c ccnbuzz.c\
        ccnbx.c ccncat.c ccncatchunks.c ccncatchunks2.c ccndump.c \
