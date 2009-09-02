@@ -24,7 +24,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	
 	protected String _repoVersion = null;
 	protected String _localName = null;
-	protected String _globalPrefix = null;
+	protected GlobalPrefix _globalPrefix = null; 
 	protected ArrayList<ContentName> _names = new ArrayList<ContentName>();
 	protected ContentName _policyName;
 	protected RepoInfoType _type = RepoInfoType.INFO;
@@ -59,17 +59,38 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		}
 	}
 	
-	protected static final HashMap<RepoInfoType, String> _InfoTypeNames = new HashMap<RepoInfoType, String>();
-	
-	public RepositoryInfo(String version, String globalPrefix, String localName) {
-		_localName = localName;
-		_repoVersion = version;
-		_globalPrefix = globalPrefix;
-		if (!_globalPrefix.startsWith("/"))
-			_globalPrefix = "/" + _globalPrefix;
+	public static class GlobalPrefix extends ContentName {
+		
+		public GlobalPrefix(ContentName cn) {
+			super(cn);
+		}
+		
+		public GlobalPrefix() {
+			super();
+		}
+		
+		@Override
+		public String getElementLabel() { return GLOBAL_PREFIX_ELEMENT; }
 	}
 	
-	public RepositoryInfo(String version, String globalPrefix, String localName, ArrayList<ContentName> names) {
+	protected static final HashMap<RepoInfoType, String> _InfoTypeNames = new HashMap<RepoInfoType, String>();
+	
+	public RepositoryInfo(String version, String globalPrefix, String localName) throws MalformedContentNameStringException {
+		_localName = localName;
+		_repoVersion = version;
+		if (!globalPrefix.startsWith("/"))
+			globalPrefix = "/" + _globalPrefix;
+		_globalPrefix = new GlobalPrefix(ContentName.fromNative(globalPrefix));
+	}
+	
+	public RepositoryInfo(String version, ContentName globalPrefix, String localName) throws MalformedContentNameStringException {
+		_localName = localName;
+		_repoVersion = version;
+		_globalPrefix = new GlobalPrefix(globalPrefix);
+	}
+	
+	
+	public RepositoryInfo(String version, String globalPrefix, String localName, ArrayList<ContentName> names) throws MalformedContentNameStringException {
 		this(localName, globalPrefix, version);
 		for (ContentName name : names) {
 			_names.add(name.clone());
@@ -77,25 +98,29 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		_type = RepoInfoType.DATA;
 	}
 	
+	public RepositoryInfo(String version, ContentName globalPrefix, String localName, ArrayList<ContentName> names) throws MalformedContentNameStringException {
+		this(localName, globalPrefix, version);
+		for (ContentName name : names) {
+			_names.add(name.clone());
+		}
+		_type = RepoInfoType.DATA;
+	}
+
 	public RepositoryInfo() {}	// For decoding
 	
 	public String getLocalName() {
 		return _localName;
 	}
 	
-	public String getGlobalPrefix() {
+	public ContentName getGlobalPrefix() {
 		return _globalPrefix;
 	}
 	
-	public synchronized ContentName getPolicyName() throws RepositoryException {
+	public synchronized ContentName getPolicyName() {
 		if (null == _policyName) {
-			try {
-				_policyName = ContentName.fromNative(_globalPrefix + '/' + _localName 
-						+ '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY);
-			} catch (MalformedContentNameStringException e) {
-				throw new RepositoryException("Cannot set policy name for repository based on configuration parameters.",
-												e);
-			}
+			_policyName = ContentName.fromNative(_globalPrefix, 
+											new String[]{_localName, Repository.REPO_DATA,
+														 Repository.REPO_POLICY});
 		}
 		return _policyName;
 	}
@@ -122,7 +147,10 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		_version = Double.valueOf(decoder.readUTF8Element(REPOSITORY_INFO_VERSION_ELEMENT));
 		_type = RepoInfoType.valueFromString(decoder.readUTF8Element(REPOSITORY_INFO_TYPE_ELEMENT));
 		_repoVersion = decoder.readUTF8Element(REPOSITORY_VERSION_ELEMENT);
-		_globalPrefix = decoder.readUTF8Element(GLOBAL_PREFIX_ELEMENT);
+		
+		_globalPrefix = new GlobalPrefix();
+		_globalPrefix.decode(decoder);
+		
 		_localName = decoder.readUTF8Element(LOCAL_NAME_ELEMENT);
 		while (decoder.peekStartElement(ContentName.CONTENT_NAME_ELEMENT)) {
 			ContentName name = new ContentName();
@@ -141,8 +169,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		encoder.writeElement(REPOSITORY_INFO_VERSION_ELEMENT, Double.toString(_version));
 		encoder.writeElement(REPOSITORY_INFO_TYPE_ELEMENT, getType().toString());
 		encoder.writeElement(REPOSITORY_VERSION_ELEMENT, _repoVersion);
-		// Should these be names?
-		encoder.writeElement(GLOBAL_PREFIX_ELEMENT, _globalPrefix);
+		_globalPrefix.encode(encoder);
 		encoder.writeElement(LOCAL_NAME_ELEMENT, _localName);
 		if (_names.size() > 0) {
 			for (ContentName name : _names)
