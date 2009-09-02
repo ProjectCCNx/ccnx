@@ -33,10 +33,6 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	protected ContentName _policyName;
 	protected RepoInfoType _type = RepoInfoType.INFO;
 	
-	protected static String DEFAULT_DICTIONARY_RESNAME = "repotags.csvdict";
-	
-	private static BinaryXMLDictionary _dictionary;
-	
 	private static final String REPOSITORY_INFO_ELEMENT = "RepositoryInfo";
 	private static final String REPOSITORY_INFO_TYPE_ELEMENT = "Type";
 	private static final String REPOSITORY_INFO_VERSION_ELEMENT = "Version";
@@ -69,15 +65,6 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	}
 	
 	protected static final HashMap<RepoInfoType, String> _InfoTypeNames = new HashMap<RepoInfoType, String>();
-	
-	static {
-		try {
-			_dictionary = new BinaryXMLDictionary(DEFAULT_DICTIONARY_RESNAME);
-		} catch (IOException e) {
-			Log.logStackTrace(Level.WARNING, e);
-			e.printStackTrace();
-		}
-	}
 	
 	public RepositoryInfo(String version, String globalPrefix, String localName) throws MalformedContentNameStringException {
 		_localName = localName;
@@ -128,36 +115,44 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	}
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.pushXMLDictionary(_dictionary);
+		decoder.readStartElement(REPOSITORY_INFO_ELEMENT);
 		if (!decoder.peekStartElement(REPOSITORY_INFO_TYPE_ELEMENT)) {
+			// This is a bad idea. It silently leaves a wad of stuff on the stream.
+			// Better to throw an exception so caller knows something is wrong.
+			// If you want to punt, need to skip rest of object. Isn't useful,
+			// version should come first, and be checked.
 			_type = RepoInfoType.UNKNOWN;
 			return;
 		}
-		_type = RepoInfoType.valueFromString(new String(decoder.readBinaryElement(REPOSITORY_INFO_TYPE_ELEMENT)));
-		_version = new String(decoder.readBinaryElement(REPOSITORY_INFO_VERSION_ELEMENT));
-		_repoVersion = new String(decoder.readBinaryElement(REPOSITORY_VERSION_ELEMENT));
-		_globalPrefix = new String(decoder.readBinaryElement(GLOBAL_PREFIX_ELEMENT));
-		_localName = new String(decoder.readBinaryElement(LOCAL_NAME_ELEMENT));
-		decoder.popXMLDictionary();
+		_type = RepoInfoType.valueFromString(decoder.readUTF8Element(REPOSITORY_INFO_TYPE_ELEMENT));
+		_version = decoder.readUTF8Element(REPOSITORY_INFO_VERSION_ELEMENT);
+		_repoVersion = decoder.readUTF8Element(REPOSITORY_VERSION_ELEMENT);
+		_globalPrefix = decoder.readUTF8Element(GLOBAL_PREFIX_ELEMENT);
+		_localName = decoder.readUTF8Element(LOCAL_NAME_ELEMENT);
 		while (decoder.peekStartElement(ContentName.CONTENT_NAME_ELEMENT)) {
 			ContentName name = new ContentName();
 			name.decode(decoder);
 			_names.add(name);
 		}
+		decoder.readEndElement();
 	}
 
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
-		encoder.pushXMLDictionary(_dictionary);
-		encoder.writeElement(REPOSITORY_INFO_TYPE_ELEMENT, getType()._stringValue.getBytes());
-		encoder.writeElement(REPOSITORY_INFO_VERSION_ELEMENT, _version.getBytes());
-		encoder.writeElement(REPOSITORY_VERSION_ELEMENT, _repoVersion.getBytes());
-		encoder.writeElement(GLOBAL_PREFIX_ELEMENT, _globalPrefix.getBytes());
-		encoder.writeElement(LOCAL_NAME_ELEMENT, _localName.getBytes());
-		encoder.popXMLDictionary();
+		if (!validate()) {
+			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+		}
+		encoder.writeStartElement(REPOSITORY_INFO_ELEMENT);
+		encoder.writeElement(REPOSITORY_INFO_TYPE_ELEMENT, getType().toString());
+		encoder.writeElement(REPOSITORY_INFO_VERSION_ELEMENT, _version);
+		encoder.writeElement(REPOSITORY_VERSION_ELEMENT, _repoVersion);
+		// Should these be names?
+		encoder.writeElement(GLOBAL_PREFIX_ELEMENT, _globalPrefix);
+		encoder.writeElement(LOCAL_NAME_ELEMENT, _localName);
 		if (_names.size() > 0) {
 			for (ContentName name : _names)
 				name.encode(encoder);
 		}
+		encoder.writeEndElement();
 	}
 
 	public boolean validate() {
