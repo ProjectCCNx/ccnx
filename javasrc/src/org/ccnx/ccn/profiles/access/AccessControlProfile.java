@@ -161,6 +161,10 @@ public class AccessControlProfile implements CCNProfile {
 		return ContentName.fromNative(groupName(namespace, groupFriendlyName),  GROUP_PUBLIC_KEY_NAME);
 	}
 	
+	public static ContentName groupPublicKeyName(ContentName groupFullName) {
+		return ContentName.fromNative(groupFullName,  GROUP_PUBLIC_KEY_NAME);
+	}
+	
 	public static ContentName groupMembershipListName(ContentName namespace, String groupFriendlyName) {
 		return ContentName.fromNative(groupName(namespace, groupFriendlyName),  GROUP_MEMBERSHIP_LIST_NAME);
 	}
