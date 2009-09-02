@@ -19,7 +19,8 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  */
 
 public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
-	protected static String _version = "1.0";
+	
+	protected static double _version = 1.0;
 	
 	protected String _repoVersion = null;
 	protected String _localName = null;
@@ -37,8 +38,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	
 	public enum RepoInfoType {
 		INFO ("INFO"),
-		DATA ("DATA"),
-		UNKNOWN();
+		DATA ("DATA");
 		
 		private String _stringValue = null;
 		
@@ -55,7 +55,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 						return pv;
 				}
 			}
-			return UNKNOWN;
+			return null;
 		}
 	}
 	
@@ -113,21 +113,13 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	}
 	
 	public String getVersion() {
-		return _version;
+		return Double.toString(_version);
 	}
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(REPOSITORY_INFO_ELEMENT);
-		if (!decoder.peekStartElement(REPOSITORY_INFO_TYPE_ELEMENT)) {
-			// This is a bad idea. It silently leaves a wad of stuff on the stream.
-			// Better to throw an exception so caller knows something is wrong.
-			// If you want to punt, need to skip rest of object. Isn't useful,
-			// version should come first, and be checked.
-			_type = RepoInfoType.UNKNOWN;
-			return;
-		}
+		_version = Double.valueOf(decoder.readUTF8Element(REPOSITORY_INFO_VERSION_ELEMENT));
 		_type = RepoInfoType.valueFromString(decoder.readUTF8Element(REPOSITORY_INFO_TYPE_ELEMENT));
-		_version = decoder.readUTF8Element(REPOSITORY_INFO_VERSION_ELEMENT);
 		_repoVersion = decoder.readUTF8Element(REPOSITORY_VERSION_ELEMENT);
 		_globalPrefix = decoder.readUTF8Element(GLOBAL_PREFIX_ELEMENT);
 		_localName = decoder.readUTF8Element(LOCAL_NAME_ELEMENT);
@@ -144,8 +136,8 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(REPOSITORY_INFO_ELEMENT);
+		encoder.writeElement(REPOSITORY_INFO_VERSION_ELEMENT, Double.toString(_version));
 		encoder.writeElement(REPOSITORY_INFO_TYPE_ELEMENT, getType().toString());
-		encoder.writeElement(REPOSITORY_INFO_VERSION_ELEMENT, _version);
 		encoder.writeElement(REPOSITORY_VERSION_ELEMENT, _repoVersion);
 		// Should these be names?
 		encoder.writeElement(GLOBAL_PREFIX_ELEMENT, _globalPrefix);
