@@ -538,11 +538,11 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
 }
 
 static int
-process_test(struct ccn_decoder *d, unsigned char *data, size_t n)
+process_data(struct ccn_decoder *d, unsigned char *data, size_t n)
 {
     int res = 0;
     size_t s;
-    printf("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
+    printf("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     s = ccn_decoder_decode(d, data, n);
     if (d->state != 0 || s < n || d->stack != NULL || d->tagstate != 0) {
         res = 1;
@@ -576,7 +576,7 @@ process_fd(struct ccn_decoder *d, int fd)
         c->length += len;
     }
     fprintf(stderr, " <!-- input is %6lu bytes -->\n", (unsigned long)c->length);
-    res |= process_test(d, c->buf, c->length);
+    res |= process_data(d, c->buf, c->length);
     ccn_charbuf_destroy(&c);
     return(res);
 }
@@ -733,7 +733,7 @@ main(int argc, char **argv)
     
     if (tflag) {
             d = ccn_decoder_create(1);
-            res |= process_test(d, test1, sizeof(test1));
+            res |= process_data(d, test1, sizeof(test1));
             ccn_decoder_destroy(&d);
             return (res);
     }
