@@ -888,7 +888,7 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
         return(NULL);
     }
     face->send_fd = socks.sending;
-    face->flags |= CCN_FACE_MCAST;
+    face->flags |= (CCN_FACE_MCAST | CCN_FACE_DGRAM);
     ccnd_msg(h, "multicast on fd=%d,%d id=%u",
              face->recv_fd, face->send_fd, face->faceid);
     return(face);
@@ -954,12 +954,12 @@ choose_content_delay_class(struct ccnd_handle *h, unsigned faceid, int content_f
     struct face *face = face_from_faceid(h, faceid);
     if (face == NULL)
         return(CCN_CQ_ASAP); /* Going nowhere, get it over with */
+    if ((face->flags & (CCN_FACE_LINK | CCN_FACE_MCAST)) != 0) /* udplink or such, delay more */
+        return((content_flags & CCN_CONTENT_ENTRY_SLOWSEND) ? CCN_CQ_SLOW : CCN_CQ_NORMAL);
     if ((face->flags & CCN_FACE_DGRAM) != 0)
         return(CCN_CQ_NORMAL); /* udp, delay just a little */
     if ((face->flags & (CCN_FACE_GG | CCN_FACE_LOCAL)) != 0)
         return(CCN_CQ_ASAP); /* localhost, answer quickly */
-    if ((face->flags & (CCN_FACE_LINK | CCN_FACE_MCAST)) != 0) /* udplink or such, delay more */
-        return((content_flags & CCN_CONTENT_ENTRY_SLOWSEND) ? CCN_CQ_SLOW : CCN_CQ_NORMAL);
     return(CCN_CQ_NORMAL); /* default */
 }
 
@@ -2508,6 +2508,43 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
     return(res);
 }
 
+static struct content_entry *
+next_child_at_level(struct ccnd_handle *h,
+                    struct content_entry *content, int level)
+{
+    struct content_entry *next = NULL;
+    struct ccn_charbuf *name;
+    struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
+    int d;
+    int res;
+    
+    if (content == NULL)
+        return(NULL);
+    if (content->ncomps <= level + 1)
+        return(NULL);
+    name = ccn_charbuf_create();
+    ccn_name_init(name);
+    res = ccn_name_append_components(name, content->key,
+                                     content->comps[0],
+                                     content->comps[level + 1]);
+    if (res < 0) abort();
+    res = ccn_name_next_sibling(name);
+    if (res < 0) abort();
+    if (h->debug & 8)
+        ccnd_debug_ccnb(h, __LINE__, "child_successor", NULL,
+                        name->buf, name->length);
+    d = content_skiplist_findbefore(h, name->buf, name->length,
+                                    NULL, pred);
+    next = content_from_accession(h, pred[0]->buf[0]);
+    if (next == content) {
+        // XXX - I think this case should not occur, but just in case, avoid a loop.
+        next = content_from_accession(h, content_skiplist_next(h, content));
+        ccnd_debug_ccnb(h, __LINE__, "bump", NULL, next->key, next->size);
+    }
+    ccn_charbuf_destroy(&name);
+    return(next);
+}
+
 static void
 process_incoming_interest(struct ccnd_handle *h, struct face *face,
                           unsigned char *msg, size_t size)
@@ -2620,9 +2657,12 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                     if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
                         break;
                     last_match = content;
+                    content = next_child_at_level(h, content, comps->n - 1);
+                    goto check_next_prefix;
                 }
             move_along:
                 content = content_from_accession(h, content_skiplist_next(h, content));
+            check_next_prefix:
                 if (content != NULL &&
                     !content_matches_interest_prefix(h, content, msg, 
                                                      comps, pi->prefix_comps)) {
@@ -2999,7 +3039,7 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
     int port = 0;
     if ((face->flags & CCN_FACE_DGRAM) == 0)
         return(face);
-    if ((face->flags & CCN_FACE_MCAST) == 1)
+    if ((face->flags & CCN_FACE_MCAST) != 0)
         return(face);
     hashtb_start(h->dgram_faces, e);
     res = hashtb_seek(e, addr, addrlen, 0);
