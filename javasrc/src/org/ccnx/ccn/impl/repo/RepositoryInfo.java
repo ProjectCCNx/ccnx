@@ -12,7 +12,6 @@ import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
-
 /**
  * 
  * @author rasmusse
@@ -88,10 +87,15 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		return _globalPrefix;
 	}
 	
-	public synchronized ContentName getPolicyName() throws MalformedContentNameStringException {
+	public synchronized ContentName getPolicyName() throws RepositoryException {
 		if (null == _policyName) {
-			_policyName = ContentName.fromNative(_globalPrefix + '/' + _localName 
-					+ '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY);
+			try {
+				_policyName = ContentName.fromNative(_globalPrefix + '/' + _localName 
+						+ '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY);
+			} catch (MalformedContentNameStringException e) {
+				throw new RepositoryException("Cannot set policy name for repository based on configuration parameters.",
+												e);
+			}
 		}
 		return _policyName;
 	}

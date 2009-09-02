@@ -289,11 +289,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, library, globalFromArgs);
 		globalPrefix = checkName != null ? checkName : globalPrefix;
 		
-		try {
-			_info = new RepositoryInfo(CURRENT_VERSION, globalPrefix, localName);
-		} catch (MalformedContentNameStringException e1) {
-			throw new RepositoryException(e1.getMessage());
-		}
+		_info = new RepositoryInfo(CURRENT_VERSION, globalPrefix, localName);
 		
 		/*
 		 * Read policy file from disk if it exists and we didn't read it in as an argument.
