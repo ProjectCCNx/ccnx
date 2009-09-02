@@ -181,9 +181,9 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	 * @throws XMLStreamException 
 	 * 
 	 */
-	
+	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(LINK_ELEMENT);
+		decoder.readStartElement(getElementLabel());
 
 		_targetName = new ContentName();
 		_targetName.decode(decoder);
@@ -200,9 +200,10 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		decoder.readEndElement();
 	}
 
+	@Override
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 
-		encoder.writeStartElement(LINK_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 		_targetName.encode(encoder);
 		if (null != targetLabel()) {
 			encoder.writeElement(LABEL_ELEMENT, targetLabel());
@@ -212,6 +213,10 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		encoder.writeEndElement();   		
 	}
 	
+	@Override
+	public String getElementLabel() { return LINK_ELEMENT; }
+
+	@Override
 	public boolean validate() {
 		return (null != targetName());
 	}

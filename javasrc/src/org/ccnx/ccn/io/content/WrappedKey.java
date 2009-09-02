@@ -54,7 +54,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		public WrappingKeyName() {}
 		
 		@Override
-		public String contentNameElement() { 
+		public String getElementLabel() { 
 			return WRAPPING_KEY_NAME_ELEMENT;
 		}
 	}
@@ -330,7 +330,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
 	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(WRAPPED_KEY_ELEMENT);
+		decoder.readStartElement(getElementLabel());
 
 		if (decoder.peekStartElement(WRAPPING_KEY_IDENTIFIER_ELEMENT)) {
 			_wrappingKeyIdentifier = decoder.readBinaryElement(WRAPPING_KEY_IDENTIFIER_ELEMENT); 
@@ -369,7 +369,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		
-		encoder.writeStartElement(WRAPPED_KEY_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 		
 		if (null != wrappingKeyIdentifier()) {
 			// needs to handle null WKI
@@ -401,6 +401,11 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		encoder.writeElement(ENCRYPTED_KEY_ELEMENT, encryptedKey());
 
 		encoder.writeEndElement();   		
+	}
+
+	@Override
+	public String getElementLabel() { 
+		return WRAPPED_KEY_ELEMENT;
 	}
 
 	@Override

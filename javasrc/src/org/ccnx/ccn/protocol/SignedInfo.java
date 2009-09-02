@@ -273,8 +273,9 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		return null;
 	}
 	
+	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(SIGNED_INFO_ELEMENT);
+		decoder.readStartElement(getElementLabel());
 		
 		if (decoder.peekStartElement(PublisherPublicKeyDigest.PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT)) {
 			_publisher = new PublisherPublicKeyDigest();
@@ -311,11 +312,12 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		decoder.readEndElement();
 	}
 
+	@Override
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		encoder.writeStartElement(SIGNED_INFO_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 		
 		if (!emptyPublisher()) {
 			getPublisherKeyID().encode(encoder);
@@ -348,6 +350,10 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		encoder.writeEndElement();   		
 	}
 	
+	@Override
+	public String getElementLabel() { return SIGNED_INFO_ELEMENT; }
+
+	@Override
 	public boolean validate() {
 		// We don't do partial matches any more, even though encoder/decoder
 		// is still pretty generous.

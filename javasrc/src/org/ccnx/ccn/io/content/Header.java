@@ -280,8 +280,8 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	 */
 	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(Header.HEADER_ELEMENT);
-		_start = Integer.valueOf(decoder.readUTF8Element(Header.START_ELEMENT));
+		decoder.readStartElement(getElementLabel());
+		_start = Integer.valueOf(decoder.readUTF8Element(START_ELEMENT));
 		_count = Integer.valueOf(decoder.readUTF8Element(COUNT_ELEMENT));
 		_blockSize = Integer.valueOf(decoder.readUTF8Element(BLOCKSIZE_ELEMENT));
 		_length = Integer.valueOf(decoder.readUTF8Element(LENGTH_ELEMENT));
@@ -311,7 +311,7 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		encoder.writeStartElement(HEADER_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 		encoder.writeElement(START_ELEMENT,	 Long.toString(_start));
 		encoder.writeElement(COUNT_ELEMENT,	 Long.toString(_count));
 		encoder.writeElement(BLOCKSIZE_ELEMENT,	 Long.toString(_blockSize));
@@ -323,6 +323,9 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		
 		// DKS -- currently not putting _type on the wire, not sure why it's here...
 	}
+
+	@Override
+	public String getElementLabel() { return HEADER_ELEMENT; }
 
 	@Override
 	public boolean validate() {

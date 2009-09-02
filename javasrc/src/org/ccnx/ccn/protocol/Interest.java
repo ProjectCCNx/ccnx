@@ -405,7 +405,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * declaration. But then couldn't use these solo.
 	 */
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(INTEREST_ELEMENT);
+		decoder.readStartElement(getElementLabel());
 
 		_name = new ContentName();
 		_name.decode(decoder);
@@ -456,7 +456,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		encoder.writeStartElement(INTEREST_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 		
 		name().encode(encoder);
 	
@@ -487,6 +487,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		encoder.writeEndElement();   		
 	}
 	
+	@Override
+	public String getElementLabel() { return INTEREST_ELEMENT; }
+
+	@Override
 	public boolean validate() {
 		// DKS -- do we do recursive validation?
 		// null authenticator ok

@@ -64,6 +64,13 @@ public interface XMLEncodable {
 	 * 	default namespace.
 	 */
 	public void encode(XMLEncoder encoder) throws XMLStreamException;
+	
+	/** 
+	 * Allow the encoder/decoder to retrieve the top-level element name
+	 * programmatically. This allows subclasses to rename elements without
+	 * changing their encoder/decoders. 
+	 */
+	public String getElementLabel();
 
 	/**
 	 * Make sure all of the necessary fields are filled in

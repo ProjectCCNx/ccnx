@@ -116,8 +116,9 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		return Double.toString(_version);
 	}
 
+	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(REPOSITORY_INFO_ELEMENT);
+		decoder.readStartElement(getElementLabel());
 		_version = Double.valueOf(decoder.readUTF8Element(REPOSITORY_INFO_VERSION_ELEMENT));
 		_type = RepoInfoType.valueFromString(decoder.readUTF8Element(REPOSITORY_INFO_TYPE_ELEMENT));
 		_repoVersion = decoder.readUTF8Element(REPOSITORY_VERSION_ELEMENT);
@@ -131,11 +132,12 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		decoder.readEndElement();
 	}
 
+	@Override
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		encoder.writeStartElement(REPOSITORY_INFO_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 		encoder.writeElement(REPOSITORY_INFO_VERSION_ELEMENT, Double.toString(_version));
 		encoder.writeElement(REPOSITORY_INFO_TYPE_ELEMENT, getType().toString());
 		encoder.writeElement(REPOSITORY_VERSION_ELEMENT, _repoVersion);
@@ -149,6 +151,10 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		encoder.writeEndElement();
 	}
 
+	@Override
+	public String getElementLabel() { return REPOSITORY_INFO_ELEMENT; }
+
+	@Override
 	public boolean validate() {
 		return true;
 	}

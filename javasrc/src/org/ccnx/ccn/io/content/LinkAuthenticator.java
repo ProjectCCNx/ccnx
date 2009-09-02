@@ -134,8 +134,9 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		this._type = type;
 	}
 	
+	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(LINK_AUTHENTICATOR_ELEMENT);
+		decoder.readStartElement(getElementLabel());
 		
 		if (PublisherID.peek(decoder)) {
 			_publisher = new PublisherID();
@@ -168,11 +169,12 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		decoder.readEndElement();
 	}
 
+	@Override
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		encoder.writeStartElement(LINK_AUTHENTICATOR_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 		
 		if (!emptyPublisher()) {
 			publisherID().encode(encoder);
@@ -196,6 +198,10 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		encoder.writeEndElement();   		
 	}
 	
+	@Override
+	public String getElementLabel() { return LINK_AUTHENTICATOR_ELEMENT; }
+
+	@Override
 	public boolean validate() {
 		// any of the fields could be null when used 
 		// as a partial-match pattern

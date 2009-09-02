@@ -93,6 +93,8 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 	public abstract void decode(XMLDecoder decoder) throws XMLStreamException;
 	
 	public abstract void encode(XMLEncoder encoder) throws XMLStreamException;
+	
+	public abstract String getElementLabel();
 
 	public abstract boolean validate();
 	
