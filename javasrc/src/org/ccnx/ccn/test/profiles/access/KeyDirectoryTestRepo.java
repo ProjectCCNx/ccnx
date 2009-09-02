@@ -93,31 +93,38 @@ public class KeyDirectoryTestRepo {
 		AESSecretKey = kg.generateKey();
 		
 		// add private key block
-//		kd.addPrivateKeyBlock(wrappedPrivateKey, AESSecretKey);		
+		kd.addPrivateKeyBlock(wrappedPrivateKey, AESSecretKey);		
 	}
 	
+	/*
+	 * Unwrap the private key via membership in a group
+	 */
 	@Test
 	public void testGetUnwrappedKeyGroupMember() throws Exception {
 		ContentName myIdentity = ContentName.fromNative("/test/parc/Users/pgolle");
 		acm.publishMyIdentity(myIdentity, null);		
-
+				
 		// add myself to a newly created group				
 		String randomGroupName = "testGroup" + rand.nextInt(10000);
 		ArrayList<Link> newMembers = new ArrayList<Link>();
 		newMembers.add(new Link(myIdentity));
 		Group myGroup = acm.groupManager().createGroup(randomGroupName, newMembers);				
 		acm.groupManager().groupList().waitForData();
+		myGroup.privateKeyDirectory(acm).waitForData();
 		Assert.assertTrue(acm.groupManager().haveKnownGroupMemberships());
 		
 		// add to the KeyDirectory the secret key wrapped in the public key
+		ContentName versionDirectoryName2 = VersioningProfile.addVersion(
+				ContentName.fromNative(keyDirectoryBase + Integer.toString(rand.nextInt(10000)) ));
+		KeyDirectory kd2 = new KeyDirectory(acm, versionDirectoryName2, handle);
 		PublicKey groupPublicKey = myGroup.publicKey();
 		ContentName groupPublicKeyName = myGroup.publicKeyName();
-		kd.addWrappedKeyBlock(AESSecretKey, groupPublicKeyName, groupPublicKey);
-		kd.getNewData();
+		kd2.addWrappedKeyBlock(AESSecretKey, groupPublicKeyName, groupPublicKey);		
+		while (kd2.getCopyOfPrincipals().size() == 0 ) kd2.getNewData();
 		
 		// retrieve the secret key
 		byte[] expectedKeyID = CCNDigestHelper.digest(AESSecretKey.getEncoded());
-		Key unwrappedSecretKey = kd.getUnwrappedKey(expectedKeyID);
+		Key unwrappedSecretKey = kd2.getUnwrappedKey(expectedKeyID);
 		Assert.assertEquals(AESSecretKey, unwrappedSecretKey);
 	}
 
@@ -125,7 +132,7 @@ public class KeyDirectoryTestRepo {
 	/*	
 	 * Wraps the AES key in an RSA wrapping key
 	 * and adds the wrapped key to the KeyDirectory
-	 */	
+	 */
 	@Test
 	public void testAddWrappedKey() throws Exception {
 		// generate a public key to wrap
@@ -176,15 +183,18 @@ public class KeyDirectoryTestRepo {
 		kd.getNewData();
 
 		// check the ID of the wrapping key
-		try{
-			kd.getKeyIDLock().readLock().lock();
-			TreeSet<byte[]> wkid = kd.getWrappingKeyIDs();
-			Assert.assertEquals(1, wkid.size());
-			Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
-			Assert.assertEquals(0, byteArrayComparator.compare(wkid.first(), wrappingPKID));
-		}finally{
-			kd.getKeyIDLock().readLock().unlock();
+		int numberOfKeys = 0;
+		byte[] firstKey = null;
+		while (numberOfKeys == 0) {
+			TreeSet<byte[]> wkid = kd.getCopyOfWrappingKeyIDs();
+			numberOfKeys = wkid.size();
+			if (numberOfKeys > 0) firstKey = wkid.first();
+			if (numberOfKeys == 0) kd.getNewData();
 		}
+		
+		Assert.assertEquals(1, numberOfKeys);
+		Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
+		Assert.assertEquals(0, byteArrayComparator.compare(firstKey, wrappingPKID));
 
 		// check name
 		ContentName wkName = kd.getWrappedKeyNameForKeyID(wrappingPKID);
@@ -206,6 +216,7 @@ public class KeyDirectoryTestRepo {
 	public void testGetWrappedKeyForPrincipal() throws Exception {		
 		// unwrap the key and check that the unwrapped secret key is correct
 		WrappedKeyObject wko = kd.getWrappedKeyForPrincipal(principalName);
+		Assert.assertNotNull(wko);
 		WrappedKey wk = wko.wrappedKey();
 		Key unwrappedSecretKey = wk.unwrapKey(wrappingKeyPair.getPrivate());
 		Assert.assertEquals(AESSecretKey, unwrappedSecretKey);
