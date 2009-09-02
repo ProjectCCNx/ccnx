@@ -1,0 +1,25 @@
+<!-- DTD for ccn -->
+<!-- $Id$ -->
+<!ENTITY % URI "CDATA">	<!-- a Uniform Resource Identifier -->
+<!ENTITY % commonattrs
+	"xmlns %URI; #FIXED 'http://www.parc.com/ccn'">
+
+<!ELEMENT RepositoryInfo (Type, Version, RepositoryVersion, GlobalPrefix, LocalName, Name*)>
+<!ATTLIST RepositoryInfo %commonattrs;>
+
+<!ELEMENT Type		(#PCDATA)>	<!-- INFO, DATA, UNKNOWN -->
+<!ATTLIST Type      ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT Version	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT RepositoryVersion	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT GlobalPrefix	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT LocalName	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT Name		(Component*)>
+<!ATTLIST Name		%commonattrs;>
+
+<!ELEMENT Component	(#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST Component     ccnbencoding CDATA #FIXED 'base64Binary'>

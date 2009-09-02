@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- $Id$ -->
+<!DOCTYPE xs:schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "XMLSchema.dtd">
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<!-- DKS: leave this out, following ccn.xsd; as things don't work right
+     if you put it in. We should fix this. -->
+<!--
+        targetNamespace="http://www.parc.com/ccn"
+        xmlns="http://www.parc.com/ccn" 
+        elementFormDefault="unqualified"
+        attributeFormDefault="unqualified">
+-->
+
+<xs:include schemaLocation="ccn.xsd"/>
+
+  <xs:annotation>
+    <xs:documentation xml:lang="en">
+      Content-Centric Networks security-related data schema.
+    </xs:documentation>
+  </xs:annotation>
+
+<!-- Top-level objects that can appear in 
+     documents, messages, etc. -->
+<xs:element name="RepositoryInfo" type="RepositoryInfoType"/>
+
+<xs:complexType name="RepositoryInfoDataType">
+  <xs:simpleContent>
+    <xs:extension base="RepositoryInfoDataTypeType">
+      <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
+
+<xs:simpleType name="RepositoryInfoDataTypeType">
+  <xs:restriction base="xs:base64Binary">
+    <xs:length value="3" fixed="true"/>
+    <xs:enumeration value="INFO"/> 
+    <xs:enumeration value="DATA"/> 
+    <xs:enumeration value="UNKNOWN"/> 
+  </xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="RepositoryInfoType">
+  <xs:sequence>
+    <xs:element name="Type" type="RepositoryInfoDataType"/>
+    <!-- Legacy strings here -->
+	<xs:element name="Version" type="xs:string"/> 
+	<xs:element name="RepositoryVersion" type="xs:string"/>
+	<xs:element name="GlobalPrefix" type="xs:string"/>
+	<xs:element name="LocalName" type="xs:string"/>
+    <!-- 0 or more names -->
+	<xs:element name="Name" type="NameType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+</xs:schema>

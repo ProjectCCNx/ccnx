@@ -1,7 +1,7 @@
 # Makefile for ccn/schema/validation
 
 W3REFS=XMLSchema.dtd XMLSchema.xsd datatypes.dtd xml.xsd
-FUZZED= ccn-bad11.xml ccn-bad06.xml ccn-bad09.xml ccn-schemabad10.xml ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad12.xml ccn-schemabad04.xml security-schemabad01.xml
+FUZZED= ccn-bad11.xml ccn-bad06.xml ccn-bad09.xml ccn-schemabad10.xml ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad12.xml ccn-schemabad04.xml security-schemabad01.xml repository-bad01.xml repository-schemabad01.xml
 
 default:
 
@@ -26,38 +26,56 @@ security.xsd:
 security.dtd:
 	ln -s ../security.dtd
 
+repository.xsd:
+	ln -s ../repository.xsd
+
+repository.dtd:
+	ln -s ../repository.dtd
+
 clean:
 	rm -f $(W3REFS) $(FUZZED) expectedfailures.out
 	test -L ccn.xsd && rm ccn.xsd || :
 	test -L security.xsd && rm security.xsd || :
+	test -L repository.xsd && rm repository.xsd || :
 	test -L ccn.dtd && rm ccn.dtd || :
 	test -L security.dtd && rm security.dtd || :
+	test -L repository.dtd && rm repository.dtd || :
 
 pretty:
 	echo ccn-test??.xml | xargs -n 1 sh prettify.sh
 	echo security-test??.xml | xargs -n 1 sh prettify.sh
+	echo repository-test??.xml | xargs -n 1 sh prettify.sh
 
-check: ccn.xsd ccn.dtd security.xsd security.dtd $(W3REFS) $(FUZZED) always
+check: ccn.xsd ccn.dtd security.xsd security.dtd repository.xsd repository.dtd $(W3REFS) $(FUZZED) always
 	@:> expectedfailures.out
 	xmllint --noout --schema XMLSchema.xsd XMLSchema.xsd || ./oops
 	xmllint --noout ccn.xsd
 	@echo === ccn.xsd is well-formed
 	xmllint --noout security.xsd
 	@echo === security.xsd is well-formed
+	xmllint --noout repository.xsd
+	@echo === repository.xsd is well-formed
 	xmllint --valid --nowarning --noout ccn.xsd
 	@echo === ccn.xsd is valid according to its dtd
 	xmllint --valid --nowarning --noout security.xsd
 	@echo === security.xsd is valid according to its dtd
+	xmllint --valid --nowarning --noout repository.xsd
+	@echo === repository.xsd is valid according to its dtd
 	xmllint --schema XMLSchema.xsd --noout ccn.xsd
 	xmllint --noout --schema ccn.xsd ccn-test??.xml
 	xmllint --noout --dtdvalid ccn.dtd ccn-test??.xml
 	xmllint --schema XMLSchema.xsd --noout security.xsd
 	xmllint --noout --schema security.xsd security-test??.xml
 	xmllint --noout --dtdvalid security.dtd security-test??.xml
+	xmllint --schema XMLSchema.xsd --noout repository.xsd
+	xmllint --noout --schema repository.xsd repository-test??.xml
+	xmllint --noout --dtdvalid repository.dtd repository-test??.xml
 	ls ccn-schemabad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --schema ccn.xsd "$$i"; do :; done
 	ls security-schemabad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --schema security.xsd "$$i"; do :; done
+	ls repository-schemabad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --schema repository.xsd "$$i"; do :; done
 	ls ccn-dtdbad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid ccn.dtd "$$i"; do :; done
 	ls security-dtdbad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid security.dtd "$$i"; do :; done
+	ls repository-dtdbad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid repository.dtd "$$i"; do :; done
 	@diff expectedfailures.ref expectedfailures.out || echo "***" $(LECTURE)
 	: --------------------------- :
 	: Schema validation complete  :
@@ -104,6 +122,10 @@ check: ccn-bad11.xml
 ccn-bad11.xml: ccn-test11.xml
 	sed -e 's/<\/Bloom>/<\/Bloom><Bloom\/>/' $? > $@
 
+check: repository-bad01.xml
+ccn-bad06.xml: repository-test01.xml
+	sed -e 's/GlobalPrefix/GlobalProofix/g' $? > $@
+
 check: ccn-schemabad12.xml
 ccn-schemabad12.xml: ccn-test12.xml
 	sed -e 's/>DATA/>FUZZ/' $? > $@
@@ -111,6 +133,10 @@ ccn-schemabad12.xml: ccn-test12.xml
 check: security-schemabad01.xml
 security-schemabad01.xml: security-test01.xml
 	sed -e '/EncryptedKey/s/dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD/bad!/' $? > $@
+
+check: repository-schemabad01.xml
+repository-schemabad01.xml: repository-test01.xml
+	sed -e '/Type/s/INFO/bad!/' $? > $@
 
 default all clean depend test check shared testinstall install uninstall: _always
 
