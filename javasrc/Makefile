@@ -1,7 +1,7 @@
 # Makefile for ccn/Java_CCN
 
 ANT = ant
-LIBS = ccn.jar
+LIBS = ccn.jar lib/bcprov-jdk16-143.jar
 TOOLS = ccn_repo ccn_run dumplog get_file put_file
 WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
                echo Skipping java build in $$(pwd -L) -    \
@@ -21,7 +21,11 @@ install: jar
 	test -d $(INSTALL_LIB) 
 	for i in $(LIBS) ""; do test -z "$$i" || $(INSTALL) $$i $(INSTALL_LIB); done
 	test -d $(INSTALL_BIN)
-	for i in $(TOOLS) ; do test -z "tools/$$i" || echo $$i; $(INSTALL) tools/$$i $(INSTALL_BIN); done
+	for i in $(TOOLS) "" ; do test -z "$$i" || $(INSTALL) tools/$$i $(INSTALL_BIN); done
+
+uninstall:
+	for i in $(LIBS) ""; do test -z "$$i" || $(RM) $(INSTALL_LIB)/`basename $$i`; done
+	for i in $(TOOLS) "" ; do test -z "$$i" || $(RM) $(INSTALL_BIN)/`basename $$i`; done
 
 # Use ant to actually do the work for these targets
 jar clean test: _always
@@ -31,7 +35,7 @@ jar clean test: _always
 documentation: _always
 	doxygen
 
-testinstall uninstall:
+testinstall:
 	@echo No $@ target for `pwd`
  
 default all clean depend test check shared install uninstall: _always
