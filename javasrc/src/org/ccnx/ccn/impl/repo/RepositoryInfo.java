@@ -37,11 +37,12 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	
 	private static BinaryXMLDictionary _dictionary;
 	
-	private static final String REPO_VERSION_ELEMENT = "RepositoryVersion";
-	private static final String REPO_INFO_VERSION_ELEMENT = "RepositoryInfoVersion";
-	private static final String REPO_INFO_TYPE_ELEMENT = "RepositoryInfoType";
-	private static final String LOCAL_NAME_ELEMENT = "RepositoryName";
-	private static final String GLOBAL_PREFIX_ELEMENT = "RepositoryPrefix";
+	private static final String REPOSITORY_INFO_ELEMENT = "RepositoryInfo";
+	private static final String REPOSITORY_INFO_TYPE_ELEMENT = "Type";
+	private static final String REPOSITORY_INFO_VERSION_ELEMENT = "Version";
+	private static final String REPOSITORY_VERSION_ELEMENT = "RepositoryVersion";
+	private static final String GLOBAL_PREFIX_ELEMENT = "GlobalPrefix";
+	private static final String LOCAL_NAME_ELEMENT = "LocalName";
 	
 	public enum RepoInfoType {
 		INFO ("INFO"),
@@ -118,7 +119,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		return _type;
 	}
 	
-	public String getRepoVersion() {
+	public String getRepositoryVersion() {
 		return _repoVersion;
 	}
 	
@@ -128,13 +129,13 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.pushXMLDictionary(_dictionary);
-		if (!decoder.peekStartElement(REPO_INFO_TYPE_ELEMENT)) {
+		if (!decoder.peekStartElement(REPOSITORY_INFO_TYPE_ELEMENT)) {
 			_type = RepoInfoType.UNKNOWN;
 			return;
 		}
-		_type = RepoInfoType.valueFromString(new String(decoder.readBinaryElement(REPO_INFO_TYPE_ELEMENT)));
-		_version = new String(decoder.readBinaryElement(REPO_INFO_VERSION_ELEMENT));
-		_repoVersion = new String(decoder.readBinaryElement(REPO_VERSION_ELEMENT));
+		_type = RepoInfoType.valueFromString(new String(decoder.readBinaryElement(REPOSITORY_INFO_TYPE_ELEMENT)));
+		_version = new String(decoder.readBinaryElement(REPOSITORY_INFO_VERSION_ELEMENT));
+		_repoVersion = new String(decoder.readBinaryElement(REPOSITORY_VERSION_ELEMENT));
 		_globalPrefix = new String(decoder.readBinaryElement(GLOBAL_PREFIX_ELEMENT));
 		_localName = new String(decoder.readBinaryElement(LOCAL_NAME_ELEMENT));
 		decoder.popXMLDictionary();
@@ -147,9 +148,9 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		encoder.pushXMLDictionary(_dictionary);
-		encoder.writeElement(REPO_INFO_TYPE_ELEMENT, getType()._stringValue.getBytes());
-		encoder.writeElement(REPO_INFO_VERSION_ELEMENT, _version.getBytes());
-		encoder.writeElement(REPO_VERSION_ELEMENT, _repoVersion.getBytes());
+		encoder.writeElement(REPOSITORY_INFO_TYPE_ELEMENT, getType()._stringValue.getBytes());
+		encoder.writeElement(REPOSITORY_INFO_VERSION_ELEMENT, _version.getBytes());
+		encoder.writeElement(REPOSITORY_VERSION_ELEMENT, _repoVersion.getBytes());
 		encoder.writeElement(GLOBAL_PREFIX_ELEMENT, _globalPrefix.getBytes());
 		encoder.writeElement(LOCAL_NAME_ELEMENT, _localName.getBytes());
 		encoder.popXMLDictionary();
