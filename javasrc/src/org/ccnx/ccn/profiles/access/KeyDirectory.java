@@ -152,17 +152,61 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 	}
 	
-	public ReadWriteLock getKeyIDLock(){ return _keyIDLock;}
-	//Elaine: caller should lock
-	public TreeSet<byte []> getWrappingKeyIDs() { return _keyIDs; }
+	/*
+	 * Return a copy to avoid synchronization problems
+	 */
+	public TreeSet<byte []> getCopyOfWrappingKeyIDs() {
+		TreeSet<byte []> copy = new TreeSet<byte []>(byteArrayComparator);
+		try {
+			_keyIDLock.readLock().lock();
+			for (byte[] elt: _keyIDs) copy.add(elt);
+		} finally {
+			_keyIDLock.readLock().unlock();
+		}
+		return copy; 	
+	}
 	
-	public ReadWriteLock getPrincipalsLock(){ return _principalsLock;}
-	//Elaine: caller should lock
-	public HashMap<String, PrincipalInfo> getPrincipals() { return _principals; }
+	/*
+	 * Return a copy to avoid synchronization problems
+	 */
+	public HashMap<String, PrincipalInfo> getCopyOfPrincipals() {
+		HashMap<String, PrincipalInfo> copy = new HashMap<String, PrincipalInfo>();
+		try {
+			_principalsLock.readLock().lock();
+			for (String key: _principals.keySet()) {
+				PrincipalInfo value = _principals.get(key);
+				copy.put(key, value);
+			}
+		} finally {
+			_principalsLock.readLock().unlock();
+		}
+		return copy; 	
+	}
 	
-	public ReadWriteLock getOtherNamesLock(){ return _otherNamesLock;}
-	//Elaine: caller should lock
-	public TreeSet<byte []> otherNames() { return _otherNames; }
+	public PrincipalInfo getPrincipalInfo(String principal) {
+		PrincipalInfo pi = null;
+		try {
+			_principalsLock.readLock().lock();
+			pi = _principals.get(principal);
+		} finally {
+			_principalsLock.readLock().unlock();
+		}
+		return pi;
+	}
+	
+	/*
+	 * Return a copy to avoid synchronization problems
+	 */
+	public TreeSet<byte []> getCopyOfOtherNames() {
+		TreeSet<byte []> copy = new TreeSet<byte []>(byteArrayComparator);
+		try {
+			_otherNamesLock.readLock().lock();
+			for (byte[] elt: _otherNames) copy.add(elt);
+		} finally {
+			_otherNamesLock.readLock().unlock();
+		}
+		return copy;	
+	}
 	
 	protected void addPrincipal(byte [] wkChildName) {
 		PrincipalInfo pi = AccessControlProfile.parsePrincipalInfoFromNameComponent(wkChildName);
@@ -369,7 +413,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		
 		try{
 			_keyIDLock.readLock().lock();
-			for (byte [] keyid : getWrappingKeyIDs()) {
+			for (byte [] keyid : _keyIDs) {
 				if (_manager.keyCache().containsKey(keyid)) {
 					// We have it, pull the block, unwrap the node key.
 					wko = getWrappedKeyForKeyID(keyid);
@@ -424,7 +468,7 @@ public class KeyDirectory extends EnumeratedNameList {
 				if (_manager.groupManager().haveKnownGroupMemberships()) {
 					try{
 						_principalsLock.readLock().lock();
-						for (String principal : getPrincipals().keySet()) {
+						for (String principal : _principals.keySet()) {
 							if ((!_manager.groupManager().isGroup(principal)) || (!_manager.groupManager().amKnownGroupMember(principal))) {
 								// On this pass, only do groups that I think I'm a member of. Do them
 								// first as it is likely faster.
@@ -451,7 +495,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					// Slower, as we crawl the groups tree.
 					try{
 							_principalsLock.readLock().lock();
-							for (String principal : getPrincipals().keySet()) {
+							for (String principal : _principals.keySet()) {
 								if ((!_manager.groupManager().isGroup(principal)) || (_manager.groupManager().amKnownGroupMember(principal))) {
 									// On this pass, only do groups that I don't think I'm a member of
 									continue;
@@ -506,7 +550,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		} else {
 			try{
 				_principalsLock.readLock().lock();
-				Log.info("Unexpected: retrieved version " + getPrincipals().get(principal) + " of " + principal + " group key, but cannot retrieve wrapped key object.");
+				Log.info("Unexpected: retrieved version " + _principals.get(principal) + " of " + principal + " group key, but cannot retrieve wrapped key object.");
 			}finally{
 				_principalsLock.readLock().unlock();
 			}
