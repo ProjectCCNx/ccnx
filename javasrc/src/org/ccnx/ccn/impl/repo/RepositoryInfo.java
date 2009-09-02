@@ -1,18 +1,14 @@
 package org.ccnx.ccn.impl.repo;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.impl.encoding.BinaryXMLDictionary;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -66,17 +62,15 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	
 	protected static final HashMap<RepoInfoType, String> _InfoTypeNames = new HashMap<RepoInfoType, String>();
 	
-	public RepositoryInfo(String version, String globalPrefix, String localName) throws MalformedContentNameStringException {
+	public RepositoryInfo(String version, String globalPrefix, String localName) {
 		_localName = localName;
 		_repoVersion = version;
 		_globalPrefix = globalPrefix;
 		if (!_globalPrefix.startsWith("/"))
 			_globalPrefix = "/" + _globalPrefix;
-		_policyName = ContentName.fromNative(_globalPrefix + '/' + _localName 
-				+ '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY);
 	}
 	
-	public RepositoryInfo(String version, String globalPrefix, String localName, ArrayList<ContentName> names) throws MalformedContentNameStringException {
+	public RepositoryInfo(String version, String globalPrefix, String localName, ArrayList<ContentName> names) {
 		this(localName, globalPrefix, version);
 		for (ContentName name : names) {
 			_names.add(name.clone());
@@ -94,7 +88,11 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		return _globalPrefix;
 	}
 	
-	public ContentName getPolicyName() {
+	public synchronized ContentName getPolicyName() throws MalformedContentNameStringException {
+		if (null == _policyName) {
+			_policyName = ContentName.fromNative(_globalPrefix + '/' + _localName 
+					+ '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY);
+		}
 		return _policyName;
 	}
 	
@@ -156,6 +154,65 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	}
 
 	public boolean validate() {
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((_globalPrefix == null) ? 0 : _globalPrefix.hashCode());
+		result = prime * result
+				+ ((_localName == null) ? 0 : _localName.hashCode());
+		result = prime * result + ((_names == null) ? 0 : _names.hashCode());
+		result = prime * result
+				+ ((_policyName == null) ? 0 : _policyName.hashCode());
+		result = prime * result
+				+ ((_repoVersion == null) ? 0 : _repoVersion.hashCode());
+		result = prime * result + ((_type == null) ? 0 : _type.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		RepositoryInfo other = (RepositoryInfo) obj;
+		if (_globalPrefix == null) {
+			if (other._globalPrefix != null)
+				return false;
+		} else if (!_globalPrefix.equals(other._globalPrefix))
+			return false;
+		if (_localName == null) {
+			if (other._localName != null)
+				return false;
+		} else if (!_localName.equals(other._localName))
+			return false;
+		if (_names == null) {
+			if (other._names != null)
+				return false;
+		} else if (!_names.equals(other._names))
+			return false;
+		if (_policyName == null) {
+			if (other._policyName != null)
+				return false;
+		} else if (!_policyName.equals(other._policyName))
+			return false;
+		if (_repoVersion == null) {
+			if (other._repoVersion != null)
+				return false;
+		} else if (!_repoVersion.equals(other._repoVersion))
+			return false;
+		if (_type == null) {
+			if (other._type != null)
+				return false;
+		} else if (!_type.equals(other._type))
+			return false;
 		return true;
 	}
 }
