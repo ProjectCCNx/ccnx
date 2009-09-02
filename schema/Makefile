@@ -9,9 +9,6 @@ default all clean depend coverage check test shared testinstall install uninstal
 
 documentation: _always
 
-dictionary: tagname.csvdict
-	cp tagname.csvdict ../javasrc/src/org/ccnx/ccn/impl/encoding/
-
-_always: dictionary
+_always: 
 
 .PHONY: _always 
