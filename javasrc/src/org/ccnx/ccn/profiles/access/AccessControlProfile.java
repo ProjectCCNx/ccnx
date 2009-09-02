@@ -275,10 +275,32 @@ public class AccessControlProfile implements CCNProfile {
 		return component;
 	}
 
+	/*
+	 * Parses the principal name from a group public key.
+	 * For groups, the last component of the public key is GROUP_PUBLIC_KEY_NAME = "Key".
+	 * The principal name is the one-before-last component.
+	 */
+	public static String parsePrincipalNameFromGroupPublicKeyName(ContentName publicKeyName) {
+		ContentName cn = VersioningProfile.cutTerminalVersion(publicKeyName).first();
+		return ContentName.componentPrintNative(cn.component(cn.count() - 2));
+	}
+	
+	/*
+	 * Do not use this method for group public keys.
+	 * For groups, use instead parsePrincipalNameFromGroupPublicKeyName
+	 */
+	public static String parsePrincipalNameFromPublicKeyName(ContentName publicKeyName) {
+		return ContentName.componentPrintNative(VersioningProfile.cutTerminalVersion(publicKeyName).first().lastComponent());
+	}
+	
 	public static PrincipalInfo parsePrincipalInfoFromPublicKeyName(boolean isGroup, ContentName publicKeyName) throws VersionMissingException {
 		byte [] type = (isGroup ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
 		Timestamp version = VersioningProfile.getLastVersionAsTimestamp(publicKeyName);
-		String principal = ContentName.componentPrintNative(VersioningProfile.cutTerminalVersion(publicKeyName).first().lastComponent());
+		
+		String principal;
+		if (isGroup) principal = parsePrincipalNameFromGroupPublicKeyName(publicKeyName);
+		else principal = parsePrincipalNameFromPublicKeyName(publicKeyName);
+		
 		return new PrincipalInfo(type, principal, version);
 	}
 }

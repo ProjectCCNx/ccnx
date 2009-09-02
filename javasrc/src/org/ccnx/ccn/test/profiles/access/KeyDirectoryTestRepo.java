@@ -1,15 +1,6 @@
 package org.ccnx.ccn.test.profiles.access;
 
 
-import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
-import org.ccnx.ccn.impl.support.ByteArrayCompare;
-import org.ccnx.ccn.io.content.WrappedKey;
-import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
-import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.access.AccessControlManager;
-import org.ccnx.ccn.profiles.access.KeyDirectory;
-import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.BeforeClass;
@@ -19,27 +10,46 @@ import java.security.KeyPairGenerator;
 import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.PrivateKey;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.TreeSet;
 import java.util.Random;
+
 import javax.crypto.KeyGenerator;
 import java.lang.reflect.Method;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.support.ByteArrayCompare;
+import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.io.content.WrappedKey;
+import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
+import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.access.AccessControlManager;
+import org.ccnx.ccn.profiles.access.AccessControlProfile;
+import org.ccnx.ccn.profiles.access.KeyDirectory;
+import org.ccnx.ccn.profiles.access.Group;
+import org.ccnx.ccn.protocol.ContentName;
 
 
 public class KeyDirectoryTestRepo {
 	
 	static Random rand = new Random();
 	static KeyDirectory kd;
+	static final String directoryBase = "/test/parc";
 	static final String keyDirectoryBase = "/test/parc/directory-";
 	static ContentName keyDirectoryName;
 	static final String keyBase = "/test/parc/keys/";
 	static String principalName = "pgolle-";
 	static ContentName publicKeyName;
-	static KeyPair kp;
-	static byte[] wrappingPKID;
+	
+	static PrivateKey wrappedPrivateKey; 
 	static Key AESSecretKey;
+	static KeyPair wrappingKeyPair;
+	static byte[] wrappingPKID;
 	static AccessControlManager acm;
+	
+	static CCNHandle handle;
 		
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -54,9 +64,14 @@ public class KeyDirectoryTestRepo {
 	@Test
 	public void testKeyDirectoryCreation() throws Exception {
 		ContentName versionDirectoryName = VersioningProfile.addVersion(keyDirectoryName);
-		CCNHandle library = CCNHandle.open();
-		acm = new AccessControlManager(versionDirectoryName);
-		kd = new KeyDirectory(acm, versionDirectoryName, library);
+		handle = CCNHandle.open();
+		
+		ContentName cnDirectoryBase = ContentName.fromNative(directoryBase);
+		ContentName groupStore = AccessControlProfile.groupNamespaceName(cnDirectoryBase);
+		ContentName userStore = ContentName.fromNative(cnDirectoryBase, "Users");		
+
+		acm = new AccessControlManager(cnDirectoryBase, groupStore, userStore);
+		kd = new KeyDirectory(acm, versionDirectoryName, handle);
 		// verify that the keyDirectory is created
 		Assert.assertNotNull(kd);		
 	}
@@ -70,18 +85,42 @@ public class KeyDirectoryTestRepo {
 		// generate a private key to wrap
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 		kpg.initialize(1024);
-		kp = kpg.generateKeyPair();
-		PrivateKey privateKey = kp.getPrivate();
+		wrappingKeyPair = kpg.generateKeyPair();
+		wrappedPrivateKey = wrappingKeyPair.getPrivate();
 
 		// generate a AES wrapping key
 		KeyGenerator kg = KeyGenerator.getInstance("AES");
 		AESSecretKey = kg.generateKey();
 		
 		// add private key block
-		kd.addPrivateKeyBlock(privateKey, AESSecretKey);		
-//		kd.getNewData();	
-//		Assert.assertTrue(kd.hasPrivateKeyBlock());
+//		kd.addPrivateKeyBlock(wrappedPrivateKey, AESSecretKey);		
 	}
+	
+	@Test
+	public void testGetUnwrappedKeyGroupMember() throws Exception {
+		ContentName myIdentity = ContentName.fromNative("/test/parc/Users/pgolle");
+		acm.publishMyIdentity(myIdentity, null);		
+
+		// add myself to a newly created group				
+		String randomGroupName = "testGroup" + rand.nextInt(10000);
+		ArrayList<Link> newMembers = new ArrayList<Link>();
+		newMembers.add(new Link(myIdentity));
+		Group myGroup = acm.groupManager().createGroup(randomGroupName, newMembers);				
+		acm.groupManager().groupList().waitForData();
+		Assert.assertTrue(acm.groupManager().haveKnownGroupMemberships());
+		
+		// add to the KeyDirectory the secret key wrapped in the public key
+		PublicKey groupPublicKey = myGroup.publicKey();
+		ContentName groupPublicKeyName = myGroup.publicKeyName();
+		kd.addWrappedKeyBlock(AESSecretKey, groupPublicKeyName, groupPublicKey);
+		kd.getNewData();
+		
+		// retrieve the secret key
+		byte[] expectedKeyID = CCNDigestHelper.digest(AESSecretKey.getEncoded());
+		Key unwrappedSecretKey = kd.getUnwrappedKey(expectedKeyID);
+		Assert.assertEquals(AESSecretKey, unwrappedSecretKey);
+	}
+
 	
 	/*	
 	 * Wraps the AES key in an RSA wrapping key
@@ -92,8 +131,8 @@ public class KeyDirectoryTestRepo {
 		// generate a public key to wrap
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 		kpg.initialize(1024);
-		kp = kpg.generateKeyPair();
-		PublicKey publicKey = kp.getPublic();
+		wrappingKeyPair = kpg.generateKeyPair();
+		PublicKey publicKey = wrappingKeyPair.getPublic();
 		wrappingPKID = CCNDigestHelper.digest(publicKey.getEncoded());
 		publicKeyName = ContentName.fromNative(keyBase + principalName);
 		ContentName versionPublicKeyName = VersioningProfile.addVersion(publicKeyName);
@@ -107,8 +146,8 @@ public class KeyDirectoryTestRepo {
 	 */
 	@Test
 	public void addWrappingKeyToACM() throws Exception {
-		PrivateKey privKey = kp.getPrivate();
-		byte[] publicKeyIdentifier = CCNDigestHelper.digest(kp.getPublic().getEncoded());
+		PrivateKey privKey = wrappingKeyPair.getPrivate();
+		byte[] publicKeyIdentifier = CCNDigestHelper.digest(wrappingKeyPair.getPublic().getEncoded());
 		String methodName = "addMyPrivateKey";
 		Class<?>[] parameterTypes = new Class[2];
 		parameterTypes[0] = publicKeyIdentifier.getClass();
@@ -134,7 +173,7 @@ public class KeyDirectoryTestRepo {
 		CCNHandle library = CCNHandle.open();
 		// Use unversioned constructor so KeyDirectory returns the latest version
 		kd = new KeyDirectory(acm, keyDirectoryName, library);
-		kd.getNewData();		
+		kd.getNewData();
 
 		// check the ID of the wrapping key
 		try{
@@ -147,10 +186,14 @@ public class KeyDirectoryTestRepo {
 			kd.getKeyIDLock().readLock().unlock();
 		}
 
+		// check name
+		ContentName wkName = kd.getWrappedKeyNameForKeyID(wrappingPKID);
+		Assert.assertNotNull(wkName);
+		
 		// unwrap the key and check that the unwrapped secret key is correct
 		WrappedKeyObject wko = kd.getWrappedKeyForKeyID(wrappingPKID);
 		WrappedKey wk = wko.wrappedKey();
-		Key unwrappedSecretKey = wk.unwrapKey(kp.getPrivate());
+		Key unwrappedSecretKey = wk.unwrapKey(wrappingKeyPair.getPrivate());
 		Assert.assertEquals(AESSecretKey, unwrappedSecretKey);
 	}
 
@@ -160,11 +203,11 @@ public class KeyDirectoryTestRepo {
 	 * 
 	 */
 	@Test
-	public void testGetWrappedKeyForPrincipal() throws Exception {
+	public void testGetWrappedKeyForPrincipal() throws Exception {		
 		// unwrap the key and check that the unwrapped secret key is correct
 		WrappedKeyObject wko = kd.getWrappedKeyForPrincipal(principalName);
 		WrappedKey wk = wko.wrappedKey();
-		Key unwrappedSecretKey = wk.unwrapKey(kp.getPrivate());
+		Key unwrappedSecretKey = wk.unwrapKey(wrappingKeyPair.getPrivate());
 		Assert.assertEquals(AESSecretKey, unwrappedSecretKey);
 	}
 	
@@ -180,15 +223,60 @@ public class KeyDirectoryTestRepo {
 		Assert.assertEquals(AESSecretKey, unwrappedSecretKey);		
 	}
 
-	
+	/*
+	 * Retrieve the private key from KD and check the result
+	 */
 	@Test
 	public void testGetPrivateKey() throws Exception {
-		PrivateKey kdPrivKey = kd.getPrivateKey();
-		
+		Assert.assertTrue(kd.hasPrivateKeyBlock());
+		PrivateKey privKey = kd.getPrivateKey();
+		Assert.assertEquals(wrappedPrivateKey, privKey);
 	}
 	
-	public void testAddSupersededByBlock() throws Exception {
-		
+	/*
+	 * Create an "old" key directory, which is superseded by the kd created above
+	 * Check that the unwrappedKey for the old superseded KD can be obtained.
+	 */
+	@Test
+	public void testGetUnwrappedKeySuperseded() throws Exception {
+		// create a superseded key directory
+		ContentName supersededKeyDirectoryName = ContentName.fromNative(keyDirectoryBase + rand.nextInt(10000) + "/superseded");
+		ContentName versionSupersededKeyDirectoryName = VersioningProfile.addVersion(supersededKeyDirectoryName);
+		CCNHandle library = CCNHandle.open();
+		KeyDirectory skd = new KeyDirectory(acm, versionSupersededKeyDirectoryName, library);
+		Assert.assertTrue(! skd.hasSupersededBlock());
+
+		// generate a AES wrapping key
+		KeyGenerator kg = KeyGenerator.getInstance("AES");
+		Key supersededAESSecretKey = kg.generateKey();
+		byte[] expectedKeyID = CCNDigestHelper.digest(supersededAESSecretKey.getEncoded());
+				
+		// add a superseded block
+		ContentName supersedingKeyName = keyDirectoryName;
+		skd.addSupersededByBlock(supersededAESSecretKey, supersedingKeyName, AESSecretKey);
+		skd.getNewData();
+		Assert.assertTrue(skd.hasSupersededBlock());
+		Assert.assertNotNull(skd.getSupersededBlockName());
+
+		// get unwrapped key for superseded KD
+		Key unwrappedSecretKey = skd.getUnwrappedKey(expectedKeyID);
+		Assert.assertEquals(supersededAESSecretKey, unwrappedSecretKey);
+	}
+
+	
+	/*
+	 * Add a previous key block
+	 */
+	public void testAddPreviousKeyBlock() throws Exception {
+		Assert.assertTrue(! kd.hasPreviousKeyBlock());
+		// generate a new AES wrapping key
+		KeyGenerator kg = KeyGenerator.getInstance("AES");
+		Key newAESSecretKey = kg.generateKey();
+
+		ContentName supersedingKeyName = ContentName.fromNative(keyDirectoryBase + "previous");
+		kd.addPreviousKeyBlock(AESSecretKey, supersedingKeyName, newAESSecretKey);
+		kd.getNewData();
+		Assert.assertTrue(kd.hasPreviousKeyBlock());
 	}
 	
 	
