@@ -61,6 +61,7 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 		Log.finest("Finished decoding wire packet.");
 	}
 
+	@Override
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": bad or missing values.");
@@ -71,6 +72,7 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 		}
 	}
 
+	@Override
 	public boolean validate() {
 		if (_contents.size() < 1) {
 			return false;
@@ -82,6 +84,11 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 			}
 		}
 		return true;
+	}
+	
+	@Override
+	public String getElementLabel() { // unused, we add nothing to encoding
+		return null;
 	}
 	
 	public void add(ContentObject data) {

@@ -274,7 +274,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 			boolean component;
 			boolean any = false;
 			while ((component = decoder.peekStartElement(ExcludeComponent.COMPONENT_ELEMENT)) || (any = decoder.peekStartElement(ExcludeAny.ANY)) ||
-						decoder.peekStartElement(BloomFilter.BLOOM)) {
+						decoder.peekStartElement(BloomFilter.BLOOM_ELEMENT)) {
 				Element ee = component?new ExcludeComponent(): any ? new ExcludeAny() : new BloomFilter();
 				ee.decode(decoder);
 				_values.add(ee);
