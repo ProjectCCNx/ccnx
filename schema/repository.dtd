@@ -14,7 +14,8 @@
 
 <!ELEMENT RepositoryVersion	(#PCDATA)>	<!-- UTF-8 -->
 
-<!ELEMENT GlobalPrefix	(#PCDATA)>	<!-- UTF-8 -->
+<!ELEMENT GlobalPrefix		(Component*)>
+<!ATTLIST GlobalPrefix		%commonattrs;>
 
 <!ELEMENT LocalName	(#PCDATA)>	<!-- UTF-8 -->
 
