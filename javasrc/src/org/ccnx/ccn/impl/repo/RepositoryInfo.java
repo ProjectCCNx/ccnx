@@ -9,6 +9,7 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -118,9 +119,8 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	
 	public synchronized ContentName getPolicyName() {
 		if (null == _policyName) {
-			_policyName = ContentName.fromNative(_globalPrefix, 
-											new String[]{_localName, Repository.REPO_DATA,
-														 Repository.REPO_POLICY});
+			_policyName = BasicPolicy.getPolicyName(_globalPrefix, _localName);
+			Log.info("REPO: Policy name for repository: {0}", _policyName);
 		}
 		return _policyName;
 	}
