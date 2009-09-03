@@ -9,3 +9,5 @@ junit*.properties
 repotest/
 lib/jsr173*.jar
 lib/bcprov-jdk15*.jar
+# copy of dictionary from schema directory, placed here by top-level make
+tagname.csvdict

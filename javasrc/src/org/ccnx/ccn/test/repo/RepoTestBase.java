@@ -49,7 +49,7 @@ public class RepoTestBase extends LibraryTestBase {
 			return;
 		}
 		if (!expected)
-			Assert.fail("Got a repo response on a bad namespace");
+			Assert.fail("Got a repo response on a bad namespace " + contentName);
 		Thread.sleep(1000);
 
 		CCNInputStream input = new CCNInputStream(baseName, getLibrary);

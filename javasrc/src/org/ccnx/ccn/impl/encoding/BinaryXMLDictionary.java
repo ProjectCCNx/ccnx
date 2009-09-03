@@ -42,6 +42,10 @@ public class BinaryXMLDictionary {
 		}
 	}
 	
+	public BinaryXMLDictionary(InputStream dictionaryStream) throws IOException {
+		loadDictionary(dictionaryStream);
+	}
+	
 	public long encodeTag(String tag) {
 		Long value = _encodingDictionary.get(tag);
 		if (null == value)
@@ -77,6 +81,13 @@ public class BinaryXMLDictionary {
 		if (null == in) {
 			throw new IOException("BinaryXMLDictionary: getResourceAsStream cannot open resource file: " + dictionaryFile + ".");
 		}
+		loadDictionary(in);
+	}
+	
+	protected void loadDictionary(InputStream in) throws IOException {
+		if (null == in) {
+			throw new IOException("BinaryXMLDictionary: loadDictionary - stream cannot be null.");
+		}
 		BufferedReader reader = 
 			new BufferedReader(new InputStreamReader(in));
 		
@@ -89,7 +100,7 @@ public class BinaryXMLDictionary {
 			// Format: <num>,<name>[,<modifier>]  where <modifier> is one of Deprecated or Obsolete
 			if (parts.length > 3) {
 				if (parts.length != 0) // if 0, just empty line
-					Log.info("Dictionary: " + dictionaryFile + ":  Cannot parse dictionary line: " + line);
+					Log.info("Cannot parse dictionary line: " + line);
 				continue;
 			} 
 			
@@ -102,6 +113,5 @@ public class BinaryXMLDictionary {
 			_encodingDictionary.put(tag, value);
 			_decodingDictionary.put(value, tag);
 		}
-		
 	}
 }

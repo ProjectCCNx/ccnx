@@ -40,6 +40,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	 */
 	public static abstract class Element extends GenericXMLEncodable implements XMLEncodable {
 	}
+	
 	public static abstract class Filler extends Element {
 		public abstract boolean match(byte [] component);
 	}
@@ -267,13 +268,13 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	}
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(EXCLUDE_ELEMENT);
+		decoder.readStartElement(getElementLabel());
 		
 		synchronized (_values) {
 			boolean component;
 			boolean any = false;
-			while ((component = decoder.peekStartElement(ExcludeComponent.COMPONENT)) || (any = decoder.peekStartElement(ExcludeAny.ANY)) ||
-						decoder.peekStartElement(BloomFilter.BLOOM)) {
+			while ((component = decoder.peekStartElement(ExcludeComponent.COMPONENT_ELEMENT)) || (any = decoder.peekStartElement(ExcludeAny.ANY)) ||
+						decoder.peekStartElement(BloomFilter.BLOOM_ELEMENT)) {
 				Element ee = component?new ExcludeComponent(): any ? new ExcludeAny() : new BloomFilter();
 				ee.decode(decoder);
 				_values.add(ee);
@@ -290,7 +291,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 		if (empty())
 			return;
 		
-		encoder.writeStartElement(EXCLUDE_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 
 		synchronized (_values) {
 			for (Element element : _values)
@@ -300,6 +301,10 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 		encoder.writeEndElement();
 	}
 
+	@Override
+	public String getElementLabel() { return EXCLUDE_ELEMENT; }
+
+	@Override
 	public boolean validate() {
 		// everything can be null
 		return true;

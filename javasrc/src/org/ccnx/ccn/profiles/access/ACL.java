@@ -31,7 +31,9 @@ public class ACL extends Collection {
 	public static final String LABEL_MANAGER = "rw+";
 	public static final String [] ROLE_LABELS = {LABEL_READER, LABEL_WRITER, LABEL_MANAGER};
 	
-	public static class ACLOperation extends Link{
+	public static class ACLOperation extends Link {
+		public static final String ACL_OPERATION_ELEMENT = "ACLOperation";
+		
 		public static final String LABEL_ADD_READER = "+r";
 		public static final String LABEL_ADD_WRITER = "+rw";
 		public static final String LABEL_ADD_MANAGER = "+rw+";
@@ -61,8 +63,11 @@ public class ACL extends Collection {
 		public static ACLOperation removeManagerOperation(Link linkRef){
 			return new ACLOperation(LABEL_DEL_MANAGER, linkRef);
 		}
+		
+		// In case anyone tries to serialize. NOT IN SCHEMA
+		@Override
+		public String getElementLabel() { return ACL_OPERATION_ELEMENT; }
 	}
-
 	
 	// maintain a set of index structures. want to match on unversioned link target name only,
 	// not label and potentially not signer if specified. Use a set class that can

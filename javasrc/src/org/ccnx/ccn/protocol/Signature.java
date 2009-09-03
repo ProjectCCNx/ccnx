@@ -63,7 +63,7 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 	
 	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(SIGNATURE_ELEMENT);
+		decoder.readStartElement(getElementLabel());
 
 		if (decoder.peekStartElement(DIGEST_ALGORITHM_ELEMENT)) {
 			_digestAlgorithm = decoder.readUTF8Element(DIGEST_ALGORITHM_ELEMENT); 
@@ -85,7 +85,7 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		
-		encoder.writeStartElement(SIGNATURE_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 		
 		if ((null != digestAlgorithm()) && (!digestAlgorithm().equals(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM))) {
 			encoder.writeElement(DIGEST_ALGORITHM_ELEMENT, OIDLookup.getDigestOID(digestAlgorithm()));
@@ -100,6 +100,9 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 
 		encoder.writeEndElement();   		
 	}
+
+	@Override
+	public String getElementLabel() { return SIGNATURE_ELEMENT; }
 
 	@Override
 	public boolean validate() {

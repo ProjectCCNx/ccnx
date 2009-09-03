@@ -137,8 +137,9 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 		return true;
 	}
 
+	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(KEY_LOCATOR_ELEMENT);
+		decoder.readStartElement(getElementLabel());
 
 		if (decoder.peekStartElement(PUBLISHER_KEY_ELEMENT)) {
 			try {
@@ -185,11 +186,12 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 		return baos.toByteArray();
 	}
 
+	@Override
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		encoder.writeStartElement(KEY_LOCATOR_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 		if (type() == KeyLocatorType.KEY) {
 			encoder.writeElement(PUBLISHER_KEY_ELEMENT, key().getEncoded());
 		} else if (type() == KeyLocatorType.CERTIFICATE) {
@@ -204,6 +206,9 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 		}
 		encoder.writeEndElement();   		
 	}
+	
+	@Override
+	public String getElementLabel() { return KEY_LOCATOR_ELEMENT; }
 	
 	public static String typeToName(KeyLocatorType type) {
 		return TypeNames.get(type);
@@ -238,6 +243,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 		return key;
 	}
 	
+	@Override
 	public boolean validate() {
 		return ((null != name() || (null != key()) || (null != certificate())));
 	}

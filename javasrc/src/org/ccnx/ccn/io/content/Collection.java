@@ -159,7 +159,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		_contents.clear();
 		
-		decoder.readStartElement(COLLECTION_ELEMENT);
+		decoder.readStartElement(getElementLabel());
 
 		Link link = null;
 		while (decoder.peekStartElement(Link.LINK_ELEMENT)) {
@@ -174,7 +174,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		encoder.writeStartElement(COLLECTION_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 		Iterator<Link> linkIt = contents().iterator();
 		while (linkIt.hasNext()) {
 			Link link = linkIt.next();
@@ -186,6 +186,9 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	public boolean validate() { 
 		return (null != contents());
 	}
+	
+	@Override
+	public String getElementLabel() { return COLLECTION_ELEMENT; }
 
 	@Override
 	public int hashCode() {

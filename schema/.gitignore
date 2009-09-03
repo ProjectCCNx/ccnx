@@ -14,4 +14,8 @@ validation/datatypes.dtd
 validation/security-schemabad01.xml
 validation/security.dtd
 validation/security.xsd
+validation/repository-bad01.xml
+validation/repository-schemabad01.xml
+validation/repository.dtd
+validation/repository.xsd
 validation/xml.xsd

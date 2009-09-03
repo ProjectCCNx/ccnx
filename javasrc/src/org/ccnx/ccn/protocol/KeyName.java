@@ -51,8 +51,9 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 	 * Thought about encoding and decoding as flat -- no wrapping
 	 * declaration. But then couldn't use these solo.
 	 */
+	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(KEY_NAME_ELEMENT);
+		decoder.readStartElement(getElementLabel());
 
 		_name = new ContentName();
 		_name.decode(decoder);
@@ -65,11 +66,12 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 		decoder.readEndElement();
 	}
 
+	@Override
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		encoder.writeStartElement(KEY_NAME_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 		
 		name().encode(encoder);
 		if (null != publisher())
@@ -78,6 +80,10 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 		encoder.writeEndElement();   		
 	}
 	
+	@Override
+	public String getElementLabel() { return KEY_NAME_ELEMENT; }
+
+	@Override
 	public boolean validate() {
 		// DKS -- do we do recursive validation?
 		// null signedInfo ok
