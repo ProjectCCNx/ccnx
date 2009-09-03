@@ -30,7 +30,7 @@ import java.util.Date;
 public class CCNTime extends Timestamp {
 
 	/**
-	 * @param time
+	 * @param time in msec
 	 */
 	public CCNTime(long time) {
 		super(time);
@@ -38,7 +38,8 @@ public class CCNTime extends Timestamp {
 	}
 
 	public CCNTime(Timestamp time) {
-		this(time.getTime());
+		super(time.getTime());
+	   	this.setNanos((int)(((time.getNanos() % 4096L) * 1000000000L) / 4096L));
 	}
 	
 	public CCNTime(Date time) {
@@ -54,16 +55,15 @@ public class CCNTime extends Timestamp {
 	
 	@Override
 	public void setTime(long time) {
-		// TODO Auto-generated method stub
-		super.setTime(time);
+		super.setTime((time / 1000) * 4096L);
 	}
 
 
 	@Override
-	public void setNanos(int n) {
-		// TODO Auto-generated method stub
-		super.setNanos(n);
+	public void setNanos(int nanos) {
+	   	super.setNanos((int)(((nanos % 4096L) * 1000000000L) / 4096L));
 	}
+	
 	/**
 	 * We handle all comparison functions by quantizing the thing
 	 * we are being compared to, then comparing. The only thing
@@ -112,7 +112,7 @@ public class CCNTime extends Timestamp {
 	 */
 	public static Timestamp roundTimestamp(Timestamp origTimestamp) {
 		Timestamp newTimestamp = (Timestamp)origTimestamp.clone();
-	   	newTimestamp.setNanos((int)(((newTimestamp.getNanos() % 4096L) * 1000000000L) / 4096L));
+	   	newTimestamp.setNanos((int)(((origTimestamp.getNanos() % 4096L) * 1000000000L) / 4096L));
 	   	return newTimestamp;
 	}
 
@@ -120,25 +120,25 @@ public class CCNTime extends Timestamp {
 	 * Compare timestamps taking into account the resolution lost in the conversion above.
 	 */
 	public static boolean timestampEquals(Timestamp t1, Timestamp t2) {
-		long timeVal1 = (t1.getTime() / 1000) * 4096L + (t1.getNanos() * 4096L + 500000000L) / 1000000000L;
-		long timeVal2 = (t2.getTime() / 1000) * 4096L + (t2.getNanos() * 4096L + 500000000L) / 1000000000L;
+		long timeVal1 = timestampToBinaryTime12AsLong(t1);
+		long timeVal2 = timestampToBinaryTime12AsLong(t2);
 		return (timeVal1 == timeVal2);
 	}
 
-	public static Timestamp binaryTime12ToTimestamp(long binaryTime12AsLong) {
+	public static CCNTime binaryTime12ToTimestamp(long binaryTime12AsLong) {
 		Timestamp ts = new Timestamp((binaryTime12AsLong / 4096L) * 1000L);
 		ts.setNanos((int)(((binaryTime12AsLong % 4096L) * 1000000000L) / 4096L));
 		return ts;
 	}
 
-	public static Timestamp binaryTime12ToTimestamp(byte [] binaryTime12) {
+	public static CCNTime binaryTime12ToTimestamp(byte [] binaryTime12) {
 		if ((null == binaryTime12) || (binaryTime12.length == 0)) {
 			throw new IllegalArgumentException("Invalid binary time!");
 		} else if (binaryTime12.length > 6) {
 			throw new IllegalArgumentException("Time unacceptably far in the future, can't decode: " + DataUtils.printHexBytes(binaryTime12));
 		}
 		long time = new BigInteger(binaryTime12).longValue();
-		Timestamp ts = CCNTime.binaryTime12ToTimestamp(time);
+		CCNTime ts = binaryTime12ToTimestamp(time);
 		return ts;
 	}
 
