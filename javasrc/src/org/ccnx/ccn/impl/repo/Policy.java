@@ -37,5 +37,9 @@ public interface Policy {
 	
 	public void setLocalName(String localName) throws MalformedContentNameStringException;
 	
+	public String getLocalName();
+	
 	public void setGlobalPrefix(String globalName) throws MalformedContentNameStringException;
+	
+	public ContentName getGlobalPrefix();
 }
