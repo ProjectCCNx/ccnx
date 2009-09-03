@@ -10,8 +10,6 @@ import org.ccnx.ccn.protocol.Interest;
 
 
 /**
- * DKS TODO this should change to reflect only the core CCN network
- * operations.
  * @author smetters, rasmussen
  *
  */
@@ -56,21 +54,6 @@ public class CCNBase {
 			try {
 				Log.finest("Putting content on wire: " + co.name());
 				return getNetworkManager().put(co);
-				
-					// DKS -- total hack, but we're dropping stuff on the floor all over
-					// the place. We need an ack on the channel for localhost, according to
-					// Michael.
-					//if (CONFIRM_PUTS) {
-					//	Interest readBackInterest = new Interest(co.name(), 0, co.signedInfo().publisherKeyID());
-					//	Interest readBackInterest = new Interest(co.name());
-					//	ContentObject readBack = get(readBackInterest, CONFIRMATION_TIMEOUT);
-					//	while (null == readBack) {
-					//		Library.info("Put failed, resubmitting " + co.name() + ".");
-					//		getNetworkManager().put(co);
-					//		readBack = get(readBackInterest, CONFIRMATION_TIMEOUT);
-					//	}
-					//	Library.finer("Confirmed put, retrieived " + readBack.name());
-					//}
 			} catch (InterruptedException e) {
 				interrupted = true;
 			}
