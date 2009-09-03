@@ -616,14 +616,10 @@ main(int argc, char **argv)
     ON_ERROR_EXIT(res);
 
     ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
-    if (configfile) {
-        for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
-            pfl->fi->ccnd_id = ccndid;
-            pfl->fi->ccnd_id_size = ccndid_size;
-            res = register_prefix(h, keystore, pfl->prefix, pfl->fi, pfl->flags);
-        }
-    } else {
-        res = register_prefix(h, keystore, name_prefix, face_instance, flags);
+    for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
+        pfl->fi->ccnd_id = ccndid;
+        pfl->fi->ccnd_id_size = ccndid_size;
+        res = register_prefix(h, keystore, pfl->prefix, pfl->fi, pfl->flags);
     }
     /* We're about to exit, so don't bother to free everything. */
     ccn_destroy(&h);
