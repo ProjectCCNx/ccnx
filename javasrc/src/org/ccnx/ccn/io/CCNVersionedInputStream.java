@@ -107,7 +107,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	 * Version of isFirstSegment that expects names to be versioned, and allows that desiredName
 	 * won't know what version it wants but will want some version.
 	 */
-	public static boolean isFirstSegment(ContentName desiredName, ContentObject potentialFirstSegment, Long startingSegmentNumber) {
+	public static boolean isVersionedFirstSegment(ContentName desiredName, ContentObject potentialFirstSegment, Long startingSegmentNumber) {
 		if ((null != potentialFirstSegment) && (SegmentationProfile.isSegment(potentialFirstSegment.name()))) {
 			Log.info("is " + potentialFirstSegment.name() + " a first segment of " + desiredName);
 			// In theory, the segment should be at most a versioning component different from desiredName.
@@ -139,7 +139,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	}
 	
 	protected boolean isFirstSegment(ContentName desiredName, ContentObject potentialFirstSegment) {
-		return isFirstSegment(desiredName, potentialFirstSegment, _startingSegmentNumber);
+		return isVersionedFirstSegment(desiredName, potentialFirstSegment, _startingSegmentNumber);
 	}
 	
 	public Timestamp getVersionAsTimestamp() throws VersionMissingException {

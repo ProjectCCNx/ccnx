@@ -546,7 +546,7 @@ public class VersioningProfile implements CCNProfile {
 			Log.info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			
 			// Now we know the version. Did we luck out and get first block?
-			if (CCNVersionedInputStream.isFirstSegment(prefix, result, startingSegmentNumber)) {
+			if (CCNVersionedInputStream.isVersionedFirstSegment(prefix, result, startingSegmentNumber)) {
 				Log.info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
 				// Now need to verify the block we got
 				if (!verifier.verify(result)) {
