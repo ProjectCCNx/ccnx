@@ -9,6 +9,7 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -41,7 +42,7 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
        	if (null != timestamp) {
     	   	// Lower resolution of time to only what we can represent on the wire;
         	// this allows decode(encode(timestamp)) == timestamp
-        	this._timestamp = DataUtils.roundTimestamp(timestamp);
+        	this._timestamp = CCNTime.roundTimestamp(timestamp);
     	}
      	this._type = type;
     	this._contentDigest = contentDigest;
@@ -123,7 +124,7 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
       	if (null != timestamp) {
     	   	// Lower resolution of time to only what we can represent on the wire;
         	// this allows decode(encode(timestamp)) == timestamp
-        	this._timestamp = DataUtils.roundTimestamp(timestamp);
+        	this._timestamp = CCNTime.roundTimestamp(timestamp);
     	}
 	}
 	

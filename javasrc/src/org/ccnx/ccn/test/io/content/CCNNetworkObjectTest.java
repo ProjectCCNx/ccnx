@@ -12,7 +12,7 @@ import javax.xml.stream.XMLStreamException;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
-import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.content.CCNNetworkObject;
@@ -196,7 +196,7 @@ public class CCNNetworkObjectTest {
 		try {
 			setupNamespace(testName);
 
-			Timestamp desiredVersion = DataUtils.roundTimestamp(SignedInfo.now());
+			Timestamp desiredVersion = CCNTime.roundTimestamp(SignedInfo.now());
 
 			CCNStringObject so = new CCNStringObject(testName, "First value", lput);
 			saveAndLog("SpecifiedVersion", so, desiredVersion, "Time: " + desiredVersion);

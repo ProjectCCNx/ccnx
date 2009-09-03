@@ -10,6 +10,7 @@ import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 
@@ -257,7 +258,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 	
 	public Timestamp readDateTime(String startTag) throws XMLStreamException {
 		byte [] byteTimestamp = readBinaryElement(startTag);
-		Timestamp timestamp = DataUtils.binaryTime12ToTimestamp(byteTimestamp);
+		Timestamp timestamp = CCNTime.binaryTime12ToTimestamp(byteTimestamp);
 		if (null == timestamp) {
 			throw new XMLStreamException("Cannot parse timestamp: " + DataUtils.printHexBytes(byteTimestamp));
 		}		

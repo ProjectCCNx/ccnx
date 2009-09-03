@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.sql.Timestamp;
 
 import org.bouncycastle.util.Arrays;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CCNProfile;
@@ -246,7 +247,7 @@ public class AccessControlProfile implements CCNProfile {
 		
 		String strPrincipal = ContentName.componentPrintNative(principal);
 		// Represent as version or just the timestamp part?
-		Timestamp version = DataUtils.binaryTime12ToTimestamp(timestamp);
+		Timestamp version = CCNTime.binaryTime12ToTimestamp(timestamp);
 		return new PrincipalInfo(type, strPrincipal, version);	
 	}
 
@@ -266,7 +267,7 @@ public class AccessControlProfile implements CCNProfile {
 													  String principalName,
 													  Timestamp timestamp) {
 		byte [] bytePrincipal = ContentName.componentParseNative(principalName);
-		byte [] byteTime = DataUtils.timestampToBinaryTime12(timestamp);
+		byte [] byteTime = CCNTime.timestampToBinaryTime12(timestamp);
 		byte [] prefix = (isGroup ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
 		byte [] component = new byte[prefix.length + bytePrincipal.length + COMPONENT_SEPARATOR.length + byteTime.length];
 		// java 1.6 has much better functions for array copying

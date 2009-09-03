@@ -11,7 +11,7 @@ import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.Log;
 
 
@@ -106,7 +106,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	 */
 	public void writeDateTime(String tag, Timestamp dateTime) throws XMLStreamException {
 		writeElement(tag, 
-				DataUtils.timestampToBinaryTime12(dateTime));
+				CCNTime.timestampToBinaryTime12(dateTime));
 	}
 
 	public void writeStartElement(String tag) throws XMLStreamException {

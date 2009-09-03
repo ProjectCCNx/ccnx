@@ -8,7 +8,7 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
-import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.protocol.ContentName;
@@ -85,7 +85,7 @@ public class VersioningProfile implements CCNProfile {
 	public static ContentName addVersion(ContentName name, Timestamp version) {
 		if (null == version)
 			throw new IllegalArgumentException("Version cannot be null!"); 
-		return addVersion(name, DataUtils.timestampToBinaryTime12AsLong(version));
+		return addVersion(name, CCNTime.timestampToBinaryTime12AsLong(version));
 	}
 	
 	/**
@@ -227,7 +227,7 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static Timestamp getLastVersionAsTimestamp(ContentName name) throws VersionMissingException {
 		long time = getLastVersionAsLong(name);
-		return DataUtils.binaryTime12ToTimestamp(time);
+		return CCNTime.binaryTime12ToTimestamp(time);
 	}
 	
 	/**
@@ -252,7 +252,7 @@ public class VersioningProfile implements CCNProfile {
 	}
 	
 	public static Timestamp versionLongToTimestamp(long version) {
-		return DataUtils.binaryTime12ToTimestamp(version);
+		return CCNTime.binaryTime12ToTimestamp(version);
 	}
 	/**
 	 * Control whether versions start at 0 or 1.

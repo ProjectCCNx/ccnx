@@ -15,6 +15,7 @@ import javax.xml.stream.XMLStreamException;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
@@ -244,7 +245,7 @@ public class GroupManager {
 		}
 		if (null == privateKeyDirectory) {
 			Log.info("Unexpected: null private key directory for group " + groupFriendlyName + " version " + privateKeyVersion + " as stamp " + 
-					DataUtils.printHexBytes(DataUtils.timestampToBinaryTime12(privateKeyVersion)));
+					DataUtils.printHexBytes(CCNTime.timestampToBinaryTime12(privateKeyVersion)));
 			return null;
 		}
 		

@@ -11,6 +11,7 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 
@@ -110,7 +111,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     	}
 	   	// Lower resolution of time to only what we can represent on the wire;
     	// this allows decode(encode(timestamp)) == timestamp
-    	this._timestamp = DataUtils.roundTimestamp(this._timestamp);
+    	this._timestamp = CCNTime.roundTimestamp(this._timestamp);
     	
     	this._type = (null == type) ? ContentType.DATA : type;
     	this._locator = locator;

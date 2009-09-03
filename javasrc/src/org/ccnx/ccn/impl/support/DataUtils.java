@@ -5,7 +5,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import org.bouncycastle.util.encoders.Base64;
@@ -176,58 +175,6 @@ public class DataUtils {
 		return true;
 	}
 	
-	/**
-	 * Converts a timestamp into a fixed point representation, with 12 bits in the fractional
-	 * component, and adds this to the ContentName as a version field. The timestamp is rounded
-	 * to the nearest value in the fixed point representation.
-	 * <p>
-	 * This allows versions to be recorded as a timestamp with a 1/4096 second accuracy.
-	 */
-	public static byte [] timestampToBinaryTime12(Timestamp timestamp) {
-		long timeVal = timestampToBinaryTime12AsLong(timestamp);
-		return BigInteger.valueOf(timeVal).toByteArray();
-	}
-	
-	public static long timestampToBinaryTime12AsLong(Timestamp timestamp) {
-		long timeVal = (timestamp.getTime() / 1000) * 4096L + (timestamp.getNanos() * 4096L + 500000000L) / 1000000000L;
-		return timeVal;
-	}
-	
-	public static Timestamp binaryTime12ToTimestamp(byte [] binaryTime12) {
-		if ((null == binaryTime12) || (binaryTime12.length == 0)) {
-			throw new IllegalArgumentException("Invalid binary time!");
-		} else if (binaryTime12.length > 6) {
-			throw new IllegalArgumentException("Time unacceptably far in the future, can't decode: " + printHexBytes(binaryTime12));
-		}
-		long time = new BigInteger(binaryTime12).longValue();
-		Timestamp ts = binaryTime12ToTimestamp(time);
-		return ts;
-	}
-	
-	public static Timestamp binaryTime12ToTimestamp(long binaryTime12AsLong) {
-		Timestamp ts = new Timestamp((binaryTime12AsLong / 4096L) * 1000L);
-		ts.setNanos((int)(((binaryTime12AsLong % 4096L) * 1000000000L) / 4096L));
-		return ts;
-	}
-	
-	/**
-	 * Compare timestamps taking into account the resolution lost in the conversion above.
-	 */
-	public static boolean timestampEquals(Timestamp t1, Timestamp t2) {
-		long timeVal1 = (t1.getTime() / 1000) * 4096L + (t1.getNanos() * 4096L + 500000000L) / 1000000000L;
-		long timeVal2 = (t2.getTime() / 1000) * 4096L + (t2.getNanos() * 4096L + 500000000L) / 1000000000L;
-		return (timeVal1 == timeVal2);
-	}
-	
-	/**
-	 * Rounding function for timestamps.
-	 */
-	public static Timestamp roundTimestamp(Timestamp origTimestamp) {
-		Timestamp newTimestamp = (Timestamp)origTimestamp.clone();
-	   	newTimestamp.setNanos((int)(((newTimestamp.getNanos() % 4096L) * 1000000000L) / 4096L));
-	   	return newTimestamp;
-	}
-
 	public static boolean isBinaryPrefix(byte [] prefix,
 										 byte [] data) {
 		if ((null == prefix) || (prefix.length == 0))
