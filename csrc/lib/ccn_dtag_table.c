@@ -1,6 +1,12 @@
+/**
+ * @file ccn_dtag_table.c
+ */
 #include <ccn/coding.h>
 
 #define ARRAY_N(arr) (sizeof(arr)/sizeof(arr[0]))
+/**
+ * See the gen_dtag_table script for help updating these.
+ */
 static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_Any, "Any"},
     {CCN_DTAG_Name, "Name"},
@@ -23,8 +29,6 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_Link, "Link"},
     {CCN_DTAG_LinkAuthenticator, "LinkAuthenticator"},
     {CCN_DTAG_NameComponentCount, "NameComponentCount"},
-    {CCN_DTAG_PublisherID, "PublisherID"},
-    {CCN_DTAG_PublisherKeyID, "PublisherKeyID"},
     {CCN_DTAG_RootDigest, "RootDigest"},
     {CCN_DTAG_Signature, "Signature"},
     {CCN_DTAG_Start, "Start"},
@@ -37,11 +41,6 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_BloomSeed, "BloomSeed"},
     {CCN_DTAG_OrderPreference, "OrderPreference"},
     {CCN_DTAG_AnswerOriginKind, "AnswerOriginKind"},
-    {CCN_DTAG_MatchFirstAvailableDescendant, "MatchFirstAvailableDescendant"},
-    {CCN_DTAG_MatchLastAvailableDescendant, "MatchLastAvailableDescendant"},
-    {CCN_DTAG_MatchNextAvailableSibling, "MatchNextAvailableSibling"},
-    {CCN_DTAG_MatchLastAvailableSibling, "MatchLastAvailableSibling"},
-    {CCN_DTAG_MatchEntirePrefix, "MatchEntirePrefix"},
     {CCN_DTAG_Witness, "Witness"},
     {CCN_DTAG_SignatureBits, "SignatureBits"},
     {CCN_DTAG_DigestAlgorithm, "DigestAlgorithm"},
@@ -75,6 +74,11 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_MinSuffixComponents, "MinSuffixComponents"},
     {CCN_DTAG_MaxSuffixComponents, "MaxSuffixComponents"},
     {CCN_DTAG_ChildSelector, "ChildSelector"},
+    {CCN_DTAG_RepositoryInfo, "RepositoryInfo"},
+    {CCN_DTAG_Version, "Version"},
+    {CCN_DTAG_RepositoryVersion, "RepositoryVersion"},
+    {CCN_DTAG_GlobalPrefix, "GlobalPrefix"},
+    {CCN_DTAG_LocalName, "LocalName"},
     {CCN_DTAG_Address, "Address"},
     {CCN_DTAG_SOType, "SOType"},
     {CCN_DTAG_Inject, "Inject"},

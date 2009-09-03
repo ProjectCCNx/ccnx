@@ -324,27 +324,6 @@ ccn_parse_PublisherID(struct ccn_buf_decoder *d, struct ccn_parsed_interest *pi)
         ccn_buf_check_close(d);
         pubend = d->decoder.token_index;
     }
-    if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherID)) { // XXX - downrev compat
-        res = d->decoder.element_index;
-        ccn_buf_advance(d);
-        if (!ccn_buf_match_attr(d, "type"))
-            return (d->decoder.state = -__LINE__);
-        ccn_buf_advance(d);
-        iskey = ccn_buf_match_udata(d, "KEY");
-        if (!(iskey                                      ||
-              ccn_buf_match_udata(d, "CERTIFICATE")      ||
-              ccn_buf_match_udata(d, "ISSUER_KEY")       ||
-              ccn_buf_match_udata(d, "ISSUER_CERTIFICATE")))
-            return (d->decoder.state = -__LINE__);
-        ccn_buf_advance(d);
-        keystart = d->decoder.token_index;
-        if (!ccn_buf_match_some_blob(d))
-            return (d->decoder.state = -__LINE__);
-        ccn_buf_advance(d);
-        keyend = d->decoder.token_index;
-        ccn_buf_check_close(d);
-        pubend = d->decoder.token_index;        // XXX - end downrev compat
-    }
     if (d->decoder.state < 0)
         return (d->decoder.state);
     if (pi != NULL) {
@@ -739,10 +718,7 @@ ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject 
     if (ccn_buf_match_dtag(d, CCN_DTAG_SignedInfo)) {
         ccn_buf_advance(d);
         x->offset[CCN_PCO_B_PublisherPublicKeyDigest] = d->decoder.token_index;
-        if (x->magic < 20090415 && ccn_buf_match_dtag(d, CCN_DTAG_PublisherKeyID))
-            ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherKeyID, 16, 64); // XXX - compatibility
-        else
-            ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherPublicKeyDigest, 16, 64);
+        ccn_parse_required_tagged_BLOB(d, CCN_DTAG_PublisherPublicKeyDigest, 16, 64);
         x->offset[CCN_PCO_E_PublisherPublicKeyDigest] = d->decoder.token_index;
         
         x->offset[CCN_PCO_B_Timestamp] = d->decoder.token_index;
@@ -751,10 +727,7 @@ ccn_parse_SignedInfo(struct ccn_buf_decoder *d, struct ccn_parsed_ContentObject 
         
         x->offset[CCN_PCO_B_Type] = d->decoder.token_index;
         x->type = CCN_CONTENT_DATA;
-        if (x->magic >= 20090415)
-            x->type = ccn_parse_optional_tagged_binary_number(d, CCN_DTAG_Type, 3, 3, CCN_CONTENT_DATA);
-        else
-            ccn_parse_required_tagged_UDATA(d, CCN_DTAG_Type); // XXX - compatibility
+        x->type = ccn_parse_optional_tagged_binary_number(d, CCN_DTAG_Type, 3, 3, CCN_CONTENT_DATA);
         x->offset[CCN_PCO_E_Type] = d->decoder.token_index;
         
         x->offset[CCN_PCO_B_FreshnessSeconds] = d->decoder.token_index;
@@ -818,9 +791,6 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
     int res;
     x->magic = 20090415;
     x->digest_bytes = 0;
-    res = ccn_buf_match_dtag(d, CCN_DTAG_ContentObjectV20080711); // XXX - downrev
-    if (res)
-        x->magic = 20080711;                                      // XXX - downrev
     if (res || ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
         ccn_buf_advance(d);
         res = ccn_parse_Signature(d, x);
@@ -875,8 +845,7 @@ ccn_buf_decoder_start_at_components(struct ccn_buf_decoder *d,
     ccn_buf_decoder_start(d, buf, buflen);
     while (ccn_buf_match_dtag(d, CCN_DTAG_Name) ||
            ccn_buf_match_dtag(d, CCN_DTAG_Interest) ||
-           ccn_buf_match_dtag(d, CCN_DTAG_ContentObject) ||
-           ccn_buf_match_dtag(d, CCN_DTAG_ContentObjectV20080711) /* XXX - downrev */
+           ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)
            ) {
         ccn_buf_advance(d);
         ccn_parse_Signature(d, NULL);

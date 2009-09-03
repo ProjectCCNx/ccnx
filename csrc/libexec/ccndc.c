@@ -10,6 +10,7 @@
 #include <strings.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <errno.h>
@@ -90,7 +91,7 @@ on_error_exit(int res, int lineno)
 }
 
 void
-initialize_global_data() {
+initialize_global_data(void) {
     /* Set up an Interest template to indicate scope 1 (Local) */
     local_scope_template = ccn_charbuf_create();
     if (local_scope_template == NULL) {
@@ -157,7 +158,7 @@ get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_size)
     return (ccndid_result_size);
 }
 
-static struct prefix_face_list_item *prefix_face_list_item_create()
+static struct prefix_face_list_item *prefix_face_list_item_create(void)
 {
     struct prefix_face_list_item *pfl = calloc(1, sizeof(struct prefix_face_list_item));
     struct ccn_face_instance *fi = calloc(1, sizeof(*fi));
