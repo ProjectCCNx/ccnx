@@ -39,6 +39,12 @@ security-bad01.xml fails to validate
 ./shouldfail xmllint --noout --schema security.xsd security-schemabad01.xml
 security-schemabad01.xml:8: element EncryptedKey: Schemas validity error : Element 'EncryptedKey': 'bad!' is not a valid value of the atomic type 'xs:base64Binary'.
 security-schemabad01.xml fails to validate
+./shouldfail xmllint --noout --schema repository.xsd repository-schemabad01.xml
+repository-schemabad01.xml:4: element Type: Schemas validity error : Element 'Type': 'bad!' is not a valid value of the atomic type 'RepositoryInfoDataTypeType'.
+repository-schemabad01.xml fails to validate
+./shouldfail xmllint --noout --schema repository.xsd security-bad01.xml
+security-bad01.xml:2: element WrappedKey: Schemas validity error : Element 'WrappedKey': No matching global declaration available for the validation root.
+security-bad01.xml fails to validate
 ./shouldfail xmllint --noout --dtdvalid ccn.dtd ccn-bad01.xml
 ccn-bad01.xml:1: parser error : Start tag expected, '<' not found
 This is not XML.
@@ -72,5 +78,16 @@ security-dtdbad00.xml:1: parser error : Document is empty
 
 ^
 security-dtdbad00.xml:1: parser error : Start tag expected, '<' not found
+
+^
+./shouldfail xmllint --noout --dtdvalid repository.dtd repository-bad01.xml
+repository-bad01.xml:2: element RepositoryInfo: validity error : Element RepositoryInfo content does not follow the DTD, expecting (Version , Type , RepositoryVersion , GlobalPrefix , LocalName , Name*), got (Version Type RepositoryVersion GlobalProofix LocalName )
+repository-bad01.xml:6: element GlobalProofix: validity error : No declaration for element GlobalProofix
+Document repository-bad01.xml does not validate against repository.dtd
+./shouldfail xmllint --noout --dtdvalid repository.dtd repository-dtdbad00.xml
+repository-dtdbad00.xml:1: parser error : Document is empty
+
+^
+repository-dtdbad00.xml:1: parser error : Start tag expected, '<' not found
 
 ^

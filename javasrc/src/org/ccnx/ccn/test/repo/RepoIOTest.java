@@ -6,11 +6,11 @@ import java.io.InputStreamReader;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.impl.repo.Repository;
+import org.ccnx.ccn.impl.repo.BasicPolicy;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
-import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.io.RepositoryOutputStream;
+import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
@@ -104,11 +104,9 @@ public class RepoIOTest extends RepoTestBase {
 		byte [] content = new byte[fis.available()];
 		fis.read(content);
 		fis.close();
-		ContentName basePolicy = ContentName.fromNative(_globalPrefix + '/' + 
-				_repoName + '/' + Repository.REPO_DATA + '/' + Repository.REPO_POLICY);
+		ContentName basePolicy = BasicPolicy.getPolicyName(ContentName.fromNative(_globalPrefix), _repoName);
 		ContentName policyName = new ContentName(basePolicy, Interest.generateNonce());
-		RepositoryFileOutputStream rfos = new RepositoryFileOutputStream(policyName,
-				putLibrary.getDefaultPublisher(), putLibrary);
+		RepositoryVersionedOutputStream rfos = new RepositoryVersionedOutputStream(policyName, putLibrary);
 		rfos.write(content, 0, content.length);
 		rfos.close();
 		Thread.sleep(4000);

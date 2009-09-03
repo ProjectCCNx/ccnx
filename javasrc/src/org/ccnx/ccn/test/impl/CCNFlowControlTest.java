@@ -9,6 +9,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -30,7 +31,7 @@ import org.junit.Test;
 
 public class CCNFlowControlTest {
 	static private CCNLibraryTestHarness _library ;
-	
+	static private CCNReader _reader;
 	static ContentName name1;
 	static ContentName v1;
 	static ContentName v2;	
@@ -38,6 +39,7 @@ public class CCNFlowControlTest {
 	static {
 		try {
 			_library = new CCNLibraryTestHarness();
+			_reader = new CCNReader(_library);
 			
 			name1 = ContentName.fromNative("/foo/bar");
 			v1 = VersioningProfile.addVersion(name1);
@@ -278,12 +280,12 @@ public class CCNFlowControlTest {
 	}
 	
 	private ContentObject testNext(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {
-		co = _library.getNext(co.name(), 3, 0);
+		co = _reader.getNext(co.name(), 3, 0);
 		return testExpected(co, expected);
 	}
 	
 	private void testLast(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {
-		co = _library.getLatest(co.name(), 3, 0);
+		co = _reader.getLatest(co.name(), 3, 0);
 		testExpected(co, expected);
 	}
 	

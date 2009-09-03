@@ -5,6 +5,7 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -23,13 +24,13 @@ public class list {
 		}
 		
 		try {
-			CCNHandle library = CCNHandle.open();
+			CCNReader reader = new CCNReader(null);
 			// List contents under all names given
 			
 			for (int i=0; i < args.length; ++i) {
 				Interest interest = new Interest(args[i]);
 			
-				ArrayList<ContentObject> names = library.enumerate(interest, CCNHandle.NO_TIMEOUT);
+				ArrayList<ContentObject> names = reader.enumerate(interest, CCNHandle.NO_TIMEOUT);
 				
 				System.out.println("Retrieved " + names.size() + " names matching: " + interest.name());
 				

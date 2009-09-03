@@ -382,28 +382,16 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 	
 	public static ContentName fromNative(ContentName parent, String name1, String name2) {
-		ContentName result = new ContentName(parent.count(), parent.components());
-		if (null != name1) {
-			byte[] decodedName = componentParseNative(name1);
-			if (null != decodedName) {
-				result._components.add(decodedName);
-			}
-		}
-		if (null != name2) {
-			byte[] decodedName = componentParseNative(name2);
-			if (null != decodedName) {
-				result._components.add(decodedName);
-			}
-		}
-		return result;
+		return fromNative(parent, new String[]{name1, name2});
+	}
+	
+	public static ContentName fromNative(String [] parts) {
+		return fromNative(new ContentName(), parts);
 	}
 
-	public static ContentName fromNative(String parts[]) {
-		ContentName result = new ContentName();
-		if ((parts == null) || (parts.length == 0)) {
-			result._components = null;
-		} else {
-			result._components = new ArrayList<byte []>(parts.length);
+	public static ContentName fromNative(ContentName parent, String [] parts) {
+		ContentName result = new ContentName(parent.count(), parent._components);
+		if ((null != parts) && (parts.length > 0)) {
 			for (int i=0; i < parts.length; ++i) {
 				byte[] component = componentParseNative(parts[i]);
 				if (null != component) {
@@ -773,16 +761,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return componentPrintURI(_components.get(i));
 	}
 	
-	/**
-	 * Allow override to give different element name.
-	 * @return
-	 */
-	public String contentNameElement() { 
-		return CONTENT_NAME_ELEMENT;
-	}
-	
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(contentNameElement());
+		decoder.readStartElement(getElementLabel());
 		
 		_components = new ArrayList<byte []>();
 		
@@ -996,7 +976,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 
-		encoder.writeStartElement(contentNameElement());
+		encoder.writeStartElement(getElementLabel());
 		
 		for (int i=0; i < count(); ++i) {
 			encoder.writeElement(COMPONENT_ELEMENT, _components.get(i));
@@ -1004,10 +984,16 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		encoder.writeEndElement();
 	}
 	
+	@Override
 	public boolean validate() { 
 		return (null != _components);
 	}
 	
+	@Override
+	public String getElementLabel() { 
+		return CONTENT_NAME_ELEMENT;
+	}
+
 	public ContentName copy(int nameComponentCount) {
 		return new ContentName(nameComponentCount, this.components());
 	}

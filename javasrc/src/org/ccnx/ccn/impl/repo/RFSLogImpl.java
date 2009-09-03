@@ -77,14 +77,17 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 	
 	public boolean checkPolicyUpdate(ContentObject co)
 			throws RepositoryException {
+		Log.info("Got potential policy update: {0}, expected prefix {1}.", co.name(), _info.getPolicyName());
 		if (_info.getPolicyName().isPrefixOf(co.name())) {
 			ByteArrayInputStream bais = new ByteArrayInputStream(co.content());
 			try {
 				if (_policy.update(bais, true)) {
 					ContentName policyName = VersioningProfile.addVersion(
 							ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY));
+					Log.info("REPO: got policy update, global name {0} local name {1}, saving to {2}", _policy.getGlobalPrefix(), _policy.getLocalName(), policyName);
 					ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
 	   				saveContent(policyCo);
+	   				Log.info("REPO: Saved policy to repository: {0}", policyCo.name());
 	   				return true;
 				}
 			} catch (Exception e) {
@@ -116,7 +119,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		try {
 			RepositoryInfo rri = _info;
 			if (names != null)
-				rri = new RepositoryInfo(_info.getLocalName(), _info.getGlobalPrefix(), CURRENT_VERSION, names);	
+				rri = new RepositoryInfo(CURRENT_VERSION, _info.getGlobalPrefix(), _info.getLocalName(), names);	
 			return rri.encode();
 		} catch (Exception e) {
 			Log.logStackTrace(Level.WARNING, e);
@@ -282,26 +285,23 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		localName = checkName != null ? checkName : localName;
 		try {
 			_policy.setLocalName(localName);
+
+			checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, library, globalFromArgs);
+			globalPrefix = checkName != null ? checkName : globalPrefix;
+
+			Log.info("REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
+			_info = new RepositoryInfo(CURRENT_VERSION, globalPrefix, localName);
+
 		} catch (MalformedContentNameStringException e3) {
 			throw new RepositoryException(e3.getMessage());
 		}
-		
-		checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, library, globalFromArgs);
-		globalPrefix = checkName != null ? checkName : globalPrefix;
-		
-		try {
-			_info = new RepositoryInfo(localName, globalPrefix, CURRENT_VERSION);
-		} catch (MalformedContentNameStringException e1) {
-			throw new RepositoryException(e1.getMessage());
-		}
-		
 		/*
 		 * Read policy file from disk if it exists and we didn't read it in as an argument.
 		 * Otherwise save the new policy to disk.
 		 */
 		if (!policyFromFile) {
 			try {
-				Log.info(REPO_NAMESPACE+"/" + _info.getLocalName() + "/" + REPO_POLICY);
+				Log.info("REPO: reading policy from network: " + REPO_NAMESPACE+"/" + _info.getLocalName() + "/" + REPO_POLICY);
 				ContentObject policyObject = getContent(
 						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY)));
 				if (policyObject != null) {
@@ -317,6 +317,7 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		
 		try {
 			_policy.setGlobalPrefix(globalPrefix);
+			Log.info("REPO: initializing policy location: {0} for global prefix {1} and local name {2}", _info.getPolicyName(), globalPrefix,  localName);
 		} catch (MalformedContentNameStringException e2) {
 			throw new RepositoryException(e2.getMessage());
 		}
@@ -336,8 +337,10 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 				}
 			}
 		}
-		if (!nameSpaceOK)
+		if (!nameSpaceOK) {
+			Log.info("Repo rejecting content: {0}, not in registered namespace.", content.name());
 			return null;
+		}
 		try {	
 			NameEnumerationResponse ner = new NameEnumerationResponse();
 			synchronized(_activeWriteFile) {

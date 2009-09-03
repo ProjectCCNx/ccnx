@@ -55,19 +55,20 @@ public class RepositoryDataListener implements CCNInterestListener {
 		
 		private DataHandler(ContentObject co) {
 			if (SystemConfiguration.getLogging("repo"))
-				Log.info("Saw data: " + co.name());
+				Log.info("Saw data: {0}", co.name());
 			_content = co;
 		}
 	
 		public void run() {
 			try {
-				if (SystemConfiguration.getLogging("repo"))
+				if (SystemConfiguration.getLogging("repo")) {
 					Log.finer("Saving content in: " + _content.name().toString());
+				}
+				
 				NameEnumerationResponse ner = _daemon.getRepository().saveContent(_content);		
 				if (_daemon.getRepository().checkPolicyUpdate(_content)) {
 					_daemon.resetNameSpaceFromHandler();
-				}
-				if(ner!=null && ner.hasNames()){
+				} if (ner!=null && ner.hasNames()) {
 					_daemon.sendEnumerationResponse(ner);
 				}
 			} catch (Exception e) {

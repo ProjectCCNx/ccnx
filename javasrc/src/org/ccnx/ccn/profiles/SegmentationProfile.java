@@ -7,6 +7,7 @@ import java.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -192,6 +193,11 @@ public class SegmentationProfile implements CCNProfile {
 		return new ContentName(name, MetadataProfile.METADATA_MARKER, HEADER_NAME);
 	}
 
+	/**
+	 * Just confirms that last name component is a segment, and that its segment number is baseSegment() (0).
+	 * @param name
+	 * @return
+	 */
 	public static boolean isFirstSegment(ContentName name) {
 		if (!isSegment(name))
 			return false;
@@ -223,7 +229,7 @@ public class SegmentationProfile implements CCNProfile {
 	
 		// TODO use better exclude filters to ensure we're only getting segments.
 		Log.info("getSegment: getting segment " + segmentName);
-		ContentObject segment = library.getLower(segmentName, 1, publisher, timeout);
+		ContentObject segment = CCNReader.getLower(library, segmentName, 1, publisher, timeout);
 	
 		if (null == segment) {
 			Log.info("Cannot get segment " + desiredSegmentNumber + " of file " + desiredContent + " expected segment: " + segmentName);

@@ -5,8 +5,14 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <errno.h>
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
@@ -17,119 +23,206 @@
 #include <ccn/signing.h>
 #include <ccn/keystore.h>
 
+#define DEFAULT_PORT "4485"
+
+/*
+ * private types
+ */
+struct prefix_face_list_item {
+    struct ccn_charbuf *prefix;
+    struct ccn_face_instance *fi;
+    int flags;
+    struct prefix_face_list_item *next;
+};
+
+/*
+ * global constant (but not staticly initializable) data
+ */
+static struct ccn_charbuf *local_scope_template = NULL;
+static struct ccn_charbuf *no_name = NULL;
+
 static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s -f configfile\n"
-            "   Read configfile and bring up links to other ccnd processes",
+            "%s [-v] [-d] (-f configfile | (add|del) uri proto host [port [flags [mcastttl [mcastif]]]])\n"
+            "	-v verbose\n"
+            "   -d enter dynamic mode and create FIB entries based on DNS SRV records\n"
+            "   -f configfile add or delete FIB entries based on contents of configfile\n"
+            "	add|del add or delete FIB entry based on parameters\n",
             progname);
     exit(1);
 }
 
-#define WITH_ERROR_CHECK(resval) chkres((resval), __LINE__)
-
-static void
-chkres(int res, int lineno)
+void
+ccndc_warn(int lineno, char *format, ...)
 {
-    if (res >= 0)
-        return;
-    fprintf(stderr, "failure at "
-                    "ccndc.c"
-                    ":%d (res = %d)\n", lineno, res);
+    struct timeval t;
+    va_list ap;
+    va_start(ap, format);
+
+    gettimeofday(&t, NULL);
+    fprintf(stderr, "%d.%06d ccndc[%d]:%d: ", (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), lineno);
+    vfprintf(stderr, format, ap);
+}
+
+void
+ccndc_fatal(int line, char *format, ...)
+{
+    struct timeval t;
+    va_list ap;
+    va_start(ap, format);
+
+    gettimeofday(&t, NULL);
+    fprintf(stderr, "%d.%06d ccndc[%d]:%d: ", (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), line);
+    vfprintf(stderr, format, ap);
     exit(1);
 }
 
-int
-main(int argc, char **argv)
+#define ON_ERROR_EXIT(resval) on_error_exit((resval), __LINE__)
+
+static void
+on_error_exit(int res, int lineno)
 {
-    struct ccn *h = NULL;
+    if (res >= 0)
+        return;
+    ccndc_fatal(lineno, "fatal error, res = %d\n", res);
+}
+
+void
+initialize_global_data() {
+    /* Set up an Interest template to indicate scope 1 (Local) */
+    local_scope_template = ccn_charbuf_create();
+    if (local_scope_template == NULL) {
+        ON_ERROR_EXIT(-1);
+    }
+
+    ON_ERROR_EXIT(ccn_charbuf_append_tt(local_scope_template, CCN_DTAG_Interest, CCN_DTAG));
+    ON_ERROR_EXIT(ccn_charbuf_append_tt(local_scope_template, CCN_DTAG_Name, CCN_DTAG));
+    ON_ERROR_EXIT(ccn_charbuf_append_closer(local_scope_template));	/* </Name> */
+    ON_ERROR_EXIT(ccnb_tagged_putf(local_scope_template, CCN_DTAG_Scope, "1"));
+    ON_ERROR_EXIT(ccn_charbuf_append_closer(local_scope_template));	/* </Interest> */
+
+    /* Create a null name */
+    no_name = ccn_charbuf_create();
+    if (no_name == NULL) {
+        ON_ERROR_EXIT(-1);
+    }
+    ON_ERROR_EXIT(ccn_name_init(no_name));
+}
+
+/*
+ * this should eventually be used as the basis for a library function
+ *    ccn_get_ccndid(...)
+ * which would retrieve a copy of the ccndid from the
+ * handle, where it should be cached.
+ */
+static int
+get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_size)
+{
+
     struct ccn_charbuf *name = NULL;
-    struct ccn_charbuf *name_prefix = NULL;
-    struct ccn_charbuf *newface = NULL;
-    struct ccn_charbuf *prefixreg = NULL;
     struct ccn_charbuf *resultbuf = NULL;
-    struct ccn_charbuf *temp = NULL;
-    struct ccn_charbuf *templat = NULL;
-    const unsigned char *ptr = NULL;
-    size_t length = 0;
-    const char *progname = NULL;
-    const char *configfile = NULL;
     struct ccn_parsed_ContentObject pcobuf = {0};
-    struct ccn_face_instance face_instance_storage = {0};
-    struct ccn_face_instance *face_instance = &face_instance_storage;
+    char ping_uri[] = "ccn:/ccn/ping/X";
+    const unsigned char *ccndid_result;
+    static size_t ccndid_result_size;
+    int res;
+
+    name = ccn_charbuf_create();
+    if (name == NULL) {
+        ON_ERROR_EXIT(-1);
+    }
+
+    resultbuf = ccn_charbuf_create();
+    if (resultbuf == NULL) {
+        ON_ERROR_EXIT(-1);
+    }
+
+
+    ping_uri[strlen(ping_uri) - 1] = getpid(); /* a really minimal nonce */
+    ON_ERROR_EXIT(ccn_name_from_uri(name, ping_uri));
+    ON_ERROR_EXIT(ccn_get(h, name, -1, local_scope_template, 200, resultbuf, &pcobuf, NULL));
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
+                              resultbuf->buf,
+                              pcobuf.offset[CCN_PCO_B_PublisherPublicKeyDigest],
+                              pcobuf.offset[CCN_PCO_E_PublisherPublicKeyDigest],
+                              &ccndid_result, &ccndid_result_size);
+    ON_ERROR_EXIT(res);
+    if (ccndid_result_size > ccndid_size)
+        ON_ERROR_EXIT(-1);
+    memcpy((void *)ccndid, ccndid_result, ccndid_result_size);
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&resultbuf);
+    return (ccndid_result_size);
+}
+
+static struct prefix_face_list_item *prefix_face_list_item_create()
+{
+    struct prefix_face_list_item *pfl = calloc(1, sizeof(struct prefix_face_list_item));
+    struct ccn_face_instance *fi = calloc(1, sizeof(*fi));
+    struct ccn_charbuf *store = ccn_charbuf_create();
+
+    if (pfl == NULL || fi == NULL || store == NULL) {
+        if (pfl) free(pfl);
+        if (fi) ccn_face_instance_destroy(&fi);
+        if (store) ccn_charbuf_destroy(&store);
+    }
+    pfl->fi = fi;
+    pfl->fi->store = store;
+    return (pfl);
+}
+
+static void prefix_face_list_destroy(struct prefix_face_list_item **pflpp)
+{
+    struct prefix_face_list_item *pflp = *pflpp;
+    struct prefix_face_list_item *next;
+
+    if (pflp == NULL) return;
+    while (pflp) {
+        ccn_face_instance_destroy(&pflp->fi);
+        ccn_charbuf_destroy(&pflp->prefix);
+        next = pflp->next;
+        free(pflp);
+        pflp = next;
+    }
+    *pflpp = NULL;
+}
+
+static int
+register_prefix(struct ccn *h, struct ccn_keystore *keystore, struct ccn_charbuf *name_prefix, struct ccn_face_instance *face_instance, int flags)
+{
+    struct ccn_charbuf *temp = NULL;
+    struct ccn_charbuf *resultbuf = NULL;
+    struct ccn_charbuf *keylocator = NULL;
+    struct ccn_charbuf *signed_info = NULL;
+    struct ccn_charbuf *newface = NULL;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *prefixreg = NULL;
+    struct ccn_parsed_ContentObject pcobuf = {0};
+    struct ccn_face_instance *new_face_instance = NULL;
     struct ccn_forwarding_entry forwarding_entry_storage = {0};
     struct ccn_forwarding_entry *forwarding_entry = &forwarding_entry_storage;
-    struct ccn_charbuf *signed_info = NULL;
-    struct ccn_charbuf *keylocator = NULL;
-    struct ccn_keystore *keystore = NULL;
-    const char *arg = NULL;
+    const unsigned char *ptr = NULL;
+    size_t length = 0;
     long expire = -1;
-    unsigned char ccndid_storage[32] = {0};
-    const unsigned char *ccndid = NULL;
-    size_t ccndid_size = 0;
     int res;
-    char ch;
-    
-    progname = argv[0];
-    while ((ch = getopt(argc, argv, "hf:")) != -1) {
-        switch (ch) {
-            case 'f':
-                configfile = optarg;
-                break;
-            case 'h':
-            default:
-                usage(progname);
-        }
-    }
 
-    name = ccn_charbuf_create();
-    WITH_ERROR_CHECK(ccn_name_from_uri(name, arg));
-    if (argc - optind < 3 || argc - optind > 4)
-        usage(progname);
-    
-    h = ccn_create();
-    res = ccn_connect(h, NULL);
-    if (res < 0) {
-        ccn_perror(h, "ccn_connect");
-        exit(1);
-    }
-
+    /* Encode the given face instance */
     newface = ccn_charbuf_create();
-    name = ccn_charbuf_create();
-    temp = ccn_charbuf_create();
-    templat = ccn_charbuf_create();
-    signed_info = ccn_charbuf_create();
-    resultbuf = ccn_charbuf_create();
-    name_prefix = ccn_charbuf_create();
+    if (newface == NULL) {
+        ON_ERROR_EXIT(-1);
+    }
+    ON_ERROR_EXIT(ccnb_append_face_instance(newface, face_instance));
 
-    keystore = ccn_keystore_create();
-        
-    face_instance->action = "newface";
-    face_instance->descr.ipproto = atoi(argv[optind + 1]); // XXX - 6 = tcp or 17 = udp
-    face_instance->descr.address = argv[optind + 2];
-    face_instance->descr.port = argv[optind + 3];
-    if (face_instance->descr.port == NULL)
-        face_instance->descr.port = "4485";
-    face_instance->descr.mcast_ttl = -1;
-    face_instance->lifetime = (~0U) >> 1;
-    
-    WITH_ERROR_CHECK(res = ccnb_append_face_instance(newface, face_instance));
-    temp->length = 0;
-    WITH_ERROR_CHECK(ccn_charbuf_putf(temp, "%s/.ccn/.ccn_keystore", getenv("HOME")));
-    res = ccn_keystore_init(keystore,
-                            ccn_charbuf_as_string(temp),
-                            "Th1s1sn0t8g00dp8ssw0rd.");
-    WITH_ERROR_CHECK(res);
-    WITH_ERROR_CHECK(ccn_name_init(name));
     /* Construct a key locator containing the key itself */
     keylocator = ccn_charbuf_create();
-    ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG);
-    ccn_charbuf_append_tt(keylocator, CCN_DTAG_Key, CCN_DTAG);
-    WITH_ERROR_CHECK(res = ccn_append_pubkey_blob(keylocator, ccn_keystore_public_key(keystore)));
-    ccn_charbuf_append_closer(keylocator);	/* </Key> */
-    ccn_charbuf_append_closer(keylocator);	/* </KeyLocator> */
-    signed_info->length = 0;
+    ON_ERROR_EXIT(ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG));
+    ON_ERROR_EXIT(ccn_charbuf_append_tt(keylocator, CCN_DTAG_Key, CCN_DTAG));
+    ON_ERROR_EXIT(ccn_append_pubkey_blob(keylocator, ccn_keystore_public_key(keystore)));
+    ON_ERROR_EXIT(ccn_charbuf_append_closer(keylocator));	/* </Key> */
+    ON_ERROR_EXIT(ccn_charbuf_append_closer(keylocator));	/* </KeyLocator> */
+    signed_info = ccn_charbuf_create();
     res = ccn_signed_info_create(signed_info,
                                  /* pubkeyid */ ccn_keystore_public_key_digest(keystore),
                                  /* publisher_key_id_size */ ccn_keystore_public_key_digest_length(keystore),
@@ -138,94 +231,399 @@ main(int argc, char **argv)
                                  /* freshness */ expire,
                                  /* finalblockid */ NULL,
                                  keylocator);
-    if (res < 0) {
-        fprintf(stderr, "Failed to create signed_info (res == %d)\n", res);
-        exit(1);
-    }
+    if (res < 0)
+        ccndc_fatal(__LINE__, "Failed to create signed_info (res == %d)\n", res);
     
-    temp->length = 0;
+    temp = ccn_charbuf_create();
+    if (temp == NULL) {
+        ON_ERROR_EXIT(-1);
+    }
     res = ccn_encode_ContentObject(temp,
-                                   name,
+                                   no_name,
                                    signed_info,
                                    newface->buf,
                                    newface->length,
                                    NULL,
                                    ccn_keystore_private_key(keystore));
-    WITH_ERROR_CHECK(res);
+    ON_ERROR_EXIT(res);
     
-    /* Set up our Interest templatate to indicate scope 1 */
-        templat->length = 0;
-        ccn_charbuf_append_tt(templat, CCN_DTAG_Interest, CCN_DTAG);
-        ccn_charbuf_append_tt(templat, CCN_DTAG_Name, CCN_DTAG);
-        ccn_charbuf_append_closer(templat);	/* </Name> */
-        ccnb_tagged_putf(templat, CCN_DTAG_Scope, "1");
-        ccn_charbuf_append_closer(templat);	/* </Interest> */
-
-    /* We need to figure out our local ccnd's CCIDID */
-    name->length = 0;
-    WITH_ERROR_CHECK(res = ccn_name_from_uri(name, "ccn:/ccn/ping/XXX")); // XXX - ideally use a nonce instead
-    WITH_ERROR_CHECK(res = ccn_get(h, name, -1, templat, 200, resultbuf, &pcobuf, NULL));
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
-                        resultbuf->buf,
-                        pcobuf.offset[CCN_PCO_B_PublisherPublicKeyDigest],
-                        pcobuf.offset[CCN_PCO_E_PublisherPublicKeyDigest],
-                        &ccndid, &ccndid_size);
-    WITH_ERROR_CHECK(res);
-    if (ccndid_size > sizeof(ccndid_storage))
-        WITH_ERROR_CHECK(-1);
-    memcpy(ccndid_storage, ccndid, ccndid_size);
-    ccndid = ccndid_storage;
-    
-    /* Create the new face */
-    WITH_ERROR_CHECK(ccn_name_init(name));
-    WITH_ERROR_CHECK(ccn_name_append(name, "ccn", 3));
-    WITH_ERROR_CHECK(ccn_name_append(name, ccndid, ccndid_size));
-    WITH_ERROR_CHECK(ccn_name_append(name, "newface", 7));
-    WITH_ERROR_CHECK(ccn_name_append(name, temp->buf, temp->length));
-    res = ccn_get(h, name, -1, templat, 1000, resultbuf, &pcobuf, NULL);
-    if (res < 0) {
-        fprintf(stderr, "no response from face creation request\n");
-        exit(1);
+    resultbuf = ccn_charbuf_create();
+    if (resultbuf == NULL) {
+        ON_ERROR_EXIT(-1);
     }
-    ptr = resultbuf->buf;
-    length = resultbuf->length;
-    res = ccn_content_get_value(resultbuf->buf, resultbuf->length, &pcobuf, &ptr, &length);
-    WITH_ERROR_CHECK(res);
-    face_instance = ccn_face_instance_parse(ptr, length);
-    if (face_instance == NULL)
-        WITH_ERROR_CHECK(res = -1);
-    WITH_ERROR_CHECK(face_instance->faceid);
+
+    /* Construct the Interest name that will create the new face */
+    name = ccn_charbuf_create();
+    if (name == NULL) {
+        ON_ERROR_EXIT(-1);
+    }
+    ON_ERROR_EXIT(ccn_name_init(name));
+    ON_ERROR_EXIT(ccn_name_append(name, "ccn", 3));
+    ON_ERROR_EXIT(ccn_name_append(name, face_instance->ccnd_id, face_instance->ccnd_id_size));
+    ON_ERROR_EXIT(ccn_name_append(name, "newface", 7));
+    ON_ERROR_EXIT(ccn_name_append(name, temp->buf, temp->length));
+    res = ccn_get(h, name, -1, local_scope_template, 1000, resultbuf, &pcobuf, NULL);
+    if (res < 0)
+        ccndc_fatal(__LINE__, "no response from face creation request\n");
+
+    ON_ERROR_EXIT(ccn_content_get_value(resultbuf->buf, resultbuf->length, &pcobuf, &ptr, &length));
+    new_face_instance = ccn_face_instance_parse(ptr, length);
+    if (new_face_instance == NULL)
+        ON_ERROR_EXIT(-1);
+    ON_ERROR_EXIT(new_face_instance->faceid);
     
     /* Finally, register the prefix */
-    name_prefix->length = 0;
-    WITH_ERROR_CHECK(ccn_name_from_uri(name_prefix, arg));
     forwarding_entry->action = "prefixreg";
     forwarding_entry->name_prefix = name_prefix;
-    forwarding_entry->faceid = face_instance->faceid;
+    forwarding_entry->ccnd_id = face_instance->ccnd_id;
+    forwarding_entry->ccnd_id_size = face_instance->ccnd_id_size;
+    forwarding_entry->faceid = new_face_instance->faceid;
+    forwarding_entry->flags = flags;
     forwarding_entry->lifetime = (~0U) >> 1;
+
     prefixreg = ccn_charbuf_create();
-    WITH_ERROR_CHECK(res = ccnb_append_forwarding_entry(prefixreg, forwarding_entry));
+    if (prefixreg == NULL) {
+        ON_ERROR_EXIT(-1);
+    }
+    ON_ERROR_EXIT(ccnb_append_forwarding_entry(prefixreg, forwarding_entry));
     temp->length = 0;
     res = ccn_encode_ContentObject(temp,
-                                   name,
+                                   no_name,
                                    signed_info,
                                    prefixreg->buf,
                                    prefixreg->length,
                                    NULL,
                                    ccn_keystore_private_key(keystore));
-    WITH_ERROR_CHECK(res);
-        WITH_ERROR_CHECK(ccn_name_init(name));
-    WITH_ERROR_CHECK(ccn_name_append(name, "ccn", 3));
-    WITH_ERROR_CHECK(ccn_name_append(name, ccndid, ccndid_size));
-    WITH_ERROR_CHECK(ccn_name_append_str(name, "prefixreg"));
-    WITH_ERROR_CHECK(ccn_name_append(name, temp->buf, temp->length));
-    res = ccn_get(h, name, -1, templat, 1000, resultbuf, &pcobuf, NULL);
+    ON_ERROR_EXIT(res);
+    ON_ERROR_EXIT(ccn_name_init(name));
+    ON_ERROR_EXIT(ccn_name_append(name, "ccn", 3));
+    ON_ERROR_EXIT(ccn_name_append(name, face_instance->ccnd_id, face_instance->ccnd_id_size));
+    ON_ERROR_EXIT(ccn_name_append_str(name, "prefixreg"));
+    ON_ERROR_EXIT(ccn_name_append(name, temp->buf, temp->length));
+    res = ccn_get(h, name, -1, local_scope_template, 1000, resultbuf, &pcobuf, NULL);
+    if (res < 0)
+        ccndc_fatal(__LINE__, "no response from prefix registration request\n");
+
+    ccn_charbuf_destroy(&signed_info);
+    ccn_charbuf_destroy(&prefixreg);
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&temp);
+    ccn_charbuf_destroy(&keylocator);
+    ccn_charbuf_destroy(&newface);
+    ccn_charbuf_destroy(&resultbuf);
+    return (new_face_instance->faceid);
+}
+
+static void
+fill_prefix_face_list_item(struct prefix_face_list_item *pflp,
+                           struct ccn_charbuf *prefix,
+                           int ipproto,
+                           int mcast_ttl,
+                           char *host,
+                           char *port,
+                           char *mcastif,
+                           int lifetime,
+                           int flags)
+{
+    size_t host_offset, port_offset, mcastif_offset;
+    struct ccn_charbuf *store = NULL;
+
+    pflp->prefix = prefix;
+    pflp->fi->action = "newface";
+    pflp->fi->descr.ipproto = ipproto;
+    pflp->fi->descr.mcast_ttl = mcast_ttl;
+        
+    store = pflp->fi->store;
+    host_offset = store->length;
+    ccn_charbuf_append_string(store, host);
+    ccn_charbuf_append_value(store, 0, 1);
+    port_offset = store->length;
+    ccn_charbuf_append_string(store, port);
+    ccn_charbuf_append_value(store, 0, 1);
+    if (mcastif != NULL) {
+        mcastif_offset = store->length;
+        ccn_charbuf_append_string(store, mcastif);
+        ccn_charbuf_append_value(store, 0, 1);
+    } else {
+        mcastif_offset = -1;
+    }
+    pflp->fi->descr.address = (char *)store->buf + host_offset;
+    pflp->fi->descr.port = (char *)store->buf + port_offset;
+    pflp->fi->descr.source_address = (mcastif_offset == -1) ? NULL : (char *)store->buf + mcastif_offset;
+    pflp->fi->lifetime = lifetime;
+    pflp->flags = flags;
+}
+static int
+process_command_tokens(struct prefix_face_list_item *pfltail,
+                       int lineno,
+                       char *cmd,
+                       char *uri,
+                       char *proto,
+                       char *host,
+                       char *port,
+                       char *flags,
+                       char *mcastttl,
+                       char *mcastif)
+{
+    int lifetime;
+    struct ccn_charbuf *prefix;
+    int ipproto;
+    int socktype;
+    int iflags;
+    int imcastttl;
+    char rhostnamebuf[NI_MAXHOST];
+    char rhostportbuf[NI_MAXSERV];
+    struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_flags = (AI_ADDRCONFIG)};
+    struct addrinfo mcasthints = {.ai_family = AF_UNSPEC, .ai_flags = (AI_ADDRCONFIG | AI_NUMERICHOST)};
+    struct addrinfo *raddrinfo = NULL;
+    struct addrinfo *mcastifaddrinfo = NULL;
+    struct prefix_face_list_item *pflp;
+    int res;
+
+    if (cmd == NULL) {
+        ccndc_warn(__LINE__, "command error (line %d), missing command\n", lineno);
+        return (-1);
+    }   
+    if (strcasecmp(cmd, "add") == 0)
+        lifetime = (~0U) >> 1;
+    else if (strcasecmp(cmd, "del") == 0)
+        lifetime = 0;
+    else {
+        ccndc_warn(__LINE__, "command error (line %d), unrecognized command '%s'\n", lineno, cmd);
+        return (-1);
+    }
+
+    if (uri == NULL) {
+        ccndc_warn(__LINE__, "command error (line %d), missing CCN URI\n", lineno);
+        return (-1);
+    }   
+    prefix = ccn_charbuf_create();
+    res = ccn_name_from_uri(prefix, uri);
     if (res < 0) {
-        fprintf(stderr, "no response from prefix registration request\n");
+        ccndc_warn(__LINE__, "command error (line %d), bad CCN URI '%s'\n", lineno, uri);
+        return (-1);
+    }
+
+    if (proto == NULL) {
+        ccndc_warn(__LINE__, "command error (line %d), missing address type\n", lineno);
+        return (-1);
+    }
+    if (strcasecmp(proto, "udp") == 0) {
+        ipproto = IPPROTO_UDP;
+        socktype = SOCK_DGRAM;
+    }
+    else if (strcasecmp(proto, "tcp") == 0) {
+        ipproto = IPPROTO_TCP;
+        socktype = SOCK_STREAM;
+    }
+    else {
+        ccndc_warn(__LINE__, "command error (line %d), unrecognized address type '%s'\n", lineno, proto);
+        return (-1);
+    }
+
+    if (host == NULL) {
+        ccndc_warn(__LINE__, "command error (line %d), missing hostname\n", lineno);
+        return (-1);
+    }
+
+    if (port == NULL) port = DEFAULT_PORT;
+
+    hints.ai_socktype = socktype;
+    res = getaddrinfo(host, port, &hints, &raddrinfo);
+    if (res != 0 || raddrinfo == NULL) {
+        ccndc_warn(__LINE__, "command error (line %d), getaddrinfo: %s\n", lineno, gai_strerror(res));
+        return (-1);
+    }
+    res = getnameinfo(raddrinfo->ai_addr, raddrinfo->ai_addrlen,
+                      rhostnamebuf, sizeof(rhostnamebuf),
+                      rhostportbuf, sizeof(rhostportbuf),
+                      NI_NUMERICHOST | NI_NUMERICSERV);
+    freeaddrinfo(raddrinfo);
+    if (res != 0) {
+        ccndc_warn(__LINE__, "command error (line %d), getnameinfo: %s\n", lineno, gai_strerror(res));
+        return (-1);
+    }
+
+    iflags = 0;
+    if (flags != NULL) {
+        iflags = atoi(flags);
+        if ((iflags & ~(CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_ADVERTISE)) != 0) {
+            ccndc_warn(__LINE__, "command error (line %d), invalid flags 0x%x\n", lineno, iflags);
+            return (-1);
+        }
+    }
+
+    imcastttl = -1;
+    if (mcastttl != NULL) {
+        imcastttl = atoi(mcastttl);
+        if (imcastttl < 0 || imcastttl > 255) {
+            ccndc_warn(__LINE__, "command error (line %d), invalid multicast ttl: %s\n", lineno, mcastttl);
+            return (-1);
+        }
+    }
+
+    if (mcastif != NULL) {
+        res = getaddrinfo(mcastif, NULL, &mcasthints, &mcastifaddrinfo);
+        if (res != 0) {
+            ccndc_warn(__LINE__, "command error (line %d), mcastifaddr getaddrinfo: %s\n", lineno, gai_strerror(res));
+            return (-1);
+        }
+    }
+
+    /* we have successfully parsed a command line */
+    pflp = prefix_face_list_item_create();
+    if (pflp == NULL) {
+        ccndc_fatal(__LINE__, "Unable to allocate prefix_face_list_item\n");
+    }
+    fill_prefix_face_list_item(pflp, prefix, ipproto, imcastttl, rhostnamebuf, rhostportbuf, mcastif, lifetime, iflags);
+    pfltail->next = pflp;
+    pfltail = pflp;
+    return (0);
+}
+
+static int
+read_configfile(const char *filename, struct prefix_face_list_item *pfltail)
+{
+    int configerrors = 0;
+    int lineno = 0;
+    char *cmd;
+    char *uri;
+    char *proto;
+    char *host;
+    char *port;
+    char *flags;
+    char *mcastttl;
+    char *mcastif;
+    FILE *cfg;
+    char buf[1024];
+    const char *seps = " \t\n";
+    char *cp = NULL;
+    char *last = NULL;
+    int res;
+
+    cfg = fopen(filename, "r");
+    if (cfg == NULL)
+        ccndc_fatal(__LINE__, "%s (%s)\n", strerror(errno), filename);
+
+    while (fgets((char *)buf, sizeof(buf), cfg)) {
+        int len;
+        lineno++;
+        len = strlen(buf);
+        if (buf[0] == '#' || len == 0)
+            continue;
+        if (buf[len - 1] == '\n')
+            buf[len - 1] = '\0';
+        cp = index(buf, '#');
+        if (cp != NULL)
+            *cp = '\0';
+
+        cmd = strtok_r(buf, seps, &last);
+        uri = strtok_r(NULL, seps, &last);
+        proto = strtok_r(NULL, seps, &last);
+        host = strtok_r(NULL, seps, &last);
+        port = strtok_r(NULL, seps, &last);
+        flags = strtok_r(NULL, seps, &last);
+        mcastttl = strtok_r(NULL, seps, &last);
+        mcastif = strtok_r(NULL, seps, &last);
+        res = process_command_tokens(pfltail, lineno, cmd, uri, proto, host, port, flags, mcastttl, mcastif);
+        if (res < 0) configerrors--;
+    }
+    fclose(cfg);
+    return (configerrors);
+}
+
+int
+main(int argc, char **argv)
+{
+    struct ccn *h = NULL;
+    struct ccn_charbuf *name_prefix = NULL;
+    struct ccn_charbuf *temp = NULL;
+    const char *progname = NULL;
+    const char *configfile = NULL;
+    struct prefix_face_list_item *pflhead = prefix_face_list_item_create();
+    struct prefix_face_list_item *pfl;
+    struct ccn_face_instance face_instance_storage = {0};
+    struct ccn_face_instance *face_instance = &face_instance_storage;
+    struct ccn_keystore *keystore = NULL;
+    int dynamic = 0;
+    int flags = 0;
+    unsigned char ccndid_storage[32] = {0};
+    const unsigned char *ccndid = ccndid_storage;
+    size_t ccndid_size;
+    int res;
+    char ch;
+    
+    initialize_global_data();
+
+    progname = argv[0];
+    while ((ch = getopt(argc, argv, "hf:d")) != -1) {
+        switch (ch) {
+        case 'f':
+            configfile = optarg;
+            break;
+        case 'd':
+            dynamic = 1;
+            break;
+        case 'h':
+        default:
+            usage(progname);
+        }
+    }
+
+    if (optind < argc) {
+        /* config file cannot be combined with command line */
+        if (configfile != NULL) {
+            usage(progname);
+        }
+        /* (add|delete) uri type host [port [flags [mcast-ttl [mcast-if]]]] */
+
+        if (argc - optind < 4 || argc - optind > 7)
+            usage(progname);
+
+        res = process_command_tokens(pflhead, 0,
+                                     argv[optind],
+                                     argv[optind+1],
+                                     argv[optind+2],
+                                     argv[optind+3],
+                                     argv[optind+4],
+                                     argv[optind+5],
+                                     argv[optind+6],
+                                     argv[optind+7]);
+        if (res < 0)
+            usage(progname);
+    }
+
+    if (configfile) {
+        read_configfile(configfile, pflhead);
+    }
+
+    h = ccn_create();
+    res = ccn_connect(h, NULL);
+    if (res < 0) {
+        ccn_perror(h, "ccn_connect");
         exit(1);
     }
-    fprintf(stderr, "Prefix %s will be forwarded to face %d\n", arg, face_instance->faceid);
 
+
+
+    temp = ccn_charbuf_create();
+    keystore = ccn_keystore_create();
+    ON_ERROR_EXIT(ccn_charbuf_putf(temp, "%s/.ccn/.ccn_keystore", getenv("HOME")));
+    res = ccn_keystore_init(keystore,
+                            ccn_charbuf_as_string(temp),
+                            "Th1s1sn0t8g00dp8ssw0rd.");
+    ON_ERROR_EXIT(res);
+
+    ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
+    if (configfile) {
+        for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
+            pfl->fi->ccnd_id = ccndid;
+            pfl->fi->ccnd_id_size = ccndid_size;
+            res = register_prefix(h, keystore, pfl->prefix, pfl->fi, pfl->flags);
+        }
+    } else {
+        res = register_prefix(h, keystore, name_prefix, face_instance, flags);
+    }
     /* We're about to exit, so don't bother to free everything. */
     ccn_destroy(&h);
     exit(res < 0);

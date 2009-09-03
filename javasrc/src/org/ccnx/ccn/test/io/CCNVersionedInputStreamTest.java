@@ -14,6 +14,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
+import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
@@ -42,6 +43,7 @@ public class CCNVersionedInputStreamTest {
 	static byte [] latestVersionDigest;
 	static CCNHandle outputLibrary;
 	static CCNHandle inputLibrary;
+	static CCNReader reader;
 	static final int MAX_FILE_SIZE = 1024*1024; // 1 MB
 	static final int BUF_SIZE = 4096;
 	
@@ -51,6 +53,7 @@ public class CCNVersionedInputStreamTest {
 		Random randBytes = new Random(); // doesn't need to be secure
 		outputLibrary = CCNHandle.open();
 		inputLibrary = CCNHandle.open();
+		reader = new CCNReader(inputLibrary);
 		
 		// Write a set of output
 		defaultStreamName = ContentName.fromNative("/test/stream/versioning/LongOutput.bin");
@@ -240,8 +243,7 @@ public class CCNVersionedInputStreamTest {
 			Assert.assertEquals(vfirst.baseName(), firstVersionName);
 			Assert.assertEquals(VersioningProfile.cutTerminalVersion(vfirst.baseName()).first(), defaultStreamName);
 			byte b = (byte)vfirst.read();
-			if (b != b) {
-				// suppress warning...
+			if (b != 0x00) {
 			}
 			Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(firstVersionName), 
 								VersioningProfile.getLastVersionAsTimestamp(vfirst.baseName()));
@@ -293,7 +295,7 @@ public class CCNVersionedInputStreamTest {
 		try {
 			// we can make a new library; as long as we don't use the outputLibrary it should work
 			ContentObject firstVersionBlock = inputLibrary.get(firstVersionName, 1000);
-			ContentObject latestVersionBlock = inputLibrary.getLatest(defaultStreamName, defaultStreamName.count(), 1000);
+			ContentObject latestVersionBlock = reader.getLatest(defaultStreamName, defaultStreamName.count(), 1000);
 			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionBlock, inputLibrary);
 			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(latestVersionBlock, inputLibrary);
 			testArgumentRunner(vfirst, vlatest);

@@ -98,6 +98,12 @@ public class CollectionTest {
 		for (int i=0; i < lrs.length; ++i) {
 			Assert.assertEquals(c.get(i), lrs[i]);
 		}
+		
+		// Test iterator
+		int j=0;
+		for (Link l : cd) {
+			Assert.assertEquals(l, lrs[j++]);			
+		}
 	}
 
 	@Test

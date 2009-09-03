@@ -17,7 +17,7 @@ import org.ccnx.ccn.impl.support.Log;
  * Implement bloom filter operations
  */
 public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilter> {
-	public static final String BLOOM = "Bloom";
+	public static final String BLOOM_ELEMENT = "Bloom";
 
 	private int _lgBits;
 	private int _nHash;
@@ -126,8 +126,12 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 		return 1 << (_lgBits - 3);
 	}
 	
+	@Override
+	public String getElementLabel() { return BLOOM_ELEMENT; }
+	
+	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		ByteArrayInputStream bais = new ByteArrayInputStream(decoder.readBinaryElement(BLOOM));
+		ByteArrayInputStream bais = new ByteArrayInputStream(decoder.readBinaryElement(getElementLabel()));
 		_lgBits = bais.read();
 		_nHash = bais.read();
 		bais.skip(2); // method & reserved - ignored for now
@@ -145,6 +149,7 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 		}
 	}
 	
+	@Override
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		baos.write((byte)_lgBits);
@@ -156,7 +161,7 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 		int size = usedBits();
 		for (int i = 0; i < size; i++)
 			baos.write(_bloom[i]);
-		encoder.writeElement(BLOOM, baos.toByteArray());
+		encoder.writeElement(getElementLabel(), baos.toByteArray());
 	}
 
 	public int compareTo(BloomFilter o) {

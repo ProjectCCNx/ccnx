@@ -25,6 +25,7 @@ import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
@@ -80,8 +81,9 @@ public class CCNLibraryTest extends LibraryTestBase {
 				writer.put(testNames.get(i).name, Integer.toString(i).getBytes());
 			}
 			
+			CCNReader reader = new CCNReader(getLibrary);
 			ArrayList<ContentObject> availableNames =
-				getLibrary.enumerate(new Interest("/CPOF"), CCNHandle.NO_TIMEOUT);
+				reader.enumerate(new Interest("/CPOF"), CCNHandle.NO_TIMEOUT);
 
 			Iterator<ContentObject> nameIt = availableNames.iterator();
 

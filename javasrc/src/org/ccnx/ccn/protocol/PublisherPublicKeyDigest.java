@@ -81,25 +81,31 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XML
 		return true;
 	}
 	
+	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		
 		// The format of a publisher ID is an octet string.
 
-		_publisherPublicKeyDigest = decoder.readBinaryElement(PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT);
+		_publisherPublicKeyDigest = decoder.readBinaryElement(getElementLabel());
 		if (null == _publisherPublicKeyDigest) {
 			throw new XMLStreamException("Cannot parse publisher key digest.");
 		}
 	}
 
+	@Override
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		// The format of a publisher ID is:
 		// <PublisherID type=<type> id_content />
-		encoder.writeElement(PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT,digest());
+		encoder.writeElement(getElementLabel(), digest());
 	}
 	
+	@Override
+	public String getElementLabel() { return PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT; }
+
+	@Override
 	public boolean validate() {
 		return (null != digest());
 	}

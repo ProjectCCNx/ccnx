@@ -18,15 +18,18 @@ public class ExcludeAny extends Exclude.Filler implements Comparable<ExcludeAny>
 
 	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(ANY);
+		decoder.readStartElement(getElementLabel());
 		decoder.readEndElement();
 	}
 
 	@Override
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
-		encoder.writeStartElement(ANY);
+		encoder.writeStartElement(getElementLabel());
 		encoder.writeEndElement();
 	}
+	
+	@Override
+	public String getElementLabel() { return ANY; }
 
 	@Override
 	public boolean validate() {

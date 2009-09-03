@@ -34,7 +34,7 @@ public class BitBucketRepository implements Repository {
 
 	public byte[] getRepoInfo(ArrayList<ContentName> names) {
 		try {
-			return (new RepositoryInfo("Repository", "/parc.com/csl/ccn/Repos", "1.0")).encode();
+			return (new RepositoryInfo("1.0", "/parc.com/csl/ccn/Repos", "Repository")).encode();
 		} catch (Exception e) {}
 		return null;
 	}

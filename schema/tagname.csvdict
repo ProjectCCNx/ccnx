@@ -71,6 +71,11 @@
 83,MinSuffixComponents
 84,MaxSuffixComponents
 85,ChildSelector
+86,RepositoryInfo
+87,Version
+88,RepositoryVersion
+89,GlobalPrefix
+90,LocalName
 2048,Address,Deprecated
 2049,SOType,Deprecated
 2050,Inject,Deprecated

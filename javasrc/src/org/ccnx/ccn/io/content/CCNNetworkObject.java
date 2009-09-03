@@ -664,7 +664,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
 					// OK, we have something that is a later version of our desired object.
 					// We're not sure it's actually the first content segment.
-					if (CCNVersionedInputStream.isFirstSegment(_currentInterest.name(), co, null)) {
+					if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
 						Log.info("Background updating of " + getCurrentVersionName() + ", got first segment: " + co.name());
 						update(co);
 					} else {

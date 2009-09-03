@@ -318,7 +318,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	public final Signature signature() { return _signature; }
 
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		decoder.readStartElement(CONTENT_OBJECT_ELEMENT);
+		decoder.readStartElement(getElementLabel());
 
 		_signature = new Signature();
 		_signature.decode(decoder);
@@ -338,7 +338,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		encoder.writeStartElement(CONTENT_OBJECT_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 
 		signature().encode(encoder);
 		name().encode(encoder);
@@ -349,6 +349,10 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		encoder.writeEndElement();   		
 	}
 
+	@Override
+	public String getElementLabel() { return CONTENT_OBJECT_ELEMENT; }
+
+	@Override
 	public boolean validate() { 
 		// recursive?
 		// null content ok

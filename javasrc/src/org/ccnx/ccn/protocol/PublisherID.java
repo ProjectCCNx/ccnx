@@ -151,6 +151,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 		return (null != nameToType(nextTag));
 	}
 
+	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		
 		// We have a choice here of one of 4 binary element types.
@@ -171,6 +172,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 
+	@Override
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
@@ -178,9 +180,13 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 		// The format of a publisher ID is a choice, a binary element tagged with
 		// one of the 4 publisher types.
 		
-		encoder.writeElement(typeToName(type()), id());
+		encoder.writeElement(getElementLabel(), id());
 	}
 	
+	@Override
+	public String getElementLabel() { return typeToName(type()); }
+
+	@Override
 	public boolean validate() {
 		return ((null != id() && (null != type())));
 	}

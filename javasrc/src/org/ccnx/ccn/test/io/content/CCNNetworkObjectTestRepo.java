@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.sql.Timestamp;
 import java.util.Random;
-import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -63,9 +62,7 @@ public class CCNNetworkObjectTestRepo {
 	static Collection big;
 	static CCNHandle library;
 	static String [] numbers = new String[]{"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"};
-	
-	static Level oldLevel;
-	
+		
 	static void setupNamespace(ContentName name) throws IOException {
 	}
 	
@@ -74,14 +71,11 @@ public class CCNNetworkObjectTestRepo {
 	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
-		Log.setLevel(oldLevel);
 	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		System.out.println("Making stuff.");
-		oldLevel = Log.getLevel();
-		Log.setLevel(Level.FINEST);
 		
 		library = CCNHandle.open();
 		namespace = ContentName.fromNative("/parc/test/data/CCNNetworkObjectTestRepo-" + + new Random().nextInt(10000));

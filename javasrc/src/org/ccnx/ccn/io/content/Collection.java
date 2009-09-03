@@ -28,7 +28,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * @author smetters
  *
  */
-public class Collection extends GenericXMLEncodable implements XMLEncodable {
+public class Collection extends GenericXMLEncodable implements XMLEncodable, Iterable<Link> {
 	
 	/**
 	 * This should eventually be called Collection, and the Collection class deleted.
@@ -159,7 +159,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable {
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		_contents.clear();
 		
-		decoder.readStartElement(COLLECTION_ELEMENT);
+		decoder.readStartElement(getElementLabel());
 
 		Link link = null;
 		while (decoder.peekStartElement(Link.LINK_ELEMENT)) {
@@ -174,7 +174,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		encoder.writeStartElement(COLLECTION_ELEMENT);
+		encoder.writeStartElement(getElementLabel());
 		Iterator<Link> linkIt = contents().iterator();
 		while (linkIt.hasNext()) {
 			Link link = linkIt.next();
@@ -186,6 +186,9 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable {
 	public boolean validate() { 
 		return (null != contents());
 	}
+	
+	@Override
+	public String getElementLabel() { return COLLECTION_ELEMENT; }
 
 	@Override
 	public int hashCode() {
@@ -210,5 +213,12 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable {
 		} else if (!_contents.equals(other._contents))
 			return false;
 		return true;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Iterable#iterator()
+	 */
+	public Iterator<Link> iterator() {
+		return _contents.iterator();
 	}
 }

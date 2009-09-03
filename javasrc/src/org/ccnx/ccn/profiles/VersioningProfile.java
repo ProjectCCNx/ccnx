@@ -11,7 +11,6 @@ import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
-import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.ExcludeAny;
@@ -534,7 +533,11 @@ public class VersioningProfile implements CCNProfile {
 		
 		Log.info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
 		
-		int prefixLength = hasTerminalVersion(startingVersion) ? startingVersion.count() : startingVersion.count() + 1;
+		ContentName prefix = startingVersion;
+		if (hasTerminalVersion(prefix)) {
+			prefix = startingVersion.parent();
+		}
+		int versionedLength = prefix.count() + 1;
 		
 		Interest getLatestInterest = firstBlockLatestVersionInterest(startingVersion, publisher);
 		ContentObject result = library.get(getLatestInterest, timeout);
@@ -542,7 +545,7 @@ public class VersioningProfile implements CCNProfile {
 			Log.info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			
 			// Now we know the version. Did we luck out and get first block?
-			if (CCNVersionedInputStream.isFirstSegment(startingVersion, result, startingSegmentNumber)) {
+			if (VersioningProfile.isVersionedFirstSegment(prefix, result, startingSegmentNumber)) {
 				Log.info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
 				// Now need to verify the block we got
 				if (!verifier.verify(result)) {
@@ -559,14 +562,49 @@ public class VersioningProfile implements CCNProfile {
 			// which works fine only if we have the wrong segment rather than some other beast entirely (like metadata).
 			// So chop off the new name just after the (first) version, and use that. If getLatestVersion is working
 			// right, that should be the right thing.
-			startingVersion = result.name().cut(prefixLength);
-			Log.info("getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
+			startingVersion = result.name().cut(versionedLength);
+			Log.info("CHILD SELECTOR FAILURE: getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
 			// this will verify
 			return SegmentationProfile.getSegment(startingVersion, startingSegmentNumber, null, timeout, verifier, library); // now that we have the latest version, go back for the first block.
 		} else {
 			Log.info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
 		}
 		return result;
+	}
+
+	/**
+	 * Version of isFirstSegment that expects names to be versioned, and allows that desiredName
+	 * won't know what version it wants but will want some version.
+	 */
+	public static boolean isVersionedFirstSegment(ContentName desiredName, ContentObject potentialFirstSegment, Long startingSegmentNumber) {
+		if ((null != potentialFirstSegment) && (SegmentationProfile.isSegment(potentialFirstSegment.name()))) {
+			Log.info("is " + potentialFirstSegment.name() + " a first segment of " + desiredName);
+			// In theory, the segment should be at most a versioning component different from desiredName.
+			// In the case of complex segmented objects (e.g. a KeyDirectory), where there is a version,
+			// then some name components, then a segment, desiredName should contain all of those other
+			// name components -- you can't use the usual versioning mechanisms to pull first segment anyway.
+			if (!desiredName.isPrefixOf(potentialFirstSegment.name())) {
+				Log.info("Desired name :" + desiredName + " is not a prefix of segment: " + potentialFirstSegment.name());
+				return false;
+			}
+			int difflen = potentialFirstSegment.name().count() - desiredName.count();
+			if (difflen > 2) {
+				Log.info("Have " + difflen + " extra components between " + potentialFirstSegment.name() + " and desired " + desiredName);
+				return false;
+			}
+			// Now need to make sure that if the difference is more than 1, that difference is
+			// a version component.
+			if ((difflen == 2) && (!isVersionComponent(potentialFirstSegment.name().component(potentialFirstSegment.name().count()-2)))) {
+				Log.info("The " + difflen + " extra component between " + potentialFirstSegment.name() + " and desired " + desiredName + " is not a version.");
+				
+			}
+			if ((null != startingSegmentNumber) && (SegmentationProfile.baseSegment() != startingSegmentNumber)) {
+				return (startingSegmentNumber.equals(SegmentationProfile.getSegmentNumber(potentialFirstSegment.name())));
+			} else {
+				return SegmentationProfile.isFirstSegment(potentialFirstSegment.name());
+			}
+		}
+		return false;
 	}
 
 }
