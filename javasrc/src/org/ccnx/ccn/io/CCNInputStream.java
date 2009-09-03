@@ -128,7 +128,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 			return -1;
 		}
 		
-		Log.finer(baseName() + ": reading " + len + " bytes into buffer of length " + 
+		Log.finest(baseName() + ": reading " + len + " bytes into buffer of length " + 
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentSegment) {
@@ -139,7 +139,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 			}
 			setFirstSegment(firstBlock);
 		} 
-		Log.finer("reading from block: " + _currentSegment.name() + " length: " + 
+		Log.finest("reading from block: {0}, length: {1}", _currentSegment.name(),  
 				_currentSegment.contentLength());
 		
 		// Now we have a block in place. Read from it. If we run out of block before
