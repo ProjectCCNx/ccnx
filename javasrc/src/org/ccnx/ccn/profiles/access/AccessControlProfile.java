@@ -157,16 +157,16 @@ public class AccessControlProfile implements CCNProfile {
 	 * @param groupFriendlyName
 	 * @return
 	 */
-	public static ContentName groupPublicKeyName(ContentName namespace, String groupFriendlyName) {
-		return ContentName.fromNative(groupName(namespace, groupFriendlyName),  GROUP_PUBLIC_KEY_NAME);
+	public static ContentName groupPublicKeyName(ContentName groupNamespaceName, String groupFriendlyName) {
+		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName, groupFriendlyName),  GROUP_PUBLIC_KEY_NAME);
 	}
 	
 	public static ContentName groupPublicKeyName(ContentName groupFullName) {
 		return ContentName.fromNative(groupFullName,  GROUP_PUBLIC_KEY_NAME);
 	}
 	
-	public static ContentName groupMembershipListName(ContentName namespace, String groupFriendlyName) {
-		return ContentName.fromNative(groupName(namespace, groupFriendlyName),  GROUP_MEMBERSHIP_LIST_NAME);
+	public static ContentName groupMembershipListName(ContentName groupNamespaceName, String groupFriendlyName) {
+		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName, groupFriendlyName),  GROUP_MEMBERSHIP_LIST_NAME);
 	}
 
 	public static String groupNameToFriendlyName(ContentName groupName) {
