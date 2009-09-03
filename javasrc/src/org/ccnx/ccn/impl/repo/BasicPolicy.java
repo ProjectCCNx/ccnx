@@ -30,7 +30,7 @@ public class BasicPolicy implements Policy {
 	private String _version = null;
 	private byte [] _content = null;
 	private ContentName _globalPrefix = null;
-	private ContentName _localName = null;
+	private String _localName = null;
 	private boolean _localNameMatched = false;
 	private boolean _globalNameMatched = false;
 	private boolean _nameSpaceChangeRequest = false;
@@ -43,7 +43,7 @@ public class BasicPolicy implements Policy {
 	public BasicPolicy(String name) {
 		try {
 			if (null != name)
-				this._localName = ContentName.fromNative(name);
+				this._localName = name;
 			_nameSpace.add(ContentName.fromNative("/"));
 		} catch (MalformedContentNameStringException e) {}
 	}
@@ -190,19 +190,16 @@ public class BasicPolicy implements Policy {
 						}
 						break;
 					case LOCALNAME:
-						try {
-							charValue = event.asCharacters().getData();
-							String localName = charValue.trim();
-							if (fromNet) {
-									if (!ContentName.fromNative(fixSlash(localName)).equals(_localName)) {
-										Log.warning("Repository local name doesn't match: request = " + localName);
-										throw new RepositoryException("Repository local name doesn't match");
-									}
-								
-							} else
-								_localName = ContentName.fromNative(fixSlash(localName));
-						} catch (MalformedContentNameStringException e) {
-							throw new RepositoryException(e.getMessage());
+						charValue = event.asCharacters().getData();
+						String localName = charValue.trim();
+						if (fromNet) {
+							if (!localName.equals(_localName)) {
+								Log.warning("Repository local name doesn't match: request = " + localName);
+								throw new RepositoryException("Repository local name doesn't match");
+							}
+
+						} else {
+							_localName = localName;
 						}
 						_localNameMatched = true;
 						break;
@@ -212,7 +209,7 @@ public class BasicPolicy implements Policy {
 						try {
 						if (fromNet) {
 							if (!ContentName.fromNative(fixSlash(globalName)).equals(_globalPrefix)) {
-								Log.warning("Repository local name doesn't match: request = " + globalName);
+								Log.warning("Repository global name doesn't match: request = " + globalName);
 								throw new RepositoryException("Repository global name doesn't match");
 							}
 						} else {
@@ -236,25 +233,23 @@ public class BasicPolicy implements Policy {
 	}
 
 	public ContentObject getPolicyContent() {
-		try {
-			// TODO WARNING: this code should not call a generic content builder meant for
-			// making test content. The repository needs to have its own set of keys, manage
-			// them and use them rather than using the default key manager (which will pull
-			// keys from whatever user keystore that started the repo). The repo should build
-			// a keystore for its own use, and when it starts up instantiate a key manager
-			// that uses that keystore. That key manager should be used for all of its
-			// operations.
-			return ContentObject.buildContentObject(ContentName.fromNative(_globalPrefix + "/" + _localName +
-					"/" + Repository.REPO_DATA + "/" + Repository.REPO_POLICY), 
-					_content);
-		} catch (MalformedContentNameStringException e) {
-			// shouldn't happen 
-			// TODO DKS: if it shouldn't happen, throw a big warning if it does -- don't silently
-			// return null, which could cause all sorts of cascading problems. 
-			Log.severe("SHOULD NOT HAPPEN: Unexpected MalformedContentNameStringException: " + e.getMessage());
-			return null;
-		}	
+		// TODO WARNING: this code should not call a generic content builder meant for
+		// making test content. The repository needs to have its own set of keys, manage
+		// them and use them rather than using the default key manager (which will pull
+		// keys from whatever user keystore that started the repo). The repo should build
+		// a keystore for its own use, and when it starts up instantiate a key manager
+		// that uses that keystore. That key manager should be used for all of its
+		// operations.
+		return ContentObject.buildContentObject(
+				getPolicyName(_globalPrefix, _localName),
+				_content);
 	}
+	
+	public static ContentName getPolicyName(ContentName globalPrefix, String localName) {
+		return ContentName.fromNative(globalPrefix, new String[]{localName, Repository.REPO_DATA, Repository.REPO_POLICY});
+	}
+	
+	public ContentName getPolicyName() { return getPolicyName(_globalPrefix, _localName); }
 
 	public void setVersion(String version) {
 		_repoVersion = version;
@@ -265,10 +260,14 @@ public class BasicPolicy implements Policy {
 			changeGlobalPrefix(globalPrefix);
 		}
 	}
+	
+	public ContentName getGlobalPrefix() { return _globalPrefix; }
+	
+	public String getLocalName() { return _localName; }
 
 	public void setLocalName(String localName) throws MalformedContentNameStringException {
 		if (null == _localName) {
-			_localName = ContentName.fromNative(fixSlash(localName));
+			_localName = localName;
 		}
 	}
 	
