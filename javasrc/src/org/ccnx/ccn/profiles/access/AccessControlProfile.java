@@ -10,7 +10,6 @@ import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.impl.support.CCNTimeTest;
 
 
 public class AccessControlProfile implements CCNProfile {
@@ -267,7 +266,7 @@ public class AccessControlProfile implements CCNProfile {
 													  String principalName,
 													  CCNTime timestamp) {
 		byte [] bytePrincipal = ContentName.componentParseNative(principalName);
-		byte [] byteTime = CCNTimeTest.timestampToBinaryTime12(timestamp);
+		byte [] byteTime = timestamp.toBinaryTime();
 		byte [] prefix = (isGroup ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
 		byte [] component = new byte[prefix.length + bytePrincipal.length + COMPONENT_SEPARATOR.length + byteTime.length];
 		// java 1.6 has much better functions for array copying

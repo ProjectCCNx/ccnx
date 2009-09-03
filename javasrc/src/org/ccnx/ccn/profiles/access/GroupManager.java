@@ -25,7 +25,6 @@ import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.access.AccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
-import org.ccnx.ccn.test.impl.support.CCNTimeTest;
 
 
 public class GroupManager {
@@ -245,7 +244,7 @@ public class GroupManager {
 		}
 		if (null == privateKeyDirectory) {
 			Log.info("Unexpected: null private key directory for group " + groupFriendlyName + " version " + privateKeyVersion + " as stamp " + 
-					DataUtils.printHexBytes(CCNTimeTest.timestampToBinaryTime12(privateKeyVersion)));
+					DataUtils.printHexBytes(privateKeyVersion.toBinaryTime()));
 			return null;
 		}
 		
