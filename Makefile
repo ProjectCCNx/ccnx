@@ -1,7 +1,9 @@
 # Top level Makefile for ccn
 
+# Subdirectories we build in
 TOPSUBDIRS = csrc schema javasrc doc/technical
-PACKLIST = Makefile build.xml README configure doc/index.txt $(TOPSUBDIRS) experiments
+# Packing list for packaging
+PACKLIST = Makefile README configure doc/index.txt $(TOPSUBDIRS) experiments
 
 default all: _always
 	for i in $(TOPSUBDIRS); do         \
@@ -54,7 +56,7 @@ distfile: tar
 	# check the Doxyfiles for good version information
 	# fail on the next step if the directory already exists
 	mkdir ccn-$(VERSION)
-	( cd ccn-$(VERSION) && tar xf ../ccn.tar && $(MAKE) fixupversions && $(MAKE) MD5 SHA1 )
+	( cd ccn-$(VERSION) && tar xf ../ccn.tar && $(MAKE) fixupversions VERSION=$(VERSION) && $(MAKE) MD5 SHA1 )
 	tar cf ccn-$(VERSION).tar ccn-$(VERSION)
 	gzip -9 ccn-$(VERSION).tar
 	ls -l ccn-$(VERSION).tar.gz
