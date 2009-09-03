@@ -534,7 +534,11 @@ public class VersioningProfile implements CCNProfile {
 		
 		Log.info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
 		
-		int prefixLength = hasTerminalVersion(startingVersion) ? startingVersion.count() : startingVersion.count() + 1;
+		ContentName prefix = startingVersion;
+		if (hasTerminalVersion(prefix)) {
+			prefix = startingVersion.parent();
+		}
+		int versionedLength = prefix.count() + 1;
 		
 		Interest getLatestInterest = firstBlockLatestVersionInterest(startingVersion, publisher);
 		ContentObject result = library.get(getLatestInterest, timeout);
@@ -542,7 +546,7 @@ public class VersioningProfile implements CCNProfile {
 			Log.info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			
 			// Now we know the version. Did we luck out and get first block?
-			if (CCNVersionedInputStream.isFirstSegment(startingVersion, result, startingSegmentNumber)) {
+			if (CCNVersionedInputStream.isFirstSegment(prefix, result, startingSegmentNumber)) {
 				Log.info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
 				// Now need to verify the block we got
 				if (!verifier.verify(result)) {
@@ -559,7 +563,7 @@ public class VersioningProfile implements CCNProfile {
 			// which works fine only if we have the wrong segment rather than some other beast entirely (like metadata).
 			// So chop off the new name just after the (first) version, and use that. If getLatestVersion is working
 			// right, that should be the right thing.
-			startingVersion = result.name().cut(prefixLength);
+			startingVersion = result.name().cut(versionedLength);
 			Log.info("CHILD SELECTOR FAILURE: getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
 			// this will verify
 			return SegmentationProfile.getSegment(startingVersion, startingSegmentNumber, null, timeout, verifier, library); // now that we have the latest version, go back for the first block.
