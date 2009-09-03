@@ -7,6 +7,7 @@ import java.io.ByteArrayOutputStream;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
@@ -79,12 +80,15 @@ public class ContentNameTest {
 	public void testContentNameString() {
 		ContentName name;
 		
-		// simple string: /test/briggs/test.txt 
+		//----------------------------- Simple strings: identical as URI-encoded and native Java
+		
+		// simple string: /test/briggs/test.txt is legal as both URI-encoded and native Java
 		String testString = ContentName.SEPARATOR + baseName + ContentName.SEPARATOR +
 				subName1 + ContentName.SEPARATOR + 
 				document1;
 				
 		System.out.println("ContentName: parsing name string \"" + testString+"\"");
+		// test URI-encoded (the canonical interpretation)
 		try {
 			name = ContentName.fromURI(testString);
 		} catch (MalformedContentNameStringException e) {
@@ -96,9 +100,23 @@ public class ContentNameTest {
 		System.out.println("Name: " + name);
 		assertEquals(name.toString(), testString);
 
-		// alternate simple string
+		// test as native Java String
+		try {
+			name = ContentName.fromNative(testString);
+		} catch (MalformedContentNameStringException e) {
+			System.out.println("Exception on native " + e.getClass().getName() + ", message: " + e.getMessage());
+			e.printStackTrace();
+			name = null;
+		}
+		assertNotNull(name);
+		System.out.println("Name (native): " + name);
+		assertEquals(name.toString(), testString);
+		
+		// alternate simple string: / only, also legal as both URI-encoded and native Java
 		String testString2 = ContentName.SEPARATOR;
 		ContentName name2 = null;
+		
+		// test as URI-encoded (canonical)
 		System.out.println("ContentName: parsing name string \"" + testString2+"\"");
 		try {
 			name2 = ContentName.fromURI(testString2);
@@ -110,7 +128,23 @@ public class ContentNameTest {
 		assertNotNull(name2);
 		System.out.println("Name: " + name2);
 		assertEquals(name2.toString(), testString2);
+		
+		// test as native Java String
+		System.out.println("ContentName: parsing name string \"" + testString2+"\"");
+		try {
+			name2 = ContentName.fromNative(testString2);
+		} catch (MalformedContentNameStringException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			e.printStackTrace();
+			name2 = null;
+		}
+		assertNotNull(name2);
+		System.out.println("Name: " + name2);
+		assertEquals(name2.toString(), testString2);
+		
 	
+		//----------------------------- tests specific to URI-encoded cases
+
 		// string with ccn: scheme on front
 		ContentName name3 = null;
 		System.out.println("ContentName: parsing name string \"" + withScheme +"\"");
@@ -225,8 +259,15 @@ public class ContentNameTest {
 		subName1 + ContentName.SEPARATOR + 
 		document1;
 		String [] testStringParts = new String[]{baseName,subName1,document1};
+		
+		// as URI format
 		name = ContentName.fromURI(testStringParts);
 		name2 = ContentName.fromURI(testString);
+		assertEquals(name, name2);
+		
+		// as native Java
+		name = ContentName.fromNative(testStringParts);
+		name2 = ContentName.fromNative(testString);
 		assertEquals(name, name2);
 	}
 	
@@ -243,7 +284,7 @@ public class ContentNameTest {
 	}
 	
 	@Test
-	public void testContentNameByteArrayArray() {
+	public void testContentNameByteArrayArray() throws MalformedContentNameStringException {
 		byte [][] arr = new byte[4][];
 		arr[0] = baseName.getBytes();
 		arr[1] = subName1.getBytes();
@@ -252,12 +293,66 @@ public class ContentNameTest {
 		ContentName name = new ContentName(3, arr);
 		assertNotNull(name);
 		System.out.println("Name: " + name);
+		assertEquals(name, ContentName.fromURI(ContentName.SEPARATOR + baseName + ContentName.SEPARATOR +
+				subName1 + ContentName.SEPARATOR + document1));
+
 		arr[3] = document3;
 		ContentName name2 = new ContentName(arr);
 		assertNotNull(name2);
 		System.out.println("Name 2: " + name2);
+		assertEquals(name2.count(), 4);
+		assertEquals(name2.components().size(), 4);
+		assert(DataUtils.arrayEquals(name2.component(0), arr[0]));
+		assert(DataUtils.arrayEquals(name2.component(1), arr[1]));
+		assert(DataUtils.arrayEquals(name2.component(2), arr[2]));
+		assert(DataUtils.arrayEquals(name2.component(3), arr[3]));
+	
 	}
 
+	@Test
+	public void testMultilevelString() throws MalformedContentNameStringException {
+		// Test multilevel construction with Strings, 
+		// i.e. methods that take a parent and then additional components
+		ContentName parent = ContentName.fromURI(ContentName.SEPARATOR + baseName + ContentName.SEPARATOR + subName1);
+		assertNotNull(parent);
+		assertEquals(parent.count(), 2);
+		String childExtension = document1 + ContentName.SEPARATOR + document2;
+		String[] childComps = new String[]{document1, document2};
+		ContentName child = null;
+		
+		// URI case
+		// Note: fromURI takes only one additional component, ignores rest
+		child = ContentName.fromURI(parent, childExtension);
+		System.out.println("Child is (URI): " + child);
+		assertNotNull(child);
+		assertEquals(child.count(), 3); // lose the last component
+		assertTrue(parent.isPrefixOf(child));
+		assertEquals(child.cut(document1.getBytes()), parent);
+		assertTrue(DataUtils.arrayEquals(child.component(2), document1.getBytes()));
+		
+		child = ContentName.fromNative(parent, document1);
+		System.out.println("Child is (native, one additional comp): " + child);
+		assertNotNull(child);
+		assertTrue(parent.isPrefixOf(child));
+		assertEquals(child.count(), 3);
+		assertEquals(child.cut(document1.getBytes()), parent);
+		assertTrue(DataUtils.arrayEquals(child.component(2), document1.getBytes()));
+		
+		child = ContentName.fromNative(parent, childComps[0], childComps[1]);
+		System.out.println("Child is (native): " + child);
+		assertNotNull(child);
+		ContentName child2 = ContentName.fromNative(parent, childComps);
+		System.out.println("Child2 is (native): " + child2);
+		assertNotNull(child2);
+		assertEquals(child, child2);
+		assertEquals(child2, child);
+		assertTrue(parent.isPrefixOf(child));
+		assertEquals(child.count(), 4);
+		assertEquals(child.cut(document1.getBytes()), parent);
+		assertTrue(DataUtils.arrayEquals(child.component(2), document1.getBytes()));
+		assertTrue(DataUtils.arrayEquals(child.component(3), document2.getBytes()));
+	}
+	
 	@Test
 	public void testInvalidContentNameByteArrayArray() throws MalformedContentNameStringException {
 		byte [][] arr = new byte[4][];
