@@ -60,7 +60,7 @@
     <xs:element name="Count" type="xs:nonNegativeInteger"/>
     <xs:element name="BlockSize" type="xs:nonNegativeInteger"/>
     <xs:element name="Length" type="xs:nonNegativeInteger"/>
-    <xs:element name="RootDigest" type="Base64BinaryType"/>
+    <xs:element name="RootDigest" type="Base64BinaryType" minOccurs="0"/>
     <xs:element name="ContentDigest" type="Base64BinaryType" minOccurs="0"/>
   </xs:sequence>
 </xs:complexType>
@@ -160,7 +160,7 @@
 		 are likely less standard for us than digest algorithms. So
 		 specify a digest algorithm here to increase our options of
 		 eliding it (default = sha-256). b) for now, sign the content
-		 directly rather than re-hashing it.  -->
+		 directly rather than re-hashing it, except for aggregated signatures.  -->
 	<xs:element name="DigestAlgorithm" type="xs:string"
 					 default="2.16.840.1.101.3.4.2.1"
                                          minOccurs="0" maxOccurs="1" /> 
