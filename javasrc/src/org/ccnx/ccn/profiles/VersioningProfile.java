@@ -82,15 +82,15 @@ public class VersioningProfile implements CCNProfile {
 	 * This allows versions to be recorded as a timestamp with a 1/4096 second accuracy.
 	 * @see #addVersion(ContentName, long)
 	 */
-	public static ContentName addVersion(ContentName name, Timestamp version) {
+	public static ContentName addVersion(ContentName name, CCNTime version) {
 		if (null == version)
 			throw new IllegalArgumentException("Version cannot be null!"); 
-		return addVersion(name, CCNTime.timestampToBinaryTime12AsLong(version));
+		return addVersion(name, version);
 	}
 	
 	/**
 	 * Add a version field based on the current time, accurate to 1/4096 second.
-	 * @see #addVersion(ContentName, Timestamp)
+	 * @see #addVersion(ContentName, CCNTime)
 	 */
 	public static ContentName addVersion(ContentName name) {
 		return addVersion(name, SignedInfo.now());
@@ -108,7 +108,7 @@ public class VersioningProfile implements CCNProfile {
 	 * Adds a version to a ContentName; if there is a terminal version there already,
 	 * first removes it.
 	 */
-	public static ContentName updateVersion(ContentName name, Timestamp version) {
+	public static ContentName updateVersion(ContentName name, CCNTime version) {
 		return addVersion(cutTerminalVersion(name).first(), version);
 	}
 
@@ -217,7 +217,7 @@ public class VersioningProfile implements CCNProfile {
 		return new BigInteger(versionData).longValue();
 	}
 
-	public static Timestamp getVersionComponentAsTimestamp(byte [] versionComponent) {
+	public static CCNTime getVersionComponentAsTimestamp(byte [] versionComponent) {
 		return versionLongToTimestamp(getVersionComponentAsLong(versionComponent));
 	}
 
@@ -225,7 +225,7 @@ public class VersioningProfile implements CCNProfile {
 	 * Extract the version from this name as a Timestamp.
 	 * @throws VersionMissingException 
 	 */
-	public static Timestamp getLastVersionAsTimestamp(ContentName name) throws VersionMissingException {
+	public static CCNTime getLastVersionAsTimestamp(ContentName name) throws VersionMissingException {
 		long time = getLastVersionAsLong(name);
 		return CCNTime.binaryTime12ToTimestamp(time);
 	}
@@ -235,14 +235,14 @@ public class VersioningProfile implements CCNProfile {
 	 * @param name
 	 * @return
 	 */
-	public static Timestamp getLastVersionAsTimestampIfVersioned(ContentName name) {
+	public static CCNTime getLastVersionAsTimestampIfVersioned(ContentName name) {
 		int versionComponent = findLastVersionComponent(name);
 		if (versionComponent < 0)
 			return null;
 		return getVersionComponentAsTimestamp(name.component(versionComponent));
 	}
 	
-	public static Timestamp getTerminalVersionAsTimestampIfVersioned(ContentName name) {
+	public static CCNTime getTerminalVersionAsTimestampIfVersioned(ContentName name) {
 		if (!hasTerminalVersion(name))
 			return null;
 		int versionComponent = findLastVersionComponent(name);
@@ -251,7 +251,7 @@ public class VersioningProfile implements CCNProfile {
 		return getVersionComponentAsTimestamp(name.component(versionComponent));
 	}
 	
-	public static Timestamp versionLongToTimestamp(long version) {
+	public static CCNTime versionLongToTimestamp(long version) {
 		return CCNTime.binaryTime12ToTimestamp(version);
 	}
 	/**
@@ -268,7 +268,7 @@ public class VersioningProfile implements CCNProfile {
 	 * @return
 	 */
 	public static int compareVersions(
-			Timestamp left,
+			CCNTime left,
 			ContentName right) {
 		if (!hasTerminalVersion(right)) {
 			throw new IllegalArgumentException("Both names to compare must be versioned!");
