@@ -19,7 +19,6 @@ import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.SignedInfo;
 
 
 /**
@@ -93,7 +92,7 @@ public class VersioningProfile implements CCNProfile {
 	 * @see #addVersion(ContentName, CCNTime)
 	 */
 	public static ContentName addVersion(ContentName name) {
-		return addVersion(name, SignedInfo.now());
+		return addVersion(name, CCNTime.now());
 	}
 	
 	/**
@@ -117,7 +116,7 @@ public class VersioningProfile implements CCNProfile {
 	 * @see #updateVersion(ContentName, Timestamp)
 	 */
 	public static ContentName updateVersion(ContentName name) {
-		return updateVersion(name, SignedInfo.now());
+		return updateVersion(name, CCNTime.now());
 	}
 
 	/**

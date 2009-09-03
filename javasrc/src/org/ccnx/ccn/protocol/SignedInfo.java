@@ -105,7 +105,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     	super();
     	this._publisher = publisher;
     	if (null == timestamp) {
-    		this._timestamp = now(); // msec only
+    		this._timestamp = CCNTime.now(); // msec only
     	} else {
     		this._timestamp = timestamp;
     	}
@@ -358,10 +358,6 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		if (emptyPublisher() || emptyTimestamp() || emptyKeyLocator())
 			return false;
 		return true;
-	}
-
-	public static Timestamp now() {
-		return new Timestamp(System.currentTimeMillis());
 	}
 
 	@Override

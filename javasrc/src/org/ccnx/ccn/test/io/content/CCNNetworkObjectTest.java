@@ -196,7 +196,7 @@ public class CCNNetworkObjectTest {
 		try {
 			setupNamespace(testName);
 
-			Timestamp desiredVersion = CCNTime.roundTimestamp(SignedInfo.now());
+			Timestamp desiredVersion = CCNTime.roundTimestamp(CCNTime.now());
 
 			CCNStringObject so = new CCNStringObject(testName, "First value", lput);
 			saveAndLog("SpecifiedVersion", so, desiredVersion, "Time: " + desiredVersion);

@@ -23,6 +23,7 @@ import org.ccnx.ccn.CCNBase;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNReader;
@@ -35,7 +36,6 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.SignedInfo;
 import org.junit.Test;
 
 
@@ -249,7 +249,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 	@Test
 	public void testRecall() {
 		String key = "/test/smetters/values/data";
-		Timestamp time = SignedInfo.now();
+		Timestamp time = CCNTime.now();
 		try {
 			ContentName keyName = ContentName.fromNative(key);
 			CCNWriter writer = new CCNWriter(keyName, putLibrary);

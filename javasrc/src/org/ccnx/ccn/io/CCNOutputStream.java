@@ -20,7 +20,6 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
@@ -287,7 +286,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		}
 
 		if (null == _timestamp)
-			_timestamp = SignedInfo.now();
+			_timestamp = CCNTime.now();
 
 		// First, are we flushing dangling blocks (e.g. on close())? If not, we always
 		// keep at least a partial block behind. There are two reasons for this; first to
