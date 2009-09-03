@@ -8,7 +8,6 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -103,43 +102,8 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		return result;
 	}
 	
-	/**
-	 * Version of isFirstSegment that expects names to be versioned, and allows that desiredName
-	 * won't know what version it wants but will want some version.
-	 */
-	public static boolean isVersionedFirstSegment(ContentName desiredName, ContentObject potentialFirstSegment, Long startingSegmentNumber) {
-		if ((null != potentialFirstSegment) && (SegmentationProfile.isSegment(potentialFirstSegment.name()))) {
-			Log.info("is " + potentialFirstSegment.name() + " a first segment of " + desiredName);
-			// In theory, the segment should be at most a versioning component different from desiredName.
-			// In the case of complex segmented objects (e.g. a KeyDirectory), where there is a version,
-			// then some name components, then a segment, desiredName should contain all of those other
-			// name components -- you can't use the usual versioning mechanisms to pull first segment anyway.
-			if (!desiredName.isPrefixOf(potentialFirstSegment.name())) {
-				Log.info("Desired name :" + desiredName + " is not a prefix of segment: " + potentialFirstSegment.name());
-				return false;
-			}
-			int difflen = potentialFirstSegment.name().count() - desiredName.count();
-			if (difflen > 2) {
-				Log.info("Have " + difflen + " extra components between " + potentialFirstSegment.name() + " and desired " + desiredName);
-				return false;
-			}
-			// Now need to make sure that if the difference is more than 1, that difference is
-			// a version component.
-			if ((difflen == 2) && (!VersioningProfile.isVersionComponent(potentialFirstSegment.name().component(potentialFirstSegment.name().count()-2)))) {
-				Log.info("The " + difflen + " extra component between " + potentialFirstSegment.name() + " and desired " + desiredName + " is not a version.");
-				
-			}
-			if ((null != startingSegmentNumber) && (SegmentationProfile.baseSegment() != startingSegmentNumber)) {
-				return (startingSegmentNumber.equals(SegmentationProfile.getSegmentNumber(potentialFirstSegment.name())));
-			} else {
-				return SegmentationProfile.isFirstSegment(potentialFirstSegment.name());
-			}
-		}
-		return false;
-	}
-	
 	protected boolean isFirstSegment(ContentName desiredName, ContentObject potentialFirstSegment) {
-		return isVersionedFirstSegment(desiredName, potentialFirstSegment, _startingSegmentNumber);
+		return VersioningProfile.isVersionedFirstSegment(desiredName, potentialFirstSegment, _startingSegmentNumber);
 	}
 	
 	public Timestamp getVersionAsTimestamp() throws VersionMissingException {
