@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.ccnx.ccn.impl.repo.RepositoryException;
+import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -40,7 +41,8 @@ public class RepoInitialReadTest extends RepoTestBase {
 		checkData(badCharName, "Funny characters!");
 		checkData(badCharLongName, "Long and funny");
 		
-		ArrayList<ContentObject>keys = getLibrary.enumerate(new Interest(keyprefix), 4000);
+		CCNReader reader = new CCNReader(getLibrary);
+		ArrayList<ContentObject>keys = reader.enumerate(new Interest(keyprefix), 4000);
 		for (ContentObject keyObject : keys) {
 			checkDataAndPublisher(name, "Testing2", new PublisherPublicKeyDigest(keyObject.content()));
 		}

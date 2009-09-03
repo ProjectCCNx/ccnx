@@ -8,13 +8,14 @@ import java.util.Arrays;
 
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.BloomFilter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Exclude;
+import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Interest;
 import org.junit.Assert;
 import org.junit.Test;
@@ -65,6 +66,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	public void getNextTest() throws Throwable {
 		System.out.println("getNext test started");
 		CCNWriter writer = new CCNWriter("/getNext", putLibrary);
+		CCNReader reader = new CCNReader(getLibrary);
 		for (int i = 0; i < count; i++) {
 			writer.put("/getNext/" + Integer.toString(i), Integer.toString(count - i));
 			Thread.sleep(rand.nextInt(50));
@@ -79,7 +81,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			int tValue = rand.nextInt(count - 1);
 			ContentName cn = new ContentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString()), 
 					ContentObject.contentDigest(Integer.toString(count - tValue)));
-			ContentObject result = getLibrary.getNext(cn, 1, 3000);
+			ContentObject result = reader.getNext(cn, 1, 3000);
 			checkResult(result, tValue + 1);
 		}
 		System.out.println("getNext test finished");
@@ -90,6 +92,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		int highest = 0;
 		System.out.println("getLatest test started");
 		CCNWriter writer = new CCNWriter("/getLatest", putLibrary);
+		CCNReader reader = new CCNReader(getLibrary);
 		for (int i = 0; i < count; i++) {
 			int tValue = getRandomFromSet(count, false);
 			if (tValue > highest)
@@ -108,7 +111,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 					tValue--;
 				ContentName cn = SegmentationProfile.segmentName(
 						ContentName.fromNative("/getLatest/" + new Integer(tValue).toString()), SegmentationProfile.baseSegment());
-				ContentObject result = getLibrary.getLatest(cn, 1, 5000);
+				ContentObject result = reader.getLatest(cn, 1, 5000);
 				checkResult(result, highest);
 			}
 		}
@@ -159,10 +162,11 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			String name = prefix + "/" + value;
 			writer.put(name, value);
 		}
-		ContentObject content = getLibrary.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
+		CCNReader reader = new CCNReader(getLibrary);
+		ContentObject content = reader.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
 		if (null == content || !Arrays.equals(content.content(), new Integer((nFilters - 1)).toString().getBytes())) {
 			// Try one more time in case we got a false positive
-			content = getLibrary.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
+			content = reader.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
 		}
 		Assert.assertFalse(content == null);
 		assertEquals(DataUtils.compare(content.content(), new Integer((nFilters - 1)).toString().getBytes()), 0);
