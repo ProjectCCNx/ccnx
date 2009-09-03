@@ -257,7 +257,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 	
 	public CCNTime readDateTime(String startTag) throws XMLStreamException {
 		byte [] byteTimestamp = readBinaryElement(startTag);
-		CCNTime timestamp = CCNTime.binaryTime12ToTimestamp(byteTimestamp);
+		CCNTime timestamp = new CCNTime(byteTimestamp);
 		if (null == timestamp) {
 			throw new XMLStreamException("Cannot parse timestamp: " + DataUtils.printHexBytes(byteTimestamp));
 		}		

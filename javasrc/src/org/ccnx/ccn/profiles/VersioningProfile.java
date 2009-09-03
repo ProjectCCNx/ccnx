@@ -225,7 +225,7 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static CCNTime getLastVersionAsTimestamp(ContentName name) throws VersionMissingException {
 		long time = getLastVersionAsLong(name);
-		return CCNTime.binaryTime12ToTimestamp(time);
+		return CCNTime.fromBinaryTimeAsLong(time);
 	}
 	
 	/**
@@ -250,8 +250,9 @@ public class VersioningProfile implements CCNProfile {
 	}
 	
 	public static CCNTime versionLongToTimestamp(long version) {
-		return CCNTime.binaryTime12ToTimestamp(version);
+		return CCNTime.fromBinaryTimeAsLong(version);
 	}
+	
 	/**
 	 * Control whether versions start at 0 or 1.
 	 * @return

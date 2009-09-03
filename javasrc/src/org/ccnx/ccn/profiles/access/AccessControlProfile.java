@@ -246,7 +246,7 @@ public class AccessControlProfile implements CCNProfile {
 		
 		String strPrincipal = ContentName.componentPrintNative(principal);
 		// Represent as version or just the timestamp part?
-		CCNTime version = CCNTime.binaryTime12ToTimestamp(timestamp);
+		CCNTime version = new CCNTime(timestamp);
 		return new PrincipalInfo(type, strPrincipal, version);	
 	}
 
