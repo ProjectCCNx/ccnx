@@ -28,7 +28,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * @author smetters
  *
  */
-public class Collection extends GenericXMLEncodable implements XMLEncodable {
+public class Collection extends GenericXMLEncodable implements XMLEncodable, Iterable<Link> {
 	
 	/**
 	 * This should eventually be called Collection, and the Collection class deleted.
@@ -210,5 +210,12 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable {
 		} else if (!_contents.equals(other._contents))
 			return false;
 		return true;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Iterable#iterator()
+	 */
+	public Iterator<Link> iterator() {
+		return _contents.iterator();
 	}
 }
