@@ -27,8 +27,8 @@ import org.ccnx.ccn.impl.support.ByteArrayCompare;
  * 2. An any element or a bloom filter element must not be followed by an any element or bloom filter.
  * I.E. Any elements or bloom filters must be separated by at least one component element.
  */
-public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
-		Comparable<ExcludeFilter> {
+public class Exclude extends GenericXMLEncodable implements XMLEncodable,
+		Comparable<Exclude> {
 	
 	public static final String EXCLUDE_ELEMENT = "Exclude";
 	public static final String BLOOM_SEED = "BloomSeed";
@@ -51,7 +51,7 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	 * and there must not be more than one BloomFilter in a row.
 	 * @throws #IllegalArgumentException
 	 */
-	public ExcludeFilter(ArrayList<Element> values) {
+	public Exclude(ArrayList<Element> values) {
 		// Make sure the values are valid
 		ExcludeComponent c = null;
 		Element last = null;
@@ -76,7 +76,7 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	 * here will result in an #IllegalArgumentException exception
 	 * @throws #IllegalArgumentException
 	 */
-	public ExcludeFilter(byte [][] omissions) {
+	public Exclude(byte [][] omissions) {
 		if (omissions == null || omissions.length == 0)
 			throw new IllegalArgumentException("No omissions");
 		Arrays.sort(omissions, new ByteArrayCompare());
@@ -85,17 +85,17 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		}
 	}
 
-	public ExcludeFilter() {} // for use by decoders
+	public Exclude() {} // for use by decoders
 
 	/**
 	 * Create an Exclude filter that excludes all components up to and including the one given,
 	 * but none after.
 	 * @param component if a null component is passed in then null is returned.
 	 */
-	public static ExcludeFilter uptoFactory(byte [] component) {
+	public static Exclude uptoFactory(byte [] component) {
 		if ( component == null)
 			return null;
-		ExcludeFilter ef = new ExcludeFilter();
+		Exclude ef = new Exclude();
 		synchronized (ef._values) {
 			ef._values.add(new ExcludeAny());
 			ef._values.add(new ExcludeComponent(component));
@@ -106,12 +106,12 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	/**
 	 * @param omissions List of names to exclude, or null
 	 * @return returns null if list is null or empty, or a new Exclude filter that excludes the listed names.
-	 * @see #ExcludeFilter(byte [][])
+	 * @see #Exclude(byte [][])
 	 */
-	public static ExcludeFilter factory(byte [][] omissions) {
+	public static Exclude factory(byte [][] omissions) {
 		if (omissions == null || omissions.length == 0)
 			return null;
-		return new ExcludeFilter(omissions);
+		return new Exclude(omissions);
 	}
 	
 	/**
@@ -145,10 +145,10 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 	}
 
 	/**
-	 * Return a new ExcludeFilter that is a copy of this one with 
+	 * Return a new Exclude filter that is a copy of this one with 
 	 * the supplied omissions added.
 	 * @param omissions
-	 * @return new ExcludeFilter object or null in case of error
+	 * @return new Exclude filter object or null in case of error
 	 */
 	public void add(byte[][] omissions) {
 		if (omissions == null || omissions.length == 0)
@@ -305,7 +305,7 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 		return true;
 	}
 
-	public int compareTo(ExcludeFilter o) {
+	public int compareTo(Exclude o) {
 		int result = 0;
 		if (empty() && !o.empty())
 			return -1;
@@ -331,7 +331,7 @@ public class ExcludeFilter extends GenericXMLEncodable implements XMLEncodable,
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		ExcludeFilter other = (ExcludeFilter) obj;
+		Exclude other = (Exclude) obj;
 		synchronized (_values) {
 			return _values.equals(other._values);
 		}

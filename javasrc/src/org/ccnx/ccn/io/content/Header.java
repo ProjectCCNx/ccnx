@@ -1,156 +1,419 @@
 
 package org.ccnx.ccn.io.content;
 
-import java.security.InvalidKeyException;
-import java.security.PrivateKey;
-import java.security.SignatureException;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
-import org.ccnx.ccn.io.content.HeaderData.FragmentationType;
+import org.ccnx.ccn.impl.encoding.XMLEncodable;
+import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.Signature;
-import org.ccnx.ccn.protocol.SignedInfo;
 
 
 /**
  * Mapping from a sequence to the underlying XML representation.
  * A Header is a content object giving a compact description of a
  * sequence of named blocks.
- * 
- * @author rasmusse
+ * @author briggs, smetters
  *
- * Replaced by HeaderObject
  */
-@Deprecated
-public class Header extends ContentObject  {
+public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	
-	protected HeaderData _data;
+	/**
+	 * This should eventually be called Header, and the Header class deleted.
+	 */
+	public static class HeaderObject extends CCNEncodableObject<Header> {
+		
+		/**
+		 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
+		 * @param name
+		 * @param data
+		 * @param library
+		 * @throws IOException
+		 */
+		public HeaderObject(ContentName name, Header data, CCNHandle library) throws IOException {
+			super(Header.class, name, data, library);
+		}
+		
+		public HeaderObject(ContentName name, Header data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
+			super(Header.class, name, data, publisher, keyLocator, library);
+		}
 
-	public Header(ContentName name,
-			 long start, long count, 
-			 int blockSize, long length,
-			 byte [] contentDigest,
-			 byte [] rootDigest,
-			 PublisherPublicKeyDigest publisher,
-			 KeyLocator locator,
-			 Signature signature
-			 ) throws XMLStreamException {
-		super(name, new SignedInfo(publisher, locator));
-		_signature = signature;
-		_data = new HeaderData(start, count, blockSize, length, contentDigest, rootDigest);
-		_content = _data.encode();
+		public HeaderObject(ContentName name,
+				Header data, PublisherPublicKeyDigest publisher,
+				KeyLocator keyLocator, CCNFlowControl flowControl) throws IOException, XMLStreamException {
+			super(Header.class, name, data, publisher, keyLocator, flowControl);
+		}
+	
+		/**
+		 * Read constructor -- opens existing object.
+		 * @param name
+		 * @param library
+		 * @throws XMLStreamException
+		 * @throws IOException
+		 * @throws ClassNotFoundException 
+		 */
+		public HeaderObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) throws IOException, XMLStreamException {
+			super(Header.class, name, publisher, library);
+		}
+		
+		public HeaderObject(ContentName name, CCNHandle library) throws IOException, XMLStreamException {
+			super(Header.class, name, (PublisherPublicKeyDigest)null, library);
+		}
+		
+		public HeaderObject(ContentObject firstBlock, CCNHandle library) throws IOException, XMLStreamException {
+			super(Header.class, firstBlock, library);
+		}
+		
+		public long start() { 
+			Header h = header();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.start(); 
+		}
+
+		public long count() { 
+			Header h = header();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.count(); 
+		}
+		
+		public int blockSize() { 
+			Header h = header();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.blockSize(); 
+		}
+		
+		public long length() { 
+			Header h = header();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.length(); 
+		}
+		
+		public byte [] rootDigest() { 
+			Header h = header();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.rootDigest(); 
+		}
+		
+		public byte [] contentDigest() {
+			Header h = header();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.contentDigest(); 
+		}
+		
+		public FragmentationType type() {
+			Header h = header();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.type(); 
+		}
+
+		public String typeName() {
+			Header h = header();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.typeName(); 
+		}
+		
+		public int[] positionToSegmentLocation(long position) {
+			Header h = header();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.positionToSegmentLocation(position);
+		}
+
+		public long segmentLocationToPosition(long block, int offset) {
+			Header h = header();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.segmentLocationToPosition(block, offset);
+		}
+
+		public int segmentCount() {
+			Header h = header();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.segmentCount();
+		}
+		
+		public int segmentRemainder() {
+			Header h = header();
+			if (null == h)
+				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
+			return h.segmentRemainder();
+		}
+
+		public Header header() { 
+			if (null == data())
+				return null;
+			return data(); 
+		}
 	}
 	
-	public Header(ContentName name,
-			long start, long count, 
-			 int blockSize, long length,
-			 byte [] contentDigest,
-			 byte [] rootDigest,
-			 PublisherPublicKeyDigest publisher,
-			 KeyLocator locator,
-			 PrivateKey signingKey
-			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, start, count, blockSize, length, contentDigest, rootDigest, publisher, locator, (Signature)null);
-		_signature = sign(name, signedInfo(), _content, 0, _content.length, signingKey);
+	public enum FragmentationType {SIMPLE_BLOCK};
+    protected static final HashMap<FragmentationType, String> FragmentationTypeNames = new HashMap<FragmentationType, String>();
+    protected static final HashMap<String, FragmentationType> FragmentationNameTypes = new HashMap<String, FragmentationType>();
+
+    static {
+    	FragmentationTypeNames.put(FragmentationType.SIMPLE_BLOCK, "SIMPLE_BLOCK");
+    	FragmentationNameTypes.put("SIMPLE_BLOCK", FragmentationType.SIMPLE_BLOCK);
+    }
+	
+	public static final String START_ELEMENT = "Start";
+	public static final String HEADER_ELEMENT = "Header";
+	/**
+	 * These are specific to simple block fragmentation.
+	 */
+	protected static final String COUNT_ELEMENT = "Count";
+	protected static final String BLOCKSIZE_ELEMENT = "BlockSize";
+	protected static final String LENGTH_ELEMENT = "Length";
+	
+	/**
+	 * These are generic.
+	 */
+	protected static final String CONTENT_DIGEST_ELEMENT = "ContentDigest";
+	protected static final String MERKLE_ROOT_ELEMENT = "RootDigest";
+	
+	/**
+	 * Specific to simple block fragmentation.
+	 */
+	protected long _start;	// starting block number ( >= 0)
+	protected long _count;	// number of blocks in sequence (>= 0)
+	protected int _blockSize; // size in bytes(?) of a block (> 0)
+	protected long _length; // total length in bytes (? same unit as _blockSize) to account for partial last block (>= 0)
+
+	
+	/**
+	 * Generic.
+	 * 
+	 */
+	protected FragmentationType _type;
+	protected byte [] _contentDigest;
+	protected byte [] _rootDigest; // root of the Merkle tree
+	
+	/**
+	 * Basic constructor for content sequences
+	 * @param start
+	 * @param count
+	 * @param blockSize
+	 * @param length
+	 */
+	public Header(long start, long count, 
+				  int blockSize, long length,
+				  byte [] contentDigest,
+				  byte [] rootDigest) {
+		_start = start;
+		_count = count;
+		_blockSize = blockSize;
+		_length = length;
+		_contentDigest = contentDigest;
+		_rootDigest = rootDigest;
+		_type = FragmentationType.SIMPLE_BLOCK;
 	}
 	
-	public Header(ContentName name,
-			long length,
-		  	 byte [] contentDigest,
-		  	 byte [] rootDigest, int blockSize,
-			 PublisherPublicKeyDigest publisher,
-			 KeyLocator locator,
-			 PrivateKey signingKey
-			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, SegmentationProfile.baseSegment(), 
+	public Header(long length,
+			byte [] contentDigest,
+			byte [] rootDigest, int blockSize
+	) throws XMLStreamException {
+		this(SegmentationProfile.baseSegment(), 
 				(length + blockSize - 1) / blockSize, blockSize, length,
-				 contentDigest, rootDigest, publisher, locator, signingKey);
-	}
-	
-	public Header(ContentName name,
-			 PublisherPublicKeyDigest publisher, 
-			 KeyLocator locator,
-			 PrivateKey signingKey
-			 ) throws XMLStreamException, InvalidKeyException, SignatureException {
-		this(name, SegmentationProfile.baseSegment(), 0, 
-					SegmentationProfile.DEFAULT_BLOCKSIZE, 0, null, null, 
-					publisher, locator, signingKey);
+				contentDigest, rootDigest);
 	}
 	
 	/**
-	 * Decoding constructor.
+	 * For decoders
 	 */
 	public Header() {}
 	
-	public static Header contentToHeader(ContentObject co) throws XMLStreamException {
-		Header header = new Header();
-		header.decode(co.encode());
-		header.decodeData();
-		return header;
-	}
-	
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
-		super.decode(decoder);
-		decodeData();
-	}
-	
-	private void decodeData() throws XMLStreamException {
-		_data = new HeaderData();
-		_data.decode(_content);
-	}
-	
 	public long start() { 
-		return _data.start();
+		return _start;
 	}
 	public long count() { 
-		return _data.count();
+		return _count;
 	}
 	public int blockSize() { 
-		return _data.blockSize();
+		return _blockSize;
 	}
 	public long length() { 
-		return _data.length();
+		return _length;
 	}
 	
 	public byte [] rootDigest() { 
-		return _data.rootDigest();
+		return _rootDigest;
 	}
 	
 	public byte [] contentDigest() {
-		return _data.contentDigest();
+		return _contentDigest;
 	}
 	
 	public FragmentationType type() {
-		return _data.type();
+		return _type;
 	}
 
 	public void type(FragmentationType type) {
-		_data.type(type);
+		this._type = type;
 	}
 	
 	public String typeName() {
-		return _data.typeName();
+		return typeToName(type());
 	}
 	
-	public int[] positionToBlockLocation(long position) {
-		return _data.positionToSegmentLocation(position);
+	/* (non-Javadoc)
+	 * @see com.parc.ccn.data.util.XMLEncodable#decode(javax.xml.stream.XMLEventReader)
+	 */
+	@Override
+	public void decode(XMLDecoder decoder) throws XMLStreamException {
+		decoder.readStartElement(Header.HEADER_ELEMENT);
+		_start = Integer.valueOf(decoder.readUTF8Element(Header.START_ELEMENT));
+		_count = Integer.valueOf(decoder.readUTF8Element(COUNT_ELEMENT));
+		_blockSize = Integer.valueOf(decoder.readUTF8Element(BLOCKSIZE_ELEMENT));
+		_length = Integer.valueOf(decoder.readUTF8Element(LENGTH_ELEMENT));
+		_contentDigest = decoder.readBinaryElement(CONTENT_DIGEST_ELEMENT);
+		if (null == _contentDigest) {
+			throw new XMLStreamException("Cannot parse content digest.");
+		}
+		
+		if (decoder.peekStartElement(MERKLE_ROOT_ELEMENT)) {
+			_rootDigest = decoder.readBinaryElement(MERKLE_ROOT_ELEMENT);
+			if (null == _rootDigest) {
+				throw new XMLStreamException("Cannot parse root digest.");
+			}
+		}
+		decoder.readEndElement();
+		
+		// Right now, we're just setting this field to default, and it's not encoded
+		_type = FragmentationType.SIMPLE_BLOCK;
 	}
 
-	public long blockLocationToPosition(long block, int offset) {
-		return _data.segmentLocationToPosition(block, offset);
+	/* (non-Javadoc)
+	 * @see com.parc.ccn.data.util.XMLEncodable#encode(javax.xml.stream.XMLStreamWriter, boolean)
+	 */
+	@Override
+	public void encode(XMLEncoder encoder)
+			throws XMLStreamException {
+		if (!validate()) {
+			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+		}
+		encoder.writeStartElement(HEADER_ELEMENT);
+		encoder.writeElement(START_ELEMENT,	 Long.toString(_start));
+		encoder.writeElement(COUNT_ELEMENT,	 Long.toString(_count));
+		encoder.writeElement(BLOCKSIZE_ELEMENT,	 Long.toString(_blockSize));
+		encoder.writeElement(LENGTH_ELEMENT,	Long.toString(_length));
+		encoder.writeElement(CONTENT_DIGEST_ELEMENT, contentDigest());
+		if (null != rootDigest())
+			encoder.writeElement(MERKLE_ROOT_ELEMENT, rootDigest());
+		encoder.writeEndElement();
+		
+		// DKS -- currently not putting _type on the wire, not sure why it's here...
 	}
 
-	public int blockCount() {
-		return _data.segmentCount();
+	@Override
+	public boolean validate() {
+		if (_start < 0 || _count < 0 ||  _length < 0) return false;
+		if (_blockSize <= 0) return false;
+		return true;
 	}
 	
-	public int blockRemainder() {
-		return _data.segmentRemainder();
+	public static String typeToName(FragmentationType type) {
+		return FragmentationTypeNames.get(type);
+	}
+
+	public static FragmentationType nameToType(String name) {
+		return FragmentationNameTypes.get(name);
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + _blockSize;
+		result = prime * result + Arrays.hashCode(_contentDigest);
+		result = prime * result + (int) (_count ^ (_count >>> 32));
+		result = prime * result + (int) (_length ^ (_length >>> 32));
+		result = prime * result + Arrays.hashCode(_rootDigest);
+		result = prime * result + (int) (_start ^ (_start >>> 32));
+		result = prime * result + ((_type == null) ? 0 : _type.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Header other = (Header) obj;
+		if (_blockSize != other._blockSize)
+			return false;
+		if (!Arrays.equals(_contentDigest, other._contentDigest))
+			return false;
+		if (_count != other._count)
+			return false;
+		if (_length != other._length)
+			return false;
+		if (!Arrays.equals(_rootDigest, other._rootDigest))
+			return false;
+		if (_start != other._start)
+			return false;
+		if (_type == null) {
+			if (other._type != null)
+				return false;
+		} else if (!_type.equals(other._type))
+			return false;
+		return true;
+	}
+
+	public int[] positionToSegmentLocation(long position) {
+		int [] blockLocation = new int[2];
+		Log.info("Header: " + this);
+		Log.info("position: " + position + " blockSize " + blockSize() + " position/blockSize " + position/blockSize() + " start: " + start());
+		blockLocation[0] = (int)(Math.floor(1.0*position/blockSize()));
+		blockLocation[1] = (int)(1.0*position % blockSize());
+		return blockLocation;
+	}
+
+	public long segmentLocationToPosition(long block, int offset) {
+		if (offset > blockSize()) {
+			block += (int)(Math.floor(1.0*offset/blockSize()));
+			offset = (int)(1.0*offset % blockSize());
+		}
+		if (block >= segmentCount()) {
+			return length();
+		}
+		return block*blockSize() + offset;
+	}
+
+	public int segmentCount() {
+		return (int)(Math.ceil(1.0*length()/blockSize()));
+	}
+	
+	/**
+	 * Length of last block.
+	 * @return
+	 */
+	public int segmentRemainder() {
+		int remainder = (int)(1.0*length() % blockSize());
+		if (remainder == 0)
+			return blockSize();
+		return remainder;
 	}
 }

@@ -1,8 +1,8 @@
 package org.ccnx.ccn.test.profiles.access;
 
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.protocol.ContentName;
@@ -21,9 +21,15 @@ public class TestUserDataTestRepo {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		testPrefix = ContentName.fromNative("/parc/test");
-		userKeyStorePrefix = ContentName.fromNative("/parc/test/_access_/Users");
-		userNamespace = ContentName.fromNative("/parc/test/Users/");
+		//testPrefix = ContentName.fromNative("/parc/test");
+		//userKeyStorePrefix = ContentName.fromNative("/parc/test/_access_/Users");
+		//userNamespace = ContentName.fromNative("/parc/test/Users/");
+		testPrefix = UserConfiguration.defaultNamespace();
+		userKeyStorePrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_access_");
+		userNamespace = ContentName.fromNative(testPrefix, "home");
+		System.out.println("testPrefix = " + testPrefix);
+		System.out.println("userKeyStorePrefix =" + userKeyStorePrefix);
+		System.out.println("userNamespace = " + userNamespace);
 	}
 	
    @Test
@@ -51,7 +57,8 @@ public class TestUserDataTestRepo {
 				"password".toCharArray(), CCNHandle.open());
 		Assert.assertEquals(td.friendlyNames(), td2.friendlyNames());
 
-		KeyManager userKeyManager2 = userLibrary.keyManager();
+		CCNHandle userLibrary2 = td2.getLibraryForUser(testUser);
+		KeyManager userKeyManager2 = userLibrary2.keyManager();
 
 		Assert.assertNotNull(userKeyManager.getDefaultKeyID());
 		Assert.assertNotNull(userKeyManager2.getDefaultKeyID());

@@ -318,6 +318,8 @@ fill_holes(struct ccn_schedule *sched, void *clienth,
     if (md->delivered == md->lastcheck && md->ooo_count > 0) {
         if (backoff == 0) {
             md->holes++;
+            fprintf(stderr, "*** Hole at %jd\n", md->delivered);
+            reporter(sched, md, NULL, 0);
             md->curwindow = 1;
             cl = calloc(1, sizeof(*cl));
             cl->p = &hole_filled;
@@ -325,7 +327,6 @@ fill_holes(struct ccn_schedule *sched, void *clienth,
             templ = make_template(md);
             ccn_express_interest(md->h, name, -1, cl, templ);
             md->interests_sent++;
-            fprintf(stderr, "Hole at %jd\n", md->delivered);
             ccn_charbuf_destroy(&templ);
             ccn_charbuf_destroy(&name);
         }

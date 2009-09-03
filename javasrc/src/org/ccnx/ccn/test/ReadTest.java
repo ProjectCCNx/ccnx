@@ -14,7 +14,7 @@ import org.ccnx.ccn.protocol.BloomFilter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.ExcludeComponent;
-import org.ccnx.ccn.protocol.ExcludeFilter;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.junit.Assert;
 import org.junit.Test;
@@ -33,7 +33,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	private static ArrayList<Integer> currentSet;
 	
 	private byte [] bloomSeed = "burp".getBytes();
-	private ExcludeFilter ef = null;
+	private Exclude ef = null;
 	
 	private String [] bloomTestValues = {
             "one", "two", "three", "four",
@@ -50,11 +50,11 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		for (String value : bloomTestValues) {
 			bf1.insert(value.getBytes());
 		}
-		ArrayList<ExcludeFilter.Element>excludes = new ArrayList<ExcludeFilter.Element>(3);
+		ArrayList<Exclude.Element>excludes = new ArrayList<Exclude.Element>(3);
 		excludes.add(e1);
 		excludes.add(bf1);
 		excludes.add(e2);
-		ef = new ExcludeFilter(excludes);
+		ef = new Exclude(excludes);
 	}
 
 	public ReadTest() throws Throwable {
@@ -116,34 +116,34 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	}
 	
 	@Test
-	public void excludeFilterTest() throws Throwable {
-		System.out.println("excludeFilterTest test started");
+	public void excludeTest() throws Throwable {
+		System.out.println("excludeTest test started");
 		excludeSetup();
-		CCNWriter writer = new CCNWriter("/excludeFilterTest", putLibrary);
+		CCNWriter writer = new CCNWriter("/excludeTest", putLibrary);
 		for (String value : bloomTestValues) {
-			writer.put("/excludeFilterTest/" + value, value);
+			writer.put("/excludeTest/" + value, value);
 		}
-		writer.put("/excludeFilterTest/aaa", "aaa");
-		writer.put("/excludeFilterTest/zzzzzzzz", "zzzzzzzz");
-		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeFilterTest/"), ef, null);
+		writer.put("/excludeTest/aaa", "aaa");
+		writer.put("/excludeTest/zzzzzzzz", "zzzzzzzz");
+		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeTest/"), ef, null);
 		ContentObject content = getLibrary.get(interest, 3000);
 		Assert.assertTrue(content == null);
 		
-		String shouldGetIt = "/excludeFilterTest/weShouldGetThis";
+		String shouldGetIt = "/excludeTest/weShouldGetThis";
 		writer.put(shouldGetIt, shouldGetIt);
 		content = getLibrary.get(interest, 3000);
 		Assert.assertFalse(content == null);
 		assertTrue(content.name().toString().startsWith(shouldGetIt));
-		System.out.println("excludeFilterTest test finished");
+		System.out.println("excludeTest test finished");
 	}
 	
 	@Test
 	public void getExcludeTest() throws Throwable {
 		System.out.println("getExclude test started");
 		// Try with single bloom filter
-		excludeTest("/getExcludeTest1", ExcludeFilter.OPTIMUM_FILTER_SIZE/2);
+		excludeTest("/getExcludeTest1", Exclude.OPTIMUM_FILTER_SIZE/2);
 		// Try with multi part filter
-		excludeTest("/getExcludeTest2", ExcludeFilter.OPTIMUM_FILTER_SIZE + 5);
+		excludeTest("/getExcludeTest2", Exclude.OPTIMUM_FILTER_SIZE + 5);
 		System.out.println("getExclude test finished");
 	}
 	

@@ -191,7 +191,7 @@
 						<path refid="classpath-run" />
 					</classpath>
 					<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
-					<jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" />
+					<!-- allow debugger attachment if repo loops <jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" /> -->
 					<arg value="-interactive" />
 					<arg value="-root" />
 					<arg value="${REPO_LOCAL_ROOT}" />
@@ -361,9 +361,6 @@
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/io/**/*TestRepo.class"/>
-					<!-- NOTE: temporary disable the CCNFileStreamTestRepo since it is failing in new class organization but the failure appears to be 
-an accident of test reordering rather than caused by reorg.  JDT -->
-					<exclude name="org/ccnx/ccn/test/io/CCNFileStreamTestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>

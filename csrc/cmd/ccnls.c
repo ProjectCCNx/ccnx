@@ -1,4 +1,5 @@
-/*
+/**
+ * @file ccnls.c
  * Attempts to list name components available at the next level of the hierarchy
  */
 #include <errno.h>

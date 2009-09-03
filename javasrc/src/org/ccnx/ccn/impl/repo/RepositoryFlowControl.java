@@ -214,14 +214,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	@Override
 	public void afterClose() throws IOException {
 		try {
-			Client client = _clients.remove();
-			if ((client.name() != null) && (client.shape() == Shape.STREAM_WITH_HEADER)) {
-				ContentName repoWriteName = new ContentName(client._name, CommandMarkers.REPO_GET_HEADER, Interest.generateNonce());
-		
-				Interest writeInterest = new Interest(repoWriteName);
-				_library.expressInterest(writeInterest, this);
-				_writeInterests.add(writeInterest);
-			}
+			_clients.remove();
 		} catch (NoSuchElementException nse) {}
 		
 		// super.afterClose() calls waitForPutDrain.

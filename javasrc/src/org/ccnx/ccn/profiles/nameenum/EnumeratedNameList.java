@@ -10,6 +10,7 @@ import java.util.TreeSet;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -76,14 +77,19 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * (thus removing it from every other listener), in effect handing the
 	 * new children to the first consumer to wake up and makes the other
 	 * ones go around again.
-	 * @return returns the array of single-component content name childrent that are new to us
+	 * @timeout maximum amount of time to wait, 0 to wait forever.
+	 * @return returns the array of single-component content name children that are new to us,
+	 *    or null if we reached the timeout before new data arrived
 	 */
-	public SortedSet<ContentName> getNewData() {
+	public SortedSet<ContentName> getNewData(long timeout) {
 		SortedSet<ContentName> childArray = null;
 		synchronized(_childLock) {
-			while (null == _newChildren) {
+			long timeRemaining = timeout;
+			while ((null == _newChildren) && ((timeout == SystemConfiguration.TIMEOUT_FOREVER) || (timeRemaining > 0))) {
 				try {
-					_childLock.wait(CHILD_WAIT_INTERVAL);
+					_childLock.wait((timeout != SystemConfiguration.TIMEOUT_FOREVER) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
+					if (timeout != SystemConfiguration.TIMEOUT_FOREVER)
+						timeRemaining -= CHILD_WAIT_INTERVAL;
 				} catch (InterruptedException e) {
 				}
 				Log.info("Waiting for new data on prefix: " + _namePrefix + " got " + ((null == _newChildren) ? 0 : _newChildren.size())
@@ -95,6 +101,14 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			}
 		}
 		return childArray;
+	}
+	
+	/**
+	 * Block and wait as long as it takes for new data to appear. See {@link #getNewData(long)}.
+	 * @return
+	 */
+	public SortedSet<ContentName> getNewData() {
+		return getNewData(SystemConfiguration.TIMEOUT_FOREVER);
 	}
 	
 	/**
@@ -138,21 +152,32 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 
 	/**
 	 * Waits until there is any data at all.
+	 * @timeout maximum amount of time to wait, if 0, waits forever
 	 * @return
 	 */
-	public void waitForData() {
+	public void waitForData(long timeout) {
 		if ((null != _children) && (_children.size() > 0))
 			return;
 		synchronized(_childLock) {
-			while ((null == _children) || (_children.size() == 0)) {
+			long timeRemaining = timeout;
+			while (((null == _children) || (_children.size() == 0)) && ((timeout == SystemConfiguration.TIMEOUT_FOREVER) || (timeRemaining > 0))) {
 				try {
-					_childLock.wait(CHILD_WAIT_INTERVAL);
+					_childLock.wait((timeout != SystemConfiguration.TIMEOUT_FOREVER) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
+					if (timeout != SystemConfiguration.TIMEOUT_FOREVER)
+						timeRemaining -= CHILD_WAIT_INTERVAL;
 				} catch (InterruptedException e) {
 				}
 				Log.info("Waiting for data on prefix: " + _namePrefix + " got " + ((null == _newChildren) ? 0 : _newChildren.size())
 						+ ".");
 			}
 		}
+	}
+	
+	/**
+	 * Wait (block) for data to arrive, possibly forever. See {@link #waitForData(long)}.
+	 */
+	public void waitForData() {
+		waitForData(0);
 	}
 
 	/**

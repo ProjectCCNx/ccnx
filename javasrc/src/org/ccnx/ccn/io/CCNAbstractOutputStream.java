@@ -49,6 +49,10 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	
 	public CCNAbstractOutputStream() {}	// special purpose constructor
 	
+	/**
+	 * Override in subclasses that need to do something special with start writes.
+	 * @throws IOException
+	 */
 	protected void startWrite() throws IOException {}
 
 	@Override

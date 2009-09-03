@@ -5,13 +5,14 @@ import java.net.URL;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class Name {
-	public String name;
+	//public String name;
+	public byte[] name;
     public ContentName path;
     public URL fileURL;
     public boolean isDirectory;
 
-    public Name(String nameString, ContentName prefix, boolean type) {
-        name = nameString;
+    public Name(byte[] cn, ContentName prefix, boolean type) {
+        name = cn;
         path = prefix;
         isDirectory = type;
         //fileURL = getClass().getResource(filename);
@@ -28,7 +29,9 @@ public class Name {
 	}
 
 	public String toString() {
-        return name;
+		if(name==null)
+			return new String("/");
+        return new String(name);
     }
 	
 }

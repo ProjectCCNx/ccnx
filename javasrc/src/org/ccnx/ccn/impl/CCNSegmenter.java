@@ -388,11 +388,11 @@ public class CCNSegmenter {
 				// compute final segment number
 				// compute final segment number; which might be this one if blockCount == 1
 				int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
-				finalBlockID = SegmentationProfile.getSegmentID(
+				finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(
 					lastSegmentIndex(baseSegmentNumber, (blockCount-1)*blockWidth, 
 												blockCount));
 			} else {
-				finalBlockID = SegmentationProfile.getSegmentID(finalSegmentIndex);
+				finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(finalSegmentIndex);
 			}
 		}
 		
@@ -454,10 +454,10 @@ public class CCNSegmenter {
 				// don't include last block length; want intervening byte count before the last block
 
 				// compute final segment number
-				finalBlockID = SegmentationProfile.getSegmentID(
+				finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(
 						lastSegmentIndex(baseSegmentNumber, length, blockCount));
 			} else {
-				finalBlockID = SegmentationProfile.getSegmentID(finalSegmentIndex);
+				finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(finalSegmentIndex);
 			}
 		}
 
@@ -525,8 +525,8 @@ public class CCNSegmenter {
 		
 		byte [] finalBlockID = ((null == finalSegmentIndex) ? null : 
 								((finalSegmentIndex.equals(LAST_SEGMENT)) ? 
-										SegmentationProfile.getSegmentID(segmentNumber) : 
-											SegmentationProfile.getSegmentID(finalSegmentIndex)));
+										SegmentationProfile.getSegmentNumberNameComponent(segmentNumber) : 
+											SegmentationProfile.getSegmentNumberNameComponent(finalSegmentIndex)));
 
 		if (null != _keys) {
 			try {

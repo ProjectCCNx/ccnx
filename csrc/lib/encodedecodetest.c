@@ -348,8 +348,11 @@ main (int argc, char *argv[]) {
     ccn_charbuf_destroy(&uri_out);
     printf("Name marker tests\n");
     do {
-        const char *expected_uri = "ccn:/example.com/.../%01/%FE/%01%02%03%04%05%06%07%08/%FD%10%10%10%10%1F%FF/%F8%81";
+        const char *expected_uri = "ccn:/example.com/.../%01/%FE/%01%02%03%04%05%06%07%08/%FD%10%10%10%10%1F%FF/%00%81";
         const char *expected_chopped_uri = "ccn:/example.com/.../%01/%FE";
+        const char *expected_bumped_uri = "ccn:/example.com/.../%01/%FF";
+        const char *expected_bumped2_uri = "ccn:/example.com/.../%01/%00%00";
+
         printf("Unit test case %d\n", i++);
         buffer = ccn_charbuf_create();
         uri_out = ccn_charbuf_create();
@@ -357,7 +360,7 @@ main (int argc, char *argv[]) {
         res |= ccn_name_append_str(buffer, "example.com");
         res |= ccn_name_append_numeric(buffer, CCN_MARKER_NONE, 0);
         res |= ccn_name_append_numeric(buffer, CCN_MARKER_NONE, 1);
-        res |= ccn_name_append_numeric(buffer, CCN_MARKER_NAMES, 0);
+        res |= ccn_name_append_numeric(buffer, 0xFE, 0);
         res |= ccn_name_append_numeric(buffer, CCN_MARKER_NONE, 0x0102030405060708ULL);
         res |= ccn_name_append_numeric(buffer, CCN_MARKER_VERSION, 0x101010101FFFULL);
         res |= ccn_name_append_numeric(buffer, CCN_MARKER_SEQNUM, 129);
@@ -387,6 +390,28 @@ main (int argc, char *argv[]) {
         if (0 != strcmp(ccn_charbuf_as_string(uri_out), expected_chopped_uri)) {
             printf("Failed: ccn_name_chop botch\n");
             printf("Expected: %s\n", expected_chopped_uri);
+            printf("  Actual: %s\n", (const char *)uri_out->buf);
+            result = 1;
+        }
+        res = ccn_name_next_sibling(buffer);
+        if (res != 4) {
+            printf("Failed: ccn_name_next_sibling got wrong length\n");
+            result = 1;
+        }
+        uri_out->length = 0;
+        ccn_uri_append(uri_out, buffer->buf, buffer->length, 1);
+        if (0 != strcmp(ccn_charbuf_as_string(uri_out), expected_bumped_uri)) {
+            printf("Failed: ccn_name_next_sibling botch\n");
+            printf("Expected: %s\n", expected_bumped_uri);
+            printf("  Actual: %s\n", (const char *)uri_out->buf);
+            result = 1;
+        }
+        ccn_name_next_sibling(buffer);
+        uri_out->length = 0;
+        ccn_uri_append(uri_out, buffer->buf, buffer->length, 1);
+        if (0 != strcmp(ccn_charbuf_as_string(uri_out), expected_bumped2_uri)) {
+            printf("Failed: ccn_name_next_sibling botch\n");
+            printf("Expected: %s\n", expected_bumped2_uri);
             printf("  Actual: %s\n", (const char *)uri_out->buf);
             result = 1;
         }

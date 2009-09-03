@@ -8,9 +8,9 @@ import org.ccnx.ccn.impl.support.DataUtils;
 
 
 /**
- * This represents a Component with an ExcludeFilter
+ * This represents a Component with an Exclude filter
  */
-public class ExcludeComponent extends ExcludeFilter.Element implements Comparable<ExcludeComponent> {
+public class ExcludeComponent extends Exclude.Element implements Comparable<ExcludeComponent> {
 	public static final String COMPONENT = "Component";
 	protected byte [] body = null;
 	

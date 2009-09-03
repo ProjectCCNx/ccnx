@@ -1,11 +1,23 @@
 #!/bin/sh
 
+JAR_FILE=ccn.jar
 JAVA_HOME=${JAVA_HOME:=/usr}
-CCN_HOME=`dirname "$0"`/..
 JAVA=$JAVA_HOME/bin/java
+SCRIPT_DIR=`dirname $0`  # note this is relative path
+CCN_HOME_JAVA=${CCN_HOME_JAVA:-$SCRIPT_DIR}
+if [ ! -f "$CCN_HOME_JAVA/$JAR_FILE" ]
+then
+    if [ -f "$SCRIPT_DIR/../lib/$JAR_FILE" -o -f "$SCRIPT_DIR/../$JAR_FILE" ] 
+    then
+	CCN_HOME_JAVA="$SCRIPT_DIR/.."
+    else
+	echo "Cannot find $JAR_FILE, set CCN_HOME_JAVA env variable."
+	exit 1;
+    fi
+fi
 
-CP1=$CCN_HOME/*.jar
-CP2=$CCN_HOME/lib/*.jar
+CP1=$CCN_HOME_JAVA/*.jar
+CP2=$CCN_HOME_JAVA/lib/*.jar
 
 CP1=`echo $CP1 | sed "s/ /:/g"`
 CP2=`echo $CP2 | sed "s/ /:/g"`
@@ -21,7 +33,9 @@ if [ $# = 0 ]
 then
   echo Possible commands:
   echo 
-  grep ccn_run /usr/local/bin/* 2>/dev/null | sed 's/^\/usr\/local\/bin\/\([^:]*\):.*$/\1/' | grep -v ccn_run | sort -u
+  (cd $SCRIPT_DIR; grep -l -I ccn_run * 2>/dev/null) | grep -v ccn_run | sort -u
 else
-  $JAVA -cp $CLASSPATH $PORTARG org.ccnx.ccn.utils.$*
+  UTIL=$1
+  shift
+  $JAVA -cp $CLASSPATH $PORTARG org.ccnx.ccn.utils.$UTIL $*
 fi

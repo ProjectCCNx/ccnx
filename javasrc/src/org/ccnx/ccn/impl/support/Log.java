@@ -35,6 +35,7 @@ public class Log {
 	public static final String DEFAULT_LOG_LEVEL_PROPERTY = "com.parc.ccn.LogLevel";
 	
 	static Logger _systemLogger = null;
+	static int _level;
 	
 	static {
 		// Can add an append=true argument to generate appending behavior.
@@ -99,7 +100,7 @@ public class Log {
 
 		// We also have to set our logger to log finer-grained
 		// messages
-		_systemLogger.setLevel(logLevel);
+		setLevel(logLevel);
 	}
 
 	public static String getApplicationClass() {
@@ -121,32 +122,33 @@ public class Log {
 	// but add varargs functionality which allows args to only have .toString()
 	// called when logging is enabled.
 	public static void info(String msg, Object... params) {
-		_systemLogger.log(Level.INFO, msg, params);
+		doLog(Level.INFO, msg, params);
 	}
 
 	public static void warning(String msg, Object... params) {
-		_systemLogger.log(Level.WARNING, msg, params);
+		doLog(Level.WARNING, msg, params);
 	}
 
 	public static void severe(String msg, Object... params) {
-		_systemLogger.log(Level.SEVERE, msg, params);
+		doLog(Level.SEVERE, msg, params);
 	}
 
 	public static void fine(String msg, Object... params) {
-		_systemLogger.log(Level.FINE, msg, params);
+		doLog(Level.FINE, msg, params);
 	}
 
 	public static void finer(String msg, Object... params) {
-		_systemLogger.log(Level.FINER, msg, params);
+		doLog(Level.FINER, msg, params);
 	}
 
 	public static void finest(String msg, Object... params) {
-		_systemLogger.log(Level.FINEST, msg, params);
+		doLog(Level.FINEST, msg, params);
 	}
 
 	// pass these methods on to the java.util.Logger for convenience
 	public static void setLevel(Level l) {
 		_systemLogger.setLevel(l);
+		_level = l.intValue();
 	}
 
 	public static Level getLevel() {
@@ -154,9 +156,28 @@ public class Log {
 	}
 
 	public static void log(Level l, String msg, Object... params) {
-		_systemLogger.log(l, msg, params);
+		// we must call doLog() to ensure caller is in right place on stack
+		doLog(l, msg, params);
 	}
 
+	@SuppressWarnings("unchecked")
+	protected static void doLog(Level l, String msg, Object... params) {
+		if (l.intValue() < _level)
+			return;
+		StackTraceElement ste = Thread.currentThread().getStackTrace()[3];
+		Class c;
+		try {
+			c = Class.forName(ste.getClassName());
+		} catch (ClassNotFoundException e) {
+			throw new RuntimeException(e);
+		}
+		for(Object o : params) {
+			if (o == null) {
+				o = "(null)";
+			}
+		}
+		_systemLogger.logp(l, c.getCanonicalName(), ste.getMethodName(), msg, params);
+	}
 
 	public static void warningStackTrace(Throwable t) {
 		logStackTrace(Level.WARNING, t);

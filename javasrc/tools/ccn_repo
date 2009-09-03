@@ -1,8 +1,21 @@
 #!/bin/sh
 
+JAR_FILE=ccn.jar
 JAVA_HOME=/usr
-CCN_HOME_JAVA=${CCN_HOME_JAVA:-.}
 JAVA=$JAVA_HOME/bin/java
+SCRIPT_DIR=`dirname $0`  # note this is relative path
+CCN_HOME_JAVA=${CCN_HOME_JAVA:-$SCRIPT_DIR}
+if [ ! -f "$CCN_HOME_JAVA/$JAR_FILE" ]
+then
+    if [ -f "$SCRIPT_DIR/../lib/$JAR_FILE" -o -f "$SCRIPT_DIR/../$JAR_FILE" ] 
+    then
+	CCN_HOME_JAVA="$SCRIPT_DIR/.."
+    else
+	echo "Cannot find $JAR_FILE, set CCN_HOME_JAVA env variable."
+	exit 1;
+    fi
+fi
+
 
 CP1=$CCN_HOME_JAVA/*.jar
 CP2=$CCN_HOME_JAVA/lib/*.jar

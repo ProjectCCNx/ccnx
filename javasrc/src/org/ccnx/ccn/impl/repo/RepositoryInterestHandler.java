@@ -1,6 +1,5 @@
 package org.ccnx.ccn.impl.repo;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
@@ -42,8 +41,6 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 					startReadProcess(interest);
 				} else if (interest.name().contains(CCNNameEnumerator.NEMARKER)) {
 					nameEnumeratorResponse(interest);
-				} else if (interest.name().contains(CommandMarkers.REPO_GET_HEADER)) {
-					getHeader(interest);
 				} else {
 					ContentObject content = _daemon.getRepository().getContent(interest);
 					if (content != null) {
@@ -89,39 +86,11 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			RepositoryDataListener listener = _daemon.addListener(interest, readInterest);
 			_daemon.getWriter().put(interest.name(), _daemon.getRepository().getRepoInfo(null), null, null,
 					_daemon.getFreshness());
+			listener.getInterests().add(readInterest, null);
 			_library.expressInterest(readInterest, listener);
 		} catch (Exception e) {
 			Log.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
-		}
-	}
-	
-	/**
-	 * Since the headers are currently sent out last, and we don't want to send out
-	 * unnecessary interests early in a stream because this kills performance, the client
-	 * side repo code will specifically ask for a header. This returns it.
-	 * 
-	 * @param interest
-	 * @throws XMLStreamException
-	 */
-	private void getHeader(Interest interest) throws XMLStreamException {
-		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
-		for (RepositoryDataListener listener : _daemon.getDataListeners()) {
-			if (listener.getOrigInterest().name().equals(listeningName)) {		
-				try {
-					// DKS- this should use SegmentationProfile.headerName to figure out the header name,
-					// not hardcode its structure here.
-					// Needs to match move to HeaderObject (versioned) writes in output streams.
-					listener._headerInterest = Interest.constructInterest(listener.getVersionedName(), _daemon.getExcludes(), null);
-					listener._headerInterest.maxSuffixComponents(1);
-					Log.fine("Sending header request: " + listener._headerInterest);
-					_library.expressInterest(listener._headerInterest, listener);
-				} catch (IOException e) {
-					Log.logStackTrace(Level.WARNING, e);
-					e.printStackTrace();
-				}
-				break;
-			}
 		}
 	}
 	

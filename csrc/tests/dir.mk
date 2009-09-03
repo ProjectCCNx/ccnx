@@ -8,6 +8,7 @@ ALLTESTS = \
   test_alone \
   test_ccnls_meta \
   test_coders \
+  test_child_selector \
   test_final_teardown \
   test_finished \
   test_happy_face \

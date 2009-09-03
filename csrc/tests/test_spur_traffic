@@ -3,6 +3,6 @@ L=udplink9113.out
 test -f $L || SkipTest expected $L is not present
 COUNT=`wc -l < $L`
 # We expect some traffic to have made it to the spur, but not too much.
-test $COUNT -gt 30 || Fail less spur traffic than expected - $COUNT
+test $COUNT -gt 20 || Fail less spur traffic than expected - $COUNT
 test $COUNT -lt 120 || Fail more spur traffic than expected - $COUNT
 echo Spur traffic $COUNT is within expected bounds

@@ -16,7 +16,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.ExcludeAny;
 import org.ccnx.ccn.protocol.ExcludeComponent;
-import org.ccnx.ccn.protocol.ExcludeFilter;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -368,7 +368,7 @@ public class VersioningProfile implements CCNProfile {
 	 * @return An exclude filter.
 	 * @throws InvalidParameterException
 	 */
-	public static ExcludeFilter acceptVersions(byte [] startingVersionComponent) {
+	public static Exclude acceptVersions(byte [] startingVersionComponent) {
 		byte [] start = null;
 		// initially exclude name components just before the first version, whether that is the
 		// 0th version or the version passed in
@@ -378,14 +378,14 @@ public class VersioningProfile implements CCNProfile {
 			start = startingVersionComponent;
 		}
 		
-		ArrayList<ExcludeFilter.Element> ees = new ArrayList<ExcludeFilter.Element>();
+		ArrayList<Exclude.Element> ees = new ArrayList<Exclude.Element>();
 		ees.add(new ExcludeAny());
 		ees.add(new ExcludeComponent(start));
 		ees.add(new ExcludeComponent(new byte [] {
 				VERSION_MARKER+1, OO, OO, OO, OO, OO, OO } ));
 		ees.add(new ExcludeAny());
 		
-		return new ExcludeFilter(ees);
+		return new Exclude(ees);
 	}
 	
 	/**

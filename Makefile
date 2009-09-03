@@ -1,17 +1,18 @@
 # Top level Makefile for ccn
 
-SUBDIRS = csrc schema javasrc doc/technical
-PACKLIST = Makefile build.xml README configure doc/index.txt $(SUBDIRS)
+TOPSUBDIRS = csrc schema javasrc doc/technical
+PACKLIST = Makefile build.xml README configure doc/index.txt $(TOPSUBDIRS) experiments
 
 default all: _always
-	for i in $(SUBDIRS); do         \
+	for i in $(TOPSUBDIRS); do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	mkdir -p ./lib ./bin ./include
-	$(MAKE) install INSTALL_BASE=`pwd`
+	(cd csrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
+	(cd javasrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
 
-clean depend test check shared documentation testinstall install uninstall: checkdirs _always
-	for i in $(SUBDIRS); do         \
+clean depend test check shared documentation testinstall install uninstall: _always
+	for i in $(TOPSUBDIRS); do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	@rm -f _always
@@ -21,16 +22,9 @@ clean-documentation: _always
 	rm -rf doc/javacode
 	(cd doc/technical && pwd && $(MAKE) clean-documentation)
 
-# Note: This should remove lib after java dir reorg is done.
 clean: clean-testinstall
 clean-testinstall: _always
-	rm -rf bin include  # lib
-
-# Transitional (18-Aug-2009): make sure old src directory is gone, but move aside one if it exists.
-# This should go away in a little while!
-checkdirs: _always
-	test -d src && mv src src.`date +%Y%m%d%H%M` || :
-	rm -rf src
+	rm -rf bin include lib
 
 # The rest of this is for packaging purposes.
 _manifester:

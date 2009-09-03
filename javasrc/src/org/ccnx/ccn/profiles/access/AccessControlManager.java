@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -28,13 +28,12 @@ import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.access.AccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.profiles.access.ACL.ACLObject;
 import org.ccnx.ccn.profiles.access.ACL.ACLOperation;
+import org.ccnx.ccn.profiles.access.AccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
@@ -220,17 +219,18 @@ public class AccessControlManager {
 	
 	public GroupManager groupManager() { return _groupManager; }
 	
-	public void publishMyIdentity(ContentName identity, PublisherPublicKeyDigest myPublicKey) throws InvalidKeyException, IOException, ConfigurationException, XMLStreamException {
+	public void publishMyIdentity(ContentName identity, PublicKey myPublicKey) throws InvalidKeyException, IOException, ConfigurationException, XMLStreamException {
 		KeyManager km = KeyManager.getKeyManager();
 		if (null == myPublicKey) {
-			myPublicKey = km.getDefaultKeyID();
+			myPublicKey = km.getDefaultPublicKey();
 		}
 		PublicKeyObject pko = new PublicKeyObject(identity, myPublicKey, library());
 		pko.saveToRepository();
 		_myIdentities.add(identity);
 	}
 	
-	public void publishMyIdentity(String userName, PublisherPublicKeyDigest myPublicKey) throws InvalidKeyException, IOException, ConfigurationException, XMLStreamException {
+	public void publishMyIdentity(String userName, PublicKey myPublicKey) throws InvalidKeyException, IOException, ConfigurationException, XMLStreamException {
+		Log.finest("publishing my identity" + AccessControlProfile.userNamespaceName(_userStorage, userName));
 		publishMyIdentity(AccessControlProfile.userNamespaceName(_userStorage, userName), myPublicKey);
 	}
 	
@@ -792,7 +792,7 @@ public class AccessControlManager {
 			if (nodeKeyDirectory.hasSupersededBlock()) {
 				return true;
 			}
-			for (PrincipalInfo principal : nodeKeyDirectory.getPrincipals().values()) {
+			for (PrincipalInfo principal : nodeKeyDirectory.getCopyOfPrincipals().values()) {
 				if (principal.isGroup()) {
 					Group theGroup = groupManager().getGroup(principal.friendlyName());
 					if (theGroup.publicKeyVersion().after(principal.versionTimestamp())) {
@@ -806,7 +806,7 @@ public class AccessControlManager {
 					// If the principal isn't available in our enumerated list, have to go get its key
 					// from the wrapped key object.
 				}
-			}
+			}			
 			return false;
 			
 		} finally {

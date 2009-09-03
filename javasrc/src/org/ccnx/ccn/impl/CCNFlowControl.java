@@ -44,7 +44,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 public class CCNFlowControl implements CCNFilterListener {
 	
-	public enum Shape {STREAM, STREAM_WITH_HEADER};
+	public enum Shape {STREAM};
 	
 	protected CCNHandle _library = null;
 	
@@ -375,15 +375,19 @@ public class CCNFlowControl implements CCNFilterListener {
 		synchronized (_holdingArea) {
 			int startSize = _holdingArea.size();
 			while (_holdingArea.size() > 0) {
-				boolean _interrupted;
+				long startTime = System.currentTimeMillis();
+				boolean keepTrying = true;
 				do {
-					_interrupted = false;
 					try {
-						_holdingArea.wait(_timeout);
+						long waitTime = _timeout - (System.currentTimeMillis() - startTime);
+						if (waitTime > 0)
+							_holdingArea.wait(waitTime);
 					} catch (InterruptedException ie) {
-						_interrupted = true;
+						keepTrying = true;
 					}
-				} while (_interrupted);
+					if (_holdingArea.size() != startSize || (System.currentTimeMillis() - startTime) >= _timeout)
+						keepTrying = false;
+				} while (keepTrying);
 				
 				if (_holdingArea.size() == startSize) {
 					for(ContentName co : _holdingArea.keySet()) {

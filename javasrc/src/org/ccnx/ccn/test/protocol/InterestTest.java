@@ -11,7 +11,7 @@ import org.ccnx.ccn.protocol.BloomFilter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.ExcludeComponent;
-import org.ccnx.ccn.protocol.ExcludeFilter;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherID;
@@ -31,7 +31,7 @@ public class InterestTest {
 	public static PublisherID pubID = null;
 	
 	private byte [] bloomSeed = "burp".getBytes();
-	private ExcludeFilter ef = null;
+	private Exclude ef = null;
 	
 	private String [] bloomTestValues = {
             "one", "two", "three", "four",
@@ -59,21 +59,21 @@ public class InterestTest {
 		ExcludeComponent e2 = new ExcludeComponent("zzzzzzzz".getBytes());
 		
 		try {
-			ArrayList<ExcludeFilter.Element>te = new ArrayList<ExcludeFilter.Element>(2);
+			ArrayList<Exclude.Element>te = new ArrayList<Exclude.Element>(2);
 			te.add(e2);
 			te.add(e1);
-			new ExcludeFilter(te);
+			new Exclude(te);
 			Assert.fail("Out of order exclude filter succeeded");
 		} catch (InvalidParameterException ipe) {}
 		
 		for (String value : bloomTestValues) {
 			bf1.insert(value.getBytes());
 		}
-		ArrayList<ExcludeFilter.Element>excludes = new ArrayList<ExcludeFilter.Element>(2);
+		ArrayList<Exclude.Element>excludes = new ArrayList<Exclude.Element>(2);
 		excludes.add(e1);
 		excludes.add(bf1);
 		excludes.add(e2);
-		ef = new ExcludeFilter(excludes);
+		ef = new Exclude(excludes);
 	}
 
 	@Test
@@ -127,11 +127,11 @@ public class InterestTest {
 	}
 		
 	@Test
-	public void testExcludeFilter() {
+	public void testExclude() {
 		excludeSetup();
 		
 		Interest exPlain = new Interest(tcn);
-		exPlain.excludeFilter(ef);
+		exPlain.exclude(ef);
 		Interest exPlainDec = new Interest();
 		Interest exPlainBDec = new Interest();
 		XMLEncodableTester.encodeDecodeTest("ExcludeInterest", exPlain, exPlainDec, exPlainBDec);
@@ -144,7 +144,7 @@ public class InterestTest {
 		excludeSetup();
 		try {
 			Interest interest = new Interest("/paul");
-			interest.excludeFilter(ef);
+			interest.exclude(ef);
 			Assert.assertTrue(interest.matches(ContentName.fromNative("/paul/car"), null));
 			Assert.assertFalse(interest.matches(ContentName.fromNative("/paul/zzzzzzzz"), null));
 			for (String value : bloomTestValues) {

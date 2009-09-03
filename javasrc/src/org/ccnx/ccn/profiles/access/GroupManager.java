@@ -275,14 +275,15 @@ public class GroupManager {
 	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) 
 			throws IOException, InvalidKeyException, AccessDeniedException, InvalidCipherTextException, 
 					XMLStreamException, ConfigurationException {
-		PrincipalInfo pi = keyDirectory.getPrincipals().get(principal);
+		PrincipalInfo pi = null;
+		pi = keyDirectory.getPrincipalInfo(principal);
 		if (null == pi) {
 			Log.info("No key available for principal : " + principal + " on node " + keyDirectory.getName());
 			return null;
 		}
 		Key privateKey = getGroupPrivateKey(principal, pi.versionTimestamp());
 		if (null == privateKey) {
-			Log.info("Unexpected: we beleive we are a member of group " + principal + " but cannot retrieve private key version: " + keyDirectory.getPrincipals().get(principal) + " our membership revoked?");
+			Log.info("Unexpected: we beleive we are a member of group " + principal + " but cannot retrieve private key version: " + keyDirectory.getPrincipalInfo(principal) + " our membership revoked?");			
 			// Check to see if we are a current member.
 			if (!amCurrentGroupMember(principal)) {
 				// Removes this group from my list of known groups, adds it to my
