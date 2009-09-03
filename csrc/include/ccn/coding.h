@@ -1,12 +1,12 @@
-/*
- * ccn/coding.h
+/**
+ * @file ccn/coding.h
  * 
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
- *
  * Details of the ccn binary wire encoding
  *
  */
-
+/*-
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc. All rights reserved.
+ */
 #ifndef CCN_CODING_DEFINED
 #define CCN_CODING_DEFINED
 
@@ -41,7 +41,9 @@ enum ccn_ext_subtype {
 };
 
 /**
- * DTAG identifies ccnb-encoded elements. c.f. tagname.csvdict
+ * DTAG identifies ccnb-encoded elements.
+ * c.f. tagname.csvdict
+ * See the gen_enum_dtag script for help updating these.
  */
 enum ccn_dtag {
     CCN_DTAG_Any = 13,
@@ -65,8 +67,6 @@ enum ccn_dtag {
     CCN_DTAG_Link = 31,
     CCN_DTAG_LinkAuthenticator = 32,
     CCN_DTAG_NameComponentCount = 33,	/* DeprecatedInInterest */
-    CCN_DTAG_PublisherID = 34,	/* Obsolete */
-    CCN_DTAG_PublisherKeyID = 35,	/* Obsolete */
     CCN_DTAG_RootDigest = 36,
     CCN_DTAG_Signature = 37,
     CCN_DTAG_Start = 38,
@@ -79,11 +79,6 @@ enum ccn_dtag {
     CCN_DTAG_BloomSeed = 45,
     CCN_DTAG_OrderPreference = 46,	/* Deprecated */
     CCN_DTAG_AnswerOriginKind = 47,	/* Deprecated */
-    CCN_DTAG_MatchFirstAvailableDescendant = 48,	/* Obsolete */
-    CCN_DTAG_MatchLastAvailableDescendant = 49,	/* Obsolete */
-    CCN_DTAG_MatchNextAvailableSibling = 50,	/* Obsolete */
-    CCN_DTAG_MatchLastAvailableSibling = 51,	/* Obsolete */
-    CCN_DTAG_MatchEntirePrefix = 52,	/* Obsolete */
     CCN_DTAG_Witness = 53,
     CCN_DTAG_SignatureBits = 54,
     CCN_DTAG_DigestAlgorithm = 55,
@@ -117,11 +112,16 @@ enum ccn_dtag {
     CCN_DTAG_MinSuffixComponents = 83,
     CCN_DTAG_MaxSuffixComponents = 84,
     CCN_DTAG_ChildSelector = 85,
+    CCN_DTAG_RepositoryInfo = 86,
+    CCN_DTAG_Version = 87,
+    CCN_DTAG_RepositoryVersion = 88,
+    CCN_DTAG_GlobalPrefix = 89,
+    CCN_DTAG_LocalName = 90,
     CCN_DTAG_Address = 2048,	/* Deprecated */
     CCN_DTAG_SOType = 2049,	/* Deprecated */
     CCN_DTAG_Inject = 2050,	/* Deprecated */
     CCN_DTAG_CCNProtocolDataUnit = 17702112,
-    CCN_DTAG_ExperimentalResponseFilter = 23204960	/* Deprecated */
+    CCN_DTAG_ExperimentalResponseFilter = 23204960,	/* Deprecated */
 };
 
 struct ccn_dict_entry {

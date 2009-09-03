@@ -193,6 +193,11 @@ public class SegmentationProfile implements CCNProfile {
 		return new ContentName(name, MetadataProfile.METADATA_MARKER, HEADER_NAME);
 	}
 
+	/**
+	 * Just confirms that last name component is a segment, and that its segment number is baseSegment() (0).
+	 * @param name
+	 * @return
+	 */
 	public static boolean isFirstSegment(ContentName name) {
 		if (!isSegment(name))
 			return false;
