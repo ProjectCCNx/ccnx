@@ -29,12 +29,14 @@ import java.util.Date;
  */
 public class CCNTime extends Timestamp {
 
+	private static final long serialVersionUID = -1537142893653443100L;
+
 	/**
 	 * @param time in msec
 	 */
-	public CCNTime(long time) {
-		super(time);
-		// TODO Auto-generated constructor stub
+	public CCNTime(long msec) {
+		super((msec / 1000) * 4096L);
+		setNanos(0);
 	}
 
 	public CCNTime(Timestamp time) {
@@ -46,11 +48,42 @@ public class CCNTime extends Timestamp {
 		this(time.getTime());
 	}
 	
+	public CCNTime(byte [] binaryTime12) {
+		super(0);
+		if ((null == binaryTime12) || (binaryTime12.length == 0)) {
+			throw new IllegalArgumentException("Invalid binary time!");
+		} else if (binaryTime12.length > 6) {
+			throw new IllegalArgumentException("Time unacceptably far in the future, can't decode: " + DataUtils.printHexBytes(binaryTime12));
+		}
+		long binaryTime12AsLong = new BigInteger(1, binaryTime12).longValue();
+		setTime((binaryTime12AsLong / 4096L) * 1000L);
+		setNanos((int)(((binaryTime12AsLong % 4096L) * 1000000000L) / 4096L));
+	}
+	
 	/**
 	 * Creates a CCNTime initialized to the current time.
 	 */
 	public CCNTime() {
 		this(System.currentTimeMillis());
+	}
+	
+	/**
+	 * Make this a static method to avoid confusion; should be little used
+	 * @return
+	 */
+	public static CCNTime fromBinaryTimeAsLong(long binaryTimeAsLong) {
+		CCNTime ts = new CCNTime((binaryTimeAsLong / 4096L) * 1000L);
+		ts.setNanos((int)(((binaryTimeAsLong % 4096L) * 1000000000L) / 4096L));
+		return ts;
+	}
+	
+	public byte [] toBinaryTime() {
+		return BigInteger.valueOf(toBinaryTimeAsLong()).toByteArray();
+	}
+	
+	public long toBinaryTimeAsLong() {
+		long timeVal = (getTime() / 1000) * 4096L + (getNanos() * 4096L + 500000000L) / 1000000000L;
+		return timeVal;
 	}
 	
 	@Override
@@ -129,20 +162,20 @@ public class CCNTime extends Timestamp {
 		return (timeVal1 == timeVal2);
 	}
 
-	public static CCNTime binaryTime12ToTimestamp(long binaryTime12AsLong) {
+	public static Timestamp binaryTime12ToTimestamp(long binaryTime12AsLong) {
 		Timestamp ts = new Timestamp((binaryTime12AsLong / 4096L) * 1000L);
 		ts.setNanos((int)(((binaryTime12AsLong % 4096L) * 1000000000L) / 4096L));
 		return ts;
 	}
 
-	public static CCNTime binaryTime12ToTimestamp(byte [] binaryTime12) {
+	public static Timestamp binaryTime12ToTimestamp(byte [] binaryTime12) {
 		if ((null == binaryTime12) || (binaryTime12.length == 0)) {
 			throw new IllegalArgumentException("Invalid binary time!");
 		} else if (binaryTime12.length > 6) {
 			throw new IllegalArgumentException("Time unacceptably far in the future, can't decode: " + DataUtils.printHexBytes(binaryTime12));
 		}
 		long time = new BigInteger(binaryTime12).longValue();
-		CCNTime ts = binaryTime12ToTimestamp(time);
+		Timestamp ts = binaryTime12ToTimestamp(time);
 		return ts;
 	}
 
