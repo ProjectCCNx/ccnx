@@ -585,10 +585,10 @@ main(int argc, char **argv)
                                      argv[optind+1],
                                      argv[optind+2],
                                      argv[optind+3],
-                                     argv[optind+4],
-                                     argv[optind+5],
-                                     argv[optind+6],
-                                     argv[optind+7]);
+                                     (optind + 4) < argc ? argv[optind+4] : NULL,
+                                     (optind + 5) < argc ? argv[optind+5] : NULL,
+                                     (optind + 6) < argc ? argv[optind+6] : NULL,
+                                     (optind + 7) < argc ? argv[optind+7] : NULL);
         if (res < 0)
             usage(progname);
     }
