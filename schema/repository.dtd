@@ -1,5 +1,4 @@
-<!-- DTD for ccn -->
-<!-- $Id$ -->
+<!-- DTD for ccn repository -->
 <!ENTITY % URI "CDATA">	<!-- a Uniform Resource Identifier -->
 <!ENTITY % commonattrs
 	"xmlns %URI; #FIXED 'http://www.parc.com/ccn'">
