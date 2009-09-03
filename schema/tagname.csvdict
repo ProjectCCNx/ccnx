@@ -19,8 +19,6 @@
 31,Link
 32,LinkAuthenticator
 33,NameComponentCount,DeprecatedInInterest
-34,PublisherID,Obsolete
-35,PublisherKeyID,Obsolete
 36,RootDigest
 37,Signature
 38,Start
@@ -33,11 +31,6 @@
 45,BloomSeed
 46,OrderPreference,Deprecated
 47,AnswerOriginKind,Deprecated
-48,MatchFirstAvailableDescendant,Obsolete
-49,MatchLastAvailableDescendant,Obsolete
-50,MatchNextAvailableSibling,Obsolete
-51,MatchLastAvailableSibling,Obsolete
-52,MatchEntirePrefix,Obsolete
 53,Witness
 54,SignatureBits
 55,DigestAlgorithm
