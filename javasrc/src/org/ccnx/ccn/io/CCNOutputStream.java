@@ -14,6 +14,7 @@ import org.ccnx.ccn.impl.CCNSegmenter;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -60,7 +61,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected byte [] _buffer = null;
 	protected long _baseNameIndex; // base name index of the current set of data to output;
 								  // incremented according to the segmentation profile.
-	protected Timestamp _timestamp; // timestamp we use for writing, set to first time we write
+	protected CCNTime _timestamp; // timestamp we use for writing, set to first time we write
 	protected ContentType _type; // null == DATA
 
 	protected CCNDigestHelper _dh;
