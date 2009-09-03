@@ -5,11 +5,10 @@ import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.sql.Timestamp;
-import java.util.TreeSet;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -20,6 +19,7 @@ import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
@@ -29,8 +29,8 @@ import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.access.AccessControlProfile.PrincipalInfo;
+import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 
@@ -260,7 +260,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		return getWrappedKey(wrappedKeyName);
 	}
 	
-	public ContentName getWrappedKeyNameForPrincipal(boolean isGroup, String principalName, Timestamp principalVersion) {
+	public ContentName getWrappedKeyNameForPrincipal(boolean isGroup, String principalName, CCNTime principalVersion) {
 		ContentName principalLinkName = new ContentName(_namePrefix, 
 				AccessControlProfile.principalInfoToNameComponent(isGroup,
 																  principalName,

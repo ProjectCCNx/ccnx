@@ -2,17 +2,15 @@ package org.ccnx.ccn.impl.encoding;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
-
-
 
 public class TextXMLCodec {
 
@@ -68,7 +66,7 @@ public class TextXMLCodec {
 	 * @param dateTime
 	 * @return
 	 */
-	public static String formatDateTime(Timestamp dateTime) {
+	public static String formatDateTime(CCNTime dateTime) {
 		// Handles nanoseconds
 		String date = ((SimpleDateFormat)canonicalWriteDateFormat.clone()).format(dateTime);
 		if (dateTime.getNanos() > 0) {
@@ -88,12 +86,12 @@ public class TextXMLCodec {
 		return date;
 	}
 	
-	public static Timestamp parseDateTime(String strDateTime) throws ParseException {
+	public static CCNTime parseDateTime(String strDateTime) throws ParseException {
 		
 		// no . but has the Z 
 		if (strDateTime.indexOf('.') < 0) {
 			Date noNsDate = ((SimpleDateFormat)canonicalWriteDateFormat.clone()).parse(strDateTime);
-			return new Timestamp(noNsDate.getTime());
+			return new CCNTime(noNsDate);
 		}
 		
 		// Split on the .
@@ -102,7 +100,7 @@ public class TextXMLCodec {
 		// odd parsing behavior...
 		Date thisDate = ((SimpleDateFormat)canonicalReadDateFormat.clone()).parse(dateParts[0]);
 		
-		Timestamp ts =  new Timestamp(thisDate.getTime());
+		CCNTime ts =  new CCNTime(thisDate);
 		// Deal with nanos. Parser ignores them, so don't have to pull them out.
 		int index = strDateTime.indexOf('.');
 		int nanos = 0;

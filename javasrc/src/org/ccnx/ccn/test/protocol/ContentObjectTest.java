@@ -5,11 +5,11 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Security;
 import java.security.SignatureException;
-import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Date;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -76,11 +76,11 @@ public class ContentObjectTest {
 			pubkey = new PublisherPublicKeyDigest(pair.getPublic());
 			
 			auth = new SignedInfo(pubkey,
-					new Timestamp(System.currentTimeMillis()), 
+					CCNTime.now(), 
 					SignedInfo.ContentType.DATA, 
 					nameLoc);
 			authKey = new SignedInfo(pubkey,
-					new Timestamp(System.currentTimeMillis()), 
+					CCNTime.now(), 
 					SignedInfo.ContentType.KEY, 
 					keyLoc);
 		} catch (Exception ex) {

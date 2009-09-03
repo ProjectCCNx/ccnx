@@ -9,6 +9,7 @@ import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
+/* Use non quantized time for testing */
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -249,7 +250,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 	@Test
 	public void testRecall() {
 		String key = "/test/smetters/values/data";
-		Timestamp time = CCNTime.now();
+		CCNTime time = CCNTime.now();
 		try {
 			ContentName keyName = ContentName.fromNative(key);
 			CCNWriter writer = new CCNWriter(keyName, putLibrary);

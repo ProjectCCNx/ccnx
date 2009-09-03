@@ -2,10 +2,10 @@ package org.ccnx.ccn.io;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.sql.Timestamp;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNSegmenter;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -70,7 +70,7 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 		return _baseName;
 	}
 
-	public Timestamp getVersion() {
+	public CCNTime getVersion() {
 		if (null == _baseName) 
 			return null;
 		return VersioningProfile.getTerminalVersionAsTimestampIfVersioned(_baseName);

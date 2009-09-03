@@ -1,7 +1,6 @@
 package org.ccnx.ccn.profiles.access;
 
 import java.io.IOException;
-import java.sql.Timestamp;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.impl.support.CCNTime;
@@ -58,9 +57,9 @@ public class AccessControlProfile implements CCNProfile {
 	public static class PrincipalInfo {
 		private byte [] _typeMarker;
 		private String _friendlyName;
-		private Timestamp _versionTimestamp;
+		private CCNTime _versionTimestamp;
 		
-		public PrincipalInfo(byte [] type, String friendlyName, Timestamp versionTimestamp) {
+		public PrincipalInfo(byte [] type, String friendlyName, CCNTime versionTimestamp) {
 			_typeMarker = type;
 			_friendlyName = friendlyName;
 			_versionTimestamp = versionTimestamp;
@@ -68,7 +67,7 @@ public class AccessControlProfile implements CCNProfile {
 		
 		public boolean isGroup() { return Arrays.areEqual(GROUP_PRINCIPAL_PREFIX, _typeMarker); }
 		public String friendlyName() { return _friendlyName; }
-		public Timestamp versionTimestamp() { return _versionTimestamp; }
+		public CCNTime versionTimestamp() { return _versionTimestamp; }
 	}
 	
 	
@@ -247,7 +246,7 @@ public class AccessControlProfile implements CCNProfile {
 		
 		String strPrincipal = ContentName.componentPrintNative(principal);
 		// Represent as version or just the timestamp part?
-		Timestamp version = CCNTime.binaryTime12ToTimestamp(timestamp);
+		CCNTime version = CCNTime.binaryTime12ToTimestamp(timestamp);
 		return new PrincipalInfo(type, strPrincipal, version);	
 	}
 
@@ -265,7 +264,7 @@ public class AccessControlProfile implements CCNProfile {
 	 */
 	public static byte[] principalInfoToNameComponent(boolean isGroup,
 													  String principalName,
-													  Timestamp timestamp) {
+													  CCNTime timestamp) {
 		byte [] bytePrincipal = ContentName.componentParseNative(principalName);
 		byte [] byteTime = CCNTime.timestampToBinaryTime12(timestamp);
 		byte [] prefix = (isGroup ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
@@ -300,7 +299,7 @@ public class AccessControlProfile implements CCNProfile {
 	
 	public static PrincipalInfo parsePrincipalInfoFromPublicKeyName(boolean isGroup, ContentName publicKeyName) throws VersionMissingException {
 		byte [] type = (isGroup ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
-		Timestamp version = VersioningProfile.getLastVersionAsTimestamp(publicKeyName);
+		CCNTime version = VersioningProfile.getLastVersionAsTimestamp(publicKeyName);
 		
 		String principal;
 		if (isGroup) principal = parsePrincipalNameFromGroupPublicKeyName(publicKeyName);

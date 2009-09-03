@@ -1,12 +1,12 @@
 package org.ccnx.ccn.io;
 
 import java.io.IOException;
-import java.sql.Timestamp;
 
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -106,7 +106,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		return VersioningProfile.isVersionedFirstSegment(desiredName, potentialFirstSegment, _startingSegmentNumber);
 	}
 	
-	public Timestamp getVersionAsTimestamp() throws VersionMissingException {
+	public CCNTime getVersionAsTimestamp() throws VersionMissingException {
 		if (null == _baseName)
 			throw new VersionMissingException("Have not yet retrieved content name!");
 		return VersioningProfile.getLastVersionAsTimestamp(_baseName);

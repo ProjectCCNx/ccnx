@@ -1,7 +1,6 @@
 package org.ccnx.ccn.impl.repo;
 
 import java.io.PrintStream;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
@@ -170,7 +169,7 @@ public class ContentTree {
 						prefix = new ContentName(prefix, CCNNameEnumerator.NEMARKER);
 						//prefix = VersioningProfile.addVersion(prefix, new CCNTime(node.timestamp));
 						Log.info("prefix for FastNEResponse: "+prefix);
-						Log.info("response name will be: "+ VersioningProfile.addVersion(new ContentName(prefix, CCNNameEnumerator.NEMARKER), new Timestamp(node.timestamp)));
+						Log.info("response name will be: "+ VersioningProfile.addVersion(new ContentName(prefix, CCNNameEnumerator.NEMARKER), new CCNTime(node.timestamp)));
 	
 						ArrayList<ContentName> names = new ArrayList<ContentName>();
 						// the parent has children we need to return

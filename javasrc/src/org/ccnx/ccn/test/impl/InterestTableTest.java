@@ -7,7 +7,6 @@ import static org.junit.Assert.fail;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.SignatureException;
-import java.sql.Timestamp;
 import java.util.List;
 import java.util.Random;
 
@@ -147,7 +146,7 @@ public class InterestTableTest {
 	 */
 	private ContentObject getContentObject(ContentName name, PublisherPublicKeyDigest pub) throws ConfigurationException, InvalidKeyException, SignatureException, MalformedContentNameStringException {
 		// contents = current date value
-		Timestamp now = CCNTime.now();
+		CCNTime now = CCNTime.now();
 		ByteBuffer bb = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
 		bb.putLong(now.getTime());
 		byte[] contents = bb.array();

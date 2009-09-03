@@ -3,7 +3,6 @@ package org.ccnx.ccn.profiles;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.InvalidParameterException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;

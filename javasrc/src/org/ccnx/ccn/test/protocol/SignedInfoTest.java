@@ -4,7 +4,6 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Security;
 import java.security.cert.X509Certificate;
-import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Date;
 
@@ -14,6 +13,7 @@ import junit.framework.Assert;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -110,7 +110,7 @@ public class SignedInfoTest {
 	public void testDecodeInputStream() {
 		SignedInfo nca = new SignedInfo(
 				pubkey, 
-				new Timestamp(System.currentTimeMillis()), 
+				CCNTime.now(), 
 				SignedInfo.ContentType.DATA, 
 				nameLoc);
 		SignedInfo dnca = new SignedInfo();
@@ -119,7 +119,7 @@ public class SignedInfoTest {
 
 		SignedInfo kca = new SignedInfo(
 				pubkey, 
-				new Timestamp(System.currentTimeMillis()), 
+				CCNTime.now(), 
 				SignedInfo.ContentType.KEY, 
 				keyLoc);
 		SignedInfo dkca = new SignedInfo();
@@ -127,7 +127,7 @@ public class SignedInfoTest {
 		XMLEncodableTester.encodeDecodeTest("SignedInfo(key)", kca, dkca, bdkca);
 
 		SignedInfo cca = new SignedInfo(pubkey, 
-				new Timestamp(System.currentTimeMillis()), 
+				CCNTime.now(), 
 				SignedInfo.ContentType.LINK, 
 				certLoc);
 		SignedInfo dcca = new SignedInfo();

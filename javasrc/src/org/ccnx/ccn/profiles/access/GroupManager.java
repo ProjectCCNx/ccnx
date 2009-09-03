@@ -5,7 +5,6 @@ import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -218,7 +217,7 @@ public class GroupManager {
 	 * @throws AccessDeniedException 
 	 * @throws ConfigurationException 
 	 */
-	public PrivateKey getGroupPrivateKey(String groupFriendlyName, Timestamp privateKeyVersion) throws InvalidKeyException, InvalidCipherTextException, IOException, XMLStreamException, AccessDeniedException, ConfigurationException {
+	public PrivateKey getGroupPrivateKey(String groupFriendlyName, CCNTime privateKeyVersion) throws InvalidKeyException, InvalidCipherTextException, IOException, XMLStreamException, AccessDeniedException, ConfigurationException {
 		// Heuristic check
 		if (!amKnownGroupMember(groupFriendlyName)) {
 			Log.info("Unexpected: we don't think we're a group member of group " + groupFriendlyName);

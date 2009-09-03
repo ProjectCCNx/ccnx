@@ -1,9 +1,9 @@
 package org.ccnx.ccn.test.io.content;
 
-import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.LinkedList;
 
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
@@ -58,7 +58,7 @@ public class CollectionTest {
 		las[1] = null;
 		las[2] = new LinkAuthenticator(pubID2, null, null,
 				SignedInfo.ContentType.DATA, contenthash1);
-		las[3] = new LinkAuthenticator(pubID1, null, new Timestamp(System.currentTimeMillis()),
+		las[3] = new LinkAuthenticator(pubID1, null, CCNTime.now(),
 				null, contenthash1);
 
 

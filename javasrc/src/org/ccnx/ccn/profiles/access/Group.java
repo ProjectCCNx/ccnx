@@ -7,7 +7,6 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import javax.xml.stream.XMLStreamException;
@@ -16,6 +15,7 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
@@ -163,7 +163,7 @@ public class Group {
 		return membershipList().getCurrentVersionName(); 
 	}
 	
-	public Timestamp membershipListVersion() throws XMLStreamException, IOException, ConfigurationException {
+	public CCNTime membershipListVersion() throws XMLStreamException, IOException, ConfigurationException {
 		ContentName name = membershipListName();
 		if (VersioningProfile.hasTerminalVersion(name)) {
 			try {
@@ -192,7 +192,7 @@ public class Group {
 	
 	public ContentName publicKeyName() { return _groupPublicKey.getCurrentVersionName(); }
 	
-	public Timestamp publicKeyVersion() {
+	public CCNTime publicKeyVersion() {
 		ContentName name = publicKeyName();
 		if (VersioningProfile.hasTerminalVersion(name)) {
 			try {
