@@ -560,7 +560,7 @@ public class VersioningProfile implements CCNProfile {
 			// So chop off the new name just after the (first) version, and use that. If getLatestVersion is working
 			// right, that should be the right thing.
 			startingVersion = result.name().cut(prefixLength);
-			Log.info("getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
+			Log.info("CHILD SELECTOR FAILURE: getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
 			// this will verify
 			return SegmentationProfile.getSegment(startingVersion, startingSegmentNumber, null, timeout, verifier, library); // now that we have the latest version, go back for the first block.
 		} else {
