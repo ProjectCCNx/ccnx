@@ -107,8 +107,8 @@ public class CCNTime extends Timestamp {
 		return super.after(new CCNTime(when));
 	}
 
-	public static Timestamp now() {
-		return new Timestamp(System.currentTimeMillis());
+	public static CCNTime now() {
+		return new CCNTime();
 	}
 
 	/**
