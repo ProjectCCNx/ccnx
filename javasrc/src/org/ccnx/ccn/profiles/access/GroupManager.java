@@ -247,7 +247,11 @@ public class GroupManager {
 					DataUtils.printHexBytes(DataUtils.timestampToBinaryTime12(privateKeyVersion)));
 			return null;
 		}
-		while (! privateKeyDirectory.hasPrivateKeyBlock()) privateKeyDirectory.getNewData();
+		
+		while (! privateKeyDirectory.hasPrivateKeyBlock()) {
+			// This will block and wait for new name enumeration data to arrive.
+			privateKeyDirectory.getNewData();
+		}
 		PrivateKey privateKey = privateKeyDirectory.getPrivateKey();
 		if (null != privateKey) {
 			_accessManager.keyCache().addPrivateKey(privateKeyDirectory.getName(), PublisherID.generatePublicKeyDigest(theGroupPublicKey), 
