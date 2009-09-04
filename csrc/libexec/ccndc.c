@@ -13,6 +13,8 @@
 #include <sys/time.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <arpa/nameser.h>
+#include <resolv.h>
 #include <errno.h>
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
@@ -45,6 +47,7 @@ struct prefix_face_list_item {
  */
 static struct ccn_charbuf *local_scope_template = NULL;
 static struct ccn_charbuf *no_name = NULL;
+static res_state state = NULL;
 
 static void
 usage(const char *progname)
@@ -113,6 +116,12 @@ initialize_global_data(void) {
         ON_ERROR_EXIT(-1);
     }
     ON_ERROR_EXIT(ccn_name_init(no_name));
+
+    /* allocate a resolver library state */
+    state = calloc(1, sizeof(*state));
+    if (state == NULL) {
+        ON_ERROR_EXIT(-1);
+    }
 }
 
 /*
@@ -537,6 +546,109 @@ read_configfile(const char *filename, struct prefix_face_list_item *pfltail)
     return (configerrors);
 }
 
+enum ccn_upcall_res
+incoming_interest(
+                  struct ccn_closure *selfp,
+                  enum ccn_upcall_kind kind,
+                  struct ccn_upcall_info *info)
+{
+    const unsigned char *ccnb = info->interest_ccnb;
+    struct ccn_parsed_interest *pi = info->pi;
+    struct ccn_indexbuf *comps = info->interest_comps;
+    const unsigned char *comp0 = NULL;
+    size_t comp0_size = 0;
+    union {
+        HEADER header;
+        unsigned char buf[NS_MAXMSG];
+    } ans;
+    ssize_t ans_size;
+    char srv_name[NS_MAXDNAME];
+    int qdcount, ancount, i;
+    unsigned char *msg, *msgend;
+    unsigned char *end;
+    int type, class, ttl, size, priority, weight, port;
+    char host[NS_MAXDNAME];
+    int res;
+
+    if (kind == CCN_UPCALL_FINAL)
+        return (CCN_UPCALL_RESULT_OK);
+    if (kind != CCN_UPCALL_INTEREST)
+        return (CCN_UPCALL_RESULT_ERR);
+    if (comps->n < 1)
+        return (CCN_UPCALL_RESULT_OK);
+  
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb, comps->buf[0], comps->buf[1],
+                              &comp0, &comp0_size);
+    if (res < 0 || comp0_size > (NS_MAXDNAME - 12))
+        return (CCN_UPCALL_RESULT_OK);
+    if (memchr(comp0, '.', comp0_size) == NULL)
+        return (CCN_UPCALL_RESULT_OK);
+
+    if (! (state->options & RES_INIT)) res_ninit(state);
+
+    /* Step 1: construct the SRV record name, and see if there's a ccn service gateway.
+     * 	       Prefer TCP service over UDP, though this might change.
+     */
+
+    sprintf(srv_name, "_ccnx._tcp.%.*s", comp0_size, comp0);
+    ans_size = res_nquery(state, srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
+    if (ans_size < 0) {
+        sprintf(srv_name, "_ccnx._udp.%.*s", comp0_size, comp0);
+        ans_size = res_nquery(state, srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
+        if (ans_size < 0)
+            return (CCN_UPCALL_RESULT_ERR);
+    }
+    if (ans_size > sizeof(ans.buf))
+        return (CCN_UPCALL_RESULT_ERR);
+    
+    /* Step 2: skip over the header and question sections */
+    qdcount = ntohs(ans.header.qdcount);
+    ancount = ntohs(ans.header.ancount);
+    msg = ans.buf + sizeof(ans.header);
+    msgend = ans.buf + ans_size;
+
+    for (i = qdcount; i > 0; --i) {
+        if ((size = dn_skipname(msg, msgend)) < 0)
+            return (CCN_UPCALL_RESULT_ERR);
+        msg = msg + size + QFIXEDSZ;
+    }
+    /* Step 3: process the answer section */
+    
+    for (i = ancount; i > 0; --i) {
+  	size = dn_expand(ans.buf, msgend, msg, srv_name, sizeof (srv_name));
+  	if (size < 0) 
+  	    return (CCN_UPCALL_RESULT_ERR);
+  	msg = msg + size;
+  	NS_GET16(type, msg);
+  	NS_GET16(class, msg);
+  	NS_GET32(ttl, msg);
+  	NS_GET16(size, msg);
+  	if ((end = msg + size) > msgend)
+            return (CCN_UPCALL_RESULT_ERR);
+
+  	if (type != T_SRV) {
+            msg = end;
+            continue;
+  	}
+
+  	NS_GET16(priority, msg);
+  	NS_GET16(weight, msg);
+  	NS_GET16(port, msg);
+  	size = dn_expand(ans.buf, msgend, msg, host, sizeof (host));
+  	if (size < 0)
+            return (CCN_UPCALL_RESULT_ERR);
+
+  	printf("Found %s %d IN SRV [%d][%d] %s:%d\n",
+               srv_name, ttl, priority, weight, host, port);
+
+  	msg = end;
+    }
+ 
+
+    return(CCN_UPCALL_RESULT_OK);
+}
+
+
 int
 main(int argc, char **argv)
 {
@@ -548,6 +660,7 @@ main(int argc, char **argv)
     struct prefix_face_list_item *pfl;
     struct ccn_keystore *keystore = NULL;
     int dynamic = 0;
+    struct ccn_closure interest_closure = {.p=&incoming_interest};
     unsigned char ccndid_storage[32] = {0};
     const unsigned char *ccndid = ccndid_storage;
     size_t ccndid_size;
@@ -621,7 +734,14 @@ main(int argc, char **argv)
         pfl->fi->ccnd_id_size = ccndid_size;
         res = register_prefix(h, keystore, pfl->prefix, pfl->fi, pfl->flags);
     }
-    /* We're about to exit, so don't bother to free everything. */
+    prefix_face_list_destroy(&pflhead);
+    if (dynamic) {
+        /* Set up a handler for interests */
+        ccn_name_init(temp);
+        ccn_set_interest_filter(h, temp, &interest_closure);
+        ccn_charbuf_destroy(&temp);
+        ccn_run(h, -1);
+    }
     ccn_destroy(&h);
     exit(res < 0);
 }
