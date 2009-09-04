@@ -3,7 +3,6 @@ package org.ccnx.ccn.test.io.content;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InvalidObjectException;
-import java.sql.Timestamp;
 import java.util.Random;
 import java.util.logging.Level;
 
@@ -12,7 +11,6 @@ import javax.xml.stream.XMLStreamException;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
-import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.content.CCNNetworkObject;
@@ -22,6 +20,7 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.SignedInfo;
@@ -111,11 +110,11 @@ public class CCNNetworkObjectTest {
 		las[1] = null;
 		las[2] = new LinkAuthenticator(pubID2, null, null,
 				SignedInfo.ContentType.DATA, contenthash1);
-		las[3] = new LinkAuthenticator(pubID1, null, new Timestamp(System.currentTimeMillis()),
+		las[3] = new LinkAuthenticator(pubID1, null, CCNTime.now(),
 				null, contenthash1);
 		
 		for (int j=4; j < NUM_LINKS; ++j) {
-			las[j] = new LinkAuthenticator(pubID2, null, new Timestamp(System.currentTimeMillis()),null, null);
+			las[j] = new LinkAuthenticator(pubID2, null, CCNTime.now(), null, null);
  		}
 
 		lrs = new Link[NUM_LINKS];
@@ -153,7 +152,7 @@ public class CCNNetworkObjectTest {
 			CCNStringObject ro = null;
 			CCNStringObject ro2 = null;
 			CCNStringObject ro3, ro4; // make each time, to get a new library.
-			Timestamp soTime, srTime, sr2Time, sr3Time, sr4Time, so2Time;
+			CCNTime soTime, srTime, sr2Time, sr3Time, sr4Time, so2Time;
 			for (int i=0; i < numbers.length; ++i) {
 				soTime = saveAndLog(numbers[i], so, null, numbers[i]);
 				if (null == ro) {
@@ -196,7 +195,7 @@ public class CCNNetworkObjectTest {
 		try {
 			setupNamespace(testName);
 
-			Timestamp desiredVersion = DataUtils.roundTimestamp(SignedInfo.now());
+			CCNTime desiredVersion = CCNTime.now();
 
 			CCNStringObject so = new CCNStringObject(testName, "First value", lput);
 			saveAndLog("SpecifiedVersion", so, desiredVersion, "Time: " + desiredVersion);
@@ -304,14 +303,14 @@ public class CCNNetworkObjectTest {
 		try {
 
 			CollectionObject c0 = new CollectionObject(testName, empty, library);
-			Timestamp t0 = saveAndLog("Empty", c0, null, empty);
+			CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 
 			CollectionObject c1 = new CollectionObject(testName2, small1, CCNHandle.open());
-			Timestamp t1 = saveAndLog("Small", c1, null, small1);
+			CCNTime t1 = saveAndLog("Small", c1, null, small1);
 			Assert.assertTrue("First version should come before second", t0.before(t1));
 
 			CollectionObject c2 = new CollectionObject(testName2, small1, null);
-			Timestamp t2 = saveAndLog("Small2ndWrite", c2, null, small1);
+			CCNTime t2 = saveAndLog("Small2ndWrite", c2, null, small1);
 			Assert.assertTrue("Third version should come after second", t1.before(t2));
 			Assert.assertTrue(c2.contentEquals(c1));
 			Assert.assertFalse(c2.equals(c1));
@@ -331,19 +330,19 @@ public class CCNNetworkObjectTest {
 		try {
 
 			CollectionObject c0 = new CollectionObject(testName, empty, library);
-			Timestamp t0 = saveAndLog("Empty", c0, null, empty);
+			CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 
 			CollectionObject c1 = new CollectionObject(testName2, small1, CCNHandle.open());
-			Timestamp t1 = saveAndLog("Small", c1, null, small1);
+			CCNTime t1 = saveAndLog("Small", c1, null, small1);
 			Assert.assertTrue("First version should come before second", t0.before(t1));
 
 			CollectionObject c2 = new CollectionObject(testName2, small1, null);
-			Timestamp t2 = saveAndLog("Small2ndWrite", c2, null, small1);
+			CCNTime t2 = saveAndLog("Small2ndWrite", c2, null, small1);
 			Assert.assertTrue("Third version should come after second", t1.before(t2));
 			Assert.assertTrue(c2.contentEquals(c1));
 			Assert.assertFalse(c2.equals(c1));
 
-			Timestamp t3 = updateAndLog(c0.getCurrentVersionName().toString(), c0, testName2);
+			CCNTime t3 = updateAndLog(c0.getCurrentVersionName().toString(), c0, testName2);
 			Assert.assertTrue(VersioningProfile.isVersionOf(c0.getCurrentVersionName(), testName2));
 			Assert.assertEquals(t3, t2);
 			Assert.assertTrue(c0.contentEquals(c2));
@@ -367,20 +366,20 @@ public class CCNNetworkObjectTest {
 
 		try {
 			CollectionObject c0 = new CollectionObject(testName, empty, library);
-			Timestamp t0 = saveAsGoneAndLog("Gone", c0);
+			CCNTime t0 = saveAsGoneAndLog("Gone", c0);
 			Assert.assertTrue("Should be gone", c0.isGone());
 			ContentName goneVersionName = c0.getCurrentVersionName();
 
-			Timestamp t1 = saveAndLog("NotGone", c0, null, small1);
+			CCNTime t1 = saveAndLog("NotGone", c0, null, small1);
 			Assert.assertFalse("Should not be gone", c0.isGone());
 			Assert.assertTrue(t1.after(t0));
 
 			CollectionObject c1 = new CollectionObject(testName, CCNHandle.open());
-			Timestamp t2 = waitForDataAndLog(testName.toString(), c1);
+			CCNTime t2 = waitForDataAndLog(testName.toString(), c1);
 			Assert.assertFalse("Read back should not be gone", c1.isGone());
 			Assert.assertEquals(t2, t1);
 
-			Timestamp t3 = updateAndLog(goneVersionName.toString(), c1, goneVersionName);
+			CCNTime t3 = updateAndLog(goneVersionName.toString(), c1, goneVersionName);
 			Assert.assertTrue(VersioningProfile.isVersionOf(c1.getCurrentVersionName(), testName));
 			Assert.assertEquals(t3, t0);
 			Assert.assertTrue("Read back should be gone.", c1.isGone());
@@ -388,7 +387,7 @@ public class CCNNetworkObjectTest {
 			t0 = saveAsGoneAndLog("GoneAgain", c0);
 			Assert.assertTrue("Should be gone", c0.isGone());
 			CollectionObject c2 = new CollectionObject(testName, CCNHandle.open());
-			Timestamp t4 = waitForDataAndLog(testName.toString(), c2);
+			CCNTime t4 = waitForDataAndLog(testName.toString(), c2);
 			Assert.assertTrue("Read back of " + c0.getCurrentVersionName() + " should be gone, got " + c2.getCurrentVersionName(), c2.isGone());
 			Assert.assertEquals(t4, t0);
 		} finally {
@@ -397,27 +396,27 @@ public class CCNNetworkObjectTest {
 
 	}
 	
-	public <T> Timestamp saveAndLog(String name, CCNNetworkObject<T> ecd, Timestamp version, T data) throws XMLStreamException, IOException {
-		Timestamp oldVersion = ecd.getCurrentVersion();
+	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws XMLStreamException, IOException {
+		CCNTime oldVersion = ecd.getCurrentVersion();
 		ecd.save(version, data);
 		Log.info("Saved " + name + ": " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getCurrentVersion();
 	}
 	
-	public <T> Timestamp saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws XMLStreamException, IOException {
-		Timestamp oldVersion = ecd.getCurrentVersion();
+	public <T> CCNTime saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws XMLStreamException, IOException {
+		CCNTime oldVersion = ecd.getCurrentVersion();
 		ecd.saveAsGone();
 		Log.info("Saved " + name + ": " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getCurrentVersion();
 	}
 	
-	public Timestamp waitForDataAndLog(String name, CCNNetworkObject<?> ecd) throws XMLStreamException, IOException {
+	public CCNTime waitForDataAndLog(String name, CCNNetworkObject<?> ecd) throws XMLStreamException, IOException {
 		ecd.waitForData();
 		Log.info("Initial read " + name + ", name: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getCurrentVersion();
 	}
 
-	public Timestamp updateAndLog(String name, CCNNetworkObject<?> ecd, ContentName updateName) throws XMLStreamException, IOException {
+	public CCNTime updateAndLog(String name, CCNNetworkObject<?> ecd, ContentName updateName) throws XMLStreamException, IOException {
 		if (((null == updateName) && ecd.update()) || (ecd.update(updateName, null)))
 			Log.info("Updated " + name + ", to name: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		else 

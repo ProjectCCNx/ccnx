@@ -7,7 +7,6 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import javax.xml.stream.XMLStreamException;
@@ -25,6 +24,7 @@ import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 
@@ -163,7 +163,7 @@ public class Group {
 		return membershipList().getCurrentVersionName(); 
 	}
 	
-	public Timestamp membershipListVersion() throws XMLStreamException, IOException, ConfigurationException {
+	public CCNTime membershipListVersion() throws XMLStreamException, IOException, ConfigurationException {
 		ContentName name = membershipListName();
 		if (VersioningProfile.hasTerminalVersion(name)) {
 			try {
@@ -192,7 +192,7 @@ public class Group {
 	
 	public ContentName publicKeyName() { return _groupPublicKey.getCurrentVersionName(); }
 	
-	public Timestamp publicKeyVersion() {
+	public CCNTime publicKeyVersion() {
 		ContentName name = publicKeyName();
 		if (VersioningProfile.hasTerminalVersion(name)) {
 			try {

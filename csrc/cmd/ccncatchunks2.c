@@ -1,4 +1,5 @@
-/*
+/**
+ * @file ccncatchunks2.c
  * Reads stuff written by ccnsendchunks, writes to stdout.
  */
 #include <sys/time.h>

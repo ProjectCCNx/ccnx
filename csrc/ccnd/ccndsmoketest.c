@@ -55,7 +55,7 @@ setup_sockaddr_un(const char *portstr, struct sockaddr_un *result)
     struct sockaddr_un *sa = result;
     memset(sa, 0, sizeof(*sa));
     sa->sun_family = AF_UNIX;
-    if (portstr != NULL && atoi(portstr) > 0 && atoi(portstr) != 4485)
+    if (portstr != NULL && atoi(portstr) > 0 && atoi(portstr) != atoi(CCN_DEFAULT_UNICAST_PORT))
         snprintf(sa->sun_path, sizeof(sa->sun_path),
                  CCN_DEFAULT_LOCAL_SOCKNAME ".%s", portstr);
     else
@@ -98,7 +98,7 @@ open_socket(const char *host, const char *portstr, int sock_type)
     struct addrinfo hints = {0};
     
     if (portstr == NULL || portstr[0] == 0)
-        portstr = "4485";
+        portstr = CCN_DEFAULT_UNICAST_PORT;
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = sock_type;
     hints.ai_flags = 0;

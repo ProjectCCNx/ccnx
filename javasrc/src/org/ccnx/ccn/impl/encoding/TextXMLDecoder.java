@@ -2,7 +2,6 @@ package org.ccnx.ccn.impl.encoding;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.Timestamp;
 import java.text.ParseException;
 import java.util.Iterator;
 import java.util.TreeMap;
@@ -13,6 +12,8 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.Characters;
 import javax.xml.stream.events.XMLEvent;
+
+import org.ccnx.ccn.protocol.CCNTime;
 
 public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 
@@ -150,9 +151,9 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	/**
 	 * Keep text timestamps for text encoding/decoding.
 	 */
-	public Timestamp readDateTime(String startTag) throws XMLStreamException {
+	public CCNTime readDateTime(String startTag) throws XMLStreamException {
 		String strTimestamp = readUTF8Element(startTag);
-		Timestamp timestamp;
+		CCNTime timestamp;
 		try {
 			timestamp = TextXMLCodec.parseDateTime(strTimestamp);
 		} catch (ParseException e) {

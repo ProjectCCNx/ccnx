@@ -1,6 +1,5 @@
 package org.ccnx.ccn.test.impl.encoding;
 
-import java.sql.Timestamp;
 import java.text.ParseException;
 import java.util.logging.Level;
 
@@ -8,6 +7,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.impl.encoding.TextXMLCodec;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -23,13 +23,12 @@ public class TextXMLCodecTest {
 	
 	@Test
 	public void testParseDateTime() {
-		Timestamp now = new Timestamp(System.currentTimeMillis());
-		/*
+		CCNTime now = CCNTime.now();
 		testDateTime(now);
 		
 		now.setNanos(384);
 		testDateTime(now);
-		*/
+
 		now.setNanos(1105384);
 		testDateTime(now);
 		now.setNanos(550105384);
@@ -44,10 +43,10 @@ public class TextXMLCodecTest {
 		testDateTime(now);
 	}
 	
-	public void testDateTime(Timestamp testDateTime) {
+	public void testDateTime(CCNTime testDateTime) {
 		String strDateTime = TextXMLCodec.formatDateTime(testDateTime);
 		System.out.println("DateTime: " + testDateTime + " XML version: " + strDateTime);
-		Timestamp parsedDateTime = null;
+		CCNTime parsedDateTime = null;
 		try {
 			parsedDateTime = TextXMLCodec.parseDateTime(strDateTime);
 		} catch (ParseException e) {

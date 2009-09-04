@@ -42,9 +42,9 @@
 #endif
 
 #include <ccn/ccn.h>
+#include <ccn/ccnd.h>
 #include <ccn/uri.h>
 
-#define DEFAULTPORTSTRING "4485"
 #define MAXRIB	1024
 struct ribline {
     struct ccn_charbuf *name;
@@ -248,7 +248,7 @@ read_configfile(const char *filename, struct routing *rt)
             continue;
         }
         rhostportstring = strtok_r(NULL, seps, &last);
-        if (rhostportstring == NULL) rhostportstring = DEFAULTPORTSTRING;
+        if (rhostportstring == NULL) rhostportstring = CCN_DEFAULT_UNICAST_PORT;
         rhostport = atoi(rhostportstring);
         if (rhostport <= 0 || rhostport > 65535) {
             ccndc_warn(__LINE__, "config file error (line %d), invalid port %s\n", configlinenumber, rhostportstring);

@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
+#include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
 #include <ccn/face_mgmt.h>
@@ -119,7 +120,7 @@ main(int argc, char **argv)
     face_instance->descr.address = argv[optind + 2];
     face_instance->descr.port = argv[optind + 3];
     if (face_instance->descr.port == NULL)
-        face_instance->descr.port = "4485";
+        face_instance->descr.port = CCN_DEFAULT_UNICAST_PORT;
     face_instance->descr.mcast_ttl = -1;
     face_instance->lifetime = (~0U) >> 1;
     

@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.sql.Timestamp;
 import java.util.Arrays;
 
 import javax.crypto.Cipher;
@@ -19,6 +18,7 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -164,7 +164,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return _baseName;
 	}
 	
-	public Timestamp getVersion() {
+	public CCNTime getVersion() {
 		if (null == _baseName) 
 			return null;
 		return VersioningProfile.getTerminalVersionAsTimestampIfVersioned(_baseName);

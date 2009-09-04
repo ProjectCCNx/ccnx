@@ -6,7 +6,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InvalidObjectException;
-import java.sql.Timestamp;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -15,6 +14,7 @@ import org.ccnx.ccn.io.NullOutputStream;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.SignedInfo;
@@ -69,11 +69,11 @@ public class EncodableObjectTest {
 		las[1] = null;
 		las[2] = new LinkAuthenticator(pubID2, null, null,
 				SignedInfo.ContentType.DATA, contenthash1);
-		las[3] = new LinkAuthenticator(pubID1, null, new Timestamp(System.currentTimeMillis()),
+		las[3] = new LinkAuthenticator(pubID1, null, CCNTime.now(),
 				null, contenthash1);
 		
 		for (int j=4; j < NUM_LINKS; ++j) {
-			las[j] = new LinkAuthenticator(pubID2, null, new Timestamp(System.currentTimeMillis()),null, null);
+			las[j] = new LinkAuthenticator(pubID2, null, CCNTime.now(),null, null);
  		}
 
 		lrs = new Link[NUM_LINKS];

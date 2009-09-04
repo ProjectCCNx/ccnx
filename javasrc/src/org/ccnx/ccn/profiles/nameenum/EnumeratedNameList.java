@@ -1,7 +1,6 @@
 package org.ccnx.ccn.profiles.nameenum;
 
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.SortedSet;
@@ -13,6 +12,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 
 
@@ -251,7 +251,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		// ListIterator previous doesn't work unless you've somehow gotten it to point at the end...
 		ContentName theName = null;
 		ContentName latestName = null;
-		Timestamp latestTimestamp = null;
+		CCNTime latestTimestamp = null;
 		Iterator<ContentName> it = _children.iterator();
 		// DKS TODO these are sorted -- we just need to iterate through them in reverse order. Having
 		// trouble finding something like C++'s reverse iterators to do that (linked list iterators
@@ -263,7 +263,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 					latestName = theName;
 					latestTimestamp = VersioningProfile.getVersionComponentAsTimestamp(theName.component(0));
 				} else {
-					Timestamp thisTimestamp = VersioningProfile.getVersionComponentAsTimestamp(theName.component(0));
+					CCNTime thisTimestamp = VersioningProfile.getVersionComponentAsTimestamp(theName.component(0));
 					if (thisTimestamp.after(latestTimestamp)) {
 						latestName = theName;
 						latestTimestamp = thisTimestamp;
@@ -274,7 +274,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		return latestName;
 	}
 	
-	public Timestamp getLatestVersionChildTime() {
+	public CCNTime getLatestVersionChildTime() {
 		ContentName latestVersion = getLatestVersionChildName();
 		if (null != latestVersion) {
 			return VersioningProfile.getVersionComponentAsTimestamp(latestVersion.component(0));

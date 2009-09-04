@@ -1,11 +1,11 @@
 package org.ccnx.ccn.impl.repo;
 
-import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -29,7 +29,7 @@ public interface Repository {
 	public class NameEnumerationResponse{
 		private ContentName prefix;
 		private ArrayList<ContentName> names;
-		private Timestamp version;
+		private CCNTime version;
 		
 		public NameEnumerationResponse(){
 			prefix = null;
@@ -37,7 +37,7 @@ public interface Repository {
 			version = null;
 		}
 		
-		public NameEnumerationResponse(ContentName p, ArrayList<ContentName> n, Timestamp ts){
+		public NameEnumerationResponse(ContentName p, ArrayList<ContentName> n, CCNTime ts){
 			prefix = p;
 			names = n;
 			version = ts;
@@ -59,11 +59,11 @@ public interface Repository {
 			return names;
 		}
 		
-		public void setTimestamp(Timestamp ts){
+		public void setTimestamp(CCNTime ts){
 			version = ts;
 		}
 		
-		public Timestamp getTimestamp(){
+		public CCNTime getTimestamp(){
 			return version;
 		}
 		

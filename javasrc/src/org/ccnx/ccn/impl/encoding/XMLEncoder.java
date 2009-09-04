@@ -1,10 +1,11 @@
 package org.ccnx.ccn.impl.encoding;
 
 import java.io.OutputStream;
-import java.sql.Timestamp;
 import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
+
+import org.ccnx.ccn.protocol.CCNTime;
 
 
 public interface XMLEncoder {
@@ -51,7 +52,7 @@ public interface XMLEncoder {
 	/**
 	 * Encapsulate our handling of timestamps.
 	 */
-	public void writeDateTime(String tag, Timestamp dateTime) throws XMLStreamException;
+	public void writeDateTime(String tag, CCNTime dateTime) throws XMLStreamException;
 	
 	public void pushXMLDictionary(BinaryXMLDictionary dictionary);
 	

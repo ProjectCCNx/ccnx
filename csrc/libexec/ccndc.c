@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
+#include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
 #include <ccn/face_mgmt.h>
@@ -25,8 +26,6 @@
 #include <ccn/sockcreate.h>
 #include <ccn/signing.h>
 #include <ccn/keystore.h>
-
-#define DEFAULT_PORT "4485"
 
 #ifndef AI_ADDRCONFIG
 #define AI_ADDRCONFIG 0 /*IEEE Std 1003.1-2001/Cor 1-2002, item XSH/TC1/D6/20*/
@@ -440,7 +439,7 @@ process_command_tokens(struct prefix_face_list_item *pfltail,
         return (-1);
     }
 
-    if (port == NULL) port = DEFAULT_PORT;
+    if (port == NULL) port = CCN_DEFAULT_UNICAST_PORT;
 
     hints.ai_socktype = socktype;
     res = getaddrinfo(host, port, &hints, &raddrinfo);

@@ -329,4 +329,6 @@ void ccnd_debug_ccnb(struct ccnd_handle *h,
                      size_t ccnb_size);
 void shutdown_client_fd(struct ccnd_handle *h, int fd);
 
+void ccnd_usage(void);
+
 #endif

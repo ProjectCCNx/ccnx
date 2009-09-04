@@ -21,6 +21,7 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -87,7 +88,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			keyObject = new ContentObject(
 					keyName,
 					new SignedInfo(keyID,
-							SignedInfo.now(),
+							CCNTime.now(),
 							SignedInfo.ContentType.KEY,
 							locatorLocator),
 							encodedKey,

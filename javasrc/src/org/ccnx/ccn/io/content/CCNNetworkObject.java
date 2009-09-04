@@ -2,7 +2,6 @@ package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
 import java.io.InvalidObjectException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -21,6 +20,7 @@ import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -303,7 +303,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws ClassNotFoundException 
 	 */
 	public boolean update(ContentName name, PublisherPublicKeyDigest publisher) throws XMLStreamException, IOException {
-		Log.info("Updating object to " + name);
+		Log.info("Updating object to {0}.", name);
 		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, _library);
 		return update(is);
 	}
@@ -368,14 +368,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	public void updateInBackground(ContentName latestVersionKnown, boolean continuousUpdates) throws IOException {
 		
-		Log.info("updateInBackground: getting latest version after " + latestVersionKnown + " in background.");
+		Log.info("updateInBackground: getting latest version after {0} in background.", latestVersionKnown);
 		// DKS TODO locking?
 		cancelInterest();
 		// express this
 		// DKS TODO better versioned interests, a la library.getlatestVersion
 		_continuousUpdates = continuousUpdates;
 		_currentInterest = VersioningProfile.firstBlockLatestVersionInterest(latestVersionKnown, null);
-		Log.info("UpdateInBackground: interest: " + _currentInterest);
+		Log.info("UpdateInBackground: interest: {0}", _currentInterest);
 		_library.expressInterest(_currentInterest, this);
 	}
 	
@@ -406,7 +406,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * the value of raw specified.
 	 * @throws IOException 
 	 */
-	public boolean save(Timestamp version) throws IOException {
+	public boolean save(CCNTime version) throws IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
@@ -421,7 +421,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * 		save. (DKS TODO: add force write flag if you need to update version. Also allow specification of freshness.)
 	 * @throws IOException 
 	 */
-	public boolean saveInternal(Timestamp version, boolean gone) throws IOException {
+	public boolean saveInternal(CCNTime version, boolean gone) throws IOException {
 		// move object to this name
 		// need to make sure we get back the actual name we're using,
 		// even if output stream does automatic versioning
@@ -500,7 +500,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return save();
 	}
 	
-	public boolean save(Timestamp version, E data) throws IOException {
+	public boolean save(CCNTime version, E data) throws IOException {
 		setData(data);
 		return save(version);
 	}
@@ -510,7 +510,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * If raw=true or DEFAULT_RAW=true specified, this must be the first call to save made
 	 * for this object.
 	 */
-	public boolean saveToRepository(Timestamp version) throws IOException {
+	public boolean saveToRepository(CCNTime version) throws IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
@@ -522,7 +522,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	public boolean saveToRepository() throws IOException {		
-		return saveToRepository((Timestamp)null);
+		return saveToRepository((CCNTime)null);
 	}
 	
 	public boolean saveToRepository(E data) throws IOException {
@@ -530,7 +530,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return saveToRepository();
 	}
 	
-	public boolean saveToRepository(Timestamp version, E data) throws IOException {
+	public boolean saveToRepository(CCNTime version, E data) throws IOException {
 		setData(data);
 		return saveToRepository(version);
 	}
@@ -562,7 +562,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return saveAsGone();
 	}
 	
-	public Timestamp getVersion() {
+	public CCNTime getVersion() {
 		if ((null == _currentVersionComponent) || (null == _lastSaved)) {
 			return null;
 		}
@@ -577,7 +577,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return _currentVersionComponent;
 	}
 	
-	public Timestamp getCurrentVersion() {
+	public CCNTime getCurrentVersion() {
 		if (null == _currentVersionComponent)
 			return null;
 		return VersioningProfile.getVersionComponentAsTimestamp(_currentVersionComponent);
@@ -665,13 +665,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 					// OK, we have something that is a later version of our desired object.
 					// We're not sure it's actually the first content segment.
 					if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
-						Log.info("Background updating of " + getCurrentVersionName() + ", got first segment: " + co.name());
+						Log.info("Background updating of {0}, got first segment: {1}", getCurrentVersionName(), co.name());
 						update(co);
 					} else {
 						// Have something that is not the first segment, like a repo write or a later segment. Go back
 						// for first segment.
 						ContentName latestVersionName = co.name().cut(_currentInterest.name().count() + 1);
-						Log.info("handleContent (network object): Have version information, now querying first segment of " + latestVersionName);
+						Log.info("handleContent (network object): Have version information, now querying first segment of {0}", latestVersionName);
 						update(latestVersionName, co.signedInfo().getPublisherKeyID());
 					}
 					_excludeList.clear();
@@ -686,15 +686,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 					return null; // implicit cancel of interest
 				}
 			} catch (IOException ex) {
-				Log.info("Exception " + ex.getClass().getName() + ": " + ex.getMessage() + " attempting to update based on object : " + co.name());
+				Log.info("Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
 				// alright, that one didn't work, try to go on.    				
 			} catch (XMLStreamException ex) {
-				Log.info("Exception " + ex.getClass().getName() + ": " + ex.getMessage() + " attempting to update based on object : " + co.name());
+				Log.info("Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
 				// alright, that one didn't work, try to go on.
 			} 
 
 			_excludeList.add(co.name().component(_currentInterest.name().count() - 1));  
-			Log.info("handleContent: got content for " + _currentInterest.name() + " that doesn't match: " + co.name());
+			Log.info("handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());
 		}
 		byte [][] excludes = new byte[_excludeList.size()][];
 		_excludeList.toArray(excludes);

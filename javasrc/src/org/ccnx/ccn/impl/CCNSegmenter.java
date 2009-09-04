@@ -8,7 +8,6 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
-import java.sql.Timestamp;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -24,6 +23,7 @@ import org.ccnx.ccn.impl.security.crypto.UnbufferedCipherInputStream;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.SegmentationProfile.SegmentNumberType;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -349,7 +349,7 @@ public class CCNSegmenter {
 			ContentName name, long baseSegmentNumber,
 			byte [] content, int offset, int length, int blockWidth,
 			ContentType type, 
-			Timestamp timestamp,
+			CCNTime timestamp,
 			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, 
@@ -420,7 +420,7 @@ public class CCNSegmenter {
 			byte [][] contentBlocks, int blockCount, 
 			int firstBlockIndex, int lastBlockLength,
 			ContentType type, 
-			Timestamp timestamp,
+			CCNTime timestamp,
 			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
@@ -502,7 +502,7 @@ public class CCNSegmenter {
 			ContentName name, long segmentNumber, 
 			byte [] content, int offset, int length,
 			ContentType type, 
-			Timestamp timestamp, 
+			CCNTime timestamp, 
 			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 

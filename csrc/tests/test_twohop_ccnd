@@ -2,11 +2,11 @@ AFTER : test_long_consumer2
 BEFORE : test_single_ccnd_teardown test_twohop_ccnd_teardown
 # ccnd 0 is already running and loaded with some data
 
-rm -f udplink*.out
+rm -f ccnd1.out ccnd2.out ccnd3.out
 
 WithCCND 1 ccnd 2>ccnd1.out &
 WithCCND 2 ccnd 2>ccnd2.out &
-WithCCND 3 ccnd 2>ccnd3.out &
+CCND_DEBUG=7 WithCCND 3 ccnd 2>ccnd3.out &
 
 # Make sure they've all started
 until CheckForCCND 0 && CheckForCCND 1 && CheckForCCND 2 && CheckForCCND 3; do
@@ -15,24 +15,22 @@ until CheckForCCND 0 && CheckForCCND 1 && CheckForCCND 2 && CheckForCCND 3; do
 done
 
 Linkup () {
-  local A B  P Q
-  A=$1
-  B=$2
+  local A B
+  A=$((CCN_LOCAL_PORT_BASE+$1))
+  B=$((CCN_LOCAL_PORT_BASE+$2))
   shift 2
   test $A -ne $B || Fail FIXME
-  P=91$A$B
-  Q=91$B$A
-  WithCCND $A udplink -h localhost -r $P -l $Q "$@" 2> udplink$Q.out &
-  WithCCND $B udplink -h localhost -r $Q -l $P "$@" 2> udplink$P.out &
+  env CCN_LOCAL_PORT=$A ccndc add / udp localhost $B
+  env CCN_LOCAL_PORT=$B ccndc add / udp localhost $A
 }
 
 # 0 --- 1 --- 2
 #       |
 #       3
 
-Linkup 0 1 -d
-Linkup 1 2 -d
-Linkup 1 3 -dd 2
+Linkup 1 0
+Linkup 1 2
+Linkup 1 3
 
 WithCCND 0 ccnls ccn:/test
 WithCCND 1 ccnls ccn:/test

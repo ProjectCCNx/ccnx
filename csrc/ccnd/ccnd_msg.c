@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include <ccn/ccn.h>
+#include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
 
@@ -103,3 +104,44 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
     ccnd_msg(h, "%s", ccn_charbuf_as_string(c));
     ccn_charbuf_destroy(&c);
 }
+
+/**
+ * Print the ccnd usage message on stderr.
+ *
+ * Does not exit.
+ */
+void
+ccnd_usage(void)
+{
+    static const char ccnd_usage_message[] =
+    "ccnd - CCN Daemon\n"
+    "  options: none\n"
+    "  arguments: none\n"
+    "  environment variables:\n"
+    "    CCND_DEBUG=\n"
+    "      0 - no stderr messages\n"
+    "      1 - default stderr messages (any non-zero value gets these)\n"
+    "      2 - interest messages\n"
+    "      4 - content messages\n"
+    "      8 - matching details\n"
+    "      16 - interest details\n"
+    "      32 - gory interest details\n"
+    "      64 - log occasional human-readable timestamps\n"
+    "      128 - face registration debugging\n"
+    "      bitwise OR these together for combinations; -1 gets everything\n"
+    "    CCN_LOCAL_PORT=\n"
+    "      UDP port for unicast clients (default %s).\n"
+    "      Also listens on this TCP port for stream connections.\n"
+    "      Also affects name of unix-domain socket.\n"
+    "    CCND_CAP=\n"
+    "      Capacity limit, in count of ContentObjects.\n"
+    "      Not an absolute limit.\n"
+    "    CCND_MTU=\n"
+    "      Packet size in bytes.\n"
+    "      If set, interest stuffing is allowed within this budget.\n"
+    "      Single items larger than this are not precluded.\n"
+    "    CCND_DATA_PAUSE_MICROSEC=\n"
+    "      Adjusts content-send delay time for multicast and udplink faces\n";
+    fprintf(stderr, ccnd_usage_message, CCN_DEFAULT_UNICAST_PORT);
+}
+

@@ -1,6 +1,5 @@
 package org.ccnx.ccn.io.content;
 
-import java.sql.Timestamp;
 import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
@@ -10,6 +9,7 @@ import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo;
@@ -25,24 +25,19 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
    
     protected PublisherID	_publisher = null;
     protected Integer		_nameComponentCount = null;
-    protected Timestamp		_timestamp = null;
+    protected CCNTime		_timestamp = null;
     protected SignedInfo.ContentType 	_type = null;
     protected byte []		_contentDigest = null; // encoded DigestInfo
     
     public LinkAuthenticator(
     		PublisherID publisher, 
     		Integer nameComponentCount,
-			Timestamp timestamp, 
+    		CCNTime timestamp, 
 			SignedInfo.ContentType type, 
        		byte [] contentDigest) {
     	super();
     	this._publisher = publisher;
     	this._nameComponentCount = nameComponentCount;
-       	if (null != timestamp) {
-    	   	// Lower resolution of time to only what we can represent on the wire;
-        	// this allows decode(encode(timestamp)) == timestamp
-        	this._timestamp = DataUtils.roundTimestamp(timestamp);
-    	}
      	this._type = type;
     	this._contentDigest = contentDigest;
     }
@@ -116,15 +111,11 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 	public void nameComponentCount(int nameComponentCount) { _nameComponentCount = new Integer(nameComponentCount); }
 	public void clearNameComponentCount() { _nameComponentCount = null; }
 	
-	public Timestamp timestamp() {
+	public CCNTime timestamp() {
 		return _timestamp;
 	}
-	public void timestamp(Timestamp timestamp) {
-      	if (null != timestamp) {
-    	   	// Lower resolution of time to only what we can represent on the wire;
-        	// this allows decode(encode(timestamp)) == timestamp
-        	this._timestamp = DataUtils.roundTimestamp(timestamp);
-    	}
+	public void timestamp(CCNTime timestamp) {
+      	this._timestamp = timestamp;
 	}
 	
 	public SignedInfo.ContentType type() {
