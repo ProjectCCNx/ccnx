@@ -3,11 +3,15 @@
  */
 package org.ccnx.ccn.test.impl.support;
 
-import static org.junit.Assert.*;
-
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.Random;
 
+import junit.framework.Assert;
+
+import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -18,11 +22,24 @@ import org.junit.Test;
  */
 public class CCNTimeTest {
 
+	static int NUM_RUNS = 10;
+	static Random random = new Random();
+	static Timestamp early, middle, late;
+	static Date dearly, dmiddle, dlate;
+
 	/**
 	 * @throws java.lang.Exception
 	 */
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		dearly = new Date();
+		early = new Timestamp(System.currentTimeMillis());
+		Thread.sleep(10);
+		dmiddle = new Date();
+		middle = new Timestamp(System.currentTimeMillis());
+		Thread.sleep(10);
+		dlate = new Date();
+		late = new Timestamp(System.currentTimeMillis());
 	}
 
 	/**
@@ -30,7 +47,23 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testSetTime() {
-		fail("Not yet implemented");
+		for (int i=0; i < NUM_RUNS; ++i) {
+			Timestamp e2 = new Timestamp(early.getTime());
+			e2.setNanos(early.getNanos());
+			Assert.assertEquals(early, e2);
+
+			CCNTime c2 = new CCNTime(e2);
+			Assert.assertTrue(timestampEquals(e2, c2));
+			Assert.assertTrue(c2.equals(e2));
+			long newTime = e2.getTime() + random.nextInt(1000 * 60 * 60 * 24 * 7); // up to a week
+
+			e2.setTime(newTime);
+			c2.setTime(newTime);
+
+			Assert.assertTrue(timestampEquals(e2, c2));
+			Assert.assertTrue(c2.equals(e2));
+			testTimestamp(c2, e2);
+		}
 	}
 
 	/**
@@ -38,7 +71,24 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testSetNanos() {
-		fail("Not yet implemented");
+		for (int i=0; i < NUM_RUNS; ++i) {
+			Timestamp e2 = new Timestamp(early.getTime());
+			e2.setNanos(early.getNanos());
+			Assert.assertEquals(early, e2);
+
+			CCNTime c2 = new CCNTime(e2);
+			Assert.assertTrue(timestampEquals(e2, c2));
+			Assert.assertTrue(c2.equals(e2));			
+
+			int newNanos = random.nextInt(1000000000);
+
+			e2.setNanos(newNanos);
+			c2.setNanos(newNanos);
+
+			Assert.assertTrue(timestampEquals(e2, c2));
+			Assert.assertTrue(c2.equals(e2));
+			testTimestamp(c2, e2);
+		}
 	}
 
 	/**
@@ -46,7 +96,12 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testCCNTimeLong() {
-		fail("Not yet implemented");
+		for (int i=0; i < NUM_RUNS; ++i) {
+			long msec = System.currentTimeMillis();
+			CCNTime t1 = new CCNTime(msec);
+			Timestamp ts1 = new Timestamp(msec);
+			testTimestamp(t1, ts1);
+		}
 	}
 
 	/**
@@ -54,7 +109,13 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testCCNTimeTimestamp() {
-		fail("Not yet implemented");
+
+		for (int i=0; i < NUM_RUNS; ++i) {
+			Timestamp ts2 = new Timestamp(System.currentTimeMillis());
+			ts2.setNanos(random.nextInt(10000000));
+			CCNTime t2 = new CCNTime(ts2);
+			testTimestamp(t2, ts2);
+		}
 	}
 
 	/**
@@ -62,15 +123,12 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testCCNTimeDate() {
-		fail("Not yet implemented");
-	}
-
-	/**
-	 * Test method for {@link org.ccnx.ccn.impl.support.CCNTime#CCNTime(byte[])}.
-	 */
-	@Test
-	public void testCCNTimeByteArray() {
-		fail("Not yet implemented");
+		for (int i=0; i < NUM_RUNS; ++i) {
+			Date now = new Date();
+			CCNTime timeNow = new CCNTime(now);
+			Timestamp tsn = new Timestamp(now.getTime());
+			testTimestamp(timeNow, tsn);
+		}
 	}
 
 	/**
@@ -78,39 +136,22 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testCCNTime() {
-		fail("Not yet implemented");
-	}
-
-	/**
-	 * Test method for {@link org.ccnx.ccn.impl.support.CCNTime#fromBinaryTimeAsLong(long)}.
-	 */
-	@Test
-	public void testFromBinaryTimeAsLong() {
-		fail("Not yet implemented");
-	}
-
-	/**
-	 * Test method for {@link org.ccnx.ccn.impl.support.CCNTime#toBinaryTime()}.
-	 */
-	@Test
-	public void testToBinaryTime() {
-		fail("Not yet implemented");
-	}
-
-	/**
-	 * Test method for {@link org.ccnx.ccn.impl.support.CCNTime#toBinaryTimeAsLong()}.
-	 */
-	@Test
-	public void testToBinaryTimeAsLong() {
-		fail("Not yet implemented");
-	}
-
-	/**
-	 * Test method for {@link org.ccnx.ccn.impl.support.CCNTime#equals(java.sql.Timestamp)}.
-	 */
-	@Test
-	public void testEqualsTimestamp() {
-		fail("Not yet implemented");
+		for (int i=0; i < NUM_RUNS; ++i) {
+			CCNTime now = new CCNTime();
+			Timestamp tn = new Timestamp(now.getTime());
+			tn.setNanos(now.getNanos());
+			testTimestamp(now, tn);
+		}
+		// Sample problem case
+		long msec = 1252088415990L;
+		CCNTime m = new CCNTime(msec);
+		Timestamp tm = new Timestamp(msec);
+		Timestamp tn = new Timestamp(m.getTime());
+		tn.setNanos(m.getNanos());
+		Timestamp rm = roundTimestamp(tm);
+		testTimestamp(m, tm);		
+		testTimestamp(m, rm);		
+		testTimestamp(m, tn);		
 	}
 
 	/**
@@ -118,7 +159,16 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testCompareToDate() {
-		fail("Not yet implemented");
+		CCNTime ce = new CCNTime(dearly);
+		CCNTime cm = new CCNTime(dmiddle);
+		CCNTime cl = new CCNTime(dlate);
+		Assert.assertTrue(ce.compareTo(dmiddle) < 0);
+		Assert.assertTrue(ce.compareTo(dlate) < 0);
+		Assert.assertTrue(cm.compareTo(dearly) > 0);
+		Assert.assertTrue(cm.compareTo(dlate) < 0);
+		Assert.assertTrue(cl.compareTo(dearly) > 0);
+		Assert.assertTrue(cl.compareTo(dmiddle) > 0);
+		// Can't compare the other way. Date.compareTo returning 1 for all targets, whether CCNTime or Timestamp. Only works on other Dates
 	}
 
 	/**
@@ -126,39 +176,61 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testCompareToTimestamp() {
-		fail("Not yet implemented");
+		CCNTime ce = new CCNTime(early);
+		CCNTime cm = new CCNTime(middle);
+		CCNTime cl = new CCNTime(late);
+		Assert.assertTrue(ce.compareTo(middle) < 0);
+		Assert.assertTrue(ce.compareTo(late) < 0);
+		Assert.assertTrue(cm.compareTo(early) > 0);
+		Assert.assertTrue(cm.compareTo(late) < 0);
+		Assert.assertTrue(cl.compareTo(early) > 0);
+		Assert.assertTrue(cl.compareTo(middle) > 0);
+		Assert.assertTrue(early.compareTo(cm) < 0);
+		Assert.assertTrue(early.compareTo(cl) < 0);
+		Assert.assertTrue(middle.compareTo(ce) > 0);
+		Assert.assertTrue(middle.compareTo(cl) < 0);
+		Assert.assertTrue(late.compareTo(ce) > 0);
+		Assert.assertTrue(late.compareTo(cm) > 0);
 	}
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.impl.support.CCNTime#before(java.sql.Timestamp)}.
+	 * Test method for {@link org.ccnx.ccn.impl.support.CCNTime#before(java.sql.Timestamp)} and {@link org.ccnx.ccn.impl.support.CCNTime#after(java.sql.Timestamp)}.
 	 */
 	@Test
-	public void testBeforeTimestamp() {
-		fail("Not yet implemented");
+	public void testBeforeAfterTimestamp() {
+		CCNTime ce = new CCNTime(early);
+		CCNTime cm = new CCNTime(middle);
+		CCNTime cl = new CCNTime(late);
+		Assert.assertTrue(ce.before(middle));
+		Assert.assertTrue(ce.before(late));
+		Assert.assertTrue(cm.after(early));
+		Assert.assertTrue(cm.before(late));
+		Assert.assertTrue(cl.after(early));
+		Assert.assertTrue(cl.after(middle));
+		Assert.assertTrue(early.before(cm));
+		Assert.assertTrue(early.before(cl));
+		Assert.assertTrue(middle.after(ce));
+		Assert.assertTrue(middle.before(cl));
+		Assert.assertTrue(late.after(ce));
+		Assert.assertTrue(late.after(cm));
 	}
 
-	/**
-	 * Test method for {@link org.ccnx.ccn.impl.support.CCNTime#after(java.sql.Timestamp)}.
-	 */
-	@Test
-	public void testAfterTimestamp() {
-		fail("Not yet implemented");
-	}
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.impl.support.CCNTime#before(java.util.Date)}.
+	 * Test method for {@link org.ccnx.ccn.impl.support.CCNTime#before(java.util.Date)} and {@link org.ccnx.ccn.impl.support.CCNTime#after(java.util.Date)}.
 	 */
 	@Test
-	public void testBeforeDate() {
-		fail("Not yet implemented");
-	}
-
-	/**
-	 * Test method for {@link org.ccnx.ccn.impl.support.CCNTime#after(java.util.Date)}.
-	 */
-	@Test
-	public void testAfterDate() {
-		fail("Not yet implemented");
+	public void testBeforeAfterDate() {
+		CCNTime ce = new CCNTime(dearly);
+		CCNTime cm = new CCNTime(dmiddle);
+		CCNTime cl = new CCNTime(dlate);
+		Assert.assertTrue(ce.before(dmiddle));
+		Assert.assertTrue(ce.before(dlate));
+		Assert.assertTrue(cm.after(dearly));
+		Assert.assertTrue(cm.before(dlate));
+		Assert.assertTrue(cl.after(dearly));
+		Assert.assertTrue(cl.after(dmiddle));
+		// Date's comparisons not happy with timestamps
 	}
 
 	/**
@@ -166,9 +238,46 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testNow() {
-		fail("Not yet implemented");
+		for (int i=0; i < NUM_RUNS; ++i) {
+			CCNTime now = CCNTime.now();
+			Timestamp tn = new Timestamp(now.getTime());
+			tn.setNanos(now.getNanos());
+			testTimestamp(now, tn);
+		}
 	}
-	
+
+	public void testTimestamp(CCNTime ccnTime, Timestamp compareTS) {
+
+		Timestamp rounded = roundTimestamp(compareTS);
+		Assert.assertTrue(timestampEquals(compareTS, rounded));
+		Assert.assertTrue(timestampEquals(rounded, ccnTime));
+		Assert.assertEquals(rounded, ccnTime);
+		Assert.assertTrue(timestampEquals(compareTS, ccnTime));
+
+		long ts12 = timestampToBinaryTime12AsLong(compareTS);
+		long r12 = timestampToBinaryTime12AsLong(rounded);
+		long c12 = timestampToBinaryTime12AsLong(ccnTime);
+		long c12t = ccnTime.toBinaryTimeAsLong();
+		Assert.assertEquals(ts12, r12);
+		Assert.assertEquals(ts12, c12);
+		Assert.assertEquals(ts12, c12t);
+
+		byte [] tsb12 = timestampToBinaryTime12(compareTS);
+		byte [] rb12 = timestampToBinaryTime12(rounded);
+		byte [] cb12 = timestampToBinaryTime12(ccnTime);
+		byte [] cb12t = ccnTime.toBinaryTime();
+
+		Assert.assertTrue(Arrays.equals(tsb12, rb12));
+		Assert.assertTrue(Arrays.equals(tsb12, cb12));
+		Assert.assertTrue(Arrays.equals(tsb12, cb12t));
+
+		CCNTime cfb = new CCNTime(cb12t);
+		Assert.assertEquals(cfb, ccnTime);
+
+		CCNTime cfl = CCNTime.fromBinaryTimeAsLong(c12);
+		Assert.assertEquals(cfl, ccnTime);
+	}
+
 	/** 
 	 * Old static quantized time interface. Move here as "ground truth", as we
 	 * know it is compatible with the C side; use it to test against.
@@ -187,8 +296,8 @@ public class CCNTimeTest {
 	}
 
 	public static long timestampToBinaryTime12AsLong(Timestamp timestamp) {
-		long timeVal = (timestamp.getTime() / 1000) * 4096L + (timestamp.getNanos() * 4096L + 500000000L) / 1000000000L;
-		return timeVal;
+		long binaryTime12AsLong = (timestamp.getTime() / 1000) * 4096L + (timestamp.getNanos() * 4096L + 500000000L) / 1000000000L;
+		return binaryTime12AsLong;
 	}
 
 	public static Timestamp binaryTime12ToTimestamp(byte [] binaryTime12) {
@@ -221,9 +330,9 @@ public class CCNTimeTest {
 	 * Rounding function for timestamps.
 	 */
 	public static Timestamp roundTimestamp(Timestamp origTimestamp) {
-		Timestamp newTimestamp = (Timestamp)origTimestamp.clone();
-	   	newTimestamp.setNanos((int)(((origTimestamp.getNanos() % 4096L) * 1000000000L) / 4096L));
-	   	return newTimestamp;
+		long binaryTime12AsLong = timestampToBinaryTime12AsLong(origTimestamp);
+		Timestamp ts = binaryTime12ToTimestamp(binaryTime12AsLong);
+		return ts;
 	}
 
 }
