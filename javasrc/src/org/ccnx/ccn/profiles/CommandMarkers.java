@@ -68,7 +68,11 @@ public class CommandMarkers {
 	 * (Name) enumeration "marker"
 	 */
 	public static final String ENUMERATION_NAMESPACE = "E";
-	
+	/**
+	 * Basic enumeration command, no arguments,
+	 */
+	public static final byte [] NEMARKER = commandComponent(ENUMERATION_NAMESPACE, "be", null);
+
 	/**
 	 * Repository "marker"
 	 */
@@ -147,8 +151,4 @@ public class CommandMarkers {
 		}
 		return new String(commandComponent, COMMAND_PREFIX.length, commandComponent.length - COMMAND_PREFIX.length);
 	}
-
-	public static final byte NAME_ENUMERATION_MARKER = (byte)0xFE;
-
-	public static final byte [] NEMARKER = new byte []{NAME_ENUMERATION_MARKER};
 }
