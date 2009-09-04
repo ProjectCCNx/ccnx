@@ -5,8 +5,8 @@ import java.io.OutputStream;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNSegmenter;
-import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;

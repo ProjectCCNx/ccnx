@@ -6,9 +6,9 @@ package org.ccnx.ccn.test.profiles;
 import static org.junit.Assert.fail;
 import junit.framework.Assert;
 
-import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.After;
 import org.junit.AfterClass;

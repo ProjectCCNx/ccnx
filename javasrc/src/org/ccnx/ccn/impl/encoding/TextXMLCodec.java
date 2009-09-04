@@ -8,9 +8,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 
-import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.protocol.CCNTime;
 
 public class TextXMLCodec {
 

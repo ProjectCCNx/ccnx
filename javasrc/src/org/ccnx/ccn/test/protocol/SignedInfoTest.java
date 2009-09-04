@@ -13,7 +13,7 @@ import junit.framework.Assert;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
-import org.ccnx.ccn.impl.support.CCNTime;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;

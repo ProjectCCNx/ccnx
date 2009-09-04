@@ -5,7 +5,7 @@ import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.impl.support.CCNTime;
+import org.ccnx.ccn.protocol.CCNTime;
 
 public interface XMLDecoder {
 	

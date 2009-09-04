@@ -19,7 +19,6 @@ import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
-import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
@@ -31,6 +30,7 @@ import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.access.AccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 

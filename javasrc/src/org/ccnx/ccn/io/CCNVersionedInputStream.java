@@ -6,10 +6,10 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
-import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;

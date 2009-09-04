@@ -13,7 +13,7 @@ import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.Characters;
 import javax.xml.stream.events.XMLEvent;
 
-import org.ccnx.ccn.impl.support.CCNTime;
+import org.ccnx.ccn.protocol.CCNTime;
 
 public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 

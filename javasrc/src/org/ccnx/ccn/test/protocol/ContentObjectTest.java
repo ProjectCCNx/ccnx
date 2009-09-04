@@ -9,8 +9,8 @@ import java.util.Arrays;
 import java.util.Date;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;

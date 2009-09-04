@@ -3,9 +3,9 @@ package org.ccnx.ccn.impl.repo;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;

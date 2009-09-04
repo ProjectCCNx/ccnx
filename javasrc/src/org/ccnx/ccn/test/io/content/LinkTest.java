@@ -2,9 +2,9 @@ package org.ccnx.ccn.test.io.content;
 
 import java.util.Arrays;
 
-import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.SignedInfo;

@@ -1,11 +1,13 @@
 /**
  * 
  */
-package org.ccnx.ccn.impl.support;
+package org.ccnx.ccn.protocol;
 
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.Date;
+
+import org.ccnx.ccn.impl.support.DataUtils;
 
 
 

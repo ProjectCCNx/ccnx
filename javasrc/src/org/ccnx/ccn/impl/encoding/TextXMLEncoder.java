@@ -8,7 +8,7 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
-import org.ccnx.ccn.impl.support.CCNTime;
+import org.ccnx.ccn.protocol.CCNTime;
 
 public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 

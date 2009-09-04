@@ -3,12 +3,12 @@ package org.ccnx.ccn.profiles.access;
 import java.io.IOException;
 
 import org.bouncycastle.util.Arrays;
-import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 
 

@@ -9,9 +9,9 @@ import java.util.TreeMap;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.impl.support.CCNTime;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.protocol.CCNTime;
 
 
 

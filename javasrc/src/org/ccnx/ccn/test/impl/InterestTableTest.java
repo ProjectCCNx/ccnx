@@ -12,7 +12,7 @@ import java.util.Random;
 
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.InterestTable;
-import org.ccnx.ccn.impl.support.CCNTime;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
