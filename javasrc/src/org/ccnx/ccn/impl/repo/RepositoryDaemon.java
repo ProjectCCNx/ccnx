@@ -140,7 +140,7 @@ public class RepositoryDaemon extends Daemon {
 			}
 			
 			byte[][]markerOmissions = new byte[2][];
-			markerOmissions[0] = CommandMarkers.REPO_START_WRITE;
+			markerOmissions[0] = CommandMarkers.COMMAND_MARKER_REPO_START_WRITE;
 			markerOmissions[1] = CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION;
 			_markerFilter = new Exclude(markerOmissions);
 			

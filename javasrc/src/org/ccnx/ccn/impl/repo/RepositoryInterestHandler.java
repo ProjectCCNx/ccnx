@@ -36,7 +36,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			try {
 				if (SystemConfiguration.getLogging("repo"))
 					Log.finer("Saw interest: " + interest.name());
-				if (interest.name().contains(CommandMarkers.REPO_START_WRITE)) {
+				if (interest.name().contains(CommandMarkers.COMMAND_MARKER_REPO_START_WRITE)) {
 					startReadProcess(interest);
 				} else if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
 					nameEnumeratorResponse(interest);

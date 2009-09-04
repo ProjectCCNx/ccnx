@@ -80,7 +80,7 @@ public class CommandMarkers {
 	/**
 	 * Start write command.
 	 */
-	public static final byte [] REPO_START_WRITE = commandComponent(REPOSITORY_NAMESPACE, "sw", null);
+	public static final byte [] COMMAND_MARKER_REPO_START_WRITE = commandComponent(REPOSITORY_NAMESPACE, "sw", null);
 	
 	/**
 	 * Nonce marker
