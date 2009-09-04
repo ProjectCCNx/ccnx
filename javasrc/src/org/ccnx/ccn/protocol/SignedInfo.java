@@ -1,6 +1,5 @@
 package org.ccnx.ccn.protocol;
 
-import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -87,7 +86,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     }
     
     protected PublisherPublicKeyDigest _publisher;
-    protected Timestamp		_timestamp;
+    protected CCNTime		_timestamp;
     protected ContentType 	_type;
     protected KeyLocator 	_locator;
     protected Integer 		_freshnessSeconds;
@@ -95,7 +94,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
    
     public SignedInfo(
     		PublisherPublicKeyDigest publisher, 
-			Timestamp timestamp, 
+    		CCNTime timestamp, 
 			ContentType type,
 			KeyLocator locator,
 			Integer freshnessSeconds,
@@ -104,13 +103,10 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     	super();
     	this._publisher = publisher;
     	if (null == timestamp) {
-    		this._timestamp = now(); // msec only
+    		this._timestamp = CCNTime.now(); // msec only
     	} else {
     		this._timestamp = timestamp;
     	}
-	   	// Lower resolution of time to only what we can represent on the wire;
-    	// this allows decode(encode(timestamp)) == timestamp
-    	this._timestamp = DataUtils.roundTimestamp(this._timestamp);
     	
     	this._type = (null == type) ? ContentType.DATA : type;
     	this._locator = locator;
@@ -120,7 +116,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     
     public SignedInfo(
     		PublisherPublicKeyDigest publisher, 
-			Timestamp timestamp, 
+			CCNTime timestamp, 
 			ContentType type,
 			KeyLocator locator) {
     	this(publisher, timestamp, type, locator, null, null);
@@ -203,7 +199,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
  	
 	public final PublisherPublicKeyDigest getPublisherKeyID() { return _publisher; }
 
-	public final Timestamp getTimestamp() { return _timestamp; }
+	public final CCNTime getTimestamp() { return _timestamp; }
 	
 	public final KeyLocator getKeyLocator() { return _locator; }
 	
@@ -357,10 +353,6 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		if (emptyPublisher() || emptyTimestamp() || emptyKeyLocator())
 			return false;
 		return true;
-	}
-
-	public static Timestamp now() {
-		return new Timestamp(System.currentTimeMillis());
 	}
 
 	@Override

@@ -5,7 +5,6 @@ import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,6 +22,7 @@ import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.access.AccessControlProfile.PrincipalInfo;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 
@@ -217,7 +217,7 @@ public class GroupManager {
 	 * @throws AccessDeniedException 
 	 * @throws ConfigurationException 
 	 */
-	public PrivateKey getGroupPrivateKey(String groupFriendlyName, Timestamp privateKeyVersion) throws InvalidKeyException, InvalidCipherTextException, IOException, XMLStreamException, AccessDeniedException, ConfigurationException {
+	public PrivateKey getGroupPrivateKey(String groupFriendlyName, CCNTime privateKeyVersion) throws InvalidKeyException, InvalidCipherTextException, IOException, XMLStreamException, AccessDeniedException, ConfigurationException {
 		// Heuristic check
 		if (!amKnownGroupMember(groupFriendlyName)) {
 			Log.info("Unexpected: we don't think we're a group member of group " + groupFriendlyName);
@@ -244,7 +244,7 @@ public class GroupManager {
 		}
 		if (null == privateKeyDirectory) {
 			Log.info("Unexpected: null private key directory for group " + groupFriendlyName + " version " + privateKeyVersion + " as stamp " + 
-					DataUtils.printHexBytes(DataUtils.timestampToBinaryTime12(privateKeyVersion)));
+					DataUtils.printHexBytes(privateKeyVersion.toBinaryTime()));
 			return null;
 		}
 		

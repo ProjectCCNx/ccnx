@@ -3,19 +3,18 @@
  */
 package org.ccnx.ccn.test.profiles;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.fail;
+import junit.framework.Assert;
 
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import java.sql.Timestamp;
-
-import junit.framework.Assert;
 
 
 /**
@@ -86,7 +85,7 @@ public class VersioningProfileTest {
 	@Test
 	public void testVersionNameContentNameTimestamp() {
 		/* try with length 2 contentname */
-		Timestamp ts = new Timestamp(1000);
+		CCNTime ts = new CCNTime(1000);
 		ts.setNanos(15722656);
 		
 		ContentName name = VersioningProfile.addVersion(abName, ts);
@@ -206,7 +205,7 @@ public class VersioningProfileTest {
 	 */
 	@Test
 	public void testGetVersionAsTimestamp() throws VersionMissingException {
-		Timestamp ts = VersioningProfile.getLastVersionAsTimestamp(abSegName);
+		CCNTime ts = VersioningProfile.getLastVersionAsTimestamp(abSegName);
 		ContentName name = VersioningProfile.addVersion(abName, ts);
 		if (!name.equals(abvName))
 			fail();

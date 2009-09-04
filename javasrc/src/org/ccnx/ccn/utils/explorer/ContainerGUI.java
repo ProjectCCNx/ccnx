@@ -45,18 +45,18 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
     
 	private static final long serialVersionUID = 1L;
 	public static final ImageIcon ICON_COMPUTER = new ImageIcon(getScaledImage(
-			(new ImageIcon("Network.png")).getImage(), 32, 32));
+			(new ImageIcon("./src/org/ccnx/ccn/utils/explorer/Network.png")).getImage(), 32, 32));
 	public static final ImageIcon ICON_DISK = new ImageIcon(getScaledImage(
-			(new ImageIcon("Computer.png")).getImage(), 32, 32));
+			(new ImageIcon("./src/org/ccnx/ccn/utils/explorer/Computer.png")).getImage(), 32, 32));
 
 	public static final ImageIcon ICON_FOLDER = new ImageIcon(getScaledImage(
-			(new ImageIcon("Folder.png")).getImage(), 32, 32));
+			(new ImageIcon("./src/org/ccnx/ccn/utils/explorer/Folder.png")).getImage(), 32, 32));
 
 	public static final ImageIcon ICON_EXPANDEDFOLDER = new ImageIcon(
-			getScaledImage((new ImageIcon("Document.png")).getImage(), 32, 32));
+			getScaledImage((new ImageIcon("./src/org/ccnx/ccn/utils/explorer/Document.png")).getImage(), 32, 32));
 
 	public static final ImageIcon ICON_DOCUMENT = new ImageIcon(getScaledImage(
-			(new ImageIcon("Document.png")).getImage(), 32, 32));
+			(new ImageIcon("./src/org/ccnx/ccn/utils/explorer/Document.png")).getImage(), 32, 32));
 
 	private static boolean DEBUG = false;
 	private ArrayList<ContentName> names;
@@ -147,8 +147,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		TreeCellRenderer renderer = new IconCellRenderer();
 		tree.setCellRenderer(renderer);
 
-		tree.addTreeExpansionListener(new 
-			      DirExpansionListener());
+		tree.addTreeExpansionListener(new DirExpansionListener());
 		tree.addTreeSelectionListener(new DirSelectionListener());
 
 		MouseListener ml = new MouseAdapter() {
@@ -169,11 +168,15 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 			private void myDoubleClick(int selRow, TreePath selPath) {
 				final Name node = getNameNode((DefaultMutableTreeNode)selPath.getLastPathComponent());
-				byte[] name = node.name;
+				
+				String name = new String(node.name);
 				//String[] items = name.split("\\."); //make this a regex later
 				//if(items.length > 1 && items[1].equalsIgnoreCase("txt")){ //have a file
-				if(name.toString().endsWith(".txt") || name.toString().endsWith(".text")){
-					retrieveFromRepo(node.path.toString()+"/"+node.name);
+				if(name.toLowerCase().endsWith(".txt") || name.toLowerCase().endsWith(".text")){
+					if(node.path.count()==0)
+						retrieveFromRepo("/"+name);
+					else
+						retrieveFromRepo(node.path.toString()+"/"+name);
 					EventQueue.invokeLater(new Runnable() {
 						public void run() {
 							try {
@@ -183,14 +186,10 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 								e.printStackTrace();
 							}
 						}
-					});
-								
-				
-				}else
-				{
+					});				
+				} else {
 					//Can't handle filetype
 					JOptionPane.showMessageDialog(ContainerGUI.this, "Cannot Open file "+ name+" Currently only opens .txt and .text files.", "Only handles .txt and .text files at this time.", JOptionPane.ERROR_MESSAGE);
-					
 				}
 			}
 
@@ -198,13 +197,13 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		 };
 		 tree.addMouseListener(ml);
 
-		tree.getSelectionModel().setSelectionMode(
-				TreeSelectionModel.SINGLE_TREE_SELECTION);
+		tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
 		tree.setShowsRootHandles(true);
 		tree.setEditable(false);
 
 
-		String filename = File.separator + "tmp";
+		//String filename = File.separator + "tmp";
+		String filename = "~/";
 		JFileChooser fc = new JFileChooser(new File(filename));
 		
 		
@@ -228,45 +227,42 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 				//if we don't have a file then we should show a file chooser
 				//otherwise give an error message "Please select a folder"
 				
-				if (((selectedPrefix.toString()).split("\\.")).length > 2)
-				{
+				if (((selectedPrefix.toString()).split("\\.")).length > 2) {
 					JOptionPane.showMessageDialog(this.frame, "Please Select a Directory to add a file", "Select Directory",JOptionPane.ERROR_MESSAGE);
-				}else{
-				// Show dialog; this method does not return until dialog is
-				// closed
+				} else {
+					// Show dialog; this method does not return until dialog is
+					// closed
 				
-				int returnVal = chooser.showOpenDialog(frame);
+					int returnVal = chooser.showOpenDialog(frame);
 
-				// Get the selected file
-				File file = chooser.getSelectedFile();
-				if(file == null || file.getName().equals("")){
-					System.out.println("the user did not select a file");
-					return;
-				}
+					// Get the selected file
+					File file = chooser.getSelectedFile();
+					if(file == null || file.getName().equals("")){
+						System.out.println("the user did not select a file");
+						return;
+					}
 				
-				//what if the user hits cancel...
-				if(returnVal != JFileChooser.APPROVE_OPTION){
-					System.out.println("user cancelled the send to repo option...  returning");
-					return;
-				}
+					//what if the user hits cancel...
+					if(returnVal != JFileChooser.APPROVE_OPTION){
+						System.out.println("user cancelled the send to repo option...  returning");
+						return;
+					}
 					
 				
-				System.out.println("Writing a file to the repo " + file.getAbsolutePath() + " " + file.getName());
-				System.out.println("Selected Node is " + selectedPrefix);
+					System.out.println("Writing a file to the repo " + file.getAbsolutePath() + " " + file.getName());
+					System.out.println("Selected Node is " + selectedPrefix);
 				
 
-				try{
-					ContentName contentName = ContentName.fromNative(selectedPrefix + "/" + file.getName());
-					sendFile(file, contentName);
-				} catch (MalformedContentNameStringException e) {
-
-					e.printStackTrace();
-				}
-
+					try{
+						ContentName contentName = ContentName.fromNative(selectedPrefix);
+						contentName = ContentName.fromNative(contentName, file.getName());
+						sendFile(file, contentName);
+					} catch (MalformedContentNameStringException e) {
+						e.printStackTrace();
+					}
 				}
 			}
-		}
-		;
+		};
 
 		Action openAction = new OpenFileAction(this, fc);
 		JButton openButton = new JButton(openAction);
@@ -329,7 +325,8 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 		pack();
 
-
+		System.out.println("setting selectionPath: "+node.getPath()+" node: "+node.toString());
+		tree.expandPath(new TreePath(node.getPath()));
 		tree.setSelectionPath(new TreePath(node.getPath()));
 
 		// POPUP Related - not working currently
@@ -343,8 +340,11 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			public void actionPerformed(ActionEvent e) {
 				if (m_clickedPath == null)
 					return;
-				if (tree.isExpanded(m_clickedPath))
+				if (tree.isExpanded(m_clickedPath)){
 					tree.collapsePath(m_clickedPath);
+					TreePath[] p = (TreePath[]) m_clickedPath.getPath();
+					System.out.println("collapsed path: "+p.toString());
+				}
 				else
 					tree.expandPath(m_clickedPath);
 			}
@@ -469,7 +469,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 	}
 
-	private void displayText(String name) {
+/*	private void displayText(String name) {
 		try {
 
 			FileInputStream fs = new FileInputStream(name);
@@ -494,6 +494,8 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		}
 
 	}
+	*/
+	
 	
 	DefaultMutableTreeNode getTreeNode(ContentName ccnContentName){
 		System.out.println("handling returned names!!! prefix = "+ccnContentName.toString());
@@ -520,6 +522,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		System.out.println("check nodeName: "+nodeName);
 		if(names.length <= depth){
 			//we don't have to look far...  this matches the root
+			System.out.println("this is the root, and we want the root...  returning the root");
 			return node;
 		}
 		
@@ -542,9 +545,14 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 				System.out.println("need to keep digging...");
 				if(node.getChildCount() > 0){
 					System.out.println("we have children: "+node.getChildCount());
-					DefaultMutableTreeNode result = findMatchingChild(parent, node, names[depth]);
-					if(result == null)
+					DefaultMutableTreeNode result = null;
+					if(names.length > depth+1)
+						result = findMatchingChild(parent, node, names[depth+1]);
+					if (result == null) {
+						System.out.println("no matching child... returning this node");
 						return node;
+					} else
+						System.out.println("result was not null...  we have a matching child");
 					TreePath path = parent.pathByAddingChild(result);
 					return find(path, depth+1, names);
 					//for(DefaultMutableTreeNode n : java.util.Collections.list((Enumeration<DefaultMutableTreeNode>)node.children()) ){
@@ -573,13 +581,14 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 	
 	
 	DefaultMutableTreeNode findMatchingChild(TreePath parent, DefaultMutableTreeNode n, String name){
+		name = name.replace("/", "");
 		if(n.getChildCount() == 0)
 			return null;
 		else {
 			DefaultMutableTreeNode c = null;
 			for(int i = 0; i < n.getChildCount(); i++){
 				c = (DefaultMutableTreeNode) n.getChildAt(i);
-				System.out.println("child name: "+c.toString());
+				System.out.println("child name: "+c.toString()+" name: "+name);
 				if(c.toString().equals(name))
 					return c;
 			}
@@ -596,8 +605,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		if (node == null)
 			return null;
 		Object obj = node.getUserObject();
-	
-		System.out.println("getting the name node: "+obj.getClass());
+
 		if(((IconData)obj).getObject()==null)
 		System.out.println("get obj is null");
 		
@@ -645,51 +653,54 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 	}
 
 	 // Make sure expansion is threaded and updating the tree model
-    // only occurs within the event dispatching thread.
-    class DirExpansionListener implements TreeExpansionListener
-    {
-        public void treeExpanded(TreeExpansionEvent event)
-        {
+	// only occurs within the event dispatching thread.
+	class DirExpansionListener implements TreeExpansionListener {
+		public void treeExpanded(TreeExpansionEvent event) {
 
-            final DefaultMutableTreeNode node = getTreeNode(event.getPath());
+			final DefaultMutableTreeNode node = getTreeNode(event.getPath());
 
+			Thread runner = new Thread() {
+				public void run() {
+					Runnable runnable = new Runnable() {
+						public void run() {
+							Name fnode = getNameNode(node);
+							if (fnode != null) {
+								System.out.println("In the tree expansion listener with node: " + node.toString());
+								getNodes(fnode);
+								m_model.reload(node);
+							} else {
+								// node = usableRoot;
+								// selected top component, switch to top usuable
+								// node.
+								System.out.println("In the tree expansion listener with null node and " + node.toString());
+								// fnode = getNameNode(usableRoot);
+								// getNodes(fnode);
+								// m_model.reload(usableRoot);
 
-			
-//		System.out.println("In the tree expansion listener with "+ fnode.name);	
-            Thread runner = new Thread() 
-            {
-              public void run() 
-              {
-                
-                  Runnable runnable = new Runnable() 
-                  {
-                    public void run() 
-                    {
-                    	Name fnode = getNameNode(node);
-                    	if(fnode != null){
-                    		System.out.println("In the tree expansion listener with "+ fnode.name + " and "+ node.toString());		
-                    	getNodes(fnode);           			
-                       m_model.reload(node);
-                       }else
-                       {
-                    	   //node = usableRoot;
-                    	 //selected top component, switch to top usuable node.
-                    	   System.out.println("In the tree expansion listener with null node and "+ node.toString());
-//           				fnode = getNameNode(usableRoot);
-//           				getNodes(fnode);           			
-//                        m_model.reload(usableRoot);
-                    	   
-                       }
-                    }
-                  };
-                  SwingUtilities.invokeLater(runnable);
-                }
-              
-            };
-            runner.start();
+							}
+						}
+					};
+					SwingUtilities.invokeLater(runnable);
+				}
+
+			};
+			runner.start();
+		}
+
+        public void treeCollapsed(TreeExpansionEvent event) {
+        	final DefaultMutableTreeNode node = getTreeNode(event.getPath());
+        	Name nodeName = getNameNode(node);
+        	System.out.println("nodeName: "+nodeName.toString());
+        	ContentName prefixToCancel = new ContentName();
+        	if(nodeName.path==null){
+        		System.out.println("collapsed the tree at the root");
+        	} else {
+        		System.out.println("tree collapsed at: "+nodeName.path+new String(nodeName.name));
+        		prefixToCancel = ContentName.fromNative(nodeName.path, nodeName.name);
+        	}
+        	System.out.println("cancelling prefix: "+prefixToCancel);
+        	_nameEnumerator.cancelEnumerationsWithPrefix(prefixToCancel);
         }
-
-        public void treeCollapsed(TreeExpansionEvent event) {}
     }
 
 	class DirSelectionListener implements TreeSelectionListener {
@@ -780,60 +791,33 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
     	if(fnode.path == null)
     		System.out.println("the path is null");
     	else
-    		System.out.println("fnode: "+fnode.name+" full name "+fnode.path.toString());
-    	//String p = fnode.path.toString() + "/"+fnode.name;
+    		System.out.println("fnode: "+new String(fnode.name)+" path: "+fnode.path.toString());
     	ContentName toExpand = null;
-    	if(fnode.path == null) {
-			//try {
+    	if(fnode.path == null)
 			toExpand = new ContentName();
-			//} catch (MalformedContentNameStringException e1) {
-			//	// TODO Auto-generated catch block
-			//	e1.printStackTrace();
-			//}
-    	} else {
+    	else
     		toExpand = ContentName.fromNative(fnode.path, fnode.name);
-    	}
-    	ContentName toExpandAlt = null;
-    	//try {
-		toExpandAlt = new ContentName();
-		if(fnode.path!=null)
-			toExpandAlt = ContentName.fromNative(fnode.path, toExpandAlt.toString().replace("/",""));
 
-		
-			
-		//} catch (MalformedContentNameStringException e) {
-		//	// TODO Auto-generated catch block
-		//	e.printStackTrace();
-		//}
-    	//String p = toExpandAlt.toString();
 		String p = toExpand.toString();
-    	System.out.println("toExpand: "+toExpand+" p: "+p+" tEA: "+toExpandAlt);
+    	System.out.println("toExpand: "+toExpand+" p: "+p);
  
-    	if (fnode.name!=null && (fnode.name.toString().endsWith(".txt") || fnode.name.toString().endsWith(".text"))){
+    	if (fnode.name!=null && (new String(fnode.name).endsWith(".txt") || new String(fnode.name).endsWith(".text"))){
 			// get the file from the repo
 			
     		System.out.println("Retrieve from Repo: " + p);
-			retrieveFromRepo(fnode.path.toString()+"/"+fnode.name);
 			retrieveFromRepo(p);			
-//			selectedPath = p; //change this to prefix later after sure its ok
-//			selectedPrefix = p;
-			
+
 			return p;
 		} else {
 			//this is a directory that we want to enumerate...
 			if(fnode.path==null)
 				System.out.println("the path is null");
 			else
-				System.out.println("this is the path: "+ fnode.path.toString()+" this is the name: "+fnode.name);
+				System.out.println("this is the path: "+ fnode.path.toString()+" this is the name: "+new String(fnode.name));
 			//String p = fnode.path.toString() + "/"+fnode.name;
 			System.out.println("Registering Prefix: " + p);
 			registerPrefix(p);
-			
-//			selectedPrefix = p;
-//			selectedPath = p; //change this to prefix later after sure its ok
-			
-			//display the default for now
-			//displayText("TreeHelp.html");
+
 			initHelp();
 			return p;
 		}
@@ -878,6 +862,15 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			return;
 		}
 
+		System.out.print("the parent has "+parentNode.getChildCount()+" children: ");
+		for(DefaultMutableTreeNode temp : java.util.Collections.list((Enumeration<DefaultMutableTreeNode>)parentNode.children())){
+			if(temp.getUserObject() instanceof IconData){
+				IconData id = (IconData)temp.getUserObject();
+				ContentName childName = ContentName.fromNative(new ContentName(), ((Name)id.m_data).name);
+				System.out.print(" "+ childName);
+			}
+		}
+		System.out.println();
 		
 		// while we are getting things, wait for stuff to happen
 		System.out.println("Getting Content Names");
@@ -885,7 +878,19 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 		DefaultMutableTreeNode toRemove = null;
 		for (ContentName cn : n) {
 			addToParent = true;
-			if(parentNode.getChildCount()>0){
+			
+			//check if a version marker
+			if(VersioningProfile.containsVersion(cn))
+				addToParent = false;
+			else
+				System.out.println("name is not a version");
+			//check if a segment marker
+			if(SegmentationProfile.isSegment(cn))
+				addToParent = false;
+			else
+				System.out.println("name is not a segment marker");
+		
+			if(addToParent && parentNode.getChildCount()>0){
 				for(DefaultMutableTreeNode temp : java.util.Collections.list((Enumeration<DefaultMutableTreeNode>)parentNode.children())){
 					//check if this name is already in there!
 					if(temp.getUserObject() instanceof Boolean){
@@ -903,18 +908,8 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 								addToParent = false;
 							}
 							else
-								System.out.println("name not already there");
-							//check if a version marker
-							if(VersioningProfile.containsVersion(cn))
-								addToParent = false;
-							else
-								System.out.println("name is not a version");
-							//check if a segment marker
-							if(SegmentationProfile.isSegment(cn))
-								addToParent = false;
-							else
-								System.out.println("name is not a segment marker");
-						}
+								System.out.println("name not a match");
+							}
 					}
 				}
 				if(toRemove!=null){
@@ -926,7 +921,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 			if(addToParent){
 				//name wasn't there, don't add again
 				System.out.println("added as child: "+cn.toString());
-				if (((cn.toString()).split("\\.")).length > 1) {
+				if (cn.toString().toLowerCase().endsWith(".txt") || cn.toString().toLowerCase().endsWith(".text")) {
 			
 					node = new DefaultMutableTreeNode(new IconData(ICON_DOCUMENT,
 							null, new Name(cn.component(0), prefix,false)));
@@ -937,30 +932,28 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 					//This is the "Retrieving Data" node (gets rendered in IconCell Renderer
 					//node.add(new DefaultMutableTreeNode(new Boolean(true)));
 				}
-				/*
-				if (((cn.toString()).split("\\.")).length > 1) {
-					
-					node = new DefaultMutableTreeNode(new IconData(ICON_DOCUMENT,
-							null, new Name(cn.toString().substring(1), prefix,false)));
-				} else {
-					
-					node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
-							null, new Name(cn.toString().substring(1), prefix,true)));
-					//This is the "Retrieving Data" node (gets rendered in IconCell Renderer
-					//node.add(new DefaultMutableTreeNode(new Boolean(true)));
-				}
-				*/
+				//parentNode.add(node);
+				
+				//javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
 		        javax.swing.SwingUtilities.invokeLater(new Runnable() {
 		            public void run() {
-						m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());		           
+						m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
+						System.out.println("inserted node...  parent now has "+parentNode.getChildCount());
 		            }
 		        });
+		        
 
-
-				
 			}
 		}
-		System.out.println("the parent node now has "+parentNode.getChildCount()+" children");
+		System.out.print("the parent node now has "+parentNode.getChildCount()+" children: ");
+		for(DefaultMutableTreeNode temp : java.util.Collections.list((Enumeration<DefaultMutableTreeNode>)parentNode.children())){
+			if(temp.getUserObject() instanceof IconData){
+				IconData id = (IconData)temp.getUserObject();
+				ContentName childName = ContentName.fromNative(new ContentName(), ((Name)id.m_data).name);
+				System.out.print(" "+ childName);
+			}
+		}
+		System.out.println();
 		System.out.println("Done Getting Content Names");
 	}
 

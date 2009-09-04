@@ -43,7 +43,7 @@ private JButton finishedButton;
 		this.setBounds(100, 100, 500, 500);
 		final JLabel label = new JLabel();
 		label.setBounds(0, 0, 490, 51);
-		label.setText("Displaying File: " + nodeSelected.name);
+		label.setText("Displaying File: " + new String(nodeSelected.name));
 		getContentPane().add(label);
 		
 
@@ -60,7 +60,10 @@ private JButton finishedButton;
 		//write the content to the content pane to be displayed in the UI
 		ContentName fileName = null;
 		try {
-			fileName = ContentName.fromNative(name.path.toString()+"/"+name.name);
+			if(name.path.count() < 1)
+				fileName = ContentName.fromNative("/"+new String(name.name));
+			else
+				fileName = ContentName.fromNative(name.path.toString()+"/"+new String(name.name));
 			displayText(fileName,library);
 		} catch (MalformedContentNameStringException e) {
 			// TODO Auto-generated catch block

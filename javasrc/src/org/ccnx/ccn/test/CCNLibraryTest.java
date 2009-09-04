@@ -9,6 +9,7 @@ import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
+/* Use non quantized time for testing */
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -30,12 +31,12 @@ import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.SignedInfo;
 import org.junit.Test;
 
 
@@ -249,7 +250,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 	@Test
 	public void testRecall() {
 		String key = "/test/smetters/values/data";
-		Timestamp time = SignedInfo.now();
+		CCNTime time = CCNTime.now();
 		try {
 			ContentName keyName = ContentName.fromNative(key);
 			CCNWriter writer = new CCNWriter(keyName, putLibrary);

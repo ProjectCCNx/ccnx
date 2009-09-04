@@ -2,7 +2,6 @@ package org.ccnx.ccn.profiles.access;
 
 import java.security.InvalidKeyException;
 import java.security.Key;
-import java.sql.Timestamp;
 
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
@@ -12,6 +11,7 @@ import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 
 
@@ -106,7 +106,7 @@ public class NodeKey {
 		return (!nodeName().isPrefixOf(storedNodeKeyName()));
 	}
 	
-	public Timestamp nodeKeyVersion() { 
+	public CCNTime nodeKeyVersion() { 
 		try {
 			return VersioningProfile.getLastVersionAsTimestamp(storedNodeKeyName());
 		} catch (VersionMissingException e) {

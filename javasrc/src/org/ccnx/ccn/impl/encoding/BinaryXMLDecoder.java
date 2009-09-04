@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.Timestamp;
 import java.util.Stack;
 import java.util.TreeMap;
 
@@ -12,6 +11,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.protocol.CCNTime;
 
 
 
@@ -255,9 +255,9 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 		return blob;
 	}
 	
-	public Timestamp readDateTime(String startTag) throws XMLStreamException {
+	public CCNTime readDateTime(String startTag) throws XMLStreamException {
 		byte [] byteTimestamp = readBinaryElement(startTag);
-		Timestamp timestamp = DataUtils.binaryTime12ToTimestamp(byteTimestamp);
+		CCNTime timestamp = new CCNTime(byteTimestamp);
 		if (null == timestamp) {
 			throw new XMLStreamException("Cannot parse timestamp: " + DataUtils.printHexBytes(byteTimestamp));
 		}		

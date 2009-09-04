@@ -2,7 +2,6 @@ package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
 import java.io.InvalidObjectException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -21,6 +20,7 @@ import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -406,7 +406,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * the value of raw specified.
 	 * @throws IOException 
 	 */
-	public boolean save(Timestamp version) throws IOException {
+	public boolean save(CCNTime version) throws IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
@@ -421,7 +421,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * 		save. (DKS TODO: add force write flag if you need to update version. Also allow specification of freshness.)
 	 * @throws IOException 
 	 */
-	public boolean saveInternal(Timestamp version, boolean gone) throws IOException {
+	public boolean saveInternal(CCNTime version, boolean gone) throws IOException {
 		// move object to this name
 		// need to make sure we get back the actual name we're using,
 		// even if output stream does automatic versioning
@@ -500,7 +500,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return save();
 	}
 	
-	public boolean save(Timestamp version, E data) throws IOException {
+	public boolean save(CCNTime version, E data) throws IOException {
 		setData(data);
 		return save(version);
 	}
@@ -510,7 +510,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * If raw=true or DEFAULT_RAW=true specified, this must be the first call to save made
 	 * for this object.
 	 */
-	public boolean saveToRepository(Timestamp version) throws IOException {
+	public boolean saveToRepository(CCNTime version) throws IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
@@ -522,7 +522,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	public boolean saveToRepository() throws IOException {		
-		return saveToRepository((Timestamp)null);
+		return saveToRepository((CCNTime)null);
 	}
 	
 	public boolean saveToRepository(E data) throws IOException {
@@ -530,7 +530,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return saveToRepository();
 	}
 	
-	public boolean saveToRepository(Timestamp version, E data) throws IOException {
+	public boolean saveToRepository(CCNTime version, E data) throws IOException {
 		setData(data);
 		return saveToRepository(version);
 	}
@@ -562,7 +562,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return saveAsGone();
 	}
 	
-	public Timestamp getVersion() {
+	public CCNTime getVersion() {
 		if ((null == _currentVersionComponent) || (null == _lastSaved)) {
 			return null;
 		}
@@ -577,7 +577,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return _currentVersionComponent;
 	}
 	
-	public Timestamp getCurrentVersion() {
+	public CCNTime getCurrentVersion() {
 		if (null == _currentVersionComponent)
 			return null;
 		return VersioningProfile.getVersionComponentAsTimestamp(_currentVersionComponent);

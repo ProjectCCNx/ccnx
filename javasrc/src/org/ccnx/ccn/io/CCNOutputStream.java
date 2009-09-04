@@ -5,7 +5,6 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
-import java.sql.Timestamp;
 import java.util.Arrays;
 
 import org.ccnx.ccn.CCNHandle;
@@ -16,10 +15,10 @@ import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
@@ -60,7 +59,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected byte [] _buffer = null;
 	protected long _baseNameIndex; // base name index of the current set of data to output;
 								  // incremented according to the segmentation profile.
-	protected Timestamp _timestamp; // timestamp we use for writing, set to first time we write
+	protected CCNTime _timestamp; // timestamp we use for writing, set to first time we write
 	protected ContentType _type; // null == DATA
 
 	protected CCNDigestHelper _dh;
@@ -286,7 +285,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		}
 
 		if (null == _timestamp)
-			_timestamp = SignedInfo.now();
+			_timestamp = CCNTime.now();
 
 		// First, are we flushing dangling blocks (e.g. on close())? If not, we always
 		// keep at least a partial block behind. There are two reasons for this; first to

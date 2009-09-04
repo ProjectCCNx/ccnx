@@ -3,14 +3,13 @@ package org.ccnx.ccn.profiles;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.InvalidParameterException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
-import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.ExcludeAny;
@@ -19,7 +18,6 @@ import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.SignedInfo;
 
 
 /**
@@ -82,18 +80,22 @@ public class VersioningProfile implements CCNProfile {
 	 * This allows versions to be recorded as a timestamp with a 1/4096 second accuracy.
 	 * @see #addVersion(ContentName, long)
 	 */
-	public static ContentName addVersion(ContentName name, Timestamp version) {
+	public static ContentName addVersion(ContentName name, CCNTime version) {
 		if (null == version)
 			throw new IllegalArgumentException("Version cannot be null!"); 
-		return addVersion(name, DataUtils.timestampToBinaryTime12AsLong(version));
+		byte [] varr = version.toBinaryTime();
+		byte [] vcomp = new byte[varr.length + 1];
+		vcomp[0] = VERSION_MARKER;
+		System.arraycopy(varr, 0, vcomp, 1, varr.length);
+		return new ContentName(name, vcomp);
 	}
 	
 	/**
 	 * Add a version field based on the current time, accurate to 1/4096 second.
-	 * @see #addVersion(ContentName, Timestamp)
+	 * @see #addVersion(ContentName, CCNTime)
 	 */
 	public static ContentName addVersion(ContentName name) {
-		return addVersion(name, SignedInfo.now());
+		return addVersion(name, CCNTime.now());
 	}
 	
 	/**
@@ -108,7 +110,7 @@ public class VersioningProfile implements CCNProfile {
 	 * Adds a version to a ContentName; if there is a terminal version there already,
 	 * first removes it.
 	 */
-	public static ContentName updateVersion(ContentName name, Timestamp version) {
+	public static ContentName updateVersion(ContentName name, CCNTime version) {
 		return addVersion(cutTerminalVersion(name).first(), version);
 	}
 
@@ -117,7 +119,7 @@ public class VersioningProfile implements CCNProfile {
 	 * @see #updateVersion(ContentName, Timestamp)
 	 */
 	public static ContentName updateVersion(ContentName name) {
-		return updateVersion(name, SignedInfo.now());
+		return updateVersion(name, CCNTime.now());
 	}
 
 	/**
@@ -217,7 +219,7 @@ public class VersioningProfile implements CCNProfile {
 		return new BigInteger(versionData).longValue();
 	}
 
-	public static Timestamp getVersionComponentAsTimestamp(byte [] versionComponent) {
+	public static CCNTime getVersionComponentAsTimestamp(byte [] versionComponent) {
 		return versionLongToTimestamp(getVersionComponentAsLong(versionComponent));
 	}
 
@@ -225,9 +227,9 @@ public class VersioningProfile implements CCNProfile {
 	 * Extract the version from this name as a Timestamp.
 	 * @throws VersionMissingException 
 	 */
-	public static Timestamp getLastVersionAsTimestamp(ContentName name) throws VersionMissingException {
+	public static CCNTime getLastVersionAsTimestamp(ContentName name) throws VersionMissingException {
 		long time = getLastVersionAsLong(name);
-		return DataUtils.binaryTime12ToTimestamp(time);
+		return CCNTime.fromBinaryTimeAsLong(time);
 	}
 	
 	/**
@@ -235,14 +237,14 @@ public class VersioningProfile implements CCNProfile {
 	 * @param name
 	 * @return
 	 */
-	public static Timestamp getLastVersionAsTimestampIfVersioned(ContentName name) {
+	public static CCNTime getLastVersionAsTimestampIfVersioned(ContentName name) {
 		int versionComponent = findLastVersionComponent(name);
 		if (versionComponent < 0)
 			return null;
 		return getVersionComponentAsTimestamp(name.component(versionComponent));
 	}
 	
-	public static Timestamp getTerminalVersionAsTimestampIfVersioned(ContentName name) {
+	public static CCNTime getTerminalVersionAsTimestampIfVersioned(ContentName name) {
 		if (!hasTerminalVersion(name))
 			return null;
 		int versionComponent = findLastVersionComponent(name);
@@ -251,9 +253,10 @@ public class VersioningProfile implements CCNProfile {
 		return getVersionComponentAsTimestamp(name.component(versionComponent));
 	}
 	
-	public static Timestamp versionLongToTimestamp(long version) {
-		return DataUtils.binaryTime12ToTimestamp(version);
+	public static CCNTime versionLongToTimestamp(long version) {
+		return CCNTime.fromBinaryTimeAsLong(version);
 	}
+	
 	/**
 	 * Control whether versions start at 0 or 1.
 	 * @return
@@ -268,7 +271,7 @@ public class VersioningProfile implements CCNProfile {
 	 * @return
 	 */
 	public static int compareVersions(
-			Timestamp left,
+			CCNTime left,
 			ContentName right) {
 		if (!hasTerminalVersion(right)) {
 			throw new IllegalArgumentException("Both names to compare must be versioned!");

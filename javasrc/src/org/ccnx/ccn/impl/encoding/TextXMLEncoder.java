@@ -1,13 +1,14 @@
 package org.ccnx.ccn.impl.encoding;
 
 import java.io.OutputStream;
-import java.sql.Timestamp;
 import java.util.Iterator;
 import java.util.TreeMap;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
+
+import org.ccnx.ccn.protocol.CCNTime;
 
 public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 
@@ -89,7 +90,7 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	/**
 	 * For now, same as text. Might want something more compact.
 	 */
-	public void writeDateTime(String tag, Timestamp dateTime) throws XMLStreamException {
+	public void writeDateTime(String tag, CCNTime dateTime) throws XMLStreamException {
 		writeElement(tag, 
 				TextXMLCodec.formatDateTime(dateTime));
 	}

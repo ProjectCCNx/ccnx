@@ -7,12 +7,12 @@ import static org.junit.Assert.fail;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.SignatureException;
-import java.sql.Timestamp;
 import java.util.List;
 import java.util.Random;
 
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.InterestTable;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -146,7 +146,7 @@ public class InterestTableTest {
 	 */
 	private ContentObject getContentObject(ContentName name, PublisherPublicKeyDigest pub) throws ConfigurationException, InvalidKeyException, SignatureException, MalformedContentNameStringException {
 		// contents = current date value
-		Timestamp now = SignedInfo.now();
+		CCNTime now = CCNTime.now();
 		ByteBuffer bb = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
 		bb.putLong(now.getTime());
 		byte[] contents = bb.array();
