@@ -37,13 +37,11 @@ public class CCNTime extends Timestamp {
 	 * @param time in msec
 	 */
 	public CCNTime(long msec) {
-		super((msec / 1000) * 4096L);
-		setNanos(0);
+		this((msec/1000) * 1000, (msec % 1000) * 1000000L);
 	}
 
-	public CCNTime(Timestamp time) {
-		super(time.getTime());
-	   	this.setNanos((int)(((time.getNanos() % 4096L) * 1000000000L) / 4096L));
+	public CCNTime(Timestamp timestamp) {
+		this(timestamp.getTime(), timestamp.getNanos());
 	}
 	
 	public CCNTime(Date time) {
@@ -51,15 +49,12 @@ public class CCNTime extends Timestamp {
 	}
 	
 	public CCNTime(byte [] binaryTime12) {
-		super(0);
+		this(new BigInteger(1, binaryTime12).longValue(), true);
 		if ((null == binaryTime12) || (binaryTime12.length == 0)) {
 			throw new IllegalArgumentException("Invalid binary time!");
 		} else if (binaryTime12.length > 6) {
 			throw new IllegalArgumentException("Time unacceptably far in the future, can't decode: " + DataUtils.printHexBytes(binaryTime12));
 		}
-		long binaryTime12AsLong = new BigInteger(1, binaryTime12).longValue();
-		setTime((binaryTime12AsLong / 4096L) * 1000L);
-		setNanos((int)(((binaryTime12AsLong % 4096L) * 1000000000L) / 4096L));
 	}
 	
 	/**
@@ -69,14 +64,21 @@ public class CCNTime extends Timestamp {
 		this(System.currentTimeMillis());
 	}
 	
+	protected CCNTime(long msec, long nanos) {
+		this(toBinaryTimeAsLong(msec, nanos), true);
+	}
+	
+	protected CCNTime(long binaryTimeAsLong, boolean unused) {
+		super((binaryTimeAsLong / 4096L) * 1000L);
+		super.setNanos((int)(((binaryTimeAsLong % 4096L) * 1000000000L) / 4096L));
+	}
+	
 	/**
 	 * Make this a static method to avoid confusion; should be little used
 	 * @return
 	 */
 	public static CCNTime fromBinaryTimeAsLong(long binaryTimeAsLong) {
-		CCNTime ts = new CCNTime((binaryTimeAsLong / 4096L) * 1000L);
-		ts.setNanos((int)(((binaryTimeAsLong % 4096L) * 1000000000L) / 4096L));
-		return ts;
+		return new CCNTime(binaryTimeAsLong, true);
 	}
 	
 	public byte [] toBinaryTime() {
@@ -84,19 +86,31 @@ public class CCNTime extends Timestamp {
 	}
 	
 	public long toBinaryTimeAsLong() {
-		long timeVal = (getTime() / 1000) * 4096L + (getNanos() * 4096L + 500000000L) / 1000000000L;
-		return timeVal;
+		return toBinaryTimeAsLong(getTime(), getNanos());
+	}
+	
+	/**
+	 * Assumes that nanos also contains the integral milliseconds for this
+	 * time. Ignores msec component in msec.
+	 * @param msec
+	 * @param nanos
+	 * @return
+	 */
+	public static long toBinaryTimeAsLong(long msec, long nanos) {
+		long timeVal = (msec / 1000) * 4096L + (nanos * 4096L + 500000000L) / 1000000000L;
+		return timeVal;		
 	}
 	
 	@Override
-	public void setTime(long time) {
-		super.setTime((time / 1000) * 4096L);
+	public void setTime(long msec) {
+		long binaryTimeAsLong = toBinaryTimeAsLong((msec/1000) * 1000, (msec % 1000) * 1000000L);
+		super.setTime((binaryTimeAsLong / 4096L) * 1000L);
+		super.setNanos((int)(((binaryTimeAsLong % 4096L) * 1000000000L) / 4096L));
 	}
-
 
 	@Override
 	public void setNanos(int nanos) {
-	   	super.setNanos((int)(((nanos % 4096L) * 1000000000L) / 4096L));
+	   	super.setNanos((int)(((((nanos * 4096L + 500000000L) / 1000000000L)) * 1000000000L) / 4096L));
 	}
 	
 	/**
