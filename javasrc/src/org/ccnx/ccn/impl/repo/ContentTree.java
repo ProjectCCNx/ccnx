@@ -166,10 +166,10 @@ public class ContentTree {
 						Log.info("we added at least one child, need to send a name enumeration response");
 						ContentName prefix = name.cut(component);
 	
-						prefix = new ContentName(prefix, CommandMarkers.NEMARKER);
+						prefix = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 						//prefix = VersioningProfile.addVersion(prefix, new CCNTime(node.timestamp));
 						Log.info("prefix for FastNEResponse: "+prefix);
-						Log.info("response name will be: "+ VersioningProfile.addVersion(new ContentName(prefix, CommandMarkers.NEMARKER), new CCNTime(node.timestamp)));
+						Log.info("response name will be: "+ VersioningProfile.addVersion(new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), new CCNTime(node.timestamp)));
 	
 						ArrayList<ContentName> names = new ArrayList<ContentName>();
 						// the parent has children we need to return
@@ -458,13 +458,13 @@ public class ContentTree {
 	public final NameEnumerationResponse getNamesWithPrefix(Interest interest, ContentGetter getter) {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		//first chop off NE marker
-		ContentName prefix = interest.name().cut(CommandMarkers.NEMARKER);
+		ContentName prefix = interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 
 		Log.fine("checking for content names under: "+prefix);
 		
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
-		    ContentName potentialCollectionName = VersioningProfile.addVersion(new ContentName(prefix, CommandMarkers.NEMARKER), new CCNTime(parent.timestamp));
+		    ContentName potentialCollectionName = VersioningProfile.addVersion(new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), new CCNTime(parent.timestamp));
 			//check if we should respond...
 			if (interest.matches(potentialCollectionName, null)) {
 				Log.info("the new version is a match with the interest!  we should respond: interest = "+interest.name()+" potentialCollectionName = "+potentialCollectionName);
@@ -489,7 +489,7 @@ public class ContentTree {
 				Log.finer("sending back "+names.size()+" names in the enumeration response for prefix "+prefix);
 			parent.interestFlag = false;
 			
-			return new NameEnumerationResponse(new ContentName(prefix, CommandMarkers.NEMARKER), names, new CCNTime(parent.timestamp));
+			return new NameEnumerationResponse(new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), names, new CCNTime(parent.timestamp));
 		}
 		return null;
 	}

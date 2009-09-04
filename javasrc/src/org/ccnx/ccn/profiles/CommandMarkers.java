@@ -71,7 +71,7 @@ public class CommandMarkers {
 	/**
 	 * Basic enumeration command, no arguments,
 	 */
-	public static final byte [] NEMARKER = commandComponent(ENUMERATION_NAMESPACE, "be", null);
+	public static final byte [] COMMAND_MARKER_BASIC_ENUMERATION = commandComponent(ENUMERATION_NAMESPACE, "be", null);
 
 	/**
 	 * Repository "marker"

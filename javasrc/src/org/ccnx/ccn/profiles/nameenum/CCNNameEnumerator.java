@@ -128,7 +128,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			Log.info("Registered Prefix: "+prefix.toString());
 			//Library.info("creating Interest");
 			
-			ContentName prefixMarked = new ContentName(prefix, CommandMarkers.NEMARKER);
+			ContentName prefixMarked = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 			
 			Interest pi = new Interest(prefixMarked);
 			
@@ -167,17 +167,17 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		
 		//Library.info("we received a Collection matching our prefix...");
 		
-		if (interest.name().contains(CommandMarkers.NEMARKER)) {
+		if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
 			//the NEMarker is in the name...  good!
 		} else {
-			//NEMARKER missing...  we have a problem
+			//COMMAND_MARKER_BASIC_ENUMERATION missing...  we have a problem
 			Log.warning("the name enumeration marker is missing...  shouldn't have gotten this callback");
 			//_library.cancelInterest(interest, this);
 			return null;
 		}
 		
 		synchronized(_currentRequests) {
-			ContentName prefix = interest.name().cut(CommandMarkers.NEMARKER);
+			ContentName prefix = interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 			NERequest ner = getCurrentRequest(prefix);
 		
 			//need to make sure the prefix is still registered
@@ -199,7 +199,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 				for (ContentObject c: results) {
 					//Library.info("we have a match on "+interest.name());
 
-					newInterest = Interest.last(c.name(), c.name().containsWhere(CommandMarkers.NEMARKER) + 1);
+					newInterest = Interest.last(c.name(), c.name().containsWhere(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION) + 1);
 					try {
 						_library.expressInterest(newInterest, this);
 						ner.addInterest(newInterest);
@@ -217,7 +217,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 							//Library.info("names: "+l.targetName());
 						}
 						//strip off NEMarker before passing through callback
-						callback.handleNameEnumerator(interest.name().cut(CommandMarkers.NEMARKER), names);
+						callback.handleNameEnumerator(interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), names);
 					} catch(XMLStreamException e) {
 						Log.warning("Error getting Collection from ContentObject in CCNNameEnumerator");
 						Log.warningStackTrace(e);
@@ -241,7 +241,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		//Library.info("we recieved content matching our prefix...");
 		
 		//Need to make sure the response has the NEMarker in it
-		if (!p.contains(NEMARKER)) {
+		if (!p.contains(COMMAND_MARKER_BASIC_ENUMERATION)) {
 			Library.warning("something is wrong...  we should have had the Name Enumeration Marker in the name");
 		} else {
 			//Library.info("we have a match on "+p.toString()+" and the NEMarker is in there!");
@@ -272,12 +272,12 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			
 			cd = new Collection();
 			//Verify NameEnumeration Marker is in the name
-			if (!name.contains(CommandMarkers.NEMARKER)) {
+			if (!name.contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
 				//Skip...  we don't handle these
 			} else {
 				//Library.info("this interest contains the NE marker!");
-				name = name.cut(CommandMarkers.NEMARKER);
-				collectionName = new ContentName(name, CommandMarkers.NEMARKER);
+				name = name.cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+				collectionName = new ContentName(name, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 				
 				boolean skip = false;
 				synchronized (_handledResponses) {
