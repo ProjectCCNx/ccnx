@@ -86,7 +86,7 @@ public class CommandMarkers {
 	 * Nonce marker
 	 */
 	public static final String NONCE_NAMESPACE = "N";
-	public static final byte [] NONCE_MARKER = commandComponent(NONCE_NAMESPACE, "n", null);
+	public static final byte [] COMMAND_MARKER_NONCE = commandComponent(NONCE_NAMESPACE, "n", null);
 	
 	public static final byte [] commandComponent(String namespace, String command, String [] arguments) {
 		StringBuffer sb = new StringBuffer(namespace);
