@@ -28,7 +28,7 @@ ccnd - CCN Daemon
 		CCND_DATA_PAUSE_MICROSEC=
 			Adjusts content-send delay time for multicast and udplink faces
 
-ccndsmoketest - simple-minded program for excercising ccnd
+ccndsmoketest - simple-minded program for exercising ccnd
 	options: -t millisconds - sets the timeout for recv operations
 		 -u hostname - communicate with ccnd using udp
 	arguments: ( send <filename> | recv | kill | timeo <millisconds> ) ...
