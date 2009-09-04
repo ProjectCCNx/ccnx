@@ -3,8 +3,8 @@
 LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 CCNLIBDIR = ../lib
 
-INSTALLED_PROGRAMS = ccndc ccndc-inject udplink
-PROGRAMS = $(INSTALLED_PROGRAMS)
+INSTALLED_PROGRAMS = ccndc
+PROGRAMS = $(INSTALLED_PROGRAMS) ccndc-inject udplink
 CSRC = ccndc.c ccndc-inject.c udplink.c
 
 default all: $(PROGRAMS)
