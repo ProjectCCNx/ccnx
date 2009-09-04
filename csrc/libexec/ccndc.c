@@ -26,6 +26,10 @@
 
 #define DEFAULT_PORT "4485"
 
+#ifndef AI_ADDRCONFIG
+#define AI_ADDRCONFIG 0 /*IEEE Std 1003.1-2001/Cor 1-2002, item XSH/TC1/D6/20*/
+#endif
+
 /*
  * private types
  */

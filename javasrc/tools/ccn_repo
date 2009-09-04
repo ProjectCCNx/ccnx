@@ -1,7 +1,7 @@
 #!/bin/sh
 
 JAR_FILE=ccn.jar
-JAVA_HOME=/usr
+: ${JAVA_HOME:=/usr}
 JAVA=$JAVA_HOME/bin/java
 SCRIPT_DIR=`dirname $0`  # note this is relative path
 CCN_HOME_JAVA=${CCN_HOME_JAVA:-$SCRIPT_DIR}
