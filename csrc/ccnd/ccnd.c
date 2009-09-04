@@ -1113,13 +1113,14 @@ face_send_queue_insert(struct ccnd_handle *h,
     return (ans);
 }
 
-/*
- * consume_matching_interests: Consume matching interests
+/**
+ * Consume matching interests
  * given a nameprefix_entry and a piece of content.
+ *
  * If face is not NULL, pay attention only to interests from that face.
  * It is allowed to pass NULL for pc, but if you have a (valid) one it
  * will avoid a re-parse.
- * Returns number of matches found.
+ * @returns number of matches found.
  */
 static int
 consume_matching_interests(struct ccnd_handle *h,
@@ -1209,7 +1210,7 @@ adjust_predicted_response(struct ccnd_handle *h,
     indexbuf_release(h, comps);
 }
 
-/*
+/**
  * Keep a little history about where matching content comes from.
  */
 static void
@@ -1227,15 +1228,30 @@ note_content_from(struct ccnd_handle *h,
     }
 }
 
-/*
- * match_interests: Find and consume interests that match given content
+/**
+ * Use the history to reorder the interest forwarding.
+ */
+static void
+reorder_outbound_using_history(struct ccnd_handle *h,
+                               struct nameprefix_entry *npe,
+                               struct ccn_indexbuf *outbound)
+{
+    if (npe->osrc != ~0)
+        ccn_indexbuf_move_to_end(outbound, npe->osrc);
+    if (npe->src != ~0)
+        ccn_indexbuf_move_to_end(outbound, npe->src);
+}
+
+/**
+ * Find and consume interests that match given content.
+ *
  * Adds to content->faces the faceids that should receive copies,
  * and schedules content_sender if needed.
  * If face is not NULL, pay attention only to interests from that face.
  * It is allowed to pass NULL for pc, but if you have a (valid) one it
  * will avoid a re-parse.
  * For new content, from_face is the source; for old content, from_face is NULL.
- * Returns number of matches.
+ * @returns number of matches.
  */
 static int
 match_interests(struct ccnd_handle *h, struct content_entry *content,
@@ -1264,30 +1280,43 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
     return(n_matched);
 }
 
-/*
- * stuff_and_write:
+/**
+ * Send a message in a PDU, possibly stuffing other interest messages into it.
  */
 static void
-stuff_and_write(struct ccnd_handle *h, struct face *face,
+stuff_and_send(struct ccnd_handle *h, struct face *face,
              unsigned char *data, size_t size) {
-    struct ccn_charbuf *c;
-    c = charbuf_obtain(h);
+    struct ccn_charbuf *c = NULL;
+    
     if ((face->flags & CCN_FACE_LINK) != 0) {
+        c = charbuf_obtain(h);
         ccn_charbuf_reserve(c, size + 5);
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
         ccn_charbuf_append(c, data, size);
         ccn_stuff_interest(h, face, c);
         ccn_charbuf_append_closer(c);
     }
-    else {
+    else if (h->mtu > size) {
+         c = charbuf_obtain(h);
          ccn_charbuf_append(c, data, size);
          ccn_stuff_interest(h, face, c);
+    }
+    else {
+        /* avoid a copy in this case */
+        do_write(h, face, data, size);
+        return;
     }
     do_write(h, face, c->buf, c->length);
     charbuf_release(h, c);
     return;
 }
 
+/**
+ * Stuff a PDU with interest messages that will fit.
+ *
+ * Note by default stuffing does not happen due to the setting of h->mtu.
+ * @returns the number of messages that were stuffed.
+ */
 static int
 ccn_stuff_interest(struct ccnd_handle *h,
                    struct face *face, struct ccn_charbuf *c)
@@ -1336,9 +1365,9 @@ ccn_stuff_interest(struct ccnd_handle *h,
     return(n_stuffed);
 }
 
-/*
- * This checks for inactivity on datagram faces.
- * Returns number of faces that have gone away.
+/**
+ * Checks for inactivity on datagram faces.
+ * @returns number of faces that have gone away.
  */
 static int
 check_dgram_faces(struct ccnd_handle *h)
@@ -1366,7 +1395,7 @@ check_dgram_faces(struct ccnd_handle *h)
     return(count);
 }
 
-/*
+/**
  * Remove expired faces from npe->forward_to
  */
 static void
@@ -1418,8 +1447,7 @@ check_propagating(struct ccnd_handle *h)
 }
 
 /**
- * Check for expired propagating interests.
- * Ages src info and retires unused nameprefix entries.
+ * Age src info and retires unused nameprefix entries.
  * @returns number that have gone away.
  */
 static int
@@ -2188,7 +2216,7 @@ do_propagate(struct ccn_schedule *sched,
                 pe->flags |= CCN_PR_WAIT1;
                 next_delay = special_delay = ev->evint;
             }
-            stuff_and_write(h, face, pe->interest_msg, pe->size);
+            stuff_and_send(h, face, pe->interest_msg, pe->size);
         }
     }
     /* The internal client may have already consumed the interest */
@@ -2297,17 +2325,6 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
         }
     }
     return(extra_delay);
-}
-
-static void
-reorder_outbound_using_history(struct ccnd_handle *h,
-                               struct nameprefix_entry *npe,
-                               struct ccn_indexbuf *outbound)
-{
-    if (npe->osrc != ~0)
-        ccn_indexbuf_move_to_end(outbound, npe->osrc);
-    if (npe->src != ~0)
-        ccn_indexbuf_move_to_end(outbound, npe->src);
 }
 
 /**
@@ -2703,6 +2720,9 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     indexbuf_release(h, comps);
 }
 
+/**
+ * Mark content as stale
+ */
 static void
 mark_stale(struct ccnd_handle *h, struct content_entry *content)
 {
@@ -2719,6 +2739,12 @@ mark_stale(struct ccnd_handle *h, struct content_entry *content)
         h->max_stale = accession;
 }
 
+/**
+ * Scheduled event that makes content stale when its FreshnessSeconds
+ * has exported.
+ *
+ * May actually remove the content if we are over quota.
+ */
 static int
 expire_content(struct ccn_schedule *sched,
                void *clienth,
@@ -2746,6 +2772,11 @@ expire_content(struct ccn_schedule *sched,
     }
     return(0);
 }
+
+/**
+ * Schedules content expiration based on its FreshnessSeconds..
+ *
+ */
 
 static void
 set_content_timer(struct ccnd_handle *h, struct content_entry *content,
@@ -3453,7 +3484,7 @@ ccnd_create(const char *progname)
     h->data_pause_microsec = 10000;
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
-        portstr = "4485";
+        portstr = CCN_DEFAULT_UNICAST_PORT;
     h->portstr = portstr;
     /* Do keystore setup early, it takes a while the first time */
     ccnd_init_internal_keystore(h);
@@ -3592,6 +3623,11 @@ int
 main(int argc, char **argv)
 {
     struct ccnd_handle *h;
+    
+    if (argc > 1) {
+        ccnd_usage();
+        exit(1);
+    }
     signal(SIGPIPE, SIG_IGN);
     h = ccnd_create(argv[0]);
     enroll_face(h, h->face0);
