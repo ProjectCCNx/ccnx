@@ -136,7 +136,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		Client client = new Client(name, shape);
 		_clients.add(client);
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
-		ContentName repoWriteName = new ContentName(name, CommandMarkers.REPO_START_WRITE, Interest.generateNonce());
+		ContentName repoWriteName = new ContentName(name, CommandMarkers.COMMAND_MARKER_REPO_START_WRITE, Interest.generateNonce());
 
 		Interest writeInterest = new Interest(repoWriteName);
 		_library.expressInterest(writeInterest, this);

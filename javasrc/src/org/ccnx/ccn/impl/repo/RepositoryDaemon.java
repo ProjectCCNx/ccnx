@@ -24,7 +24,6 @@ import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.CommandMarkers;
-import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
@@ -141,8 +140,8 @@ public class RepositoryDaemon extends Daemon {
 			}
 			
 			byte[][]markerOmissions = new byte[2][];
-			markerOmissions[0] = CommandMarkers.REPO_START_WRITE;
-			markerOmissions[1] = CCNNameEnumerator.NEMARKER;
+			markerOmissions[0] = CommandMarkers.COMMAND_MARKER_REPO_START_WRITE;
+			markerOmissions[1] = CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION;
 			_markerFilter = new Exclude(markerOmissions);
 			
 			Timer periodicTimer = new Timer(true);
