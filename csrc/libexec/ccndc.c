@@ -46,8 +46,7 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-v] [-d] (-f configfile | (add|del) uri proto host [port [flags [mcastttl [mcastif]]]])\n"
-            "	-v verbose\n"
+            "%s [-d] (-f configfile | (add|del) uri proto host [port [flags [mcastttl [mcastif]]]])\n"
             "   -d enter dynamic mode and create FIB entries based on DNS SRV records\n"
             "   -f configfile add or delete FIB entries based on contents of configfile\n"
             "	add|del add or delete FIB entry based on parameters\n",
@@ -125,7 +124,7 @@ get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_size)
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *resultbuf = NULL;
     struct ccn_parsed_ContentObject pcobuf = {0};
-    char ping_uri[] = "ccn:/ccn/ping/X";
+    char ping_uri[] = "ccn:/ccn/ping";
     const unsigned char *ccndid_result;
     static size_t ccndid_result_size;
     int res;
@@ -141,8 +140,8 @@ get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_size)
     }
 
 
-    ping_uri[strlen(ping_uri) - 1] = getpid(); /* a really minimal nonce */
     ON_ERROR_EXIT(ccn_name_from_uri(name, ping_uri));
+    ON_ERROR_EXIT(ccn_name_append_numeric(name, CCN_MARKER_NONE, getpid()));
     ON_ERROR_EXIT(ccn_get(h, name, -1, local_scope_template, 200, resultbuf, &pcobuf, NULL));
     res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
                               resultbuf->buf,
