@@ -12,7 +12,7 @@ default all: $(PROGRAMS)
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
 ccndc: ccndc.o
-	$(CC) $(CFLAGS) -o $@ ccndc.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+	$(CC) $(CFLAGS) -o $@ ccndc.o $(LDLIBS) $(OPENSSL_LIBS) -lresolv -lcrypto
 
 ccndc-inject: ccndc-inject.o
 	$(CC) $(CFLAGS) -o $@ ccndc-inject.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
