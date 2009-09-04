@@ -83,7 +83,11 @@ public class VersioningProfile implements CCNProfile {
 	public static ContentName addVersion(ContentName name, CCNTime version) {
 		if (null == version)
 			throw new IllegalArgumentException("Version cannot be null!"); 
-		return addVersion(name, version);
+		byte [] varr = version.toBinaryTime();
+		byte [] vcomp = new byte[varr.length + 1];
+		vcomp[0] = VERSION_MARKER;
+		System.arraycopy(varr, 0, vcomp, 1, varr.length);
+		return new ContentName(name, vcomp);
 	}
 	
 	/**
