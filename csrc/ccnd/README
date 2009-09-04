@@ -15,18 +15,18 @@ ccnd - CCN Daemon
 			128 - face registration debugging
 			bitwise OR these together for combinations; -1 gets everything
 		CCN_LOCAL_PORT=
-			UDP port for local clients (default 4485)
-			Also affects name of unix-domain socket
+			UDP port for unicast clients (default CCN_DEFAULT_UNICAST_PORT).
+			Also listens on this TCP port for stream connections.
+			Also affects name of unix-domain socket.
 		CCND_CAP=
-			Capacity limit in ContentObjects.
+			Capacity limit, in count of ContentObjects.
 			Not an absolute limit.
 		CCND_MTU=
 			Packet size in bytes.
 			If set, interest stuffing is allowed within this budget.
 			Single items larger than this are not precluded.
 		CCND_DATA_PAUSE_MICROSEC=
-			Average content-send delay time for udplink faces
-			Default is 2000
+			Adjusts content-send delay time for multicast and udplink faces
 
 ccndsmoketest - simple-minded program for excercising ccnd
 	options: -t millisconds - sets the timeout for recv operations

@@ -1,5 +1,5 @@
 /**
- * ccn/ccnd.h
+ * @file ccn/ccnd.h
  * 
  * Definitions pertaining to the CCN daemon
  *

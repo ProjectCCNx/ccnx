@@ -178,7 +178,7 @@ collect_stats_html(struct ccnd_handle *h)
     
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
-        portstr = "4485";
+        portstr = CCN_DEFAULT_UNICAST_PORT;
     uname(&un);
     pid = getpid();
     

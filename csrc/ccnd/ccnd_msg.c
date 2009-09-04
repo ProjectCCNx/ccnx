@@ -113,7 +113,7 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
 void
 ccnd_usage(void)
 {
-    static const char usage_message =
+    static const char ccnd_usage_message[] =
     "ccnd - CCN Daemon\n"
     "  options: none\n"
     "  arguments: none\n"
@@ -142,6 +142,6 @@ ccnd_usage(void)
     "      Single items larger than this are not precluded.\n"
     "    CCND_DATA_PAUSE_MICROSEC=\n"
     "      Adjusts content-send delay time for multicast and udplink faces\n";
-    fprintf(stderr, usage_message, CCN_DEFAULT_UNICAST_PORT);
+    fprintf(stderr, ccnd_usage_message, CCN_DEFAULT_UNICAST_PORT);
 }
 
