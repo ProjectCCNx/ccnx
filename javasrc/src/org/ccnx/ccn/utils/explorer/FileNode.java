@@ -6,7 +6,7 @@ import java.util.Vector;
 import javax.swing.JOptionPane;
 import javax.swing.tree.DefaultMutableTreeNode;
 
-import org.ccnx.ccn.utils.explorer.ContainerGUI;
+import org.ccnx.ccn.utils.explorer.ContentExplorer;
 import org.ccnx.ccn.utils.explorer.IconData;
 
 
@@ -66,8 +66,8 @@ public class FileNode {
 
 		for (int i = 0; i < v.size(); i++) {
 			FileNode nd = (FileNode) v.elementAt(i);
-			IconData idata = new IconData(ContainerGUI.ICON_FOLDER,
-					ContainerGUI.ICON_EXPANDEDFOLDER, nd);
+			IconData idata = new IconData(ContentExplorer.ICON_FOLDER,
+					ContentExplorer.ICON_EXPANDEDFOLDER, nd);
 			DefaultMutableTreeNode node = new DefaultMutableTreeNode(idata);
 			parent.add(node);
 
