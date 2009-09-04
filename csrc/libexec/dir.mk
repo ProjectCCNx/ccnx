@@ -33,13 +33,13 @@ test:
 ###############################
 ccndc.o: ccndc.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h \
+  ../include/ccn/indexbuf.h ../include/ccn/ccnd.h ../include/ccn/uri.h \
   ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/signing.h \
   ../include/ccn/keystore.h
 ccndc-inject.o: ccndc-inject.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
+  ../include/ccn/indexbuf.h ../include/ccn/ccnd.h ../include/ccn/uri.h
 udplink.o: udplink.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccnd.h
