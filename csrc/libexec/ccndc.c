@@ -89,7 +89,7 @@ on_error_exit(int res, int lineno)
     ccndc_fatal(lineno, "fatal error, res = %d\n", res);
 }
 
-void
+static void
 initialize_global_data(void) {
     /* Set up an Interest template to indicate scope 1 (Local) */
     local_scope_template = ccn_charbuf_create();
@@ -325,7 +325,8 @@ fill_prefix_face_list_item(struct prefix_face_list_item *pflp,
                            int lifetime,
                            int flags)
 {
-    size_t host_offset, port_offset, mcastif_offset;
+    ssize_t host_offset, port_offset;
+    ssize_t mcastif_offset;
     struct ccn_charbuf *store = NULL;
 
     pflp->prefix = prefix;
@@ -536,17 +537,13 @@ int
 main(int argc, char **argv)
 {
     struct ccn *h = NULL;
-    struct ccn_charbuf *name_prefix = NULL;
     struct ccn_charbuf *temp = NULL;
     const char *progname = NULL;
     const char *configfile = NULL;
     struct prefix_face_list_item *pflhead = prefix_face_list_item_create();
     struct prefix_face_list_item *pfl;
-    struct ccn_face_instance face_instance_storage = {0};
-    struct ccn_face_instance *face_instance = &face_instance_storage;
     struct ccn_keystore *keystore = NULL;
     int dynamic = 0;
-    int flags = 0;
     unsigned char ccndid_storage[32] = {0};
     const unsigned char *ccndid = ccndid_storage;
     size_t ccndid_size;
