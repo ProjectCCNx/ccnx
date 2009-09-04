@@ -10,9 +10,9 @@ import org.ccnx.ccn.impl.repo.Repository;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.Repository.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -229,7 +229,7 @@ public class RFSTest extends RepoTestBase {
 		//send initial interest to make sure namespace is empty
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
-		Interest interest = new Interest(new ContentName(nerpre, CCNNameEnumerator.NEMARKER));
+		Interest interest = new Interest(new ContentName(nerpre, CommandMarkers.NEMARKER));
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
 		//now saving the first piece of content in the repo.  interest flag not set, so it should not get an object back
@@ -239,7 +239,7 @@ public class RFSTest extends RepoTestBase {
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
 
-		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
+		Assert.assertTrue(neresponse.getPrefix().contains(CommandMarkers.NEMARKER));
 		Assert.assertTrue(neresponse.getTimestamp()!=null);
 		//now call get names with prefix again to set interest flag
 		//have to use the version from the last response (or at least a version after the last write
@@ -251,7 +251,7 @@ public class RFSTest extends RepoTestBase {
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner2, "FastNameRespTest".getBytes()));
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
 		Assert.assertTrue(neresponse.getNames().contains(nername2));
-		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
+		Assert.assertTrue(neresponse.getPrefix().contains(CommandMarkers.NEMARKER));
 		Assert.assertTrue(neresponse.getTimestamp()!=null);
 		
 		//need to reconstruct the interest again
@@ -264,7 +264,7 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
 		Assert.assertTrue(neresponse.getNames().contains(nername2));
 		Assert.assertTrue(neresponse.getNames().contains(nername3));
-		Assert.assertTrue(neresponse.getPrefix().contains(CCNNameEnumerator.NEMARKER));
+		Assert.assertTrue(neresponse.getPrefix().contains(CommandMarkers.NEMARKER));
 		Assert.assertTrue(neresponse.getTimestamp()!=null);
 		
 		repo.shutDown();
