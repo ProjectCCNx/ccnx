@@ -3,7 +3,7 @@
 # Subdirectories we build in
 TOPSUBDIRS = csrc schema javasrc doc/technical
 # Packing list for packaging
-PACKLIST = Makefile README configure doc/index.txt $(TOPSUBDIRS) experiments
+PACKLIST = Makefile README configure doc/index.txt $(TOPSUBDIRS) apps experiments
 
 default all: _always
 	for i in $(TOPSUBDIRS); do         \
