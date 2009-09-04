@@ -423,5 +423,20 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			return null;
 		}
 	}
+
+	public void cancelEnumerationsWithPrefix(ContentName prefixToCancel) {
+		Log.info("cancel prefix: "+prefixToCancel.toString());
+		synchronized(_currentRequests) {
+			//cancel the behind the scenes interests and remove from the local ArrayList
+			ArrayList<NERequest> toRemove = new ArrayList<NERequest>();
+			for(NERequest n: _currentRequests){
+				if(prefixToCancel.isPrefixOf(n.prefix))
+					toRemove.add(n);
+			}
+			while(!toRemove.isEmpty()){
+				cancelPrefix(toRemove.remove(0).prefix);
+			}
+		}
+	}
 	
 }
