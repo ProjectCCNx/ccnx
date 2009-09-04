@@ -836,7 +836,7 @@ make_connection(struct ccnd_handle *h, struct sockaddr *who, socklen_t wholen)
     }
     res = connect(fd, who, wholen);
     if (res == -1) {
-        perror("connect");
+        ccnd_msg(h, "connect failed: %s", strerror(errno));
         close(fd);
         return(NULL);
     }
