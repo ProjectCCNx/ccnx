@@ -1,5 +1,6 @@
 package org.ccnx.ccn.impl.repo;
 
+import java.io.File;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
@@ -89,7 +90,7 @@ public interface Repository {
 	 * @param args - user arguments to the repository
 	 * @return
 	 */
-	public String[] initialize(String[] args, CCNHandle library) throws RepositoryException;
+	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix) throws RepositoryException;
 	
 	/**
 	 * Save the specified content in the repository.  If content is added to a name that has

@@ -66,7 +66,7 @@ public class RFSTest extends RepoTestBase {
 						
 	public void initRepoLog() throws Exception {
 		repolog = new RFSLogImpl();
-		repolog.initialize(new String[] {"-root", _fileTestDir, "-local", _repoName, "-global", _globalPrefix, "-singlefile"}, putLibrary);
+		repolog.initialize(putLibrary, _fileTestDir, null, _repoName, _globalPrefix);
 	}
 	
 	@Test
@@ -298,15 +298,15 @@ public class RFSTest extends RepoTestBase {
 	public void testPolicy() throws Exception {
 		Repository repo = new RFSLogImpl();
 		try {	// Test no version
-			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"}, putLibrary);
+			repo.initialize(putLibrary, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
 		try {	// Test bad version
-			repo.initialize(new String[] {"-root", _fileTestDir, "-policy", _topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"}, putLibrary);
+			repo.initialize(putLibrary, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
-		repo.initialize(new String[] {"-root", _fileTestDir, "-policy", 
-					_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml", "-local", _repoName, "-global", _globalPrefix}, putLibrary);
+		repo.initialize(putLibrary, _fileTestDir,  
+					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix);
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
 		repo.saveContent(content);
@@ -316,8 +316,8 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(oonsContent);
 		ContentObject testContent = repo.getContent(new Interest(outOfNameSpaceName));
 		Assert.assertTrue(testContent == null);
-		repo.initialize(new String[] {"-root", _fileTestDir, "-policy", 
-				_topdir + "/org/ccnx/ccn/test/repo/origPolicy.xml", "-local", _repoName, "-global", _globalPrefix}, putLibrary);
+		repo.initialize(putLibrary, _fileTestDir, 
+				new File(_topdir + "/org/ccnx/ccn/test/repo/origPolicy.xml"), _repoName, _globalPrefix);
 		repo.saveContent(oonsContent);
 		checkData(repo, outOfNameSpaceName, "Shouldn't see this");	
 	}

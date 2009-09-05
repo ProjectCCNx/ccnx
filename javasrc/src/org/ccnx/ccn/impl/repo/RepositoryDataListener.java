@@ -36,7 +36,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private Interest _origInterest;
 	private ContentName _versionedName;
 	private InterestTable<Object> _interests = new InterestTable<Object>();
-	private RepositoryDaemon _daemon;
+	private RepositoryServer _server;
 	private CCNHandle _library;
 	private long _currentBlock = 0; // latest block we're looking for
 	private long _finalBlockID = -1; // expected last block of the stream
@@ -65,11 +65,11 @@ public class RepositoryDataListener implements CCNInterestListener {
 					Log.finer("Saving content in: " + _content.name().toString());
 				}
 				
-				NameEnumerationResponse ner = _daemon.getRepository().saveContent(_content);		
-				if (_daemon.getRepository().checkPolicyUpdate(_content)) {
-					_daemon.resetNameSpaceFromHandler();
+				NameEnumerationResponse ner = _server.getRepository().saveContent(_content);		
+				if (_server.getRepository().checkPolicyUpdate(_content)) {
+					_server.resetNameSpaceFromHandler();
 				} if (ner!=null && ner.hasNames()) {
-					_daemon.sendEnumerationResponse(ner);
+					_server.sendEnumerationResponse(ner);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -78,11 +78,11 @@ public class RepositoryDataListener implements CCNInterestListener {
 		}
 	}
 	
-	public RepositoryDataListener(Interest origInterest, Interest interest, RepositoryDaemon daemon) throws XMLStreamException, IOException {
+	public RepositoryDataListener(Interest origInterest, Interest interest, RepositoryServer server) throws XMLStreamException, IOException {
 		_origInterest = interest;
 		_versionedName = interest.name();
-		_daemon = daemon;
-		_library = daemon.getLibrary();
+		_server = server;
+		_library = server.getHandle();
 		_timer = new Date().getTime();
 		Log.info("Starting up repository listener on original interest: " + origInterest + " interest " + interest);
 	}
@@ -93,7 +93,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_timer = new Date().getTime();
 		
 		for (ContentObject co : results) {
-			_daemon.getThreadPool().execute(new DataHandler(co));
+			_server.getThreadPool().execute(new DataHandler(co));
 			
 			boolean isFinalBlock = false;
 			
@@ -141,7 +141,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 															// out of order
 					firstInterestToRequest = _currentBlock;
 				
-				int nOutput = _interests.size() >= _daemon.getWindowSize() ? 0 : _daemon.getWindowSize() - _interests.size();
+				int nOutput = _interests.size() >= _server.getWindowSize() ? 0 : _server.getWindowSize() - _interests.size();
 				
 				// Make sure we don't go past prospective last block.
 				if (_finalBlockID >= 0 && _finalBlockID < firstInterestToRequest) {

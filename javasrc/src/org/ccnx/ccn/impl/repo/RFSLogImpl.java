@@ -202,47 +202,28 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		return new Integer(max);
 	}
 	
-	public String[] initialize(String[] args, CCNHandle library) throws RepositoryException {
-		boolean policyFromFile = false;
-		boolean nameFromArgs = false;
-		boolean globalFromArgs = false;
-		String localName = DEFAULT_LOCAL_NAME;
-		String globalPrefix = DEFAULT_GLOBAL_NAME;
-		String[] outArgs = args;
+	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix) throws RepositoryException {
+		boolean policyFromFile = (null != policyFile);
+		boolean nameFromArgs = (null != localName);
+		boolean globalFromArgs = (null != globalPrefix);
+		if (null == localName)
+			localName = DEFAULT_LOCAL_NAME;
+		if (null == globalPrefix) 
+			globalPrefix = DEFAULT_GLOBAL_NAME;
 		_policy = new BasicPolicy(null);
 		_policy.setVersion(CURRENT_VERSION);
-		for (int i = 0; i < args.length; i++) {
-			if (args[i].equals("-root")) {
-				if (args.length < i + 2)
-					throw new InvalidParameterException();
-				_repositoryRoot = args[i + 1];
-				i++;
-			} else if (args[i].equals("-policy")) {
-				policyFromFile = true;
-				if (args.length < i + 2)
-					throw new InvalidParameterException();
-				File policyFile = new File(args[i + 1]);
-				try {
-					_policy.update(new FileInputStream(policyFile), false);
-				} catch (Exception e) {
-					throw new InvalidParameterException(e.getMessage());
-				}
-			} else if (args[i].equals("-local")) {
-				if (args.length < i + 2)
-					throw new InvalidParameterException();
-				localName = args[i + 1];
-				nameFromArgs = true;
-			} else if (args[i].equals("-global")) {
-				if (args.length < i + 2)
-					throw new InvalidParameterException();
-				globalPrefix = args[i + 1];
-				if (!globalPrefix.startsWith("/"))
-					globalPrefix = "/" + globalPrefix;
-				globalFromArgs = true;
+
+		if (null != policyFile) {
+			try {
+				_policy.update(new FileInputStream(policyFile), false);
+			} catch (Exception e) {
+				throw new InvalidParameterException(e.getMessage());
 			}
 		}
-		if (_repositoryRoot == null) {
+		if (repositoryRoot == null) {
 			throw new InvalidParameterException();
+		} else {
+			_repositoryRoot = repositoryRoot;
 		}
 		
 		_repositoryFile = new File(_repositoryRoot);
@@ -277,16 +258,16 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 			Log.warning("Error opening content output file index " + maxFileIndex);
 		}
 		
-		String version = checkFile(VERSION, CURRENT_VERSION, library, false);
+		String version = checkFile(VERSION, CURRENT_VERSION, handle, false);
 		if (version != null && !version.trim().equals(CURRENT_VERSION))
 			throw new RepositoryException("Bad repository version: " + version);
 		
-		String checkName = checkFile(REPO_LOCALNAME, localName, library, nameFromArgs);
+		String checkName = checkFile(REPO_LOCALNAME, localName, handle, nameFromArgs);
 		localName = checkName != null ? checkName : localName;
 		try {
 			_policy.setLocalName(localName);
 
-			checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, library, globalFromArgs);
+			checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, handle, globalFromArgs);
 			globalPrefix = checkName != null ? checkName : globalPrefix;
 
 			Log.info("REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
@@ -321,8 +302,6 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		} catch (MalformedContentNameStringException e2) {
 			throw new RepositoryException(e2.getMessage());
 		}
-		
-		return outArgs;
 	}
 
 

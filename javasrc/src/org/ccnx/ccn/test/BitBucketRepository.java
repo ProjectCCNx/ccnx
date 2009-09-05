@@ -1,5 +1,6 @@
 package org.ccnx.ccn.test;
 
+import java.io.File;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
@@ -44,9 +45,8 @@ public class BitBucketRepository implements Repository {
 		return null;
 	}
 
-	public String[] initialize(String[] args, CCNHandle library) throws RepositoryException {
+	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix) throws RepositoryException {
 		// TODO Auto-generated method stub
-		return null;
 	}
 
 	public NameEnumerationResponse saveContent(ContentObject content) throws RepositoryException {

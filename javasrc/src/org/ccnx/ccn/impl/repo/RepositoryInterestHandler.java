@@ -23,12 +23,12 @@ import org.ccnx.ccn.protocol.Interest;
  */
 
 public class RepositoryInterestHandler implements CCNFilterListener {
-	private RepositoryDaemon _daemon;
+	private RepositoryServer _server;
 	private CCNHandle _library;
 	
-	public RepositoryInterestHandler(RepositoryDaemon daemon) {
-		_daemon = daemon;
-		_library = daemon.getLibrary();
+	public RepositoryInterestHandler(RepositoryServer server) {
+		_server = server;
+		_library = server.getHandle();
 	}
 
 	public int handleInterests(ArrayList<Interest> interests) {
@@ -41,7 +41,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				} else if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
 					nameEnumeratorResponse(interest);
 				} else {
-					ContentObject content = _daemon.getRepository().getContent(interest);
+					ContentObject content = _server.getRepository().getContent(interest);
 					if (content != null) {
 						Log.finest("Satisfying interest: " + interest + " with content " + content.name());
 						_library.put(content);
@@ -58,7 +58,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	}
 	
 	private void startReadProcess(Interest interest) throws XMLStreamException {
-		for (RepositoryDataListener listener : _daemon.getDataListeners()) {
+		for (RepositoryDataListener listener : _server.getDataListeners()) {
 			if (listener.getOrigInterest().equals(interest)) {
 				Log.info("Write request " + interest.name() + " is a duplicate, ignoring");
 				return;
@@ -73,7 +73,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		 * to allow new sessions that are within the new namespace to start but figuring out all
 		 * the locking/startup issues surrounding this is complex so for now we just don't allow it.
 		 */
-		if (_daemon.getPendingNameSpaceState()) {
+		if (_server.getPendingNameSpaceState()) {
 			Log.info("Discarding write request " + interest.name() + " due to pending namespace change");
 			return;
 		}
@@ -81,10 +81,10 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
 		try {
 			Log.info("Processing write request for " + listeningName);
-			Interest readInterest = Interest.constructInterest(listeningName, _daemon.getExcludes(), null);
-			RepositoryDataListener listener = _daemon.addListener(interest, readInterest);
-			_daemon.getWriter().put(interest.name(), _daemon.getRepository().getRepoInfo(null), null, null,
-					_daemon.getFreshness());
+			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null);
+			RepositoryDataListener listener = _server.addListener(interest, readInterest);
+			_server.getWriter().put(interest.name(), _server.getRepository().getRepoInfo(null), null, null,
+					_server.getFreshness());
 			listener.getInterests().add(readInterest, null);
 			_library.expressInterest(readInterest, listener);
 		} catch (Exception e) {
@@ -94,10 +94,10 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	}
 	
 	public void nameEnumeratorResponse(Interest interest) {
-		NameEnumerationResponse ner = _daemon.getRepository().getNamesWithPrefix(interest);
+		NameEnumerationResponse ner = _server.getRepository().getNamesWithPrefix(interest);
 
 		if (ner!=null && ner.hasNames()) {
-			_daemon.sendEnumerationResponse(ner);
+			_server.sendEnumerationResponse(ner);
 			Log.fine("sending back name enumeration response "+ner.getPrefix());
 		} else {
 			Log.fine("we are not sending back a response to the name enumeration interest (interest.name() = "+interest.name()+")");
