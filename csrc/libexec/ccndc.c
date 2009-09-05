@@ -643,10 +643,10 @@ incoming_interest(
   	if (size < 0) 
   	    return (CCN_UPCALL_RESULT_ERR);
   	msg = msg + size;
-  	NS_GET16(type, msg);
-  	NS_GET16(class, msg);
-  	NS_GET32(ttl, msg);
-  	NS_GET16(size, msg);
+  	GETSHORT(type, msg);
+  	GETSHORT(class, msg);
+  	GETLONG(ttl, msg);
+  	GETSHORT(size, msg);
   	if ((end = msg + size) > msgend)
             return (CCN_UPCALL_RESULT_ERR);
 
@@ -655,9 +655,9 @@ incoming_interest(
             continue;
   	}
 
-  	NS_GET16(priority, msg);
-  	NS_GET16(weight, msg);
-  	NS_GET16(port, msg);
+  	GETSHORT(priority, msg);
+  	GETSHORT(weight, msg);
+  	GETSHORT(port, msg);
   	size = dn_expand(ans.buf, msgend, msg, host, sizeof (host));
   	if (size < 0)
             return (CCN_UPCALL_RESULT_ERR);
