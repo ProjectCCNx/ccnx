@@ -54,7 +54,7 @@ public class CommandMarkers {
 	(byte)0xF6, (byte)0xF7, (byte)0xF8, (byte)0xF9, (byte)0xFA, (byte)0xFB, (byte)0xFC, 
 	(byte)0xFD, (byte)0xFE};
 
-	public static final byte COMMAND_PREFIX_BYTE = (byte)0xC0;
+	public static final byte COMMAND_PREFIX_BYTE = (byte)0xC1;
 	
 	/**
 	 * %C0.
@@ -115,7 +115,7 @@ public class CommandMarkers {
 		String cs = extractCommandString(commandComponent);
 		int lastDot = cs.lastIndexOf(COMMAND_SEPARATOR);
 		if (lastDot < 0) {
-			return cs;
+			return null;
 		}
 		return cs.substring(0, lastDot);
 	}
@@ -123,10 +123,8 @@ public class CommandMarkers {
 	public static String getCommand(byte [] commandComponent) {
 		String cs = extractCommandString(commandComponent);
 		int lastDot = cs.lastIndexOf(COMMAND_SEPARATOR);
-		if (lastDot < 0) {
-			return null;
-		}
 		int firstTilde = cs.indexOf(ARGUMENT_SEPARATOR);
+		// if lastDot not there, lastDot = 0 and namespace is null, 0 correct starting point.
 		if (firstTilde < 0)
 			return cs.substring(lastDot+1);
 		return cs.substring(lastDot + 1, firstTilde);

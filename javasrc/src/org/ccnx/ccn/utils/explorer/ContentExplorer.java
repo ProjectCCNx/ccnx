@@ -34,7 +34,7 @@ import org.ccnx.ccn.utils.explorer.Name;
 
 
 
-public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,ActionListener{
+public class ContentExplorer extends JFrame implements BasicNameEnumeratorListener,ActionListener{
 
 	private static ContentName root;
 	private static boolean accessControlOn = false;
@@ -80,8 +80,8 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 	
 	
 	
-	public ContainerGUI() {
-		super("CCN Repository Explorer");
+	public ContentExplorer() {
+		super("CCN Content Explorer");
 		
 		setupNameEnumerator();
 
@@ -189,7 +189,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 					});				
 				} else {
 					//Can't handle filetype
-					JOptionPane.showMessageDialog(ContainerGUI.this, "Cannot Open file "+ name+" Currently only opens .txt and .text files.", "Only handles .txt and .text files at this time.", JOptionPane.ERROR_MESSAGE);
+					JOptionPane.showMessageDialog(ContentExplorer.this, "Cannot Open file "+ name+" Currently only opens .txt and .text files.", "Only handles .txt and .text files at this time.", JOptionPane.ERROR_MESSAGE);
 				}
 			}
 
@@ -360,7 +360,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 			public void actionPerformed(ActionEvent e) {
 				tree.repaint();
-				JOptionPane.showMessageDialog(ContainerGUI.this,
+				JOptionPane.showMessageDialog(ContentExplorer.this,
 						"Delete option is not implemented", "Info",
 						JOptionPane.INFORMATION_MESSAGE);
 			}
@@ -375,7 +375,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
 
 			public void actionPerformed(ActionEvent e) {
 				tree.repaint();
-				JOptionPane.showMessageDialog(ContainerGUI.this,
+				JOptionPane.showMessageDialog(ContentExplorer.this,
 						"Rename option is not implemented", "Info",
 						JOptionPane.INFORMATION_MESSAGE);
 			}
@@ -780,11 +780,10 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
                 createAndShowGUI();
             }
         });
-//		new ContainerGUI();
 	}
 
 	public static void usage(){
-		System.out.println("Repository Explorer usage: [-root /pathToExplore] [-accessControl]");
+		System.out.println("Content Explorer usage: [-root /pathToExplore] [-accessControl]");
 	}
 	
     public String getNodes(Name fnode) {
@@ -834,7 +833,7 @@ public class ContainerGUI extends JFrame implements BasicNameEnumeratorListener,
             }
         }
 
-        new ContainerGUI();
+        new ContentExplorer();
         //Create and set up the window.
 //        JFrame frame = new JFrame("CCN Demo");
 //        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
