@@ -11,8 +11,8 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
-import org.ccnx.ccn.impl.repo.RFSLogImpl;
-import org.ccnx.ccn.impl.repo.Repository;
+import org.ccnx.ccn.impl.repo.LogStructRepoStore;
+import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNOutputStream;
@@ -33,13 +33,13 @@ public class RepoPerformanceTester extends CCNOutputStream {
 
 	private class TestFlowControl extends CCNFlowControl {
 		
-		private Repository _repo = null;
+		private RepositoryStore _repo = null;
 		
 		public TestFlowControl(String repoName, ContentName name, CCNHandle library)
 				throws MalformedContentNameStringException, RepositoryException, IOException {
 			super(name, library);
 			if (repoName != null) {
-				_repo = new RFSLogImpl();
+				_repo = new LogStructRepoStore();
 				_repo.initialize(library, repoName, null, null, null);
 			}
 		}

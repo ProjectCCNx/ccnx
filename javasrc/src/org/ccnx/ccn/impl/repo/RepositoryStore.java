@@ -13,15 +13,21 @@ import org.ccnx.ccn.protocol.Interest;
 
 
 /**
- * Designed to contain all methods that talk to the repository
- * directly so that we can easily replace the repository with a
- * different implementation.  
+ * A RepositoryStore stores ContentObjects for later retrieval
+ * by Interest and supports enumeration of names.
+ * A variety of different implementations are possible; typically
+ * RepositoryStores will provide persistence of 
+ * content through use of an external stable store like 
+ * a filesystem.  A RepositoryStore is the lower half of 
+ * a full persistent Repository, the part that handles 
+ * the storage, as opposed to the Repository Protocol which 
+ * is implemented by a RepositoryServer. 
  * 
  * @author rasmusse
  *
  */
 
-public interface Repository {
+public interface RepositoryStore {
 
 	public static final String REPO_POLICY = "policy.xml";
 	public static final String REPO_NAMESPACE = "/ccn/repository";

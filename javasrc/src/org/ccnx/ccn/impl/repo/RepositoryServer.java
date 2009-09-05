@@ -15,7 +15,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.repo.Repository.NameEnumerationResponse;
+import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.io.content.Collection;
@@ -28,7 +28,7 @@ import org.ccnx.ccn.protocol.Interest;
 /**
  * High level implementation of repository protocol that
  * can be used by any application to provide repository service. 
- * The application must supply a Repository instance to take care of actual storage
+ * The application must supply a RepositoryStore instance to take care of actual storage
  * and retrieval, which might use persistent storage or application data structures.
  * 
  * @author rasmusse
@@ -48,7 +48,7 @@ import org.ccnx.ccn.protocol.Interest;
  */
 
 public class RepositoryServer {
-	private Repository _repo = null;
+	private RepositoryStore _repo = null;
 	private CCNHandle _handle = null;
 	private ArrayList<NameAndListener> _repoFilters = new ArrayList<NameAndListener>();
 	private ArrayList<RepositoryDataListener> _currentListeners = new ArrayList<RepositoryDataListener>();
@@ -109,10 +109,10 @@ public class RepositoryServer {
 	 * Constructor.  Note that merely creating an instance does not begin service 
 	 * of requests from the network.  For that you must call start().
 	 * @param handle the CCNHandle to use for communication
-	 * @param repo the Repository instance to use for backing storage
+	 * @param repo the RepositoryStore instance to use for backing storage
 	 * @throws IOException
 	 */
-	public RepositoryServer(CCNHandle handle, Repository repo) throws IOException {
+	public RepositoryServer(CCNHandle handle, RepositoryStore repo) throws IOException {
 			_handle = handle;
 			_repo = repo;
 			_writer = new CCNWriter(_handle);
@@ -244,7 +244,7 @@ public class RepositoryServer {
 		return _handle;
 	}
 	
-	public Repository getRepository() {
+	public RepositoryStore getRepository() {
 		return _repo;
 	}
 	

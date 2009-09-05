@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.repo.Policy;
-import org.ccnx.ccn.impl.repo.Repository;
+import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryInfo;
 import org.ccnx.ccn.protocol.ContentName;
@@ -14,7 +14,7 @@ import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
-public class BitBucketRepository implements Repository {
+public class BitBucketRepository implements RepositoryStore {
 	
 	public boolean checkPolicyUpdate(ContentObject co)
 			throws RepositoryException {

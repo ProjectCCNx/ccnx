@@ -36,10 +36,10 @@ import org.ccnx.ccn.protocol.SignedInfo;
  * 
  * @author jthornto, rbraynar, rasmusse
  *
- * Implements a repository using sequential data files (log-structured) with an index for queries
+ * Implements a log-structured RepositoryStore on a filesystem using sequential data files with an index for queries
  */
 
-public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
+public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentGetter {
 
 	public final static String CURRENT_VERSION = "1.4";
 		

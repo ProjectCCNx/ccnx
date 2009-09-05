@@ -5,10 +5,10 @@ import java.security.InvalidParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
-import org.ccnx.ccn.impl.repo.RFSLogImpl;
-import org.ccnx.ccn.impl.repo.Repository;
+import org.ccnx.ccn.impl.repo.LogStructRepoStore;
+import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.repo.RepositoryException;
-import org.ccnx.ccn.impl.repo.Repository.NameEnumerationResponse;
+import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.SegmentationProfile;
@@ -40,7 +40,7 @@ import org.junit.Test;
 
 public class RFSTest extends RepoTestBase {
 	
-	Repository repolog; // Instance of simple log-based repo implementation under test
+	RepositoryStore repolog; // Instance of simple log-based repo implementation under test
 	
 	private ContentName longName;
 	private ContentName badCharName;
@@ -65,7 +65,7 @@ public class RFSTest extends RepoTestBase {
 	}
 						
 	public void initRepoLog() throws Exception {
-		repolog = new RFSLogImpl();
+		repolog = new LogStructRepoStore();
 		repolog.initialize(putLibrary, _fileTestDir, null, _repoName, _globalPrefix);
 	}
 	
@@ -80,7 +80,7 @@ public class RFSTest extends RepoTestBase {
 	}
 	
 	
-	public void test(Repository repo) throws Exception{		
+	public void test(RepositoryStore repo) throws Exception{		
 		System.out.println("Repotest - Testing basic data");
 		ContentName name = ContentName.fromNative("/repoTest/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
@@ -270,7 +270,7 @@ public class RFSTest extends RepoTestBase {
 		repo.shutDown();
 	}
 	
-	public void testReinitialization(Repository repo) throws Exception {
+	public void testReinitialization(RepositoryStore repo) throws Exception {
 		
 		System.out.println("Repotest - Testing reinitialization of repo");
 		// Since we have 2 pieces of data with the name "longName" we need to compute the
@@ -296,7 +296,7 @@ public class RFSTest extends RepoTestBase {
 	
 	@Test
 	public void testPolicy() throws Exception {
-		Repository repo = new RFSLogImpl();
+		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
 			repo.initialize(putLibrary, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null);
 			Assert.fail("Bad policy file succeeded");
@@ -322,11 +322,11 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, outOfNameSpaceName, "Shouldn't see this");	
 	}
 	
-	private void checkData(Repository repo, ContentName name, String data) throws RepositoryException {
+	private void checkData(RepositoryStore repo, ContentName name, String data) throws RepositoryException {
 		checkData(repo, new Interest(name), data);
 	}
 	
-	private void checkDataWithDigest(Repository repo, ContentName name, String data) throws RepositoryException {
+	private void checkDataWithDigest(RepositoryStore repo, ContentName name, String data) throws RepositoryException {
 		// When generating an Interest for the exact name with content digest, need to set maxSuffixComponents
 		// to 0, signifying that name ends with explicit digest
 		Interest interest = new Interest(name);
@@ -334,13 +334,13 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, interest, data);
 	}
 
-	private void checkData(Repository repo, Interest interest, String data) throws RepositoryException {
+	private void checkData(RepositoryStore repo, Interest interest, String data) throws RepositoryException {
 		ContentObject testContent = repo.getContent(interest);
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));		
 	}
 	
-	private void checkDataAndPublisher(Repository repo, ContentName name, String data, PublisherPublicKeyDigest publisher) 
+	private void checkDataAndPublisher(RepositoryStore repo, ContentName name, String data, PublisherPublicKeyDigest publisher) 
 				throws RepositoryException {
 		Interest interest = new Interest(name, new PublisherID(publisher));
 		ContentObject testContent = repo.getContent(interest);

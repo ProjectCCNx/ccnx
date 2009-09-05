@@ -246,7 +246,7 @@ public class BasicPolicy implements Policy {
 	}
 	
 	public static ContentName getPolicyName(ContentName globalPrefix, String localName) {
-		return ContentName.fromNative(globalPrefix, new String[]{localName, Repository.REPO_DATA, Repository.REPO_POLICY});
+		return ContentName.fromNative(globalPrefix, new String[]{localName, RepositoryStore.REPO_DATA, RepositoryStore.REPO_POLICY});
 	}
 	
 	public ContentName getPolicyName() { return getPolicyName(_globalPrefix, _localName); }

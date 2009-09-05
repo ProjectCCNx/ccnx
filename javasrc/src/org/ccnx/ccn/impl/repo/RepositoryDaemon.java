@@ -18,7 +18,7 @@ import org.ccnx.ccn.test.BitBucketRepository;
  */
 public class RepositoryDaemon extends Daemon {
 	RepositoryServer _server;
-	Repository _repo;
+	RepositoryStore _repo;
 	CCNHandle _handle;
 	
 	protected class RepositoryWorkerThread extends Daemon.WorkerThread {
@@ -134,7 +134,7 @@ public class RepositoryDaemon extends Daemon {
 				SystemConfiguration.setLogging("repo", false);
 			
 			if (_repo == null)	// default lower half
-				_repo = new RFSLogImpl();
+				_repo = new LogStructRepoStore();
 			
 			_repo.initialize(_handle, repositoryRoot, policyFile, localName, globalPrefix);
 			_server = new RepositoryServer(_handle, _repo);
