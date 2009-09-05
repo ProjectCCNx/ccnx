@@ -14,8 +14,8 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #define BIND_8_COMPAT
-#include <resolv.h>
 #include <arpa/nameser.h>
+#include <resolv.h>
 #include <errno.h>
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
