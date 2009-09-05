@@ -286,7 +286,7 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="com.parc.ccn.LogLevel" value="FINEST"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINEST"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/protocol/*TestRepo.class"/>
@@ -481,7 +481,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RepoInitialReadTest.class"/>
@@ -500,7 +500,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RepoIOTest.class"/>
@@ -519,7 +519,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="UNDEFINED"/>
@@ -654,7 +654,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/security/crypto/*Test.class"/>
@@ -675,7 +675,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/security/crypto/*TestRepo.class"/>
@@ -699,7 +699,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/profiles/access/*Test.class"/>
@@ -719,7 +719,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-			<sysproperty key="com.parc.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/profiles/access/*TestRepo.class"/>

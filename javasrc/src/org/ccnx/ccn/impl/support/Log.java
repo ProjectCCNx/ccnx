@@ -32,7 +32,7 @@ public class Log {
 	/**
 	 * Property to set log level.
 	 */
-	public static final String DEFAULT_LOG_LEVEL_PROPERTY = "com.parc.ccn.LogLevel";
+	public static final String DEFAULT_LOG_LEVEL_PROPERTY = "org.ccnx.ccn.LogLevel";
 	
 	static Logger _systemLogger = null;
 	static int _level;
