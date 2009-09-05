@@ -13,6 +13,8 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.ccnx.ccn.config.SystemConfiguration;
+
 /**
  * Our own wrapper for the standard java.util Logging classes.
  */
@@ -69,7 +71,12 @@ public class Log {
 				Date theDate = new Date();
 				SimpleDateFormat df = new SimpleDateFormat("yy-MM-dd-HHmmss");
 				logFileName.append(df.format(theDate));
-				logFileName.append("-" + new Random().nextInt(1000));
+				String pid = SystemConfiguration.getPID();
+				if (null != pid) {
+					logFileName.append("-" + pid);
+				} else {
+					logFileName.append("-R" + new Random().nextInt(1000));
+				}
 				logFileName.append(DEFAULT_LOG_SUFFIX);
 
 				theHandler = new FileHandler(logFileName.toString());
