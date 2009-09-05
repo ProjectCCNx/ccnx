@@ -30,4 +30,4 @@ fi
 ccndsmoketest `find "$HOME/.ccn/keyCache" -type f -name \*.ccnb`
 
 # Run ccndc if a static config file is present.
-test -f $HOME/.ccn/ccnd.conf && ccndc -f ccnd.conf
+test -f $HOME/.ccn/ccnd.conf && ccndc -f $HOME/.ccn/ccnd.conf
