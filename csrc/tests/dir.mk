@@ -1,6 +1,6 @@
 # makefile for csrc/tests directory
 
-SCRIPTSRC = testdriver.sh shebang functions preamble settings $(ALLTESTS)
+SCRIPTSRC = testdriver.sh functions preamble settings $(ALLTESTS)
 DUPDIR = stubs
 
 TESTS = $(ALLTESTS)
@@ -43,7 +43,7 @@ check test: $(SCRIPTSRC) testdriver stubs
 	: -------------- :
 
 testdriver: testdriver.sh
-	./shebang $(SH) testdriver.sh > testdriver
+	../util/shebang $(SH) testdriver.sh > testdriver
 	chmod +x testdriver
 
 default all clean check test: _always
