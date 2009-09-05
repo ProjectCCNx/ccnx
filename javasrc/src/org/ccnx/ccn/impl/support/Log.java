@@ -24,15 +24,16 @@ public class Log {
 	public static final String DEFAULT_APPLICATION_CLASS =
 		"com.parc.ccn.Library";
 
-	public static final String DEFAULT_LOG_DIR = "log";
 	public static final String DEFAULT_LOG_FILE = "ccn_";
 	public static final String DEFAULT_LOG_SUFFIX = ".log";
 	public static final Level DEFAULT_LOG_LEVEL = Level.INFO;
 	
 	/**
-	 * Property to set log level.
+	 * Properties and environment variables to set log parameters.
 	 */
 	public static final String DEFAULT_LOG_LEVEL_PROPERTY = "org.ccnx.ccn.LogLevel";
+	public static final String LOG_DIR_PROPERTY = "org.ccnx.ccn.LogDir";
+	public static final String LOG_DIR_ENV = "CCN_LOG_DIR";
 	
 	static Logger _systemLogger = null;
 	static int _level;
@@ -42,34 +43,45 @@ public class Log {
 		Handler theHandler = null;
 		_systemLogger = Logger.getLogger(DEFAULT_APPLICATION_CLASS);
 
-		StringBuffer logFileName = new StringBuffer();
 		
-		try {
-			// See if log dir exists, if not make it.
-			File dir = new File(DEFAULT_LOG_DIR);
-			if (!dir.exists() || !dir.isDirectory()) {
-				if (!dir.mkdir()) {
-					System.err.println("Cannot open log directory " + DEFAULT_LOG_DIR);
-					throw new IOException("Cannot open log directory " + DEFAULT_LOG_DIR);
-				}
-			}
-			String sep = System.getProperty("file.separator");
-			
-			logFileName.append(DEFAULT_LOG_DIR + sep + DEFAULT_LOG_FILE);
-			Date theDate = new Date();
-			SimpleDateFormat df = new SimpleDateFormat("yy-MM-dd-HHmmss");
-			logFileName.append(df.format(theDate));
-			logFileName.append("-" + new Random().nextInt(1000));
-			logFileName.append(DEFAULT_LOG_SUFFIX);
-			
-			theHandler = new FileHandler(logFileName.toString());
+		String logdir = System.getProperty(LOG_DIR_PROPERTY);
+		if (null == logdir) {
+			logdir = System.getenv(LOG_DIR_ENV);
+		}
 
-		} catch (IOException e) {
-			// Can't open that file
-			System.err.println("Cannot open log file: " + logFileName);
-			e.printStackTrace();
-			
-			theHandler = new ConsoleHandler();
+		// Only set up file handler if log directory is set
+		if (null != logdir) {
+			StringBuffer logFileName = new StringBuffer();
+			try {
+				// See if log dir exists, if not make it.
+				File dir = new File(logdir);
+				if (!dir.exists() || !dir.isDirectory()) {
+					if (!dir.mkdir()) {
+						System.err.println("Cannot open log directory "
+								+ logdir);
+						throw new IOException("Cannot open log directory "
+								+ logdir);
+					}
+				}
+				String sep = System.getProperty("file.separator");
+
+				logFileName.append(logdir + sep + DEFAULT_LOG_FILE);
+				Date theDate = new Date();
+				SimpleDateFormat df = new SimpleDateFormat("yy-MM-dd-HHmmss");
+				logFileName.append(df.format(theDate));
+				logFileName.append("-" + new Random().nextInt(1000));
+				logFileName.append(DEFAULT_LOG_SUFFIX);
+
+				theHandler = new FileHandler(logFileName.toString());
+				System.out.println("Writing log records to " + logFileName);
+				
+			} catch (IOException e) {
+				// Can't open that file
+				System.err.println("Cannot open log file: " + logFileName);
+				e.printStackTrace();
+
+				theHandler = new ConsoleHandler();
+			}
 		}
 		if (null != theHandler) {
 			_systemLogger.addHandler(theHandler);
