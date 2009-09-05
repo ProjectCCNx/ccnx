@@ -13,3 +13,5 @@ ccndstart: ccndstart.sh
 clean:
 	rm -f $(PROGRAMS)
 
+test:
+	@echo "Sorry, no libexec unit tests at this time"
