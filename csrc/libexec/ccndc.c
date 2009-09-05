@@ -32,6 +32,22 @@
 #define AI_ADDRCONFIG 0 /*IEEE Std 1003.1-2001/Cor 1-2002, item XSH/TC1/D6/20*/
 #endif
 
+#ifndef NS_MAXMSG
+#ifdef MAXMSG
+#define NS_MAXMSG MAXMSG
+#endif
+#endif
+
+#ifndef NS_MAXDNAME
+#ifdef MAXDNAME
+#define NS_MAXDNAME MAXDNAME
+#endif
+#endif
+
+#ifndef T_SRV
+#define T_SRV 33
+#endif
+
 /*
  * private types
  */
