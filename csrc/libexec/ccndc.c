@@ -14,8 +14,8 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #define BIND_8_COMPAT
-#include <arpa/nameser.h>
 #include <resolv.h>
+#include <arpa/nameser.h>
 #include <errno.h>
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
@@ -33,9 +33,7 @@
 #endif
 
 #ifndef NS_MAXMSG
-#ifdef MAXMSG
-#define NS_MAXMSG MAXMSG
-#endif
+#define NS_MAXMSG 65535
 #endif
 
 #ifndef NS_MAXDNAME
@@ -66,7 +64,7 @@ static struct ccn_charbuf *no_name = NULL;
 static unsigned char ccndid_storage[32] = {0};
 static const unsigned char *ccndid = ccndid_storage;
 static size_t ccndid_size;
-static res_state state = NULL;
+static struct __res_state *state = NULL;
 
 static void
 usage(const char *progname)
