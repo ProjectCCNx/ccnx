@@ -13,6 +13,7 @@
 #include <sys/time.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#define BIND_8_COMPAT
 #include <arpa/nameser.h>
 #include <resolv.h>
 #include <errno.h>
@@ -46,6 +47,9 @@ struct prefix_face_list_item {
  */
 static struct ccn_charbuf *local_scope_template = NULL;
 static struct ccn_charbuf *no_name = NULL;
+static unsigned char ccndid_storage[32] = {0};
+static const unsigned char *ccndid = ccndid_storage;
+static size_t ccndid_size;
 static res_state state = NULL;
 
 static void
@@ -130,7 +134,7 @@ initialize_global_data(void) {
  * handle, where it should be cached.
  */
 static int
-get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_size)
+get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_storage_size)
 {
 
     struct ccn_charbuf *name = NULL;
@@ -161,7 +165,7 @@ get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_size)
                               pcobuf.offset[CCN_PCO_E_PublisherPublicKeyDigest],
                               &ccndid_result, &ccndid_result_size);
     ON_ERROR_EXIT(res);
-    if (ccndid_result_size > ccndid_size)
+    if (ccndid_result_size > ccndid_storage_size)
         ON_ERROR_EXIT(-1);
     memcpy((void *)ccndid, ccndid_result, ccndid_result_size);
     ccn_charbuf_destroy(&name);
@@ -554,8 +558,10 @@ incoming_interest(
     const unsigned char *ccnb = info->interest_ccnb;
     struct ccn_parsed_interest *pi = info->pi;
     struct ccn_indexbuf *comps = info->interest_comps;
+    struct ccn_keystore *keystore = selfp->data;
     const unsigned char *comp0 = NULL;
     size_t comp0_size = 0;
+    char *proto = NULL;
     union {
         HEADER header;
         unsigned char buf[NS_MAXMSG];
@@ -567,6 +573,9 @@ incoming_interest(
     unsigned char *end;
     int type, class, ttl, size, priority, weight, port;
     char host[NS_MAXDNAME];
+    char portstring[10];
+    struct prefix_face_list_item *pflhead = prefix_face_list_item_create();
+    struct prefix_face_list_item *pfl;
     int res;
 
     if (kind == CCN_UPCALL_FINAL)
@@ -589,9 +598,11 @@ incoming_interest(
      * 	       Prefer TCP service over UDP, though this might change.
      */
 
+    proto = "tcp";
     sprintf(srv_name, "_ccnx._tcp.%.*s", comp0_size, comp0);
     ans_size = res_nquery(state, srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
     if (ans_size < 0) {
+        proto = "udp";
         sprintf(srv_name, "_ccnx._udp.%.*s", comp0_size, comp0);
         ans_size = res_nquery(state, srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
         if (ans_size < 0)
@@ -643,7 +654,26 @@ incoming_interest(
   	msg = end;
     }
  
+    /* now process the results */
+    /* pflhead, lineno=0, "add" "ccn:/asdfasdf.com/" "tcp|udp", host, portstring, NULL NULL NULL */
+    sprintf(srv_name, "ccn:/%.*s", comp0_size, comp0);
+    sprintf(portstring, "%d", port);
+    res = process_command_tokens(pflhead, 0,
+                                 "add",
+                                 srv_name,
+                                 proto,
+                                 host,
+                                 portstring,
+                                 NULL, NULL, NULL);
+    if (res < 0)
+        return (CCN_UPCALL_RESULT_ERR);
 
+    for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
+        pfl->fi->ccnd_id = ccndid;
+        pfl->fi->ccnd_id_size = ccndid_size;
+        res = register_prefix(info->h, keystore, pfl->prefix, pfl->fi, pfl->flags);
+    }
+    prefix_face_list_destroy(&pflhead);
     return(CCN_UPCALL_RESULT_OK);
 }
 
@@ -660,9 +690,6 @@ main(int argc, char **argv)
     struct ccn_keystore *keystore = NULL;
     int dynamic = 0;
     struct ccn_closure interest_closure = {.p=&incoming_interest};
-    unsigned char ccndid_storage[32] = {0};
-    const unsigned char *ccndid = ccndid_storage;
-    size_t ccndid_size;
     int res;
     char ch;
     
@@ -736,6 +763,7 @@ main(int argc, char **argv)
     prefix_face_list_destroy(&pflhead);
     if (dynamic) {
         /* Set up a handler for interests */
+        interest_closure.data = keystore;
         ccn_name_init(temp);
         ccn_set_interest_filter(h, temp, &interest_closure);
         ccn_charbuf_destroy(&temp);
