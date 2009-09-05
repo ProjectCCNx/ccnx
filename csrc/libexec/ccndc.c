@@ -64,7 +64,7 @@ static struct ccn_charbuf *no_name = NULL;
 static unsigned char ccndid_storage[32] = {0};
 static const unsigned char *ccndid = ccndid_storage;
 static size_t ccndid_size;
-static struct __res_state *state = NULL;
+/* static struct __res_state *state = NULL; */
 
 static void
 usage(const char *progname)
@@ -134,11 +134,13 @@ initialize_global_data(void) {
     }
     ON_ERROR_EXIT(ccn_name_init(no_name));
 
+#if 0
     /* allocate a resolver library state */
     state = calloc(1, sizeof(*state));
     if (state == NULL) {
         ON_ERROR_EXIT(-1);
     }
+#endif
 }
 
 /*
@@ -606,19 +608,30 @@ incoming_interest(
     if (memchr(comp0, '.', comp0_size) == NULL)
         return (CCN_UPCALL_RESULT_OK);
 
+#if 0
     if (! (state->options & RES_INIT)) res_ninit(state);
-
+#else
+    res_init();
+#endif
     /* Step 1: construct the SRV record name, and see if there's a ccn service gateway.
      * 	       Prefer TCP service over UDP, though this might change.
      */
 
     proto = "tcp";
     sprintf(srv_name, "_ccnx._tcp.%.*s", comp0_size, comp0);
+#if 0
     ans_size = res_nquery(state, srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
+#else
+    ans_size = res_query(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
+#endif
     if (ans_size < 0) {
         proto = "udp";
         sprintf(srv_name, "_ccnx._udp.%.*s", comp0_size, comp0);
+#if 0
         ans_size = res_nquery(state, srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
+#else
+        ans_size = res_query(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
+#endif
         if (ans_size < 0)
             return (CCN_UPCALL_RESULT_ERR);
     }
