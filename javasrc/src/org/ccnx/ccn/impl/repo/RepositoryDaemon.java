@@ -152,8 +152,8 @@ public class RepositoryDaemon extends Daemon {
 		try {
 			// Without parsing args, we don't know which repo impl we will get, so show the default 
 			// impl usage and allow for differences 
-			String msg = "usage: " + this.getClass().getName() + " -start | -stop <pid> | -interactive | -signal <signal> <pid>" +
-			" [-log <level>] [-singlefile | -bb] " + RFSLogImpl.getUsage() + " | <repoimpl-args>";
+			String msg = "usage: " + this.getClass().getName() + " -start -root <repository_root> | -stop <pid> | -interactive | -signal <signal> <pid>" +
+			" [-log <level>] [-policy <policy_file>] [-local <local_name>] [-global <global_prefix>] [-bb]";
 			System.out.println(msg);
 			Log.severe(msg);
 		} catch (Exception e) {

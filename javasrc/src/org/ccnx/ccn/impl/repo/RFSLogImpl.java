@@ -128,10 +128,6 @@ public class RFSLogImpl implements Repository, ContentTree.ContentGetter {
 		return null;
 	}
 
-	public static String getUsage() {
-		return " -root repository_root [-policy policy_file] [-local local_name] [-global global_prefix]\n";
-	}
-
 	protected Integer createIndex() {
 		int max = 0;
 		_index = new ContentTree();
