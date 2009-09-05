@@ -22,7 +22,7 @@ import org.ccnx.ccn.protocol.ContentObject;
 
 public class SystemConfiguration {
 	
-	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES};
+	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES, DUMP_DAEMONCMD};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
 
 	/**

@@ -23,6 +23,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 
 
@@ -329,10 +330,13 @@ public class Daemon {
 		for (String arg : argList) {
 			cmd += arg +  " ";
 		}
-		FileOutputStream fos = new FileOutputStream("daemon_cmd.txt");
-		fos.write(cmd.getBytes());
-		fos.flush();
-		fos.close();
+		
+		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DUMP_DAEMONCMD)) {
+			FileOutputStream fos = new FileOutputStream("daemon_cmd.txt");
+			fos.write(cmd.getBytes());
+			fos.flush();
+			fos.close();
+		}
 		Log.info("Starting daemon with command line: " + cmd);
 		
 		ProcessBuilder pb = new ProcessBuilder(argList);
