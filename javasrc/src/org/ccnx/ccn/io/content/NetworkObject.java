@@ -73,23 +73,11 @@ public abstract class NetworkObject<E> {
 		
 		if (!_available) {
 			Log.info("Update -- first initialization.");
-			_data = newData;
-			_available = true;
-			_isDirty = false;
 		}
-		if (null == _data) {
-			if (null != newData) {
-				Log.info("Update -- got new non-null " + newData.getClass().getName());
-				_data = merge(input, newData);
-			} else {
-				Log.info("Update -- value still null.");
-			}
-		} else if (_data.equals(newData)) {
-			Log.info("Update -- value hasn't changed.");
-		} else {
-			Log.info("Update -- got new " + newData.getClass().getName());
-			_data = merge(input, newData);
-		}
+		
+		_data = newData;
+		_available = true;
+		_isDirty = false;
 	}
 	
 	/**
@@ -99,42 +87,6 @@ public abstract class NetworkObject<E> {
 	 */
 	public boolean available() {
 		return _available;
-	}
-	
-	protected void setAvailable(boolean available) {
-		_available = available;
-	}
-
-	/**
-	 * Why pass in input? Because some subclasses have input streams that
-	 * know more about their data than we do at this point... If the
-	 * result of the merge is that there is no difference from what
-	 * we just saw on the wire, set _isDirty to false. If 
-	 * merge does a true merge, then set _isDirty to true.
-	 * @param input
-	 * @param newData
-	 * @return
-	 */
-	protected E merge(InputStream input, E newData) {
-		_isDirty = false;
-		return newData;
-	}
-
-	/**
-	 * Subclasses should expose methods to update _data,
-	 * but possibly not _data itself. Ideally any dangerous operation
-	 * (like giving access to some variable that could be changed) will
-	 * mark the object as _isDirty.
-	 * @return Returns the data. Whether null data is allowed or not is
-	 *   determined by the subclass, which can override available() (by
-	 *   default, data cannot be null).
-	 * @throws ContentNotReadyException if the object has not finished retrieving data/having data set
-	 */
-	protected E data() throws ContentNotReadyException, ContentGoneException { 
-		if (!available()) {
-			throw new ContentNotReadyException("No data yet saved or retrieved!");
-		}
-		return _data; 
 	}
 	
 	public void setData(E data) { 
@@ -155,6 +107,27 @@ public abstract class NetworkObject<E> {
 		}
 	}
 
+	protected void setAvailable(boolean available) {
+		_available = available;
+	}
+
+	/**
+	 * Subclasses should expose methods to update _data,
+	 * but possibly not _data itself. Ideally any dangerous operation
+	 * (like giving access to some variable that could be changed) will
+	 * mark the object as _isDirty.
+	 * @return Returns the data. Whether null data is allowed or not is
+	 *   determined by the subclass, which can override available() (by
+	 *   default, data cannot be null).
+	 * @throws ContentNotReadyException if the object has not finished retrieving data/having data set
+	 */
+	protected E data() throws ContentNotReadyException, ContentGoneException { 
+		if (!available()) {
+			throw new ContentNotReadyException("No data yet saved or retrieved!");
+		}
+		return _data; 
+	}
+	
 	/**
 	 * Base behavior -- always write when asked.
 	 * @param output
@@ -179,8 +152,16 @@ public abstract class NetworkObject<E> {
 		}
 	}
 
-	protected boolean isDirty() throws IOException {
+	protected boolean isDirty() {
 		return _isDirty;
+	}
+	
+	/**
+	 * True if the content was either read from the network or was saved locally.
+	 * @return
+	 */
+	public boolean isSaved() {
+		return available() && !isDirty();
 	}
 
 	protected void setDirty(boolean dirty) { _isDirty = dirty; }
