@@ -576,7 +576,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return readInternal(null, 0, (int)n);
 	}
 
-	protected int segmentCount() {
+	protected int segmentCount() throws IOException {
 		return 0;
 	}
 
@@ -594,15 +594,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return skip(position);
 	}
 
-	public long tell() {
-		try {
-			return _currentSegment.contentLength() - _segmentReadStream.available();
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		} // could implement a running count...
+	public long tell() throws IOException {
+		return _currentSegment.contentLength() - _segmentReadStream.available();
 	}
 
-	public long length() {
+	public long length() throws IOException {
 		return -1;
 	}
 

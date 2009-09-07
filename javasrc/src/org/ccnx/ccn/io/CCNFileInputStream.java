@@ -260,7 +260,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	}
 	
 	@Override
-	protected int segmentCount() {
+	protected int segmentCount() throws IOException {
 		if (hasHeader()) {
             return _header.segmentCount();
 		}
@@ -317,7 +317,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	}
 
 	@Override
-	public long tell() {
+	public long tell() throws IOException {
 		if (hasHeader()) {
 			return _header.segmentLocationToPosition(segmentNumber(), (int)super.tell());
 		} else {
@@ -326,7 +326,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	}
 	
 	@Override
-	public long length() {
+	public long length() throws IOException {
 		if (hasHeader()) {
 			return _header.length();
 		}
