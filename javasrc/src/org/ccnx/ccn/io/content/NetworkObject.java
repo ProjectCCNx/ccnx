@@ -155,7 +155,7 @@ public abstract class NetworkObject<E> {
 			if (data != null) {
 				_data = data;
 				setDirty(true);
-				setAvailable(data == null);				
+				setAvailable(true);				
 			}
 		}
 	}
