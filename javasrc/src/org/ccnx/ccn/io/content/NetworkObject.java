@@ -37,9 +37,7 @@ public abstract class NetworkObject<E> {
 	
 	public NetworkObject(Class<E> type, E data) {
 		this(type);
-		_data = data;
-		// we don't mark data as available till we've called update or save
-		_available = false;
+		setData(data); // marks data as available
 	}
 
 	protected E factory() throws IOException {
@@ -89,6 +87,10 @@ public abstract class NetworkObject<E> {
 	public boolean available() {
 		return _available;
 	}
+	
+	protected void setAvailable(boolean available) {
+		_available = available;
+	}
 
 	/**
 	 * Why pass in input? Because some subclasses have input streams that
@@ -110,16 +112,22 @@ public abstract class NetworkObject<E> {
 	 * but possibly not _data itself. Ideally any dangerous operation
 	 * (like giving access to some variable that could be changed) will
 	 * mark the object as _potentiallyDirty.
-	 * @return Returns null if the data is not yet available
-	 * or the data is gone or the data is null.
-	 * TBD: is null data supported?
+	 * @return Returns the data. Whether null data is allowed or not is
+	 *   determined by the subclass, which can override available() (by
+	 *   default, data cannot be null).
+	 * @throws ContentNotReadyException if the object has not finished retrieving data/having data set
 	 */
-	protected E data() { return _data; }
+	protected E data() throws ContentNotReadyException, ContentGoneException { 
+		if (!available()) {
+			throw new ContentNotReadyException("No data yet saved or retrieved!");
+		}
+		return _data; 
+	}
 	
 	public void setData(E data) { 
 		_data = data; 
-		_available = true;
 		setPotentiallyDirty(true);
+		setAvailable(true);
 	}
 
 	/**

@@ -76,21 +76,21 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		@Override
 		public ContentType contentType() { return ContentType.LINK; }
 
-		public ContentName getTargetName() { 
+		public ContentName getTargetName() throws ContentGoneException, ContentNotReadyException { 
 			Link lr = link();
 			if (null == lr)
 				return null;
 			return lr.targetName(); 
 		}
 
-		public LinkAuthenticator getTargetAuthenticator() { 
+		public LinkAuthenticator getTargetAuthenticator() throws ContentNotReadyException, ContentGoneException { 
 			Link lr = link();
 			if (null == lr)
 				return null;
 			return lr.targetAuthenticator(); 
 		}
 
-		public Link link() { 
+		public Link link() throws ContentNotReadyException, ContentGoneException { 
 			if (null == data())
 				return null;
 			return data(); 

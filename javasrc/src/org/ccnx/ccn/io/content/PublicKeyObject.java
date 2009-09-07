@@ -79,7 +79,7 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 */
 	public ContentType contentType() { return ContentType.KEY; }
 
-	public PublicKey publicKey() { return data(); }
+	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException { return data(); }
 
 	@Override
 	protected PublicKey readObjectImpl(InputStream input) throws IOException, XMLStreamException {

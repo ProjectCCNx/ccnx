@@ -9,6 +9,8 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentGoneException;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Header;
 import org.ccnx.ccn.io.content.Header.HeaderObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
@@ -76,7 +78,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	}
 	
 	public boolean hasHeader() {
-		return (headerRequested() && _header.available());
+		return (headerRequested() && _header.available() && !_header.isGone());
 	}
 	
 	public void waitForHeader() {
@@ -85,23 +87,15 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		_header.waitForData(); // should take timeout
 	}
 	
-	public Header header() {
-		if (null == _header)
-			return null;
+	public Header header() throws ContentNotReadyException, ContentGoneException {
+		if (!headerRequested())
+			throw new IllegalStateException("Not enough information available to request header!");
 		return _header.header();
 	}
 	
 	protected void requestHeader(ContentName baseName, PublisherPublicKeyDigest publisher) throws IOException, XMLStreamException {
 		if (headerRequested())
 			return; // done already
-		// DKS TODO match header interest to new header name
-		/*
-		Interest headerInterest = new Interest(SegmentationProfile.headerName(baseName), publisher);
-		headerInterest.maxSuffixComponents(1);
-		Library.info("retrieveHeader: base name " + baseName);
-		Library.info("retrieveHeader: header name " + SegmentationProfile.headerName(baseName));
-		_library.expressInterest(headerInterest, this);
-		*/
 		// Ask for the header, but update it in the background, as it may not be there yet.
 		_header = new HeaderObject(SegmentationProfile.headerName(baseName), null, publisher, null, _library);
 		Log.info("Retrieving header : " + _header.getBaseName() + " in background.");
