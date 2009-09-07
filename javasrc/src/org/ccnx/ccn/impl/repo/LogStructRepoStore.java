@@ -20,7 +20,7 @@ import java.util.logging.Level;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.repo.ContentTree.ContentFileRef;
+import org.ccnx.ccn.impl.repo.ContentRef;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -74,6 +74,12 @@ public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentG
 		RandomAccessFile openFile;
 		long nextWritePos;
 	}
+	
+	protected class FileRef extends ContentRef {
+		int id;
+		long offset;
+	}
+
 	
 	public boolean checkPolicyUpdate(ContentObject co)
 			throws RepositoryException {
@@ -154,7 +160,7 @@ public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentG
 					
 						Log.fine("Creating index for " + filenames[i]);
 						while (true) {
-							ContentFileRef ref = _index.new ContentFileRef();
+							FileRef ref = new FileRef();
 							ref.id = index.intValue();
 							ref.offset = rfile.openFile.getFilePointer();
 							if(ref.offset > 0)
@@ -320,7 +326,7 @@ public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentG
 			NameEnumerationResponse ner = new NameEnumerationResponse();
 			synchronized(_activeWriteFile) {
 				assert(null != _activeWriteFile.openFile);
-				ContentFileRef ref = _index.new ContentFileRef();
+				FileRef ref = new FileRef();
 				ref.id = Integer.parseInt(_activeWriteFile.file.getName().substring(CONTENT_FILE_PREFIX.length()));
 				ref.offset = _activeWriteFile.nextWritePos;
 				_activeWriteFile.openFile.seek(_activeWriteFile.nextWritePos);
@@ -346,16 +352,19 @@ public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentG
 		_policy = policy;
 	}
 
-	public ContentObject get(ContentFileRef ref) {
+	public ContentObject get(ContentRef ref) {
+		// This is a call back based on what we put in ContentTree, so it must be
+		// using our subtype of ContentRef
+		FileRef fref = (FileRef)ref;
 		try {
-			RepoFile file = _files.get(ref.id);
+			RepoFile file = _files.get(fref.id);
 			if (null == file)
 				return null;
 			synchronized (file) {
 				if (null == file.openFile) {
 					file.openFile = new RandomAccessFile(file.file, "r");
 				}
-				file.openFile.seek(ref.offset);
+				file.openFile.seek(fref.offset);
 				ContentObject content = new ContentObject();
 				InputStream is = new BufferedInputStream(new RandomAccessInputStream(file.openFile));
 				content.decode(is);

@@ -20,19 +20,9 @@ import org.ccnx.ccn.protocol.Interest;
 
 
 public class ContentTree {
-
-	/**
-	 * ContentFileRef
-	 * @author jthornto, rbraynar, rasmusse
-	 *
-	 */
-	public class ContentFileRef {
-		int id;
-		long offset;
-	}
 	
 	public interface ContentGetter {
-		public ContentObject get(ContentFileRef ref);
+		public ContentObject get(ContentRef ref);
 	}
 	
 	/**
@@ -56,8 +46,8 @@ public class ContentTree {
 		// oneContent is special case when there is only 
 		// a single content object here (to save obj overhead).
 		// either oneContent or content should be null
-		ContentFileRef oneContent;
-		List<ContentFileRef> content;
+		ContentRef oneContent;
+		List<ContentRef> content;
 		long timestamp;
 		boolean interestFlag = false;
 		
@@ -128,7 +118,7 @@ public class ContentTree {
 	 * @param getter
 	 * @return - true if content is not exact duplicate of existing content.
 	 */
-	public boolean insert(ContentObject content, ContentFileRef ref, long ts, ContentGetter getter, NameEnumerationResponse ner) {
+	public boolean insert(ContentObject content, ContentRef ref, long ts, ContentGetter getter, NameEnumerationResponse ner) {
 		final ContentName name = new ContentName(content.name(), content.contentDigest());
 		Log.fine("inserting content: "+name.toString());
 		TreeNode node = root; // starting point
@@ -203,7 +193,7 @@ public class ContentTree {
 				if (null != prev && content.equals(prev))
 					return false;
 			} else if (null != node.content) {
-				for (ContentFileRef oldRef : node.content) {
+				for (ContentRef oldRef : node.content) {
 					ContentObject prev = getter.get(oldRef);
 					if (null != prev && content.equals(prev))
 						return false;
@@ -221,7 +211,7 @@ public class ContentTree {
 			node.content.add(ref);
 		} else {
 			// Second content at current node, need to switch to list
-			node.content = new ArrayList<ContentFileRef>();
+			node.content = new ArrayList<ContentRef>();
 			node.content.add(node.oneContent);
 			node.content.add(ref);
 			node.oneContent = null;
@@ -261,11 +251,11 @@ public class ContentTree {
 	 * @param count
 	 * @return
 	 */
-	protected final List<ContentFileRef> lookup(ContentName name) {
+	protected final List<ContentRef> lookup(ContentName name) {
 		TreeNode node = lookupNode(name, name.count());
 		if (null != node) {
 			if (null != node.oneContent) {
-				ArrayList<ContentFileRef> result = new ArrayList<ContentFileRef>();
+				ArrayList<ContentRef> result = new ArrayList<ContentRef>();
 				result.add(node.oneContent);
 				return result;
 			} else {
@@ -348,17 +338,17 @@ public class ContentTree {
 				Interest publisherFreeInterest = interest.clone();
 				publisherFreeInterest.publisherID(null);
 				if (publisherFreeInterest.matches(digestFreeName, null)) {
-					List<ContentFileRef> content = null;
+					List<ContentRef> content = null;
 					synchronized(node) {
 						if (null != node.oneContent) {
-							content = new ArrayList<ContentFileRef>();
+							content = new ArrayList<ContentRef>();
 							content.add(node.oneContent);
 						} else {
 							assert(null != node.content);
-							content = new ArrayList<ContentFileRef>(node.content);
+							content = new ArrayList<ContentRef>(node.content);
 						}
 					}
-					for (ContentFileRef ref : content) {
+					for (ContentRef ref : content) {
 						ContentObject cand = getter.get(ref);
 						if (interest.matches(cand)) {
 							return cand;
@@ -434,17 +424,17 @@ public class ContentTree {
 		for (int i = options.size()-1; i >= 0 ; i--) {
 			TreeNode candidate = options.get(i);
 			if (null != candidate.oneContent || null != candidate.content) {
-				List<ContentFileRef> content = null;
+				List<ContentRef> content = null;
 				synchronized(candidate) {
 					if (null != candidate.oneContent) {
-						content = new ArrayList<ContentFileRef>();
+						content = new ArrayList<ContentRef>();
 						content.add(candidate.oneContent);
 					} else {
 						assert(null != node.content);
-						content = new ArrayList<ContentFileRef>(candidate.content);
+						content = new ArrayList<ContentRef>(candidate.content);
 					}
 				}
-				for (ContentFileRef ref : content) {
+				for (ContentRef ref : content) {
 					ContentObject cand = getter.get(ref);
 					if (cand!=null && interest.matches(cand)) {
 						return cand;
@@ -500,9 +490,9 @@ public class ContentTree {
 		int ncc = interest.name().count();
 		if (null != addl && addl.intValue() == 0) {
 			// Query is for exact match to full name with digest, no additional components
-			List<ContentFileRef> found = lookup(interest.name());
+			List<ContentRef> found = lookup(interest.name());
 			if (found!=null) {
-				for (ContentFileRef ref : found) {
+				for (ContentRef ref : found) {
 					ContentObject cand = getter.get(ref);
 					if (null != cand) {
 						if (interest.matches(cand)) {
