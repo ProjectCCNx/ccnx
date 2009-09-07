@@ -581,7 +581,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	public byte [] getCurrentVersionComponent() {
-		return _currentVersionComponent;
+		if (isSaved())
+			return _currentVersionComponent;
 	}
 	
 	public CCNTime getCurrentVersion() {
