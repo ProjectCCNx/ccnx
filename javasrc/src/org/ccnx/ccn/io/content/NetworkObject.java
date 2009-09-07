@@ -47,7 +47,7 @@ public abstract class NetworkObject<E> {
 	protected Class<E> _type;
 	protected E _data;
 	protected byte [] _lastSaved = null;
-	protected boolean _potentiallyDirty = true;
+	protected boolean _isDirty = true;
 	protected boolean _available = false; // false until first time data is set or updated
 
 	public NetworkObject(Class<E> type) {
@@ -81,7 +81,7 @@ public abstract class NetworkObject<E> {
 			Log.info("Update -- first initialization.");
 			_data = newData;
 			_available = true;
-			_potentiallyDirty = false;
+			_isDirty = false;
 		}
 		if (null == _data) {
 			if (null != newData) {
@@ -115,14 +115,14 @@ public abstract class NetworkObject<E> {
 	 * Why pass in input? Because some subclasses have input streams that
 	 * know more about their data than we do at this point... If the
 	 * result of the merge is that there is no difference from what
-	 * we just saw on the wire, set _potentiallyDirty to false. If 
-	 * merge does a true merge, then set _potentiallyDirty to true.
+	 * we just saw on the wire, set _isDirty to false. If 
+	 * merge does a true merge, then set _isDirty to true.
 	 * @param input
 	 * @param newData
 	 * @return
 	 */
 	protected E merge(InputStream input, E newData) {
-		_potentiallyDirty = false;
+		_isDirty = false;
 		return newData;
 	}
 
@@ -130,7 +130,7 @@ public abstract class NetworkObject<E> {
 	 * Subclasses should expose methods to update _data,
 	 * but possibly not _data itself. Ideally any dangerous operation
 	 * (like giving access to some variable that could be changed) will
-	 * mark the object as _potentiallyDirty.
+	 * mark the object as _isDirty.
 	 * @return Returns the data. Whether null data is allowed or not is
 	 *   determined by the subclass, which can override available() (by
 	 *   default, data cannot be null).
@@ -144,9 +144,20 @@ public abstract class NetworkObject<E> {
 	}
 	
 	public void setData(E data) { 
-		_data = data; 
-		setPotentiallyDirty(true);
-		setAvailable(data == null);
+		if (null != _data) {
+			if (!_data.equals(data)) {
+				_data = data;
+				setDirty(true);
+				setAvailable(data == null);
+			}
+			// else -- setting to same value, not dirty, do nothing
+		} else {
+			if (data != null) {
+				_data = data;
+				setDirty(true);
+				setAvailable(data == null);				
+			}
+		}
 	}
 
 	/**
@@ -173,7 +184,7 @@ public abstract class NetworkObject<E> {
 		} if (null == _lastSaved) {
 			// Definitely save the object
 			internalWriteObject(output);
-		} else if (_potentiallyDirty) {
+		} else if (_isDirty) {
 			// For CCN we don't want to write the thing unless we need to. But 
 			// in general, probably want to write every time we're asked.
 			if (isDirty()) {
@@ -212,9 +223,9 @@ public abstract class NetworkObject<E> {
 		}
 	}
 
-	protected boolean isPotentiallyDirty() { return _potentiallyDirty; }
+	protected boolean isPotentiallyDirty() { return _isDirty; }
 
-	protected void setPotentiallyDirty(boolean dirty) { _potentiallyDirty = dirty; }
+	protected void setDirty(boolean dirty) { _isDirty = dirty; }
 
 	protected void internalWriteObject(OutputStream output) throws IOException {
 		try {
@@ -224,7 +235,7 @@ public abstract class NetworkObject<E> {
 			writeObjectImpl(dos);
 			dos.flush(); // do not close the dos, as it will close output. allow caller to do that.
 			_lastSaved = dos.getMessageDigest().digest();
-			setPotentiallyDirty(false);
+			setDirty(false);
 		} catch (NoSuchAlgorithmException e) {
 			Log.warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
 			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");

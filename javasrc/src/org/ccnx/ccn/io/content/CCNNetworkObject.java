@@ -497,7 +497,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		_currentVersionComponent = name.lastComponent();
 		_currentVersionName = null;
-		setPotentiallyDirty(false);
+		setDirty(false);
 		_available = true;
 		return true;
 	}
