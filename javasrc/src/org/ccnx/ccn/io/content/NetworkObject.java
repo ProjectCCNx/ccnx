@@ -4,15 +4,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InvalidObjectException;
 import java.io.OutputStream;
-import java.security.DigestOutputStream;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.NullOutputStream;
 
 
 
@@ -46,8 +41,7 @@ public abstract class NetworkObject<E> {
 
 	protected Class<E> _type;
 	protected E _data;
-	protected byte [] _lastSaved = null;
-	protected boolean _isDirty = true;
+	protected boolean _isDirty = false;
 	protected boolean _available = false; // false until first time data is set or updated
 
 	public NetworkObject(Class<E> type) {
@@ -157,6 +151,7 @@ public abstract class NetworkObject<E> {
 				setDirty(true);
 				setAvailable(true);				
 			}
+			// else -- setting from null to null, do nothing
 		}
 	}
 
@@ -179,69 +174,24 @@ public abstract class NetworkObject<E> {
 	 */
 	public void saveIfDirty(OutputStream output) throws IOException,
 	XMLStreamException {
-		if (null == _data) {
-			throw new InvalidObjectException("No data to save!");
-		} if (null == _lastSaved) {
-			// Definitely save the object
-			internalWriteObject(output);
-		} else if (_isDirty) {
-			// For CCN we don't want to write the thing unless we need to. But 
-			// in general, probably want to write every time we're asked.
-			if (isDirty()) {
-				internalWriteObject(output);
-			}
+		if (available() && isDirty()) {
+			save(output);
 		}
 	}
 
 	protected boolean isDirty() throws IOException {
-		try {
-			if (_data == null)
-				return _lastSaved != null;
-
-			// Problem -- can't wrap the OOS in a DOS, need to do it the other way round.
-			DigestOutputStream dos = new DigestOutputStream(new NullOutputStream(), 
-					MessageDigest.getInstance(DEFAULT_DIGEST));
-
-			writeObjectImpl(dos);
-			dos.flush();
-			dos.close();
-			byte [] currentValue = dos.getMessageDigest().digest();
-
-			if (Arrays.equals(currentValue, _lastSaved)) {
-				Log.info("Last saved value for object still current.");
-				return false;
-			} else {
-				Log.info("Last saved value for object not current -- object changed.");
-				return true;
-			}
-		} catch (NoSuchAlgorithmException e) {
-			Log.warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
-			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
-		} catch (XMLStreamException e) {
-			// XMLStreamException should never happen, since our code should always write good XML
-			throw new RuntimeException(e);
-		}
+		return _isDirty;
 	}
-
-	protected boolean isPotentiallyDirty() { return _isDirty; }
 
 	protected void setDirty(boolean dirty) { _isDirty = dirty; }
 
 	protected void internalWriteObject(OutputStream output) throws IOException {
 		try {
-			// Problem -- can't wrap the OOS in a DOS, need to do it the other way round.
-			DigestOutputStream dos = new DigestOutputStream(output, 
-					MessageDigest.getInstance(DEFAULT_DIGEST));
-			writeObjectImpl(dos);
-			dos.flush(); // do not close the dos, as it will close output. allow caller to do that.
-			_lastSaved = dos.getMessageDigest().digest();
+			writeObjectImpl(output);
 			setDirty(false);
-		} catch (NoSuchAlgorithmException e) {
-			Log.warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
-			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
 		} catch (XMLStreamException e) {
-			// XMLStreamException should never happen, since our code should always write good XML
-			throw new RuntimeException(e);
+			// TODO when move to 1.6, use nested exceptions
+			throw new IOException("XMLStreamException " + e);
 		}
 	}
 	

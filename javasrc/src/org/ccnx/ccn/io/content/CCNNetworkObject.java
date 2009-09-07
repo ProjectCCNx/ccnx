@@ -570,7 +570,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	public CCNTime getVersion() {
-		if ((null == _currentVersionComponent) || (null == _lastSaved)) {
+		if (null == _currentVersionComponent) {
 			return null;
 		}
 		return VersioningProfile.getVersionComponentAsTimestamp(_currentVersionComponent);
