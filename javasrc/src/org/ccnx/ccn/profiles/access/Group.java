@@ -17,6 +17,8 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.ContentGoneException;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.io.content.PublicKeyObject;
@@ -188,7 +190,7 @@ public class Group {
 
 	PublicKeyObject publicKeyObject() { return _groupPublicKey; }
 	
-	public PublicKey publicKey() { return _groupPublicKey.publicKey(); }
+	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException { return _groupPublicKey.publicKey(); }
 	
 	public ContentName publicKeyName() { return _groupPublicKey.getCurrentVersionName(); }
 	
