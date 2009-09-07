@@ -290,6 +290,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return false;
 	}
 	
+	protected E data() throws ContentNotReadyException, ContentGoneException { 
+		if (isGone()) {
+			throw new ContentGoneException("Content is gone!");
+		}
+		return super.data();
+	}
+	
 	public boolean update() throws XMLStreamException, IOException {
 		return update(DEFAULT_TIMEOUT);
 	}
@@ -644,7 +651,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	public boolean isGone() {
-		return _available && _data == null;
+		return available() && _data == null;
 	}
 	
 	public PublisherPublicKeyDigest contentPublisher() {
