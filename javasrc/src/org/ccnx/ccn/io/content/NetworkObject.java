@@ -20,6 +20,25 @@ import org.ccnx.ccn.io.NullOutputStream;
  * A NetworkObject provides support for storing an object in a network based backing store.
  * It provides support for loading the object from the network, tracking if the object's data
  * has been changed, to determine whether it needs to be saved or not and saving the object.
+ * 
+ * It can have 3 states:
+ * - available: refers to whether it has data (either set by caller or updated from network)
+ * 		(potentiallyDirty refers to whether it has been saved since last set; it might not 
+ * 		 actually be dirty if saved to same value as previous)
+ * - stored: saved to network or updated from network and not since saved
+ * 
+ * It can be:
+ * - not available (no data assigned, not saved or read, basically not ready)
+ * - available but not stored (assigned locally, but not yet stored anywhere; this
+ * 				means that storage-related metadata is unavailable even though data can be read
+ * 				back out), or assigned locally since last stored
+ * 		- if assigned locally but unchanged, it will not be rewritten and last stored
+ * 			metadata 
+ * - available and stored (stored by caller, or read from network)
+ * 
+ * Subclasses can vary as to whether they think null is valid data for an object -- i.e. 
+ * whether assigning the object's value to null makes it available or not. The default behavior
+ * is to not treat a null assignment as a value -- i.e. not available.
  */
 public abstract class NetworkObject<E> {
 
@@ -37,7 +56,7 @@ public abstract class NetworkObject<E> {
 	
 	public NetworkObject(Class<E> type, E data) {
 		this(type);
-		setData(data); // marks data as available
+		setData(data); // marks data as available if non-null
 	}
 
 	protected E factory() throws IOException {
@@ -127,7 +146,7 @@ public abstract class NetworkObject<E> {
 	public void setData(E data) { 
 		_data = data; 
 		setPotentiallyDirty(true);
-		setAvailable(true);
+		setAvailable(data == null);
 	}
 
 	/**
