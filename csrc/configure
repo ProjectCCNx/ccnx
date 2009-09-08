@@ -28,6 +28,7 @@ TryScript "python" "$@"
 TryScript "local" "$@"
 ProvideDefault CPREFLAGS = -I../include
 ProvideDefault PCAP_PROGRAMS = ccndumppcap
+ProvideDefault RESOLV_LIBS = -lresolv
 ProvideDefault INSTALL_BASE = ${INSTALL_BASE:-/usr/local}
 ProvideDefault INSTALL_INCLUDE = '$(INSTALL_BASE)/include'
 ProvideDefault INSTALL_LIB = '$(INSTALL_BASE)/lib'
