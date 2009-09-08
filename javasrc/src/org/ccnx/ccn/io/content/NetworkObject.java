@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InvalidObjectException;
 import java.io.OutputStream;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -43,6 +44,7 @@ public abstract class NetworkObject<E> {
 	protected E _data;
 	protected boolean _isDirty = false;
 	protected boolean _available = false; // false until first time data is set or updated
+	protected ReentrantReadWriteLock _lock = new ReentrantReadWriteLock();
 
 	public NetworkObject(Class<E> type) {
 		_type = type;
@@ -71,13 +73,18 @@ public abstract class NetworkObject<E> {
 		
 		E newData = readObjectImpl(input);
 		
-		if (!_available) {
-			Log.info("Update -- first initialization.");
+		try {
+			_lock.writeLock().lock();
+			if (!_available) {
+				Log.info("Update -- first initialization.");
+			}
+
+			_data = newData;
+			_available = true;
+			_isDirty = false;
+		} finally {
+			_lock.writeLock().unlock();
 		}
-		
-		_data = newData;
-		_available = true;
-		_isDirty = false;
 	}
 	
 	/**
@@ -86,27 +93,44 @@ public abstract class NetworkObject<E> {
 	 * @return false if data has not been set or updated from the network yet
 	 */
 	public boolean available() {
-		return _available;
+		try {
+			_lock.readLock().lock();
+			return _available; // do we need to return a copy of a primitive type?
+		} finally {
+			_lock.readLock().unlock();
+		}
 	}
 	
 	public void setData(E data) { 
-		if (null != _data) {
-			if (!_data.equals(data)) {
-				_data = data;
-				setDirty(true);
-				setAvailable(data != null);
+		try {
+			_lock.writeLock().lock(); // blocks readers. a reader can never get the write lock
+									  // without first releasing read lock and re-checking; go
+									  // for simplicity here and just take the write lock even though
+									  // we might not need it.
+			if (null != _data) {
+				if (!_data.equals(data)) {
+					_data = data;
+					setDirty(true);
+					setAvailable(data != null);
+				}
+				// else -- setting to same value, not dirty, do nothing
+			} else {
+				if (data != null) {
+					_data = data;
+					setDirty(true);
+					setAvailable(true);				
+				}
+				// else -- setting from null to null, do nothing
 			}
-			// else -- setting to same value, not dirty, do nothing
-		} else {
-			if (data != null) {
-				_data = data;
-				setDirty(true);
-				setAvailable(true);				
-			}
-			// else -- setting from null to null, do nothing
+		} finally {
+			_lock.writeLock().unlock();
 		}
 	}
 
+	/**
+	 * Expects to be called while holding write lock.
+	 * @param available
+	 */
 	protected void setAvailable(boolean available) {
 		_available = available;
 	}
@@ -122,10 +146,17 @@ public abstract class NetworkObject<E> {
 	 * @throws ContentNotReadyException if the object has not finished retrieving data/having data set
 	 */
 	protected E data() throws ContentNotReadyException, ContentGoneException { 
-		if (!available()) {
-			throw new ContentNotReadyException("No data yet saved or retrieved!");
+		try {
+			_lock.readLock().lock();
+			if (!available()) {
+				throw new ContentNotReadyException("No data yet saved or retrieved!");
+			}
+			// return a pointer to the current data. No guarantee that this will continue
+			// to be what we think our data unless caller holds read lock.
+			return _data; 
+		} finally {
+			_lock.readLock().unlock();
 		}
-		return _data; 
 	}
 	
 	/**
@@ -137,7 +168,12 @@ public abstract class NetworkObject<E> {
 		if (null == _data) {
 			throw new InvalidObjectException("No data to save!");
 		}
-		internalWriteObject(output);
+		try {
+			_lock.writeLock().lock();
+			internalWriteObject(output);
+		} finally {
+			_lock.writeLock().lock();
+		}
 	}
 
 	/**
@@ -147,13 +183,22 @@ public abstract class NetworkObject<E> {
 	 */
 	public void saveIfDirty(OutputStream output) throws IOException,
 	XMLStreamException {
+		_lock.readLock().lock();
 		if (available() && isDirty()) {
+			_lock.readLock().unlock();
 			save(output);
+		} else {
+			_lock.readLock().unlock();
 		}
 	}
 
 	protected boolean isDirty() {
-		return _isDirty;
+		try {
+			_lock.readLock().lock();
+			return _isDirty; 
+		} finally {
+			_lock.readLock().unlock();
+		}
 	}
 	
 	/**
@@ -161,18 +206,30 @@ public abstract class NetworkObject<E> {
 	 * @return
 	 */
 	public boolean isSaved() {
-		return available() && !isDirty();
+		try {
+			_lock.readLock().lock();
+			return available() && !isDirty();
+		} finally {
+			_lock.readLock().unlock();
+		}
 	}
 
+	/**
+	 * Expects to be called under write lock.
+	 * @param dirty
+	 */
 	protected void setDirty(boolean dirty) { _isDirty = dirty; }
 
 	protected void internalWriteObject(OutputStream output) throws IOException {
 		try {
+			_lock.writeLock().lock();
 			writeObjectImpl(output);
 			setDirty(false);
 		} catch (XMLStreamException e) {
 			// TODO when move to 1.6, use nested exceptions
 			throw new IOException("XMLStreamException " + e);
+		} finally {
+			_lock.writeLock().unlock();
 		}
 	}
 	
