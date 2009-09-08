@@ -145,7 +145,6 @@ public class CCNNetworkObjectTest {
 		CCNHandle lget = CCNHandle.open();
 		
 		ContentName testName = ContentName.fromNative(stringObjName, "testVersioning");
-		setupNamespace(testName);
 		try {
 
 			CCNStringObject so = new CCNStringObject(testName, "First value", lput);
@@ -153,6 +152,7 @@ public class CCNNetworkObjectTest {
 			CCNStringObject ro2 = null;
 			CCNStringObject ro3, ro4; // make each time, to get a new library.
 			CCNTime soTime, srTime, sr2Time, sr3Time, sr4Time, so2Time;
+			setupNamespace(testName);
 			for (int i=0; i < numbers.length; ++i) {
 				soTime = saveAndLog(numbers[i], so, null, numbers[i]);
 				if (null == ro) {
@@ -193,11 +193,11 @@ public class CCNNetworkObjectTest {
 		CCNHandle lget = CCNHandle.open();
 		ContentName testName = ContentName.fromNative(stringObjName, "testSaveToVersion");
 		try {
-			setupNamespace(testName);
 
 			CCNTime desiredVersion = CCNTime.now();
 
 			CCNStringObject so = new CCNStringObject(testName, "First value", lput);
+			setupNamespace(testName);
 			saveAndLog("SpecifiedVersion", so, desiredVersion, "Time: " + desiredVersion);
 			Assert.assertEquals("Didn't write correct version", desiredVersion, so.getVersion());
 
@@ -224,9 +224,9 @@ public class CCNNetworkObjectTest {
 		boolean caught = false;
 		ContentName testName = ContentName.fromNative(stringObjName, "testEmptySave");
 		try {
-			setupNamespace(testName);
 			CollectionObject emptycoll = 
 				new CollectionObject(testName, (Collection)null, library);
+			setupNamespace(testName);
 			try {
 				emptycoll.setData(small1); // set temporarily to non-null
 				saveAndLog("Empty", emptycoll, null, null);
@@ -245,8 +245,8 @@ public class CCNNetworkObjectTest {
 
 		ContentName testName = ContentName.fromNative(collectionObjName, "testStreamUpdate");
 		try {
-			setupNamespace(testName);
 			CollectionObject testCollectionObject = new CollectionObject(testName, small1, CCNHandle.open());
+			setupNamespace(testName);
 
 			saveAndLog("testStreamUpdate", testCollectionObject, null, small1);
 			System.out.println("testCollectionObject name: " + testCollectionObject.getVersionedName());
@@ -297,16 +297,16 @@ public class CCNNetworkObjectTest {
 	@Test
 	public void testVersionOrdering() throws Exception {
 		ContentName testName = ContentName.fromNative(collectionObjName, "testVersionOrdering", "name1");
-		setupNamespace(testName);
 		ContentName testName2 = ContentName.fromNative(collectionObjName, "testVersionOrdering", "name2");
-		setupNamespace(testName2);
 
 		try {
 
 			CollectionObject c0 = new CollectionObject(testName, empty, library);
+			setupNamespace(testName);
 			CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 
 			CollectionObject c1 = new CollectionObject(testName2, small1, CCNHandle.open());
+			setupNamespace(testName2);
 			CCNTime t1 = saveAndLog("Small", c1, null, small1);
 			Assert.assertTrue("First version should come before second", t0.before(t1));
 
@@ -325,15 +325,15 @@ public class CCNNetworkObjectTest {
 	@Test
 	public void testUpdateOtherName() throws Exception {
 		ContentName testName = ContentName.fromNative(collectionObjName, "testUpdateOtherName", "name1");
-		setupNamespace(testName);
 		ContentName testName2 = ContentName.fromNative(collectionObjName, "testUpdateOtherName", "name2");
-		setupNamespace(testName2);
 		try {
 
 			CollectionObject c0 = new CollectionObject(testName, empty, library);
+			setupNamespace(testName);
 			CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 
 			CollectionObject c1 = new CollectionObject(testName2, small1, CCNHandle.open());
+			setupNamespace(testName2);
 			CCNTime t1 = saveAndLog("Small", c1, null, small1);
 			Assert.assertTrue("First version should come before second", t0.before(t1));
 
@@ -363,15 +363,16 @@ public class CCNNetworkObjectTest {
 	@Test
 	public void testSaveAsGone() throws Exception {
 		ContentName testName = ContentName.fromNative(collectionObjName, "testSaveAsGone");
-		Log.info("T0");
-		setupNamespace(testName);
 
 		try {
 			CollectionObject c0 = new CollectionObject(testName, empty, library);
+			setupNamespace(testName); // this sends the interest, doing it after the object gives it
+						// a chance to catch it.
+			
+			
 			CCNTime t0 = saveAsGoneAndLog("Gone", c0);
 			Assert.assertTrue("Should be gone", c0.isGone());
 			ContentName goneVersionName = c0.getVersionedName();
-			Log.info("T1");
 			
 			CCNTime t1 = saveAndLog("NotGone", c0, null, small1);
 			Assert.assertFalse("Should not be gone", c0.isGone());
