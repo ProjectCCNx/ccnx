@@ -55,6 +55,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	protected static final int INTEREST_HIGHWATER_DEFAULT = 40;
 	protected int _timeout = MAX_TIMEOUT;
 	protected int _highwater = HIGHWATER_DEFAULT;
+	protected long _nOut = 0;
 	
 	protected static final int PURGE = 2000;
 	
@@ -293,6 +294,7 @@ public class CCNFlowControl implements CCNFilterListener {
 					Log.finest("Found content " + co.name() + " matching interest: " + interest);
 					try {
 						_library.put(co);
+						_nOut++;
 						afterPutAction(co);
 					} catch (IOException e) {
 						Log.warning("IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
@@ -373,7 +375,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	public void waitForPutDrain() throws IOException {
 		synchronized (_holdingArea) {
-			int startSize = _holdingArea.size();
+			long startSize = _nOut;
 			while (_holdingArea.size() > 0) {
 				long startTime = System.currentTimeMillis();
 				boolean keepTrying = true;
@@ -385,11 +387,11 @@ public class CCNFlowControl implements CCNFilterListener {
 					} catch (InterruptedException ie) {
 						keepTrying = true;
 					}
-					if (_holdingArea.size() != startSize || (System.currentTimeMillis() - startTime) >= _timeout)
+					if (_nOut == startSize || (System.currentTimeMillis() - startTime) >= _timeout)
 						keepTrying = false;
 				} while (keepTrying);
 				
-				if (_holdingArea.size() == startSize) {
+				if (_nOut == startSize) {
 					for(ContentName co : _holdingArea.keySet()) {
 						Log.warning("FlowController: still holding: " + co.toString());
 					}
