@@ -291,7 +291,6 @@ dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 
     switch (packet_type) {
     case CCN_DTAG_ContentObject:
-    case CCN_DTAG_ContentObjectV20080711:
         if (0 > dissect_ccn_contentobject(ccnb, sd->index, tvb, pinfo, ccn_tree))
             return (0);
         break;

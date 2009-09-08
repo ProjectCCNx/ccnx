@@ -3043,8 +3043,7 @@ process_input_message(struct ccnd_handle *h, struct face *face,
             process_incoming_interest(h, face, msg, size);
             return;
         }
-        else if (d->numval == CCN_DTAG_ContentObject ||
-                 d->numval == CCN_DTAG_ContentObjectV20080711) {
+        else if (d->numval == CCN_DTAG_ContentObject) {
             process_incoming_content(h, face, msg, size);
             return;
         }
