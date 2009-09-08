@@ -177,21 +177,21 @@ public class CCNNetworkObjectTestRepo {
 		
 		CCNStringObject so = new CCNStringObject(testName, "First value", lput);
 		saveAndLog("SpecifiedVersion", so, desiredVersion, "Time: " + desiredVersion);
-		Assert.assertEquals("Didn't write correct version", desiredVersion, so.getCurrentVersion());
+		Assert.assertEquals("Didn't write correct version", desiredVersion, so.getVersion());
 		
 		CCNStringObject ro = new CCNStringObject(testName, lget);
 		ro.waitForData(); 
-		Assert.assertEquals("Didn't read correct version", desiredVersion, ro.getCurrentVersion());
+		Assert.assertEquals("Didn't read correct version", desiredVersion, ro.getVersion());
 		ContentName versionName = ro.getCurrentVersionName();
 		
 		saveAndLog("UpdatedVersion", so, null, "ReplacementData");
 		updateAndLog("UpdatedData", ro, null);
-		Assert.assertTrue("New version " + so.getCurrentVersion() + " should be later than old version " + desiredVersion, (desiredVersion.before(so.getCurrentVersion())));
-		Assert.assertEquals("Didn't read correct version", so.getCurrentVersion(), ro.getCurrentVersion());
+		Assert.assertTrue("New version " + so.getVersion() + " should be later than old version " + desiredVersion, (desiredVersion.before(so.getVersion())));
+		Assert.assertEquals("Didn't read correct version", so.getVersion(), ro.getVersion());
 		
 		CCNStringObject ro2 = new CCNStringObject(versionName, null);
 		ro2.waitForData();
-		Assert.assertEquals("Didn't read correct version", desiredVersion, ro2.getCurrentVersion());
+		Assert.assertEquals("Didn't read correct version", desiredVersion, ro2.getVersion());
 	}
 
 	@Test
@@ -349,23 +349,23 @@ public class CCNNetworkObjectTestRepo {
 	}
 	
 	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws XMLStreamException, IOException {
-		CCNTime oldVersion = ecd.getCurrentVersion();
+		CCNTime oldVersion = ecd.getVersion();
 		ecd.saveToRepository(version, data);
 		Log.info(name + " Saved " + name + ": " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getCurrentVersion();
+		return ecd.getVersion();
 	}
 	
 	public <T> CCNTime saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws XMLStreamException, IOException {
-		CCNTime oldVersion = ecd.getCurrentVersion();
+		CCNTime oldVersion = ecd.getVersion();
 		ecd.saveToRepositoryAsGone();
 		Log.info("Saved " + name + ": " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getCurrentVersion();
+		return ecd.getVersion();
 	}
 	
 	public CCNTime waitForDataAndLog(String name, CCNNetworkObject<?> ecd) throws XMLStreamException, IOException {
 		ecd.waitForData();
 		Log.info("Initial read " + name + ", name: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getCurrentVersion();
+		return ecd.getVersion();
 	}
 
 	public CCNTime updateAndLog(String name, CCNNetworkObject<?> ecd, ContentName updateName) throws XMLStreamException, IOException {
@@ -373,6 +373,6 @@ public class CCNNetworkObjectTestRepo {
 			Log.info("Updated " + name + ", to name: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		else 
 			Log.info("No update found for " + name + ((null != updateName) ? (" at name " + updateName) : "") + ", still: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getCurrentVersion();
+		return ecd.getVersion();
 	}
 }

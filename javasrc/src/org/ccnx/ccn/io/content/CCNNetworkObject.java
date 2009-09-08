@@ -579,12 +579,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public ContentName getBaseName() {
 		return _baseName;
 	}
-	
-	public byte [] getCurrentVersionComponent() {
-		if (isSaved())
-			return _currentVersionComponent;
-	}
-	
+		
 	public CCNTime getCurrentVersion() {
 		if (null == _currentVersionComponent)
 			return null;

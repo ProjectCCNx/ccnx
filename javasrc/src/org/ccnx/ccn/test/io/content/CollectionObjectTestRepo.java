@@ -83,7 +83,7 @@ public class CollectionObjectTestRepo {
 		collection.save();
 		readCollection.update(5000);
 		checkReferences = collection.contents();
-		Assert.assertEquals(collection.getCurrentVersion(), readCollection.getCurrentVersion());
+		Assert.assertEquals(collection.getVersion(), readCollection.getVersion());
 		Assert.assertEquals(checkReferences.size(), 4);
 		Assert.assertEquals(newReferences.get(0), checkReferences.get(2));
 		Assert.assertEquals(newReferences.get(1), checkReferences.get(3));
@@ -92,9 +92,9 @@ public class CollectionObjectTestRepo {
 		collection.save();
 		readCollection.update(5000);
 		checkReferences = collection.contents();
-		Assert.assertEquals(collection.getCurrentVersion(), readCollection.getCurrentVersion());
+		Assert.assertEquals(collection.getVersion(), readCollection.getVersion());
 		checkReferences = collection.contents();
-		Assert.assertEquals(collection.getCurrentVersion(), readCollection.getCurrentVersion());
+		Assert.assertEquals(collection.getVersion(), readCollection.getVersion());
 		Assert.assertEquals(collection.contents(), readCollection.contents());
 	}
 }
