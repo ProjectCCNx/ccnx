@@ -655,7 +655,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
 	}
 	
-	public PublisherPublicKeyDigest contentPublisher() throws ContentNotReadyException, ContentNotSavedException {
+	public PublisherPublicKeyDigest getContentPublisher() throws ContentNotReadyException, ContentNotSavedException {
 		if (isSaved())
 			return _currentPublisher;
 		if (!available()) 
@@ -663,8 +663,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
 	}
 	
-	public KeyLocator publisherKeyLocator() {
-		return _currentPublisherKeyLocator;		
+	public KeyLocator getPublisherKeyLocator() throws ContentNotReadyException, ContentNotSavedException {
+		if (isSaved())
+			return _currentPublisherKeyLocator;		
+		if (!available()) 
+			throw new ContentNotReadyException("No content available!");
+		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
 	}
 
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {

@@ -86,8 +86,8 @@ public class TestUserDataTestRepo {
 			PublicKeyObject pko = new PublicKeyObject(keyName, uKeyManager.getDefaultPublicKey(), uLibrary);
 			pko.saveToRepository();
 			
-			System.out.println("Object key locator: " + pko.publisherKeyLocator());
-			System.out.println("Object key ID: " + pko.contentPublisher());
+			System.out.println("Object key locator: " + pko.getPublisherKeyLocator());
+			System.out.println("Object key ID: " + pko.getContentPublisher());
 
 			// Canaries -- things getting altered somehow.
 			Assert.assertTrue("Checkpoint 2", userKeyManager2.getDefaultKeyID().equals(userKeyManager.getDefaultKeyID()));
@@ -96,10 +96,10 @@ public class TestUserDataTestRepo {
 			if (!pkr.available()) {
 				Log.info("Can't read back object " + pko.getVersionedName());
 			} else {
-				System.out.println("Retrieved object key locator: " + pkr.publisherKeyLocator());
-				System.out.println("Retrieved object key ID: " + pkr.contentPublisher());
-				Assert.assertEquals(pkr.contentPublisher(), uKeyManager.getDefaultKeyID());
-				Assert.assertEquals(pkr.publisherKeyLocator(), uKeyManager.getDefaultKeyLocator());
+				System.out.println("Retrieved object key locator: " + pkr.getPublisherKeyLocator());
+				System.out.println("Retrieved object key ID: " + pkr.getContentPublisher());
+				Assert.assertEquals(pkr.getContentPublisher(), uKeyManager.getDefaultKeyID());
+				Assert.assertEquals(pkr.getPublisherKeyLocator(), uKeyManager.getDefaultKeyLocator());
 			}
 		}
 
