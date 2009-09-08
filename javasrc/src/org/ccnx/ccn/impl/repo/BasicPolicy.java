@@ -48,6 +48,15 @@ public class BasicPolicy implements Policy {
 		} catch (MalformedContentNameStringException e) {}
 	}
 	
+	public BasicPolicy(String name, ArrayList<ContentName> namespace) {
+		if (null != name) {
+			this._localName = name;
+		}
+		if (null != namespace) {
+			_nameSpace = (ArrayList<ContentName>) namespace.clone();
+		}
+	}
+	
 	private enum PolicyValue {
 		VERSION ("VERSION"),
 		NAMESPACE ("NAMESPACE"),
