@@ -149,11 +149,11 @@ public class CCNNetworkObjectTestRepo {
 			} else {
 				sr2Time = updateAndLog(numbers[i], ro2, null);				
 			}
-			ro3 = new CCNStringObject(ro.getCurrentVersionName(), null); // read specific version
+			ro3 = new CCNStringObject(ro.getVersionedName(), null); // read specific version
 			sr3Time = waitForDataAndLog("UpdateToROVersion", ro3);
 			// Save a new version and pull old
 			so2Time = saveAndLog(numbers[i] + "-Update", so, null, numbers[i] + "-Update");
-			ro4 = new CCNStringObject(ro.getCurrentVersionName(), null); // read specific version
+			ro4 = new CCNStringObject(ro.getVersionedName(), null); // read specific version
 			sr4Time = waitForDataAndLog("UpdateAnotherToROVersion", ro4);
 			System.out.println("Update " + i + ": Times: " + soTime + " " + srTime + " " + sr2Time + " " + sr3Time + " different: " + so2Time);
 			Assert.assertEquals("SaveTime doesn't match first read", soTime, srTime);
@@ -182,7 +182,7 @@ public class CCNNetworkObjectTestRepo {
 		CCNStringObject ro = new CCNStringObject(testName, lget);
 		ro.waitForData(); 
 		Assert.assertEquals("Didn't read correct version", desiredVersion, ro.getVersion());
-		ContentName versionName = ro.getCurrentVersionName();
+		ContentName versionName = ro.getVersionedName();
 		
 		saveAndLog("UpdatedVersion", so, null, "ReplacementData");
 		updateAndLog("UpdatedData", ro, null);
@@ -218,9 +218,9 @@ public class CCNNetworkObjectTestRepo {
 		CollectionObject testCollectionObject = new CollectionObject(testName, small1, CCNHandle.open());
 		
 		saveAndLog("testStreamUpdate", testCollectionObject, null, small1);
-		System.out.println("testCollectionObject name: " + testCollectionObject.getCurrentVersionName());
+		System.out.println("testCollectionObject name: " + testCollectionObject.getVersionedName());
 				
-		CCNVersionedInputStream vis = new CCNVersionedInputStream(testCollectionObject.getCurrentVersionName());
+		CCNVersionedInputStream vis = new CCNVersionedInputStream(testCollectionObject.getVersionedName());
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		byte [] buf = new byte[128];
 		// Will incur a timeout
@@ -237,7 +237,7 @@ public class CCNNetworkObjectTestRepo {
 		System.out.println("Decoded collection data: " + decodedData);
 		Assert.assertEquals("Decoding via stream fails to give expected result!", decodedData, small1);
 		
-		CCNVersionedInputStream vis2 = new CCNVersionedInputStream(testCollectionObject.getCurrentVersionName());
+		CCNVersionedInputStream vis2 = new CCNVersionedInputStream(testCollectionObject.getVersionedName());
 		ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
 		// Will incur a timeout
 		while (!vis2.eof()) {
@@ -254,7 +254,7 @@ public class CCNNetworkObjectTestRepo {
 		decodedData2.decode(baos2.toByteArray());
 		Assert.assertEquals("Decoding via stream byte read fails to give expected result!", decodedData2, small1);
 
-		CCNVersionedInputStream vis3 = new CCNVersionedInputStream(testCollectionObject.getCurrentVersionName());
+		CCNVersionedInputStream vis3 = new CCNVersionedInputStream(testCollectionObject.getVersionedName());
 		Collection decodedData3 = new Collection();
 		decodedData3.decode(vis3);
 		Assert.assertEquals("Decoding via stream full read fails to give expected result!", decodedData3, small1);
@@ -279,7 +279,7 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertTrue("Third version should come after second", t1.before(t2));
 		Assert.assertTrue(c2.contentEquals(c1));
 		Assert.assertFalse(c2.equals(c1));
-		Assert.assertTrue(VersioningProfile.isLaterVersionOf(c2.getCurrentVersionName(), c1.getCurrentVersionName()));
+		Assert.assertTrue(VersioningProfile.isLaterVersionOf(c2.getVersionedName(), c1.getVersionedName()));
 	}
 	
 	@Test
@@ -302,13 +302,13 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertTrue(c2.contentEquals(c1));
 		Assert.assertFalse(c2.equals(c1));
 		
-		CCNTime t3 = updateAndLog(c0.getCurrentVersionName().toString(), c0, testName2);
-		Assert.assertTrue(VersioningProfile.isVersionOf(c0.getCurrentVersionName(), testName2));
+		CCNTime t3 = updateAndLog(c0.getVersionedName().toString(), c0, testName2);
+		Assert.assertTrue(VersioningProfile.isVersionOf(c0.getVersionedName(), testName2));
 		Assert.assertEquals(t3, t2);
 		Assert.assertTrue(c0.contentEquals(c2));
 		
-		t3 = updateAndLog(c0.getCurrentVersionName().toString(), c0, c1.getCurrentVersionName());
-		Assert.assertTrue(VersioningProfile.isVersionOf(c0.getCurrentVersionName(), testName2));
+		t3 = updateAndLog(c0.getVersionedName().toString(), c0, c1.getVersionedName());
+		Assert.assertTrue(VersioningProfile.isVersionOf(c0.getVersionedName(), testName2));
 		Assert.assertEquals(t3, t1);
 		Assert.assertTrue(c0.contentEquals(c1));	
 	}
@@ -322,7 +322,7 @@ public class CCNNetworkObjectTestRepo {
 		CollectionObject c0 = new CollectionObject(testName, empty, library);
 		CCNTime t0 = saveAsGoneAndLog("Gone", c0);
 		Assert.assertTrue("Should be gone", c0.isGone());
-		ContentName goneVersionName = c0.getCurrentVersionName();
+		ContentName goneVersionName = c0.getVersionedName();
 		
 		CCNTime t1 = saveAndLog("NotGone", c0, null, small1);
 		Assert.assertFalse("Should not be gone", c0.isGone());
@@ -334,7 +334,7 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertEquals(t2, t1);
 		
 		CCNTime t3 = updateAndLog(goneVersionName.toString(), c1, goneVersionName);
-		Assert.assertTrue(VersioningProfile.isVersionOf(c1.getCurrentVersionName(), testName));
+		Assert.assertTrue(VersioningProfile.isVersionOf(c1.getVersionedName(), testName));
 		Assert.assertEquals(t3, t0);
 		Assert.assertTrue("Read back should be gone.", c1.isGone());
 
@@ -343,7 +343,7 @@ public class CCNNetworkObjectTestRepo {
 		
 		CollectionObject c2 = new CollectionObject(testName, CCNHandle.open());
 		CCNTime t4 = waitForDataAndLog(testName.toString(), c2);
-		Assert.assertTrue("Read back of " + c0.getCurrentVersionName() + " should be gone, got " + c2.getCurrentVersionName(), c2.isGone());
+		Assert.assertTrue("Read back of " + c0.getVersionedName() + " should be gone, got " + c2.getVersionedName(), c2.isGone());
 		Assert.assertEquals(t4, t0);
 
 	}
@@ -351,28 +351,28 @@ public class CCNNetworkObjectTestRepo {
 	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws XMLStreamException, IOException {
 		CCNTime oldVersion = ecd.getVersion();
 		ecd.saveToRepository(version, data);
-		Log.info(name + " Saved " + name + ": " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+		Log.info(name + " Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 	
 	public <T> CCNTime saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws XMLStreamException, IOException {
 		CCNTime oldVersion = ecd.getVersion();
 		ecd.saveToRepositoryAsGone();
-		Log.info("Saved " + name + ": " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+		Log.info("Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 	
 	public CCNTime waitForDataAndLog(String name, CCNNetworkObject<?> ecd) throws XMLStreamException, IOException {
 		ecd.waitForData();
-		Log.info("Initial read " + name + ", name: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+		Log.info("Initial read " + name + ", name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 
 	public CCNTime updateAndLog(String name, CCNNetworkObject<?> ecd, ContentName updateName) throws XMLStreamException, IOException {
 		if (((null == updateName) && ecd.update()) || (ecd.update(updateName, null)))
-			Log.info("Updated " + name + ", to name: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+			Log.info("Updated " + name + ", to name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		else 
-			Log.info("No update found for " + name + ((null != updateName) ? (" at name " + updateName) : "") + ", still: " + ecd.getCurrentVersionName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+			Log.info("No update found for " + name + ((null != updateName) ? (" at name " + updateName) : "") + ", still: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 }

@@ -97,6 +97,6 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		// the segmenter. For now, use our own.
 		HeaderObject header = new HeaderObject(headerName, headerData, this._publisher, this._locator, this.getSegmenter().getFlowControl());
 		header.save();
-		Log.info("Wrote header: " + header.getCurrentVersionName());
+		Log.info("Wrote header: " + header.getVersionedName());
 	}
 }

@@ -92,9 +92,9 @@ public class TestUserDataTestRepo {
 			// Canaries -- things getting altered somehow.
 			Assert.assertTrue("Checkpoint 2", userKeyManager2.getDefaultKeyID().equals(userKeyManager.getDefaultKeyID()));
 
-			PublicKeyObject pkr = new PublicKeyObject(pko.getCurrentVersionName(), standardLibrary);
+			PublicKeyObject pkr = new PublicKeyObject(pko.getVersionedName(), standardLibrary);
 			if (!pkr.available()) {
-				Log.info("Can't read back object " + pko.getCurrentVersionName());
+				Log.info("Can't read back object " + pko.getVersionedName());
 			} else {
 				System.out.println("Retrieved object key locator: " + pkr.publisherKeyLocator());
 				System.out.println("Retrieved object key ID: " + pkr.contentPublisher());

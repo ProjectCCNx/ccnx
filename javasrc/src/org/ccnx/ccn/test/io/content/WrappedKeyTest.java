@@ -244,17 +244,17 @@ public class WrappedKeyTest {
 			flosser.handleNamespace(storedKeyName);
 			WrappedKeyObject wko = new WrappedKeyObject(storedKeyName, wks, library);
 			wko.save();
-			Assert.assertTrue(VersioningProfile.hasTerminalVersion(wko.getCurrentVersionName()));
+			Assert.assertTrue(VersioningProfile.hasTerminalVersion(wko.getVersionedName()));
 			// should update in another thread
 			WrappedKeyObject wkoread = new WrappedKeyObject(storedKeyName, CCNHandle.open()); // new library
 			Assert.assertTrue(wkoread.available());
-			Assert.assertEquals(wkoread.getCurrentVersionName(), wko.getCurrentVersionName());
+			Assert.assertEquals(wkoread.getVersionedName(), wko.getVersionedName());
 			Assert.assertEquals(wkoread.wrappedKey(), wko.wrappedKey());
 			// DKS -- bug in interest handling, can't save wkoread and update wko
 			wko.save(wka);
-			Assert.assertTrue(VersioningProfile.isLaterVersionOf(wko.getCurrentVersionName(), wkoread.getCurrentVersionName()));
+			Assert.assertTrue(VersioningProfile.isLaterVersionOf(wko.getVersionedName(), wkoread.getVersionedName()));
 			wkoread.update();
-			Assert.assertEquals(wkoread.getCurrentVersionName(), wko.getCurrentVersionName());
+			Assert.assertEquals(wkoread.getVersionedName(), wko.getVersionedName());
 			Assert.assertEquals(wkoread.wrappedKey(), wko.wrappedKey());
 			Assert.assertEquals(wko.wrappedKey(), wka);
 		} catch (Exception e) {

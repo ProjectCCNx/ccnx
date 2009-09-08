@@ -119,7 +119,7 @@ public class Group {
 		}
 		if (_groupPublicKey.available()){
 			_privKeyDirectory = new KeyDirectory(manager, 
-					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getCurrentVersionName()), _library);
+					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()), _library);
 			return _privKeyDirectory;
 		}
 		Log.info("Public key not ready for group: " + friendlyName());
@@ -162,7 +162,7 @@ public class Group {
 	}
 	
 	public ContentName membershipListName() throws XMLStreamException, IOException, ConfigurationException { 
-		return membershipList().getCurrentVersionName(); 
+		return membershipList().getVersionedName(); 
 	}
 	
 	public CCNTime membershipListVersion() throws XMLStreamException, IOException, ConfigurationException {
@@ -195,7 +195,7 @@ public class Group {
 	public ContentName publicKeyName() { 
 		if (_groupPublicKey.isSaved())
 			try {
-				return _groupPublicKey.getCurrentVersionName();
+				return _groupPublicKey.getVersionedName();
 			} catch (IOException e) {
 				Log.info("Unexpected exception getting current version name of saved key {0}: {1}", _groupPublicKey.getBaseName(), e);
 			} 
@@ -247,7 +247,7 @@ public class Group {
 		// Write superseded block in old key directory
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
 		// Write link back to previous key
-		Link lr = new Link(_groupPublicKey.getCurrentVersionName(), new LinkAuthenticator(new PublisherID(KeyManager.getKeyManager().getDefaultKeyID())));
+		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(KeyManager.getKeyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _library);
 		precededByBlock.saveToRepository();
 	}
@@ -319,12 +319,12 @@ public class Group {
 				// Need to write wrapped key block and linking principal name.
 				newPrivateKeyDirectory.addWrappedKeyBlock(
 						privateKeyWrappingKey, 
-						latestPublicKey.getCurrentVersionName(), 
+						latestPublicKey.getVersionedName(), 
 						latestPublicKey.publicKey());
 			} catch (XMLStreamException e) {
 				Log.warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
 			} catch (VersionMissingException e) {
-				Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getCurrentVersionName() + ", unable to retrieve principal's public key. Skipping.");
+				Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getVersionedName() + ", unable to retrieve principal's public key. Skipping.");
 			}
 		}
 		return privateKeyWrappingKey;
@@ -370,12 +370,12 @@ public class Group {
 				// Need to write wrapped key block and linking principal name.
 				privateKeyDirectory.addWrappedKeyBlock(
 						privateKeyWrappingKey, 
-						latestPublicKey.getCurrentVersionName(), 
+						latestPublicKey.getVersionedName(), 
 						latestPublicKey.publicKey());
 			} catch (XMLStreamException e) {
 				Log.warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
 			} catch (VersionMissingException e) {
-				Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getCurrentVersionName() + ", unable to retrieve principal's public key. Skipping.");
+				Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getVersionedName() + ", unable to retrieve principal's public key. Skipping.");
 			}
 		}
 	}

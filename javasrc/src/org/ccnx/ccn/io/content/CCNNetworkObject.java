@@ -282,7 +282,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		// Look for first segment of version after ours, or first version if we have none.
 		ContentObject firstSegment = 
-			VersioningProfile.getFirstBlockOfLatestVersion(getCurrentVersionName(), null, null, timeout, 
+			VersioningProfile.getFirstBlockOfLatestVersion(getVersionedName(), null, null, timeout, 
 																_library.defaultVerifier(), _library);
 		if (null != firstSegment) {
 			return update(firstSegment);
@@ -362,7 +362,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
 		}
 		// Look for latest version.
-		updateInBackground(getCurrentVersionName(), continuousUpdates);
+		updateInBackground(getVersionedName(), continuousUpdates);
 	}
 
 	/**
@@ -644,7 +644,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
 	}
 	
-	public ContentName getCurrentVersionName() throws ContentNotReadyException, ContentNotSavedException {
+	public ContentName getVersionedName() throws ContentNotReadyException, ContentNotSavedException {
 		if (isSaved()) {
 			if (null == _currentVersionName)
 				_currentVersionName =  new ContentName(_baseName, _currentVersionComponent);
@@ -677,7 +677,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 					// OK, we have something that is a later version of our desired object.
 					// We're not sure it's actually the first content segment.
 					if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
-						Log.info("Background updating of {0}, got first segment: {1}", getCurrentVersionName(), co.name());
+						Log.info("Background updating of {0}, got first segment: {1}", getVersionedName(), co.name());
 						update(co);
 					} else {
 						// Have something that is not the first segment, like a repo write or a later segment. Go back
@@ -762,7 +762,20 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	@Override
-	public String toString() { return getCurrentVersionName() + ": " + ((null == _data) ? null : _data.toString()); }
+	public String toString() { 
+		try {
+			if (isSaved()) {
+				return getVersionedName() + ": " + (isGone() ? "GONE" : data());
+			} else if (available()) {
+				return getBaseName() + " (unsaved): " + data();
+			} else {
+				return getBaseName() + " (unsaved, no data)";	
+			}
+		} catch (IOException e) {
+			Log.info("Unexpected exception retrieving object information: {0}", e);
+			return getBaseName() + ": unexpected exception " + e;
+		} 	
+	}
 }
 
 
