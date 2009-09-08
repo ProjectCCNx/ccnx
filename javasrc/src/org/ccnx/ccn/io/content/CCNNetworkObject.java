@@ -527,7 +527,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				byte [] empty = new byte[0];
 				ContentObject goneObject = 
 					ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty, _publisher, _keyLocator, null, null);
-
+				
 				// The segmenter in the stream does an addNameSpace of the versioned name. Right now
 				// this not only adds the prefix (ignored) but triggers the repo start write.
 				_flowControl.addNameSpace(name);
