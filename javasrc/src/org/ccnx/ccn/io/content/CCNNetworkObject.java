@@ -52,6 +52,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 	protected static boolean DEFAULT_RAW = true;
 	protected static long DEFAULT_TIMEOUT = 3000; // msec
+	protected static final byte [] GONE_OUTPUT = "GONE".getBytes();
 	
 	/**
 	 * Unversioned "base" name.
@@ -358,6 +359,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				_currentPublisherKeyLocator = inputStream.deletionInformation().signedInfo().getKeyLocator();
 				_available = true;
 				_isGone = true;
+				_isDirty = false;
+				_lastSaved = digestContent();			
 			} else {
 				super.update(inputStream);
 
@@ -534,6 +537,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				_flowControl.afterClose();
 				_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
 				_currentPublisherKeyLocator = goneObject.signedInfo().getKeyLocator();
+				_lastSaved = GONE_OUTPUT;
 			}
 			_currentVersionComponent = name.lastComponent();
 			_currentVersionName = null;
@@ -697,6 +701,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 	public boolean isGone() {
 		return _isGone;
+	}
+	
+	@Override
+	protected byte [] digestContent() throws IOException {
+		if (isGone()) {
+			return GONE_OUTPUT;
+		}
+		return super.digestContent();
 	}
 	
 	@Override
