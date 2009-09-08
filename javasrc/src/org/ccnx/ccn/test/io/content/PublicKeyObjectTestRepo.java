@@ -1,8 +1,6 @@
 package org.ccnx.ccn.test.io.content;
 
 
-import static org.junit.Assert.fail;
-
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.KeyPair;
@@ -89,15 +87,12 @@ public class PublicKeyObjectTestRepo {
 	}
 
 	@Test
-	public void testRawPublicKeyObject() {
+	public void testRawPublicKeyObject() throws Exception {
 		
 		try {
 			testRawKeyReadWrite(storedKeyNames[0][0], pair1.getPublic(), pair2.getPublic());
 			testRawKeyReadWrite(storedKeyNames[0][1], egPair.getPublic(), null);
 			testRawKeyReadWrite(storedKeyNames[0][2], eccPair.getPublic(), eciesPair.getPublic());
-		} catch (Exception e) {
-			e.printStackTrace();
-			fail("Exception in publicKeyObject testing: " + e.getClass().getName() + ":  " + e.getMessage());
 		} finally {
 			System.out.println("Stopping flosser.");
 			flosser.stop();
@@ -106,17 +101,11 @@ public class PublicKeyObjectTestRepo {
 	}
 
 	@Test
-	public void testRepoPublicKeyObject() {
-		
-		try {
-			testRepoKeyReadWrite(storedKeyNames[1][0], pair1.getPublic(), pair2.getPublic());
-			testRepoKeyReadWrite(storedKeyNames[1][1], egPair.getPublic(), null);
-			testRepoKeyReadWrite(storedKeyNames[1][2], eccPair.getPublic(), eciesPair.getPublic());
-		} catch (Exception e) {
-			e.printStackTrace();
-			fail("Exception in publicKeyObject testing: " + e.getClass().getName() + ":  " + e.getMessage());
-		} finally {
-		}
+	public void testRepoPublicKeyObject() throws Exception {
+
+		testRepoKeyReadWrite(storedKeyNames[1][0], pair1.getPublic(), pair2.getPublic());
+		testRepoKeyReadWrite(storedKeyNames[1][1], egPair.getPublic(), null);
+		testRepoKeyReadWrite(storedKeyNames[1][2], eccPair.getPublic(), eciesPair.getPublic());
 	}
 
 	public void testRawKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException, VersionMissingException {
