@@ -413,7 +413,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			Log.info("UpdateInBackground: interest: {0}", _currentInterest);
 			_library.expressInterest(_currentInterest, this);
 		} finally {
-			_lock.writeLock().lock();
+			_lock.writeLock().unlock();
 		}
 	}
 	
