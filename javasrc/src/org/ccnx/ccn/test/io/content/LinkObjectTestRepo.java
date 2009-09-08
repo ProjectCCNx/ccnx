@@ -66,13 +66,13 @@ public class LinkObjectTestRepo {
 			System.out.println("Got expected exception reading link from non-link.");
 		}
 
-		Link lr = new Link(so.getCurrentVersionName());
+		Link lr = new Link(so.getVersionedName());
 		LinkObject aLink = new LinkObject(linkName, lr, putLibrary);
 		aLink.saveToRepository();
 		
-		ContentObject linkData = getLibrary.get(aLink.getCurrentVersionName(), 5000);
+		ContentObject linkData = getLibrary.get(aLink.getVersionedName(), 5000);
 		if (null == linkData) {
-			Assert.fail("Cannot retrieve first block of saved link: " + aLink.getCurrentVersionName());
+			Assert.fail("Cannot retrieve first block of saved link: " + aLink.getVersionedName());
 		}
 		// Make sure we're writing type LINK.
 		Assert.assertEquals(linkData.signedInfo().getType(), ContentType.LINK);

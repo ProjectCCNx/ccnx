@@ -303,11 +303,11 @@ public class RepositoryServer {
 				co = new CollectionObject(ner.getPrefix(), cd, _handle);
 				co.disableFlowControl();
 				co.save(ner.getTimestamp());
-				Log.finer("saved collection object: "+co.getCurrentVersionName());
+				Log.finer("saved collection object: "+co.getVersionedName());
 				return;
 
 			} catch(IOException e){
-				Log.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+co.getCurrentVersion()+")", e);
+				Log.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+co.getVersionedName()+")", e);
 			}
 
 		}

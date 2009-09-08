@@ -8,6 +8,7 @@ import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -20,16 +21,37 @@ import org.ccnx.ccn.io.NullOutputStream;
  * A NetworkObject provides support for storing an object in a network based backing store.
  * It provides support for loading the object from the network, tracking if the object's data
  * has been changed, to determine whether it needs to be saved or not and saving the object.
+ * 
+ * It can have 3 states:
+ * - available: refers to whether it has data (either set by caller or updated from network)
+ * 		(potentiallyDirty refers to whether it has been saved since last set; it might not 
+ * 		 actually be dirty if saved to same value as previous)
+ * - stored: saved to network or updated from network and not since saved
+ * 
+ * It can be:
+ * - not available (no data assigned, not saved or read, basically not ready)
+ * - available but not stored (assigned locally, but not yet stored anywhere; this
+ * 				means that storage-related metadata is unavailable even though data can be read
+ * 				back out), or assigned locally since last stored
+ * 		- if assigned locally but unchanged, it will not be rewritten and last stored
+ * 			metadata 
+ * - available and stored (stored by caller, or read from network)
+ * 
+ * Subclasses can vary as to whether they think null is valid data for an object -- i.e. 
+ * whether assigning the object's value to null makes it available or not. The default behavior
+ * is to not treat a null assignment as a value -- i.e. not available.
  */
 public abstract class NetworkObject<E> {
 
-	public static final String DEFAULT_DIGEST = "SHA-1"; // OK for now.
+	public static final String DEFAULT_CHECKSUM_ALGORITHM = "MD5"; // Care about speed, not collision-resistance.
 
 	protected Class<E> _type;
 	protected E _data;
-	protected byte [] _lastSaved = null;
-	protected boolean _potentiallyDirty = true;
+	protected boolean _isDirty = false;
+	protected byte [] _lastSaved; // save digest of serialized item, so can tell if updated outside
+								  // of setData
 	protected boolean _available = false; // false until first time data is set or updated
+	protected ReentrantReadWriteLock _lock = new ReentrantReadWriteLock();
 
 	public NetworkObject(Class<E> type) {
 		_type = type;
@@ -37,9 +59,7 @@ public abstract class NetworkObject<E> {
 	
 	public NetworkObject(Class<E> type, E data) {
 		this(type);
-		_data = data;
-		// we don't mark data as available till we've called update or save
-		_available = false;
+		setData(data); // marks data as available if non-null
 	}
 
 	protected E factory() throws IOException {
@@ -58,27 +78,22 @@ public abstract class NetworkObject<E> {
 
 	public void update(InputStream input) throws IOException, XMLStreamException {
 		
-		E newData = readObjectImpl(input);
-		
-		if (!_available) {
-			Log.info("Update -- first initialization.");
-			_data = newData;
-			_available = true;
-			_potentiallyDirty = false;
-		}
-		if (null == _data) {
-			if (null != newData) {
-				Log.info("Update -- got new non-null " + newData.getClass().getName());
-				_data = merge(input, newData);
-			} else {
-				Log.info("Update -- value still null.");
+			E newData = readObjectImpl(input);
+
+			try {
+				_lock.writeLock().lock();
+				if (!_available) {
+					Log.info("Update -- first initialization.");
+				}
+
+				_data = newData;
+				_available = true;
+				_isDirty = false;
+				_lastSaved = digestContent();
+				
+			} finally {
+				_lock.writeLock().unlock();
 			}
-		} else if (_data.equals(newData)) {
-			Log.info("Update -- value hasn't changed.");
-		} else {
-			Log.info("Update -- got new " + newData.getClass().getName());
-			_data = merge(input, newData);
-		}
 	}
 	
 	/**
@@ -87,41 +102,72 @@ public abstract class NetworkObject<E> {
 	 * @return false if data has not been set or updated from the network yet
 	 */
 	public boolean available() {
-		return _available;
+		try {
+			_lock.readLock().lock();
+			return _available; // do we need to return a copy of a primitive type?
+		} finally {
+			_lock.readLock().unlock();
+		}
+	}
+	
+	public void setData(E data) { 
+		try {
+			_lock.writeLock().lock(); // blocks readers. a reader can never get the write lock
+									  // without first releasing read lock and re-checking; go
+									  // for simplicity here and just take the write lock even though
+									  // we might not need it.
+			if (null != _data) {
+				if (!_data.equals(data)) {
+					_data = data;
+					setDirty(true);
+					setAvailable(data != null);
+				}
+				// else -- setting to same value, not dirty, do nothing
+			} else {
+				if (data != null) {
+					_data = data;
+					setDirty(true);
+					setAvailable(true);				
+				}
+				// else -- setting from null to null, do nothing
+			}
+		} finally {
+			_lock.writeLock().unlock();
+		}
 	}
 
 	/**
-	 * Why pass in input? Because some subclasses have input streams that
-	 * know more about their data than we do at this point... If the
-	 * result of the merge is that there is no difference from what
-	 * we just saw on the wire, set _potentiallyDirty to false. If 
-	 * merge does a true merge, then set _potentiallyDirty to true.
-	 * @param input
-	 * @param newData
-	 * @return
+	 * Expects to be called while holding write lock.
+	 * @param available
 	 */
-	protected E merge(InputStream input, E newData) {
-		_potentiallyDirty = false;
-		return newData;
+	protected void setAvailable(boolean available) {
+		_available = available;
 	}
 
 	/**
 	 * Subclasses should expose methods to update _data,
 	 * but possibly not _data itself. Ideally any dangerous operation
 	 * (like giving access to some variable that could be changed) will
-	 * mark the object as _potentiallyDirty.
-	 * @return Returns null if the data is not yet available
-	 * or the data is gone or the data is null.
-	 * TBD: is null data supported?
+	 * mark the object as _isDirty.
+	 * @return Returns the data. Whether null data is allowed or not is
+	 *   determined by the subclass, which can override available() (by
+	 *   default, data cannot be null).
+	 * @throws ContentNotReadyException if the object has not finished retrieving data/having data set
 	 */
-	protected E data() { return _data; }
-	
-	public void setData(E data) { 
-		_data = data; 
-		_available = true;
-		setPotentiallyDirty(true);
+	protected E data() throws ContentNotReadyException, ContentGoneException { 
+		try {
+			_lock.readLock().lock();
+			if (!available()) {
+				throw new ContentNotReadyException("No data yet saved or retrieved!");
+			}
+			// return a pointer to the current data. No guarantee that this will continue
+			// to be what we think our data unless caller holds read lock.
+			return _data; 
+		} finally {
+			_lock.readLock().unlock();
+		}
 	}
-
+	
 	/**
 	 * Base behavior -- always write when asked.
 	 * @param output
@@ -131,7 +177,12 @@ public abstract class NetworkObject<E> {
 		if (null == _data) {
 			throw new InvalidObjectException("No data to save!");
 		}
-		internalWriteObject(output);
+		try {
+			_lock.writeLock().lock();
+			internalWriteObject(output);
+		} finally {
+			_lock.writeLock().lock();
+		}
 	}
 
 	/**
@@ -141,69 +192,97 @@ public abstract class NetworkObject<E> {
 	 */
 	public void saveIfDirty(OutputStream output) throws IOException,
 	XMLStreamException {
-		if (null == _data) {
-			throw new InvalidObjectException("No data to save!");
-		} if (null == _lastSaved) {
-			// Definitely save the object
-			internalWriteObject(output);
-		} else if (_potentiallyDirty) {
-			// For CCN we don't want to write the thing unless we need to. But 
-			// in general, probably want to write every time we're asked.
-			if (isDirty()) {
-				internalWriteObject(output);
-			}
+		_lock.readLock().lock();
+		if (available() && isDirty()) {
+			_lock.readLock().unlock();
+			save(output);
+		} else {
+			_lock.readLock().unlock();
+		}
+	}
+	
+	protected byte [] digestContent() throws IOException {
+		try {
+			// Otherwise, might have been written when we weren't looking (someone accessed
+			// data and then changed it).
+			DigestOutputStream dos = new DigestOutputStream(new NullOutputStream(), MessageDigest.getInstance(DEFAULT_CHECKSUM_ALGORITHM));
+			writeObjectImpl(dos);
+			dos.flush();
+			dos.close();
+			byte [] currentValue = dos.getMessageDigest().digest();
+			return currentValue;
+		} catch (NoSuchAlgorithmException e) {
+			Log.warning("No pre-configured algorithm {0} available -- configuration error!", DEFAULT_CHECKSUM_ALGORITHM);
+			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_CHECKSUM_ALGORITHM + " available -- configuration error!");
+		} catch (XMLStreamException e) {
+			Log.warning("Encoding exception determining whether an object is dirty: {0}", e);
+			throw new IOException("Encoding exception determining whether an object is dirty: " + e);
 		}
 	}
 
 	protected boolean isDirty() throws IOException {
 		try {
-			if (_data == null)
-				return _lastSaved != null;
-
-			// Problem -- can't wrap the OOS in a DOS, need to do it the other way round.
-			DigestOutputStream dos = new DigestOutputStream(new NullOutputStream(), 
-					MessageDigest.getInstance(DEFAULT_DIGEST));
-
-			writeObjectImpl(dos);
-			dos.flush();
-			dos.close();
-			byte [] currentValue = dos.getMessageDigest().digest();
-
-			if (Arrays.equals(currentValue, _lastSaved)) {
-				Log.info("Last saved value for object still current.");
-				return false;
-			} else {
-				Log.info("Last saved value for object not current -- object changed.");
+			_lock.readLock().lock();
+			if (_isDirty) {
+				return _isDirty;
+			} else if (_lastSaved == null) {
+				if (_data == null)
+					return false;
 				return true;
 			}
-		} catch (NoSuchAlgorithmException e) {
-			Log.warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
-			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
-		} catch (XMLStreamException e) {
-			// XMLStreamException should never happen, since our code should always write good XML
-			throw new RuntimeException(e);
+			byte [] currentValue = digestContent();
+			
+			if (Arrays.equals(currentValue, _lastSaved)) {
+				Log.info("Last saved value for object still current.");
+				_isDirty = false;
+			} else {
+				Log.info("Last saved value for object not current -- object changed.");
+				_isDirty = true;
+			}
+			
+			return _isDirty; 
+		} finally {
+			_lock.readLock().unlock();
+		}
+	}
+	
+	/**
+	 * True if the content was either read from the network or was saved locally.
+	 * @return
+	 */
+	public boolean isSaved() throws IOException {
+		try {
+			_lock.readLock().lock();
+			return available() && !isDirty();
+		} finally {
+			_lock.readLock().unlock();
 		}
 	}
 
-	protected boolean isPotentiallyDirty() { return _potentiallyDirty; }
-
-	protected void setPotentiallyDirty(boolean dirty) { _potentiallyDirty = dirty; }
+	/**
+	 * Expects to be called under write lock.
+	 * @param dirty
+	 */
+	protected void setDirty(boolean dirty) { _isDirty = dirty; }
 
 	protected void internalWriteObject(OutputStream output) throws IOException {
 		try {
-			// Problem -- can't wrap the OOS in a DOS, need to do it the other way round.
-			DigestOutputStream dos = new DigestOutputStream(output, 
-					MessageDigest.getInstance(DEFAULT_DIGEST));
+			_lock.writeLock().lock();
+			DigestOutputStream dos = new DigestOutputStream(output, MessageDigest.getInstance(DEFAULT_CHECKSUM_ALGORITHM));
 			writeObjectImpl(dos);
-			dos.flush(); // do not close the dos, as it will close output. allow caller to do that.
+			dos.flush(); // do not close dos, as it will close the output, allow caller to close
 			_lastSaved = dos.getMessageDigest().digest();
-			setPotentiallyDirty(false);
+			setDirty(false);
+			
 		} catch (NoSuchAlgorithmException e) {
-			Log.warning("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
-			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_DIGEST + " available -- configuration error!");
+			Log.warning("No pre-configured algorithm {0} available -- configuration error!", DEFAULT_CHECKSUM_ALGORITHM);
+			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_CHECKSUM_ALGORITHM + " available -- configuration error!");
 		} catch (XMLStreamException e) {
-			// XMLStreamException should never happen, since our code should always write good XML
-			throw new RuntimeException(e);
+			Log.warning("Encoding exception determining whether an object is dirty: {0}", e);
+			// TODO when move to 1.6, use nested exceptions
+			throw new IOException("Encoding exception determining whether an object is dirty: " + e);
+		} finally {
+			_lock.writeLock().unlock();
 		}
 	}
 	

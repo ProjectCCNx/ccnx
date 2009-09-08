@@ -17,6 +17,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -80,21 +81,26 @@ public class CollectionObjectTestRepo {
 		newReferences.add(new Link(ContentName.fromNative("/libraryTest/r3")));
 		newReferences.add(new Link(ContentName.fromNative("/libraryTest/r4")));
 		collection.contents().addAll(newReferences);
-		collection.save();
+		if (!collection.save()) {
+			System.out.println("Collection not saved -- data should have been updated?");
+		}
 		readCollection.update(5000);
+		System.out.println("read collection version: " + readCollection.getVersion());
 		checkReferences = collection.contents();
-		Assert.assertEquals(collection.getCurrentVersion(), readCollection.getCurrentVersion());
+		Assert.assertEquals(collection.getVersion(), readCollection.getVersion());
 		Assert.assertEquals(checkReferences.size(), 4);
 		Assert.assertEquals(newReferences.get(0), checkReferences.get(2));
 		Assert.assertEquals(newReferences.get(1), checkReferences.get(3));
+		CCNTime oldVersion = collection.getVersion();
 		
 		collection.contents().removeAll(newReferences);
 		collection.save();
 		readCollection.update(5000);
 		checkReferences = collection.contents();
-		Assert.assertEquals(collection.getCurrentVersion(), readCollection.getCurrentVersion());
+		Assert.assertEquals(collection.getVersion(), readCollection.getVersion());
 		checkReferences = collection.contents();
-		Assert.assertEquals(collection.getCurrentVersion(), readCollection.getCurrentVersion());
+		Assert.assertEquals(collection.getVersion(), readCollection.getVersion());
 		Assert.assertEquals(collection.contents(), readCollection.contents());
+		Assert.assertTrue("Updated version contents", collection.getVersion().after(oldVersion));
 	}
 }

@@ -44,5 +44,5 @@ public class CCNStringObject extends CCNSerializableObject<String> {
 		super(String.class, firstBlock, library);
 	}
 	
-	public String string() { return data(); }
+	public String string() throws ContentNotReadyException, ContentGoneException { return data(); }
 }

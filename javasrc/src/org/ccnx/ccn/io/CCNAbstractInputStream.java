@@ -64,6 +64,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	
 	protected KeyLocator _publisherKeyLocator; // the key locator of the content publisher as we read it.
 
+	protected boolean _atEOF = false;
+
+	protected int _readlimit = 0;
+
+	protected int _markOffset = 0;
+
+	protected long _markBlock = 0;
+
 	/**
 	 * @param baseName should not include a segment component.
 	 * @param startingSegmentNumber
@@ -486,5 +494,114 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	public String currentSegmentName() {
 		return ((null == _currentSegment) ? "null" : _currentSegment.name().toString());
 	}
+
+	@Override
+	public int available() throws IOException {
+		if (null == _segmentReadStream)
+			return 0;
+		return _segmentReadStream.available();
+	}
+
+	public boolean eof() { 
+		//Library.info("Checking eof: there yet? " + _atEOF);
+		return _atEOF; 
+	}
+
+	@Override
+	public void close() throws IOException {
+		// don't have to do anything.
+	}
+
+	@Override
+	public synchronized void mark(int readlimit) {
+		_readlimit = readlimit;
+		_markBlock = segmentNumber();
+		if (null == _segmentReadStream) {
+			_markOffset = 0;
+		} else {
+			try {
+				_markOffset = _currentSegment.contentLength() - _segmentReadStream.available();
+				if (_segmentReadStream.markSupported()) {
+					_segmentReadStream.mark(readlimit);
+				}
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		Log.finer("mark: block: " + segmentNumber() + " offset: " + _markOffset);
+	}
+
+	@Override
+	public boolean markSupported() {
+		return true;
+	}
+
+	@Override
+	public synchronized void reset() throws IOException {
+		// TODO: when first block is read in constructor this check can be removed
+		if (_currentSegment == null) {
+			setFirstSegment(getSegment(_markBlock));
+		} else if (currentSegmentNumber() == _markBlock) {
+				//already have the correct segment
+				if (tell() == _markOffset){
+					//already have the correct offset
+				} else {
+					// Reset and skip.
+					if (_segmentReadStream.markSupported()) {
+						_segmentReadStream.reset();
+						Log.finer("reset within block: block: " + segmentNumber() + " offset: " + _markOffset + " eof? " + _atEOF);
+						return;
+					} else {
+						setCurrentSegment(_currentSegment);
+					}
+				}
+		} else {
+			// getSegment doesn't pull segment if we already have the right one
+			setCurrentSegment(getSegment(_markBlock));
+		}
+		_segmentReadStream.skip(_markOffset);
+		_atEOF = false;
+		Log.finer("reset: block: " + segmentNumber() + " offset: " + _markOffset + " eof? " + _atEOF);
+	}
+
+	@Override
+	public long skip(long n) throws IOException {
+		
+		Log.info("in skip("+n+")");
+		
+		if (n < 0) {
+			return 0;
+		}
+		
+		return readInternal(null, 0, (int)n);
+	}
+
+	protected int segmentCount() throws IOException {
+		return 0;
+	}
+
+	public long seek(long position) throws IOException {
+		Log.info("Seeking stream to " + position);
+		// TODO: when first block is read in constructor this check can be removed
+		if ((_currentSegment == null) || (!SegmentationProfile.isFirstSegment(_currentSegment.name()))) {
+			setFirstSegment(getFirstSegment());
+		} else {
+			// we just need to go forward... but there is no good way to rewind or
+			// to figure out where we are. but don't refetch current segment
+			// TODO -- optimize for small local seeks
+			setCurrentSegment(_currentSegment);
+		}
+		return skip(position);
+	}
+
+	public long tell() throws IOException {
+		return _currentSegment.contentLength() - _segmentReadStream.available();
+	}
+
+	public long length() throws IOException {
+		return -1;
+	}
+
+	public ContentName baseName() { return _baseName; }
 	
 }

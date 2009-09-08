@@ -620,7 +620,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			new WrappedKeyObject(getWrappedKeyNameForKeyID(WrappedKey.wrappingKeyIdentifier(publicKey)),
 								 wrappedKey, _manager.library());
 		wko.saveToRepository();
-		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new Link(wko.getCurrentVersionName()), _manager.library());
+		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new Link(wko.getVersionedName()), _manager.library());
 		lo.saveToRepository();
 	}
 	

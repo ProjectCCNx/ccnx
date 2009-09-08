@@ -76,91 +76,67 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 			super(Header.class, firstBlock, library);
 		}
 		
-		public long start() { 
+		public long start() throws ContentGoneException, ContentNotReadyException { 
 			Header h = header();
-			if (null == h)
-				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.start(); 
 		}
 
-		public long count() { 
+		public long count() throws ContentGoneException, ContentNotReadyException { 
 			Header h = header();
-			if (null == h)
-				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.count(); 
 		}
 		
-		public int blockSize() { 
+		public int blockSize() throws ContentGoneException, ContentNotReadyException { 
 			Header h = header();
-			if (null == h)
-				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.blockSize(); 
 		}
 		
-		public long length() { 
+		public long length() throws ContentGoneException, ContentNotReadyException { 
 			Header h = header();
-			if (null == h)
-				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.length(); 
 		}
 		
-		public byte [] rootDigest() { 
+		public byte [] rootDigest() throws ContentGoneException, ContentNotReadyException { 
 			Header h = header();
-			if (null == h)
-				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.rootDigest(); 
 		}
 		
-		public byte [] contentDigest() {
+		public byte [] contentDigest() throws ContentGoneException, ContentNotReadyException {
 			Header h = header();
-			if (null == h)
-				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.contentDigest(); 
 		}
 		
-		public FragmentationType type() {
+		public FragmentationType type() throws ContentGoneException, ContentNotReadyException {
 			Header h = header();
-			if (null == h)
-				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.type(); 
 		}
 
-		public String typeName() {
+		public String typeName() throws ContentNotReadyException, ContentGoneException {
 			Header h = header();
-			if (null == h)
-				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.typeName(); 
 		}
 		
-		public int[] positionToSegmentLocation(long position) {
+		public int[] positionToSegmentLocation(long position) throws ContentNotReadyException, ContentGoneException {
 			Header h = header();
-			if (null == h)
-				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.positionToSegmentLocation(position);
 		}
 
-		public long segmentLocationToPosition(long block, int offset) {
+		public long segmentLocationToPosition(long block, int offset) throws ContentNotReadyException, ContentGoneException {
 			Header h = header();
-			if (null == h)
-				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.segmentLocationToPosition(block, offset);
 		}
 
-		public int segmentCount() {
+		public int segmentCount() throws ContentNotReadyException, ContentGoneException {
 			Header h = header();
-			if (null == h)
-				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.segmentCount();
 		}
 		
-		public int segmentRemainder() {
+		public int segmentRemainder() throws ContentNotReadyException, ContentGoneException {
 			Header h = header();
-			if (null == h)
-				throw new IllegalStateException("HeaderObject does not have valid data! Gone? " + isGone() + " Ready? " + available());
 			return h.segmentRemainder();
 		}
 
-		public Header header() { 
+		public Header header() throws ContentNotReadyException, ContentGoneException { 
 			if (null == data())
 				return null;
 			return data(); 

@@ -20,7 +20,7 @@ import java.util.logging.Level;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.repo.ContentTree.ContentFileRef;
+import org.ccnx.ccn.impl.repo.ContentRef;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -39,7 +39,7 @@ import org.ccnx.ccn.protocol.SignedInfo;
  * Implements a log-structured RepositoryStore on a filesystem using sequential data files with an index for queries
  */
 
-public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentGetter {
+public class LogStructRepoStore extends RepositoryStoreBase implements RepositoryStore, ContentTree.ContentGetter {
 
 	public final static String CURRENT_VERSION = "1.4";
 		
@@ -47,13 +47,13 @@ public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentG
 	public final static String NORMAL_COMPONENT = "0";
 	public final static String SPLIT_COMPONENT = "1";
 	
+	private static String DEFAULT_LOCAL_NAME = "Repository";
+	private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
 	private static final String REPO_PRIVATE = "private";
 	private static final String VERSION = "version";
 	private static final String REPO_LOCALNAME = "local";
 	private static final String REPO_GLOBALPREFIX = "global";
 
-	private static String DEFAULT_LOCAL_NAME = "Repository";
-	private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
 	private static String CONTENT_FILE_PREFIX = "repoFile";
 	private static String DEBUG_TREEDUMP_FILE = "debugNamesTree";
 	
@@ -62,8 +62,6 @@ public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentG
 
 	protected String _repositoryRoot = null;
 	protected File _repositoryFile;
-	protected RepositoryInfo _info = null;
-	protected Policy _policy = null;
 
 	Map<Integer,RepoFile> _files;
 	RepoFile _activeWriteFile;
@@ -75,27 +73,9 @@ public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentG
 		long nextWritePos;
 	}
 	
-	public boolean checkPolicyUpdate(ContentObject co)
-			throws RepositoryException {
-		Log.info("Got potential policy update: {0}, expected prefix {1}.", co.name(), _info.getPolicyName());
-		if (_info.getPolicyName().isPrefixOf(co.name())) {
-			ByteArrayInputStream bais = new ByteArrayInputStream(co.content());
-			try {
-				if (_policy.update(bais, true)) {
-					ContentName policyName = VersioningProfile.addVersion(
-							ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY));
-					Log.info("REPO: got policy update, global name {0} local name {1}, saving to {2}", _policy.getGlobalPrefix(), _policy.getLocalName(), policyName);
-					ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
-	   				saveContent(policyCo);
-	   				Log.info("REPO: Saved policy to repository: {0}", policyCo.name());
-	   				return true;
-				}
-			} catch (Exception e) {
-				Log.logStackTrace(Level.WARNING, e);
-				e.printStackTrace();
-			} 
-		}
-		return false;
+	protected class FileRef extends ContentRef {
+		int id;
+		long offset;
 	}
 
 	public ContentObject getContent(Interest interest)
@@ -107,25 +87,12 @@ public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentG
 		return _index.getNamesWithPrefix(i, this);
 	}
 
-	public ArrayList<ContentName> getNamespace() {
-		return _policy.getNameSpace();
-	}
-	
 	public Policy getPolicy() {
 		return _policy;
 	}
 
-	public byte[] getRepoInfo(ArrayList<ContentName> names) {
-		try {
-			RepositoryInfo rri = _info;
-			if (names != null)
-				rri = new RepositoryInfo(CURRENT_VERSION, _info.getGlobalPrefix(), _info.getLocalName(), names);	
-			return rri.encode();
-		} catch (Exception e) {
-			Log.logStackTrace(Level.WARNING, e);
-			e.printStackTrace();
-		}
-		return null;
+	public String getVersion() {
+		return CURRENT_VERSION;
 	}
 
 	protected Integer createIndex() {
@@ -154,7 +121,7 @@ public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentG
 					
 						Log.fine("Creating index for " + filenames[i]);
 						while (true) {
-							ContentFileRef ref = _index.new ContentFileRef();
+							FileRef ref = new FileRef();
 							ref.id = index.intValue();
 							ref.offset = rfile.openFile.getFilePointer();
 							if(ref.offset > 0)
@@ -206,16 +173,8 @@ public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentG
 			localName = DEFAULT_LOCAL_NAME;
 		if (null == globalPrefix) 
 			globalPrefix = DEFAULT_GLOBAL_NAME;
-		_policy = new BasicPolicy(null);
-		_policy.setVersion(CURRENT_VERSION);
+		startInitPolicy(policyFile);
 
-		if (null != policyFile) {
-			try {
-				_policy.update(new FileInputStream(policyFile), false);
-			} catch (Exception e) {
-				throw new InvalidParameterException(e.getMessage());
-			}
-		}
 		if (repositoryRoot == null) {
 			throw new InvalidParameterException();
 		} else {
@@ -254,49 +213,42 @@ public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentG
 			Log.warning("Error opening content output file index " + maxFileIndex);
 		}
 		
+		/**
+		 * Verify stored policy info
+		 */
 		String version = checkFile(VERSION, CURRENT_VERSION, handle, false);
 		if (version != null && !version.trim().equals(CURRENT_VERSION))
 			throw new RepositoryException("Bad repository version: " + version);
-		
+
 		String checkName = checkFile(REPO_LOCALNAME, localName, handle, nameFromArgs);
 		localName = checkName != null ? checkName : localName;
 		try {
-			_policy.setLocalName(localName);
-
-			checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, handle, globalFromArgs);
-			globalPrefix = checkName != null ? checkName : globalPrefix;
-
-			Log.info("REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
-			_info = new RepositoryInfo(CURRENT_VERSION, globalPrefix, localName);
-
+			_policy.setLocalName(localName);		
 		} catch (MalformedContentNameStringException e3) {
 			throw new RepositoryException(e3.getMessage());
 		}
-		/*
-		 * Read policy file from disk if it exists and we didn't read it in as an argument.
-		 * Otherwise save the new policy to disk.
+		
+		/**
+		 * Try to read policy from storage if we don't have full policy source yet
 		 */
 		if (!policyFromFile) {
-			try {
-				Log.info("REPO: reading policy from network: " + REPO_NAMESPACE+"/" + _info.getLocalName() + "/" + REPO_POLICY);
-				ContentObject policyObject = getContent(
-						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY)));
-				if (policyObject != null) {
-					ByteArrayInputStream bais = new ByteArrayInputStream(policyObject.content());
-					_policy.update(bais, false);
-				}
-			} catch (MalformedContentNameStringException e) {} // None of this should happen
-			  catch (XMLStreamException e) {} 
-			  catch (IOException e) {}
-		} else {
-			saveContent(_policy.getPolicyContent());
+			readPolicy(localName);
 		}
-		
+
+		checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, handle, globalFromArgs);
+		globalPrefix = checkName != null ? checkName : globalPrefix;
+		Log.info("REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
 		try {
 			_policy.setGlobalPrefix(globalPrefix);
-			Log.info("REPO: initializing policy location: {0} for global prefix {1} and local name {2}", _info.getPolicyName(), globalPrefix,  localName);
+			Log.info("REPO: initializing policy location: {0} for global prefix {1} and local name {2}", localName, globalPrefix,  localName);
 		} catch (MalformedContentNameStringException e2) {
 			throw new RepositoryException(e2.getMessage());
+		}
+		saveContent(_policy.getPolicyContent());
+		try {
+			finishInitPolicy(globalPrefix, localName);
+		} catch (MalformedContentNameStringException e) {
+			throw new RepositoryException(e.getMessage());
 		}
 	}
 
@@ -320,7 +272,7 @@ public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentG
 			NameEnumerationResponse ner = new NameEnumerationResponse();
 			synchronized(_activeWriteFile) {
 				assert(null != _activeWriteFile.openFile);
-				ContentFileRef ref = _index.new ContentFileRef();
+				FileRef ref = new FileRef();
 				ref.id = Integer.parseInt(_activeWriteFile.file.getName().substring(CONTENT_FILE_PREFIX.length()));
 				ref.offset = _activeWriteFile.nextWritePos;
 				_activeWriteFile.openFile.seek(_activeWriteFile.nextWritePos);
@@ -342,20 +294,19 @@ public class LogStructRepoStore implements RepositoryStore, ContentTree.ContentG
 		}
 	}
 
-	public void setPolicy(Policy policy) {
-		_policy = policy;
-	}
-
-	public ContentObject get(ContentFileRef ref) {
+	public ContentObject get(ContentRef ref) {
+		// This is a call back based on what we put in ContentTree, so it must be
+		// using our subtype of ContentRef
+		FileRef fref = (FileRef)ref;
 		try {
-			RepoFile file = _files.get(ref.id);
+			RepoFile file = _files.get(fref.id);
 			if (null == file)
 				return null;
 			synchronized (file) {
 				if (null == file.openFile) {
 					file.openFile = new RandomAccessFile(file.file, "r");
 				}
-				file.openFile.seek(ref.offset);
+				file.openFile.seek(fref.offset);
 				ContentObject content = new ContentObject();
 				InputStream is = new BufferedInputStream(new RandomAccessInputStream(file.openFile));
 				content.decode(is);

@@ -8,6 +8,8 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.ContentGoneException;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -48,6 +50,6 @@ public class MembershipList extends CCNEncodableObject<Collection> {
 		super(Collection.class, firstBlock, library);
 	}
 	
-	public Collection membershipList() { return data(); }
+	public Collection membershipList() throws ContentNotReadyException, ContentGoneException { return data(); }
 
 }

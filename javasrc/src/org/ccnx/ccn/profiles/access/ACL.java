@@ -15,6 +15,8 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.ContentGoneException;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -139,7 +141,7 @@ public class ACL extends Collection {
 			super(ACL.class, firstBlock, library);
 		}
 		
-		public ACL acl() { return data(); }
+		public ACL acl() throws ContentNotReadyException, ContentGoneException { return data(); }
 	}
 
 	public ACL() {
