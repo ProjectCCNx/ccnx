@@ -569,32 +569,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return saveAsGone();
 	}
 	
-	public CCNTime getVersion() {
-		if (null == _currentVersionComponent) {
-			return null;
-		}
-		return VersioningProfile.getVersionComponentAsTimestamp(_currentVersionComponent);
-	}
-
-	public ContentName getBaseName() {
-		return _baseName;
-	}
-		
-	public CCNTime getCurrentVersion() {
-		if (null == _currentVersionComponent)
-			return null;
-		return VersioningProfile.getVersionComponentAsTimestamp(_currentVersionComponent);
-	}
-	
-	public ContentName getCurrentVersionName() {
-		if (null != _currentVersionComponent) {
-			if (null == _currentVersionName)
-				_currentVersionName =  new ContentName(_baseName, _currentVersionComponent);
-			return _currentVersionName;
-		}
-		return _baseName;
-	}
-	
 	/**
 	 * Warning - calling this risks packet drops. It should only
 	 * be used for tests or other special circumstances in which
@@ -649,9 +623,44 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public boolean isGone() {
 		return available() && _data == null;
 	}
+		
+	public CCNTime getVersion() throws ContentNotReadyException, ContentNotSavedException {
+		if (isSaved())
+			return VersioningProfile.getVersionComponentAsTimestamp(_currentVersionComponent);
+		if (!available()) 
+			throw new ContentNotReadyException("No content available!");
+		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
+	}
+
+	public ContentName getBaseName() {
+		return _baseName;
+	}
 	
-	public PublisherPublicKeyDigest contentPublisher() {
-		return _currentPublisher;
+	public byte [] getCurrentVersionComponent() throws ContentNotReadyException, ContentNotSavedException {
+		if (isSaved())
+			return _currentVersionComponent;
+		if (!available()) 
+			throw new ContentNotReadyException("No content available!");
+		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
+	}
+	
+	public ContentName getCurrentVersionName() throws ContentNotReadyException, ContentNotSavedException {
+		if (isSaved()) {
+			if (null == _currentVersionName)
+				_currentVersionName =  new ContentName(_baseName, _currentVersionComponent);
+			return _currentVersionName;
+		}
+		if (!available()) 
+			throw new ContentNotReadyException("No content available!");
+		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
+	}
+	
+	public PublisherPublicKeyDigest contentPublisher() throws ContentNotReadyException, ContentNotSavedException {
+		if (isSaved())
+			return _currentPublisher;
+		if (!available()) 
+			throw new ContentNotReadyException("No content available!");
+		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
 	}
 	
 	public KeyLocator publisherKeyLocator() {
