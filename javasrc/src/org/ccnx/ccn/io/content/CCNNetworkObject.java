@@ -642,24 +642,20 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		super.setData(newData);
 	}
 	
-	public CCNTime getVersion() throws ContentNotReadyException, ContentNotSavedException {
+	public CCNTime getVersion() {
 		if (isSaved())
-			return VersioningProfile.getVersionComponentAsTimestamp(_currentVersionComponent);
-		if (!available()) 
-			throw new ContentNotReadyException("No content available!");
-		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
+			return VersioningProfile.getVersionComponentAsTimestamp(getVersionComponent());
+		return null;
 	}
 
 	public ContentName getBaseName() {
 		return _baseName;
 	}
 	
-	public byte [] getVersionComponent() throws ContentNotReadyException, ContentNotSavedException {
+	public byte [] getVersionComponent() {
 		if (isSaved())
 			return _currentVersionComponent;
-		if (!available()) 
-			throw new ContentNotReadyException("No content available!");
-		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
+		return null;
 	}
 	
 	/**
@@ -676,20 +672,16 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return getBaseName();
 	}
 	
-	public PublisherPublicKeyDigest getContentPublisher() throws ContentNotReadyException, ContentNotSavedException {
+	public PublisherPublicKeyDigest getContentPublisher() {
 		if (isSaved())
 			return _currentPublisher;
-		if (!available()) 
-			throw new ContentNotReadyException("No content available!");
-		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
+		return null;
 	}
 	
-	public KeyLocator getPublisherKeyLocator() throws ContentNotReadyException, ContentNotSavedException {
+	public KeyLocator getPublisherKeyLocator() {
 		if (isSaved())
 			return _currentPublisherKeyLocator;		
-		if (!available()) 
-			throw new ContentNotReadyException("No content available!");
-		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
+		return null;
 	}
 
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
