@@ -724,7 +724,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 	}
 	
-	public CCNTime getVersion() {
+	public CCNTime getVersion() throws IOException {
 		try {
 			_lock.readLock().lock();
 			if (isSaved())
@@ -744,7 +744,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 	}
 	
-	public byte [] getVersionComponent() {
+	public byte [] getVersionComponent() throws IOException {
 		try {
 			_lock.readLock().lock();
 			if (isSaved())
@@ -760,7 +760,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * name. Otherwise returns the base name.
 	 * @return
 	 */
-	public ContentName getVersionedName() {
+	public ContentName getVersionedName()  {
 		try {
 			_lock.readLock().lock();
 
@@ -770,12 +770,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				return _currentVersionName;
 			}
 			return getBaseName();
+		} catch (IOException e) {
+			Log.warning("Invalid state for object {0}, cannot get current version name: {1}", getBaseName(), e);
+			return getBaseName();
 		} finally {
 			_lock.readLock().unlock();
 		}
 	}
 
-	public PublisherPublicKeyDigest getContentPublisher() {
+	public PublisherPublicKeyDigest getContentPublisher() throws IOException {
 		try {
 			_lock.readLock().lock();
 			if (isSaved())
@@ -786,7 +789,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 	}
 	
-	public KeyLocator getPublisherKeyLocator() {
+	public KeyLocator getPublisherKeyLocator() throws IOException  {
 		try {
 			_lock.readLock().lock();
 			if (isSaved())
