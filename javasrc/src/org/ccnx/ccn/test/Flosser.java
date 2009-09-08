@@ -105,10 +105,10 @@ public class Flosser implements CCNInterestListener {
 	public void handleNamespace(ContentName namespace) throws IOException {
 		synchronized(_interests) {
 			if (_interests.containsKey(namespace)) {
-				Log.fine("Already handling namespace: " + namespace);
+				Log.fine("FLOSSER: Already handling namespace: {0}", namespace);
 				return;
 			}
-			Log.info("Flosser: handling namespace: " + namespace);
+			Log.info("FLOSSER: handling namespace: {0}", namespace);
 			Interest namespaceInterest = new Interest(namespace);
 			_interests.put(namespace, namespaceInterest);
 			_library.expressInterest(namespaceInterest, this);
@@ -116,7 +116,7 @@ public class Flosser implements CCNInterestListener {
 			if (null == subNamespaces) {
 				subNamespaces = new HashSet<ContentName>();
 				_subInterests.put(namespace, subNamespaces);
-				Log.info("FLOSSER: setup parent namespace: " + namespace);
+				Log.info("FLOSSER: setup parent namespace: {0}", namespace);
 			}			
 		}
 	}
@@ -124,10 +124,10 @@ public class Flosser implements CCNInterestListener {
 	public void handleNamespace(ContentName namespace, ContentName parent) throws IOException {
 		synchronized(_interests) {
 			if (_interests.containsKey(namespace)) {
-				Log.fine("Already handling child namespace: " + namespace);
+				Log.fine("Already handling child namespace: {0}", namespace);
 				return;
 			}
-			Log.info("FLOSSER: handling child namespace: " + namespace + " expected parent: " + parent);
+			Log.info("FLOSSER: handling child namespace: {0} expected parent: {1}", namespace, parent);
 			Interest namespaceInterest = new Interest(namespace);
 			_interests.put(namespace, namespaceInterest);
 			_library.expressInterest(namespaceInterest, this);
@@ -138,15 +138,15 @@ public class Flosser implements CCNInterestListener {
 			while ((subNamespace == null) && (!parentNamespace.equals(ContentName.ROOT))) {
 				parentNamespace = parentNamespace.parent();
 				subNamespace = _subInterests.get(parentNamespace);
-				Log.info("FLOSSER: initial parent not found in map, looked up " + parentNamespace + " found in map? " + ((null == subNamespace) ? "no" : "yes"));
+				Log.info("FLOSSER: initial parent not found in map, looked up {0} found in map? {1}", parentNamespace, ((null == subNamespace) ? "no" : "yes"));
 			}
 			if (null != subNamespace) {
-				Log.info("FLOSSER: Adding subnamespace: " + namespace + " to ancestor " + parentNamespace);
+				Log.info("FLOSSER: Adding subnamespace: {0} to ancestor {1}", namespace, parentNamespace);
 				subNamespace.add(namespace);
 			} else {
-				Log.info("FLOSSER: Cannot find ancestor namespace for " + namespace);
+				Log.info("FLOSSER: Cannot find ancestor namespace for {0}", namespace);
 				for (ContentName n : _subInterests.keySet()) {
-					Log.info("FLOSSER: 		available ancestor: " + n);
+					Log.info("FLOSSER: 		available ancestor: {0}", n);
 				}
 			}
 		}
@@ -159,10 +159,10 @@ public class Flosser implements CCNInterestListener {
 		ContentName interestName = null;
 		for (ContentObject result : results) {
 			if (_processedObjects.contains(result)) {
-				Log.fine("Got repeated content for interest: " + interest + " content: " + result.name());
+				Log.fine("FLOSSER: Got repeated content for interest: {0} content: {1}", interest, result.name());
 				continue;
 			}
-			Log.finest("Got new content for interest " + interest + " content name: " + result.name());
+			Log.finest("FLOSSER: Got new content for interest {0} content name: {1}", interest, result.name());
 			processContent(result);
 			// update the interest. follow process used by ccnslurp.
             // exclude the next component of this object, and set up a
