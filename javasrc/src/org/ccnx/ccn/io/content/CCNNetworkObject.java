@@ -636,7 +636,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return _baseName;
 	}
 	
-	public byte [] getCurrentVersionComponent() throws ContentNotReadyException, ContentNotSavedException {
+	public byte [] getVersionComponent() throws ContentNotReadyException, ContentNotSavedException {
 		if (isSaved())
 			return _currentVersionComponent;
 		if (!available()) 
