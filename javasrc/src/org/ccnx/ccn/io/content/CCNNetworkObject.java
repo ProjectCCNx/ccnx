@@ -66,6 +66,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	protected ContentName _currentVersionName;
 	
+	/**
+	 * Flag to indicate whether content has been explicitly marked as GONE
+	 * in the latest version we know about. Use an explicit flag to separate from
+	 * the option for valid null content, or content that has not yet been updated.
+	 */
+	protected boolean _isGone = false;
+	
 	protected PublisherPublicKeyDigest _currentPublisher;
 	protected KeyLocator _currentPublisherKeyLocator;
 	protected CCNHandle _library;
@@ -289,14 +296,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		return false;
 	}
-	
-	protected E data() throws ContentNotReadyException, ContentGoneException { 
-		if (isGone()) {
-			throw new ContentGoneException("Content is gone!");
-		}
-		return super.data();
-	}
-	
+
 	public boolean update() throws XMLStreamException, IOException {
 		return update(DEFAULT_TIMEOUT);
 	}
@@ -337,12 +337,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_currentPublisher = inputStream.deletionInformation().signedInfo().getPublisherKeyID();
 			_currentPublisherKeyLocator = inputStream.deletionInformation().signedInfo().getKeyLocator();
 			_available = true;
+			_isGone = true;
 		} else {
 			super.update(inputStream);
 			
 			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.baseName());
 			_currentPublisher = inputStream.publisher();
 			_currentPublisherKeyLocator = inputStream.publisherKeyLocator();
+			_isGone = false;
 		}
 		_baseName = nameAndVersion.first();
 		_currentVersionComponent = nameAndVersion.second();
@@ -437,7 +439,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// write the object, and figure out if that's happened. Also need to make
 		// parent behavior just write, put the dirty check higher in the state.
 
-		if (_data != null && !isDirty()) { // Should we check potentially dirty?
+		if (!gone && !isDirty()) { 
 			Log.info("Object not dirty. Not saving.");
 			return false;
 		}
@@ -466,7 +468,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// TODO -- perhaps disallow updates for unrelated names.
 		_flowControl.addNameSpace(_baseName);
 		
-		if (_data != null) {
+		if (!gone) {
 			// CCNVersionedOutputStream will version an unversioned name. 
 			// If it gets a versioned name, will respect it. 
 			// This will call startWrite on the flow controller.
@@ -554,6 +556,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
 		_data = null;
+		_isGone = true;
+		setDirty(true);
 		return saveInternal(null, true);
 	}
 
@@ -621,9 +625,23 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	public boolean isGone() {
-		return available() && _data == null;
+		return _isGone;
 	}
-		
+	
+	@Override
+	protected E data() throws ContentNotReadyException, ContentGoneException { 
+		if (isGone()) {
+			throw new ContentGoneException("Content is gone!");
+		}
+		return super.data();
+	}
+	
+	@Override
+	public void setData(E newData) {
+		_isGone = false; // clear gone, even if we're setting to null; only saveAsGone can set as gone
+		super.setData(newData);
+	}
+	
 	public CCNTime getVersion() throws ContentNotReadyException, ContentNotSavedException {
 		if (isSaved())
 			return VersioningProfile.getVersionComponentAsTimestamp(_currentVersionComponent);
