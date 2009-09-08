@@ -87,11 +87,11 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 			super(Collection.class, firstBlock, library);
 		}
 		
-		public Collection collection() {
+		public Collection collection() throws ContentNotReadyException, ContentGoneException {
 			return data();
 		}
 		
-		public LinkedList<Link> contents() { 
+		public LinkedList<Link> contents() throws ContentNotReadyException, ContentGoneException { 
 			if (null == data())
 				return null;
 			return data().contents(); 

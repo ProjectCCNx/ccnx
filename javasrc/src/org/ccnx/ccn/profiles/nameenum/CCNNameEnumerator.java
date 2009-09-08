@@ -324,7 +324,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 
 							CollectionObject collobj = new CollectionObject(collectionName, cd, _library);
 							collobj.save();
-							Log.info("Saved collection object in name enumeration: " + collobj.getCurrentVersionName());
+							Log.info("Saved collection object in name enumeration: " + collobj.getVersionedName());
 							System.out.println("saved collection object");
 							
 							r.clean();

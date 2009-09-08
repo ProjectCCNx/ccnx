@@ -66,6 +66,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	protected ContentName _currentVersionName;
 	
+	/**
+	 * Flag to indicate whether content has been explicitly marked as GONE
+	 * in the latest version we know about. Use an explicit flag to separate from
+	 * the option for valid null content, or content that has not yet been updated.
+	 */
+	protected boolean _isGone = false;
+	
 	protected PublisherPublicKeyDigest _currentPublisher;
 	protected KeyLocator _currentPublisherKeyLocator;
 	protected CCNHandle _library;
@@ -254,6 +261,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * decide how to store this object.
 	 * When we create the flow controller, we add the base name namespace, so it will respond
 	 * to requests for latest version.
+	 * 
+	 * Expects to be called with the write lock held.
 	 * @return
 	 * @throws IOException 
 	 */
@@ -277,19 +286,25 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException
 	 */
 	public boolean update(long timeout) throws XMLStreamException, IOException {
-		if (null == _baseName) {
-			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
+		try {
+			_lock.writeLock().lock();
+
+			if (null == _baseName) {
+				throw new IllegalStateException("Cannot retrieve an object without giving a name!");
+			}
+			// Look for first segment of version after ours, or first version if we have none.
+			ContentObject firstSegment = 
+				VersioningProfile.getFirstBlockOfLatestVersion(getVersionedName(), null, null, timeout, 
+						_library.defaultVerifier(), _library);
+			if (null != firstSegment) {
+				return update(firstSegment);
+			}
+			return false;
+		} finally {
+			_lock.writeLock().unlock();
 		}
-		// Look for first segment of version after ours, or first version if we have none.
-		ContentObject firstSegment = 
-			VersioningProfile.getFirstBlockOfLatestVersion(getCurrentVersionName(), null, null, timeout, 
-																_library.defaultVerifier(), _library);
-		if (null != firstSegment) {
-			return update(firstSegment);
-		}
-		return false;
 	}
-	
+
 	public boolean update() throws XMLStreamException, IOException {
 		return update(DEFAULT_TIMEOUT);
 	}
@@ -303,9 +318,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws ClassNotFoundException 
 	 */
 	public boolean update(ContentName name, PublisherPublicKeyDigest publisher) throws XMLStreamException, IOException {
-		Log.info("Updating object to {0}.", name);
-		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, _library);
-		return update(is);
+		try {
+			_lock.writeLock().lock();
+			Log.info("Updating object to {0}.", name);
+			CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, _library);
+			return update(is);
+		} finally {
+			_lock.writeLock().unlock();
+		}
 	}
 
 	/**
@@ -315,31 +335,44 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException
 	 */
 	public boolean update(ContentObject object) throws XMLStreamException, IOException {
-		CCNInputStream is = new CCNInputStream(object, _library);
-		is.seek(0); // in case it wasn't the first segment
-		return update(is);
+		try {
+			_lock.writeLock().lock();
+			CCNInputStream is = new CCNInputStream(object, _library);
+			is.seek(0); // in case it wasn't the first segment
+			return update(is);
+		} finally {
+			_lock.writeLock().unlock();
+		}
 	}
 
 	public boolean update(CCNInputStream inputStream) throws IOException, XMLStreamException {
-		Tuple<ContentName, byte []> nameAndVersion = null;
-		if (inputStream.isGone()) {
-			_data = null;
-			
-			// This will have a final version and a segment
-			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.deletionInformation().name());
-			_currentPublisher = inputStream.deletionInformation().signedInfo().getPublisherKeyID();
-			_currentPublisherKeyLocator = inputStream.deletionInformation().signedInfo().getKeyLocator();
-			_available = true;
-		} else {
-			super.update(inputStream);
-			
-			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.baseName());
-			_currentPublisher = inputStream.publisher();
-			_currentPublisherKeyLocator = inputStream.publisherKeyLocator();
+		try {
+			_lock.writeLock().lock();
+			Tuple<ContentName, byte []> nameAndVersion = null;
+			if (inputStream.isGone()) {
+				_data = null;
+
+				// This will have a final version and a segment
+				nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.deletionInformation().name());
+				_currentPublisher = inputStream.deletionInformation().signedInfo().getPublisherKeyID();
+				_currentPublisherKeyLocator = inputStream.deletionInformation().signedInfo().getKeyLocator();
+				_available = true;
+				_isGone = true;
+			} else {
+				super.update(inputStream);
+
+				nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.baseName());
+				_currentPublisher = inputStream.publisher();
+				_currentPublisherKeyLocator = inputStream.publisherKeyLocator();
+				_isGone = false;
+			}
+			_baseName = nameAndVersion.first();
+			_currentVersionComponent = nameAndVersion.second();
+			_currentVersionName = null; // cached if used
+
+		} finally {
+			_lock.writeLock().unlock();
 		}
-		_baseName = nameAndVersion.first();
-		_currentVersionComponent = nameAndVersion.second();
-		_currentVersionName = null; // cached if used
 		
 		// Signal readers.
 		newVersionAvailable();
@@ -355,7 +388,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
 		}
 		// Look for latest version.
-		updateInBackground(getCurrentVersionName(), continuousUpdates);
+		updateInBackground(getVersionedName(), continuousUpdates);
 	}
 
 	/**
@@ -368,23 +401,33 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	public void updateInBackground(ContentName latestVersionKnown, boolean continuousUpdates) throws IOException {
 		
-		Log.info("updateInBackground: getting latest version after {0} in background.", latestVersionKnown);
-		// DKS TODO locking?
-		cancelInterest();
-		// express this
-		// DKS TODO better versioned interests, a la library.getlatestVersion
-		_continuousUpdates = continuousUpdates;
-		_currentInterest = VersioningProfile.firstBlockLatestVersionInterest(latestVersionKnown, null);
-		Log.info("UpdateInBackground: interest: {0}", _currentInterest);
-		_library.expressInterest(_currentInterest, this);
+		try {
+			_lock.writeLock().lock();
+			Log.info("updateInBackground: getting latest version after {0} in background.", latestVersionKnown);
+			// DKS TODO locking?
+			cancelInterest();
+			// express this
+			// DKS TODO better versioned interests, a la library.getlatestVersion
+			_continuousUpdates = continuousUpdates;
+			_currentInterest = VersioningProfile.firstBlockLatestVersionInterest(latestVersionKnown, null);
+			Log.info("UpdateInBackground: interest: {0}", _currentInterest);
+			_library.expressInterest(_currentInterest, this);
+		} finally {
+			_lock.writeLock().unlock();
+		}
 	}
 	
 	public void cancelInterest() {
-		_continuousUpdates = false;
-		if (null != _currentInterest) {
-			_library.cancelInterest(_currentInterest, this);
+		try {
+			_lock.writeLock().lock();
+			_continuousUpdates = false;
+			if (null != _currentInterest) {
+				_library.cancelInterest(_currentInterest, this);
+			}
+			_excludeList.clear();
+		} finally {
+			_lock.writeLock().unlock();
 		}
-		_excludeList.clear();
 	}
 
 	/**
@@ -422,87 +465,99 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException 
 	 */
 	public boolean saveInternal(CCNTime version, boolean gone) throws IOException {
-		// move object to this name
-		// need to make sure we get back the actual name we're using,
-		// even if output stream does automatic versioning
-		// probably need to refactor save behavior -- right now, internalWriteObject
-		// either writes the object or not; we need to only make a new name if we do
-		// write the object, and figure out if that's happened. Also need to make
-		// parent behavior just write, put the dirty check higher in the state.
+		
+		try {
+			_lock.writeLock().lock();
 
-		if (_data != null && !isDirty()) { // Should we check potentially dirty?
-			Log.info("Object not dirty. Not saving.");
-			return false;
-		}
-		
-		if (!gone && (null == _data)) {
-			// skip some of the prep steps that have side effects rather than getting this exception later from superclass
-			throw new InvalidObjectException("No data to save!");
-		}
-		
-		if (null == _baseName) {
-			throw new IllegalStateException("Cannot save an object without giving it a name!");
-		}
-		
-		// Create the flow controller, if we haven't already.
-		createFlowController();
-		
-		// Handle versioning ourselves to make name handling easier. VOS should respect it.
-		ContentName name = _baseName;
-		if (null != version) {
-			name = VersioningProfile.addVersion(_baseName, version);
-		} else {
-			name = VersioningProfile.addVersion(_baseName);
-		}
-		// DKS if we add the versioned name, we don't handle get latest version.
-		// We re-add the baseName here in case an update has changed it.
-		// TODO -- perhaps disallow updates for unrelated names.
-		_flowControl.addNameSpace(_baseName);
-		
-		if (_data != null) {
-			// CCNVersionedOutputStream will version an unversioned name. 
-			// If it gets a versioned name, will respect it. 
-			// This will call startWrite on the flow controller.
-			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _flowControl);
-			save(cos); // superclass stream save. calls flush but not close on a wrapping
-			// digest stream; want to make sure we end up with a single non-MHT signed
-			// segment and no header on small objects
-			cos.close();
-			_currentPublisher = (_publisher == null) ? _flowControl.getLibrary().getDefaultPublisher() : _publisher; // TODO DKS -- is this always correct?
-			_currentPublisherKeyLocator = (_keyLocator == null) ? 
-							_flowControl.getLibrary().keyManager().getKeyLocator(_publisher) : _keyLocator;
-		} else {
-			// saving object as gone, currently this is always one empty segment so we don't use an OutputStream
-			ContentName segmentedName = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
-			byte [] empty = new byte[0];
-			ContentObject goneObject = 
-				ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty, _publisher, _keyLocator, null, null);
+			// move object to this name
+			// need to make sure we get back the actual name we're using,
+			// even if output stream does automatic versioning
+			// probably need to refactor save behavior -- right now, internalWriteObject
+			// either writes the object or not; we need to only make a new name if we do
+			// write the object, and figure out if that's happened. Also need to make
+			// parent behavior just write, put the dirty check higher in the state.
 
-			// The segmenter in the stream does an addNameSpace of the versioned name. Right now
-			// this not only adds the prefix (ignored) but triggers the repo start write.
-			_flowControl.addNameSpace(name);
-			_flowControl.startWrite(name, Shape.STREAM); // Streams take care of this for the non-gone case.
-			_flowControl.put(goneObject);
-			_flowControl.beforeClose();
-			_flowControl.afterClose();
-			_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
-			_currentPublisherKeyLocator = goneObject.signedInfo().getKeyLocator();
+			if (!gone && !isDirty()) { 
+				Log.info("Object not dirty. Not saving.");
+				return false;
+			}
+
+			if (!gone && (null == _data)) {
+				// skip some of the prep steps that have side effects rather than getting this exception later from superclass
+				throw new InvalidObjectException("No data to save!");
+			}
+
+			if (null == _baseName) {
+				throw new IllegalStateException("Cannot save an object without giving it a name!");
+			}
+
+			// Create the flow controller, if we haven't already.
+			createFlowController();
+
+			// Handle versioning ourselves to make name handling easier. VOS should respect it.
+			ContentName name = _baseName;
+			if (null != version) {
+				name = VersioningProfile.addVersion(_baseName, version);
+			} else {
+				name = VersioningProfile.addVersion(_baseName);
+			}
+			// DKS if we add the versioned name, we don't handle get latest version.
+			// We re-add the baseName here in case an update has changed it.
+			// TODO -- perhaps disallow updates for unrelated names.
+			_flowControl.addNameSpace(_baseName);
+
+			if (!gone) {
+				// CCNVersionedOutputStream will version an unversioned name. 
+				// If it gets a versioned name, will respect it. 
+				// This will call startWrite on the flow controller.
+				CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _flowControl);
+				save(cos); // superclass stream save. calls flush but not close on a wrapping
+				// digest stream; want to make sure we end up with a single non-MHT signed
+				// segment and no header on small objects
+				cos.close();
+				_currentPublisher = (_publisher == null) ? _flowControl.getLibrary().getDefaultPublisher() : _publisher; // TODO DKS -- is this always correct?
+				_currentPublisherKeyLocator = (_keyLocator == null) ? 
+						_flowControl.getLibrary().keyManager().getKeyLocator(_publisher) : _keyLocator;
+			} else {
+				// saving object as gone, currently this is always one empty segment so we don't use an OutputStream
+				ContentName segmentedName = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
+				byte [] empty = new byte[0];
+				ContentObject goneObject = 
+					ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty, _publisher, _keyLocator, null, null);
+
+				// The segmenter in the stream does an addNameSpace of the versioned name. Right now
+				// this not only adds the prefix (ignored) but triggers the repo start write.
+				_flowControl.addNameSpace(name);
+				_flowControl.startWrite(name, Shape.STREAM); // Streams take care of this for the non-gone case.
+				_flowControl.put(goneObject);
+				_flowControl.beforeClose();
+				_flowControl.afterClose();
+				_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
+				_currentPublisherKeyLocator = goneObject.signedInfo().getKeyLocator();
+			}
+			_currentVersionComponent = name.lastComponent();
+			_currentVersionName = null;
+			setDirty(false);
+			_available = true;
+
+		} finally {
+			_lock.writeLock().unlock();
 		}
-		_currentVersionComponent = name.lastComponent();
-		_currentVersionName = null;
-		setPotentiallyDirty(false);
-		_available = true;
 		return true;
 	}
 	
 	public boolean save(E data) throws XMLStreamException, IOException {
-		setData(data);
-		return save();
+		return save(null, data);
 	}
 	
 	public boolean save(CCNTime version, E data) throws IOException {
-		setData(data);
-		return save(version);
+		try {
+			_lock.writeLock().lock();
+			setData(data);
+			return save(version);
+		} finally {
+			_lock.writeLock().unlock();
+		}
 	}
 
 	/**
@@ -511,28 +566,38 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * for this object.
 	 */
 	public boolean saveToRepository(CCNTime version) throws IOException {
-		if (null == _baseName) {
-			throw new IllegalStateException("Cannot save an object without giving it a name!");
+		try {
+			_lock.writeLock().lock();
+
+			if (null == _baseName) {
+				throw new IllegalStateException("Cannot save an object without giving it a name!");
+			}
+			if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
+				throw new IOException("Cannot call saveToRepository on raw object!");
+			}
+			_raw = false; // control what flow controller will be made
+			return save(version);
+		} finally {
+			_lock.writeLock().unlock();
 		}
-		if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
-			throw new IOException("Cannot call saveToRepository on raw object!");
-		}
-		_raw = false; // control what flow controller will be made
-		return save(version);
 	}
-	
+
 	public boolean saveToRepository() throws IOException {		
 		return saveToRepository((CCNTime)null);
 	}
 	
 	public boolean saveToRepository(E data) throws IOException {
-		setData(data);
-		return saveToRepository();
+		return saveToRepository(null, data);
 	}
 	
 	public boolean saveToRepository(CCNTime version, E data) throws IOException {
-		setData(data);
-		return saveToRepository(version);
+		try {
+			_lock.writeLock().lock();
+			setData(data);
+			return saveToRepository(version);
+		} finally {
+			_lock.writeLock().unlock();
+		}
 	}
 
 	/**
@@ -542,12 +607,19 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param name
 	 * @throws IOException
 	 */
-	public boolean saveAsGone() throws IOException {		
-		if (null == _baseName) {
-			throw new IllegalStateException("Cannot save an object without giving it a name!");
+	public boolean saveAsGone() throws IOException {	
+		try {
+			_lock.writeLock().lock();
+			if (null == _baseName) {
+				throw new IllegalStateException("Cannot save an object without giving it a name!");
+			}
+			_data = null;
+			_isGone = true;
+			setDirty(true);
+			return saveInternal(null, true);
+		} finally {
+			_lock.writeLock().unlock();
 		}
-		_data = null;
-		return saveInternal(null, true);
 	}
 
 	/**
@@ -555,52 +627,32 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * for this object.
 	 */
 	public boolean saveToRepositoryAsGone() throws XMLStreamException, IOException {
-		if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
-			throw new IOException("Cannot call saveToRepository on raw object!");
+		try {
+			_lock.writeLock().lock();
+			if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
+				throw new IOException("Cannot call saveToRepository on raw object!");
+			}
+			_raw = false; // control what flow controller will be made
+			return saveAsGone();
+		} finally {
+			_lock.writeLock().unlock();
 		}
-		_raw = false; // control what flow controller will be made
-		return saveAsGone();
-	}
-	
-	public CCNTime getVersion() {
-		if ((null == _currentVersionComponent) || (null == _lastSaved)) {
-			return null;
-		}
-		return VersioningProfile.getVersionComponentAsTimestamp(_currentVersionComponent);
 	}
 
-	public ContentName getBaseName() {
-		return _baseName;
-	}
-	
-	public byte [] getCurrentVersionComponent() {
-		return _currentVersionComponent;
-	}
-	
-	public CCNTime getCurrentVersion() {
-		if (null == _currentVersionComponent)
-			return null;
-		return VersioningProfile.getVersionComponentAsTimestamp(_currentVersionComponent);
-	}
-	
-	public ContentName getCurrentVersionName() {
-		if (null != _currentVersionComponent) {
-			if (null == _currentVersionName)
-				_currentVersionName =  new ContentName(_baseName, _currentVersionComponent);
-			return _currentVersionName;
-		}
-		return _baseName;
-	}
-	
 	/**
 	 * Warning - calling this risks packet drops. It should only
 	 * be used for tests or other special circumstances in which
 	 * you "know what you are doing".
 	 */
 	public void disableFlowControl() {
-		if (null != _flowControl)
-			_flowControl.disable();
-		_disableFlowControlRequest = true;
+		try {
+			_lock.writeLock().lock();
+			if (null != _flowControl)
+				_flowControl.disable();
+			_disableFlowControlRequest = true;
+		} finally {
+			_lock.writeLock().unlock();
+		}
 	}
 	
 	protected synchronized void newVersionAvailable() {
@@ -644,62 +696,155 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	public boolean isGone() {
-		return _available && _data == null;
+		return _isGone;
 	}
 	
-	public PublisherPublicKeyDigest contentPublisher() {
-		return _currentPublisher;
+	@Override
+	protected E data() throws ContentNotReadyException, ContentGoneException { 
+		try {
+			_lock.readLock().lock();
+			if (isGone()) {
+				throw new ContentGoneException("Content is gone!");
+			}
+			return super.data();
+		} finally {
+			_lock.readLock().unlock();
+		}
 	}
 	
-	public KeyLocator publisherKeyLocator() {
-		return _currentPublisherKeyLocator;		
+	@Override
+	public void setData(E newData) {
+		try {
+			_lock.writeLock().lock();
+
+			_isGone = false; // clear gone, even if we're setting to null; only saveAsGone can set as gone
+			super.setData(newData);
+		} finally {
+			_lock.writeLock().unlock();
+		}
+	}
+	
+	public CCNTime getVersion() {
+		try {
+			_lock.readLock().lock();
+			if (isSaved())
+				return VersioningProfile.getVersionComponentAsTimestamp(getVersionComponent());
+			return null;
+		} finally {
+			_lock.readLock().unlock();
+		}
+	}
+
+	public ContentName getBaseName() {
+		try {
+			_lock.readLock().lock();
+			return _baseName;
+		} finally {
+			_lock.readLock().unlock();
+		}
+	}
+	
+	public byte [] getVersionComponent() {
+		try {
+			_lock.readLock().lock();
+			if (isSaved())
+				return _currentVersionComponent;
+			return null;
+		} finally {
+			_lock.readLock().unlock();
+		}
+	}
+	
+	/**
+	 * If the object has been saved or read from the network, returns the (cached) versioned
+	 * name. Otherwise returns the base name.
+	 * @return
+	 */
+	public ContentName getVersionedName() {
+		try {
+			_lock.readLock().lock();
+
+			if (isSaved()) {
+				if (null == _currentVersionName) // cache; only read lock necessary
+					_currentVersionName =  new ContentName(_baseName, _currentVersionComponent);
+				return _currentVersionName;
+			}
+			return getBaseName();
+		} finally {
+			_lock.readLock().unlock();
+		}
+	}
+
+	public PublisherPublicKeyDigest getContentPublisher() {
+		try {
+			_lock.readLock().lock();
+			if (isSaved())
+				return _currentPublisher;
+			return null;
+		} finally {
+			_lock.readLock().unlock();
+		}
+	}
+	
+	public KeyLocator getPublisherKeyLocator() {
+		try {
+			_lock.readLock().lock();
+			if (isSaved())
+				return _currentPublisherKeyLocator;		
+			return null;
+		} finally {
+			_lock.readLock().unlock();
+		}
 	}
 
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
-		// Do we have a version?
-		// DKS TODO timeout?
-		for (ContentObject co : results) {
-			try {
-				Log.info("handleContent: " + _currentInterest + " retrieved " + co.name());
-				if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
-					// OK, we have something that is a later version of our desired object.
-					// We're not sure it's actually the first content segment.
-					if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
-						Log.info("Background updating of {0}, got first segment: {1}", getCurrentVersionName(), co.name());
-						update(co);
-					} else {
-						// Have something that is not the first segment, like a repo write or a later segment. Go back
-						// for first segment.
-						ContentName latestVersionName = co.name().cut(_currentInterest.name().count() + 1);
-						Log.info("handleContent (network object): Have version information, now querying first segment of {0}", latestVersionName);
-						update(latestVersionName, co.signedInfo().getPublisherKeyID());
+		try {
+			_lock.writeLock().lock();
+			for (ContentObject co : results) {
+				try {
+					Log.info("handleContent: " + _currentInterest + " retrieved " + co.name());
+					if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
+						// OK, we have something that is a later version of our desired object.
+						// We're not sure it's actually the first content segment.
+						if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
+							Log.info("Background updating of {0}, got first segment: {1}", getVersionedName(), co.name());
+							update(co);
+						} else {
+							// Have something that is not the first segment, like a repo write or a later segment. Go back
+							// for first segment.
+							ContentName latestVersionName = co.name().cut(_currentInterest.name().count() + 1);
+							Log.info("handleContent (network object): Have version information, now querying first segment of {0}", latestVersionName);
+							update(latestVersionName, co.signedInfo().getPublisherKeyID());
+						}
+						_excludeList.clear();
+						_currentInterest = null;
+						newVersionAvailable(); // notify that a new version is available; perhaps move to real notify()
+						if (_continuousUpdates) {
+							// DKS TODO -- order with respect to newVersionAvailable and locking...
+							updateInBackground(true);
+						} else {
+							_continuousUpdates = false;
+						}
+						return null; // implicit cancel of interest
 					}
-					_excludeList.clear();
-					_currentInterest = null;
-					newVersionAvailable(); // notify that a new version is available; perhaps move to real notify()
-					if (_continuousUpdates) {
-						// DKS TODO -- order with respect to newVersionAvailable and locking...
-						updateInBackground(true);
-					} else {
-						_continuousUpdates = false;
-					}
-					return null; // implicit cancel of interest
-				}
-			} catch (IOException ex) {
-				Log.info("Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
-				// alright, that one didn't work, try to go on.    				
-			} catch (XMLStreamException ex) {
-				Log.info("Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
-				// alright, that one didn't work, try to go on.
-			} 
+				} catch (IOException ex) {
+					Log.info("Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
+					// alright, that one didn't work, try to go on.    				
+				} catch (XMLStreamException ex) {
+					Log.info("Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
+					// alright, that one didn't work, try to go on.
+				} 
 
-			_excludeList.add(co.name().component(_currentInterest.name().count() - 1));  
-			Log.info("handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());
+				_excludeList.add(co.name().component(_currentInterest.name().count() - 1));  
+				Log.info("handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());
+			}
+			byte [][] excludes = new byte[_excludeList.size()][];
+			_excludeList.toArray(excludes);
+			_currentInterest = Interest.last(_currentInterest.name(), excludes, null);
+			return _currentInterest;
+		} finally {
+			_lock.writeLock().unlock();
 		}
-		byte [][] excludes = new byte[_excludeList.size()][];
-		_excludeList.toArray(excludes);
-		_currentInterest = Interest.last(_currentInterest.name(), excludes, null);
-		return _currentInterest;
 	}
 	
 	/**
@@ -708,7 +853,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @return
 	 */
 	public ContentType contentType() { return ContentType.DATA; }
-
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -726,6 +871,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	@SuppressWarnings("unchecked") // cast to obj<E>
 	@Override
 	public boolean equals(Object obj) {
+		// should hold read lock?
 		if (this == obj)
 			return true;
 		if (!super.equals(obj))
@@ -750,7 +896,20 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	@Override
-	public String toString() { return getCurrentVersionName() + ": " + ((null == _data) ? null : _data.toString()); }
+	public String toString() { 
+		try {
+			if (isSaved()) {
+				return getVersionedName() + ": " + (isGone() ? "GONE" : data());
+			} else if (available()) {
+				return getBaseName() + " (unsaved): " + data();
+			} else {
+				return getBaseName() + " (unsaved, no data)";	
+			}
+		} catch (IOException e) {
+			Log.info("Unexpected exception retrieving object information: {0}", e);
+			return getBaseName() + ": unexpected exception " + e;
+		} 	
+	}
 }
 
 
