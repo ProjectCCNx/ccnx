@@ -662,15 +662,18 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
 	}
 	
-	public ContentName getVersionedName() throws ContentNotReadyException, ContentNotSavedException {
+	/**
+	 * If the object has been saved or read from the network, returns the (cached) versioned
+	 * name. Otherwise returns the base name.
+	 * @return
+	 */
+	public ContentName getVersionedName() {
 		if (isSaved()) {
 			if (null == _currentVersionName)
 				_currentVersionName =  new ContentName(_baseName, _currentVersionComponent);
 			return _currentVersionName;
 		}
-		if (!available()) 
-			throw new ContentNotReadyException("No content available!");
-		throw new ContentNotSavedException("Content set locally, not saved to or retrieved from network!");
+		return getBaseName();
 	}
 	
 	public PublisherPublicKeyDigest getContentPublisher() throws ContentNotReadyException, ContentNotSavedException {

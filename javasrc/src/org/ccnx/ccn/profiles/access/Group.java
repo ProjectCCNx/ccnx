@@ -193,13 +193,7 @@ public class Group {
 	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException { return _groupPublicKey.publicKey(); }
 	
 	public ContentName publicKeyName() { 
-		if (_groupPublicKey.isSaved())
-			try {
-				return _groupPublicKey.getVersionedName();
-			} catch (IOException e) {
-				Log.info("Unexpected exception getting current version name of saved key {0}: {1}", _groupPublicKey.getBaseName(), e);
-			} 
-		return _groupPublicKey.getBaseName();
+		return _groupPublicKey.getVersionedName();
 	}
 	
 	public CCNTime publicKeyVersion() {
