@@ -228,6 +228,7 @@ public class CCNNetworkObjectTest {
 			CollectionObject emptycoll = 
 				new CollectionObject(testName, (Collection)null, library);
 			try {
+				emptycoll.setData(small1); // set temporarily to non-null
 				saveAndLog("Empty", emptycoll, null, null);
 			} catch (InvalidObjectException iox) {
 				// this is what we expect to happen
