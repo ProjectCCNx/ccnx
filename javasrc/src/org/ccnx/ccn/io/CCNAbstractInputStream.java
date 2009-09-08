@@ -521,6 +521,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		} else {
 			try {
 				_markOffset = _currentSegment.contentLength() - _segmentReadStream.available();
+				if (_segmentReadStream.markSupported()) {
+					_segmentReadStream.mark(readlimit);
+				}
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -538,6 +541,20 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		// TODO: when first block is read in constructor this check can be removed
 		if (_currentSegment == null) {
 			setFirstSegment(getSegment(_markBlock));
+		} else if (currentSegmentNumber() == _markBlock) {
+				//already have the correct segment
+				if (tell() == _markOffset){
+					//already have the correct offset
+				} else {
+					// Reset and skip.
+					if (_segmentReadStream.markSupported()) {
+						_segmentReadStream.reset();
+						Log.finer("reset within block: block: " + segmentNumber() + " offset: " + _markOffset + " eof? " + _atEOF);
+						return;
+					} else {
+						setCurrentSegment(_currentSegment);
+					}
+				}
 		} else {
 			// getSegment doesn't pull segment if we already have the right one
 			setCurrentSegment(getSegment(_markBlock));
