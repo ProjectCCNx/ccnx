@@ -737,7 +737,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @return
 	 */
 	public ContentType contentType() { return ContentType.DATA; }
-
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
