@@ -94,7 +94,7 @@ public abstract class NetworkObject<E> {
 			if (!_data.equals(data)) {
 				_data = data;
 				setDirty(true);
-				setAvailable(data == null);
+				setAvailable(data != null);
 			}
 			// else -- setting to same value, not dirty, do nothing
 		} else {
