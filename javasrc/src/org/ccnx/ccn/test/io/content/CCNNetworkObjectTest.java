@@ -363,6 +363,7 @@ public class CCNNetworkObjectTest {
 	@Test
 	public void testSaveAsGone() throws Exception {
 		ContentName testName = ContentName.fromNative(collectionObjName, "testSaveAsGone");
+		Log.info("T0");
 		setupNamespace(testName);
 
 		try {
@@ -370,20 +371,24 @@ public class CCNNetworkObjectTest {
 			CCNTime t0 = saveAsGoneAndLog("Gone", c0);
 			Assert.assertTrue("Should be gone", c0.isGone());
 			ContentName goneVersionName = c0.getVersionedName();
-
+			Log.info("T1");
+			
 			CCNTime t1 = saveAndLog("NotGone", c0, null, small1);
 			Assert.assertFalse("Should not be gone", c0.isGone());
 			Assert.assertTrue(t1.after(t0));
+			Log.info("T2");
 
 			CollectionObject c1 = new CollectionObject(testName, CCNHandle.open());
 			CCNTime t2 = waitForDataAndLog(testName.toString(), c1);
 			Assert.assertFalse("Read back should not be gone", c1.isGone());
 			Assert.assertEquals(t2, t1);
+			Log.info("T3");
 
 			CCNTime t3 = updateAndLog(goneVersionName.toString(), c1, goneVersionName);
 			Assert.assertTrue(VersioningProfile.isVersionOf(c1.getVersionedName(), testName));
 			Assert.assertEquals(t3, t0);
 			Assert.assertTrue("Read back should be gone.", c1.isGone());
+			Log.info("T4");
 
 			t0 = saveAsGoneAndLog("GoneAgain", c0);
 			Assert.assertTrue("Should be gone", c0.isGone());
@@ -391,6 +396,8 @@ public class CCNNetworkObjectTest {
 			CCNTime t4 = waitForDataAndLog(testName.toString(), c2);
 			Assert.assertTrue("Read back of " + c0.getVersionedName() + " should be gone, got " + c2.getVersionedName(), c2.isGone());
 			Assert.assertEquals(t4, t0);
+			Log.info("T5");
+
 		} finally {
 			removeNamespace(testName);
 		}
