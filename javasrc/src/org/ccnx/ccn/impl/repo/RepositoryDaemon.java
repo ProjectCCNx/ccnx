@@ -1,7 +1,6 @@
 package org.ccnx.ccn.impl.repo;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.security.InvalidParameterException;
 import java.util.logging.Level;
 
@@ -166,8 +165,7 @@ public class RepositoryDaemon extends Daemon {
 	protected WorkerThread createWorkerThread() {
 		return new RepositoryWorkerThread(daemonName());
 	}
-	
-	
+		
 	public static void main(String[] args) {
 		Daemon daemon = null;
 		try {

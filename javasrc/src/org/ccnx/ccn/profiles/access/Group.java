@@ -17,6 +17,8 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.ContentGoneException;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.io.content.PublicKeyObject;
@@ -117,7 +119,7 @@ public class Group {
 		}
 		if (_groupPublicKey.available()){
 			_privKeyDirectory = new KeyDirectory(manager, 
-					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getCurrentVersionName()), _library);
+					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()), _library);
 			return _privKeyDirectory;
 		}
 		Log.info("Public key not ready for group: " + friendlyName());
@@ -160,7 +162,7 @@ public class Group {
 	}
 	
 	public ContentName membershipListName() throws XMLStreamException, IOException, ConfigurationException { 
-		return membershipList().getCurrentVersionName(); 
+		return membershipList().getVersionedName(); 
 	}
 	
 	public CCNTime membershipListVersion() throws XMLStreamException, IOException, ConfigurationException {
@@ -188,9 +190,11 @@ public class Group {
 
 	PublicKeyObject publicKeyObject() { return _groupPublicKey; }
 	
-	public PublicKey publicKey() { return _groupPublicKey.publicKey(); }
+	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException { return _groupPublicKey.publicKey(); }
 	
-	public ContentName publicKeyName() { return _groupPublicKey.getCurrentVersionName(); }
+	public ContentName publicKeyName() { 
+		return _groupPublicKey.getVersionedName();
+	}
 	
 	public CCNTime publicKeyVersion() {
 		ContentName name = publicKeyName();
@@ -237,7 +241,7 @@ public class Group {
 		// Write superseded block in old key directory
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
 		// Write link back to previous key
-		Link lr = new Link(_groupPublicKey.getCurrentVersionName(), new LinkAuthenticator(new PublisherID(KeyManager.getKeyManager().getDefaultKeyID())));
+		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(KeyManager.getKeyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _library);
 		precededByBlock.saveToRepository();
 	}
@@ -309,12 +313,12 @@ public class Group {
 				// Need to write wrapped key block and linking principal name.
 				newPrivateKeyDirectory.addWrappedKeyBlock(
 						privateKeyWrappingKey, 
-						latestPublicKey.getCurrentVersionName(), 
+						latestPublicKey.getVersionedName(), 
 						latestPublicKey.publicKey());
 			} catch (XMLStreamException e) {
 				Log.warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
 			} catch (VersionMissingException e) {
-				Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getCurrentVersionName() + ", unable to retrieve principal's public key. Skipping.");
+				Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getVersionedName() + ", unable to retrieve principal's public key. Skipping.");
 			}
 		}
 		return privateKeyWrappingKey;
@@ -360,12 +364,12 @@ public class Group {
 				// Need to write wrapped key block and linking principal name.
 				privateKeyDirectory.addWrappedKeyBlock(
 						privateKeyWrappingKey, 
-						latestPublicKey.getCurrentVersionName(), 
+						latestPublicKey.getVersionedName(), 
 						latestPublicKey.publicKey());
 			} catch (XMLStreamException e) {
 				Log.warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
 			} catch (VersionMissingException e) {
-				Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getCurrentVersionName() + ", unable to retrieve principal's public key. Skipping.");
+				Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getVersionedName() + ", unable to retrieve principal's public key. Skipping.");
 			}
 		}
 	}

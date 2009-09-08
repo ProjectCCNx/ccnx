@@ -328,7 +328,7 @@ public class AccessControlManager {
 		while (null == ancestorACLObject) {
 			ancestorACLObject = getACLObjectForNodeIfExists(parentName);
 			if ((null != ancestorACLObject) && (ancestorACLObject.isGone())) {
-				Log.info("Found an ACL object at " + ancestorACLObject.getCurrentVersionName() + " but its GONE.");
+				Log.info("Found an ACL object at " + ancestorACLObject.getVersionedName() + " but its GONE.");
 				ancestorACLObject = null;
 			}
 			nextParentName = parentName.parent();
@@ -341,7 +341,7 @@ public class AccessControlManager {
 		if (null == ancestorACLObject) {
 			throw new IllegalStateException("No ACL available in ancestor tree for node : " + dataNodeName);
 		}
-		Log.info("Found ACL for " + dataNodeName + " at ancestor :" + ancestorACLObject.getCurrentVersionName());
+		Log.info("Found ACL for " + dataNodeName + " at ancestor :" + ancestorACLObject.getVersionedName());
 		return ancestorACLObject;
 	}
 
@@ -444,7 +444,7 @@ public class AccessControlManager {
 			Log.info("Asked to delete ACL for node " + nodeName + " that doesn't have one. Doing nothing.");
 			return;
 		}
-		Log.info("Deleting ACL for node " + nodeName + " latest version: " + thisNodeACL.getCurrentVersionName());
+		Log.info("Deleting ACL for node " + nodeName + " latest version: " + thisNodeACL.getVersionedName());
 		
 		// Then, find the latest node key. This should not be a derived node key.
 		NodeKey nk = getEffectiveNodeKey(nodeName);
@@ -524,11 +524,11 @@ public class AccessControlManager {
 					// do nothing
 				}
 				if (latestKey.available()) {
-					Log.info("Adding wrapped key block for reader: " + latestKey.getCurrentVersionName());
+					Log.info("Adding wrapped key block for reader: " + latestKey.getVersionedName());
 					try {
-						keyDirectory.addWrappedKeyBlock(latestNodeKey.nodeKey(), latestKey.getCurrentVersionName(), latestKey.publicKey());
+						keyDirectory.addWrappedKeyBlock(latestNodeKey.nodeKey(), latestKey.getVersionedName(), latestKey.publicKey());
 					} catch (VersionMissingException e) {
-						Log.warning("UNEXPECTED: latest key for prinicpal: " + latestKey.getCurrentVersionName() + " has no version? Skipping.");
+						Log.warning("UNEXPECTED: latest key for prinicpal: " + latestKey.getVersionedName() + " has no version? Skipping.");
 					}
 				} else {
 					// Do we use an old key or give up?
@@ -596,8 +596,8 @@ public class AccessControlManager {
 			Log.warning("Unexpected: could not find effective ACL for node: " + nodeName);
 			throw new IOException("Unexpected: could not find effective ACL for node: " + nodeName);
 		}
-		Log.info("Got ACL named: " + effectiveACL.getCurrentVersionName() + " attempting to retrieve node key from " + AccessControlProfile.accessRoot(effectiveACL.getCurrentVersionName()));
-		return getLatestNodeKeyForNode(AccessControlProfile.accessRoot(effectiveACL.getCurrentVersionName()));
+		Log.info("Got ACL named: " + effectiveACL.getVersionedName() + " attempting to retrieve node key from " + AccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
+		return getLatestNodeKeyForNode(AccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
 	}
 	
 	/**
@@ -864,7 +864,7 @@ public class AccessControlManager {
 			return null;
 		}
 		
-		NodeKey nk = getLatestNodeKeyForNode(AccessControlProfile.accessRoot(nearestACL.getCurrentVersionName()));
+		NodeKey nk = getLatestNodeKeyForNode(AccessControlProfile.accessRoot(nearestACL.getVersionedName()));
 		return nk;
 	}
 
@@ -915,10 +915,10 @@ public class AccessControlManager {
 					entryPublicKey = new PublicKeyObject(aclEntry.targetName(), aclEntry.targetAuthenticator().publisher(), library());
 				}
 				try {
-					nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getCurrentVersionName(), entryPublicKey.publicKey());
+					nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getVersionedName(), entryPublicKey.publicKey());
 				} catch (VersionMissingException ve) {
-					Log.logException("Unexpected version missing exception for public key " + entryPublicKey.getCurrentVersionName(), ve);
-					throw new IOException("Unexpected version missing exception for public key " + entryPublicKey.getCurrentVersionName() + ": " + ve);
+					Log.logException("Unexpected version missing exception for public key " + entryPublicKey.getVersionedName(), ve);
+					throw new IOException("Unexpected version missing exception for public key " + entryPublicKey.getVersionedName() + ": " + ve);
 				}
 			}
 

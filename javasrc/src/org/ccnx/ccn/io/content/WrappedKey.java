@@ -88,7 +88,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			super(WrappedKey.class, firstBlock, library);
 		}
 		
-		public WrappedKey wrappedKey() { return data(); }
+		public WrappedKey wrappedKey() throws ContentNotReadyException, ContentGoneException { return data(); }
 	}
 
 	private static final Map<String,String> _WrapAlgorithmMap = new HashMap<String,String>();

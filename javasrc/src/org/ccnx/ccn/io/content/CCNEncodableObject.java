@@ -116,6 +116,8 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	@Override
 	protected void writeObjectImpl(OutputStream output) throws IOException,
 			XMLStreamException {
+		if (null == _data)
+			throw new ContentNotReadyException("No content available to save for object " + getBaseName());
 		_data.encode(output);
 	}
 }

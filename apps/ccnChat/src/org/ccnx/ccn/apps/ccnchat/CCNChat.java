@@ -136,10 +136,10 @@ public class CCNChat extends JFrame implements ActionListener {
 				}
 			} catch (InterruptedException e) {
 			}
-			if (_readString.available()) {
-				Timestamp thisUpdate = _readString.getCurrentVersion();
+			if (_readString.isSaved()) {
+				Timestamp thisUpdate = _readString.getVersion();
 				if ((null == _lastUpdate) || thisUpdate.after(_lastUpdate)) {
-					System.out.println("Got an update: " + _readString.getCurrentVersion());
+					System.out.println("Got an update: " + _readString.getVersion());
 					_lastUpdate = thisUpdate;
 					showMessage(_readString.contentPublisher(), _readString.publisherKeyLocator(), thisUpdate, _readString.string());
 				} else {

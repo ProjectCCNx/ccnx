@@ -116,6 +116,8 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 	@Override
 	protected void writeObjectImpl(OutputStream output) throws IOException,
 			XMLStreamException {
+		if (null == _data)
+			throw new ContentNotReadyException("No content available to save for object " + getBaseName());
 		ObjectOutputStream oos = new ObjectOutputStream(output);		
 		oos.writeObject(_data);
 		oos.flush();
