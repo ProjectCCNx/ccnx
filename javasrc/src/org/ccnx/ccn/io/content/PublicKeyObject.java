@@ -110,9 +110,8 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	@Override
 	protected void writeObjectImpl(OutputStream output) throws IOException,
 			XMLStreamException {
-		if (null == data()) {
-			return;
-		}
+		if (null == data())
+			throw new ContentNotReadyException("No content available to save for object " + getBaseName());
 		byte [] encoded = data().getEncoded();
 		output.write(encoded);
 	}
