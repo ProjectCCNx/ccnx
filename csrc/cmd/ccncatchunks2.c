@@ -17,7 +17,7 @@
 #include <ccn/uri.h>
 
 #define CHUNK_SIZE 1024
-#define PIPELIMIT (1U << 6)
+#define PIPELIMIT (1U << 7)
 //#define GOT_HERE() fprintf(stderr, "LINE %d\n", __LINE__)
 #define GOT_HERE() ((void)(__LINE__))
 
@@ -37,6 +37,7 @@ struct mydata {
     unsigned curwindow;
     unsigned maxwindow;
     unsigned sendtime;
+    unsigned sendtime_slot;
     unsigned rtt;
     unsigned rtte;
     unsigned backoff;
@@ -66,6 +67,8 @@ struct excludestuff {
 
 static int fill_holes(struct ccn_schedule *sched, void *clienth, 
                       struct ccn_scheduled_event *ev, int flags);
+
+static FILE* logstream = NULL;
 
 static void
 usage(const char *progname)
@@ -97,10 +100,15 @@ static struct ccn_gettime myticker = {
 };
 
 static void
-update_rtt(struct mydata *md, int incoming)
+update_rtt(struct mydata *md, int incoming, unsigned slot)
 {
     struct timeval now = {0};
     unsigned t, delta, rtte;
+    
+    if (!incoming && md->sendtime_slot == ~0)
+        md->sendtime_slot = slot;
+    if (slot != md->sendtime_slot)
+        return;
     gettimeofday(&now, 0);
     t = ((unsigned)(now.tv_sec) * 1000000) + (unsigned)(now.tv_usec);
     if (incoming) {
@@ -118,6 +126,24 @@ update_rtt(struct mydata *md, int incoming)
         }
         if (md->holefiller == NULL)
             md->holefiller = ccn_schedule_event(md->sched, 10000, &fill_holes, NULL, 0);
+        md->sendtime_slot = ~0;
+        if (logstream)
+            fprintf(logstream,
+                    "%ld.%06u ccncatchunks2: "
+                    "%jd isent, %jd recvd, %jd junk, %jd holes, %jd t/o, %jd unvrf, "
+                    "%u curwin, %u rtt, %u rtte\n",
+                    (long)now.tv_sec,
+                    (unsigned)now.tv_usec,
+                    md->interests_sent,
+                    md->pkts_recvd,
+                    md->junk,
+                    md->holes,
+                    md->timeouts,
+                    md->unverified,
+                    md->curwindow,
+                    md->rtt,
+                    md->rtte
+                    );
     }
     else
         md->sendtime = t;
@@ -276,8 +302,7 @@ ask_more(struct mydata *md, uintmax_t seq)
     name = sequenced_name(md, seq);
     clear_excludes(md); // XXX Should not do this unconditionally
     templ = make_template(md);
-    if (slot == 0)
-        update_rtt(md, 0);
+    update_rtt(md, 0, slot);
     res = ccn_express_interest(md->h, name, -1, cl, templ);
     if (res < 0) abort();
     md->interests_sent++;
@@ -346,8 +371,7 @@ fill_holes(struct ccn_schedule *sched, void *clienth,
 }
 
 enum ccn_upcall_res
-incoming_content(
-                 struct ccn_closure *selfp,
+incoming_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info)
 {
@@ -387,7 +411,6 @@ GOT_HERE();
     }
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
-    /* XXX - must verify sig, and make sure it is LEAF content */
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
     if (res < 0) abort();
     if (data_size > CHUNK_SIZE) {
@@ -410,8 +433,7 @@ GOT_HERE();
         templ = make_template(md);
         res = ccn_express_interest(info->h, name, -1, selfp, templ);
         md->interests_sent++;
-        if (((uintptr_t)selfp->intdata) % PIPELIMIT == 0)
-            update_rtt(md, 0);
+        update_rtt(md, 0, ((uintptr_t)selfp->intdata) % PIPELIMIT);
         if (res < 0)
             abort();
         ccn_charbuf_destroy(&templ);
@@ -427,8 +449,7 @@ GOT_HERE();
         struct ooodata *ooo = &md->ooo[slot];
         if (ooo->raw_data_size == 0) {
 GOT_HERE();
-            if (slot == 0)
-                update_rtt(md, 1);
+            update_rtt(md, 1, slot);
             ooo->raw_data = malloc(data_size);
             memcpy(ooo->raw_data, data, data_size);
             ooo->raw_data_size = data_size + 1;
@@ -440,8 +461,7 @@ GOT_HERE();
     }
     else {
         assert(md->ooo[slot].raw_data_size == 0);
-        if (slot == 0)
-            update_rtt(md, 1);
+        update_rtt(md, 1, slot);
         md->ooo[slot].closure.intdata = -1;
         md->delivered++;
 GOT_HERE();
@@ -556,6 +576,8 @@ main(int argc, char **argv)
     mydata->ooo_base = 0;
     mydata->ooo_count = 0;
     mydata->curwindow = 1;
+    logstream = NULL;
+    // logstream = fopen("xxxxxxxxxxxxxxlogstream" + (unsigned)getpid()%10, "wb"); 
     ask_more(mydata, 0);
     /* Run a little while to see if there is anything there */
     res = ccn_run(ccn, 500);
