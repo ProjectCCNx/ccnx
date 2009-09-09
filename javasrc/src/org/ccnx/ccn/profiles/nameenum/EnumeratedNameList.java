@@ -18,7 +18,7 @@ import org.ccnx.ccn.protocol.ContentName;
 
 public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	
-	protected static final long CHILD_WAIT_INTERVAL = 30000;
+	protected static final long CHILD_WAIT_INTERVAL = 1000;
 	
 	protected ContentName _namePrefix;
 	protected CCNNameEnumerator _enumerator;
@@ -27,6 +27,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	protected SortedSet<ContentName> _children = new TreeSet<ContentName>();
 	protected SortedSet<ContentName> _newChildren = null;
 	protected Object _childLock = new Object();
+	protected CCNTime _lastUpdate = null;
 	
 	/**
 	 * Creates an EnumerateNameList object
@@ -83,18 +84,15 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 */
 	public SortedSet<ContentName> getNewData(long timeout) {
 		SortedSet<ContentName> childArray = null;
-		synchronized(_childLock) {
-			long timeRemaining = timeout;
-			while ((null == _newChildren) && ((timeout == SystemConfiguration.TIMEOUT_FOREVER) || (timeRemaining > 0))) {
-				try {
-					_childLock.wait((timeout != SystemConfiguration.TIMEOUT_FOREVER) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
-					if (timeout != SystemConfiguration.TIMEOUT_FOREVER)
-						timeRemaining -= CHILD_WAIT_INTERVAL;
-				} catch (InterruptedException e) {
-				}
-				Log.info("Waiting for new data on prefix: " + _namePrefix + " got " + ((null == _newChildren) ? 0 : _newChildren.size())
-						+ ".");
+		synchronized(_childLock) { // reentrant?
+			while ((null == _children) || _children.size() == 0) {
+				waitForNewData(timeout);
+				if (timeout != SystemConfiguration.TIMEOUT_FOREVER)
+					break;
 			}
+			Log.info("Waiting for new data on prefix: " + _namePrefix + " got " + ((null == _newChildren) ? 0 : _newChildren.size())
+					+ ".");
+
 			if (null != _newChildren) {
 				childArray = _newChildren;
 				_newChildren = null;
@@ -149,27 +147,45 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	public boolean hasChild(String childName) {
 		return hasChild(ContentName.componentParseNative(childName));
 	}
-
+	
 	/**
-	 * Waits until there is any data at all.
-	 * @timeout maximum amount of time to wait, if 0, waits forever
-	 * @return
+	 * Wait for new NE data to arrive, whether it actually signals children or not.
 	 */
-	public void waitForData(long timeout) {
-		if ((null != _children) && (_children.size() > 0))
-			return;
+	public void waitForNewData(long timeout) {
 		synchronized(_childLock) {
 			long timeRemaining = timeout;
-			while (((null == _children) || (_children.size() == 0)) && ((timeout == SystemConfiguration.TIMEOUT_FOREVER) || (timeRemaining > 0))) {
+			CCNTime lastUpdate = _lastUpdate;
+			while (((null == lastUpdate) || (!_lastUpdate.after(lastUpdate))) && 
+				   ((timeout == SystemConfiguration.TIMEOUT_FOREVER) || (timeRemaining > 0))) {
 				try {
 					_childLock.wait((timeout != SystemConfiguration.TIMEOUT_FOREVER) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
 					if (timeout != SystemConfiguration.TIMEOUT_FOREVER)
 						timeRemaining -= CHILD_WAIT_INTERVAL;
 				} catch (InterruptedException e) {
 				}
-				Log.info("Waiting for data on prefix: " + _namePrefix + " got " + ((null == _newChildren) ? 0 : _newChildren.size())
-						+ ".");
+				Log.info("Waiting for new data on prefix: {0}, updated {1}, our update {2}, now have " + 
+						((null == _children) ? 0 : _children.size()), _namePrefix + " new " + 
+						((null == _newChildren) ? 0 : _newChildren.size()) + ".", _lastUpdate, lastUpdate);
 			}
+		}
+	}
+	
+	public void waitForNewData() {
+		waitForNewData(0);
+	}
+
+	/**
+	 * Waits until there is any data at all. Right now, waits for actual
+	 * children, not just a NE response. That means it could block
+	 * forever if no children exist in a repo.
+	 * @timeout maximum amount of time to wait, if 0, waits forever
+	 * @return
+	 */
+	public void waitForData(long timeout) {
+		while ((null == _children) || _children.size() == 0) {
+			waitForNewData(timeout);
+			if (timeout != SystemConfiguration.TIMEOUT_FOREVER)
+				break;
 		}
 	}
 	
@@ -177,7 +193,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * Wait (block) for data to arrive, possibly forever. See {@link #waitForData(long)}.
 	 */
 	public void waitForData() {
-		waitForData(0);
+		waitForData(SystemConfiguration.TIMEOUT_FOREVER);
 	}
 
 	/**
@@ -217,7 +233,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 					_newChildren = thisRoundNew;
 				}
 				_children.addAll(thisRoundNew);
-				Log.info("New children found: " + thisRoundNew.size() + " total children " + _children.size());
+				_lastUpdate = new CCNTime();
+				Log.info("New children found: at {0} " + thisRoundNew.size() + " total children " + _children.size(), _lastUpdate);
 				processNewChildren(thisRoundNew);
 				_childLock.notifyAll();
 			}
