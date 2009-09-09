@@ -250,6 +250,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				if (match != null) {
 					Log.finest("Found pending matching interest for " + co.name() + ", putting to network.");
 					_library.put(co);
+					_nOut++;
 					afterPutAction(co);
 				}
 				if (_holdingArea.size() >= _highwater) {
