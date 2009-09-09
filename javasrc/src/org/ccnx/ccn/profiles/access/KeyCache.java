@@ -67,7 +67,7 @@ public class KeyCache {
 	PrivateKey getPrivateKey(byte [] desiredPublicKeyIdentifier) {
 		PrivateKey key = _myKeyMap.get(desiredPublicKeyIdentifier);
 		if (null == key) {
-			_privateKeyMap.get(desiredPublicKeyIdentifier);
+			key = _privateKeyMap.get(desiredPublicKeyIdentifier);
 		}
 		return key;
 	}

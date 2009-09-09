@@ -35,7 +35,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 public class BasicKeyManager extends KeyManager {
-		
+	
 	protected KeyStore _keystore = null;
 	protected String _userName = null;
 	protected String _defaultAlias = null;
@@ -48,7 +48,7 @@ public class BasicKeyManager extends KeyManager {
 	protected KeyRepository _keyRepository = null;
 	
 	private char [] _password = null;
-	
+		
 	public BasicKeyManager() throws ConfigurationException, IOException {
 		_keyRepository = new KeyRepository();
 		_userName = UserConfiguration.userName();

@@ -127,7 +127,7 @@ public class AccessControlProfile implements CCNProfile {
 	
 	/**
 	 * Assumes a top-level namespace, where the group information is stored in 
-	 * <namespace>/_access_/Groups and <namespace>/_access_/Users..
+	 * <namespace>/Groups and <namespace>/Users..
 	 * @param namespace
 	 * @param groupFriendlyName
 	 * @return
