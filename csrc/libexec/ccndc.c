@@ -736,6 +736,9 @@ incoming_interest(
         pfl->fi->ccnd_id = ccndid;
         pfl->fi->ccnd_id_size = ccndid_size;
         res = register_prefix(info->h, keystore, pfl->prefix, pfl->fi, pfl->flags);
+        if (res < 0) {
+            ccndc_warn(__LINE__, "Unable to register prefix %s\n", pfl->prefix);
+        }
     }
     prefix_face_list_destroy(&pflhead);
     return(CCN_UPCALL_RESULT_OK);
@@ -823,6 +826,9 @@ main(int argc, char **argv)
         pfl->fi->ccnd_id = ccndid;
         pfl->fi->ccnd_id_size = ccndid_size;
         res = register_prefix(h, keystore, pfl->prefix, pfl->fi, pfl->flags);
+        if (res < 0) {
+            ccndc_warn(__LINE__, "Unable to register prefix %s\n", pfl->prefix);
+        }
     }
     prefix_face_list_destroy(&pflhead);
     if (dynamic) {
