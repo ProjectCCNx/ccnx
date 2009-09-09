@@ -25,7 +25,7 @@ LIBS = libccn.a
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
     ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_sockcreate.o ccn_traverse.o ccn_match.o hashtb.o ccn_merkle_path_asn1.o ccn_bulkdata.o ccn_versioning.o
 
-default all: lib $(PROGRAMS)
+default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.
 # all: shlib
 
@@ -45,6 +45,9 @@ lib: libccn.a
 
 test: default keystore_check encodedecodetest
 	./encodedecodetest -o /dev/null
+
+dtag_check: _always
+	@./gen_dtag_table 2>/dev/null | diff - ccn_dtag_table.c | grep '^[<]' >/dev/null && echo '*** Warning: ccn_dtag_table.c may be out of sync with tagnames.cvsdict' || :
 
 keystore_check: ccn_initkeystore.sh
 	test -f $$HOME/.ccn/.ccn_keystore || $(MAKE) -f dir.mk new_keystore

@@ -16,6 +16,7 @@ import java.util.Random;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
@@ -70,38 +71,38 @@ public class CCNFileStreamTestRepo {
 		// Write to a repo. Read it back in. See if repo gets the header.
 		RepositoryFileOutputStream rfos = new RepositoryFileOutputStream(fileName, writeLib);
 		byte [] digest = writeRandomFile(fileSize, rfos);
-		System.out.println("Wrote file to repository: " + rfos.getBaseName());
+		Log.info("Wrote file to repository: " + rfos.getBaseName());
 		
 		CCNFileInputStream fis = new CCNFileInputStream(fileName, readLib);
 		CountAndDigest readDigest = readRandomFile(fis);
 		
-		System.out.println("Read file from repository: " + fis.getBaseName() + " has header? " + 
+		Log.info("Read file from repository: " + fis.getBaseName() + " has header? " + 
 				fis.hasHeader());
 		if (!fis.hasHeader()) {
-			System.out.println("No header yet, waiting..");
+			Log.info("No header yet, waiting..");
 			fis.waitForHeader();
 		}
 		Assert.assertTrue(fis.hasHeader());
-		System.out.println("Read file size: " + readDigest.count() + " written size: " + fileSize + " header file size " + fis.header().length());
+		Log.info("Read file size: " + readDigest.count() + " written size: " + fileSize + " header file size " + fis.header().length());
 		Assert.assertEquals(readDigest.count(), fileSize);
 		Assert.assertEquals(fileSize, fis.header().length());		
-		System.out.println("Read digest: " + DataUtils.printBytes(readDigest.digest()) + " wrote digest: " + digest);
+		Log.info("Read digest: " + DataUtils.printBytes(readDigest.digest()) + " wrote digest: " + digest);
 		Assert.assertArrayEquals(digest, readDigest.digest());
 		
 		CCNFileInputStream fis2 = new CCNFileInputStream(rfos.getBaseName(), readLib);
 		CountAndDigest readDigest2 = readRandomFile(fis2);
 		
-		System.out.println("Read file from repository again: " + fis2.getBaseName() + " has header? " + 
+		Log.info("Read file from repository again: " + fis2.getBaseName() + " has header? " + 
 				fis2.hasHeader());
 		if (!fis2.hasHeader()) {
-			System.out.println("No header yet, waiting..");
+			Log.info("No header yet, waiting..");
 			fis2.waitForHeader();
 		}
 		Assert.assertTrue(fis2.hasHeader());
-		System.out.println("Read file size: " + readDigest2.count() + " written size: " + fileSize + " header file size " + fis.header().length());
+		Log.info("Read file size: " + readDigest2.count() + " written size: " + fileSize + " header file size " + fis.header().length());
 		Assert.assertEquals(readDigest2.count(), fileSize);
 		Assert.assertEquals(fileSize, fis2.header().length());		
-		System.out.println("Read digest: " + DataUtils.printBytes(readDigest2.digest()) + " wrote digest: " + digest);
+		Log.info("Read digest: " + DataUtils.printBytes(readDigest2.digest()) + " wrote digest: " + digest);
 		Assert.assertArrayEquals(digest, readDigest2.digest());
 
 	}
