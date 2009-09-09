@@ -16,7 +16,10 @@ import java.util.logging.Logger;
 import org.ccnx.ccn.config.SystemConfiguration;
 
 /**
- * Our own wrapper for the standard java.util Logging classes.
+ * Wrapper for the standard java.util Logging classes.
+ * To send log entries to file, specify the log output directory using either the system property
+ * org.ccnx.ccn.LogDir or the environment variable CCN_LOG_DIR.  To override the default 
+ * log level for whatever program you are running, set the system property org.ccnx.ccn.LogLevel.
  */
 public class Log {
 
@@ -39,6 +42,7 @@ public class Log {
 	
 	static Logger _systemLogger = null;
 	static int _level;
+	static boolean useDefaultLevel = true; // reset if an external override of the default level was specified
 	
 	static {
 		// Can add an append=true argument to generate appending behavior.
@@ -112,6 +116,7 @@ public class Log {
 		if (null != logLevelName) {
 			try {
 				logLevel = Level.parse(logLevelName);
+				useDefaultLevel = false;
 			} catch (IllegalArgumentException e) {
 				logLevel = DEFAULT_LOG_LEVEL;
 			}
@@ -170,6 +175,19 @@ public class Log {
 		_level = l.intValue();
 	}
 
+	/**
+	 * Set the default log level that will be in effect unless overridden by
+	 * the system property.  Use of this method allows a program to change the 
+	 * default logging level while still allowing external override by the user
+	 * at runtime.
+	 * @param l the new default level
+	 */
+	public static void setDefaultLevel(Level l) {
+		if (useDefaultLevel) {
+			setLevel(l);
+		} // else we're not using the default level and should not change what is set
+	}
+	
 	public static Level getLevel() {
 		return _systemLogger.getLevel();
 	}

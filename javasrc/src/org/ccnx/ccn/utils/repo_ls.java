@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -23,6 +24,7 @@ public class repo_ls implements BasicNameEnumeratorListener{
 	private SortedSet<ContentName> allNames;
 
 	public static void main(String[] args) {
+		Log.setDefaultLevel(Level.WARNING);
 		repo_ls lister = new repo_ls();
 		lister.init(args);
 		lister.enumerateNames();
