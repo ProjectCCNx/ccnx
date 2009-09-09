@@ -81,7 +81,7 @@ public class Flosser implements CCNInterestListener {
 			// Remove the top-level interest.
 			removeInterest(namespace);
 			_subInterests.remove(namespace);
-			Log.info("FLOSSER: no longer monitoring namespace: " + namespace);
+			Log.info("FLOSSER: no longer monitoring namespace: {0}", namespace);
 		}
 	}
 	
@@ -93,7 +93,7 @@ public class Flosser implements CCNInterestListener {
 			Interest interest = _interests.get(namespace);
 			_library.cancelInterest(interest, this);
 			_interests.remove(namespace);
-			Log.fine("Cancelled interest in " + namespace);
+			Log.fine("Cancelled interest in {0}", namespace);
 		}
 	}
 	
@@ -186,7 +186,7 @@ public class Flosser implements CCNInterestListener {
               		ArrayList<Exclude.Element> excludes = new ArrayList<Exclude.Element>();
                		excludes.add(new ExcludeComponent(result.contentDigest()));
             		interest.exclude(new Exclude(excludes));
-            		Log.finest("Creating new exclude filter for interest " + interest.name());
+            		Log.finest("Creating new exclude filter for interest {0}", interest.name());
             	} else {
             		if (interest.exclude().match(result.contentDigest())) {
             			Log.fine("We should have already excluded content digest: " + DataUtils.printBytes(result.contentDigest()));
@@ -196,16 +196,16 @@ public class Flosser implements CCNInterestListener {
             			interest.exclude().add(new byte [][] { result.contentDigest() });
             		}
             	}
-            	Log.finer("Excluding content digest: " + DataUtils.printBytes(result.contentDigest()) + " onto interest " + interest.name() + " total excluded: " + interest.exclude().size());
+            	Log.finer("Excluding content digest: " + DataUtils.printBytes(result.contentDigest()) + " onto interest {0} total excluded: " + interest.exclude().size(), interest.name());
             } else {
                	if (null == interest.exclude()) {
                		ArrayList<Exclude.Element> excludes = new ArrayList<Exclude.Element>();
                		excludes.add(new ExcludeComponent(result.name().component(prefixCount)));
             		interest.exclude(new Exclude(excludes));
-            		Log.finest("Creating new exclude filter for interest " + interest.name());
+            		Log.finest("Creating new exclude filter for interest {0}", interest.name());
                	} else {
                     if (interest.exclude().match(result.name().component(prefixCount))) {
-            			Log.fine("We should have already excluded child component: " + ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
+            			Log.fine("We should have already excluded child component: {0}", ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
                     } else {
                     	// Has to be in order...
                     	Log.finest("Adding child component to exclude.");
@@ -219,14 +219,15 @@ public class Flosser implements CCNInterestListener {
                 try {
                 	if (interest.name().count() == result.name().count()) {
                 		newNamespace = new ContentName(interest.name(), result.contentDigest());
+                		Log.info("Not adding content exclusion namespace: {0}", newNamespace);
                 	} else {
                 		newNamespace = new ContentName(interest.name(), 
                 			result.name().component(interest.name().count()));
-                	}
-                	Log.info("Adding new namespace: " + newNamespace);
-                	handleNamespace(newNamespace, interest.name());
+                       	Log.info("Adding new namespace: {0}", newNamespace);
+                    	handleNamespace(newNamespace, interest.name());
+                   	}
                 } catch (IOException ioex) {
-                	Log.warning("IOException picking up namespace: " + newNamespace);
+                	Log.warning("IOException picking up namespace: {0}", newNamespace);
                 }
             }
 		}

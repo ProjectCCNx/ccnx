@@ -207,7 +207,7 @@ public class CCNSecureInputStreamTest {
 		inputLibrary = CCNHandle.open();
 		
 		// Write a set of output
-		defaultStreamName = ContentName.fromNative("/test/stream");
+		defaultStreamName = ContentName.fromNative("/test/CCNSecureInputStreamTest-" + new Random().nextInt(10000));
 		
 		flosser = new Flosser();
 		

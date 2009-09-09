@@ -1,10 +1,12 @@
 package org.ccnx.ccn.impl.security.crypto;
 
 import java.math.BigInteger;
+import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.security.spec.InvalidParameterSpecException;
 
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
@@ -36,9 +38,9 @@ public class ContentKeys {
 	public static final int BLOCK_COUNTER_LENGTH = 2; // bytes
 	private static final byte [] INITIAL_BLOCK_COUNTER_VALUE = new byte[]{0x00, 0x01};
 
-	public String encryptionAlgorithm;
-	public SecretKeySpec encryptionKey;
-	public IvParameterSpec masterIV;
+	public String _encryptionAlgorithm;
+	public SecretKeySpec _encryptionKey;
+	public IvParameterSpec _masterIV;
 	
 	/**
 	 * Create a set of ContentKeys using the default cipher and key algorithm.
@@ -48,9 +50,9 @@ public class ContentKeys {
 	public ContentKeys(byte [] key, byte [] iv) {
 		assert(key.length == DEFAULT_KEY_LENGTH);
 		assert(iv.length == IV_MASTER_LENGTH);
-		this.encryptionAlgorithm = DEFAULT_CIPHER_ALGORITHM;
-		this.encryptionKey = new SecretKeySpec(key, DEFAULT_KEY_ALGORITHM);
-		this.masterIV = new IvParameterSpec(iv);
+		this._encryptionAlgorithm = DEFAULT_CIPHER_ALGORITHM;
+		this._encryptionKey = new SecretKeySpec(key, DEFAULT_KEY_ALGORITHM);
+		this._masterIV = new IvParameterSpec(iv);
 		// TODO: this assumes the default algorithms are available. Should probably check during startup
 	}
 
@@ -59,9 +61,9 @@ public class ContentKeys {
 		// ensure NoSuchPaddingException cannot be thrown later when a Cipher is made
 		Cipher.getInstance(encryptionAlgorithm);
 		// TODO check secret key/iv not empty?
-		this.encryptionAlgorithm = encryptionAlgorithm;
-		this.encryptionKey = encryptionKey;
-		this.masterIV = masterIV;
+		this._encryptionAlgorithm = encryptionAlgorithm;
+		this._encryptionKey = encryptionKey;
+		this._masterIV = masterIV;
 	}
 
 	@SuppressWarnings("unused")
@@ -72,22 +74,29 @@ public class ContentKeys {
 	 * A number of users of ContentKeys only support using the default algorithm.
 	 * @throws UnsupportedOperationException if the algorithm is not the default.
 	 */
-	public void OnlySupportDefaultAlg() {
+	public void requireDefaultAlgorithm() {
 		// For now we only support the default algorithm.
-		if (!encryptionAlgorithm.equals(ContentKeys.DEFAULT_CIPHER_ALGORITHM)) {
+		if (!_encryptionAlgorithm.equals(ContentKeys.DEFAULT_CIPHER_ALGORITHM)) {
 			String err = "Right now the only encryption algorithm we support is: " + 
-			ContentKeys.DEFAULT_CIPHER_ALGORITHM + ", " + encryptionAlgorithm + 
+			ContentKeys.DEFAULT_CIPHER_ALGORITHM + ", " + _encryptionAlgorithm + 
 			" will come later.";
 			Log.severe(err);
 			throw new UnsupportedOperationException(err);
 		}
 	}
 	
+	public String getBaseAlgorithm() {
+		if (_encryptionAlgorithm.contains("/")) {
+			return _encryptionAlgorithm.substring(0, _encryptionAlgorithm.indexOf("/"));
+		}
+		return _encryptionAlgorithm;
+	}
+	
 	public Cipher getCipher() {
 		// We have tried a dummy call to Cipher.getInstance on construction of this ContentKeys - so
 		// further "NoSuch" exceptions should not happen here.
 		try {
-			return Cipher.getInstance(encryptionAlgorithm);
+			return Cipher.getInstance(_encryptionAlgorithm);
 		} catch (NoSuchAlgorithmException e) {
 			String err = "Unexpected NoSuchAlgorithmException for an algorithm we have already used!";
 			Log.severe(err);
@@ -114,7 +123,7 @@ public class ContentKeys {
 	 * This will use the CCN defaults for IV handling, to ensure that segments
 	 * of a given larger piece of content do not have overlapping key streams.
 	 * Higher-level functionality embodied in the library (or application-specific
-	 * code) should be used to make sure that the key, masterIV pair used for a 
+	 * code) should be used to make sure that the key, _masterIV pair used for a 
 	 * given multi-block piece of content is unique for that content.
 	 * 
 	 * CCN encryption algorithms assume deterministic IV generation (e.g. from 
@@ -161,17 +170,29 @@ public class ContentKeys {
 
 		// Construct the IV/initial counter.
 		if (0 == cipher.getBlockSize()) {
-			Log.warning(encryptionAlgorithm + " is not a block cipher!");
-			throw new InvalidAlgorithmParameterException(encryptionAlgorithm + " is not a block cipher!");
+			Log.warning(_encryptionAlgorithm + " is not a block cipher!");
+			throw new InvalidAlgorithmParameterException(_encryptionAlgorithm + " is not a block cipher!");
 		}
 
-		if (masterIV.getIV().length < IV_MASTER_LENGTH) {
-			throw new InvalidAlgorithmParameterException("Master IV length must be at least " + IV_MASTER_LENGTH + " bytes, it is: " + masterIV.getIV().length);
+		if (_masterIV.getIV().length < IV_MASTER_LENGTH) {
+			throw new InvalidAlgorithmParameterException("Master IV length must be at least " + IV_MASTER_LENGTH + " bytes, it is: " + _masterIV.getIV().length);
 		}
 
-		IvParameterSpec iv_ctrSpec = buildIVCtr(masterIV, segmentNumber, cipher.getBlockSize());
-		Log.finest(encryption?"En":"De"+"cryption Key: "+DataUtils.printHexBytes(encryptionKey.getEncoded())+" iv="+DataUtils.printHexBytes(iv_ctrSpec.getIV()));
-		cipher.init(encryption?Cipher.ENCRYPT_MODE:Cipher.DECRYPT_MODE, encryptionKey, iv_ctrSpec);
+		IvParameterSpec iv_ctrSpec = buildIVCtr(_masterIV, segmentNumber, cipher.getBlockSize());
+		AlgorithmParameters algorithmParams = null;
+		try {
+			algorithmParams = AlgorithmParameters.getInstance(getBaseAlgorithm());
+			algorithmParams.init(iv_ctrSpec);
+		} catch (NoSuchAlgorithmException e) {
+			Log.warning("Unexpected exception: have already validated that algorithm {0} exists: {1}", cipher.getAlgorithm(), e);
+			throw new InvalidKeyException("Unexpected exception: have already validated that algorithm " + cipher.getAlgorithm() + " exists: " + e);
+		} catch (InvalidParameterSpecException e) {
+			Log.warning("InvalidParameterSpecException attempting to create algorithm parameters: {0}", e);
+			throw new InvalidAlgorithmParameterException("Error creating a parameter object from IV/CTR spec!", e);
+		}
+		
+		Log.finest(encryption?"En":"De"+"cryption Key: "+DataUtils.printHexBytes(_encryptionKey.getEncoded())+" iv="+DataUtils.printHexBytes(iv_ctrSpec.getIV()));
+		cipher.init(encryption?Cipher.ENCRYPT_MODE:Cipher.DECRYPT_MODE, _encryptionKey, algorithmParams);
 
 		return cipher;
 	}
