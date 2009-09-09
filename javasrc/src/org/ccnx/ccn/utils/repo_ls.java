@@ -113,11 +113,8 @@ public class repo_ls implements BasicNameEnumeratorListener{
 	}
 	
 	public void printNames(){
-		System.out.println("==========");
-		System.out.println("Contents under "+name.toString());
 		for(ContentName c: allNames)
-			System.out.println("  + "+c);
-		System.out.println("----------");
+			System.out.println(c.toString().replaceFirst("/", ""));
 	}
 	
 }
