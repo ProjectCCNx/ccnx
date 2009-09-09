@@ -34,15 +34,17 @@ public class RepoIOTest extends RepoTestBase {
 	
 	protected static String _repoTestDir = "repotest";
 	protected static byte [] data = new byte[4000];
+	protected static String _testPrefix = "/testNameSpace/stream";
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		//Library.setLevel(Level.FINEST);
+		_testPrefix += "-" + rand.nextInt(10000);
 		RepoTestBase.setUpBeforeClass();
 		byte value = 1;
 		for (int i = 0; i < data.length; i++)
 			data[i] = value++;
-		RepositoryOutputStream ros = new RepositoryOutputStream(ContentName.fromNative("/testNameSpace/stream"), putLibrary); 
+		RepositoryOutputStream ros = new RepositoryOutputStream(ContentName.fromNative(_testPrefix), putLibrary); 
 		ros.setBlockSize(100);
 		ros.setTimeout(4000);
 		ros.write(data, 0, data.length);
@@ -72,7 +74,7 @@ public class RepoIOTest extends RepoTestBase {
 	public void testReadFromRepo() throws Exception {
 		System.out.println("Testing reading a stream from the repo");
 		Thread.sleep(5000);
-		CCNInputStream input = new CCNInputStream(ContentName.fromNative("/testNameSpace/stream"), null, getLibrary);
+		CCNInputStream input = new CCNInputStream(ContentName.fromNative(_testPrefix), null, getLibrary);
 		byte[] testBytes = new byte[data.length];
 		input.read(testBytes);
 		Assert.assertArrayEquals(data, testBytes);

@@ -284,6 +284,39 @@ public class CCNNetworkObjectTestRepo {
 	}
 	
 	@Test
+	public void testUpdateInBackground() throws Exception {
+		
+		ContentName testName = ContentName.fromNative(stringObjName, "testUpdateInBackground", "name1");
+		CCNStringObject c0 = new CCNStringObject(testName, (String)null, CCNHandle.open());
+		c0.updateInBackground();
+
+		CCNStringObject c1 = new CCNStringObject(testName, (String)null, CCNHandle.open());
+		c1.updateInBackground(true);
+
+		Assert.assertFalse(c0.available());
+		Assert.assertFalse(c0.isSaved());
+		Assert.assertFalse(c1.available());
+		Assert.assertFalse(c1.isSaved());
+
+		CCNStringObject c2 = new CCNStringObject(testName, (String)null, CCNHandle.open());
+		CCNTime t1 = saveAndLog("First string", c2, null, "Here is the first string.");
+		System.out.println("Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
+		c0.waitForData();
+		Assert.assertEquals("c0 update", c0.getVersion(), c2.getVersion());
+		c1.waitForData();
+		Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
+
+		CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
+		if (!c1.getVersion().equals(t2)) {
+			synchronized (c1) {
+				c1.wait(5000);
+			}
+		}
+		Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
+		Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
+	}
+	
+	@Test
 	public void testUpdateOtherName() throws Exception {
 		ContentName testName = ContentName.fromNative(collectionObjName, "testUpdateOtherName", "name1");
 		setupNamespace(testName);

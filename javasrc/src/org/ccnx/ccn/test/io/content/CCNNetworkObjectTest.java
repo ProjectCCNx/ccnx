@@ -145,7 +145,6 @@ public class CCNNetworkObjectTest {
 		CCNHandle lget = CCNHandle.open();
 		
 		ContentName testName = ContentName.fromNative(stringObjName, "testVersioning");
-		setupNamespace(testName);
 		try {
 
 			CCNStringObject so = new CCNStringObject(testName, "First value", lput);
@@ -153,6 +152,7 @@ public class CCNNetworkObjectTest {
 			CCNStringObject ro2 = null;
 			CCNStringObject ro3, ro4; // make each time, to get a new library.
 			CCNTime soTime, srTime, sr2Time, sr3Time, sr4Time, so2Time;
+			setupNamespace(testName);
 			for (int i=0; i < numbers.length; ++i) {
 				soTime = saveAndLog(numbers[i], so, null, numbers[i]);
 				if (null == ro) {
@@ -193,11 +193,11 @@ public class CCNNetworkObjectTest {
 		CCNHandle lget = CCNHandle.open();
 		ContentName testName = ContentName.fromNative(stringObjName, "testSaveToVersion");
 		try {
-			setupNamespace(testName);
 
 			CCNTime desiredVersion = CCNTime.now();
 
 			CCNStringObject so = new CCNStringObject(testName, "First value", lput);
+			setupNamespace(testName);
 			saveAndLog("SpecifiedVersion", so, desiredVersion, "Time: " + desiredVersion);
 			Assert.assertEquals("Didn't write correct version", desiredVersion, so.getVersion());
 
@@ -224,9 +224,9 @@ public class CCNNetworkObjectTest {
 		boolean caught = false;
 		ContentName testName = ContentName.fromNative(stringObjName, "testEmptySave");
 		try {
-			setupNamespace(testName);
 			CollectionObject emptycoll = 
 				new CollectionObject(testName, (Collection)null, library);
+			setupNamespace(testName);
 			try {
 				emptycoll.setData(small1); // set temporarily to non-null
 				saveAndLog("Empty", emptycoll, null, null);
@@ -245,8 +245,8 @@ public class CCNNetworkObjectTest {
 
 		ContentName testName = ContentName.fromNative(collectionObjName, "testStreamUpdate");
 		try {
-			setupNamespace(testName);
 			CollectionObject testCollectionObject = new CollectionObject(testName, small1, CCNHandle.open());
+			setupNamespace(testName);
 
 			saveAndLog("testStreamUpdate", testCollectionObject, null, small1);
 			System.out.println("testCollectionObject name: " + testCollectionObject.getVersionedName());
@@ -297,16 +297,16 @@ public class CCNNetworkObjectTest {
 	@Test
 	public void testVersionOrdering() throws Exception {
 		ContentName testName = ContentName.fromNative(collectionObjName, "testVersionOrdering", "name1");
-		setupNamespace(testName);
 		ContentName testName2 = ContentName.fromNative(collectionObjName, "testVersionOrdering", "name2");
-		setupNamespace(testName2);
 
 		try {
 
 			CollectionObject c0 = new CollectionObject(testName, empty, library);
+			setupNamespace(testName);
 			CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 
 			CollectionObject c1 = new CollectionObject(testName2, small1, CCNHandle.open());
+			setupNamespace(testName2);
 			CCNTime t1 = saveAndLog("Small", c1, null, small1);
 			Assert.assertTrue("First version should come before second", t0.before(t1));
 
@@ -325,15 +325,15 @@ public class CCNNetworkObjectTest {
 	@Test
 	public void testUpdateOtherName() throws Exception {
 		ContentName testName = ContentName.fromNative(collectionObjName, "testUpdateOtherName", "name1");
-		setupNamespace(testName);
 		ContentName testName2 = ContentName.fromNative(collectionObjName, "testUpdateOtherName", "name2");
-		setupNamespace(testName2);
 		try {
 
 			CollectionObject c0 = new CollectionObject(testName, empty, library);
+			setupNamespace(testName);
 			CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 
 			CollectionObject c1 = new CollectionObject(testName2, small1, CCNHandle.open());
+			setupNamespace(testName2);
 			CCNTime t1 = saveAndLog("Small", c1, null, small1);
 			Assert.assertTrue("First version should come before second", t0.before(t1));
 
@@ -356,41 +356,89 @@ public class CCNNetworkObjectTest {
 			removeNamespace(testName);
 			removeNamespace(testName2);
 		}
+	}
+	
+	@Test
+	public void testUpdateInBackground() throws Exception {
+		
+		ContentName testName = ContentName.fromNative(stringObjName, "testUpdateInBackground", "name1");
+		try {
+			CCNStringObject c0 = new CCNStringObject(testName, (String)null, CCNHandle.open());
+			c0.updateInBackground();
+			
+			CCNStringObject c1 = new CCNStringObject(testName, (String)null, CCNHandle.open());
+			c1.updateInBackground(true);
+			
+			Assert.assertFalse(c0.available());
+			Assert.assertFalse(c0.isSaved());
+			Assert.assertFalse(c1.available());
+			Assert.assertFalse(c1.isSaved());
+			
+			CCNStringObject c2 = new CCNStringObject(testName, (String)null, CCNHandle.open());
+			CCNTime t1 = saveAndLog("First string", c2, null, "Here is the first string.");
+			System.out.println("Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
+			c0.waitForData();
+			Assert.assertEquals("c0 update", c0.getVersion(), c2.getVersion());
+			c1.waitForData();
+			Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
+			
+			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
 
+			if (!c1.getVersion().equals(t2)) {
+				synchronized (c1) {
+					c1.wait(5000);
+				}
+			}
+			Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
+			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
+		} finally {
+			removeNamespace(testName);
+		}
 	}
 
 	
 	@Test
 	public void testSaveAsGone() throws Exception {
 		ContentName testName = ContentName.fromNative(collectionObjName, "testSaveAsGone");
-		setupNamespace(testName);
 
 		try {
 			CollectionObject c0 = new CollectionObject(testName, empty, library);
+			setupNamespace(testName); // this sends the interest, doing it after the object gives it
+						// a chance to catch it.
+			
+			
 			CCNTime t0 = saveAsGoneAndLog("Gone", c0);
 			Assert.assertTrue("Should be gone", c0.isGone());
 			ContentName goneVersionName = c0.getVersionedName();
-
+			
 			CCNTime t1 = saveAndLog("NotGone", c0, null, small1);
 			Assert.assertFalse("Should not be gone", c0.isGone());
 			Assert.assertTrue(t1.after(t0));
+			Log.info("T2");
 
 			CollectionObject c1 = new CollectionObject(testName, CCNHandle.open());
 			CCNTime t2 = waitForDataAndLog(testName.toString(), c1);
 			Assert.assertFalse("Read back should not be gone", c1.isGone());
 			Assert.assertEquals(t2, t1);
+			Log.info("T3");
 
 			CCNTime t3 = updateAndLog(goneVersionName.toString(), c1, goneVersionName);
 			Assert.assertTrue(VersioningProfile.isVersionOf(c1.getVersionedName(), testName));
 			Assert.assertEquals(t3, t0);
 			Assert.assertTrue("Read back should be gone.", c1.isGone());
+			Log.info("T4");
 
 			t0 = saveAsGoneAndLog("GoneAgain", c0);
 			Assert.assertTrue("Should be gone", c0.isGone());
+			Log.info("TSAG: Updating new object: {0}", testName);
 			CollectionObject c2 = new CollectionObject(testName, CCNHandle.open());
+			Log.info("TSAG: Waiting for: {0}", testName);
 			CCNTime t4 = waitForDataAndLog(testName.toString(), c2);
+			Log.info("TSAG: Waited for: {0}", c2.getVersionedName());
 			Assert.assertTrue("Read back of " + c0.getVersionedName() + " should be gone, got " + c2.getVersionedName(), c2.isGone());
 			Assert.assertEquals(t4, t0);
+			Log.info("T5");
+
 		} finally {
 			removeNamespace(testName);
 		}

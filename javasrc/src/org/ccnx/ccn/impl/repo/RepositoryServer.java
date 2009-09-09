@@ -307,7 +307,7 @@ public class RepositoryServer {
 				return;
 
 			} catch(IOException e){
-				Log.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+co.getVersion()+")", e);
+				Log.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+co.getVersionedName()+")", e);
 			}
 
 		}
