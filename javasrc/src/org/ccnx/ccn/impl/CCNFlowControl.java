@@ -385,10 +385,8 @@ public class CCNFlowControl implements CCNFilterListener {
 						long waitTime = _timeout - (System.currentTimeMillis() - startTime);
 						if (waitTime > 0)
 							_holdingArea.wait(waitTime);
-					} catch (InterruptedException ie) {
-						keepTrying = true;
-					}
-					if (_nOut == startSize || (System.currentTimeMillis() - startTime) >= _timeout)
+					} catch (InterruptedException ie) {}
+					if (_nOut != startSize || (System.currentTimeMillis() - startTime) >= _timeout)
 						keepTrying = false;
 				} while (keepTrying);
 				
