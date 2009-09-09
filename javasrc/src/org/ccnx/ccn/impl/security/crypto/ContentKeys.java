@@ -1,10 +1,12 @@
 package org.ccnx.ccn.impl.security.crypto;
 
 import java.math.BigInteger;
+import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.security.spec.InvalidParameterSpecException;
 
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
@@ -170,8 +172,20 @@ public class ContentKeys {
 		}
 
 		IvParameterSpec iv_ctrSpec = buildIVCtr(masterIV, segmentNumber, cipher.getBlockSize());
+		AlgorithmParameters algorithmParams = null;
+		try {
+			algorithmParams = AlgorithmParameters.getInstance(cipher.getAlgorithm());
+			algorithmParams.init(iv_ctrSpec);
+		} catch (NoSuchAlgorithmException e) {
+			Log.warning("Unexpected exception: have already validated that algorithm {0} exists: {1}", cipher.getAlgorithm(), e);
+			throw new InvalidKeyException("Unexpected exception: have already validated that algorithm " + cipher.getAlgorithm() + " exists: " + e);
+		} catch (InvalidParameterSpecException e) {
+			Log.warning("InvalidParameterSpecException attempting to create algorithm parameters: {0}", e);
+			throw new InvalidAlgorithmParameterException("Error creating a parameter object from IV/CTR spec!", e);
+		}
+		
 		Log.finest(encryption?"En":"De"+"cryption Key: "+DataUtils.printHexBytes(encryptionKey.getEncoded())+" iv="+DataUtils.printHexBytes(iv_ctrSpec.getIV()));
-		cipher.init(encryption?Cipher.ENCRYPT_MODE:Cipher.DECRYPT_MODE, encryptionKey, iv_ctrSpec);
+		cipher.init(encryption?Cipher.ENCRYPT_MODE:Cipher.DECRYPT_MODE, encryptionKey, algorithmParams);
 
 		return cipher;
 	}
