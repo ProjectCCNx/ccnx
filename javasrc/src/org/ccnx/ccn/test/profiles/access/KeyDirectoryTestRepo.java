@@ -1,53 +1,58 @@
 package org.ccnx.ccn.test.profiles.access;
 
 
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.BeforeClass;
-
+import java.lang.reflect.Method;
 import java.security.Key;
-import java.security.KeyPairGenerator;
 import java.security.KeyPair;
-import java.security.PublicKey;
+import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.TreeSet;
 import java.util.Random;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import javax.crypto.KeyGenerator;
-import java.lang.reflect.Method;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.profiles.access.AccessControlProfile;
-import org.ccnx.ccn.profiles.access.KeyDirectory;
 import org.ccnx.ccn.profiles.access.Group;
+import org.ccnx.ccn.profiles.access.KeyDirectory;
 import org.ccnx.ccn.protocol.ContentName;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 
 public class KeyDirectoryTestRepo {
 	
 	static Random rand = new Random();
-	static KeyDirectory kd;
-	static final String directoryBase = "/test/parc";
-	static final String keyDirectoryBase = "/test/parc/directory-";
+	static final String directoryBase = "/test";
+	static final String keyDirectoryBase = "/test/KeyDirectoryTestRepo-";
 	static ContentName keyDirectoryName;
 	static final String keyBase = "/test/parc/keys/";
 	static String principalName = "pgolle-";
 	static ContentName publicKeyName;
+	static ContentName versionedDirectoryName;
 	
 	static PrivateKey wrappedPrivateKey; 
 	static Key AESSecretKey;
 	static KeyPair wrappingKeyPair;
 	static byte[] wrappingPKID;
 	static AccessControlManager acm;
+	static KeyDirectory kd;
+	
+	static int testCount = 0;
 	
 	static CCNHandle handle;
 		
@@ -56,44 +61,52 @@ public class KeyDirectoryTestRepo {
 		// randomize names to minimize stateful effects of ccnd/repo caches.
 		keyDirectoryName = ContentName.fromNative(keyDirectoryBase + Integer.toString(rand.nextInt(10000)));
 		principalName = principalName + Integer.toString(rand.nextInt(10000));
+		handle = CCNHandle.open();
+		
+		ContentName cnDirectoryBase = ContentName.fromNative(directoryBase);
+		ContentName groupStore = AccessControlProfile.groupNamespaceName(cnDirectoryBase);
+		ContentName userStore = ContentName.fromNative(cnDirectoryBase, "Users");		
+		acm = new AccessControlManager(cnDirectoryBase, groupStore, userStore);
+		versionedDirectoryName = VersioningProfile.addVersion(keyDirectoryName);
 	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		kd.stopEnumerating();
+	}
+	
 	
 	/*	
 	 * Create a new versioned KeyDirectory
 	 */
 	@Test
 	public void testKeyDirectoryCreation() throws Exception {
-		ContentName versionDirectoryName = VersioningProfile.addVersion(keyDirectoryName);
-		handle = CCNHandle.open();
-		
-		ContentName cnDirectoryBase = ContentName.fromNative(directoryBase);
-		ContentName groupStore = AccessControlProfile.groupNamespaceName(cnDirectoryBase);
-		ContentName userStore = ContentName.fromNative(cnDirectoryBase, "Users");		
 
-		acm = new AccessControlManager(cnDirectoryBase, groupStore, userStore);
-		kd = new KeyDirectory(acm, versionDirectoryName, handle);
+		kd = new KeyDirectory(acm, versionedDirectoryName, handle);
 		// verify that the keyDirectory is created
 		Assert.assertNotNull(kd);		
 	}
 	
-	/*
-	 * Add a private key block to KD
-	 */
 	@Test
 	public void testAddPrivateKey() throws Exception {
-		Assert.assertFalse(kd.hasPrivateKeyBlock());
+		// CAN'T ASK THIS HERE -- because KD is being constructed incrementally across
+		// these tests (not the best idea), the KD is currently empty. If you ask this here,
+		// it will time out badly. Only want to make this sort of query on a KD you know
+		// is not completely empty.
+		// TODO -- make a KD, add only symmetric key blocks to it, then ask for private key block and test that it's false
+		// Assert.assertFalse(kd.hasPrivateKeyBlock());
 		// generate a private key to wrap
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 		kpg.initialize(1024);
 		wrappingKeyPair = kpg.generateKeyPair();
 		wrappedPrivateKey = wrappingKeyPair.getPrivate();
-
+	 
 		// generate a AES wrapping key
 		KeyGenerator kg = KeyGenerator.getInstance("AES");
 		AESSecretKey = kg.generateKey();
-		
 		// add private key block
 		kd.addPrivateKeyBlock(wrappedPrivateKey, AESSecretKey);
+		kd.waitForData(); // this was the first add; need to wait till we have any data, hopefully NE responder will fast path
 		Assert.assertTrue(kd.hasPrivateKeyBlock());
 	}
 	
@@ -111,7 +124,9 @@ public class KeyDirectoryTestRepo {
 		newMembers.add(new Link(myIdentity));
 		Group myGroup = acm.groupManager().createGroup(randomGroupName, newMembers);
 		Assert.assertTrue(acm.groupManager().haveKnownGroupMemberships());
-		Assert.assertTrue(myGroup.privateKeyDirectory(acm).hasPrivateKeyBlock());
+		KeyDirectory pkd = myGroup.privateKeyDirectory(acm);
+		pkd.waitForData();
+		Assert.assertTrue(pkd.hasPrivateKeyBlock());
 		
 		// add to the KeyDirectory the secret key wrapped in the public key
 		ContentName versionDirectoryName2 = VersioningProfile.addVersion(
@@ -123,8 +138,10 @@ public class KeyDirectoryTestRepo {
 		
 		// retrieve the secret key
 		byte[] expectedKeyID = CCNDigestHelper.digest(AESSecretKey.getEncoded());
+		kd2.waitForData();
 		Key unwrappedSecretKey = kd2.getUnwrappedKey(expectedKeyID);
 		Assert.assertEquals(AESSecretKey, unwrappedSecretKey);
+		kd2.stopEnumerating();
 	}
 
 	
@@ -144,7 +161,7 @@ public class KeyDirectoryTestRepo {
 		ContentName versionPublicKeyName = VersioningProfile.addVersion(publicKeyName);
 		
 		// add to the KeyDirectory the secret key wrapped in the public key
-		kd.addWrappedKeyBlock(AESSecretKey, versionPublicKeyName, publicKey);			
+		kd.addWrappedKeyBlock(AESSecretKey, versionPublicKeyName, publicKey);	
 	}
 	
 	/*
@@ -166,6 +183,7 @@ public class KeyDirectoryTestRepo {
 		m.invoke(acm, args);
 	}
 	
+	
 	/*	
 	 * Create a new (unversioned) KeyDirectory object with the same	
 	 * directory name as above. Check that the constructor retrieves the latest
@@ -178,24 +196,27 @@ public class KeyDirectoryTestRepo {
 	public void testGetWrappedKeyForKeyID() throws Exception {
 		CCNHandle library = CCNHandle.open();
 		// Use unversioned constructor so KeyDirectory returns the latest version
-		kd = new KeyDirectory(acm, keyDirectoryName, library);
-
+		KeyDirectory uvkd = new KeyDirectory(acm, keyDirectoryName, library);
+		while (!uvkd.hasChildren() || uvkd.getCopyOfWrappingKeyIDs().size() == 0) {
+			uvkd.waitForNewData();
+		}
 		// check the ID of the wrapping key
-		TreeSet<byte[]> wkid = kd.getCopyOfWrappingKeyIDs();
+		TreeSet<byte[]> wkid = uvkd.getCopyOfWrappingKeyIDs();
 		
 		Assert.assertEquals(1, wkid.size());
 		Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 		Assert.assertEquals(0, byteArrayComparator.compare(wkid.first(), wrappingPKID));
 
 		// check name
-		ContentName wkName = kd.getWrappedKeyNameForKeyID(wrappingPKID);
+		ContentName wkName = uvkd.getWrappedKeyNameForKeyID(wrappingPKID);
 		Assert.assertNotNull(wkName);
 		
 		// unwrap the key and check that the unwrapped secret key is correct
-		WrappedKeyObject wko = kd.getWrappedKeyForKeyID(wrappingPKID);
+		WrappedKeyObject wko = uvkd.getWrappedKeyForKeyID(wrappingPKID);
 		WrappedKey wk = wko.wrappedKey();
 		Key unwrappedSecretKey = wk.unwrapKey(wrappingKeyPair.getPrivate());
 		Assert.assertEquals(AESSecretKey, unwrappedSecretKey);
+		uvkd.stopEnumerating();
 	}
 
 	/*	
@@ -246,7 +267,9 @@ public class KeyDirectoryTestRepo {
 		ContentName versionSupersededKeyDirectoryName = VersioningProfile.addVersion(supersededKeyDirectoryName);
 		CCNHandle library = CCNHandle.open();
 		KeyDirectory skd = new KeyDirectory(acm, versionSupersededKeyDirectoryName, library);
-		Assert.assertTrue(! skd.hasSupersededBlock());
+		// can't call waitForData here -- directory empty
+		// TODO -- really bad idea -- don't want to test for existence in a directory you know is empty.
+		//Assert.assertTrue(!skd.hasSupersededBlock());
 
 		// generate a AES wrapping key
 		KeyGenerator kg = KeyGenerator.getInstance("AES");
@@ -256,12 +279,15 @@ public class KeyDirectoryTestRepo {
 		// add a superseded block
 		ContentName supersedingKeyName = keyDirectoryName;
 		skd.addSupersededByBlock(supersededAESSecretKey, supersedingKeyName, AESSecretKey);
+		while (!skd.hasChildren() || !skd.hasSupersededBlock()) 
+			skd.waitForNewData();
 		Assert.assertTrue(skd.hasSupersededBlock());
 		Assert.assertNotNull(skd.getSupersededBlockName());
 
 		// get unwrapped key for superseded KD
 		Key unwrappedSecretKey = skd.getUnwrappedKey(expectedKeyID);
 		Assert.assertEquals(supersededAESSecretKey, unwrappedSecretKey);
+		skd.stopEnumerating();
 	}
 
 	
@@ -277,6 +303,7 @@ public class KeyDirectoryTestRepo {
 
 		ContentName supersedingKeyName = ContentName.fromNative(keyDirectoryBase + "previous");
 		kd.addPreviousKeyBlock(AESSecretKey, supersedingKeyName, newAESSecretKey);
+		kd.waitForNewData();
 		Assert.assertTrue(kd.hasPreviousKeyBlock());
 	}
 	
