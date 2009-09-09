@@ -80,11 +80,8 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentSegment) {
-			ContentObject firstSegment = getFirstSegment();
-			if (null == firstSegment) {
-				return 0; // nothing to read
-			}
-			setFirstSegment(firstSegment);
+			// This will throw an exception if no block found, which is what we want.
+			setFirstSegment(getFirstSegment());
 		} 
 		
 		// Now we have a block in place. Read from it. If we run out of block before
@@ -92,11 +89,15 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		int remainingBytes = _segmentReadStream.available();
 		
 		if (remainingBytes <= 0) {
-			setCurrentSegment(getNextSegment());
-			if (null == _currentSegment) {
-				// in socket implementation, this would be EAGAIN
-				return 0;
+			if (!hasNextSegment()) {
+				return -1;
 			}
+			ContentObject nextSegment = getNextSegment();
+			if (null == nextSegment) {
+				// in socket implementation, this would be EAGAIN
+				return -1;
+			}
+			setCurrentSegment(nextSegment);
 			remainingBytes = _segmentReadStream.available();
 		}
 		// Read minimum of remainder of this block and available buffer.

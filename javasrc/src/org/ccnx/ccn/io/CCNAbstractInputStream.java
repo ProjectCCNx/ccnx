@@ -155,9 +155,6 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	public CCNAbstractInputStream(ContentObject firstSegment, 			
 			CCNHandle library) throws IOException  {
 		super();
-		if (null == firstSegment) {
-			throw new IllegalArgumentException("starterSegment cannot be null!");
-		}
 		_library = library; 
 		if (null == _library) {
 			_library = CCNHandle.getLibrary();
@@ -236,6 +233,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * @throws IOException
 	 */
 	protected void setFirstSegment(ContentObject newSegment) throws IOException {
+		if (null == newSegment) {
+			throw new NoMatchingContentFoundException("Cannot find first segment of " + getBaseName());
+		}
+		if (newSegment.signedInfo().getType().equals(ContentType.GONE)) {
+			_goneSegment = newSegment;
+			Log.info("getFirstSegment: got gone segment: " + _goneSegment.name());
+		}
 		setCurrentSegment(newSegment);
 	}
 
@@ -249,7 +253,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		_currentSegment = null;
 		_segmentReadStream = null;
 		if (null == newSegment) {
-			Log.info("Setting current segment to null! Did a segment fail to verify?");
+			Log.info("FINDME: Setting current segment to null! Did a segment fail to verify?");
 			return;
 		}
 		
@@ -260,28 +264,40 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		_publisher = newSegment.signedInfo().getPublisherKeyID();
 		_publisherKeyLocator = newSegment.signedInfo().getKeyLocator();
 		
-		_segmentReadStream = new ByteArrayInputStream(_currentSegment.content());
+		if (_goneSegment != newSegment) { // want pointer ==, not equals() here
+			_segmentReadStream = new ByteArrayInputStream(_currentSegment.content());
 
-		// if we're decrypting, then set it up now
-		if (_keys != null) {
-			try {
-				// Reuse of current segment OK. Don't expect to have two separate readers
-				// independently use this stream without state confusion anyway.
-				_cipher = _keys.getSegmentDecryptionCipher(
-						SegmentationProfile.getSegmentNumber(_currentSegment.name()));
-			} catch (InvalidKeyException e) {
-				Log.warning("InvalidKeyException: " + e.getMessage());
-				throw new IOException("InvalidKeyException: " + e.getMessage());
-			} catch (InvalidAlgorithmParameterException e) {
-				Log.warning("InvalidAlgorithmParameterException: " + e.getMessage());
-				throw new IOException("InvalidAlgorithmParameterException: " + e.getMessage());
-			}
-			_segmentReadStream = new UnbufferedCipherInputStream(_segmentReadStream, _cipher);
-		} else {
-			if (_currentSegment.signedInfo().getType().equals(ContentType.ENCR)) {
-				Log.warning("Asked to read encrypted content, but not given a key to decrypt it. Decryption happening at higher level?");
+			// if we're decrypting, then set it up now
+			if (_keys != null) {
+				try {
+					// Reuse of current segment OK. Don't expect to have two separate readers
+					// independently use this stream without state confusion anyway.
+					_cipher = _keys.getSegmentDecryptionCipher(
+							SegmentationProfile.getSegmentNumber(_currentSegment.name()));
+				} catch (InvalidKeyException e) {
+					Log.warning("InvalidKeyException: " + e.getMessage());
+					throw new IOException("InvalidKeyException: " + e.getMessage());
+				} catch (InvalidAlgorithmParameterException e) {
+					Log.warning("InvalidAlgorithmParameterException: " + e.getMessage());
+					throw new IOException("InvalidAlgorithmParameterException: " + e.getMessage());
+				}
+				_segmentReadStream = new UnbufferedCipherInputStream(_segmentReadStream, _cipher);
+			} else {
+				if (_currentSegment.signedInfo().getType().equals(ContentType.ENCR)) {
+					Log.warning("Asked to read encrypted content, but not given a key to decrypt it. Decryption happening at higher level?");
+				}
 			}
 		}
+	}
+	
+	protected void rewindSegment() throws IOException {
+		if (null == _currentSegment) {
+			Log.info("Cannot reqind null segment.");
+		}
+		if (null == _segmentReadStream) {
+			setCurrentSegment(_currentSegment);
+		}
+		_segmentReadStream.reset(); // will reset to 0 if mark not caled
 	}
 
 	/**
@@ -307,12 +323,18 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return SegmentationProfile.getSegment(_baseName, number, _publisher, _timeout, this, _library);
 	}
 	
-	protected ContentObject getNextSegment() throws IOException {
+	/**
+	 * Checks whether we might have a next segment -- we're not past the EOF marker,
+	 * or GONE.
+	 * @return
+	 * @throws IOException
+	 */
+	protected boolean hasNextSegment() throws IOException {
 		
 		// We're looking at content marked GONE
 		if (null != _goneSegment) {
 			Log.info("getNextSegment: We have a gone segment, no next segment. Gone segment: " + _goneSegment.name());
-			return null;
+			return false;
 		}
 		
 		// Check to see if finalBlockID is the current segment. If so, there should
@@ -324,8 +346,21 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			if (Arrays.equals(_currentSegment.signedInfo().getFinalBlockID(), _currentSegment.name().lastComponent())) {
 				Log.info("getNextSegment: there is no next segment. We have segment: " + 
 						DataUtils.printHexBytes(_currentSegment.name().lastComponent()) + " which is marked as the final segment.");
-				return null;
+				return false;
 			}
+		}
+		return true;
+	}
+	
+	/**
+	 * Will try for the next segment.
+	 * @return
+	 * @throws IOException
+	 */
+	protected ContentObject getNextSegment() throws IOException {
+		if (null == _currentSegment) {
+			Log.info("getNextSegment: no current segment, getting first segment.");
+			return getFirstSegment();
 		}
 		
 		Log.info("getNextSegment: getting segment after " + _currentSegment.name());
@@ -335,11 +370,6 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected ContentObject getFirstSegment() throws IOException {
 		if (null != _startingSegmentNumber) {
 			ContentObject firstSegment = getSegment(_startingSegmentNumber);
-			if ((null != firstSegment) && (firstSegment.signedInfo().getType().equals(ContentType.GONE))) {
-				_goneSegment = firstSegment;
-				Log.info("getFirstSegment: got gone segment: " + _goneSegment.name());
-				return null;
-			}
 			Log.info("getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " + 
 					((null == firstSegment) ? "no " : firstSegment.name()));
 			return firstSegment;
@@ -469,19 +499,22 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * @throws IOException
 	 */
 	public boolean isGone() throws IOException {
-		ContentObject newSegment = null;
 
 		// TODO: once first segment is always read in constructor this code will change
-		if (null == _currentSegment && null == _goneSegment) {
-			newSegment = getFirstSegment(); // sets _goneSegment, but not _currentSegment
-		}
-		if (null == _goneSegment) {
-			if (null != newSegment) {
-				setFirstSegment(newSegment); // save it for reuse
+		if (null == _currentSegment) {
+			ContentObject firstSegment = getFirstSegment();
+			if (null != firstSegment) {
+				setFirstSegment(firstSegment); // sets _goneSegment
+			} else {
+				// don't know anything
+				return false;
 			}
-			return false;
 		}
-		return true;
+		// We might have set first segment in constructor, in which case we will also have set _goneSegment
+		if (null != _goneSegment) {
+			return true;
+		}
+		return false;
 	}
 	
 	public ContentObject deletionInformation() {
@@ -597,18 +630,20 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return 0;
 	}
 
-	public long seek(long position) throws IOException {
+	public void seek(long position) throws IOException {
 		Log.info("Seeking stream to " + position);
 		// TODO: when first block is read in constructor this check can be removed
 		if ((_currentSegment == null) || (!SegmentationProfile.isFirstSegment(_currentSegment.name()))) {
 			setFirstSegment(getFirstSegment());
+			skip(position);
+		} else if (position > tell()) {
+			// we are on the first segment already, just move forward
+			skip(position - tell());
 		} else {
-			// we just need to go forward... but there is no good way to rewind or
-			// to figure out where we are. but don't refetch current segment
-			// TODO -- optimize for small local seeks
-			setCurrentSegment(_currentSegment);
+			// we are on the first segment already, just rewind back to the beginning
+			rewindSegment();
+			skip(position);
 		}
-		return skip(position);
 	}
 
 	public long tell() throws IOException {

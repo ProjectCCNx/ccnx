@@ -368,6 +368,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_lock.writeLock().lock();
 			Tuple<ContentName, byte []> nameAndVersion = null;
 			if (inputStream.isGone()) {
+				Log.fine("Reading from GONE stream: {0}", inputStream.baseName());
 				_data = null;
 
 				// This will have a final version and a segment
@@ -377,7 +378,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				_available = true;
 				_isGone = true;
 				_isDirty = false;
-				_lastSaved = digestContent();			
+				_lastSaved = digestContent();	
 			} else {
 				super.update(inputStream);
 

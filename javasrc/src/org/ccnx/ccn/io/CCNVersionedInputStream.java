@@ -108,11 +108,6 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		if (null != result){
 			Log.info("getFirstSegment: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			_baseName = result.name().cut(_baseName.count() + 1);
-			if (result.signedInfo().getType().equals(ContentType.GONE)) {
-				_goneSegment = result;
-				Log.info("getFirstSegment: got gone segment: " + _goneSegment.name());
-				return null;
-			}
 		} else {
 			Log.info("getFirstSegment: no segment available for latest version of " + _baseName);
 		}
