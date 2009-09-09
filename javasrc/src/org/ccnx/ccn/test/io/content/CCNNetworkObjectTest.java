@@ -384,8 +384,8 @@ public class CCNNetworkObjectTest {
 			
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
 
-			synchronized (c1) {
-				if (!c1.getVersion().equals(t2)) {
+			if (!c1.getVersion().equals(t2)) {
+				synchronized (c1) {
 					c1.wait(5000);
 				}
 			}
