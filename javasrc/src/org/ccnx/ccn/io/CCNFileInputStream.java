@@ -285,7 +285,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	}
 
 	@Override
-	public long seek(long position) throws IOException {
+	public void seek(long position) throws IOException {
 		Log.info("Seeking stream to " + position + ": have header? " + hasHeader());
 		if (hasHeader()) {
 			int [] blockAndOffset = _header.positionToSegmentLocation(position);
@@ -304,7 +304,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 					}
 					_segmentReadStream.skip(blockAndOffset[1]);
 				}
-				return position;
+				return;
 			}
 			
 			// TODO: once first block is always set in a constructor this conditional can be removed
@@ -327,9 +327,8 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			//skip(check);
 			
 			//Library.info(" _blockOffset "+_blockOffset);
-			return check;
 		} else {
-			return super.seek(position);
+			super.seek(position);
 		}
 	}
 
