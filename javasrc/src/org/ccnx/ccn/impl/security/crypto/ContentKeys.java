@@ -181,7 +181,7 @@ public class ContentKeys {
 		IvParameterSpec iv_ctrSpec = buildIVCtr(_masterIV, segmentNumber, cipher.getBlockSize());
 		AlgorithmParameters algorithmParams = null;
 		try {
-			algorithmParams = AlgorithmParameters.getInstance(cipher.getAlgorithm());
+			algorithmParams = AlgorithmParameters.getInstance(getBaseAlgorithm());
 			algorithmParams.init(iv_ctrSpec);
 		} catch (NoSuchAlgorithmException e) {
 			Log.warning("Unexpected exception: have already validated that algorithm {0} exists: {1}", cipher.getAlgorithm(), e);
