@@ -383,8 +383,10 @@ public class CCNNetworkObjectTest {
 			Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
 			
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
-			if (!c1.getVersion().equals(t2)) {
-				c1.wait(5000);
+			synchronized (c1) {
+				if (!c1.getVersion().equals(t2)) {
+					c1.wait(5000);
+				}
 			}
 			Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
 			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
@@ -427,8 +429,11 @@ public class CCNNetworkObjectTest {
 
 			t0 = saveAsGoneAndLog("GoneAgain", c0);
 			Assert.assertTrue("Should be gone", c0.isGone());
+			Log.info("TSAG: Updating new object: {0}", testName);
 			CollectionObject c2 = new CollectionObject(testName, CCNHandle.open());
+			Log.info("TSAG: Waiting for: {0}", testName);
 			CCNTime t4 = waitForDataAndLog(testName.toString(), c2);
+			Log.info("TSAG: Waited for: {0}", c2.getVersionedName());
 			Assert.assertTrue("Read back of " + c0.getVersionedName() + " should be gone, got " + c2.getVersionedName(), c2.isGone());
 			Assert.assertEquals(t4, t0);
 			Log.info("T5");
