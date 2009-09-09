@@ -4,10 +4,13 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.Provider;
 import java.security.PublicKey;
+import java.security.Security;
 import java.security.cert.CertificateEncodingException;
 import java.security.spec.InvalidKeySpecException;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.KeyRepository;
@@ -34,6 +37,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 public abstract class KeyManager {
 	
 	public static final String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
+	protected static Provider BC_PROVIDER = null;
 	
 	protected static KeyManager _defaultKeyManager = null;
 	
@@ -45,6 +49,22 @@ public abstract class KeyManager {
 		} catch (IOException io) {
 			throw new RuntimeException(io);
 		}
+	}
+	
+	public static void initializeProvider() {
+		synchronized(KeyManager.class) {
+			if (null == BC_PROVIDER) {
+				BC_PROVIDER = new BouncyCastleProvider();
+				Security.addProvider(BC_PROVIDER);		
+			}
+		}
+	}
+	
+	public static Provider getDefaultProvider() {
+		if (null == BC_PROVIDER) {
+			initializeProvider();
+		}
+		return BC_PROVIDER;
 	}
 	
 	/**

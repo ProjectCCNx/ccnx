@@ -1,9 +1,7 @@
 package org.ccnx.ccn;
 
 import java.io.IOException;
-import java.security.Security;
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.support.Log;
@@ -43,7 +41,9 @@ import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
 public class CCNHandle extends CCNBase {
 	
 	static {
-		Security.addProvider(new BouncyCastleProvider());
+		// This needs to be done once. Do it here to be sure it happens before 
+		// any work that needs it.
+		KeyManager.initializeProvider();
 	}
 	
 	protected static CCNHandle _library = null;

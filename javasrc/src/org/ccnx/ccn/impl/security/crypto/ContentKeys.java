@@ -13,6 +13,7 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 
@@ -96,7 +97,7 @@ public class ContentKeys {
 		// We have tried a dummy call to Cipher.getInstance on construction of this ContentKeys - so
 		// further "NoSuch" exceptions should not happen here.
 		try {
-			return Cipher.getInstance(_encryptionAlgorithm);
+			return Cipher.getInstance(_encryptionAlgorithm, KeyManager.getDefaultProvider());
 		} catch (NoSuchAlgorithmException e) {
 			String err = "Unexpected NoSuchAlgorithmException for an algorithm we have already used!";
 			Log.severe(err);
