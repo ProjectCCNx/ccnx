@@ -106,6 +106,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					throw new IOException("Unexpected: really can't get a latest version for key directory name : " + _namePrefix);
 				}
 			}
+			Log.finer("KeyDirectory, got latest version of {0}, name {1}", _namePrefix, latestVersionName);
 			synchronized (_childLock) {
 				stopEnumerating();
 				_children.clear();
