@@ -74,7 +74,7 @@ public class ContentKeys {
 	 * A number of users of ContentKeys only support using the default algorithm.
 	 * @throws UnsupportedOperationException if the algorithm is not the default.
 	 */
-	public void OnlySupportDefaultAlg() {
+	public void requireDefaultAlgorithm() {
 		// For now we only support the default algorithm.
 		if (!encryptionAlgorithm.equals(ContentKeys.DEFAULT_CIPHER_ALGORITHM)) {
 			String err = "Right now the only encryption algorithm we support is: " + 
