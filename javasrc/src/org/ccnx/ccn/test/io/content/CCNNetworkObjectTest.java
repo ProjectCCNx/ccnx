@@ -384,7 +384,9 @@ public class CCNNetworkObjectTest {
 			
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
 			if (!c1.getVersion().equals(t2)) {
-				c1.wait(5000);
+				synchronized (c1) {
+					c1.wait(5000);
+				}
 			}
 			Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
 			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
