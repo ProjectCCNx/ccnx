@@ -307,8 +307,8 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
 
 		CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
-		if (!c1.getVersion().equals(t2)) {
-			synchronized (c1) {
+		synchronized (c1) {
+			if (!c1.getVersion().equals(t2)) {
 				c1.wait(5000);
 			}
 		}
