@@ -85,6 +85,13 @@ public class ContentKeys {
 		}
 	}
 	
+	public String getBaseAlgorithm() {
+		if (encryptionAlgorithm.contains("/")) {
+			return encryptionAlgorithm.substring(0, encryptionAlgorithm.indexOf("/"));
+		}
+		return encryptionAlgorithm;
+	}
+	
 	public Cipher getCipher() {
 		// We have tried a dummy call to Cipher.getInstance on construction of this ContentKeys - so
 		// further "NoSuch" exceptions should not happen here.
