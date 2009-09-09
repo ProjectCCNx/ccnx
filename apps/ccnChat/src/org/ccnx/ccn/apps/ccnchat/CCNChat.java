@@ -141,7 +141,7 @@ public class CCNChat extends JFrame implements ActionListener {
 				if ((null == _lastUpdate) || thisUpdate.after(_lastUpdate)) {
 					System.out.println("Got an update: " + _readString.getVersion());
 					_lastUpdate = thisUpdate;
-					showMessage(_readString.contentPublisher(), _readString.publisherKeyLocator(), thisUpdate, _readString.string());
+					showMessage(_readString.getContentPublisher(), _readString.getPublisherKeyLocator(), thisUpdate, _readString.string());
 				} else {
 				}
 			}

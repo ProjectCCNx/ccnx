@@ -4,11 +4,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InvalidObjectException;
 import java.io.OutputStream;
+import java.security.DigestOutputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.NullOutputStream;
 
 
 
@@ -38,11 +43,13 @@ import org.ccnx.ccn.impl.support.Log;
  */
 public abstract class NetworkObject<E> {
 
-	public static final String DEFAULT_DIGEST = "SHA-1"; // OK for now.
+	public static final String DEFAULT_CHECKSUM_ALGORITHM = "MD5"; // Care about speed, not collision-resistance.
 
 	protected Class<E> _type;
 	protected E _data;
 	protected boolean _isDirty = false;
+	protected byte [] _lastSaved; // save digest of serialized item, so can tell if updated outside
+								  // of setData
 	protected boolean _available = false; // false until first time data is set or updated
 	protected ReentrantReadWriteLock _lock = new ReentrantReadWriteLock();
 
@@ -71,20 +78,22 @@ public abstract class NetworkObject<E> {
 
 	public void update(InputStream input) throws IOException, XMLStreamException {
 		
-		E newData = readObjectImpl(input);
-		
-		try {
-			_lock.writeLock().lock();
-			if (!_available) {
-				Log.info("Update -- first initialization.");
-			}
+			E newData = readObjectImpl(input);
 
-			_data = newData;
-			_available = true;
-			_isDirty = false;
-		} finally {
-			_lock.writeLock().unlock();
-		}
+			try {
+				_lock.writeLock().lock();
+				if (!_available) {
+					Log.info("Update -- first initialization.");
+				}
+
+				_data = newData;
+				_available = true;
+				_isDirty = false;
+				_lastSaved = digestContent();
+				
+			} finally {
+				_lock.writeLock().unlock();
+			}
 	}
 	
 	/**
@@ -191,10 +200,46 @@ public abstract class NetworkObject<E> {
 			_lock.readLock().unlock();
 		}
 	}
+	
+	protected byte [] digestContent() throws IOException {
+		try {
+			// Otherwise, might have been written when we weren't looking (someone accessed
+			// data and then changed it).
+			DigestOutputStream dos = new DigestOutputStream(new NullOutputStream(), MessageDigest.getInstance(DEFAULT_CHECKSUM_ALGORITHM));
+			writeObjectImpl(dos);
+			dos.flush();
+			dos.close();
+			byte [] currentValue = dos.getMessageDigest().digest();
+			return currentValue;
+		} catch (NoSuchAlgorithmException e) {
+			Log.warning("No pre-configured algorithm {0} available -- configuration error!", DEFAULT_CHECKSUM_ALGORITHM);
+			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_CHECKSUM_ALGORITHM + " available -- configuration error!");
+		} catch (XMLStreamException e) {
+			Log.warning("Encoding exception determining whether an object is dirty: {0}", e);
+			throw new IOException("Encoding exception determining whether an object is dirty: " + e);
+		}
+	}
 
-	protected boolean isDirty() {
+	protected boolean isDirty() throws IOException {
 		try {
 			_lock.readLock().lock();
+			if (_isDirty) {
+				return _isDirty;
+			} else if (_lastSaved == null) {
+				if (_data == null)
+					return false;
+				return true;
+			}
+			byte [] currentValue = digestContent();
+			
+			if (Arrays.equals(currentValue, _lastSaved)) {
+				Log.info("Last saved value for object still current.");
+				_isDirty = false;
+			} else {
+				Log.info("Last saved value for object not current -- object changed.");
+				_isDirty = true;
+			}
+			
 			return _isDirty; 
 		} finally {
 			_lock.readLock().unlock();
@@ -205,7 +250,7 @@ public abstract class NetworkObject<E> {
 	 * True if the content was either read from the network or was saved locally.
 	 * @return
 	 */
-	public boolean isSaved() {
+	public boolean isSaved() throws IOException {
 		try {
 			_lock.readLock().lock();
 			return available() && !isDirty();
@@ -223,11 +268,19 @@ public abstract class NetworkObject<E> {
 	protected void internalWriteObject(OutputStream output) throws IOException {
 		try {
 			_lock.writeLock().lock();
-			writeObjectImpl(output);
+			DigestOutputStream dos = new DigestOutputStream(output, MessageDigest.getInstance(DEFAULT_CHECKSUM_ALGORITHM));
+			writeObjectImpl(dos);
+			dos.flush(); // do not close dos, as it will close the output, allow caller to close
+			_lastSaved = dos.getMessageDigest().digest();
 			setDirty(false);
+			
+		} catch (NoSuchAlgorithmException e) {
+			Log.warning("No pre-configured algorithm {0} available -- configuration error!", DEFAULT_CHECKSUM_ALGORITHM);
+			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_CHECKSUM_ALGORITHM + " available -- configuration error!");
 		} catch (XMLStreamException e) {
+			Log.warning("Encoding exception determining whether an object is dirty: {0}", e);
 			// TODO when move to 1.6, use nested exceptions
-			throw new IOException("XMLStreamException " + e);
+			throw new IOException("Encoding exception determining whether an object is dirty: " + e);
 		} finally {
 			_lock.writeLock().unlock();
 		}

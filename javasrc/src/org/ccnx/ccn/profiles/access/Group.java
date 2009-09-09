@@ -196,16 +196,8 @@ public class Group {
 		return _groupPublicKey.getVersionedName();
 	}
 	
-	public CCNTime publicKeyVersion() {
-		ContentName name = publicKeyName();
-		if (VersioningProfile.hasTerminalVersion(name)) {
-			try {
-				return VersioningProfile.getLastVersionAsTimestamp(name);
-			} catch (VersionMissingException e) {
-				Log.warning("Should not happen: VersionMissingException on name where isVersioned is true: " + name + ": " + e.getMessage());
-			}
-		}
-		return null;
+	public CCNTime publicKeyVersion() throws IOException {
+		return _groupPublicKey.getVersion();
 	}
 
 	public void setMembershipList(GroupManager groupManager, java.util.Collection<Link> newMembers) 

@@ -961,9 +961,12 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		System.out.println("got a callback!");
 		this.names = n;
 		System.out.println("here are the returned names: ");
-		for (ContentName cn : this.names)
-			System.out.println(cn.toString() + " (" + prefix.toString()
-					+ cn.toString() + ")");
+		for (ContentName cn : this.names){
+			if(!prefix.equals(new ContentName()))
+				System.out.println(cn.toString() + " (" + prefix.toString()	+ cn.toString() + ")");
+			else
+				System.out.println(cn.toString() + " ("+cn.toString()+")");
+		}
 		this.addTreeNodes(n, prefix);
 
 		return 0;

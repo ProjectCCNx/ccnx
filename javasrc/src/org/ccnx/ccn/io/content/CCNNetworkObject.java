@@ -52,6 +52,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 	protected static boolean DEFAULT_RAW = true;
 	protected static long DEFAULT_TIMEOUT = 3000; // msec
+	protected static final byte [] GONE_OUTPUT = "GONE".getBytes();
 	
 	/**
 	 * Unversioned "base" name.
@@ -358,6 +359,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				_currentPublisherKeyLocator = inputStream.deletionInformation().signedInfo().getKeyLocator();
 				_available = true;
 				_isGone = true;
+				_isDirty = false;
+				_lastSaved = digestContent();			
 			} else {
 				super.update(inputStream);
 
@@ -524,7 +527,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				byte [] empty = new byte[0];
 				ContentObject goneObject = 
 					ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty, _publisher, _keyLocator, null, null);
-
+				
 				// The segmenter in the stream does an addNameSpace of the versioned name. Right now
 				// this not only adds the prefix (ignored) but triggers the repo start write.
 				_flowControl.addNameSpace(name);
@@ -534,6 +537,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				_flowControl.afterClose();
 				_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
 				_currentPublisherKeyLocator = goneObject.signedInfo().getKeyLocator();
+				_lastSaved = GONE_OUTPUT;
 			}
 			_currentVersionComponent = name.lastComponent();
 			_currentVersionName = null;
@@ -700,6 +704,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	@Override
+	protected byte [] digestContent() throws IOException {
+		if (isGone()) {
+			return GONE_OUTPUT;
+		}
+		return super.digestContent();
+	}
+	
+	@Override
 	protected E data() throws ContentNotReadyException, ContentGoneException { 
 		try {
 			_lock.readLock().lock();
@@ -724,7 +736,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 	}
 	
-	public CCNTime getVersion() {
+	public CCNTime getVersion() throws IOException {
 		try {
 			_lock.readLock().lock();
 			if (isSaved())
@@ -744,7 +756,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 	}
 	
-	public byte [] getVersionComponent() {
+	public byte [] getVersionComponent() throws IOException {
 		try {
 			_lock.readLock().lock();
 			if (isSaved())
@@ -760,7 +772,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * name. Otherwise returns the base name.
 	 * @return
 	 */
-	public ContentName getVersionedName() {
+	public ContentName getVersionedName()  {
 		try {
 			_lock.readLock().lock();
 
@@ -770,12 +782,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				return _currentVersionName;
 			}
 			return getBaseName();
+		} catch (IOException e) {
+			Log.warning("Invalid state for object {0}, cannot get current version name: {1}", getBaseName(), e);
+			return getBaseName();
 		} finally {
 			_lock.readLock().unlock();
 		}
 	}
 
-	public PublisherPublicKeyDigest getContentPublisher() {
+	public PublisherPublicKeyDigest getContentPublisher() throws IOException {
 		try {
 			_lock.readLock().lock();
 			if (isSaved())
@@ -786,7 +801,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 	}
 	
-	public KeyLocator getPublisherKeyLocator() {
+	public KeyLocator getPublisherKeyLocator() throws IOException  {
 		try {
 			_lock.readLock().lock();
 			if (isSaved())

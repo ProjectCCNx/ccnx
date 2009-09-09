@@ -65,6 +65,9 @@ public class KeyDirectory extends EnumeratedNameList {
 	
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 	
+	// time spent waiting for new data (in ms) before responding to read queries 
+	static final long DEFAULT_TIMEOUT = 5000;	
+	
 	AccessControlManager _manager; // to get at key cache
 	HashMap<String, PrincipalInfo> _principals = new HashMap<String, PrincipalInfo>();
 	private final ReadWriteLock _principalsLock = new ReentrantReadWriteLock();
@@ -152,10 +155,22 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 	}
 	
-	/*
-	 * Return a copy to avoid synchronization problems
+	private void waitForDataBeforeReading() {
+		long timeRemaining = DEFAULT_TIMEOUT;
+		while (timeRemaining>0) {
+			long startTime = System.currentTimeMillis();
+			this.getNewData(timeRemaining);
+			timeRemaining -= System.currentTimeMillis() - startTime;
+		}
+	}
+	
+	/**
+	 * Waits for new data, then
+	 * Returns a copy to avoid synchronization problems
+	 * 
 	 */
 	public TreeSet<byte []> getCopyOfWrappingKeyIDs() {
+		waitForDataBeforeReading();
 		TreeSet<byte []> copy = new TreeSet<byte []>(byteArrayComparator);
 		try {
 			_keyIDLock.readLock().lock();
@@ -166,10 +181,12 @@ public class KeyDirectory extends EnumeratedNameList {
 		return copy; 	
 	}
 	
-	/*
+	/**
+	 * Waits for new data, then
 	 * Return a copy to avoid synchronization problems
 	 */
 	public HashMap<String, PrincipalInfo> getCopyOfPrincipals() {
+		waitForDataBeforeReading();
 		HashMap<String, PrincipalInfo> copy = new HashMap<String, PrincipalInfo>();
 		try {
 			_principalsLock.readLock().lock();
@@ -183,7 +200,11 @@ public class KeyDirectory extends EnumeratedNameList {
 		return copy; 	
 	}
 	
+	/**
+	 * Waits for new data, then returns principal info
+	 */
 	public PrincipalInfo getPrincipalInfo(String principal) {
+		waitForDataBeforeReading();
 		PrincipalInfo pi = null;
 		try {
 			_principalsLock.readLock().lock();
@@ -194,10 +215,12 @@ public class KeyDirectory extends EnumeratedNameList {
 		return pi;
 	}
 	
-	/*
-	 * Return a copy to avoid synchronization problems
+	/**
+	 * Waits for new data, then 
+	 * Returns a copy to avoid synchronization problems
 	 */
 	public TreeSet<byte []> getCopyOfOtherNames() {
+		waitForDataBeforeReading();
 		TreeSet<byte []> copy = new TreeSet<byte []>(byteArrayComparator);
 		try {
 			_otherNamesLock.readLock().lock();
@@ -218,7 +241,11 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 	}
 	
+	/**
+	 * Waits for new data, then returns wrapped key object
+	 */
 	public WrappedKeyObject getWrappedKeyForKeyID(byte [] keyID) throws XMLStreamException, IOException, ConfigurationException {
+		waitForDataBeforeReading();
 		try{
 			_keyIDLock.readLock().lock();
 			if (!_keyIDs.contains(keyID)) {
@@ -235,7 +262,11 @@ public class KeyDirectory extends EnumeratedNameList {
 		return new ContentName(_namePrefix, AccessControlProfile.targetKeyIDToNameComponent(keyID));
 	}
 	
+	/**
+	 * Waits for new data then returns wrapped key object
+	 */
 	public WrappedKeyObject getWrappedKeyForPrincipal(String principalName) throws IOException, XMLStreamException, ConfigurationException {
+		waitForDataBeforeReading();
 		
 		PrincipalInfo pi = null;
 		try{
@@ -273,8 +304,12 @@ public class KeyDirectory extends EnumeratedNameList {
 																					  principalPublicKeyName);
 		return getWrappedKeyNameForPrincipal(info.isGroup(), info.friendlyName(), info.versionTimestamp());
 	}
-	
+
+	/**
+	 * Waits for new data before checking for the existence of a superseded block
+	 */
 	public boolean hasSupersededBlock() {
+		waitForDataBeforeReading();
 		boolean b = false;
 		try{
 			_otherNamesLock.readLock().lock();
@@ -304,12 +339,14 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * except in the case of an interposed ACL, where there is nothing to link to; 
 	 * and it instead stores a wrapped key block containing the effective node key that
 	 * was the previous key.
+	 * This method waits for new data before checking for the existence of a superseded block
 	 * @return
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 * @throws ConfigurationException 
 	 */
 	public WrappedKeyObject getSupersededWrappedKey() throws XMLStreamException, IOException, ConfigurationException {
+		waitForDataBeforeReading();
 		if (!hasSupersededBlock())
 			return null;
 		return getWrappedKey(getSupersededBlockName());
@@ -321,7 +358,11 @@ public class KeyDirectory extends EnumeratedNameList {
 		return wrappedKey;		
 	}
 	
+	/**
+	 * Waits for new data before checking for the existence of a previous key block
+	 */
 	public boolean hasPreviousKeyBlock() {
+		waitForDataBeforeReading();
 		boolean b;
 		try{
 			_otherNamesLock.readLock().lock();
@@ -365,9 +406,11 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * then wrapped under the public keys of various principals. The WrappedKey structure
 	 * would allow us to do this (wrap private in public) in a single object, with
 	 * an inline nonce key, but this option is more efficient.
+	 * Waits for new data before checking for the existence of a private key block
 	 * @return
 	 */
 	public boolean hasPrivateKeyBlock() {
+		waitForDataBeforeReading();
 		boolean b;
 		try{
 			_otherNamesLock.readLock().lock();
@@ -390,7 +433,8 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
-	 * Find a copy of the key block in this directory that we can unwrap (either the private
+	 * First, wait for new data.
+	 * Then find a copy of the key block in this directory that we can unwrap (either the private
 	 * key wrapping key block or a wrapped raw symmetric key). Chase superseding keys if
 	 * we have to. This mechanism should be generic, and should work for node keys
 	 * as well as private key wrapping keys in directories following this structure.
@@ -411,6 +455,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		// to a superseding key below if there is one.)
 		// Do we have one of the wrapping keys in our cache?
 		
+		waitForDataBeforeReading();
 		try{
 			_keyIDLock.readLock().lock();
 			for (byte [] keyid : _keyIDs) {
