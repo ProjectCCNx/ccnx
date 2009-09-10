@@ -1,21 +1,28 @@
-/*
- * ccn/uri.h
+/**
+ * @file ccn/uri.h
  * 
- * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
+ * ccn-scheme uri conversions.
  *
- * ccn-scheme uri conversions
+ * Part of the CCNx C Library.
  *
- * $Id$
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #ifndef CCN_URI_DEFINED
 #define CCN_URI_DEFINED
-#include <ccn/charbuf.h>
 
-/*
- * XXX - these names and signatures are a little confusing, and will
- * get reworked.  Please look at ccn_uri.c for details.
- */
+#include <ccn/charbuf.h>
 
 /* Conversion from ccnb to uri */
 int

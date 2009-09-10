@@ -695,8 +695,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
         	if(nodeName.path==null){
         		System.out.println("collapsed the tree at the root");
         	} else {
-        		System.out.println("tree collapsed at: "+nodeName.path+new String(nodeName.name));
         		prefixToCancel = ContentName.fromNative(nodeName.path, nodeName.name);
+        		System.out.println("tree collapsed at: "+prefixToCancel.toString());	
         	}
         	System.out.println("cancelling prefix: "+prefixToCancel);
         	_nameEnumerator.cancelEnumerationsWithPrefix(prefixToCancel);
@@ -707,35 +707,46 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		public void valueChanged(TreeSelectionEvent event) {
 
 			final DefaultMutableTreeNode node = getTreeNode(event.getPath());
-			Thread runner = new Thread() {
-				public void run() {
+			if (tree.isCollapsed(event.getPath())) {
+				System.out.println("tree is collapsed");
+				//if(tree.isCollapsed(event.getPath().getParentPath())){
+				//	System.out.println("parent is collapsed");
+				//} else {
+				//	System.out.println("parent was expanded... go ahead and expand this one");
 
-					Runnable runnable = new Runnable() {
-						public void run() {
-							System.out.println("getting name node: "+node.toString());
-							Name fnode = getNameNode(node);
+				Thread runner = new Thread() {
+					public void run() {
 
-							if (fnode == null) {
-								System.out.println("fnode path is null...");
-								// selected top component, switch to top usable node
-								// node = usableRoot;
-								fnode = getNameNode(usableRoot);
+						Runnable runnable = new Runnable() {
+							public void run() {
+								System.out.println("getting name node: " + node.toString());
+								Name fnode = getNameNode(node);
+
+								if (fnode == null) {
+									System.out.println("fnode path is null...");
+									// selected top component, switch to top
+									// usable node
+									// node = usableRoot;
+									fnode = getNameNode(usableRoot);
+								}
+								if (fnode == null)
+									System.out.println("fnode is null");
+								if (node == null)
+									System.out.println("node is null");
+								System.out.println("In the tree selection listener with " + fnode.name + " and " + node.toString());
+								String p = getNodes(fnode);
+								selectedPath = p;
+								selectedPrefix = p;
 							}
-							if(fnode == null)
-								System.out.println("fnode is null");
-							if(node == null)
-								System.out.println("node is null");
-							System.out.println("In the tree expansion listener with "+ fnode.name+ " and "+ node.toString());
-							String p = getNodes(fnode);
-							selectedPath = p;
-							selectedPrefix = p;
-						}
-					};
-					SwingUtilities.invokeLater(runnable);
-				}
-			};
-			runner.start();
-			// prefix.toString()+cn.toString();
+						};
+						SwingUtilities.invokeLater(runnable);
+					}
+				};
+				runner.start();
+				//}
+			} else {
+				System.out.println("path is expanded...");
+			}
 		}
 	}
 
@@ -934,13 +945,15 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				//parentNode.add(node);
 				
 				//javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
-		        javax.swing.SwingUtilities.invokeLater(new Runnable() {
-		            public void run() {
-						m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
-						System.out.println("inserted node...  parent now has "+parentNode.getChildCount());
-		            }
-		        });
+		    //    javax.swing.SwingUtilities.invokeLater(new Runnable() {
+		    //       public void run() {
+			//			m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
+			//			System.out.println("inserted node...  parent now has "+parentNode.getChildCount());
+		    //        }
+		    //    });
 		        
+		        m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
+				System.out.println("inserted node...  parent now has "+parentNode.getChildCount());
 
 			}
 		}

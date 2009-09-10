@@ -1,6 +1,21 @@
-/*
- * ccn_versioning.c
- * Copyright (C) 2009 Palo Alto Research Center, Inc. All rights reserved.
+/**
+ * @file ccn_versioning.c
+ * @brief Versioning support.
+ * 
+ * Part of the CCNx C Library.
+ *
+ * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,7 +29,7 @@
 
 #define FF 0xff
 
-/*
+/**
  * This appends a tagged, valid, fully-saturated Bloom filter, useful for
  * excluding everything between two 'fenceposts' in an Exclude construct.
  */
@@ -30,7 +45,7 @@ append_bf_all(struct ccn_charbuf *c)
     ccn_charbuf_append_closer(c);
 }
 
-/*
+/**
  * Append AnswerOriginKind=1 to partially constructed Interest, meaning
  * do not generate new content.
  */
@@ -43,7 +58,8 @@ answer_passive(struct ccn_charbuf *templ)
     ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
 }
 
-/*
+/**
+XXX
  * Append OrderPreference=5 to partially constructed Interest, meaning
  * prefer to send bigger.
  */

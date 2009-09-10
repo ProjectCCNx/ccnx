@@ -3,6 +3,8 @@ package org.ccnx.ccn.utils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
@@ -27,6 +29,7 @@ public class put_file {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		System.err.print("here1");
 		int startArg = 0;
 		
 		for (int i = 0; i < args.length - 2; i++) {
@@ -84,71 +87,18 @@ public class put_file {
 			
 			if (args.length == (startArg + 2)) {
 				
-				File theFile = new File(args[startArg + 1]);
-				if (!theFile.exists()) {
-					System.out.println("No such file: " + args[startArg + 1]);
-					usage();
-				}
-				Log.info("put_file: putting file " + args[startArg + 1] + " bytes: " + theFile.length());
+				Log.info("put_file: putting file " + args[startArg + 1]);
 				
-				CCNOutputStream ostream;
-				if (rawMode) {
-					if (unversioned)
-						ostream = new CCNOutputStream(argName, library);
-					else
-						ostream = new CCNFileOutputStream(argName, library);
-				} else {
-					if (unversioned)
-						ostream = new RepositoryOutputStream(argName, library);
-					else
-						ostream = new RepositoryFileOutputStream(argName, library);
-				}
-				if (timeout != null)
-					ostream.setTimeout(timeout);
-				do_write(ostream, theFile);
-				
-				System.out.println("Inserted file " + args[startArg + 1] + ".");
+				doPut(library, args[startArg + 1], argName);
 				System.out.println("put_file took: "+(System.currentTimeMillis() - starttime)+"ms");
 				System.exit(0);
 			} else {
 				for (int i=startArg + 1; i < args.length; ++i) {
 					
-					File theFile = new File(args[i]);
-					if (!theFile.exists()) {
-						System.out.println("No such file: " + args[i]);
-						usage();
-					}
-					
-					//FileOutputStream testOut = new FileOutputStream("put_file" + i + ".dat");
-					//testOut.write(contents);
-					//testOut.flush();
-					//testOut.close();
-					
 					// put as child of name
-					ContentName nodeName = ContentName.fromURI(argName, theFile.getName());
+					ContentName nodeName = ContentName.fromURI(argName, args[i]);
 					
-					// int version = new Random().nextInt(1000);
-					// would be version = library.latestVersion(argName) + 1;
-					CCNOutputStream ostream;
-					
-					// Use file stream in both cases to match behavior. CCNOutputStream doesn't do
-					// versioning and neither it nor CCNVersionedOutputStream add headers.
-					if (rawMode) {
-						if (unversioned)
-							ostream = new CCNOutputStream(nodeName, library);
-						else
-							ostream = new CCNFileOutputStream(nodeName, library);
-					} else {
-						if (unversioned)
-							ostream = new RepositoryOutputStream(nodeName, library);
-						else
-							ostream = new RepositoryFileOutputStream(nodeName, library);
-					}
-					if (timeout != null)
-						ostream.setTimeout(timeout);
-					do_write(ostream, theFile);
-					
-					System.out.println("Inserted file " + args[i] + ".");
+					doPut(library, args[i], nodeName);
 				}
 				System.out.println("put_file took: "+(System.currentTimeMillis() - starttime)+"ms");
 				System.exit(0);
@@ -166,32 +116,65 @@ public class put_file {
 		System.exit(1);
 
 	}
+
+	protected static void doPut(CCNHandle library, String fileName,
+			ContentName nodeName) throws IOException {
+		InputStream is;
+		
+		System.out.printf("filename %s\n", fileName);
+		if (fileName.startsWith("http://")) {
+			System.out.printf("filename is http\n");			
+			is = new URL(fileName).openStream();
+		} else {
+			System.out.printf("filename is file\n");			
+			File theFile = new File(fileName);
 	
-	private static void do_write(CCNOutputStream ostream, File file) throws IOException {
+			if (!theFile.exists()) {
+				System.out.println("No such file: " + theFile.getName());
+				usage();
+			}
+			is = new FileInputStream(theFile);
+		}
+
+		CCNOutputStream ostream;
+		
+		// Use file stream in both cases to match behavior. CCNOutputStream doesn't do
+		// versioning and neither it nor CCNVersionedOutputStream add headers.
+		if (rawMode) {
+			if (unversioned)
+				ostream = new CCNOutputStream(nodeName, library);
+			else
+				ostream = new CCNFileOutputStream(nodeName, library);
+		} else {
+			if (unversioned)
+				ostream = new RepositoryOutputStream(nodeName, library);
+			else
+				ostream = new RepositoryFileOutputStream(nodeName, library);
+		}
+		if (timeout != null)
+			ostream.setTimeout(timeout);
+		do_write(ostream, is);
+		
+		System.out.println("Inserted file " + fileName + ".");
+	}
+	
+	private static void do_write(CCNOutputStream ostream, InputStream is) throws IOException {
 		long time = System.currentTimeMillis();
-		FileInputStream fis = new FileInputStream(file);
 		int size = BLOCK_SIZE;
 		int readLen = 0;
 		byte [] buffer = new byte[BLOCK_SIZE];
-		//do {
-		Log.info("do_write: " + fis.available() + " bytes left.");
-		while((readLen = fis.read(buffer, 0, size)) != -1){	
-			//if (size > fis.available())
-			//	size = fis.available();
-			//if (size > 0) {
-			//	fis.read(buffer, 0, size);
-			//	ostream.write(buffer, 0, size);
+		Log.info("do_write: " + is.available() + " bytes left.");
+		while((readLen = is.read(buffer, 0, size)) != -1){	
 			ostream.write(buffer, 0, readLen);
 			Log.info("do_write: wrote " + size + " bytes.");
-			Log.info("do_write: " + fis.available() + " bytes left.");
+			Log.info("do_write: " + is.available() + " bytes left.");
 		}
-		//} while (fis.available() > 0);
 		ostream.close();
 		Log.info("finished write: "+(System.currentTimeMillis() - time));
 	}
 	
 	public static void usage() {
-		System.out.println("usage: put_file [-raw] [-unversioned] [-timeout millis] [-log level] <ccnname> <filename> [<filename> ...]");
+		System.out.println("usage: put_file [-raw] [-unversioned] [-timeout millis] [-log level] <ccnname> (<filename>|<url>)*");
 		System.exit(1);
 	}
 

@@ -1,3 +1,22 @@
+/**
+ * @file ccn_client.c
+ * @brief Support for ccn clients.
+ * 
+ * Part of the CCNx C Library.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -717,14 +736,14 @@ ccn_cache_key(struct ccn *h,
 
 }
 
-/*
+/**
  * Examine a ContentObject and try to find the public key needed to
  * verify it.  It might be present in our cache of keys, or in the
  * object itself; in either of these cases, we can satisfy the request
  * right away. Or there may be an indirection (a KeyName), in which case
  * return without the key. The final possibility
  * is that there is no key locator we can make sense of.
- * Returns negative for error, 0 when pubkey is filled in,
+ * @returns negative for error, 0 when pubkey is filled in,
  *         or 1 if the key needs to be requested.
  */
 static int
@@ -814,7 +833,7 @@ ccn_locate_key(struct ccn *h,
     return (-1);
 }
 
-/*
+/**
  * Called when we get an answer to a KeyLocator fetch issued by
  * ccn_initiate_key_fetch.  This does not really have to do much,
  * since the main content handling logic picks up the keys as they
@@ -911,7 +930,7 @@ ccn_initiate_key_fetch(struct ccn *h,
     return(res);
 }
 
-/*
+/**
  * If we were waiting for a key and it has arrived,
  * refresh the interest.
  */
@@ -1236,7 +1255,7 @@ ccn_process_scheduled_operations(struct ccn *h)
     return(h->refresh_us);
 }
 
-/*
+/**
  * Modify ccn_run timeout.
  * This may be called from an upcall to change the timeout value.
  * Most often this will be used to set the timeout to zero so that
@@ -1253,7 +1272,7 @@ ccn_set_run_timeout(struct ccn *h, int timeout)
     return(ans);
 }
 
-/*
+/**
  * Run the ccn client event loop.
  * This may serve as the main event loop for simple apps by passing 
  * a timeout value of -1.
