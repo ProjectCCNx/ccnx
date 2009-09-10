@@ -114,10 +114,10 @@ public class Group {
 	}
 	
 	public KeyDirectory privateKeyDirectory(AccessControlManager manager) throws IOException {
-		if(_privKeyDirectory != null){
+		if (_privKeyDirectory != null) {
 			return _privKeyDirectory;
 		}
-		if (_groupPublicKey.available()){
+		if (_groupPublicKey.available()) {
 			_privKeyDirectory = new KeyDirectory(manager, 
 					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()), _library);
 			return _privKeyDirectory;
@@ -126,14 +126,14 @@ public class Group {
 		return null;
 	}
 	
-	protected void stopPrivateKeyDirectoryEnumeration(AccessControlManager manager) throws IOException{
+	protected void stopPrivateKeyDirectoryEnumeration() throws IOException{
 		if(_privKeyDirectory != null){
 			_privKeyDirectory.stopEnumerating();
 		}
 	}
 	
 	public void restartPrivateKeyDirectoryEnumeration(AccessControlManager manager) throws IOException{
-		stopPrivateKeyDirectoryEnumeration(manager);
+		stopPrivateKeyDirectoryEnumeration();
 		_privKeyDirectory = null;
 		privateKeyDirectory(manager);
 	}
@@ -219,9 +219,7 @@ public class Group {
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
-		}else{
-			stopPrivateKeyDirectoryEnumeration(manager.getAccessManager());
-		}
+		} 
 		
 		// Generate key pair
 		// Write public key to new versioned name
@@ -272,7 +270,7 @@ public class Group {
 					_library);
 		_groupPublicKey.saveToRepository();
 		
-		stopPrivateKeyDirectoryEnumeration(manager.getAccessManager());
+		stopPrivateKeyDirectoryEnumeration();
 		_privKeyDirectory = null;
 		
 		KeyDirectory newPrivateKeyDirectory = privateKeyDirectory(manager.getAccessManager()); // takes from new public key
@@ -340,9 +338,7 @@ public class Group {
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
-		}else{
-			stopPrivateKeyDirectoryEnumeration(manager.getAccessManager());
-		}
+		} 
 		
 		PublicKeyObject latestPublicKey = null;
 		for (Link lr : membersToAdd) {
@@ -428,8 +424,6 @@ public class Group {
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
-		}else{
-			stopPrivateKeyDirectoryEnumeration(_groupManager.getAccessManager());
 		}
 
 		// Do we need to wait for data to come in? We use this to create new groups as well...
