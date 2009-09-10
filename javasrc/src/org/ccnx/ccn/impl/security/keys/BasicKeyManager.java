@@ -43,6 +43,7 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -477,5 +478,27 @@ public class BasicKeyManager extends KeyManager {
 			}
 		}
 		keyRepository().publishKey(keyName, key, getDefaultKeyID(), getDefaultSigningKey());
+	}
+
+	@Override
+	public void publishKeyToRepository(ContentName keyName,
+			PublisherPublicKeyDigest keyToPublish, CCNHandle handle) throws InvalidKeyException,
+			IOException, ConfigurationException {
+		PublicKey key = null;
+		if (null == keyToPublish) {
+			key = getDefaultPublicKey();
+		} else {
+			key = getPublicKey(keyToPublish);
+			if (null == key) {
+				throw new InvalidKeyException("Cannot retrieive key " + keyToPublish);
+			}
+		}
+		KeyLocator locatorLocator = 
+			new KeyLocator(keyName, new PublisherID(keyToPublish));
+		
+		RepositoryOutputStream ros = new RepositoryOutputStream(keyName, locatorLocator, null, handle);
+		
+		byte [] encodedKey = key.getEncoded();
+
 	}
 }

@@ -178,9 +178,9 @@ public abstract class KeyManager {
 	
 	/**
 	 * Publish a key at a certain name, signed by our default identity. Usually used to
-	 * publish our own keys. Version that takes a public key can be used to
-	 * publish other people's keys.
-	 * @param keyName
+	 * publish our own keys, but can specify other keys we have in our cache.
+	 * @param keyName the name under which the key should be published. For the moment, keys are
+	 * 		  unversioned.
 	 * @param keyToPublish can be null, in which case we publish our own default public key
 	 * @throws InvalidKeyException 
 	 * @throws ConfigurationException 
@@ -190,6 +190,18 @@ public abstract class KeyManager {
 	 * @throws CertificateEncodingException 
 	 */
 	public abstract void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException;
+	
+	/**
+	 * Publish a key at a certain name, ensuring that it is stored in a repository. Will throw an
+	 * exception if no repository available. Usually used to publish our own keys, but can specify
+	 * any key known to our key cache.
+	 * @param keyName Name under which to publish the key. Currently not versioned (no version added).
+	 * @param keyToPublish can be null, in which case we publish our own default public key.
+	 * @throws InvalidKeyException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
+	public abstract void publishKeyToRepository(ContentName keyName, PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException;
 	
 	public abstract KeyRepository keyRepository();
 
