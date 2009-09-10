@@ -55,6 +55,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	protected static final int INTEREST_HIGHWATER_DEFAULT = 40;
 	protected int _timeout = MAX_TIMEOUT;
 	protected int _highwater = HIGHWATER_DEFAULT;
+	
+	// Value used to determine whether the buffer is draining in waitForPutDrain
 	protected long _nOut = 0;
 	
 	protected static final int PURGE = 2000;
@@ -250,7 +252,6 @@ public class CCNFlowControl implements CCNFilterListener {
 				if (match != null) {
 					Log.finest("Found pending matching interest for " + co.name() + ", putting to network.");
 					_library.put(co);
-					_nOut++;
 					afterPutAction(co);
 				}
 				if (_holdingArea.size() >= _highwater) {
@@ -295,7 +296,6 @@ public class CCNFlowControl implements CCNFilterListener {
 					Log.finest("Found content " + co.name() + " matching interest: " + interest);
 					try {
 						_library.put(co);
-						_nOut++;
 						afterPutAction(co);
 					} catch (IOException e) {
 						Log.warning("IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
@@ -318,6 +318,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param co
 	 */
 	public void afterPutAction(ContentObject co) throws IOException {
+		_nOut++;
 		_holdingArea.remove(co.name());	
 		_holdingArea.notify();
 	}
