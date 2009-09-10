@@ -134,13 +134,9 @@ public class PublicKeyObjectTestRepo {
 			// get delivered and we end up on a wait for put drain, even though there
 			// is a perfectly good matching interest coming from the flosser -- it somehow
 			// only makes it to the object that doesn't have data.
-			// TODO DKS FIX
-			//pkoread.save(optional2ndKey);
-			//Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getName(), pko.getName()));
-			//pko.update();
-			pko.save(optional2ndKey);
-			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pko.getVersionedName(), pkoread.getVersionedName()));
-			pkoread.update();
+			pkoread.save(optional2ndKey);
+			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
+			pko.update();
 			Assert.assertEquals(pkoread.getVersionedName(), pko.getVersionedName());
 			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
 			Assert.assertEquals(pko.publicKey(), optional2ndKey);
@@ -172,12 +168,9 @@ public class PublicKeyObjectTestRepo {
 			// is a perfectly good matching interest coming from the flosser -- it somehow
 			// only makes it to the object that doesn't have data.
 			// TODO DKS FIX
-			//pkoread.saveToRepository(optional2ndKey);
-			//Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getName(), pko.getName()));
-			//pko.update();
-			pko.saveToRepository(optional2ndKey);
-			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pko.getVersionedName(), pkoread.getVersionedName()));
-			pkoread.update();
+			pkoread.saveToRepository(optional2ndKey);
+			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
+			pko.update();
 			Assert.assertEquals(pkoread.getVersionedName(), pko.getVersionedName());
 			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
 			Assert.assertEquals(pko.publicKey(), optional2ndKey);
