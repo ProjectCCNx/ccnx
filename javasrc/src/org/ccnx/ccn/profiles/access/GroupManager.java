@@ -240,7 +240,9 @@ public class GroupManager {
 				new KeyDirectory(_accessManager, 
 					AccessControlProfile.groupPrivateKeyDirectory(versionedPublicKeyName), _library);
 			// TODO -- how long to wait to make sure we have update
-			privateKeyDirectory.waitForData();
+			while (! privateKeyDirectory.hasChildren() || ! privateKeyDirectory.hasPrivateKeyBlock()) {
+				privateKeyDirectory.waitForData();
+			}
 			
 			PublicKeyObject thisPublicKey = new PublicKeyObject(versionedPublicKeyName, _library);
 			thisPublicKey.waitForData();
