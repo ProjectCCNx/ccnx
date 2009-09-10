@@ -95,23 +95,23 @@ public abstract class NetworkObject<E> {
 	}
 
 	public void update(InputStream input) throws IOException, XMLStreamException {
-		
-			E newData = readObjectImpl(input);
 
-			try {
-				_lock.writeLock().lock();
-				if (!_available) {
-					Log.info("Update -- first initialization.");
-				}
+		E newData = readObjectImpl(input);
 
-				_data = newData;
-				_available = true;
-				setDirty(false);
-				_lastSaved = digestContent();
-				
-			} finally {
-				_lock.writeLock().unlock();
+		try {
+			_lock.writeLock().lock();
+			if (!_available) {
+				Log.info("Update -- first initialization.");
 			}
+
+			_data = newData;
+			_available = true;
+			setDirty(false);
+			_lastSaved = digestContent();
+
+		} finally {
+			_lock.writeLock().unlock();
+		}
 	}
 	
 	/**
