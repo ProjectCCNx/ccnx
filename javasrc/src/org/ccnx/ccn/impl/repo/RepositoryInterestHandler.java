@@ -58,10 +58,12 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	}
 	
 	private void startReadProcess(Interest interest) throws XMLStreamException {
-		for (RepositoryDataListener listener : _server.getDataListeners()) {
-			if (listener.getOrigInterest().equals(interest)) {
-				Log.info("Write request " + interest.name() + " is a duplicate, ignoring");
-				return;
+		synchronized (_server.getDataListeners()) {
+			for (RepositoryDataListener listener : _server.getDataListeners()) {
+				if (listener.getOrigInterest().equals(interest)) {
+					Log.info("Write request " + interest.name() + " is a duplicate, ignoring");
+					return;
+				}
 			}
 		}
 		

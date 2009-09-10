@@ -111,7 +111,7 @@ process_fd(int fd, struct fstate *perfilestate)
     res = fstat(fd, &s);
     len = s.st_size;
     buf = (unsigned char *)mmap((void *)NULL, len, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (buf == NULL) return (1);
+    if (buf == (void *)-1) return (1);
     fprintf(stderr, " <!-- input is %6lu bytes -->\n", (unsigned long)len);
     res |= process_test(buf, len, perfilestate);
     munmap((void *)buf, len);

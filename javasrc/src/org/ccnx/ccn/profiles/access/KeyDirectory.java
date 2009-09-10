@@ -21,6 +21,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.io.content.WrappedKey;
@@ -106,6 +107,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					throw new IOException("Unexpected: really can't get a latest version for key directory name : " + _namePrefix);
 				}
 			}
+			Log.finer("KeyDirectory, got latest version of {0}, name {1}", _namePrefix, latestVersionName);
 			synchronized (_childLock) {
 				stopEnumerating();
 				_children.clear();
@@ -155,22 +157,16 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 	}
 	
-	private void waitForDataBeforeReading() {
-		long timeRemaining = DEFAULT_TIMEOUT;
-		while (timeRemaining>0) {
-			long startTime = System.currentTimeMillis();
-			this.getNewData(timeRemaining);
-			timeRemaining -= System.currentTimeMillis() - startTime;
-		}
-	}
-	
 	/**
 	 * Waits for new data, then
 	 * Returns a copy to avoid synchronization problems
+	 * @throws ContentNotReadyException 
 	 * 
 	 */
-	public TreeSet<byte []> getCopyOfWrappingKeyIDs() {
-		waitForDataBeforeReading();
+	public TreeSet<byte []> getCopyOfWrappingKeyIDs() throws ContentNotReadyException {
+		if (!hasChildren()) {
+			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+		}
 		TreeSet<byte []> copy = new TreeSet<byte []>(byteArrayComparator);
 		try {
 			_keyIDLock.readLock().lock();
@@ -182,11 +178,13 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
-	 * Waits for new data, then
 	 * Return a copy to avoid synchronization problems
+	 * @throws ContentNotReadyException 
 	 */
-	public HashMap<String, PrincipalInfo> getCopyOfPrincipals() {
-		waitForDataBeforeReading();
+	public HashMap<String, PrincipalInfo> getCopyOfPrincipals() throws ContentNotReadyException {
+		if (!hasChildren()) {
+			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+		}
 		HashMap<String, PrincipalInfo> copy = new HashMap<String, PrincipalInfo>();
 		try {
 			_principalsLock.readLock().lock();
@@ -202,9 +200,12 @@ public class KeyDirectory extends EnumeratedNameList {
 	
 	/**
 	 * Waits for new data, then returns principal info
+	 * @throws ContentNotReadyException 
 	 */
-	public PrincipalInfo getPrincipalInfo(String principal) {
-		waitForDataBeforeReading();
+	public PrincipalInfo getPrincipalInfo(String principal) throws ContentNotReadyException {
+		if (!hasChildren()) {
+			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+		}
 		PrincipalInfo pi = null;
 		try {
 			_principalsLock.readLock().lock();
@@ -218,9 +219,12 @@ public class KeyDirectory extends EnumeratedNameList {
 	/**
 	 * Waits for new data, then 
 	 * Returns a copy to avoid synchronization problems
+	 * @throws ContentNotReadyException 
 	 */
-	public TreeSet<byte []> getCopyOfOtherNames() {
-		waitForDataBeforeReading();
+	public TreeSet<byte []> getCopyOfOtherNames() throws ContentNotReadyException {
+		if (!hasChildren()) {
+			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+		}
 		TreeSet<byte []> copy = new TreeSet<byte []>(byteArrayComparator);
 		try {
 			_otherNamesLock.readLock().lock();
@@ -245,7 +249,9 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * Waits for new data, then returns wrapped key object
 	 */
 	public WrappedKeyObject getWrappedKeyForKeyID(byte [] keyID) throws XMLStreamException, IOException, ConfigurationException {
-		waitForDataBeforeReading();
+		if (!hasChildren()) {
+			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+		}
 		try{
 			_keyIDLock.readLock().lock();
 			if (!_keyIDs.contains(keyID)) {
@@ -266,7 +272,9 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * Waits for new data then returns wrapped key object
 	 */
 	public WrappedKeyObject getWrappedKeyForPrincipal(String principalName) throws IOException, XMLStreamException, ConfigurationException {
-		waitForDataBeforeReading();
+		if (!hasChildren()) {
+			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+		}
 		
 		PrincipalInfo pi = null;
 		try{
@@ -307,9 +315,12 @@ public class KeyDirectory extends EnumeratedNameList {
 
 	/**
 	 * Waits for new data before checking for the existence of a superseded block
+	 * @throws ContentNotReadyException 
 	 */
-	public boolean hasSupersededBlock() {
-		waitForDataBeforeReading();
+	public boolean hasSupersededBlock() throws ContentNotReadyException {
+		if (!hasChildren()) {
+			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+		}
 		boolean b = false;
 		try{
 			_otherNamesLock.readLock().lock();
@@ -346,7 +357,9 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws ConfigurationException 
 	 */
 	public WrappedKeyObject getSupersededWrappedKey() throws XMLStreamException, IOException, ConfigurationException {
-		waitForDataBeforeReading();
+		if (!hasChildren()) {
+			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+		}
 		if (!hasSupersededBlock())
 			return null;
 		return getWrappedKey(getSupersededBlockName());
@@ -360,9 +373,12 @@ public class KeyDirectory extends EnumeratedNameList {
 	
 	/**
 	 * Waits for new data before checking for the existence of a previous key block
+	 * @throws ContentNotReadyException 
 	 */
-	public boolean hasPreviousKeyBlock() {
-		waitForDataBeforeReading();
+	public boolean hasPreviousKeyBlock() throws ContentNotReadyException {
+		if (!hasChildren()) {
+			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+		}
 		boolean b;
 		try{
 			_otherNamesLock.readLock().lock();
@@ -389,11 +405,14 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 */
-	public Link getPreviousKey() throws XMLStreamException, IOException {
+	public Link getPreviousKey(long timeout) throws XMLStreamException, IOException {
+		if (!hasChildren()) {
+			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+		}
 		if (!hasPreviousKeyBlock())
 			return null;
 		LinkObject previousKey = new LinkObject(getPreviousKeyBlockName(), _manager.library());
-		previousKey.waitForData(); // TODO timeout?
+		previousKey.waitForData(timeout); 
 		if (!previousKey.available()) {
 			Log.info("Unexpected: no previous key link at " + getPreviousKeyBlockName());
 			return null;
@@ -408,9 +427,12 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * an inline nonce key, but this option is more efficient.
 	 * Waits for new data before checking for the existence of a private key block
 	 * @return
+	 * @throws ContentNotReadyException 
 	 */
-	public boolean hasPrivateKeyBlock() {
-		waitForDataBeforeReading();
+	public boolean hasPrivateKeyBlock() throws ContentNotReadyException {
+		if (!hasChildren()) {
+			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+		}
 		boolean b;
 		try{
 			_otherNamesLock.readLock().lock();
@@ -426,7 +448,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public WrappedKeyObject getPrivateKeyObject() throws IOException, XMLStreamException, ConfigurationException {
-		if (!hasPrivateKeyBlock())
+		if (!hasPrivateKeyBlock()) // checks hasChildren
 			return null;
 		
 		return new WrappedKey.WrappedKeyObject(getPrivateKeyBlockName(), _manager.library());
@@ -455,7 +477,9 @@ public class KeyDirectory extends EnumeratedNameList {
 		// to a superseding key below if there is one.)
 		// Do we have one of the wrapping keys in our cache?
 		
-		waitForDataBeforeReading();
+		if (!hasChildren()) {
+			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+		}
 		try{
 			_keyIDLock.readLock().lock();
 			for (byte [] keyid : _keyIDs) {
@@ -488,6 +512,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					KeyDirectory supersedingKeyDirectory = null;
 					try {
 						supersedingKeyDirectory = new KeyDirectory(_manager, supersededKeyBlock.wrappedKey().wrappingKeyName(), _manager.library());
+						supersedingKeyDirectory.waitForData();
 						// This wraps the key we actually want.
 						unwrappedSupersedingKey = supersedingKeyDirectory.getUnwrappedKey(supersededKeyBlock.wrappedKey().wrappingKeyIdentifier());
 					} finally {
@@ -589,7 +614,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			Log.info("Null unwrapping key. Cannot unwrap.");
 			return null;
 		}
-		WrappedKeyObject wko = getWrappedKeyForPrincipal(principal);
+		WrappedKeyObject wko = getWrappedKeyForPrincipal(principal); // checks hasChildren
 		if (null != wko.wrappedKey()) {
 			unwrappedKey = wko.wrappedKey().unwrapKey(unwrappingKey);
 		} else {
@@ -617,7 +642,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 */
 	public PrivateKey getPrivateKey() throws IOException, XMLStreamException, 
 				InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
-		if (!hasPrivateKeyBlock()) {
+		if (!hasPrivateKeyBlock()) { // checks hasChildren
 			Log.info("No private key block exists with name " + getPrivateKeyBlockName());
 			return null;
 		}

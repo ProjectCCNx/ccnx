@@ -67,7 +67,9 @@ public class GroupTestRepo {
 			groupStore = AccessControlProfile.groupNamespaceName(testStorePrefix);
 			
 			_library = CCNHandle.open();
+			System.out.println("prefix: " + testStorePrefix);
 			System.out.println("group store: " + groupStore);
+			System.out.println("user store: " + userStore);
 			_acm = new AccessControlManager(testStorePrefix, groupStore, userStore);
 			_acm.publishMyIdentity(myUserName, KeyManager.getDefaultKeyManager().getDefaultPublicKey());
 			_userList = _acm.userList();
@@ -96,6 +98,23 @@ public class GroupTestRepo {
 		}
 		System.out.println(".....................removed user, number of retries:..............." + retries);
 	}
+	
+	private void testAddUsers(ArrayList<Link> removeMembers, Group grp) throws InvalidKeyException, CryptoException, XMLStreamException, IOException, ConfigurationException{
+		boolean succeed = false;
+		int retries = 0;
+		while(!succeed){
+			retries ++;
+			System.out.print("................trying to add user...........");
+			try{
+					grp.addUsers(removeMembers);
+					succeed = true;
+			}catch(AccessDeniedException e){
+				succeed = false;
+			}
+		}
+		System.out.println(".....................added user, number of retries:..............." + retries);
+	}
+	
 	
 	@Test
 	public void testCreateGroup() {
@@ -148,19 +167,7 @@ public class GroupTestRepo {
 			ArrayList<Link> addMembers = new ArrayList<Link>();
 			addMembers.add(new Link(ContentName.fromNative(fullname)));
 			
-			boolean succeed = false;
-			int retries = 0;
-			while(!succeed){
-					retries ++;
-					System.out.print("................trying to add user...........");
-					try{
-						newGroup.addUsers(addMembers);
-						succeed = true;
-					}catch(AccessDeniedException e){
-						succeed = false;
-					}
-			}
-			System.out.println(".....................added user, number of retries:..............." + retries);
+			testAddUsers(addMembers, newGroup);
 			
 			
 			ArrayList<Link> removeMembers = new ArrayList<Link>();
@@ -175,8 +182,8 @@ public class GroupTestRepo {
 			removeMembers.clear();
 			//try removing myself
 			removeMembers.add(new Link(UserConfiguration.defaultUserNamespace()));
-			System.out.println("removing myself:.................." );
-			testRemoveUsers(removeMembers, newGroup);
+//			System.out.println("removing myself:.................." );
+//			testRemoveUsers(removeMembers, newGroup);
 			
 			//Assert.assertFalse(_gm.haveKnownGroupMemberships());
 			
@@ -189,13 +196,13 @@ public class GroupTestRepo {
 			//test groups of group
 			String randomParentGroupName = "parentGroup" + random.nextInt();
 			newMembers.clear();
-			ContentName parentGroupNamespace = AccessControlProfile.groupName(testStorePrefix, randomGroupName);
-			System.out.println("parent group namespace = " + parentGroupNamespace);
-			newMembers.add(new Link(parentGroupNamespace));
+			ContentName childGroupNamespace = AccessControlProfile.groupName(testStorePrefix, randomGroupName);
+			System.out.println("child group namespace = " + childGroupNamespace);
+			newMembers.add(new Link(childGroupNamespace));
 			Group newParentGroup = _gm.createGroup(randomParentGroupName, newMembers);
 			
-//			System.out.println("adding users to parent group.........");
-//			newParentGroup.addUsers(addMembers);
+			System.out.println("adding users to parent group.........");
+			testAddUsers(addMembers, newParentGroup);
 			
 			//test deletion of group
 			_gm.deleteGroup(randomGroupName);			

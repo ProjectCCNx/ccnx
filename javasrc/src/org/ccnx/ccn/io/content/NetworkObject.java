@@ -48,6 +48,7 @@ public abstract class NetworkObject<E> {
 	protected Class<E> _type;
 	protected E _data;
 	protected boolean _isDirty = false;
+	protected boolean _isPotentiallyDirty = false;
 	protected byte [] _lastSaved; // save digest of serialized item, so can tell if updated outside
 								  // of setData
 	protected boolean _available = false; // false until first time data is set or updated
@@ -88,7 +89,7 @@ public abstract class NetworkObject<E> {
 
 				_data = newData;
 				_available = true;
-				_isDirty = false;
+				setDirty(false);
 				_lastSaved = digestContent();
 				
 			} finally {
@@ -160,6 +161,9 @@ public abstract class NetworkObject<E> {
 			if (!available()) {
 				throw new ContentNotReadyException("No data yet saved or retrieved!");
 			}
+			// Mark that we've given out access to the internal data, so we know someone might
+			// have changed it.
+			_isPotentiallyDirty = true;
 			// return a pointer to the current data. No guarantee that this will continue
 			// to be what we think our data unless caller holds read lock.
 			return _data; 
@@ -230,14 +234,20 @@ public abstract class NetworkObject<E> {
 					return false;
 				return true;
 			}
-			byte [] currentValue = digestContent();
-			
-			if (Arrays.equals(currentValue, _lastSaved)) {
-				Log.info("Last saved value for object still current.");
-				_isDirty = false;
+			if (_isPotentiallyDirty) {
+				byte [] currentValue = digestContent();
+
+				if (Arrays.equals(currentValue, _lastSaved)) {
+					Log.info("Last saved value for object still current.");
+					_isDirty = false;
+				} else {
+					Log.info("Last saved value for object not current -- object changed.");
+					_isDirty = true;
+				}
 			} else {
-				Log.info("Last saved value for object not current -- object changed.");
-				_isDirty = true;
+				// We've never set the data, nor given out access to it. It can't be dirty.
+				Log.finer("NetworkObject: data cannot be dirty.");
+				_isDirty = false;
 			}
 			
 			return _isDirty; 
@@ -263,7 +273,12 @@ public abstract class NetworkObject<E> {
 	 * Expects to be called under write lock.
 	 * @param dirty
 	 */
-	protected void setDirty(boolean dirty) { _isDirty = dirty; }
+	protected void setDirty(boolean dirty) { 
+		_isDirty = dirty; 
+		if (!_isDirty) {
+			_isPotentiallyDirty = false; // just read or written
+		}
+	}
 
 	protected void internalWriteObject(OutputStream output) throws IOException {
 		try {

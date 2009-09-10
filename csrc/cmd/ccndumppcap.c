@@ -218,7 +218,7 @@ process_fd(pcap_dumper_t *pcap_out, int fd, int content_only,
     res = fstat(fd, &s);
     len = s.st_size;
     buf = (unsigned char *)mmap((void *)NULL, len, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (buf == NULL) return (1);
+    if (buf == (void *)-1) return (1);
     fprintf(stderr, " <!-- input is %6lu bytes -->\n", (unsigned long)len);
     res |= process_test(pcap_out, content_only,
                         ip_src_addr, ip_dest_addr, udp_src_port, udp_dest_port,

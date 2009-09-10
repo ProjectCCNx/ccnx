@@ -153,7 +153,7 @@ public class CCNSegmenter {
 		this(flowControl, signer);
 		
 		if (keys != null) {
-			keys.OnlySupportDefaultAlg();
+			keys.requireDefaultAlgorithm();
 			_keys = keys;
 		}
 	}

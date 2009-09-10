@@ -124,7 +124,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		this(baseName, startingSegmentNumber, publisher, library);
 		
 		if (null != keys) {
-			keys.OnlySupportDefaultAlg();
+			keys.requireDefaultAlgorithm();
 			_keys = keys;
 		}
 	}
@@ -160,7 +160,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 		this(firstSegment, library);
 		
-		keys.OnlySupportDefaultAlg();
+		keys.requireDefaultAlgorithm();
 		_keys = keys;
 	}
 
