@@ -618,7 +618,6 @@ incoming_interest(
                   struct ccn_upcall_info *info)
 {
     const unsigned char *ccnb = info->interest_ccnb;
-    struct ccn_parsed_interest *pi = info->pi;
     struct ccn_indexbuf *comps = info->interest_comps;
     struct ccn_keystore *keystore = selfp->data;
     const unsigned char *comp0 = NULL;
@@ -647,6 +646,9 @@ incoming_interest(
     if (comps->n < 1)
         return (CCN_UPCALL_RESULT_OK);
   
+    port = 0;
+    host[0] = 0;
+    
     res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb, comps->buf[0], comps->buf[1],
                               &comp0, &comp0_size);
     if (res < 0 || comp0_size > (NS_MAXDNAME - 12))
@@ -664,7 +666,7 @@ incoming_interest(
      */
 
     proto = "tcp";
-    sprintf(srv_name, "_ccnx._tcp.%.*s", comp0_size, comp0);
+    sprintf(srv_name, "_ccnx._tcp.%.*s", (int)comp0_size, comp0);
 #if 0
     ans_size = res_nquery(state, srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
 #else
@@ -672,7 +674,7 @@ incoming_interest(
 #endif
     if (ans_size < 0) {
         proto = "udp";
-        sprintf(srv_name, "_ccnx._udp.%.*s", comp0_size, comp0);
+        sprintf(srv_name, "_ccnx._udp.%.*s", (int)comp0_size, comp0);
 #if 0
         ans_size = res_nquery(state, srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
 #else
@@ -734,7 +736,7 @@ incoming_interest(
  
     /* now process the results */
     /* pflhead, lineno=0, "add" "ccn:/asdfasdf.com/" "tcp|udp", host, portstring, NULL NULL NULL */
-    sprintf(srv_name, "ccn:/%.*s", comp0_size, comp0);
+    sprintf(srv_name, "ccn:/%.*s", (int)comp0_size, comp0);
     sprintf(portstring, "%d", port);
     res = process_command_tokens(pflhead, 0,
                                  "add",
