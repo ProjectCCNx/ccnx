@@ -1,6 +1,23 @@
-/* packet-ccn.c
- * Routines for CCN Protocol disassembly
- * RFC 2257
+/**
+ * @file glue/wireshark/ccn/packet-ccn.c
+ * 
+ * A wireshark plugin for CCNx protocols.
+ *
+ * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation.
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+ 
+/* Based on an example bearing this notice:
  *
  * Wireshark - Network traffic analyzer
  * By Gerald Combs <gerald@wireshark.org>
@@ -28,6 +45,7 @@
 #include <epan/packet.h>
 #include <epan/prefs.h>
 
+#include <stdlib.h>
 #include <string.h>
 #include <ccn/ccn.h>
 #include <ccn/coding.h>
@@ -81,7 +99,6 @@ static gint hf_ccn_answeroriginkind = -1;
 static gint hf_ccn_scope = -1;
 static gint hf_ccn_nonce = -1;
 
-static int global_ccn_port = 4573;
 static dissector_handle_t ccn_handle = NULL;
 
 
@@ -193,6 +210,7 @@ proto_reg_handoff_ccn(void)
 {
     static gboolean initialized = FALSE;
     static int current_ccn_port = -1;
+    int global_ccn_port = atoi(CCN_DEFAULT_UNICAST_PORT);
 
     if (!initialized) {
         ccn_handle = new_create_dissector_handle(dissect_ccn, proto_ccn);
