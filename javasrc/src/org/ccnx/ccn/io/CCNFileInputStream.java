@@ -52,7 +52,21 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	 * we've read it. 
 	 */
 	protected HeaderObject _header = null;
-	
+
+	public CCNFileInputStream(ContentName name) throws XMLStreamException, IOException {
+		super(name);
+	}
+
+	public CCNFileInputStream(ContentName name, CCNHandle library)
+									throws XMLStreamException, IOException {
+		super(name, library);
+	}
+
+	public CCNFileInputStream(ContentName name, long startingBlockIndex)
+										throws XMLStreamException, IOException {
+		this(name, startingBlockIndex, null, null);
+	}
+
 	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
 			PublisherPublicKeyDigest publisher, CCNHandle library)
 			throws XMLStreamException, IOException {
@@ -68,21 +82,6 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	public CCNFileInputStream(ContentName name, PublisherPublicKeyDigest publisher,
 			CCNHandle library) throws XMLStreamException, IOException {
 		this(name, null, publisher, library);
-	}
-
-	public CCNFileInputStream(ContentName name) throws XMLStreamException,
-			IOException {
-		super(name);
-	}
-
-	public CCNFileInputStream(ContentName name, CCNHandle library)
-			throws XMLStreamException, IOException {
-		super(name, library);
-	}
-
-	public CCNFileInputStream(ContentName name, long startingBlockIndex)
-			throws XMLStreamException, IOException {
-		this(name, startingBlockIndex, null, null);
 	}
 
 	public CCNFileInputStream(ContentObject starterBlock, CCNHandle library)
