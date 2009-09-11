@@ -1,6 +1,3 @@
-/**
- * 
- */
 package org.ccnx.ccn.test.io.content;
 
 import static org.junit.Assert.assertEquals;

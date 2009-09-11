@@ -1,6 +1,3 @@
-/**
- * 
- */
 package org.ccnx.ccn.profiles.access;
 
 import java.io.IOException;

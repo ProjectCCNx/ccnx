@@ -1,6 +1,3 @@
-/**
- * 
- */
 package org.ccnx.ccn;
 
 import org.ccnx.ccn.protocol.ContentObject;

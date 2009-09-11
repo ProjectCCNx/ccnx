@@ -1,6 +1,3 @@
-/**
- * 
- */
 package org.ccnx.ccn.protocol;
 
 import java.math.BigInteger;

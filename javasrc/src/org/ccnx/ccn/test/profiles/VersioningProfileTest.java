@@ -1,6 +1,3 @@
-/**
- * 
- */
 package org.ccnx.ccn.test.profiles;
 
 import static org.junit.Assert.fail;

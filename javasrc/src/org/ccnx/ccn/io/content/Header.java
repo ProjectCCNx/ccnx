@@ -1,4 +1,3 @@
-
 package org.ccnx.ccn.io.content;
 
 import java.io.IOException;

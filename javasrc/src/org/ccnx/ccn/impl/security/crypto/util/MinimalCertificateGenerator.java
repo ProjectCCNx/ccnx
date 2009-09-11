@@ -1,6 +1,3 @@
-/**
- * 
- */
 package org.ccnx.ccn.impl.security.crypto.util;
 
 import java.io.IOException;
