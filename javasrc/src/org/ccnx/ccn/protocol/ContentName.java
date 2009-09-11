@@ -685,7 +685,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public static byte[] componentParseNative(String name) {
 		try {
-		return name.getBytes("UTF-8");
+			return name.getBytes("UTF-8");
 		} catch (UnsupportedEncodingException e) {
 			Log.severe("UTF-8 not supported.");
 			throw new RuntimeException("UTF-8 not supported", e);
