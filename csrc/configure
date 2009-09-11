@@ -24,7 +24,6 @@ TryAppend "`uname`"
 TryAppend "`uname -sr | sed -e 's/ /-/g'`"
 TryAppend "local"
 TryScript "`uname`" "$@"
-TryScript "python" "$@"
 TryScript "local" "$@"
 ProvideDefault CPREFLAGS = -I../include
 ProvideDefault PCAP_PROGRAMS = ccndumppcap
