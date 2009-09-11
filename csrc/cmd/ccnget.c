@@ -112,7 +112,7 @@ main(int argc, char **argv)
     }
     resultbuf = ccn_charbuf_create();
     if (resolve_version) {
-        res = ccn_resolve_version(h, name, (CCN_V_REPLACE | CCN_V_HIGHEST), 500);
+        res = ccn_resolve_version(h, name, CCN_V_HIGHEST, 500);
         if (res >= 0) {
             ccn_uri_append(resultbuf, name->buf, name->length, 1);
             fprintf(stderr, "== %s\n",

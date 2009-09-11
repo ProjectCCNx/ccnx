@@ -684,9 +684,11 @@ int ccn_content_matches_interest(const unsigned char *content_object,
 /*
  * ccn_perror: produce message on standard error output describing the last
  * error encountered during a call using the given handle.
+ * ccn_seterror records error info, ccn_geterror gets it.
  */
 void ccn_perror(struct ccn *h, const char *s);
-
+int ccn_seterror(struct ccn *h, int error_code);
+int ccn_geterror(struct ccn *h);
 
 /***********************************
  * Low-level binary formatting
