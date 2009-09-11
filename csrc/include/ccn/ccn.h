@@ -9,7 +9,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -290,7 +290,7 @@ ccn_signed_info_create(
  */
 int ccn_express_interest(struct ccn *h,
                          struct ccn_charbuf *namebuf,
-                         int prefix_comps,
+//                         int prefix_comps,
                          struct ccn_closure *action,
                          struct ccn_charbuf *interest_template);
 
@@ -350,16 +350,17 @@ int ccn_set_run_timeout(struct ccn *h, int timeout);
  * The pcobuf and compsbuf arguments may be supplied to save the work of
  * re-parsing the ContentObject.  Either or both may be NULL if this
  * information is not actually needed.
+ * flags are not currently used, should be 0.
  * Returns 0 for success, -1 for an error.
  */
 int ccn_get(struct ccn *h,
             struct ccn_charbuf *name,
-            int prefix_comps,
             struct ccn_charbuf *interest_template,
             int timeout_ms,
             struct ccn_charbuf *resultbuf,
             struct ccn_parsed_ContentObject *pcobuf,
-            struct ccn_indexbuf *compsbuf);
+            struct ccn_indexbuf *compsbuf,
+            int flags);
 
 
 /***********************************

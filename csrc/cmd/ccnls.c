@@ -8,7 +8,7 @@
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -160,7 +160,7 @@ incoming_content(
         fprintf(stderr, "*** Interest packet is %d bytes\n", (int)templ->length);
         data->warn = data->warn * 8 / 5;
     }
-    ccn_express_interest(info->h, c, -1, selfp, templ);
+    ccn_express_interest(info->h, c, selfp, templ);
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&c);
     ccn_charbuf_destroy(&uri);
@@ -217,7 +217,7 @@ main(int argc, char **argv)
     cl = calloc(1, sizeof(*cl));
     cl->p = &incoming_content;
     cl->data = data;
-    ccn_express_interest(ccn, c, -1, cl, NULL);
+    ccn_express_interest(ccn, c, cl, NULL);
     cl = NULL;
     data = NULL;
     for (i = 0;; i++) {

@@ -8,7 +8,7 @@
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -148,7 +148,7 @@ main(int argc, char **argv)
         ccn_charbuf_append(templ, "\001\322\362\000\002\322\216\060\000\000", 10);
     }
     ccn_name_init(c);
-    ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
+    ccn_express_interest(ccn, c, &incoming_content_action, templ);
     for (i = 0; i < 100; i++) {
         seen = mydata.nseen;
         ccn_run(ccn, w <= 0 ? 100 : w * 1000);

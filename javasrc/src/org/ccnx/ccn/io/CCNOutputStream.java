@@ -1,3 +1,20 @@
+/**
+ * Part of the CCNx Java Library.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 package org.ccnx.ccn.io;
 
 import java.io.IOException;
@@ -64,38 +81,53 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	protected CCNDigestHelper _dh;
 
-	public CCNOutputStream(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,
-			ContentKeys keys, CCNHandle library) throws IOException {
-		this(name, locator, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library),
-				null, keys));
-	}
-
-	public CCNOutputStream(ContentName name,
-			PublisherPublicKeyDigest publisher, ContentType type,
-			CCNHandle library) throws IOException {
-		this(name, null, publisher, type, new CCNSegmenter(new CCNFlowControl(name, library)));
-	}
-
-	public CCNOutputStream(ContentName name,
-			PublisherPublicKeyDigest publisher,
-			CCNHandle library) throws IOException {
-		this(name, null, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
-	}
-
 	public CCNOutputStream(ContentName name, CCNHandle library) throws IOException {
-		this(name, null, null, library);
+		this(name, (PublisherPublicKeyDigest)null, library);
 	}
 
-	public CCNOutputStream(ContentName name, ContentType type, CCNHandle library) throws IOException {
-		this(name, null, type, library);
+	public CCNOutputStream(ContentName name,
+						   PublisherPublicKeyDigest publisher,
+						   CCNHandle library) throws IOException {
+		this(name, null, publisher, null, null, library);
 	}
-	
-	public CCNOutputStream() {}	// special purpose constructor
+
+	public CCNOutputStream(ContentName name, ContentKeys keys, CCNHandle library) throws IOException {
+		this(name, null, null, null, keys, library);
+	}
+
+	public CCNOutputStream(ContentName name, 
+			  			   KeyLocator locator, 
+			  			   PublisherPublicKeyDigest publisher,
+			  			   ContentKeys keys,
+			  			   CCNHandle library) throws IOException {
+		this(name, locator, publisher, null, keys, library);
+	}
+
+	public CCNOutputStream(ContentName name, 
+						   KeyLocator locator, 
+						   PublisherPublicKeyDigest publisher,
+						   ContentType type, 
+						   ContentKeys keys,
+						   CCNHandle library) throws IOException {
+		this(name, locator, publisher, type, keys, new CCNFlowControl(name, library));
+	}
+
+	public CCNOutputStream(ContentName name, 
+							  KeyLocator locator, 
+							  PublisherPublicKeyDigest publisher,
+							  ContentType type, 
+							  ContentKeys keys,
+							  CCNFlowControl flowControl) throws IOException {
+		this(name, locator, publisher, type, new CCNSegmenter(flowControl, null, keys));
+	}
+
+	protected CCNOutputStream() {}	// special purpose constructor
 
 	protected CCNOutputStream(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher, ContentType type,
-			CCNSegmenter segmenter) throws IOException {
+							  KeyLocator locator, 
+							  PublisherPublicKeyDigest publisher, 
+							  ContentType type,
+							  CCNSegmenter segmenter) throws IOException {
 
 		super(locator, publisher, segmenter);
 
@@ -110,16 +142,10 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		_baseName = nameToOpen;
 		_buffer = new byte[BLOCK_BUF_COUNT * segmenter.getBlockSize()];
 		_baseNameIndex = SegmentationProfile.baseSegment();
-		_type = type; // null = DATA
+		_type = type; // null = DATA or ENCR
 
 		_dh = new CCNDigestHelper();
 		startWrite(); // set up flow controller to write
-	}
-
-	protected CCNOutputStream(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher,
-			CCNFlowControl flowControl) throws IOException {
-		this(name, locator, publisher, null, new CCNSegmenter(flowControl));
 	}
 
 	@Override

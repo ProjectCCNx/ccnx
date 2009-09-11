@@ -1,3 +1,20 @@
+/**
+ * Part of the CCNx Java Library.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
@@ -13,6 +30,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.CCNInputStream;
@@ -82,6 +100,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use library defaults
 	protected KeyLocator _keyLocator; // locator to find publisher key
 	protected boolean _raw = DEFAULT_RAW; // what kind of flow controller to make if we don't have one
+	protected ContentKeys _keys;
 	
 	// control ongoing update.
 	ArrayList<byte[]> _excludeList = new ArrayList<byte[]>();
@@ -351,6 +370,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_lock.writeLock().lock();
 			Tuple<ContentName, byte []> nameAndVersion = null;
 			if (inputStream.isGone()) {
+				Log.fine("Reading from GONE stream: {0}", inputStream.baseName());
 				_data = null;
 
 				// This will have a final version and a segment
@@ -360,7 +380,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				_available = true;
 				_isGone = true;
 				_isDirty = false;
-				_lastSaved = digestContent();			
+				_lastSaved = digestContent();	
 			} else {
 				super.update(inputStream);
 
@@ -513,7 +533,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				// CCNVersionedOutputStream will version an unversioned name. 
 				// If it gets a versioned name, will respect it. 
 				// This will call startWrite on the flow controller.
-				CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _flowControl);
+				CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _keys, _flowControl);
 				save(cos); // superclass stream save. calls flush but not close on a wrapping
 				// digest stream; want to make sure we end up with a single non-MHT signed
 				// segment and no header on small objects

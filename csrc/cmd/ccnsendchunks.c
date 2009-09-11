@@ -8,7 +8,7 @@
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -196,7 +196,7 @@ main(int argc, char **argv)
     ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
     // XXX - use pubid
     ccn_charbuf_append_closer(templ); /* </Interest> */
-    res = ccn_express_interest(ccn, name, -1, &in_content, templ);
+    res = ccn_express_interest(ccn, name, &in_content, templ);
     if (res < 0) abort();
     
     /* Construct a key locator contining the key itself */

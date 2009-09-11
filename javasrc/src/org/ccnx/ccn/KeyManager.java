@@ -1,3 +1,20 @@
+/**
+ * Part of the CCNx Java Library.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 package org.ccnx.ccn;
 
 import java.io.IOException;
@@ -161,9 +178,9 @@ public abstract class KeyManager {
 	
 	/**
 	 * Publish a key at a certain name, signed by our default identity. Usually used to
-	 * publish our own keys. Version that takes a public key can be used to
-	 * publish other people's keys.
-	 * @param keyName
+	 * publish our own keys, but can specify other keys we have in our cache.
+	 * @param keyName the name under which the key should be published. For the moment, keys are
+	 * 		  unversioned.
 	 * @param keyToPublish can be null, in which case we publish our own default public key
 	 * @throws InvalidKeyException 
 	 * @throws ConfigurationException 
@@ -174,6 +191,29 @@ public abstract class KeyManager {
 	 */
 	public abstract void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException;
 	
+	/**
+	 * Publish a key at a certain name, ensuring that it is stored in a repository. Will throw an
+	 * exception if no repository available. Usually used to publish our own keys, but can specify
+	 * any key known to our key cache.
+	 * @param keyName Name under which to publish the key. Currently not versioned (no version added).
+	 * @param keyToPublish can be null, in which case we publish our own default public key.
+	 * @throws InvalidKeyException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
+	public abstract void publishKeyToRepository(ContentName keyName, 
+												PublisherPublicKeyDigest keyToPublish, 
+												CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException;
+
+	/**
+	 * Publish our default key to a repository at its default location.
+	 * @param handle
+	 * @throws InvalidKeyException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
+	public abstract void publishKeyToRepository(CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException;
+
 	public abstract KeyRepository keyRepository();
 
 }

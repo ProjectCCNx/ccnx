@@ -1,3 +1,22 @@
+/**
+ * @file ccn_client.c
+ * @brief Support for ccn clients.
+ * 
+ * Part of the CCNx C Library.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -419,7 +438,6 @@ ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf, int prefix_comps,
 static void
 ccn_construct_interest(struct ccn *h,
                        struct ccn_charbuf *namebuf,
-                       int prefix_comps,
                        struct ccn_charbuf *interest_template,
                        struct expressed_interest *dest)
 {
@@ -427,18 +445,10 @@ ccn_construct_interest(struct ccn *h,
     size_t start;
     size_t size;
     int res;
-    char buf[20];
     
     c->length = 0;
     ccn_charbuf_append_tt(c, CCN_DTAG_Interest, CCN_DTAG);
     ccn_charbuf_append(c, namebuf->buf, namebuf->length);
-    if (prefix_comps >= 0) {
-        ccn_charbuf_append_tt(c, CCN_DTAG_NameComponentCount, CCN_DTAG);
-        res = snprintf(buf, sizeof(buf), "%d", prefix_comps);
-        ccn_charbuf_append_tt(c, res, CCN_UDATA);
-        ccn_charbuf_append(c, buf, res);
-        ccn_charbuf_append_closer(c);
-    }
     res = 0;
     if (interest_template != NULL) {
         struct ccn_parsed_interest pi = { 0 };
@@ -463,7 +473,6 @@ ccn_construct_interest(struct ccn *h,
 int
 ccn_express_interest(struct ccn *h,
                      struct ccn_charbuf *namebuf,
-                     int prefix_comps,
                      struct ccn_closure *action,
                      struct ccn_charbuf *interest_template)
 {
@@ -478,7 +487,7 @@ ccn_express_interest(struct ccn *h,
         if (h->interests_by_prefix == NULL)
             return(NOTE_ERRNO(h));
     }
-    prefixend = ccn_check_namebuf(h, namebuf, prefix_comps, 1);
+    prefixend = ccn_check_namebuf(h, namebuf, -1, 1);
     if (prefixend < 0)
         return(prefixend);
     /*
@@ -502,7 +511,7 @@ ccn_express_interest(struct ccn *h,
         return(-1);
     }
     interest->magic = 0x7059e5f4;
-    ccn_construct_interest(h, namebuf, prefix_comps, interest_template, interest);
+    ccn_construct_interest(h, namebuf, interest_template, interest);
     if (interest->interest_msg == NULL) {
         free(interest);
         hashtb_end(e);
@@ -717,14 +726,14 @@ ccn_cache_key(struct ccn *h,
 
 }
 
-/*
+/**
  * Examine a ContentObject and try to find the public key needed to
  * verify it.  It might be present in our cache of keys, or in the
  * object itself; in either of these cases, we can satisfy the request
  * right away. Or there may be an indirection (a KeyName), in which case
  * return without the key. The final possibility
  * is that there is no key locator we can make sense of.
- * Returns negative for error, 0 when pubkey is filled in,
+ * @returns negative for error, 0 when pubkey is filled in,
  *         or 1 if the key needs to be requested.
  */
 static int
@@ -814,7 +823,7 @@ ccn_locate_key(struct ccn *h,
     return (-1);
 }
 
-/*
+/**
  * Called when we get an answer to a KeyLocator fetch issued by
  * ccn_initiate_key_fetch.  This does not really have to do much,
  * since the main content handling logic picks up the keys as they
@@ -905,13 +914,13 @@ ccn_initiate_key_fetch(struct ccn *h,
                             pco->offset[CCN_PCO_B_KeyName_Pub]));
         ccn_charbuf_append_closer(templ); /* </Interest> */
     }
-    res = ccn_express_interest(h, key_name, -1, key_closure, templ);
+    res = ccn_express_interest(h, key_name, key_closure, templ);
     ccn_charbuf_destroy(&key_name);
     ccn_charbuf_destroy(&templ);
     return(res);
 }
 
-/*
+/**
  * If we were waiting for a key and it has arrived,
  * refresh the interest.
  */
@@ -1236,7 +1245,7 @@ ccn_process_scheduled_operations(struct ccn *h)
     return(h->refresh_us);
 }
 
-/*
+/**
  * Modify ccn_run timeout.
  * This may be called from an upcall to change the timeout value.
  * Most often this will be used to set the timeout to zero so that
@@ -1253,7 +1262,7 @@ ccn_set_run_timeout(struct ccn *h, int timeout)
     return(ans);
 }
 
-/*
+/**
  * Run the ccn client event loop.
  * This may serve as the main event loop for simple apps by passing 
  * a timeout value of -1.
@@ -1377,21 +1386,22 @@ handle_simple_incoming_content(
  * @param interest_template conveys other fields to be used in the interest
  *        (may be NULL).
  * @param timeout_ms limits the time spent waiting for an answer (milliseconds).
+ * @param resultbuf is updated to contain the ccnb-encoded ContentObject.
  * @param pcobuf may be supplied to save the client the work of re-parsing the
  *        ContentObject; may be NULL if this information is not actually needed.
  * @param compsbuf works similarly.
- * @param resultbuf is updated to contain the ccnb-encoded ContentObject.
+ * @param flags are not currently used, should be 0.
  * @returns 0 for success, -1 for an error.
  */
 int
 ccn_get(struct ccn *h,
         struct ccn_charbuf *name,
-        int prefix_comps,
         struct ccn_charbuf *interest_template,
         int timeout_ms,
         struct ccn_charbuf *resultbuf,
         struct ccn_parsed_ContentObject *pcobuf,
-        struct ccn_indexbuf *compsbuf)
+        struct ccn_indexbuf *compsbuf,
+        int flags)
 {
     struct ccn *orig_h = h;
     struct hashtb *saved_keys = NULL;
@@ -1421,7 +1431,7 @@ ccn_get(struct ccn *h,
     md->closure.data = md;
     md->closure.intdata = 1; /* tell upcall to re-express if needed */
     md->closure.refcount = 1;
-    res = ccn_express_interest(h, name, prefix_comps, &md->closure, interest_template);
+    res = ccn_express_interest(h, name, &md->closure, interest_template);
     if (res >= 0)
         res = ccn_run(h, timeout_ms);
     if (res >= 0)

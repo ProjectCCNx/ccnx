@@ -8,7 +8,7 @@
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -95,7 +95,8 @@ incoming_content(
     ccn_digest_ContentObject(ccnb, info->pco);
     ccn_name_append(c, info->pco->digest, info->pco->digest_bytes);
     templ = local_scope_template(selfp->intdata);
-    res = ccn_express_interest(info->h, c, info->pi->prefix_comps, selfp, templ);
+    // XXX - This program cannot work anymore as written.
+    res = ccn_express_interest(info->h, c, /* info->pi->prefix_comps,*/ selfp, templ);
     if (res < 0) abort();
     ccn_charbuf_destroy(&c);
     ccn_charbuf_destroy(&templ);

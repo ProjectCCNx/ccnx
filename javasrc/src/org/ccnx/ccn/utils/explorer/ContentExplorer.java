@@ -1,3 +1,20 @@
+/**
+ * A CCNx command line utility.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation. 
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+
 package org.ccnx.ccn.utils.explorer;
 
 
@@ -695,8 +712,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
         	if(nodeName.path==null){
         		System.out.println("collapsed the tree at the root");
         	} else {
-        		System.out.println("tree collapsed at: "+nodeName.path+new String(nodeName.name));
         		prefixToCancel = ContentName.fromNative(nodeName.path, nodeName.name);
+        		System.out.println("tree collapsed at: "+prefixToCancel.toString());	
         	}
         	System.out.println("cancelling prefix: "+prefixToCancel);
         	_nameEnumerator.cancelEnumerationsWithPrefix(prefixToCancel);
@@ -707,35 +724,46 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		public void valueChanged(TreeSelectionEvent event) {
 
 			final DefaultMutableTreeNode node = getTreeNode(event.getPath());
-			Thread runner = new Thread() {
-				public void run() {
+			if (tree.isCollapsed(event.getPath())) {
+				System.out.println("tree is collapsed");
+				//if(tree.isCollapsed(event.getPath().getParentPath())){
+				//	System.out.println("parent is collapsed");
+				//} else {
+				//	System.out.println("parent was expanded... go ahead and expand this one");
 
-					Runnable runnable = new Runnable() {
-						public void run() {
-							System.out.println("getting name node: "+node.toString());
-							Name fnode = getNameNode(node);
+				Thread runner = new Thread() {
+					public void run() {
 
-							if (fnode == null) {
-								System.out.println("fnode path is null...");
-								// selected top component, switch to top usable node
-								// node = usableRoot;
-								fnode = getNameNode(usableRoot);
+						Runnable runnable = new Runnable() {
+							public void run() {
+								System.out.println("getting name node: " + node.toString());
+								Name fnode = getNameNode(node);
+
+								if (fnode == null) {
+									System.out.println("fnode path is null...");
+									// selected top component, switch to top
+									// usable node
+									// node = usableRoot;
+									fnode = getNameNode(usableRoot);
+								}
+								if (fnode == null)
+									System.out.println("fnode is null");
+								if (node == null)
+									System.out.println("node is null");
+								System.out.println("In the tree selection listener with " + fnode.name + " and " + node.toString());
+								String p = getNodes(fnode);
+								selectedPath = p;
+								selectedPrefix = p;
 							}
-							if(fnode == null)
-								System.out.println("fnode is null");
-							if(node == null)
-								System.out.println("node is null");
-							System.out.println("In the tree expansion listener with "+ fnode.name+ " and "+ node.toString());
-							String p = getNodes(fnode);
-							selectedPath = p;
-							selectedPrefix = p;
-						}
-					};
-					SwingUtilities.invokeLater(runnable);
-				}
-			};
-			runner.start();
-			// prefix.toString()+cn.toString();
+						};
+						SwingUtilities.invokeLater(runnable);
+					}
+				};
+				runner.start();
+				//}
+			} else {
+				System.out.println("path is expanded...");
+			}
 		}
 	}
 
@@ -934,13 +962,15 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				//parentNode.add(node);
 				
 				//javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
-		        javax.swing.SwingUtilities.invokeLater(new Runnable() {
-		            public void run() {
-						m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
-						System.out.println("inserted node...  parent now has "+parentNode.getChildCount());
-		            }
-		        });
+		    //    javax.swing.SwingUtilities.invokeLater(new Runnable() {
+		    //       public void run() {
+			//			m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
+			//			System.out.println("inserted node...  parent now has "+parentNode.getChildCount());
+		    //        }
+		    //    });
 		        
+		        m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
+				System.out.println("inserted node...  parent now has "+parentNode.getChildCount());
 
 			}
 		}

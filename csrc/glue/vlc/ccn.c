@@ -1,24 +1,21 @@
-
-/*****************************************************************************
- * ccn.c: CCN input module
- *****************************************************************************
- * Copyright (C) 2009, Palo Alto Research Center
- * $Id:$
+/**
+ * @file glue/vlc/ccn.c
+ * 
+ * CCNx input module for vlc.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Copyright (C) 2009 Palo Alto Research Center, Inc.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston3 MA 02110-1301, USA.
- *****************************************************************************/
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation.
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
 
 /*****************************************************************************
  * Preamble
@@ -143,7 +140,7 @@ static int CCNOpen(vlc_object_t *p_this)
     if (i_ret < 0) {
         goto exit_error;
     }
-    i_ret = ccn_express_interest(p_sys->ccn, p_name, -1, p_sys->incoming, NULL);
+    i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, NULL);
     if (i_ret < 0) {
         goto exit_error;
     }
@@ -296,7 +293,7 @@ static int CCNSeek(access_t *p_access, int64_t i_pos)
         return (VLC_EGENERIC);
     }
     ccn_name_append_numeric(p_name, CCN_MARKER_SEQNUM, p_sys->incoming->intdata / CCN_CHUNK_SIZE);
-    ccn_express_interest(p_sys->ccn, p_name, -1, p_sys->incoming, NULL);
+    ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, NULL);
     ccn_charbuf_destroy(&p_name);    
     p_access->info.i_pos = i_pos;
     p_access->info.b_eof = false;
@@ -447,7 +444,7 @@ incoming_content(struct ccn_closure *selfp,
                            info->pco->offset[CCN_PCO_B_Signature],
                            info->pco->offset[CCN_PCO_E_Signature]);
         templ = make_template(p_sys, info);
-        res = ccn_express_interest(info->h, name, -1, selfp, templ);
+        res = ccn_express_interest(info->h, name, selfp, templ);
         /* TODO: must not abort... */
         if (res < 0)
             abort();
@@ -522,9 +519,9 @@ incoming_content(struct ccn_closure *selfp,
     clear_excludes(p_sys);
     templ = make_template(p_sys, info);
 
-    res = ccn_express_interest(info->h, name, -1, selfp, templ);
+    res = ccn_express_interest(info->h, name, selfp, templ);
 #else
-    res = ccn_express_interest(info->h, name, -1, selfp, NULL);
+    res = ccn_express_interest(info->h, name, selfp, NULL);
 #endif
     if (res < 0) abort();
 #if 0

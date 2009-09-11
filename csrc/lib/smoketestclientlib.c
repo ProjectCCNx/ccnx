@@ -8,7 +8,7 @@
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -152,8 +152,8 @@ main(int argc, char **argv)
             fprintf(stderr, "Registering interest with %d name components\n", res);
             c->length = 0;
             ccn_charbuf_append(c, rawbuf + name_start, name_size);
-            // XXX - rep is currently ignored
-            ccn_express_interest(ccn, c, interest.prefix_comps, &incoming_content_action, templ);
+            // XXX - res is currently ignored
+            ccn_express_interest(ccn, c, &incoming_content_action, templ);
         }
         else {
             struct ccn_parsed_ContentObject obj = {0};

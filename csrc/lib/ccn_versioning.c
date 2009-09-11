@@ -1,6 +1,21 @@
-/*
- * ccn_versioning.c
- * Copyright (C) 2009 Palo Alto Research Center, Inc. All rights reserved.
+/**
+ * @file ccn_versioning.c
+ * @brief Versioning support.
+ * 
+ * Part of the CCNx C Library.
+ *
+ * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,7 +29,7 @@
 
 #define FF 0xff
 
-/*
+/**
  * This appends a tagged, valid, fully-saturated Bloom filter, useful for
  * excluding everything between two 'fenceposts' in an Exclude construct.
  */
@@ -30,7 +45,7 @@ append_bf_all(struct ccn_charbuf *c)
     ccn_charbuf_append_closer(c);
 }
 
-/*
+/**
  * Append AnswerOriginKind=1 to partially constructed Interest, meaning
  * do not generate new content.
  */
@@ -43,7 +58,8 @@ answer_passive(struct ccn_charbuf *templ)
     ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
 }
 
-/*
+/**
+XXX
  * Append OrderPreference=5 to partially constructed Interest, meaning
  * prefer to send bigger.
  */
@@ -132,7 +148,7 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
         goto Finish;
     templ = resolve_templ(templ, lowtime, sizeof(lowtime));
     result->length = 0;
-    res = ccn_get(h, name, -1, templ, timeout_ms, result, pco, ndx);
+    res = ccn_get(h, name, templ, timeout_ms, result, pco, ndx, 0);
     while (result->length != 0) {
         if (pco->type == CCN_CONTENT_NACK) // XXX - also check for number of components
             break;
@@ -148,8 +164,9 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
             myres = 0;
             templ = resolve_templ(templ, name->buf + nix->buf[n], nix->buf[n+1] - nix->buf[n]);
             if (templ == NULL) break;
+            res = ccn_name_chop(name, nix, n);
             result->length = 0;
-            res = ccn_get(h, name, n, templ, timeout_ms, result, pco, ndx);
+            res = ccn_get(h, name, templ, timeout_ms, result, pco, ndx, 0);
         }
         else break;
     }

@@ -8,7 +8,7 @@
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -133,7 +133,7 @@ main(int argc, char **argv)
             fprintf(stderr, "%s: bad ccn URI: %s\n", argv[0], argv[i]);
             exit(1);
         }
-        ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
+        ccn_express_interest(ccn, c, &incoming_content_action, templ);
     }
     if (i == optind)
         usage(argv[0]);

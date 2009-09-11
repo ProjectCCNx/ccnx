@@ -65,6 +65,15 @@ must obtain a few additional library files independently:
 
 Copy the extra JAR files into lib/ AND javasrc/lib.
 
+SPECIAL PLATFORM NOTES
+
+[Fedora]
+
+JDK1.5 on Fedora has been seen to be extremely slow at seeding the
+random number generator, which causes major delays for certain
+operations such as generating the initial keystore file.  We recommend
+using JDK1.6 on Fedora.
+
 ==================================================
 3. Build and install instructions
 ==================================================

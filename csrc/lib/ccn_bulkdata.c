@@ -1,12 +1,22 @@
-/*
- * ccn_bulkdata.c
+/**
+ * @file ccn_bulkdata.c
+ * @brief (INCOMPLETE)Support for transport of bulk data.
  * 
- * Copyright 2008 Palo Alto Research Center, Inc. All rights reserved.
+ * Part of the CCNx C Library.
  *
- * Support for transport of bulk data
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
  *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
  */
-
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -211,7 +221,7 @@ express_bulkdata_interest(struct ccn *h, struct pending *p)
     ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
 
     ccn_charbuf_append_closer(templ); /* </Interest> */
-    res = ccn_express_interest(h, name, prefix_comps, &p->closure, templ);
+    res = ccn_express_interest(h, name, &p->closure, templ);
     assert(res >= 0); // XXX - handle this better
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&templ);

@@ -1,3 +1,20 @@
+/**
+ * Part of the CCNx Java Library.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 package org.ccnx.ccn.impl.repo;
 
 import java.io.PrintStream;
@@ -12,6 +29,7 @@ import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarkers;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
@@ -455,11 +473,12 @@ public class ContentTree {
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
 		    ContentName potentialCollectionName = VersioningProfile.addVersion(new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), new CCNTime(parent.timestamp));
+		    potentialCollectionName = SegmentationProfile.segmentName(potentialCollectionName, SegmentationProfile.baseSegment());
 			//check if we should respond...
 			if (interest.matches(potentialCollectionName, null)) {
-				Log.info("the new version is a match with the interest!  we should respond: interest = "+interest.name()+" potentialCollectionName = "+potentialCollectionName);
+				Log.info("the new version is a match with the interest!  we should respond: interest = "+interest+" potentialCollectionName = "+potentialCollectionName);
 			} else {
-				Log.info("the new version doesn't match, no response needed: interest = "+interest.name()+" would be collection name: "+potentialCollectionName);
+				Log.info("the new version doesn't match, no response needed: interest = "+interest+" would be collection name: "+potentialCollectionName);
 				parent.interestFlag = true;
 				return null;
 			}

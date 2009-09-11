@@ -7,7 +7,7 @@
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -161,7 +161,7 @@ main (int argc, char *argv[]) {
                 name_size = interest.offset[CCN_PI_E_Name] - name_start;
                 ccn_charbuf_append(interestnamebuf, rawbuf + name_start, name_size);
                 ccn_charbuf_append(interesttemplatebuf, rawbuf, rawlen);
-                res = ccn_express_interest(ccn, interestnamebuf, interest.prefix_comps, action, interesttemplatebuf);
+                res = ccn_express_interest(ccn, interestnamebuf, action, interesttemplatebuf);
             }
         } else {
             if (options.logging == 0) fprintf(stderr, "Processing %s ", filename);

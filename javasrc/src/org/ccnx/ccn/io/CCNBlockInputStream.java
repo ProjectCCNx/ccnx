@@ -1,3 +1,20 @@
+/**
+ * Part of the CCNx Java Library.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 package org.ccnx.ccn.io;
 
 import java.io.IOException;
@@ -63,11 +80,8 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentSegment) {
-			ContentObject firstSegment = getFirstSegment();
-			if (null == firstSegment) {
-				return 0; // nothing to read
-			}
-			setFirstSegment(firstSegment);
+			// This will throw an exception if no block found, which is what we want.
+			setFirstSegment(getFirstSegment());
 		} 
 		
 		// Now we have a block in place. Read from it. If we run out of block before
@@ -75,11 +89,15 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		int remainingBytes = _segmentReadStream.available();
 		
 		if (remainingBytes <= 0) {
-			setCurrentSegment(getNextSegment());
-			if (null == _currentSegment) {
-				// in socket implementation, this would be EAGAIN
-				return 0;
+			if (!hasNextSegment()) {
+				return -1;
 			}
+			ContentObject nextSegment = getNextSegment();
+			if (null == nextSegment) {
+				// in socket implementation, this would be EAGAIN
+				return -1;
+			}
+			setCurrentSegment(nextSegment);
 			remainingBytes = _segmentReadStream.available();
 		}
 		// Read minimum of remainder of this block and available buffer.

@@ -1,3 +1,20 @@
+/**
+ * Part of the CCNx Java Library.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 package org.ccnx.ccn.profiles.nameenum;
 
 import java.io.IOException;
@@ -14,6 +31,7 @@ import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.CommandMarkers;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -119,6 +137,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			if (r!=null) {
 				//this prefix is already registered...
 				Log.info("prefix "+prefix.toString()+" is already registered...  returning");
+				return;
 			}
 			else{
 				r = new NERequest(prefix);
@@ -130,7 +149,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			
 			ContentName prefixMarked = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 			
-			Interest pi = new Interest(prefixMarked);
+			//Interest pi = new Interest(prefixMarked);
+			Interest pi = VersioningProfile.firstBlockLatestVersionInterest(prefixMarked, null);
 			
 			//Library.info("interest name: "+pi.name().toString()+" prefix: "+pi.name().prefixCount()+" order preference "+pi.orderPreference());
 			r.addInterest(pi);
@@ -198,8 +218,9 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			if (results != null) {
 				for (ContentObject c: results) {
 					//Library.info("we have a match on "+interest.name());
-
-					newInterest = Interest.last(c.name(), c.name().containsWhere(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION) + 1);
+					Log.fine("we have a match for: "+interest.name()+" ["+ interest.toString()+"]");
+					//newInterest = Interest.last(c.name(), c.name().containsWhere(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION) + 1);
+					newInterest = VersioningProfile.firstBlockLatestVersionInterest(c.name(), null);
 					try {
 						_library.expressInterest(newInterest, this);
 						ner.addInterest(newInterest);
@@ -432,7 +453,10 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					toRemove.add(n);
 			}
 			while(!toRemove.isEmpty()){
-				cancelPrefix(toRemove.remove(0).prefix);
+				if(cancelPrefix(toRemove.remove(0).prefix))
+					Log.info("cancelled prefix: "+prefixToCancel.toString());
+				else
+					Log.info("could not cancel prefix: "+prefixToCancel.toString());
 			}
 		}
 	}
