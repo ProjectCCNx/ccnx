@@ -438,7 +438,6 @@ ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf, int prefix_comps,
 static void
 ccn_construct_interest(struct ccn *h,
                        struct ccn_charbuf *namebuf,
-                       int prefix_comps,
                        struct ccn_charbuf *interest_template,
                        struct expressed_interest *dest)
 {
@@ -446,18 +445,10 @@ ccn_construct_interest(struct ccn *h,
     size_t start;
     size_t size;
     int res;
-    char buf[20];
     
     c->length = 0;
     ccn_charbuf_append_tt(c, CCN_DTAG_Interest, CCN_DTAG);
     ccn_charbuf_append(c, namebuf->buf, namebuf->length);
-    if (prefix_comps >= 0) {
-        ccn_charbuf_append_tt(c, CCN_DTAG_NameComponentCount, CCN_DTAG);
-        res = snprintf(buf, sizeof(buf), "%d", prefix_comps);
-        ccn_charbuf_append_tt(c, res, CCN_UDATA);
-        ccn_charbuf_append(c, buf, res);
-        ccn_charbuf_append_closer(c);
-    }
     res = 0;
     if (interest_template != NULL) {
         struct ccn_parsed_interest pi = { 0 };
@@ -482,7 +473,6 @@ ccn_construct_interest(struct ccn *h,
 int
 ccn_express_interest(struct ccn *h,
                      struct ccn_charbuf *namebuf,
-                     int prefix_comps,
                      struct ccn_closure *action,
                      struct ccn_charbuf *interest_template)
 {
@@ -497,7 +487,7 @@ ccn_express_interest(struct ccn *h,
         if (h->interests_by_prefix == NULL)
             return(NOTE_ERRNO(h));
     }
-    prefixend = ccn_check_namebuf(h, namebuf, prefix_comps, 1);
+    prefixend = ccn_check_namebuf(h, namebuf, -1, 1);
     if (prefixend < 0)
         return(prefixend);
     /*
@@ -521,7 +511,7 @@ ccn_express_interest(struct ccn *h,
         return(-1);
     }
     interest->magic = 0x7059e5f4;
-    ccn_construct_interest(h, namebuf, prefix_comps, interest_template, interest);
+    ccn_construct_interest(h, namebuf, interest_template, interest);
     if (interest->interest_msg == NULL) {
         free(interest);
         hashtb_end(e);
@@ -924,7 +914,7 @@ ccn_initiate_key_fetch(struct ccn *h,
                             pco->offset[CCN_PCO_B_KeyName_Pub]));
         ccn_charbuf_append_closer(templ); /* </Interest> */
     }
-    res = ccn_express_interest(h, key_name, -1, key_closure, templ);
+    res = ccn_express_interest(h, key_name, key_closure, templ);
     ccn_charbuf_destroy(&key_name);
     ccn_charbuf_destroy(&templ);
     return(res);
@@ -1396,21 +1386,22 @@ handle_simple_incoming_content(
  * @param interest_template conveys other fields to be used in the interest
  *        (may be NULL).
  * @param timeout_ms limits the time spent waiting for an answer (milliseconds).
+ * @param resultbuf is updated to contain the ccnb-encoded ContentObject.
  * @param pcobuf may be supplied to save the client the work of re-parsing the
  *        ContentObject; may be NULL if this information is not actually needed.
  * @param compsbuf works similarly.
- * @param resultbuf is updated to contain the ccnb-encoded ContentObject.
+ * @param flags are not currently used, should be 0.
  * @returns 0 for success, -1 for an error.
  */
 int
 ccn_get(struct ccn *h,
         struct ccn_charbuf *name,
-        int prefix_comps,
         struct ccn_charbuf *interest_template,
         int timeout_ms,
         struct ccn_charbuf *resultbuf,
         struct ccn_parsed_ContentObject *pcobuf,
-        struct ccn_indexbuf *compsbuf)
+        struct ccn_indexbuf *compsbuf,
+        int flags)
 {
     struct ccn *orig_h = h;
     struct hashtb *saved_keys = NULL;
@@ -1440,7 +1431,7 @@ ccn_get(struct ccn *h,
     md->closure.data = md;
     md->closure.intdata = 1; /* tell upcall to re-express if needed */
     md->closure.refcount = 1;
-    res = ccn_express_interest(h, name, prefix_comps, &md->closure, interest_template);
+    res = ccn_express_interest(h, name, &md->closure, interest_template);
     if (res >= 0)
         res = ccn_run(h, timeout_ms);
     if (res >= 0)

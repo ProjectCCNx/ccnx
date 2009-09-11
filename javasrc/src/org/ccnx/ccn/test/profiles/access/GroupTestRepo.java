@@ -1,3 +1,20 @@
+/**
+ * A CCNx library test.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation. 
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+
 package org.ccnx.ccn.test.profiles.access;
 
 import static org.junit.Assert.assertTrue;
@@ -19,6 +36,7 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.profiles.access.AccessControlProfile;
@@ -92,7 +110,7 @@ public class GroupTestRepo {
 			try{
 					grp.removeUsers(removeMembers);
 					succeed = true;
-			}catch(AccessDeniedException e){
+			}catch(ContentNotReadyException e){
 				succeed = false;
 			}
 		}
@@ -108,7 +126,7 @@ public class GroupTestRepo {
 			try{
 					grp.addUsers(removeMembers);
 					succeed = true;
-			}catch(AccessDeniedException e){
+			}catch(ContentNotReadyException e){
 				succeed = false;
 			}
 		}
@@ -181,9 +199,9 @@ public class GroupTestRepo {
 			
 			removeMembers.clear();
 			//try removing myself
-			removeMembers.add(new Link(UserConfiguration.defaultUserNamespace()));
-//			System.out.println("removing myself:.................." );
-//			testRemoveUsers(removeMembers, newGroup);
+			//removeMembers.add(new Link(UserConfiguration.defaultUserNamespace()));
+			//System.out.println("removing myself:.................." );
+			//testRemoveUsers(removeMembers, newGroup);
 			
 			//Assert.assertFalse(_gm.haveKnownGroupMemberships());
 			

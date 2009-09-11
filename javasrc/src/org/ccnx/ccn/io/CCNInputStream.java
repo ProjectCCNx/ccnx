@@ -1,3 +1,20 @@
+/**
+ * Part of the CCNx Java Library.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 package org.ccnx.ccn.io;
 
 import java.io.IOException;
@@ -88,12 +105,8 @@ public class CCNInputStream extends CCNAbstractInputStream {
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentSegment) {
-			ContentObject firstBlock = getFirstSegment();
-			if (null == firstBlock) {
-				_atEOF = true;
-				return -1; // nothing to read
-			}
-			setFirstSegment(firstBlock);
+			// This will throw an exception if no block found, which is what we want.
+			setFirstSegment(getFirstSegment());
 		} 
 		Log.finest("reading from block: {0}, length: {1}", _currentSegment.name(),  
 				_currentSegment.contentLength());
@@ -117,15 +130,25 @@ public class CCNInputStream extends CCNAbstractInputStream {
 
 			if (readCount <= 0) {
 				Log.info("Tried to read at end of block, go get next block.");
-				setCurrentSegment(getNextSegment());
-				if (null == _currentSegment) {
-					Log.info("next block was null, setting _atEOF, returning " + ((lenRead > 0) ? lenRead : -1));
+				if (!hasNextSegment()) {
+					Log.info("No next block expected, setting _atEOF, returning " + ((lenRead > 0) ? lenRead : -1));
+					_atEOF = true;
+					if (lenRead > 0) {
+						return lenRead;
+					}
+					return -1; // no bytes read, at eof					
+				}
+				ContentObject nextSegment = getNextSegment();
+				if (null == nextSegment) {
+					Log.info("Next block is null, setting _atEOF, returning " + ((lenRead > 0) ? lenRead : -1));
 					_atEOF = true;
 					if (lenRead > 0) {
 						return lenRead;
 					}
 					return -1; // no bytes read, at eof
 				}
+				setCurrentSegment(nextSegment);
+
 				Log.info("now reading from block: " + _currentSegment.name() + " length: " + 
 						_currentSegment.contentLength());
 			} else {

@@ -140,7 +140,7 @@ static int CCNOpen(vlc_object_t *p_this)
     if (i_ret < 0) {
         goto exit_error;
     }
-    i_ret = ccn_express_interest(p_sys->ccn, p_name, -1, p_sys->incoming, NULL);
+    i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, NULL);
     if (i_ret < 0) {
         goto exit_error;
     }
@@ -293,7 +293,7 @@ static int CCNSeek(access_t *p_access, int64_t i_pos)
         return (VLC_EGENERIC);
     }
     ccn_name_append_numeric(p_name, CCN_MARKER_SEQNUM, p_sys->incoming->intdata / CCN_CHUNK_SIZE);
-    ccn_express_interest(p_sys->ccn, p_name, -1, p_sys->incoming, NULL);
+    ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, NULL);
     ccn_charbuf_destroy(&p_name);    
     p_access->info.i_pos = i_pos;
     p_access->info.b_eof = false;
@@ -444,7 +444,7 @@ incoming_content(struct ccn_closure *selfp,
                            info->pco->offset[CCN_PCO_B_Signature],
                            info->pco->offset[CCN_PCO_E_Signature]);
         templ = make_template(p_sys, info);
-        res = ccn_express_interest(info->h, name, -1, selfp, templ);
+        res = ccn_express_interest(info->h, name, selfp, templ);
         /* TODO: must not abort... */
         if (res < 0)
             abort();
@@ -519,9 +519,9 @@ incoming_content(struct ccn_closure *selfp,
     clear_excludes(p_sys);
     templ = make_template(p_sys, info);
 
-    res = ccn_express_interest(info->h, name, -1, selfp, templ);
+    res = ccn_express_interest(info->h, name, selfp, templ);
 #else
-    res = ccn_express_interest(info->h, name, -1, selfp, NULL);
+    res = ccn_express_interest(info->h, name, selfp, NULL);
 #endif
     if (res < 0) abort();
 #if 0

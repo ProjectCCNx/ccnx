@@ -211,7 +211,7 @@ incoming_content(
         ccn_name_append_components(c, ccnb,
                                    comps->buf[0],
                                    comps->buf[matched_comps + 1]);
-        ccn_express_interest(info->h, c, -1, cl, passive_templ);
+        ccn_express_interest(info->h, c, cl, passive_templ);
     }
     else {
         res = ccn_uri_append(uri, info->content_ccnb, info->pco->offset[CCN_PCO_E], 1);
@@ -276,7 +276,7 @@ express_my_interest(struct ccn *h,
     if (templ->length + name->length > 1450 && data->n_excl > 3)
         ans = -1;
     else {
-        ccn_express_interest(h, name, -1, selfp, templ);
+        ccn_express_interest(h, name, selfp, templ);
         ans = 0;
     }
     ccn_charbuf_destroy(&templ);
@@ -394,7 +394,7 @@ main(int argc, char **argv)
     cl = calloc(1, sizeof(*cl));
     cl->p = &incoming_content;
     cl->data = data;
-    ccn_express_interest(ccn, c, -1, cl, passive_templ);
+    ccn_express_interest(ccn, c, cl, passive_templ);
     cl = NULL;
     data = NULL;
     ccn_charbuf_destroy(&c);

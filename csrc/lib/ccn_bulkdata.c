@@ -221,7 +221,7 @@ express_bulkdata_interest(struct ccn *h, struct pending *p)
     ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
 
     ccn_charbuf_append_closer(templ); /* </Interest> */
-    res = ccn_express_interest(h, name, prefix_comps, &p->closure, templ);
+    res = ccn_express_interest(h, name, &p->closure, templ);
     assert(res >= 0); // XXX - handle this better
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&templ);

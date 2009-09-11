@@ -273,7 +273,7 @@ express_my_interest(struct ccn *h,
     if (templ->length + name->length > 1450 && data->n_excl > 3)
         ans = -1;
     else {
-        ccn_express_interest(h, name, -1, selfp, templ);
+        ccn_express_interest(h, name, selfp, templ);
         ans = 0;
     }
     ccn_charbuf_destroy(&templ);

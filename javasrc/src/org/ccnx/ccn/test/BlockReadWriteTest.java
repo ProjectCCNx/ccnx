@@ -1,3 +1,20 @@
+/**
+ * A CCNx library test.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation. 
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+
 package org.ccnx.ccn.test;
 
 import java.io.ByteArrayInputStream;
@@ -40,7 +57,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	public void getResults(ContentName baseName, int count, CCNHandle library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
-		CCNDescriptor desc = new CCNDescriptor(thisName, null, library);
+		CCNDescriptor desc = new CCNDescriptor(thisName, null, library, false);
 		desc.setTimeout(5000);
 		Log.info("Opened descriptor for reading: " + thisName);
 
@@ -77,7 +94,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	@Override
 	public void doPuts(ContentName baseName, int count, CCNHandle library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
-		CCNDescriptor desc = new CCNDescriptor(thisName, null, null, library);
+		CCNDescriptor desc = new CCNDescriptor(thisName, null, library, true);
 		desc.setTimeout(5000);
 		sema.release();	// put channel open
 		

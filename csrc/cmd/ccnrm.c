@@ -133,7 +133,7 @@ main(int argc, char **argv)
             fprintf(stderr, "%s: bad ccn URI: %s\n", argv[0], argv[i]);
             exit(1);
         }
-        ccn_express_interest(ccn, c, -1, &incoming_content_action, templ);
+        ccn_express_interest(ccn, c, &incoming_content_action, templ);
     }
     if (i == optind)
         usage(argv[0]);
