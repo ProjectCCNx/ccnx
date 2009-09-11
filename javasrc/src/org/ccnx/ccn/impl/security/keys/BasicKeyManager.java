@@ -51,6 +51,7 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.KeyName;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 public class BasicKeyManager extends KeyManager {
@@ -488,6 +489,7 @@ public class BasicKeyManager extends KeyManager {
 		PublicKey key = null;
 		if (null == keyToPublish) {
 			key = getDefaultPublicKey();
+			keyToPublish = getDefaultKeyID();
 		} else {
 			key = getPublicKey(keyToPublish);
 			if (null == key) {
@@ -499,7 +501,7 @@ public class BasicKeyManager extends KeyManager {
 		
 		// Can't determine whether a read copy comes from repo or cache, so have to write it regardless...
 		// Eventually might want to use PublicKeyObjects and versioning
-		RepositoryOutputStream ros = new RepositoryOutputStream(keyName, locatorLocator, keyToPublish, handle);
+		RepositoryOutputStream ros = new RepositoryOutputStream(keyName, locatorLocator, keyToPublish, ContentType.KEY, null, handle);
 		
 		byte [] encodedKey = key.getEncoded();
 		ros.write(encodedKey);

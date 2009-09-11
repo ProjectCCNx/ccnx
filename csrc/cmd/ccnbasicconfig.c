@@ -188,7 +188,7 @@ main(int argc, char **argv)
     /* We need to figure out our local ccnd's CCIDID */
     name->length = 0;
     CHKRES(res = ccn_name_from_uri(name, "ccn:/ccn/ping/XXX")); // XXX - ideally use a nonce instead
-    CHKRES(res = ccn_get(h, name, -1, templ, 200, resultbuf, &pcobuf, NULL));
+    CHKRES(res = ccn_get(h, name, templ, 200, resultbuf, &pcobuf, NULL, 0));
     res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
                         resultbuf->buf,
                         pcobuf.offset[CCN_PCO_B_PublisherPublicKeyDigest],
@@ -206,7 +206,7 @@ main(int argc, char **argv)
     CHKRES(ccn_name_append(name, ccndid, ccndid_size));
     CHKRES(ccn_name_append(name, "newface", 7));
     CHKRES(ccn_name_append(name, temp->buf, temp->length));
-    res = ccn_get(h, name, -1, templ, 1000, resultbuf, &pcobuf, NULL);
+    res = ccn_get(h, name, templ, 1000, resultbuf, &pcobuf, NULL, 0);
     if (res < 0) {
         fprintf(stderr, "no response from face creation request\n");
         exit(1);
@@ -243,7 +243,7 @@ main(int argc, char **argv)
     CHKRES(ccn_name_append(name, ccndid, ccndid_size));
     CHKRES(ccn_name_append_str(name, "prefixreg"));
     CHKRES(ccn_name_append(name, temp->buf, temp->length));
-    res = ccn_get(h, name, -1, templ, 1000, resultbuf, &pcobuf, NULL);
+    res = ccn_get(h, name, templ, 1000, resultbuf, &pcobuf, NULL, 0);
     if (res < 0) {
         fprintf(stderr, "no response from prefix registration request\n");
         exit(1);

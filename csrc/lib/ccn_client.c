@@ -126,6 +126,38 @@ ccn_note_err(struct ccn *h)
     return(-1);
 }
 
+/**
+ * Set the error code in a ccn handle.
+ * @param h is the ccn handle - may be NULL.
+ * @param error_code is the code to set.
+ * @returns -1 in all cases.
+ */
+int
+ccn_seterror(struct ccn *h, int error_code)
+{
+    if (h == NULL)
+        return(-1);
+    h->err = error_code;
+    h->errline = 0;
+    if (error_code != 0)
+        ccn_note_err(h);
+    return(-1);
+}
+
+/**
+ * Recover last error code.
+ * @param h is the ccn handle - may be NULL.
+ * @param error_code is the code to set.
+ * @returns the most recently set error code, or 0 if h is NULL.
+ */
+int
+ccn_geterror(struct ccn *h)
+{
+    if (h == NULL)
+        return(0);
+    return(h->err);
+}
+
 static struct ccn_indexbuf *
 ccn_indexbuf_obtain(struct ccn *h)
 {

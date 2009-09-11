@@ -157,6 +157,12 @@ public class put_file {
 			is = new FileInputStream(theFile);
 		}
 
+		// If we are using a repository, make sure our key is available to
+		// repository clients. For now, write an unversioned form of key.
+		if (!rawMode) {
+			library.keyManager().publishKeyToRepository(library);
+		}
+
 		CCNOutputStream ostream;
 		
 		// Use file stream in both cases to match behavior. CCNOutputStream doesn't do
@@ -175,13 +181,7 @@ public class put_file {
 		if (timeout != null)
 			ostream.setTimeout(timeout);
 		do_write(ostream, is);
-		
-		// If we are using a repository, make sure our key is available to
-		// repository clients. For now, write an unversioned form of key.
-		if (!rawMode) {
-			library.keyManager().publishKeyToRepository(library);
-		}
-		
+				
 		System.out.println("Inserted file " + fileName + ".");
 	}
 	
