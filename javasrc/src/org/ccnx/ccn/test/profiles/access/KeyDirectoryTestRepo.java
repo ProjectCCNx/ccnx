@@ -27,7 +27,6 @@ import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Random;
-import java.util.SortedSet;
 import java.util.TreeSet;
 
 import javax.crypto.KeyGenerator;
@@ -35,7 +34,6 @@ import javax.crypto.KeyGenerator;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
