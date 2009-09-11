@@ -9,7 +9,11 @@
 @section c_install_sec Installation
 
 @subsection step1 Step 1: 
- 
-blah blah...
+
+If we want to refer to the directory ccn/csrc/cmd, with a link to the documentation for the
+directory under that text, we would use (at)link cmd ccn/csrc/cmd (at)endlink (like this)
+@link cmd ccn/csrc/cmd @endlink
+as the reference.  Note that the single word following the (at)link command is the object
+reference for the directory as doxygen believes it is named (see the Directories tab in the generated documentation)
 
 */
