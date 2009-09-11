@@ -417,6 +417,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	
 
 	public void retrieveFromRepo(String name){
+		//TODO this is a long-running operation, it should be a separate thread
+		
+		
 		try{
 	
 			//get the file name as a ContentName
@@ -427,7 +430,10 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			CCNFileInputStream fis = new CCNFileInputStream(fileName, _library);
 				
 			htmlPane.read(fis, fileName);
-				
+			
+			//should catch a generic exception and print a message in the bottom pane
+			//that the selected file is not available
+			
 		} catch (XMLStreamException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -724,13 +730,12 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		public void valueChanged(TreeSelectionEvent event) {
 
 			final DefaultMutableTreeNode node = getTreeNode(event.getPath());
+					
+			//if the tree is not collapsed already, it is already being enumerated, so we don't need to reselect it
 			if (tree.isCollapsed(event.getPath())) {
-				System.out.println("tree is collapsed");
-				//if(tree.isCollapsed(event.getPath().getParentPath())){
-				//	System.out.println("parent is collapsed");
-				//} else {
-				//	System.out.println("parent was expanded... go ahead and expand this one");
-
+				//if the row is -1, that means a parent is collapsed and this node is being
+				//selected as part of a collapse, so we don't want to re-register it for enumerating
+				if (tree.getRowForPath(event.getPath()) > -1) {
 				Thread runner = new Thread() {
 					public void run() {
 
@@ -760,9 +765,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					}
 				};
 				runner.start();
-				//}
+				}
 			} else {
-				System.out.println("path is expanded...");
+				System.out.println("path is expanded... "+node.toString());
 			}
 		}
 	}
