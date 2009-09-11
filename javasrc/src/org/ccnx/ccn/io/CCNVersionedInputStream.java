@@ -1,3 +1,20 @@
+/**
+ * Part of the CCNx Java Library.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 package org.ccnx.ccn.io;
 
 import java.io.IOException;
@@ -13,7 +30,6 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
@@ -91,11 +107,6 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		if (null != result){
 			Log.info("getFirstSegment: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			_baseName = result.name().cut(_baseName.count() + 1);
-			if (result.signedInfo().getType().equals(ContentType.GONE)) {
-				_goneSegment = result;
-				Log.info("getFirstSegment: got gone segment: " + _goneSegment.name());
-				return null;
-			}
 		} else {
 			Log.info("getFirstSegment: no segment available for latest version of " + _baseName);
 		}

@@ -1,3 +1,20 @@
+/**
+ * Part of the CCNx Java Library.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 package org.ccnx.ccn.io;
 
 import java.io.IOException;
@@ -35,7 +52,21 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	 * we've read it. 
 	 */
 	protected HeaderObject _header = null;
-	
+
+	public CCNFileInputStream(ContentName name) throws XMLStreamException, IOException {
+		super(name);
+	}
+
+	public CCNFileInputStream(ContentName name, CCNHandle library)
+									throws XMLStreamException, IOException {
+		super(name, library);
+	}
+
+	public CCNFileInputStream(ContentName name, long startingBlockIndex)
+										throws XMLStreamException, IOException {
+		this(name, startingBlockIndex, null, null);
+	}
+
 	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
 			PublisherPublicKeyDigest publisher, CCNHandle library)
 			throws XMLStreamException, IOException {
@@ -51,21 +82,6 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	public CCNFileInputStream(ContentName name, PublisherPublicKeyDigest publisher,
 			CCNHandle library) throws XMLStreamException, IOException {
 		this(name, null, publisher, library);
-	}
-
-	public CCNFileInputStream(ContentName name) throws XMLStreamException,
-			IOException {
-		super(name);
-	}
-
-	public CCNFileInputStream(ContentName name, CCNHandle library)
-			throws XMLStreamException, IOException {
-		super(name, library);
-	}
-
-	public CCNFileInputStream(ContentName name, long startingBlockIndex)
-			throws XMLStreamException, IOException {
-		this(name, startingBlockIndex, null, null);
 	}
 
 	public CCNFileInputStream(ContentObject starterBlock, CCNHandle library)
@@ -268,7 +284,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	}
 
 	@Override
-	public long seek(long position) throws IOException {
+	public void seek(long position) throws IOException {
 		Log.info("Seeking stream to " + position + ": have header? " + hasHeader());
 		if (hasHeader()) {
 			int [] blockAndOffset = _header.positionToSegmentLocation(position);
@@ -287,7 +303,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 					}
 					_segmentReadStream.skip(blockAndOffset[1]);
 				}
-				return position;
+				return;
 			}
 			
 			// TODO: once first block is always set in a constructor this conditional can be removed
@@ -310,9 +326,8 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			//skip(check);
 			
 			//Library.info(" _blockOffset "+_blockOffset);
-			return check;
 		} else {
-			return super.seek(position);
+			super.seek(position);
 		}
 	}
 

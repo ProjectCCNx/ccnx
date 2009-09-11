@@ -1,3 +1,20 @@
+/**
+ * A CCNx library test.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation. 
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+
 package org.ccnx.ccn.test.repo;
 
 import java.io.File;
@@ -60,12 +77,12 @@ public class RepoPerformanceTester extends CCNOutputStream {
 	
 	public RepoPerformanceTester(String repoName, ContentName name, CCNHandle library)
 			throws XMLStreamException, IOException, MalformedContentNameStringException, RepositoryException {
-		super(name, null, null, _rpt.new TestFlowControl(repoName, name, library));
+		super(name, null, null, null, null, _rpt.new TestFlowControl(repoName, name, library));
 	}
 	
 	public RepoPerformanceTester(ContentName name, CCNFlowControl cf)
 			throws XMLStreamException, IOException, MalformedContentNameStringException, RepositoryException {
-		super(name, null, null, cf);
+		super(name, null, null, null, null, cf);
 	}
 	
 	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle library) throws MalformedContentNameStringException, XMLStreamException, IOException, RepositoryException {

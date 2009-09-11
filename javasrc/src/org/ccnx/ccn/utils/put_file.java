@@ -1,3 +1,20 @@
+/**
+ * A CCNx command line utility.
+ *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation. 
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+
 package org.ccnx.ccn.utils;
 
 import java.io.File;
@@ -5,6 +22,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.security.InvalidKeyException;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
@@ -112,13 +130,16 @@ public class put_file {
 		} catch (IOException e) {
 			System.out.println("Cannot read file. " + e.getMessage());
 			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			System.out.println("Cannot publish invalid key: " + e.getMessage());
+			e.printStackTrace();
 		}
 		System.exit(1);
 
 	}
 
 	protected static void doPut(CCNHandle library, String fileName,
-			ContentName nodeName) throws IOException {
+			ContentName nodeName) throws IOException, InvalidKeyException, ConfigurationException {
 		InputStream is;
 		
 		System.out.printf("filename %s\n", fileName);
@@ -134,6 +155,12 @@ public class put_file {
 				usage();
 			}
 			is = new FileInputStream(theFile);
+		}
+
+		// If we are using a repository, make sure our key is available to
+		// repository clients. For now, write an unversioned form of key.
+		if (!rawMode) {
+			library.keyManager().publishKeyToRepository(library);
 		}
 
 		CCNOutputStream ostream;
@@ -154,7 +181,7 @@ public class put_file {
 		if (timeout != null)
 			ostream.setTimeout(timeout);
 		do_write(ostream, is);
-		
+				
 		System.out.println("Inserted file " + fileName + ".");
 	}
 	
