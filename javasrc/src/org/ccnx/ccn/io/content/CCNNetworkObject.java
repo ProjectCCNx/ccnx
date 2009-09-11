@@ -427,10 +427,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		try {
 			_lock.writeLock().lock();
 			Log.info("updateInBackground: getting latest version after {0} in background.", latestVersionKnown);
-			// DKS TODO locking?
 			cancelInterest();
-			// express this
-			// DKS TODO better versioned interests, a la library.getlatestVersion
 			_continuousUpdates = continuousUpdates;
 			_currentInterest = VersioningProfile.firstBlockLatestVersionInterest(latestVersionKnown, null);
 			Log.info("UpdateInBackground: interest: {0}", _currentInterest);
