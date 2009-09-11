@@ -195,7 +195,7 @@ get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_storage_siz
 
     ON_ERROR_EXIT(ccn_name_from_uri(name, ping_uri));
     ON_ERROR_EXIT(ccn_name_append_numeric(name, CCN_MARKER_NONE, getpid()));
-    ON_ERROR_EXIT(ccn_get(h, name, -1, local_scope_template, 200, resultbuf, &pcobuf, NULL));
+    ON_ERROR_EXIT(ccn_get(h, name, local_scope_template, 200, resultbuf, &pcobuf, NULL, 0));
     res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
                               resultbuf->buf,
                               pcobuf.offset[CCN_PCO_B_PublisherPublicKeyDigest],
@@ -323,7 +323,7 @@ register_prefix(struct ccn *h, struct ccn_keystore *keystore, struct ccn_charbuf
     ON_ERROR_CLEANUP(ccn_name_append(name, face_instance->ccnd_id, face_instance->ccnd_id_size));
     ON_ERROR_CLEANUP(ccn_name_append(name, "newface", 7));
     ON_ERROR_CLEANUP(ccn_name_append(name, temp->buf, temp->length));
-    res = ccn_get(h, name, -1, local_scope_template, 1000, resultbuf, &pcobuf, NULL);
+    res = ccn_get(h, name, local_scope_template, 1000, resultbuf, &pcobuf, NULL, 0);
     ON_ERROR_CLEANUP(res);
 
     ON_ERROR_CLEANUP(ccn_content_get_value(resultbuf->buf, resultbuf->length, &pcobuf, &ptr, &length));
@@ -360,7 +360,7 @@ register_prefix(struct ccn *h, struct ccn_keystore *keystore, struct ccn_charbuf
     ON_ERROR_CLEANUP(ccn_name_append(name, face_instance->ccnd_id, face_instance->ccnd_id_size));
     ON_ERROR_CLEANUP(ccn_name_append_str(name, "prefixreg"));
     ON_ERROR_CLEANUP(ccn_name_append(name, temp->buf, temp->length));
-    res = ccn_get(h, name, -1, local_scope_template, 1000, resultbuf, &pcobuf, NULL);
+    res = ccn_get(h, name, local_scope_template, 1000, resultbuf, &pcobuf, NULL, 0);
     ON_ERROR_CLEANUP(res);
 
     res = new_face_instance->faceid;

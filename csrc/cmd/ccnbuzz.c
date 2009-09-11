@@ -258,8 +258,8 @@ incoming_content(
     temp = ccn_charbuf_create();
 
     templ = make_template(md, info, NULL);
-    
-    res = ccn_express_interest(info->h, name, info->pi->prefix_comps, selfp, templ);
+    // XXX - this program might not work correctly anymore
+    res = ccn_express_interest(info->h, name, /* info->pi->prefix_comps,*/ selfp, templ);
     if (res < 0) abort();
     
     ccn_charbuf_destroy(&templ);
@@ -329,7 +329,7 @@ main(int argc, char **argv)
     for (i = 0; i < n; i++) {
         struct ccn_bloom *b = make_partition(i, lg_n);
         templ = make_template(mydata, NULL, b);
-        ccn_express_interest(ccn, name, -1, incoming, templ);
+        ccn_express_interest(ccn, name, incoming, templ);
         ccn_charbuf_destroy(&templ);
         ccn_bloom_destroy(&b);
     }

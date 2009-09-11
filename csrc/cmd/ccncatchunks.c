@@ -190,7 +190,7 @@ incoming_content(
                            info->pco->offset[CCN_PCO_B_Signature],
                            info->pco->offset[CCN_PCO_E_Signature]);
         templ = make_template(md, info);
-        res = ccn_express_interest(info->h, name, -1, selfp, templ);
+        res = ccn_express_interest(info->h, name, selfp, templ);
         if (res < 0)
             abort();
         ccn_charbuf_destroy(&templ);
@@ -221,7 +221,7 @@ incoming_content(
     clear_excludes(md);
     templ = make_template(md, info);
     
-    res = ccn_express_interest(info->h, name, -1, selfp, templ);
+    res = ccn_express_interest(info->h, name, selfp, templ);
     if (res < 0) abort();
     
     ccn_charbuf_destroy(&templ);
@@ -277,7 +277,7 @@ main(int argc, char **argv)
     mydata->excl = NULL;
     incoming->data = mydata;
     templ = make_template(mydata, NULL);
-    ccn_express_interest(ccn, name, -1, incoming, templ);
+    ccn_express_interest(ccn, name, incoming, templ);
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&name);
     /* Run a little while to see if there is anything there */

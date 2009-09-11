@@ -120,7 +120,7 @@ main(int argc, char **argv)
             resultbuf->length = 0;
         }
     }
-    res = ccn_get(h, name, -1, templ, timeout_ms, resultbuf, &pcobuf, NULL);
+    res = ccn_get(h, name, templ, timeout_ms, resultbuf, &pcobuf, NULL, 0);
     if (res >= 0) {
         ptr = resultbuf->buf;
         length = resultbuf->length;
