@@ -85,22 +85,31 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		this(name, (PublisherPublicKeyDigest)null, library);
 	}
 
+	public CCNOutputStream(ContentName name,
+						   PublisherPublicKeyDigest publisher,
+						   CCNHandle library) throws IOException {
+		this(name, null, publisher, null, null, library);
+	}
+
 	public CCNOutputStream(ContentName name, ContentKeys keys, CCNHandle library) throws IOException {
 		this(name, null, null, null, keys, library);
 	}
 
-	public CCNOutputStream(ContentName name,
-						   PublisherPublicKeyDigest publisher,
-						   CCNHandle library) throws IOException {
-		this(name, null, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library)));
+	public CCNOutputStream(ContentName name, 
+			  			   KeyLocator locator, 
+			  			   PublisherPublicKeyDigest publisher,
+			  			   ContentKeys keys,
+			  			   CCNHandle library) throws IOException {
+		this(name, locator, publisher, null, keys, library);
 	}
 
 	public CCNOutputStream(ContentName name, 
-			  KeyLocator locator, 
-			  PublisherPublicKeyDigest publisher,
-			  ContentKeys keys,
-			  CCNHandle library) throws IOException {
-		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library), null, keys));
+						   KeyLocator locator, 
+						   PublisherPublicKeyDigest publisher,
+						   ContentType type, 
+						   ContentKeys keys,
+						   CCNHandle library) throws IOException {
+		this(name, locator, publisher, type, keys, new CCNFlowControl(name, library));
 	}
 
 	public CCNOutputStream(ContentName name, 
@@ -108,18 +117,11 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 							  PublisherPublicKeyDigest publisher,
 							  ContentType type, 
 							  ContentKeys keys,
-							  CCNHandle library) throws IOException {
-		this(name, locator, publisher, null, new CCNSegmenter(new CCNFlowControl(name, library), null, keys));
+							  CCNFlowControl flowControl) throws IOException {
+		this(name, locator, publisher, type, new CCNSegmenter(flowControl, null, keys));
 	}
 
 	protected CCNOutputStream() {}	// special purpose constructor
-
-	protected CCNOutputStream(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher,
-			ContentType type, ContentKeys keys,
-			CCNFlowControl flowControl) throws IOException {
-		this(name, locator, publisher, null, new CCNSegmenter(flowControl, null, keys));
-	}
 
 	protected CCNOutputStream(ContentName name, 
 							  KeyLocator locator, 
@@ -140,7 +142,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		_baseName = nameToOpen;
 		_buffer = new byte[BLOCK_BUF_COUNT * segmenter.getBlockSize()];
 		_baseNameIndex = SegmentationProfile.baseSegment();
-		_type = type; // null = DATA
+		_type = type; // null = DATA or ENCR
 
 		_dh = new CCNDigestHelper();
 		startWrite(); // set up flow controller to write

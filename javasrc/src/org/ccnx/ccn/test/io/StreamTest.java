@@ -106,7 +106,7 @@ public class StreamTest extends BlockReadWriteTest {
 	public void doPuts(ContentName baseName, int count, CCNHandle library) throws InterruptedException, 
 				SignatureException, MalformedContentNameStringException, IOException, InvalidKeyException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
-		CCNOutputStream ostream = new CCNOutputStream(thisName, null, null, library);
+		CCNOutputStream ostream = new CCNOutputStream(thisName, library);
 		sema.release();	// put channel open
 		
 		Log.info("Opened output stream for writing: " + thisName);

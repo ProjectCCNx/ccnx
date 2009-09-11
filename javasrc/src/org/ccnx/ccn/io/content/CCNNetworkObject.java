@@ -30,6 +30,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.CCNInputStream;
@@ -99,6 +100,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use library defaults
 	protected KeyLocator _keyLocator; // locator to find publisher key
 	protected boolean _raw = DEFAULT_RAW; // what kind of flow controller to make if we don't have one
+	protected ContentKeys _keys;
 	
 	// control ongoing update.
 	ArrayList<byte[]> _excludeList = new ArrayList<byte[]>();
@@ -531,7 +533,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				// CCNVersionedOutputStream will version an unversioned name. 
 				// If it gets a versioned name, will respect it. 
 				// This will call startWrite on the flow controller.
-				CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _flowControl);
+				CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _keys, _flowControl);
 				save(cos); // superclass stream save. calls flush but not close on a wrapping
 				// digest stream; want to make sure we end up with a single non-MHT signed
 				// segment and no header on small objects

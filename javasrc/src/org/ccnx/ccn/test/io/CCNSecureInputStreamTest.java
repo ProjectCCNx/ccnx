@@ -251,7 +251,7 @@ public class CCNSecureInputStreamTest {
 				return new CCNFileInputStream(name, null, null, keys, inputLibrary);
 			}
 			public OutputStream makeOutputStream() throws IOException, XMLStreamException {
-				return new CCNFileOutputStream(name, null, keys, outputLibrary);
+				return new CCNFileOutputStream(name, keys, outputLibrary);
 			}
 		};
 		flosser.stop();

@@ -24,7 +24,6 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
@@ -49,15 +48,14 @@ public class CCNDescriptor {
 	/**
 	 * Open for reading. This does getLatestVersion, etc on name, and assumes fragmentation.
 	 */
-	public CCNDescriptor(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) 
-	throws XMLStreamException, IOException {
-		openForReading(name, publisher, library);
-	}
-
-	public CCNDescriptor(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher,
-			CCNHandle library) throws XMLStreamException, IOException {
-		openForWriting(name, locator, publisher, library);
+	public CCNDescriptor(ContentName name, PublisherPublicKeyDigest publisher, 
+						 CCNHandle library, boolean openForWriting) 
+										throws XMLStreamException, IOException {
+		if (openForWriting) {
+			openForWriting(name, publisher, library);
+		} else {	
+			openForReading(name, publisher, library);
+		}
 	}
 
 	protected void openForReading(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) 
@@ -71,13 +69,13 @@ public class CCNDescriptor {
 	}
 
 	protected void openForWriting(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher,
-			CCNHandle library) throws IOException {
+								  PublisherPublicKeyDigest publisher,
+								  CCNHandle library) throws IOException {
 		ContentName nameToOpen = name;
 		if (SegmentationProfile.isSegment(name)) {
 			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
 		}
-		_output = new CCNVersionedOutputStream(nameToOpen, locator, publisher, library);
+		_output = new CCNVersionedOutputStream(nameToOpen, publisher, library);
 	}
 
 	public int available() throws IOException {

@@ -77,12 +77,12 @@ public class RepoPerformanceTester extends CCNOutputStream {
 	
 	public RepoPerformanceTester(String repoName, ContentName name, CCNHandle library)
 			throws XMLStreamException, IOException, MalformedContentNameStringException, RepositoryException {
-		super(name, null, null, _rpt.new TestFlowControl(repoName, name, library));
+		super(name, null, null, null, null, _rpt.new TestFlowControl(repoName, name, library));
 	}
 	
 	public RepoPerformanceTester(ContentName name, CCNFlowControl cf)
 			throws XMLStreamException, IOException, MalformedContentNameStringException, RepositoryException {
-		super(name, null, null, cf);
+		super(name, null, null, null, null, cf);
 	}
 	
 	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle library) throws MalformedContentNameStringException, XMLStreamException, IOException, RepositoryException {

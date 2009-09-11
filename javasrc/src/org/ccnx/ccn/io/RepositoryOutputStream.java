@@ -21,9 +21,11 @@ import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 
@@ -39,10 +41,40 @@ public class RepositoryOutputStream extends CCNOutputStream {
 		this(name, null, null, library);
 	}
 	
+	public RepositoryOutputStream(ContentName name,
+								  PublisherPublicKeyDigest publisher, 
+								  CCNHandle library) throws IOException {
+		this(name, null, publisher, library);
+	}
+
 	public RepositoryOutputStream(ContentName name, 
-			KeyLocator locator, PublisherPublicKeyDigest publisher, CCNHandle library)
-			throws IOException {
-		super(name, locator, publisher, new RepositoryFlowControl(name, library));
+								  KeyLocator locator, 
+								  PublisherPublicKeyDigest publisher, 
+								  CCNHandle library) throws IOException {
+		this(name, locator, publisher, null, null, library);
+	}
+
+	public RepositoryOutputStream(ContentName name, 
+								  ContentKeys keys,
+								  CCNHandle library) throws IOException {
+		this(name, null, null, keys, library);
+	}
+
+	public RepositoryOutputStream(ContentName name, 
+								  KeyLocator locator,
+								  PublisherPublicKeyDigest publisher, 
+								  ContentKeys keys,
+								  CCNHandle library) throws IOException {
+		this(name, locator, publisher, null, keys, library);
+	}
+
+	public RepositoryOutputStream(ContentName name, 
+								  KeyLocator locator,
+								  PublisherPublicKeyDigest publisher, 
+								  ContentType type,
+								  ContentKeys keys, 
+								  CCNHandle library) throws IOException {
+		super(name, locator, publisher, type, keys, new RepositoryFlowControl(name, library));
 	}
 }
 
