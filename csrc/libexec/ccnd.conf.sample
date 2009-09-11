@@ -1,0 +1,5 @@
+# Sample ccnd.conf for use with ccndc that will route all CCN URIs with
+# an example.com prefix to a link-local multicast on an ephemeral port.
+# 
+# add ccn:/example.com/ udp 224.0.0.204 52428
+#
