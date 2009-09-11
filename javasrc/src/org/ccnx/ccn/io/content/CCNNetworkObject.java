@@ -676,7 +676,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 	}
 	
-	protected synchronized void newVersionAvailable() {
+	protected void newVersionAvailable() {
 		// by default signal all waiters
 		this.notifyAll();
 	}
@@ -832,6 +832,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		try {
 			_lock.writeLock().lock();
+			boolean hasNewVersion = false;
 			for (ContentObject co : results) {
 				try {
 					Log.info("handleContent: " + _currentInterest + " retrieved " + co.name());
@@ -850,14 +851,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 						}
 						_excludeList.clear();
 						_currentInterest = null;
-						newVersionAvailable(); // notify that a new version is available; perhaps move to real notify()
-						if (_continuousUpdates) {
-							// DKS TODO -- order with respect to newVersionAvailable and locking...
-							updateInBackground(true);
-						} else {
-							_continuousUpdates = false;
-						}
-						return null; // implicit cancel of interest
+						hasNewVersion = true;
+					} else {
+						_excludeList.add(co.name().component(_currentInterest.name().count() - 1));  
+						Log.info("handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());						
 					}
 				} catch (IOException ex) {
 					Log.info("Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
@@ -867,13 +864,26 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 					// alright, that one didn't work, try to go on.
 				} 
 
-				_excludeList.add(co.name().component(_currentInterest.name().count() - 1));  
-				Log.info("handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());
 			}
-			byte [][] excludes = new byte[_excludeList.size()][];
-			_excludeList.toArray(excludes);
-			_currentInterest = Interest.last(_currentInterest.name(), excludes, null);
+			
+			if (hasNewVersion) {
+				if (_continuousUpdates) {
+					// DKS TODO -- order with respect to newVersionAvailable and locking...
+					updateInBackground(true);
+				} else {
+					_continuousUpdates = false;
+				}
+				_currentInterest = null; // implicit cancel of interest
+				newVersionAvailable();
+			} else {
+				byte [][] excludes = new byte[_excludeList.size()][];
+				_excludeList.toArray(excludes);
+				_currentInterest = Interest.last(_currentInterest.name(), excludes, null);
+			} 
 			return _currentInterest;
+		} catch (IOException ex) {
+			Log.info("Exception {0}: {1}  attempting to request further updates : {2}", ex.getClass().getName(), ex.getMessage(), _currentInterest);
+			return null;
 		} finally {
 			_lock.writeLock().unlock();
 		}
