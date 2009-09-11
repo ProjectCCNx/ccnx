@@ -89,12 +89,6 @@ public class KeyDirectoryTestRepo {
 	
 	@Test
 	public void testAddPrivateKey() throws Exception {
-		// CAN'T ASK THIS HERE -- because KD is being constructed incrementally across
-		// these tests (not the best idea), the KD is currently empty. If you ask this here,
-		// it will time out badly. Only want to make this sort of query on a KD you know
-		// is not completely empty.
-		// TODO -- make a KD, add only symmetric key blocks to it, then ask for private key block and test that it's false
-		// Assert.assertFalse(kd.hasPrivateKeyBlock());
 		// generate a private key to wrap
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 		kpg.initialize(1024);
@@ -267,9 +261,6 @@ public class KeyDirectoryTestRepo {
 		ContentName versionSupersededKeyDirectoryName = VersioningProfile.addVersion(supersededKeyDirectoryName);
 		CCNHandle library = CCNHandle.open();
 		KeyDirectory skd = new KeyDirectory(acm, versionSupersededKeyDirectoryName, library);
-		// can't call waitForData here -- directory empty
-		// TODO -- really bad idea -- don't want to test for existence in a directory you know is empty.
-		//Assert.assertTrue(!skd.hasSupersededBlock());
 
 		// generate a AES wrapping key
 		KeyGenerator kg = KeyGenerator.getInstance("AES");
