@@ -36,6 +36,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
+import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -481,9 +482,9 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public void publishKeyToRepository(ContentName keyName,
-			PublisherPublicKeyDigest keyToPublish, CCNHandle handle) throws InvalidKeyException,
-			IOException, ConfigurationException {
+	public void publishKeyToRepository(ContentName keyName, 
+									   PublisherPublicKeyDigest keyToPublish, 
+									   CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException {
 		PublicKey key = null;
 		if (null == keyToPublish) {
 			key = getDefaultPublicKey();
@@ -496,9 +497,18 @@ public class BasicKeyManager extends KeyManager {
 		KeyLocator locatorLocator = 
 			new KeyLocator(keyName, new PublisherID(keyToPublish));
 		
-		RepositoryOutputStream ros = new RepositoryOutputStream(keyName, locatorLocator, null, handle);
+		// Can't determine whether a read copy comes from repo or cache, so have to write it regardless...
+		// Eventually might want to use PublicKeyObjects and versioning
+		RepositoryOutputStream ros = new RepositoryOutputStream(keyName, locatorLocator, keyToPublish, handle);
 		
 		byte [] encodedKey = key.getEncoded();
-
+		ros.write(encodedKey);
+		ros.close();
 	}
+	
+	@Override
+	public void publishKeyToRepository(CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException {
+		publishKeyToRepository(_keyLocator.name().name(), null, handle);
+	}
+
 }

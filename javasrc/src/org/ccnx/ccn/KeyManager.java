@@ -201,8 +201,19 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 * @throws ConfigurationException
 	 */
-	public abstract void publishKeyToRepository(ContentName keyName, PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException;
-	
+	public abstract void publishKeyToRepository(ContentName keyName, 
+												PublisherPublicKeyDigest keyToPublish, 
+												CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException;
+
+	/**
+	 * Publish our default key to a repository at its default location.
+	 * @param handle
+	 * @throws InvalidKeyException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
+	public abstract void publishKeyToRepository(CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException;
+
 	public abstract KeyRepository keyRepository();
 
 }

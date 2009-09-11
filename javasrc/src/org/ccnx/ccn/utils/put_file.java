@@ -22,6 +22,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.security.InvalidKeyException;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
@@ -129,13 +130,16 @@ public class put_file {
 		} catch (IOException e) {
 			System.out.println("Cannot read file. " + e.getMessage());
 			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			System.out.println("Cannot publish invalid key: " + e.getMessage());
+			e.printStackTrace();
 		}
 		System.exit(1);
 
 	}
 
 	protected static void doPut(CCNHandle library, String fileName,
-			ContentName nodeName) throws IOException {
+			ContentName nodeName) throws IOException, InvalidKeyException, ConfigurationException {
 		InputStream is;
 		
 		System.out.printf("filename %s\n", fileName);
@@ -175,7 +179,7 @@ public class put_file {
 		// If we are using a repository, make sure our key is available to
 		// repository clients. For now, write an unversioned form of key.
 		if (!rawMode) {
-			library.keyManager().publishKeyToRepository();
+			library.keyManager().publishKeyToRepository(library);
 		}
 		
 		System.out.println("Inserted file " + fileName + ".");
