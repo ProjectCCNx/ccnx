@@ -19,6 +19,7 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.profiles.access.AccessControlProfile;
@@ -92,7 +93,7 @@ public class GroupTestRepo {
 			try{
 					grp.removeUsers(removeMembers);
 					succeed = true;
-			}catch(AccessDeniedException e){
+			}catch(ContentNotReadyException e){
 				succeed = false;
 			}
 		}
@@ -108,7 +109,7 @@ public class GroupTestRepo {
 			try{
 					grp.addUsers(removeMembers);
 					succeed = true;
-			}catch(AccessDeniedException e){
+			}catch(ContentNotReadyException e){
 				succeed = false;
 			}
 		}
@@ -181,9 +182,9 @@ public class GroupTestRepo {
 			
 			removeMembers.clear();
 			//try removing myself
-			removeMembers.add(new Link(UserConfiguration.defaultUserNamespace()));
-//			System.out.println("removing myself:.................." );
-//			testRemoveUsers(removeMembers, newGroup);
+			//removeMembers.add(new Link(UserConfiguration.defaultUserNamespace()));
+			//System.out.println("removing myself:.................." );
+			//testRemoveUsers(removeMembers, newGroup);
 			
 			//Assert.assertFalse(_gm.haveKnownGroupMemberships());
 			

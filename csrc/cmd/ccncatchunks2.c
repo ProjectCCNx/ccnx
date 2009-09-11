@@ -318,7 +318,7 @@ ask_more(struct mydata *md, uintmax_t seq)
     clear_excludes(md); // XXX Should not do this unconditionally
     templ = make_template(md);
     update_rtt(md, 0, slot);
-    res = ccn_express_interest(md->h, name, -1, cl, templ);
+    res = ccn_express_interest(md->h, name, cl, templ);
     if (res < 0) abort();
     md->interests_sent++;
     ccn_charbuf_destroy(&templ);
@@ -366,7 +366,7 @@ fill_holes(struct ccn_schedule *sched, void *clienth,
             cl->p = &hole_filled;
             name = sequenced_name(md, md->delivered);
             templ = make_template(md);
-            ccn_express_interest(md->h, name, -1, cl, templ);
+            ccn_express_interest(md->h, name, cl, templ);
             md->interests_sent++;
             ccn_charbuf_destroy(&templ);
             ccn_charbuf_destroy(&name);
@@ -446,7 +446,7 @@ GOT_HERE();
                            info->pco->offset[CCN_PCO_B_Signature],
                            info->pco->offset[CCN_PCO_E_Signature]);
         templ = make_template(md);
-        res = ccn_express_interest(info->h, name, -1, selfp, templ);
+        res = ccn_express_interest(info->h, name, selfp, templ);
         md->interests_sent++;
         update_rtt(md, 0, ((uintptr_t)selfp->intdata) % PIPELIMIT);
         if (res < 0)

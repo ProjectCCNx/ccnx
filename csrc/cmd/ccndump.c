@@ -95,7 +95,8 @@ incoming_content(
     ccn_digest_ContentObject(ccnb, info->pco);
     ccn_name_append(c, info->pco->digest, info->pco->digest_bytes);
     templ = local_scope_template(selfp->intdata);
-    res = ccn_express_interest(info->h, c, info->pi->prefix_comps, selfp, templ);
+    // XXX - This program cannot work anymore as written.
+    res = ccn_express_interest(info->h, c, /* info->pi->prefix_comps,*/ selfp, templ);
     if (res < 0) abort();
     ccn_charbuf_destroy(&c);
     ccn_charbuf_destroy(&templ);

@@ -17,7 +17,7 @@ public class TestUserDataTestRepo {
 	static ContentName testPrefix = null;
 	static ContentName userNamespace = null;
 	static ContentName userKeyStorePrefix = null;
-	static int userCount = 3;
+	static int userCount = 10;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {

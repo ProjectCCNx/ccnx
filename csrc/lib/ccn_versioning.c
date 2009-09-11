@@ -148,7 +148,7 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
         goto Finish;
     templ = resolve_templ(templ, lowtime, sizeof(lowtime));
     result->length = 0;
-    res = ccn_get(h, name, -1, templ, timeout_ms, result, pco, ndx);
+    res = ccn_get(h, name, templ, timeout_ms, result, pco, ndx, 0);
     while (result->length != 0) {
         if (pco->type == CCN_CONTENT_NACK) // XXX - also check for number of components
             break;
@@ -164,8 +164,9 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
             myres = 0;
             templ = resolve_templ(templ, name->buf + nix->buf[n], nix->buf[n+1] - nix->buf[n]);
             if (templ == NULL) break;
+            res = ccn_name_chop(name, nix, n);
             result->length = 0;
-            res = ccn_get(h, name, n, templ, timeout_ms, result, pco, ndx);
+            res = ccn_get(h, name, templ, timeout_ms, result, pco, ndx, 0);
         }
         else break;
     }

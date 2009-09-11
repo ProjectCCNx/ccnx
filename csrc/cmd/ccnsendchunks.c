@@ -196,7 +196,7 @@ main(int argc, char **argv)
     ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
     // XXX - use pubid
     ccn_charbuf_append_closer(templ); /* </Interest> */
-    res = ccn_express_interest(ccn, name, -1, &in_content, templ);
+    res = ccn_express_interest(ccn, name, &in_content, templ);
     if (res < 0) abort();
     
     /* Construct a key locator contining the key itself */

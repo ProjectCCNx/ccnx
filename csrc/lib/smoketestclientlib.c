@@ -152,8 +152,8 @@ main(int argc, char **argv)
             fprintf(stderr, "Registering interest with %d name components\n", res);
             c->length = 0;
             ccn_charbuf_append(c, rawbuf + name_start, name_size);
-            // XXX - rep is currently ignored
-            ccn_express_interest(ccn, c, interest.prefix_comps, &incoming_content_action, templ);
+            // XXX - res is currently ignored
+            ccn_express_interest(ccn, c, &incoming_content_action, templ);
         }
         else {
             struct ccn_parsed_ContentObject obj = {0};
