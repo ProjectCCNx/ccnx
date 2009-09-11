@@ -566,7 +566,7 @@ public class CCNNetworkManager implements Runnable {
 			throw new NullPointerException("expressInterest: callbackListener cannot be null");
 		}		
 	
-		Log.fine("expressInterest: {0}", interest.name());
+		Log.fine("expressInterest: {0}", interest);
 		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller);
 		expressInterest(reg);
 	}
