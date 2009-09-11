@@ -219,7 +219,9 @@ public class Group {
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
-		} 
+		}else{
+			stopPrivateKeyDirectoryEnumeration();
+		}
 		
 		// Generate key pair
 		// Write public key to new versioned name
@@ -338,7 +340,9 @@ public class Group {
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
-		} 
+		}else{
+			stopPrivateKeyDirectoryEnumeration();
+		}
 		
 		PublicKeyObject latestPublicKey = null;
 		for (Link lr : membersToAdd) {
@@ -424,6 +428,8 @@ public class Group {
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
+		}else{
+			stopPrivateKeyDirectoryEnumeration();
 		}
 
 		// Do we need to wait for data to come in? We use this to create new groups as well...
