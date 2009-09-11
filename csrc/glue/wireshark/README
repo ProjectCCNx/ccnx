@@ -1,0 +1,9 @@
+In order to build the CCN plugin for Wireshark you will first need to install
+and configure a Wireshark source distribution.
+
+Then -- in your wireshark source directory you should make a symlink from
+wireshark/plugins/ccn to the ccn/csrc/glue/wireshark/ccn directory
+of the CCN distribution.
+
+You'll need to follow the instructions in wireshark file doc/README.plugins
+regarding existing Wireshark files that need to be edited to add a new plugin.
