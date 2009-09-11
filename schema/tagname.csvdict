@@ -30,7 +30,7 @@
 44,Bloom
 45,BloomSeed
 46,OrderPreference,Deprecated
-47,AnswerOriginKind,Deprecated
+47,AnswerOriginKind
 53,Witness
 54,SignatureBits
 55,DigestAlgorithm
