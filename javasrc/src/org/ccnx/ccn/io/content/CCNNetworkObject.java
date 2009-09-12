@@ -36,6 +36,7 @@ import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
+import org.ccnx.ccn.io.NoMatchingContentFoundException;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -364,7 +365,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_isDirty = false;
 			_lastSaved = digestContent();	
 		} else {
-			super.update(inputStream);
+			try {
+				super.update(inputStream);
+			} catch (NoMatchingContentFoundException nme) {
+				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available. Updating once in background.", inputStream.baseName());
+				updateInBackground();
+				return false;
+			}
 
 			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.baseName());
 			_currentPublisher = inputStream.publisher();
