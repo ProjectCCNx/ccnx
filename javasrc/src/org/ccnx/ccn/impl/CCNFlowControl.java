@@ -144,9 +144,9 @@ public class CCNFlowControl implements CCNFilterListener {
 				it.remove();
 			}
 		}
-		Log.info("addNameSpace: adding namespace: " + name);
 		_filteredNames.add(name);
 		_library.registerFilter(name, this);
+		Log.info("Flow controller addNameSpace: added namespace: " + name);
 	}
 	
 	public void addNameSpace(String name) throws MalformedContentNameStringException, IOException {
