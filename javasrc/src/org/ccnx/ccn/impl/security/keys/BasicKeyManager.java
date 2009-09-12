@@ -42,9 +42,9 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
+import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -52,7 +52,6 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.KeyName;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 public class BasicKeyManager extends KeyManager {
@@ -497,9 +496,7 @@ public class BasicKeyManager extends KeyManager {
 				throw new InvalidKeyException("Cannot retrieive key " + keyToPublish);
 			}
 		}
-		KeyLocator locatorLocator = 
-			new KeyLocator(keyName, new PublisherID(keyToPublish));
-		
+
 		// HACK - want to use repo confirmation protocol to make sure data makes it to a repo
 		// even if it doesn't come from us. Problem is, we may have already written it, and don't
 		// want to write a brand new version of identical data. If we try to publish it under
@@ -508,6 +505,8 @@ public class BasicKeyManager extends KeyManager {
 		// name enumeration protocol to determine whether this key has been written to a repository
 		// already.
 		// This works because the last explicit name component of the key is its publisherID. 
+		// We then use a further trick, just calling startWrite on the key, to get the repo
+		// to read it -- not from here, but from the key server embedded in the KeyManager.
 		EnumeratedNameList enl = new EnumeratedNameList(keyName.parent(), handle);
 		enl.waitForData(500); // have to time out, may be nothing there.
 		enl.stopEnumerating();
@@ -518,13 +517,9 @@ public class BasicKeyManager extends KeyManager {
 			}
 		}
 		if (!enl.hasChildren() || !enl.hasChild(keyName.lastComponent())) {
-			// Eventually might want to use PublicKeyObjects and versioning
-			RepositoryOutputStream ros = new RepositoryOutputStream(keyName, locatorLocator, keyToPublish, ContentType.KEY, null, handle);
-
-			byte [] encodedKey = key.getEncoded();
-			ros.write(encodedKey);
-			ros.close();
-			Log.info("Key 0} published to repository.", keyName);
+			// this calls startWrite, but probably shouldn't. We should call it manually.
+			RepositoryFlowControl rfc = new RepositoryFlowControl(keyName, handle);
+			Log.info("Key {0} published to repository.", keyName);
 		} else {
 			Log.info("Key {0} already published to repository, not re-publishing.", keyName);
 		}
