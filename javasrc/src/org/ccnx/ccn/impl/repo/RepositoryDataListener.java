@@ -143,6 +143,9 @@ public class RepositoryDataListener implements CCNInterestListener {
 					// So in other words, the only time we use this value to actually cancel outstanding
 					// interests is when we have hit the end of the stream.
 					_finalBlockID = SegmentationProfile.getSegmentNumber(co.signedInfo().getFinalBlockID());
+					if (_finalBlockID == thisBlock) {
+						isFinalBlock = true; // we only know for sure what the final block is when this is true
+					}
 				}
 			}
 			synchronized (_interests) {
@@ -161,11 +164,15 @@ public class RepositoryDataListener implements CCNInterestListener {
 				int nOutput = _interests.size() >= _server.getWindowSize() ? 0 : _server.getWindowSize() - _interests.size();
 				
 				// Make sure we don't go past prospective last block.
-				if (_finalBlockID >= 0 && _finalBlockID < firstInterestToRequest) {
-					nOutput -= (firstInterestToRequest - _finalBlockID);
-					cancelHigherInterests(_finalBlockID);
+				if (_finalBlockID >= 0 && _finalBlockID < (firstInterestToRequest + nOutput - 1)) {
+					// want max to be _finalBlockID or firstInterestToRequest, whichever is larger,
+					// unless isFinalBlock is true, in which case max is _finalBlockID (i.e. no more interests)
+					nOutput = (int)(_finalBlockID - firstInterestToRequest + 1);
 					if (nOutput < 0)
 						nOutput = 0;
+					// If we're confident about the final block ID, cancel previous extra interests
+					if (isFinalBlock)
+						cancelHigherInterests(_finalBlockID);
 				}
 				
 				Log.finest("REPO: Got block: " + co.name() + " expressing " + nOutput + " more interests, current block " + _currentBlock + " final block " + _finalBlockID + " last block? " + isFinalBlock);

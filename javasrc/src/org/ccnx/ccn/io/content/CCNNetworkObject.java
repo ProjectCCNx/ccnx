@@ -508,8 +508,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// saving object as gone, currently this is always one empty segment so we don't use an OutputStream
 			ContentName segmentedName = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
 			byte [] empty = new byte[0];
+			byte [] finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(SegmentationProfile.BASE_SEGMENT);
 			ContentObject goneObject = 
-				ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty, _publisher, _keyLocator, null, null);
+				ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty, _publisher, _keyLocator, null, finalBlockID);
 
 			// The segmenter in the stream does an addNameSpace of the versioned name. Right now
 			// this not only adds the prefix (ignored) but triggers the repo start write.
