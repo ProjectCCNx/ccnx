@@ -918,7 +918,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 		System.out.println("addTreeNodes: prefix = "+prefix+" names: "+n.toString());
 
-		final DefaultMutableTreeNode parentNode = getTreeNode(prefix);
+		DefaultMutableTreeNode parentNode = getTreeNode(prefix);
 		if(parentNode == null){
 			System.out.println("PARENT NODE IS NULL!!!"+ prefix.toString());
 			System.out.println("can't add anything to a null parent...  cancel prefix and return");
@@ -944,8 +944,19 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			addToParent = true;
 			
 			//check if a version marker
-			if(VersioningProfile.containsVersion(cn))
+			if(VersioningProfile.containsVersion(cn)) {
 				addToParent = false;
+				
+				//this name is a version, that means the parent is something we can grab...
+				//we should change the icon for the parent to be a file and not a folder
+				
+				Name parentNameNode = getNameNode(parentNode);
+				parentNameNode.setIsDirectory(false);
+
+				((IconData)parentNode.getUserObject()).setIcon(ICON_DOCUMENT);
+				m_model.nodeChanged(parentNode);
+				
+			}
 			else
 				System.out.println("name is not a version");
 			//check if a segment marker
@@ -965,8 +976,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 							IconData id = (IconData)temp.getUserObject();
 							ContentName nodeName = ContentName.fromNative(new ContentName(), ((Name)id.m_data).name);
 							System.out.println("check names: "+nodeName+" "+cn.toString());
-							//if(((Name)(id.m_data)).toString().equals(cn.toString())){
-							//if(temp.toString().equals(cn.toString().substring(1))){
+
 							//check if already there...
 							if(cn.compareTo(nodeName) == 0){
 								addToParent = false;
@@ -983,7 +993,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			}
 			final DefaultMutableTreeNode node;
 			if(addToParent){
-				//name wasn't there, don't add again
+				//name wasn't there, go ahead and add to the parent
 				System.out.println("added as child: "+cn.toString());
 				if (cn.toString().toLowerCase().endsWith(".txt") || cn.toString().toLowerCase().endsWith(".text")) {
 			
@@ -993,18 +1003,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					
 					node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
 							null, new Name(cn.component(0), prefix,true)));
-					//This is the "Retrieving Data" node (gets rendered in IconCell Renderer
-					//node.add(new DefaultMutableTreeNode(new Boolean(true)));
 				}
-				//parentNode.add(node);
-				
-				//javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
-		    //    javax.swing.SwingUtilities.invokeLater(new Runnable() {
-		    //       public void run() {
-			//			m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
-			//			System.out.println("inserted node...  parent now has "+parentNode.getChildCount());
-		    //        }
-		    //    });
 		        
 		        m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
 				System.out.println("inserted node...  parent now has "+parentNode.getChildCount());

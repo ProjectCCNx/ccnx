@@ -40,6 +40,11 @@ public class Name {
     }
 
     
+    public boolean setIsDirectory(boolean b){
+    	isDirectory = b;
+    	return isDirectory;
+    }
+    
     public Object getObject() {
 		// TODO Auto-generated method stub
 		return this;

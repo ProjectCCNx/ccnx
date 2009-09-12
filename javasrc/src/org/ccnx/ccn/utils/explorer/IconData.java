@@ -39,6 +39,10 @@ public class IconData {
 	public Icon getIcon() {
 		return m_icon;
 	}
+	
+	public void setIcon(Icon i){
+		m_icon = i;
+	}
 
 	public Icon getExpandedIcon() {
 		return m_expandedIcon != null ? m_expandedIcon : m_icon;
