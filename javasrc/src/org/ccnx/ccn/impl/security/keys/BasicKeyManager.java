@@ -45,6 +45,7 @@ import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryOutputStream;
+import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -499,13 +500,34 @@ public class BasicKeyManager extends KeyManager {
 		KeyLocator locatorLocator = 
 			new KeyLocator(keyName, new PublisherID(keyToPublish));
 		
-		// Can't determine whether a read copy comes from repo or cache, so have to write it regardless...
-		// Eventually might want to use PublicKeyObjects and versioning
-		RepositoryOutputStream ros = new RepositoryOutputStream(keyName, locatorLocator, keyToPublish, ContentType.KEY, null, handle);
-		
-		byte [] encodedKey = key.getEncoded();
-		ros.write(encodedKey);
-		ros.close();
+		// HACK - want to use repo confirmation protocol to make sure data makes it to a repo
+		// even if it doesn't come from us. Problem is, we may have already written it, and don't
+		// want to write a brand new version of identical data. If we try to publish it under
+		// the same (unversioned) name, the repository may get some of the data from the ccnd
+		// cache, which will cause us to think it hasn't been written. So for the moment, we use the
+		// name enumeration protocol to determine whether this key has been written to a repository
+		// already.
+		// This works because the last explicit name component of the key is its publisherID. 
+		EnumeratedNameList enl = new EnumeratedNameList(keyName.parent(), handle);
+		enl.waitForData(500); // have to time out, may be nothing there.
+		enl.stopEnumerating();
+		if (enl.hasChildren()) {
+			Log.info("Looking for children of {0} matching {1}.", keyName.parent(), keyName);
+			for (ContentName name: enl.getChildren()) {
+				Log.info("Child: {0}", name);
+			}
+		}
+		if (!enl.hasChildren() || !enl.hasChild(keyName.lastComponent())) {
+			// Eventually might want to use PublicKeyObjects and versioning
+			RepositoryOutputStream ros = new RepositoryOutputStream(keyName, locatorLocator, keyToPublish, ContentType.KEY, null, handle);
+
+			byte [] encodedKey = key.getEncoded();
+			ros.write(encodedKey);
+			ros.close();
+			Log.info("Key 0} published to repository.", keyName);
+		} else {
+			Log.info("Key {0} already published to repository, not re-publishing.", keyName);
+		}
 	}
 	
 	@Override
