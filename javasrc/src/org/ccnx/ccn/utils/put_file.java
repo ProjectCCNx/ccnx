@@ -42,12 +42,13 @@ public class put_file {
 	private static boolean rawMode = false;
 	private static Integer timeout = null;
 	private static boolean unversioned = false;
+	private static boolean verbose = false;
 
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		System.err.print("here1");
+
 		int startArg = 0;
 		
 		for (int i = 0; i < args.length - 2; i++) {
@@ -83,6 +84,9 @@ public class put_file {
 				Log.setLevel(level);
 				if (startArg <= i)
 					startArg = i + 1;
+			} else if (args[i].equals("-v")) {
+				verbose = true;
+				++i;
 			} else {
 				usage();
 			}
@@ -104,11 +108,12 @@ public class put_file {
 			CCNHandle library = CCNHandle.open();
 			
 			if (args.length == (startArg + 2)) {
-				
-				Log.info("put_file: putting file " + args[startArg + 1]);
+				if (verbose)
+					Log.info("put_file: putting file " + args[startArg + 1]);
 				
 				doPut(library, args[startArg + 1], argName);
-				System.out.println("put_file took: "+(System.currentTimeMillis() - starttime)+"ms");
+				if (verbose)
+					System.out.println("put_file took: "+(System.currentTimeMillis() - starttime)+" ms");
 				System.exit(0);
 			} else {
 				for (int i=startArg + 1; i < args.length; ++i) {
@@ -118,7 +123,8 @@ public class put_file {
 					
 					doPut(library, args[i], nodeName);
 				}
-				System.out.println("put_file took: "+(System.currentTimeMillis() - starttime)+"ms");
+				if (verbose)
+					System.out.println("put_file took: "+(System.currentTimeMillis() - starttime)+" ms");
 				System.exit(0);
 			}
 		} catch (ConfigurationException e) {
@@ -141,13 +147,15 @@ public class put_file {
 	protected static void doPut(CCNHandle library, String fileName,
 			ContentName nodeName) throws IOException, InvalidKeyException, ConfigurationException {
 		InputStream is;
-		
-		System.out.printf("filename %s\n", fileName);
+		if (verbose)
+			System.out.printf("filename %s\n", fileName);
 		if (fileName.startsWith("http://")) {
-			System.out.printf("filename is http\n");			
+			if (verbose)
+				System.out.printf("filename is http\n");			
 			is = new URL(fileName).openStream();
 		} else {
-			System.out.printf("filename is file\n");			
+			if (verbose)
+				System.out.printf("filename is file\n");			
 			File theFile = new File(fileName);
 	
 			if (!theFile.exists()) {
@@ -182,6 +190,7 @@ public class put_file {
 			ostream.setTimeout(timeout);
 		do_write(ostream, is);
 				
+		// leave this one as always printing for now
 		System.out.println("Inserted file " + fileName + ".");
 	}
 	
@@ -190,18 +199,18 @@ public class put_file {
 		int size = BLOCK_SIZE;
 		int readLen = 0;
 		byte [] buffer = new byte[BLOCK_SIZE];
-		Log.info("do_write: " + is.available() + " bytes left.");
+		Log.finer("do_write: " + is.available() + " bytes left.");
 		while((readLen = is.read(buffer, 0, size)) != -1){	
 			ostream.write(buffer, 0, readLen);
-			Log.info("do_write: wrote " + size + " bytes.");
-			Log.info("do_write: " + is.available() + " bytes left.");
+			Log.finer("do_write: wrote " + size + " bytes.");
+			Log.finer("do_write: " + is.available() + " bytes left.");
 		}
 		ostream.close();
-		Log.info("finished write: "+(System.currentTimeMillis() - time));
+		Log.fine("finished write: "+(System.currentTimeMillis() - time));
 	}
 	
 	public static void usage() {
-		System.out.println("usage: put_file [-raw] [-unversioned] [-timeout millis] [-log level] <ccnname> (<filename>|<url>)*");
+		System.out.println("usage: put_file [-v (verbose)] [-raw] [-unversioned] [-timeout millis] [-log level] <ccnname> (<filename>|<url>)*");
 		System.exit(1);
 	}
 
