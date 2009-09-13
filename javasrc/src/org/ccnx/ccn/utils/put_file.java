@@ -48,7 +48,7 @@ public class put_file {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-
+		Log.setDefaultLevel(Level.WARNING);
 		int startArg = 0;
 		
 		for (int i = 0; i < args.length - 2; i++) {
