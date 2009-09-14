@@ -42,6 +42,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
+import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
@@ -517,8 +518,8 @@ public class BasicKeyManager extends KeyManager {
 			}
 		}
 		if (!enl.hasChildren() || !enl.hasChild(keyName.lastComponent())) {
-			// this calls startWrite, but probably shouldn't. We should call it manually.
 			RepositoryFlowControl rfc = new RepositoryFlowControl(keyName, handle);
+			rfc.startWrite(keyName, Shape.STREAM);
 			Log.info("Key {0} published to repository.", keyName);
 		} else {
 			Log.info("Key {0} already published to repository, not re-publishing.", keyName);
