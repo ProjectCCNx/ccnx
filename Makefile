@@ -1,4 +1,4 @@
-# Top level Makefile for ccn
+# Top level Makefile for ccnx
 
 # Subdirectories we build in
 TOPSUBDIRS = csrc schema javasrc doc/technical
@@ -44,9 +44,9 @@ MANIFEST: _manifester
 	mv MANIFEST.new MANIFEST
 	rm _manifester
 
-tar:	ccn.tar
-ccn.tar: MANIFEST
-	tar cf ccn.tar -T MANIFEST
+tar:	ccnx.tar
+ccnx.tar: MANIFEST
+	tar cf ccnx.tar -T MANIFEST
 	mv MANIFEST 00MANIFEST
 
 distfile: tar
@@ -55,11 +55,11 @@ distfile: tar
 	grep '^[0-9].....' version
 	# check the Doxyfiles for good version information
 	# fail on the next step if the directory already exists
-	mkdir ccn-$(VERSION)
-	( cd ccn-$(VERSION) && tar xf ../ccn.tar && $(MAKE) fixupversions VERSION=$(VERSION) && $(MAKE) MD5 SHA1 )
-	tar cf ccn-$(VERSION).tar ccn-$(VERSION)
-	gzip -9 ccn-$(VERSION).tar
-	ls -l ccn-$(VERSION).tar.gz
+	mkdir ccnx-$(VERSION)
+	( cd ccnx-$(VERSION) && tar xf ../ccnx.tar && $(MAKE) fixupversions VERSION=$(VERSION) && $(MAKE) MD5 SHA1 )
+	tar cf ccnx-$(VERSION).tar ccnx-$(VERSION)
+	gzip -9 ccnx-$(VERSION).tar
+	ls -l ccnx-$(VERSION).tar.gz
 
 fixupversions: _always
 	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 javasrc/Doxyfile
