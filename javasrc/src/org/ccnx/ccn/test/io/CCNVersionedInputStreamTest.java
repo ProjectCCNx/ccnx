@@ -295,8 +295,10 @@ public class CCNVersionedInputStreamTest {
 	public void testCCNVersionedInputStreamContentNameInt() {
 		try {
 			// we can make a new handle; as long as we don't use the outputHandle it should work
-			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, ((4 > firstVersionMaxSegment) ? firstVersionMaxSegment : 4L));
-			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, ((4 > latestVersionMaxSegment) ? latestVersionMaxSegment : 4L));
+			CCNVersionedInputStream vfirst = 
+				new CCNVersionedInputStream(firstVersionName, ((4 > firstVersionMaxSegment) ? firstVersionMaxSegment : 4L), null);
+			CCNVersionedInputStream vlatest = 
+				new CCNVersionedInputStream(defaultStreamName, ((4 > latestVersionMaxSegment) ? latestVersionMaxSegment : 4L), null);
 			testArgumentRunner(vfirst, vlatest);
 		} catch (XMLStreamException e) {
 			e.printStackTrace();
@@ -316,9 +318,6 @@ public class CCNVersionedInputStreamTest {
 			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionBlock, inputHandle);
 			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(latestVersionBlock, inputHandle);
 			testArgumentRunner(vfirst, vlatest);
-		} catch (XMLStreamException e) {
-			e.printStackTrace();
-			Assert.fail("XMLStreamException: " + e.getMessage());
 		} catch (IOException e) {
 			e.printStackTrace();
 			Assert.fail("IOException: " + e.getMessage());

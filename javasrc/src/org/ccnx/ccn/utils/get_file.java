@@ -105,7 +105,7 @@ public class get_file {
 			long starttime = System.currentTimeMillis();
 			CCNInputStream input;
 			if (unversioned)
-				input = new CCNInputStream(argName, null, handle);
+				input = new CCNInputStream(argName, handle);
 			else
 				input = new CCNFileInputStream(argName, handle);
 			if (timeout != null) {
