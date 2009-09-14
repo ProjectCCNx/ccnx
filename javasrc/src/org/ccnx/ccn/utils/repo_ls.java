@@ -44,8 +44,6 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * with the -c flag.  The tool utilizes the basic name enumeration protocol and currently does not properly
  * handle responses from multiple repositories.  If this is run with multiple repositories responding, it
  * will not crash, it just may not receive all of the information from each repository.
- * 
- * @author rbraynar
  *
  */
 

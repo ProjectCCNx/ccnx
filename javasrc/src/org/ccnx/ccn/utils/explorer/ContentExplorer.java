@@ -756,7 +756,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			final DefaultMutableTreeNode node = getTreeNode(event.getPath());
 					
 			//if the tree is not collapsed already, it is already being enumerated, so we don't need to reselect it
-			if (tree.isCollapsed(event.getPath())) {
+			//if (tree.isCollapsed(event.getPath())) {
 				//if the row is -1, that means a parent is collapsed and this node is being
 				//selected as part of a collapse, so we don't want to re-register it for enumerating
 				if (tree.getRowForPath(event.getPath()) > -1) {
@@ -790,9 +790,10 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				};
 				runner.start();
 				}
-			} else {
-				System.out.println("path is expanded... "+node.toString());
-			}
+			//} else {
+			//	System.out.println("path is expanded... "+node.toString());
+				
+			//}
 		}
 	}
 
