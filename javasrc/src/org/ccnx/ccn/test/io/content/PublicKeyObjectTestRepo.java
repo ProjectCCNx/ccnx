@@ -62,7 +62,7 @@ public class PublicKeyObjectTestRepo {
 	static Level oldLevel;
 	
 	static Flosser flosser = null;
-	public static CCNHandle library = null;
+	public static CCNHandle handle = null;
 	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
@@ -71,7 +71,7 @@ public class PublicKeyObjectTestRepo {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		library = CCNHandle.open();
+		handle = CCNHandle.open();
 		oldLevel = Log.getLevel();
 		Log.setLevel(Level.FINEST);
 		Security.addProvider(new BouncyCastleProvider());
@@ -133,11 +133,11 @@ public class PublicKeyObjectTestRepo {
 			flosser = new Flosser();
 		} 
 		flosser.handleNamespace(keyName);
-		PublicKeyObject pko = new PublicKeyObject(keyName, key, library);
+		PublicKeyObject pko = new PublicKeyObject(keyName, key, handle);
 		pko.save();
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getVersionedName()));
 		// should update in another thread
-		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new library
+		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new handle
 		Assert.assertTrue(pkoread.available());
 		Assert.assertEquals(pkoread.getVersionedName(), pko.getVersionedName());
 		if (!pkoread.publicKey().equals(pko.publicKey())) {
@@ -164,13 +164,13 @@ public class PublicKeyObjectTestRepo {
 		
 
 		System.out.println("Reading and writing key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
-		PublicKeyObject pko = new PublicKeyObject(keyName, key, library);
+		PublicKeyObject pko = new PublicKeyObject(keyName, key, handle);
 		pko.saveToRepository();
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getVersionedName()));
 		Log.info("Saved " + pko.getVersionedName() + " to repo, now trying to read.");
 		// should update in another thread
 
-		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new library
+		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new handle
 		Assert.assertTrue(pkoread.available());
 		Assert.assertEquals(pkoread.getVersionedName(), pko.getVersionedName());
 		if (!pkoread.publicKey().equals(pko.publicKey())) {

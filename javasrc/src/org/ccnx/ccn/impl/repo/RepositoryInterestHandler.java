@@ -41,11 +41,11 @@ import org.ccnx.ccn.protocol.Interest;
 
 public class RepositoryInterestHandler implements CCNFilterListener {
 	private RepositoryServer _server;
-	private CCNHandle _library;
+	private CCNHandle _handle;
 	
 	public RepositoryInterestHandler(RepositoryServer server) {
 		_server = server;
-		_library = server.getHandle();
+		_handle = server.getHandle();
 	}
 
 	public int handleInterests(ArrayList<Interest> interests) {
@@ -61,7 +61,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 					ContentObject content = _server.getRepository().getContent(interest);
 					if (content != null) {
 						Log.finest("Satisfying interest: " + interest + " with content " + content.name());
-						_library.put(content);
+						_handle.put(content);
 					} else {
 						Log.fine("Unsatisfied interest: " + interest);
 					}
@@ -105,7 +105,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			_server.getWriter().put(interest.name(), _server.getRepository().getRepoInfo(null), null, null,
 					_server.getFreshness());
 			listener.getInterests().add(readInterest, null);
-			_library.expressInterest(readInterest, listener);
+			_handle.expressInterest(readInterest, listener);
 		} catch (Exception e) {
 			Log.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();

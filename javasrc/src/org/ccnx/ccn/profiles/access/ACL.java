@@ -130,32 +130,32 @@ public class ACL extends Collection {
 
 	public static class ACLObject extends CCNEncodableObject<ACL> {
 
-		public ACLObject(ContentName name, ACL data, CCNHandle library) throws ConfigurationException, IOException {
-			super(ACL.class, name, data, library);
+		public ACLObject(ContentName name, ACL data, CCNHandle handle) throws ConfigurationException, IOException {
+			super(ACL.class, name, data, handle);
 		}
 		
 		public ACLObject(ContentName name, PublisherPublicKeyDigest publisher,
-				CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
-			super(ACL.class, name, publisher, library);
+				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+			super(ACL.class, name, publisher, handle);
 		}
 		
 		/**
 		 * Read constructor -- opens existing object.
 		 * @param type
 		 * @param name
-		 * @param library
+		 * @param handle
 		 * @throws XMLStreamException
 		 * @throws IOException
 		 * @throws ClassNotFoundException 
 		 */
 		public ACLObject(ContentName name, 
-				CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
-			super(ACL.class, name, (PublisherPublicKeyDigest)null, library);
+				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+			super(ACL.class, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
 		public ACLObject(ContentObject firstBlock,
-				CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
-			super(ACL.class, firstBlock, library);
+				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+			super(ACL.class, firstBlock, handle);
 		}
 		
 		public ACL acl() throws ContentNotReadyException, ContentGoneException { return data(); }

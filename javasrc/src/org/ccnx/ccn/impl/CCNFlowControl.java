@@ -63,7 +63,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	public enum Shape {STREAM};
 	
-	protected CCNHandle _library = null;
+	protected CCNHandle _handle = null;
 	
 	// Temporarily default to very high timeout so that puts have a good
 	// chance of going through.  We actually may want to keep this.
@@ -91,36 +91,36 @@ public class CCNFlowControl implements CCNFilterListener {
 	/**
 	 * Enabled flow control constructor
 	 * @param name
-	 * @param library
+	 * @param handle
 	 */
-	public CCNFlowControl(ContentName name, CCNHandle library) throws IOException {
-		this(library);
+	public CCNFlowControl(ContentName name, CCNHandle handle) throws IOException {
+		this(handle);
 		if (name != null) {
 			Log.finest("adding namespace: " + name);
 			// don't call full addNameSpace, in order to allow subclasses to 
 			// override. just do minimal part
 			_filteredNames.add(name);
-			_library.registerFilter(name, this);
+			_handle.registerFilter(name, this);
 		}
 		_unmatchedInterests.setHighWater(INTEREST_HIGHWATER_DEFAULT);
 	}
 	
-	public CCNFlowControl(String name, CCNHandle library) 
+	public CCNFlowControl(String name, CCNHandle handle) 
 				throws MalformedContentNameStringException, IOException {
-		this(ContentName.fromNative(name), library);
+		this(ContentName.fromNative(name), handle);
 	}
 	
-	public CCNFlowControl(CCNHandle library) throws IOException {
-		if (null == library) {
-			// Could make this create a library.
+	public CCNFlowControl(CCNHandle handle) throws IOException {
+		if (null == handle) {
+			// Could make this create a handle.
 			try {
-				library = CCNHandle.open();
+				handle = CCNHandle.open();
 			} catch (ConfigurationException e) {
-				Log.info("Got ConfigurationException attempting to create a library. Rethrowing it as an IOException. Message: " + e.getMessage());
-				throw new IOException("ConfigurationException creating a library: " + e.getMessage());
+				Log.info("Got ConfigurationException attempting to create a handle. Rethrowing it as an IOException. Message: " + e.getMessage());
+				throw new IOException("ConfigurationException creating a handle: " + e.getMessage());
 			}
 		}
-		_library = library;
+		_handle = handle;
 		_unmatchedInterests.setHighWater(INTEREST_HIGHWATER_DEFAULT);
 	}
 	
@@ -140,12 +140,12 @@ public class CCNFlowControl implements CCNFilterListener {
 				return;		// Already part of filter
 			}
 			if (name.isPrefixOf(filteredName)) {
-				_library.unregisterFilter(filteredName, this);
+				_handle.unregisterFilter(filteredName, this);
 				it.remove();
 			}
 		}
 		_filteredNames.add(name);
-		_library.registerFilter(name, this);
+		_handle.registerFilter(name, this);
 		Log.info("Flow controller addNameSpace: added namespace: " + name);
 	}
 	
@@ -182,7 +182,7 @@ public class CCNFlowControl implements CCNFilterListener {
 		while (it.hasNext()) {
 			ContentName filteredName = it.next();
 			if (all || filteredName.equals(name)) {
-				_library.unregisterFilter(filteredName, this);
+				_handle.unregisterFilter(filteredName, this);
 				it.remove();
 				Log.finest("removing namespace: " + name);
 				break;
@@ -268,7 +268,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				match = _unmatchedInterests.removeMatch(co);
 				if (match != null) {
 					Log.finest("Found pending matching interest for " + co.name() + ", putting to network.");
-					_library.put(co);
+					_handle.put(co);
 					afterPutAction(co);
 				}
 				if (_holdingArea.size() >= _highwater) {
@@ -300,7 +300,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				}
 			}
 		} else
-			_library.put(co);
+			_handle.put(co);
 		return co;
 	}
 	
@@ -312,7 +312,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				if (co != null) {
 					Log.finest("Found content " + co.name() + " matching interest: " + interest);
 					try {
-						_library.put(co);
+						_handle.put(co);
 						afterPutAction(co);
 					} catch (IOException e) {
 						Log.warning("IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
@@ -433,11 +433,11 @@ public class CCNFlowControl implements CCNFilterListener {
 	 */
 	public void shutdown() throws IOException {
 		waitForPutDrain();
-		_library.getNetworkManager().shutdown();
+		_handle.getNetworkManager().shutdown();
 	}
 	
-	public CCNHandle getLibrary() {
-		return _library;
+	public CCNHandle getHandle() {
+		return _handle;
 	}
 	
 	public void clearUnmatchedInterests() {

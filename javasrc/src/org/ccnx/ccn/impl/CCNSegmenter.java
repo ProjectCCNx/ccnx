@@ -108,7 +108,7 @@ public class CCNSegmenter {
 	protected int _byteScale = SegmentationProfile.DEFAULT_SCALE;
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
 	
-	protected CCNHandle _library;
+	protected CCNHandle _handle;
 	// Eventually may not contain this; callers may access it exogenously.
 	protected CCNFlowControl _flowControl;
 	
@@ -150,12 +150,12 @@ public class CCNSegmenter {
 	}
 	
 	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer) {
-		if ((null == flowControl) || (null == flowControl.getLibrary())) {
+		if ((null == flowControl) || (null == flowControl.getHandle())) {
 			// Tries to get a library or make a flow control, yell if we fail.
 			throw new IllegalArgumentException("CCNSegmenter: must provide a valid library or flow controller.");
 		} 
 		_flowControl = flowControl;
-		_library = _flowControl.getLibrary();
+		_handle = _flowControl.getHandle();
 		if (null == signer) {
 			_bulkSigner = new CCNMerkleTreeSigner();
 		} else {
@@ -205,7 +205,7 @@ public class CCNSegmenter {
 		return getScaledByteCountSegmenter(1, flowControl);
 	}
 	
-	public CCNHandle getLibrary() { return _library; }
+	public CCNHandle getLibrary() { return _handle; }
 	
 	public CCNFlowControl getFlowControl() { return _flowControl; }
 
@@ -275,12 +275,12 @@ public class CCNSegmenter {
 					throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 
 		if (null == publisher) {
-			publisher = _library.keyManager().getDefaultKeyID();
+			publisher = _handle.keyManager().getDefaultKeyID();
 		}
-		PrivateKey signingKey = _library.keyManager().getSigningKey(publisher);
+		PrivateKey signingKey = _handle.keyManager().getSigningKey(publisher);
 
 		if (null == locator)
-			locator = _library.keyManager().getKeyLocator(signingKey);
+			locator = _handle.keyManager().getKeyLocator(signingKey);
 
 		if (null == type) {
 			type = ContentType.DATA;
@@ -384,12 +384,12 @@ public class CCNSegmenter {
 			return baseSegmentNumber;
 		
 		if (null == publisher) {
-			publisher = getFlowControl().getLibrary().keyManager().getDefaultKeyID();
+			publisher = getFlowControl().getHandle().keyManager().getDefaultKeyID();
 		}
-		PrivateKey signingKey = getFlowControl().getLibrary().keyManager().getSigningKey(publisher);
+		PrivateKey signingKey = getFlowControl().getHandle().keyManager().getSigningKey(publisher);
 
 		if (null == locator)
-			locator = getFlowControl().getLibrary().keyManager().getKeyLocator(signingKey);
+			locator = getFlowControl().getHandle().keyManager().getKeyLocator(signingKey);
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
 		// DKS -- replace with stream-level call to start writing
@@ -447,12 +447,12 @@ public class CCNSegmenter {
 			return baseSegmentNumber;
 
 		if (null == publisher) {
-			publisher = getFlowControl().getLibrary().keyManager().getDefaultKeyID();
+			publisher = getFlowControl().getHandle().keyManager().getDefaultKeyID();
 		}
-		PrivateKey signingKey = getFlowControl().getLibrary().keyManager().getSigningKey(publisher);
+		PrivateKey signingKey = getFlowControl().getHandle().keyManager().getSigningKey(publisher);
 
 		if (null == locator)
-			locator = getFlowControl().getLibrary().keyManager().getKeyLocator(signingKey);
+			locator = getFlowControl().getHandle().keyManager().getKeyLocator(signingKey);
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
 		getFlowControl().addNameSpace(rootName);
@@ -526,12 +526,12 @@ public class CCNSegmenter {
 							NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 
 		if (null == publisher) {
-			publisher = _library.keyManager().getDefaultKeyID();
+			publisher = _handle.keyManager().getDefaultKeyID();
 		}
-		PrivateKey signingKey = _library.keyManager().getSigningKey(publisher);
+		PrivateKey signingKey = _handle.keyManager().getSigningKey(publisher);
 
 		if (null == locator)
-			locator = _library.keyManager().getKeyLocator(signingKey);
+			locator = _handle.keyManager().getKeyLocator(signingKey);
 
 		if (null == type) {
 			type = ContentType.DATA;

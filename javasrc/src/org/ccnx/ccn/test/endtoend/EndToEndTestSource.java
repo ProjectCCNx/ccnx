@@ -38,7 +38,7 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 	public void puts() throws Throwable {
 		assert(count <= Byte.MAX_VALUE);
 		System.out.println("Put sequence started");
-		CCNWriter writer = new CCNWriter("/BaseLibraryTest", library);
+		CCNWriter writer = new CCNWriter("/BaseLibraryTest", handle);
 		writer.setTimeout(5000);
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
@@ -55,12 +55,12 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 	public void server() throws Throwable {
 		System.out.println("PutServer started");
 		name = ContentName.fromNative("/BaseLibraryTest/");
-		_writer = new CCNWriter(name, library);
+		_writer = new CCNWriter(name, handle);
 		_writer.setTimeout(5000);
-		library.registerFilter(name, this);
+		handle.registerFilter(name, this);
 		// Block on semaphore until enough data has been received
 		sema.acquire();
-		library.unregisterFilter(name, this);
+		handle.unregisterFilter(name, this);
 		if (null != error) {
 			throw error;
 		}

@@ -18,9 +18,7 @@
 package org.ccnx.ccn.impl.repo;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,7 +27,6 @@ import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.security.InvalidParameterException;
 import java.security.PrivateKey;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -37,7 +34,6 @@ import java.util.logging.Level;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.repo.ContentRef;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -347,7 +343,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * TODO - Co Should be signed with the "repository's" signature.
 	 * @throws RepositoryException
 	 */
-	private String checkFile(String fileName, String contents, CCNHandle library, boolean forceWrite) throws RepositoryException {
+	private String checkFile(String fileName, String contents, CCNHandle handle, boolean forceWrite) throws RepositoryException {
 		byte[][] components = new byte[3][];
 		components[0] = META_DIR.getBytes();
 		components[1] = REPO_PRIVATE.getBytes();
@@ -360,9 +356,9 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		}
 		
 		ContentName versionedName = VersioningProfile.addVersion(name);
-		PublisherPublicKeyDigest publisher = library.keyManager().getDefaultKeyID();
-		PrivateKey signingKey = library.keyManager().getSigningKey(publisher);
-		KeyLocator locator = library.keyManager().getKeyLocator(signingKey);
+		PublisherPublicKeyDigest publisher = handle.keyManager().getDefaultKeyID();
+		PrivateKey signingKey = handle.keyManager().getSigningKey(publisher);
+		KeyLocator locator = handle.keyManager().getKeyLocator(signingKey);
 		try {
 			co = new ContentObject(versionedName, new SignedInfo(publisher, locator), contents.getBytes(), signingKey);
 		} catch (Exception e) {

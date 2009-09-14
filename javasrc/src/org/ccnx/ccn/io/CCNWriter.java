@@ -46,16 +46,16 @@ public class CCNWriter {
 	
 	protected CCNSegmenter _segmenter;
 	
-	public CCNWriter(ContentName namespace, CCNHandle library) throws IOException {
-		this(new CCNFlowControl(namespace, library));
+	public CCNWriter(ContentName namespace, CCNHandle handle) throws IOException {
+		this(new CCNFlowControl(namespace, handle));
 	}
 	
-	public CCNWriter(String namespace, CCNHandle library) throws MalformedContentNameStringException, IOException {
-		this(new CCNFlowControl(ContentName.fromNative(namespace), library));
+	public CCNWriter(String namespace, CCNHandle handle) throws MalformedContentNameStringException, IOException {
+		this(new CCNFlowControl(ContentName.fromNative(namespace), handle));
 	}
 
-	public CCNWriter(CCNHandle library) throws IOException {
-		this(new CCNFlowControl(library));
+	public CCNWriter(CCNHandle handle) throws IOException {
+		this(new CCNFlowControl(handle));
 	}
 
 	public CCNWriter(CCNFlowControl flowControl) {

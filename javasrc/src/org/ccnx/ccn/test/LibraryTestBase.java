@@ -145,7 +145,7 @@ public class LibraryTestBase {
 	 * Expects this method to call checkGetResults on each set of content returned...
 	 * @param baseName
 	 * @param count
-	 * @param library
+	 * @param handle
 	 * @return
 	 * @throws InterruptedException
 	 * @throws MalformedContentNameStringException
@@ -154,7 +154,7 @@ public class LibraryTestBase {
 	 * @throws InvalidKeyException 
 	 * @throws XMLStreamException 
 	 */
-	public void getResults(ContentName baseName, int count, CCNHandle library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNHandle handle) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
 		Random rand = new Random();
 	//	boolean done = false;
 		System.out.println("getResults: getting children of " + baseName);
@@ -162,7 +162,7 @@ public class LibraryTestBase {
 	//	while (!done) {
 			Thread.sleep(rand.nextInt(50));
 			System.out.println("getResults getting " + baseName + " subitem " + i);
-			ContentObject contents = library.get(ContentName.fromNative(baseName, Integer.toString(i)), CCNBase.NO_TIMEOUT);
+			ContentObject contents = handle.get(ContentName.fromNative(baseName, Integer.toString(i)), CCNBase.NO_TIMEOUT);
 		
 			try {
 				int val = Integer.parseInt(new String(contents.content()));
@@ -197,9 +197,9 @@ public class LibraryTestBase {
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
-	public void doPuts(ContentName baseName, int count, CCNHandle library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
+	public void doPuts(ContentName baseName, int count, CCNHandle handle) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
 
-		CCNWriter writer = new CCNWriter(baseName, library);
+		CCNWriter writer = new CCNWriter(baseName, handle);
 		Random rand = new Random();
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
@@ -220,16 +220,16 @@ public class LibraryTestBase {
 	}
 	
 	public class GetThread implements Runnable {
-		protected CCNHandle library = null;
+		protected CCNHandle handle = null;
 		int count = 0;
 		int id = 0;
 		public GetThread(int n, int id) throws ConfigurationException, IOException {
-			library = CCNHandle.open();
+			handle = CCNHandle.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNHandle)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
+					((CCNHandle)handle).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
 				} catch (IOException ie) {
 				}
 			}
@@ -237,8 +237,8 @@ public class LibraryTestBase {
 		public void run() {
 			try {
 				System.out.println("Get thread started");
-				getResults(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
-				library.close();
+				getResults(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, handle);
+				handle.close();
 				System.out.println("Get thread finished");
 			} catch (Throwable ex) {
 				error = ex;
@@ -247,16 +247,16 @@ public class LibraryTestBase {
 	}
 	
 	public class PutThread implements Runnable {
-		protected CCNHandle library = null;
+		protected CCNHandle handle = null;
 		int count = 0;
 		int id = 0;
 		public PutThread(int n, int id) throws ConfigurationException, IOException {
-			library = CCNHandle.open();
+			handle = CCNHandle.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNHandle)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
+					((CCNHandle)handle).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
 				} catch (IOException ie) {
 				}
 			}
@@ -264,8 +264,8 @@ public class LibraryTestBase {
 		public void run() {
 			try {
 				System.out.println("Put thread started");
-				doPuts(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, library);
-				library.close();
+				doPuts(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, handle);
+				handle.close();
 				System.out.println("Put thread finished");
 				//cf.shutdown();
 			} catch (Throwable ex) {
@@ -277,7 +277,7 @@ public class LibraryTestBase {
 	}
 	
 	public class GetServer implements Runnable, CCNInterestListener {
-		protected CCNHandle library = null;
+		protected CCNHandle handle = null;
 		int count = 0;
 		int next = 0;
 		Semaphore sema = new Semaphore(0);
@@ -285,12 +285,12 @@ public class LibraryTestBase {
 		int id;
 		
 		public GetServer(int n, int id) throws ConfigurationException, IOException {
-			library = CCNHandle.open();
+			handle = CCNHandle.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNHandle)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
+					((CCNHandle)handle).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
 				} catch (IOException ie) {
 				}
 			}
@@ -300,7 +300,7 @@ public class LibraryTestBase {
 				System.out.println("GetServer started");
 				Interest interest = new Interest(ContentName.fromNative(PARENT_NAME, Integer.toString(id)));
 				// Register interest
-				library.expressInterest(interest, this);
+				handle.expressInterest(interest, this);
 				// Block on semaphore until enough data has been received
 				boolean interrupted = false;
 				do {
@@ -308,8 +308,8 @@ public class LibraryTestBase {
 						sema.acquire();
 					} catch (InterruptedException ie) { interrupted = true; }
 				} while (interrupted);
-				library.cancelInterest(interest, this);
-				library.close();
+				handle.cancelInterest(interest, this);
+				handle.close();
 
 			} catch (Throwable ex) {
 				error = ex;
@@ -341,7 +341,7 @@ public class LibraryTestBase {
 	}
 	
 	public class PutServer implements Runnable, CCNFilterListener {
-		protected CCNHandle library = null;
+		protected CCNHandle handle = null;
 		int count = 0;
 		int next = 0;
 		Semaphore sema = new Semaphore(0);
@@ -352,12 +352,12 @@ public class LibraryTestBase {
 		CCNWriter writer = null;
 		
 		public PutServer(int n, int id) throws ConfigurationException, IOException {
-			library = CCNHandle.open();
+			handle = CCNHandle.open();
 			count = n;
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNHandle)library).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
+					((CCNHandle)handle).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
 				} catch (IOException ie) {
 				}
 			}
@@ -368,13 +368,13 @@ public class LibraryTestBase {
 				System.out.println("PutServer started");
 				// Register filter
 				name = ContentName.fromNative(PARENT_NAME, Integer.toString(id));
-				writer = new CCNWriter(name, library);
-				library.registerFilter(name, this);
+				writer = new CCNWriter(name, handle);
+				handle.registerFilter(name, this);
 				// Block on semaphore until enough data has been received
 				sema.acquire();
-				library.unregisterFilter(name, this);
+				handle.unregisterFilter(name, this);
 				System.out.println("PutServer finished.");
-				library.close();
+				handle.close();
 
 			} catch (Throwable ex) {
 				error = ex;

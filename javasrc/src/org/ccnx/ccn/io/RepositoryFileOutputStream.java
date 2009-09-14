@@ -32,28 +32,28 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 public class RepositoryFileOutputStream extends CCNFileOutputStream {
 
-	public RepositoryFileOutputStream(ContentName name, CCNHandle library) throws IOException {
-		this(name, (PublisherPublicKeyDigest)null, library);
+	public RepositoryFileOutputStream(ContentName name, CCNHandle handle) throws IOException {
+		this(name, (PublisherPublicKeyDigest)null, handle);
 	}
 	
 	public RepositoryFileOutputStream(ContentName name,
 								  	  PublisherPublicKeyDigest publisher, 
-								  	  CCNHandle library) throws IOException {
-		this(name, null, publisher, null, null, library);
+								  	  CCNHandle handle) throws IOException {
+		this(name, null, publisher, null, null, handle);
 	}
 
 	public RepositoryFileOutputStream(ContentName name, 
 								      ContentKeys keys, 
-								      CCNHandle library) throws IOException {
-		this(name, null, null, null, keys, library);
+								      CCNHandle handle) throws IOException {
+		this(name, null, null, null, keys, handle);
 	}
 	
 	public RepositoryFileOutputStream(ContentName name, 
 									  KeyLocator locator, 
 									  PublisherPublicKeyDigest publisher,
 									  ContentKeys keys,
-									  CCNHandle library) throws IOException {
-		this(name, locator, publisher, null, keys, library);
+									  CCNHandle handle) throws IOException {
+		this(name, locator, publisher, null, keys, handle);
 	}
 
 	public RepositoryFileOutputStream(ContentName name, 
@@ -61,8 +61,8 @@ public class RepositoryFileOutputStream extends CCNFileOutputStream {
 								  PublisherPublicKeyDigest publisher, 
 								  ContentType type,
 								  ContentKeys keys, 
-								  CCNHandle library) throws IOException {
+								  CCNHandle handle) throws IOException {
 		super(name, locator, publisher, type, keys, 
-			  new RepositoryFlowControl(VersioningProfile.cutTerminalVersion(name).first(), library));
+			  new RepositoryFlowControl(VersioningProfile.cutTerminalVersion(name).first(), handle));
 	}
 }

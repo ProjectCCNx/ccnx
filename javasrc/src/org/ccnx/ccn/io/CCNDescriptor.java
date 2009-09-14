@@ -32,7 +32,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * stream that knows about versioning. It should probably mutate into
  * something else.
  * 
- * This object uses the library functions to do verification
+ * This object uses the handle functions to do verification
  * and build trust.
  * @author smetters
  *
@@ -49,33 +49,33 @@ public class CCNDescriptor {
 	 * Open for reading. This does getLatestVersion, etc on name, and assumes fragmentation.
 	 */
 	public CCNDescriptor(ContentName name, PublisherPublicKeyDigest publisher, 
-						 CCNHandle library, boolean openForWriting) 
+						 CCNHandle handle, boolean openForWriting) 
 										throws XMLStreamException, IOException {
 		if (openForWriting) {
-			openForWriting(name, publisher, library);
+			openForWriting(name, publisher, handle);
 		} else {	
-			openForReading(name, publisher, library);
+			openForReading(name, publisher, handle);
 		}
 	}
 
-	protected void openForReading(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) 
+	protected void openForReading(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
 	throws IOException, XMLStreamException {
 		ContentName nameToOpen = name;
 		if (SegmentationProfile.isSegment(nameToOpen)) {
 			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
 		} 
 
-		_input = new CCNVersionedInputStream(nameToOpen, publisher, library);
+		_input = new CCNVersionedInputStream(nameToOpen, publisher, handle);
 	}
 
 	protected void openForWriting(ContentName name, 
 								  PublisherPublicKeyDigest publisher,
-								  CCNHandle library) throws IOException {
+								  CCNHandle handle) throws IOException {
 		ContentName nameToOpen = name;
 		if (SegmentationProfile.isSegment(name)) {
 			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
 		}
-		_output = new CCNVersionedOutputStream(nameToOpen, publisher, library);
+		_output = new CCNVersionedOutputStream(nameToOpen, publisher, handle);
 	}
 
 	public int available() throws IOException {

@@ -48,20 +48,20 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 	 * @param type
 	 * @param name
 	 * @param data
-	 * @param library
+	 * @param handle
 	 * @throws IOException
 	 */
-	public CCNSerializableObject(Class<E> type, ContentName name, E data, CCNHandle library) throws IOException {
-		super(type, name, data, library);
+	public CCNSerializableObject(Class<E> type, ContentName name, E data, CCNHandle handle) throws IOException {
+		super(type, name, data, handle);
 	}
 
-	public CCNSerializableObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
-		super(type, name, data, publisher, keyLocator, library);
+	public CCNSerializableObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+		super(type, name, data, publisher, keyLocator, handle);
 	}
 
 	public CCNSerializableObject(Class<E> type, ContentName name, E data,
-			boolean raw, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
-		super(type, name, data, raw, publisher, keyLocator, library);
+			boolean raw, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+		super(type, name, data, raw, publisher, keyLocator, handle);
 	}
 
 	protected CCNSerializableObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher,
@@ -73,25 +73,25 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 	 * Read constructor -- opens existing object.
 	 * @param type
 	 * @param name
-	 * @param library
+	 * @param handle
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
 	public CCNSerializableObject(Class<E> type, ContentName name, 
-			CCNHandle library) throws IOException, XMLStreamException {
-		super(type, name, (PublisherPublicKeyDigest)null, library);
+			CCNHandle handle) throws IOException, XMLStreamException {
+		super(type, name, (PublisherPublicKeyDigest)null, handle);
 	}
 	
 	public CCNSerializableObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle library) throws IOException, XMLStreamException {
-		super(type, name, publisher, library);
+			CCNHandle handle) throws IOException, XMLStreamException {
+		super(type, name, publisher, handle);
 	}
 	
 	public CCNSerializableObject(Class<E> type, ContentName name,
-			PublisherPublicKeyDigest publisher, boolean raw, CCNHandle library)
+			PublisherPublicKeyDigest publisher, boolean raw, CCNHandle handle)
 			throws IOException, XMLStreamException {
-		super(type, name, publisher, raw, library);
+		super(type, name, publisher, raw, handle);
 	}
 
 	protected CCNSerializableObject(Class<E> type, ContentName name,
@@ -101,14 +101,14 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 	}
 
 	public CCNSerializableObject(Class<E> type, ContentObject firstBlock,
-			CCNHandle library) throws IOException, XMLStreamException {
-		super(type, firstBlock, library);
+			CCNHandle handle) throws IOException, XMLStreamException {
+		super(type, firstBlock, handle);
 	}
 
 	public CCNSerializableObject(Class<E> type, ContentObject firstBlock,
-			boolean raw, CCNHandle library) throws IOException,
+			boolean raw, CCNHandle handle) throws IOException,
 			XMLStreamException {
-		super(type, firstBlock, raw, library);
+		super(type, firstBlock, raw, handle);
 	}
 
 	protected CCNSerializableObject(Class<E> type, ContentObject firstBlock,

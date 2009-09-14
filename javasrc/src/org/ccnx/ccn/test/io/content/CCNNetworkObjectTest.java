@@ -78,7 +78,7 @@ public class CCNNetworkObjectTest {
 	static Collection small2;
 	static Collection empty;
 	static Collection big;
-	static CCNHandle library;
+	static CCNHandle handle;
 	static String [] numbers = new String[]{"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"};
 	
 	static Level oldLevel;
@@ -108,7 +108,7 @@ public class CCNNetworkObjectTest {
 		oldLevel = Log.getLevel();
 		Log.setLevel(Level.FINE);
 		
-		library = CCNHandle.open();
+		handle = CCNHandle.open();
 		namespace = ContentName.fromNative("/parc/test/data/CCNNetworkObjectTest-" + + new Random().nextInt(10000));
 		stringObjName = ContentName.fromNative(namespace, "StringObject");
 		collectionObjName = ContentName.fromNative(namespace, "CollectionObject");
@@ -167,7 +167,7 @@ public class CCNNetworkObjectTest {
 			CCNStringObject so = new CCNStringObject(testName, "First value", lput);
 			CCNStringObject ro = null;
 			CCNStringObject ro2 = null;
-			CCNStringObject ro3, ro4; // make each time, to get a new library.
+			CCNStringObject ro3, ro4; // make each time, to get a new handle.
 			CCNTime soTime, srTime, sr2Time, sr3Time, sr4Time, so2Time;
 			setupNamespace(testName);
 			for (int i=0; i < numbers.length; ++i) {
@@ -242,7 +242,7 @@ public class CCNNetworkObjectTest {
 		ContentName testName = ContentName.fromNative(stringObjName, "testEmptySave");
 		try {
 			CollectionObject emptycoll = 
-				new CollectionObject(testName, (Collection)null, library);
+				new CollectionObject(testName, (Collection)null, handle);
 			setupNamespace(testName);
 			try {
 				emptycoll.setData(small1); // set temporarily to non-null
@@ -318,7 +318,7 @@ public class CCNNetworkObjectTest {
 
 		try {
 
-			CollectionObject c0 = new CollectionObject(testName, empty, library);
+			CollectionObject c0 = new CollectionObject(testName, empty, handle);
 			setupNamespace(testName);
 			CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 
@@ -345,7 +345,7 @@ public class CCNNetworkObjectTest {
 		ContentName testName2 = ContentName.fromNative(collectionObjName, "testUpdateOtherName", "name2");
 		try {
 
-			CollectionObject c0 = new CollectionObject(testName, empty, library);
+			CollectionObject c0 = new CollectionObject(testName, empty, handle);
 			setupNamespace(testName);
 			CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 
@@ -419,7 +419,7 @@ public class CCNNetworkObjectTest {
 		ContentName testName = ContentName.fromNative(collectionObjName, "testSaveAsGone");
 
 		try {
-			CollectionObject c0 = new CollectionObject(testName, empty, library);
+			CollectionObject c0 = new CollectionObject(testName, empty, handle);
 			setupNamespace(testName); // this sends the interest, doing it after the object gives it
 						// a chance to catch it.
 			
@@ -465,7 +465,7 @@ public class CCNNetworkObjectTest {
 	public void testUpdateDoesNotExist() throws Exception {
 		ContentName testName = ContentName.fromNative(collectionObjName, "testUpdateDoesNotExist");
 		try {
-			CCNStringObject so = new CCNStringObject(testName, library);
+			CCNStringObject so = new CCNStringObject(testName, handle);
 			setupNamespace(testName);
 			// so should catch exception thrown by underlying stream when it times out.
 			Assert.assertFalse(so.available());

@@ -59,7 +59,7 @@ public class EnumeratedNameListTestRepo {
 	static ContentName name1;
 	static ContentName name2;
 	static ContentName name3;
-	static CCNHandle putLibrary;
+	static CCNHandle putHandle;
 		
 	static String prefix1StringError = "/park.com/csl/ccn/repositories";
 	ArrayList<ContentName> names;
@@ -81,16 +81,15 @@ public class EnumeratedNameListTestRepo {
 		name2 = ContentName.fromNative(directory, name2String);
 		name3 = ContentName.fromNative(directory, name3String);
 		brokenPrefix = ContentName.fromNative(prefix1StringError);
-		putLibrary = CCNHandle.open();
+		putHandle = CCNHandle.open();
 	}
 	
 	@Test
 	public void testEnumeratedName() throws Exception {
-		//Library.setLevel(Level.FINEST);
 		System.out.println("Starting Enumerated Name Test");
 		
 		try {
-			CCNHandle library = CCNHandle.open();
+			CCNHandle handle = CCNHandle.open();
 		
 			Log.info("*****************Starting Enumerated Name Test");
 
@@ -102,11 +101,11 @@ public class EnumeratedNameListTestRepo {
 
 			Log.info("*****************Creating Enumerated Name List Object");
 			//creates Enumerated Name List
-			testList = new EnumeratedNameList(directory, putLibrary);
+			testList = new EnumeratedNameList(directory, putHandle);
 
-			Log.info("*****************assert creation of library and enumeratednamelist object");
-			//verify that the class and library is setup
-			Assert.assertNotNull(putLibrary);
+			Log.info("*****************assert creation of handle and enumeratednamelist object");
+			//verify that the class and handle is setup
+			Assert.assertNotNull(putHandle);
 			Assert.assertNotNull(testList);
 
 			Log.info("*****************assert creation of prefix");
@@ -127,7 +126,7 @@ public class EnumeratedNameListTestRepo {
 			Log.info("****************** adding name1 to repo");
 
 			// adding content to repo
-			ContentName latestName = addContentToRepo(name1, library);
+			ContentName latestName = addContentToRepo(name1, handle);
 			testList.waitForData();
 			Log.info("Added data to repo: " + latestName);
 
@@ -180,9 +179,9 @@ public class EnumeratedNameListTestRepo {
 			// Now add some more data
 			
 			System.out.println("adding name2: "+name2);
-			addContentToRepo(name2, library);
+			addContentToRepo(name2, handle);
 			System.out.println("adding name3: "+name3);
-			addContentToRepo(name3, library);
+			addContentToRepo(name3, handle);
 			
 			//both of these actions could generate a new response since there is an outstanding interest on the data.
 			//this means the response can come a few different ways
@@ -234,11 +233,11 @@ public class EnumeratedNameListTestRepo {
 			
 			// This will add new versions
 			for (int i=0; i < 5; ++i) {
-				latestName = addContentToRepo(name1, library);
+				latestName = addContentToRepo(name1, handle);
 				Log.info("Added data to repo: " + latestName);
 			}
 			
-			EnumeratedNameList versionList = new EnumeratedNameList(name1, library);
+			EnumeratedNameList versionList = new EnumeratedNameList(name1, handle);
 			versionList.waitForData();
 			Assert.assertTrue(versionList.hasNewData());
 			// Even though the addition of versions above is blocking and the new EnumeratedNameList
@@ -273,11 +272,11 @@ public class EnumeratedNameListTestRepo {
 	 * Adds data to the repo for testing
 	 * DKS -- previous version that used repo streams somehow wasn't getting data in.
 	 * */
-	private ContentName addContentToRepo(ContentName name, CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
+	private ContentName addContentToRepo(ContentName name, CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
 		//method to load something to repo for testing
 		// DKS -- don't know why this wasn't working
 		/*
-		RepositoryOutputStream ros = putLibrary.repoOpen(name, null, putLibrary.getDefaultPublisher());
+		RepositoryOutputStream ros = putHandle.repoOpen(name, null, putHandle.getDefaultPublisher());
 		ros.setTimeout(5000);
 		byte [] data = "Testing 1 2 3".getBytes();
 		ros.write(data, 0, data.length);
@@ -285,7 +284,7 @@ public class EnumeratedNameListTestRepo {
 		return name;
 		*/
 		
-		CCNStringObject cso = new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), library);
+		CCNStringObject cso = new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), handle);
 		cso.saveToRepository();
 		System.out.println("Saved new object: " + cso.getVersionedName());
 		return cso.getVersionedName();

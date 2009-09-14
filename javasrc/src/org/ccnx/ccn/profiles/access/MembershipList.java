@@ -39,32 +39,32 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class MembershipList extends CCNEncodableObject<Collection> {
 
-	public MembershipList(ContentName name, Collection data, CCNHandle library) throws ConfigurationException, IOException {
-		super(Collection.class, name, data, library);
+	public MembershipList(ContentName name, Collection data, CCNHandle handle) throws ConfigurationException, IOException {
+		super(Collection.class, name, data, handle);
 	}
 	
 	public MembershipList(ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
-		super(Collection.class, name, publisher, library);
+			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+		super(Collection.class, name, publisher, handle);
 	}
 	
 	/**
 	 * Read constructor -- opens existing object.
 	 * @param type
 	 * @param name
-	 * @param library
+	 * @param handle
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
 	public MembershipList(ContentName name, 
-			CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
-		super(Collection.class, name, (PublisherPublicKeyDigest)null, library);
+			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+		super(Collection.class, name, (PublisherPublicKeyDigest)null, handle);
 	}
 	
 	public MembershipList(ContentObject firstBlock,
-			CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
-		super(Collection.class, firstBlock, library);
+			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+		super(Collection.class, firstBlock, handle);
 	}
 	
 	public Collection membershipList() throws ContentNotReadyException, ContentGoneException { return data(); }

@@ -95,10 +95,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	protected PublisherPublicKeyDigest _currentPublisher;
 	protected KeyLocator _currentPublisherKeyLocator;
-	protected CCNHandle _library;
+	protected CCNHandle _handle;
 	protected CCNFlowControl _flowControl;
 	protected boolean _disableFlowControlRequest = false;
-	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use library defaults
+	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use handle defaults
 	protected KeyLocator _keyLocator; // locator to find publisher key
 	protected boolean _raw = DEFAULT_RAW; // what kind of flow controller to make if we don't have one
 	protected ContentKeys _keys;
@@ -117,8 +117,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNHandle library) throws IOException {
-		this(type, name, data, DEFAULT_RAW, null, null, library);
+	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNHandle handle) throws IOException {
+		this(type, name, data, DEFAULT_RAW, null, null, handle);
 	}
 		
 	/**
@@ -126,12 +126,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param type
 	 * @param name
 	 * @param data
-	 * @param publisher which publisher key to sign this content with, or library defaults if null
-	 * @param library
+	 * @param publisher which publisher key to sign this content with, or handle defaults if null
+	 * @param handle
 	 * @throws IOException
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNHandle library) throws IOException {
-		this(type, name, data, DEFAULT_RAW, publisher, locator, library);
+	public CCNNetworkObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNHandle handle) throws IOException {
+		this(type, name, data, DEFAULT_RAW, publisher, locator, handle);
 	}
 		
 	/**
@@ -141,24 +141,24 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param name
 	 * @param data
 	 * @param raw
-	 * @param publisher which publisher key to sign this content with, or library defaults if null
-	 * @param library
+	 * @param publisher which publisher key to sign this content with, or handle defaults if null
+	 * @param handle
 	 * @throws IOException
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, 
 							PublisherPublicKeyDigest publisher, KeyLocator locator,
-							CCNHandle library) throws IOException {
+							CCNHandle handle) throws IOException {
 		// Don't start pulling a namespace till we actually write something. We may never write
 		// anything on this object. In fact, don't make a flow controller at all till we need one.
 		super(type, data);
-		if (null == library) {
+		if (null == handle) {
 			try {
-				library = CCNHandle.open();
+				handle = CCNHandle.open();
 			} catch (ConfigurationException e) {
-				throw new IllegalArgumentException("Library null, and cannot create one: " + e.getMessage(), e);
+				throw new IllegalArgumentException("handle null, and cannot create one: " + e.getMessage(), e);
 			}
 		}
-		_library = library;
+		_handle = handle;
 		_baseName = name;
 		_publisher = publisher;
 		_keyLocator = locator;
@@ -172,7 +172,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param type
 	 * @param name
 	 * @param data
-	 * @param publisher which publisher key to sign this content with, or library defaults if null
+	 * @param publisher which publisher key to sign this content with, or handle defaults if null
 	 * @param flowControl
 	 * @throws IOException
 	 */
@@ -180,7 +180,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 								PublisherPublicKeyDigest publisher, 
 								KeyLocator locator,
 								CCNFlowControl flowControl) throws IOException {
-		this(type, name, data, publisher, locator, flowControl.getLibrary());
+		this(type, name, data, publisher, locator, flowControl.getHandle());
 		_flowControl = flowControl;
 	}
 
@@ -190,19 +190,19 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param type
 	 * @param name
 	 * @param publisher Who must have signed the data we want. TODO should be PublisherID.
-	 * @param library
+	 * @param handle
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 * @throws XMLStreamException
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, 
-			CCNHandle library) throws IOException, XMLStreamException {
-		this(type, name, (PublisherPublicKeyDigest)null, library);
+			CCNHandle handle) throws IOException, XMLStreamException {
+		this(type, name, (PublisherPublicKeyDigest)null, handle);
 	}
 
 	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle library) throws IOException, XMLStreamException {
-		this(type, name, publisher, DEFAULT_RAW, library);
+			CCNHandle handle) throws IOException, XMLStreamException {
+		this(type, name, publisher, DEFAULT_RAW, handle);
 	}
 
 	/**
@@ -223,21 +223,21 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			CCNFlowControl flowControl) throws IOException, XMLStreamException {
 		super(type);
 		_flowControl = flowControl;
-		_library = flowControl.getLibrary();
+		_handle = flowControl.getHandle();
 		update(name, publisher);
 	}
 
 	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			boolean raw, CCNHandle library) throws IOException, XMLStreamException {
+			boolean raw, CCNHandle handle) throws IOException, XMLStreamException {
 		super(type);
-		if (null == library) {
+		if (null == handle) {
 			try {
-				library = CCNHandle.open();
+				handle = CCNHandle.open();
 			} catch (ConfigurationException e) {
-				throw new IllegalArgumentException("Library null, and cannot create one: " + e.getMessage(), e);
+				throw new IllegalArgumentException("handle null, and cannot create one: " + e.getMessage(), e);
 			}
 		}
-		_library = library;
+		_handle = handle;
 		_baseName = name;
 		update(name, publisher);
 	}
@@ -246,25 +246,25 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Read constructors if you already have a segment of the object. Used by streams.
 	 * @param type
 	 * @param firstSegment
-	 * @param library
+	 * @param handle
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 * @throws XMLStreamException
 	 */
-	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, CCNHandle library) throws IOException, XMLStreamException {
-		this(type, firstSegment, DEFAULT_RAW, library);
+	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, CCNHandle handle) throws IOException, XMLStreamException {
+		this(type, firstSegment, DEFAULT_RAW, handle);
 	}
 	
-	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, boolean raw, CCNHandle library) throws IOException, XMLStreamException {
+	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, boolean raw, CCNHandle handle) throws IOException, XMLStreamException {
 		super(type);
-		if (null == library) {
+		if (null == handle) {
 			try {
-				library = CCNHandle.open();
+				handle = CCNHandle.open();
 			} catch (ConfigurationException e) {
-				throw new IllegalArgumentException("Library null, and cannot create one: " + e.getMessage(), e);
+				throw new IllegalArgumentException("handle null, and cannot create one: " + e.getMessage(), e);
 			}
 		}
-		_library = library;
+		_handle = handle;
 		update(firstSegment);
 	}
 
@@ -273,7 +273,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (null == flowControl)
 			throw new IllegalArgumentException("flowControl cannot be null!");
 		_flowControl = flowControl;
-		_library = flowControl.getLibrary();
+		_handle = flowControl.getHandle();
 		update(firstSegment);
 	}
 	
@@ -289,8 +289,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	protected synchronized void createFlowController() throws IOException {
 		if (null == _flowControl) {
-			_flowControl = (_raw ? new CCNFlowControl(_library) : 
-								   new RepositoryFlowControl(_library));
+			_flowControl = (_raw ? new CCNFlowControl(_handle) : 
+								   new RepositoryFlowControl(_handle));
 			if (_disableFlowControlRequest)
 				_flowControl.disable();
 			// Have to register the version root. If we just register this specific version, we won't
@@ -313,7 +313,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// Look for first segment of version after ours, or first version if we have none.
 		ContentObject firstSegment = 
 			VersioningProfile.getFirstBlockOfLatestVersion(getVersionedName(), null, null, timeout, 
-					_library.defaultVerifier(), _library);
+					_handle.defaultVerifier(), _handle);
 		if (null != firstSegment) {
 			return update(firstSegment);
 		}
@@ -334,7 +334,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	public boolean update(ContentName name, PublisherPublicKeyDigest publisher) throws XMLStreamException, IOException {
 		Log.info("Updating object to {0}.", name);
-		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, _library);
+		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, _handle);
 		return update(is);
 	}
 
@@ -345,7 +345,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException
 	 */
 	public boolean update(ContentObject object) throws XMLStreamException, IOException {
-		CCNInputStream is = new CCNInputStream(object, _library);
+		CCNInputStream is = new CCNInputStream(object, _handle);
 		is.seek(0); // in case it wasn't the first segment
 		return update(is);
 	}
@@ -414,13 +414,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_continuousUpdates = continuousUpdates;
 		_currentInterest = VersioningProfile.firstBlockLatestVersionInterest(latestVersionKnown, null);
 		Log.info("UpdateInBackground: interest: {0}", _currentInterest);
-		_library.expressInterest(_currentInterest, this);
+		_handle.expressInterest(_currentInterest, this);
 	}
 	
 	public synchronized void cancelInterest() {
 		_continuousUpdates = false;
 		if (null != _currentInterest) {
-			_library.cancelInterest(_currentInterest, this);
+			_handle.cancelInterest(_currentInterest, this);
 		}
 		_excludeList.clear();
 	}
@@ -501,9 +501,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// digest stream; want to make sure we end up with a single non-MHT signed
 			// segment and no header on small objects
 			cos.close();
-			_currentPublisher = (_publisher == null) ? _flowControl.getLibrary().getDefaultPublisher() : _publisher; // TODO DKS -- is this always correct?
+			_currentPublisher = (_publisher == null) ? _flowControl.getHandle().getDefaultPublisher() : _publisher; // TODO DKS -- is this always correct?
 			_currentPublisherKeyLocator = (_keyLocator == null) ? 
-					_flowControl.getLibrary().keyManager().getKeyLocator(_publisher) : _keyLocator;
+					_flowControl.getHandle().keyManager().getKeyLocator(_publisher) : _keyLocator;
 		} else {
 			// saving object as gone, currently this is always one empty segment so we don't use an OutputStream
 			ContentName segmentedName = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );

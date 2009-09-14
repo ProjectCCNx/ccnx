@@ -55,15 +55,15 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
 		 * @param name
 		 * @param data
-		 * @param library
+		 * @param handle
 		 * @throws IOException
 		 */
-		public HeaderObject(ContentName name, Header data, CCNHandle library) throws IOException {
-			super(Header.class, name, data, library);
+		public HeaderObject(ContentName name, Header data, CCNHandle handle) throws IOException {
+			super(Header.class, name, data, handle);
 		}
 		
-		public HeaderObject(ContentName name, Header data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
-			super(Header.class, name, data, publisher, keyLocator, library);
+		public HeaderObject(ContentName name, Header data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+			super(Header.class, name, data, publisher, keyLocator, handle);
 		}
 
 		public HeaderObject(ContentName name,
@@ -75,21 +75,21 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		/**
 		 * Read constructor -- opens existing object.
 		 * @param name
-		 * @param library
+		 * @param handle
 		 * @throws XMLStreamException
 		 * @throws IOException
 		 * @throws ClassNotFoundException 
 		 */
-		public HeaderObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) throws IOException, XMLStreamException {
-			super(Header.class, name, publisher, library);
+		public HeaderObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
+			super(Header.class, name, publisher, handle);
 		}
 		
-		public HeaderObject(ContentName name, CCNHandle library) throws IOException, XMLStreamException {
-			super(Header.class, name, (PublisherPublicKeyDigest)null, library);
+		public HeaderObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
+			super(Header.class, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
-		public HeaderObject(ContentObject firstBlock, CCNHandle library) throws IOException, XMLStreamException {
-			super(Header.class, firstBlock, library);
+		public HeaderObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
+			super(Header.class, firstBlock, handle);
 		}
 		
 		public long start() throws ContentGoneException, ContentNotReadyException { 

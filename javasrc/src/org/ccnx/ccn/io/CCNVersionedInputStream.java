@@ -62,14 +62,14 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		super(name);
 	}
 
-	public CCNVersionedInputStream(ContentName name, CCNHandle library)
+	public CCNVersionedInputStream(ContentName name, CCNHandle handle)
 										throws XMLStreamException, IOException {
-		super(name, library);
+		super(name, handle);
 	}
 
 	public CCNVersionedInputStream(ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle library) throws XMLStreamException, IOException {
-		super(name, publisher, library);
+			CCNHandle handle) throws XMLStreamException, IOException {
+		super(name, publisher, handle);
 	}
 
 	public CCNVersionedInputStream(ContentName name, Long startingSegmentNumber)
@@ -79,24 +79,24 @@ public class CCNVersionedInputStream extends CCNInputStream {
 
 	public CCNVersionedInputStream(ContentName name,
 			Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
-			CCNHandle library) throws XMLStreamException, IOException {
-		super(name, startingSegmentNumber, publisher, library);
+			CCNHandle handle) throws XMLStreamException, IOException {
+		super(name, startingSegmentNumber, publisher, handle);
 	}
 
 	public CCNVersionedInputStream(ContentName name,
 			Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
-			ContentKeys keys, CCNHandle library)
+			ContentKeys keys, CCNHandle handle)
 			throws XMLStreamException, IOException {
-		super(name, startingSegmentNumber, publisher, keys, library);
+		super(name, startingSegmentNumber, publisher, keys, handle);
 	}
 
 	public CCNVersionedInputStream(ContentObject firstSegment,
-			CCNHandle library) throws XMLStreamException, IOException {
-		super(firstSegment, library);
+			CCNHandle handle) throws XMLStreamException, IOException {
+		super(firstSegment, handle);
 	}
 	
-	public CCNVersionedInputStream(ContentObject firstSegment, ContentKeys keys, CCNHandle library) throws XMLStreamException, IOException {
-		super(firstSegment, keys, library);
+	public CCNVersionedInputStream(ContentObject firstSegment, ContentKeys keys, CCNHandle handle) throws XMLStreamException, IOException {
+		super(firstSegment, keys, handle);
 	}
 	
 	@Override

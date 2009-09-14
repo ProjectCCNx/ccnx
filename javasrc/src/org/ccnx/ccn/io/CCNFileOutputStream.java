@@ -39,28 +39,28 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 public class CCNFileOutputStream extends CCNVersionedOutputStream {
 
-	public CCNFileOutputStream(ContentName name, CCNHandle library) throws IOException {
-		this(name, (PublisherPublicKeyDigest)null, library);
+	public CCNFileOutputStream(ContentName name, CCNHandle handle) throws IOException {
+		this(name, (PublisherPublicKeyDigest)null, handle);
 	}
 
 	public CCNFileOutputStream(ContentName name,
 						   	   PublisherPublicKeyDigest publisher,
-						   	   CCNHandle library) throws IOException {
-		this(name, null, publisher, null, null, library);
+						   	   CCNHandle handle) throws IOException {
+		this(name, null, publisher, null, null, handle);
 	}
 
 	public CCNFileOutputStream(ContentName name, 
 							   ContentKeys keys, 
-							   CCNHandle library) throws IOException {
-		this(name, null, null, null, keys, library);
+							   CCNHandle handle) throws IOException {
+		this(name, null, null, null, keys, handle);
 	}
 
 	public CCNFileOutputStream(ContentName name, 
 			  			   	   KeyLocator locator, 
 			  			   	   PublisherPublicKeyDigest publisher,
 			  			   	   ContentKeys keys,
-			  			   	   CCNHandle library) throws IOException {
-		this(name, locator, publisher, null, keys, library);
+			  			   	   CCNHandle handle) throws IOException {
+		this(name, locator, publisher, null, keys, handle);
 	}
 
 	public CCNFileOutputStream(ContentName name, 
@@ -68,9 +68,9 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 							   PublisherPublicKeyDigest publisher, 
 							   ContentType type, 
 							   ContentKeys keys, 
-							   CCNHandle library)
+							   CCNHandle handle)
 			throws IOException {
-		super(name, locator, publisher, type, keys, library);
+		super(name, locator, publisher, type, keys, handle);
 	}
 	
 	protected CCNFileOutputStream(ContentName name, 

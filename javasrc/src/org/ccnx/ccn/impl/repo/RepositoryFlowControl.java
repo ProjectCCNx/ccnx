@@ -131,17 +131,17 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		public Shape shape() { return _shape; }
 	}
 
-	public RepositoryFlowControl(CCNHandle library) throws IOException {
-		super(library);
+	public RepositoryFlowControl(CCNHandle handle) throws IOException {
+		super(handle);
 	}
 
-	public RepositoryFlowControl(ContentName name, CCNHandle library) throws IOException {
-		this(library);
+	public RepositoryFlowControl(ContentName name, CCNHandle handle) throws IOException {
+		this(handle);
 		addNameSpace(name);
 	}
 	
-	public RepositoryFlowControl(ContentName name, CCNHandle library, Shape shape) throws IOException {
-		this(library);
+	public RepositoryFlowControl(ContentName name, CCNHandle handle, Shape shape) throws IOException {
+		this(handle);
 		addNameSpace(name);
 		startWrite(name, shape);
 	}
@@ -155,11 +155,11 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		ContentName repoWriteName = new ContentName(name, CommandMarkers.COMMAND_MARKER_REPO_START_WRITE, Interest.generateNonce());
 
 		Interest writeInterest = new Interest(repoWriteName);
-		_library.expressInterest(writeInterest, this);
+		_handle.expressInterest(writeInterest, this);
 		_writeInterests.add(writeInterest);
 		if (! _bestEffort) {
 			_ackHandler = new RepoAckHandler();
-			_ackne = new CCNNameEnumerator(_library, _ackHandler);
+			_ackne = new CCNNameEnumerator(_handle, _ackHandler);
 		}
 
 		/*
@@ -251,7 +251,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			}
 		}
 		for (Interest writeInterest : _writeInterests){
-			_library.cancelInterest(writeInterest, this);
+			_handle.cancelInterest(writeInterest, this);
 		}
 	}
 }

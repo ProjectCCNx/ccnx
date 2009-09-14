@@ -57,36 +57,36 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
 	 * @param name
 	 * @param data
-	 * @param library
+	 * @param handle
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
-	public PublicKeyObject(ContentName name, PublicKey data, CCNHandle library) throws IOException {
-		super(PublicKey.class, name, data, library);
+	public PublicKeyObject(ContentName name, PublicKey data, CCNHandle handle) throws IOException {
+		super(PublicKey.class, name, data, handle);
 	}
 	
-	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNHandle library) throws IOException {
-		super(PublicKey.class, name, data, publisher, locator, library);
+	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNHandle handle) throws IOException {
+		super(PublicKey.class, name, data, publisher, locator, handle);
 	}
 
 	/**
 	 * Read constructor -- opens existing object.
 	 * @param name
-	 * @param library
+	 * @param handle
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
-	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) throws IOException, XMLStreamException {
-		super(PublicKey.class, name, publisher, library);
+	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
+		super(PublicKey.class, name, publisher, handle);
 	}
 	
-	public PublicKeyObject(ContentName name, CCNHandle library) throws IOException, XMLStreamException {
-		super(PublicKey.class, name, (PublisherPublicKeyDigest)null, library);
+	public PublicKeyObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
+		super(PublicKey.class, name, (PublisherPublicKeyDigest)null, handle);
 	}
 	
-	public PublicKeyObject(ContentObject firstBlock, CCNHandle library) throws IOException, XMLStreamException {
-		super(PublicKey.class, firstBlock, library);
+	public PublicKeyObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
+		super(PublicKey.class, firstBlock, handle);
 	}
 	
 	/**
