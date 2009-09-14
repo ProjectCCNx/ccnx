@@ -19,8 +19,6 @@ package org.ccnx.ccn.io;
 
 import java.io.IOException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
@@ -66,8 +64,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	 * both a version and a segment number, will start to read from that segment of that version.
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
-	public CCNVersionedInputStream(ContentName name) throws XMLStreamException,
-															IOException {
+	public CCNVersionedInputStream(ContentName name) throws IOException {
 		super(name);
 	}
 
@@ -88,7 +85,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
 	public CCNVersionedInputStream(ContentName name, CCNHandle handle)
-										throws XMLStreamException, IOException {
+										throws IOException {
 		super(name, handle);
 	}
 
@@ -111,7 +108,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
 	public CCNVersionedInputStream(ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle handle) throws XMLStreamException, IOException {
+			CCNHandle handle) throws IOException {
 		super(name, publisher, handle);
 	}
 
@@ -134,7 +131,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
 	public CCNVersionedInputStream(ContentName name, Long startingSegmentNumber, CCNHandle handle)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		super(name, startingSegmentNumber, handle);
 	}
 
@@ -160,7 +157,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	 */
 	public CCNVersionedInputStream(ContentName name,
 			Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
-			CCNHandle handle) throws XMLStreamException, IOException {
+			CCNHandle handle) throws IOException {
 		super(name, startingSegmentNumber, publisher, handle);
 	}
 
@@ -187,7 +184,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	public CCNVersionedInputStream(ContentName name,
 			Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
 			ContentKeys keys, CCNHandle handle)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		super(name, startingSegmentNumber, publisher, keys, handle);
 	}
 
