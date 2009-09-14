@@ -34,7 +34,6 @@ import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
-import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -188,162 +187,99 @@ public class CCNVersionedInputStreamTest {
 	}
 	
 	@Test
-	public void testCCNVersionedInputStreamContentNameLongPublisherKeyIDCCNLibrary() {
-		try {
-			// we can make a new handle; as long as we don't use the outputHandle it should work
-			CCNVersionedInputStream vfirst = 
-				new CCNVersionedInputStream(firstVersionName, 
-						((3 > firstVersionMaxSegment) ? firstVersionMaxSegment : 3L), outputHandle.getDefaultPublisher(), inputHandle);
-			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, 
-					((3 > latestVersionMaxSegment) ? latestVersionMaxSegment : 3L), outputHandle.getDefaultPublisher(), inputHandle);
-			testArgumentRunner(vfirst, vlatest);
-		} catch (XMLStreamException e) {
-			e.printStackTrace();
-			Assert.fail("XMLStreamException: " + e.getMessage());
-		} catch (IOException e) {
-			e.printStackTrace();
-			Assert.fail("IOException: " + e.getMessage());
-		}
+	public void testCCNVersionedInputStreamContentNameLongPublisherKeyIDCCNLibrary() throws Exception {
+		// we can make a new handle; as long as we don't use the outputHandle it should work
+		CCNVersionedInputStream vfirst = 
+			new CCNVersionedInputStream(firstVersionName, 
+					((3 > firstVersionMaxSegment) ? firstVersionMaxSegment : 3L), outputHandle.getDefaultPublisher(), inputHandle);
+		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, 
+				((3 > latestVersionMaxSegment) ? latestVersionMaxSegment : 3L), outputHandle.getDefaultPublisher(), inputHandle);
+		testArgumentRunner(vfirst, vlatest);
 	}
 
 	@Test
-	public void testCCNVersionedInputStreamContentNamePublisherKeyIDCCNLibrary() {
-		try {
-			// we can make a new handle; as long as we don't use the outputHandle it should work
-			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, outputHandle.getDefaultPublisher(), inputHandle);
-			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, outputHandle.getDefaultPublisher(), inputHandle);
-			testArgumentRunner(vfirst, vlatest);
-		} catch (XMLStreamException e) {
-			e.printStackTrace();
-			Assert.fail("XMLStreamException: " + e.getMessage());
-		} catch (IOException e) {
-			e.printStackTrace();
-			Assert.fail("IOException: " + e.getMessage());
-		}
+	public void testCCNVersionedInputStreamContentNamePublisherKeyIDCCNLibrary() throws Exception {
+		// we can make a new handle; as long as we don't use the outputHandle it should work
+		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, outputHandle.getDefaultPublisher(), inputHandle);
+		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, outputHandle.getDefaultPublisher(), inputHandle);
+		testArgumentRunner(vfirst, vlatest);
 	}
 
 	@Test
-	public void testCCNVersionedInputStreamContentName() {
-		try {
-			// we can make a new handle; as long as we don't use the outputHandle it should work
-			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName);
-			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName);
-			testArgumentRunner(vfirst, vlatest);
-		} catch (XMLStreamException e) {
-			e.printStackTrace();
-			Assert.fail("XMLStreamException: " + e.getMessage());
-		} catch (IOException e) {
-			e.printStackTrace();
-			Assert.fail("IOException: " + e.getMessage());
-		}
+	public void testCCNVersionedInputStreamContentName() throws Exception {
+		// we can make a new handle; as long as we don't use the outputHandle it should work
+		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName);
+		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName);
+		testArgumentRunner(vfirst, vlatest);
 	}
 
 	@Test
-	public void testCCNVersionedInputStreamContentNameCCNLibrary() {
+	public void testCCNVersionedInputStreamContentNameCCNLibrary() throws Exception {
 		
-		try {
-			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, inputHandle);
-			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, inputHandle);
-			testArgumentRunner(vfirst, vlatest);
-		} catch (XMLStreamException e) {
-			e.printStackTrace();
-			Assert.fail("XMLStreamException: " + e.getMessage());
-		} catch (IOException e) {
-			e.printStackTrace();
-			Assert.fail("IOException: " + e.getMessage());
-		}
+		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, inputHandle);
+		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, inputHandle);
+		testArgumentRunner(vfirst, vlatest);
 	}
 	
 	protected void testArgumentRunner(CCNVersionedInputStream vfirst,
-									  CCNVersionedInputStream vlatest) {
-		try {
-			Assert.assertEquals(vfirst.getBaseName(), firstVersionName);
-			Assert.assertEquals(VersioningProfile.cutTerminalVersion(vfirst.getBaseName()).first(), defaultStreamName);
-			byte b = (byte)vfirst.read();
-			if (b != 0x00) {
-			}
-			Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(firstVersionName), 
-								VersioningProfile.getLastVersionAsTimestamp(vfirst.getBaseName()));
-			Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(firstVersionName),
-							    vfirst.getVersionAsTimestamp());
-
-			System.out.println("Opened stream on latest version, expected: " + latestVersionName + " got: " + 
-								vlatest.getBaseName());
-			b = (byte)vlatest.read();
-			System.out.println("Post-read: Opened stream on latest version, expected: " + latestVersionName + " got: " + 
-					vlatest.getBaseName());
-			Assert.assertEquals(vlatest.getBaseName(), latestVersionName);
-			Assert.assertEquals(VersioningProfile.cutTerminalVersion(vlatest.getBaseName()).first(), defaultStreamName);
-			Assert.assertEquals(VersioningProfile.getLastVersionAsLong(latestVersionName), 
-					VersioningProfile.getLastVersionAsLong(vlatest.getBaseName()));
-			Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(latestVersionName), 
-								VersioningProfile.getLastVersionAsTimestamp(vlatest.getBaseName()));
-			Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(latestVersionName),
-					vlatest.getVersionAsTimestamp());
-		
-		} catch (IOException e) {
-			e.printStackTrace();
-			Assert.fail("IOException: " + e.getMessage());
-		} catch (VersionMissingException e) {
-			e.printStackTrace();
-			Assert.fail("VersionMissingException: " + e.getMessage());
+									  CCNVersionedInputStream vlatest) throws Exception {
+		Assert.assertEquals(vfirst.getBaseName(), firstVersionName);
+		Assert.assertEquals(VersioningProfile.cutTerminalVersion(vfirst.getBaseName()).first(), defaultStreamName);
+		byte b = (byte)vfirst.read();
+		if (b != 0x00) {
 		}
+		Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(firstVersionName), 
+				VersioningProfile.getLastVersionAsTimestamp(vfirst.getBaseName()));
+		Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(firstVersionName),
+				vfirst.getVersionAsTimestamp());
 
+		System.out.println("Opened stream on latest version, expected: " + latestVersionName + " got: " + 
+				vlatest.getBaseName());
+		b = (byte)vlatest.read();
+		System.out.println("Post-read: Opened stream on latest version, expected: " + latestVersionName + " got: " + 
+				vlatest.getBaseName());
+		Assert.assertEquals(vlatest.getBaseName(), latestVersionName);
+		Assert.assertEquals(VersioningProfile.cutTerminalVersion(vlatest.getBaseName()).first(), defaultStreamName);
+		Assert.assertEquals(VersioningProfile.getLastVersionAsLong(latestVersionName), 
+				VersioningProfile.getLastVersionAsLong(vlatest.getBaseName()));
+		Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(latestVersionName), 
+				VersioningProfile.getLastVersionAsTimestamp(vlatest.getBaseName()));
+		Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(latestVersionName),
+				vlatest.getVersionAsTimestamp());
 	}
 
 	@Test
-	public void testCCNVersionedInputStreamContentNameInt() {
-		try {
-			// we can make a new handle; as long as we don't use the outputHandle it should work
-			CCNVersionedInputStream vfirst = 
-				new CCNVersionedInputStream(firstVersionName, ((4 > firstVersionMaxSegment) ? firstVersionMaxSegment : 4L), null);
-			CCNVersionedInputStream vlatest = 
-				new CCNVersionedInputStream(defaultStreamName, ((4 > latestVersionMaxSegment) ? latestVersionMaxSegment : 4L), null);
-			testArgumentRunner(vfirst, vlatest);
-		} catch (XMLStreamException e) {
-			e.printStackTrace();
-			Assert.fail("XMLStreamException: " + e.getMessage());
-		} catch (IOException e) {
-			e.printStackTrace();
-			Assert.fail("IOException: " + e.getMessage());
-		}
+	public void testCCNVersionedInputStreamContentNameInt() throws Exception {
+		// we can make a new handle; as long as we don't use the outputHandle it should work
+		CCNVersionedInputStream vfirst = 
+			new CCNVersionedInputStream(firstVersionName, ((4 > firstVersionMaxSegment) ? firstVersionMaxSegment : 4L), null);
+		CCNVersionedInputStream vlatest = 
+			new CCNVersionedInputStream(defaultStreamName, ((4 > latestVersionMaxSegment) ? latestVersionMaxSegment : 4L), null);
+		testArgumentRunner(vfirst, vlatest);
 	}
 
 	@Test
-	public void testCCNVersionedInputStreamContentObjectCCNLibrary() {
-		try {
-			// we can make a new handle; as long as we don't use the outputHandle it should work
-			ContentObject firstVersionBlock = inputHandle.get(firstVersionName, 1000);
-			ContentObject latestVersionBlock = reader.getLatest(defaultStreamName, defaultStreamName.count(), 1000);
-			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionBlock, inputHandle);
-			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(latestVersionBlock, inputHandle);
-			testArgumentRunner(vfirst, vlatest);
-		} catch (IOException e) {
-			e.printStackTrace();
-			Assert.fail("IOException: " + e.getMessage());
-		}
+	public void testCCNVersionedInputStreamContentObjectCCNLibrary() throws Exception {
+		// we can make a new handle; as long as we don't use the outputHandle it should work
+		ContentObject firstVersionBlock = inputHandle.get(firstVersionName, 1000);
+		ContentObject latestVersionBlock = reader.getLatest(defaultStreamName, defaultStreamName.count(), 1000);
+		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionBlock, inputHandle);
+		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(latestVersionBlock, inputHandle);
+		testArgumentRunner(vfirst, vlatest);
 	}
 
 	@Test
-	public void testReadByteArray() {
+	public void testReadByteArray() throws Exception {
 		// Test other forms of read in superclass test.
-		try {
-			CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, inputHandle);
-			byte [] readDigest = readFile(vfirst, firstVersionLength);
-			Assert.assertArrayEquals(firstVersionDigest, readDigest);
-			CCNVersionedInputStream vmiddle = new CCNVersionedInputStream(middleVersionName, inputHandle);
-			readDigest = readFile(vmiddle, middleVersionLength);
-			Assert.assertArrayEquals(middleVersionDigest, readDigest);
-			CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, inputHandle);
-			readDigest = readFile(vlatest, latestVersionLength);
-			Assert.assertArrayEquals(latestVersionDigest, readDigest);
-		} catch (XMLStreamException e) {
-			e.printStackTrace();
-			Assert.fail("XMLStreamException: " + e.getMessage());
-		} catch (IOException e) {
-			e.printStackTrace();
-			Assert.fail("IOException: " + e.getMessage());
-		}
+		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, inputHandle);
+		byte [] readDigest = readFile(vfirst, firstVersionLength);
+		Assert.assertArrayEquals(firstVersionDigest, readDigest);
+		CCNVersionedInputStream vmiddle = new CCNVersionedInputStream(middleVersionName, inputHandle);
+		readDigest = readFile(vmiddle, middleVersionLength);
+		Assert.assertArrayEquals(middleVersionDigest, readDigest);
+		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, inputHandle);
+		readDigest = readFile(vlatest, latestVersionLength);
+		Assert.assertArrayEquals(latestVersionDigest, readDigest);
 	}
 
 }
