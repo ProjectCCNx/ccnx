@@ -299,8 +299,11 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				
 
 					try{
-						ContentName contentName = ContentName.fromNative(selectedPrefix);
-						contentName = ContentName.fromNative(contentName, file.getName());
+						//ContentName contentName = ContentName.fromNative(selectedPrefix);
+						//contentName = ContentName.fromNative(contentName, file.getName());
+						ContentName contentName = ContentName.fromURI(selectedPrefix);
+						contentName = ContentName.fromURI(contentName, file.getName());
+						
 						sendFile(file, contentName);
 					} catch (MalformedContentNameStringException e) {
 						e.printStackTrace();
@@ -451,7 +454,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		try{
 	
 			//get the file name as a ContentName
-			ContentName fileName = ContentName.fromNative(name);
+			//ContentName fileName = ContentName.fromNative(name);
+			ContentName fileName = ContentName.fromURI(name);
 			//String localName = new String(fileName.lastComponent());
 			System.out.println("retrieving "+fileName.toString()+" from repo");
 
@@ -809,7 +813,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				if (s.equalsIgnoreCase("-root")) {
 					i++;
 					try {
-						root = ContentName.fromNative(args[i]);
+						//root = ContentName.fromNative(args[i]);
+						root = ContentName.fromURI(args[i]);
 					} catch (MalformedContentNameStringException e) {
 						System.err.println("Could not parse root path: "
 								+ args[i] + " (exiting)");
@@ -1037,7 +1042,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		System.out.println("registering prefix: " + prefix);
 
 		try {
-			currentPrefix = ContentName.fromNative(prefix);
+			//currentPrefix = ContentName.fromNative(prefix);
+			currentPrefix = ContentName.fromURI(prefix);
 			_nameEnumerator.registerPrefix(currentPrefix);
 		} catch (IOException e) {
 			System.err.println("error registering prefix");
