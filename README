@@ -204,9 +204,9 @@ JUnit source code is available from http://github.com/KentBeck/junit
 W3C SOFTWARE (XML Schema definitions)
 
 XML Schema definitions are redistributed herein for validation
-tests. The file XMLSchema.xsd has been modified to remove a web
-reference from schemaLocation as noted in the file included in the
-distribution.
+tests. The file XMLSchema.xsd has been modified (February 15, 2008)
+to remove a web reference from schemaLocation as noted in the file
+included in the distribution.
 
 Copyright © 2001 World Wide Web Consortium, (Massachusetts Institute
 of Technology, European Research Consortium for Informatics and
