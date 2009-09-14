@@ -91,7 +91,7 @@ public class RepoIOTest extends RepoTestBase {
 	public void testReadFromRepo() throws Exception {
 		System.out.println("Testing reading a stream from the repo");
 		Thread.sleep(5000);
-		CCNInputStream input = new CCNInputStream(ContentName.fromNative(_testPrefix), null, getLibrary);
+		CCNInputStream input = new CCNInputStream(ContentName.fromNative(_testPrefix), getLibrary);
 		byte[] testBytes = new byte[data.length];
 		input.read(testBytes);
 		Assert.assertArrayEquals(data, testBytes);

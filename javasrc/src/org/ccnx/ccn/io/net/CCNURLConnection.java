@@ -22,8 +22,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
@@ -49,9 +47,6 @@ public class CCNURLConnection extends URLConnection {
 		} catch (MalformedContentNameStringException e) {
 			Log.info("Cannot parse URI: " + this.url);
 			throw new IOException("Cannot parse URI: " + this.url + ": " + e.getMessage());
-		} catch (XMLStreamException e) {
-			Log.info("Cannot parse XML: " + e.getMessage());
-			throw new IOException("Cannot parse XML.: " + e.getMessage());
 		}
 	}
 }

@@ -19,8 +19,6 @@ package org.ccnx.ccn.io;
 
 import java.io.IOException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -28,13 +26,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * Right now, this has turned into a wrapper to input and output
- * stream that knows about versioning. It should probably mutate into
- * something else.
- * 
- * This object uses the handle functions to do verification
- * and build trust.
- * @author smetters
+ * A file descriptor-style wrapper around {@link CCNVersionedInputStream} and {@link CCNVersionedOutputStream}.
  *
  */
 public class CCNDescriptor {
@@ -46,11 +38,17 @@ public class CCNDescriptor {
 	protected CCNOutputStream _output = null;
 
 	/**
-	 * Open for reading. This does getLatestVersion, etc on name, and assumes fragmentation.
+	 * Open a new descriptor for reading or writing (but not both).
+	 *
+	 * @param name see {@link CCNVersionedInputStream} for specification
+	 * @param publisher see {@link CCNVersionedInputStream} for specification
+	 * @param handle see {@link CCNVersionedInputStream} for specification
+	 * @param openForWriting if true, open an output stream. Otherwise open an input stream.
+	 * @throws IOException
 	 */
 	public CCNDescriptor(ContentName name, PublisherPublicKeyDigest publisher, 
 						 CCNHandle handle, boolean openForWriting) 
-										throws XMLStreamException, IOException {
+										throws IOException {
 		if (openForWriting) {
 			openForWriting(name, publisher, handle);
 		} else {	
@@ -59,7 +57,7 @@ public class CCNDescriptor {
 	}
 
 	protected void openForReading(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
-	throws IOException, XMLStreamException {
+	throws IOException {
 		ContentName nameToOpen = name;
 		if (SegmentationProfile.isSegment(nameToOpen)) {
 			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
@@ -78,20 +76,34 @@ public class CCNDescriptor {
 		_output = new CCNVersionedOutputStream(nameToOpen, publisher, handle);
 	}
 
+	/**
+	 * @return If open for reading, returns result of {@link CCNInputStream#available()}, otherwise returns 0.
+	 * @throws IOException
+	 */
 	public int available() throws IOException {
 		if (!openForReading())
 			return 0;
 		return _input.available();
 	}
 
+	/**
+	 * @return true if opened for reading
+	 */
 	public boolean openForReading() {
 		return (null != _input);
 	}
 
+	/**
+	 * @return true if opened for writing
+	 */
 	public boolean openForWriting() {
 		return (null != _output);
 	}
 
+	/**
+	 * Close underlying stream.
+	 * @throws IOException
+	 */
 	public void close() throws IOException {
 		if (null != _input)
 			_input.close();
@@ -99,25 +111,41 @@ public class CCNDescriptor {
 			_output.close();
 	}
 
+	/**
+	 * Flush output stream if open for writing.
+	 * @throws IOException
+	 */
 	public void flush() throws IOException {
 		if (null != _output)
 			_output.flush();
 	}
 
+	/**
+	 * @return true if open for reading and {@link CCNInputStream#eof()}.
+	 */
 	public boolean eof() { 
 		return openForReading() ? _input.eof() : false;
 	}
 
+	/**
+	 * See {@link CCNInputStream#read(byte[], int, int)}.
+	 */
 	public int read(byte[] buf, int offset, int len) throws IOException {
 		if (null != _input)
 			return _input.read(buf, offset, len);
 		throw new IOException("Descriptor not open for reading!");
 	}
 
+	/**
+	 * See {@link CCNInputStream#read(byte[])}
+	 */
 	public int read(byte[] b) throws IOException {
 		return read(b, 0, b.length);
 	}
 
+	/**
+	 * See {@link CCNOutputStream#writeToNetwork(byte[], long, long)}.
+	 */
 	public void write(byte[] buf, int offset, int len) throws IOException {
 		if (null != _output) {
 			_output.write(buf, offset, len);
@@ -126,6 +154,10 @@ public class CCNDescriptor {
 		throw new IOException("Descriptor not open for writing!");
 	}
 
+	/**
+	 * Sets the timeout for the underlying stream.
+	 * @param timeout in msec
+	 */
 	public void setTimeout(int timeout) {
 		if (null != _input)
 			_input.setTimeout(timeout);

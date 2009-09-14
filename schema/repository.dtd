@@ -1,7 +1,7 @@
-<!-- DTD for ccn repository -->
+<!-- DTD for CCNx Repository Protocol -->
 <!ENTITY % URI "CDATA">	<!-- a Uniform Resource Identifier -->
 <!ENTITY % commonattrs
-	"xmlns %URI; #FIXED 'http://www.parc.com/ccn'">
+	"xmlns %URI; #FIXED 'http://www.ccnx.org/content/schema/20090915'">
 
 <!ELEMENT RepositoryInfo (Version, Type, RepositoryVersion, GlobalPrefix, LocalName, Name*)>
 <!ATTLIST RepositoryInfo %commonattrs;>
