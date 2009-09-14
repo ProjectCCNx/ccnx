@@ -56,8 +56,19 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	protected CCNHandle _handle;
 
+	/**
+	 * The segment we are currently reading from.
+	 */
 	protected ContentObject _currentSegment = null;
+	
+	/**
+	 *Publisher information if the stream we are reading is marked GONE ({@link SignedInfo.ContentType.GONE}.
+	 */
 	protected ContentObject _goneSegment = null;
+	
+	/**
+	 * Internal stream used for reads.
+	 */
 	protected InputStream _segmentReadStream = null; // includes filters, etc.
 	
 	/**
@@ -65,7 +76,17 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * fragment/segment number.
 	 */
 	protected ContentName _baseName = null;
-	protected PublisherPublicKeyDigest _publisher = null; // the publisher we are looking for
+	
+	/**
+	 * The publisher we are looking for, either specified by querier on initial
+	 * read, or read from previous blocks (for now, we assume that all segments in a
+	 * stream are created by the same publisher).
+	 */
+	protected PublisherPublicKeyDigest _publisher = null; 
+	
+	/**
+	 * The segment number to start with. If not specified, is {@link SegmentationProfile.baseSegment()}.
+	 */
 	protected Long _startingSegmentNumber = null;
 	protected int _timeout = MAX_TIMEOUT;
 	
@@ -97,8 +118,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected long _markBlock = 0;
 
 	/**
-	 * @param baseName should not include a segment component.
-	 * @param startingSegmentNumber
+	 * 
+	 * @param baseName Name to read from. If contains a segment number, will start to read from that
+	 *    segment.
+	 * @param startingSegmentNumber Alternative specification of starting segment number. If
+	 * 		unspecified, will be {@link SegmentationProfile.baseSegment()}.
 	 * @param publisher
 	 * @param handle
 	 * @throws XMLStreamException
@@ -193,6 +217,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return _baseName;
 	}
 	
+	/**
+	 * @return The version of the stream being read, if name is versioned.
+	 */
 	public CCNTime getVersion() {
 		if (null == _baseName) 
 			return null;
@@ -331,7 +358,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	/**
-	 * Checks whether we might have a next segment -- we're not past the EOF marker,
+	 * Checks whether we might have a next segment -- in other words, we're not past the EOF marker,
 	 * or GONE.
 	 * @return
 	 * @throws IOException
@@ -360,7 +387,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	/**
-	 * Will try for the next segment.
+	 * Try to read the next segment.
 	 * @return
 	 * @throws IOException
 	 */
@@ -477,11 +504,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	/**
-	 * Return the index of the next segment of stream data.
+	 * @return The index of the next segment of stream data.
 	 * Default segmentation generates sequentially-numbered stream
 	 * segments but this method may be overridden in subclasses to 
-	 * perform re-assembly on streams that have been segemented differently.
-	 * @return
+	 * perform re-assembly on streams that have been segmented differently.
 	 */
 	public long nextSegmentNumber() {
 		if (null == _currentSegment) {
