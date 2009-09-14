@@ -29,6 +29,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.security.keys.NetworkKeyManager;
 import org.ccnx.ccn.impl.security.keys.RepositoryKeyManager;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.Flosser;
@@ -147,6 +148,16 @@ public class TestUserData {
 				availableChildren = userDirectory.getNewData();
 			}
 		}
+	}
+	
+	public void saveUserPK2Repo(ContentName userNamespace) throws IOException{
+		for(String friendlyName: _userFriendlyNames.keySet()) {
+			ContentName keyStoreName = _userFriendlyNames.get(friendlyName);
+			KeyManager userKM = _userData.get(keyStoreName);
+			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
+			PublicKeyObject pko = new PublicKeyObject(keyName, userKM.getDefaultPublicKey(), getHandleForUser(friendlyName));
+			pko.saveToRepository(); 
+		} 
 	}
 	
 	public boolean hasUser(String friendlyName) {

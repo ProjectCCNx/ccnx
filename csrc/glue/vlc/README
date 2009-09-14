@@ -1,3 +1,5 @@
+The vlc plugin code provided is known to work with the 0.9.9 releases.
+
 In order to compile the vlc plugin you will need to install
 the vlc and libvlc-dev packages.  On Ubuntu Linux, for example,
 you can use:
@@ -11,7 +13,7 @@ $ sudo port install VLC
 Next you should make the CCN library prior to compiling
 the vlc plugin.
 
-$ ( cd ../../src && ./configure && make; )
+$ ( cd ../.. && ./configure && make )
 
 Two system-dependent makefiles are provided, Makefile.Linux and Makefile.OSX.
 Make a symlink that reflects the appropriate one for your system, e. g.

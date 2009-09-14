@@ -65,7 +65,6 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
-import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -463,13 +462,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			//should catch a generic exception and print a message in the bottom pane
 			//that the selected file is not available
 			
-		} catch (XMLStreamException e) {
+		} catch (IOException e) {			
 			e.printStackTrace();
-		} catch (IOException e) {
-			
-			e.printStackTrace();
-		} catch (MalformedContentNameStringException e) {
-			
+		} catch (MalformedContentNameStringException e) {			
 			e.printStackTrace();
 		}
 	}
