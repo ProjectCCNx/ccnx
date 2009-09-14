@@ -12,7 +12,6 @@ ALLTESTS = \
   test_final_teardown \
   test_finished \
   test_happy_face \
-  test_inject \
   test_key_fetch \
   test_late \
   test_long_consumer \
@@ -21,7 +20,6 @@ ALLTESTS = \
   test_newface \
   test_prefixreg \
   test_prefix_registration \
-  test_sans_udplink \
   test_short_stuff \
   test_single_ccnd \
   test_single_ccnd_teardown \

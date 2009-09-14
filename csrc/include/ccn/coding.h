@@ -126,9 +126,6 @@ enum ccn_dtag {
     CCN_DTAG_RepositoryVersion = 88,
     CCN_DTAG_GlobalPrefix = 89,
     CCN_DTAG_LocalName = 90,
-    CCN_DTAG_Address = 2048,	/* Deprecated */
-    CCN_DTAG_SOType = 2049,	/* Deprecated */
-    CCN_DTAG_Inject = 2050,	/* Deprecated */
     CCN_DTAG_CCNProtocolDataUnit = 17702112
 };
 

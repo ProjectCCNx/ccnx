@@ -92,9 +92,6 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_RepositoryVersion, "RepositoryVersion"},
     {CCN_DTAG_GlobalPrefix, "GlobalPrefix"},
     {CCN_DTAG_LocalName, "LocalName"},
-    {CCN_DTAG_Address, "Address"},
-    {CCN_DTAG_SOType, "SOType"},
-    {CCN_DTAG_Inject, "Inject"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
     {0, 0}
 };

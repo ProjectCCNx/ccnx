@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<Inject>
-  <SOType>2</SOType>
-  <Address ccnbencoding="base64Binary">thesearenotthedroidsyouarelookingfor</Address>
-  <Interest>
-    <Name/>
-    <Nonce ccnbencoding="base64Binary">2obhHzDz</Nonce>
-  </Interest>
-</Inject>
