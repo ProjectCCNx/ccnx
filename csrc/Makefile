@@ -1,4 +1,4 @@
-# Hakefile for csrc directory
+# Makefile for csrc directory
 
 SUBDIRS = lib ccnd libexec cmd util tests
 OBJTREE = build
@@ -33,30 +33,6 @@ objtree: conf.mk _always
 	     || exit 1);						\
 	done
 	cd $(OBJTREE) && ../configure
-
-cleanall: _always
-	find . -type l -print -exec rm '{}' ';'
-
-_manifester:
-	rm -f _manifester
-	test -d .svn && { type svn >/dev/null 2>/dev/null; } && ( echo svn list -R > _manifester; ) || :
-	test -f _manifester || ( git branch >/dev/null 2>/dev/null && echo git ls-files > _manifester; ) || :
-	test -f _manifester || ( echo false > _manifester )
-
-MANIFEST: _manifester
-	echo MANIFEST > MANIFEST.new
-	sh _manifester | grep -v -e '/$$' >> MANIFEST.new
-	mv MANIFEST.new MANIFEST
-	rm _manifester
-
-FAVORITES: MANIFEST
-	./makefavorites
-	mv MANIFEST 00MANIFEST
-
-tar:	ccn-c.tar
-ccn-c.tar: MANIFEST
-	tar cf ccnd.tar -T MANIFEST
-	mv MANIFEST 00MANIFEST
 
 documentation: _always
 	doxygen

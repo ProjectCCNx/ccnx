@@ -762,7 +762,7 @@ ccn_parse_ContentObject(const unsigned char *msg, size_t size,
     int res;
     x->magic = 20090415;
     x->digest_bytes = 0;
-    if (res || ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
+    if (ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
         ccn_buf_advance(d);
         res = ccn_parse_Signature(d, x);
         x->offset[CCN_PCO_B_Name] = d->decoder.token_index;

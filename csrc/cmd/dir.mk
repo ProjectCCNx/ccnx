@@ -160,14 +160,13 @@ ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnbx.o: ccnbx.c ../include/ccn/charbuf.h ../include/ccn/coding.h \
   ../include/ccn/ccn.h ../include/ccn/indexbuf.h
-ccncat.o: ccncat.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+ccncat.o: ccncat.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccncatchunks.o: ccncatchunks.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccncatchunks.o: ccncatchunks.c ../include/ccn/bloom.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccncatchunks2.o: ccncatchunks2.c ../include/ccn/bloom.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+ccncatchunks2.o: ccncatchunks2.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/schedule.h \
   ../include/ccn/uri.h
 ccndump.o: ccndump.c ../include/ccn/ccn.h ../include/ccn/coding.h \

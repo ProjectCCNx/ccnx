@@ -193,7 +193,6 @@ struct ccn_charbuf *
 make_template(struct mydata *md)
 {
     struct ccn_charbuf *templ = ccn_charbuf_create();
-    int i;
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
     ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
     ccn_charbuf_append_closer(templ); /* </Name> */
