@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -54,7 +55,7 @@ import org.junit.Test;
 public class GroupTestRepo {
 	
 	static boolean USE_REPO = true;
-	static int NUM_USERS = 20;
+	static int NUM_USERS = 10;
 	static char [] USER_PASSWORD = new String("password").toCharArray();
 	
 	static ContentName testStorePrefix = null;
@@ -71,7 +72,7 @@ public class GroupTestRepo {
 	 * @throws Exception
 	 */
 	static TestUserData users = null;
-	static CCNHandle userLibrary = null;
+	static CCNHandle userHandle = null;
 	static AccessControlManager _acm = null;
 	static GroupManager _gm = null;
 
@@ -83,17 +84,23 @@ public class GroupTestRepo {
 			testStorePrefix = UserConfiguration.defaultNamespace();
 			userStore = ContentName.fromNative(testStorePrefix, "home");
 			groupStore = AccessControlProfile.groupNamespaceName(testStorePrefix);
-			
-			_handle = CCNHandle.open();
+
 			System.out.println("prefix: " + testStorePrefix);
 			System.out.println("group store: " + groupStore);
 			System.out.println("user store: " + userStore);
+
+			_handle = CCNHandle.open();
+			userHandle = _handle;
+	
+			
+			//users = new TestUserData(userStore, NUM_USERS,
+			//		USE_REPO,
+			//		USER_PASSWORD, userHandle);
+			
 			_acm = new AccessControlManager(testStorePrefix, groupStore, userStore);
 			_acm.publishMyIdentity(myUserName, KeyManager.getDefaultKeyManager().getDefaultPublicKey());
 			_userList = _acm.userList();
 			_gm = _acm.groupManager();
-
-	//		users = new TestUserData(userStore, NUM_USERS, USE_REPO, USER_PASSWORD, userLibrary);
 		} catch (Exception e) {
 			Log.warning("Exception in setupBeforeClass: " + e);
 			Log.warningStackTrace(e);
@@ -135,7 +142,7 @@ public class GroupTestRepo {
 	
 	
 	@Test
-	public void testCreateGroup() {
+	public void testGroup() {
 		try {
 			Assert.assertNotNull(_userList);
 			ContentName prefixTest = _userList.getName();
@@ -221,6 +228,12 @@ public class GroupTestRepo {
 			
 			System.out.println("adding users to parent group.........");
 			testAddUsers(addMembers, newParentGroup);
+			
+			PrivateKey privKey = _gm.getGroupPrivateKey(randomParentGroupName, null);
+			System.out.println("retrieved group priv key for parent group:" + privKey.toString());
+			
+			privKey = _gm.getGroupPrivateKey(randomGroupName, null);
+			System.out.println("retrieved group priv key:" + privKey.toString());
 			
 			//test deletion of group
 			_gm.deleteGroup(randomGroupName);			
