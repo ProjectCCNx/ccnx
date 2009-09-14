@@ -74,8 +74,8 @@ public class TestUserDataTestRepo {
 				"password".toCharArray(), CCNHandle.open());
 		Assert.assertEquals(td.friendlyNames(), td2.friendlyNames());
 
-		CCNHandle userLibrary2 = td2.getHandleForUser(testUser);
-		KeyManager userKeyManager2 = userLibrary2.keyManager();
+		CCNHandle userHandle2 = td2.getHandleForUser(testUser);
+		KeyManager userKeyManager2 = userHandle2.keyManager();
 
 		Assert.assertNotNull(userKeyManager.getDefaultKeyID());
 		Assert.assertNotNull(userKeyManager2.getDefaultKeyID());
