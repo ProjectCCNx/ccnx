@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <ccn/bloom.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
@@ -38,101 +37,25 @@ usage(const char *progname)
     exit(1);
 }
 
-struct excludestuff;
-
 struct mydata {
     int allow_stale;
-    struct excludestuff *excl;
 };
-
-struct excludestuff {
-    struct excludestuff* next;
-    unsigned char *data;
-    size_t size;
-};
-
-int
-count_excludestuff(struct excludestuff* p)
-{
-    int n;
-    for (n = 0; p != NULL; p = p->next)
-        n++;
-    return(n);
-}
-
-void
-fill_bloom(struct ccn_bloom *b, struct excludestuff* excl)
-{
-    struct excludestuff* p;
-    for (p = excl; p != NULL; p = p->next)
-        ccn_bloom_insert(b, p->data, p->size);
-}
-
-void
-clear_excludes(struct mydata *md)
-{
-    struct excludestuff* e;
-    while (md->excl != NULL) {
-        e = md->excl;
-        md->excl = e->next;
-        free(e->data);
-        free(e);
-    }
-}
-void
-note_new_exclusion(struct mydata *md, const unsigned char *ccnb,
-                   size_t start, size_t stop)
-{
-    struct excludestuff* e;
-    unsigned char *data;
-    if (start < stop) {
-        e = calloc(1, sizeof(*e));
-        data = calloc(1, stop-start);
-        memcpy(data, ccnb + start, stop - start);
-        e->data = data;
-        e->size = stop - start;
-        e->next = md->excl;
-        md->excl = e;
-    }
-}
 
 struct ccn_charbuf *
 make_template(struct mydata *md, struct ccn_upcall_info *info)
 {
     struct ccn_charbuf *templ = ccn_charbuf_create();
-    int nexcl;
-    struct ccn_bloom *b = NULL;
-    int i;
-    unsigned char seed[4];
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
     ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
     ccn_charbuf_append_closer(templ); /* </Name> */
     // XXX - use pubid if possible
-    ccn_charbuf_append_tt(templ, CCN_DTAG_AdditionalNameComponents, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
     ccnb_append_number(templ, 1);
-    ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
+    ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
     if (md->allow_stale) {
         ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-        ccnb_append_number(templ,
-                                                CCN_AOK_DEFAULT | CCN_AOK_STALE);
+        ccnb_append_number(templ, CCN_AOK_DEFAULT | CCN_AOK_STALE);
         ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
-    }
-    nexcl = count_excludestuff(md->excl);
-    if (nexcl != 0) {
-        long r = lrand48();
-        for (i = 0; i < 4; i++) {
-            seed[i] = r;
-            r <<= 8;
-        }
-        if (nexcl < 8) nexcl = 8;
-        b = ccn_bloom_create(nexcl, seed);
-        fill_bloom(b, md->excl);
-        ccn_charbuf_append_tt(templ, CCN_DTAG_ExperimentalResponseFilter, CCN_DTAG);
-        i = ccn_bloom_wiresize(b);
-        ccn_charbuf_append_tt(templ, i, CCN_BLOB);
-        ccn_bloom_store_wire(b, ccn_charbuf_reserve(templ, i), i);
-        templ->length += i;
-        ccn_charbuf_append_closer(templ);
     }
     ccn_charbuf_append_closer(templ); /* </Interest> */
     return(templ);
@@ -161,7 +84,6 @@ incoming_content(
     
     if (kind == CCN_UPCALL_FINAL) {
         if (md != NULL) {
-            clear_excludes(md);
             selfp->data = NULL;
             free(md);
             md = NULL;
@@ -169,7 +91,7 @@ incoming_content(
         return(CCN_UPCALL_RESULT_OK);
     }
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
-        return(CCN_UPCALL_RESULT_REEXPRESS); // XXX - may need to reseed bloom filter
+        return(CCN_UPCALL_RESULT_REEXPRESS);
     if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_ERR);
     if (md == NULL)
@@ -182,20 +104,9 @@ incoming_content(
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
     if (res < 0) abort();
     if (data_size > CHUNK_SIZE) {
-        /* For us this is spam. Need to try again, excluding this one. */
-        fprintf(stderr, "*** skip spam at block %d\n", (int)selfp->intdata);
-        name = ccn_charbuf_create();
-        ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 1]);
-        note_new_exclusion(md, ccnb,
-                           info->pco->offset[CCN_PCO_B_Signature],
-                           info->pco->offset[CCN_PCO_E_Signature]);
-        templ = make_template(md, info);
-        res = ccn_express_interest(info->h, name, selfp, templ);
-        if (res < 0)
-            abort();
-        ccn_charbuf_destroy(&templ);
-        ccn_charbuf_destroy(&name);
-        return(CCN_UPCALL_RESULT_OK);
+        /* For us this is spam. Give up now. */
+        fprintf(stderr, "*** spammed at block %d\n", (int)selfp->intdata);
+        exit(1);
     }
     
     /* OK, we will accept this block. */
@@ -218,7 +129,6 @@ incoming_content(
     ccn_charbuf_putf(temp, "%d", ++(selfp->intdata));
     ccn_name_append(name, temp->buf, temp->length);
     ccn_charbuf_destroy(&temp);
-    clear_excludes(md);
     templ = make_template(md, info);
     
     res = ccn_express_interest(info->h, name, selfp, templ);
@@ -274,7 +184,6 @@ main(int argc, char **argv)
     incoming->p = &incoming_content;
     mydata = calloc(1, sizeof(*mydata));
     mydata->allow_stale = allow_stale;
-    mydata->excl = NULL;
     incoming->data = mydata;
     templ = make_template(mydata, NULL);
     ccn_express_interest(ccn, name, incoming, templ);

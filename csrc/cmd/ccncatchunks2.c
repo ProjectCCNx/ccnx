@@ -25,7 +25,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <ccn/bloom.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/schedule.h>
@@ -72,12 +71,6 @@ struct mydata {
     intmax_t lastcheck;
     intmax_t unverified;
     struct ooodata ooo[PIPELIMIT];
-};
-
-struct excludestuff {
-    struct excludestuff* next;
-    unsigned char *data;
-    size_t size;
 };
 
 static int fill_holes(struct ccn_schedule *sched, void *clienth, 
@@ -196,89 +189,22 @@ reporter(struct ccn_schedule *sched, void *clienth,
     return(3000000);
 }
 
-int
-count_excludestuff(struct excludestuff* p)
-{
-    int n;
-    for (n = 0; p != NULL; p = p->next)
-        n++;
-    return(n);
-}
-
-void
-fill_bloom(struct ccn_bloom *b, struct excludestuff* excl)
-{
-    struct excludestuff* p;
-    for (p = excl; p != NULL; p = p->next)
-        ccn_bloom_insert(b, p->data, p->size);
-}
-
-void
-clear_excludes(struct mydata *md)
-{
-    struct excludestuff* e;
-    while (md->excl != NULL) {
-        e = md->excl;
-        md->excl = e->next;
-        free(e->data);
-        free(e);
-    }
-}
-
-void
-note_new_exclusion(struct mydata *md, const unsigned char *ccnb,
-                   size_t start, size_t stop)
-{
-    struct excludestuff* e;
-    unsigned char *data;
-    if (start < stop) {
-        e = calloc(1, sizeof(*e));
-        data = calloc(1, stop-start);
-        memcpy(data, ccnb + start, stop - start);
-        e->data = data;
-        e->size = stop - start;
-        e->next = md->excl;
-        md->excl = e;
-    }
-}
-
 struct ccn_charbuf *
 make_template(struct mydata *md)
 {
     struct ccn_charbuf *templ = ccn_charbuf_create();
-    int nexcl;
-    struct ccn_bloom *b = NULL;
     int i;
-    unsigned char seed[4];
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
     ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
     ccn_charbuf_append_closer(templ); /* </Name> */
     // XXX - use pubid if possible
-    ccn_charbuf_append_tt(templ, CCN_DTAG_AdditionalNameComponents, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
     ccnb_append_number(templ, 1);
-    ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
+    ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
     if (md->allow_stale) {
         ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-        ccnb_append_number(templ,
-                                                CCN_AOK_DEFAULT | CCN_AOK_STALE);
+        ccnb_append_number(templ, CCN_AOK_DEFAULT | CCN_AOK_STALE);
         ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
-    }
-    nexcl = count_excludestuff(md->excl);
-    if (nexcl != 0) {
-        long r = lrand48();
-        for (i = 0; i < 4; i++) {
-            seed[i] = r;
-            r <<= 8;
-        }
-        if (nexcl < 8) nexcl = 8;
-        b = ccn_bloom_create(nexcl, seed);
-        fill_bloom(b, md->excl);
-        ccn_charbuf_append_tt(templ, CCN_DTAG_ExperimentalResponseFilter, CCN_DTAG);
-        i = ccn_bloom_wiresize(b);
-        ccn_charbuf_append_tt(templ, i, CCN_BLOB);
-        ccn_bloom_store_wire(b, ccn_charbuf_reserve(templ, i), i);
-        templ->length += i;
-        ccn_charbuf_append_closer(templ);
     }
     ccn_charbuf_append_closer(templ); /* </Interest> */
     return(templ);
@@ -315,7 +241,6 @@ ask_more(struct mydata *md, uintmax_t seq)
     assert(cl->intdata == seq);
     assert(md->ooo[slot].raw_data_size == 0);
     name = sequenced_name(md, seq);
-    clear_excludes(md); // XXX Should not do this unconditionally
     templ = make_template(md);
     update_rtt(md, 0, slot);
     res = ccn_express_interest(md->h, name, cl, templ);
@@ -428,33 +353,6 @@ GOT_HERE();
     ccnb_size = info->pco->offset[CCN_PCO_E];
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
     if (res < 0) abort();
-    if (data_size > CHUNK_SIZE) {
-        /* For us this is spam. Need to try again, excluding this one. */
-        const unsigned char *ib = NULL; /* info->interest_ccnb */
-        struct ccn_indexbuf *ic = NULL;
-        struct ccn_charbuf *name = NULL;
-        struct ccn_charbuf *templ = NULL;
-        
-        ib = info->interest_ccnb;
-        ic = info->interest_comps;
-        
-        md->junk++;
-        fprintf(stderr, "*** skip spam at block %d\n", (int)selfp->intdata);
-        name = ccn_charbuf_create();
-        ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 1]);
-        note_new_exclusion(md, ccnb,
-                           info->pco->offset[CCN_PCO_B_Signature],
-                           info->pco->offset[CCN_PCO_E_Signature]);
-        templ = make_template(md);
-        res = ccn_express_interest(info->h, name, selfp, templ);
-        md->interests_sent++;
-        update_rtt(md, 0, ((uintptr_t)selfp->intdata) % PIPELIMIT);
-        if (res < 0)
-            abort();
-        ccn_charbuf_destroy(&templ);
-        ccn_charbuf_destroy(&name);
-        return(CCN_UPCALL_RESULT_OK);
-    }
 GOT_HERE();
     /* OK, we will accept this block. */
     slot = ((uintptr_t)selfp->intdata) % PIPELIMIT;

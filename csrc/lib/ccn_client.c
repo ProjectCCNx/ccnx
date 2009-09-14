@@ -469,7 +469,7 @@ ccn_check_namebuf(struct ccn *h, struct ccn_charbuf *namebuf, int prefix_comps,
 
 static void
 ccn_construct_interest(struct ccn *h,
-                       struct ccn_charbuf *namebuf,
+                       struct ccn_charbuf *name_prefix,
                        struct ccn_charbuf *interest_template,
                        struct expressed_interest *dest)
 {
@@ -480,14 +480,14 @@ ccn_construct_interest(struct ccn *h,
     
     c->length = 0;
     ccn_charbuf_append_tt(c, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append(c, namebuf->buf, namebuf->length);
+    ccn_charbuf_append(c, name_prefix->buf, name_prefix->length);
     res = 0;
     if (interest_template != NULL) {
         struct ccn_parsed_interest pi = { 0 };
         res = ccn_parse_interest(interest_template->buf,
                                  interest_template->length, &pi, NULL);
         if (res >= 0) {
-            start = pi.offset[CCN_PI_E_NameComponentCount];
+            start = pi.offset[CCN_PI_E_Name];
             size = pi.offset[CCN_PI_B_Nonce] - start;
             ccn_charbuf_append(c, interest_template->buf + start, size);
             start = pi.offset[CCN_PI_B_OTHER];

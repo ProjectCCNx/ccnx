@@ -445,10 +445,6 @@ enum ccn_parsed_interest_offsetid {
     CCN_PI_E_LastPrefixComponent,
     CCN_PI_E_ComponentLast,
     CCN_PI_E_Name,
-    CCN_PI_B_NameComponentCount /* deprecated */,
-    CCN_PI_E_NameComponentCount,
-    CCN_PI_B_AdditionalNameComponents, /* deprecated */
-    CCN_PI_E_AdditionalNameComponents,
     CCN_PI_B_MinSuffixComponents,
     CCN_PI_E_MinSuffixComponents,
     CCN_PI_B_MaxSuffixComponents,

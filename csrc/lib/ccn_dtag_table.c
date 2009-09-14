@@ -34,7 +34,7 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_SignedInfo, "SignedInfo"},
     {CCN_DTAG_ContentDigest, "ContentDigest"},
     {CCN_DTAG_ContentHash, "ContentHash"},
-    {CCN_DTAG_ContentObjectV20080711, "ContentObjectV20080711"},
+    //{CCN_DTAG_ContentObjectV20080711, "ContentObjectV20080711"},
     {CCN_DTAG_Count, "Count"},
     {CCN_DTAG_Header, "Header"},
     {CCN_DTAG_Interest, "Interest"},
@@ -55,13 +55,13 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_Exclude, "Exclude"},
     {CCN_DTAG_Bloom, "Bloom"},
     {CCN_DTAG_BloomSeed, "BloomSeed"},
-    {CCN_DTAG_OrderPreference, "OrderPreference"},
+    //{CCN_DTAG_OrderPreference, "OrderPreference"},
     {CCN_DTAG_AnswerOriginKind, "AnswerOriginKind"},
     {CCN_DTAG_Witness, "Witness"},
     {CCN_DTAG_SignatureBits, "SignatureBits"},
     {CCN_DTAG_DigestAlgorithm, "DigestAlgorithm"},
     {CCN_DTAG_BlockSize, "BlockSize"},
-    {CCN_DTAG_AdditionalNameComponents, "AdditionalNameComponents"},
+    //{CCN_DTAG_AdditionalNameComponents, "AdditionalNameComponents"},
     {CCN_DTAG_FreshnessSeconds, "FreshnessSeconds"},
     {CCN_DTAG_FinalBlockID, "FinalBlockID"},
     {CCN_DTAG_PublisherPublicKeyDigest, "PublisherPublicKeyDigest"},
@@ -99,7 +99,7 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_SOType, "SOType"},
     {CCN_DTAG_Inject, "Inject"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
-    {CCN_DTAG_ExperimentalResponseFilter, "ExperimentalResponseFilter"},
+    //{CCN_DTAG_ExperimentalResponseFilter, "ExperimentalResponseFilter"},
     {0, 0}
 };
 
