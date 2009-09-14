@@ -141,7 +141,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * 				(subject to higher-level verification).
 	 * @param keys The keys to use to decrypt this content. Null if content unencrypted, or another
 	 * 				process will be used to retrieve the keys (for example, an {@link AccessControlManager}).
-	 * @param handle The CCN handle to use for data retrieval.
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
 	public CCNAbstractInputStream(
@@ -193,7 +194,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * 		We assume that the signature on this segment was verified by our caller.
 	 * @param keys The keys to use to decrypt this content. Null if content unencrypted, or another
 	 * 				process will be used to retrieve the keys (for example, an {@link AccessControlManager}).
-	 * @param handle The CCN handle to use for data retrieval.
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
 	 * @throws IOException
 	 */
 	public CCNAbstractInputStream(ContentObject startingSegment,
@@ -416,7 +418,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	/**
-	 * Try to read the next segment.
+	 * Retrieve the next segment of the stream. Convenience method, uses {@link #getSegment(long)}.
 	 * @return
 	 * @throws IOException
 	 */
@@ -430,6 +432,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return getSegment(nextSegmentNumber());
 	}
 	
+	/**
+	 * Retrieves the first segment of the stream, based on specified startingSegmentNumber 
+	 * (see {@link #CCNAbstractInputStream(ContentName, Long, PublisherPublicKeyDigest, ContentKeys, CCNHandle)}).
+	 * Convenience method, uses {@link #getSegment(long)}.
+	 * @return
+	 * @throws IOException
+	 */
 	protected ContentObject getFirstSegment() throws IOException {
 		if (null != _startingSegmentNumber) {
 			ContentObject firstSegment = getSegment(_startingSegmentNumber);
@@ -442,10 +451,17 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	/**
-	 * For CCNAbstractInputStream, assume that desiredName contains the name up to segmentation information.
-	 * @param desiredName
-	 * @param segment
-	 * @return
+	 * Method to determine whether a retrieved block is the first segment of this stream (as
+	 * specified by startingSegmentNumber, (see {@link #CCNAbstractInputStream(ContentName, Long, PublisherPublicKeyDigest, ContentKeys, CCNHandle)}).
+	 * Overridden by subclasses to implement narrower constraints on names. Once first
+	 * segment is retrieved, further segments can be identified just by segment-naming
+	 * conventions (see {@link SegmentationProfile}).
+	 * 
+	 * @param desiredName The expected name prefix for the stream. 
+	 * 	For CCNAbstractInputStream, assume that desiredName contains the name up to but not including
+	 * 	segmentation information.
+	 * @param segment The potential first segment.
+	 * @return True if it is the first segment, false otherwise.
 	 */
 	protected boolean isFirstSegment(ContentName desiredName, ContentObject segment) {
 		if ((null != segment) && (SegmentationProfile.isSegment(segment.name()))) {
@@ -468,7 +484,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 
 	/**
+	 * Verifies the signature on a segment using cached bulk signature data (from Merkle Hash Trees)
+	 * if it is available.
 	 * TODO -- check to see if it matches desired publisher.
+	 * @param segment the segment whose signature to verify in the context of this stream.
 	 */
 	public boolean verify(ContentObject segment) {
 
@@ -520,9 +539,28 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return true;
 	}
 
+	/**
+	 * Returns the segment number for the next segment.
+	 * Default segmentation generates sequentially-numbered stream
+	 * segments but this method may be overridden in subclasses to 
+	 * perform re-assembly on streams that have been segmented differently.
+	 * @return The index of the next segment of stream data.
+	 */
+	public long nextSegmentNumber() {
+		if (null == _currentSegment) {
+			return _startingSegmentNumber.longValue();
+		} else {
+			return segmentNumber() + 1;
+		}
+	}
+	
+	/**
+	 * @return Returns the segment number of the current segment if we have one, otherwise
+	 * the expected startingSegmentNumber.
+	 */
 	public long segmentNumber() {
 		if (null == _currentSegment) {
-			return SegmentationProfile.baseSegment();
+			return _startingSegmentNumber;
 		} else {
 			// This needs to work on streaming content that is not traditional fragments.
 			// The segmentation profile tries to do that, though it is seeming like the
@@ -533,20 +571,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	/**
-	 * @return The index of the next segment of stream data.
-	 * Default segmentation generates sequentially-numbered stream
-	 * segments but this method may be overridden in subclasses to 
-	 * perform re-assembly on streams that have been segmented differently.
+	 * @return Returns the segment number of the current segment if we have one, otherwise -1.
 	 */
-	public long nextSegmentNumber() {
-		if (null == _currentSegment) {
-			return _startingSegmentNumber.longValue();
-		} else {
-			return segmentNumber() + 1;
-		}
-	}
-	
-	protected long currentSegmentNumber(){
+	protected long currentSegmentNumber() {
 		if (null == _currentSegment) {
 			return -1; // make sure we don't match inappropriately
 		}
@@ -554,11 +581,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	/**
-	 * Is the stream GONE? I.E. Is there a single empty data segment, of type GONE where
-	 * the first segment should be? This convention is used to represent a stream that has been
-	 * deleted.
-	 * @return
-	 * @throws IOException
+	 * Checks to see whether this content has been marked as GONE (deleted). Will retrieve the first
+	 * segment if we do not already have it in order to make this determination.
+	 * @return true if stream is GONE.
+	 * @throws IOException if there is difficulty retrieving the first segment.
 	 */
 	public boolean isGone() throws IOException {
 
@@ -579,6 +605,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return false;
 	}
 	
+	/**
+	 * Return the single segment of a stream marked as GONE.
+	 * @return
+	 */
 	public ContentObject deletionInformation() {
 		return _goneSegment;
 	}
@@ -596,12 +626,15 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return _publisher;
 	}
 	
+	/**
+	 * @return the key locator for this stream's publisher.
+	 */
 	public KeyLocator publisherKeyLocator() {
 		return _publisherKeyLocator;		
 	}
 	
 	/**
-	 * For debugging
+	 * @return the name of the current segment held by this string, or "null". Used for debugging.
 	 */
 	public String currentSegmentName() {
 		return ((null == _currentSegment) ? "null" : _currentSegment.name().toString());
@@ -614,6 +647,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return _segmentReadStream.available();
 	}
 
+	/**
+	 * @return Whether this stream believes it as at eof (has read past the end of the 
+	 *   last segment of the stream).
+	 */
 	public boolean eof() { 
 		//Log.info("Checking eof: there yet? " + _atEOF);
 		return _atEOF; 
@@ -688,10 +725,20 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return readInternal(null, 0, (int)n);
 	}
 
+	/**
+	 * @return Currently returns 0. Can be optionally overridden by subclasses.
+	 * @throws IOException
+	 */
 	protected int segmentCount() throws IOException {
 		return 0;
 	}
 
+	/**
+	 * Seek a stream to a specific byte offset from the start. Tries to avoid retrieving
+	 * extra segments.
+	 * @param position
+	 * @throws IOException
+	 */
 	public void seek(long position) throws IOException {
 		Log.info("Seeking stream to " + position);
 		// TODO: when first block is read in constructor this check can be removed
@@ -708,10 +755,20 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		}
 	}
 
+	/**
+	 * @return Returns position in byte offset. For CCNAbstractInputStream, provide an inadequate
+	 *   base implementation that returns the offset into the current segment (not the stream as
+	 *   a whole).
+	 * @throws IOException
+	 */
 	public long tell() throws IOException {
 		return _currentSegment.contentLength() - _segmentReadStream.available();
 	}
 
+	/**
+	 * @return Total length of the stream, if known, otherwise -1.
+	 * @throws IOException
+	 */
 	public long length() throws IOException {
 		return -1;
 	}
