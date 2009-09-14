@@ -55,9 +55,9 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * in the running stream, or by another integer metric (e.g. time offset),
  * by supplying a multiplier to conver the byte offset into a metric value.
  * Finally, writers can specify the block identifier with a write.
- * 
- * @author smetters
- *
+ * Currently, however, the corresponding reader {@link CCNBlockInputStream} expects
+ * sequential segment numbering (and constraints based on the low-level CCN
+ * Interest specification may make this difficult to overcome).
  */
 public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 
@@ -88,6 +88,10 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 		init(baseName, type);
 	}
 
+	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type) throws XMLStreamException, IOException {
+		this(baseName, type, null, null);
+	}
+		
 	private void init(ContentName baseName, SignedInfo.ContentType type) {
 		_type = type;
 
@@ -105,10 +109,6 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 		_baseName = nameToOpen;
 	}
 	
-	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type) throws XMLStreamException, IOException {
-		this(baseName, type, null, null);
-	}
-		
 	public void useByteCountSequenceNumbers() {
 		getSegmenter().setSequenceType(SegmentNumberType.SEGMENT_BYTE_COUNT);
 		getSegmenter().setByteScale(1);
