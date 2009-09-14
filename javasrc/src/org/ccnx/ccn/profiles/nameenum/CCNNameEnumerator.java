@@ -192,7 +192,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		} else {
 			//COMMAND_MARKER_BASIC_ENUMERATION missing...  we have a problem
 			Log.warning("the name enumeration marker is missing...  shouldn't have gotten this callback");
-			//_library.cancelInterest(interest, this);
+			//_handle.cancelInterest(interest, this);
 			return null;
 		}
 		
@@ -203,7 +203,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			//need to make sure the prefix is still registered
 			if (ner==null) {
 				//this is no longer registered...  no need to keep refreshing the interest use the callback
-				//_library.cancelInterest(interest, this);
+				//_handle.cancelInterest(interest, this);
 				return null;
 			} else {
 				ner.removeInterest(interest);
@@ -398,7 +398,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		}
 		//Do not need to register each name as a filter...  the namespace should cover it
 		synchronized(_handledResponses) {
-			//_library.registerFilter(name, this);
+			//_handle.registerFilter(name, this);
 			if (!_registeredNames.contains(name)) {
 				// DKS - if we don't care about order, could use a Set instead of an ArrayList,
 				// then just call add as duplicates suppressed

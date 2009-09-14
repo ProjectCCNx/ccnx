@@ -107,7 +107,7 @@ public class Group {
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
 					CCNHandle library, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {		
 		this(namespace, groupFriendlyName, members, null, library,manager);
-//		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _library);
+//		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _handle);
 		createGroupPublicKey(manager, members);
 		_groupMembers.saveToRepository();
 	}

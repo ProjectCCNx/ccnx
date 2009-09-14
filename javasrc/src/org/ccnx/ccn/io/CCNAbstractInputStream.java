@@ -43,11 +43,18 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
+/**
+ * This abstract class is the superclass of all classes representing an input stream of
+ * bytes segmented and stored in CCN. 
+ * 
+ * @see CCNSegmenter for description of CCN segmentation
+ * @author smetters
+ */
 public abstract class CCNAbstractInputStream extends InputStream implements ContentVerifier {
 
 	protected static final int MAX_TIMEOUT = 5000;
 
-	protected CCNHandle _library;
+	protected CCNHandle _handle;
 
 	protected ContentObject _currentSegment = null;
 	protected ContentObject _goneSegment = null;
@@ -106,9 +113,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		if (null == baseName) {
 			throw new IllegalArgumentException("baseName cannot be null!");
 		}
-		_library = library; 
-		if (null == _library) {
-			_library = CCNHandle.getLibrary();
+		_handle = library; 
+		if (null == _handle) {
+			_handle = CCNHandle.getHandle();
 		}
 		_publisher = publisher;	
 		
@@ -155,9 +162,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	public CCNAbstractInputStream(ContentObject firstSegment, 			
 			CCNHandle library) throws IOException  {
 		super();
-		_library = library; 
-		if (null == _library) {
-			_library = CCNHandle.getLibrary();
+		_handle = library; 
+		if (null == _handle) {
+			_handle = CCNHandle.getHandle();
 		}
 		setFirstSegment(firstSegment);
 		_baseName = SegmentationProfile.segmentRoot(firstSegment.name());
@@ -320,7 +327,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
  		// available that verifies for first segment. If _publisher specified a priori, or once we have
  		// retrieved a segment and set _publisher to the publisher of that segment, we will continue to
  		// retrieve segments by the same publisher.
-		return SegmentationProfile.getSegment(_baseName, number, _publisher, _timeout, this, _library);
+		return SegmentationProfile.getSegment(_baseName, number, _publisher, _timeout, this, _handle);
 	}
 	
 	/**
