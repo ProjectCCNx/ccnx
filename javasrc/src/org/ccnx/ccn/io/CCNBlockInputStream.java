@@ -41,36 +41,36 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 public class CCNBlockInputStream extends CCNAbstractInputStream {
 
 	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber, 
-			   PublisherPublicKeyDigest publisher, ContentKeys keys, CCNHandle library) throws XMLStreamException, IOException {
-		super(baseName, startingSegmentNumber, publisher, keys, library);
+			   PublisherPublicKeyDigest publisher, ContentKeys keys, CCNHandle handle) throws XMLStreamException, IOException {
+		super(baseName, startingSegmentNumber, publisher, keys, handle);
 		setTimeout(CCNBase.NO_TIMEOUT);
 	}
 
 	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber,
-							   PublisherPublicKeyDigest publisher, CCNHandle library) throws XMLStreamException, IOException {
-		super(baseName, startingSegmentNumber, publisher, null, library);
+							   PublisherPublicKeyDigest publisher, CCNHandle handle) throws XMLStreamException, IOException {
+		super(baseName, startingSegmentNumber, publisher, null, handle);
 		setTimeout(CCNBase.NO_TIMEOUT);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, PublisherPublicKeyDigest publisher, CCNHandle library) 
+	public CCNBlockInputStream(ContentName baseName, PublisherPublicKeyDigest publisher, CCNHandle handle) 
 															throws XMLStreamException, IOException {
-		this(baseName, null, publisher, library);
+		this(baseName, null, publisher, handle);
 	}
 
 	public CCNBlockInputStream(ContentName baseName) throws XMLStreamException, IOException {
 		this(baseName, null, null, null);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, CCNHandle library) throws XMLStreamException, IOException {
-		this(baseName, null, null, library);
+	public CCNBlockInputStream(ContentName baseName, CCNHandle handle) throws XMLStreamException, IOException {
+		this(baseName, null, null, handle);
 	}
 
 	public CCNBlockInputStream(ContentName baseName, long segmentNumber) throws XMLStreamException, IOException {
 		this(baseName, segmentNumber, null, null);
 	}
 	
-	public CCNBlockInputStream(ContentObject firstSegment, CCNHandle library) throws XMLStreamException, IOException {
-		super(firstSegment, null, library);
+	public CCNBlockInputStream(ContentObject firstSegment, CCNHandle handle) throws XMLStreamException, IOException {
+		super(firstSegment, null, handle);
 	}
 
 	@Override

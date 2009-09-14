@@ -256,14 +256,14 @@ public class WrappedKeyTest {
 		
 		Flosser flosser = null;
 		try {
-			CCNHandle library = CCNHandle.open();
+			CCNHandle handle = CCNHandle.open();
 			flosser = new Flosser();
 			flosser.handleNamespace(storedKeyName);
-			WrappedKeyObject wko = new WrappedKeyObject(storedKeyName, wks, library);
+			WrappedKeyObject wko = new WrappedKeyObject(storedKeyName, wks, handle);
 			wko.save();
 			Assert.assertTrue(VersioningProfile.hasTerminalVersion(wko.getVersionedName()));
 			// should update in another thread
-			WrappedKeyObject wkoread = new WrappedKeyObject(storedKeyName, CCNHandle.open()); // new library
+			WrappedKeyObject wkoread = new WrappedKeyObject(storedKeyName, CCNHandle.open()); // new handle
 			Assert.assertTrue(wkoread.available());
 			Assert.assertEquals(wkoread.getVersionedName(), wko.getVersionedName());
 			Assert.assertEquals(wkoread.wrappedKey(), wko.wrappedKey());

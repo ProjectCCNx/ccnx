@@ -100,20 +100,20 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * @param baseName should not include a segment component.
 	 * @param startingSegmentNumber
 	 * @param publisher
-	 * @param library
+	 * @param handle
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 */
 	public CCNAbstractInputStream(
 			ContentName baseName, Long startingSegmentNumber,
-			PublisherPublicKeyDigest publisher, CCNHandle library) 
+			PublisherPublicKeyDigest publisher, CCNHandle handle) 
 					throws XMLStreamException, IOException {
 		super();
 		
 		if (null == baseName) {
 			throw new IllegalArgumentException("baseName cannot be null!");
 		}
-		_handle = library; 
+		_handle = handle; 
 		if (null == _handle) {
 			_handle = CCNHandle.getHandle();
 		}
@@ -142,10 +142,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	public CCNAbstractInputStream(
 			ContentName baseName, Long startingSegmentNumber,
 			PublisherPublicKeyDigest publisher,
-			ContentKeys keys, CCNHandle library) 
+			ContentKeys keys, CCNHandle handle) 
 					throws XMLStreamException, IOException {
 		
-		this(baseName, startingSegmentNumber, publisher, library);
+		this(baseName, startingSegmentNumber, publisher, handle);
 		
 		if (null != keys) {
 			keys.requireDefaultAlgorithm();
@@ -156,13 +156,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	/**
 	 * Assumes starterSegment has been verified by caller.
 	 * @param firstSegment
-	 * @param library
+	 * @param handle
 	 * @throws IOException
 	 */
 	public CCNAbstractInputStream(ContentObject firstSegment, 			
-			CCNHandle library) throws IOException  {
+			CCNHandle handle) throws IOException  {
 		super();
-		_handle = library; 
+		_handle = handle; 
 		if (null == _handle) {
 			_handle = CCNHandle.getHandle();
 		}
@@ -177,9 +177,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	public CCNAbstractInputStream(ContentObject firstSegment, 			
 			ContentKeys keys,
-			CCNHandle library) throws IOException {
+			CCNHandle handle) throws IOException {
 
-		this(firstSegment, library);
+		this(firstSegment, handle);
 		
 		keys.requireDefaultAlgorithm();
 		_keys = keys;
@@ -560,7 +560,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 
 	public boolean eof() { 
-		//Library.info("Checking eof: there yet? " + _atEOF);
+		//Log.info("Checking eof: there yet? " + _atEOF);
 		return _atEOF; 
 	}
 

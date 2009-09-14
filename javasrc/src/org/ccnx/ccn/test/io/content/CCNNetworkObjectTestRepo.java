@@ -76,7 +76,7 @@ public class CCNNetworkObjectTestRepo {
 	static Collection small2;
 	static Collection empty;
 	static Collection big;
-	static CCNHandle library;
+	static CCNHandle handle;
 	static String [] numbers = new String[]{"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"};
 		
 	static void setupNamespace(ContentName name) throws IOException {
@@ -93,7 +93,7 @@ public class CCNNetworkObjectTestRepo {
 	public static void setUpBeforeClass() throws Exception {
 		System.out.println("Making stuff.");
 		
-		library = CCNHandle.open();
+		handle = CCNHandle.open();
 		namespace = ContentName.fromNative("/parc/test/data/CCNNetworkObjectTestRepo-" + + new Random().nextInt(10000));
 		stringObjName = ContentName.fromNative(namespace, "StringObject");
 		collectionObjName = ContentName.fromNative(namespace, "CollectionObject");
@@ -150,7 +150,7 @@ public class CCNNetworkObjectTestRepo {
 		CCNStringObject so = new CCNStringObject(testName, "First value", lput);
 		CCNStringObject ro = null;
 		CCNStringObject ro2 = null;
-		CCNStringObject ro3, ro4; // make each time, to get a new library.
+		CCNStringObject ro3, ro4; // make each time, to get a new handle.
 		CCNTime soTime, srTime, sr2Time, sr3Time, sr4Time, so2Time;
 		for (int i=0; i < numbers.length; ++i) {
 			soTime = saveAndLog(numbers[i], so, null, numbers[i]);
@@ -217,7 +217,7 @@ public class CCNNetworkObjectTestRepo {
 		ContentName testName = ContentName.fromNative(stringObjName, "testEmptySave");
 		setupNamespace(testName);
 		CollectionObject emptycoll = 
-			new CollectionObject(testName, (Collection)null, library);
+			new CollectionObject(testName, (Collection)null, handle);
 		try {
 			emptycoll.setData(small1); // set temporarily to non-null
 			saveAndLog("Empty", emptycoll, null, null);
@@ -285,7 +285,7 @@ public class CCNNetworkObjectTestRepo {
 		ContentName testName2 = ContentName.fromNative(collectionObjName, "testVersionOrdering", "name2");
 		setupNamespace(testName2);
 		
-		CollectionObject c0 = new CollectionObject(testName, empty, library);
+		CollectionObject c0 = new CollectionObject(testName, empty, handle);
 		CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 		
 		CollectionObject c1 = new CollectionObject(testName2, small1, CCNHandle.open());
@@ -340,7 +340,7 @@ public class CCNNetworkObjectTestRepo {
 		ContentName testName2 = ContentName.fromNative(collectionObjName, "testUpdateOtherName", "name2");
 		setupNamespace(testName2);
 
-		CollectionObject c0 = new CollectionObject(testName, empty, library);
+		CollectionObject c0 = new CollectionObject(testName, empty, handle);
 		CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 		
 		CollectionObject c1 = new CollectionObject(testName2, small1, CCNHandle.open());
@@ -370,7 +370,7 @@ public class CCNNetworkObjectTestRepo {
 		ContentName testName = ContentName.fromNative(collectionObjName, "testSaveAsGone");
 		setupNamespace(testName);
 
-		CollectionObject c0 = new CollectionObject(testName, empty, library);
+		CollectionObject c0 = new CollectionObject(testName, empty, handle);
 		CCNTime t0 = saveAsGoneAndLog("Gone", c0);
 		Assert.assertTrue("Should be gone", c0.isGone());
 		ContentName goneVersionName = c0.getVersionedName();
@@ -402,7 +402,7 @@ public class CCNNetworkObjectTestRepo {
 	@Test
 	public void testUpdateDoesNotExist() throws Exception {
 		ContentName testName = ContentName.fromNative(collectionObjName, "testUpdateDoesNotExist");
-		CCNStringObject so = new CCNStringObject(testName, library);
+		CCNStringObject so = new CCNStringObject(testName, handle);
 		setupNamespace(testName);
 		// so should catch exception thrown by underlying stream when it times out.
 		Assert.assertFalse(so.available());

@@ -30,32 +30,32 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 public class CCNStringObject extends CCNSerializableObject<String> {
 
-	public CCNStringObject(ContentName name, String data, CCNHandle library) throws ConfigurationException, IOException {
-		super(String.class, name, data, library);
+	public CCNStringObject(ContentName name, String data, CCNHandle handle) throws ConfigurationException, IOException {
+		super(String.class, name, data, handle);
 	}
 	
 	public CCNStringObject(ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
-		super(String.class, name, publisher, library);
+			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+		super(String.class, name, publisher, handle);
 	}
 	
 	/**
 	 * Read constructor -- opens existing object.
 	 * @param type
 	 * @param name
-	 * @param library
+	 * @param handle
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 * @throws ClassNotFoundException 
 	 */
 	public CCNStringObject(ContentName name, 
-			CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
-		super(String.class, name, (PublisherPublicKeyDigest)null, library);
+			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+		super(String.class, name, (PublisherPublicKeyDigest)null, handle);
 	}
 	
 	public CCNStringObject(ContentObject firstBlock,
-			CCNHandle library) throws ConfigurationException, IOException, XMLStreamException {
-		super(String.class, firstBlock, library);
+			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+		super(String.class, firstBlock, handle);
 	}
 	
 	public String string() throws ContentNotReadyException, ContentGoneException { return data(); }

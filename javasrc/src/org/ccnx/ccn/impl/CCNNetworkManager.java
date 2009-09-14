@@ -449,7 +449,7 @@ public class CCNNetworkManager implements Runnable {
 	/***************************************************************
 	 * NOTE: former statics getNetworkManager(), createNetworkManager()
 	 * are no longer appropriate given that there are multiple instances
-	 * of a network manager (one per library instance)
+	 * of a network manager (one per handle instance)
 	 ***************************************************************/
 	
 	public CCNNetworkManager() throws IOException {

@@ -33,28 +33,28 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 public class CCNVersionedOutputStream extends CCNOutputStream {
 
-	public CCNVersionedOutputStream(ContentName name, CCNHandle library) throws IOException {
-		this(name, (PublisherPublicKeyDigest)null, library);
+	public CCNVersionedOutputStream(ContentName name, CCNHandle handle) throws IOException {
+		this(name, (PublisherPublicKeyDigest)null, handle);
 	}
 
 	public CCNVersionedOutputStream(ContentName name,
 						   			PublisherPublicKeyDigest publisher,
-						   			CCNHandle library) throws IOException {
-		this(name, null, publisher, null, null, library);
+						   			CCNHandle handle) throws IOException {
+		this(name, null, publisher, null, null, handle);
 	}
 
 	public CCNVersionedOutputStream(ContentName name, 
 									ContentKeys keys, 
-									CCNHandle library) throws IOException {
-		this(name, null, null, null, keys, library);
+									CCNHandle handle) throws IOException {
+		this(name, null, null, null, keys, handle);
 	}
 
 	public CCNVersionedOutputStream(ContentName name, 
 			  			   			KeyLocator locator, 
 			  			   			PublisherPublicKeyDigest publisher,
 			  			   			ContentKeys keys,
-			  			   			CCNHandle library) throws IOException {
-		this(name, locator, publisher, null, keys, library);
+			  			   			CCNHandle handle) throws IOException {
+		this(name, locator, publisher, null, keys, handle);
 	}
 
 	public CCNVersionedOutputStream(ContentName name, 
@@ -62,14 +62,14 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 									PublisherPublicKeyDigest publisher, 
 									ContentType type, 
 									ContentKeys keys, 
-									CCNHandle library)
+									CCNHandle handle)
 			throws IOException {
 		/*
 		 * The Flow Controller must register a Filter above the version no. for someone else's
 		 * getLatestVersion interests to see this stream.
 		 */
 		this(name, locator, publisher, type, keys, 
-			 new CCNFlowControl(VersioningProfile.cutTerminalVersion(name).first(), library));
+			 new CCNFlowControl(VersioningProfile.cutTerminalVersion(name).first(), handle));
 	}
 
 	/**

@@ -32,28 +32,28 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 public class RepositoryVersionedOutputStream extends CCNVersionedOutputStream {
 
-	public RepositoryVersionedOutputStream(ContentName name, CCNHandle library) throws IOException {
-		this(name, (PublisherPublicKeyDigest)null, library);
+	public RepositoryVersionedOutputStream(ContentName name, CCNHandle handle) throws IOException {
+		this(name, (PublisherPublicKeyDigest)null, handle);
 	}
 
 	public RepositoryVersionedOutputStream(ContentName name,
 						   				   PublisherPublicKeyDigest publisher,
-						   				   CCNHandle library) throws IOException {
-		this(name, null, publisher, null, null, library);
+						   				   CCNHandle handle) throws IOException {
+		this(name, null, publisher, null, null, handle);
 	}
 
 	public RepositoryVersionedOutputStream(ContentName name, 
 										   ContentKeys keys, 
-										   CCNHandle library) throws IOException {
-		this(name, null, null, null, keys, library);
+										   CCNHandle handle) throws IOException {
+		this(name, null, null, null, keys, handle);
 	}
 
 	public RepositoryVersionedOutputStream(ContentName name, 
 			  			   			KeyLocator locator, 
 			  			   			PublisherPublicKeyDigest publisher,
 			  			   			ContentKeys keys,
-			  			   			CCNHandle library) throws IOException {
-		this(name, locator, publisher, null, keys, library);
+			  			   			CCNHandle handle) throws IOException {
+		this(name, locator, publisher, null, keys, handle);
 	}
 
 	public RepositoryVersionedOutputStream(ContentName name, 
@@ -61,14 +61,14 @@ public class RepositoryVersionedOutputStream extends CCNVersionedOutputStream {
 										   PublisherPublicKeyDigest publisher, 
 										   ContentType type, 
 										   ContentKeys keys, 
-										   CCNHandle library)
+										   CCNHandle handle)
 			throws IOException {
 		/*
 		 * The Flow Controller must register a Filter above the version no. for someone else's
 		 * getLatestVersion interests to see this stream.
 		 */
 		super(name, locator, publisher, type, keys, 
-			  new RepositoryFlowControl(VersioningProfile.cutTerminalVersion(name).first(), library));
+			  new RepositoryFlowControl(VersioningProfile.cutTerminalVersion(name).first(), handle));
 	}
 	
 

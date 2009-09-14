@@ -47,16 +47,16 @@ public class NetworkKeyManager extends BasicKeyManager {
 	
 	ContentName _keystoreName;
 	PublisherPublicKeyDigest _publisher;
-	CCNHandle _library;
+	CCNHandle _handle;
 
 	public NetworkKeyManager(String userName, ContentName keystoreName, PublisherPublicKeyDigest publisher,
-							char [] password, CCNHandle library) throws ConfigurationException, IOException {
+							char [] password, CCNHandle handle) throws ConfigurationException, IOException {
 		// key repository created by default superclass constructor
 		if (null != userName)
 			_userName = userName; // otherwise default for actual user
 		_keystoreName = keystoreName;
 		_publisher = publisher;
-		_library = library;
+		_handle = handle;
 		setPassword(password);
 		// loading done by initialize()
 	}
@@ -82,7 +82,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 		ContentObject keystoreObject = null;
 		try {
 			keystoreObject = 
-				VersioningProfile.getFirstBlockOfLatestVersion(_keystoreName, null, _publisher, DEFAULT_TIMEOUT, new ContentObject.SimpleVerifier(_publisher),  _library);
+				VersioningProfile.getFirstBlockOfLatestVersion(_keystoreName, null, _publisher, DEFAULT_TIMEOUT, new ContentObject.SimpleVerifier(_publisher),  _handle);
 			if (null == keystoreObject) {
 				Log.info("Creating new CCN key store..." + _keystoreName);
 				_keystore = createKeyStore();	
@@ -95,7 +95,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 			CCNVersionedInputStream in = null;
 			Log.info("Loading CCN key store from " + _keystoreName + "...");
 			try {
-				in = new CCNVersionedInputStream(keystoreObject, _library);
+				in = new CCNVersionedInputStream(keystoreObject, _handle);
 				readKeyStore(in);
 			} catch (XMLStreamException e) {
 				Log.warning("Cannot open existing key store: " + _keystoreName);
@@ -133,6 +133,6 @@ public class NetworkKeyManager extends BasicKeyManager {
 	 * @throws IOException
 	 */
 	protected OutputStream createKeyStoreWriteStream() throws XMLStreamException, IOException {
-		return new CCNVersionedOutputStream(_keystoreName, _library);
+		return new CCNVersionedOutputStream(_keystoreName, _handle);
 	}
 }

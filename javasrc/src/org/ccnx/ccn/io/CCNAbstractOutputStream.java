@@ -59,7 +59,7 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 			_handle = CCNHandle.getHandle();
 		}
 
-		// If these are null, the library defaults will be used.
+		// If these are null, the handle defaults will be used.
 		_locator = locator;
 		_publisher = publisher;		
 	}

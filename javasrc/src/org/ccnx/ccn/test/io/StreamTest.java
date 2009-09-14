@@ -61,10 +61,10 @@ public class StreamTest extends BlockReadWriteTest {
 	}
 	
 	@Override
-	public void getResults(ContentName baseName, int count, CCNHandle library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNHandle handle) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
-		CCNInputStream istream = new CCNInputStream(thisName, library);
+		CCNInputStream istream = new CCNInputStream(thisName, handle);
 		istream.setTimeout(8000);
 		Log.info("Opened descriptor for reading: " + baseName);
 
@@ -103,10 +103,10 @@ public class StreamTest extends BlockReadWriteTest {
 	 * @throws InvalidKeyException 
 	 */
 	@Override
-	public void doPuts(ContentName baseName, int count, CCNHandle library) throws InterruptedException, 
+	public void doPuts(ContentName baseName, int count, CCNHandle handle) throws InterruptedException, 
 				SignatureException, MalformedContentNameStringException, IOException, InvalidKeyException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
-		CCNOutputStream ostream = new CCNOutputStream(thisName, library);
+		CCNOutputStream ostream = new CCNOutputStream(thisName, handle);
 		sema.release();	// put channel open
 		
 		Log.info("Opened output stream for writing: " + thisName);

@@ -76,16 +76,16 @@ public class puttap implements CCNInterestListener {
 				return false;
 			}
 			
-			// Get writing library 
-			CCNHandle library = CCNHandle.open();
-			manager = library.getNetworkManager();
+			// Get writing handle 
+			CCNHandle handle = CCNHandle.open();
+			manager = handle.getNetworkManager();
 			// Set up tap so packets get written to file
 			manager.setTap(tapName);
 			
 			ContentName name = ContentName.fromURI(ccnName);
 			
 			// Register standing interest so our put's will flow
-			// This must be through separate library instance so it 
+			// This must be through separate handle instance so it 
 			// appears that there is an interest from a separate app
 			// because interest from the same app as the writer will 
 			// not consume the data and therefore will block
@@ -100,7 +100,7 @@ public class puttap implements CCNInterestListener {
 	        InputStream is = new FileInputStream(theFile);
 	        byte[] bytes = new byte[CHUNK_SIZE];
 	        int i = 0;
-	        CCNWriter writer = new CCNWriter(name, library);
+	        CCNWriter writer = new CCNWriter(name, handle);
 	        while (is.read(bytes) >= 0) {
 	        	writer.put(ContentName.fromNative(name, new Integer(i++).toString()), bytes);
 	        }

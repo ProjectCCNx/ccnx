@@ -69,7 +69,6 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	 * @param publisher
 	 * @param locator
 	 * @param signingKey
-	 * @param library
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 */

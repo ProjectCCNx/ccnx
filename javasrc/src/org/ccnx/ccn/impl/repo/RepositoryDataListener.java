@@ -58,7 +58,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 										// expressed but not yet satisfied.  Also used to decide how many interests
 										// may be expressed to satisfy the current pipelining window
 	private RepositoryServer _server;
-	private CCNHandle _library;
+	private CCNHandle _handle;
 	private long _currentBlock = 0; 	// latest block we're looking for
 	private long _finalBlockID = -1; 	// expected last block of the stream
 	
@@ -116,7 +116,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_origInterest = interest;
 		_versionedName = interest.name();
 		_server = server;
-		_library = server.getHandle();
+		_handle = server.getHandle();
 		_timer = new Date().getTime();
 		Log.info("Starting up repository listener on original interest: " + origInterest + " interest " + interest);
 	}
@@ -202,7 +202,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 					// DKS - should use better interest generation to only get segments (TBD, in SegmentationProfile)
 					Interest newInterest = new Interest(name);
 					try {
-						_library.expressInterest(newInterest, this);
+						_handle.expressInterest(newInterest, this);
 						_interests.add(newInterest, null);
 					} catch (IOException e) {
 						Log.logStackTrace(Level.WARNING, e);
@@ -257,7 +257,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		@Override
 		protected void action(long value, Entry<?> entry, Iterator<Entry<Object>> it) {
 			if (value > _value) {
-				_library.cancelInterest(entry.interest(), _listener);
+				_handle.cancelInterest(entry.interest(), _listener);
 				it.remove();
 			}
 		}
@@ -293,7 +293,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	 */
 	public void cancelInterests() {
 		for (Entry<Object> entry : _interests.values())
-			_library.cancelInterest(entry.interest(), this);
+			_handle.cancelInterest(entry.interest(), this);
 	}
 	
 	/**

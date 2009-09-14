@@ -56,52 +56,52 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
 		 * @param name
 		 * @param data
-		 * @param library
+		 * @param handle
 		 * @throws ConfigurationException
 		 * @throws IOException
 		 */
-		public CollectionObject(ContentName name, Collection data, CCNHandle library) throws IOException {
-			super(Collection.class, name, data, library);
+		public CollectionObject(ContentName name, Collection data, CCNHandle handle) throws IOException {
+			super(Collection.class, name, data, handle);
 		}
 		
-		public CollectionObject(ContentName name, java.util.Collection<Link> contents, CCNHandle library) throws IOException {
-			this(name, new Collection(contents), library);
+		public CollectionObject(ContentName name, java.util.Collection<Link> contents, CCNHandle handle) throws IOException {
+			this(name, new Collection(contents), handle);
 		}
 		
-		public CollectionObject(ContentName name, Link [] contents, CCNHandle library) throws IOException {
-			this(name, new Collection(contents), library);			
+		public CollectionObject(ContentName name, Link [] contents, CCNHandle handle) throws IOException {
+			this(name, new Collection(contents), handle);			
 		}
 
-		public CollectionObject(ContentName name, Collection data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
-			super(Collection.class, name, data, publisher, keyLocator, library);
+		public CollectionObject(ContentName name, Collection data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+			super(Collection.class, name, data, publisher, keyLocator, handle);
 		}
 
-		public CollectionObject(ContentName name, java.util.Collection<Link> contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
-			this(name, new Collection(contents), publisher, keyLocator, library);
+		public CollectionObject(ContentName name, java.util.Collection<Link> contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+			this(name, new Collection(contents), publisher, keyLocator, handle);
 		}
 		
-		public CollectionObject(ContentName name, Link [] contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
-			this(name, new Collection(contents), publisher, keyLocator, library);			
+		public CollectionObject(ContentName name, Link [] contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+			this(name, new Collection(contents), publisher, keyLocator, handle);			
 		}
 
 		/**
 		 * Read constructor -- opens existing object.
 		 * @param name
-		 * @param library
+		 * @param handle
 		 * @throws XMLStreamException
 		 * @throws IOException
 		 * @throws ClassNotFoundException 
 		 */
-		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) throws IOException, XMLStreamException {
-			super(Collection.class, name, publisher, library);
+		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
+			super(Collection.class, name, publisher, handle);
 		}
 		
-		public CollectionObject(ContentName name, CCNHandle library) throws IOException, XMLStreamException {
-			super(Collection.class, name, (PublisherPublicKeyDigest)null, library);
+		public CollectionObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
+			super(Collection.class, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
-		public CollectionObject(ContentObject firstBlock, CCNHandle library) throws IOException, XMLStreamException {
-			super(Collection.class, firstBlock, library);
+		public CollectionObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
+			super(Collection.class, firstBlock, handle);
 		}
 		
 		public Collection collection() throws ContentNotReadyException, ContentGoneException {

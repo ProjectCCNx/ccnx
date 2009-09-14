@@ -45,12 +45,12 @@ public class get {
 			// with random version.
 			ContentName argName = ContentName.fromURI(args[0]);
 			
-			CCNHandle library = CCNHandle.open();
+			CCNHandle handle = CCNHandle.open();
 			
 			if (args.length == 2) {
 				// Adjust to use defragmenting interface, find latest
 				// version, etc...
-				ContentObject object = library.get(argName, CCNHandle.NO_TIMEOUT);
+				ContentObject object = handle.get(argName, CCNHandle.NO_TIMEOUT);
 				
 				System.out.println("Retrieved an object named: " + argName);
 				System.out.println("Writing to file " + args[1]);

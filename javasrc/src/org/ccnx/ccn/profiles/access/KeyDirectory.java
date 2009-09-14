@@ -97,12 +97,12 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * Directory name should be versioned, else we pull the latest version
 	 * @param manager
 	 * @param directoryName
-	 * @param library
+	 * @param handle
 	 * @throws IOException
 	 */
-	public KeyDirectory(AccessControlManager manager, ContentName directoryName, CCNHandle library) 
+	public KeyDirectory(AccessControlManager manager, ContentName directoryName, CCNHandle handle) 
 					throws IOException {
-		super(directoryName, library);
+		super(directoryName, handle);
 		if (null == manager) {
 			stopEnumerating();
 			throw new IllegalArgumentException("Manager cannot be null.");
@@ -310,7 +310,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		ContentName principalLinkName = getWrappedKeyNameForPrincipal(pi.isGroup(), pi.friendlyName(), pi.versionTimestamp());
 		// This should be a link to the actual key block
 		// TODO DKS should wait on link data...
-		LinkObject principalLink = new LinkObject(principalLinkName, _manager.library());
+		LinkObject principalLink = new LinkObject(principalLinkName, _manager.handle());
 		Log.info("Retrieving wrapped key for principal " + principalName + " at " + principalLink.getTargetName());
 		ContentName wrappedKeyName = principalLink.getTargetName();
 		return getWrappedKey(wrappedKeyName);
@@ -383,7 +383,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public WrappedKeyObject getWrappedKey(ContentName wrappedKeyName) throws XMLStreamException, IOException, ConfigurationException {
-		WrappedKeyObject wrappedKey = new WrappedKeyObject(wrappedKeyName, _manager.library());
+		WrappedKeyObject wrappedKey = new WrappedKeyObject(wrappedKeyName, _manager.handle());
 		wrappedKey.update();
 		return wrappedKey;		
 	}
@@ -428,7 +428,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		if (!hasPreviousKeyBlock())
 			return null;
-		LinkObject previousKey = new LinkObject(getPreviousKeyBlockName(), _manager.library());
+		LinkObject previousKey = new LinkObject(getPreviousKeyBlockName(), _manager.handle());
 		previousKey.waitForData(timeout); 
 		if (!previousKey.available()) {
 			Log.info("Unexpected: no previous key link at " + getPreviousKeyBlockName());
@@ -468,7 +468,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		if (!hasPrivateKeyBlock()) // checks hasChildren
 			return null;
 		
-		return new WrappedKey.WrappedKeyObject(getPrivateKeyBlockName(), _manager.library());
+		return new WrappedKey.WrappedKeyObject(getPrivateKeyBlockName(), _manager.handle());
 	}
 	
 	/**
@@ -528,7 +528,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					Key unwrappedSupersedingKey = null;
 					KeyDirectory supersedingKeyDirectory = null;
 					try {
-						supersedingKeyDirectory = new KeyDirectory(_manager, supersededKeyBlock.wrappedKey().wrappingKeyName(), _manager.library());
+						supersedingKeyDirectory = new KeyDirectory(_manager, supersededKeyBlock.wrappedKey().wrappingKeyName(), _manager.handle());
 						supersedingKeyDirectory.waitForData();
 						// This wraps the key we actually want.
 						unwrappedSupersedingKey = supersedingKeyDirectory.getUnwrappedKey(supersededKeyBlock.wrappedKey().wrappingKeyIdentifier());
@@ -705,9 +705,9 @@ public class KeyDirectory extends EnumeratedNameList {
 		wrappedKey.setWrappingKeyName(publicKeyName);
 		WrappedKeyObject wko = 
 			new WrappedKeyObject(getWrappedKeyNameForKeyID(WrappedKey.wrappingKeyIdentifier(publicKey)),
-								 wrappedKey, _manager.library());
+								 wrappedKey, _manager.handle());
 		wko.saveToRepository();
-		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new Link(wko.getVersionedName()), _manager.library());
+		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new Link(wko.getVersionedName()), _manager.handle());
 		lo.saveToRepository();
 	}
 	
@@ -715,7 +715,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		
 		WrappedKey wrappedKey = WrappedKey.wrapKey(privateKey, null, null, privateKeyWrappingKey);	
 		wrappedKey.setWrappingKeyIdentifier(privateKeyWrappingKey);
-		WrappedKeyObject wko = new WrappedKeyObject(getPrivateKeyBlockName(), wrappedKey, _manager.library());
+		WrappedKeyObject wko = new WrappedKeyObject(getPrivateKeyBlockName(), wrappedKey, _manager.handle());
 		wko.saveToRepository();
 	}
 
@@ -733,7 +733,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			ContentName supersedingKeyName, Key newPrivateKeyWrappingKey) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException {
 		
 		addSupersededByBlock(getSupersededBlockName(), oldPrivateKeyWrappingKey,
-						     supersedingKeyName, newPrivateKeyWrappingKey, _manager.library());
+						     supersedingKeyName, newPrivateKeyWrappingKey, _manager.handle());
 	}
 	
 	/**
@@ -743,12 +743,12 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws InvalidKeyException 
 	 */
 	public static void addSupersededByBlock(ContentName oldKeySupersededBlockName, Key oldKeyToBeSuperseded, 
-											ContentName supersedingKeyName, Key supersedingKey, CCNHandle library) throws IOException, InvalidKeyException {
+											ContentName supersedingKeyName, Key supersedingKey, CCNHandle handle) throws IOException, InvalidKeyException {
 		
 		WrappedKey wrappedKey = WrappedKey.wrapKey(oldKeyToBeSuperseded, null, null, supersedingKey);
 		wrappedKey.setWrappingKeyIdentifier(supersedingKey);
 		wrappedKey.setWrappingKeyName(supersedingKeyName);
-		WrappedKeyObject wko = new WrappedKeyObject(oldKeySupersededBlockName, wrappedKey, library);
+		WrappedKeyObject wko = new WrappedKeyObject(oldKeySupersededBlockName, wrappedKey, handle);
 		wko.saveToRepository();
 	}
 
@@ -766,7 +766,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			Log.warning("Unexpected, already have previous key block : " + getPreviousKeyBlockName());
 		}
 		LinkAuthenticator la = (null != previousKeyPublisher) ? new LinkAuthenticator(previousKeyPublisher) : null;
-		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new Link(previousKey,la), _manager.library());
+		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new Link(previousKey,la), _manager.handle());
 		pklo.saveToRepository();
 	}
 	
@@ -777,7 +777,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		WrappedKey wrappedKey = WrappedKey.wrapKey(oldPrivateKeyWrappingKey, null, null, newPrivateKeyWrappingKey);
 		wrappedKey.setWrappingKeyIdentifier(newPrivateKeyWrappingKey);
 		wrappedKey.setWrappingKeyName(supersedingKeyName);
-		WrappedKeyObject wko = new WrappedKeyObject(getPreviousKeyBlockName(), wrappedKey, _manager.library());
+		WrappedKeyObject wko = new WrappedKeyObject(getPreviousKeyBlockName(), wrappedKey, _manager.handle());
 		wko.saveToRepository();
 	}
 }

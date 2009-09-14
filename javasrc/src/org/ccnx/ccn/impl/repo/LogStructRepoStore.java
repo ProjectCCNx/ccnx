@@ -343,7 +343,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * TODO - Co Should be signed with the "repository's" signature.
 	 * @throws RepositoryException
 	 */
-	private String checkFile(String fileName, String contents, CCNHandle library, boolean forceWrite) throws RepositoryException {
+	private String checkFile(String fileName, String contents, CCNHandle handle, boolean forceWrite) throws RepositoryException {
 		byte[][] components = new byte[3][];
 		components[0] = META_DIR.getBytes();
 		components[1] = REPO_PRIVATE.getBytes();
@@ -356,9 +356,9 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		}
 		
 		ContentName versionedName = VersioningProfile.addVersion(name);
-		PublisherPublicKeyDigest publisher = library.keyManager().getDefaultKeyID();
-		PrivateKey signingKey = library.keyManager().getSigningKey(publisher);
-		KeyLocator locator = library.keyManager().getKeyLocator(signingKey);
+		PublisherPublicKeyDigest publisher = handle.keyManager().getDefaultKeyID();
+		PrivateKey signingKey = handle.keyManager().getSigningKey(publisher);
+		KeyLocator locator = handle.keyManager().getKeyLocator(signingKey);
 		try {
 			co = new ContentObject(versionedName, new SignedInfo(publisher, locator), contents.getBytes(), signingKey);
 		} catch (Exception e) {

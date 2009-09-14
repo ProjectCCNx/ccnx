@@ -497,14 +497,14 @@ public class VersioningProfile implements CCNProfile {
 											     PublisherPublicKeyDigest publisher, 
 												 long timeout, 
  												 ContentVerifier verifier,
-												 CCNHandle library) throws IOException {
+												 CCNHandle handle) throws IOException {
 		
 		ContentName latestVersionFound = startingVersion;
 		
 		while (true) {
 			
 			Interest getLatestInterest = latestVersionInterest(latestVersionFound, null, publisher);
-			ContentObject co = library.get(getLatestInterest, timeout);
+			ContentObject co = handle.get(getLatestInterest, timeout);
 			if (co == null) {
 				Log.info("Null returned from getLatest for name: " + startingVersion);
 				return null;
@@ -549,7 +549,7 @@ public class VersioningProfile implements CCNProfile {
 															 PublisherPublicKeyDigest publisher, 
 															 long timeout, 
 															 ContentVerifier verifier,
-															 CCNHandle library) throws IOException {
+															 CCNHandle handle) throws IOException {
 		
 		Log.info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
 		
@@ -560,7 +560,7 @@ public class VersioningProfile implements CCNProfile {
 		int versionedLength = prefix.count() + 1;
 		
 		Interest getLatestInterest = firstBlockLatestVersionInterest(startingVersion, publisher);
-		ContentObject result = library.get(getLatestInterest, timeout);
+		ContentObject result = handle.get(getLatestInterest, timeout);
 		if (null != result){
 			Log.info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			
@@ -585,7 +585,7 @@ public class VersioningProfile implements CCNProfile {
 			startingVersion = result.name().cut(versionedLength);
 			Log.info("CHILD SELECTOR FAILURE: getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
 			// this will verify
-			return SegmentationProfile.getSegment(startingVersion, startingSegmentNumber, null, timeout, verifier, library); // now that we have the latest version, go back for the first block.
+			return SegmentationProfile.getSegment(startingVersion, startingSegmentNumber, null, timeout, verifier, handle); // now that we have the latest version, go back for the first block.
 		} else {
 			Log.info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
 		}

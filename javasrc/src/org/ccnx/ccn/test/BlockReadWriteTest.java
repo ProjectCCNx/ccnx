@@ -54,10 +54,10 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	}
 
 	@Override
-	public void getResults(ContentName baseName, int count, CCNHandle library) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNHandle handle) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
-		CCNDescriptor desc = new CCNDescriptor(thisName, null, library, false);
+		CCNDescriptor desc = new CCNDescriptor(thisName, null, handle, false);
 		desc.setTimeout(5000);
 		Log.info("Opened descriptor for reading: " + thisName);
 
@@ -92,9 +92,9 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	 * @throws InvalidKeyException 
 	 */
 	@Override
-	public void doPuts(ContentName baseName, int count, CCNHandle library) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
+	public void doPuts(ContentName baseName, int count, CCNHandle handle) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
-		CCNDescriptor desc = new CCNDescriptor(thisName, null, library, true);
+		CCNDescriptor desc = new CCNDescriptor(thisName, null, handle, true);
 		desc.setTimeout(5000);
 		sema.release();	// put channel open
 		

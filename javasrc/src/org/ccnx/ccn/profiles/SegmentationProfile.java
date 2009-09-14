@@ -230,11 +230,11 @@ public class SegmentationProfile implements CCNProfile {
 	 * @param segmentNumber If null, gets baseSegment().
 	 * @param timeout
 	 * @param verifier Cannot be null.
-	 * @param library
+	 * @param handle
 	 * @return
 	 * @throws IOException
 	 */
-	public static ContentObject getSegment(ContentName desiredContent, Long desiredSegmentNumber, PublisherPublicKeyDigest publisher, long timeout, ContentVerifier verifier, CCNHandle library) throws IOException {
+	public static ContentObject getSegment(ContentName desiredContent, Long desiredSegmentNumber, PublisherPublicKeyDigest publisher, long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
 		
 	    // Block name requested should be interpreted literally, not taken
 	    // relative to baseSegment().
@@ -246,7 +246,7 @@ public class SegmentationProfile implements CCNProfile {
 	
 		// TODO use better exclude filters to ensure we're only getting segments.
 		Log.info("getSegment: getting segment {0}", segmentName);
-		ContentObject segment = CCNReader.getLower(library, segmentName, 1, publisher, timeout);
+		ContentObject segment = CCNReader.getLower(handle, segmentName, 1, publisher, timeout);
 	
 		if (null == segment) {
 			Log.info("Cannot get segment " + desiredSegmentNumber + " of file {0} expected segment: {1}.", desiredContent,  segmentName);
