@@ -40,6 +40,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
@@ -47,7 +48,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * This abstract class is the superclass of all classes representing an input stream of
  * bytes segmented and stored in CCN. 
  * 
- * @see CCNSegmenter for description of CCN segmentation
+ * @see SegmentationProfile for description of CCN segmentation
  * @author smetters
  */
 public abstract class CCNAbstractInputStream extends InputStream implements ContentVerifier {
@@ -62,18 +63,18 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected ContentObject _currentSegment = null;
 	
 	/**
-	 *Publisher information if the stream we are reading is marked GONE ({@link SignedInfo.ContentType.GONE}.
+	 *  information if the stream we are reading is marked GONE (see {@link SignedInfo.ContentType}).
 	 */
 	protected ContentObject _goneSegment = null;
 	
 	/**
-	 * Internal stream used for reads.
+	 * Internal stream used for buffering reads. May include filters.
 	 */
-	protected InputStream _segmentReadStream = null; // includes filters, etc.
+	protected InputStream _segmentReadStream = null; 
 	
 	/**
-	 * This is the name we are querying against, prior to each
-	 * fragment/segment number.
+	 * The name prefix of the segmented stream we are reading, up to (but not including)
+	 * a segment number.
 	 */
 	protected ContentName _baseName = null;
 	
@@ -88,18 +89,23 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * The segment number to start with. If not specified, is {@link SegmentationProfile.baseSegment()}.
 	 */
 	protected Long _startingSegmentNumber = null;
+	
+	/**
+	 * The timeout to use for segment retrieval. 
+	 * TODO -- provide constructor arguments to set.
+	 */
 	protected int _timeout = MAX_TIMEOUT;
 	
 	/**
-	 *  Encryption/decryption handler
+	 *  Encryption/decryption handler.
 	 */
 	protected Cipher _cipher;
 	protected ContentKeys _keys;
 	
 	/**
-	 * If this content uses Merkle Hash Trees or other structures to amortize
+	 * If this content uses Merkle Hash Trees or other bulk signatures to amortize
 	 * signature cost, we can amortize verification cost as well by caching verification
-	 * data. Store the currently-verified root signature, so we don't have to re-verify;
+	 * data as follows: store the currently-verified root signature, so we don't have to re-verify it;
 	 * and the verified root hash. For each piece of incoming content, see if it aggregates
 	 * to the same root, if so don't reverify signature. If not, assume it's part of
 	 * a new tree and change the root.
@@ -107,14 +113,18 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected byte [] _verifiedRootSignature = null;
 	protected byte [] _verifiedProxy = null;
 	
-	protected KeyLocator _publisherKeyLocator; // the key locator of the content publisher as we read it.
+	/**
+	 * The key locator of the content publisher as we read it.
+	 */
+	protected KeyLocator _publisherKeyLocator; 
 
 	protected boolean _atEOF = false;
 
+	/**
+	 * Used for {@link #mark(int)} and {@link #reset()}.
+	 */
 	protected int _readlimit = 0;
-
 	protected int _markOffset = 0;
-
 	protected long _markBlock = 0;
 
 	/**
