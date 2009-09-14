@@ -38,9 +38,6 @@ public class TestUserDataTestRepo {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		//testPrefix = ContentName.fromNative("/parc/test");
-		//userKeyStorePrefix = ContentName.fromNative("/parc/test/_access_/Users");
-		//userNamespace = ContentName.fromNative("/parc/test/Users/");
 		testPrefix = UserConfiguration.defaultNamespace();
 		userKeyStorePrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_access_");
 		userNamespace = ContentName.fromNative(testPrefix, "home");
@@ -59,6 +56,9 @@ public class TestUserDataTestRepo {
 			sb.append(" " + s);
 		}
 		System.out.println(sb.toString());
+		
+		td.saveUserPK2Repo(userNamespace);
+		
 		// OK, now let's make a handle using one of these users and make sure the publisher ID
 		// and such defaults correctly.
 		// Should we pick randomly?
@@ -98,10 +98,10 @@ public class TestUserDataTestRepo {
 		for (String friendlyName: td.friendlyNames()){
 			CCNHandle uLibrary = td.getHandleForUser(friendlyName);
 			KeyManager uKeyManager = uLibrary.keyManager();
-			//ContentName keyName = ContentName.fromNative(userNamespace, "PublicKey:" + userKeyManager.getDefaultKeyID());
 			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
-			PublicKeyObject pko = new PublicKeyObject(keyName, uKeyManager.getDefaultPublicKey(), uLibrary);
-			pko.saveToRepository();
+			//PublicKeyObject pko = new PublicKeyObject(keyName, uKeyManager.getDefaultPublicKey(), uLibrary);
+			PublicKeyObject pko = new PublicKeyObject(keyName, uLibrary);
+			//pko.saveToRepository();
 			
 			System.out.println("Object key locator: " + pko.getPublisherKeyLocator());
 			System.out.println("Object key ID: " + pko.getContentPublisher());

@@ -205,8 +205,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		if (null == _handle) {
 			_handle = CCNHandle.getHandle();
 		}
-		keys.requireDefaultAlgorithm();
-		_keys = keys;
+		
+		if (null != keys) {
+			keys.requireDefaultAlgorithm();
+			_keys = keys;
+		}
 
 		setFirstSegment(startingSegment);
 		_baseName = SegmentationProfile.segmentRoot(startingSegment.name());

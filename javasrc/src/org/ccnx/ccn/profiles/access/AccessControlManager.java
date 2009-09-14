@@ -317,6 +317,20 @@ public class AccessControlManager {
 	}
 
 	/**
+	 * Creates the root ACL for _namespace.
+	 * This initialization must be done before any other ACL or nodekey can be read or written.
+	 * @param rootACL
+	 */
+	public void initializeNamespace(ACL rootACL) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {
+		// generates the new node key		
+		generateNewNodeKey(_namespace, null, rootACL);
+		
+		// write the root ACL
+		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(_namespace), rootACL, handle());
+		aclo.saveToRepository();
+	}
+	
+	/**
 	 * Retrieves the latest version of an ACL effective at this node, either stored
 	 * here or at one of its ancestors.
 	 * @param nodeName
@@ -883,10 +897,11 @@ public class AccessControlManager {
 		
 		NodeKey nk = getLatestNodeKeyForNode(AccessControlProfile.accessRoot(nearestACL.getVersionedName()));
 		return nk;
-	}
-
+	}	
+	
 	/**
-	 * Make a new node key, encrypt it under the given ACL, and wrap its previous node key.
+	 * Make a new node key and encrypt it under the given ACL.
+	 * If there is a previous node key (oldEffectiveNodeKey not null), it is wrapped in the new node key.
 	 * Put all the blocks into the aggregating writer, but don't flush.
 	 * @param nodeName
 	 * @param effectiveNodeKey
@@ -947,25 +962,27 @@ public class AccessControlManager {
 			//	 -- we are updating that node key to a new version
 			// 			NK/vn replaced by NK/vn+k -- new node key will be later version of previous node key
 			//   -- we don't get called if we are deleting an ACL here -- no new node key is added.
-			if (oldEffectiveNodeKey.isDerivedNodeKey()) {
-				// Interposing an ACL. 
-				// Add a previous key block wrapping the previous key. There is nothing to link to.
-				nodeKeyDirectory.addPreviousKeyBlock(oldEffectiveNodeKey.nodeKey(), nodeKeyDirectoryName, nodeKey);
-			} else {
-				try {
-					if (!VersioningProfile.isLaterVersionOf(nodeKeyDirectoryName, oldEffectiveNodeKey.storedNodeKeyName())) {
-						Log.warning("Unexpected: replacing node key stored at " + oldEffectiveNodeKey.storedNodeKeyName() + " with new node key " + 
-								nodeKeyDirectoryName + " but latter is not later version of the former.");
+			if (oldEffectiveNodeKey != null) {
+				if (oldEffectiveNodeKey.isDerivedNodeKey()) {
+					// Interposing an ACL. 
+					// Add a previous key block wrapping the previous key. There is nothing to link to.
+					nodeKeyDirectory.addPreviousKeyBlock(oldEffectiveNodeKey.nodeKey(), nodeKeyDirectoryName, nodeKey);
+				} else {
+					try {
+						if (!VersioningProfile.isLaterVersionOf(nodeKeyDirectoryName, oldEffectiveNodeKey.storedNodeKeyName())) {
+							Log.warning("Unexpected: replacing node key stored at " + oldEffectiveNodeKey.storedNodeKeyName() + " with new node key " + 
+									nodeKeyDirectoryName + " but latter is not later version of the former.");
+						}
+					} catch (VersionMissingException vex) {
+						Log.warning("Very unexpected version missing exception when replacing node key : " + vex);
 					}
-				} catch (VersionMissingException vex) {
-					Log.warning("Very unexpected version missing exception when replacing node key : " + vex);
+					// Add a previous key link to the old version of the key.
+					// TODO do we need to add publisher?
+					nodeKeyDirectory.addPreviousKeyLink(oldEffectiveNodeKey.storedNodeKeyName(), null);
+					// OK, just add superseded-by block to the old directory.
+					KeyDirectory.addSupersededByBlock(oldEffectiveNodeKey.storedNodeKeyName(), oldEffectiveNodeKey.nodeKey(), 
+							nodeKeyDirectoryName, nodeKey, handle());
 				}
-				// Add a previous key link to the old version of the key.
-				// TODO do we need to add publisher?
-				nodeKeyDirectory.addPreviousKeyLink(oldEffectiveNodeKey.storedNodeKeyName(), null);
-				// OK, just add superseded-by block to the old directory.
-				KeyDirectory.addSupersededByBlock(oldEffectiveNodeKey.storedNodeKeyName(), oldEffectiveNodeKey.nodeKey(), 
-						nodeKeyDirectoryName, nodeKey, handle());
 			}
 		} finally {
 			if (null != nodeKeyDirectory) {
