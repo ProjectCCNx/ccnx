@@ -80,16 +80,13 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
-
-
-
 public class ContentExplorer extends JFrame implements BasicNameEnumeratorListener,ActionListener{
 
 	private static ContentName root;
 	private static boolean accessControlOn = false;
 	
 	private CCNNameEnumerator _nameEnumerator = null;
-	protected static CCNHandle _library = null;
+	protected static CCNHandle _handle = null;
     private static boolean useSystemLookAndFeel = false;
     
 	private static final long serialVersionUID = 1L;
@@ -229,7 +226,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					EventQueue.invokeLater(new Runnable() {
 						public void run() {
 							try {
-								ShowTextDialog dialog = new ShowTextDialog(node,_library);
+								ShowTextDialog dialog = new ShowTextDialog(node,_handle);
 								dialog.setVisible(true);
 							} catch (Exception e) {
 								e.printStackTrace();
@@ -459,7 +456,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			//String localName = new String(fileName.lastComponent());
 			System.out.println("retrieving "+fileName.toString()+" from repo");
 
-			CCNFileInputStream fis = new CCNFileInputStream(fileName, _library);
+			CCNFileInputStream fis = new CCNFileInputStream(fileName, _handle);
 				
 			htmlPane.read(fis, fileName);
 			
@@ -488,7 +485,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		
 		try {
 			
-			RepositoryFileOutputStream fos = new RepositoryFileOutputStream(ccnName, _library);
+			RepositoryFileOutputStream fos = new RepositoryFileOutputStream(ccnName, _handle);
 			FileInputStream fs = new FileInputStream(file);
 			int bytesRead = 0;
 			byte[] buffer = new byte[SegmentationProfile.DEFAULT_BLOCKSIZE];
@@ -1062,8 +1059,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	
 	private void setupNameEnumerator(){
 		try {
-			_library = CCNHandle.open();
-			_nameEnumerator = new CCNNameEnumerator(_library, this);
+			_handle = CCNHandle.open();
+			_nameEnumerator = new CCNNameEnumerator(_handle, this);
 		} catch (ConfigurationException e1) {
 	
 			e1.printStackTrace();

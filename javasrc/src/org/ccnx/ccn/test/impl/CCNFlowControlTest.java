@@ -47,7 +47,7 @@ import org.junit.Test;
  */
 
 public class CCNFlowControlTest {
-	static private CCNLibraryTestHarness _library ;
+	static private CCNLibraryTestHarness _handle ;
 	static private CCNReader _reader;
 	static ContentName name1;
 	static ContentName v1;
@@ -55,8 +55,8 @@ public class CCNFlowControlTest {
 
 	static {
 		try {
-			_library = new CCNLibraryTestHarness();
-			_reader = new CCNReader(_library);
+			_handle = new CCNLibraryTestHarness();
+			_reader = new CCNReader(_handle);
 			
 			name1 = ContentName.fromNative("/foo/bar");
 			v1 = VersioningProfile.addVersion(name1);
@@ -78,7 +78,7 @@ public class CCNFlowControlTest {
 	
 	@Before
 	public void setUp() throws Exception {
-		fc = new CCNFlowControl(_library);
+		fc = new CCNFlowControl(_handle);
 	}
 	
 	
@@ -91,7 +91,7 @@ public class CCNFlowControlTest {
 	ContentObject objv1s3 = new ContentObject(v1s3, new SignedInfo(), "v1s3".getBytes(), (Signature)null);	
 	ContentName v1s4 = SegmentationProfile.segmentName(v1, 4);
 	ContentObject objv1s4 = new ContentObject(v1s4, new SignedInfo(), "v1s4".getBytes(), (Signature)null);
-	Queue<ContentObject> queue = _library.getOutputQueue();
+	Queue<ContentObject> queue = _handle.getOutputQueue();
 	ArrayList<Interest> interestList = new ArrayList<Interest>();
 	CCNFlowControl fc = null;
 
@@ -99,7 +99,7 @@ public class CCNFlowControlTest {
 	public void testBasicControlFlow() throws Throwable {	
 		
 		System.out.println("Testing basic control flow functionality and errors");
-		_library.reset();
+		_handle.reset();
 		try {
 			fc.put(obj1);
 			Assert.fail("Put with no namespace succeeded");
@@ -184,7 +184,7 @@ public class CCNFlowControlTest {
 		fc.put(objv1s1);
 		fc.put(objv1s2);
 		fc.put(objv1s3);
-		ContentObject co = testExpected(_library.get(v1, 0), objv1s1);
+		ContentObject co = testExpected(_handle.get(v1, 0), objv1s1);
 		co = testNext(co, objv1s2);
 		co = testNext(co, objv1s3);
 		co = testNext(co, objv1s4);
@@ -203,7 +203,7 @@ public class CCNFlowControlTest {
 		
 		// First one normal order exchange: put first, interest next
 		fc.put(objv1s1);
-		ContentObject co = testExpected(_library.get(v1, 0), objv1s1);
+		ContentObject co = testExpected(_handle.get(v1, 0), objv1s1);
 
 		// Next we get the interest for the next segment before the data
 		interestList.add(Interest.next(co,3));
@@ -231,7 +231,7 @@ public class CCNFlowControlTest {
 		testLast(objv1s1, objv1s4);
 		testLast(objv1s1, objv1s3);
 		testLast(objv1s1, objv1s2);
-		_library.get(new Interest(v1s1), 0);
+		_handle.get(new Interest(v1s1), 0);
 		
 		System.out.println("Testing \"waitForPutDrain\"");
 		try {
@@ -281,7 +281,7 @@ public class CCNFlowControlTest {
 			synchronized (this) {
 				try {
 					Thread.sleep(500);
-					_library.get(objv1s1.name(), 0);
+					_handle.get(objv1s1.name(), 0);
 				} catch (Exception e) {
 					Assert.fail("Caught exception: " + e.getMessage());
 				}
@@ -291,9 +291,9 @@ public class CCNFlowControlTest {
 	}
 	
 	private void normalReset(ContentName n) throws IOException {
-		_library.reset();
+		_handle.reset();
 		interestList.clear();
-		fc = new CCNFlowControl(n, _library);
+		fc = new CCNFlowControl(n, _handle);
 	}
 	
 	private ContentObject testNext(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {

@@ -42,7 +42,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 /**
  * This particular output stream class embodies the following assumptions:
  * - content is buffered
- * - content is automatically fragmented, using the standard library fragmentation
+ * - content is automatically segmented, using the standard library segmentation
  *    mechanisms, independently of the block size in which it is written
  * - content is written with an associated header
  * - content is authenticated using a bulk signer (e.g. a MHT); each time flush() is called,
@@ -81,26 +81,26 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	protected CCNDigestHelper _dh;
 
-	public CCNOutputStream(ContentName name, CCNHandle library) throws IOException {
-		this(name, (PublisherPublicKeyDigest)null, library);
+	public CCNOutputStream(ContentName name, CCNHandle handle) throws IOException {
+		this(name, (PublisherPublicKeyDigest)null, handle);
 	}
 
 	public CCNOutputStream(ContentName name,
 						   PublisherPublicKeyDigest publisher,
-						   CCNHandle library) throws IOException {
-		this(name, null, publisher, null, null, library);
+						   CCNHandle handle) throws IOException {
+		this(name, null, publisher, null, null, handle);
 	}
 
-	public CCNOutputStream(ContentName name, ContentKeys keys, CCNHandle library) throws IOException {
-		this(name, null, null, null, keys, library);
+	public CCNOutputStream(ContentName name, ContentKeys keys, CCNHandle handle) throws IOException {
+		this(name, null, null, null, keys, handle);
 	}
 
 	public CCNOutputStream(ContentName name, 
 			  			   KeyLocator locator, 
 			  			   PublisherPublicKeyDigest publisher,
 			  			   ContentKeys keys,
-			  			   CCNHandle library) throws IOException {
-		this(name, locator, publisher, null, keys, library);
+			  			   CCNHandle handle) throws IOException {
+		this(name, locator, publisher, null, keys, handle);
 	}
 
 	public CCNOutputStream(ContentName name, 
@@ -108,8 +108,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 						   PublisherPublicKeyDigest publisher,
 						   ContentType type, 
 						   ContentKeys keys,
-						   CCNHandle library) throws IOException {
-		this(name, locator, publisher, type, keys, new CCNFlowControl(name, library));
+						   CCNHandle handle) throws IOException {
+		this(name, locator, publisher, type, keys, new CCNFlowControl(name, handle));
 	}
 
 	public CCNOutputStream(ContentName name, 

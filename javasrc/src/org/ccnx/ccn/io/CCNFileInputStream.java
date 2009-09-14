@@ -57,9 +57,14 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		super(name);
 	}
 
-	public CCNFileInputStream(ContentName name, CCNHandle library)
+	public CCNFileInputStream(ContentName name, CCNHandle handle)
 									throws XMLStreamException, IOException {
-		super(name, library);
+		super(name, handle);
+	}
+
+	public CCNFileInputStream(ContentName name, PublisherPublicKeyDigest publisher,
+			CCNHandle handle) throws XMLStreamException, IOException {
+		this(name, null, publisher, handle);
 	}
 
 	public CCNFileInputStream(ContentName name, long startingBlockIndex)
@@ -68,27 +73,27 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 	}
 
 	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
-			PublisherPublicKeyDigest publisher, CCNHandle library)
+			PublisherPublicKeyDigest publisher, CCNHandle handle)
 			throws XMLStreamException, IOException {
-		super(name, startingBlockIndex, publisher, library);
+		super(name, startingBlockIndex, publisher, handle);
 	}
 
 	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
-			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNHandle library)
+			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNHandle handle)
 			throws XMLStreamException, IOException {
-		super(name, startingBlockIndex, publisher, keys, library);
+		super(name, startingBlockIndex, publisher, keys, handle);
 	}
 
-	public CCNFileInputStream(ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle library) throws XMLStreamException, IOException {
-		this(name, null, publisher, library);
-	}
-
-	public CCNFileInputStream(ContentObject starterBlock, CCNHandle library)
+	public CCNFileInputStream(ContentObject firstSegment, CCNHandle handle)
 			throws XMLStreamException, IOException {
-		super(starterBlock, library);
+		super(firstSegment, handle);
 	}
 
+	public CCNFileInputStream(ContentObject firstSegment, 
+				ContentKeys keys, CCNHandle handle) throws XMLStreamException, IOException {
+		super(firstSegment, keys, handle);
+	}
+	
 	protected boolean headerRequested() {
 		return (null != _header);
 	}
@@ -113,7 +118,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		if (headerRequested())
 			return; // done already
 		// Ask for the header, but update it in the background, as it may not be there yet.
-		_header = new HeaderObject(SegmentationProfile.headerName(baseName), null, publisher, null, _library);
+		_header = new HeaderObject(SegmentationProfile.headerName(baseName), null, publisher, null, _handle);
 		Log.info("Retrieving header : " + _header.getBaseName() + " in background.");
 		_header.updateInBackground();
 	}
@@ -320,7 +325,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 			}
 			// Might be at end of stream, so different value than came in...
 			//long check = _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
-			//Library.info("return val check: "+check);
+			//Log.info("return val check: "+check);
 			
 			//return _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
 			//skip(check);

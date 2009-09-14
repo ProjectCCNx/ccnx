@@ -51,11 +51,11 @@ public class GroupManager {
 	private EnumeratedNameList _groupList;
 	private HashMap<String, Group> _groupCache = new HashMap<String, Group>();
 	private HashSet<String> _myGroupMemberships = new HashSet<String>();
-	private CCNHandle _library;
+	private CCNHandle _handle;
 
 	public GroupManager(AccessControlManager accessManager,
-						ContentName groupStorage, CCNHandle library) throws IOException {
-		_library = library;
+						ContentName groupStorage, CCNHandle handle) throws IOException {
+		_handle = handle;
 		_accessManager = accessManager;
 		_groupStorage = groupStorage;
 		groupList();
@@ -67,7 +67,7 @@ public class GroupManager {
 		if (null == _groupList) {
 			System.out.println("enumerating group: ......");
 			System.out.println(_groupStorage);
-			_groupList = new EnumeratedNameList(_groupStorage, _library);
+			_groupList = new EnumeratedNameList(_groupStorage, _handle);
 		}
 		return _groupList;
 	}
@@ -96,7 +96,7 @@ public class GroupManager {
 			synchronized(_groupCache) {
 				theGroup = _groupCache.get(groupFriendlyName);
 				if (null == theGroup) {
-					theGroup = new Group(_groupStorage, groupFriendlyName, _library,this);
+					theGroup = new Group(_groupStorage, groupFriendlyName, _handle,this);
 					// wait for group to be ready?
 					_groupCache.put(groupFriendlyName, theGroup);
 				}
@@ -136,8 +136,8 @@ public class GroupManager {
 			MembershipList ml = 
 				new MembershipList(
 						AccessControlProfile.groupMembershipListName(_groupStorage, groupFriendlyName), 
-						new Collection(newMembers), _library);
-			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _library, this);
+						new Collection(newMembers), _handle);
+			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _handle, this);
 			cacheGroup(newGroup);
 			// If I'm a group member (I end up knowing the private key of the group if I
 			// created it, but I could simply forget it...).
@@ -255,10 +255,10 @@ public class GroupManager {
 						privateKeyVersion);
 			privateKeyDirectory =
 				new KeyDirectory(_accessManager, 
-					AccessControlProfile.groupPrivateKeyDirectory(versionedPublicKeyName), _library);
+					AccessControlProfile.groupPrivateKeyDirectory(versionedPublicKeyName), _handle);
 			privateKeyDirectory.waitForData();
 			
-			PublicKeyObject thisPublicKey = new PublicKeyObject(versionedPublicKeyName, _library);
+			PublicKeyObject thisPublicKey = new PublicKeyObject(versionedPublicKeyName, _handle);
 			thisPublicKey.waitForData();
 			theGroupPublicKey = thisPublicKey.publicKey();
 		}

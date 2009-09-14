@@ -203,9 +203,9 @@ public class KeyDirectoryTestRepo {
 	 */
 	@Test
 	public void testGetWrappedKeyForKeyID() throws Exception {
-		CCNHandle library = CCNHandle.open();
+		CCNHandle handle = CCNHandle.open();
 		// Use unversioned constructor so KeyDirectory returns the latest version
-		KeyDirectory uvkd = new KeyDirectory(acm, keyDirectoryName, library);
+		KeyDirectory uvkd = new KeyDirectory(acm, keyDirectoryName, handle);
 		while (!uvkd.hasChildren() || uvkd.getCopyOfWrappingKeyIDs().size() == 0) {
 			uvkd.waitForNewData();
 		}
@@ -274,8 +274,8 @@ public class KeyDirectoryTestRepo {
 		// create a superseded key directory
 		ContentName supersededKeyDirectoryName = ContentName.fromNative(keyDirectoryBase + rand.nextInt(10000) + "/superseded");
 		ContentName versionSupersededKeyDirectoryName = VersioningProfile.addVersion(supersededKeyDirectoryName);
-		CCNHandle library = CCNHandle.open();
-		KeyDirectory skd = new KeyDirectory(acm, versionSupersededKeyDirectoryName, library);
+		CCNHandle handle = CCNHandle.open();
+		KeyDirectory skd = new KeyDirectory(acm, versionSupersededKeyDirectoryName, handle);
 
 		// generate a AES wrapping key
 		KeyGenerator kg = KeyGenerator.getInstance("AES");

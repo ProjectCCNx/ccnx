@@ -50,7 +50,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * Creates an EnumerateNameList object
 	 * <p>
 	 * The namePrefix argument is a content name object that refers to ??
-	 * The library CCNHandle argument is the current CCN environment where
+	 * The handle CCNHandle argument is the current CCN environment where
 	 * the names are being iterated. 
 	 *<p>
 	 * this constructor creates a new CCN Library if the one passed in is null
@@ -62,19 +62,19 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @see
 	 */
 
-	public EnumeratedNameList(ContentName namePrefix, CCNHandle library) throws IOException {
+	public EnumeratedNameList(ContentName namePrefix, CCNHandle handle) throws IOException {
 		if (null == namePrefix) {
 			throw new IllegalArgumentException("namePrefix cannot be null!");
 		}
-		if (null == library) {
+		if (null == handle) {
 			try {
-				library = CCNHandle.open();
+				handle = CCNHandle.open();
 			} catch (ConfigurationException e) {
-				throw new IOException("ConfigurationException attempting to open a library: " + e.getMessage());
+				throw new IOException("ConfigurationException attempting to open a handle: " + e.getMessage());
 			}
 		}
 		_namePrefix = namePrefix;
-		_enumerator = new CCNNameEnumerator(namePrefix, library, this);
+		_enumerator = new CCNNameEnumerator(namePrefix, handle, this);
 	}
 	
 	public ContentName getName() { return _namePrefix; }
@@ -321,12 +321,12 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * latest version of content with the prefix name.
 	 * 
 	 * @param name
-	 * @param library
+	 * @param handle
 	 * @return
 	 * @throws IOException
 	 */
-	public static ContentName getLatestVersionName(ContentName name, CCNHandle library) throws IOException {
-		EnumeratedNameList enl = new EnumeratedNameList(name, library);
+	public static ContentName getLatestVersionName(ContentName name, CCNHandle handle) throws IOException {
+		EnumeratedNameList enl = new EnumeratedNameList(name, handle);
 		enl.waitForData();
 		ContentName childLatestVersion = enl.getLatestVersionChildName();
 		enl.stopEnumerating();
@@ -348,20 +348,20 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @return
 	 * @throws IOException 
 	 */
-	public static EnumeratedNameList exists(ContentName childName, ContentName prefixKnownToExist, CCNHandle library) throws IOException {
+	public static EnumeratedNameList exists(ContentName childName, ContentName prefixKnownToExist, CCNHandle handle) throws IOException {
 		if ((null == prefixKnownToExist) || (null == childName) || (!prefixKnownToExist.isPrefixOf(childName))) {
 			Log.info("Child " + childName + " must be prefixed by name " + prefixKnownToExist);
 			throw new IllegalArgumentException("Child " + childName + " must be prefixed by name " + prefixKnownToExist);
 		}
 		if (childName.count() == prefixKnownToExist.count()) {
 			// we're already there
-			return new EnumeratedNameList(childName, library);
+			return new EnumeratedNameList(childName, handle);
 		}
 		ContentName parentName = prefixKnownToExist;
 		int childIndex = parentName.count();
 		EnumeratedNameList parentEnumerator = null;
 		while (childIndex < childName.count()) {
-			parentEnumerator = new EnumeratedNameList(parentName, library);
+			parentEnumerator = new EnumeratedNameList(parentName, handle);
 			parentEnumerator.waitForData(); // we're only getting the first round here... 
 			// could wrap this bit in a loop if want to try harder
 			if (parentEnumerator.hasChild(childName.component(childIndex))) {

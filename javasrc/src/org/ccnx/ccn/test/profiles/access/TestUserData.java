@@ -77,7 +77,7 @@ public class TestUserData {
 	 * @throws InvalidKeyException 
 	 */
 	public TestUserData(ContentName userKeyStorePrefix,
-			int userCount, boolean storeInRepo, char [] password, CCNHandle library) throws ConfigurationException, IOException, InvalidKeyException {
+			int userCount, boolean storeInRepo, char [] password, CCNHandle handle) throws ConfigurationException, IOException, InvalidKeyException {
 	
 		ContentName childName = null;
 		String friendlyName = null;
@@ -93,9 +93,9 @@ public class TestUserData {
 			if (storeInRepo) {
 				// This only matters the first time through, when we save the user's data.
 				// but it makes no difference in other cases anyway.
-				userKeyManager = new RepositoryKeyManager(friendlyName, childName, null, password, library);
+				userKeyManager = new RepositoryKeyManager(friendlyName, childName, null, password, handle);
 			} else {
-				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password, library);
+				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password, handle);
 			}
 			userKeyManager.initialize();
 			_userData.put(childName, userKeyManager);
@@ -113,9 +113,9 @@ public class TestUserData {
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
-	public TestUserData(ContentName userKeystoreDataPrefix, char [] password, CCNHandle library) throws IOException, ConfigurationException, InvalidKeyException {
+	public TestUserData(ContentName userKeystoreDataPrefix, char [] password, CCNHandle handle) throws IOException, ConfigurationException, InvalidKeyException {
 		
-		EnumeratedNameList userDirectory = new EnumeratedNameList(userKeystoreDataPrefix, library);
+		EnumeratedNameList userDirectory = new EnumeratedNameList(userKeystoreDataPrefix, handle);
 		userDirectory.waitForData(); // will block
 		
 		SortedSet<ContentName> availableChildren = userDirectory.getChildren();
@@ -135,7 +135,7 @@ public class TestUserData {
 				}
 				childName = new ContentName(userKeystoreDataPrefix, child.lastComponent());
 				Log.info("Loading user: " + friendlyName + " from " + childName);
-				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password, library);
+				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password, handle);
 				userKeyManager.initialize();
 				_userData.put(childName, userKeyManager);
 				_userFriendlyNames.put(friendlyName, childName);
@@ -163,7 +163,7 @@ public class TestUserData {
 		return _userData.get(userName);
 	}
 	
-	public CCNHandle getLibraryForUser(String friendlyName) {
+	public CCNHandle getHandleForUser(String friendlyName) {
 		KeyManager km = getUser(friendlyName);
 		if (null == km)
 			return null;

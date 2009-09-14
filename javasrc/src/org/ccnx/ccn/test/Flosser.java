@@ -54,7 +54,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  */
 public class Flosser implements CCNInterestListener {
 	
-	CCNHandle _library;
+	CCNHandle _handle;
 	Map<ContentName, Interest> _interests = new HashMap<ContentName, Interest>();
 	Map<ContentName, Set<ContentName>> _subInterests = new HashMap<ContentName, Set<ContentName>>();
 	HashSet<ContentObject> _processedObjects = new HashSet<ContentObject>();
@@ -65,7 +65,7 @@ public class Flosser implements CCNInterestListener {
 	 * @throws IOException
 	 */
 	public Flosser() throws ConfigurationException, IOException {
-		_library = CCNHandle.open();
+		_handle = CCNHandle.open();
 	}
 	
 	public Flosser(ContentName namespace) throws ConfigurationException, IOException {
@@ -108,7 +108,7 @@ public class Flosser implements CCNInterestListener {
 				return;
 			}
 			Interest interest = _interests.get(namespace);
-			_library.cancelInterest(interest, this);
+			_handle.cancelInterest(interest, this);
 			_interests.remove(namespace);
 			Log.fine("Cancelled interest in {0}", namespace);
 		}
@@ -128,7 +128,7 @@ public class Flosser implements CCNInterestListener {
 			Log.info("FLOSSER: handling namespace: {0}", namespace);
 			Interest namespaceInterest = new Interest(namespace);
 			_interests.put(namespace, namespaceInterest);
-			_library.expressInterest(namespaceInterest, this);
+			_handle.expressInterest(namespaceInterest, this);
 			Set<ContentName> subNamespaces = _subInterests.get(namespace);
 			if (null == subNamespaces) {
 				subNamespaces = new HashSet<ContentName>();
@@ -147,7 +147,7 @@ public class Flosser implements CCNInterestListener {
 			Log.info("FLOSSER: handling child namespace: {0} expected parent: {1}", namespace, parent);
 			Interest namespaceInterest = new Interest(namespace);
 			_interests.put(namespace, namespaceInterest);
-			_library.expressInterest(namespaceInterest, this);
+			_handle.expressInterest(namespaceInterest, this);
 			
 			// Now we need to find a parent in the subInterest map, and reflect this namespace underneath it.
 			ContentName parentNamespace = parent;
@@ -260,7 +260,7 @@ public class Flosser implements CCNInterestListener {
 		synchronized (_interests) {
 			for (Interest interest : _interests.values()) {
 				Log.info("Cancelling pending interest: " + interest);
-				_library.cancelInterest(interest, this);
+				_handle.cancelInterest(interest, this);
 			}
 		}
 	}

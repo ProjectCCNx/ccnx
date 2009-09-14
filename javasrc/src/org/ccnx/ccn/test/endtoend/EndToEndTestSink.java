@@ -40,7 +40,7 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 		Random rand = new Random();
 		for (int i = 0; i < BaseLibrarySource.count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			ContentObject contents = library.get(ContentName.fromNative("/BaseLibraryTest/gets/" + i), CCNHandle.NO_TIMEOUT);
+			ContentObject contents = handle.get(ContentName.fromNative("/BaseLibraryTest/gets/" + i), CCNHandle.NO_TIMEOUT);
 			int value = contents.content()[0];
 			// Note that we cannot be guaranteed to pick up every value:
 			// due to timing we may miss a value that arrives while we are not
@@ -58,10 +58,10 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 		System.out.println("GetServer started");
 		Interest interest = new Interest("/BaseLibraryTest/server");
 		// Register interest
-		library.expressInterest(interest, this);
+		handle.expressInterest(interest, this);
 		// Block on semaphore until enough data has been received
 		sema.acquire();
-		library.cancelInterest(interest, this);
+		handle.cancelInterest(interest, this);
 		if (null != error) {
 			throw error;
 		}

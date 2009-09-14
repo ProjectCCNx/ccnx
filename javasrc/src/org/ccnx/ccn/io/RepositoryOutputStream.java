@@ -37,35 +37,35 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 public class RepositoryOutputStream extends CCNOutputStream {
 	
-	public RepositoryOutputStream(ContentName name, CCNHandle library) throws IOException {
-		this(name, null, null, library);
+	public RepositoryOutputStream(ContentName name, CCNHandle handle) throws IOException {
+		this(name, null, null, handle);
 	}
 	
 	public RepositoryOutputStream(ContentName name,
 								  PublisherPublicKeyDigest publisher, 
-								  CCNHandle library) throws IOException {
-		this(name, null, publisher, library);
+								  CCNHandle handle) throws IOException {
+		this(name, null, publisher, handle);
 	}
 
 	public RepositoryOutputStream(ContentName name, 
 								  KeyLocator locator, 
 								  PublisherPublicKeyDigest publisher, 
-								  CCNHandle library) throws IOException {
-		this(name, locator, publisher, null, null, library);
+								  CCNHandle handle) throws IOException {
+		this(name, locator, publisher, null, null, handle);
 	}
 
 	public RepositoryOutputStream(ContentName name, 
 								  ContentKeys keys,
-								  CCNHandle library) throws IOException {
-		this(name, null, null, keys, library);
+								  CCNHandle handle) throws IOException {
+		this(name, null, null, keys, handle);
 	}
 
 	public RepositoryOutputStream(ContentName name, 
 								  KeyLocator locator,
 								  PublisherPublicKeyDigest publisher, 
 								  ContentKeys keys,
-								  CCNHandle library) throws IOException {
-		this(name, locator, publisher, null, keys, library);
+								  CCNHandle handle) throws IOException {
+		this(name, locator, publisher, null, keys, handle);
 	}
 
 	public RepositoryOutputStream(ContentName name, 
@@ -73,8 +73,8 @@ public class RepositoryOutputStream extends CCNOutputStream {
 								  PublisherPublicKeyDigest publisher, 
 								  ContentType type,
 								  ContentKeys keys, 
-								  CCNHandle library) throws IOException {
-		super(name, locator, publisher, type, keys, new RepositoryFlowControl(name, library));
+								  CCNHandle handle) throws IOException {
+		super(name, locator, publisher, type, keys, new RepositoryFlowControl(name, handle));
 	}
 }
 

@@ -34,7 +34,7 @@ import org.junit.BeforeClass;
 
 public class BaseLibrarySource {
 	public static int count = 43;
-	protected static CCNHandle library = null;
+	protected static CCNHandle handle = null;
 	ContentName name = null;
 	int next = 0;
 	protected static Throwable error = null; // for errors in callback
@@ -44,7 +44,7 @@ public class BaseLibrarySource {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		library = CCNHandle.open();
+		handle = CCNHandle.open();
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		Log.setLevel(Level.INFO);
 		rand = new Random();

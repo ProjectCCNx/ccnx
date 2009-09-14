@@ -52,12 +52,12 @@ public class RepoPerformanceTester extends CCNOutputStream {
 		
 		private RepositoryStore _repo = null;
 		
-		public TestFlowControl(String repoName, ContentName name, CCNHandle library)
+		public TestFlowControl(String repoName, ContentName name, CCNHandle handle)
 				throws MalformedContentNameStringException, RepositoryException, IOException {
-			super(name, library);
+			super(name, handle);
 			if (repoName != null) {
 				_repo = new LogStructRepoStore();
-				_repo.initialize(library, repoName, null, null, null);
+				_repo.initialize(handle, repoName, null, null, null);
 			}
 		}
 		
@@ -75,9 +75,9 @@ public class RepoPerformanceTester extends CCNOutputStream {
 	
 	public RepoPerformanceTester() {}
 	
-	public RepoPerformanceTester(String repoName, ContentName name, CCNHandle library)
+	public RepoPerformanceTester(String repoName, ContentName name, CCNHandle handle)
 			throws XMLStreamException, IOException, MalformedContentNameStringException, RepositoryException {
-		super(name, null, null, null, null, _rpt.new TestFlowControl(repoName, name, library));
+		super(name, null, null, null, null, _rpt.new TestFlowControl(repoName, name, handle));
 	}
 	
 	public RepoPerformanceTester(ContentName name, CCNFlowControl cf)
@@ -85,8 +85,8 @@ public class RepoPerformanceTester extends CCNOutputStream {
 		super(name, null, null, null, null, cf);
 	}
 	
-	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle library) throws MalformedContentNameStringException, XMLStreamException, IOException, RepositoryException {
-		return new RepoPerformanceTester(repoName, name, library);
+	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle handle) throws MalformedContentNameStringException, XMLStreamException, IOException, RepositoryException {
+		return new RepoPerformanceTester(repoName, name, handle);
 	}
 	
 	public void doTest(String[] args) {
@@ -95,7 +95,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 		Log.setLevel(Level.SEVERE);	// turn off logging
 		try {
 			argName = ContentName.fromURI(args[0]);
-			CCNHandle library = CCNHandle.open();
+			CCNHandle handle = CCNHandle.open();
 			
 			File theFile = new File(args[1]);
 			if (!theFile.exists()) {
@@ -103,7 +103,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 				return;
 			}
 			Log.info("repo_test: putting file " + args[1] + " bytes: " + theFile.length());
-			RepoPerformanceTester ostream = getTester(args.length > 2 ? args[2] : null, argName, library);
+			RepoPerformanceTester ostream = getTester(args.length > 2 ? args[2] : null, argName, handle);
 			do_write(ostream, theFile);
 			
 		} catch (MalformedContentNameStringException e) {

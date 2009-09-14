@@ -41,9 +41,9 @@ public class RepoSingleFileTester extends RepoPerformanceTester {
 		
 		private FileOutputStream _fos = null;
 		
-		public TestFlowControl(String repoName, ContentName name, CCNHandle library)
+		public TestFlowControl(String repoName, ContentName name, CCNHandle handle)
 				throws MalformedContentNameStringException, RepositoryException, IOException {
-			super(name, library);
+			super(name, handle);
 			_tfc = this;
 			if (repoName != null) {
 				File file = new File(repoName + "/" + "repoFile");
@@ -76,13 +76,13 @@ public class RepoSingleFileTester extends RepoPerformanceTester {
 	
 	public RepoSingleFileTester() {}
 	
-	public RepoSingleFileTester(String repoName, ContentName name, CCNHandle library)
+	public RepoSingleFileTester(String repoName, ContentName name, CCNHandle handle)
 			throws XMLStreamException, IOException, MalformedContentNameStringException, RepositoryException {
-		super(name, _rpt.new TestFlowControl(repoName, name, library));
+		super(name, _rpt.new TestFlowControl(repoName, name, handle));
 	}
 	
-	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle library) throws MalformedContentNameStringException, XMLStreamException, IOException, RepositoryException {
-		return new RepoSingleFileTester(repoName, name, library);
+	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle handle) throws MalformedContentNameStringException, XMLStreamException, IOException, RepositoryException {
+		return new RepoSingleFileTester(repoName, name, handle);
 	}
 	
 	public void close() throws IOException {

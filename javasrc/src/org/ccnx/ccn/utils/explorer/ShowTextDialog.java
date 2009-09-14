@@ -51,7 +51,7 @@ private JButton finishedButton;
 		}
 		
 	}
-	public ShowTextDialog(Name name,CCNHandle library) {	
+	public ShowTextDialog(Name name,CCNHandle handle) {	
 		super();
 		
 		
@@ -81,7 +81,7 @@ private JButton finishedButton;
 				fileName = ContentName.fromNative("/"+new String(name.name));
 			else
 				fileName = ContentName.fromNative(name.path.toString()+"/"+new String(name.name));
-			displayText(fileName,library);
+			displayText(fileName, handle);
 		} catch (MalformedContentNameStringException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -104,12 +104,12 @@ private JButton finishedButton;
 	 *<p>
 	 *@param fileName
 	 * a content name object that points to an existing file in the repo to be displayed
-	 *@param library
+	 *@param handle
 	 * */
-	private void displayText(ContentName fileName, CCNHandle library) {
+	private void displayText(ContentName fileName, CCNHandle handle) {
 		try {
 			
-			CCNFileInputStream fis = new CCNFileInputStream(fileName, library);
+			CCNFileInputStream fis = new CCNFileInputStream(fileName, handle);
 			
 			editorPane.read(fis, fileName);
 			

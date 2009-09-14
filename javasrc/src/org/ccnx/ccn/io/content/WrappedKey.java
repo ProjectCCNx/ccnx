@@ -78,31 +78,31 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
 	public static class WrappedKeyObject extends CCNEncodableObject<WrappedKey> {
 
-		public WrappedKeyObject(ContentName name, WrappedKey data, CCNHandle library) throws IOException {
-			super(WrappedKey.class, name, data, library);
+		public WrappedKeyObject(ContentName name, WrappedKey data, CCNHandle handle) throws IOException {
+			super(WrappedKey.class, name, data, handle);
 		}
 		
 		public WrappedKeyObject(ContentName name, PublisherPublicKeyDigest publisher,
-				CCNHandle library) throws IOException, XMLStreamException {
-			super(WrappedKey.class, name, publisher, library);
+				CCNHandle handle) throws IOException, XMLStreamException {
+			super(WrappedKey.class, name, publisher, handle);
 		}
 		
 		/**
 		 * Read constructor -- opens existing object.
 		 * @param type
 		 * @param name
-		 * @param library
+		 * @param handle
 		 * @throws XMLStreamException
 		 * @throws IOException
 		 */
 		public WrappedKeyObject(ContentName name, 
-				CCNHandle library) throws IOException, XMLStreamException {
-			super(WrappedKey.class, name, (PublisherPublicKeyDigest)null, library);
+				CCNHandle handle) throws IOException, XMLStreamException {
+			super(WrappedKey.class, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
 		public WrappedKeyObject(ContentObject firstBlock,
-				CCNHandle library) throws IOException, XMLStreamException {
-			super(WrappedKey.class, firstBlock, library);
+				CCNHandle handle) throws IOException, XMLStreamException {
+			super(WrappedKey.class, firstBlock, handle);
 		}
 		
 		public WrappedKey wrappedKey() throws ContentNotReadyException, ContentGoneException { return data(); }
@@ -194,8 +194,8 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 					byte [] encodedKeyToBeWrapped = keyToBeWrapped.getEncoded();
 					wrappedKey = AESWrapWithPad(nonceKey, encodedKeyToBeWrapped, 0, encodedKeyToBeWrapped.length);
 					//} catch (NoSuchAlgorithmException nsex) {
-					//	Library.warning("Configuration error: Unknown default nonce key algorithm: " + NONCE_KEY_ALGORITHM);
-					//	Library.warningStackTrace(nsex);
+					//	Log.warning("Configuration error: Unknown default nonce key algorithm: " + NONCE_KEY_ALGORITHM);
+					//	Log.warningStackTrace(nsex);
 					//	throw new RuntimeException("Configuration error: Unknown default nonce key algorithm: " + NONCE_KEY_ALGORITHM);	    		
 					//}
 					wrappedNonceKey = wrapCipher.wrap(nonceKey);

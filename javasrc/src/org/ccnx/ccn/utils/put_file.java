@@ -105,13 +105,13 @@ public class put_file {
 			// with random version.
 			ContentName argName = ContentName.fromURI(args[startArg]);
 			
-			CCNHandle library = CCNHandle.open();
+			CCNHandle handle = CCNHandle.open();
 			
 			if (args.length == (startArg + 2)) {
 				if (verbose)
 					Log.info("put_file: putting file " + args[startArg + 1]);
 				
-				doPut(library, args[startArg + 1], argName);
+				doPut(handle, args[startArg + 1], argName);
 				if (verbose)
 					System.out.println("put_file took: "+(System.currentTimeMillis() - starttime)+" ms");
 				System.exit(0);
@@ -121,7 +121,7 @@ public class put_file {
 					// put as child of name
 					ContentName nodeName = ContentName.fromURI(argName, args[i]);
 					
-					doPut(library, args[i], nodeName);
+					doPut(handle, args[i], nodeName);
 				}
 				if (verbose)
 					System.out.println("put_file took: "+(System.currentTimeMillis() - starttime)+" ms");
@@ -144,7 +144,7 @@ public class put_file {
 
 	}
 
-	protected static void doPut(CCNHandle library, String fileName,
+	protected static void doPut(CCNHandle handle, String fileName,
 			ContentName nodeName) throws IOException, InvalidKeyException, ConfigurationException {
 		InputStream is;
 		if (verbose)
@@ -168,7 +168,7 @@ public class put_file {
 		// If we are using a repository, make sure our key is available to
 		// repository clients. For now, write an unversioned form of key.
 		if (!rawMode) {
-			library.keyManager().publishKeyToRepository(library);
+			handle.keyManager().publishKeyToRepository(handle);
 		}
 
 		CCNOutputStream ostream;
@@ -177,14 +177,14 @@ public class put_file {
 		// versioning and neither it nor CCNVersionedOutputStream add headers.
 		if (rawMode) {
 			if (unversioned)
-				ostream = new CCNOutputStream(nodeName, library);
+				ostream = new CCNOutputStream(nodeName, handle);
 			else
-				ostream = new CCNFileOutputStream(nodeName, library);
+				ostream = new CCNFileOutputStream(nodeName, handle);
 		} else {
 			if (unversioned)
-				ostream = new RepositoryOutputStream(nodeName, library);
+				ostream = new RepositoryOutputStream(nodeName, handle);
 			else
-				ostream = new RepositoryFileOutputStream(nodeName, library);
+				ostream = new RepositoryFileOutputStream(nodeName, handle);
 		}
 		if (timeout != null)
 			ostream.setTimeout(timeout);

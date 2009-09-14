@@ -94,7 +94,7 @@ public class get_file {
 			// with random version.
 			ContentName argName = ContentName.fromURI(args[startArg]);
 			
-			CCNHandle library = CCNHandle.open();
+			CCNHandle handle = CCNHandle.open();
 
 			File theFile = new File(args[startArg + 1]);
 			if (theFile.exists()) {
@@ -105,9 +105,9 @@ public class get_file {
 			long starttime = System.currentTimeMillis();
 			CCNInputStream input;
 			if (unversioned)
-				input = new CCNInputStream(argName, null, library);
+				input = new CCNInputStream(argName, null, handle);
 			else
-				input = new CCNFileInputStream(argName, library);
+				input = new CCNFileInputStream(argName, handle);
 			if (timeout != null) {
 				input.setTimeout(timeout); 
 			}

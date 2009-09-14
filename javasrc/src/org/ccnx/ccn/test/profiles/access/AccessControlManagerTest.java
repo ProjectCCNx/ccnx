@@ -50,19 +50,19 @@ public class AccessControlManagerTest {
 		writer.put(bname, "Some b's.".getBytes());
 		writer.put(abname, "Some a's and b's.".getBytes());
 		
-		CCNHandle library = CCNHandle.open();
-		ContentObject bobject = library.get(bname, 1000);
+		CCNHandle handle = CCNHandle.open();
+		ContentObject bobject = handle.get(bname, 1000);
 		if (bobject != null) {
 			System.out.println("Queried for bname, got back: " + bobject.name());
 		}
-		ContentObject aobject = library.get(aname, 1000);
+		ContentObject aobject = handle.get(aname, 1000);
 		if (aobject != null) {
 			System.out.println("Queried for aname, got back: " + aobject.name());
 		} else {
 			System.out.println("Queried for aname, got back nothing.");
 		}
 		writer.put(aname, "Some a's.".getBytes());
-		ContentObject aobject2 = library.get(versionPrefix, 1000);
+		ContentObject aobject2 = handle.get(versionPrefix, 1000);
 		if (aobject2 != null) {
 			System.out.println("Queried for aname, again got back: " + aobject2.name());
 		}

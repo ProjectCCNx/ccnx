@@ -40,8 +40,8 @@ public class RepositoryKeyManager extends NetworkKeyManager {
 
 	public RepositoryKeyManager(String userName, ContentName keystoreName,
 			PublisherPublicKeyDigest publisher, char[] password,
-			CCNHandle library) throws ConfigurationException, IOException {
-		super(userName, keystoreName, publisher, password, library);
+			CCNHandle handle) throws ConfigurationException, IOException {
+		super(userName, keystoreName, publisher, password, handle);
 	}
 
 	/**
@@ -51,6 +51,6 @@ public class RepositoryKeyManager extends NetworkKeyManager {
 	 * @throws IOException
 	 */
 	protected OutputStream createKeyStoreWriteStream() throws XMLStreamException, IOException {
-		return new RepositoryVersionedOutputStream(_keystoreName, _library);
+		return new RepositoryVersionedOutputStream(_keystoreName, _handle);
 	}
 }

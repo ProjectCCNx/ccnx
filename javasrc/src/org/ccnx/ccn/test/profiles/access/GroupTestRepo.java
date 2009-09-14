@@ -62,7 +62,7 @@ public class GroupTestRepo {
 	static ContentName groupStore = null;
 	
 	static EnumeratedNameList _userList = null;
-	static CCNHandle _library = null;
+	static CCNHandle _handle = null;
 	
 	static String myUserName = null;
 	
@@ -84,7 +84,7 @@ public class GroupTestRepo {
 			userStore = ContentName.fromNative(testStorePrefix, "home");
 			groupStore = AccessControlProfile.groupNamespaceName(testStorePrefix);
 			
-			_library = CCNHandle.open();
+			_handle = CCNHandle.open();
 			System.out.println("prefix: " + testStorePrefix);
 			System.out.println("group store: " + groupStore);
 			System.out.println("user store: " + userStore);

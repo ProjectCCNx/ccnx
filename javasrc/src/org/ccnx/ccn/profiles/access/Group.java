@@ -64,22 +64,22 @@ public class Group {
 	private PublicKeyObject _groupPublicKey;
 	private MembershipList _groupMembers; 
 	private String _groupFriendlyName;
-	private CCNHandle _library;
+	private CCNHandle _handle;
 	private GroupManager _groupManager;
 	
 	private KeyDirectory _privKeyDirectory = null;
 	
-	public Group(ContentName namespace, String groupFriendlyName, CCNHandle library,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
-		_library = library;
+	public Group(ContentName namespace, String groupFriendlyName, CCNHandle handle,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
+		_handle = handle;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
-		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _library);
+		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _handle);
 		_groupPublicKey.updateInBackground(true);
 		_groupManager = manager;
 	}
 	
-	public Group(ContentName groupName, CCNHandle library,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
-		this(groupName.parent(), AccessControlProfile.groupNameToFriendlyName(groupName), library,manager);
+	public Group(ContentName groupName, CCNHandle handle,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
+		this(groupName.parent(), AccessControlProfile.groupNameToFriendlyName(groupName), handle,manager);
 	}
 	
 	/**
@@ -87,8 +87,8 @@ public class Group {
 	 * @return
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
-		  PublicKeyObject publicKey, CCNHandle library,GroupManager manager) {
-		_library = library;
+		  PublicKeyObject publicKey, CCNHandle handle,GroupManager manager) {
+		_handle = handle;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
 		_groupMembers = members;
@@ -105,9 +105,9 @@ public class Group {
 	 * @throws InvalidKeyException 
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
-					CCNHandle library, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {		
-		this(namespace, groupFriendlyName, members, null, library,manager);
-//		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _library);
+					CCNHandle handle, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {		
+		this(namespace, groupFriendlyName, members, null, handle,manager);
+//		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _handle);
 		createGroupPublicKey(manager, members);
 		_groupMembers.saveToRepository();
 	}
@@ -136,7 +136,7 @@ public class Group {
 		}
 		if (_groupPublicKey.available()) {
 			_privKeyDirectory = new KeyDirectory(manager, 
-					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()), _library);
+					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()), _handle);
 			return _privKeyDirectory;
 		}
 		Log.info("Public key not ready for group: " + friendlyName());
@@ -171,7 +171,7 @@ public class Group {
 			// Read constructor. Synchronously updates. 
 			// Elaine: the code will throw an exception if no membership list is found or upon error
 			// reading membership list from network... need error handling...
-			_groupMembers = new MembershipList(AccessControlProfile.groupMembershipListName(_groupNamespace, _groupFriendlyName), _library);
+			_groupMembers = new MembershipList(AccessControlProfile.groupMembershipListName(_groupNamespace, _groupFriendlyName), _handle);
 			// Keep dynamically updating.
 			_groupMembers.updateInBackground(true);
 		}
@@ -251,7 +251,7 @@ public class Group {
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(KeyManager.getKeyManager().getDefaultKeyID())));
-		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _library);
+		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _handle);
 		precededByBlock.saveToRepository();
 	}
 	
@@ -286,7 +286,7 @@ public class Group {
 			new PublicKeyObject(
 					AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), 
 					pair.getPublic(),
-					_library);
+					_handle);
 		_groupPublicKey.saveToRepository();
 		
 		stopPrivateKeyDirectoryEnumeration();
@@ -314,7 +314,7 @@ public class Group {
 				}
 				System.out.println("retrieving pub key from:..." + pkName);
 				
-				latestPublicKey = new PublicKeyObject(pkName, _library);
+				latestPublicKey = new PublicKeyObject(pkName, _handle);
 				if (!latestPublicKey.available()) {
 					Log.warning("Could not retrieve public key for " + pkName);
 					continue;
@@ -365,7 +365,7 @@ public class Group {
 		for (Link lr : membersToAdd) {
 			try {
 				// DKS TODO verify target public key against publisher, etc in link
-				latestPublicKey = new PublicKeyObject(lr.targetName(), _library);
+				latestPublicKey = new PublicKeyObject(lr.targetName(), _handle);
 				if (!latestPublicKey.available()) {
 					Log.warning("Could not retrieve public key for " + lr.targetName());
 					continue;

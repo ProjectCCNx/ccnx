@@ -63,7 +63,7 @@ public class CCNHandle extends CCNBase {
 		KeyManager.initializeProvider();
 	}
 	
-	protected static CCNHandle _library = null;
+	protected static CCNHandle _handle = null;
 
 	/**
 	 * Do we want to do this this way, or everything static?
@@ -90,28 +90,27 @@ public class CCNHandle extends CCNBase {
 		}
 	}
 	
-	public static CCNHandle getLibrary() { 
-		if (null != _library) 
-			return _library;
+	public static CCNHandle getHandle() { 
+		if (null != _handle) 
+			return _handle;
 		try {
-			return createCCNLibrary();
+			return create();
 		} catch (ConfigurationException e) {
-			Log.warning("Configuration exception attempting to create library: " + e.getMessage());
+			Log.warning("Configuration exception attempting to create handle: " + e.getMessage());
 			Log.warningStackTrace(e);
-			throw new RuntimeException("Error in system configuration. Cannot create library.",e);
+			throw new RuntimeException("Error in system configuration. Cannot create handle.",e);
 		} catch (IOException e) {
-			Log.warning("IO exception attempting to create library: " + e.getMessage());
+			Log.warning("IO exception attempting to create handle: " + e.getMessage());
 			Log.warningStackTrace(e);
-			throw new RuntimeException("Error in system IO. Cannot create library.",e);
+			throw new RuntimeException("Error in system IO. Cannot create handle.",e);
 		}
 	}
 
-	protected static synchronized CCNHandle 
-				createCCNLibrary() throws ConfigurationException, IOException {
-		if (null == _library) {
-			_library = new CCNHandle();
+	protected static synchronized CCNHandle create() throws ConfigurationException, IOException {
+		if (null == _handle) {
+			_handle = new CCNHandle();
 		}
-		return _library;
+		return _handle;
 	}
 
 	protected CCNHandle(KeyManager keyManager) {
@@ -168,7 +167,7 @@ public class CCNHandle extends CCNBase {
 	}
 
 	/**
-	 * Shutdown the library and it's associated resources
+	 * Shutdown the handle and it's associated resources
 	 */
 	public void close() {
 		if (null != _networkManager)

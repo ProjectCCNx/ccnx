@@ -39,7 +39,7 @@ public class SampleTestRepo {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		ContentName name = ContentName.fromNative(base + file_name);
-		RepositoryOutputStream os = new RepositoryOutputStream(name, CCNHandle.getLibrary());
+		RepositoryOutputStream os = new RepositoryOutputStream(name, CCNHandle.getHandle());
 		
 		os.write(txt.getBytes(UTF8));
 		os.close();

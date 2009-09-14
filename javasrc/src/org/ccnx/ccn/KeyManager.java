@@ -85,10 +85,10 @@ public abstract class KeyManager {
 	}
 	
 	/**
-	 * Right now, the library uses the default key manager
+	 * Right now, the handle uses the default key manager
 	 * interface. We want a generic mechanism for getting
 	 * key managers used by low-level apps not relying on the
-	 * library to use that puts all the exception handling in
+	 * handle to use that puts all the exception handling in
 	 * one place...
 	 * @return
 	 */

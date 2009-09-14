@@ -65,6 +65,7 @@ public class BasicPolicy implements Policy {
 		} catch (MalformedContentNameStringException e) {}
 	}
 	
+	@SuppressWarnings("unchecked")
 	public BasicPolicy(String name, ArrayList<ContentName> namespace) {
 		if (null != name) {
 			this._localName = name;

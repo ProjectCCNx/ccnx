@@ -37,12 +37,12 @@ public class interest {
 		}
 		
 		try {
-			CCNHandle library = CCNHandle.open();
+			CCNHandle handle = CCNHandle.open();
 			// List contents under all names given
 			for (int i=0; i < args.length; ++i) {
 				Interest interest = new Interest(args[i]);
 			
-				library.expressInterest(interest, null);
+				handle.expressInterest(interest, null);
 				
 			} 
 			System.exit(0);

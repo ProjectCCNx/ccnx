@@ -59,12 +59,12 @@ public class TestUserDataTestRepo {
 			sb.append(" " + s);
 		}
 		System.out.println(sb.toString());
-		// OK, now let's make a library using one of these users and make sure the publisher ID
+		// OK, now let's make a handle using one of these users and make sure the publisher ID
 		// and such defaults correctly.
 		// Should we pick randomly?
 		String testUser = td.friendlyNames().iterator().next();
-		CCNHandle userLibrary = td.getLibraryForUser(testUser);
-		KeyManager userKeyManager = userLibrary.keyManager();
+		CCNHandle userHandle = td.getHandleForUser(testUser);
+		KeyManager userKeyManager = userHandle.keyManager();
 		
 		Assert.assertNotNull(userKeyManager.getDefaultKeyID());
 		
@@ -74,7 +74,7 @@ public class TestUserDataTestRepo {
 				"password".toCharArray(), CCNHandle.open());
 		Assert.assertEquals(td.friendlyNames(), td2.friendlyNames());
 
-		CCNHandle userLibrary2 = td2.getLibraryForUser(testUser);
+		CCNHandle userLibrary2 = td2.getHandleForUser(testUser);
 		KeyManager userKeyManager2 = userLibrary2.keyManager();
 
 		Assert.assertNotNull(userKeyManager.getDefaultKeyID());
@@ -96,7 +96,7 @@ public class TestUserDataTestRepo {
 		Assert.assertTrue(userKeyManager2.getDefaultKeyID().equals(userKeyManager.getDefaultKeyID()));
 
 		for (String friendlyName: td.friendlyNames()){
-			CCNHandle uLibrary = td.getLibraryForUser(friendlyName);
+			CCNHandle uLibrary = td.getHandleForUser(friendlyName);
 			KeyManager uKeyManager = uLibrary.keyManager();
 			//ContentName keyName = ContentName.fromNative(userNamespace, "PublicKey:" + userKeyManager.getDefaultKeyID());
 			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);

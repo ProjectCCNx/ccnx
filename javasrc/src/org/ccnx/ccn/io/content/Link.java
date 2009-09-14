@@ -54,36 +54,36 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
 		 * @param name
 		 * @param data
-		 * @param library
+		 * @param handle
 		 * @throws ConfigurationException
 		 * @throws IOException
 		 */
-		public LinkObject(ContentName name, Link data, CCNHandle library) throws IOException {
-			super(Link.class, name, data, library);
+		public LinkObject(ContentName name, Link data, CCNHandle handle) throws IOException {
+			super(Link.class, name, data, handle);
 		}
 		
-		public LinkObject(ContentName name, Link data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle library) throws IOException {
-			super(Link.class, name, data, publisher, keyLocator, library);
+		public LinkObject(ContentName name, Link data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+			super(Link.class, name, data, publisher, keyLocator, handle);
 		}
 
 		/**
 		 * Read constructor -- opens existing object.
 		 * @param name
-		 * @param library
+		 * @param handle
 		 * @throws XMLStreamException
 		 * @throws IOException
 		 * @throws ClassNotFoundException 
 		 */
-		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) throws IOException, XMLStreamException {
-			super(Link.class, name, publisher, library);
+		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
+			super(Link.class, name, publisher, handle);
 		}
 		
-		public LinkObject(ContentName name, CCNHandle library) throws IOException, XMLStreamException {
-			super(Link.class, name, (PublisherPublicKeyDigest)null, library);
+		public LinkObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
+			super(Link.class, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
-		public LinkObject(ContentObject firstBlock, CCNHandle library) throws IOException, XMLStreamException {
-			super(Link.class, firstBlock, library);
+		public LinkObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
+			super(Link.class, firstBlock, handle);
 		}
 		
 		/**
@@ -116,7 +116,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		public ContentObject dereference(long timeout) throws IOException {
 			if (null == data())
 				return null;
-			return link().dereference(timeout, _library);
+			return link().dereference(timeout, _handle);
 		}
 	}
 
@@ -180,17 +180,17 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	 *   to verify higher-level trust and go look for another block on failure.
 	 * @throws IOException 
 	 */
-	public ContentObject dereference(long timeout, CCNHandle library) throws IOException {
+	public ContentObject dereference(long timeout, CCNHandle handle) throws IOException {
 		
 		// getLatestVersion will return the latest version of an unversioned name, or the
 		// latest version after a given version. So if given a specific version, get that one.
 		if (VersioningProfile.hasTerminalVersion(targetName())) {
-			return library.get(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
+			return handle.get(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
 		}
 		// Don't know if we are referencing a particular object, so don't look for segments.
 		PublisherPublicKeyDigest desiredPublisher = (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null;
 		return VersioningProfile.getLatestVersion(targetName(), 
-				desiredPublisher, timeout, new ContentObject.SimpleVerifier(desiredPublisher), library);
+				desiredPublisher, timeout, new ContentObject.SimpleVerifier(desiredPublisher), handle);
 	}
 	
 	/**
