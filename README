@@ -127,7 +127,16 @@ encryption software.  BEFORE using any encryption software, please
 check your country's laws, regulations and policies concerning the
 import, possession, or use, and re-export of encryption software,
 to see if this is permitted.  See <http://www.wassenaar.org/> for more
-information.
+information.  In addition, this software is subject to U.S. export
+laws and regulations.
+
+Any use of information here by you is without recourse to the Palo
+Alto Research Center, Inc. (PARC) and is at your own risk. PARC makes
+NO WARRANTY or representation that the information contained here is
+accurate, current, or complete.  PARC is in no way responsible for any
+damages, whether direct, consequential, incidental, or otherwise,
+suffered by you as a result of using or relying upon such information
+for any purpose.
 
 The U.S. Government Department of Commerce, Bureau of Industry and
 Security (BIS), has classified this software as Export Commodity 
@@ -143,6 +152,9 @@ The included cryptographic software is the Bouncy Castle provider which
 is itself classified under ECCN 5D002 and approved for export under
 License Exception TSU.  It is included in this distribution for the
 convenience of users.
+
+For more information about export control of CCNx software, please see
+the page http://www.ccnx.org/exports
 
 -------------------------
 BOUNCY CASTLE 
