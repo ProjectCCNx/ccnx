@@ -29,6 +29,8 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
 /**
+ * Policy is the interface used by the RepositoryStore for interpreting and applying policy 
+ * data to CCN repositories.
  * 
  * @author rasmusse
  *
@@ -39,24 +41,63 @@ public interface Policy {
 	/**
 	 * Update the policy
 	 * 
-	 * @param stream
-	 * @return - false if update is not for us.
-	 * @throws XMLStreamException
-	 * @throws IOException
+	 * @param stream	a stream of potential repository data
+	 * @return			false if update is invalid or not for us
+	 * @throws XMLStreamException	if the policy data is incorrect or inconsistent
+	 * @throws IOException			on stream read errors
 	 */
 	boolean update(InputStream stream, boolean fromNet) throws XMLStreamException, IOException;
 
+	/**
+	 * Gets the current namespace covered by this repository. Any name not included within
+	 * this namespace will not be stored in this repository.
+	 * 
+	 * @return			array of ContentNames specifying the namespace
+	 */
 	public ArrayList<ContentName> getNameSpace();
 	
+	/**
+	 * Gets the current policy file as a CCN ContentObject
+	 * 
+	 * @return			the policy ContentObject
+	 */
 	public ContentObject getPolicyContent();
 	
+	/**
+	 * Set the version of the policy protocol which is currently valid.  Depending on the
+	 * implementation, any policy file containing a protocol with a different version ID may
+	 * be rejected.
+	 * 
+	 * @param version the version to use
+	 */
 	public void setVersion(String version);
 	
+	/**
+	 * The localName is used to identify an individual repository among several in an organization
+	 * or other entity.
+	 * 
+	 * @param localName the name as a string in the form xxx/yyy/zzz
+	 * @throws MalformedContentNameStringException	if the name is formatted incorrectly
+	 */
 	public void setLocalName(String localName) throws MalformedContentNameStringException;
 	
+	/**
+	 * @return - the local name of this repository as a String in the form xxx/yyy/zzz
+	 */
 	public String getLocalName();
 	
+	/**
+	 * The globalPrefix is used to identify a path to repositories within an organization
+	 * or entity. Several local repositories could be contained with an organizations global
+	 * repository namespace.
+	 * 
+	 * @param globalName the prefix as a string in the form xxx/yyy/zzz
+	 * @throws MalformedContentNameStringException	if the name is formatted incorrectly
+	 */
 	public void setGlobalPrefix(String globalName) throws MalformedContentNameStringException;
 	
+	/**
+	 * @return - the local name of this repository as a String in the form xxx/yyy/zzz
+	 */
 	public ContentName getGlobalPrefix();
 }

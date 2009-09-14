@@ -18,9 +18,7 @@
 package org.ccnx.ccn.impl.repo;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,7 +27,6 @@ import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.security.InvalidParameterException;
 import java.security.PrivateKey;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -37,7 +34,6 @@ import java.util.logging.Level;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.repo.ContentRef;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;

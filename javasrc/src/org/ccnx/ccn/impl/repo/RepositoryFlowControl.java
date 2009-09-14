@@ -40,8 +40,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
- * Handle repo specialty start/end protocol. Currently this handles only the
- * stream "shape".
+ * Handle repo specialty start/end protocol
  * 
  * Needs to be able to handle multiple clients. Currently due to limitations in close,
  * to do this requires that clients above close their streams in order when multiple
@@ -51,21 +50,33 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * a workable way to do it.
  * 
  * @author smetters, rasmusse
- *
+ * @see CCNFlowControl
+ * @see RepositoryInterestHandler
  */
 public class RepositoryFlowControl extends CCNFlowControl implements CCNInterestListener {
 
+	protected boolean _bestEffort = true;	// Whether to use the ACK protocol (currently disabled)
+	
+	// Outstanding interests output by this FlowController. Currently includes only the original
+	// start write request.
+	protected HashSet<Interest> _writeInterests = new HashSet<Interest>();
+	
+	// The following values are used by the currently disabled ACK protocol
 	protected static final int ACK_BLOCK_SIZE = 20;
 	protected static final int ACK_INTERVAL = 128;
-	protected boolean _bestEffort = true;
 	protected int _blocksSinceAck = 0;
 	protected int _ackInterval = ACK_INTERVAL;
-	protected HashSet<Interest> _writeInterests = new HashSet<Interest>();
 	protected CCNNameEnumerator _ackne;
 	protected RepoAckHandler _ackHandler;
 	
+	// Queue of current clients of this RepositoryFlowController
+	// Implemented as a queue so we can decide which one to close on calls to beforeClose/afterClose
 	protected Queue<Client> _clients = new ConcurrentLinkedQueue<Client>();
 
+	/**
+	 * Handles packets received from the repository after the start write request.  It's looking
+	 * for a RepoInfo packet indicating a repository has responded.
+	 */
 	public Interest handleContent(ArrayList<ContentObject> results,
 			Interest interest) {
 		
@@ -117,6 +128,11 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		}
 	}
 	
+	/**
+	 * Preserves information about our clients
+	 * @author rasmusse
+	 *
+	 */
 	protected class Client {
 		protected ContentName _name;
 		protected Shape _shape;
@@ -131,28 +147,54 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		public Shape shape() { return _shape; }
 	}
 
+	/**
+	 * 
+	 * @param library
+	 * @throws IOException if library is null and a new CCNHandle can't be created
+	 */
 	public RepositoryFlowControl(CCNHandle library) throws IOException {
 		super(library);
 	}
 
+	/**
+	 * @param name		an initial namespace for this stream
+	 * @param library
+	 * @throws IOException if library is null and a new CCNHandle can't be created
+	 */
 	public RepositoryFlowControl(ContentName name, CCNHandle library) throws IOException {
 		this(library);
 		addNameSpace(name);
-		startWrite(name, Shape.STREAM);
 	}
 	
+	/**
+	 * @param name		an intial namespace for this stream
+	 * @param library
+	 * @param shape		shapes are not currently implemented and may be deprecated. The only currently defined
+	 * 					shape is "Shape.STREAM"
+	 * @throws IOException	if library is null and a new CCNHandle can't be created
+	 * @see	CCNFlowControl
+	 */
 	public RepositoryFlowControl(ContentName name, CCNHandle library, Shape shape) throws IOException {
 		this(library);
 		addNameSpace(name);
-		startWrite(name, shape);
 	}
 
 	@Override
+	/**
+	 * Send out a start write request to any listening repositories and wait for a response.
+	 * 
+	 * @param name	the basename of the stream to start
+	 * @param shape currently ignored - can only be Shape.STREAM
+	 * @throws IOException if there is no response from a repository
+	 */
 	public void startWrite(ContentName name, Shape shape) throws IOException {
 		
 		Client client = new Client(name, shape);
 		_clients.add(client);
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
+		
+		// A nonce is used because if we tried to write data with the same name more than once, we could retrieve the
+		// the previous answer from the cache, and the repo would never be informed of our start write.
 		ContentName repoWriteName = new ContentName(name, CommandMarkers.COMMAND_MARKER_REPO_START_WRITE, Interest.generateNonce());
 
 		Interest writeInterest = new Interest(repoWriteName);
@@ -163,9 +205,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			_ackne = new CCNNameEnumerator(_library, _ackHandler);
 		}
 
-		/*
-		 * Wait for information to be returned from a repo
-		 */
+		//Wait for information to be returned from a repo
 		synchronized (this) {
 			boolean interrupted;
 			long startTime = System.currentTimeMillis();
@@ -224,11 +264,17 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		}
 	}
 
+	/**
+	 * Called after close() is called but before close attempts to flush its output data
+	 */
 	@Override
 	public void beforeClose() throws IOException {
 		_ackInterval = 0;
 	}
 
+	/**
+	 * Called after close has completed a flush
+	 */
 	@Override
 	public void afterClose() throws IOException {
 		try {

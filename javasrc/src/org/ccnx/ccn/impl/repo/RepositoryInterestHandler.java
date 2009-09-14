@@ -34,6 +34,11 @@ import org.ccnx.ccn.protocol.Interest;
 
 
 /**
+ * Handles interests matching the repository's namespace.
+ * 
+ * @see RepositoryServer
+ * @see RepositoryFlowControl
+ * @see RepositoryDataListener
  * 
  * @author rasmusse
  *
@@ -48,6 +53,12 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		_library = server.getHandle();
 	}
 
+	/**
+	 * Parse incoming interests for type and dispatch those dedicated to some special purpose.
+	 * Interests can be to start a write or a name enumeration request.
+	 * If the interest has no special purpose, its assumed that it's to actually read data from
+	 * the repository and the request is sent to the RepositoryStore to be processed.
+	 */
 	public int handleInterests(ArrayList<Interest> interests) {
 		for (Interest interest : interests) {
 			try {
@@ -74,6 +85,12 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		return interests.size();
 	}
 	
+	/**
+	 * Handle start write requests
+	 * 
+	 * @param interest
+	 * @throws XMLStreamException
+	 */
 	private void startReadProcess(Interest interest) throws XMLStreamException {
 		synchronized (_server.getDataListeners()) {
 			for (RepositoryDataListener listener : _server.getDataListeners()) {
@@ -83,15 +100,13 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				}
 			}
 		}
-		
-		/*
-		 * For now we need to wait until all current sessions are complete before a namespace
-		 * change which will reset the filters is allowed. So for now, we just don't allow any
-		 * new sessions to start until a pending namespace change is complete to allow there to
-		 * be space for this to actually happen. In theory we should probably figure out a way
-		 * to allow new sessions that are within the new namespace to start but figuring out all
-		 * the locking/startup issues surrounding this is complex so for now we just don't allow it.
-		 */
+			
+		 // For now we need to wait until all current sessions are complete before a namespace
+		 // change which will reset the filters is allowed. So for now, we just don't allow any
+		 // new sessions to start until a pending namespace change is complete to allow there to
+		 // be space for this to actually happen. In theory we should probably figure out a way
+		 // to allow new sessions that are within the new namespace to start but figuring out all
+		 // the locking/startup issues surrounding this is complex so for now we just don't allow it.
 		if (_server.getPendingNameSpaceState()) {
 			Log.info("Discarding write request " + interest.name() + " due to pending namespace change");
 			return;
@@ -112,6 +127,11 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		}
 	}
 	
+	/**
+	 * Handle name enumeration requests
+	 * 
+	 * @param interest
+	 */
 	public void nameEnumeratorResponse(Interest interest) {
 		NameEnumerationResponse ner = _server.getRepository().getNamesWithPrefix(interest);
 

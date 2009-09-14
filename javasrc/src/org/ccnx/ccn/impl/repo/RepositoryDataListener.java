@@ -24,8 +24,6 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -41,24 +39,28 @@ import org.ccnx.ccn.protocol.Interest;
 
 
 /**
- * Handle incoming data in the repository. Currently only handles
- * the stream "shape"
+ * Handles incoming data for the repository. Its jobs are to store data in the repository
+ * by interfacing with the RepositoryStore and to generate interests for data following the
+ * received data in an input stream. RepositoryDataListeners are destroyed after the stream
+ * which triggered their creation has been fully read.
  * 
  * @author rasmusse
  *
  */
 
 public class RepositoryDataListener implements CCNInterestListener {
-	private long _timer;
-	private Interest _origInterest;
-	private ContentName _versionedName;
-	private InterestTable<Object> _interests = new InterestTable<Object>();
+	private long _timer;				// Used to timeout inactive listeners
+	private Interest _origInterest;		// The interest which originally triggered the creation of
+										// this listener. Used to filter out duplicate or overlapping
+										// requests for listeners
+	private ContentName _versionedName;	// The name associated with this listener
+	private InterestTable<Object> _interests = new InterestTable<Object>();	// Used to hold outstanding interests
+										// expressed but not yet satisfied.  Also used to decide how many interests
+										// may be expressed to satisfy the current pipelining window
 	private RepositoryServer _server;
 	private CCNHandle _library;
-	private long _currentBlock = 0; // latest block we're looking for
-	private long _finalBlockID = -1; // expected last block of the stream
-	
-	public Interest _headerInterest = null;
+	private long _currentBlock = 0; 	// latest block we're looking for
+	private long _finalBlockID = -1; 	// expected last block of the stream
 	
 	/**
 	 * So the main listener can output interests sooner, we do the data creation work
@@ -76,6 +78,14 @@ public class RepositoryDataListener implements CCNInterestListener {
 			_content = co;
 		}
 	
+		/**
+		 * The content listener runs this thread to store data using the content store.
+		 * The thread also checks for policy updates which may reset the repository's
+		 * namespace and sends "early" nameEnumerationResponses when requested by the
+		 * store.
+		 * 
+		 * @see RepositoryStore
+		 */
 		public void run() {
 			try {
 				if (SystemConfiguration.getLogging("repo")) {
@@ -95,7 +105,14 @@ public class RepositoryDataListener implements CCNInterestListener {
 		}
 	}
 	
-	public RepositoryDataListener(Interest origInterest, Interest interest, RepositoryServer server) throws XMLStreamException, IOException {
+	/**
+	 * 
+	 * @param origInterest	used only to log the actual interest that created this listener
+	 * @param interest		interest to be used to identify this listener to filter out subsequent duplicate or overlapping
+	 * 						requests
+	 * @param server		associated RepositoryServer
+	 */
+	public RepositoryDataListener(Interest origInterest, Interest interest, RepositoryServer server) {
 		_origInterest = interest;
 		_versionedName = interest.name();
 		_server = server;
@@ -104,6 +121,10 @@ public class RepositoryDataListener implements CCNInterestListener {
 		Log.info("Starting up repository listener on original interest: " + origInterest + " interest " + interest);
 	}
 	
+	/**
+	 * The actual incoming data handler. Kicks off a thread to store the data and expresses interest in data following
+	 * the incoming data.
+	 */
 	public Interest handleContent(ArrayList<ContentObject> results,
 			Interest interest) {
 		
@@ -268,17 +289,15 @@ public class RepositoryDataListener implements CCNInterestListener {
 	}
 	
 	/**
-	 * 
+	 * Called on listener teardown.
 	 */
 	public void cancelInterests() {
 		for (Entry<Object> entry : _interests.values())
 			_library.cancelInterest(entry.interest(), this);
-		if (null != _headerInterest)
-			_library.cancelInterest(_headerInterest, this);
 	}
 	
 	/**
-	 * 
+	 * Gets the time of the last data received
 	 * @return
 	 */
 	public long getTimer() {
@@ -286,15 +305,15 @@ public class RepositoryDataListener implements CCNInterestListener {
 	}
 	
 	/**
-	 * 
-	 * @param time
+	 * Changes the time used to timeout the listener
+	 * @param time 
 	 */
 	public void setTimer(long time) {
 		_timer = time;
 	}
 	
 	/**
-	 * 
+	 * Gets the namespace served by this listener as an interest
 	 * @return
 	 */
 	public Interest getOrigInterest() {
@@ -302,7 +321,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	}
 	
 	/**
-	 * 
+	 * Gets the namespace served by this listener as a ContentName
 	 * @return
 	 */
 	public ContentName getVersionedName() {
@@ -310,7 +329,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	}
 	
 	/**
-	 * 
+	 * Gets the current set of outstanding interests for this listener
 	 * @return
 	 */
 	public InterestTable<Object> getInterests() {
