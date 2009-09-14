@@ -49,7 +49,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * bytes segmented and stored in CCN. 
  * 
  * @see SegmentationProfile for description of CCN segmentation
- * @author smetters
  */
 public abstract class CCNAbstractInputStream extends InputStream implements ContentVerifier {
 
