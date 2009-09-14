@@ -39,6 +39,7 @@ import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.profiles.access.AccessControlProfile;
+import org.ccnx.ccn.profiles.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.access.Group;
 import org.ccnx.ccn.profiles.access.GroupManager;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
@@ -119,6 +120,8 @@ public class GroupTestRepo {
 					succeed = true;
 			}catch(ContentNotReadyException e){
 				succeed = false;
+			}catch(AccessDeniedException e){
+				succeed = false;
 			}
 		}
 		System.out.println(".....................removed user, number of retries:..............." + retries);
@@ -134,6 +137,8 @@ public class GroupTestRepo {
 					grp.addUsers(removeMembers);
 					succeed = true;
 			}catch(ContentNotReadyException e){
+				succeed = false;
+			}catch(AccessDeniedException e){
 				succeed = false;
 			}
 		}
