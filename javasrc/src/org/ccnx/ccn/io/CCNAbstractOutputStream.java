@@ -21,7 +21,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNSegmenter;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
@@ -29,6 +31,12 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
+/**
+ * This abstract class is the superclass of all classes for writing an output stream of
+ * bytes segmented and stored in CCN. 
+ * 
+ * @see SegmentationProfile for description of CCN segmentation
+ */
 public abstract class CCNAbstractOutputStream extends OutputStream {
 
 	protected CCNHandle _handle = null;
@@ -41,13 +49,17 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	protected PublisherPublicKeyDigest _publisher;
 
 	/**
+	 * Base constructor for all output streams.
 	 * The behavior of an output stream derived class is determined
 	 * largely by its buffering, segmentation configuration (embodied
 	 * in a CCNSegmenter) and flow control (embodied in a CCNFlowControl,
-	 * contained within the segmenter).
-	 * @param locator
-	 * @param publisher
-	 * @param segmenter
+	 * contained within the segmenter), as well as the way it constructs is names.
+	 * @param locator the key locator to be used in written segments. If null, default
+	 * 		is used.
+	 * @param publisher the key with which to sign the output. If null, default for user
+	 * 		is used.
+	 * @param segmenter The segmenter used to construct and sign output segments, specified
+	 *    by subclasses to provide various kinds of behavior.
 	 */
 	public CCNAbstractOutputStream(KeyLocator locator, 
 								   PublisherPublicKeyDigest publisher,
@@ -64,10 +76,14 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 		_publisher = publisher;		
 	}
 	
-	public CCNAbstractOutputStream() {}	// special purpose constructor
+	/**
+	 * Special purpose constructor used in tests.
+	 */
+	protected CCNAbstractOutputStream() {}	
 	
 	/**
-	 * Override in subclasses that need to do something special with start writes.
+	 * Override in subclasses that need to do something special with start writes 
+	 * (see {@link CCNFlowControl#startWrite(ContentName, org.ccnx.ccn.impl.CCNFlowControl.Shape)}).
 	 * @throws IOException
 	 */
 	protected void startWrite() throws IOException {}
@@ -83,20 +99,33 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 		write(buf, 0, 1);
 	}
 
+	/**
+	 * @return The name used as a prefix for segments of this stream (not including the segment number).
+	 */
 	public ContentName getBaseName() {
 		return _baseName;
 	}
 
+	/**
+	 * @return The version of the stream being written, if its name is versioned.
+	 */
 	public CCNTime getVersion() {
 		if (null == _baseName) 
 			return null;
 		return VersioningProfile.getTerminalVersionAsTimestampIfVersioned(_baseName);
 	}
 
-	public CCNSegmenter getSegmenter() {
+	/**
+	 * @return The {@link CCNSegmenter} responsible for segmenting and signing stream content. 
+	 */
+	protected CCNSegmenter getSegmenter() {
 		return _segmenter;
 	}
 	
+	/**
+	 * Set the timeout that will be used for all content writes on this stream.
+	 * @param timeout
+	 */
 	public void setTimeout(int timeout) {
 		getSegmenter().setTimeout(timeout);
 	}

@@ -35,29 +35,14 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * fixed chunks. The chunks can be individually signed or authenticated
  * using a Merkle Hash Tree, but read will return when it gets a single
  * block of content, and will not fill buffers across content blocks.
+ * This will consume data written by either {@link CCNBlockOutputStream},
+ * or by the C program ccnsendchunks.
  * The intent is to read packet-oriented protocols; possibly a better
  * abstraction is to move this to be a subclass of DatagramSocket.
  */
 public class CCNBlockInputStream extends CCNAbstractInputStream {
 
-	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber, 
-			   PublisherPublicKeyDigest publisher, ContentKeys keys, CCNHandle handle) throws XMLStreamException, IOException {
-		super(baseName, startingSegmentNumber, publisher, keys, handle);
-		setTimeout(CCNBase.NO_TIMEOUT);
-	}
-
-	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber,
-							   PublisherPublicKeyDigest publisher, CCNHandle handle) throws XMLStreamException, IOException {
-		super(baseName, startingSegmentNumber, publisher, null, handle);
-		setTimeout(CCNBase.NO_TIMEOUT);
-	}
-
-	public CCNBlockInputStream(ContentName baseName, PublisherPublicKeyDigest publisher, CCNHandle handle) 
-															throws XMLStreamException, IOException {
-		this(baseName, null, publisher, handle);
-	}
-
-	public CCNBlockInputStream(ContentName baseName) throws XMLStreamException, IOException {
+	public CCNBlockInputStream(ContentName baseName) throws IOException {
 		this(baseName, null, null, null);
 	}
 
@@ -65,14 +50,41 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		this(baseName, null, null, handle);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, long segmentNumber) throws XMLStreamException, IOException {
-		this(baseName, segmentNumber, null, null);
+	public CCNBlockInputStream(ContentName baseName, 
+			PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException {
+		this(baseName, null, publisher, handle);
 	}
-	
-	public CCNBlockInputStream(ContentObject firstSegment, CCNHandle handle) throws XMLStreamException, IOException {
+
+	public CCNBlockInputStream(ContentName baseName, Long segmentNumber, CCNHandle handle) throws IOException {
+		this(baseName, segmentNumber, null, handle);
+	}
+
+	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber,
+							   PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException {
+		super(baseName, startingSegmentNumber, publisher, null, handle);
+		setTimeout(CCNBase.NO_TIMEOUT);
+	}
+
+	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber, 
+			   PublisherPublicKeyDigest publisher, ContentKeys keys, CCNHandle handle) throws IOException {
+		super(baseName, startingSegmentNumber, publisher, keys, handle);
+		setTimeout(CCNBase.NO_TIMEOUT);
+	}
+
+	public CCNBlockInputStream(ContentObject firstSegment, CCNHandle handle) throws IOException {
 		super(firstSegment, null, handle);
 	}
 
+	public CCNBlockInputStream(ContentObject firstSegment, ContentKeys keys, CCNHandle handle) throws IOException {
+		super(firstSegment, keys, handle);
+	}
+
+	/**
+	 * Implement sequential reads of data quantized into segments. Will read the remainder
+	 * of the current segment on each {@link #read(byte[], int, int)} call, when a given
+	 * segment runs out of bytes returns -1. Next {@link #read(byte[], int, int)} call
+	 * will retrieve the next segment. Meant for reading complete segments at a time.
+	 */
 	@Override
 	protected int readInternal(byte [] buf, int offset, int len) throws IOException {
 		

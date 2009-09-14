@@ -18,94 +18,202 @@
 package org.ccnx.ccn.io;
 
 import java.io.IOException;
-
-import javax.xml.stream.XMLStreamException;
+import java.io.InputStream;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * Perform sequential reads on any block-oriented CCN content, namely that
- * where the name component after the specified name prefix is an optionally
- * segment-encoded integer, and the content blocks are indicated by 
- * monotonically increasing (but not necessarily sequential)
- * optionally segment-encoded integers. For example, a file could be 
- * divided into sequential blocks, while an audio stream might have 
- * blocks named by time offsets into the stream. 
- * 
+ * Perform sequential reads on any segmented CCN content, as if it
+ * were a standard {@link InputStream}.
  * This input stream will read from a sequence of blocks, authenticating
- * each as it goes, and caching what information it can. All it assumes
- * is that the last component of the name is an increasing integer
- * value, where we start with the name we are given, and get right siblings
- * (next blocks) moving forward.
+ * each as it goes, and caching what verification information it can to speed
+ * up verification of future blocks. All it assumes
+ * is that the last component of the name is a segment number as described in
+ * {@link SegmentationProfile}.
  * 
- * This input stream works with data with and without a header block; it
- * opportunistically queries for a header block and uses its information if
- * one is available. That means an extra interest for content that does not have
- * a header block.
- * 
- * Read size is independent of fragment size; the stream will pull additional
+ * Read buffer size is independent of segment size; the stream will pull additional
  * content fragments dynamically when possible to fill out the requested number
  * of bytes.
- * 
- * TODO remove header handling from here, add use of lastSegment marker in
- *    blocks leading up to the end. Headers, in whatever form they evolve
- *    into, will be used only by higher-level streams.
  * @author smetters
- *
  */
 public class CCNInputStream extends CCNAbstractInputStream {
 	
-	public CCNInputStream(ContentName name) throws XMLStreamException, IOException {
+	/**
+	 * Set up an input stream to read segmented CCN content under a given name. Content is assumed
+	 * to be unencrypted, or keys will be retrieved automatically via another
+	 * process (for example, an {@link AccessControlManager}). 
+	 * Will use the default handle given by {@link CCNHandle.getHandle()}.
+	 * Note that this constructor does not currently retrieve any
+	 * data; data is not retrieved until read() is called. This will change in the future, and
+	 * this constructor will retrieve the first block.
+	 * 
+	 * @param baseName Name to read from. If contains a segment number, will start to read from that
+	 *    segment.
+	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
+	 */
+	public CCNInputStream(ContentName name) throws IOException {
 		this(name, null);
 	}
 	
-	public CCNInputStream(ContentName name, CCNHandle handle) throws XMLStreamException, IOException {
+	/**
+	 * Set up an input stream to read segmented CCN content under a given name. Content is assumed
+	 * to be unencrypted, or keys will be retrieved automatically via another
+	 * process (for example, an {@link AccessControlManager}).
+	 * Note that this constructor does not currently retrieve any
+	 * data; data is not retrieved until read() is called. This will change in the future, and
+	 * this constructor will retrieve the first block.
+	 * 
+	 * @param baseName Name to read from. If contains a segment number, will start to read from that
+	 *    segment.
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
+	 */
+	public CCNInputStream(ContentName name, CCNHandle handle) throws IOException {
 		this(name, null, null, handle);
 	}
 	
+	/**
+	 * Set up an input stream to read segmented CCN content under a given name. Content is assumed
+	 * to be unencrypted, or keys will be retrieved automatically via another
+	 * process (for example, an {@link AccessControlManager}).
+	 * Note that this constructor does not currently retrieve any
+	 * data; data is not retrieved until read() is called. This will change in the future, and
+	 * this constructor will retrieve the first block.
+	 * 
+	 * @param baseName Name to read from. If contains a segment number, will start to read from that
+	 *    segment.
+	 * @param publisher The key we require to have signed this content. If null, will accept any publisher
+	 * 				(subject to higher-level verification).
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
+	 */
 	public CCNInputStream(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
-			throws XMLStreamException, IOException {
+			throws IOException {
 		this(name, null, publisher, handle);
 	}
 
-	public CCNInputStream(ContentName name, long segmentNumber) throws XMLStreamException, IOException {
-		this(name, segmentNumber, null, null);
+	/**
+	 * Set up an input stream to read segmented CCN content under a given name. Content is assumed
+	 * to be unencrypted, or keys will be retrieved automatically via another
+	 * process (for example, an {@link AccessControlManager}).
+	 * Note that this constructor does not currently retrieve any
+	 * data; data is not retrieved until read() is called. This will change in the future, and
+	 * this constructor will retrieve the first block.
+	 * 
+	 * @param baseName Name to read from. If contains a segment number, will start to read from that
+	 *    segment.
+	 * @param startingSegmentNumber Alternative specification of starting segment number. If
+	 * 		null, will be {@link SegmentationProfile.baseSegment()}.
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
+	 */
+	public CCNInputStream(ContentName name, Long startingSegmentNumber, CCNHandle handle) throws IOException {
+		this(name, startingSegmentNumber, null, handle);
 	}
 	
+	/**
+	 * Set up an input stream to read segmented CCN content under a given name. Content is assumed
+	 * to be unencrypted, or keys will be retrieved automatically via another
+	 * process (for example, an {@link AccessControlManager}).
+	 * Note that this constructor does not currently retrieve any
+	 * data; data is not retrieved until read() is called. This will change in the future, and
+	 * this constructor will retrieve the first block.
+	 * 
+	 * @param baseName Name to read from. If contains a segment number, will start to read from that
+	 *    segment.
+	 * @param startingSegmentNumber Alternative specification of starting segment number. If
+	 * 		null, will be {@link SegmentationProfile.baseSegment()}.
+	 * @param publisher The key we require to have signed this content. If null, will accept any publisher
+	 * 				(subject to higher-level verification).
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
+	 */
 	public CCNInputStream(ContentName name, Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
-			CCNHandle handle) throws XMLStreamException, IOException {
+			CCNHandle handle) throws IOException {
 
-		super(name, startingSegmentNumber, publisher, handle);
+		super(name, startingSegmentNumber, publisher, null, handle);
 	}
 	
+	/**
+	 * Set up an input stream to read segmented CCN content under a given name. 
+	 * Note that this constructor does not currently retrieve any
+	 * data; data is not retrieved until read() is called. This will change in the future, and
+	 * this constructor will retrieve the first block.
+	 * 
+	 * @param baseName Name to read from. If contains a segment number, will start to read from that
+	 *    segment.
+	 * @param startingSegmentNumber Alternative specification of starting segment number. If
+	 * 		null, will be {@link SegmentationProfile.baseSegment()}.
+	 * @param publisher The key we require to have signed this content. If null, will accept any publisher
+	 * 				(subject to higher-level verification).
+	 * @param keys The keys to use to decrypt this content. If null, assumes content unencrypted, or another
+	 * 				process will be used to retrieve the keys (for example, an {@link AccessControlManager}).
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
+	 */
 	public CCNInputStream(ContentName name, Long startingSegmentNumber, PublisherPublicKeyDigest publisher, 
-			ContentKeys keys, CCNHandle handle) throws XMLStreamException,
-			IOException {
+			ContentKeys keys, CCNHandle handle) throws IOException {
 
 		super(name, startingSegmentNumber, publisher, keys, handle);
 	}
 
-	public CCNInputStream(ContentObject firstSegment, CCNHandle handle) throws XMLStreamException, IOException {
-		super(firstSegment, handle);
+	/**
+	 * Set up an input stream to read segmented CCN content starting with a given
+	 * {@link ContentObject} that has already been retrieved.  Content is assumed
+	 * to be unencrypted, or keys will be retrieved automatically via another
+	 * process (for example, an {@link AccessControlManager}).
+	 * @param startingSegment The first segment to read from. If this is not the
+	 * 		first segment of the stream, reading will begin from this point.
+	 * 		We assume that the signature on this segment was verified by our caller.
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException
+	 */
+	public CCNInputStream(ContentObject startingSegment, CCNHandle handle) throws IOException {
+		super(startingSegment, null, handle);
 	}
 	
-	public CCNInputStream(ContentObject firstSegment, ContentKeys keys, CCNHandle handle) throws XMLStreamException, IOException {
-		super(firstSegment, keys, handle);
+	/**
+	 * Set up an input stream to read segmented CCN content starting with a given
+	 * {@link ContentObject} that has already been retrieved.  
+	 * @param startingSegment The first segment to read from. If this is not the
+	 * 		first segment of the stream, reading will begin from this point.
+	 * 		We assume that the signature on this segment was verified by our caller.
+	 * @param keys The keys to use to decrypt this content. Null if content unencrypted, or another
+	 * 				process will be used to retrieve the keys (for example, an {@link AccessControlManager}).
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException
+	 */
+	public CCNInputStream(ContentObject startingSegment, ContentKeys keys, CCNHandle handle) throws IOException {
+		super(startingSegment, keys, handle);
 	}
 	
+	/**
+	 * Implement sequential reads of data across multiple segments. As we run out of bytes
+	 * on a given segment, the next segment is retrieved and reading continues.
+	 */
+	@Override
 	protected int readInternal(byte [] buf, int offset, int len) throws IOException {
 		
 		if (_atEOF) {
 			return -1;
 		}
 		
-		Log.finest(baseName() + ": reading " + len + " bytes into buffer of length " + 
+		Log.finest(getBaseName() + ": reading " + len + " bytes into buffer of length " + 
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentSegment) {

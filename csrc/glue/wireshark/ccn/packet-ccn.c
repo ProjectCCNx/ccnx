@@ -48,6 +48,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ccn/ccn.h>
+#include <ccn/ccnd.h>
 #include <ccn/coding.h>
 #include <ccn/uri.h>
 
@@ -83,8 +84,6 @@ static gint hf_ccn_contenttype = -1;
 static gint hf_ccn_freshnessseconds = -1;
 static gint hf_ccn_finalblockid = -1;
 
-static gint hf_ccn_namecomponentcount = -1;
-static gint hf_ccn_additionalnamecomponents = -1;
 static gint hf_ccn_minsuffixcomponents = -1;
 static gint hf_ccn_maxsuffixcomponents = -1;
 static gint hf_ccn_childselector = -1;
@@ -170,12 +169,6 @@ proto_register_ccn(void)
          {"Data", "ccn.data", FT_BYTES, BASE_HEX, NULL,
           0x0, "Raw data", HFILL}},
 
-        {&hf_ccn_namecomponentcount,
-         {"NameComponentCount", "ccn.namecomponentcount", FT_UINT32, BASE_DEC, NULL,
-          0x0, "Prefix components", HFILL}},
-        {&hf_ccn_additionalnamecomponents,
-         {"AdditionalNameComponents", "ccn.additionalnamecomponents", FT_UINT32, BASE_DEC, NULL,
-          0x0, "Additional name components", HFILL}},
         {&hf_ccn_minsuffixcomponents,
          {"MinSuffixComponents", "ccn.minsuffixcomponents", FT_UINT32, BASE_DEC, NULL,
           0x0, "Minimum suffix components", HFILL}},
@@ -370,23 +363,6 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
     for (i = 0; i < comps->n - 1; i++) {
         res = ccn_name_comp_get(ccnb, comps, i, &comp, &comp_size);
         titem = proto_tree_add_item(name_tree, hf_ccn_name_components, tvb, comp - ccnb, comp_size, FALSE);
-    }
-
-    /* NameComponentCount */
-    l = pi->offset[CCN_PI_E_NameComponentCount] - pi->offset[CCN_PI_B_NameComponentCount];
-    if (l > 0) {
-        i = pi->prefix_comps;
-        titem = proto_tree_add_uint(tree, hf_ccn_namecomponentcount, tvb, pi->offset[CCN_PI_B_NameComponentCount], l, i);
-    }
-
-    /* AdditionalNameComponents - deprecated, will be removed */
-    l = pi->offset[CCN_PI_E_AdditionalNameComponents] - pi->offset[CCN_PI_B_AdditionalNameComponents];
-    if (l > 0) {
-        i = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_AdditionalNameComponents, ccnb,
-                                                pi->offset[CCN_PI_B_AdditionalNameComponents],
-                                                pi->offset[CCN_PI_E_AdditionalNameComponents]);
-
-        titem = proto_tree_add_uint(tree, hf_ccn_additionalnamecomponents, tvb, pi->offset[CCN_PI_B_AdditionalNameComponents], l, i);
     }
 
     /* MinSuffixComponents */

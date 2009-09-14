@@ -125,15 +125,12 @@ incoming_content(
         ccn_charbuf_destroy(&comp);
         /*
          * We can't rely on the Exclude filter to keep from seeing this, so 
-         * say that we need one more name component.
-         * We would REALLY like to say AT LEAST one more name component, but
-         * right now we don't have the expressiveness to say that in one
-         * Interest.  So we can miss things because of that.                    // XXX
+         * say that we need at least one more name component.
          */
-        ccn_charbuf_append_tt(templ, CCN_DTAG_AdditionalNameComponents, CCN_DTAG);
+        ccn_charbuf_append_tt(templ, CCN_DTAG_MinSuffixComponents, CCN_DTAG);
         ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
         ccn_charbuf_append(templ, "1", 1);
-        ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
+        ccn_charbuf_append_closer(templ); /* </MinSuffixComponents> */
     }
     else {
         data->excl = realloc(data->excl, (data->n_excl + 1) * sizeof(data->excl[0]));

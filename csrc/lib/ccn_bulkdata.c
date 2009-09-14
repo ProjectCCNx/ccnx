@@ -216,10 +216,8 @@ express_bulkdata_interest(struct ccn *h, struct pending *p)
     ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
     ccn_charbuf_append_closer(templ); /* </Name> */
 
-    ccn_charbuf_append_tt(templ, CCN_DTAG_AdditionalNameComponents, CCN_DTAG);
-    ccnb_append_number(templ, addl_comps);
-    ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
-
+    // XXX - may want to set Min/MaxSuffixComponents
+    
     ccn_charbuf_append_closer(templ); /* </Interest> */
     res = ccn_express_interest(h, name, &p->closure, templ);
     assert(res >= 0); // XXX - handle this better

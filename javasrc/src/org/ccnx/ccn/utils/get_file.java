@@ -22,8 +22,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
@@ -105,7 +103,7 @@ public class get_file {
 			long starttime = System.currentTimeMillis();
 			CCNInputStream input;
 			if (unversioned)
-				input = new CCNInputStream(argName, null, handle);
+				input = new CCNInputStream(argName, handle);
 			else
 				input = new CCNFileInputStream(argName, handle);
 			if (timeout != null) {
@@ -134,9 +132,6 @@ public class get_file {
 			e.printStackTrace();
 		} catch (IOException e) {
 			System.out.println("Cannot write file or read content. " + e.getMessage());
-			e.printStackTrace();
-		} catch (XMLStreamException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		System.exit(1);

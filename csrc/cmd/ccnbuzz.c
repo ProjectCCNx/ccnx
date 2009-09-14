@@ -138,9 +138,9 @@ make_template(struct mydata *md, struct ccn_upcall_info *info, struct ccn_bloom 
     ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
     ccn_charbuf_append_closer(templ); /* </Name> */
     // XXX - use pubid if possible
-    ccn_charbuf_append_tt(templ, CCN_DTAG_AdditionalNameComponents, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
     ccnb_append_number(templ, 2);
-    ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
+    ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
     if (info != NULL) {
         ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
         ib = info->interest_ccnb;

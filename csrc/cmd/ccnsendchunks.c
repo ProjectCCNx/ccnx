@@ -190,10 +190,10 @@ main(int argc, char **argv)
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
     ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
     ccn_charbuf_append_closer(templ); /* </Name> */
-    ccn_charbuf_append_tt(templ, CCN_DTAG_AdditionalNameComponents, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
     ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
     ccn_charbuf_append(templ, "1", 1);
-    ccn_charbuf_append_closer(templ); /* </AdditionalNameComponents> */
+    ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
     // XXX - use pubid
     ccn_charbuf_append_closer(templ); /* </Interest> */
     res = ccn_express_interest(ccn, name, &in_content, templ);

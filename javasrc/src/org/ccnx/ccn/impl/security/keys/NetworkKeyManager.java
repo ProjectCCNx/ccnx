@@ -97,9 +97,6 @@ public class NetworkKeyManager extends BasicKeyManager {
 			try {
 				in = new CCNVersionedInputStream(keystoreObject, _handle);
 				readKeyStore(in);
-			} catch (XMLStreamException e) {
-				Log.warning("Cannot open existing key store: " + _keystoreName);
-				throw new ConfigurationException("Cannot open existing key store: " + _keystoreName + ": " + e.getMessage(), e);
 			} catch (IOException e) {
 				Log.warning("Cannot open existing key store: " + _keystoreName);
 				throw new ConfigurationException("Cannot open existing key store: " + _keystoreName + ": " + e.getMessage(), e);
