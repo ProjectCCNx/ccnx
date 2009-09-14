@@ -62,6 +62,11 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		super(name, library);
 	}
 
+	public CCNFileInputStream(ContentName name, PublisherPublicKeyDigest publisher,
+			CCNHandle library) throws XMLStreamException, IOException {
+		this(name, null, publisher, library);
+	}
+
 	public CCNFileInputStream(ContentName name, long startingBlockIndex)
 										throws XMLStreamException, IOException {
 		this(name, startingBlockIndex, null, null);
@@ -79,16 +84,16 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements CCNIn
 		super(name, startingBlockIndex, publisher, keys, library);
 	}
 
-	public CCNFileInputStream(ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle library) throws XMLStreamException, IOException {
-		this(name, null, publisher, library);
-	}
-
-	public CCNFileInputStream(ContentObject starterBlock, CCNHandle library)
+	public CCNFileInputStream(ContentObject firstSegment, CCNHandle library)
 			throws XMLStreamException, IOException {
-		super(starterBlock, library);
+		super(firstSegment, library);
 	}
 
+	public CCNFileInputStream(ContentObject firstSegment, 
+				ContentKeys keys, CCNHandle library) throws XMLStreamException, IOException {
+		super(firstSegment, keys, library);
+	}
+	
 	protected boolean headerRequested() {
 		return (null != _header);
 	}

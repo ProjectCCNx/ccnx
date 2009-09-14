@@ -61,24 +61,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class CCNInputStream extends CCNAbstractInputStream {
 	
-	public CCNInputStream(ContentName name, Long startingSegmentNumber, PublisherPublicKeyDigest publisher, 
-			ContentKeys keys, CCNHandle library) throws XMLStreamException,
-			IOException {
-
-		super(name, startingSegmentNumber, publisher, keys, library);
-	}
-
-	public CCNInputStream(ContentName name, Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
-			CCNHandle library) throws XMLStreamException, IOException {
-
-		super(name, startingSegmentNumber, publisher, library);
-	}
-	
-	public CCNInputStream(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) 
-			throws XMLStreamException, IOException {
-		this(name, null, publisher, library);
-	}
-	
 	public CCNInputStream(ContentName name) throws XMLStreamException, IOException {
 		this(name, null);
 	}
@@ -87,12 +69,34 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		this(name, null, null, library);
 	}
 	
+	public CCNInputStream(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle library) 
+			throws XMLStreamException, IOException {
+		this(name, null, publisher, library);
+	}
+
 	public CCNInputStream(ContentName name, long segmentNumber) throws XMLStreamException, IOException {
 		this(name, segmentNumber, null, null);
 	}
 	
+	public CCNInputStream(ContentName name, Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
+			CCNHandle library) throws XMLStreamException, IOException {
+
+		super(name, startingSegmentNumber, publisher, library);
+	}
+	
+	public CCNInputStream(ContentName name, Long startingSegmentNumber, PublisherPublicKeyDigest publisher, 
+			ContentKeys keys, CCNHandle library) throws XMLStreamException,
+			IOException {
+
+		super(name, startingSegmentNumber, publisher, keys, library);
+	}
+
 	public CCNInputStream(ContentObject firstSegment, CCNHandle library) throws XMLStreamException, IOException {
 		super(firstSegment, library);
+	}
+	
+	public CCNInputStream(ContentObject firstSegment, ContentKeys keys, CCNHandle library) throws XMLStreamException, IOException {
+		super(firstSegment, keys, library);
 	}
 	
 	protected int readInternal(byte [] buf, int offset, int len) throws IOException {
