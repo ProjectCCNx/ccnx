@@ -116,7 +116,7 @@ public class GroupTestRepo {
 			retries ++;
 			System.out.print("................trying to remove user...........");
 			try{
-					grp.removeUsers(removeMembers);
+					grp.removeMembers(removeMembers);
 					succeed = true;
 			}catch(ContentNotReadyException e){
 				succeed = false;
@@ -134,7 +134,7 @@ public class GroupTestRepo {
 			retries ++;
 			System.out.print("................trying to add user...........");
 			try{
-					grp.addUsers(removeMembers);
+					grp.addMembers(removeMembers);
 					succeed = true;
 			}catch(ContentNotReadyException e){
 				succeed = false;
