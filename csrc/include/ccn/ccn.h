@@ -433,9 +433,11 @@ int ccn_fetch_tagged_nonNegativeInteger(enum ccn_dtag tt,
  * An omitted element has its beginning and ending offset equal to each other.
  * Normally these offsets will end up in non-decreasing order.
  * Some aliasing tricks may be played here, e.g. since
- * offset[CCN_PI_B_NameComponentCount] is always equal to offset[CCN_PI_E_Name],
- * we may define CCN_PI_B_NameComponentCount = CCN_PI_E_Name.  However, code
- * should not rely on that, since it may change from time to time as the
+ * offset[CCN_PI_E_ComponentLast] is always equal to
+ * offset[CCN_PI_E_LastPrefixComponent],
+ * we may define CCN_PI_E_ComponentLast = CCN_PI_E_LastPrefixComponent.
+ * However, code should not rely on that,
+ * since it may change from time to time as the
  * interest schema evolves.
  */
 enum ccn_parsed_interest_offsetid {
@@ -443,7 +445,7 @@ enum ccn_parsed_interest_offsetid {
     CCN_PI_B_Component0,
     CCN_PI_B_LastPrefixComponent,
     CCN_PI_E_LastPrefixComponent,
-    CCN_PI_E_ComponentLast,
+    CCN_PI_E_ComponentLast = CCN_PI_E_LastPrefixComponent,
     CCN_PI_E_Name,
     CCN_PI_B_MinSuffixComponents,
     CCN_PI_E_MinSuffixComponents,
@@ -456,9 +458,7 @@ enum ccn_parsed_interest_offsetid {
     CCN_PI_B_Exclude,
     CCN_PI_E_Exclude,
     CCN_PI_B_ChildSelector,
-    CCN_PI_B_OrderPreference = CCN_PI_B_ChildSelector,
     CCN_PI_E_ChildSelector,
-    CCN_PI_E_OrderPreference = CCN_PI_E_ChildSelector,
     CCN_PI_B_AnswerOriginKind,
     CCN_PI_E_AnswerOriginKind,
     CCN_PI_B_Scope,
