@@ -257,27 +257,27 @@ public class CCNVersionedInputStreamTest {
 	protected void testArgumentRunner(CCNVersionedInputStream vfirst,
 									  CCNVersionedInputStream vlatest) {
 		try {
-			Assert.assertEquals(vfirst.baseName(), firstVersionName);
-			Assert.assertEquals(VersioningProfile.cutTerminalVersion(vfirst.baseName()).first(), defaultStreamName);
+			Assert.assertEquals(vfirst.getBaseName(), firstVersionName);
+			Assert.assertEquals(VersioningProfile.cutTerminalVersion(vfirst.getBaseName()).first(), defaultStreamName);
 			byte b = (byte)vfirst.read();
 			if (b != 0x00) {
 			}
 			Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(firstVersionName), 
-								VersioningProfile.getLastVersionAsTimestamp(vfirst.baseName()));
+								VersioningProfile.getLastVersionAsTimestamp(vfirst.getBaseName()));
 			Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(firstVersionName),
 							    vfirst.getVersionAsTimestamp());
 
 			System.out.println("Opened stream on latest version, expected: " + latestVersionName + " got: " + 
-								vlatest.baseName());
+								vlatest.getBaseName());
 			b = (byte)vlatest.read();
 			System.out.println("Post-read: Opened stream on latest version, expected: " + latestVersionName + " got: " + 
-					vlatest.baseName());
-			Assert.assertEquals(vlatest.baseName(), latestVersionName);
-			Assert.assertEquals(VersioningProfile.cutTerminalVersion(vlatest.baseName()).first(), defaultStreamName);
+					vlatest.getBaseName());
+			Assert.assertEquals(vlatest.getBaseName(), latestVersionName);
+			Assert.assertEquals(VersioningProfile.cutTerminalVersion(vlatest.getBaseName()).first(), defaultStreamName);
 			Assert.assertEquals(VersioningProfile.getLastVersionAsLong(latestVersionName), 
-					VersioningProfile.getLastVersionAsLong(vlatest.baseName()));
+					VersioningProfile.getLastVersionAsLong(vlatest.getBaseName()));
 			Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(latestVersionName), 
-								VersioningProfile.getLastVersionAsTimestamp(vlatest.baseName()));
+								VersioningProfile.getLastVersionAsTimestamp(vlatest.getBaseName()));
 			Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(latestVersionName),
 					vlatest.getVersionAsTimestamp());
 		

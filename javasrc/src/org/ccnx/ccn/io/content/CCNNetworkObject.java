@@ -353,7 +353,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public synchronized boolean update(CCNInputStream inputStream) throws IOException, XMLStreamException {
 		Tuple<ContentName, byte []> nameAndVersion = null;
 		if (inputStream.isGone()) {
-			Log.fine("Reading from GONE stream: {0}", inputStream.baseName());
+			Log.fine("Reading from GONE stream: {0}", inputStream.getBaseName());
 			_data = null;
 
 			// This will have a final version and a segment
@@ -368,12 +368,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			try {
 				super.update(inputStream);
 			} catch (NoMatchingContentFoundException nme) {
-				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available. Updating once in background.", inputStream.baseName());
+				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available. Updating once in background.", inputStream.getBaseName());
 				updateInBackground();
 				return false;
 			}
 
-			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.baseName());
+			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
 			_currentPublisher = inputStream.publisher();
 			_currentPublisherKeyLocator = inputStream.publisherKeyLocator();
 			_isGone = false;

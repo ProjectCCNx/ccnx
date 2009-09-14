@@ -105,7 +105,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 			return -1;
 		}
 		
-		Log.finest(baseName() + ": reading " + len + " bytes into buffer of length " + 
+		Log.finest(getBaseName() + ": reading " + len + " bytes into buffer of length " + 
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentSegment) {
