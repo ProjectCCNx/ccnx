@@ -105,7 +105,10 @@ public class CCNFlowControl implements CCNFilterListener {
 =======
 	 * @param name
 	 * @param handle
+<<<<<<< HEAD
 >>>>>>> Change variables named "library" to "handle"; otherwise very confusing.
+=======
+>>>>>>> 8e225fb1a02d205dfb6059197744c38f33800b4a
 	 */
 	public CCNFlowControl(ContentName name, CCNHandle handle) throws IOException {
 		this(handle);
