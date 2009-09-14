@@ -26,6 +26,7 @@ import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -33,7 +34,8 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * A CCNInputStream that embodies the Versioning profile. If you
+ * A {@link CCNInputStream} that reads and writes versioned streams.
+ * Names are versioned using the {@link VersioningProfile}. If you
  * ask to open a name that is already versioned, it opens that
  * version for you. If you ask to open a name without a version,
  * it attempts to open the latest version of that name. If you
@@ -47,42 +49,141 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * are working with, to make sure we continue to get blocks
  * from the same version (even if, say someone writes another
  * version on top of us).
- * 
- * TODO -- outstanding concern -- depending on when the header arrives,
- * the response of this class may differ (not entirely clear). Given
- * that we're moving away from headers, perhaps, this may not be an
- * issue, but it brings up the point that we have to write unit tests
- * that seed ccnd or the repo with potentially complicating data and
- * make sure we can still retrieve it.
  */
 public class CCNVersionedInputStream extends CCNInputStream {
 
+	/**
+	 * Set up an input stream to read segmented CCN content under a given versioned name. 
+	 * Content is assumed to be unencrypted, or keys will be retrieved automatically via another
+	 * process (for example, an {@link AccessControlManager}). 
+	 * Will use the default handle given by {@link CCNHandle.getHandle()}.
+	 * Note that this constructor does not currently retrieve any
+	 * data; data is not retrieved until read() is called. This will change in the future, and
+	 * this constructor will retrieve the first block.
+	 * 
+	 * @param baseName Name to read from. If it ends with a version, will retrieve that
+	 * specific version. If not, will find the latest version available. If it ends with
+	 * both a version and a segment number, will start to read from that segment of that version.
+	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
+	 */
 	public CCNVersionedInputStream(ContentName name) throws XMLStreamException,
 															IOException {
 		super(name);
 	}
 
+	/**
+	 * Set up an input stream to read segmented CCN content under a given versioned name. 
+	 * Content is assumed to be unencrypted, or keys will be retrieved automatically via another
+	 * process (for example, an {@link AccessControlManager}). 
+	 * Will use the default handle given by {@link CCNHandle.getHandle()}.
+	 * Note that this constructor does not currently retrieve any
+	 * data; data is not retrieved until read() is called. This will change in the future, and
+	 * this constructor will retrieve the first block.
+	 * 
+	 * @param baseName Name to read from. If it ends with a version, will retrieve that
+	 * specific version. If not, will find the latest version available. If it ends with
+	 * both a version and a segment number, will start to read from that segment of that version.
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
+	 */
 	public CCNVersionedInputStream(ContentName name, CCNHandle handle)
 										throws XMLStreamException, IOException {
 		super(name, handle);
 	}
 
+	/**
+	 * Set up an input stream to read segmented CCN content under a given versioned name. 
+	 * Content is assumed to be unencrypted, or keys will be retrieved automatically via another
+	 * process (for example, an {@link AccessControlManager}). 
+	 * Will use the default handle given by {@link CCNHandle.getHandle()}.
+	 * Note that this constructor does not currently retrieve any
+	 * data; data is not retrieved until read() is called. This will change in the future, and
+	 * this constructor will retrieve the first block.
+	 * 
+	 * @param baseName Name to read from. If it ends with a version, will retrieve that
+	 * specific version. If not, will find the latest version available. If it ends with
+	 * both a version and a segment number, will start to read from that segment of that version.
+	 * @param publisher The key we require to have signed this content. If null, will accept any publisher
+	 * 				(subject to higher-level verification).
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
+	 */
 	public CCNVersionedInputStream(ContentName name, PublisherPublicKeyDigest publisher,
 			CCNHandle handle) throws XMLStreamException, IOException {
 		super(name, publisher, handle);
 	}
 
-	public CCNVersionedInputStream(ContentName name, Long startingSegmentNumber)
+	/**
+	 * Set up an input stream to read segmented CCN content under a given versioned name. 
+	 * Content is assumed to be unencrypted, or keys will be retrieved automatically via another
+	 * process (for example, an {@link AccessControlManager}). 
+	 * Will use the default handle given by {@link CCNHandle.getHandle()}.
+	 * Note that this constructor does not currently retrieve any
+	 * data; data is not retrieved until read() is called. This will change in the future, and
+	 * this constructor will retrieve the first block.
+	 * 
+	 * @param baseName Name to read from. If it ends with a version, will retrieve that
+	 * specific version. If not, will find the latest version available. If it ends with
+	 * both a version and a segment number, will start to read from that segment of that version.
+	 * @param startingSegmentNumber Alternative specification of starting segment number. If
+	 * 		null, will be {@link SegmentationProfile.baseSegment()}.
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
+	 */
+	public CCNVersionedInputStream(ContentName name, Long startingSegmentNumber, CCNHandle handle)
 			throws XMLStreamException, IOException {
-		super(name, startingSegmentNumber);
+		super(name, startingSegmentNumber, handle);
 	}
 
+	/**
+	 * Set up an input stream to read segmented CCN content under a given versioned name. 
+	 * Content is assumed to be unencrypted, or keys will be retrieved automatically via another
+	 * process (for example, an {@link AccessControlManager}). 
+	 * Will use the default handle given by {@link CCNHandle.getHandle()}.
+	 * Note that this constructor does not currently retrieve any
+	 * data; data is not retrieved until read() is called. This will change in the future, and
+	 * this constructor will retrieve the first block.
+	 * 
+	 * @param baseName Name to read from. If it ends with a version, will retrieve that
+	 * specific version. If not, will find the latest version available. If it ends with
+	 * both a version and a segment number, will start to read from that segment of that version.
+	 * @param startingSegmentNumber Alternative specification of starting segment number. If
+	 * 		null, will be {@link SegmentationProfile.baseSegment()}.
+	 * @param publisher The key we require to have signed this content. If null, will accept any publisher
+	 * 				(subject to higher-level verification).
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
+	 */
 	public CCNVersionedInputStream(ContentName name,
 			Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
 			CCNHandle handle) throws XMLStreamException, IOException {
 		super(name, startingSegmentNumber, publisher, handle);
 	}
 
+	/**
+	 * Set up an input stream to read segmented CCN content under a given versioned name. 
+	 * Will use the default handle given by {@link CCNHandle.getHandle()}.
+	 * Note that this constructor does not currently retrieve any
+	 * data; data is not retrieved until read() is called. This will change in the future, and
+	 * this constructor will retrieve the first block.
+	 * 
+	 * @param baseName Name to read from. If it ends with a version, will retrieve that
+	 * specific version. If not, will find the latest version available. If it ends with
+	 * both a version and a segment number, will start to read from that segment of that version.
+	 * @param startingSegmentNumber Alternative specification of starting segment number. If
+	 * 		null, will be {@link SegmentationProfile.baseSegment()}.
+	 * @param publisher The key we require to have signed this content. If null, will accept any publisher
+	 * 				(subject to higher-level verification).
+	 * @param keys The keys to use to decrypt this content. If null, assumes content unencrypted, or another
+	 * 				process will be used to retrieve the keys (for example, an {@link AccessControlManager}).
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
+	 */
 	public CCNVersionedInputStream(ContentName name,
 			Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
 			ContentKeys keys, CCNHandle handle)
@@ -90,15 +191,46 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		super(name, startingSegmentNumber, publisher, keys, handle);
 	}
 
-	public CCNVersionedInputStream(ContentObject firstSegment,
-			CCNHandle handle) throws XMLStreamException, IOException {
-		super(firstSegment, handle);
+	/**
+	 * Set up an input stream to read segmented CCN content starting with a given
+	 * {@link ContentObject} that has already been retrieved.  Content is assumed
+	 * to be unencrypted, or keys will be retrieved automatically via another
+	 * process (for example, an {@link AccessControlManager}).
+	 * @param startingSegment The first segment to read from. If this is not the
+	 * 		first segment of the stream, reading will begin from this point.
+	 * 		We assume that the signature on this segment was verified by our caller.
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException
+	 */
+	public CCNVersionedInputStream(ContentObject startingSegment,
+			CCNHandle handle) throws IOException {
+		super(startingSegment, handle);
 	}
 	
-	public CCNVersionedInputStream(ContentObject firstSegment, ContentKeys keys, CCNHandle handle) throws XMLStreamException, IOException {
-		super(firstSegment, keys, handle);
+	/**
+	 * Set up an input stream to read segmented CCN content starting with a given
+	 * {@link ContentObject} that has already been retrieved.  
+	 * @param startingSegment The first segment to read from. If this is not the
+	 * 		first segment of the stream, reading will begin from this point.
+	 * 		We assume that the signature on this segment was verified by our caller.
+	 * @param keys The keys to use to decrypt this content. Null if content unencrypted, or another
+	 * 				process will be used to retrieve the keys (for example, an {@link AccessControlManager}).
+	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
+	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * @throws IOException
+	 */
+	public CCNVersionedInputStream(ContentObject startingSegment, ContentKeys keys, CCNHandle handle) throws IOException {
+		super(startingSegment, keys, handle);
 	}
 	
+	/**
+	 * Implementation of {@link #getFirstSegment()} that expects segments to be versioned. If a version
+	 * (and optionally a segment) is specified in the name, gets that specific version (and segment). Otherwise,
+	 * gets the latest version available. Uses {@link VersioningProfile.getFirstBlockOfLatestVersion}.
+	 * @throws IOException If no block found ({@link NoMatchingContentFoundException}), or there is
+	 *   an error retrieving the block.
+	 */
 	@Override
 	protected ContentObject getFirstSegment() throws IOException {
 		if (VersioningProfile.hasTerminalVersion(_baseName)) {
@@ -117,10 +249,19 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		return result;
 	}
 	
+	/**
+	 * Determines whether a given content object is the first block of the versioned stream specified.
+	 */
+	@Override
 	protected boolean isFirstSegment(ContentName desiredName, ContentObject potentialFirstSegment) {
 		return VersioningProfile.isVersionedFirstSegment(desiredName, potentialFirstSegment, _startingSegmentNumber);
 	}
 	
+	/**
+	 * Convenience method.
+	 * @return The version of this content as a {@link CCNTime}.
+	 * @throws VersionMissingException If we do not yet have a versioned content name.
+	 */
 	public CCNTime getVersionAsTimestamp() throws VersionMissingException {
 		if (null == _baseName)
 			throw new VersionMissingException("Have not yet retrieved content name!");
