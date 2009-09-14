@@ -81,7 +81,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	public CCNInputStream(ContentName name, Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
 			CCNHandle handle) throws XMLStreamException, IOException {
 
-		super(name, startingSegmentNumber, publisher, handle);
+		super(name, startingSegmentNumber, publisher, null, handle);
 	}
 	
 	public CCNInputStream(ContentName name, Long startingSegmentNumber, PublisherPublicKeyDigest publisher, 
@@ -92,7 +92,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	}
 
 	public CCNInputStream(ContentObject firstSegment, CCNHandle handle) throws XMLStreamException, IOException {
-		super(firstSegment, handle);
+		super(firstSegment, null, handle);
 	}
 	
 	public CCNInputStream(ContentObject firstSegment, ContentKeys keys, CCNHandle handle) throws XMLStreamException, IOException {

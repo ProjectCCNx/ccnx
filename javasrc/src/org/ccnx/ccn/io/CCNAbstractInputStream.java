@@ -134,13 +134,16 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * @param startingSegmentNumber Alternative specification of starting segment number. If
 	 * 		unspecified, will be {@link SegmentationProfile.baseSegment()}.
 	 * @param publisher
+	 * @param keys
 	 * @param handle
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 */
 	public CCNAbstractInputStream(
 			ContentName baseName, Long startingSegmentNumber,
-			PublisherPublicKeyDigest publisher, CCNHandle handle) 
+			PublisherPublicKeyDigest publisher, 
+			ContentKeys keys,
+			CCNHandle handle) 
 					throws XMLStreamException, IOException {
 		super();
 		
@@ -153,6 +156,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		}
 		_publisher = publisher;	
 		
+		if (null != keys) {
+			keys.requireDefaultAlgorithm();
+			_keys = keys;
+		}
+
 		// So, we assume the name we get in is up to but not including the sequence
 		// numbers, whatever they happen to be. If a starting segment is given, we
 		// open from there, otherwise we open from the leftmost number available.
@@ -173,33 +181,24 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		}
 	}
 	
-	public CCNAbstractInputStream(
-			ContentName baseName, Long startingSegmentNumber,
-			PublisherPublicKeyDigest publisher,
-			ContentKeys keys, CCNHandle handle) 
-					throws XMLStreamException, IOException {
-		
-		this(baseName, startingSegmentNumber, publisher, handle);
-		
-		if (null != keys) {
-			keys.requireDefaultAlgorithm();
-			_keys = keys;
-		}
-	}
-	
 	/**
 	 * Assumes starterSegment has been verified by caller.
 	 * @param firstSegment
+	 * @param keys
 	 * @param handle
 	 * @throws IOException
 	 */
-	public CCNAbstractInputStream(ContentObject firstSegment, 			
-			CCNHandle handle) throws IOException  {
+	public CCNAbstractInputStream(ContentObject firstSegment,
+								  ContentKeys keys,
+								  CCNHandle handle) throws IOException  {
 		super();
 		_handle = handle; 
 		if (null == _handle) {
 			_handle = CCNHandle.getHandle();
 		}
+		keys.requireDefaultAlgorithm();
+		_keys = keys;
+
 		setFirstSegment(firstSegment);
 		_baseName = SegmentationProfile.segmentRoot(firstSegment.name());
 		try {
@@ -207,16 +206,6 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		} catch (NumberFormatException nfe) {
 			throw new IOException("Stream starter segment name does not contain a valid segment number, so the stream does not know what content to start with.");
 		}
-	}
-
-	public CCNAbstractInputStream(ContentObject firstSegment, 			
-			ContentKeys keys,
-			CCNHandle handle) throws IOException {
-
-		this(firstSegment, handle);
-		
-		keys.requireDefaultAlgorithm();
-		_keys = keys;
 	}
 
 	public void setTimeout(int timeout) {
