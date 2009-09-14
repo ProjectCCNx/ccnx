@@ -20,8 +20,7 @@ package org.ccnx.ccn.io;
 import java.io.IOException;
 
 /**
- * @author smetters
- *
+ * Exception to throw when a data request times out without returning any matching data.
  */
 public class NoMatchingContentFoundException extends IOException {
 

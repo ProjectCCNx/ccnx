@@ -40,26 +40,11 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
- * This particular output stream class embodies the following assumptions:
- * - content is buffered
- * - content is automatically segmented, using the standard library segmentation
- *    mechanisms, independently of the block size in which it is written
- * - content is written with an associated header
- * - content is authenticated using a bulk signer (e.g. a MHT); each time flush() is called,
- *    available buffered data is written in a new MHT. The number of blocks in each
- *    MHT is a maximum of BLOCK_BUF_COUNT (TODO: calculate overhead), and a minimum of
- *    the number of blocks with data when flush() is called.
- *    
- * Version 2: now that the bulk signer interface supports contiguous buffers, and
- * the segmenter will segment, remove the overhead here of having blocked buffers.
- * (This is preparation for removing the buffers entirely and streaming directly
- * through the segmenter.)
- * 
- * Also keep track of what we've flushed; right now if we call close multiple times,
- * we write the last partial block multiple times.
- *    
- * @author smetters
- *
+ * Basic output stream class which generates segmented content under a given
+ * name prefix. Segment naming is generated according to the {@link SegmentationProfile};
+ * by default names are sequentially numbered. Name prefixes are taken as specified
+ * (no versions or other information is added by this class). Segments are 
+ * fixed length (see {@link CCNBlockOutputStream} for non fixed-length segments).
  */
 public class CCNOutputStream extends CCNAbstractOutputStream {
 
@@ -71,30 +56,81 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 */
 	protected static final int BLOCK_BUF_COUNT = 128;
 
-	protected long _totalLength = 0; // elapsed length written
-	protected int _blockOffset = 0; // write pointer - offset into the write buffer at which to write
+	/**
+	 * elapsed length written
+	 */
+	protected long _totalLength = 0; 
+	/**
+	 * write pointer - offset into the write buffer at which to write
+	 */
+	protected int _blockOffset = 0; 
+	/**
+	 * write buffer
+	 */
 	protected byte [] _buffer = null;
-	protected long _baseNameIndex; // base name index of the current set of data to output;
-								  // incremented according to the segmentation profile.
-	protected CCNTime _timestamp; // timestamp we use for writing, set to first time we write
-	protected ContentType _type; // null == DATA (or ENCR if encrypted)
+	/**
+	 * base name index of the current set of data to output;
+	 * incremented according to the segmentation profile.
+	 */
+	protected long _baseNameIndex; 
+	
+	/**
+	 * // timestamp we use for writing, set to time first segment is written
+	 */
+	protected CCNTime _timestamp; 
+	
+	/**
+	 * type of content null == DATA (or ENCR if encrypted)
+	 */
+	protected ContentType _type; 
 
 	protected CCNDigestHelper _dh;
 
+	/**
+	 * Constructor for a simple CCN output stream.
+	 * @param name name prefix under which to write content segments
+	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @throws IOException stream setup fails
+	 */
 	public CCNOutputStream(ContentName name, CCNHandle handle) throws IOException {
 		this(name, (PublisherPublicKeyDigest)null, handle);
 	}
 
+	/**
+	 * Constructor for a simple CCN output stream.
+	 * @param name name prefix under which to write content segments
+	 * @param publisher key to use to sign the segments, if null, default for user is used.
+	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @throws IOException stream setup fails
+	 */
 	public CCNOutputStream(ContentName name,
 						   PublisherPublicKeyDigest publisher,
 						   CCNHandle handle) throws IOException {
 		this(name, null, publisher, null, null, handle);
 	}
 
+	/**
+	 * Constructor for a simple CCN output stream.
+	 * @param name name prefix under which to write content segments
+	 * @param keys keys with which to encrypt content, if null content either unencrypted
+	 * 		or keys retrieved according to local policy
+	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @throws IOException stream setup fails
+	 */
 	public CCNOutputStream(ContentName name, ContentKeys keys, CCNHandle handle) throws IOException {
 		this(name, null, null, null, keys, handle);
 	}
 
+	/**
+	 * Constructor for a simple CCN output stream.
+	 * @param name name prefix under which to write content segments
+	 * @param locator key locator to use, if null, default for key is used.
+	 * @param publisher key to use to sign the segments, if null, default for user is used.
+	 * @param keys keys with which to encrypt content, if null content either unencrypted
+	 * 		or keys retrieved according to local policy
+	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @throws IOException stream setup fails
+	 */
 	public CCNOutputStream(ContentName name, 
 			  			   KeyLocator locator, 
 			  			   PublisherPublicKeyDigest publisher,
@@ -103,6 +139,18 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		this(name, locator, publisher, null, keys, handle);
 	}
 
+	/**
+	 * Constructor for a simple CCN output stream.
+	 * @param name name prefix under which to write content segments
+	 * @param locator key locator to use, if null, default for key is used.
+	 * @param publisher key to use to sign the segments, if null, default for user is used.
+	 * @param type type to mark content (see {@link ContentType}), if null, DATA is used; if
+	 * 			content encrypted, ENCR is used.
+	 * @param keys keys with which to encrypt content, if null content either unencrypted
+	 * 		or keys retrieved according to local policy
+	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @throws IOException stream setup fails
+	 */
 	public CCNOutputStream(ContentName name, 
 						   KeyLocator locator, 
 						   PublisherPublicKeyDigest publisher,
@@ -112,6 +160,23 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		this(name, locator, publisher, type, keys, new CCNFlowControl(name, handle));
 	}
 
+	/**
+	 * Special purpose constructor.
+	 */
+	protected CCNOutputStream() {}	
+
+	/**
+	 * Low-level constructor used by clients that need to specify flow control behavior.
+	 * @param name name prefix under which to write content segments
+	 * @param locator key locator to use, if null, default for key is used.
+	 * @param publisher key to use to sign the segments, if null, default for user is used.
+	 * @param type type to mark content (see {@link ContentType}), if null, DATA is used; if
+	 * 			content encrypted, ENCR is used.
+	 * @param keys keys with which to encrypt content, if null content either unencrypted
+	 * 		or keys retrieved according to local policy
+	 * @param flowControl flow controller used to buffer output content
+	 * @throws IOException if flow controller setup fails
+	 */
 	public CCNOutputStream(ContentName name, 
 							  KeyLocator locator, 
 							  PublisherPublicKeyDigest publisher,
@@ -121,8 +186,17 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		this(name, locator, publisher, type, new CCNSegmenter(flowControl, null, keys));
 	}
 
-	protected CCNOutputStream() {}	// special purpose constructor
-
+	/**
+	 * Low-level constructor used by subclasses that need to specify segmenter behavior.
+	 * @param name name prefix under which to write content segments
+	 * @param locator key locator to use, if null, default for key is used.
+	 * @param publisher key to use to sign the segments, if null, default for user is used.
+	 * @param type type to mark content (see {@link ContentType}), if null, DATA is used; if
+	 * 			content encrypted, ENCR is used.
+	 * @param segmenter segmenter used to segment and sign content, should be already initialized
+	 * 		with {@link ContentKeys} if needed.
+	 * @throws IOException if flow controller setup fails
+	 */
 	protected CCNOutputStream(ContentName name, 
 							  KeyLocator locator, 
 							  PublisherPublicKeyDigest publisher, 
@@ -154,9 +228,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	}
 	
 	/**
-	 * Set the fragmentation block size to use. Constraints: needs to be
+	 * Set the segmentation block size to use. Constraints: needs to be
 	 * a multiple of the likely encryption block size (which is, conservatively, 32 bytes).
-	 * @param blockSize
+	 * @param blockSize in bytes
 	 */
 	public void setBlockSize(int blockSize) {
 		if (blockSize <= 0) {
@@ -169,6 +243,10 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		getSegmenter().setBlockSize(blockSize);
 	}
 
+	/**
+	 * Get segmentation block size.
+	 * @return block size in bytes
+	 */
 	public int getBlockSize() {
 		return getSegmenter().getBlockSize();
 	}
@@ -195,6 +273,12 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		flush(false); // if there is a partial block, don't flush it
 	}
 
+	/**
+	 * Internal flush.
+	 * @param flushLastBlock Should we flush the last (partial) block, or hold it back
+	 *   for it to be filled.
+	 * @throws IOException on a variety of types of error.
+	 */
 	protected void flush(boolean flushLastBlock) throws IOException {
 		try {
 			flushToNetwork(flushLastBlock);
@@ -221,12 +305,20 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			throw new IOException("Cannot sign content -- signature failure!: " + e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
 			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
-		} catch (InterruptedException e) {
-			throw new IOException("Low-level network failure!: " + e.getMessage());
 		}
 	}
 
-	protected int writeToNetwork(byte[] buf, long offset, long len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException {
+	/**
+	 * Actually write bytes to the network.
+	 * @param buf as in {@link #write(byte[], int, int)}
+	 * @param offset as in {@link #write(byte[], int, int)}
+	 * @param len as in {@link #write(byte[])}
+	 * @throws IOException on network errors
+	 * @throws InvalidKeyException if we cannot encrypt content as specified
+	 * @throws SignatureException if we cannot sign content
+	 * @throws NoSuchAlgorithmException if encryption requests invalid algorithm
+	 */
+	protected void writeToNetwork(byte[] buf, long offset, long len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		if ((len <= 0) || (null == buf) || (buf.length == 0) || (offset >= buf.length))
 			throw new IllegalArgumentException("Invalid argument!");
 
@@ -254,9 +346,16 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				flush(); // will reset _blockIndex and _blockOffset
 			}
 		}
-		return 0;
 	}
 
+	/**
+	 * Flush partial hanging block if we have one.
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
 	protected void closeNetworkData() throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InterruptedException {
 		// flush last partial buffers. Remove previous code to specially handle
 		// small data objects (written as single blocks without headers); instead
@@ -382,6 +481,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		Arrays.fill(_buffer, _blockOffset, _buffer.length, (byte)0);
 	}
 	
+	/**
+	 * @return number of bytes that have been written on this stream.
+	 */
 	protected long lengthWritten() { 
 		return _totalLength;
 	}

@@ -36,7 +36,13 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
-
+/**
+ * A versioned output stream that adds a header containing file-level metadata
+ * to every stream it outputs (see {@link Header} for contents). Reading this
+ * content with {@link CCNFileInputStream} will allow retrieval of both the 
+ * content (including automatic retrieval of the latest version, if desired),
+ * and the header.
+ */
 public class CCNFileOutputStream extends CCNVersionedOutputStream {
 
 	public CCNFileOutputStream(ContentName name, CCNHandle handle) throws IOException {
@@ -82,6 +88,10 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		super(name, locator, publisher, type, keys, flowControl);
 	}
 
+	/**
+	 * Writes the header to the network.
+	 * @throws IOException
+	 */
 	protected void writeHeader() throws IOException {
 		// What do we put in the header if we have multiple merkle trees?
 		try {
@@ -94,7 +104,8 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 	}
 	
 	/**
-	 * Override this, not close(), because CCNOutputStream.close() currently
+	 * Subclasses that want to do something other than write a header at the end
+	 * should override this, not close(), because CCNOutputStream.close() currently
 	 * calls waitForPutDrain, and we don't want to call that till after we've put the header.
 	 * 
 	 * When we can, we might want to write the header earlier. Here we wait
@@ -112,6 +123,9 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		writeHeader();
 	}
 	
+	/**
+	 * Actually put the header blocks (versioned, though that isn't necessary) onto the wire.
+	 */
 	protected void putHeader(
 			ContentName name, long contentLength, int blockSize, byte [] contentDigest, 
 			byte [] contentTreeAuthenticator) throws XMLStreamException, IOException  {
