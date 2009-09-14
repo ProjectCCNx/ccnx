@@ -25,7 +25,6 @@ import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -69,7 +68,6 @@ public abstract class NetworkObject<E> {
 	protected byte [] _lastSaved; // save digest of serialized item, so can tell if updated outside
 								  // of setData
 	protected boolean _available = false; // false until first time data is set or updated
-	protected ReentrantReadWriteLock _lock = new ReentrantReadWriteLock();
 
 	public NetworkObject(Class<E> type) {
 		_type = type;
@@ -98,8 +96,7 @@ public abstract class NetworkObject<E> {
 
 		E newData = readObjectImpl(input);
 
-		try {
-			_lock.writeLock().lock();
+		synchronized(this) {
 			if (!_available) {
 				Log.info("Update -- first initialization.");
 			}
@@ -108,9 +105,6 @@ public abstract class NetworkObject<E> {
 			_available = true;
 			setDirty(false);
 			_lastSaved = digestContent();
-
-		} finally {
-			_lock.writeLock().unlock();
 		}
 	}
 	
@@ -119,46 +113,32 @@ public abstract class NetworkObject<E> {
 	 * you if update has gone through.
 	 * @return false if data has not been set or updated from the network yet
 	 */
-	public boolean available() {
-		try {
-			_lock.readLock().lock();
-			return _available; // do we need to return a copy of a primitive type?
-		} finally {
-			_lock.readLock().unlock();
-		}
+	public synchronized boolean available() {
+		return _available; // do we need to return a copy of a primitive type?
 	}
 	
-	public void setData(E data) { 
-		try {
-			_lock.writeLock().lock(); // blocks readers. a reader can never get the write lock
-									  // without first releasing read lock and re-checking; go
-									  // for simplicity here and just take the write lock even though
-									  // we might not need it.
-			if (null != _data) {
-				if (!_data.equals(data)) {
-					_data = data;
-					setDirty(true);
-					setAvailable(data != null);
-				}
-				// else -- setting to same value, not dirty, do nothing
-			} else {
-				if (data != null) {
-					_data = data;
-					setDirty(true);
-					setAvailable(true);				
-				}
-				// else -- setting from null to null, do nothing
+	public synchronized void setData(E data) { 
+		if (null != _data) {
+			if (!_data.equals(data)) {
+				_data = data;
+				setDirty(true);
+				setAvailable(data != null);
 			}
-		} finally {
-			_lock.writeLock().unlock();
+			// else -- setting to same value, not dirty, do nothing
+		} else {
+			if (data != null) {
+				_data = data;
+				setDirty(true);
+				setAvailable(true);				
+			}
+			// else -- setting from null to null, do nothing
 		}
 	}
 
 	/**
-	 * Expects to be called while holding write lock.
 	 * @param available
 	 */
-	protected void setAvailable(boolean available) {
+	protected synchronized void setAvailable(boolean available) {
 		_available = available;
 	}
 
@@ -172,21 +152,17 @@ public abstract class NetworkObject<E> {
 	 *   default, data cannot be null).
 	 * @throws ContentNotReadyException if the object has not finished retrieving data/having data set
 	 */
-	protected E data() throws ContentNotReadyException, ContentGoneException { 
-		try {
-			_lock.readLock().lock();
-			if (!available()) {
-				throw new ContentNotReadyException("No data yet saved or retrieved!");
-			}
-			// Mark that we've given out access to the internal data, so we know someone might
-			// have changed it.
-			_isPotentiallyDirty = true;
-			// return a pointer to the current data. No guarantee that this will continue
-			// to be what we think our data unless caller holds read lock.
-			return _data; 
-		} finally {
-			_lock.readLock().unlock();
+	protected synchronized E data() throws ContentNotReadyException, ContentGoneException { 
+
+		if (!available()) {
+			throw new ContentNotReadyException("No data yet saved or retrieved!");
 		}
+		// Mark that we've given out access to the internal data, so we know someone might
+		// have changed it.
+		_isPotentiallyDirty = true;
+		// return a pointer to the current data. No guarantee that this will continue
+		// to be what we think our data unless caller holds read lock.
+		return _data; 
 	}
 	
 	/**
@@ -194,16 +170,11 @@ public abstract class NetworkObject<E> {
 	 * @param output
 	 * @throws IOException
 	 */
-	public void save(OutputStream output) throws IOException {
+	public synchronized void save(OutputStream output) throws IOException {
 		if (null == _data) {
 			throw new InvalidObjectException("No data to save!");
 		}
-		try {
-			_lock.writeLock().lock();
-			internalWriteObject(output);
-		} finally {
-			_lock.writeLock().lock();
-		}
+		internalWriteObject(output);
 	}
 
 	/**
@@ -211,14 +182,10 @@ public abstract class NetworkObject<E> {
 	 * @param output
 	 * @throws IOException
 	 */
-	public void saveIfDirty(OutputStream output) throws IOException,
-	XMLStreamException {
-		_lock.readLock().lock();
+	public synchronized void saveIfDirty(OutputStream output) throws IOException, XMLStreamException {
+
 		if (available() && isDirty()) {
-			_lock.readLock().unlock();
 			save(output);
-		} else {
-			_lock.readLock().unlock();
 		}
 	}
 	
@@ -241,65 +208,54 @@ public abstract class NetworkObject<E> {
 		}
 	}
 
-	protected boolean isDirty() throws IOException {
-		try {
-			_lock.readLock().lock();
-			if (_isDirty) {
-				return _isDirty;
-			} else if (_lastSaved == null) {
-				if (_data == null)
-					return false;
-				return true;
-			}
-			if (_isPotentiallyDirty) {
-				byte [] currentValue = digestContent();
+	protected synchronized boolean isDirty() throws IOException {
 
-				if (Arrays.equals(currentValue, _lastSaved)) {
-					Log.info("Last saved value for object still current.");
-					_isDirty = false;
-				} else {
-					Log.info("Last saved value for object not current -- object changed.");
-					_isDirty = true;
-				}
-			} else {
-				// We've never set the data, nor given out access to it. It can't be dirty.
-				Log.finer("NetworkObject: data cannot be dirty.");
-				_isDirty = false;
-			}
-			
-			return _isDirty; 
-		} finally {
-			_lock.readLock().unlock();
+		if (_isDirty) {
+			return _isDirty;
+		} else if (_lastSaved == null) {
+			if (_data == null)
+				return false;
+			return true;
 		}
+		if (_isPotentiallyDirty) {
+			byte [] currentValue = digestContent();
+
+			if (Arrays.equals(currentValue, _lastSaved)) {
+				Log.info("Last saved value for object still current.");
+				_isDirty = false;
+			} else {
+				Log.info("Last saved value for object not current -- object changed.");
+				_isDirty = true;
+			}
+		} else {
+			// We've never set the data, nor given out access to it. It can't be dirty.
+			Log.finer("NetworkObject: data cannot be dirty.");
+			_isDirty = false;
+		}
+
+		return _isDirty; 
 	}
 	
 	/**
 	 * True if the content was either read from the network or was saved locally.
 	 * @return
 	 */
-	public boolean isSaved() throws IOException {
-		try {
-			_lock.readLock().lock();
-			return available() && !isDirty();
-		} finally {
-			_lock.readLock().unlock();
-		}
+	public synchronized boolean isSaved() throws IOException {
+		return available() && !isDirty();
 	}
 
 	/**
-	 * Expects to be called under write lock.
 	 * @param dirty
 	 */
-	protected void setDirty(boolean dirty) { 
+	protected synchronized void setDirty(boolean dirty) { 
 		_isDirty = dirty; 
 		if (!_isDirty) {
 			_isPotentiallyDirty = false; // just read or written
 		}
 	}
 
-	protected void internalWriteObject(OutputStream output) throws IOException {
+	protected synchronized void internalWriteObject(OutputStream output) throws IOException {
 		try {
-			_lock.writeLock().lock();
 			DigestOutputStream dos = new DigestOutputStream(output, MessageDigest.getInstance(DEFAULT_CHECKSUM_ALGORITHM));
 			writeObjectImpl(dos);
 			dos.flush(); // do not close dos, as it will close the output, allow caller to close
@@ -313,8 +269,6 @@ public abstract class NetworkObject<E> {
 			Log.warning("Encoding exception determining whether an object is dirty: {0}", e);
 			// TODO when move to 1.6, use nested exceptions
 			throw new IOException("Encoding exception determining whether an object is dirty: " + e);
-		} finally {
-			_lock.writeLock().unlock();
 		}
 	}
 	

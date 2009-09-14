@@ -245,20 +245,20 @@ public class SegmentationProfile implements CCNProfile {
 		ContentName segmentName = segmentName(desiredContent, desiredSegmentNumber);
 	
 		// TODO use better exclude filters to ensure we're only getting segments.
-		Log.info("getSegment: getting segment " + segmentName);
+		Log.info("getSegment: getting segment {0}", segmentName);
 		ContentObject segment = CCNReader.getLower(library, segmentName, 1, publisher, timeout);
 	
 		if (null == segment) {
-			Log.info("Cannot get segment " + desiredSegmentNumber + " of file " + desiredContent + " expected segment: " + segmentName);
+			Log.info("Cannot get segment " + desiredSegmentNumber + " of file {0} expected segment: {1}.", desiredContent,  segmentName);
 			throw new IOException("Cannot get segment " + desiredSegmentNumber + " of file " + desiredContent + " expected segment: " + segmentName);
 		} else {
-			Log.info("getsegment: retrieved segment " + segment.name());
+			Log.info("getsegment: retrieved segment {0}.", segment.name());
 		}
 		
 		// So for the segment, we assume we have a potential document.
 		if (!verifier.verify(segment)) {
 			// TODO eventually try to go and look for another option
-			Log.info("Retrieved segment " + segment.name() + ", but it didn't verify.");
+			Log.info("Retrieved segment {0}, but it didn't verify.", segment.name());
 			return null;
 		}
 		return segment;

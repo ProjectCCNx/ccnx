@@ -17,19 +17,54 @@
 
 package org.ccnx.ccn.utils.explorer;
 
-
-//import FileNode;
-
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.Dimension;
+import java.awt.EventQueue;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Image;
+import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.awt.image.BufferedImage;
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.logging.Level;
-import javax.swing.*;
-import javax.swing.tree.*;
-import javax.swing.event.*;
+
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JEditorPane;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JTextField;
+import javax.swing.JTree;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.event.TreeExpansionEvent;
+import javax.swing.event.TreeExpansionListener;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeCellRenderer;
+import javax.swing.tree.TreePath;
+import javax.swing.tree.TreeSelectionModel;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
@@ -43,9 +78,6 @@ import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.utils.explorer.IconCellRenderer;
-import org.ccnx.ccn.utils.explorer.IconData;
-import org.ccnx.ccn.utils.explorer.Name;
 
 
 
@@ -417,6 +449,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	
 
 	public void retrieveFromRepo(String name){
+		//TODO this is a long-running operation, it should be a separate thread
+		
+		
 		try{
 	
 			//get the file name as a ContentName
@@ -427,7 +462,10 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			CCNFileInputStream fis = new CCNFileInputStream(fileName, _library);
 				
 			htmlPane.read(fis, fileName);
-				
+			
+			//should catch a generic exception and print a message in the bottom pane
+			//that the selected file is not available
+			
 		} catch (XMLStreamException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -724,13 +762,12 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		public void valueChanged(TreeSelectionEvent event) {
 
 			final DefaultMutableTreeNode node = getTreeNode(event.getPath());
+					
+			//if the tree is not collapsed already, it is already being enumerated, so we don't need to reselect it
 			if (tree.isCollapsed(event.getPath())) {
-				System.out.println("tree is collapsed");
-				//if(tree.isCollapsed(event.getPath().getParentPath())){
-				//	System.out.println("parent is collapsed");
-				//} else {
-				//	System.out.println("parent was expanded... go ahead and expand this one");
-
+				//if the row is -1, that means a parent is collapsed and this node is being
+				//selected as part of a collapse, so we don't want to re-register it for enumerating
+				if (tree.getRowForPath(event.getPath()) > -1) {
 				Thread runner = new Thread() {
 					public void run() {
 
@@ -760,9 +797,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					}
 				};
 				runner.start();
-				//}
+				}
 			} else {
-				System.out.println("path is expanded...");
+				System.out.println("path is expanded... "+node.toString());
 			}
 		}
 	}
@@ -881,7 +918,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 		System.out.println("addTreeNodes: prefix = "+prefix+" names: "+n.toString());
 
-		final DefaultMutableTreeNode parentNode = getTreeNode(prefix);
+		DefaultMutableTreeNode parentNode = getTreeNode(prefix);
 		if(parentNode == null){
 			System.out.println("PARENT NODE IS NULL!!!"+ prefix.toString());
 			System.out.println("can't add anything to a null parent...  cancel prefix and return");
@@ -907,8 +944,19 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			addToParent = true;
 			
 			//check if a version marker
-			if(VersioningProfile.containsVersion(cn))
+			if(VersioningProfile.containsVersion(cn)) {
 				addToParent = false;
+				
+				//this name is a version, that means the parent is something we can grab...
+				//we should change the icon for the parent to be a file and not a folder
+				
+				Name parentNameNode = getNameNode(parentNode);
+				parentNameNode.setIsDirectory(false);
+
+				((IconData)parentNode.getUserObject()).setIcon(ICON_DOCUMENT);
+				m_model.nodeChanged(parentNode);
+				
+			}
 			else
 				System.out.println("name is not a version");
 			//check if a segment marker
@@ -928,8 +976,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 							IconData id = (IconData)temp.getUserObject();
 							ContentName nodeName = ContentName.fromNative(new ContentName(), ((Name)id.m_data).name);
 							System.out.println("check names: "+nodeName+" "+cn.toString());
-							//if(((Name)(id.m_data)).toString().equals(cn.toString())){
-							//if(temp.toString().equals(cn.toString().substring(1))){
+
 							//check if already there...
 							if(cn.compareTo(nodeName) == 0){
 								addToParent = false;
@@ -946,7 +993,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			}
 			final DefaultMutableTreeNode node;
 			if(addToParent){
-				//name wasn't there, don't add again
+				//name wasn't there, go ahead and add to the parent
 				System.out.println("added as child: "+cn.toString());
 				if (cn.toString().toLowerCase().endsWith(".txt") || cn.toString().toLowerCase().endsWith(".text")) {
 			
@@ -956,18 +1003,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					
 					node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
 							null, new Name(cn.component(0), prefix,true)));
-					//This is the "Retrieving Data" node (gets rendered in IconCell Renderer
-					//node.add(new DefaultMutableTreeNode(new Boolean(true)));
 				}
-				//parentNode.add(node);
-				
-				//javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
-		    //    javax.swing.SwingUtilities.invokeLater(new Runnable() {
-		    //       public void run() {
-			//			m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
-			//			System.out.println("inserted node...  parent now has "+parentNode.getChildCount());
-		    //        }
-		    //    });
 		        
 		        m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
 				System.out.println("inserted node...  parent now has "+parentNode.getChildCount());

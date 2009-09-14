@@ -46,8 +46,9 @@ are not included in the distribution.
   
   libxml2 available from xmlsoft.org
 
-In addition, you will need vlc and wireshark to build and use the 
-CCNx plugins for those packages.
+In addition, you will need vlc and wireshark to build and use the CCNx
+plugins for those packages.  Please see the individual README files
+for more information.
 
 JAVA LANGUAGE REQUIREMENTS
 
@@ -126,7 +127,16 @@ encryption software.  BEFORE using any encryption software, please
 check your country's laws, regulations and policies concerning the
 import, possession, or use, and re-export of encryption software,
 to see if this is permitted.  See <http://www.wassenaar.org/> for more
-information.
+information.  In addition, this software is subject to U.S. export
+laws and regulations.
+
+Any use of information here by you is without recourse to the Palo
+Alto Research Center, Inc. (PARC) and is at your own risk. PARC makes
+NO WARRANTY or representation that the information contained here is
+accurate, current, or complete.  PARC is in no way responsible for any
+damages, whether direct, consequential, incidental, or otherwise,
+suffered by you as a result of using or relying upon such information
+for any purpose.
 
 The U.S. Government Department of Commerce, Bureau of Industry and
 Security (BIS), has classified this software as Export Commodity 
@@ -143,6 +153,9 @@ is itself classified under ECCN 5D002 and approved for export under
 License Exception TSU.  It is included in this distribution for the
 convenience of users.
 
+For more information about export control of CCNx software, please see
+the page http://www.ccnx.org/exports
+
 -------------------------
 BOUNCY CASTLE 
 
@@ -158,6 +171,17 @@ without limitation the rights to use, copy, modify, merge, publish,
 distribute, sublicense, and/or sell copies of the Software, and to
 permit persons to whom the Software is furnished to do so, subject to
 the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 -------------------------
 JUNIT
@@ -193,9 +217,9 @@ JUnit source code is available from http://github.com/KentBeck/junit
 W3C SOFTWARE (XML Schema definitions)
 
 XML Schema definitions are redistributed herein for validation
-tests. The file XMLSchema.xsd has been modified to remove a web
-reference from schemaLocation as noted in the file included in the
-distribution.
+tests. The file XMLSchema.xsd has been modified (February 15, 2008)
+to remove a web reference from schemaLocation as noted in the file
+included in the distribution.
 
 Copyright © 2001 World Wide Web Consortium, (Massachusetts Institute
 of Technology, European Research Consortium for Informatics and

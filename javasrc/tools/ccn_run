@@ -4,6 +4,7 @@ JAR_FILE=ccn.jar
 JAVA_HOME=${JAVA_HOME:=/usr}
 JAVA=$JAVA_HOME/bin/java
 SCRIPT_DIR=`dirname $0`  # note this is relative path
+CMD_NAME=`basename $0` 
 CCN_HOME_JAVA=${CCN_HOME_JAVA:-$SCRIPT_DIR}
 if [ ! -f "$CCN_HOME_JAVA/$JAR_FILE" ]
 then
@@ -29,13 +30,19 @@ if [ ! "$CCN_LOCAL_PORT" = "" ]; then
   PORTARG="-Dccn.agent.port=$CCN_LOCAL_PORT"
 fi
 
-if [ $# = 0 ]
+if [ $CMD_NAME != "ccn_run" ]; then
+    UTIL=$CMD_NAME
+elif [ $# = 0 ]
 then
   echo Possible commands:
   echo 
   (cd $SCRIPT_DIR; grep -l -I ccn_run * 2>/dev/null) | grep -v ccn_run | sort -u
+  exit 1
 else
   UTIL=$1
   shift
-  $JAVA -cp $CLASSPATH $PORTARG org.ccnx.ccn.utils.$UTIL $*
 fi
+
+$JAVA -cp $CLASSPATH $PORTARG org.ccnx.ccn.utils.$UTIL $*
+
+

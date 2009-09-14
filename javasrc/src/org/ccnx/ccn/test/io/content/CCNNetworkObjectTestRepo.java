@@ -399,6 +399,21 @@ public class CCNNetworkObjectTestRepo {
 
 	}
 	
+	@Test
+	public void testUpdateDoesNotExist() throws Exception {
+		ContentName testName = ContentName.fromNative(collectionObjName, "testUpdateDoesNotExist");
+		CCNStringObject so = new CCNStringObject(testName, library);
+		setupNamespace(testName);
+		// so should catch exception thrown by underlying stream when it times out.
+		Assert.assertFalse(so.available());
+		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", CCNHandle.open());
+		saveAndLog("Delayed write", sowrite, null, "Now we write something.");
+		so.waitForData();
+		Assert.assertTrue(so.available());
+		Assert.assertEquals(so.string(), sowrite.string());
+		Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
+	}
+
 	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws XMLStreamException, IOException {
 		CCNTime oldVersion = ecd.getVersion();
 		ecd.saveToRepository(version, data);
