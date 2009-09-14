@@ -138,7 +138,6 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	public RepositoryFlowControl(ContentName name, CCNHandle library) throws IOException {
 		this(library);
 		addNameSpace(name);
-		startWrite(name, Shape.STREAM);
 	}
 	
 	public RepositoryFlowControl(ContentName name, CCNHandle library, Shape shape) throws IOException {
