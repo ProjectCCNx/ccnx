@@ -97,19 +97,6 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	private boolean _flowControlEnabled = true;
 	
-	/**
-	 * Enabled flow control constructor
-<<<<<<< HEAD
-	 * @param name an intial namespace to serve
-	 * @param library may be null in which case a new CCNHandle will be created
-=======
-	 * @param name
-	 * @param handle
-<<<<<<< HEAD
->>>>>>> Change variables named "library" to "handle"; otherwise very confusing.
-=======
->>>>>>> 8e225fb1a02d205dfb6059197744c38f33800b4a
-	 */
 	public CCNFlowControl(ContentName name, CCNHandle handle) throws IOException {
 		this(handle);
 		if (name != null) {
