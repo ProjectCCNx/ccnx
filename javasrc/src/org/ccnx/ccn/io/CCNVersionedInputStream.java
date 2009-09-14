@@ -57,11 +57,24 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class CCNVersionedInputStream extends CCNInputStream {
 
-	public CCNVersionedInputStream(ContentName name,
-			Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
-			ContentKeys keys, CCNHandle library)
+	public CCNVersionedInputStream(ContentName name) throws XMLStreamException,
+															IOException {
+		super(name);
+	}
+
+	public CCNVersionedInputStream(ContentName name, CCNHandle library)
+										throws XMLStreamException, IOException {
+		super(name, library);
+	}
+
+	public CCNVersionedInputStream(ContentName name, PublisherPublicKeyDigest publisher,
+			CCNHandle library) throws XMLStreamException, IOException {
+		super(name, publisher, library);
+	}
+
+	public CCNVersionedInputStream(ContentName name, Long startingSegmentNumber)
 			throws XMLStreamException, IOException {
-		super(name, startingSegmentNumber, publisher, keys, library);
+		super(name, startingSegmentNumber);
 	}
 
 	public CCNVersionedInputStream(ContentName name,
@@ -70,29 +83,20 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		super(name, startingSegmentNumber, publisher, library);
 	}
 
-	public CCNVersionedInputStream(ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle library) throws XMLStreamException, IOException {
-		super(name, publisher, library);
-	}
-
-	public CCNVersionedInputStream(ContentName name) throws XMLStreamException,
-			IOException {
-		super(name);
-	}
-
-	public CCNVersionedInputStream(ContentName name, CCNHandle library)
+	public CCNVersionedInputStream(ContentName name,
+			Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
+			ContentKeys keys, CCNHandle library)
 			throws XMLStreamException, IOException {
-		super(name, library);
-	}
-
-	public CCNVersionedInputStream(ContentName name, Long startingSegmentNumber)
-			throws XMLStreamException, IOException {
-		super(name, startingSegmentNumber);
+		super(name, startingSegmentNumber, publisher, keys, library);
 	}
 
 	public CCNVersionedInputStream(ContentObject firstSegment,
 			CCNHandle library) throws XMLStreamException, IOException {
 		super(firstSegment, library);
+	}
+	
+	public CCNVersionedInputStream(ContentObject firstSegment, ContentKeys keys, CCNHandle library) throws XMLStreamException, IOException {
+		super(firstSegment, keys, library);
 	}
 	
 	@Override
