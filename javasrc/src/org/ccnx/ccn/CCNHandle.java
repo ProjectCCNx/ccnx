@@ -90,7 +90,7 @@ public class CCNHandle extends CCNBase {
 		}
 	}
 	
-	public static CCNHandle getLibrary() { 
+	public static CCNHandle getHandle() { 
 		if (null != _library) 
 			return _library;
 		try {

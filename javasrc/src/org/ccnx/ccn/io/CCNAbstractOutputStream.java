@@ -31,7 +31,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 public abstract class CCNAbstractOutputStream extends OutputStream {
 
-	protected CCNHandle _library = null;
+	protected CCNHandle _handle = null;
 	protected CCNSegmenter _segmenter = null;
 	/** 
 	 * The name for the content fragments, up to just before the sequence number.
@@ -54,9 +54,9 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 								   CCNSegmenter segmenter) {
 		super();
 		_segmenter = segmenter;
-		_library = _segmenter.getLibrary();
-		if (null == _library) {
-			_library = CCNHandle.getLibrary();
+		_handle = _segmenter.getLibrary();
+		if (null == _handle) {
+			_handle = CCNHandle.getHandle();
 		}
 
 		// If these are null, the library defaults will be used.
