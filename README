@@ -46,8 +46,9 @@ are not included in the distribution.
   
   libxml2 available from xmlsoft.org
 
-In addition, you will need vlc and wireshark to build and use the 
-CCNx plugins for those packages.
+In addition, you will need vlc and wireshark to build and use the CCNx
+plugins for those packages.  Please see the individual README files
+for more information.
 
 JAVA LANGUAGE REQUIREMENTS
 
