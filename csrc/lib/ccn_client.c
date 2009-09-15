@@ -147,7 +147,6 @@ ccn_seterror(struct ccn *h, int error_code)
 /**
  * Recover last error code.
  * @param h is the ccn handle - may be NULL.
- * @param error_code is the code to set.
  * @returns the most recently set error code, or 0 if h is NULL.
  */
 int
