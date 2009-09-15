@@ -82,10 +82,7 @@ import org.ccnx.ccn.protocol.PublisherID;
 public class KeyDirectory extends EnumeratedNameList {
 	
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
-	
-	// time spent waiting for new data (in ms) before responding to read queries 
-	static final long DEFAULT_TIMEOUT = 5000;	
-	
+		
 	AccessControlManager _manager; // to get at key cache
 	HashMap<String, PrincipalInfo> _principals = new HashMap<String, PrincipalInfo>();
 	private final ReadWriteLock _principalsLock = new ReentrantReadWriteLock();
