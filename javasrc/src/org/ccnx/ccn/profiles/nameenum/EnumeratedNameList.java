@@ -405,8 +405,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * an enumeration attempt, so a child may be missed if it is not included in the first
 	 * enumeration response.
 	 * 
-	 * @TODO Add loop to enumerate under a name multiple times to avoid missing a child name
-	 * @TODO Handle timeouts better to avoid missing children.  (Note: We could modify the
+	 * TODO Add loop to enumerate under a name multiple times to avoid missing a child name
+	 * TODO Handle timeouts better to avoid missing children.  (Note: We could modify the
 	 * name enumeration protocol to return empty responses if we query for an unknown name,
 	 *  but that adds semantic complications.)
 	 *  
