@@ -1,5 +1,6 @@
 /**
  * @file ccncat.c
+ * Reads streams at the given CCN URIs and writes to stdout
  *
  * A CCNx command-line utility.
  *
