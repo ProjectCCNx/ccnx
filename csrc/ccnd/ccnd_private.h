@@ -99,7 +99,8 @@ struct ccnd_handle {
     ccn_accession_t accession;      /**< newest used accession number */
     ccn_accession_t min_stale;      /**< smallest accession of stale content */
     ccn_accession_t max_stale;      /**< largest accession of stale content */
-    unsigned long capacity;         /**< may toss content if #items > capacity */
+    unsigned long capacity;         /**< may toss content if there more than
+                                     this many content objects in the store */
     unsigned long oldformatcontent;
     unsigned long oldformatcontentgrumble;
     unsigned long oldformatinterests;
