@@ -37,75 +37,131 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
- * Simple "bag o bytes" putter. Puts blocks of data, optionally
- * fragmenting them if need be.
- * @author smetters
- *
+ * Simplest interface to putting data into CCN. Puts buffers of data, optionally
+ * fragmenting them if need be. Useful for writing small test programs, however
+ * more complex clients will usually prefer the higher-level
+ * interfaces offered by CCNOutputStream and its subclasses, or 
+ * CCNNetworkObject and its subclasses.
  */
 public class CCNWriter {
 	
 	protected CCNSegmenter _segmenter;
 	
-	public CCNWriter(ContentName namespace, CCNHandle handle) throws IOException {
-		this(new CCNFlowControl(namespace, handle));
-	}
-	
+	/**
+	 * Construct a writer that will write content into a certain namespace. Names specified
+	 * in calls to put should be descendants of this namespace.
+	 * @param namespace The parent namespace this writer will write to as a file path-style string version
+	 * 		of a name (for example /org/ccnx/test).
+	 * @param handle The ccn context it will use to write, if null one will be created with CCNHandle#open().
+	 * @throws MalformedContentNameStringException If namespace cannot be parsed. 
+	 * @throws IOException If network initialization fails.
+	 */
 	public CCNWriter(String namespace, CCNHandle handle) throws MalformedContentNameStringException, IOException {
 		this(new CCNFlowControl(ContentName.fromNative(namespace), handle));
 	}
 
+	/**
+	 * Construct a writer that will write content into a certain namespace. Names specified
+	 * in calls to put should be descendants of this namespace.
+	 * @param namespace The parent namespace this writer will write to.
+	 * @param handle The ccn context it will use to write, if null one will be created with CCNHandle#open().
+	 * @throws MalformedContentNameStringException If namespace cannot be parsed. 
+	 * @throws IOException If network initialization fails.
+	 */
+	public CCNWriter(ContentName namespace, CCNHandle handle) throws IOException {
+		this(new CCNFlowControl(namespace, handle));
+	}
+	
 	public CCNWriter(CCNHandle handle) throws IOException {
 		this(new CCNFlowControl(handle));
 	}
 
-	public CCNWriter(CCNFlowControl flowControl) {
+	/**
+	 * Low-level constructor used by implementation.
+	 * @param flowControl Output buffer.
+	 */
+	protected CCNWriter(CCNFlowControl flowControl) {
 		_segmenter = new CCNSegmenter(flowControl);
 	}
 	
 	/**
-	 * Publish a piece of content under a particular identity.
-	 * All of these automatically make the final name unique.
-	 * @param name
-	 * @param contents
-	 * @param publisher selects one of our identities to publish under
-	 * @throws SignatureException 
-	 * @throws IOException 
+	 * Publish a piece of named content signed by our default identity.
+	 * @param name name for content.
+	 * @param content content to publish; will be fragmented if necessary.
+	 * @throws SignatureException if there is a problem signing.
+	 * @throws IOException if there is a problem writing data.
 	 */
-	public ContentName put(ContentName name, byte[] contents, 
-							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
-		return put(name, contents, null, publisher, null);
+	public ContentName put(String name, String content) throws SignatureException, MalformedContentNameStringException, IOException {
+		return put(ContentName.fromURI(name), content.getBytes(), null, null, null);
 	}
 	
-	public ContentName put(String name, String contents) throws SignatureException, MalformedContentNameStringException, IOException {
-		return put(ContentName.fromURI(name), contents.getBytes(), null, null, null);
-	}
-	
-	public ContentName put(String name, String contents, Integer freshnessSeconds) throws SignatureException, MalformedContentNameStringException, IOException {
-		return put(ContentName.fromURI(name), contents.getBytes(), null, null, freshnessSeconds);
-	}
-	
-	public ContentName put(ContentName name, byte[] contents) 
-				throws SignatureException, IOException {
-		return put(name, contents, null, null, null);
+	/**
+	 * Publish a piece of named content signed by our default identity.
+	 * @param name name for content.
+	 * @param content content to publish; will be fragmented if necessary.
+	 * @throws SignatureException if there is a problem signing.
+	 * @throws IOException if there is a problem writing data.
+	 */	
+	public ContentName put(ContentName name, byte[] content) throws SignatureException, IOException {
+		return put(name, content, null, null, null);
 	}
 
-	public ContentName put(CCNFlowControl cf, ContentName name, byte[] contents, 
+	/**
+	 * Publish a piece of named content signed by a particular identity.
+	 * @param name name for content.
+	 * @param content content to publish; will be fragmented if necessary.
+	 * @param publisher selects one of our identities to publish under
+	 * @throws SignatureException if there is a problem signing.
+	 * @throws IOException if there is a problem writing data.
+	 */
+	public ContentName put(ContentName name, byte[] content, 
 							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
-		return put(name, contents, null, publisher, null);
+		return put(name, content, null, publisher, null);
 	}
-
-	public ContentName put(ContentName name, byte[] contents, 
+	
+	/**
+	 * Publish a piece of named content signed by our default identity.
+	 * @param name name for content.
+	 * @param content content to publish; will be fragmented if necessary.
+	 * @param freshnessSeconds how long the content should be considered valid in the cache.
+	 * @throws SignatureException if there is a problem signing.
+	 * @throws IOException if there is a problem writing data.
+	 */	
+	public ContentName put(String name, String content, Integer freshnessSeconds) throws SignatureException, MalformedContentNameStringException, IOException {
+		return put(ContentName.fromURI(name), content.getBytes(), null, null, freshnessSeconds);
+	}
+	
+	/**
+	 * Publish a piece of named content signed by a particular identity.
+	 * @param name name for content.
+	 * @param content content to publish; will be fragmented if necessary.
+	 * @param type type to specify for content. If null, DATA will be used. (see ContentType).
+	 * @param publisher selects one of our identities to publish under
+	 * @throws SignatureException if there is a problem signing.
+	 * @throws IOException if there is a problem writing data.
+	 */
+	public ContentName put(ContentName name, byte[] content, 
 							SignedInfo.ContentType type,
 							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
-		return put(name, contents, null, publisher, null);
+		return put(name, content, null, publisher, null);
 	}
 	
-	public ContentName put(ContentName name, byte[] contents, 
+	/**
+	 * Publish a piece of named content signed by a particular identity.
+	 * @param name name for content.
+	 * @param content content to publish; will be fragmented if necessary
+	 * @param type type to specify for content. If null, DATA will be used. (see ContentType).
+	 * @param publisher selects one of our identities to publish under
+	 * @param freshnessSeconds how long the content should be considered valid in the cache.
+	 * @throws SignatureException if there is a problem signing.
+	 * @throws IOException if there is a problem writing data.
+	 */
+	public ContentName put(ContentName name, byte[] content, 
 			SignedInfo.ContentType type,
 			PublisherPublicKeyDigest publisher,
 			Integer freshnessSeconds) throws SignatureException, IOException {
 		try {
-			_segmenter.put(name, contents, 0, ((null == contents) ? 0 : contents.length),
+			_segmenter.put(name, content, 0, ((null == content) ? 0 : content.length),
 								  true, type, freshnessSeconds, null, publisher);
 			return name;
 		} catch (InvalidKeyException e) {
@@ -123,69 +179,77 @@ public class CCNWriter {
 	}
 
 	/**
-	 * This does the actual work of generating a new version's name and doing 
-	 * the corresponding put. Handles fragmentation.
-	 * @throws InvalidAlgorithmParameterException 
+	 * Publishes a piece of content as a new version of a given name.
+	 * @param name The (unversioned) name to publish under.
+	 * @param content The content to publish, which will be segmented if necessary.
+	 * @throws SignatureException if cannot sign
+	 * @throws InvalidKeyException if cannot sign with specified key.
+	 * @throws NoSuchAlgorithmException if algorithm specified does not exist.
+	 * @throws IOException if cannot write data successfully.
+	 * @throws InvalidAlgorithmParameterException if there is a problem with the cryptographic parameters.
+	 */
+	public ContentName newVersion(ContentName name,
+								    byte[] content) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
+		return newVersion(name, content, null);
+	}
+
+	/**
+	 * Publishes a piece of content as a new version of a given name.
+	 * @param name The (unversioned) name to publish under.
+	 * @param content The content to publish, which will be segmented if necessary.
+	 * @param publisher Specifies what key the content should be signed by.
+	 * @throws SignatureException if cannot sign
+	 * @throws InvalidKeyException if cannot sign with specified key.
+	 * @throws NoSuchAlgorithmException if algorithm specified does not exist.
+	 * @throws IOException if cannot write data successfully.
+	 * @throws InvalidAlgorithmParameterException if there is a problem with the cryptographic parameters.
 	 */
 	public ContentName newVersion(
-			ContentName name, byte [] contents,
+			ContentName name, 
+			byte[] content,
+			PublisherPublicKeyDigest publisher) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
+		return newVersion(name, content, null, null, publisher);
+	}
+	
+	/**
+	 * Publishes a piece of content as a new version of a given name.
+	 * @param name The (unversioned) name to publish under.
+	 * @param content The content to publish, which will be segmented if necessary.
+	 * @param type The type to publish the content as.
+	 * @param locator The key locator to used to help consumers find the key used to sign.
+	 * @param publisher Specifies what key the content should be signed by.
+	 * @throws SignatureException if cannot sign
+	 * @throws InvalidKeyException if cannot sign with specified key.
+	 * @throws NoSuchAlgorithmException if algorithm specified does not exist.
+	 * @throws IOException if cannot write data successfully.
+	 * @throws InvalidAlgorithmParameterException if there is a problem with the cryptographic parameters.
+	 */
+	public ContentName newVersion(
+			ContentName name, byte [] content,
 			ContentType type,
 			KeyLocator locator, PublisherPublicKeyDigest publisher) throws SignatureException, 
 			InvalidKeyException, NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 		
 		// Construct new name
-		// <name>/<VERSION_MARKER>/<version_number>
+		// <name>/<VERSION_MARKER><version_number>
 		ContentName versionedName = VersioningProfile.addVersion(name);
 
 		// put result; segmenter will fill in defaults
-		_segmenter.put(versionedName, contents, 0, ((null == contents) ? 0 : contents.length),
+		_segmenter.put(versionedName, content, 0, ((null == content) ? 0 : content.length),
 							  true,
 				 			  type, null, locator, publisher);
 		return versionedName;
 	}
 	
 	/**
-	 * Publishes a new version of this name with the given contents. First
-	 * attempts to figure out the most recent version of that name, and
-	 * then increments that to get the intended version number.
-	 * 
-	 * Right now have all sorts of uncertainties in versioning --
-	 * do we know the latest version number of a piece of content?
-	 * Even if we've read it, it isn't atomic -- by the time
-	 * we write our new version, someone else might have updated
-	 * the number...
-	 * @throws NoSuchAlgorithmException 
-	 * @throws InvalidKeyException 
-	 * @throws InvalidAlgorithmParameterException 
+	 * @return internal flow buffer.
 	 */
-	public ContentName newVersion(ContentName name,
-								    byte[] contents) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
-		return newVersion(name, contents, null);
-	}
-
-	/**
-	 * A specialization of newVersion that allows control of the identity to
-	 * publish under. 
-	 * 
-	 * @param publisher Who we want to publish this as,
-	 * not who published the existing version. If null, uses the default publishing
-	 * identity.
-	 * @throws NoSuchAlgorithmException 
-	 * @throws InvalidKeyException 
-	 * @throws InvalidAlgorithmParameterException 
-	 */
-	public ContentName newVersion(
-			ContentName name, 
-			byte[] contents,
-			PublisherPublicKeyDigest publisher) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
-		return newVersion(name, contents, null, null, publisher);
-	}
-	
 	public CCNFlowControl getFlowControl() {
 		return _segmenter.getFlowControl();
 	}
 	
 	/**
+	 * Turn off flow control.
 	 * Warning - calling this risks packet drops. It should only
 	 * be used for tests or other special circumstances in which
 	 * you "know what you are doing".
@@ -194,10 +258,18 @@ public class CCNWriter {
 		getFlowControl().disable();
 	}
 	
+	/**
+	 * Close this writer, ensuring all buffers are clear.
+	 * @throws IOException If readers do not empty the buffer.
+	 */
 	public void close() throws IOException {
 		_segmenter.getFlowControl().waitForPutDrain();
 	}
 	
+	/**
+	 * Set the default timeout for this writer.
+	 * @param timeout in msec.
+	 */
 	public void setTimeout(int timeout) {
 		getFlowControl().setTimeout(timeout);
 	}

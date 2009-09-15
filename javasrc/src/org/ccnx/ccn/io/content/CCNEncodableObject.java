@@ -24,7 +24,6 @@ import java.io.OutputStream;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
@@ -36,22 +35,12 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * Takes a class E, and backs it securely to CCN.
- * @author smetters
- *
- * @param <E>
+ * Subclass of CCNNetworkObject that wraps classes implementing XMLEncodable, and uses
+ * XMLEncodable's encode() and decode() methods to read and write those objects to 
+ * CCN.
  */
 public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject<E> {
 	
-	/**
-	 * Doesn't save until you call save, in case you want to tweak things first.
-	 * @param type
-	 * @param name
-	 * @param data
-	 * @param handle
-	 * @throws ConfigurationException
-	 * @throws IOException
-	 */
 	public CCNEncodableObject(Class<E> type, ContentName name, E data, CCNHandle handle) throws IOException {
 		super(type, name, data, null, null, handle);
 	}
@@ -70,15 +59,6 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 		super(type, name, data, publisher, keyLocator, flowControl);
 	}
 	
-	/**
-	 * Read constructor -- opens existing object.
-	 * @param type
-	 * @param name
-	 * @param handle
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws ClassNotFoundException 
-	 */
 	public CCNEncodableObject(Class<E> type, ContentName name, 
 			CCNHandle handle) throws IOException, XMLStreamException {
 		super(type, name, (PublisherPublicKeyDigest)null, handle);

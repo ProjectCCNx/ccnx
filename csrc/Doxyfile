@@ -16,7 +16,7 @@ ALWAYS_DETAILED_SEC    = NO
 INLINE_INHERITED_MEMB  = NO
 FULL_PATH_NAMES        = YES
 STRIP_FROM_PATH        = 
-STRIP_FROM_INC_PATH    = 
+STRIP_FROM_INC_PATH    = include
 SHORT_NAMES            = NO
 JAVADOC_AUTOBRIEF      = YES
 QT_AUTOBRIEF           = NO
@@ -104,10 +104,10 @@ FILTER_SOURCE_FILES    = NO
 #---------------------------------------------------------------------------
 # configuration options related to source browsing
 #---------------------------------------------------------------------------
-SOURCE_BROWSER         = NO
+SOURCE_BROWSER         = YES
 INLINE_SOURCES         = NO
-STRIP_CODE_COMMENTS    = YES
-REFERENCED_BY_RELATION = NO
+STRIP_CODE_COMMENTS    = NO
+REFERENCED_BY_RELATION = YES
 REFERENCES_RELATION    = NO
 REFERENCES_LINK_SOURCE = YES
 USE_HTAGS              = NO

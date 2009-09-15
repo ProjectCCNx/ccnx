@@ -38,26 +38,25 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * Mapping from a sequence to the underlying XML representation.
- * A Header is a content object giving a compact description of a
- * sequence of named blocks.
- * @author briggs, smetters
- *
+ * A Header is a set of metadata describing a particular CCN stream; basically it provides
+ * summary file-level information about that set of content. It is usually stored and
+ * read by CCNFileOutputStream and CCNFileInputStream and their subclasses, rather than
+ * being created directly by clients.
+ * 
+ * A number of the segmentation-related definitions currently found in Header will
+ * eventually move to the SegmentationProfile.
  */
 public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	
 	/**
-	 * This should eventually be called Header, and the Header class deleted.
+	 * A CCNNetworkObject wrapper around Header, used for easily saving and retrieving
+	 * versioned Headers to CCN. A typical pattern for using network objects to save
+	 * objects that happen to be encodable or serializable is to incorporate such a static
+	 * member wrapper class subclassing CCNEncodableObject, CCNSerializableObject, or
+	 * CCNNetworkObject itself inside the main class definition.
 	 */
 	public static class HeaderObject extends CCNEncodableObject<Header> {
 		
-		/**
-		 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
-		 * @param name
-		 * @param data
-		 * @param handle
-		 * @throws IOException
-		 */
 		public HeaderObject(ContentName name, Header data, CCNHandle handle) throws IOException {
 			super(Header.class, name, data, handle);
 		}
@@ -72,20 +71,12 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 			super(Header.class, name, data, publisher, keyLocator, flowControl);
 		}
 	
-		/**
-		 * Read constructor -- opens existing object.
-		 * @param name
-		 * @param handle
-		 * @throws XMLStreamException
-		 * @throws IOException
-		 * @throws ClassNotFoundException 
-		 */
-		public HeaderObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
-			super(Header.class, name, publisher, handle);
-		}
-		
 		public HeaderObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
 			super(Header.class, name, (PublisherPublicKeyDigest)null, handle);
+		}
+		
+		public HeaderObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
+			super(Header.class, name, publisher, handle);
 		}
 		
 		public HeaderObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
@@ -122,7 +113,7 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 			return h.contentDigest(); 
 		}
 		
-		public FragmentationType type() throws ContentGoneException, ContentNotReadyException {
+		public SegmentationType type() throws ContentGoneException, ContentNotReadyException {
 			Header h = header();
 			return h.type(); 
 		}
@@ -159,17 +150,18 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		}
 	}
 	
-	public enum FragmentationType {SIMPLE_BLOCK};
-    protected static final HashMap<FragmentationType, String> FragmentationTypeNames = new HashMap<FragmentationType, String>();
-    protected static final HashMap<String, FragmentationType> FragmentationNameTypes = new HashMap<String, FragmentationType>();
+	public enum SegmentationType {SIMPLE_BLOCK};
+    protected static final HashMap<SegmentationType, String> SegmentationTypeNames = new HashMap<SegmentationType, String>();
+    protected static final HashMap<String, SegmentationType> SegmentationNameTypes = new HashMap<String, SegmentationType>();
 
     static {
-    	FragmentationTypeNames.put(FragmentationType.SIMPLE_BLOCK, "SIMPLE_BLOCK");
-    	FragmentationNameTypes.put("SIMPLE_BLOCK", FragmentationType.SIMPLE_BLOCK);
+    	SegmentationTypeNames.put(SegmentationType.SIMPLE_BLOCK, "SIMPLE_BLOCK");
+    	SegmentationNameTypes.put("SIMPLE_BLOCK", SegmentationType.SIMPLE_BLOCK);
     }
 	
 	public static final String START_ELEMENT = "Start";
 	public static final String HEADER_ELEMENT = "Header";
+	
 	/**
 	 * These are specific to simple block fragmentation.
 	 */
@@ -196,16 +188,20 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	 * Generic.
 	 * 
 	 */
-	protected FragmentationType _type;
+	protected SegmentationType _type;
 	protected byte [] _contentDigest;
 	protected byte [] _rootDigest; // root of the Merkle tree
 	
 	/**
-	 * Basic constructor for content sequences
-	 * @param start
-	 * @param count
-	 * @param blockSize
-	 * @param length
+	 * Basic constructor for content sequence headers.
+	 * @param start The starting byte offset for this file.
+	 * @param count The number of blocks.
+	 * @param blockSize The size of blocks (in bytes).
+	 * @param length The total length of the stream.
+	 * @param contentDigest For convenience, the digest of the unsegmented content.
+	 * @param rootDigest The root digest of the bulk signature tree for the content (Merkle Hash Tree).
+	 *  		This turns out to be less useful than you'd think as there are typically multiple
+	 *  		MHT's per file, and is likely to be removed.
 	 */
 	public Header(long start, long count, 
 				  int blockSize, long length,
@@ -217,9 +213,18 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		_length = length;
 		_contentDigest = contentDigest;
 		_rootDigest = rootDigest;
-		_type = FragmentationType.SIMPLE_BLOCK;
+		_type = SegmentationType.SIMPLE_BLOCK;
 	}
 	
+	/**
+	 * Basic constructor for content sequences
+	 * @param length The total length of the stream.
+	 * @param contentDigest For convenience, the digest of the unsegmented content.
+	 * @param rootDigest The root digest of the bulk signature tree for the content (Merkle Hash Tree).
+	 *  		This turns out to be less useful than you'd think as there are typically multiple
+	 *  		MHT's per file, and is likely to be removed.
+	 * @param blockSize The size of blocks (in bytes).
+	 */
 	public Header(long length,
 			byte [] contentDigest,
 			byte [] rootDigest, int blockSize
@@ -255,11 +260,11 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		return _contentDigest;
 	}
 	
-	public FragmentationType type() {
+	public SegmentationType type() {
 		return _type;
 	}
 
-	public void type(FragmentationType type) {
+	public void type(SegmentationType type) {
 		this._type = type;
 	}
 	
@@ -291,7 +296,7 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		decoder.readEndElement();
 		
 		// Right now, we're just setting this field to default, and it's not encoded
-		_type = FragmentationType.SIMPLE_BLOCK;
+		_type = SegmentationType.SIMPLE_BLOCK;
 	}
 
 	/* (non-Javadoc)
@@ -326,12 +331,12 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		return true;
 	}
 	
-	public static String typeToName(FragmentationType type) {
-		return FragmentationTypeNames.get(type);
+	public static String typeToName(SegmentationType type) {
+		return SegmentationTypeNames.get(type);
 	}
 
-	public static FragmentationType nameToType(String name) {
-		return FragmentationNameTypes.get(name);
+	public static SegmentationType nameToType(String name) {
+		return SegmentationNameTypes.get(name);
 	}
 
 	@Override

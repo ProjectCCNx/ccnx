@@ -46,8 +46,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * will not crash, it just may not receive all of the information from each repository.
  *
  */
-
-public class repo_ls implements BasicNameEnumeratorListener {
+public class ccnlsrepo implements BasicNameEnumeratorListener {
 
 	private String prefix = "";
 	private ContentName name = null;
@@ -56,7 +55,7 @@ public class repo_ls implements BasicNameEnumeratorListener {
 
 	
 	/**
-	 * Main function for the repo_ls tool.  Initializes the tool and triggers name enumeration.
+	 * Main function for the ccnlsrepo tool.  Initializes the tool and triggers name enumeration.
 	 * 
 	 * @param args Command line arguments: prefix to enumeration and timeout flag (and time in ms)
 	 * 
@@ -65,14 +64,14 @@ public class repo_ls implements BasicNameEnumeratorListener {
 	
 	public static void main(String[] args) {
 		Log.setDefaultLevel(Level.WARNING);
-		repo_ls lister = new repo_ls();
+		ccnlsrepo lister = new ccnlsrepo();
 		lister.init(args);
 		lister.enumerateNames();
 		System.exit(0);
 	}
 
 	/**
-	 * Initialization function for repo_ls.  This method parses the command line input
+	 * Initialization function for ccnlsrepo.  This method parses the command line input
 	 * and creates a ContentName for the supplied prefix (or creates a new ContentName for the default "/" prefix).
 	 * The program prints the usage and exits if the input is not correct.
 	 * 
@@ -80,7 +79,8 @@ public class repo_ls implements BasicNameEnumeratorListener {
 	 * 
 	 * @return void
 	 * 
-	 * @throws org.ccnx.ccn.protocol.MalformedContentNameStringException Converting the input to a ContentName can throw a MalformedContentNameException.
+	 * @throws org.ccnx.ccn.protocol.MalformedContentNameStringException Converting the input to a
+	 * ContentName can throw a MalformedContentNameException.
 	 * 
 	 * @see org.ccnx.ccn.protocol.ContentName
 	 */
@@ -144,10 +144,9 @@ public class repo_ls implements BasicNameEnumeratorListener {
 	}
 
 	/**
-	 * Method to initialize a CCNHandle and the CCNNameEnumerator for the repo_ls tool.
+	 * Method to initialize a CCNHandle and the CCNNameEnumerator for the ccnlsrepo tool.
 	 * This method also determines when the program should print out results and exit.
 	 * 
-	 * @param void
 	 * @return void
 	 * 
 	 * @throws org.ccnx.ccn.config.ConfigurationException A configuration exception is
@@ -192,14 +191,13 @@ public class repo_ls implements BasicNameEnumeratorListener {
 	}
 
 	/**
-	 * Function to print out the options for repo_ls
+	 * Function to print out the options for ccnlsrepo
 	 * 
-	 * @param void
 	 * @returns void
 	 */
 	
 	public void usage() {
-		System.out.println("usage: repo_ls <ccnprefix> [-timeout millis (default is 2000ms) | -c(ontinuous)]");
+		System.out.println("usage: ccnlsrepo <ccnprefix> [-timeout millis (default is 2000ms) | -c(ontinuous)]");
 	}
 
 	/**
@@ -225,7 +223,6 @@ public class repo_ls implements BasicNameEnumeratorListener {
 			System.out.println();
 		}
 			
-		
 		return 0;
 	}
 
@@ -234,7 +231,7 @@ public class repo_ls implements BasicNameEnumeratorListener {
 	 *	Method to print the names collection through enumeration.  Iterates through the names and prints each content name.
 	 *	Uses the ContentName.toString method and removes the leading "/" - component separator.
 	 * 
-	 * 
+	 *  @return void
 	 */
 	private void printNames() {
 		for (ContentName c : allNames)

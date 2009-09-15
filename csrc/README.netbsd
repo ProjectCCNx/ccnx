@@ -7,7 +7,7 @@ For access to sources via git, also need:
 pkg_add -v gitweb
 (it may be enough to just use scmgit)
 
-To build all documentation as well ("make documentation" in src/../), install these:
+To build all documentation as well ("make documentation" in csrc/../), install these:
 pkg_add -v asciidoc
 pkg_add -v doxygen
 

@@ -31,9 +31,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-/**
- *
- */
 public class VersioningProfileTest {
 	private static byte[][] abParts = { { 97 }, { 98 } };
 	private static ContentName abName = new ContentName(abParts);

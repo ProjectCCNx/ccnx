@@ -20,14 +20,11 @@ package org.ccnx.ccn.io.content;
 import java.io.IOException;
 
 /**
- * @author smetters
- *
+ * IOException returned when a CCNNetworkObject is asked for data not available until
+ * it has either been saved to or retrieved from the network.
  */
 public class ContentNotSavedException extends IOException {
 
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -7882656440295361498L;
 
 	/**

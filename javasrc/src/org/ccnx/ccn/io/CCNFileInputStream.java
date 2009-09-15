@@ -29,28 +29,27 @@ import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Header;
 import org.ccnx.ccn.io.content.Header.HeaderObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
-import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * A CCN input stream that expects content names to be versioned, and streams to have a {@link Header}
- * containing file-level metadata about each stream. See {@link CCNVersionedInputStream} for
- * a description of versioning behavior, and {@link CCNFileOutputStream} for a description of
+ * A CCN input stream that expects content names to be versioned, and streams to have a Header
+ * containing file-level metadata about each stream. See CCNVersionedInputStream for
+ * a description of versioning behavior, and CCNFileOutputStream for a description of
  * header information. The header is read asynchronously, and may not be available at all until the complete
  * stream has been written (in other words, the publisher typically writes the header last).
  * Stream data can be read normally before the header has been read, and the consumer
  * may opt to ignore the header completely, in which case this acts exactly like a 
- * {@link CCNVersionedInputStream}. In fact, a {@link CCNVersionedInputStream} can be used
- * to read data read by {@link CCNFileOutputStream} (except for the header). Using a
- * CCNFileInputStream to read something not written by a {@link CCNFileOutputStream} or one
+ * CCNVersionedInputStream. In fact, a CCNVersionedInputStream can be used
+ * to read data read by CCNFileOutputStream (except for the header). Using a
+ * CCNFileInputStream to read something not written by a CCNFileOutputStream or one
  * of its subclasses (in other words, something without a header) will still try to retrieve
  * the (nonexistent) header in the background, but will not cause an error unless someone tries to access
  * the header data itself. 
  * 
- * Headers are named according to defintions in the {@link SegmentationProfile}.
+ * Headers are named according to definitions in the SegmentationProfile.
  *
  */
 public class CCNFileInputStream extends CCNVersionedInputStream  {
@@ -65,8 +64,8 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	/**
 	 * Set up an input stream to read segmented CCN content under a given versioned name. 
 	 * Content is assumed to be unencrypted, or keys will be retrieved automatically via another
-	 * process (for example, an {@link AccessControlManager}). 
-	 * Will use the default handle given by {@link CCNHandle.getHandle()}.
+	 * process. 
+	 * Will use the default handle given by CCNHandle#getHandle().
 	 * Note that this constructor does not currently retrieve any
 	 * data; data is not retrieved until read() is called. This will change in the future, and
 	 * this constructor will retrieve the first block.
@@ -76,15 +75,15 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * both a version and a segment number, will start to read from that segment of that version.
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
-	public CCNFileInputStream(ContentName name) throws IOException {
-		super(name);
+	public CCNFileInputStream(ContentName baseName) throws IOException {
+		super(baseName);
 	}
 
 	/**
 	 * Set up an input stream to read segmented CCN content under a given versioned name. 
 	 * Content is assumed to be unencrypted, or keys will be retrieved automatically via another
-	 * process (for example, an {@link AccessControlManager}). 
-	 * Will use the default handle given by {@link CCNHandle.getHandle()}.
+	 * process. 
+	 * Will use the default handle given by CCNHandle#getHandle().
 	 * Note that this constructor does not currently retrieve any
 	 * data; data is not retrieved until read() is called. This will change in the future, and
 	 * this constructor will retrieve the first block.
@@ -93,19 +92,19 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * specific version. If not, will find the latest version available. If it ends with
 	 * both a version and a segment number, will start to read from that segment of that version.
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
-	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
-	public CCNFileInputStream(ContentName name, CCNHandle handle)
+	public CCNFileInputStream(ContentName baseName, CCNHandle handle)
 									throws IOException {
-		super(name, handle);
+		super(baseName, handle);
 	}
 
 	/**
 	 * Set up an input stream to read segmented CCN content under a given versioned name. 
 	 * Content is assumed to be unencrypted, or keys will be retrieved automatically via another
-	 * process (for example, an {@link AccessControlManager}). 
-	 * Will use the default handle given by {@link CCNHandle.getHandle()}.
+	 * process. 
+	 * Will use the default handle given by CCNHandle#getHandle().
 	 * Note that this constructor does not currently retrieve any
 	 * data; data is not retrieved until read() is called. This will change in the future, and
 	 * this constructor will retrieve the first block.
@@ -116,19 +115,19 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * @param publisher The key we require to have signed this content. If null, will accept any publisher
 	 * 				(subject to higher-level verification).
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
-	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
-	public CCNFileInputStream(ContentName name, PublisherPublicKeyDigest publisher,
+	public CCNFileInputStream(ContentName baseName, PublisherPublicKeyDigest publisher,
 			CCNHandle handle) throws IOException {
-		this(name, null, publisher, handle);
+		this(baseName, null, publisher, handle);
 	}
 
 	/**
 	 * Set up an input stream to read segmented CCN content under a given versioned name. 
 	 * Content is assumed to be unencrypted, or keys will be retrieved automatically via another
-	 * process (for example, an {@link AccessControlManager}). 
-	 * Will use the default handle given by {@link CCNHandle.getHandle()}.
+	 * process. 
+	 * Will use the default handle given by CCNHandle#getHandle().
 	 * Note that this constructor does not currently retrieve any
 	 * data; data is not retrieved until read() is called. This will change in the future, and
 	 * this constructor will retrieve the first block.
@@ -137,21 +136,21 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * specific version. If not, will find the latest version available. If it ends with
 	 * both a version and a segment number, will start to read from that segment of that version.
 	 * @param startingSegmentNumber Alternative specification of starting segment number. If
-	 * 		null, will be {@link SegmentationProfile.baseSegment()}.
+	 * 		null, will be SegmentationProfile#baseSegment().
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
-	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
-	public CCNFileInputStream(ContentName name, Long startingBlockIndex, CCNHandle handle)
+	public CCNFileInputStream(ContentName baseName, Long startingSegmentNumber, CCNHandle handle)
 										throws IOException {
-		this(name, startingBlockIndex, null, handle);
+		this(baseName, startingSegmentNumber, null, handle);
 	}
 
 	/**
 	 * Set up an input stream to read segmented CCN content under a given versioned name. 
 	 * Content is assumed to be unencrypted, or keys will be retrieved automatically via another
-	 * process (for example, an {@link AccessControlManager}). 
-	 * Will use the default handle given by {@link CCNHandle.getHandle()}.
+	 * process. 
+	 * Will use the default handle given by CCNHandle#getHandle().
 	 * Note that this constructor does not currently retrieve any
 	 * data; data is not retrieved until read() is called. This will change in the future, and
 	 * this constructor will retrieve the first block.
@@ -160,22 +159,22 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * specific version. If not, will find the latest version available. If it ends with
 	 * both a version and a segment number, will start to read from that segment of that version.
 	 * @param startingSegmentNumber Alternative specification of starting segment number. If
-	 * 		null, will be {@link SegmentationProfile.baseSegment()}.
+	 * 		null, will be SegmentationProfile#baseSegment().
 	 * @param publisher The key we require to have signed this content. If null, will accept any publisher
 	 * 				(subject to higher-level verification).
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
-	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
-	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
+	public CCNFileInputStream(ContentName baseName, Long startingSegmentNumber,
 			PublisherPublicKeyDigest publisher, CCNHandle handle)
 			throws IOException {
-		super(name, startingBlockIndex, publisher, handle);
+		super(baseName, startingSegmentNumber, publisher, handle);
 	}
 
 	/**
 	 * Set up an input stream to read segmented CCN content under a given versioned name. 
-	 * Will use the default handle given by {@link CCNHandle.getHandle()}.
+	 * Will use the default handle given by CCNHandle#getHandle().
 	 * Note that this constructor does not currently retrieve any
 	 * data; data is not retrieved until read() is called. This will change in the future, and
 	 * this constructor will retrieve the first block.
@@ -184,31 +183,31 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * specific version. If not, will find the latest version available. If it ends with
 	 * both a version and a segment number, will start to read from that segment of that version.
 	 * @param startingSegmentNumber Alternative specification of starting segment number. If
-	 * 		null, will be {@link SegmentationProfile.baseSegment()}.
+	 * 		null, will be SegmentationProfile#baseSegment().
 	 * @param publisher The key we require to have signed this content. If null, will accept any publisher
 	 * 				(subject to higher-level verification).
 	 * @param keys The keys to use to decrypt this content. If null, assumes content unencrypted, or another
-	 * 				process will be used to retrieve the keys (for example, an {@link AccessControlManager}).
+	 * 				process will be used to retrieve the keys.
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
-	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
-	public CCNFileInputStream(ContentName name, Long startingBlockIndex,
+	public CCNFileInputStream(ContentName baseName, Long startingSegmentNumber,
 			PublisherPublicKeyDigest publisher, ContentKeys keys, CCNHandle handle)
 			throws IOException {
-		super(name, startingBlockIndex, publisher, keys, handle);
+		super(baseName, startingSegmentNumber, publisher, keys, handle);
 	}
 
 	/**
 	 * Set up an input stream to read segmented CCN content starting with a given
-	 * {@link ContentObject} that has already been retrieved.  Content is assumed
+	 * ContentObject that has already been retrieved.  Content is assumed
 	 * to be unencrypted, or keys will be retrieved automatically via another
-	 * process (for example, an {@link AccessControlManager}).
+	 * process.
 	 * @param startingSegment The first segment to read from. If this is not the
 	 * 		first segment of the stream, reading will begin from this point.
 	 * 		We assume that the signature on this segment was verified by our caller.
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
-	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException
 	 */
 	public CCNFileInputStream(ContentObject startingSegment, CCNHandle handle)
@@ -218,14 +217,14 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 
 	/**
 	 * Set up an input stream to read segmented CCN content starting with a given
-	 * {@link ContentObject} that has already been retrieved.  
+	 * ContentObject that has already been retrieved.  
 	 * @param startingSegment The first segment to read from. If this is not the
 	 * 		first segment of the stream, reading will begin from this point.
 	 * 		We assume that the signature on this segment was verified by our caller.
 	 * @param keys The keys to use to decrypt this content. Null if content unencrypted, or another
-	 * 				process will be used to retrieve the keys (for example, an {@link AccessControlManager}).
+	 * 				process will be used to retrieve the keys.
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
-	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException
 	 */
 	public CCNFileInputStream(ContentObject startingSegment, 
@@ -262,7 +261,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	
 	/**
 	 * Accesses the header data if it has been requested.
-	 * @return the {@link Header} for this stream.
+	 * @return the Header for this stream.
 	 * @throws ContentNotReadyException if we have not retrieved the header yet, or it hasn't been requested.
 	 * @throws ContentGoneException if the header has been deleted.
 	 */
@@ -289,7 +288,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	}
 
 	/**
-	 * Once we have retrieved the first segment of this stream using {@link CCNVersionedInputStream#getFirstSegment()},
+	 * Once we have retrieved the first segment of this stream using CCNVersionedInputStream#getFirstSegment(),
 	 * initiate header retrieval.
 	 */
 	@Override

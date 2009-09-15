@@ -20,26 +20,20 @@ package org.ccnx.ccn.io.content;
 import java.io.IOException;
 
 /**
- * @author smetters
- *
+ * Informative subclass of IOException to be thrown when content is expected, but
+ * GONE (deleted) content found instead.
  */
 public class ContentGoneException extends IOException {
 
-	/**
-	 * TODO add constructor taking Throwable when move to 1.6
-	 */
 	private static final long serialVersionUID = 6732044153240082669L;
 
 	/**
-	 * 
+	 * TODO add constructor taking Throwable when move to 1.6
 	 */
 	public ContentGoneException() {
 		super();
 	}
 
-	/**
-	 * @param s
-	 */
 	public ContentGoneException(String s) {
 		super(s);
 	}

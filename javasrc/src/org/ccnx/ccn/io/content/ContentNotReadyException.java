@@ -20,26 +20,20 @@ package org.ccnx.ccn.io.content;
 import java.io.IOException;
 
 /**
- * @author smetters
- *
+ * IOException type to indicate when a given NetworkObject has not yet retrieved its
+ * content.
  */
 public class ContentNotReadyException extends IOException {
 
-	/**
-	 * TODO add constructor taking Throwable when move to 1.6
-	 */
 	private static final long serialVersionUID = 6732044053240082669L;
 
 	/**
-	 * 
+	 * TODO add constructor taking Throwable when move to 1.6
 	 */
 	public ContentNotReadyException() {
 		super();
 	}
 
-	/**
-	 * @param s
-	 */
 	public ContentNotReadyException(String s) {
 		super(s);
 	}

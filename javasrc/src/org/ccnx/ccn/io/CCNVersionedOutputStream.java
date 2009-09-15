@@ -31,88 +31,84 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 /**
  * An output stream that adds a version to the names it outputs. Reading this
- * output with {@link CCNVersionedInputStream} allows retrieval of the "latest version"
+ * output with CCNVersionedInputStream allows retrieval of the "latest version"
  * of a stream.
  */
 public class CCNVersionedOutputStream extends CCNOutputStream {
 
 	/**
 	 * Constructor for a CCN output stream writing under a versioned name.
-	 * @param name name prefix under which to write content segments; if it is already
+	 * @param baseName name prefix under which to write content segments; if it is already
 	 *   versioned, that version is used, otherwise a new version is added.
-	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @param handle if null, new handle created with CCNHandle#open().
 	 * @throws IOException stream setup fails
 	 */
-	public CCNVersionedOutputStream(ContentName name, CCNHandle handle) throws IOException {
-		this(name, (PublisherPublicKeyDigest)null, handle);
+	public CCNVersionedOutputStream(ContentName baseName, CCNHandle handle) throws IOException {
+		this(baseName, (PublisherPublicKeyDigest)null, handle);
 	}
 
 	/**
 	 * Constructor for a CCN output stream writing under a versioned name.
-	 * @param name name prefix under which to write content segments; if it is already
+	 * @param baseName name prefix under which to write content segments; if it is already
 	 *   versioned, that version is used, otherwise a new version is added.
-	 * @param name name prefix under which to write content segments
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
-	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @param handle if null, new handle created with CCNHandle#open()
 	 * @throws IOException stream setup fails
 	 */
-	public CCNVersionedOutputStream(ContentName name,
+	public CCNVersionedOutputStream(ContentName baseName,
 						   			PublisherPublicKeyDigest publisher,
 						   			CCNHandle handle) throws IOException {
-		this(name, null, publisher, null, null, handle);
+		this(baseName, null, publisher, null, null, handle);
 	}
 
 	/**
 	 * Constructor for a CCN output stream writing under a versioned name.
-	 * @param name name prefix under which to write content segments; if it is already
+	 * @param baseName name prefix under which to write content segments; if it is already
 	 *   versioned, that version is used, otherwise a new version is added.
-	 * @param name name prefix under which to write content segments
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
-	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @param handle if null, new handle created with CCNHandle#open()
 	 * @throws IOException stream setup fails
 	 */
-	public CCNVersionedOutputStream(ContentName name, 
+	public CCNVersionedOutputStream(ContentName baseName, 
 									ContentKeys keys, 
 									CCNHandle handle) throws IOException {
-		this(name, null, null, null, keys, handle);
+		this(baseName, null, null, null, keys, handle);
 	}
 
 	/**
 	 * Constructor for a CCN output stream writing under a versioned name.
-	 * @param name name prefix under which to write content segments; if it is already
+	 * @param baseName name prefix under which to write content segments; if it is already
 	 *   versioned, that version is used, otherwise a new version is added.
-	 * @param name name prefix under which to write content segments
 	 * @param locator key locator to use, if null, default for key is used.
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
-	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @param handle if null, new handle created with CCNHandle#open()
 	 * @throws IOException stream setup fails
 	 */
-	public CCNVersionedOutputStream(ContentName name, 
+	public CCNVersionedOutputStream(ContentName baseName, 
 			  			   			KeyLocator locator, 
 			  			   			PublisherPublicKeyDigest publisher,
 			  			   			ContentKeys keys,
 			  			   			CCNHandle handle) throws IOException {
-		this(name, locator, publisher, null, keys, handle);
+		this(baseName, locator, publisher, null, keys, handle);
 	}
 
 	/**
 	 * Constructor for a CCN output stream writing under a versioned name.
-	 * @param name name prefix under which to write content segments; if it is already
+	 * @param baseName name prefix under which to write content segments; if it is already
 	 *   versioned, that version is used, otherwise a new version is added.
-	 * @param name name prefix under which to write content segments
 	 * @param locator key locator to use, if null, default for key is used.
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
-	 * @param type type to mark content (see {@link ContentType}), if null, DATA is used; if
+	 * @param type type to mark content (see ContentType), if null, DATA is used; if
 	 * 			content encrypted, ENCR is used.
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
-	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @param handle if null, new handle created with CCNHandle#open().
 	 * @throws IOException stream setup fails
 	 */
-	public CCNVersionedOutputStream(ContentName name, 
+	public CCNVersionedOutputStream(ContentName baseName, 
 									KeyLocator locator,
 									PublisherPublicKeyDigest publisher, 
 									ContentType type, 
@@ -123,30 +119,30 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 		 * The Flow Controller must register a Filter above the version no. for someone else's
 		 * getLatestVersion interests to see this stream.
 		 */
-		this(name, locator, publisher, type, keys, 
-			 new CCNFlowControl(VersioningProfile.cutTerminalVersion(name).first(), handle));
+		this(baseName, locator, publisher, type, keys, 
+			 new CCNFlowControl(VersioningProfile.cutTerminalVersion(baseName).first(), handle));
 	}
 
 	/**
 	 * Low-level constructor used by clients that need to specify flow control behavior.
-	 * @param name name prefix under which to write content segments; if it is already
+	 * @param baseName name prefix under which to write content segments; if it is already
 	 *   versioned, that version is used, otherwise a new version is added.
 	 * @param locator key locator to use, if null, default for key is used.
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
-	 * @param type type to mark content (see {@link ContentType}), if null, DATA is used; if
+	 * @param type type to mark content (see ContentType), if null, DATA is used; if
 	 * 			content encrypted, ENCR is used.
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
 	 * @param flowControl flow controller used to buffer output content
 	 * @throws IOException if flow controller setup fails
 	 */
-	public CCNVersionedOutputStream(ContentName name, 
+	public CCNVersionedOutputStream(ContentName baseName, 
 									   KeyLocator locator, 
 									   PublisherPublicKeyDigest publisher,
 									   ContentType type, 
 									   ContentKeys keys,
 									   CCNFlowControl flowControl) throws IOException {
-		super((VersioningProfile.hasTerminalVersion(name) ? name : VersioningProfile.addVersion(name)), 
+		super((VersioningProfile.hasTerminalVersion(baseName) ? baseName : VersioningProfile.addVersion(baseName)), 
 				locator, publisher, type, keys, flowControl);
 	}
 }
