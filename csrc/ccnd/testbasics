@@ -1,5 +1,5 @@
 #!/bin/sh
-: ${CCN_LOCAL_PORT:=2009}
+: ${CCN_LOCAL_PORT:=62009}
 export CCN_LOCAL_PORT
 : ${CCND_DEBUG:=0}
 export CCND_DEBUG
