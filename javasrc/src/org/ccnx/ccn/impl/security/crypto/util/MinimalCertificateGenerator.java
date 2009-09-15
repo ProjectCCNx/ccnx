@@ -57,7 +57,7 @@ import org.ccnx.ccn.impl.support.Log;
  */
 public class MinimalCertificateGenerator {
 
-	   /**
+	/**
      * A few useful OIDs that aren't in X509Extension, plus those that
      * are (because they're protected there).
      */
@@ -100,12 +100,39 @@ public class MinimalCertificateGenerator {
 	protected Vector<DERObjectIdentifier> _ekus = new Vector<DERObjectIdentifier>();
 	protected ASN1EncodableVector _subjectAltNames = new ASN1EncodableVector();
 
+	/**
+	 * Generates an X509 certificate for a specified user key pair, 
+	 * subject distinguished name and duration.
+	 * @param userKeyPair the user key pair.
+	 * @param subjectDN the distinguished name of the user.
+	 * @param duration the duration of validity of the certificate.
+	 * @return the X509 certificate.
+	 * @throws CertificateEncodingException
+	 * @throws InvalidKeyException
+	 * @throws IllegalStateException
+	 * @throws NoSuchAlgorithmException
+	 * @throws SignatureException
+	 */
 	public static X509Certificate GenerateUserCertificate(KeyPair userKeyPair, String subjectDN, long duration) throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, SignatureException {
 		MinimalCertificateGenerator mg = new MinimalCertificateGenerator(subjectDN, userKeyPair.getPublic(), duration, false);
 		mg.setClientAuthenticationUsage();
 		return mg.sign(null, userKeyPair.getPrivate());
 	}
-	
+
+	/**
+	 * Generates an X509 certificate for a specified user key pair,
+	 * subject distinguished name, email address and duration.
+	 * @param userKeyPair the user key pair.
+	 * @param subjectDN the distinguished name of the subject.
+	 * @param emailAddress the email address.
+	 * @param duration the duration.
+	 * @return the X509 certificate.
+	 * @throws CertificateEncodingException
+	 * @throws InvalidKeyException
+	 * @throws IllegalStateException
+	 * @throws NoSuchAlgorithmException
+	 * @throws SignatureException
+	 */
 	public static X509Certificate GenerateUserCertificate(KeyPair userKeyPair, String subjectDN, String emailAddress, long duration) throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, SignatureException {
 		MinimalCertificateGenerator mg = new MinimalCertificateGenerator(subjectDN, userKeyPair.getPublic(), duration, false);
 		mg.setClientAuthenticationUsage();
@@ -208,7 +235,6 @@ public class MinimalCertificateGenerator {
 	 * certificate.
 	 */
 	public void setClientAuthenticationUsage() {
-
 		_ekus.add(id_kp_clientAuth);
 	}
 
@@ -237,9 +263,19 @@ public class MinimalCertificateGenerator {
 		_subjectAltNames.add(name);
 		_ekus.add(id_kp_ipsec);
 	}
-	
+
+	/**
+	 * Generate an X509 certificate, based on the current issuer and subject using the default provider.
+	 * @param digestAlgorithm
+	 * @param signingKey
+	 * @return the X509 certificate.
+	 * @throws CertificateEncodingException
+	 * @throws InvalidKeyException
+	 * @throws IllegalStateException
+	 * @throws NoSuchAlgorithmException
+	 * @throws SignatureException
+	 */
 	public X509Certificate sign(String digestAlgorithm, PrivateKey signingKey) throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, SignatureException {
-		
 		/**
 		 * Finalize extensions.
 		 */
