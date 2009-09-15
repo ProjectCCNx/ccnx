@@ -28,44 +28,74 @@ import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.DigestInfo;
 import org.ccnx.ccn.impl.support.Log;
 
-
+/**
+ * Helper class for digest algorithms.
+ * Includes static methods to compute the digest of an array of bytes with
+ * DEFAULT_DIGEST_ALGORITHM ("SHA-1" by default). 
+ * Includes methods for computing Merkle hash trees (hash computation of the 
+ * concatenation of two or more arrays of bytes.)
+ */
 
 public class DigestHelper {
 
 	public static String DEFAULT_DIGEST_ALGORITHM = "SHA-1";
-	// public static String DEFAULT_DIGEST_ALGORITHM = "SHA-256"; // change length to 64
+    // public static String DEFAULT_DIGEST_ALGORITHM = "SHA-256"; // change length to 64
 	public static int DEFAULT_DIGEST_LENGTH = 32;
 	
 	protected MessageDigest _md;
-	
+
+	/**
+	 * Instantiates a MessageDigest of type DEFAULT_DIGEST_ALGORITHM.
+	 */
 	public DigestHelper() {
 		try {
 			_md = MessageDigest.getInstance(getDefaultDigest());
 		} catch (java.security.NoSuchAlgorithmException ex) {
-			// DKS --big configuration problem
+			// possible configuration problem
 			Log.warning("Fatal Error: cannot find default algorithm " + getDefaultDigest());
 			throw new RuntimeException("Error: can't find default algorithm " + getDefaultDigest() + "!  " + ex.toString());
 		}
 	}
 	
+	/**
+	 * Instantiates a MessageDigest of type digestAlgorithm.
+	 * @param digestAlgorithm the digest algorithm selected.
+	 * @throws NoSuchAlgorithmException
+	 */
 	public DigestHelper(String digestAlgorithm) throws NoSuchAlgorithmException {
 		_md = MessageDigest.getInstance(digestAlgorithm);
 	}
-	
+		
 	/**
-	 * Has to be non-static to allow subclasses to override.
-	 * @return
+	 * Returns the default digest algorithm.
+	 * This method is non-static so subclasses can override it.
 	 */
 	public String getDefaultDigest() { return DEFAULT_DIGEST_ALGORITHM; }
 	
+	/**
+	 * Updates the digest using the specified array of bytes, starting at the specified offset. 
+	 * @param content the array of bytes.
+	 * @param offset the offset.
+	 * @param len the number of bytes to use, starting at offset.
+	 */
 	public void update(byte [] content, int offset, int len) {
 		_md.update(content, offset, len);
 	}
 	
+	/**
+	 * Completes the hash computation by performing final operations such as padding. 
+	 * The digest is reset after this call is made. 
+	 * @return the array of bytes for the resulting hash value.
+	 */
 	public byte [] digest() {
 		return _md.digest();
 	}
 	
+	/**
+	 * Static method to hash an array of bytes with DEFAULT_DIGEST_ALGORITHM.
+	 * @param content the array of bytes.
+	 * @return the array of bytes for the resulting hash value.
+	 */
     public static byte[] digest(byte [] content) {
 		if (null == content) {
 			throw new IllegalArgumentException("Content cannot be null!");
@@ -73,6 +103,13 @@ public class DigestHelper {
 		return digest(content, 0, content.length);
 	}
 	
+    /**
+     * Static method to hash an array of bytes with a specified digest algorithm. 
+     * @param digestAlgorithm the digest algorithm.
+     * @param content the array of bytes.
+     * @return the array of bytes for the resulting hash value.
+     * @throws NoSuchAlgorithmException
+     */
 	public static byte [] digest(String digestAlgorithm, byte [] content) throws NoSuchAlgorithmException {
 		if (null == content) {
 			throw new IllegalArgumentException("Content cannot be null!");
@@ -80,12 +117,30 @@ public class DigestHelper {
 		return digest(digestAlgorithm, content, 0, content.length);
 	}
 	
+	/**
+	 * Static method to hash an array of bytes with DEFAULT_DIGEST_ALGORITHM,
+	 * starting at the specified offset.
+	 * @param content the array of bytes.
+	 * @param offset the offset.
+	 * @param length the number of bytes to use, starting at offset.
+	 * @return the array of bytes for the resulting hash value.
+	 */
 	public static byte [] digest(byte [] content, int offset, int length) {
 		DigestHelper dh = new DigestHelper();
 		dh.update(content, offset, length);
 		return dh.digest();
 	}
 	
+	/**
+	 * Static method to hash an array of bytes with a specified digest algorithm,
+	 * starting at the specified offset.
+	 * @param digestAlgorithm the digest algorithm.
+	 * @param content the array of bytes.
+	 * @param offset the offset.
+	 * @param length the number of bytes to user, starting at offset.
+	 * @return the array of bytes for the resulting hash value.
+	 * @throws NoSuchAlgorithmException
+	 */
 	public static byte [] digest(String digestAlgorithm, byte [] content, int offset, int length) throws NoSuchAlgorithmException {
 		DigestHelper dh = new DigestHelper(digestAlgorithm);
 		dh.update(content, offset, length);
@@ -93,30 +148,38 @@ public class DigestHelper {
 	}
 
 	/**
-	 * Helper functions for building Merkle hash trees. Returns digest of
+	 * Helper function for building Merkle hash trees. Returns digest of
 	 * two concatenated byte arrays. If either is null, simply includes
-	 * the non-null array.
-	 * @param content1
-	 * @param content2
-	 * @return
+	 * the non-null array. The digest is computed with DEFAULT_DIGEST_ALGORITHM.
+	 * @param content1 first array of bytes.
+	 * @param content2 second array of bytes.
+	 * @return the array of bytes for the resulting hash value.
 	 */
 	public static byte[] digest(byte [] content1, byte [] content2) {
 		return digest(new byte [][]{content1, content2});
 	}
 	
 	/**
-	 * Helper functions for building Merkle hash trees. Returns digest of
+	 * Helper function for building Merkle hash trees. Returns digest of
 	 * two concatenated byte arrays. If either is null, simply includes
-	 * the non-null array.
-	 * @param content1
-	 * @param content2
-	 * @return
+	 * the non-null array. The digest is computed with the specified digest algorithm.
+	 * @param digestAlgorithm the digest algorithm.
+	 * @param content1 first array of bytes.
+	 * @param content2 second array of bytes.
+	 * @return the array of bytes for the resulting hash value.
 	 * @throws NoSuchAlgorithmException 
 	 */
 	public static byte [] digest(String digestAlgorithm, byte [] content1, byte [] content2) throws NoSuchAlgorithmException {
 		return digest(digestAlgorithm, new byte [][]{content1, content2});
 	}
 	
+	/**
+	 * Helper function for building Merkle hash trees. 
+	 * Returns the digest of an array of byte arrays.
+	 * The digest is computed with DEFAULT_DIGEST_ALGORITHM.
+	 * @param contents the array of byte arrays.
+	 * @return the array of bytes for the resulting hash value.
+	 */
 	public static byte [] digest(byte [][] contents) {
 		DigestHelper dh = new DigestHelper();
 		for (int i=0; i < contents.length; ++i) {
@@ -125,6 +188,15 @@ public class DigestHelper {
 		return dh.digest();
 	}	
 	
+	/**
+	 * Helper function for building Merkle hash trees. 
+	 * Returns the digest of an array of byte arrays.
+	 * The digest is computed with the specified digest algorithm.
+	 * @param digestAlgorithm the digest algorithm.
+	 * @param contents the array of byte arrays.
+	 * @return the array of bytes of the resulting hash value.
+	 * @throws NoSuchAlgorithmException
+	 */
 	public static byte [] digest(String digestAlgorithm, byte [][] contents) throws NoSuchAlgorithmException {
 		DigestHelper dh = new DigestHelper(digestAlgorithm);
 		for (int i=0; i < contents.length; ++i) {
@@ -134,10 +206,10 @@ public class DigestHelper {
 	}
 	
 	/**
-	 * Digests some data and wraps it in a DigestInfo.
-	 * @param digestAlgorithm
-	 * @param content
-	 * @return
+	 * Digests some array of bytes with the specified digest algorithm and wraps it in a DigestInfo.
+	 * @param digestAlgorithm the digest algorithm.
+	 * @param content the array of bytes.
+	 * @return the array of bytes of the resulting DigestInfo.
 	 * @throws CertificateEncodingException
 	 * @throws NoSuchAlgorithmException 
 	 */
@@ -146,15 +218,23 @@ public class DigestHelper {
 		return digestEncoder(digestAlgorithm, digest);
 	}
 	
+	/**
+	 * Digests some array of bytes with DEFAULT_DIGEST_ALGORITHM and wraps it in a DigestInfo.
+	 * @param content the array of bytes.
+	 * @return the array of bytes of the resulting DigestInfo.
+	 * @throws CertificateEncodingException
+	 * @throws NoSuchAlgorithmException 
+	 */
 	public static byte [] encodedDigest(byte [] content) throws CertificateEncodingException {
 		byte [] digest = digest(content);
 		return digestEncoder(DEFAULT_DIGEST_ALGORITHM, digest);
 	}
 	
 	/**
-	 * Takes an existing digest and wraps it in a DigestInfo.
-	 * Do we need to wrap the byte [] in an OctetString?
-	 * Or does BC do that?
+	 * Takes a specified digest and wraps it in a DigestInfo for the specified digest algorithm.
+	 * @param digestAlgorithm the digest algorithm.
+	 * @param theDigest the digest.
+	 * @return the array of bytes of the resulting DigestInfo.
 	 */
 	public static byte [] digestEncoder(String digestAlgorithm, byte [] theDigest) {
 		AlgorithmIdentifier digestAlg = 
@@ -170,17 +250,35 @@ public class DigestHelper {
 		}
 	}
 	
+	/**
+	 * Returns the DigestInfo corresponding to a specified array of bytes.
+	 * @param encodedDigest the array of bytes.
+	 * @return the corresponding DigestInfo.
+	 * @throws CertificateEncodingException
+	 */
 	public static DigestInfo digestDecoder(byte [] encodedDigest) throws CertificateEncodingException {
 		DERObject di = CryptoUtil.decode(encodedDigest);
 		DigestInfo info = new DigestInfo((ASN1Sequence)di);
 		return info;
 	}
 	
+	/**
+	 * Returns an array of bytes as a String.
+	 * @param binaryObject the array of bytes.
+	 * @param radix the radix.
+	 * @return the corresponding String.
+	 */
 	public static String printBytes(byte [] binaryObject, int radix) {
 		BigInteger bi = new BigInteger(1,binaryObject);
 		return bi.toString(radix);
 	}
-	
+
+	/**
+	 * Returns a String as an array of bytes.
+	 * @param encodedString the String.
+	 * @param radix the radix.
+	 * @return the corresponding array of bytes.
+	 */
 	public static byte [] scanBytes(String encodedString, int radix) {
 		BigInteger bi = new BigInteger(encodedString, radix);
 		return bi.toByteArray();
