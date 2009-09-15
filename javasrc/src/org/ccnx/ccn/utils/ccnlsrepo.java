@@ -46,7 +46,6 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * will not crash, it just may not receive all of the information from each repository.
  *
  */
-// Note class name needs to match command name to work with ccn_run
 public class ccnlsrepo implements BasicNameEnumeratorListener {
 
 	private String prefix = "";
@@ -80,7 +79,8 @@ public class ccnlsrepo implements BasicNameEnumeratorListener {
 	 * 
 	 * @return void
 	 * 
-	 * @throws org.ccnx.ccn.protocol.MalformedContentNameStringException Converting the input to a ContentName can throw a MalformedContentNameException.
+	 * @throws org.ccnx.ccn.protocol.MalformedContentNameStringException Converting the input to a
+	 * ContentName can throw a MalformedContentNameException.
 	 * 
 	 * @see org.ccnx.ccn.protocol.ContentName
 	 */
@@ -147,7 +147,6 @@ public class ccnlsrepo implements BasicNameEnumeratorListener {
 	 * Method to initialize a CCNHandle and the CCNNameEnumerator for the ccnlsrepo tool.
 	 * This method also determines when the program should print out results and exit.
 	 * 
-	 * @param void
 	 * @return void
 	 * 
 	 * @throws org.ccnx.ccn.config.ConfigurationException A configuration exception is
@@ -194,7 +193,6 @@ public class ccnlsrepo implements BasicNameEnumeratorListener {
 	/**
 	 * Function to print out the options for ccnlsrepo
 	 * 
-	 * @param void
 	 * @returns void
 	 */
 	
@@ -225,7 +223,6 @@ public class ccnlsrepo implements BasicNameEnumeratorListener {
 			System.out.println();
 		}
 			
-		
 		return 0;
 	}
 
@@ -234,7 +231,7 @@ public class ccnlsrepo implements BasicNameEnumeratorListener {
 	 *	Method to print the names collection through enumeration.  Iterates through the names and prints each content name.
 	 *	Uses the ContentName.toString method and removes the leading "/" - component separator.
 	 * 
-	 * 
+	 *  @return void
 	 */
 	private void printNames() {
 		for (ContentName c : allNames)
