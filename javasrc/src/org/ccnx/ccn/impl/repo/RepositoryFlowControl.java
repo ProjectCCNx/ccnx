@@ -164,7 +164,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 * @param handle	a CCNHandle - if null one is created
 	 * @param shape		shapes are not currently implemented and may be deprecated. The only currently defined
 	 * 					shape is "Shape.STREAM"
-	 * @throws IOException	if library is null and a new CCNHandle can't be created
+	 * @throws IOException	if handle is null and a new CCNHandle can't be created
 	 * @see	CCNFlowControl
 	 */
 	public RepositoryFlowControl(ContentName name, CCNHandle handle, Shape shape) throws IOException {
