@@ -27,12 +27,9 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
 
 
 /**
- * Prototypical wrapper around an XMLEncodable object. Expand to variants
- * for CCNObjects. 
- * TODO - synchronization
- * @author smetters
- *
- * @param <E>
+ * Subclass of NetworkObject that wraps classes implementing XMLEncodable, and uses
+ * XMLEncodable's encode() and decode() methods to read and write those objects to 
+ * an OutputStream. Not CCN-specific, the CCN variant of this is CCNEncodableObject.
  */
 public class EncodableObject<E extends XMLEncodable> extends NetworkObject<E> {
 		

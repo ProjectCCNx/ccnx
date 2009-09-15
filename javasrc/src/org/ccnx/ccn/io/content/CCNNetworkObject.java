@@ -703,7 +703,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
-	 * Warning - calling this risks packet drops. It should only
+	 * Turn off flow control for this object. Warning - calling this risks packet drops. It should only
 	 * be used for tests or other special circumstances in which
 	 * you "know what you are doing".
 	 */
@@ -713,6 +713,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_disableFlowControlRequest = true;
 	}
 	
+	/**
+	 * Used to signal waiters that a new version is available.
+	 */
 	protected void newVersionAvailable() {
 		// by default signal all waiters
 		this.notifyAll();
@@ -720,7 +723,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	/**
 	 * Will return immediately if this object already has data, otherwise
-	 * will wait for timeout msec for new data to appear.
+	 * will wait indefinitely for new data to appear.
 	 */
 	public void waitForData() {
 		if (available())
@@ -736,10 +739,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	/**
-	 * Will wait for timeout msec for data to arrive. Callers should use
+	 * Will wait for data to arrive. Callers should use
 	 * available() to determine whether data has arrived or not.
-	 * If data already available, will return immediately.
-	 * @param timeout If 0, will wait forever (if data does not arrive).
+	 * If data already available, will return immediately (in other
+	 * words, this is only useful to wait for the first update to
+	 * an object, or to ensure that it has data). To wait for later
+	 * updates, call wait() on the object itself.
+	 * @param timeout In milliseconds. If 0, will wait forever (if data does not arrive).
 	 */
 	public void waitForData(long timeout) {
 		
