@@ -1,0 +1,29 @@
+CCN Content Object
+==================
+
+== Source references
+link:../../schema/ccn.xsd[ccn.xsd] is the xml schema that describes what the xml rendition of ccn data (including ContentObject messages) should look like.
+
+link:../../schema/ccn.dtd[ccn.dtd] is a dtd that should describe the same, in a less strongly-typed fashion.
+
+link:../../schema/tagname.csvdict[tagname.csvdict] contains the mapping between the DTAG values used in the binary encoding and the element names used in the XML representation.
+
+Below we will use a less formal abstract syntax to indicate how the pieces fit together.
+
+== ContentObject
+.......................................................
+ContentObject ::= Signature
+                  Name
+                  SignedInfo
+                  Content
+.......................................................
+
+The ContentObject element represents some arbitrary binary data
+(held in the link:Content element) together with its link:Name.html[Name], some
+additional bits of information (the SignedInfo), and a digital
+Signature of the other three elements.
+
+== Content
+.......................................................
+Content ::= BLOB
+.......................................................
