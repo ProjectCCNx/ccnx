@@ -1,6 +1,6 @@
 # Makefile for ccn/doc/technical
 
-DERIVED_HTML = DigestComponent.html InterestMessage.html NameConventions.html Staleness.html Registration.html URI.html Name.html ContentObject.html DTAG.html
+DERIVED_HTML = DigestComponent.html InterestMessage.html NameConventions.html Staleness.html Registration.html URI.html Name.html ContentObject.html DTAG.html dtd.html xsd.html
 
 DERIVED_INDEX = ../index.html index.html index.txt
 DEBRIS = .tagname.csv
@@ -26,6 +26,12 @@ DTAG.html: DTAG.txt .tagname.csv
 
 .tagname.csv: ../../schema/tagname.csvdict
 	sed -e 's/$$/,,,,/g' ../../schema/tagname.csvdict | cut -d , -f 1-3 > .tagname.csv
+
+dtd.html: dtd.txt ../../schema/ccn.dtd
+	asciidoc --unsafe dtd.txt
+
+xsd.html: xsd.txt ../../schema/ccn.xsd
+	asciidoc --unsafe xsd.txt
 
 InterestMessage.html: InterestMessage.txt
 	asciidoc InterestMessage.txt
