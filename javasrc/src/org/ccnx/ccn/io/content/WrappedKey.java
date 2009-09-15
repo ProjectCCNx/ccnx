@@ -87,14 +87,6 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			super(WrappedKey.class, name, publisher, handle);
 		}
 		
-		/**
-		 * Read constructor -- opens existing object.
-		 * @param type
-		 * @param name
-		 * @param handle
-		 * @throws XMLStreamException
-		 * @throws IOException
-		 */
 		public WrappedKeyObject(ContentName name, 
 				CCNHandle handle) throws IOException, XMLStreamException {
 			super(WrappedKey.class, name, (PublisherPublicKeyDigest)null, handle);
