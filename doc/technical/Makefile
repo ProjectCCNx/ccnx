@@ -1,15 +1,20 @@
 # Makefile for ccn/doc/technical
 
-DERIVED_HTML = DigestComponent.html InterestMessage.html NameConventions.html Staleness.html Registration.html URI.html
+DERIVED_HTML = DigestComponent.html InterestMessage.html NameConventions.html Staleness.html Registration.html URI.html Name.html ContentObject.html
+
 DERIVED_INDEX = ../index.html index.html index.txt
-SRC_HTML = InterestMessage-changes.html InterestMessage-old.html
+SRC_HTML = # any checked-in html files should go here
 
 default:
+	@: do nothing by default, and be quiet about it
 
 all documentation: $(DERIVED_HTML) $(DERIVED_INDEX)
 
 clean-documentation: _always
 	rm -f $(DERIVED_HTML) $(DERIVED_INDEX)
+
+clean:
+	@: intentional NOP - clean-documentation really does this
 
 DigestComponent.html: DigestComponent.txt
 	asciidoc DigestComponent.txt
@@ -28,6 +33,12 @@ Staleness.html: Staleness.txt
 
 URI.html: URI.txt
 	asciidoc URI.txt
+
+ContentObject.html: ContentObject.txt
+	asciidoc ContentObject.txt
+
+Name.html: Name.txt
+	asciidoc Name.txt
 
 ../index.html: ../index.txt
 	asciidoc ../index.txt
