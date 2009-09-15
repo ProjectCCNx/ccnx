@@ -46,9 +46,6 @@ import org.ccnx.ccn.protocol.SignedInfo;
 
 
 /**
- * 
- * @author jthornto, rbraynar, rasmusse
- *
  * Implements a log-structured RepositoryStore on a filesystem using sequential data files with an index for queries
  */
 
@@ -91,23 +88,50 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		long offset;
 	}
 
+	/**
+	 * Gets content matching the given interest
+	 * 
+	 * @param interest the given interest
+	 * @return the closest matching ContentObject or null if no match
+	 */
 	public ContentObject getContent(Interest interest)
 			throws RepositoryException {
 		return _index.get(interest, this);
 	}
 
+	/**
+	 * Gets all names matching the given NameEnumeration interest
+	 * 
+	 * @param i the interest
+	 * @returns the data as a NameEnumerationResponse
+	 */
 	public NameEnumerationResponse getNamesWithPrefix(Interest i) {
-		return _index.getNamesWithPrefix(i, this);
+		return _index.getNamesWithPrefix(i);
 	}
 
+	/**
+	 * Gets the current policy for this repository
+	 * @returns the policy
+	 */
 	public Policy getPolicy() {
 		return _policy;
 	}
 
+	/**
+	 * Gets the current version of this RepositoryStore
+	 * 
+	 * @return the version as a String
+	 */
 	public String getVersion() {
 		return CURRENT_VERSION;
 	}
 
+	/**
+	 * Read the current repository file(s) for this repository and create an index for them.
+	 * WARNING: multiple files are not well tested
+	 * 
+	 * @return the number of files making up the repository
+	 */
 	protected Integer createIndex() {
 		int max = 0;
 		_index = new ContentTree();
@@ -126,12 +150,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 						RepoFile rfile = new RepoFile();
 						rfile.file = new File(_repositoryFile,filenames[i]);
 						rfile.openFile = new RandomAccessFile(rfile.file, "r");
-						//InputStream is = new RandomAccessInputStream(rfile.openFile);
 						InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile));
-						//FileInputStream fis = new FileInputStream(rfile.file);
-						//is = new BufferedInputStream(fis);
-						//FileChannel fc = fis.getChannel();
-					
+						
 						Log.fine("Creating index for " + filenames[i]);
 						while (true) {
 							FileRef ref = new FileRef();
@@ -178,6 +198,16 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		return new Integer(max);
 	}
 	
+	/**
+	 * Initialize the repository
+	 * 
+	 * @param handle a CCNHandle used to retrieve keys for storing repository private data as ContentObjects
+	 * @param repositoryRoot the directory containing the files to store a repository. A new directory is created if this doesn't yet exist
+	 * @param policyFile a file containing policy data to define the initial repository policy (see BasicPolicy)
+	 * @param localName the local name for this repository as a slash separated String (defaults if null)
+	 * @param globalPrefix the global prefix for this repository as a slash separated String (defaults if null)
+	 * @throws RepositoryException if the policyFile, localName, or globalName are improperly formatted
+	 */
 	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix) throws RepositoryException {
 		boolean policyFromFile = (null != policyFile);
 		boolean nameFromArgs = (null != localName);
@@ -226,9 +256,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			Log.warning("Error opening content output file index " + maxFileIndex);
 		}
 		
-		/**
-		 * Verify stored policy info
-		 */
+		// Verify stored policy info
 		String version = checkFile(VERSION, CURRENT_VERSION, handle, false);
 		if (version != null && !version.trim().equals(CURRENT_VERSION))
 			throw new RepositoryException("Bad repository version: " + version);
@@ -265,7 +293,13 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		}
 	}
 
-
+	/**
+	 * Save the given content in the repository store
+	 * 
+	 * @param content the content to save
+	 * @throws RepositoryException it the content can not be written or encoded
+	 * @returns NameEnumerationResponse if this satisfies an outstanding NameEnumeration request
+	 */
 	public NameEnumerationResponse saveContent(ContentObject content) throws RepositoryException {
 		// Make sure content is within allowable nameSpace
 		boolean nameSpaceOK = false;
@@ -307,6 +341,13 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		}
 	}
 
+	/**
+	 * Get content for the given reference from the storage files. Used to retrieve content for 
+	 * comparison operations.
+	 * 
+	 * @param ref the reference
+	 * @return ContentObject at the referenced slot in the storage files
+	 */
 	public ContentObject get(ContentRef ref) {
 		// This is a call back based on what we put in ContentTree, so it must be
 		// using our subtype of ContentRef
@@ -385,6 +426,12 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		}
 	}
 
+	/**
+	 * Dump all names of data stored in the repository into a special file within the repository 
+	 * on diagnostic request from higher level code
+	 * 
+	 * @param name "nametree" or "nametreewide" to decide whether to limit the printout length of components
+	 */
 	public boolean diagnostic(String name) {
 		if (0 == name.compareToIgnoreCase(DIAG_NAMETREE)) {
 			dumpNames(35);
@@ -396,6 +443,11 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		return false;
 	}
 
+	/**
+	 * Cleanup on shutdown
+	 * 
+	 * TODO I'm not sure the higher level code actually calls this currently
+	 */
 	public void shutDown() {
 		if (null != _activeWriteFile.openFile) {
 			try {

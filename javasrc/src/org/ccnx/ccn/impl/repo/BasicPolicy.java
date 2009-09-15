@@ -36,9 +36,34 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
 /**
+ * A reference implementation of Policy using an XML based policy file
  * 
- * @author rasmusse
- *
+ * TODO policy change requests via the network are currently totally insecure and could easily be 
+ * exploited to disrupt the proper functioning of a repository.
+ * 
+ * The policy file is structured as follows:
+ * 
+ * All elements must be nested within a <policy> element.<p>
+ * 
+ * The file must contain a <version> element with an id attribute set to a string
+ * corresponding to the current version of the repository which is "1.4".<p>
+ * 
+ * The file must contain a <localname> element which specifies the local name.<p>
+ * The file must contain a <globalname> element which specifies the global name.<p>
+ * The file may contain any number of <namespace> elements specifying namespaces<p>
+ * covered by the repository
+ * 
+ * <pre>
+ * For example:
+ * 	<policy>
+ *		<version id="1.4"/>
+ *		<localname> TestRepository </localname>
+ *		<globalname> parc.com/csl/ccn/repositories </globalname>
+ *		<namespace> /testNameSpace </namespace>
+ *		<namespace> /testNameSpace2 </namespace>
+ * 	</policy>
+ * </pre>
+ * 
  */
 public class BasicPolicy implements Policy {
 	
@@ -57,6 +82,10 @@ public class BasicPolicy implements Policy {
 	private ArrayList<ContentName> _nameSpace = new ArrayList<ContentName>(0);
 	private ArrayList<ContentName> _prevNameSpace = new ArrayList<ContentName>(0);
 	
+	/**
+	 * Constructor defaulting the initial namespace to "everything"
+	 * @param name local name for this repository
+	 */
 	public BasicPolicy(String name) {
 		try {
 			if (null != name)
@@ -65,6 +94,11 @@ public class BasicPolicy implements Policy {
 		} catch (MalformedContentNameStringException e) {}
 	}
 	
+	/**
+	 * Constructor allowing an initial namespace to be set
+	 * @param name local name for this repository
+	 * @param namespace the initial namespace
+	 */
 	@SuppressWarnings("unchecked")
 	public BasicPolicy(String name, ArrayList<ContentName> namespace) {
 		if (null != name) {
@@ -101,6 +135,15 @@ public class BasicPolicy implements Policy {
 		}
 	}
 	
+	/**
+	 * Reads, parses and applies a new policy file. This can be called to read a policy file specified
+	 * during repository startup or a file sent via the network.
+	 * 
+	 * @param stream	The policy file stream
+	 * @param fromNet	true if the policy file was submitted over the network
+	 * @throws XMLStreamException if the xml is invalid or doesn't contain a version, local name or global name
+	 * @throws IOException on file read errors
+	 */
 	public boolean update(InputStream stream, boolean fromNet) throws XMLStreamException, IOException {
 		_content = new byte[stream.available()];
 		stream.read(_content);
@@ -143,7 +186,7 @@ public class BasicPolicy implements Policy {
 	}
 	
 	/**
-	 * For now we only expect the values "policy", "version", and "namespace"
+	 * Parses the XML file
 	 * @param reader
 	 * @param expectedValue
 	 * @return
@@ -259,6 +302,10 @@ public class BasicPolicy implements Policy {
 		return event;
 	}
 
+	/**
+	 * Gets the current policy as a ContentObject
+	 * @return the policy content
+	 */
 	public ContentObject getPolicyContent() {
 		// TODO WARNING: this code should not call a generic content builder meant for
 		// making test content. The repository needs to have its own set of keys, manage
@@ -272,24 +319,57 @@ public class BasicPolicy implements Policy {
 				_content);
 	}
 	
+	/**
+	 * Creates the path for a policy file for a repository given it's global prefix and local name
+	 * 
+	 * @param globalPrefix global prefix as a ContentName
+	 * @param localName local name as a / separated String
+	 * @return the name as a ContentName
+	 */
 	public static ContentName getPolicyName(ContentName globalPrefix, String localName) {
 		return ContentName.fromNative(globalPrefix, new String[]{localName, RepositoryStore.REPO_DATA, RepositoryStore.REPO_POLICY});
 	}
 	
+	/**
+	 * Gets the policy path for this repository
+	 * @return the policy path as a ContentName
+	 */
 	public ContentName getPolicyName() { return getPolicyName(_globalPrefix, _localName); }
 
+	/**
+	 * Sets the repository version to be used by this policy interpreter. After this call any
+	 * policy file containing a different version will be rejected.
+	 * 
+	 * @param version The version as a String
+	 */
 	public void setVersion(String version) {
 		_repoVersion = version;
 	}
 
+	/**
+	 * Sets the global prefix for this policy interpreter. After this call any policy file
+	 * containing a different global prefix will be rejected
+	 *
+	 * @param globalPrefix the global prefix as a slash separated String
+	 */
 	public void setGlobalPrefix(String globalPrefix) throws MalformedContentNameStringException {
 		if (null == _globalPrefix) {
 			changeGlobalPrefix(globalPrefix);
 		}
 	}
 	
+	/**
+	 * Gets the global prefix currently in use for this repository
+	 * 
+	 * @return the global prefix as a ContentName
+	 */
 	public ContentName getGlobalPrefix() { return _globalPrefix; }
 	
+	/**
+	 * Gets the local name currently used by this repository
+	 * 
+	 * @return the local name as a slash separated String
+	 */
 	public String getLocalName() { return _localName; }
 
 	public void setLocalName(String localName) throws MalformedContentNameStringException {

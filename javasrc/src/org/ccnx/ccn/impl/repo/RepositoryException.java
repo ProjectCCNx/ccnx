@@ -18,9 +18,7 @@
 package org.ccnx.ccn.impl.repo;
 
 /**
- * 
- * @author rasmusse
- *
+ * Exceptions specific to Repositories
  */
 public class RepositoryException extends Exception {
 	

@@ -40,8 +40,6 @@ import org.ccnx.ccn.protocol.Interest;
  * the storage, as opposed to the Repository Protocol which 
  * is implemented by a RepositoryServer. 
  * 
- * @author rasmusse
- *
  */
 
 public interface RepositoryStore {

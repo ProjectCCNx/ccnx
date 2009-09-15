@@ -30,9 +30,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * MemoryRepoStore is a transient, in-memory store for applications that 
  * wish to provide a repo for their own content as long as they are running.
  * Given that it is transient, this implementation breaks the usual convention
- * that a repository provides persistent storage. 
- * @author jthornto
- *
+ * that a repository provides persistent storage.  *
  */
 public class MemoryRepoStore extends RepositoryStoreBase implements RepositoryStore, ContentTree.ContentGetter {
 	public final static String CURRENT_VERSION = "1.0";
@@ -102,7 +100,7 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
 	}
 		
 	public NameEnumerationResponse getNamesWithPrefix(Interest i) {
-		return _index.getNamesWithPrefix(i, this);
+		return _index.getNamesWithPrefix(i);
 	}
 
     public void shutDown() {

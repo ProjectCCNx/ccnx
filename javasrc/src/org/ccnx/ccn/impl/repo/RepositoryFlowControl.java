@@ -49,7 +49,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * Intended to handle the repo ack protocol. This is currently unused until we find
  * a workable way to do it.
  * 
- * @author smetters, rasmusse
  * @see CCNFlowControl
  * @see RepositoryInterestHandler
  */
@@ -114,9 +113,6 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 * The names returned by NameEnumerator are only the 1 level names
 	 * without prefix, but the names we are holding contain the basename
 	 * so we reconstruct a full name here.
-	 *
-	 * @author rasmusse
-	 *
 	 */
 	private class RepoAckHandler implements BasicNameEnumeratorListener {
 
@@ -130,8 +126,6 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	
 	/**
 	 * Preserves information about our clients
-	 * @author rasmusse
-	 *
 	 */
 	protected class Client {
 		protected ContentName _name;
@@ -148,8 +142,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	}
 
 	/**
-	 * 
-	 * @param library
+	 * @param handle a CCNHandle - if null one is created
 	 * @throws IOException if library is null and a new CCNHandle can't be created
 	 */
 	public RepositoryFlowControl(CCNHandle handle) throws IOException {
@@ -158,8 +151,8 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 
 	/**
 	 * @param name		an initial namespace for this stream
-	 * @param library
-	 * @throws IOException if library is null and a new CCNHandle can't be created
+	 * @param handle	a CCNHandle - if null one is created
+	 * @throws IOException if handle is null and a new CCNHandle can't be created
 	 */
 	public RepositoryFlowControl(ContentName name, CCNHandle handle) throws IOException {
 		this(handle);
@@ -168,7 +161,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	
 	/**
 	 * @param name		an intial namespace for this stream
-	 * @param library
+	 * @param handle	a CCNHandle - if null one is created
 	 * @param shape		shapes are not currently implemented and may be deprecated. The only currently defined
 	 * 					shape is "Shape.STREAM"
 	 * @throws IOException	if library is null and a new CCNHandle can't be created
@@ -244,6 +237,11 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		}
 	}
 
+	/**
+	 * BestEffort means the ACK protocol is not used. BestEffort should never be set false
+	 * within the current implementation.
+	 * @param flag
+	 */
 	public void setBestEffort(boolean flag) {
 		_bestEffort = flag;
 	}
@@ -252,6 +250,9 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		return _bestEffort ? true : _holdingArea.size() == 0;
 	}
 
+	/**
+	 * Only used by unimplemented ACK protocol
+	 */
 	public void afterPutAction(ContentObject co) throws IOException {
 		if (! _bestEffort) {
 			if (_holdingArea.size() > _ackInterval) {
@@ -291,6 +292,11 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		}
 	}
 
+	/**
+	 * Cancel any outstanding interests on close.
+	 * TODO - since the flow controller may be used by multiple streams we probably want to use Clients to decide
+	 * what interests to cancel.
+	 */
 	public void cancelInterests() {
 		if (! _bestEffort) {
 			for (ContentName prefix : _filteredNames) {
