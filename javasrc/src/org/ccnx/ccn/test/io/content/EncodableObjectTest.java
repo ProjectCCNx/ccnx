@@ -26,7 +26,6 @@ import java.io.IOException;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.util.Arrays;
-import org.ccnx.ccn.io.NullOutputStream;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
@@ -144,10 +143,6 @@ public class EncodableObjectTest {
 	
 	@Test
 	public void testUpdate() {
-		EncodableCollectionData ecd1 = new EncodableCollectionData(small1);
-		EncodableCollectionData ecd2 = new EncodableCollectionData();
-		EncodableCollectionData ecd3 = new EncodableCollectionData(small2);
-		
 		boolean caught = false;
 		EncodableCollectionData emptycoll = new EncodableCollectionData();
 		try {
@@ -160,7 +155,10 @@ public class EncodableObjectTest {
 		}
 		Assert.assertTrue("Failed to produce expected exception.", caught);
 
-
+		EncodableCollectionData ecd1 = new EncodableCollectionData(small1);
+		EncodableCollectionData ecd2 = new EncodableCollectionData();
+		EncodableCollectionData ecd3 = new EncodableCollectionData(small2);
+		
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		ByteArrayOutputStream baos3 = new ByteArrayOutputStream();
 

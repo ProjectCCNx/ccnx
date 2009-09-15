@@ -48,8 +48,6 @@ import org.ccnx.ccn.protocol.Interest;
  * The application must supply a RepositoryStore instance to take care of actual storage
  * and retrieval, which might use persistent storage or application data structures.
  * 
- * @author rasmusse
- *
  * Some notes:
  * We use a policy file to decide which namespaces to save. The policy file
  * is currently parsed within the lower level.

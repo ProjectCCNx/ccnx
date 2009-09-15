@@ -32,7 +32,6 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.NullOutputStream;
 
 
-
 /**
  * A NetworkObject provides support for storing an object in a network based backing store.
  * It provides support for loading the object from the network, tracking if the object's data

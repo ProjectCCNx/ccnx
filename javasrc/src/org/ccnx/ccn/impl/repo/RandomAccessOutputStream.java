@@ -21,24 +21,81 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 
+/**
+ * RandomAccessOutputStream extends OutputStream to allow writing
+ * to the RandomAccessFile that is the backend of the repository.
+ * 
+ * This class is intended to be used for writing to the backend
+ * repository and not general CCN stream use.
+ * 
+ * @see OutputStream
+ * @see RandomAccessFile
+ */
 public class RandomAccessOutputStream extends OutputStream {
 
 	protected RandomAccessFile underlying;
+	
+	/**
+	 * Method to set the backend RandomAccessFile for writing
+	 * 
+	 * @param f Backend RandomAccessFile
+	 */
 	
 	public RandomAccessOutputStream(RandomAccessFile f) {
 		underlying = f;
 	}
 
+	
+	/**
+	 * Method implementing write one byte at a time.
+	 * 
+	 * @param b byte to be written
+	 * 
+	 * @return void
+	 * 
+	 * @throws IOException
+	 * 
+	 * @see OutputStream
+	 * @see RandomAccessFile
+	 */
 	@Override
 	public void write(int b) throws IOException {
 		underlying.write(b);
 	}
 	
+	
+	/**
+	 * Method to write a byte array to the underlying repository file.
+	 * 
+	 * @param b byte[] to write to the file
+	 * 
+	 * @return void
+	 * 
+	 * @throws IOException
+	 * 
+	 * @see OutputStream
+	 * @see RandomAccessFile
+	 */
 	@Override
 	public void write(byte[] b) throws IOException {
 		underlying.write(b);
 	}
 	
+	
+	/**
+	 * Method to write a byte array of len bytes to the underlying repository file starting at offset off.
+	 * 
+	 * @param b byte[] to write to the file
+	 * @param off Offset to start writing in the file
+	 * @param len number of bytes to write from the byte[] b
+	 * 
+	 * @return void
+	 * 
+	 * @throws IOException
+	 * 
+	 * @see OutputStream
+	 * @see RandomAccessFile
+	 */
 	@Override
 	public void write(byte[] b, int off, int len) throws IOException {
 		underlying.write(b, off, len);

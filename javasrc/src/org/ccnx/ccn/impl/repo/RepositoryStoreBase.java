@@ -38,14 +38,17 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 /**
  * Provide the generic policy-handling features of a RepositoryStore to simplify
  * implementation of subclasses for different storage systems.
- * @author jthornto
- *
  */
 public abstract class RepositoryStoreBase implements RepositoryStore {
 	
 	protected Policy _policy = null;
 	protected RepositoryInfo _info = null;
 
+	/**
+	 * Decide whether incoming data is a request to update the repository policy and attempt to
+	 * update the policy if so. This is done by simply comparing the prefix of the name to the prefix
+	 * expected for a policy file.
+	 */
 	public boolean checkPolicyUpdate(ContentObject co)
 			throws RepositoryException {
 		Log.info("Got potential policy update: {0}, expected prefix {1}.", co.name(), _info.getPolicyName());
@@ -69,6 +72,12 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 		return false;
 	}
 
+	/**
+	 * Handle diagnostic requests
+	 * 
+	 * @return true if request recognized and carried out
+	 */
+	@Override
 	public boolean diagnostic(String name) {
 		return false;
 	}
@@ -77,10 +86,17 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 
 	public abstract NameEnumerationResponse getNamesWithPrefix(Interest i);
 
+	/**
+	 * Gets the currently valid namespace for this repository
+	 * @return the namespace as an ArrayList of ContentNames containing prefixes of valid namespaces
+	 */
 	public ArrayList<ContentName> getNamespace() {
 		return _policy.getNameSpace();
 	}
 
+	/**
+	 * Gets the current policy for this repository
+	 */
 	public Policy getPolicy() {
 		return _policy;
 	}
@@ -89,10 +105,14 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * Returns the current version of the repository instance.
 	 * Subclasses must implement this method to report their version for returning
 	 * repository information.
-	 * @return
+	 * @return the version as a String
 	 */
 	public abstract String getVersion();
 	
+	/**
+	 * Gets current repository information to be used as content in a ContentObject
+	 * @param names intended for nonimplemented repository ACK protocol - currently unused
+	 */
 	public byte[] getRepoInfo(ArrayList<ContentName> names) {
 		try {
 			RepositoryInfo rri = _info;
@@ -106,6 +126,9 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 		return null;
 	}
 
+	/**
+	 * Initialize a repository
+	 */
 	public abstract void initialize(CCNHandle handle, String repositoryRoot,
 			File policyFile, String localName, String globalPrefix)
 			throws RepositoryException;

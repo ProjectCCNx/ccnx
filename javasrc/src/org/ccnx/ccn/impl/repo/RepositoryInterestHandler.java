@@ -39,9 +39,6 @@ import org.ccnx.ccn.protocol.Interest;
  * @see RepositoryServer
  * @see RepositoryFlowControl
  * @see RepositoryDataListener
- * 
- * @author rasmusse
- *
  */
 
 public class RepositoryInterestHandler implements CCNFilterListener {

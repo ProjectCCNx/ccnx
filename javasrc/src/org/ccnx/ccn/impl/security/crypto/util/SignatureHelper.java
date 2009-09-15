@@ -47,6 +47,16 @@ import org.ccnx.ccn.impl.support.Log;
  */
 public class SignatureHelper {
 	
+	/**
+	 * Signs an array of bytes with a private signing key and specified digest algorithm. 
+	 * @param digestAlgorithm the digest algorithm.
+	 * @param toBeSigned the array of bytes to be signed.
+	 * @param signingKey the signing key.
+	 * @return the signature.
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 * @throws InvalidKeyException
+	 */
 	public static byte [] sign(String digestAlgorithm,
 							   byte [] toBeSigned,
 							   PrivateKey signingKey) throws SignatureException, 
@@ -74,10 +84,10 @@ public class SignatureHelper {
 	
 	/**
 	 * Sign concatenation of the toBeSigneds.
-	 * @param digestAlgorithm
-	 * @param toBeSigneds
-	 * @param signingKey
-	 * @return
+	 * @param digestAlgorithm the digest algorithm.
+	 * @param toBeSigneds the content to be signed.
+	 * @param signingKey the signing key.
+	 * @return the signature.
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
 	 * @throws InvalidKeyException
@@ -110,6 +120,17 @@ public class SignatureHelper {
 		return sig.sign();
 	}
 	
+	/**
+	 * Verifies the signature on some data, given the verification key and digest algorithm. 
+	 * @param data the data.
+	 * @param signature the signature.
+	 * @param digestAlgorithm the digest algorithm.
+	 * @param verificationKey the public verification key.
+	 * @return the correctness of the signature as a boolean.
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 * @throws InvalidKeyException
+	 */
 	public static boolean verify(
 			byte [][] data,
 			byte [] signature,
@@ -146,7 +167,7 @@ public class SignatureHelper {
 	
 	/**
 	 * gets an AlgorithmIdentifier incorporating a given digest and
-	 * encryption algorithm, and containing any necessary prarameters for
+	 * encryption algorithm, and containing any necessary parameters for
 	 * the signing key
 	 *
 	 * @param hashAlgorithm the JCA standard name of the digest algorithm

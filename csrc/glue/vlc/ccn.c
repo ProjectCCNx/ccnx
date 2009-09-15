@@ -71,8 +71,10 @@ vlc_module_end();
 /*****************************************************************************
  * Local prototypes
  *****************************************************************************/
-#define CCN_FIFO_MAX (2 * 1024 * 1024)
+#define CCN_FIFO_MAX_PACKETS 512
+#define CCN_CHUNK_SIZE 4096
 #define CCN_VERSION_TIMEOUT 5000
+
 struct access_sys_t
 {
     vlc_url_t  url;
@@ -104,7 +106,9 @@ static int CCNOpen(vlc_object_t *p_this)
     p_sys = p_access->p_sys;
     if (p_sys == NULL)
         return VLC_ENOMEM;
+#ifdef VLCPLUGINVER099
     p_access->info.b_prebuffered = true;
+#endif
     p_access->info.i_size = -1;
     /* Update default_pts */
     var_Create(p_access, "ccn-caching", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
@@ -151,8 +155,13 @@ static int CCNOpen(vlc_object_t *p_this)
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
+#ifdef VLCPLUGINVER099
     i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
                       VLC_THREAD_PRIORITY_INPUT, false);
+#else
+    i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
+                              VLC_THREAD_PRIORITY_INPUT);
+#endif
     if (i_ret == 0)
         return VLC_SUCCESS;
 
@@ -267,7 +276,6 @@ static ssize_t CCNRead(access_t *p_access, uint8_t *buf, size_t size)
 /*****************************************************************************
  * CCNSeek:
  *****************************************************************************/
-#define CCN_CHUNK_SIZE 4096
 
 static int CCNSeek(access_t *p_access, int64_t i_pos)
 {
@@ -319,10 +327,12 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
             *pb_bool = true;
             break;
 
+#ifdef VLCPLUGINVER099
         case ACCESS_GET_MTU:
             pi_int = (int*)va_arg(args, int *);
             *pi_int = 0;
             break;
+#endif
 
         case ACCESS_GET_PTS_DELAY:
             pi_64 = (int64_t*)va_arg(args, int64_t *);
@@ -503,7 +513,7 @@ incoming_content(struct ccn_closure *selfp,
     }
 
     /* need to do this with a condition variable, since we don't want to sleep the thread */
-    while (block_FifoSize(p_sys->p_fifo) > CCN_FIFO_MAX) {
+    while (block_FifoCount(p_sys->p_fifo) > CCN_FIFO_MAX_PACKETS) {
         msleep(1000);
         if (!vlc_object_alive(p_access)) return(CCN_UPCALL_RESULT_OK);
     }

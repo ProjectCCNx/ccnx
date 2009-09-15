@@ -31,9 +31,11 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
+ * Object to return information associated with a Repository to a repository client
  * 
- * @author rasmusse
- *
+ * TODO This object was once intended to be used for the currently unimplemented repo ACK
+ * protocol also. If we decide to implement the ACK protocol in a different way, the dual use
+ * aspects of this object should be removed.
  */
 
 public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
@@ -54,6 +56,10 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	private static final String GLOBAL_PREFIX_ELEMENT = "GlobalPrefix";
 	private static final String LOCAL_NAME_ELEMENT = "LocalName";
 	
+	/**
+	 * The two possible types.
+	 * INFO is to return information, DATA is for the ACK protocol
+	 */
 	public enum RepoInfoType {
 		INFO ("INFO"),
 		DATA ("DATA");
@@ -77,7 +83,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		}
 	}
 	
-	public static class GlobalPrefix extends ContentName {
+	private static class GlobalPrefix extends ContentName {
 		
 		public GlobalPrefix(ContentName cn) {
 			super(cn);
@@ -93,6 +99,14 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	
 	protected static final HashMap<RepoInfoType, String> _InfoTypeNames = new HashMap<RepoInfoType, String>();
 	
+	/**
+	 * The main constructor used to create the information returned by a repository during initialization
+	 * 
+	 * @param version
+	 * @param globalPrefix
+	 * @param localName
+	 * @throws MalformedContentNameStringException
+	 */
 	public RepositoryInfo(String version, String globalPrefix, String localName) throws MalformedContentNameStringException {
 		_localName = localName;
 		_repoVersion = version;
@@ -101,13 +115,15 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		_globalPrefix = new GlobalPrefix(ContentName.fromNative(globalPrefix));
 	}
 	
-	public RepositoryInfo(String version, ContentName globalPrefix, String localName) throws MalformedContentNameStringException {
-		_localName = localName;
-		_repoVersion = version;
-		_globalPrefix = new GlobalPrefix(globalPrefix);
-	}
-	
-	
+	/**
+	 * Currently used only to test decoding/encoding
+	 * 
+	 * @param version
+	 * @param globalPrefix
+	 * @param localName
+	 * @param names
+	 * @throws MalformedContentNameStringException
+	 */
 	public RepositoryInfo(String version, String globalPrefix, String localName, ArrayList<ContentName> names) throws MalformedContentNameStringException {
 		this(localName, globalPrefix, version);
 		for (ContentName name : names) {
@@ -116,8 +132,18 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		_type = RepoInfoType.DATA;
 	}
 	
+	/**
+	 * This would be used only for the ACK protocol.
+	 * @param version
+	 * @param globalPrefix
+	 * @param localName
+	 * @param names
+	 * @throws MalformedContentNameStringException
+	 */
 	public RepositoryInfo(String version, ContentName globalPrefix, String localName, ArrayList<ContentName> names) throws MalformedContentNameStringException {
-		this(localName, globalPrefix, version);
+		_localName = localName;
+		_repoVersion = version;
+		_globalPrefix = new GlobalPrefix(globalPrefix);
 		for (ContentName name : names) {
 			_names.add(name.clone());
 		}
@@ -126,14 +152,26 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 
 	public RepositoryInfo() {}	// For decoding
 	
+	/**
+	 * Gets the current local name as a slash separated String
+	 * @return the local name
+	 */
 	public String getLocalName() {
 		return _localName;
 	}
 	
+	/**
+	 * Gets the current global prefix as a ContentName
+	 * @return the prefix
+	 */
 	public ContentName getGlobalPrefix() {
 		return _globalPrefix;
 	}
 	
+	/**
+	 * Gets the ContentName that would be used to change policy for this repository
+	 * @return the name
+	 */
 	public synchronized ContentName getPolicyName() {
 		if (null == _policyName) {
 			_policyName = BasicPolicy.getPolicyName(_globalPrefix, _localName);
@@ -142,18 +180,26 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		return _policyName;
 	}
 	
-	public ArrayList<ContentName> getNames() {
-		return _names;
-	}
-	
+	/**
+	 * Get the type of information encapsulated in this object (INFO or DATA).
+	 * @return
+	 */
 	public RepoInfoType getType() {
 		return _type;
 	}
 	
+	/**
+	 * Gets the repository store version as a String
+	 * @return the version
+	 */
 	public String getRepositoryVersion() {
 		return _repoVersion;
 	}
 	
+	/**
+	 * Get the repository store version as a Double
+	 * @return the version
+	 */
 	public String getVersion() {
 		return Double.toString(_version);
 	}
