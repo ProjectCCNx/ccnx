@@ -49,7 +49,10 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
- * Extends a NetworkObject to add specifics for using a CCN based backing store.
+ * Extends a NetworkObject to add specifics for using a CCN-based backing store. Each time
+ * the object is saved creates a new CCN version. Readers can open a specific version or
+ * not specify a version, in which case the latest available version is read. Defaults
+ * allow for saving data to a repository or directly to the network.
  *
  * Need to support four use models:
  * dimension 1: synchronous - ask for and block, the latest version or a specific version
@@ -59,13 +62,9 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * can attempt to do better than that. Start by using only in the background load case, as until
  * something comes back we can keep using the old one and the propensity for blocking is high.
  * 
- * Support for superclasses or users specifying different flow controllers with
+ * Support for subclasses or users specifying different flow controllers with
  * different behavior. Build in support for either the simplest standard flow
- * controller, or a standard repo-backed flow controller.
- * 
- * @author smetters
- *
- * @param <E>
+ * controller, or a standard repository-backed flow controller.
  */
 public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNInterestListener {
 
@@ -77,10 +76,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Unversioned "base" name.
 	 */
 	protected ContentName _baseName;
+	
 	/**
 	 * The most recent version we have read/written.
 	 */
 	protected byte [] _currentVersionComponent; 
+	
 	/**
 	 * Cached versioned name.
 	 */
@@ -103,47 +104,57 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected boolean _raw = DEFAULT_RAW; // what kind of flow controller to make if we don't have one
 	protected ContentKeys _keys;
 	
-	// control ongoing update.
+	/**
+	 *  Controls ongoing update.
+	 */
 	ArrayList<byte[]> _excludeList = new ArrayList<byte[]>();
 	Interest _currentInterest = null;
 	boolean _continuousUpdates = false;
 	
 	/**
-	 * Basic write constructor.
-	 * Setting true or false in this constructor determines default -- repo or raw objects.
-	 * @param type
-	 * @param name
-	 * @param data
-	 * @throws ConfigurationException
-	 * @throws IOException
+	 * Basic write constructor. This will set the object's internal data but it will not save it
+	 * until save() or saveToRepository() is called. If save() is called, will save directly
+	 * to the network. If saveToRepository() is called on the first save, it will override backing 
+	 * store behavior and store the object to a repository.
+	 * @param type Wrapped class type.
+	 * @param name Name under which to save object.
+	 * @param data Data to save.
+	 * @param handle CCNHandle to use for network operations. If null, a new one is created using {@link CCNHandle#open()}.
+	 * @throws IOException If there is an error setting up network backing store.
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNHandle handle) throws IOException {
 		this(type, name, data, DEFAULT_RAW, null, null, handle);
 	}
 		
 	/**
-	 * Allow publisher control.
-	 * @param type
-	 * @param name
-	 * @param data
-	 * @param publisher which publisher key to sign this content with, or handle defaults if null
-	 * @param handle
-	 * @throws IOException
+	 * Basic write constructor. This will set the object's internal data but it will not save it
+	 * until save() or saveToRepository() is called. If save() is called, will save directly
+	 * to the network. If saveToRepository() is called on the first save, it will override backing 
+	 * store behavior and store the object to a repository.
+	 * @param type Wrapped class type.
+	 * @param name Name under which to save object.
+	 * @param data Data to save.
+	 * @param publisher The key to use to sign this data, or our default if null.
+	 * @param handle CCNHandle to use for network operations. If null, a new one is created using {@link CCNHandle#open()}.
+	 * @throws IOException If there is an error setting up network backing store.
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNHandle handle) throws IOException {
 		this(type, name, data, DEFAULT_RAW, publisher, locator, handle);
 	}
 		
 	/**
-	 * A raw object uses a raw flow controller. A non-raw object uses a repository backend.
-	 * repo flow controller.
-	 * @param type
-	 * @param name
-	 * @param data
-	 * @param raw
-	 * @param publisher which publisher key to sign this content with, or handle defaults if null
-	 * @param handle
-	 * @throws IOException
+	 * Basic write constructor. This will set the object's internal data but it will not save it
+	 * until save() or saveToRepository() is called. If save() is called, will save directly
+	 * to the network. If saveToRepository() is called on the first save, it will override backing 
+	 * store behavior and store the object to a repository.
+	 * @param type Wrapped class type.
+	 * @param name Name under which to save object.
+	 * @param data Data to save.
+	 * @param raw If true, saves to network by default, if false, saves to repository by default.
+	 * @param publisher The key to use to sign this data, or our default if null.
+	 * @param locator The key locator to use to let others know where to get our key.
+	 * @param handle CCNHandle to use for network operations. If null, a new one is created using {@link CCNHandle#open()}.
+	 * @throws IOException If there is an error setting up network backing store.
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, 
 							PublisherPublicKeyDigest publisher, KeyLocator locator,
@@ -166,15 +177,17 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
-	 * Write constructors. This allows subclasses or users to pass in new forms of flow controller.
-	 * You should only use this one if you really know what you are doing.
-	 * 
-	 * @param type
-	 * @param name
-	 * @param data
-	 * @param publisher which publisher key to sign this content with, or handle defaults if null
-	 * @param flowControl
-	 * @throws IOException
+	 * Specialized constructor, allowing subclasses to override default flow controller 
+	 * (and hence backing store) behavior.
+	 * @param type Wrapped class type.
+	 * @param name Name under which to save object.
+	 * @param data Data to save.
+	 * @param publisher The key to use to sign this data, or our default if null.
+	 * @param locator The key locator to use to let others know where to get our key.
+	 * @param flowControl Flow controller to use. A single flow controller object
+	 *   is used for all this instance's writes, we use underlying streams to call
+	 *   CCNFlowControl#startWrite(ContentName, Shape) on each save.
+	 * @throws IOException If there is an error setting up network backing store.
 	 */
 	protected CCNNetworkObject(Class<E> type, ContentName name, E data, 
 								PublisherPublicKeyDigest publisher, 
@@ -185,39 +198,54 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
-	 * Read constructors. Will try to pull latest version of this object, or a specific
-	 * named version. Flow controller assumed to already be set to handle this namespace.
-	 * @param type
-	 * @param name
-	 * @param publisher Who must have signed the data we want. TODO should be PublisherID.
-	 * @param handle
-	 * @throws ConfigurationException
-	 * @throws IOException
-	 * @throws XMLStreamException
+	 * Read constructor. Will try to pull latest version of this object, or a specific
+	 * named version if specified in the name. If read times out, will leave object in
+	 * its uninitialized state, and continue attempting to update it (one time) in the
+	 * background.
+	 * @param type Wrapped class type.
+	 * @param name Name from which to read the object. If versioned, will read that specific
+	 * 	version. If unversioned, will attempt to read the latest version available.
+	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
+	 * @throws IOException If there is an error setting up network backing store.
+	 * @throws XMLStreamException If there is a problem decoding the object.
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, 
 			CCNHandle handle) throws IOException, XMLStreamException {
 		this(type, name, (PublisherPublicKeyDigest)null, handle);
 	}
 
+	/**
+	 * Read constructor. Will try to pull latest version of this object, or a specific
+	 * named version if specified in the name. If read times out, will leave object in
+	 * its uninitialized state, and continue attempting to update it (one time) in the
+	 * background.
+	 * @param type Wrapped class type.
+	 * @param name Name from which to read the object. If versioned, will read that specific
+	 * 	version. If unversioned, will attempt to read the latest version available.
+	 * @param publisher Particular publisher we require to have signed the content, or null for any publisher.
+	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
+	 * @throws IOException If there is an error setting up network backing store.
+	 * @throws XMLStreamException If there is a problem decoding the object.
+	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
 			CCNHandle handle) throws IOException, XMLStreamException {
 		this(type, name, publisher, DEFAULT_RAW, handle);
 	}
 
 	/**
-	 * Updates to either a particular named version, or if no version given on name,
-	 * the latest version. 
-	 * Currently will time out and be unhappy if no such version exists.
-	 * 
-	 * Need a way to differentiate whether to read a specific
-	 * version or to read the latest version after a given one.
-	 * @param type
-	 * @param name
-	 * @param publisher
-	 * @param flowControl
-	 * @throws IOException
-	 * @throws XMLStreamException
+	 * Read constructor. Will try to pull latest version of this object, or a specific
+	 * named version if specified in the name. If read times out, will leave object in
+	 * its uninitialized state, and continue attempting to update it (one time) in the
+	 * background.
+	 * @param type Wrapped class type.
+	 * @param name Name from which to read the object. If versioned, will read that specific
+	 * 	version. If unversioned, will attempt to read the latest version available.
+	 * @param publisher Particular publisher we require to have signed the content, or null for any publisher.
+	 * @param flowControl Flow controller to use. A single flow controller object
+	 *   is used for all this instance's writes, we use underlying streams to call
+	 *   CCNFlowControl#startWrite(ContentName, Shape) on each save.
+	 * @throws IOException If there is an error setting up network backing store.
+	 * @throws XMLStreamException If there is a problem decoding the object.
 	 */
 	protected CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
 			CCNFlowControl flowControl) throws IOException, XMLStreamException {
@@ -227,6 +255,20 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		update(name, publisher);
 	}
 
+	/**
+	 * Read constructor. Will try to pull latest version of this object, or a specific
+	 * named version if specified in the name. If read times out, will leave object in
+	 * its uninitialized state, and continue attempting to update it (one time) in the
+	 * background.
+	 * @param type Wrapped class type.
+	 * @param name Name from which to read the object. If versioned, will read that specific
+	 * 	version. If unversioned, will attempt to read the latest version available.
+	 * @param publisher Particular publisher we require to have signed the content, or null for any publisher.
+	 * @param raw If true, defaults to raw network writes, if false, repository writes.
+	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
+	 * @throws IOException If there is an error setting up network backing store.
+	 * @throws XMLStreamException If there is a problem decoding the object.
+	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
 			boolean raw, CCNHandle handle) throws IOException, XMLStreamException {
 		super(type);
@@ -243,18 +285,26 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
-	 * Read constructors if you already have a segment of the object. Used by streams.
-	 * @param type
-	 * @param firstSegment
-	 * @param handle
-	 * @throws ConfigurationException
-	 * @throws IOException
-	 * @throws XMLStreamException
+	 * Read constructor if you already have a segment of the object. Used by streams.
+	 * @param type Wrapped class type.
+	 * @param firstSegment First segment of the object, retrieved by other means.
+	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
+	 * @throws IOException If there is an error setting up network backing store.
+	 * @throws XMLStreamException If there is a problem decoding the object.
 	 */
 	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, CCNHandle handle) throws IOException, XMLStreamException {
 		this(type, firstSegment, DEFAULT_RAW, handle);
 	}
 	
+	/**
+	 * Read constructor if you already have a segment of the object. Used by streams.
+	 * @param type Wrapped class type.
+	 * @param firstSegment First segment of the object, retrieved by other means.
+	 * @param raw If true, defaults to raw network writes, if false, repository writes.
+	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
+	 * @throws IOException If there is an error setting up network backing store.
+	 * @throws XMLStreamException If there is a problem decoding the object.
+	 */
 	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, boolean raw, CCNHandle handle) throws IOException, XMLStreamException {
 		super(type);
 		if (null == handle) {
@@ -268,6 +318,16 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		update(firstSegment);
 	}
 
+	/**
+	 * Read constructor if you already have a segment of the object. Used by streams.
+	 * @param type Wrapped class type.
+	 * @param firstSegment First segment of the object, retrieved by other means.
+	 * @param flowControl Flow controller to use. A single flow controller object
+	 *   is used for all this instance's writes, we use underlying streams to call
+	 *   CCNFlowControl#startWrite(ContentName, Shape) on each save.
+	 * @throws IOException If there is an error setting up network backing store.
+	 * @throws XMLStreamException If there is a problem decoding the object.
+	 */
 	protected CCNNetworkObject(Class<E> type, ContentObject firstSegment, CCNFlowControl flowControl) throws IOException, XMLStreamException {
 		super(type);
 		if (null == flowControl)
@@ -282,8 +342,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * decide how to store this object.
 	 * When we create the flow controller, we add the base name namespace, so it will respond
 	 * to requests for latest version.
-	 * 
-	 * Expects to be called with the write lock held.
 	 * @return
 	 * @throws IOException 
 	 */
@@ -320,6 +378,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return false;
 	}
 
+	/**
+	 * Calls update(long) with the default timeout DEFAULT_TIMEOUT.
+	 * @return see update(long).
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 */
 	public boolean update() throws XMLStreamException, IOException {
 		return update(DEFAULT_TIMEOUT);
 	}
@@ -327,10 +391,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	/**
 	 * Load data into object. If name is versioned, load that version. If
 	 * name is not versioned, look for latest version. 
-	 * @param name
+	 * @param name Name of object to read.
 	 * @throws IOException 
 	 * @throws XMLStreamException 
-	 * @throws ClassNotFoundException 
 	 */
 	public boolean update(ContentName name, PublisherPublicKeyDigest publisher) throws XMLStreamException, IOException {
 		Log.info("Updating object to {0}.", name);
@@ -350,6 +413,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return update(is);
 	}
 
+	/**
+	 * Updates the object from a CCNInputStream or one of its subclasses. Used predominantly
+	 * by internal methods, most clients should use update() or update(long). Exposed for
+	 * special-purpose use and experimentation.
+	 * @param inputStream Stream to read object from.
+	 * @return true if an update found, false if not.
+	 * @throws IOException
+	 * @throws XMLStreamException
+	 */
 	public synchronized boolean update(CCNInputStream inputStream) throws IOException, XMLStreamException {
 		Tuple<ContentName, byte []> nameAndVersion = null;
 		if (inputStream.isGone()) {
@@ -387,10 +459,28 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return true;
 	}
 	
+	/**
+	 * Update this object in the background -- asynchronously. This call updates the
+	 * object a single time, after the first update (the requested version or the
+	 * latest version), the object will not self-update again unless requested.
+	 * To use, create an object using a write constructor, setting the data field
+	 * to null. Then call updateInBackground() to retrieve the object's data asynchronously.
+	 * To wait on data arrival, call either waitForData() or wait() on the object itself.
+	 * @throws IOException
+	 */
 	public void updateInBackground() throws IOException {
 		updateInBackground(false);
 	}
 	
+	/**
+	 * Update this object in the background -- asynchronously. 
+	 * To use, create an object using a write constructor, setting the data field
+	 * to null. Then call updateInBackground() to retrieve the object's data asynchronously.
+	 * To wait for an update to arrive, call wait() on this object itself.
+	 * @param continuousUpdates If true, updates the
+	 * object continuously to the latest version available, a single time if it is false.
+	 * @throws IOException
+	 */
 	public void updateInBackground(boolean continuousUpdates) throws IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
@@ -400,11 +490,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
-	 * Tries to find a version after this one.
+	 * Update this object in the background -- asynchronously. 
+	 * To use, create an object using a write constructor, setting the data field
+	 * to null. Then call updateInBackground() to retrieve the object's data asynchronously.
+	 * To wait for an update to arrive, call wait() on this object itself.
 	 * @param latestVersionKnown the name of the latest version we know of, or an unversioned
 	 *    name if no version known
-	 * @param continuousUpdates do this once, or keep going -- produce a dynamically updated object
-	 *   DKS TODO look at locking of updates
+	 * @param continuousUpdates If true, updates the
+	 * object continuously to the latest version available, a single time if it is false.
 	 * @throws IOException 
 	 */
 	public synchronized void updateInBackground(ContentName latestVersionKnown, boolean continuousUpdates) throws IOException {
@@ -417,6 +510,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_handle.expressInterest(_currentInterest, this);
 	}
 	
+	/**
+	 * Cancel an outstanding updateInBackground().
+	 */
 	public synchronized void cancelInterest() {
 		_continuousUpdates = false;
 		if (null != _currentInterest) {
@@ -427,8 +523,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 	/**
 	 * Save to existing name, if content is dirty. Update version.
-	 * Saves according to flow controller in force, or creates one according to
-	 * the value of raw specified.
+	 * This is the default form of save -- if the object has been told to use
+	 * a repository backing store, by either giving it a repository flow controller,
+	 * calling saveToRepository() on it for its first save, or specifying false
+	 * to a constructor that allows a raw argument, it will save to a repository.
+	 * Otherwise will perform a raw save.
 	 * @throws IOException 
 	 */
 	public boolean save() throws IOException {
@@ -436,9 +535,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
-	 * Save to existing name, if content is dirty. Update version.
-	 * Saves according to flow controller in force, or creates one according to
-	 * the value of raw specified.
+	 * Save to existing name, if content is dirty. Saves to specified version.
+	 * This is the default form of save -- if the object has been told to use
+	 * a repository backing store, by either giving it a repository flow controller,
+	 * calling saveToRepository() on it for its first save, or specifying false
+	 * to a constructor that allows a raw argument, it will save to a repository.
+	 * Otherwise will perform a raw save.
+	 * @param version Version to save to.
 	 * @throws IOException 
 	 */
 	public boolean save(CCNTime version) throws IOException {
@@ -446,14 +549,16 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
-	 * Save content to specific version. If version is non-null, assume that is the desired
+	 * Save content to specific version. Internal form that performs actual save.
+	 * @param version If version is non-null, assume that is the desired
 	 * version. If not, set version based on current time.
-	 * @param name
-	 * @param return Returns true if it saved data, false if it thought data was stale and didn't
-	 * 		save. (DKS TODO: add force write flag if you need to update version. Also allow specification of freshness.)
+	 * @param gone Are we saving this content as gone or not.
+	 * @param return Returns true if it saved data, false if it thought data was not dirty and didn't
+	 * 		save. 
+	 * TODO allow freshness specification
 	 * @throws IOException 
 	 */
-	public boolean saveInternal(CCNTime version, boolean gone) throws IOException {
+	protected boolean saveInternal(CCNTime version, boolean gone) throws IOException {
 
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
@@ -598,7 +703,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
-	 * Warning - calling this risks packet drops. It should only
+	 * Turn off flow control for this object. Warning - calling this risks packet drops. It should only
 	 * be used for tests or other special circumstances in which
 	 * you "know what you are doing".
 	 */
@@ -608,6 +713,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_disableFlowControlRequest = true;
 	}
 	
+	/**
+	 * Used to signal waiters that a new version is available.
+	 */
 	protected void newVersionAvailable() {
 		// by default signal all waiters
 		this.notifyAll();
@@ -615,7 +723,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	/**
 	 * Will return immediately if this object already has data, otherwise
-	 * will wait for timeout msec for new data to appear.
+	 * will wait indefinitely for new data to appear.
 	 */
 	public void waitForData() {
 		if (available())
@@ -631,10 +739,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	/**
-	 * Will wait for timeout msec for data to arrive. Callers should use
+	 * Will wait for data to arrive. Callers should use
 	 * available() to determine whether data has arrived or not.
-	 * If data already available, will return immediately.
-	 * @param timeout If 0, will wait forever (if data does not arrive).
+	 * If data already available, will return immediately (in other
+	 * words, this is only useful to wait for the first update to
+	 * an object, or to ensure that it has data). To wait for later
+	 * updates, call wait() on the object itself.
+	 * @param timeout In milliseconds. If 0, will wait forever (if data does not arrive).
 	 */
 	public void waitForData(long timeout) {
 		

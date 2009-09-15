@@ -32,15 +32,14 @@ import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.security.crypto.UnbufferedCipherInputStream;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.NoMatchingContentFoundException;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.access.AccessControlManager;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
@@ -62,7 +61,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected ContentObject _currentSegment = null;
 	
 	/**
-	 *  information if the stream we are reading is marked GONE (see {@link SignedInfo.ContentType}).
+	 *  information if the stream we are reading is marked GONE (see ContentType).
 	 */
 	protected ContentObject _goneSegment = null;
 	
@@ -85,7 +84,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected PublisherPublicKeyDigest _publisher = null; 
 	
 	/**
-	 * The segment number to start with. If not specified, is {@link SegmentationProfile.baseSegment()}.
+	 * The segment number to start with. If not specified, is SegmentationProfile#baseSegment().
 	 */
 	protected Long _startingSegmentNumber = null;
 	
@@ -120,7 +119,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected boolean _atEOF = false;
 
 	/**
-	 * Used for {@link #mark(int)} and {@link #reset()}.
+	 * Used for mark(int) and reset().
 	 */
 	protected int _readlimit = 0;
 	protected int _markOffset = 0;
@@ -135,13 +134,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * @param baseName Name to read from. If contains a segment number, will start to read from that
 	 *    segment.
 	 * @param startingSegmentNumber Alternative specification of starting segment number. If
-	 * 		unspecified, will be {@link SegmentationProfile.baseSegment()}.
+	 * 		unspecified, will be SegmentationProfile#baseSegment().
 	 * @param publisher The key we require to have signed this content. If null, will accept any publisher
 	 * 				(subject to higher-level verification).
 	 * @param keys The keys to use to decrypt this content. Null if content unencrypted, or another
-	 * 				process will be used to retrieve the keys (for example, an {@link AccessControlManager}).
+	 * 				process will be used to retrieve the keys.
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
-	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
 	public CCNAbstractInputStream(
@@ -187,14 +186,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	
 	/**
 	 * Set up an input stream to read segmented CCN content starting with a given
-	 * {@link ContentObject} that has already been retrieved.  
+	 * ContentObject that has already been retrieved.  
 	 * @param startingSegment The first segment to read from. If this is not the
 	 * 		first segment of the stream, reading will begin from this point.
 	 * 		We assume that the signature on this segment was verified by our caller.
 	 * @param keys The keys to use to decrypt this content. Null if content unencrypted, or another
-	 * 				process will be used to retrieve the keys (for example, an {@link AccessControlManager}).
+	 * 				process will be used to retrieve the keys.
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
-	 * 		given by {@link CCNHandle.getHandle()} will be used.
+	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException
 	 */
 	public CCNAbstractInputStream(ContentObject startingSegment,
@@ -270,14 +269,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	/**
 	 * Actual mechanism used to trigger segment retrieval and perform content reads. 
 	 * Subclasses define different schemes for retrieving content across segments.
-	 * See {@link CCNInputStream} and {@link CCNBlockInputStream} for examples.
-	 * @param buf As in {@link #read(byte[], int, int)}.
-	 * @param offset As in {@link #readInternal(byte[], int, int)}.
-	 * @param len As in {@link #read(byte[], int, int)}.
-	 * @return As in {@link #readInternal(byte[], int, int)}.
+	 * @param buf As in read(byte[], int, int).
+	 * @param offset As in read(byte[], int, int).
+	 * @param len As in read(byte[], int, int).
+	 * @return As in read(byte[], int, int).
 	 * @throws IOException if a segment cannot be retrieved, or there is an error in lower-level
 	 * 		segment retrieval mechanisms. Uses subclasses of IOException to help provide
-	 * 		more information. In particular, throws {@link NoMatchingContentFoundException} when
+	 * 		more information. In particular, throws NoMatchingContentFoundException when
 	 * 		no content found within the timeout given.
 	 */
 	protected abstract int readInternal(byte [] buf, int offset, int len) throws IOException;
@@ -285,7 +283,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	/**
 	 * Called to set the first segment when opening a stream. This does initialization
 	 * and setup particular to the first segment of a stream. Subclasses should not override
-	 * unless they really know what they are doing. Calls {@link #setCurrentSegment(ContentObject)}
+	 * unless they really know what they are doing. Calls #setCurrentSegment(ContentObject)
 	 * for the first segment.
 	 * @param newSegment Must not be null
 	 * @throws IOException
@@ -369,10 +367,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * Have to assume that everyone is using our segment number encoding. Probably
 	 * easier to ask raw streams to use that encoding (e.g. for packet numbers)
 	 * than to flag streams as to whether they are using integers or segments.
-	 * @param number Segment number to retrieve. See {@link SegmentationProfile} for numbering.
-	 * 		If we already have this segment as {@link #currentSegmentNumber()}, will just
+	 * @param number Segment number to retrieve. See SegmentationProfile for numbering.
+	 * 		If we already have this segment as #currentSegmentNumber(), will just
 	 * 		return the current segment, and will not re-retrieve it from the network.
-	 * @throws IOException If no matching content found ({@link NoMatchingContentFoundException}),
+	 * @throws IOException If no matching content found (actually throws NoMatchingContentFoundException)
 	 *  	or if there is an error at lower layers.
 	 **/
 	protected ContentObject getSegment(long number) throws IOException {
@@ -393,7 +391,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	
 	/**
 	 * Checks whether we might have a next segment.
-	 * @return Returns false if this content is marked as GONE (#{@link ContentType}), or if we have
+	 * @return Returns false if this content is marked as GONE (see ContentType), or if we have
 	 * 		retrieved the segment marked as the last one.
 	 */
 	protected boolean hasNextSegment() {
@@ -420,8 +418,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	/**
-	 * Retrieve the next segment of the stream. Convenience method, uses {@link #getSegment(long)}.
-	 * @return
+	 * Retrieve the next segment of the stream. Convenience method, uses #getSegment(long).
+	 * @return the next segment, if found.
 	 * @throws IOException
 	 */
 	protected ContentObject getNextSegment() throws IOException {
@@ -436,9 +434,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	
 	/**
 	 * Retrieves the first segment of the stream, based on specified startingSegmentNumber 
-	 * (see {@link #CCNAbstractInputStream(ContentName, Long, PublisherPublicKeyDigest, ContentKeys, CCNHandle)}).
-	 * Convenience method, uses {@link #getSegment(long)}.
-	 * @return
+	 * (see #CCNAbstractInputStream(ContentName, Long, PublisherPublicKeyDigest, ContentKeys, CCNHandle)).
+	 * Convenience method, uses #getSegment(long).
+	 * @return the first segment, if found.
 	 * @throws IOException
 	 */
 	protected ContentObject getFirstSegment() throws IOException {
@@ -454,10 +452,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	
 	/**
 	 * Method to determine whether a retrieved block is the first segment of this stream (as
-	 * specified by startingSegmentNumber, (see {@link #CCNAbstractInputStream(ContentName, Long, PublisherPublicKeyDigest, ContentKeys, CCNHandle)}).
+	 * specified by startingSegmentNumber, (see #CCNAbstractInputStream(ContentName, Long, PublisherPublicKeyDigest, ContentKeys, CCNHandle)).
 	 * Overridden by subclasses to implement narrower constraints on names. Once first
 	 * segment is retrieved, further segments can be identified just by segment-naming
-	 * conventions (see {@link SegmentationProfile}).
+	 * conventions (see SegmentationProfile).
 	 * 
 	 * @param desiredName The expected name prefix for the stream. 
 	 * 	For CCNAbstractInputStream, assume that desiredName contains the name up to but not including
@@ -608,8 +606,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	/**
-	 * Return the single segment of a stream marked as GONE.
-	 * @return
+	 * 
+	 * @return Return the single segment of a stream marked as GONE.
 	 */
 	public ContentObject deletionInformation() {
 		return _goneSegment;
@@ -622,7 +620,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * (In particular once we're doing trust calculations, to ensure we do them
 	 * only once per stream.)
 	 * But we do verify each segment, so start by pulling what's in the current segment.
-	 * @return
+	 * @return the publisher of the data in the stream (either as requested, or once we have
+	 * data, as observed).
 	 */
 	public PublisherPublicKeyDigest publisher() {
 		return _publisher;

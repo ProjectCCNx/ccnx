@@ -32,6 +32,15 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 
+/**
+ * Wrapping class for CCNNameEnumerator.  This class allows applications to wrap the methods of
+ * CCNNameEnumerator and call blocking functions (with optional timeouts) to wait for name
+ * enumeration responses for a given name prefix. 
+ * 
+ * 
+ * @see CCNNameEnumerator
+ * @see BasicNameEnumeratorListener
+ */
 
 public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	
@@ -79,7 +88,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	
 	public ContentName getName() { return _namePrefix; }
 	
-	/* StopEnumerating
+	/** StopEnumerating
 	 * <p>
 	 * Sends a cancel interest on the namePrefix assigned in the 
 	 * constructor. Cancels the enumeration on that prefix
@@ -136,13 +145,33 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		return _children;
 	}
 	
+	/**
+	 * Returns true if the prefix has new names that have not been handled by the calling application.
+	 * 
+	 * @return boolean
+	 */
+	
 	public boolean hasNewData() {
 		return ((null != _newChildren) && (_newChildren.size() > 0));
 	}
 	
+	/**
+	 * Returns true if the prefix has names stored from received enumeration responses.
+	 * 
+	 * @return boolean
+	 */
+	
 	public boolean hasChildren() {
 		return ((null != _children) && (_children.size() > 0));
 	}
+	
+	/**
+	 * Returns true if the prefix has a child matching the given name component.
+	 * 
+	 * @param childComponent Name component to check for in the stored child names.
+	 * 
+	 * @return boolean
+	 */
 	
 	public boolean hasChild(byte [] childComponent) {
 		for (ContentName child : _children) {
@@ -166,7 +195,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 	
 	/**
-	 * Wait for new NE data to arrive, whether it actually signals children or not.
+	 * Wait for new name enumeration data to arrive, whether it actually signals children or not.
 	 */
 	public void waitForNewData(long timeout) {
 		synchronized(_childLock) {
@@ -273,11 +302,12 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 
 	/**
+	 * Returns the latest version name of the child version components that were returned through enumeration
 	 * 
-	 * 
-	 * 
+	 * @return ContentName The latest version component
 	 * 
 	 * */
+	
 	public ContentName getLatestVersionChildName() {
 		// of the available names in _children that are version components,
 		// find the latest one (version-wise)
@@ -307,6 +337,12 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		}
 		return latestName;
 	}
+	
+	/**
+	 * Returns the latest version as a CCNTime object.
+	 * 
+	 * @return CCNTime Latest child version as CCNTime
+	 */
 	
 	public CCNTime getLatestVersionChildTime() {
 		ContentName latestVersion = getLatestVersionChildName();

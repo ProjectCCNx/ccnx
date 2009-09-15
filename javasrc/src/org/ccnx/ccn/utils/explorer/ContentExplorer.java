@@ -450,27 +450,16 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	public void retrieveFromRepo(String name){
 		//TODO this is a long-running operation, it should be a separate thread
 		
+		htmlPane.setText("Retrieving content...");
 		
-		try{
-	
-			//get the file name as a ContentName
-			//ContentName fileName = ContentName.fromNative(name);
-			ContentName fileName = ContentName.fromURI(name);
-			//String localName = new String(fileName.lastComponent());
-			System.out.println("retrieving "+fileName.toString()+" from repo");
+		ContentRetriever retriever = new ContentRetriever(_handle, htmlPane, name);
+		
+		Thread t = new Thread(retriever);
+		//t.run();
+		
+		SwingUtilities.invokeLater(t);
 
-			CCNFileInputStream fis = new CCNFileInputStream(fileName, _handle);
-				
-			htmlPane.read(fis, fileName);
-			
-			//should catch a generic exception and print a message in the bottom pane
-			//that the selected file is not available
-			
-		} catch (IOException e) {			
-			e.printStackTrace();
-		} catch (MalformedContentNameStringException e) {			
-			e.printStackTrace();
-		}
+		
 	}
 	
 	

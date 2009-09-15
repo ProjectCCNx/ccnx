@@ -35,8 +35,8 @@ import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
-
-public class put_file {
+//Note class name needs to match command name to work with ccn_run
+public class ccnputfile {
 	
 	private static int BLOCK_SIZE = 8096;
 	private static boolean rawMode = false;
@@ -109,11 +109,11 @@ public class put_file {
 			
 			if (args.length == (startArg + 2)) {
 				if (verbose)
-					Log.info("put_file: putting file " + args[startArg + 1]);
+					Log.info("ccnputfile: putting file " + args[startArg + 1]);
 				
 				doPut(handle, args[startArg + 1], argName);
 				if (verbose)
-					System.out.println("put_file took: "+(System.currentTimeMillis() - starttime)+" ms");
+					System.out.println("ccnputfile took: "+(System.currentTimeMillis() - starttime)+" ms");
 				System.exit(0);
 			} else {
 				for (int i=startArg + 1; i < args.length; ++i) {
@@ -124,7 +124,7 @@ public class put_file {
 					doPut(handle, args[i], nodeName);
 				}
 				if (verbose)
-					System.out.println("put_file took: "+(System.currentTimeMillis() - starttime)+" ms");
+					System.out.println("ccnputfile took: "+(System.currentTimeMillis() - starttime)+" ms");
 				System.exit(0);
 			}
 		} catch (ConfigurationException e) {
@@ -210,7 +210,7 @@ public class put_file {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: put_file [-v (verbose)] [-raw] [-unversioned] [-timeout millis] [-log level] <ccnname> (<filename>|<url>)*");
+		System.out.println("usage: ccnputfile [-v (verbose)] [-raw] [-unversioned] [-timeout millis] [-log level] <ccnname> (<filename>|<url>)*");
 		System.exit(1);
 	}
 

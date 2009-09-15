@@ -30,8 +30,8 @@ import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
-
-public class get_file {
+//Note class name needs to match command name to work with ccn_run
+public class ccngetfile {
 	
 	public static Integer timeout = null;
 	public static boolean unversioned = false;
@@ -120,12 +120,12 @@ public class get_file {
 				output.write(buffer, 0, readcount);
 				output.flush();
 			}
-			System.out.println("get_file took: "+(System.currentTimeMillis() - starttime)+"ms");
+			System.out.println("ccngetfile took: "+(System.currentTimeMillis() - starttime)+"ms");
 			System.out.println("Retrieved content " + args[1] + " got " + readtotal + " bytes.");
 			System.exit(0);
 
 		} catch (ConfigurationException e) {
-			System.out.println("Configuration exception in get_file: " + e.getMessage());
+			System.out.println("Configuration exception in ccngetfile: " + e.getMessage());
 			e.printStackTrace();
 		} catch (MalformedContentNameStringException e) {
 			System.out.println("Malformed name: " + args[0] + " " + e.getMessage());
@@ -138,6 +138,6 @@ public class get_file {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: get_file [-unversioned] [-timeout millis] <ccnname> <filename>");
+		System.out.println("usage: ccngetfile [-unversioned] [-timeout millis] <ccnname> <filename>");
 	}
 }

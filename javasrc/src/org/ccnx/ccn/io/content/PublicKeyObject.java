@@ -29,7 +29,6 @@ import java.security.spec.InvalidKeySpecException;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
@@ -41,26 +40,18 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
+ * A CCNNetworkObject subclass specialized for reading and writing PublicKeys.
  * PublicKeys are Serializable. So we could use a subclass of CCNSerializableObject
  * to serialize them to CCN. But, we want to control their on-the-wire data format --
  * using their serialization interface, the output will contain metadata only
  * readable via the Java serialization interface. We want to write raw encoded
  * keys. So have to override the serialization behavior.
  * 
- * TODO what to do with LINKs that point to public keys.
- * @author smetters
- *
+ * This class also serves as an example of how to write a CCNNetworkObject
+ * subclass that needs to implement its own serialization.
  */
 public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 
-	/**
-	 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
-	 * @param name
-	 * @param data
-	 * @param handle
-	 * @throws ConfigurationException
-	 * @throws IOException
-	 */
 	public PublicKeyObject(ContentName name, PublicKey data, CCNHandle handle) throws IOException {
 		super(PublicKey.class, name, data, handle);
 	}
@@ -69,14 +60,6 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		super(PublicKey.class, name, data, publisher, locator, handle);
 	}
 
-	/**
-	 * Read constructor -- opens existing object.
-	 * @param name
-	 * @param handle
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws ClassNotFoundException 
-	 */
 	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
 		super(PublicKey.class, name, publisher, handle);
 	}
@@ -89,11 +72,7 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		super(PublicKey.class, firstBlock, handle);
 	}
 	
-	/**
-	 * Subclasses that need to write an object of a particular type can override.
-	 * DKS TODO -- verify type on read, modulo that ENCR overrides everything.
-	 * @return
-	 */
+	@Override
 	public ContentType contentType() { return ContentType.KEY; }
 
 	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException { return data(); }

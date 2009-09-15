@@ -55,23 +55,14 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * in the running stream, or by another integer metric (e.g. time offset),
  * by supplying a multiplier to conver the byte offset into a metric value.
  * Finally, writers can specify the block identifier with a write.
- * Currently, however, the corresponding reader {@link CCNBlockInputStream} expects
+ * Currently, however, the corresponding reader {@link org.ccnx.ccn.io.CCNBlockInputStream} expects
  * sequential segment numbering (and constraints based on the low-level CCN
  * Interest specification may make this difficult to overcome).
  */
 public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 
 	protected SignedInfo.ContentType _type;
-	
-	/**
-	 * Default, fixed increment, sequential-numbered blocks (unless overridden on write).
-	 * @param name
-	 * @param publisher
-	 * @param locator
-	 * @param signingKey
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 */
+
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
 								PublisherPublicKeyDigest publisher,
 								CCNFlowControl flowControl)

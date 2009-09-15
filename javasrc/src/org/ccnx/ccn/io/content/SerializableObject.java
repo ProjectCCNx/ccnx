@@ -31,12 +31,9 @@ import org.ccnx.ccn.io.GenericObjectInputStream;
 
 
 /**
- * Prototypical wrapper around a Serializable object. Expand to variants
- * for CCNObjects. 
- * TODO - synchronization
- * @author smetters
- *
- * @param <E>
+ * Subclass of NetworkObject that wraps classes implementing Serializable, and uses
+ * Java serialization to read and write those objects to 
+ * an OutputStream. Not CCN-specific, the CCN variant of this is CCNSerializableObject.
  */
 public class SerializableObject<E extends Serializable> extends NetworkObject<E> {
 	
