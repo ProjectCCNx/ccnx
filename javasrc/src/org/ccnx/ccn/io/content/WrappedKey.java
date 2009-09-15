@@ -152,16 +152,17 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	 * this is available in Java 1.6, or BouncyCastle.
 	 * 
 	 * @param keyToBeWrapped The key to wrap, can be symmetric, private, or public.
-	 * @param keyAlgorithm optional algorithm to decode the wrapped key (e.g. AES-CBC); otherwise
-	 *    we use  key.getAlgorithm(). The latter may not work, or depending on the key used,
-	 *    may require unlimited strength crypto to be installed. Use of AES, or a reasonable-length
-	 *    RSA key will work correctly without special configuration on all systems.
-	 * @param keyLabel optional label for the wrapped key
+	 * @param keyAlgorithm optional algorithm to associate with the wrapped key; if null
+	 *    we use  key.getAlgorithm(). 
+	 * @param keyLabel a friendly name for the key.
 	 * @param wrappingKey The key to use for wrapping. This can be a symmetric key or a public key
 	 * 	(as noted above, some public key algorithms may require Java's unlimited strength policy
 	 * 	files). If the wrapping key is a public key, and the wrapped key is a private key (which
-	 * may extend past the block length of the public key) we will automatically generate a nonce (random)
+	 *  may extend past the block length of the public key) we will automatically generate a nonce (random)
 	 *   AES key, wrap the private key in that, and then wrap that nonce key in the public key.
+	 *   We derive the wrapping algorithm to use as a function of this key's algorithm. Eventually may
+	 *   want to allow it to be passed in (merely encrypting with the key as usual may not be the
+	 *   best key wrap algorithm; keys are high entropy and often require specialized padding schemes).
 	 * @throws NoSuchPaddingException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
@@ -241,11 +242,55 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	    					 keyLabel, wrappedNonceKey, wrappedKey);
 	}
 	
+	/**
+	 * Represent an already-wrapped key as a WrappedKey. 
+	 * @param wrappingKeyIdentifier a byte ID for this key, usually the digest of the encoded key.
+	 * @param encryptedKey the wrapped, encoded key.
+	 */
+	public WrappedKey(byte [] wrappingKeyIdentifier, byte [] encryptedKey) {
+		this(wrappingKeyIdentifier, null, null, null, null, encryptedKey);
+	}
+	
+	/**
+	 * Represent an already-wrapped key as a WrappedKey. 
+	 * @param wrappingKeyIdentifier a byte ID for this key, usually the digest of the encoded key.
+	 * @param label a friendly name for the key.
+	 * @param encryptedKey the wrapped, encoded key.
+	 */
+	public WrappedKey(byte [] wrappingKeyIdentifier, String label, byte [] encryptedKey) {
+		this(wrappingKeyIdentifier, null, null, label, null, encryptedKey);
+	}
+
+	/**
+	 * Represent an already-wrapped key as a WrappedKey. 
+	 * @param wrappingKeyIdentifier a byte ID for this key, usually the digest of the encoded key.
+	 * @param wrapAlgorithm the algorithm used to wrap this key, if null the default wrap algorithm for
+	 * 		the decryption key (specified to unwrapKey()) is used
+	 * @param keyAlgorithm the algorithm of the wrapped (encrypted, encoded) key. Necessary to decode
+	 * 		the key back into a Key object as part of unwrapping. Can be specified at unwrapping time if
+	 * 		not stored here.
+	 * @param label a friendly name for the key.
+	 * @param encryptedKey the wrapped, encoded key.
+	 */
 	public WrappedKey(byte [] wrappingKeyIdentifier, String wrapAlgorithm, String keyAlgorithm,
 			  String label, byte [] encryptedKey) {
 		this(wrappingKeyIdentifier, wrapAlgorithm, keyAlgorithm, label, null, encryptedKey);
 	}
 
+	/**
+	 * Represent an already-wrapped key as a WrappedKey. 
+	 * @param wrappingKeyIdentifier a byte ID for this key, usually the digest of the encoded key.
+	 * @param wrapAlgorithm the algorithm used to wrap this key, if null the default wrap algorithm for
+	 * 		the decryption key (specified to unwrapKey()) is used
+	 * @param keyAlgorithm the algorithm of the wrapped (encrypted, encoded) key. Necessary to decode
+	 * 		the key back into a Key object as part of unwrapping. Can be specified at unwrapping time if
+	 * 		not stored here.
+	 * @param label a friendly name for the key.
+	 * @param encryptedNonceKey if the key is a private or public key wrapped by a public key, this defines
+	 * 		an encrypted interposed nonce key where the nonce key is used to wrap the private or public
+	 * 		key and the wrapping key is used to wrap the nonce key.
+	 * @param encryptedKey the wrapped, encoded key.
+	 */
 	public WrappedKey(byte [] wrappingKeyIdentifier, String wrapAlgorithm, String keyAlgorithm,
 					  String label, byte [] encryptedNonceKey, byte [] encryptedKey) {
 		_wrappingKeyIdentifier = wrappingKeyIdentifier;
@@ -256,14 +301,6 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		_encryptedKey = encryptedKey;
 	}
 	
-	public WrappedKey(byte [] wrappingKeyIdentifier, byte [] encryptedKey) {
-		this(wrappingKeyIdentifier, null, null, null, null, encryptedKey);
-	}
-	
-	public WrappedKey(byte [] wrappingKeyIdentifier, String label, byte [] encryptedKey) {
-		this(wrappingKeyIdentifier, null, null, label, null, encryptedKey);
-	}
-
 	/**
 	 * Empty constructor for decoding.
 	 */
@@ -271,27 +308,34 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	}
 	
 	/**
-	 * Unwraps an encrypted key. See unwrapKey(Key, String) for details.
-	 * @param unwrapKey
-	 * @return
-	 * @throws InvalidKeyException
-	 * @throws InvalidCipherTextException
-	 */
+	 * Unwraps an encrypted key, and decodes it into a Key of an algorithm type
+	 * specified by keyAlgorithm(). See unwrapKey(Key, String) for details.
+	 * @see unwrapKey(Key, String)
+	 **/
 	public Key unwrapKey(Key unwrapKey) throws InvalidKeyException, InvalidCipherTextException {
 
 		if (null == keyAlgorithm()) {
 			throw new InvalidCipherTextException("No algorithm specified for key to be unwrapped!");
 		}
-		
 		try {
 			return unwrapKey(unwrapKey, keyAlgorithm());
 		} catch (NoSuchAlgorithmException e) {
-			Log.warning("Unexpected NoSuchAlgorithmException attempting to unwrap key with specified algorithm : " + keyAlgorithm());
-			throw new InvalidCipherTextException("Unexpected NoSuchAlgorithmException attempting to unwrap key with specified algorithm : " + keyAlgorithm());
-		} 
+			throw new InvalidCipherTextException("Algorithm specified for wrapped key " + keyAlgorithm() + " is unknown: " + e.getMessage());
+		}
 	}
-	
-	public Key unwrapKey(Key unwrapKey, String wrappedKeyAlgorithm) throws InvalidKeyException, NoSuchAlgorithmException, InvalidCipherTextException {
+
+	/**
+	 * Unwraps an encrypted key, and decodes it into a Key of an algorithm type
+	 * specified by wrappedKeyAlgorithm.
+	 * @param unwrapKey the key to use to decrypt this wrapped key.
+	 * @param wrappedKeyAlgorithm the algorithm of the wrapped key, used in decoding it.
+	 * @return the decrypted key if successful.
+	 * @throws InvalidKeyException if we encounter an error using the unwrapKey to decrypt.
+	 * @throws InvalidCipherTextException if the wrapped key is not a valid encrypted key.
+	 * @throws NoSuchAlgorithmException if we do not recognize the wrappedKeyAlgorithm.
+	 **/
+	public Key unwrapKey(Key unwrapKey, String wrappedKeyAlgorithm) 
+			throws InvalidKeyException, InvalidCipherTextException, NoSuchAlgorithmException {
 
 		Key unwrappedKey = null;
 		Log.info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
@@ -546,11 +590,14 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	}
 	
 	/**
-	 * Until we can sign a provider, we need to reach directly in to wrap public keys in AES keys.
-	 * @param input
-	 * @param offset
-	 * @param length
-	 * @return
+	 * Wrap using AES. Do not use standard Cipher interface, as we need to use an alternate algorithm
+	 * (see AESWrapWithPadEngine) that is not currently included in any signed provider. Once it
+	 * is, we will drop this special-case code.
+	 * @param wrappingKey key to use to encrypt
+	 * @param input encoded key to encrypt
+	 * @param offset offset into encoded data buffer
+	 * @param length length of data to encrypt.
+	 * @return encrypted data.
 	 */
 	protected static byte [] AESWrapWithPad(Key wrappingKey, byte[] input, int offset, int length) {
 		if (! wrappingKey.getAlgorithm().equals("AES")) {
@@ -561,6 +608,17 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		return engine.wrap(input, offset, length);
 	}
 	
+	/**
+	 * Unwrap using AES. Do not use standard Cipher interface, as we need to use an alternate algorithm
+	 * (see AESWrapWithPadEngine) that is not currently included in any signed provider. Once it
+	 * is, we will drop this special-case code.
+	 * @param unwrappingKey key to use to decrypt
+	 * @param wrappedKeyAlgorithm algorithm to use to decode key once decrypted.
+	 * @param input encrypted key to decrypt and decode
+	 * @param offset offset into encrypted data buffer
+	 * @param length length of data to decrypt.
+	 * @return decrypted, decoded key.
+	 */
 	protected static Key AESUnwrapWithPad(Key unwrappingKey, String wrappedKeyAlgorithm,
 				byte [] input, int offset, int length) throws InvalidCipherTextException, InvalidKeyException {
 		if (! unwrappingKey.getAlgorithm().equals("AES")) {
