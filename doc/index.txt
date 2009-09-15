@@ -9,3 +9,13 @@ CCN Documentation Index
  - link:ccode/html/index.html[Content-Centric Networking in C]
  - link:javacode/html/index.html[Content-Centric Networking in Java]
 
+== Distribution Docs
+.README
+------------------------------------
+include::../README[tabsize=8]
+------------------------------------
+
+.LICENSE
+------------------------------------
+include::../LICENSE[tabsize=8]
+------------------------------------
