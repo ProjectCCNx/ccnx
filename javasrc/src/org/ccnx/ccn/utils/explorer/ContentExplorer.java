@@ -34,7 +34,6 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -299,8 +298,11 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				
 
 					try{
-						ContentName contentName = ContentName.fromNative(selectedPrefix);
-						contentName = ContentName.fromNative(contentName, file.getName());
+						//ContentName contentName = ContentName.fromNative(selectedPrefix);
+						//contentName = ContentName.fromNative(contentName, file.getName());
+						ContentName contentName = ContentName.fromURI(selectedPrefix);
+						contentName = ContentName.fromURI(contentName, file.getName());
+						
 						sendFile(file, contentName);
 					} catch (MalformedContentNameStringException e) {
 						e.printStackTrace();
@@ -445,104 +447,37 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	
 
 	public void retrieveFromRepo(String name){
-		//TODO this is a long-running operation, it should be a separate thread
 		
+		htmlPane.setText("Retrieving content...");
 		
-		try{
-	
-			//get the file name as a ContentName
-			ContentName fileName = ContentName.fromNative(name);
-			//String localName = new String(fileName.lastComponent());
-			System.out.println("retrieving "+fileName.toString()+" from repo");
-
-			CCNFileInputStream fis = new CCNFileInputStream(fileName, _handle);
-				
-			htmlPane.read(fis, fileName);
-			
-			//should catch a generic exception and print a message in the bottom pane
-			//that the selected file is not available
-			
-		} catch (IOException e) {			
-			e.printStackTrace();
-		} catch (MalformedContentNameStringException e) {			
-			e.printStackTrace();
-		}
+		HTMLPaneContentRetriever retriever = new HTMLPaneContentRetriever(_handle, htmlPane, name);
+		
+		Thread t = new Thread(retriever);
+		
+		SwingUtilities.invokeLater(t);	
 	}
 	
 	
 	
 	
 	public void sendFile(File file, ContentName ccnName) {
-		// doing this to send it to repo and then get it back and read it
 
-		System.out.println("Writing a file to the repo " + file.getName()+" with contentName: "+ccnName.toString());
+		htmlPane.setText("Writing "+file.getName()+" to CCN as: "+ccnName);
 
+		ContentWriter writer = new ContentWriter(_handle, ccnName, file, htmlPane);
 		
-		try {
-			
-			RepositoryFileOutputStream fos = new RepositoryFileOutputStream(ccnName, _handle);
-			FileInputStream fs = new FileInputStream(file);
-			int bytesRead = 0;
-			byte[] buffer = new byte[SegmentationProfile.DEFAULT_BLOCKSIZE];
-			
-			while ((bytesRead = fs.read(buffer)) != -1){
-				fos.write(buffer, 0, bytesRead);
-			}
-
-			fos.close();
-			
-		} catch (IOException e) {
-
-			System.out.println("error writing file to repo");
-			e.printStackTrace();
-		}
-
+		Thread t = new Thread(writer);
+		
+		SwingUtilities.invokeLater(t);
 	}
 
 
 	private void initHelp() {
-		//String s = "TreeHelp.html";
-		//helpURL = getClass().getResource(s);
 
-		//if (helpURL == null) {
-		//	System.err.println("Couldn't open help file: " + s);
-		//} else if (DEBUG) {
-		//	System.out.println("Help URL is " + helpURL);
-		//}
-
-		//displayText(s);
-		
 		htmlPane.setText("Please expand folder names you would like to enumerate.  You may also select text files to be displayed in this window.");
 
 	}
 
-/*	private void displayText(String name) {
-		try {
-
-			FileInputStream fs = new FileInputStream(name);
-			byte[] cbuf = null;
-			try {
-				cbuf = new byte[fs.available()];
-			} catch (IOException e1) {
-
-				e1.printStackTrace();
-			}
-			try {
-				fs.read(cbuf);
-			} catch (IOException e) {
-
-				e.printStackTrace();
-			}
-			htmlPane.setText(new String(cbuf));
-		} catch (FileNotFoundException e) {
-
-			System.out.println("the file was not found...  "+name);
-			e.printStackTrace();
-		}
-
-	}
-	*/
-	
 	
 	DefaultMutableTreeNode getTreeNode(ContentName ccnContentName){
 		System.out.println("handling returned names!!! prefix = "+ccnContentName.toString());
@@ -756,7 +691,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			final DefaultMutableTreeNode node = getTreeNode(event.getPath());
 					
 			//if the tree is not collapsed already, it is already being enumerated, so we don't need to reselect it
-			if (tree.isCollapsed(event.getPath())) {
+			//if (tree.isCollapsed(event.getPath())) {
 				//if the row is -1, that means a parent is collapsed and this node is being
 				//selected as part of a collapse, so we don't want to re-register it for enumerating
 				if (tree.getRowForPath(event.getPath()) > -1) {
@@ -790,9 +725,10 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				};
 				runner.start();
 				}
-			} else {
-				System.out.println("path is expanded... "+node.toString());
-			}
+			//} else {
+			//	System.out.println("path is expanded... "+node.toString());
+				
+			//}
 		}
 	}
 
@@ -808,7 +744,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				if (s.equalsIgnoreCase("-root")) {
 					i++;
 					try {
-						root = ContentName.fromNative(args[i]);
+						//root = ContentName.fromNative(args[i]);
+						root = ContentName.fromURI(args[i]);
 					} catch (MalformedContentNameStringException e) {
 						System.err.println("Could not parse root path: "
 								+ args[i] + " (exiting)");
@@ -1036,7 +973,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		System.out.println("registering prefix: " + prefix);
 
 		try {
-			currentPrefix = ContentName.fromNative(prefix);
+			//currentPrefix = ContentName.fromNative(prefix);
+			currentPrefix = ContentName.fromURI(prefix);
 			_nameEnumerator.registerPrefix(currentPrefix);
 		} catch (IOException e) {
 			System.err.println("error registering prefix");

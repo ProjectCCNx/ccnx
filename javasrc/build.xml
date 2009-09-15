@@ -36,9 +36,8 @@
 	<property name="TOP_DIR" value="../src"/>
 	<!-- TEST_PORT is alternative ccnd port so we can run tests
         with an isolated ccnd rather than the "live" ccnd on the machine.
-        Port 9 (discard) would be ideal but this needs to be a non-privileged
-        port. -->
-	<property name="TEST_PORT" value="1999"/>
+        -->
+	<property name="TEST_PORT" value="61999"/>
 
         <!-- Classpaths are actually defined in a separate file so 
              that it can be included by ant files of apps so they 

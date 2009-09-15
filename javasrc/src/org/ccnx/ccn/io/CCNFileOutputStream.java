@@ -38,8 +38,8 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 /**
  * A versioned output stream that adds a header containing file-level metadata
- * to every stream it outputs (see {@link Header} for contents). Reading this
- * content with {@link CCNFileInputStream} will allow retrieval of both the 
+ * to every stream it outputs (see Header for contents). Reading this
+ * content with CCNFileInputStream will allow retrieval of both the 
  * content (including automatic retrieval of the latest version, if desired),
  * and the header.
  */

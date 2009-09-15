@@ -29,8 +29,6 @@ import org.ccnx.ccn.test.BitBucketRepository;
 
 /**
  * Daemon for stand-alone repository on persistent storage in the filesystem.
- * @author jthornto
- *
  */
 public class RepositoryDaemon extends Daemon {
 	RepositoryServer _server;
@@ -86,6 +84,21 @@ public class RepositoryDaemon extends Daemon {
 		_daemonName = "repository";
 	}
 	
+	/**
+	 * Parse arguments specific to the Repository
+	 * 
+	 * Current arguments are:<p>
+	 * 
+	 * -root <directory> sets the root of the repository (this argument is required).
+	 * 
+	 * The following arguments are optional:<p>
+	 * <ul>
+	 * <li>-log <level> enable logging and set the logging level to <level>
+	 * <li>-policy <file> use the policy file to set initial policy for the repo
+	 * <li>-local <path> set the local name for this repository
+	 * <li>-global <path> set the global prefix for this repository
+	 * </ul>
+	 */
 	public void initialize(String[] args, Daemon daemon) {
 		Log.info("Starting " + _daemonName + "...");				
 		Log.setLevel(Level.INFO);
@@ -182,7 +195,11 @@ public class RepositoryDaemon extends Daemon {
 	protected WorkerThread createWorkerThread() {
 		return new RepositoryWorkerThread(daemonName());
 	}
-		
+	
+	/**
+	 * Start a new repository daemon
+	 * @param args
+	 */
 	public static void main(String[] args) {
 		Daemon daemon = null;
 		try {

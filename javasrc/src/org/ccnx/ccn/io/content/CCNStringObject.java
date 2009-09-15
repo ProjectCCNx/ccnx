@@ -28,6 +28,11 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
+/**
+ * A CCNNetworkObject wrapper around Java Strings. Allows reading and writing of
+ * versioned strings to CCN, and background updating of same. Very useful class
+ * for writing simple tests and applications. See CCNChat for an example.
+ */
 public class CCNStringObject extends CCNSerializableObject<String> {
 
 	public CCNStringObject(ContentName name, String data, CCNHandle handle) throws ConfigurationException, IOException {
@@ -39,15 +44,6 @@ public class CCNStringObject extends CCNSerializableObject<String> {
 		super(String.class, name, publisher, handle);
 	}
 	
-	/**
-	 * Read constructor -- opens existing object.
-	 * @param type
-	 * @param name
-	 * @param handle
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws ClassNotFoundException 
-	 */
 	public CCNStringObject(ContentName name, 
 			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
 		super(String.class, name, (PublisherPublicKeyDigest)null, handle);

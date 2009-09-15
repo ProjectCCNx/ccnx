@@ -35,7 +35,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * fixed chunks. The chunks can be individually signed or authenticated
  * using a Merkle Hash Tree, but read will return when it gets a single
  * block of content, and will not fill buffers across content blocks.
- * This will consume data written by either {@link CCNBlockOutputStream},
+ * This will consume data written by either CCNBlockOutputStream,
  * or by the C program ccnsendchunks.
  * The intent is to read packet-oriented protocols; possibly a better
  * abstraction is to move this to be a subclass of DatagramSocket.
@@ -81,8 +81,8 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 
 	/**
 	 * Implement sequential reads of data quantized into segments. Will read the remainder
-	 * of the current segment on each {@link #read(byte[], int, int)} call, when a given
-	 * segment runs out of bytes returns -1. Next {@link #read(byte[], int, int)} call
+	 * of the current segment on each read(byte[], int, int) call, when a given
+	 * segment runs out of bytes returns -1. Next read(byte[], int, int) call
 	 * will retrieve the next segment. Meant for reading complete segments at a time.
 	 */
 	@Override

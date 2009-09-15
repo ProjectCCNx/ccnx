@@ -242,7 +242,7 @@ ccn_name_chop(struct ccn_charbuf *c, struct ccn_indexbuf *components, int n)
 int
 ccn_name_next_sibling(struct ccn_charbuf *c)
 {
-    int res;
+    int res = -1;
     struct ccn_indexbuf *ndx;
     unsigned char *lastcomp = NULL;
     size_t lastcompsize = 0;

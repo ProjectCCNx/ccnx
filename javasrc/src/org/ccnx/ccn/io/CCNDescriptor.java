@@ -26,7 +26,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * A file descriptor-style wrapper around {@link CCNVersionedInputStream} and {@link CCNVersionedOutputStream}.
+ * A file descriptor-style wrapper around CCNVersionedInputStream and CCNVersionedOutputStream.
  *
  */
 public class CCNDescriptor {
@@ -40,9 +40,9 @@ public class CCNDescriptor {
 	/**
 	 * Open a new descriptor for reading or writing (but not both).
 	 *
-	 * @param name see {@link CCNVersionedInputStream} for specification
-	 * @param publisher see {@link CCNVersionedInputStream} for specification
-	 * @param handle see {@link CCNVersionedInputStream} for specification
+	 * @param name see CCNVersionedInputStream for specification
+	 * @param publisher see CCNVersionedInputStream for specification
+	 * @param handle see CCNVersionedInputStream for specification
 	 * @param openForWriting if true, open an output stream. Otherwise open an input stream.
 	 * @throws IOException
 	 */
@@ -77,7 +77,7 @@ public class CCNDescriptor {
 	}
 
 	/**
-	 * @return If open for reading, returns result of {@link CCNInputStream#available()}, otherwise returns 0.
+	 * @return If open for reading, returns result of CCNInputStream#available(), otherwise returns 0.
 	 * @throws IOException
 	 */
 	public int available() throws IOException {
@@ -121,14 +121,14 @@ public class CCNDescriptor {
 	}
 
 	/**
-	 * @return true if open for reading and {@link CCNInputStream#eof()}.
+	 * @return true if open for reading and CCNInputStream#eof().
 	 */
 	public boolean eof() { 
 		return openForReading() ? _input.eof() : false;
 	}
 
 	/**
-	 * See {@link CCNInputStream#read(byte[], int, int)}.
+	 * See CCNInputStream#read(byte[], int, int).
 	 */
 	public int read(byte[] buf, int offset, int len) throws IOException {
 		if (null != _input)
@@ -137,14 +137,14 @@ public class CCNDescriptor {
 	}
 
 	/**
-	 * See {@link CCNInputStream#read(byte[])}
+	 * See CCNInputStream#read(byte[]).
 	 */
 	public int read(byte[] b) throws IOException {
 		return read(b, 0, b.length);
 	}
 
 	/**
-	 * See {@link CCNOutputStream#writeToNetwork(byte[], long, long)}.
+	 * See CCNOutputStream#writeToNetwork(byte[], long, long).
 	 */
 	public void write(byte[] buf, int offset, int len) throws IOException {
 		if (null != _output) {

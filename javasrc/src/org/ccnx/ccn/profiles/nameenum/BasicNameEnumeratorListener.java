@@ -22,13 +22,20 @@ import java.util.ArrayList;
 import org.ccnx.ccn.protocol.ContentName;
 
 
+/**
+ * Interface for classes making name enumeration requests to allow callbacks with content matching registered prefixes.
+ *
+ * @see org.ccnx.ccn.profiles.nameenume.CCNNameEnumerator
+ */
 
 public interface BasicNameEnumeratorListener {
 
 	/**
 	 * Callback called when we get a collection matching a registered prefix.
-	 * @param  collectionData  The list of Link objects corresponding to the names in the local namespace  
-	 * @return int number of Link objects in Collection
+	 * @param prefix The ContentName prefix with matching responses.
+	 * @param  names An ArrayList of ContentNames matching the prefix.
+	 *   
+	 * @return int The number of names in the collection.
 	 */
 	public int handleNameEnumerator(ContentName prefix, ArrayList<ContentName> names);
 

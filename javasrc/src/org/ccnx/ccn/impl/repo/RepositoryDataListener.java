@@ -43,9 +43,6 @@ import org.ccnx.ccn.protocol.Interest;
  * by interfacing with the RepositoryStore and to generate interests for data following the
  * received data in an input stream. RepositoryDataListeners are destroyed after the stream
  * which triggered their creation has been fully read.
- * 
- * @author rasmusse
- *
  */
 
 public class RepositoryDataListener implements CCNInterestListener {
@@ -65,9 +62,6 @@ public class RepositoryDataListener implements CCNInterestListener {
 	/**
 	 * So the main listener can output interests sooner, we do the data creation work
 	 * in a separate thread.
-	 * 
-	 * @author rasmusse
-	 *
 	 */
 	private class DataHandler implements Runnable {
 		private ContentObject _content;
@@ -106,7 +100,6 @@ public class RepositoryDataListener implements CCNInterestListener {
 	}
 	
 	/**
-	 * 
 	 * @param origInterest	used only to log the actual interest that created this listener
 	 * @param interest		interest to be used to identify this listener to filter out subsequent duplicate or overlapping
 	 * 						requests
@@ -221,8 +214,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	 */
 	
 	/**
-	 * Much match implementation of nextSegmentNumber in input streams, segmenters.
-	 * @return
+	 * Must match implementation of nextSegmentNumber in input streams, segmenters.
 	 */
 	private class GetNextBlockIDAction extends InterestActionClass {
 		@Override

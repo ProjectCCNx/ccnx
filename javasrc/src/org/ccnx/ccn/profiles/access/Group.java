@@ -113,14 +113,14 @@ public class Group {
 	}
 	
 	
-	public void addUsers(ArrayList<Link> newUsers)
+	public void addMembers(ArrayList<Link> newUsers)
 			throws XMLStreamException, IOException, InvalidKeyException,
 			InvalidCipherTextException, AccessDeniedException,
 			ConfigurationException {
 		modify(newUsers, null);						
 	}
 
-	public void removeUsers( ArrayList<Link> removedUsers) throws XMLStreamException,
+	public void removeMembers( ArrayList<Link> removedUsers) throws XMLStreamException,
 			IOException, InvalidKeyException, InvalidCipherTextException,
 			AccessDeniedException, ConfigurationException {
 		modify(null, removedUsers);

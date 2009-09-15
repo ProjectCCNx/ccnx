@@ -38,9 +38,6 @@ public class TestUserDataTestRepo {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		//testPrefix = ContentName.fromNative("/parc/test");
-		//userKeyStorePrefix = ContentName.fromNative("/parc/test/_access_/Users");
-		//userNamespace = ContentName.fromNative("/parc/test/Users/");
 		testPrefix = UserConfiguration.defaultNamespace();
 		userKeyStorePrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_access_");
 		userNamespace = ContentName.fromNative(testPrefix, "home");
@@ -59,6 +56,9 @@ public class TestUserDataTestRepo {
 			sb.append(" " + s);
 		}
 		System.out.println(sb.toString());
+		
+		td.saveUserPK2Repo(userNamespace);
+		
 		// OK, now let's make a handle using one of these users and make sure the publisher ID
 		// and such defaults correctly.
 		// Should we pick randomly?
@@ -80,8 +80,8 @@ public class TestUserDataTestRepo {
 		Assert.assertNotNull(userKeyManager.getDefaultKeyID());
 		Assert.assertNotNull(userKeyManager2.getDefaultKeyID());
 
-		CCNHandle standardLibrary = CCNHandle.open();
-		KeyManager standardKeyManager = standardLibrary.keyManager();
+		CCNHandle standardHandle = CCNHandle.open();
+		KeyManager standardKeyManager = standardHandle.keyManager();
 
 		System.out.println("Default key locator: " + standardKeyManager.getDefaultKeyLocator());
 		System.out.println("Default key ID: " + standardKeyManager.getDefaultKeyID());
@@ -96,12 +96,12 @@ public class TestUserDataTestRepo {
 		Assert.assertTrue(userKeyManager2.getDefaultKeyID().equals(userKeyManager.getDefaultKeyID()));
 
 		for (String friendlyName: td.friendlyNames()){
-			CCNHandle uLibrary = td.getHandleForUser(friendlyName);
-			KeyManager uKeyManager = uLibrary.keyManager();
-			//ContentName keyName = ContentName.fromNative(userNamespace, "PublicKey:" + userKeyManager.getDefaultKeyID());
+			CCNHandle uHandle = td.getHandleForUser(friendlyName);
+			KeyManager uKeyManager = uHandle.keyManager();
 			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
-			PublicKeyObject pko = new PublicKeyObject(keyName, uKeyManager.getDefaultPublicKey(), uLibrary);
-			pko.saveToRepository();
+			//PublicKeyObject pko = new PublicKeyObject(keyName, uKeyManager.getDefaultPublicKey(), uHandle);
+			PublicKeyObject pko = new PublicKeyObject(keyName, uHandle);
+			//pko.saveToRepository();
 			
 			System.out.println("Object key locator: " + pko.getPublisherKeyLocator());
 			System.out.println("Object key ID: " + pko.getContentPublisher());
@@ -109,7 +109,7 @@ public class TestUserDataTestRepo {
 			// Canaries -- things getting altered somehow.
 			Assert.assertTrue("Checkpoint 2", userKeyManager2.getDefaultKeyID().equals(userKeyManager.getDefaultKeyID()));
 
-			PublicKeyObject pkr = new PublicKeyObject(pko.getVersionedName(), standardLibrary);
+			PublicKeyObject pkr = new PublicKeyObject(pko.getVersionedName(), standardHandle);
 			if (!pkr.available()) {
 				Log.info("Can't read back object " + pko.getVersionedName());
 			} else {

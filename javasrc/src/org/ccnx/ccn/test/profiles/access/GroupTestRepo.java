@@ -22,7 +22,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
@@ -31,7 +30,6 @@ import java.util.SortedSet;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.CryptoException;
-import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -59,8 +57,9 @@ public class GroupTestRepo {
 	static char [] USER_PASSWORD = new String("password").toCharArray();
 	
 	static ContentName testStorePrefix = null;
-	static ContentName userStore = null;
+	static ContentName userNamespace = null;
 	static ContentName groupStore = null;
+	static ContentName userKeyStore = null;
 	
 	static EnumeratedNameList _userList = null;
 	static CCNHandle _handle = null;
@@ -82,22 +81,24 @@ public class GroupTestRepo {
 			myUserName = UserConfiguration.userName();
 			System.out.println("Username = " + myUserName);
 			testStorePrefix = UserConfiguration.defaultNamespace();
-			userStore = ContentName.fromNative(testStorePrefix, "home");
+			userNamespace = ContentName.fromNative(testStorePrefix, "home");
+			userKeyStore = ContentName.fromNative(testStorePrefix, "_access_");
 			groupStore = AccessControlProfile.groupNamespaceName(testStorePrefix);
 
 			System.out.println("prefix: " + testStorePrefix);
 			System.out.println("group store: " + groupStore);
-			System.out.println("user store: " + userStore);
+			System.out.println("user store: " + userNamespace);
 
 			_handle = CCNHandle.open();
 			userHandle = _handle;
 	
 			
-			//users = new TestUserData(userStore, NUM_USERS,
-			//		USE_REPO,
-			//		USER_PASSWORD, userHandle);
+			users = new TestUserData(userKeyStore, NUM_USERS,
+					USE_REPO,
+					USER_PASSWORD, userHandle);
+			users.saveUserPK2Repo(userNamespace);
 			
-			_acm = new AccessControlManager(testStorePrefix, groupStore, userStore);
+			_acm = new AccessControlManager(testStorePrefix, groupStore, userNamespace);
 			_acm.publishMyIdentity(myUserName, KeyManager.getDefaultKeyManager().getDefaultPublicKey());
 			_userList = _acm.userList();
 			_gm = _acm.groupManager();
@@ -115,9 +116,11 @@ public class GroupTestRepo {
 			retries ++;
 			System.out.print("................trying to remove user...........");
 			try{
-					grp.removeUsers(removeMembers);
+					grp.removeMembers(removeMembers);
 					succeed = true;
 			}catch(ContentNotReadyException e){
+				succeed = false;
+			}catch(AccessDeniedException e){
 				succeed = false;
 			}
 		}
@@ -131,9 +134,11 @@ public class GroupTestRepo {
 			retries ++;
 			System.out.print("................trying to add user...........");
 			try{
-					grp.addUsers(removeMembers);
+					grp.addMembers(removeMembers);
 					succeed = true;
 			}catch(ContentNotReadyException e){
+				succeed = false;
+			}catch(AccessDeniedException e){
 				succeed = false;
 			}
 		}
@@ -148,7 +153,7 @@ public class GroupTestRepo {
 			ContentName prefixTest = _userList.getName();
 			Assert.assertNotNull(prefixTest);
 			Log.info("***************** Prefix is "+ prefixTest.toString());
-			Assert.assertEquals(prefixTest, userStore);
+			Assert.assertEquals(prefixTest, userNamespace);
 			
 			_userList.waitForData();
 			Assert.assertTrue(_userList.hasNewData());

@@ -1,13 +1,14 @@
 libdir = $(shell pkg-config --variable=libdir vlc-plugin )
 vlclibdir = $(libdir)/vlc
+VLCPLUGINVERDEF = `pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER\1/;s/\.//g;'`
 
 all: libaccess_ccn_plugin.so
 
 libaccess_ccn_plugin.so: libaccess_ccn_plugin.o
-	gcc -g -shared -std=gnu99 $< `pkg-config  --libs vlc-plugin`  -Wl,-soname -Wl,$@ -o $@ -L/usr/local/lib -L../../csrc/lib -lccn -lcrypto
+	gcc -g -shared -std=gnu99 $< `pkg-config  --libs vlc-plugin`  -Wl,-soname -Wl,$@ -o $@ -L../../../csrc/lib -L/usr/local/lib -lccn -lcrypto
 
 libaccess_ccn_plugin.o: ccn.c
-	gcc -c -g -O3 -std=gnu99  $< -I../../src/include/ `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" -o $@  
+	gcc -c -g -O3 -std=gnu99  $< -I../../../csrc/include/ `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" $(VLCPLUGINVERDEF) -o $@  
 
 clean:
 	rm -f libaccess_ccn_plugin.o libaccess_ccn_plugin.so

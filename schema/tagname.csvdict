@@ -66,7 +66,4 @@
 88,RepositoryVersion
 89,GlobalPrefix
 90,LocalName
-2048,Address,Deprecated
-2049,SOType,Deprecated
-2050,Inject,Deprecated
 17702112,CCNProtocolDataUnit

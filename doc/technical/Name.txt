@@ -1,0 +1,13 @@
+CCN Name
+========
+
+== Name
+.......................................................
+Name ::= Component*
+Component ::= BLOB
+.......................................................
+A Name element simply contains a sequence of *Component* elements. Each Component element contains a sequence of zero or more bytes.  There are no restrictions on what byte sequences may be used, so when displayed as xml, a base64Binary encoding may be needed.  When the bytes happen to be printable UTF-8, a more human-friendly "text" alternative is available (although this is not shown in the official schema).  There is also a "hexBinary" available.
+
+The Name element in an interest is synonymous with the term 'prefix'.
+
+The Name element plays a pivotal role in both the link:InterestMessage.html[NInterest] and link:ContentObject.html[ContentObject].

@@ -22,13 +22,12 @@ import static org.junit.Assert.fail;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InvalidObjectException;
 
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.util.Arrays;
-import org.ccnx.ccn.io.NullOutputStream;
 import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -113,18 +112,6 @@ public class EncodableObjectTest {
 
 	@Test
 	public void testSave() {
-		boolean caught = false;
-		EncodableCollectionData emptycoll = new EncodableCollectionData();
-		try {
-			NullOutputStream nos = new NullOutputStream();
-			emptycoll.save(nos);
-		} catch (InvalidObjectException iox) {
-			// this is what we expect to happen
-			caught = true;
-		} catch (IOException ie) {
-			Assert.fail("Unexpectd IOException!");
-		}
-		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
 		EncodableCollectionData ecd0 = new EncodableCollectionData(empty);
 		EncodableCollectionData ecd1 = new EncodableCollectionData(small1);
@@ -156,10 +143,22 @@ public class EncodableObjectTest {
 	
 	@Test
 	public void testUpdate() {
+		boolean caught = false;
+		EncodableCollectionData emptycoll = new EncodableCollectionData();
+		try {
+			emptycoll.collection();
+		} catch (ContentNotReadyException iox) {
+			// this is what we expect to happen
+			caught = true;
+		} catch (IOException ie) {
+			Assert.fail("Unexpectd IOException!");
+		}
+		Assert.assertTrue("Failed to produce expected exception.", caught);
+
 		EncodableCollectionData ecd1 = new EncodableCollectionData(small1);
 		EncodableCollectionData ecd2 = new EncodableCollectionData();
 		EncodableCollectionData ecd3 = new EncodableCollectionData(small2);
-
+		
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		ByteArrayOutputStream baos3 = new ByteArrayOutputStream();
 

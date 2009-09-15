@@ -36,21 +36,12 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * Takes a class E, and backs it securely to CCN.
- * @author smetters
- *
- * @param <E>
+ * Subclass of CCNNetworkObject that wraps classes implementing Serializable, and uses
+ * Java serialization to read and write those objects to 
+ * CCN.
  */
 public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObject<E> {
 	
-	/**
-	 * Doesn't save until you call save, in case you want to tweak things first.
-	 * @param type
-	 * @param name
-	 * @param data
-	 * @param handle
-	 * @throws IOException
-	 */
 	public CCNSerializableObject(Class<E> type, ContentName name, E data, CCNHandle handle) throws IOException {
 		super(type, name, data, handle);
 	}
@@ -69,15 +60,6 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 		super(type, name, data, publisher, keyLocator, flowControl);
 	}
 
-	/**
-	 * Read constructor -- opens existing object.
-	 * @param type
-	 * @param name
-	 * @param handle
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws ClassNotFoundException 
-	 */
 	public CCNSerializableObject(Class<E> type, ContentName name, 
 			CCNHandle handle) throws IOException, XMLStreamException {
 		super(type, name, (PublisherPublicKeyDigest)null, handle);

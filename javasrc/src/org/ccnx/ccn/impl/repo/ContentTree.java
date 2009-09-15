@@ -36,7 +36,13 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
-
+/**
+ * Creates a tree structure to track the data stored within a LogStructRepoStore RepositoryStore.
+ * 
+ * Implements binary tree based algorithms to store and retrieve data based on interests and
+ * NameEnumeration
+ *
+ */
 public class ContentTree {
 	
 	public interface ContentGetter {
@@ -51,8 +57,6 @@ public class ContentTree {
 	 * same component (i.e. having same content digest at end
 	 * but presumably different publisher etc. that is not 
 	 * visible in this tree)
-	 * @author jthornto
-	 *
 	 */
 	public class TreeNode {
 		byte[] component; // name of this node in the tree, null for root only
@@ -121,26 +125,27 @@ public class ContentTree {
 		}
 	}
 
-	protected TreeNode root;
+	protected TreeNode _root;
 	
 	public ContentTree() {
-		root = new TreeNode();
-		root.component = null; // Only the root has a null value
+		_root = new TreeNode();
+		_root.component = null; // Only the root has a null value
 	}
 	
 	/**
 	 * Insert entry for the given ContentObject.
-	 * @param content
-	 * @param ref
-	 * @param ts
-	 * @param getter
+	 * 
+	 * @param content the data to insert
+	 * @param ref pointer to position of data in the file storage
+	 * @param ts last modification time of the data
+	 * @param getter to retrieve previous content to check for duplication
 	 * @return - true if content is not exact duplicate of existing content.
 	 */
 	public boolean insert(ContentObject content, ContentRef ref, long ts, ContentGetter getter, NameEnumerationResponse ner) {
 		final ContentName name = new ContentName(content.name(), content.contentDigest());
 		Log.fine("inserting content: "+name.toString());
-		TreeNode node = root; // starting point
-		assert(null != root);
+		TreeNode node = _root; // starting point
+		assert(null != _root);
 		boolean added = false;
 		
 		for (byte[] component : name.components()) {
@@ -238,10 +243,17 @@ public class ContentTree {
 		return true;
 	}
 
+	/**
+	 * Find the node for the given name
+	 * 
+	 * @param name ContentName to search for
+	 * @param count depth to search
+	 * @return node containing the name
+	 */
 	protected TreeNode lookupNode(ContentName name, int count) {
-		TreeNode node = root; // starting point
+		TreeNode node = _root; // starting point
 		
-		assert(null != root);
+		assert(null != _root);
 		if (count < 1) {
 			return node;
 		}
@@ -265,9 +277,9 @@ public class ContentTree {
 	
 	/**
 	 * Return the content objects with exactly the given name
-	 * @param name
-	 * @param count
-	 * @return
+	 * 
+	 * @param name ContentName to lookup
+	 * @return node containing the name
 	 */
 	protected final List<ContentRef> lookup(ContentName name) {
 		TreeNode node = lookupNode(name, name.count());
@@ -284,15 +296,21 @@ public class ContentTree {
 		}
 	}
 	
+	/**
+	 * Dump current names to an output file for debugging
+	 * 
+	 * @param output the output file
+	 * @param maxNodeLen max characters to include in a component name in the output
+	 */
 	public void dumpNamesTree(PrintStream output, int maxNodeLen) {		
-		assert(null != root);
+		assert(null != _root);
 		assert(null != output);
 		
 		output.println("Dumping tree of names of indexed content at " + new Date().toString());
 		if (maxNodeLen > 0) {
 			output.println("Node names truncated to max " + maxNodeLen + " characters");
 		}
-		dumpRecurse(output, root, "", maxNodeLen);
+		dumpRecurse(output, _root, "", maxNodeLen);
 	}
 	
 	// Note: this is not thread-safe against everything else going on.
@@ -336,14 +354,16 @@ public class ContentTree {
 	}
 
 	/**
+	 * Search for data matching an interest that specifies either the leftmost (canonically smallest) match or
+	 * doesn't specify a specific way to match data within several pieces of matching data.
 	 * 
 	 * @param interest the interest to match
 	 * @param matchlen total number of components required in final answer or -1 if not specified
 	 * @param node the node rooting a subtree to search
 	 * @param nodeName the full name of this node from the root up to and its component
 	 * @param depth the length of name of node including its component (number of components)
-	 * @param getter a handler to pull actual ContentObjects for final match testing.
-	 * @return
+	 * @param getter a handler to pull actual ContentObjects for final match testing
+	 * @return ContentObject matching the interest or null if not found
 	 */
 	protected final ContentObject leftSearch(Interest interest, int matchlen, TreeNode node, ContentName nodeName, int depth, boolean anyOK, ContentGetter getter) {
 		if ( (nodeName.count() >= 0) && (matchlen == -1 || matchlen == depth)) {
@@ -411,6 +431,13 @@ public class ContentTree {
 		return null;
 	}
 	
+	/**
+	 * Get all nodes below the given one
+	 * 
+	 * @param node the starting node
+	 * @param result list of nodes we are looking for
+	 * @param components depth
+	 */
 	protected void getSubtreeNodes(TreeNode node, List<TreeNode> result, Integer components) {
 		result.add(node);
 		if (components != null) {
@@ -429,10 +456,22 @@ public class ContentTree {
 		}
 	}
 	
+	/**
+	 * Search for data matching an interest in which the rightmost (canonically largest) data among several
+	 * matching pieces should be returned.
+	 * 
+	 * @param interest
+	 * @param matchlen
+	 * @param node
+	 * @param nodeName
+	 * @param depth
+	 * @param getter
+	 * @return
+	 */
 	protected final ContentObject rightSearch(Interest interest, int matchlen, TreeNode node, ContentName nodeName, int depth, ContentGetter getter) {
 		// A shortcut compared to leftSearch() for moment, just accumulate all options in forward order
 		// and then go through them in reverse direction and do full test
-		// ToDo This is very inefficient for all but the most optimal case where the last thing in the
+		// TODO This is very inefficient for all but the most optimal case where the last thing in the
 		// subtree happens to be a perfect match
 		ArrayList<TreeNode> options = new ArrayList<TreeNode>();
 		Integer totalComponents = null;
@@ -463,7 +502,13 @@ public class ContentTree {
 		return null;
 	}
 	
-	public final NameEnumerationResponse getNamesWithPrefix(Interest interest, ContentGetter getter) {
+	/**
+	 * Return all names with a prefix matching the name within the interest for name enumeration.
+	 * 
+	 * @param interest the interest to base the enumeration on using the rules of name enumeration
+	 * @return the name enumeration response containing the list of matching names
+	 */
+	public final NameEnumerationResponse getNamesWithPrefix(Interest interest) {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		//first chop off NE marker
 		ContentName prefix = interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
@@ -503,7 +548,13 @@ public class ContentTree {
 		return null;
 	}
 	
-	
+	/**
+	 * Retrieve the data from the store that best matches the given interest
+	 * 
+	 * @param interest the interest to match
+	 * @param getter used to read a possible match for final matching
+	 * @return the matching ContentObject or null if none
+	 */
 	public final ContentObject get(Interest interest, ContentGetter getter) {
 		Integer addl = interest.maxSuffixComponents();
 		int ncc = interest.name().count();
@@ -521,10 +572,8 @@ public class ContentTree {
 				}
 			}
 		} else {
-			//TreeNode prefixRoot = lookupNode(interest.name(), interest.nameComponentCount());
 			TreeNode prefixRoot = lookupNode(interest.name(), ncc);
 			if (prefixRoot == null) {
-				//Library.info("For: " + interest.name() + " the prefix root is null...  returning null");
 				return null;
 			}
 			
@@ -540,40 +589,7 @@ public class ContentTree {
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
 						ncc, false, getter);
 			}
-			
-			
-			/** original version	
-			
-			
-			// Now we need to iterate over content at or below this node to find best match
-			//if ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-				//	== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME)) {
-			if ((null!=interest.orderPreference()) && ((interest.orderPreference() & (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))
-					== (Interest.ORDER_PREFERENCE_LEFT | Interest.ORDER_PREFERENCE_ORDER_NAME))) {
-				// Traverse to find earliest match
-				//leftSearch(interest, (null == addl) ? -1 : addl + interest.nameComponentCount(),
-					//prefixRoot, new ContentName(interest.nameComponentCount(), interest.name().components()), 
-					//interest.nameComponentCount(), getter);
-				System.out.println("going to do leftSearch for earliest.  Interest: "+interest.toString());
-				return leftSearch(interest, (null == addl) ? -1 : addl + ncc,
-						prefixRoot, new ContentName(ncc, interest.name().components()), 
-						ncc, getter);
-			} else {
-				// Traverse to find latest match
-				//rightSearch(interest, (null == addl) ? -1 : addl + interest.nameComponentCount(), 
-				//		prefixRoot, new ContentName(interest.nameComponentCount(), interest.name().components()), 
-				//		interest.nameComponentCount(), getter);
-				System.out.println("going to do rightSearch for latest.  Interest: "+interest.name().toString());
-				
-				return rightSearch(interest, (null == addl) ? -1 : addl + ncc, 
-						prefixRoot, new ContentName(ncc, interest.name().components()), 
-						ncc, getter);
-			}
-			
-			**/
-			
 		}
 		return null;
 	}
-
 }

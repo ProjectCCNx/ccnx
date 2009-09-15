@@ -1,5 +1,5 @@
 /**
- * A CCNx library test.
+ * A CCNx command line utility.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
  *
@@ -15,25 +15,23 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.io.content;
+package org.ccnx.ccn.utils;
 
-import org.ccnx.ccn.io.content.Collection;
-import org.ccnx.ccn.io.content.ContentGoneException;
-import org.ccnx.ccn.io.content.ContentNotReadyException;
-import org.ccnx.ccn.io.content.EncodableObject;
+import org.ccnx.ccn.utils.explorer.ContentExplorer;
 
+/**
+ * A command-line wrapper class for running an explorer from ccn_run script.
+ * Note class name in utils package needs to match command name to work with ccn_run, 
+ * hence this wrapper exists so the real implementation can be in its own subpackage
+ * of utils.
+ */
+public class ccnexplore {
 
-public class EncodableCollectionData extends EncodableObject<Collection> {
-
-	private static final long serialVersionUID = 1233491939485391189L;
-
-	public EncodableCollectionData() {
-		super(Collection.class);
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		ContentExplorer.main(args);
 	}
-	
-	public EncodableCollectionData(Collection collectionData) {
-		super(Collection.class, collectionData);
-	}
-	
-	public Collection collection() throws ContentNotReadyException, ContentGoneException { return data(); }
+
 }
