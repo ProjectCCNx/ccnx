@@ -25,7 +25,6 @@ import java.util.LinkedList;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -37,29 +36,32 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * Mapping from a collection to the underlying XML representation.
- * Basically a collection is a content object containing
- * a List of links -- names and optionally some content authentication
- * information to specify whose value for each name
- * to take.
- * @author smetters
- *
+ * A representation of a collection of CCN objects, represented as a list of Link s.
+ * See Link for a discussion of what such links can refer to and their security.
+ * A Collection is the easiest way in CCN of representing extensional containment -- a fixed
+ * list of items that form a group, where it is possible to say that an item is either
+ * in or out of the group. Containment in CCN can also be represented intentionally -- 
+ * by looking at the set of children a given name currently has. In that latter case,
+ * it is impossible to say in general whether something is not in the set, as there
+ * might exist a child with that name, but it is not accessible to your network at
+ * the moment.
+ * 
+ * By tailoring the meaning of and labels attached to the Links in a Collection,
+ * one can generate special-purpose Collection subclasses with particular semantics,
+ * useful in particular applications. See ACL and the Name Enumeration protocol
+ * for examples of this.
  */
 public class Collection extends GenericXMLEncodable implements XMLEncodable, Iterable<Link> {
 	
 	/**
-	 * This should eventually be called Collection, and the Collection class deleted.
+	 * A CCNNetworkObject wrapper around Collection, used for easily saving and retrieving
+	 * versioned Collections to CCN. A typical pattern for using network objects to save
+	 * objects that happen to be encodable or serializable is to incorporate such a static
+	 * member wrapper class subclassing CCNEncodableObject, CCNSerializableObject, or
+	 * CCNNetworkObject itself inside the main class definition.
 	 */
 	public static class CollectionObject extends CCNEncodableObject<Collection> {
 		
-		/**
-		 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
-		 * @param name
-		 * @param data
-		 * @param handle
-		 * @throws ConfigurationException
-		 * @throws IOException
-		 */
 		public CollectionObject(ContentName name, Collection data, CCNHandle handle) throws IOException {
 			super(Collection.class, name, data, handle);
 		}
@@ -84,24 +86,16 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 			this(name, new Collection(contents), publisher, keyLocator, handle);			
 		}
 
-		/**
-		 * Read constructor -- opens existing object.
-		 * @param name
-		 * @param handle
-		 * @throws XMLStreamException
-		 * @throws IOException
-		 * @throws ClassNotFoundException 
-		 */
 		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
 			super(Collection.class, name, publisher, handle);
 		}
 		
-		public CollectionObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
-			super(Collection.class, name, (PublisherPublicKeyDigest)null, handle);
-		}
-		
 		public CollectionObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
 			super(Collection.class, firstBlock, handle);
+		}
+		
+		public CollectionObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
+			super(Collection.class, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
 		public Collection collection() throws ContentNotReadyException, ContentGoneException {
@@ -115,6 +109,10 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		}
 	}
 	
+	/**
+	 * Default tag used for encoding a collection. See ccn.xsd for definition of a Collection's
+	 * wire format.
+	 */
 	protected static final String COLLECTION_ELEMENT = "Collection";
 
 	protected LinkedList<Link> _contents = new LinkedList<Link>();
@@ -168,11 +166,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	
 	public int size() { return _contents.size(); }
 	
-	/**
-	 * XML format:
-	 * @throws XMLStreamException 
-	 * 
-	 */
+	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		_contents.clear();
 		
@@ -187,6 +181,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		decoder.readEndElement();
 	}
 
+	@Override
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
@@ -200,6 +195,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		encoder.writeEndElement();   		
 	}
 	
+	@Override
 	public boolean validate() { 
 		return (null != contents());
 	}

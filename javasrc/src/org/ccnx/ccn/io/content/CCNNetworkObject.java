@@ -52,7 +52,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * Extends a NetworkObject to add specifics for using a CCN-based backing store. Each time
  * the object is saved creates a new CCN version. Readers can open a specific version or
  * not specify a version, in which case the latest available version is read. Defaults
- * allow for saving data to a repository or directly to the network.
+ * allow for saving data to a repository or directly to the network. 
  *
  * Need to support four use models:
  * dimension 1: synchronous - ask for and block, the latest version or a specific version
@@ -65,6 +65,15 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * Support for subclasses or users specifying different flow controllers with
  * different behavior. Build in support for either the simplest standard flow
  * controller, or a standard repository-backed flow controller.
+ * 
+ * These objects attempt to maintain a CCN copy of the current state of their data. In descriptions
+ * below, an object that is "dirty" is one whose data has been modified locally, but not yet
+ * saved to the network. 
+ * 
+ * TODO: Note that the CCNNetworkObject class hierarchy currently has a plethora of constructors.
+ * It is also missing some important functionality -- encryption, the ability to specify
+ * freshness, and so on. Expect new constructors to deal with the latter deficiencies, and
+ * a cleanup of the constructor architecture overall in the near term.
  */
 public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNInterestListener {
 
@@ -119,7 +128,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param type Wrapped class type.
 	 * @param name Name under which to save object.
 	 * @param data Data to save.
-	 * @param handle CCNHandle to use for network operations. If null, a new one is created using {@link CCNHandle#open()}.
+	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNHandle handle) throws IOException {
@@ -135,7 +144,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param name Name under which to save object.
 	 * @param data Data to save.
 	 * @param publisher The key to use to sign this data, or our default if null.
-	 * @param handle CCNHandle to use for network operations. If null, a new one is created using {@link CCNHandle#open()}.
+	 * @param locator The key locator to use.
+	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNHandle handle) throws IOException {
@@ -153,7 +163,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param raw If true, saves to network by default, if false, saves to repository by default.
 	 * @param publisher The key to use to sign this data, or our default if null.
 	 * @param locator The key locator to use to let others know where to get our key.
-	 * @param handle CCNHandle to use for network operations. If null, a new one is created using {@link CCNHandle#open()}.
+	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
 	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, 
@@ -392,6 +402,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Load data into object. If name is versioned, load that version. If
 	 * name is not versioned, look for latest version. 
 	 * @param name Name of object to read.
+	 * @param publisher Desired publisher, or null for any.
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 */
@@ -542,6 +553,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * to a constructor that allows a raw argument, it will save to a repository.
 	 * Otherwise will perform a raw save.
 	 * @param version Version to save to.
+	 * @return true if object was saved, false if it was not (if it was not dirty).
 	 * @throws IOException 
 	 */
 	public boolean save(CCNTime version) throws IOException {
@@ -555,6 +567,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param gone Are we saving this content as gone or not.
 	 * @param return Returns true if it saved data, false if it thought data was not dirty and didn't
 	 * 		save. 
+	 * @return 
 	 * TODO allow freshness specification
 	 * @throws IOException 
 	 */
@@ -677,7 +690,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Save this object as GONE. Intended to mark the latest version, rather
 	 * than a specific version as GONE. So for now, require that name handed in
 	 * is *not* already versioned; throw an IOException if it is.
-	 * @param name
 	 * @throws IOException
 	 */
 	public synchronized boolean saveAsGone() throws IOException {	
