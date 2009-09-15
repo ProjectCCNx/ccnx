@@ -565,9 +565,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param version If version is non-null, assume that is the desired
 	 * version. If not, set version based on current time.
 	 * @param gone Are we saving this content as gone or not.
-	 * @param return Returns true if it saved data, false if it thought data was not dirty and didn't
+	 * @return return Returns true if it saved data, false if it thought data was not dirty and didn't
 	 * 		save. 
-	 * @return 
 	 * TODO allow freshness specification
 	 * @throws IOException 
 	 */
