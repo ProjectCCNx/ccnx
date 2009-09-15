@@ -71,8 +71,10 @@ vlc_module_end();
 /*****************************************************************************
  * Local prototypes
  *****************************************************************************/
-#define CCN_FIFO_MAX (2 * 1024 * 1024)
+#define CCN_FIFO_MAX_PACKETS 512
+#define CCN_CHUNK_SIZE 4096
 #define CCN_VERSION_TIMEOUT 5000
+
 struct access_sys_t
 {
     vlc_url_t  url;
@@ -274,7 +276,6 @@ static ssize_t CCNRead(access_t *p_access, uint8_t *buf, size_t size)
 /*****************************************************************************
  * CCNSeek:
  *****************************************************************************/
-#define CCN_CHUNK_SIZE 4096
 
 static int CCNSeek(access_t *p_access, int64_t i_pos)
 {
@@ -512,7 +513,7 @@ incoming_content(struct ccn_closure *selfp,
     }
 
     /* need to do this with a condition variable, since we don't want to sleep the thread */
-    while (block_FifoSize(p_sys->p_fifo) > CCN_FIFO_MAX) {
+    while (block_FifoCount(p_sys->p_fifo) > CCN_FIFO_MAX_PACKETS) {
         msleep(1000);
         if (!vlc_object_alive(p_access)) return(CCN_UPCALL_RESULT_OK);
     }
