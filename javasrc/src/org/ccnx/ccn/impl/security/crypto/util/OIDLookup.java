@@ -88,27 +88,27 @@ public class OIDLookup {
 	private static Map<String,String> _s2oid = new HashMap<String,String>();
 
 	/**
-	 * Map from oid to DigestwithCipher names. Multiway -- all known OIDs listed.
+	 * Map from OID to DigestwithCipher names. Multiway -- all known OIDs listed.
 	 **/
 	private static Map<String,String> _oid2s = new HashMap<String,String>();
 
 	/**
-	 * A map from engine type to oid maps.
+	 * Map from engine type to OID maps.
 	 **/
 	private static Map<String,Map<String,String>> _e2oid2alg = new HashMap<String, Map<String,String>>();
 
 	/**
-	 * One that goes the other way.
+	 * Map that goes the other way.
 	 **/
 	private static Map<String,Map<String,String>> _e2alg2oid = new HashMap<String,Map<String,String>>();
 
 	/**
-	 * A map from provider name to provider alias map.
+	 * Map from provider name to provider alias map.
 	 **/
 	protected static Map<String,Map<String,String>> _aliasMap;
 	
 	/**
-	 * Preload the tables.
+	 * Preload the maps.
 	 **/
 	static {
 
@@ -209,8 +209,11 @@ public class OIDLookup {
 	}
 
 	/**
-	 * Map from a digest algorithm name and a cipher algorithm name to an OID. 
-	 * */
+	 * Map from a digest algorithm name and a cipher algorithm name to an OID.
+	 * @param digestAlg the digest algorithm.
+	 * @param cipherAlg the cipher algorithm.
+	 * @return the OID
+	 */
 	public static String getSignatureAlgorithmOID(String digestAlg, String cipherAlg) {
 
 		digestAlg = resolveDigestAlias(digestAlg);
@@ -225,11 +228,13 @@ public class OIDLookup {
 		return oid; // might be null
 	}
 
-
 	/**
 	 * Map from a digest algorithm name and a cipher algorithm to a signature algorithm
 	 * name. If the signature algorithm name doesn't exist, return null.
-	 **/
+	 * @param digestAlg the digest algorithm.
+	 * @param cipherAlg the cipher algorithm.
+	 * @return the signature algorithm.
+	 */
 	public static String getSignatureAlgorithm(String digestAlg, String cipherAlg) {
 
 		digestAlg = resolveDigestAlias(digestAlg);
@@ -248,41 +253,46 @@ public class OIDLookup {
 		return null;
 	}	
 
+	/**
+	 * Map from a signature algorithm to a cipher.
+	 * @param signatureAlgorithm the signature algorithm.
+	 * @return the cipher.
+	 */
 	public static String signatureAlgorithmToCipher(String signatureAlgorithm) {
-
 		signatureAlgorithm = resolveSignatureAlias(signatureAlgorithm);		
-
 		String [] dac =  signatureAlgorithmToDigestAndCipher(signatureAlgorithm);
-
 		return dac[1];
 	}
 
+	/**
+	 * Map from a signature algorithm to a digest.
+	 * @param signatureAlgorithm the signature algorithm.
+	 * @return the digest.
+	 */
 	public static String signatureAlgorithmToDigest(String signatureAlgorithm) {
-
 		signatureAlgorithm = resolveSignatureAlias(signatureAlgorithm);		
-
 		String [] dac =  signatureAlgorithmToDigestAndCipher(signatureAlgorithm);
-
 		return dac[0];
 	}
 
 	/**
-	 * Only works for ciphers used in signatures.
-	 **/
+	 * Get the OID for a cipher algorithm.
+	 * This only works for ciphers used in signatures.
+	 * @param cipherAlgorithm the cipher algorithm.
+	 * @return the OID.
+	 */
 	public static String getCipherOID(String cipherAlgorithm)  {
-
 		cipherAlgorithm = resolveCipherAlias(cipherAlgorithm);
-
 		return mapGet(_c2oid, cipherAlgorithm);
 	}
 
 	/**
 	 * Return the preferred OID for a digest algorithm.
-	 **/
+	 * @param digestAlgorithm the digest algorithm.
+	 * @return the OID.
+	 */
 	public static String getDigestOID(String digestAlgorithm)  {
-
 		digestAlgorithm = resolveDigestAlias(digestAlgorithm);
-
 		return mapGet(_d2oid, digestAlgorithm);
 	}
 
@@ -290,9 +300,7 @@ public class OIDLookup {
 	 * Return the preferred OID for a signature algorithm.
 	 **/
 	public static String getSignatureOID(String algorithm)  {
-
 		algorithm = resolveSignatureAlias(algorithm);
-
 		return mapGet(_s2oid, algorithm);
 	}
 
@@ -300,7 +308,6 @@ public class OIDLookup {
 	 * Return the preferred name for a signature OID.
 	 **/
 	public static String getSignatureName(String oid)  {
-
 		return mapGet(_oid2s, oid);
 	}
 
@@ -308,7 +315,6 @@ public class OIDLookup {
 	 * Return the preferred name for a digest OID.
 	 **/
 	public static String getDigestName(String oid)  {
-
 		return mapGet(_oid2d, oid);
 	}
 
@@ -316,7 +322,6 @@ public class OIDLookup {
 	 * Return the preferred name for a cipher OID.
 	 **/
 	public static String getCipherName(String oid)  {
-
 		return mapGet(_oid2c, oid);
 	}
 
@@ -325,7 +330,6 @@ public class OIDLookup {
 	 * Attempt to cope with aliases, etc.
 	 **/
 	public static String[] signatureAlgorithmToDigestAndCipher(String signatureAlgorithm) {
-
 		signatureAlgorithm = resolveSignatureAlias(signatureAlgorithm);
 
 		if (signatureAlgorithm == null) {
@@ -336,7 +340,7 @@ public class OIDLookup {
 		String [] dandc = signatureAlgorithm.split("with");
 
 		if (dandc.length != 2) {
-			// houston, we have a problem.
+			// We have a problem.
 			String [] dandctry2 = signatureAlgorithm.split("/");
 			if (dandctry2.length != 2) {
 				System.out.println("System error: splitting canonical signature algorithm name: " +
@@ -396,7 +400,7 @@ public class OIDLookup {
 	 * @param doid The string representation of the digest
 	 *   algorithm OID. The OID must have a &quot;OID.&quot;
 	 *   prefix.
-	 * @param doid The string representation of the cipher
+	 * @param coid The string representation of the cipher
 	 *   algorithm OID. The OID must have a &quot;OID.&quot;
 	 *   prefix.
 	 * @return The standard JCE name of the signature algorithm
@@ -461,7 +465,7 @@ public class OIDLookup {
 		/* We start from the last provider and work our
 		 * way to the first one such that aliases of
 		 * preferred providers overwrite entries of
-		 * less favoured providers.
+		 * less favored providers.
 		 */
 		for (i=providers.length-1; i>=0; i--)  {
 
@@ -474,8 +478,7 @@ public class OIDLookup {
 				if (!k.startsWith("Alg.Alias.")) 
 					continue;
 
-				/* Truncate k to <engine>.<alias>
-				 */
+				// Truncate k to <engine>.<alias>
 				k = k.substring(10).toLowerCase();
 				j = k.indexOf('.');
 
@@ -687,7 +690,7 @@ public class OIDLookup {
 	}
 
 	/**
-	 * Unfortunately, there's no easy way to do this
+	 * Unfortunately, there's no easy way to do this.
 	 * Need to add a way to get parameters from each new key type. Makes it hard to add
 	 * new key types dynamically. The parameter interfaces should be cleaned up in Java.
 	 * So instead, we try reflection...
@@ -700,7 +703,7 @@ public class OIDLookup {
 		// Handle the obvious cases, try to get a little general with reflection.
 		if (key instanceof RSAKey) {
 			// do nothing, params should be null (as opposed to RSAKeyGenerator parameters,
-			// which actually do contain stuff. Don't use those here.
+			// which actually do contain stuff). Don't use those here.
 		} if (key instanceof DSAKey) {
 			DSAParams params = ((DSAKey)key).getParams();
 
@@ -774,14 +777,20 @@ public class OIDLookup {
 		// don't want the generation parameters, want the null
 		return null;
 	}
-	
+
+	/**
+	 * Prints the list of loaded providers.
+	 */
 	public static void listLoadedProviders() {
 		Set<String> providers = _aliasMap.keySet();
 		for (String s : providers) {
 			System.out.println("OIDLookup: loaded provider " + s);
 		}
 	}
-	
+
+	/**
+	 * Prints the list of loaded aliases.
+	 */
 	public static void listLoadedAliases() {
 		Set<String> providers = _aliasMap.keySet();
 		for (String p : providers) {

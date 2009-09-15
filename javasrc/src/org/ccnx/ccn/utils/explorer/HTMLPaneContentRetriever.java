@@ -6,13 +6,13 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 
-public class ContentRetriever implements Runnable {
+public class HTMLPaneContentRetriever implements Runnable {
 
 	private String name = null;
 	private JEditorPane htmlPane = null;
 	private CCNHandle handle = null;
 	
-	public ContentRetriever(CCNHandle h, JEditorPane p, String n){
+	public HTMLPaneContentRetriever(CCNHandle h, JEditorPane p, String n){
 		handle = h;
 		htmlPane = p;
 		name = n;
@@ -44,18 +44,17 @@ public class ContentRetriever implements Runnable {
 		
 		if (handle == null) {
 			System.err.println("Must set CCNHandle");
+			return;
 		}
 			
 
 		try{
 			//get the file name as a ContentName
 			ContentName fileName = ContentName.fromURI(name);
-			//System.out.println("retrieving "+fileName.toString()+" from repo");
 
 			CCNFileInputStream fis = new CCNFileInputStream(fileName, handle);
 				
 			htmlPane.read(fis, fileName);
-			
 		} catch (Exception e) {
 			System.err.println("Could not retrieve file: "+name);
 			htmlPane.setText(name + " is not available at this time.");
