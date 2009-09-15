@@ -41,10 +41,10 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 /**
  * Basic output stream class which generates segmented content under a given
- * name prefix. Segment naming is generated according to the {@link SegmentationProfile};
+ * name prefix. Segment naming is generated according to the SegmentationProfile;
  * by default names are sequentially numbered. Name prefixes are taken as specified
  * (no versions or other information is added by this class). Segments are 
- * fixed length (see {@link CCNBlockOutputStream} for non fixed-length segments).
+ * fixed length (see CCNBlockOutputStream for non fixed-length segments).
  */
 public class CCNOutputStream extends CCNAbstractOutputStream {
 
@@ -89,7 +89,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	/**
 	 * Constructor for a simple CCN output stream.
 	 * @param name name prefix under which to write content segments
-	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @param handle if null, new handle created with CCNHandle#open()
 	 * @throws IOException stream setup fails
 	 */
 	public CCNOutputStream(ContentName name, CCNHandle handle) throws IOException {
@@ -100,7 +100,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * Constructor for a simple CCN output stream.
 	 * @param name name prefix under which to write content segments
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
-	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @param handle if null, new handle created with CCNHandle#open()
 	 * @throws IOException stream setup fails
 	 */
 	public CCNOutputStream(ContentName name,
@@ -114,7 +114,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param name name prefix under which to write content segments
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
-	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @param handle if null, new handle created with CCNHandle#open()
 	 * @throws IOException stream setup fails
 	 */
 	public CCNOutputStream(ContentName name, ContentKeys keys, CCNHandle handle) throws IOException {
@@ -128,7 +128,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
-	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @param handle if null, new handle created with CCNHandle#open()
 	 * @throws IOException stream setup fails
 	 */
 	public CCNOutputStream(ContentName name, 
@@ -144,11 +144,11 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param name name prefix under which to write content segments
 	 * @param locator key locator to use, if null, default for key is used.
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
-	 * @param type type to mark content (see {@link ContentType}), if null, DATA is used; if
+	 * @param type type to mark content (see ContentType), if null, DATA is used; if
 	 * 			content encrypted, ENCR is used.
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
-	 * @param handle if null, new handle created with {@link CCNHandle#open()}
+	 * @param handle if null, new handle created with CCNHandle#open()
 	 * @throws IOException stream setup fails
 	 */
 	public CCNOutputStream(ContentName name, 
@@ -170,7 +170,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param name name prefix under which to write content segments
 	 * @param locator key locator to use, if null, default for key is used.
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
-	 * @param type type to mark content (see {@link ContentType}), if null, DATA is used; if
+	 * @param type type to mark content (see ContentType), if null, DATA is used; if
 	 * 			content encrypted, ENCR is used.
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
@@ -191,10 +191,10 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param name name prefix under which to write content segments
 	 * @param locator key locator to use, if null, default for key is used.
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
-	 * @param type type to mark content (see {@link ContentType}), if null, DATA is used; if
+	 * @param type type to mark content (see ContentType), if null, DATA is used; if
 	 * 			content encrypted, ENCR is used.
 	 * @param segmenter segmenter used to segment and sign content, should be already initialized
-	 * 		with {@link ContentKeys} if needed.
+	 * 		with ContentKeys if needed.
 	 * @throws IOException if flow controller setup fails
 	 */
 	protected CCNOutputStream(ContentName name, 
@@ -310,9 +310,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	/**
 	 * Actually write bytes to the network.
-	 * @param buf as in {@link #write(byte[], int, int)}
-	 * @param offset as in {@link #write(byte[], int, int)}
-	 * @param len as in {@link #write(byte[])}
+	 * @param buf as in write(byte[], int, int)
+	 * @param offset as in write(byte[], int, int)
+	 * @param len as in write(byte[])
 	 * @throws IOException on network errors
 	 * @throws InvalidKeyException if we cannot encrypt content as specified
 	 * @throws SignatureException if we cannot sign content

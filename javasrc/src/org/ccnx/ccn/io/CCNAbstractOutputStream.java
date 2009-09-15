@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNSegmenter;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -83,7 +82,7 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	
 	/**
 	 * Override in subclasses that need to do something special with start writes 
-	 * (see {@link CCNFlowControl#startWrite(ContentName, org.ccnx.ccn.impl.CCNFlowControl.Shape)}).
+	 * (see CCNFlowControl#startWrite(ContentName, Shape)).
 	 * @throws IOException
 	 */
 	protected void startWrite() throws IOException {}
@@ -116,7 +115,7 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	}
 
 	/**
-	 * @return The {@link CCNSegmenter} responsible for segmenting and signing stream content. 
+	 * @return The CCNSegmenter responsible for segmenting and signing stream content. 
 	 */
 	protected CCNSegmenter getSegmenter() {
 		return _segmenter;
