@@ -31,7 +31,9 @@ import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo;
 
-
+/**
+ * A specifier for the information that can be used to authenticate the target of a Link.
+ */
 public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodable, Comparable<LinkAuthenticator> {
 
     public static final String LINK_AUTHENTICATOR_ELEMENT = "LinkAuthenticator";
