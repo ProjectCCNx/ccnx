@@ -22,14 +22,13 @@ import static org.junit.Assert.fail;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InvalidObjectException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.util.Arrays;
-import org.ccnx.ccn.io.NullOutputStream;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -51,18 +50,6 @@ public class SerializableObjectTest {
 
 	@Test
 	public void testSave() {
-		boolean caught = false;
-		SerializablePublicKey empty = new SerializablePublicKey();
-		try {
-			NullOutputStream nos = new NullOutputStream();
-			empty.save(nos);
-		} catch (InvalidObjectException iox) {
-			// this is what we expect to happen
-			caught = true;
-		} catch (IOException ie) {
-			Assert.fail("Unexpectd IOException!");
-		}
-		Assert.assertTrue("Failed to produce expected exception.", caught);
 		
 		SerializablePublicKey spk1 = new SerializablePublicKey(kp1.getPublic());
 		SerializablePublicKey spk2 = new SerializablePublicKey(kp1.getPublic());
@@ -88,6 +75,18 @@ public class SerializableObjectTest {
 	
 	@Test
 	public void testUpdate() {
+		boolean caught = false;
+		SerializablePublicKey empty = new SerializablePublicKey();
+		try {
+			empty.publicKey();
+		} catch (ContentNotReadyException iox) {
+			// this is what we expect to happen
+			caught = true;
+		} catch (IOException ie) {
+			Assert.fail("Unexpectd IOException!");
+		}
+		Assert.assertTrue("Failed to produce expected exception.", caught);
+
 		SerializablePublicKey spk1 = new SerializablePublicKey(kp1.getPublic());
 		SerializablePublicKey spk2 = new SerializablePublicKey();
 		SerializablePublicKey spk3 = new SerializablePublicKey(kp2.getPublic());

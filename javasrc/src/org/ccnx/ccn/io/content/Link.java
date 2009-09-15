@@ -46,18 +46,14 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable {
 	
 	/**
-	 * This should eventually be called Link, and the Link class deleted.
+	 * A CCNNetworkObject wrapper around Link, used for easily saving and retrieving
+	 * versioned Links to CCN. A typical pattern for using network objects to save
+	 * objects that happen to be encodable or serializable is to incorporate such a static
+	 * member wrapper class subclassing CCNEncodableObject, CCNSerializableObject, or
+	 * CCNNetworkObject itself inside the main class definition.
 	 */
 	public static class LinkObject extends CCNEncodableObject<Link> {
 		
-		/**
-		 * Write constructor. Doesn't save until you call save, in case you want to tweak things first.
-		 * @param name
-		 * @param data
-		 * @param handle
-		 * @throws ConfigurationException
-		 * @throws IOException
-		 */
 		public LinkObject(ContentName name, Link data, CCNHandle handle) throws IOException {
 			super(Link.class, name, data, handle);
 		}
@@ -66,14 +62,6 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 			super(Link.class, name, data, publisher, keyLocator, handle);
 		}
 
-		/**
-		 * Read constructor -- opens existing object.
-		 * @param name
-		 * @param handle
-		 * @throws XMLStreamException
-		 * @throws IOException
-		 * @throws ClassNotFoundException 
-		 */
 		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
 			super(Link.class, name, publisher, handle);
 		}
@@ -88,7 +76,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		
 		/**
 		 * Subclasses that need to write an object of a particular type can override.
-		 * @return
+		 * @return Content type to use.
 		 */
 		@Override
 		public ContentType contentType() { return ContentType.LINK; }
@@ -149,10 +137,6 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	 */
 	public Link() {}
 	
-	/**
-	 * Copy constructor. If we want to change name or authenticator,
-	 * should clone those as well.
-	 */
 	public Link(Link other) {
 		_targetName = other.targetName();
 		_targetLabel = other.targetLabel();
@@ -175,6 +159,8 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	 * and otherwise it'll probably assume that what is below here is either a version and
 	 * segments (get latest version) or that this is versioned and it wants segments.
 	 * 
+	 * @param timeout How long to try for, in milliseconds.
+	 * @param handle Handle to use. Should not be null.
 	 * @return Returns a child object. Verifies that it meets the requirement of the link,
 	 *   and that it is signed by who it claims. Could allow caller to pass in verifier
 	 *   to verify higher-level trust and go look for another block on failure.
@@ -193,11 +179,6 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 				desiredPublisher, timeout, new ContentObject.SimpleVerifier(desiredPublisher), handle);
 	}
 	
-	/**
-	 * XML format:
-	 * @throws XMLStreamException 
-	 * 
-	 */
 	@Override
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(getElementLabel());
