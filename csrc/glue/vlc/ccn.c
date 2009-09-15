@@ -104,7 +104,9 @@ static int CCNOpen(vlc_object_t *p_this)
     p_sys = p_access->p_sys;
     if (p_sys == NULL)
         return VLC_ENOMEM;
+#ifdef VLCPLUGINVER099
     p_access->info.b_prebuffered = true;
+#endif
     p_access->info.i_size = -1;
     /* Update default_pts */
     var_Create(p_access, "ccn-caching", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
@@ -151,8 +153,13 @@ static int CCNOpen(vlc_object_t *p_this)
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
+#ifdef VLCPLUGINVER099
     i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
                       VLC_THREAD_PRIORITY_INPUT, false);
+#else
+    i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
+                              VLC_THREAD_PRIORITY_INPUT);
+#endif
     if (i_ret == 0)
         return VLC_SUCCESS;
 
@@ -319,10 +326,12 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
             *pb_bool = true;
             break;
 
+#ifdef VLCPLUGINVER099
         case ACCESS_GET_MTU:
             pi_int = (int*)va_arg(args, int *);
             *pi_int = 0;
             break;
+#endif
 
         case ACCESS_GET_PTS_DELAY:
             pi_64 = (int64_t*)va_arg(args, int64_t *);
