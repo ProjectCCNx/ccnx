@@ -144,6 +144,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param name Name under which to save object.
 	 * @param data Data to save.
 	 * @param publisher The key to use to sign this data, or our default if null.
+	 * @param locator The key locator to use.
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
@@ -566,6 +567,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param gone Are we saving this content as gone or not.
 	 * @param return Returns true if it saved data, false if it thought data was not dirty and didn't
 	 * 		save. 
+	 * @return 
 	 * TODO allow freshness specification
 	 * @throws IOException 
 	 */
