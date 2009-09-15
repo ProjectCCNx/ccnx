@@ -35,7 +35,6 @@ import java.awt.event.WindowListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.logging.Level;
@@ -62,14 +61,13 @@ import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellRenderer;
+import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.CCNFileInputStream;
-import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
@@ -102,10 +100,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	public static final ImageIcon ICON_DOCUMENT = new ImageIcon(getScaledImage(
 			(new ImageIcon("./src/org/ccnx/ccn/utils/explorer/Document.png")).getImage(), 32, 32));
 
-	private static boolean DEBUG = false;
 	private ArrayList<ContentName> names;
 	private JEditorPane htmlPane;
-	private URL helpURL;
 	public String selectedPrefix;
 	public String selectedPath;
 	protected JTree tree;
@@ -497,7 +493,6 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		return p;
 	}
 
-//	@SuppressWarnings("unchecked")
 	private DefaultMutableTreeNode find(TreePath parent, int depth, String[] names){
 		DefaultMutableTreeNode node = (DefaultMutableTreeNode)parent.getLastPathComponent();
 		String nodeName = node.toString().replace("/", "");
@@ -842,109 +837,119 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 //        frame.setVisible(true);
     }
 
-	//@SuppressWarnings("unchecked")
 	private void addTreeNodes(ArrayList<ContentName> n, ContentName prefix) {
 
-		System.out.println("addTreeNodes: prefix = "+prefix+" names: "+n.toString());
+		System.out.println("addTreeNodes: prefix = " + prefix + " names: " + n.toString());
 
 		DefaultMutableTreeNode parentNode = getTreeNode(prefix);
-		if(parentNode == null){
-			System.out.println("PARENT NODE IS NULL!!!"+ prefix.toString());
-			System.out.println("can't add anything to a null parent...  cancel prefix and return");
-			_nameEnumerator.cancelPrefix(prefix);
-			return;
-		}
+		synchronized (parentNode) {
 
-		System.out.print("the parent has "+parentNode.getChildCount()+" children: ");
-		for(DefaultMutableTreeNode temp : java.util.Collections.list((Enumeration<DefaultMutableTreeNode>)parentNode.children())){
-			if(temp.getUserObject() instanceof IconData){
-				IconData id = (IconData)temp.getUserObject();
-				ContentName childName = ContentName.fromNative(new ContentName(), ((Name)id.m_data).name);
-				System.out.print(" "+ childName);
+			if (parentNode == null) {
+				System.out.println("PARENT NODE IS NULL!!!" + prefix.toString());
+				System.out.println("can't add anything to a null parent...  cancel prefix and return");
+				_nameEnumerator.cancelPrefix(prefix);
+				return;
 			}
-		}
-		System.out.println();
-		
-		// while we are getting things, wait for stuff to happen
-		System.out.println("Getting Content Names");
-		boolean addToParent = true;
-		DefaultMutableTreeNode toRemove = null;
-		for (ContentName cn : n) {
-			addToParent = true;
-			
-			//check if a version marker
-			if(VersioningProfile.containsVersion(cn)) {
-				addToParent = false;
-				
-				//this name is a version, that means the parent is something we can grab...
-				//we should change the icon for the parent to be a file and not a folder
-				
-				Name parentNameNode = getNameNode(parentNode);
-				parentNameNode.setIsDirectory(false);
 
-				((IconData)parentNode.getUserObject()).setIcon(ICON_DOCUMENT);
-				m_model.nodeChanged(parentNode);
-				
-			}
-			else
-				System.out.println("name is not a version");
-			//check if a segment marker
-			if(SegmentationProfile.isSegment(cn))
-				addToParent = false;
-			else
-				System.out.println("name is not a segment marker");
-		
-			if(addToParent && parentNode.getChildCount()>0){
-				for(DefaultMutableTreeNode temp : java.util.Collections.list((Enumeration<DefaultMutableTreeNode>)parentNode.children())){
-					//check if this name is already in there!
-					if(temp.getUserObject() instanceof Boolean){
-						toRemove = temp;
-					}
-					else{
-						if(temp.getUserObject() instanceof IconData){
-							IconData id = (IconData)temp.getUserObject();
-							ContentName nodeName = ContentName.fromNative(new ContentName(), ((Name)id.m_data).name);
-							System.out.println("check names: "+nodeName+" "+cn.toString());
-
-							//check if already there...
-							if(cn.compareTo(nodeName) == 0){
-								addToParent = false;
-							}
-							else
-								System.out.println("name not a match");
-							}
-					}
-				}
-				if(toRemove!=null){
-					m_model.removeNodeFromParent(toRemove);
-					toRemove = null;
+			int numChildren = parentNode.getChildCount();
+			System.out.print("the parent has " + numChildren + " children: ");
+			DefaultMutableTreeNode temp = null;
+			for(int i = 0; i < numChildren; i++) {
+				temp = (DefaultMutableTreeNode) parentNode.getChildAt(i);
+				if (temp.getUserObject() instanceof IconData) {
+					IconData id = (IconData) temp.getUserObject();
+					ContentName childName = ContentName.fromNative(new ContentName(), ((Name) id.m_data).name);
+					System.out.print(" " + childName);
 				}
 			}
-			final DefaultMutableTreeNode node;
-			if(addToParent){
-				//name wasn't there, go ahead and add to the parent
-				System.out.println("added as child: "+cn.toString());
-				if (cn.toString().toLowerCase().endsWith(".txt") || cn.toString().toLowerCase().endsWith(".text")) {
-			
-					node = new DefaultMutableTreeNode(new IconData(ICON_DOCUMENT,
-							null, new Name(cn.component(0), prefix,false)));
+			System.out.println();
+
+			// while we are getting things, wait for stuff to happen
+			System.out.println("Getting Content Names");
+			boolean addToParent = true;
+			DefaultMutableTreeNode toRemove = null;
+			for (ContentName cn : n) {
+				addToParent = true;
+
+				// check if a version marker
+				if (VersioningProfile.containsVersion(cn)) {
+					addToParent = false;
+
+					// this name is a version, that means the parent is
+					// something we can grab...
+					// we should change the icon for the parent to be a file and
+					// not a folder
+
+					Name parentNameNode = getNameNode(parentNode);
+					parentNameNode.setIsDirectory(false);
+
+					((IconData) parentNode.getUserObject()).setIcon(ICON_DOCUMENT);
+					m_model.nodeChanged(parentNode);
+
 				} else {
-					
-					node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
-							null, new Name(cn.component(0), prefix,true)));
+					System.out.println("name is not a version");
 				}
-		        
-		        m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
-				System.out.println("inserted node...  parent now has "+parentNode.getChildCount());
+				// check if a segment marker
+				if (SegmentationProfile.isSegment(cn)) {
+					addToParent = false;
+				} else {
+					System.out.println("name is not a segment marker");
+				}
 
+				if (addToParent && parentNode.getChildCount() > 0) {
+					numChildren = parentNode.getChildCount();
+
+					for (int i = 0; i < numChildren; i++) {
+						temp = (DefaultMutableTreeNode)parentNode.getChildAt(i);
+						// check if this name is already in there!
+						if (temp.getUserObject() instanceof Boolean) {
+							toRemove = temp;
+						} else {
+							if (temp.getUserObject() instanceof IconData) {
+								IconData id = (IconData) temp.getUserObject();
+								ContentName nodeName = ContentName.fromNative(new ContentName(),((Name) id.m_data).name);
+								System.out.println("check names: " + nodeName + " " + cn.toString());
+
+								// check if already there...
+								if (cn.compareTo(nodeName) == 0) {
+									addToParent = false;
+								} else {
+									System.out.println("name not a match");
+								}
+							}
+						}
+					}
+					if (toRemove != null) {
+						m_model.removeNodeFromParent(toRemove);
+						toRemove = null;
+					}
+				}
+				final DefaultMutableTreeNode node;
+				if (addToParent) {
+					// name wasn't there, go ahead and add to the parent
+					System.out.println("added as child: " + cn.toString());
+					if (cn.toString().toLowerCase().endsWith(".txt") || cn.toString().toLowerCase().endsWith(".text")) {
+						node = new DefaultMutableTreeNode(new IconData(ICON_DOCUMENT, null, new Name(cn.component(0), prefix, false)));
+					} else {
+						node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER, null, new Name(cn.component(0),	prefix, true)));
+					}
+
+					m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
+					System.out.println("inserted node...  parent now has "+ parentNode.getChildCount());
+
+				}
 			}
-		}
-		System.out.print("the parent node now has "+parentNode.getChildCount()+" children: ");
-		for(DefaultMutableTreeNode temp : java.util.Collections.list((Enumeration<DefaultMutableTreeNode>)parentNode.children())){
-			if(temp.getUserObject() instanceof IconData){
-				IconData id = (IconData)temp.getUserObject();
-				ContentName childName = ContentName.fromNative(new ContentName(), ((Name)id.m_data).name);
-				System.out.print(" "+ childName);
+			System.out.print("the parent node now has "	+ parentNode.getChildCount() + " children: ");
+			numChildren = parentNode.getChildCount();
+			for (int i = 0; i < numChildren; i++) {
+				temp = (DefaultMutableTreeNode) parentNode.getChildAt(i);
+			//for (DefaultMutableTreeNode temp : java.util.Collections.list((Enumeration<DefaultMutableTreeNode>) parentNode.children())) {
+				if (temp.getUserObject() instanceof IconData) {
+					IconData id = (IconData) temp.getUserObject();
+					ContentName childName = ContentName.fromNative(
+							new ContentName(), ((Name) id.m_data).name);
+					System.out.print(" " + childName);
+				}
 			}
 		}
 		System.out.println();
