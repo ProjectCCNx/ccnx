@@ -294,7 +294,6 @@ public class CCNFlowControl implements CCNFilterListener {
 					afterPutAction(co);
 				}
 				if (_holdingArea.size() >= _highwater) {
-					boolean interrupted;
 					long ourTime = new Date().getTime();
 					Entry<UnmatchedInterest> removeIt;
 					do {
@@ -308,17 +307,18 @@ public class CCNFlowControl implements CCNFilterListener {
 						if (removeIt != null)
 							_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
 					} while (removeIt != null);
+					long elapsed = 0;
 					do {
-						interrupted = false;
 						try {
-							Log.finest("Waiting for drain");
-							_holdingArea.wait(_timeout);
-						if (_holdingArea.size() >= _highwater)
-							throw new IOException("Flow control buffer full and not draining");
+							Log.finest("Waiting for drain ({0}, {1})", _holdingArea.size(), elapsed);
+							_holdingArea.wait(_timeout-elapsed);
 						} catch (InterruptedException e) {
-							interrupted = true;
+							// intentional no-op
 						}
-					} while (interrupted);
+						elapsed = new Date().getTime() - ourTime;
+					} while (_holdingArea.size() >= _highwater && elapsed < _timeout);						
+					if (_holdingArea.size() >= _highwater)
+						throw new IOException("Flow control buffer full and not draining");
 				}
 			}
 		} else
@@ -361,9 +361,11 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param co
 	 */
 	public void afterPutAction(ContentObject co) throws IOException {
-		_nOut++;
-		_holdingArea.remove(co.name());	
-		_holdingArea.notify();
+		synchronized(_holdingArea) {
+			_nOut++;
+			_holdingArea.remove(co.name());
+			_holdingArea.notify();
+		}
 	}
 	
 	/**
