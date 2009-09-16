@@ -404,7 +404,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	public void afterPutAction(ContentObject co) throws IOException {
 		_nOut++;
 		_holdingArea.remove(co.name());
-		_holdingArea.notify();
+		_holdingArea.notifyAll();
 	}
 	
 	/**
