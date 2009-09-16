@@ -574,7 +574,7 @@ public class OIDLookup {
 		return resolveAlias("Signature", alias);
 	}
 	
-	/**
+	/*
 	 * AES OIDs depend on key length.
 	 */
 /*	public static String getAESOID(String algorithm, int keyLength) {
@@ -589,7 +589,7 @@ public class OIDLookup {
 		
 	}
 */
-
+	
 	/**
 	 * Resolves the given alias to the standard JCA name for the
 	 * given engine type. If no appropriate mapping is defined
@@ -597,15 +597,11 @@ public class OIDLookup {
 	 * actually an OID string and there is an appropriate alias
 	 * mapping defined for that OID by some provider then the
 	 * corresponding JCA name is returned.
-	 *
+	 * 
 	 * @param engine The JCA engine type name.
 	 * @param alias The alias to resolve for the given engine type.
 	 * @return The standard JCA name or <code>null</code> if no
 	 *   appropriate mapping could be found.
-	 * @exception IllegalArgumentException if the alias is
-	 *   an empty string.
-	 * @exception NullPointerException if the alias or the engine
-	 *   name is <code>null</code>.
 	 */
 	public static String resolveAlias(String engine, String alias) {
 
@@ -654,7 +650,7 @@ public class OIDLookup {
 
 	/**
 	 * Map accessors that handle synchronization. 
-	 * DKS TODO replace with read-only maps, and make these go away after
+	 * TODO replace with read-only maps, and make these go away after
 	 * initialization. (Can also use Collection.synchronizedMap).
 	 **/
 	public static boolean mapContainsKey(Map<?,?> map, Object key) {
