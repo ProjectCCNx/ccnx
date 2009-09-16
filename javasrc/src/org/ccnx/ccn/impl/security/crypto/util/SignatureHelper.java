@@ -42,8 +42,6 @@ import org.ccnx.ccn.impl.support.Log;
 
 /** 
  * Helper class for generating signatures.
- * @author smetters
- *
  */
 public class SignatureHelper {
 	
