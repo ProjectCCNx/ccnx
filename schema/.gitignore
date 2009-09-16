@@ -8,8 +8,8 @@ validation/ccn-schemabad02.xml
 validation/ccn-schemabad04.xml
 validation/ccn-schemabad10.xml
 validation/ccn-schemabad12.xml
-validation/ccn.dtd
-validation/ccn.xsd
+validation/ccnx.dtd
+validation/ccnx.xsd
 validation/datatypes.dtd
 validation/security-schemabad01.xml
 validation/security.dtd
