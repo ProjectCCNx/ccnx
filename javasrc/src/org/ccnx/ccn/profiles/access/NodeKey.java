@@ -31,6 +31,11 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 
+/**
+ * This class represents node keys.
+ * It includes methods for computing derived node keys for descendant nodes
+ * using a key derivation function.
+ */
 
 public class NodeKey {
 	
@@ -65,10 +70,21 @@ public class NodeKey {
 	 */
 	private Key _nodeKey;
 	
+	/**
+	 * Constructor for a node key specified by its name and key bytes
+	 * interpreted as a key for DEFAULT_NODE_KEY_ALGORITHM.
+	 * @param nodeKeyName
+	 * @param unwrappedNodeKey
+	 */
 	public NodeKey(ContentName nodeKeyName, byte [] unwrappedNodeKey) {
 		this(nodeKeyName, new SecretKeySpec(unwrappedNodeKey, DEFAULT_NODE_KEY_ALGORITHM));
 	}
 	
+	/**
+	 * Constructor for a node key specified by its name and key. 
+	 * @param nodeKeyName
+	 * @param unwrappedNodeKey
+	 */
 	public NodeKey(ContentName nodeKeyName, Key unwrappedNodeKey) {
 		if ((null == nodeKeyName) || (null == unwrappedNodeKey)) {
 			throw new IllegalArgumentException("NodeKey: key name and key cannot be null!");
@@ -86,6 +102,14 @@ public class NodeKey {
 		}		
 	}
 	
+	/**
+	 * Constructor for a node key derived (via a key derivation function)
+	 * from an ancestor node key. 
+	 * @param nodeName
+	 * @param derivedNodeKey
+	 * @param ancestorNodeKeyName
+	 * @param ancestorNodeKeyID
+	 */
 	protected NodeKey(ContentName nodeName, byte [] derivedNodeKey, 
 					  ContentName ancestorNodeKeyName, byte [] ancestorNodeKeyID) {
 		if (!VersioningProfile.hasTerminalVersion(ancestorNodeKeyName)) {
@@ -98,6 +122,15 @@ public class NodeKey {
 		_nodeKey = new SecretKeySpec(derivedNodeKey, DEFAULT_NODE_KEY_ALGORITHM);
 	}
 	
+	/**
+	 * Computes the descendant node key for a specified descendant node
+	 * using the key derivation function. 
+	 * @param descendantNodeName
+	 * @param keyLabel
+	 * @return
+	 * @throws InvalidKeyException
+	 * @throws XMLStreamException
+	 */
 	public NodeKey computeDescendantNodeKey(ContentName descendantNodeName, String keyLabel) throws InvalidKeyException, XMLStreamException {
 		if (nodeName().equals(descendantNodeName)) {
 			Log.info("Asked to compute ourselves as our own descendant (node key " + nodeName() +"), returning this.");
@@ -132,6 +165,10 @@ public class NodeKey {
 		}
 	}
 	
+	/**
+	 * Returns a hash of the node key.
+	 * @return
+	 */
 	public byte [] generateKeyID() { 
 		return generateKeyID(nodeKey().getEncoded());
 	}

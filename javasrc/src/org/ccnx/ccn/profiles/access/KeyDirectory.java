@@ -82,21 +82,33 @@ import org.ccnx.ccn.protocol.PublisherID;
 public class KeyDirectory extends EnumeratedNameList {
 	
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
-	
-	// time spent waiting for new data (in ms) before responding to read queries 
-	static final long DEFAULT_TIMEOUT = 5000;	
-	
+		
 	AccessControlManager _manager; // to get at key cache
+	
+	/**
+	 * Maps the friendly names of principals (typically groups) to their information.
+	 */
 	HashMap<String, PrincipalInfo> _principals = new HashMap<String, PrincipalInfo>();
 	private final ReadWriteLock _principalsLock = new ReentrantReadWriteLock();
+
+	/**
+	 * The set _keyIDs contains the digests of the (public) wrapping keys
+	 * of the wrapped key objects stored in the KeyDirectory.
+	 */
 	TreeSet<byte []> _keyIDs = new TreeSet<byte []>(byteArrayComparator);
 	private final ReadWriteLock _keyIDLock = new ReentrantReadWriteLock();
+
+	/**
+	 * The set _otherNames records the presence of superseded keys, previous keys, 
+	 * group private keys, etc. 
+	 */
 	TreeSet<byte []> _otherNames = new TreeSet<byte []>(byteArrayComparator);
 	private final ReadWriteLock _otherNamesLock = new ReentrantReadWriteLock();
+
 	/**
-	 * Directory name should be versioned, else we pull the latest version
-	 * @param manager
-	 * @param directoryName
+	 * Directory name should be versioned, else we pull the latest version.
+	 * @param manager the access control manager.
+	 * @param directoryName the root of the KeyDirectory.
 	 * @param handle
 	 * @throws IOException
 	 */
@@ -175,8 +187,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
-	 * Waits for new data, then
-	 * Returns a copy to avoid synchronization problems
+	 * Return a copy to avoid synchronization problems.
 	 * @throws ContentNotReadyException 
 	 * 
 	 */
@@ -195,7 +206,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
-	 * Return a copy to avoid synchronization problems
+	 * Return a copy to avoid synchronization problems.
 	 * @throws ContentNotReadyException 
 	 */
 	public HashMap<String, PrincipalInfo> getCopyOfPrincipals() throws ContentNotReadyException {
@@ -216,7 +227,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
-	 * Waits for new data, then returns principal info
+	 * Returns principal info
 	 * @throws ContentNotReadyException 
 	 */
 	public PrincipalInfo getPrincipalInfo(String principal) throws ContentNotReadyException {
@@ -234,7 +245,6 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
-	 * Waits for new data, then 
 	 * Returns a copy to avoid synchronization problems
 	 * @throws ContentNotReadyException 
 	 */
@@ -252,6 +262,10 @@ public class KeyDirectory extends EnumeratedNameList {
 		return copy;	
 	}
 	
+	/**
+	 * Adds a principal name
+	 * @param wkChildName the principal name
+	 */
 	protected void addPrincipal(byte [] wkChildName) {
 		PrincipalInfo pi = AccessControlProfile.parsePrincipalInfoFromNameComponent(wkChildName);
 		try{
@@ -263,7 +277,12 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
-	 * Waits for new data, then returns wrapped key object
+	 * Returns the wrapped key object corresponding to a public key specified by its digest.
+	 * @param keyID the digest of the specified public key. 
+	 * @return the corresponding wrapped key object.
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
 	 */
 	public WrappedKeyObject getWrappedKeyForKeyID(byte [] keyID) throws XMLStreamException, IOException, ConfigurationException {
 		if (!hasChildren()) {
@@ -281,12 +300,22 @@ public class KeyDirectory extends EnumeratedNameList {
 		return getWrappedKey(wrappedKeyName);
 	}
 	
+	/**
+	 * Returns the wrapped key name for a public key specified by its digest.
+	 * @param keyID the digest of the public key.
+	 * @return the corresponding wrapped key name.
+	 */
 	public ContentName getWrappedKeyNameForKeyID(byte [] keyID) {
 		return new ContentName(_namePrefix, AccessControlProfile.targetKeyIDToNameComponent(keyID));
 	}
 	
 	/**
-	 * Waits for new data then returns wrapped key object
+	 * Returns the wrapped key object corresponding to a specified principal.
+	 * @param principalName the principal.
+	 * @return the corresponding wrapped key object.
+	 * @throws IOException
+	 * @throws XMLStreamException
+	 * @throws ConfigurationException
 	 */
 	public WrappedKeyObject getWrappedKeyForPrincipal(String principalName) throws IOException, XMLStreamException, ConfigurationException {
 		if (!hasChildren()) {
@@ -316,6 +345,13 @@ public class KeyDirectory extends EnumeratedNameList {
 		return getWrappedKey(wrappedKeyName);
 	}
 	
+	/**
+	 * Returns the wrapped key name for a specified principal.
+	 * @param isGroup whether the principal is a group.
+	 * @param principalName the name of the principal.
+	 * @param principalVersion the version of the principal.
+	 * @return the corresponding wrapped key name. 
+	 */
 	public ContentName getWrappedKeyNameForPrincipal(boolean isGroup, String principalName, CCNTime principalVersion) {
 		ContentName principalLinkName = new ContentName(_namePrefix, 
 				AccessControlProfile.principalInfoToNameComponent(isGroup,
@@ -324,6 +360,12 @@ public class KeyDirectory extends EnumeratedNameList {
 		return principalLinkName;
 	}
 	
+	/**
+	 * Returns the wrapped key name for a principal specified by the name of its public key. 
+	 * @param principalPublicKeyName the name of the public key of the principal.
+	 * @return the corresponding wrapped key name.
+	 * @throws VersionMissingException
+	 */
 	public ContentName getWrappedKeyNameForPrincipal(ContentName principalPublicKeyName) throws VersionMissingException {
 		PrincipalInfo info = AccessControlProfile.parsePrincipalInfoFromPublicKeyName(_manager.groupManager().isGroup(principalPublicKeyName),
 																					  principalPublicKeyName);
@@ -331,7 +373,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	/**
-	 * Waits for new data before checking for the existence of a superseded block
+	 * Checks for the existence of a superseded block.
 	 * @throws ContentNotReadyException 
 	 */
 	public boolean hasSupersededBlock() throws ContentNotReadyException {
@@ -360,14 +402,14 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * key block be a link, or the previous key block be a wrapped key and the superseded
 	 * location be a link. Or we could store wrapped key blocks in both places. Because
 	 * the wrapped key blocks can contain the name of the key that wrapped them (but
-	 * not the key being wrapped), they in essence are a pointer forward to the replacing
+	 * not the key being wrapped), they are in essence a pointer forward to the replacing
 	 * key. So, the superseded block, if it contains a wrapped key, is both a key and a link.
 	 * If the block was stored at the previous key, it would not be both a key and a link,
 	 * as its wrapping key is indicated by where it is. So it should indeed be a link -- 
 	 * except in the case of an interposed ACL, where there is nothing to link to; 
 	 * and it instead stores a wrapped key block containing the effective node key that
 	 * was the previous key.
-	 * This method waits for new data before checking for the existence of a superseded block
+	 * This method checks for the existence of a superseded block.
 	 * @return
 	 * @throws XMLStreamException
 	 * @throws IOException
@@ -382,6 +424,14 @@ public class KeyDirectory extends EnumeratedNameList {
 		return getWrappedKey(getSupersededBlockName());
 	}
 	
+	/**
+	 * Returns the wrapped key object corresponding to the specified wrapped key name.
+	 * @param wrappedKeyName
+	 * @return
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
 	public WrappedKeyObject getWrappedKey(ContentName wrappedKeyName) throws XMLStreamException, IOException, ConfigurationException {
 		WrappedKeyObject wrappedKey = new WrappedKeyObject(wrappedKeyName, _manager.handle());
 		wrappedKey.update();
@@ -389,7 +439,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
-	 * Waits for new data before checking for the existence of a previous key block
+	 * Checks for the existence of a previous key block
 	 * @throws ContentNotReadyException 
 	 */
 	public boolean hasPreviousKeyBlock() throws ContentNotReadyException {
@@ -415,6 +465,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
+	 * Returns a link to the previous key.
 	 * Previous key might be a link, if we're a simple newer version, or it might
 	 * be a wrapped key, if we're an interposed node key. 
 	 * DKS TODO
@@ -442,7 +493,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * then wrapped under the public keys of various principals. The WrappedKey structure
 	 * would allow us to do this (wrap private in public) in a single object, with
 	 * an inline nonce key, but this option is more efficient.
-	 * Waits for new data before checking for the existence of a private key block
+	 * Checks for the existence of a private key block
 	 * @return
 	 * @throws ContentNotReadyException 
 	 */
@@ -464,6 +515,13 @@ public class KeyDirectory extends EnumeratedNameList {
 		return ContentName.fromNative(_namePrefix, AccessControlProfile.GROUP_PRIVATE_KEY_NAME);
 	}
 	
+	/**
+	 * Returns the private key object as a wrapped key object.
+	 * @return
+	 * @throws IOException
+	 * @throws XMLStreamException
+	 * @throws ConfigurationException
+	 */
 	public WrappedKeyObject getPrivateKeyObject() throws IOException, XMLStreamException, ConfigurationException {
 		if (!hasPrivateKeyBlock()) // checks hasChildren
 			return null;
@@ -472,8 +530,8 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
-	 * First, wait for new data.
-	 * Then find a copy of the key block in this directory that we can unwrap (either the private
+	 * Unwrap and return the key wrapped in a wrapping key specified by its digest.
+	 * Find a copy of the key block in this directory that we can unwrap (either the private
 	 * key wrapping key block or a wrapped raw symmetric key). Chase superseding keys if
 	 * we have to. This mechanism should be generic, and should work for node keys
 	 * as well as private key wrapping keys in directories following this structure.
@@ -584,7 +642,7 @@ public class KeyDirectory extends EnumeratedNameList {
 							_principalsLock.readLock().lock();
 							for (String principal : _principals.keySet()) {
 								if ((!_manager.groupManager().isGroup(principal)) || (_manager.groupManager().amKnownGroupMember(principal))) {
-									// On this pass, only do groups that I don't think I'm a member of
+									// On this pass, only do groups that I don't think I'm a member of.
 									continue;
 								}
 								if (_manager.groupManager().amCurrentGroupMember(principal)) {
@@ -623,6 +681,17 @@ public class KeyDirectory extends EnumeratedNameList {
 		return unwrappedKey;
 	}
 		
+	/**
+	 * Unwrap the key wrapped under a specified principal, with a specified unwrapping key.
+	 * @param principal
+	 * @param unwrappingKey
+	 * @return
+	 * @throws IOException
+	 * @throws XMLStreamException
+	 * @throws InvalidKeyException
+	 * @throws InvalidCipherTextException
+	 * @throws ConfigurationException
+	 */
 	protected Key unwrapKeyForPrincipal(String principal, Key unwrappingKey) 
 			throws IOException, XMLStreamException, InvalidKeyException, InvalidCipherTextException, ConfigurationException {
 		
@@ -646,7 +715,12 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 		
 	/**
-	 * Relies on caller, who presumably knows the public key, to add the result to the
+	 * Returns the private key stored in the KeyDirectory. 
+	 * The private key is wrapped in a wrapping key, which is itself wrapped.
+	 * So the unwrapping proceeds in two steps.
+	 * First, we unwrap the wrapping key for the private key.
+	 * Then, we unwrap the private key itself. 
+	 * Relies on the caller, who presumably knows the public key, to add the result to the
 	 * cache.
 	 * @return
 	 * @throws AccessDeniedException
@@ -685,12 +759,13 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	/**
+	 * Writes a wrapped key block to the repository.
 	 * Eventually aggregate signing and repo stream operations at the very
 	 * least across writing paired objects and links, preferably across larger
 	 * swaths of data.
 	 * @param secretKeyToWrap either a node key, a data key, or a private key wrapping key
-	 * @param publicKeyName
-	 * @param publicKey
+	 * @param publicKeyName the name of the public key.
+	 * @param publicKey the public key.
 	 * @throws VersionMissingException
 	 * @throws XMLStreamException
 	 * @throws IOException
@@ -711,6 +786,15 @@ public class KeyDirectory extends EnumeratedNameList {
 		lo.saveToRepository();
 	}
 	
+	/**
+	 * Writes a private key block to the repository. 
+	 * @param privateKey the private key.
+	 * @param privateKeyWrappingKey the wrapping key used to wrap the private key.
+	 * @throws InvalidKeyException
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
 	public void addPrivateKeyBlock(PrivateKey privateKey, Key privateKeyWrappingKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
 		
 		WrappedKey wrappedKey = WrappedKey.wrapKey(privateKey, null, null, privateKeyWrappingKey);	
@@ -753,7 +837,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	/**
-	 * 
+	 * Writes a link to a previous key to the repository. 
 	 * @param previousKey
 	 * @param previousKeyPublisher
 	 * @throws XMLStreamException
@@ -770,6 +854,16 @@ public class KeyDirectory extends EnumeratedNameList {
 		pklo.saveToRepository();
 	}
 	
+	/**
+	 * Writes a previous key block to the repository. 
+	 * @param oldPrivateKeyWrappingKey
+	 * @param supersedingKeyName
+	 * @param newPrivateKeyWrappingKey
+	 * @throws InvalidKeyException
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
 	public void addPreviousKeyBlock(Key oldPrivateKeyWrappingKey,
 									ContentName supersedingKeyName, Key newPrivateKeyWrappingKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException {
 		// DKS TODO -- do we need in the case of deletion of ACLs to allow for multiple previous key blocks simultaneously?

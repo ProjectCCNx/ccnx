@@ -37,10 +37,15 @@ public class KeyCache {
 	
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 	
+	/** Map the digest of a key to the key. */
 	private TreeMap<byte [], Key> _keyMap = new TreeMap<byte [], Key>(byteArrayComparator);
+	/** Map the digest of a public key to <I>my</I> corresponding private key. */
 	private TreeMap<byte [], PrivateKey> _myKeyMap = new TreeMap<byte [], PrivateKey>(byteArrayComparator);
+	/** Map the digest of a public key to the corresponding private key */
 	private TreeMap<byte [], PrivateKey> _privateKeyMap = new TreeMap<byte [], PrivateKey>(byteArrayComparator);
+	/** Map the digest of a private key to the digest of the corresponding public key. */
 	private TreeMap<byte [], byte []> _privateKeyIdentifierMap = new TreeMap<byte [], byte[]>(byteArrayComparator);
+	/** Map the digest of a key to its name */
 	private TreeMap<byte [], ContentName> _keyNameMap = new TreeMap<byte [], ContentName>(byteArrayComparator);
 	
 	public KeyCache() {
@@ -54,6 +59,11 @@ public class KeyCache {
 		}
 	}
 	
+	/**
+	 * Retrieve a key specified by its digest
+	 * @param desiredKeyIdentifier
+	 * @return
+	 */
 	Key getKey(byte [] desiredKeyIdentifier) {
 		Key theKey = _keyMap.get(desiredKeyIdentifier);
 		if (null == theKey) {
@@ -64,7 +74,12 @@ public class KeyCache {
 		}
 		return theKey;
 	}
-	
+
+	/**
+	 * Checks whether we have a record of a key specified by its digest.
+	 * @param keyIdentifier the key digest.
+	 * @return
+	 */
 	public boolean containsKey(byte [] keyIdentifier) {
 		if ((_keyMap.containsKey(keyIdentifier)) || (_myKeyMap.containsKey(keyIdentifier)) ||
 					(_privateKeyMap.containsKey(keyIdentifier))) {
@@ -72,7 +87,12 @@ public class KeyCache {
 		}
 		return false;
 	}
-	
+
+	/**
+	 * Returns the name of a key specified by its digest
+	 * @param keyIdentifier the digest of the key.
+	 * @return the name of the key.
+	 */
 	public ContentName getKeyName(byte [] keyIdentifier) {
 		return _keyNameMap.get(keyIdentifier);
 	}
@@ -81,6 +101,11 @@ public class KeyCache {
 		return getKeyName(getKeyIdentifier(key));
 	}
 
+	/**
+	 * Returns the private key corresponding to a public key specified by its digest.
+	 * @param desiredPublicKeyIdentifier the digest of the public key.
+	 * @return the corresponding private key.
+	 */
 	PrivateKey getPrivateKey(byte [] desiredPublicKeyIdentifier) {
 		PrivateKey key = _myKeyMap.get(desiredPublicKeyIdentifier);
 		if (null == key) {
@@ -89,6 +114,12 @@ public class KeyCache {
 		return key;
 	}
 	
+	/**
+	 * Records a private key and the name and digest of the corresponding public key.
+	 * @param keyName
+	 * @param publicKeyIdentifier
+	 * @param pk
+	 */
 	void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyMap.put(publicKeyIdentifier, pk);
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
@@ -96,17 +127,32 @@ public class KeyCache {
 			_keyNameMap.put(publicKeyIdentifier, keyName);
 	}
 
+	/**
+	 * Records one of my private keys and the digest of the corresponding public key.
+	 * @param publicKeyIdentifier the digest of the public key.
+	 * @param pk the corresponding private key.
+	 */
 	void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		_myKeyMap.put(publicKeyIdentifier, pk);
 	}
 	
+	/**
+	 * Make a record of a key by its name and digest.
+	 * @param name the name of the key.
+	 * @param key the key.
+	 */
 	public void addKey(ContentName name, Key key) {
 		byte [] id = getKeyIdentifier(key);
 		_keyMap.put(id, key);
 		_keyNameMap.put(id, name);
 	}
 	
+	/**
+	 * Returns the digest of a specified key.
+	 * @param key the key.
+	 * @return
+	 */
 	public static byte [] getKeyIdentifier(Key key) {
 		// Works on symmetric and public.
 		return CCNDigestHelper.digest(key.getEncoded());
