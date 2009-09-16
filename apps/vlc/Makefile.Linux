@@ -5,10 +5,10 @@ VLCPLUGINVERDEF = `pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVL
 all: libaccess_ccn_plugin.so
 
 libaccess_ccn_plugin.so: libaccess_ccn_plugin.o
-	gcc -g -shared -std=gnu99 $< `pkg-config  --libs vlc-plugin`  -Wl,-soname -Wl,$@ -o $@ -L../../../csrc/lib -L/usr/local/lib -lccn -lcrypto
+	gcc -g -shared -std=gnu99 $< `pkg-config  --libs vlc-plugin`  -Wl,-soname -Wl,$@ -o $@ -L../../lib -L/usr/local/lib -lccn -lcrypto
 
 libaccess_ccn_plugin.o: ccn.c
-	gcc -c -g -O3 -std=gnu99  $< -I../../../csrc/include/ `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" $(VLCPLUGINVERDEF) -o $@  
+	gcc -c -g -O3 -std=gnu99  $< -I../../include/ `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" $(VLCPLUGINVERDEF) -o $@  
 
 clean:
 	rm -f libaccess_ccn_plugin.o libaccess_ccn_plugin.so
