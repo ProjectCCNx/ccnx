@@ -27,9 +27,8 @@ import org.ccnx.ccn.protocol.ContentObject;
 
 
 /**
- * An unaggregating aggregated signer. Signs each block individually.
- * @author smetters
- *
+ * An unaggregating aggregated signer. Signs each block individually
+ * using ContentObject#sign(PrivateKey).
  */
 public class CCNBlockSigner implements CCNAggregatedSigner {
 	

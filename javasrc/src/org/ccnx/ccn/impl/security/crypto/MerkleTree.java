@@ -25,14 +25,19 @@ import org.ccnx.ccn.impl.support.Log;
 
 
 /**
- * Modified to match Knuth, Vol 1 2.3.4.5. We represent
+ * Implementation of a Merkle hash tree. 
+ * 
+ * Representation based on Knuth, Vol 1, section 2.3.4.5. We represent
  * trees as a special sublcass of extended binary
  * trees, where empty subtrees are only present in one end
  * of the tree.
+ * 
  * Tree nodes are numbered starting with 1, which is the
  * root. 
+ * 
  * Tree nodes are stored in an array, with node i stored at index
  * i-1 into the array.
+ * 
  * Incomplete binary trees are represented as multi-level extended
  * binary trees -- lower-numbered leaves are represented in the
  * upper half of the tree, in a layer one closer to the root than
@@ -41,7 +46,7 @@ import org.ccnx.ccn.impl.support.Log;
  * Total number of nodes in the tree = 2n + 1, where n is the number of leaves.
  * 
  * Taken in terms of node indices (where root == 1), the parent
- * of node k is node floor(k/2), and hte children of node k are
+ * of node k is node floor(k/2), and the children of node k are
  * nodes 2k and 2k+1. Leaves are numbered from node n+1 through 
  * 2n+1, where n is the number of leaves.
  * 
@@ -50,11 +55,12 @@ import org.ccnx.ccn.impl.support.Log;
  * Should we want to get fancy, we could have t-ary trees; the
  * construction above works for tree with internal nodes (non-leaves)
  * {1,2,...,n}.
+ * 
  * The parent of node k is the node floor((k+t-2)/t) = ceil((k-1)/t).
  * The children of node k are:
  * t(k-1)+2, t(k-1)+3,..., tk+1
  * 
- * Store internally as DEROctetStrings for more efficient
+ * Store node digests internally as DEROctetStrings for more efficient
  * encoding. 
  */
 public class MerkleTree {
@@ -66,24 +72,12 @@ public class MerkleTree {
 	
 	protected DEROctetString [] _tree;
 	protected int _numLeaves;
-	protected String _algorithm;
-	
-	protected static final String MERKLE_OID_PREFIX = "1.2.840.113550.11.1.2";
+	protected String _digestAlgorithm;
 	
 	/**
-	 * Subclass constructor.
-	 * @param algorithm
-	 * @param contentBlocks
+	 * The OID we use to represent Merkle trees. Derived from PARC-s sub-arc of Xerox's OID.
 	 */
-	protected MerkleTree(String algorithm, int numLeaves) {
-		if (numLeaves < 2) {
-			throw new IllegalArgumentException("MerkleTrees must have 2 or more nodes!");
-		}
-		_algorithm = (null == algorithm) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : algorithm;
-		_numLeaves = numLeaves;
-		_tree = new DEROctetString[nodeCount()];
-		// Let calling constructor handle building the tree.
-	}
+	protected static final String MERKLE_OID_PREFIX = "1.2.840.113550.11.1.2";
 	
 	/**
 	 * @param contentBlocks the leaf content to be hashed into this 
@@ -96,10 +90,10 @@ public class MerkleTree {
 	 * 	  with our default algorithm (true)? (default algorithm: DigestHelper.DEFAULT_DIGEST_ALGORITHM)
 	 * @throws NoSuchAlgorithmException 
 	 */
-	public MerkleTree(String algorithm, 
+	public MerkleTree(String digestAlgorithm, 
 					  byte [][] contentBlocks, boolean isDigest, int blockCount, 
 					  int baseBlockIndex, int lastBlockLength) throws NoSuchAlgorithmException {
-		this(algorithm, blockCount);		
+		this(digestAlgorithm, blockCount);		
 		initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockLength);
 	}
 	
@@ -114,9 +108,9 @@ public class MerkleTree {
 		}
 	}
 
-	public MerkleTree(String algorithm, byte [] content, int offset, int length,
+	public MerkleTree(String digestAlgorithm, byte [] content, int offset, int length,
 					  int blockWidth) throws NoSuchAlgorithmException {
-		this(algorithm, blockCount(length, blockWidth));
+		this(digestAlgorithm, blockCount(length, blockWidth));
 		initializeTree(content, offset, length, blockWidth);
 	}
 
@@ -132,6 +126,22 @@ public class MerkleTree {
 		}
 	}
 	
+	
+	/**
+	 * Subclass constructor.
+	 * @param digestAlgorithm
+	 * @param contentBlocks
+	 */
+	protected MerkleTree(String digestAlgorithm, int numLeaves) {
+		if (numLeaves < 2) {
+			throw new IllegalArgumentException("MerkleTrees must have 2 or more nodes!");
+		}
+		_digestAlgorithm = (null == digestAlgorithm) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm;
+		_numLeaves = numLeaves;
+		_tree = new DEROctetString[nodeCount()];
+		// Let calling constructor handle building the tree.
+	}
+
 	/**
 	 * Separate this out to allow subclasses to initialize members before
 	 * building tree.
@@ -160,7 +170,7 @@ public class MerkleTree {
 		computeNodeValues();		
 	}
 	
-	public String algorithm() { return _algorithm; }
+	public String digestAlgorithm() { return _digestAlgorithm; }
 	
 	/**
 	 * Returns 0 if this node has no parent (is the root).
@@ -396,7 +406,7 @@ public class MerkleTree {
 		// Climb the tree
 		int firstNode = firstLeaf()-1;
 		for (int i=firstNode; i >= ROOT_NODE; --i) {
-			byte [] nodeDigest = CCNDigestHelper.digest(algorithm(), get(leftChild(i)), get(rightChild(i)));
+			byte [] nodeDigest = CCNDigestHelper.digest(digestAlgorithm(), get(leftChild(i)), get(rightChild(i)));
 			_tree[i-1] = new DEROctetString(nodeDigest);
 		}
 	}
@@ -419,7 +429,7 @@ public class MerkleTree {
 	public byte[] getRootAsEncodedDigest() {
 		// Take root and wrap it up as an encoded DigestInfo
 		return CCNDigestHelper.digestEncoder(
-				algorithm(), 
+				digestAlgorithm(), 
 				root());
 	}
 
@@ -440,11 +450,11 @@ public class MerkleTree {
 		// Are we on the last block?
 		if ((leafIndex + baseBlockIndex) == (baseBlockIndex + numLeaves() - 1))
 			computeBlockDigest(leafIndex, contentBlocks[leafIndex+baseBlockIndex], 0, lastBlockLength);
-		return computeBlockDigest(_algorithm, contentBlocks[leafIndex+baseBlockIndex]);
+		return computeBlockDigest(_digestAlgorithm, contentBlocks[leafIndex+baseBlockIndex]);
 	}
 	
 	protected byte [] computeBlockDigest(int leafIndex, byte [] block, int offset, int length) throws NoSuchAlgorithmException {
-		return CCNDigestHelper.digest(_algorithm, block, offset, length);		
+		return CCNDigestHelper.digest(_digestAlgorithm, block, offset, length);		
 	}
 	
 	public static byte [] computeBlockDigest(String algorithm, byte [] block) throws NoSuchAlgorithmException {

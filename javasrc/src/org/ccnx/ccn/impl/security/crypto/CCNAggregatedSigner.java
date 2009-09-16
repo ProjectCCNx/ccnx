@@ -37,10 +37,6 @@ import org.ccnx.ccn.protocol.ContentObject;
  * made an object returning blocks. Instead, we try an interface
  * that has a set of bulk put methods which construct blocks, put
  * them to the network, and return an individual ContentObject.
- * 
- * 
- * @author smetters
- *
  */
 public interface CCNAggregatedSigner {
 	
@@ -51,15 +47,13 @@ public interface CCNAggregatedSigner {
 	 * Sign a set of unrelated content objects in one aggregated signature pass.
 	 * Objects must have already been constructed and initialized. They must
 	 * all indicate the same signer. 
-	 * DKS TODO -- should we re-set the publisherID? Currently assume that it
-	 *   was set to match the chinging key. Opens up the option to muck with
-	 *    the insides of COs more than ideal.
-	 *    TODO -- should the segmenter and these classes move into same package
-	 *      with CO in order to have access to internal methods?
-	 * @param segmenter
-	 * @param contentObjects
-	 * @param publisher used to select the private key to sign with.
-	 * @return
+	 * Open questions:
+	 * 	- should we re-set the publisherID? Currently assume that it
+	 *   	was set to match the signing key when the blocks were
+	 *   	built. This opens up the option to muck with
+	 *    	the insides of COs more than ideal.
+	 * @param contentObjects the set of objects to sign
+	 * @param signingKey the key to sign with
 	 * @throws InvalidKeyException
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
