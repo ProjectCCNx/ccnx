@@ -1,5 +1,6 @@
-/*
- * Generate implementation of ASN.1 functions to deal with Merkle paths
+/**
+ * @file ccn_merkle_path_asn1.c
+ * Framework to generate implementation of ASN.1 functions to deal with Merkle paths
  */
 
 #include <ccn/merklepathasn1.h>
