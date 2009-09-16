@@ -27,6 +27,14 @@ import javax.xml.stream.XMLStreamWriter;
 
 import org.ccnx.ccn.protocol.CCNTime;
 
+/**
+ * An implementation of XMLEncoder for the Text codec. Uses javax.xml.stream interfaces.
+ * These are standard in Java 1.6, but require installing an add on package from JSR 173
+ * for Java 1.5. See README for details.
+ * 
+ * @see TextXMLCodec
+ * @see XMLEncoder
+ */
 public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 
 	protected OutputStream _ostream = null;
@@ -104,9 +112,6 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		writeEndElement();
 	}
 
-	/**
-	 * For now, same as text. Might want something more compact.
-	 */
 	public void writeDateTime(String tag, CCNTime dateTime) throws XMLStreamException {
 		writeElement(tag, 
 				TextXMLCodec.formatDateTime(dateTime));
@@ -148,5 +153,6 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	}
 
 	public void pushXMLDictionary(BinaryXMLDictionary dictionary) {
+		// do nothing
 	}
 }
