@@ -10,7 +10,7 @@
         attributeFormDefault="unqualified">
 -->
 
-<xs:include schemaLocation="ccn.xsd"/>
+<xs:include schemaLocation="ccnx.xsd"/>
 
   <xs:annotation>
     <xs:documentation xml:lang="en">
