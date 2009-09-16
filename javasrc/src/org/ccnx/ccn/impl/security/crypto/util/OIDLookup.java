@@ -34,8 +34,6 @@ import java.util.HashMap;
 import java.util.Set;
 
 /**
- * @author smetters
- * 
  * Adapted from the CDC Standard Provider's JCA class, this class provides
  * the facilities to look up signature algorithm OIDs from digest and encryption
  * algorithms, and vice versa.
