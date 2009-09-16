@@ -54,9 +54,11 @@ public interface CCNAggregatedSigner {
 	 *    	the insides of COs more than ideal.
 	 * @param contentObjects the set of objects to sign
 	 * @param signingKey the key to sign with
-	 * @throws InvalidKeyException
-	 * @throws SignatureException
-	 * @throws NoSuchAlgorithmException
+	 * @throws InvalidKeyException if there is a problem with the signing key
+	 * @throws SignatureException if we have an error in signature generation
+	 * @throws NoSuchAlgorithmException if we do not recognize the default digest algorithm, or the signature
+	 * 	algorithm associated with the key, or an internal algorithm used by the aggregating
+	 *  signer
 	 * @throws IOException
 	 */
 	public void signBlocks(
