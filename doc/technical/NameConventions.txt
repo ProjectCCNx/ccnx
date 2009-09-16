@@ -12,10 +12,10 @@ CCN Name Conventions
 Keep in mind that these are just conventions that have extra support in the libraries to make them efficient and easy to use.  Applications may choose to do their own thing.
 
 == Coding space
-The specification of `UTF-8` prohibits certain octet values from occurring anywhere in a `UTF-8` encoded string.  These are the (hex) octet values `C0`, `C1`, and `F5` to `FF`.  In addition, the null octet `00` is used for string termination and so does not encode a usable character.  Thus these make good markers to help identify components of a CCN name that play special roles such as versioning and sequence numbering, since they won't appear in portions of the name intended for humans.  Note, though, that the primary indication of the component's role is its position in the name, the marker byte simply acting as a check that the component is indeed intended to play that role.  The marker appears as the _first_ byte of the component.
+The specification of `UTF-8` prohibits certain octet values from occurring anywhere in a `UTF-8` encoded string.  These are the (hex) octet values `C0`, `C1`, and `F5` to `FF`.  In addition, the null octet `00` is used for string termination and so does not encode a usable character.  Thus these make good markers to help identify components of a CCNx name that play special roles such as versioning and sequence numbering, since they won't appear in portions of the name intended for humans.  Note, though, that the primary indication of the component's role is its position in the name, the marker byte simply acting as a check that the component is indeed intended to play that role.  The marker appears as the _first_ byte of the component.
 
 == Versioning FD
-Versions, when present, occupy the next-to-last component of the CCN name, not counting the digest component.  They are chosen based (primarily) on time.  The first byte of the version component is `0xFD`. The remaining bytes are a big-endian binary encoding of the time, expressed in units of 2**(-12) seconds since the start of Unix time, using the minimum number of bytes.  The time portion will thus take 48 bits until quite a few centuries from now (_Sun, 20 Aug 4147 07:32:16 GMT_, if you must know), at which point an additional byte will be required. With 12 bits of fraction, this format allows for sub-millisecond resolution.
+Versions, when present, occupy the next-to-last component of the CCNx name, not counting the digest component.  They are chosen based (primarily) on time.  The first byte of the version component is `0xFD`. The remaining bytes are a big-endian binary encoding of the time, expressed in units of 2**(-12) seconds since the start of Unix time, using the minimum number of bytes.  The time portion will thus take 48 bits until quite a few centuries from now (_Sun, 20 Aug 4147 07:32:16 GMT_, if you must know), at which point an additional byte will be required. With 12 bits of fraction, this format allows for sub-millisecond resolution.
 
 The client generating the version stamp should try to avoid using a stamp earlier than (or the same as) any version of the file, to the extent that it knows about it.  It should also avoid generating stamps that are unreasonably far in the future.
 
@@ -28,7 +28,7 @@ February 13, 2009 3:31:30 PM PST = 1234567890.000 seconds since January 1, 1970 
 .........
 
 == Sequencing 00, FB
-Sequence numbers occupy the final component of the CCN name (again, not counting the digest component).
+Sequence numbers occupy the final component of the CCNx name (again, not counting the digest component).
 For consecutive numbering, the first byte of the sequence component is 0x00.
 The remaining bytes hold the sequence number in big-endian binary, using the minimum number of bytes.
 Thus sequence number 0 is encoded in just one byte, `%00`, and sequence number 1 is `%00%01`.
@@ -43,15 +43,15 @@ or
 .......................................................
 
 == Headers and unfragmented content
-Short content does not require CCN fragmenting, and so does not need a header object.
+Short content does not require CCNx fragmenting, and so does not need a header object.
 Long content is fragmented and may have an associated header object.
 Generally the single-leaf data should live at the same place in the name hierarchy as would the the header entry for the segmented case, because under normal conditions you would expect to have only one of them present.
-(A CCN link is another possibility.)
+(A CCNx link is another possibility.)
 
-In the case that versioning is used, it is desirable to preserve the position of the version component in the name even for these items.  Thus a zero-length component is used to hold this place.  The link:URI.html[CCN URI scheme] spells this as "...", so we might have
+In the case that versioning is used, it is desirable to preserve the position of the version component in the name even for these items.  Thus a zero-length component is used to hold this place.  The link:URI.html[CCNx URI scheme] spells this as "...", so we might have
 
 ....
- ccn:/parc.com/diana/favorite_color/%FD%04%99%60%2d%2000/.../<digest>
+ ccnx:/parc.com/diana/favorite_color/%FD%04%99%60%2d%2000/.../<digest>
 ....
 as the name for either the header or the single leaf.
 

@@ -3,9 +3,9 @@ CCN Main Schema
 
 == CCNx XML schema
 
-This corresponds to the DTD link:dtd.html[ccn.dtd].
+This corresponds to the DTD link:dtd.html[ccnx.dtd].
 
-.ccn.xsd
+.ccnx.xsd
 ------------------------------------
-include::../../schema/ccn.xsd[]
+include::../../schema/ccnx.xsd[]
 ------------------------------------

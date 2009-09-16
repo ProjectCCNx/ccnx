@@ -1,4 +1,4 @@
-Staleness handling in CCN
+Staleness handling in CCNx
 =========================
 
 == Staleness
@@ -26,7 +26,7 @@ the "Mark as stale" bit (0x10) set in the AnswerOriginKind element.  This is res
 clients to limit the scope of attacks that might seek to make content inaccessible.
 
 To set the staleness bit by a timer, the ContentObject may include a FreshnessSeconds element.
-The per-object staleness timer is local to the CCN node, and starts when the said ContentObject arrives.
+The per-object staleness timer is local to the CCNx node, and starts when the said ContentObject arrives.
 The ContentObject becomes stale when the specified number of seconds has expired.
 (Note that the implementation may choose to simply record the arrival time and compute the effective
 staleness bit lazily.)

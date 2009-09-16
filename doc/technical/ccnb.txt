@@ -2,9 +2,9 @@
 
 === Design Target: 
 
-   * Custom binary encoding format for XML to meet specific needs of CCN
+   * Custom binary encoding format for XML to meet specific needs of CCNx
       * Various existing proposed standards are not suitable [why?]
-   * Encoding that would be attractive for others to adopt for general use independent of CCN<br />
+   * Encoding that would be attractive for others to adopt for general use independent of CCNx<br />
 
 === Goals: 
 

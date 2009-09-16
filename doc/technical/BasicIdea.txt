@@ -1,7 +1,7 @@
 Basic Idea
 ==========
 
-The basic idea behind CCN is move 
+The basic idea behind CCNx is move 
 link:ContentObject.html[signed, named data]
 from wherever it is
 to where it is needed,

@@ -7,10 +7,10 @@ Abstract
 
 This document describes the CCNx protocol, the transport protocol
 for a communications architecture called Content-Centric
-Networking (CCN) built on _named data_.  CCN has no notion of host at
+Networking built on _named data_.  CCNx has no notion of host at
 its lowest level -- a packet "address" names content, not location.
 The CCNx protocol efficiently delivers named content rather than connecting
-hosts to other hosts.  Every packet of data may be cached at any CCN
+hosts to other hosts.  Every packet of data may be cached at any CCNx
 router -- this combined with intrinsic support for multicast or broadcast
 delivery leads to a very efficient use of the network when many
 people are interested in the same content.

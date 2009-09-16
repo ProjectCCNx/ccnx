@@ -3,6 +3,8 @@
 # The order here determines the order in the generated index.
 DERIVED_HTML =				\
 	BasicIdea.html			\
+	CCNxProtocol.html		\
+	ccnb.html			\
 	Name.html			\
 	URI.html			\
 	ContentObject.html		\
@@ -70,6 +72,12 @@ Name.html: Name.txt
 
 BasicIdea.html: BasicIdea.txt
 	asciidoc BasicIdea.txt
+
+ccnb.html: ccnb.txt
+	asciidoc ccnb.txt
+
+CCNxProtocol.html: CCNxProtocol.txt
+	asciidoc CCNxProtocol.txt
 
 ../index.html: ../index.txt ../../README ../../LICENSE
 	asciidoc --unsafe ../index.txt
