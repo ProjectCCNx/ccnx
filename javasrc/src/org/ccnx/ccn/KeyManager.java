@@ -182,14 +182,14 @@ public abstract class KeyManager {
 	
 	/**
 	 * Get the public key associated with a given Java keystore alias
-	 * @param the alias for the key
+	 * @param alias the alias for the key
 	 * @return the key, or null if no such alias
 	 */
 	public abstract PublicKey getPublicKey(String alias);
 
 	/**
 	 * Get the public key associated with a given publisher
-	 * @param the digest of the desired key
+	 * @param publisher the digest of the desired key
 	 * @return the key, or null if no such key known to our cache
 	 */
 	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws IOException;
@@ -210,14 +210,14 @@ public abstract class KeyManager {
 
 	/**
 	 * Get the private key associated with a given Java keystore alias
-	 * @param the alias for the key
+	 * @param alias the alias for the key
 	 * @return the key, or null if no such alias
 	 */
 	public abstract PrivateKey getSigningKey(String alias);
 
 	/**
 	 * Get the private key associated with a given publisher 
-	 * @param the public key digest of the desired key
+	 * @param publisherKeyID the public key digest of the desired key
 	 * @return the key, or null if no such key known to our cache
 	 */
 	public abstract PrivateKey getSigningKey(PublisherPublicKeyDigest publisherKeyID);
