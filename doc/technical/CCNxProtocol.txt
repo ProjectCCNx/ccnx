@@ -1,0 +1,96 @@
+CCNx Protocol
+=============
+
+
+Abstract
+--------
+
+This document describes the CCNx protocol, the transport protocol
+for a communications architecture called Content-Centric
+Networking (CCN) built on _named data_.  CCN has no notion of host at
+its lowest level -- a packet "address" names content, not location.
+The CCNx protocol efficiently delivers named content rather than connecting
+hosts to other hosts.  Every packet of data may be cached at any CCN
+router -- this combined with intrinsic support for multicast or broadcast
+delivery leads to a very efficient use of the network when many
+people are interested in the same content.
+
+Introduction
+------------
+
+This document describes the CCNx protocol which provides
+location-independent delivery services for named data packets.  The
+services include multihop forwarding for end-to-end delivery, flow
+control, transparent and automatic multicast delivery using
+buffer storage available in the network, loop-free multipath
+forwarding, verification of content integrity regardless of delivery
+path, and carriage of arbitrary application data.  Applications run
+CCNx over some lower-layer communications service capable of
+transmitting packets.  There are no restrictions on the nature of the
+lower-layer service: it may be a physical transport or another network
+or transport protocol.  For example, applications will typically run
+CCNx on top of UDP to take advantage of existing IP connectivity.
+Since content is named independent of location in the CCNx protocol,
+it may also be preserved indefinitely in the network providing
+effectively a form of distributed filesystem service.
+
+CCNx is a general protocol, supporting a wide range of network
+applications.  It may be natural to think of stored content
+applications such as distribution of video or document files, but CCNx
+also supports real-time communication and discovery protocols and is
+general enough to carry conversations between hosts such as TCP
+connections. CCNx supports a broad range of applications by leaving
+the choice of naming conventions to the application.  This document
+specifies the common functions that are independent of the contents of
+the names and data and the semantics of exchanges. In addition to this
+document, therefore, a complete specification of the use of CCNx for a
+particular application will require additional specification of the
+naming rules, data formats, and message semantics.
+
+CCNx is designed for end-to-end communication between applications and so
+it is intended to be integrated into application processing rather
+than being implemented as a separate layer.
+
+
+Definitions
+~~~~~~~~~~~
+
+node::
+  a CCNx network entity that implements forwarding and
+buffering
+party::
+  any entity in the network using CCNx to communicate.  Note
+that parties are not just machines but applications using CCNx are
+themselves parties.
+message:: 
+  a CCNx packet.  We use this term to avoid confusion with the
+lower-layer packet that may be carrying CCNx.  A single lower-layer
+packet (for example a single UDP packet) MAY contain more than one
+CCNx message.
+
+Message Format and Encodings
+----------------------------
+
+Unlike many other protocols, CCNx does not have any fixed-length
+fields.  Instead, CCNx data formats are defined by XML schemas and
+encoded with explicitly identified field boundaries.  This design
+permits field values of arbitrary length, optional fields that consume no
+packet space when omitted, and nested structures.  The use of XML
+structure does not imply that field values are text strings nor
+require that messages be encoded as human-readable text.  Most fields
+are defined to contain arbitrary binary values.
+
+The wire format of CCNx messages is an efficient binary encoding of
+XML structures called link:ccnb.html[ccnb], which defines such things
+as the byte order. There is also a text XML encoding which is useful
+for debugging, testing, examples in documentation, etc. and MAY be
+used on the wire in special circumstances.  Parties are NOT REQUIRED
+to support text XML encoding on the wire.
+
+
+Content Identification
+----------------------
+
+CCNx accomplishes transfers of content by _name_, irrespective of the
+identities or locations of machines involved.
+

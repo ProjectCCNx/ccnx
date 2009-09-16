@@ -17,6 +17,10 @@
 
 package org.ccnx.ccn;
 
+/**
+ * Top-level Exception subclass to mark CCN exceptions. There are some CCN exceptions
+ * that do not extend this type, because they need to extend IOException.
+ */
 public class CCNException extends Exception {
 
 	private static final long serialVersionUID = 1010994050811465163L;

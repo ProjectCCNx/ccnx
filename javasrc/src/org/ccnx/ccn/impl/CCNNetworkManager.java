@@ -546,11 +546,9 @@ public class CCNNetworkManager implements Runnable {
 		try {
 			write(co);
 		} catch (XMLStreamException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			Log.warning("Exception in lowest-level put for object {1}! {1}", co.name(), e);
 		}
 		return co;
-		//return CCNRepositoryManager.getRepositoryManager().put(name, signedInfo, signature, content);
 	}
 	
 	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {

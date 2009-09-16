@@ -36,7 +36,21 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
-
+/**
+ * A class encapsulating a number of system-level default parameters as well as helper
+ * functionality for managing log output and printing debug data. Eventually will
+ * be supported by an external configuration file for controlling key parameters.
+ * 
+ * The current basic logging infrastructure uses standard Java logging, 
+ * controlled only by a system-wide Level value.
+ * That value, as well as other logging-related parameters are currently managed by the
+ * Log class, but should eventually migrate here. There is a facility for selective logging
+ * control, by turning on and off logging for individual named "modules"; though that has
+ * not yet been widely utilized. Eventually we should support separate log Level settings
+ * for each module when necessary.
+ * @author smetters
+ *
+ */
 public class SystemConfiguration {
 	
 	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES, DUMP_DAEMONCMD};
@@ -209,37 +223,52 @@ public class SystemConfiguration {
 		}
 	}
 	
+	/**
+	 * Log information about an object at level Level.INFO. See logObject(Level, String, ContentObject) for details.
+	 * @param message String to prefix output with
+	 * @param co ContentObject to print debugging information about. 
+	 * @see logObject(Level, String, ContentObject)
+	 */
 	public static void logObject(String message, ContentObject co) {
 		logObject(Level.INFO, message, co);
 	}
 	
+	/**
+	 * Log the gory details of an object, including debugging information relevant to object signing.
+	 * @param level log Level to control printing of log messages
+	 * @param message message to prefix output with
+	 * @param co ContentObject to print debugging information for
+	 */
 	public static void logObject(Level level, String message, ContentObject co) {
 		try {
 			byte [] coDigest = CCNDigestHelper.digest(co.encode());
 			byte [] tbsDigest = CCNDigestHelper.digest(ContentObject.prepareContent(co.name(), co.signedInfo(), co.content()));
-			Log.log(level, message + " name: " + co.name() +  " timestamp: " + co.signedInfo().getTimestamp() + " digest: " + CCNDigestHelper.printBytes(coDigest, DEBUG_RADIX) + " tbs: " + CCNDigestHelper.printBytes(tbsDigest, DEBUG_RADIX));
+			Log.log(level, message + " name: {0} timestamp: {1} digest: {2}  tbs: {3}.",
+					co.name(), co.signedInfo().getTimestamp(), CCNDigestHelper.printBytes(coDigest, DEBUG_RADIX),
+					CCNDigestHelper.printBytes(tbsDigest, DEBUG_RADIX));
 		} catch (XMLStreamException xs) {
-			Log.log(level, "Cannot encode object for logging: " + co.name());
+			Log.log(level, "Cannot encode object for logging: {0}.", co.name());
 		}
 		
 	}
 	
 	/**
-	 * Set logging for a particular module. This could (should?) be
-	 * modified to allow use of a properties file.
+	 * Turn on logging for a particular module. This could (should?) be
+	 * modified to allow use of a properties file to statically set a
+	 * logging configuration.
 	 * 
-	 * @param name
-	 * @param value
+	 * @param name name of module to turn on logging for
+	 * @param value true to turn on logging, false to turn it off
 	 */
 	public static void setLogging(String name, Boolean value) {
 		loggingInfo.put(name, value);
 	}
 	
 	/**
-	 * Get logging for a particular module. To maintain the "status quo"
+	 * Determine whether logging is turned on for a particular module. To maintain the "status quo"
 	 * we say to go ahead with the logging if logging was never setup.
-	 * @param name
-	 * @return
+	 * @param name name of module to check logging state for
+	 * @return true if that module is to be logged, false if not
 	 */
 	public static boolean getLogging(String name) {
 		Boolean value = loggingInfo.get(name);

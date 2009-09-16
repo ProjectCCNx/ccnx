@@ -135,10 +135,17 @@ public class ContentTree {
 	/**
 	 * Insert entry for the given ContentObject.
 	 * 
+	 * Inserts at a parent with the interest flag set create a NameEnumerationResponse object
+	 * to send out in response to a name enumeration request that was not answered do to no new
+	 * information existing.  If the interest flag is not set at the parent, a name enumeration
+	 * response is not written.
+	 * 
 	 * @param content the data to insert
 	 * @param ref pointer to position of data in the file storage
 	 * @param ts last modification time of the data
 	 * @param getter to retrieve previous content to check for duplication
+	 * @param ner NameEnumerationResponse object to populate if the insert occurs at a parent
+	 *   with the interest flag set
 	 * @return - true if content is not exact duplicate of existing content.
 	 */
 	public boolean insert(ContentObject content, ContentRef ref, long ts, ContentGetter getter, NameEnumerationResponse ner) {
@@ -504,6 +511,13 @@ public class ContentTree {
 	
 	/**
 	 * Return all names with a prefix matching the name within the interest for name enumeration.
+	 * 
+	 * The current implementation of name enumeration in the repository uses the object save dates
+	 * to determine whether there is new information to send back.  If the name matches the incoming
+	 * interest, the child names are collected from the tree and sent back in a NameEnumerationResponse
+	 * object.  If there is not any new information under the prefix, an interest flag is set.  This will
+	 * trigger a NameEnumerationResponse when a new child is added to the prefix.  Interests attempting
+	 * to enumerate under a prefix that does not exist on the repo are dropped.
 	 * 
 	 * @param interest the interest to base the enumeration on using the rules of name enumeration
 	 * @return the name enumeration response containing the list of matching names

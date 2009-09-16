@@ -91,6 +91,8 @@ public class CCNFlowControlTest {
 	ContentObject objv1s3 = new ContentObject(v1s3, new SignedInfo(), "v1s3".getBytes(), (Signature)null);	
 	ContentName v1s4 = SegmentationProfile.segmentName(v1, 4);
 	ContentObject objv1s4 = new ContentObject(v1s4, new SignedInfo(), "v1s4".getBytes(), (Signature)null);
+	ContentName v1s5 = SegmentationProfile.segmentName(v1, 5);
+	ContentObject objv1s5 = new ContentObject(v1s5, new SignedInfo(), "v1s5".getBytes(), (Signature)null);
 	Queue<ContentObject> queue = _handle.getOutputQueue();
 	ArrayList<Interest> interestList = new ArrayList<Interest>();
 	CCNFlowControl fc = null;
@@ -256,8 +258,9 @@ public class CCNFlowControlTest {
 		fc.put(objv1s1);
 		fc.put(objv1s2);
 		fc.put(objv1s3);
+		fc.put(objv1s4);
 		try {
-			fc.put(objv1s4);
+			fc.put(objv1s5);
 			Assert.fail("Put over highwater mark succeeded");
 		} catch (IOException ioe) {}
 		
@@ -273,6 +276,7 @@ public class CCNFlowControlTest {
 		HighWaterHelper hwh = new HighWaterHelper();
 		hwh.start();
 		fc.put(objv1s4);
+		fc.put(objv1s5);
 	}
 	
 	public class HighWaterHelper extends Thread {

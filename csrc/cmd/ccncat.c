@@ -1,5 +1,6 @@
 /**
  * @file ccncat.c
+ * Reads streams at the given CCN URIs and writes to stdout
  *
  * A CCNx command-line utility.
  *
@@ -25,6 +26,9 @@
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
 
+/**
+ * Provide usage hints for the program and then exit with a non-zero status.
+ */
 static void
 usage(const char *progname)
 {
@@ -42,6 +46,11 @@ struct mydata {
     int allow_stale;
 };
 
+/**
+ * Construct a template suitable for use with ccn_express_interest
+ * indicating at least one suffix component, and stale data if so
+ * requested.
+ */
 struct ccn_charbuf *
 make_template(struct mydata *md, struct ccn_upcall_info *info)
 {
@@ -62,6 +71,11 @@ make_template(struct mydata *md, struct ccn_upcall_info *info)
     return(templ);
 }
 
+/**
+ * Handle the incoming content messages. Extracts the data, and
+ * requests the next block in sequence if the received block was
+ * not the final one.
+ */
 enum ccn_upcall_res
 incoming_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
@@ -162,6 +176,10 @@ incoming_content(struct ccn_closure *selfp,
     return(CCN_UPCALL_RESULT_OK);
 }
 
+/**
+ * Process options and then loop through command line CCN URIs retrieving
+ * the data and writing it to stdout.
+ */
 int
 main(int argc, char **argv)
 {

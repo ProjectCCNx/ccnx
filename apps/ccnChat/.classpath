@@ -3,9 +3,7 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/Java_CCN"/>
-	<classpathentry kind="lib" path="/Java_CCN/lib/bcprov-jdk15-143.jar"/>
-	<classpathentry kind="lib" path="/Java_CCN/lib/jsr173_1.0_ri.jar" sourcepath="/Java_CCN/lib/jsr173_1.0_src.jar"/>
-	<classpathentry kind="lib" path="/Java_CCN/lib/jsr173_api.jar" sourcepath="/Java_CCN/lib/jsr173_1.0_src.jar"/>
 	<classpathentry kind="lib" path="/Java_CCN/lib/junit-4.3.1.jar"/>
+	<classpathentry kind="lib" path="/Java_CCN/lib/bcprov-jdk16-143.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
