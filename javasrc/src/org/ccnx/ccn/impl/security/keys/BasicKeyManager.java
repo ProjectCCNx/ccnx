@@ -55,6 +55,11 @@ import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
+/**
+ * A simple implementation of KeyManager.
+ *
+ * @see KeyManager
+ */
 public class BasicKeyManager extends KeyManager {
 	
 	protected KeyStore _keystore = null;
@@ -198,7 +203,7 @@ public class BasicKeyManager extends KeyManager {
 		    _keyLocator = new KeyLocator(keyName, new PublisherID(_defaultKeyID));
 			Log.info("Default key locator for user " + _userName + ": " + _keyLocator);
 
-		    if (null == getKey(_defaultKeyID, _keyLocator, KeyRepository.SHORT_KEY_TIMEOUT)) {
+		    if (null == getPublicKey(_defaultKeyID, _keyLocator, KeyRepository.SHORT_KEY_TIMEOUT)) {
 		    	boolean resetFlag = false;
 		    	if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 		    		resetFlag = true;
@@ -304,24 +309,34 @@ public class BasicKeyManager extends KeyManager {
 		return ks;
 	}
 
+	/**
+	 * Helper method to turn low-level errors into ConfigurationExceptions
+	 * @param message explanatory message
+	 * @param e original error
+	 * @throws ConfigurationException
+	 */
 	static void generateConfigurationException(String message, Exception e) throws ConfigurationException {
 		Log.warning(message + " " + e.getClass().getName() + ": " + e.getMessage());
 		Log.warningStackTrace(e);
 		throw new ConfigurationException(message, e);
 	}
 
+	@Override
 	public PublisherPublicKeyDigest getDefaultKeyID() {
 		return _defaultKeyID;
 	}
 
+	@Override
 	public PublicKey getDefaultPublicKey() {
 		return _certificate.getPublicKey();
 	}
 	
+	@Override
 	public KeyLocator getDefaultKeyLocator() {
 		return _keyLocator;
 	}
 	
+	@Override
 	public KeyLocator getKeyLocator(PublisherPublicKeyDigest key) {
 		if ((null == key) || (key.equals(_defaultKeyID)))
 			return _keyLocator;
@@ -333,6 +348,7 @@ public class BasicKeyManager extends KeyManager {
 		return null;
 	}
 	
+	@Override
 	public PrivateKey getDefaultSigningKey() {
 		return _privateKey;
 	}
@@ -343,6 +359,7 @@ public class BasicKeyManager extends KeyManager {
 	 * @param keyID
 	 * @return
 	 */
+	@Override
 	public ContentName getDefaultKeyName(byte [] keyID) {
 		ContentName keyDir =
 			ContentName.fromNative(UserConfiguration.defaultUserNamespace(), 
@@ -350,6 +367,7 @@ public class BasicKeyManager extends KeyManager {
 		return new ContentName(keyDir, keyID);
 	}
 
+	@Override
 	public PublicKey getPublicKey(String alias) {
 		Certificate cert = null;;
 		try {
@@ -361,6 +379,7 @@ public class BasicKeyManager extends KeyManager {
 		return cert.getPublicKey();
 	}
 
+	@Override
 	public PrivateKey getSigningKey(String alias) {
 		PrivateKey key = null;;
 		try {
@@ -379,36 +398,6 @@ public class BasicKeyManager extends KeyManager {
 		return new PrivateKey[]{getDefaultSigningKey()};
 	}
 	
-	/**
-	 * Find the key for the given publisher, using the 
-	 * available location information. Or, more generally,
-	 * find a key at the given location that matches the
-	 * given publisher information. If the publisher is an
-	 * issuer, this gets tricky -- basically the information
-	 * at the given location must be sufficient to get the
-	 * right key.
-	 * TODO DKS need to figure out how to decide what to do
-	 * 	with a piece of content. In some sense, mime-types
-	 * 	might make sense...
-	 * @param publisher
-	 * @param locator
-	 * @return
-	 * @throws IOException
-	 * @throws InterruptedException 
-	 */
-	public PublicKey getKey(PublisherPublicKeyDigest desiredKeyID,
-							KeyLocator locator,
-							long timeout) throws IOException, InterruptedException {
-		
-		// DKS -- currently unused; contains some complex key validation behavior that
-		// will move into the trust managers.
-		// Otherwise, this is a name. 
-		
-		// First, try our local key repository.  This will go to the network if it fails.
-		PublicKey key =  _keyRepository.getPublicKey(desiredKeyID, locator, timeout);		
-		return key;
-	}
-
 	@Override
 	public PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws IOException {
 		// TODO Auto-generated method stub
@@ -417,15 +406,6 @@ public class BasicKeyManager extends KeyManager {
 		if (_defaultKeyID.equals(publisher))
 			return _certificate.getPublicKey();
 		return keyRepository().getPublicKey(publisher);
-	}
-
-	@Override
-	public PrivateKey getSigningKey(PublisherID publisher) {
-		// TODO Auto-generated method stub
-		Log.finer("getSigningKey: retrieving key: " + publisher);
-		if (_defaultKeyID.equals(publisher))
-			return _privateKey;
-		return null;
 	}
 
 	@Override
@@ -438,7 +418,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherID, KeyLocator keyLocator, long timeout) throws IOException, InterruptedException {		
+	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherID, KeyLocator keyLocator, long timeout) throws IOException {		
 		Log.finer("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.
