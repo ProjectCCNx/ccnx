@@ -478,13 +478,13 @@ process_command_tokens(struct prefix_face_list_item *pfltail,
     }
 
     if (uri == NULL) {
-        ccndc_warn(__LINE__, "command error (line %d), missing CCN URI\n", lineno);
+        ccndc_warn(__LINE__, "command error (line %d), missing CCNx URI\n", lineno);
         return (-1);
     }   
     prefix = ccn_charbuf_create();
     res = ccn_name_from_uri(prefix, uri);
     if (res < 0) {
-        ccndc_warn(__LINE__, "command error (line %d), bad CCN URI '%s'\n", lineno, uri);
+        ccndc_warn(__LINE__, "command error (line %d), bad CCNx URI '%s'\n", lineno, uri);
         return (-1);
     }
 
