@@ -30,28 +30,39 @@ import org.ccnx.ccn.impl.support.Log;
 
 
 /**
- * Helper class for objects that use the JAXP stream
- * encode and decode operations to read and write
- * themselves.
- * @author smetters
- *
+ * Implementation of generic XML encode/decode functionality for objects.
+ * Subclasses will be capable of being encoded to and decoded from both normal
+ * text-based XML and the ccnb compact binary encoding. (Though a subclass could
+ * mandate only one be used, or a caller can choose to specify. This is useful,
+ * for example, to use this approach to easily write classes that can be encoded/
+ * decoded to/from user-editable text XML only. See GenericXMLEncodable#toString()
+ * for an example.)
+ * 
+ * This class handles most of the generic methods required by XMLEncodable, leaving
+ * only a very small number that subclasses need to actually implement.
+ * 
+ * @see XMLEncodable
  */
 public abstract class GenericXMLEncodable implements XMLEncodable {
 
-	protected GenericXMLEncodable() {}
-	
 	/**
-	 * Don't provide a constructor that takes a byte[]. It
-	 * can decode fine, but subclasses don't have their members
-	 * set up to accept the data yet. Do the base constructor
-	 * and then call decode.
+	 * All subclasses should provide a public no-argument constructor to be used
+	 * by decoding methods. 
+	 * 
+	 * Don't provide a constructor that takes a byte[]. A class with no subclasses
+	 * will decode fine, but its subclasses won't have their members
+	 * set up to accept the data yet and so bad things will happen. (And even if you
+	 * don't see why anyone would need to subclass your type, someone else might.) 
+	 * Clients wishing to decode content will call the no-argument constructor
+	 * first, and then call decode(InputStream) or decode(ByteBuffer).
 	 */
+	protected GenericXMLEncodable() {}
 	
  	public void decode(InputStream istream) throws XMLStreamException {
  		decode(istream, null);
  	}
  	
- 	public void decode(InputStream istream, String codec) throws XMLStreamException {
+	public void decode(InputStream istream, String codec) throws XMLStreamException {
 		XMLDecoder decoder = XMLCodecFactory.getDecoder(codec);
 		decoder.beginDecoding(istream);
 		decode(decoder);
@@ -106,15 +117,11 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 		encode(baos, codec);
 		return baos.toByteArray();
 	}
-	
-	public abstract void decode(XMLDecoder decoder) throws XMLStreamException;
-	
-	public abstract void encode(XMLEncoder encoder) throws XMLStreamException;
-	
-	public abstract String getElementLabel();
 
-	public abstract boolean validate();
-	
+	/**
+	 * Default toString() implementation simply prints the text encoding of the
+	 * object. This demonstrates how to force use of the text encoding.
+	 */
 	@Override
 	public String toString() {
 		byte[] encoded;
@@ -126,6 +133,19 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 		}
 		return new String(encoded);
 	}
+
+	/**
+	 * These are the methods that a subclass really does need to implement.
+	 */
+	
+	public abstract void decode(XMLDecoder decoder) throws XMLStreamException;
+	
+	public abstract void encode(XMLEncoder encoder) throws XMLStreamException;
+	
+	public abstract String getElementLabel();
+
+	public abstract boolean validate();
+	
 }
 
 

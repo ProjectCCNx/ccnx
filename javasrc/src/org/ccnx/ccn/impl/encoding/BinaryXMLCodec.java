@@ -23,9 +23,33 @@ import java.io.OutputStream;
 
 import org.ccnx.ccn.impl.support.Log;
 
-
-public class BinaryXMLCodec  {
+/**
+ * The ccnb compressed binary XMLCodec. This class contains utility functions used by 
+ * BinaryXMLEncoder and BinaryXMLDecoder as well as setup to use this codec with XMLCodecFactory.
+ * 
+ * Basically ccnb encoding uses a dictionary to turn tag and attribute names into short
+ * binary identifiers, and uses a compressed encoding for those identifiers and the lengths
+ * of atomic UTF-8 and binary data. For easy encoding/decoding there are no lengths of elements;
+ * this means encoding can be done as a single pass because the length of an encoded child
+ * element does not need to be known in order to write the start of the parent element.
+ * 
+ * The possible type tags:
+ *  - dtag: binary tag encoded using a dictionary
+ *  - dattr: binary attribute encoded using a dictionary
+ *  - tag: UTF-8 encoded tag not found in dictionary
+ *  - attribute: UTF-8 encoded attribute not found in dictionary
+ *  - utf8 string
+ *  - binary data
+ *  
+ * See protocol documentation for more details of the ccnb format.
+ */
+public class BinaryXMLCodec implements XMLCodec {
 	
+	/**
+	 * Class for managing the paired type/value representation used to encode tags
+	 * and content lengths.
+	 * @author smetters
+	 */
 	public static class TypeAndVal {
 		protected int _type;
 		protected long _val;
@@ -42,25 +66,49 @@ public class BinaryXMLCodec  {
 	public static final String CODEC_NAME = "Binary";
 	
 	/**
-	 * Possible type tags:
-	 *  - tag
-	 *  - attribute
-	 *  - dtag
-	 *  - dattr
-	 *  - utf8 string
-	 *  - binary data
-	 */ 
-	public static byte XML_EXT = 0x00; // starts composite extension - numval is subtype
-	public static byte XML_TAG = 0x01; // starts composite - numval is tagnamelen-1
-	public static byte XML_DTAG = 0x02; // starts composite - numval is tagdict index
-	public static byte XML_ATTR = 0x03; // attribute - numval is attrnamelen-1, value follows
-	public static byte XML_DATTR = 0x04; // attribute numval is attrdict index
-	public static byte XML_BLOB = 0x05; // opaque binary data - numval is byte count
-	public static byte XML_UDATA = 0x06; // UTF-8 encoded character data - numval is byte count
+	 * Values encoded in type and value composites.
+	 **/
+	/**
+	 * // starts composite extension - value is subtype
+	 */
+	public static byte XML_EXT = 0x00; 
 	
-	public static byte XML_CLOSE = 0x0; // end element
+	/**
+	 * // starts composite - value is tagnamelen-1
+	 */
+	public static byte XML_TAG = 0x01; 
+	
+	/**
+	 * // starts composite - value is tagdict index
+	 */
+	public static byte XML_DTAG = 0x02; 
+	/**
+	 * // attribute - value is attrnamelen-1, attribute value follows
+	 */
+	public static byte XML_ATTR = 0x03; 
+ 
+	/**
+	 * // attribute value is attrdict index
+	 */
+	public static byte XML_DATTR = 0x04; 
+	/**
+	 * // opaque binary data - value is byte count
+	 */
+	public static byte XML_BLOB = 0x05; 
+	/**
+	 * // UTF-8 encoded character data - value is byte count
+	 */
+	public static byte XML_UDATA = 0x06; 
+	
+	/**
+	 * // end element
+	 */
+	public static byte XML_CLOSE = 0x0; 
 
-	public static byte XML_SUBTYPE_PROCESSING_INSTRUCTIONS = 16; // <?name:U value:U?>
+	/**
+	 * // <?name:U value:U?>
+	 */
+	public static byte XML_SUBTYPE_PROCESSING_INSTRUCTIONS = 16; 
 	
 	/**
 	 * Masks for bitwise processing. Java's bitwise operations operate
@@ -77,24 +125,32 @@ public class BinaryXMLCodec  {
 	public static int LONG_BYTES = 8;
 	public static int LONG_BITS = 64;
 	
+	/**
+	 * The name of this codec. Used to generate XMLEncoder and XMLDecoder instances with XMLCodecFactory.
+	 * @return the codec name.
+	 */
 	public static String codecName() { return CODEC_NAME; }
 	
 
 	/**
+	 * Encode a type identifier (from the set listed above) and an integer value
+	 * together in a composite encoding.
 	 * Value is encoded in the first several bytes; with the tag encoded in the
 	 * last three bits. The encoding of value is variable length in the bottom
 	 * 7 bits of every byte except for the last one, where it is in the next to top
 	 * 4 bits; the high order bit is set on every byte where there are more bytes
 	 * to follow.
 	 *
-	 * @param tag
+	 * @param type the type value to encode
 	 * @param val Positive integer, potentially of any length, allow only longs
 	 * 	   here.
+	 * @param buf the buffer to encode into
+	 * @param offset the offset into buf at which to start encoding
 	 * @return the number of bytes used to encode.
 	 */
-	public static int encodeTypeAndVal(int tag, long val, byte [] buf, int offset) {
+	public static int encodeTypeAndVal(int type, long val, byte [] buf, int offset) {
 		
-		if ((tag > XML_UDATA) || (tag < 0) || (val < 0)) {
+		if ((type > XML_UDATA) || (type < 0) || (val < 0)) {
 			throw new IllegalArgumentException("Tag and value must be positive, and tag valid.");
 		}
 		
@@ -110,7 +166,7 @@ public class BinaryXMLCodec  {
 		// Bottom 4 bits of val go in last byte with tag.
 		buf[offset + numEncodingBytes - 1] = 
 			(byte)(BYTE_MASK &
-						(((XML_TT_MASK & tag) | 
+						(((XML_TT_MASK & type) | 
 						 ((XML_TT_VAL_MASK & val) << XML_TT_BITS))) |
 						 XML_TT_NO_MORE); // set top bit for last byte
 		val = val >>> XML_TT_VAL_BITS;;
@@ -131,19 +187,42 @@ public class BinaryXMLCodec  {
 		return numEncodingBytes;
 	}
 	
-	public static byte [] encodeTypeAndVal(int tag, long val) {
+	/**
+	 * Convenience method. Encodes type and val into fixed buffer using encodeTypeAndVal(int, long, byte [], int)
+	 * and returns the result.
+	 * @param type the type value to encode
+	 * @param val Positive integer, potentially of any length, allow only longs
+	 * 	   here.
+	 * @return the encoded type and value
+	 */
+	public static byte [] encodeTypeAndVal(int type, long val) {
 		byte [] buf = new byte[numEncodingBytes(val)];
 		
-		encodeTypeAndVal(tag, val, buf, 0);
+		encodeTypeAndVal(type, val, buf, 0);
 		return buf;
 	}
 	
+	/**
+	 * Convenience method. Encodes type and val into output stream using encodeTypeAndVal(int, long, byte [], int)
+	 * and returns the number of bytes encoded.
+	 * @param tag the type value to encode
+	 * @param val Positive integer, potentially of any length, allow only longs
+	 * 	   here.
+	 * @param ostream the stream to encode to
+	 * @return the number of bytes encoded
+	 */
 	public static int encodeTypeAndVal(int tag, long val, OutputStream ostream) throws IOException {
 		byte [] encoding = encodeTypeAndVal(tag, val);
 		ostream.write(encoding);
 		return encoding.length;
 	}
 	
+	/**
+	 * Decodes a type and value pair from an InputStream.
+	 * @param istream stream to read from
+	 * @return a decoded type and value
+	 * @throws IOException if there is an error reading or decoding the type and value pair
+	 */
 	public static TypeAndVal decodeTypeAndVal(InputStream istream) throws IOException {
 		
 		int next;
@@ -183,6 +262,13 @@ public class BinaryXMLCodec  {
 		return new TypeAndVal(type, val);
 	}
 	
+	/**
+	 * Decodes a type and value pair from an InputStream, and then resets that
+	 * stream at its original position.
+	 * @param istream stream to read from
+	 * @return a decoded type and value
+	 * @throws IOException if there is an error reading or decoding the type and value pair
+	 */
 	public static TypeAndVal peekTypeAndVal(InputStream istream) throws IOException {
 		if (!istream.markSupported()) {
 			Log.info("Cannot peek -- stream without marking ability!");
@@ -200,7 +286,12 @@ public class BinaryXMLCodec  {
 		}
 		return tv;
 	}
-			
+		
+	/**
+	 * Helper method, return the number of significant bits of x.
+	 * @param x number we want to know bit length of
+	 * @return bit length of x
+	 */
 	public static int numbits(long x) {
 		if (0 == x)
 			return 0;
@@ -218,8 +309,12 @@ public class BinaryXMLCodec  {
 	}
 	
 	/**
+	 * Decodes a binary blob (encoded binary content) from an InputStream.
 	 * Expects to read a XML_BLOB type marker, and then the data. Has to peek
 	 * to cope with 0-length blob. Inline the peek to avoid unneeded resets.
+	 * @param istream stream to read from
+	 * @return returns decoded blob (binary content)
+	 * @throws IOException if stream cannot be read, decoded or reset
 	 */
 	public static byte [] decodeBlob(InputStream istream) throws IOException {
 		if (!istream.markSupported()) {
@@ -239,7 +334,12 @@ public class BinaryXMLCodec  {
 	}
 	
 	/**
-	 * If we've already read the tag, and just need to get the data.
+	 * Decodes a binary blob (encoded binary content) from an InputStream
+	 * when we have already read the BLOB tag and length, and just need to read the content.
+	 * @param istream stream to read from
+	 * @param blobLength the length of the binary content to read in bytes
+	 * @return returns decoded blob (binary content)
+	 * @throws IOException if stream cannot be read or decoded
 	 */
 	public static byte [] decodeBlob(InputStream istream, int blobLength) throws IOException {
 		byte [] bytes = new byte[blobLength];
@@ -264,8 +364,45 @@ public class BinaryXMLCodec  {
 	}
 	
 	/**
-	 * Expects to read a XML_UDATA type marker, and then the data.
-	 * This will not decode a TAG or ATTR ustring. Cope with elided 0-length ustring.
+	 * Encodes a binary BLOB (binary content) to an output stream.
+	 * @param ostream the stream to write to
+	 * @param blob the binary content to write
+	 * @throws IOException if there is an error encoding or writing the data
+	 */
+	public static void encodeBlob(OutputStream ostream, byte [] blob) throws IOException {
+		encodeBlob(ostream, blob, 0, ((null == blob) ? 0 : blob.length));
+	}
+	
+	/**
+	 * Encodes a binary BLOB (binary content) to an output stream.
+	 * @param ostream the stream to write to
+	 * @param blob the binary content to write
+	 * @param offset the offset into blob at which to start encoding data
+	 * @param length the number of bytes of blob to encode
+	 * @throws IOException if there is an error encoding or writing the data
+	 */
+	public static void encodeBlob(OutputStream ostream, byte [] blob, int offset, int length) throws IOException {
+		// We elide the encoding of a 0-length blob
+		if ((null == blob) || (length == 0)) {
+			Log.finer("Eliding 0-length blob.");
+			return;
+		}
+		
+		encodeTypeAndVal(XML_BLOB, length, ostream);
+		if (null != blob) {
+			ostream.write(blob, offset, length);
+		}
+	}
+
+	
+	/**
+	 * Decodes a UTF-8 string element's content from an InputStream.
+	 * Expects to read a XML_UDATA type marker, and then the data. Has to peek
+	 * to cope with 0-length ustring. Inline the peek to avoid unneeded resets.
+	 * This will not decode a TAG or ATTR ustring.
+	 * @param istream stream to read from
+	 * @return returns decoded String
+	 * @throws IOException if stream cannot be read, decoded or reset
 	 */
 	public static String decodeUString(InputStream istream) throws IOException {
 		if (!istream.markSupported()) {
@@ -285,15 +422,16 @@ public class BinaryXMLCodec  {
 	}
 
 	/**
-	 * If we've read the type indicator (which could be UDATA, or TAG, or ATTR)
+	 * Decodes a UTF-8 string element's content from an InputStream
+	 * when we've read the type indicator (which could be UDATA, or TAG, or ATTR)
 	 * and just need to get the data. Assumes caller will cope with the fact that
 	 * TAGs and ATTRs have encoded lengths that are one byte shorter than their
 	 * actual data length, and that the length passed in here is actually the
 	 * length of data we should read.
-	 * @param istream
-	 * @param byteLength
-	 * @return
-	 * @throws IOException
+	 * @param istream stream to read from
+	 * @param byteLength length of element to read
+	 * @return returns the decoded String
+	 * @throws IOException if stream cannot be read or decoded
 	 */
 	public static String decodeUString(InputStream istream, int byteLength) throws IOException {
 		
@@ -304,22 +442,26 @@ public class BinaryXMLCodec  {
 	}
 	
 	/**
-	 * Encode as UDATA element.
-	 * @param istream
-	 * @param ustring
-	 * @throws IOException
+	 * Encode a non-TAG, non-ATTR UString (UTF-8 String).
+	 * @param ostream stream to encode to
+	 * @param ustring String to encode
+	 * @throws IOException if there is an error encoding the data or writing to the stream
 	 */
 	public static void encodeUString(OutputStream ostream, String ustring) throws IOException {
 		encodeUString(ostream, ustring, XML_UDATA);
 	}
 	
 	/**
-	 * We have to special case the UStrings that represent TAG and ATTR.
+	 * Encode the special case the UStrings that represent TAG and ATTR.
 	 * The lengths of these strings are represented as length-1, as they
 	 * can never be 0 length. The decrement is done here, rather than
 	 * in encodeTypeAndVal. Alternatively, we could make this generic, and
 	 * either provide another encoder specifically for tags, or allow
 	 * caller to give us a length.
+	 * @param ostream the stream to encode to
+	 * @param ustring the String containing the TAG or ATTR value
+	 * @param type the type to encode (XML_TAG or XML_ATTR)
+	 * @throws IOException if there is an error encoding or writing the data
 	 **/
 	public static void encodeUString(OutputStream ostream, String ustring, byte type) throws IOException {
 		
@@ -336,22 +478,5 @@ public class BinaryXMLCodec  {
 									(strBytes.length-1) :
 									strBytes.length), ostream);
 		ostream.write(strBytes);
-	}
-
-	public static void encodeBlob(OutputStream ostream, byte [] blob) throws IOException {
-		encodeBlob(ostream, blob, 0, ((null == blob) ? 0 : blob.length));
-	}
-	
-	public static void encodeBlob(OutputStream ostream, byte [] blob, int offset, int length) throws IOException {
-		// We elide the encoding of a 0-length blob
-		if ((null == blob) || (length == 0)) {
-			Log.finer("Eliding 0-length blob.");
-			return;
-		}
-		
-		encodeTypeAndVal(XML_BLOB, length, ostream);
-		if (null != blob) {
-			ostream.write(blob, offset, length);
-		}
 	}
 }

@@ -32,16 +32,29 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.CCNTime;
 
 
-
+/**
+ * An implementation of XMLEncoder for the Binary (ccnb) codec.
+ * 
+ * @see BinaryXMLCodec
+ * @see XMLEncoder
+ */
 public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	
 	protected OutputStream _ostream = null;
 	protected Stack<BinaryXMLDictionary> _dictionary = new Stack<BinaryXMLDictionary>();
 	
+	/**
+	 * Create a BinaryXMLEncoder initialized with the default dictionary obtained
+	 * from BinaryXMLDictionary#getDefaultDictionary().
+	 */
 	public BinaryXMLEncoder() {
 		this(null);
 	}
 
+	/**
+	 * Create a BinaryXMLEncoder initialized with a specified dictionary.
+	 * @param dictionary the dictionary to use, if null the default dictionary is used.
+	 */
 	public BinaryXMLEncoder(BinaryXMLDictionary dictionary) {
 		if (null == dictionary)
 			_dictionary.push(BinaryXMLDictionary.getDefaultDictionary());
@@ -119,7 +132,8 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	}
 
 	/**
-	 * Compact binary encoding of time. Same as used for versions.
+	 * Compact binary encoding of time, same as used for versions.
+	 * @see VersioningProfile
 	 */
 	public void writeDateTime(String tag, CCNTime dateTime) throws XMLStreamException {
 		writeElement(tag, dateTime.toBinaryTime());

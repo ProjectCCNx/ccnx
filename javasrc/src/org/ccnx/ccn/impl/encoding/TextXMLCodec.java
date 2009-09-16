@@ -29,7 +29,12 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.CCNTime;
 
-public class TextXMLCodec {
+/**
+ * A text-based XMLCodec. Basically standard text XML, though limited support
+ * for things like namespaces. This class contains utility functions used by TextXMLEncoder
+ * and TextXMLDecoder as well as setup to use this codec with XMLCodecFactory.
+ */
+public class TextXMLCodec implements XMLCodec {
 
 	public static final String CCN_NAMESPACE = "http://www.parc.com/ccn";
 	public static final String CCN_PREFIX = "ccn";	
@@ -38,6 +43,10 @@ public class TextXMLCodec {
 	public static final String BINARY_ATTRIBUTE = "ccnbencoding";
 	public static final String BINARY_ATTRIBUTE_VALUE = "base64Binary";
 	
+	/**
+	 * The name of this codec. Used to generate XMLEncoder and XMLDecoder instances with XMLCodecFactory.
+	 * @return the codec name.
+	 */
 	public static String codecName() { return CODEC_NAME; }
 
 	protected static DateFormat canonicalWriteDateFormat = null;
@@ -56,13 +65,24 @@ public class TextXMLCodec {
 		canonicalReadDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 	}
 
-	// Needs to handle null and 0-length elements.
+	/**
+	 * Encodes a binary element as base 64.
+	 * @param element the element data to encode. Needs to handle null and 0-length elements
+	 * @return the binary data base64 encoded into a String
+	 */
 	public static String encodeBinaryElement(byte [] element) {
 		if ((null == element) || (0 == element.length)) 
 			return new String("");
 		return new String(DataUtils.base64Encode(element));
 	}
 	
+	/**
+	 * Encodes a binary element as base 64.
+	 * @param element the element data to encode. Needs to handle null and 0-length elements
+	 * @param offset the offset into element at which to start encoding
+	 * @param length how many bytes of element to encode
+	 * @return the binary data base64 encoded into a String
+	 */
 	public static String encodeBinaryElement(byte [] element, int offset, int length) {
 		if ((null == element) || (0 == element.length)) 
 			return new String("");
@@ -70,6 +90,12 @@ public class TextXMLCodec {
 		return new String(DataUtils.base64Encode(bbuf.array()));
 	}
 
+	/**
+	 * Decodes a base64-encoded binary element back into a byte array.
+	 * @param element base64-encoded element content
+	 * @return the decoded byte array
+	 * @throws IOException if element is not valid base64
+	 */
 	public static byte [] decodeBinaryElement(String element) throws IOException {
 		if ((null == element) || (0 == element.length()))
 			return new byte[0];
@@ -77,11 +103,10 @@ public class TextXMLCodec {
 	}
 
 	/**
-	 * Put our intput/output of Timestamps in one place as
-	 * it seems tricky. Used by all classes to encode, so
-	 * might want to go somewhere else.
-	 * @param dateTime
-	 * @return
+	 * Encapsulate our timestamp formatting/parsing for consistency. Use a simple
+	 * standard format for outputing a quantized CCNTime.
+	 * @param dateTime the timestamp to encode
+	 * @return the formatted timestamp
 	 */
 	public static String formatDateTime(CCNTime dateTime) {
 		// Handles nanoseconds
@@ -103,6 +128,12 @@ public class TextXMLCodec {
 		return date;
 	}
 	
+	/**
+	 * Encapsulate our timestamp formatting/parsing for consistency. Use a simple
+	 * standard format for outputing a quantized CCNTime.
+	 * @param strDateTime the string-encoded timestamp
+	 * @return the parsed timestamp as a CCNTime
+	 */
 	public static CCNTime parseDateTime(String strDateTime) throws ParseException {
 		
 		// no . but has the Z 

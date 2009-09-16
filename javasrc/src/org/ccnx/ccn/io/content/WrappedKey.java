@@ -33,7 +33,6 @@ import javax.crypto.NoSuchPaddingException;
 import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
-import org.bouncycastle.crypto.params.KeyParameter;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
@@ -41,7 +40,6 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.jce.AESWrapWithPad;
-import org.ccnx.ccn.impl.security.crypto.jce.AESWrapWithPadEngine;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -184,8 +182,12 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		byte [] wrappedKey = null;
 
 		if (wrappingAlgorithm.equalsIgnoreCase("AESWrapWithPad")) {
-			byte [] encodedKeyToBeWrapped = keyToBeWrapped.getEncoded();
-			wrappedKey = AESWrapWithPad(wrappingKey, encodedKeyToBeWrapped, 0, encodedKeyToBeWrapped.length);
+			try {
+				wrappedKey = AESWrapWithPad(wrappingKey, keyToBeWrapped);
+			} catch (IllegalBlockSizeException e) {
+				Log.warning("Unexpected IllegalBlockSizeException attempting to instantiate wrapping algorithm.");
+				throw new InvalidKeyException("Unexpected IllegalBlockSizeException attempting to instantiate wrapping algorithm");
+			}
 		} else {
 
 			Cipher wrapCipher = null;
@@ -219,8 +221,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 					//Cipher nonceCipher = Cipher.getInstance(wrapAlgorithmForKey(nonceKey.getAlgorithm()));
 					//nonceCipher.init(Cipher.WRAP_MODE, nonceKey);
 					//wrappedKey = nonceCipher.wrap(keyToBeWrapped);
-					byte [] encodedKeyToBeWrapped = keyToBeWrapped.getEncoded();
-					wrappedKey = AESWrapWithPad(nonceKey, encodedKeyToBeWrapped, 0, encodedKeyToBeWrapped.length);
+					wrappedKey = AESWrapWithPad(nonceKey, keyToBeWrapped);
 					//} catch (NoSuchAlgorithmException nsex) {
 					//	Log.warning("Configuration error: Unknown default nonce key algorithm: " + NONCE_KEY_ALGORITHM);
 					//	Log.warningStackTrace(nsex);
@@ -598,14 +599,15 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	 * @param offset offset into encoded data buffer
 	 * @param length length of data to encrypt.
 	 * @return encrypted data.
+	 * @throws IllegalBlockSizeException 
+	 * @throws InvalidKeyException 
 	 */
-	protected static byte [] AESWrapWithPad(Key wrappingKey, byte[] input, int offset, int length) {
+	protected static byte [] AESWrapWithPad(Key wrappingKey, Key keyToBeWrapped) throws InvalidKeyException, IllegalBlockSizeException {
 		if (! wrappingKey.getAlgorithm().equals("AES")) {
 			throw new IllegalArgumentException("AES wrap must wrap with with an AES key.");
 		}
-		AESWrapWithPadEngine engine = new AESWrapWithPadEngine();
-		engine.init(true, new KeyParameter(wrappingKey.getEncoded()));
-		return engine.wrap(input, offset, length);
+		AESWrapWithPad engine = new AESWrapWithPad();
+		return engine.wrap(wrappingKey, keyToBeWrapped);
 	}
 	
 	/**
