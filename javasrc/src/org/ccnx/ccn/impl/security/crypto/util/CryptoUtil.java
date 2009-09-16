@@ -45,7 +45,8 @@ import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 
 
 /**
- * Collection of crypto utility functions specific to bouncy castle.
+ * A collection of crypto-related utility methods largely related to BouncyCastle.
+ * 
  */
 public class CryptoUtil {
     
