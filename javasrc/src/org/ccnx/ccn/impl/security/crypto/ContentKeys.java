@@ -90,7 +90,7 @@ public class ContentKeys {
 	
 	/**
 	 * A number of users of ContentKeys only support using the default algorithm.
-	 * @throws UnsupportedOperationException if the algorithm is not the default.
+	 * @throws UnsupportedOperationException if the algorithm for this object is not the default.
 	 */
 	public void requireDefaultAlgorithm() {
 		// For now we only support the default algorithm.
@@ -128,6 +128,7 @@ public class ContentKeys {
 	
 	/**
 	 * Create a set of random encryption/decryption keys using the default algorithm.
+	 * @return a randomly-generated set of keys and IV that can be used for encryption
 	 */
 	public static ContentKeys generateRandomKeys() {
 		return new ContentKeys(SecureRandom.getSeed(DEFAULT_KEY_LENGTH),

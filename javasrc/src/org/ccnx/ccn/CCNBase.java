@@ -28,7 +28,7 @@ import org.ccnx.ccn.protocol.Interest;
 /**
  * This is the lowest-level interface to CCN. It consists of only a small number
  * of methods, all other operations in CCN are built on top of these methods together
- * with the contstraint specifications allowed by Interest.
+ * with the constraint specifications allowed by Interest.
  * 
  * Clients wishing to build simple test programs can access an implementation of
  * these methods most easily using the CCNReader and CCNWriter class. Clients wishing
@@ -98,7 +98,7 @@ public class CCNBase {
 	 * when matching content is found or it times out, whichever comes first.
 	 * @param interest
 	 * @param timeout
-	 * @return
+	 * @return the content object
 	 * @throws IOException
 	 */
 	public ContentObject get(Interest interest, long timeout) throws IOException {
@@ -112,6 +112,8 @@ public class CCNBase {
 	/**
 	 * Register a standing interest filter with callback to receive any 
 	 * matching interests seen
+	 * @param filter
+	 * @param callbackListener
 	 */
 	public void registerFilter(ContentName filter,
 			CCNFilterListener callbackListener) {
@@ -120,6 +122,8 @@ public class CCNBase {
 	
 	/**
 	 * Unregister a standing interest filter
+	 * @param filter
+	 * @param callbackListener
 	 */
 	public void unregisterFilter(ContentName filter,
 			CCNFilterListener callbackListener) {
@@ -157,7 +161,6 @@ public class CCNBase {
 	 * @param interest
 	 * @param listener Used to distinguish the same interest
 	 * 	requested by more than one listener.
-	 * @throws IOException
 	 */
 	public void cancelInterest(Interest interest, CCNInterestListener listener) {
 		getNetworkManager().cancelInterest(this, interest, listener);

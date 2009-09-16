@@ -26,9 +26,9 @@ import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
  * NOT CURRENTLY USED, may be used in future releases.
  * Create a Provider in order to host algorithms internal to us, or not yet supported
  * by either Sun Java or BouncyCastle. For the most part, we expect the
- * latter set to eventually be supported in a future BC version. This allows
+ * latter set to eventually be supported in a future BouncyCastle version. This allows
  * us to use such algorithms within the Java Cryptography Extension (JCE) infrastructure.
- * We have a Provider signing key, but have not had time to move over to eitherusing our
+ * We have a Provider signing key, but have not had time to move over to either using our
  * own Provider or seeing if we can get our changes incorporated by BouncyCastle.
  */
 public class CCNCryptoProvider extends Provider {
