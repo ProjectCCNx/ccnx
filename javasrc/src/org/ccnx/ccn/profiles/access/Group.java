@@ -50,23 +50,31 @@ import org.ccnx.ccn.protocol.PublisherID;
 
 /**
  * Wrapper for Group public key, and a way to access its private keys.
+ * The private keys are stored in a <KeyDirectory>, wrapped under the
+ * public keys of the members of the group. 
  * Model for private key access: if you're not allowed to get a key,
  * we throw AccessDeniedException.
+ * 
+ * Right now dynamically load both public key and membership list.
+ * For efficiency might want to only load public key, and pull membership
+ * list only when we need to.
+ * 
  * @author smetters
  *
  */
 public class Group {
 	
-	// Right now dynamically load both public key and membership list.
-	// For efficiency might want to only load public key, and pull membership
-	// list only when we need to.
 	private ContentName _groupNamespace;
 	private PublicKeyObject _groupPublicKey;
 	private MembershipList _groupMembers; 
 	private String _groupFriendlyName;
 	private CCNHandle _handle;
 	private GroupManager _groupManager;
-	
+
+	/** 
+	 * The <KeyDirectory> which stores the group private key wrapped
+	 * in the public keys of the members of the group. 
+	 */
 	private KeyDirectory _privKeyDirectory = null;
 	
 	public Group(ContentName namespace, String groupFriendlyName, CCNHandle handle,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
@@ -112,7 +120,6 @@ public class Group {
 		_groupMembers.saveToRepository();
 	}
 	
-	
 	public void addMembers(ArrayList<Link> newUsers)
 			throws XMLStreamException, IOException, InvalidKeyException,
 			InvalidCipherTextException, AccessDeniedException,
@@ -126,10 +133,23 @@ public class Group {
 		modify(null, removedUsers);
 	}
 
+	/**
+	 * Checks whether the group public key has been created.
+	 * @return
+	 */
 	public boolean ready() {
 		return _groupPublicKey.available();
 	}
 	
+	/**
+	 * Returns the <KeyDirectory> which stores the group private key wrapped
+	 * in the public keys of the members of the group.
+	 * A new private key directory is created if it does not already exist
+	 * and if the group public key is ready. 
+	 * @param manager
+	 * @return
+	 * @throws IOException
+	 */
 	public KeyDirectory privateKeyDirectory(AccessControlManager manager) throws IOException {
 		if (_privKeyDirectory != null) {
 			return _privKeyDirectory;
@@ -158,10 +178,9 @@ public class Group {
 	public String friendlyName() { return _groupFriendlyName; }
 
 	/**
-	 * Returns a list containing all the members of a Group object
-	 * Sets up the list to automatically update in the background
-	 * 
-	 * @return MembershipList- a list containing all the members of a Group object
+	 * Returns a list containing all the members of a Group object.
+	 * Sets up the list to automatically update in the background.
+	 * @return MembershipList a list containing all the members of a Group object
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 * @throws ConfigurationException
@@ -169,8 +188,8 @@ public class Group {
 	public MembershipList membershipList() throws XMLStreamException, IOException, ConfigurationException { 
 		if (null == _groupMembers) {
 			// Read constructor. Synchronously updates. 
-			// Elaine: the code will throw an exception if no membership list is found or upon error
-			// reading membership list from network... need error handling...
+			// Throws an exception if no membership list is found or upon error.
+			// Reading membership list from network. Needs error handling.
 			_groupMembers = new MembershipList(AccessControlProfile.groupMembershipListName(_groupNamespace, _groupFriendlyName), _handle);
 			// Keep dynamically updating.
 			_groupMembers.updateInBackground(true);
@@ -217,6 +236,17 @@ public class Group {
 		return _groupPublicKey.getVersion();
 	}
 
+	/**
+	 * Sets the membership list of the group. Existing members of the group are removed.
+	 * @param groupManager
+	 * @param newMembers
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws InvalidCipherTextException
+	 * @throws AccessDeniedException
+	 * @throws ConfigurationException
+	 */
 	public void setMembershipList(GroupManager groupManager, java.util.Collection<Link> newMembers) 
 					throws XMLStreamException, IOException, 
 						InvalidKeyException, InvalidCipherTextException, AccessDeniedException, ConfigurationException {
@@ -231,11 +261,27 @@ public class Group {
 		}
 	}
 	
+	/**
+	 * Generate a new group public key, e.g. after membership update.
+	 * The caller of this method must have access rights to the existing (soon to be previous)
+	 * private key of the group.
+	 * The new key is created with a call to createGroupPublicKey. This method also wraps
+	 * the new private key under the public keys of all the members of the group.
+	 * Finally, a superseded block and a link to the previous key are written to the repository.
+	 * @param manager
+	 * @param ml
+	 * @throws AccessDeniedException
+	 * @throws IOException
+	 * @throws XMLStreamException
+	 * @throws InvalidKeyException
+	 * @throws InvalidCipherTextException
+	 * @throws ConfigurationException
+	 */
 	public void newGroupPublicKey(GroupManager manager, MembershipList ml) throws AccessDeniedException, IOException, XMLStreamException, InvalidKeyException, InvalidCipherTextException, ConfigurationException {
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(manager.getAccessManager());
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
-			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
+			throw new AccessDeniedException("Cannot update group membership, do not have access rights to private key for group " + friendlyName());
 		}else{
 			stopPrivateKeyDirectoryEnumeration();
 		}
@@ -256,16 +302,19 @@ public class Group {
 	}
 	
 	/**
-	 * We don't expect there to be an existing key. So we just write it.
+	 * Creates a public key for the group, and wraps the corresponding private key
+	 * in the public keys of all the members of the group. 
+	 * We don't expect there to be an existing key. So we just write a new one.
 	 * If we're not supposed to be a member, this is tricky... we just live
-	 * with the fact that we know it, and forget it.
-	 * @param ml
-	 * @throws IOException 
-	 * @throws XMLStreamException 
-	 * @throws ConfigurationException 
-	 * @throws InvalidKeyException 
-	 * @throws InvalidKeyException 
-	 */
+	 * with the fact that we know the private key, and forget it.
+	 * @param manager the group manager.
+	 * @param ml the membership list.
+	 * @return the group private key wrapping key. 
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 * @throws InvalidKeyException
+	 */	
 	public Key createGroupPublicKey(GroupManager manager, MembershipList ml) 
 			throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {
 		
@@ -331,12 +380,14 @@ public class Group {
 			}
 		}
 		return privateKeyWrappingKey;
-		
 	}
 	
 	/**
+	 * Adds members to an existing group.
+	 * The caller of this method must have access to the private key of the group.
 	 * We need to wrap the group public key wrapping key in the latest public
 	 * keys of the members to add.
+	 * Since members are only added, there is no need to replace the group key.
 	 * @param membersToAdd
 	 * @throws IOException 
 	 * @throws XMLStreamException 
@@ -383,9 +434,11 @@ public class Group {
 		}
 	}
 	
+	/**
+	 * Print useful name and version information.
+	 */
 	@Override
 	public String toString() {
-		// Print useful name and version information.
 		StringBuffer sb = new StringBuffer("Group ");
 		sb.append(friendlyName());
 		sb.append(": public key: ");
@@ -410,22 +463,22 @@ public class Group {
 		return sb.toString();
 	}
 
-/**
- * Modify will add and remove members from a Group
- * It can be used to only add members, in which case the membersToRemove list is null
- * or it can be used to only remove members, in which case the membersToAdd list is null
- * If both lists are passed in, then the items in the membersToAdd list are added and the
- * items in the membersToRemove are then removed from the Group members list.
- *  
- * @param membersToAdd - list of group members to be added
- * @param membersToRemove - list of group members to be removed
- * @throws XMLStreamException
- * @throws IOException
- * @throws InvalidKeyException
- * @throws InvalidCipherTextException
- * @throws AccessDeniedException
- * @throws ConfigurationException
- */
+	/**
+	 * Modify will add and remove members from a Group.
+	 * It can be used to only add members, in which case the membersToRemove list is null
+	 * or it can be used to only remove members, in which case the membersToAdd list is null.
+	 * If both lists are passed in, then the items in the membersToAdd list are added and the
+	 * items in the membersToRemove are then removed from the Group members list.
+	 *  
+	 * @param membersToAdd - list of group members to be added
+	 * @param membersToRemove - list of group members to be removed
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws InvalidCipherTextException
+	 * @throws AccessDeniedException
+	 * @throws ConfigurationException
+	 */
 	public void modify(java.util.Collection<Link> membersToAdd,
 					   java.util.Collection<Link> membersToRemove) 
 				throws XMLStreamException, IOException, InvalidKeyException, 
@@ -438,8 +491,8 @@ public class Group {
 			return; // nothing to do
 		}
 		
-		//elaine: you don't want to modify membership list if you dont have permission. 
-		//assume no concurrent writer.  
+		// You don't want to modify membership list if you dont have permission. 
+		// Assume no concurrent writer.  
 		
 		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);

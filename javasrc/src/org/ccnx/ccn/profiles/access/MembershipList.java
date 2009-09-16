@@ -33,6 +33,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
+ * This class records the membership list of <Group>.
  * Eventually should extend Collection, when that moves onto encodable objects.
  * @author smetters
  *
@@ -67,6 +68,12 @@ public class MembershipList extends CCNEncodableObject<Collection> {
 		super(Collection.class, firstBlock, handle);
 	}
 	
+	/**
+	 * Returns the membership list as a collection.
+	 * @return
+	 * @throws ContentNotReadyException
+	 * @throws ContentGoneException
+	 */
 	public Collection membershipList() throws ContentNotReadyException, ContentGoneException { return data(); }
 
 }

@@ -77,7 +77,6 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * 
 	 * @return true if request recognized and carried out
 	 */
-	@Override
 	public boolean diagnostic(String name) {
 		return false;
 	}
