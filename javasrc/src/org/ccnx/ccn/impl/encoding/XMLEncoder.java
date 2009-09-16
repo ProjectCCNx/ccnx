@@ -28,50 +28,132 @@ import org.ccnx.ccn.protocol.CCNTime;
 public interface XMLEncoder {
 	
 	/**
-	 * Handles writing the document start.
-	 * @param ostream
-	 * @throws XMLStreamException
+	 * Initiates encoding and handles any startup steps, including writing the start
+	 * document if one is defined for this codec.
+	 * @param ostream the output stream to encode to
+	 * @throws XMLStreamException if there is an error encoding or writing the content
 	 */
 	public void beginEncoding(OutputStream ostream) throws XMLStreamException;
 	
 	/**
-	 * Handles writing the document end.
-	 * @throws XMLStreamException
+	 * Handles any necessary steps for ending the encoding, including writing the end
+	 * document if one is defined for this codec.
+	 * @throws XMLStreamException if there is an error encoding or writing the content
 	 */
 	public void endEncoding() throws XMLStreamException;
 	
+	/**
+	 * Writes a start element tag in the format defined by this codec to the stream.
+	 * @param tag the element start tag
+	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 */
 	public void writeStartElement(String tag) throws XMLStreamException;
 	
+	/**
+	 * Writes a start element tag in the format defined by this codec to the stream, together with
+	 * a set of attributes.
+	 * @param tag the element start tag
+	 * @param attributes the (attribute, value) pairs to write as attributes of the element start tag,
+	 * 	if null or empty no attributes are written
+	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 */
 	public void writeStartElement(String tag, TreeMap<String,String> attributes) throws XMLStreamException;
 	
+	/**
+	 * Writes the end element defined by this codec to the stream.
+	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 */
 	public void writeEndElement() throws XMLStreamException;   		
 	
+	/**
+	 * Writes a UTF-8 encoded string to the stream formatted according to this codec.
+	 * @param tag start tag to use
+	 * @param utf8Content the string data to encode
+	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 */
 	public void writeElement(String tag, String utf8Content) throws XMLStreamException;
 	
+	/**
+	 * Writes a UTF-8 encoded string to the stream formatted according to this codec.
+	 * @param tag start tag to use
+	 * @param utf8Content the string data to encode
+	 * @param attributes the XML attributes to add to this tag
+	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 */
 	public void writeElement(String tag, String utf8Content, 
 			TreeMap<String,String> attributes) throws XMLStreamException;
 	
+	/**
+	 * Writes a binary element to the stream formatted according to this codec.
+	 * @param tag start tag to use
+	 * @param binaryContent the binary data to encode
+	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 */
 	public void writeElement(String tag, byte [] binaryContent) throws XMLStreamException;
 	
+	/**
+	 * Writes a binary element to the stream formatted according to this codec.
+	 * @param tag start tag to use
+	 * @param binaryContent the binary data to encode
+	 * @param offset the offset into binaryContent at which to start
+	 * @param length the number of bytes of binaryContent to encode
+	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 */
 	public void writeElement(String tag, byte [] binaryContent, int offset, int length) throws XMLStreamException;
 	
+	/**
+	 * Writes a binary element to the stream formatted according to this codec.
+	 * @param tag start tag to use
+	 * @param binaryContent the binary data to encode
+	 * @param attributes the XML attributes to add to this tag
+	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 */
 	public void writeElement(String tag, byte [] binaryContent, 
 			TreeMap<String,String> attributes) throws XMLStreamException;
 
+	/**
+	 * Writes a binary element to the stream formatted according to this codec.
+	 * @param tag start tag to use
+	 * @param binaryContent the binary data to encode
+	 * @param offset the offset into binaryContent at which to start
+	 * @param length the number of bytes of binaryContent to encode
+	 * @param attributes the XML attributes to add to this tag
+	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 */
 	public void writeElement(String tag, byte [] binaryContent, int offset, int length,
 			TreeMap<String,String> attributes) throws XMLStreamException;
 	
 	/**
-	 * Encapsulate string handling.
+	 * Writes an integer to the stream formatted according to this codec.
+	 * @param tag start tag to use
+	 * @param value the integer to encode
+	 * @throws XMLStreamException if there is an error encoding or writing the content
 	 */
 	public void writeIntegerElement(String tag, Integer value) throws XMLStreamException;
 	
 	/**
-	 * Encapsulate our handling of timestamps.
+	 * Writes a quantized timestamp to the stream formatted according to this codec.
+	 * @param tag start tag to use
+	 * @param dateTime the timestamp to encode
+	 * @throws XMLStreamException if there is an error encoding or writing the content
 	 */
 	public void writeDateTime(String tag, CCNTime dateTime) throws XMLStreamException;
 	
+	/**
+	 * Some codecs use a dictionary to make encoding and decoding more efficient. Those
+	 * codecs typically load their default dictionary automatically. This call allows a user
+	 * to manipulate the dictionary stack, adding their own dictionaries to the set used to
+	 * decode.
+	 * @param dictionary a dictionary to add to the set used for decoding
+	 */
 	public void pushXMLDictionary(BinaryXMLDictionary dictionary);
 	
+	/**
+	 * Some codecs use a dictionary to make encoding and decoding more efficient. Those
+	 * codecs typically load their default dictionary automatically. This call allows a user
+	 * to manipulate the dictionary stack, removing the most recently added dictionary from the set used to
+	 * encode.
+	 * @return returns the removed dictionary
+	 */
 	public BinaryXMLDictionary popXMLDictionary();
 }
