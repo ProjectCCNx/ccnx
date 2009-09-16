@@ -1,7 +1,7 @@
 /**
  * @file ccn/ccn.h
  *
- * This is the low-level interface for CCN clients.
+ * This is the low-level interface for CCNx clients.
  *
  * Part of the CCNx C Library.
  *
@@ -598,7 +598,7 @@ int ccn_compare_names(const unsigned char *a, size_t asize,
 /*
  * ccn_indexbuf_comp_strcmp: perform strcmp of given val against 
  * name component at given index i (counting from 0).
- * Uses conventional string ordering, not the canonical CCN ordering.
+ * Uses conventional string ordering, not the canonical CCNx ordering.
  * Returns negative, 0, or positive if val is less than, equal to,
  * or greater than the component.
  * Safe even on binary components, though the result may not be useful.
