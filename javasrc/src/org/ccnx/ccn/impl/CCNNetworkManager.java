@@ -50,11 +50,18 @@ import org.ccnx.ccn.protocol.WirePacket;
 
 
 /**
- * Interface to the ccnd.  Most clients,
- * and the CCN library, will use this as the "CCN".
+ * The low level interface to ccnd. Connects to a ccnd and maintains the connection by sending 
+ * heartbeats to it.  Other functions include reading and writing interests and content
+ * to/from the ccnd, starting handler threads to feed interests and content to registered handlers,
+ * and refreshing unsatisfied interests. 
  * 
- * @author smetters, rasmusse
- *
+ * It also attempts to notice when a ccnd has died and to
+ * reconnect to a ccnd when it is restarted.
+ * 
+ * It also handles the low level output "tap" functionality.
+ * 
+ * Starts a separate thread to listen to, decode and handle incoming data from ccnd.
+ * 
  */
 public class CCNNetworkManager implements Runnable {
 	
@@ -95,11 +102,13 @@ public class CCNNetworkManager implements Runnable {
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
 	
 	private Timer _periodicTimer = null;
-	private boolean timersSetup = false;
+	private boolean _timersSetup = false;
 	
 	/**
-	 * @author rasmusse
-	 * Do scheduled writes.
+	 * Do scheduled writes of heartbeats and interest refreshes
+	 * 
+	 * TODO Interest refresh time is supposed to "decay" over time but there are currently unresolved problems
+	 * with this.
 	 */
 	private class PeriodicWriter extends TimerTask {
 		public void run() {
@@ -119,8 +128,7 @@ public class CCNNetworkManager implements Runnable {
 						InterestRegistration reg = entry.value();
 						if (ourTime > reg.nextRefresh) {
 							Log.finer("Refresh interest: {0}", reg.interest);
-							// Temporarily back out refresh period decay to allow the repository
-							// to work with an "eavesdropping interest"
+							// Temporarily back out refresh period decay
 							//reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
 									//: reg.nextRefreshPeriod * 2;
 							reg.nextRefresh += reg.nextRefreshPeriod;
@@ -139,7 +147,9 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 	
-	// Send heartbeat
+	/**
+	 * Send the heartbeat. Also attempt to detect ccnd going down.
+	 */
 	private void heartbeat() {
 		try {
 			ByteBuffer heartbeat = ByteBuffer.allocate(1);
@@ -161,8 +171,8 @@ public class CCNNetworkManager implements Runnable {
 	 * We don't bother to "unstartup" if everything is deregistered
 	 */
 	private void setupTimers() {
-		if (!timersSetup) {
-			timersSetup = true;
+		if (!_timersSetup) {
+			_timersSetup = true;
 			heartbeat();
 			
 			// Create timer for heartbeats and other periodic behavior
@@ -171,10 +181,11 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 			
-	// Generic superclass for registration objects that may have a listener
-	// Handles invalidation and pending delivery consistently to enable 
-	// subclass to call listener callback without holding any library locks,
-	// yet avoid delivery to a cancelled listener.
+	/** Generic superclass for registration objects that may have a listener
+	 *	Handles invalidation and pending delivery consistently to enable 
+	 *	subclass to call listener callback without holding any library locks,
+	 *	yet avoid delivery to a cancelled listener.
+	 */
 	protected abstract class ListenerRegistration implements Runnable {
 		protected Object listener;
 		protected CCNNetworkManager manager;
@@ -185,6 +196,11 @@ public class CCNNetworkManager implements Runnable {
 		
 		public abstract void deliver();
 		
+		/**
+		 * This is called when removing interest or content handlers. It's purpose
+		 * is to insure that once the remove call begins it completes atomically without more 
+		 * handlers being triggered.
+		 */
 		public void invalidate() {
 			// There may be a pending delivery in progress, and it doesn't 
 			// happen while holding this lock because that would give the 
@@ -208,6 +224,9 @@ public class CCNNetworkManager implements Runnable {
 			}
 		}
 		
+		/**
+		 * Calls the client handler
+		 */
 		public void run() {
 			id = Thread.currentThread().getId();
 			synchronized (this) {
@@ -227,8 +246,10 @@ public class CCNNetworkManager implements Runnable {
 				}
 			}
 		}
-		// Equality based on listener if present, so multiple objects can 
-		// have the same interest registered without colliding
+		
+		/** Equality based on listener if present, so multiple objects can 
+		 *  have the same interest registered without colliding
+		 */
 		public boolean equals(Object obj) {
 			if (obj instanceof ListenerRegistration) {
 				ListenerRegistration other = (ListenerRegistration)obj;
@@ -267,8 +288,6 @@ public class CCNNetworkManager implements Runnable {
 	 * @field data data for waiting thread
 	 * @field lastRefresh last time this interest was refreshed
 	 * @field data Holds data responsive to the interest for a waiting thread
-	 * @author jthornto
-	 *
 	 */
 	protected class InterestRegistration extends ListenerRegistration {
 		public final Interest interest;
@@ -287,15 +306,16 @@ public class CCNNetworkManager implements Runnable {
 			}
 			nextRefresh = new Date().getTime() + nextRefreshPeriod;
 		}
-		// Add a copy of data, not the original data object, so that 
-		// the recipient cannot disturb the buffers of the sender
-		// We need this even when data comes from network, since receive
-		// buffer will be reused while recipient thread may proceed to read
-		// from buffer it is handed
+		
 		/**
 		 * Return true if data was added
 		 */
 		public synchronized boolean add(ContentObject obj) {
+			// Add a copy of data, not the original data object, so that 
+			// the recipient cannot disturb the buffers of the sender
+			// We need this even when data comes from network, since receive
+			// buffer will be reused while recipient thread may proceed to read
+			// from buffer it is handed
 			boolean hasData = (null == data);
 			if (!hasData)
 				this.data.add(obj.clone());
@@ -315,6 +335,9 @@ public class CCNNetworkManager implements Runnable {
 			return result;
 		}
 		
+		/**
+		 * Deliver content to a registered handler
+		 */
 		public void deliver() {
 			try {
 				if (null != this.listener) {
@@ -388,6 +411,9 @@ public class CCNNetworkManager implements Runnable {
 			}
 		}
 		
+		/**
+		 * Start a thread to deliver data to a registered handler
+		 */
 		public void run() {
 			synchronized (this) {
 				// For now only one piece of data may be delivered per InterestRegistration
@@ -401,9 +427,8 @@ public class CCNNetworkManager implements Runnable {
 	
 	/**
 	 * Record of a filter describing portion of namespace for which this 
-	 * application can respond to interests.
-	 * @author jthornto
-	 *
+	 * application can respond to interests. Used to deliver incoming interests
+	 * to registered interest handlers
 	 */
 	protected class Filter extends ListenerRegistration {
 		public ContentName name;
@@ -416,6 +441,10 @@ public class CCNNetworkManager implements Runnable {
 		public synchronized void add(Interest i) {
 			interests.add(i);
 		}
+		
+		/**
+		 * Deliver interest to a registered handler
+		 */
 		public void deliver() {
 			try {
 				ArrayList<Interest> results = null;
@@ -445,13 +474,10 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 	
-	
-	/***************************************************************
-	 * NOTE: former statics getNetworkManager(), createNetworkManager()
-	 * are no longer appropriate given that there are multiple instances
-	 * of a network manager (one per handle instance)
-	 ***************************************************************/
-	
+	/**
+	 * The constructor. Attempts to connect to a ccnd at the currently specified port number
+	 * @throws IOException if the port is invalid
+	 */
 	public CCNNetworkManager() throws IOException {
 		// Determine port at which to contact agent
 		String portval = System.getProperty(PROP_AGENT_PORT);
@@ -498,9 +524,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 	
 	/**
-	 * 
-	 * @param putWait - wait for all puts to be output before
-	 * 					shutting down the server.
+	 * Shutdown the connection to ccnd and all threads associated with this network manager
 	 */
 	public void shutdown() {
 		Log.info("Shutdown requested");
@@ -517,10 +541,10 @@ public class CCNNetworkManager implements Runnable {
 	}
 	
 	/**
-	 * Turn on writing of all packets to a file for test/debug
+	 * Turns on writing of all packets to a file for test/debug
 	 * Overrides any previous setTap or environment/property setting.
 	 * Pass null to turn off tap.
-	 * @param filename
+	 * @param pathname name of tap file
 	 */
 	public void setTap(String pathname) throws IOException {
 		// Turn off any active tap
@@ -542,6 +566,17 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 	
+	/**
+	 * Write content to ccnd
+	 * 
+	 * @param co the content
+	 * @return the same content that was passed into the method
+	 * 
+	 * TODO - code doesn't actually throw either of these exceptions but need to fix upper
+	 * level code to compensate when they are removed.
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
 	public ContentObject put(ContentObject co) throws IOException, InterruptedException {	
 		try {
 			write(co);
@@ -551,6 +586,19 @@ public class CCNNetworkManager implements Runnable {
 		return co;
 	}
 	
+	/**
+	 * get content matching an interest from ccnd. Expresses an interest, waits for ccnd to
+	 * return matching the data, then removes the interest and returns the data to the caller.
+	 * 
+	 * TODO should probably handle InterruptedException at this level instead of throwing it to
+	 * 		higher levels
+	 * 
+	 * @param interest	the interest
+	 * @param timeout	time to wait for return in ms
+	 * @return	ContentObject or null on timeout
+	 * @throws IOException 	on incorrect interest data
+	 * @throws InterruptedException	if process is interrupted during wait
+	 */
 	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
 		Log.fine("get: {0}", interest);
 		InterestRegistration reg = new InterestRegistration(this, interest, null, null);
@@ -569,9 +617,16 @@ public class CCNNetworkManager implements Runnable {
 		return result.size() > 0 ? result.get(0) : null;
 	}
 
-
 	/**
 	 * We express interests to the ccnd and register them within the network manager
+	 * 
+	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
+	 * serving any useful purpose.
+	 *
+	 * @param caller 	must not be null
+	 * @param interest 	the interest
+	 * @param callbackListener	listener to callback on receipt of data
+	 * @throws IOException on incorrect interest
 	 */
 	public void expressInterest(
 			Object caller,
@@ -599,6 +654,13 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * Cancel this query with all the repositories we sent
 	 * it to.
+	 * 
+	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
+	 * serving any useful purpose.
+	 *
+	 * @param caller 	must not be null
+	 * @param interest
+	 * @param callbackListener
 	 */
 	public void cancelInterest(Object caller, Interest interest, CCNInterestListener callbackListener) {
 		if (null == callbackListener) {
@@ -610,10 +672,17 @@ public class CCNNetworkManager implements Runnable {
 		unregisterInterest(caller, interest, callbackListener);
 	}
 
-	
 	/**
 	 * Register a standing interest filter with callback to receive any 
-	 * matching interests seen
+	 * matching interests seen. Any interests whose prefix completely matches "filter" will
+	 * be delivered to the listener
+	 *
+	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
+	 * serving any useful purpose.
+	 *
+	 * @param caller 	must not be null
+	 * @param filter	ContentName containing prefix of interests to match
+	 * @param callbackListener a CCNFilterListener
 	 */
 	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
 		//Library.fine("setInterestFilter: " + filter);
@@ -625,6 +694,13 @@ public class CCNNetworkManager implements Runnable {
 	
 	/**
 	 * Unregister a standing interest filter
+	 *
+	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
+	 * serving any useful purpose.
+	 *
+	 * @param caller 	must not be null
+	 * @param filter	currently registered filter
+	 * @param callbackListener	the CCNFilterListener registered to it
 	 */
 	public void cancelInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
 		Log.fine("cancelInterestFilter: {0}", filter);
@@ -673,7 +749,7 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * Pass things on to the network stack.
 	 */
-	InterestRegistration registerInterest(InterestRegistration reg) {
+	private InterestRegistration registerInterest(InterestRegistration reg) {
 		// Add to standing interests table
 		setupTimers();
 		Log.finest("registerInterest for {0}, and obj is " + _myInterests.hashCode(), reg.interest.name());
@@ -683,9 +759,7 @@ public class CCNNetworkManager implements Runnable {
 		return reg;
 	}
 	
-	// external version: for use when we only have interest from client.  For all internal
-	// purposes we should unregister the InterestRegistration we already have
-	void unregisterInterest(Object caller, Interest interest, CCNInterestListener callbackListener) {
+	private void unregisterInterest(Object caller, Interest interest, CCNInterestListener callbackListener) {
 		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller);
 		unregisterInterest(reg);
 	}
@@ -696,7 +770,7 @@ public class CCNNetworkManager implements Runnable {
 	 * Important Note: This can indirectly need to obtain the lock for "reg" with the lock on
 	 * "myInterests" held.  Therefore it can't be called when holding the lock for "reg".
 	 */
-	void unregisterInterest(InterestRegistration reg) {
+	private void unregisterInterest(InterestRegistration reg) {
 		synchronized (_myInterests) {
 			Entry<InterestRegistration> found = _myInterests.remove(reg.interest, reg);
 			if (null != found) {
@@ -705,8 +779,10 @@ public class CCNNetworkManager implements Runnable {
 		}		
 	}
 
-	// Thread method: this thread will handle reading datagrams and 
-	// the periodic re-expressing of standing interests
+	/**
+	 * Thread method: this thread will handle reading datagrams and 
+	 * the periodic re-expressing of standing interests
+	 */
 	public void run() {
 		if (! _run) {
 			Log.warning("CCNSimpleNetworkManager run() called after shutdown");
@@ -805,7 +881,11 @@ public class CCNNetworkManager implements Runnable {
 		Log.info("Shutdown complete");
 	}
 
-	// Internal delivery of interests to pending filter listeners
+	/**
+	 * Internal delivery of interests to pending filter listeners
+	 * @param ireg
+	 * @throws XMLStreamException
+	 */
 	protected void deliverInterest(InterestRegistration ireg) throws XMLStreamException {
 		// Call any listeners with matching filters
 		synchronized (_myFilters) {
@@ -819,7 +899,11 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 
-	// Deliver data to blocked getters and registered interests
+	/**
+	 *  Deliver data to blocked getters and registered interests
+	 * @param co
+	 * @throws XMLStreamException
+	 */
 	protected void deliverData(ContentObject co) throws XMLStreamException {
 		synchronized (_myInterests) {
 			for (InterestRegistration ireg : _myInterests.getValues(co)) {
