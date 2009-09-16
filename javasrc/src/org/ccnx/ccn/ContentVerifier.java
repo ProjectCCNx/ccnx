@@ -20,16 +20,17 @@ package org.ccnx.ccn;
 import org.ccnx.ccn.protocol.ContentObject;
 
 /**
- * @author smetters
- * 
- * A callback interface to allow low-level mechanisms to ask someone else to verify content.
- *
+ * A callback interface to allow low-level mechanisms to ask someone else to verify content
+ * on their behalf.
  */
 public interface ContentVerifier {
 	
 	/**
-	 * Verify this content object, perhaps in the context of other data held by the verifier.
-	 * @param block Should we rename this?
+	 * Verify this content object, potentially in the context of other data held by the verifier.
+	 * This may be a simple signature verification, which might take advantage of cached data,
+	 * or a more complex trust calculation determining the acceptability of this content for
+	 * a particular use.
+	 * @param content the object whose signature we should verify.
 	 * @return
 	 */
 	public boolean verify(ContentObject content);
