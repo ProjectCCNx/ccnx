@@ -440,8 +440,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		HTMLPaneContentRetriever retriever = new HTMLPaneContentRetriever(_handle, htmlPane, name);
 		
 		Thread t = new Thread(retriever);
-		
-		SwingUtilities.invokeLater(t);	
+		t.start();
 	}
 	
 	
@@ -454,8 +453,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		ContentWriter writer = new ContentWriter(_handle, ccnName, file, htmlPane);
 		
 		Thread t = new Thread(writer);
-		
-		SwingUtilities.invokeLater(t);
+		t.start();
 	}
 
 
