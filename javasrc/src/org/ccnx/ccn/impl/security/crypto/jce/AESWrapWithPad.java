@@ -31,7 +31,7 @@ import org.ccnx.ccn.io.content.WrappedKey;
 /**
  * Engine wrapper around RFC3394WrapWithPadEngine, which as part of a signed Provider
  * will let it be used via the JCE crypto interfaces. In the short term, expose the
- * wrap and unwrap functionality directory to allow it to be used without having to be signed.
+ * wrap and unwrap functionality directly to allow it to be used without having to be signed.
  */
 public class AESWrapWithPad extends WrapCipherSpi {
 	
@@ -46,6 +46,7 @@ public class AESWrapWithPad extends WrapCipherSpi {
 	 * can make this a provider.
 	 * @param wrappingKey key to use to wrap another key
 	 * @param keyToBeWrapped key to be wrapped
+	 * @return the wrapped key
 	 * @throws IllegalBlockSizeException if the wrapped key or its padded version does not match the block size of the ciphar
 	 * @throws InvalidKeyException  if the wrappingKey is invalid
 	 */
@@ -60,6 +61,7 @@ public class AESWrapWithPad extends WrapCipherSpi {
 	 * @param wrappingKey key to use to wrap another key
 	 * @param wrappedKey key to be unwrapped
 	 * @param wrappedKeyAlgorithm algorithm to decode wrappedKey into a key for
+	 * @return the unwrapped key
 	 * @throws InvalidKeyException  if the wrappingKey is invalid
 	 */
 	public Key unwrap(Key wrappingKey, byte [] wrappedKey, String wrappedKeyAlgorithm) throws InvalidKeyException {
