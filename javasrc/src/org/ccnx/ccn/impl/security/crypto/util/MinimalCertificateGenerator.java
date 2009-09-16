@@ -161,11 +161,9 @@ public class MinimalCertificateGenerator {
 	/**
 	 * Self-signed certificate (which may or may not be a CA).
 	 * @param subjectDN
-	 * @param keyPair
+	 * @param subjectPublicKey
 	 * @param duration
 	 * @param isCA
-	 * @throws CertificateEncodingException
-	 * @throws IOException
 	 */
 	public MinimalCertificateGenerator(String subjectDN, PublicKey subjectPublicKey,  
 									   long duration, boolean isCA) {
@@ -219,8 +217,7 @@ public class MinimalCertificateGenerator {
 	 * extension, and adds the DNS name to the subject alt name
 	 * extension (not marked critical). (Combines addServerAuthenticationEKU and
 	 * addDNSNameSubjectAltName).
-	 * @throws java.security.cert.CertificateEncodingException if the DNS name
-	 * is not a DNS name
+	 * @param serverDNSName
 	 */
 	public void setServerAuthenticationUsage(String serverDNSName) {
 		GeneralName name = new GeneralName(GeneralName.dNSName, serverDNSName);
@@ -241,8 +238,7 @@ public class MinimalCertificateGenerator {
 	 * Both adds the secure email OID to the EKU
 	 * extension, and adds the email address to the subject alt name
 	 * extension (not marked critical). (Combines addSecureEmailEKU and addEmailSubjectAltName).
-	 * @throws java.security.cert.CertificateEncodingException if the email address
-	 * is not an email address
+	 * @param subjectEmailAddress
 	 */
 	public void setSecureEmailUsage(String subjectEmailAddress) {
 		GeneralName name = new GeneralName(GeneralName.rfc822Name, subjectEmailAddress);
