@@ -239,9 +239,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		
 		
 		class OpenFileAction extends AbstractAction {
-			/**
-		 * 
-		 */
+
 			private static final long serialVersionUID = 1L;
 			JFrame frame;
 			
