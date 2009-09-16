@@ -1,5 +1,5 @@
-CCNx Main Schema
-================
+CCN Main Schema
+===============
 
 == CCNx XML schema
 
