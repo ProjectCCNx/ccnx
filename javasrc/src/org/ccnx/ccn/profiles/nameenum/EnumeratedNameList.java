@@ -224,8 +224,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 						((null == _newChildren) ? 0 : _newChildren.size()) + ".", _lastUpdate, lastUpdate);
 			}
 		}
-	}
-	
+	}	
 	
 	/**
 	 * Wait for new children to arrive.
