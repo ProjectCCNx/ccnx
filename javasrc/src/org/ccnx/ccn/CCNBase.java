@@ -34,6 +34,8 @@ import org.ccnx.ccn.protocol.Interest;
  * these methods most easily using the CCNReader and CCNWriter class. Clients wishing
  * to do more sophisticated IO should look at the options available in the
  * org.ccnx.ccn.io and org.ccnx.ccn.io.content packages.
+ * 
+ * @see CCNHandle
  */
 public class CCNBase {
 	
