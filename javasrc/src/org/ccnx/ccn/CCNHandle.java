@@ -134,14 +134,6 @@ public class CCNHandle extends CCNBase {
 		return get(interest, timeout);
 	}
 	
-	/**
-	 * TODO -- ignores publisher.
-	 * @param name
-	 * @param publisher
-	 * @param timeout
-	 * @return
-	 * @throws IOException
-	 */
 	public ContentObject get(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
 		Interest interest = new Interest(name, publisher);
 		return get(interest, timeout);

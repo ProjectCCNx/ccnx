@@ -48,12 +48,15 @@ public class UserConfiguration {
 	protected static ContentName DEFAULT_CCN_NAMESPACE;
 	protected static ContentName DEFAULT_USER_NAMESPACE;
 	
-	// TODO: DKS improve handling
+	/**
+	 * Currently very cheezy keystore handling. Will improve when we can actually use
+	 * java 1.6-only features.
+	 */
 	protected static final String KEYSTORE_PASSWORD = "Th1s1sn0t8g00dp8ssw0rd.";
 	protected static final int DEFAULT_KEY_LENGTH = 1024;
 	protected static final String DEFAULT_KEY_ALG = "RSA";
 	protected static final String DEFAULT_KEY_ALIAS = "CCNUser";
-	protected static final String DEFAULT_KEYSTORE_TYPE = "PKCS12"; // "JCEKS"; // want JCEKS, but don't want to force regen yet
+	protected static final String DEFAULT_KEYSTORE_TYPE = "PKCS12"; // "JCEKS"; // want JCEKS, but don't want to force keystore regeneration yet
 	
 	protected static String CCN_DIR;
 	protected static String USER_DIR;
