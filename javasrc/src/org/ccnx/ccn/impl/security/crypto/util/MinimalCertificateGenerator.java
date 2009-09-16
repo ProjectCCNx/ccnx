@@ -52,7 +52,6 @@ import org.ccnx.ccn.impl.support.Log;
 
 
 /**
- * @author smetters
  * Wrap BouncyCastle's X.509 certificate generator in a slightly more user-friendly way.
  */
 public class MinimalCertificateGenerator {
@@ -67,7 +66,7 @@ public class MinimalCertificateGenerator {
     public static final DERObjectIdentifier id_kp_ipsec = new DERObjectIdentifier("1.3.6.1.5.5.8.2.2");
 
     /**
-	 *  Can't just use null to get the default provider
+	 *  We can't just use null to get the default provider
 	 *  and have any assurance of what it is, as a user
 	 *  can change the default provider.
 	 */
@@ -125,7 +124,7 @@ public class MinimalCertificateGenerator {
 	 * @param userKeyPair the user key pair.
 	 * @param subjectDN the distinguished name of the subject.
 	 * @param emailAddress the email address.
-	 * @param duration the duration.
+	 * @param duration the validity duration of the certificate.
 	 * @return the X509 certificate.
 	 * @throws CertificateEncodingException
 	 * @throws InvalidKeyException
@@ -142,11 +141,11 @@ public class MinimalCertificateGenerator {
 
 	/**
 	 * Certificate issued under an existing CA.
-	 * @param subjectDN
-	 * @param subjectPublicKey
-	 * @param issuerCertificate
-	 * @param duration
-	 * @param isCA
+	 * @param subjectDN the distinguished name of the subject.
+	 * @param subjectPublicKey the public key of the subject.
+	 * @param issuerCertificate the certificate of the issuer.
+	 * @param duration the validity duration of the certificate.
+	 * @param isCA 
 	 * @throws CertificateEncodingException
 	 * @throws IOException
 	 */
@@ -161,12 +160,10 @@ public class MinimalCertificateGenerator {
 
 	/**
 	 * Self-signed certificate (which may or may not be a CA).
-	 * @param subjectDN
-	 * @param keyPair
-	 * @param duration
+	 * @param subjectDN the distinguished name of the subject.
+	 * @param subjectPublicKey the public key of the subject.
+	 * @param duration the validity duration of the certificate.
 	 * @param isCA
-	 * @throws CertificateEncodingException
-	 * @throws IOException
 	 */
 	public MinimalCertificateGenerator(String subjectDN, PublicKey subjectPublicKey,  
 									   long duration, boolean isCA) {
@@ -179,10 +176,10 @@ public class MinimalCertificateGenerator {
 
 	/**
 	 * Basic common path.
-	 * @param subjectDN
-	 * @param subjectPublicKey
-	 * @param issuerDN
-	 * @param duration
+	 * @param subjectDN the distinguished name of the subject.
+	 * @param subjectPublicKey the public key of the subject.
+	 * @param issuerDN the distinguished name of the issuer.
+	 * @param duration the validity duration of the certificate.
 	 * @param isCA
 	 */
 	public MinimalCertificateGenerator(String subjectDN, PublicKey subjectPublicKey, 
@@ -220,8 +217,7 @@ public class MinimalCertificateGenerator {
 	 * extension, and adds the DNS name to the subject alt name
 	 * extension (not marked critical). (Combines addServerAuthenticationEKU and
 	 * addDNSNameSubjectAltName).
-	 * @throws java.security.cert.CertificateEncodingException if the DNS name
-	 * is not a DNS name
+	 * @param serverDNSName the DNS name of the server.
 	 */
 	public void setServerAuthenticationUsage(String serverDNSName) {
 		GeneralName name = new GeneralName(GeneralName.dNSName, serverDNSName);
@@ -242,8 +238,7 @@ public class MinimalCertificateGenerator {
 	 * Both adds the secure email OID to the EKU
 	 * extension, and adds the email address to the subject alt name
 	 * extension (not marked critical). (Combines addSecureEmailEKU and addEmailSubjectAltName).
-	 * @throws java.security.cert.CertificateEncodingException if the email address
-	 * is not an email address
+	 * @param subjectEmailAddress the email address of the subject.
 	 */
 	public void setSecureEmailUsage(String subjectEmailAddress) {
 		GeneralName name = new GeneralName(GeneralName.rfc822Name, subjectEmailAddress);
@@ -266,8 +261,8 @@ public class MinimalCertificateGenerator {
 
 	/**
 	 * Generate an X509 certificate, based on the current issuer and subject using the default provider.
-	 * @param digestAlgorithm
-	 * @param signingKey
+	 * @param digestAlgorithm the digest algorithm.
+	 * @param signingKey the signing key.
 	 * @return the X509 certificate.
 	 * @throws CertificateEncodingException
 	 * @throws InvalidKeyException
@@ -294,6 +289,9 @@ public class MinimalCertificateGenerator {
 		return _generator.generate(signingKey);
 	}
 	
+	/**
+	 * Adds an extended key usage extension to the certificate.
+	 */
 	protected void addExtendedKeyUsageExtension() {
 		if (_ekus.isEmpty())
 			return;
@@ -301,6 +299,9 @@ public class MinimalCertificateGenerator {
 		_generator.addExtension(X509Extensions.ExtendedKeyUsage, false, eku);
 	}
 
+	/**
+	 * Adds an subject alternative name extension to the certificate.
+	 */
 	protected void addSubjectAltNamesExtension() {
 		if (_subjectAltNames.size() == 0)
 			return;

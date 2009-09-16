@@ -67,8 +67,8 @@ public class DigestHelper {
 	}
 		
 	/**
-	 * Returns the default digest algorithm.
 	 * This method is non-static so subclasses can override it.
+	 * @return the default digest algorithm.
 	 */
 	public String getDefaultDigest() { return DEFAULT_DIGEST_ALGORITHM; }
 	
