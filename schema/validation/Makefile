@@ -14,11 +14,11 @@ w3downloads.tgz: always
 	tar cvfz w3downloads.tgz $(W3REFS)
 
 # todo -- generalize these rules for a list of schemata
-ccn.xsd:
-	ln -s ../ccn.xsd
+ccnx.xsd:
+	ln -s ../ccnx.xsd
 
-ccn.dtd:
-	ln -s ../ccn.dtd
+ccnx.dtd:
+	ln -s ../ccnx.dtd
 
 security.xsd:
 	ln -s ../security.xsd
@@ -34,10 +34,10 @@ repository.dtd:
 
 clean:
 	rm -f $(W3REFS) $(FUZZED) expectedfailures.out
-	test -L ccn.xsd && rm ccn.xsd || :
+	test -L ccnx.xsd && rm ccnx.xsd || :
 	test -L security.xsd && rm security.xsd || :
 	test -L repository.xsd && rm repository.xsd || :
-	test -L ccn.dtd && rm ccn.dtd || :
+	test -L ccnx.dtd && rm ccnx.dtd || :
 	test -L security.dtd && rm security.dtd || :
 	test -L repository.dtd && rm repository.dtd || :
 
@@ -46,34 +46,34 @@ pretty:
 	echo security-test??.xml | xargs -n 1 sh prettify.sh
 	echo repository-test??.xml | xargs -n 1 sh prettify.sh
 
-check: ccn.xsd ccn.dtd security.xsd security.dtd repository.xsd repository.dtd $(W3REFS) $(FUZZED) always
+check: ccnx.xsd ccnx.dtd security.xsd security.dtd repository.xsd repository.dtd $(W3REFS) $(FUZZED) always
 	@:> expectedfailures.out
 	xmllint --noout --schema XMLSchema.xsd XMLSchema.xsd || ./oops
-	xmllint --noout ccn.xsd
-	@echo === ccn.xsd is well-formed
+	xmllint --noout ccnx.xsd
+	@echo === ccnx.xsd is well-formed
 	xmllint --noout security.xsd
 	@echo === security.xsd is well-formed
 	xmllint --noout repository.xsd
 	@echo === repository.xsd is well-formed
-	xmllint --valid --nowarning --noout ccn.xsd
-	@echo === ccn.xsd is valid according to its dtd
+	xmllint --valid --nowarning --noout ccnx.xsd
+	@echo === ccnx.xsd is valid according to its dtd
 	xmllint --valid --nowarning --noout security.xsd
 	@echo === security.xsd is valid according to its dtd
 	xmllint --valid --nowarning --noout repository.xsd
 	@echo === repository.xsd is valid according to its dtd
-	xmllint --schema XMLSchema.xsd --noout ccn.xsd
-	xmllint --noout --schema ccn.xsd ccn-test??.xml
-	xmllint --noout --dtdvalid ccn.dtd ccn-test??.xml
+	xmllint --schema XMLSchema.xsd --noout ccnx.xsd
+	xmllint --noout --schema ccnx.xsd ccn-test??.xml
+	xmllint --noout --dtdvalid ccnx.dtd ccn-test??.xml
 	xmllint --schema XMLSchema.xsd --noout security.xsd
 	xmllint --noout --schema security.xsd security-test??.xml
 	xmllint --noout --dtdvalid security.dtd security-test??.xml
 	xmllint --schema XMLSchema.xsd --noout repository.xsd
 	xmllint --noout --schema repository.xsd repository-test??.xml
 	xmllint --noout --dtdvalid repository.dtd repository-test??.xml
-	ls ccn-schemabad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --schema ccn.xsd "$$i"; do :; done
+	ls ccn-schemabad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --schema ccnx.xsd "$$i"; do :; done
 	ls security-schemabad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --schema security.xsd "$$i"; do :; done
 	ls repository-schemabad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --schema repository.xsd "$$i"; do :; done
-	ls ccn-dtdbad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid ccn.dtd "$$i"; do :; done
+	ls ccn-dtdbad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid ccnx.dtd "$$i"; do :; done
 	ls security-dtdbad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid security.dtd "$$i"; do :; done
 	ls repository-dtdbad??.xml repository-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid repository.dtd "$$i"; do :; done
 	@diff expectedfailures.ref expectedfailures.out || echo "***" $(LECTURE)

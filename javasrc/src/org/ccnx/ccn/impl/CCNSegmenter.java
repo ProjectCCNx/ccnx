@@ -615,7 +615,6 @@ public class CCNSegmenter {
 						SegmentationProfile.segmentName(rootName, nextSegmentIndex),
 						signedInfo,
 						dataStream, blockWidth);
-			Log.finest("Created content object - segment "+nextSegmentIndex+" before encr="+content[offset]+" after encr="+blocks[i].content()[0]);
 
 			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, 
 												blocks[i].contentLength());

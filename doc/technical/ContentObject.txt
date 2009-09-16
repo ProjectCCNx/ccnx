@@ -1,12 +1,12 @@
-CCN Content Object
-==================
+CCNx Content Object
+===================
 
 == Source references
-link:../../schema/ccn.xsd[ccn.xsd] is the xml schema that describes what the xml rendition of ccn data (including ContentObject messages) should look like.
+link:xsd.html[ccn.xsd] is the xml schema that describes what the xml rendition of ccn data (including ContentObject messages) should look like.
 
-link:../../schema/ccn.dtd[ccn.dtd] is a dtd that should describe the same, in a less strongly-typed fashion.
+link:xsd.html[ccn.xsd] is a dtd that should describe the same, in a less strongly-typed fashion.
 
-link:../../schema/tagname.csvdict[tagname.csvdict] contains the mapping between the DTAG values used in the binary encoding and the element names used in the XML representation.
+link:DTAG.html[tagname.csvdict] contains the mapping between the DTAG values used in the binary encoding and the element names used in the XML representation.
 
 Below we will use a less formal abstract syntax to indicate how the pieces fit together.
 

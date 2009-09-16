@@ -1,0 +1,62 @@
+CCNx Binary Encoding (ccnb)
+===========================
+
+== Design Target: 
+
+   * Custom binary encoding format for XML to meet specific needs of CCNx
+      * Various existing proposed standards are not suitable [why?]
+   * Encoding that would be attractive for others to adopt for general use independent of CCNx<br />
+
+== Goals: 
+
+   * binary to xml to binary: output should exactly match input
+   * xml to binary to xml: output not guaranteed to exactly match input
+   * support evolution while still making binary to xml to binary transformation possible
+
+== Format: 
+
+   * transmission unit: octet, high-order transmitted first
+   * encoding unit: "blocks": (like ASN1) represents start of XML element or attribute, or character data
+      * Header<br />
+         * number value (non-negative integer, variable-length big-endian representation, high order 1 is terminator, packed 7 bits per byte except for the last byte, which gets 4 bits)
+         * 3 bits type (low-order bits): determines interpretation of rest of "block"<br />
+      * Value 
+   * Ending delimiter: represents close of XML element
+      * single octet (0x00)
+         
+
+== "Block" Types: 
+
+   * BLOB: Arbitrary binary value, arbitrary length (including 0), no alignment requirements
+      ** number value is length in octets
+      ** Value will encoded as base 64 when converted to text XML
+   * UData: same as BLOB but value restricted to valid UTF-8 sequences<br />
+   * Tag: XML element tag name in UTF-8 encoding
+      ** number value is length in octets of UTF-8 encoding of tag name - 1 (minimum tag name length is 1)
+      ** may be followed by anything due to XML nesting
+   * Attr: XML attribute name in UTF-8 encoding
+      ** number value is length in octets of UTF-8 encoding of attribute name - 1 (minimum attribute name length is 1)
+      ** UData must follow immediately representing attribute value (though 0 length value may be represented)
+   * DTag: Dictionary Tag
+      ** Same as Tag except number value is an index into a dictionary of tag names (for compressed encoding of tag names)
+      ** Dictionary must be agreed separately or from context
+   * DAttr: same as DTag but for attribute names<br />
+      ** Distinct dictionary for tags and attributes
+   * KitchenSink: Anything other than the XML structures covered by explicit types above, e.g. processing instructions.<br />
+      ** number value is extension subtype identifier (identifiers to be allocated as extensions are defined)
+
+== External Dependencies 
+
+   * Dictionary: interpretation depends on agreed external dictionaries for tags and attributes that will be commonly used
+   * Extension subtype definitions
+
+== Text Conversions
+
+   * When decoding to standard XML text, the arbitrary octets of a BLOB value will be encoded as a sequence of UTF-8 characters according to a standard encoding
+      ** Base 64 is the default encoding
+         * An alternative encoding (e.g. hex) may be used if called for by a schema governing the XML that is produced
+      ** A special attribute value will be added to the tag of any element containing such BLOB values so that the XML text may be encoded to produce the original binary encoding - i.e. the UTF-8 encoding of the arbitrary value will be reversed when the special attribute value is specified on the containing element
+      ** The special attribute value may be specified implicitly by the governing schema definition rather than explicitly included in every tag where it applies
+      ** Note that XML attributes may not have BLOB-encoded values so that no issue arises for converting them to text representation
+
+

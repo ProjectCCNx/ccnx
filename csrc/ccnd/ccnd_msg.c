@@ -125,7 +125,7 @@ void
 ccnd_usage(void)
 {
     static const char ccnd_usage_message[] =
-    "ccnd - CCN Daemon\n"
+    "ccnd - CCNx Daemon\n"
     "  options: none\n"
     "  arguments: none\n"
     "  environment variables:\n"

@@ -1,6 +1,6 @@
 /**
  * @file ccncat.c
- * Reads streams at the given CCN URIs and writes to stdout
+ * Reads streams at the given CCNx URIs and writes to stdout
  *
  * A CCNx command-line utility.
  *
@@ -177,7 +177,7 @@ incoming_content(struct ccn_closure *selfp,
 }
 
 /**
- * Process options and then loop through command line CCN URIs retrieving
+ * Process options and then loop through command line CCNx URIs retrieving
  * the data and writing it to stdout.
  */
 int

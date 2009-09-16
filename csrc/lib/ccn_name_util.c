@@ -67,10 +67,10 @@ ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n)
 /**
  * Add a Component that is a NUL-terminated string.
  *
- * The component added consists of the bytes of the string without the \0.
+ * The component added consists of the bytes of the string without the NUL.
  * This function is convenient for those applications that construct 
  * component names from simple strings.
- * @returns 0, or -1 for error
+ * @returns 0, or -1 for error.
  */
 int 
 ccn_name_append_str(struct ccn_charbuf *c, const char *s)

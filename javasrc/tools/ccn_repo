@@ -30,10 +30,11 @@ OUTPUT_FILE=
 LOCAL_PORT=
 DEBUG_DAEMON=
 PROFILE_INFO=
+usage="usage: ccn_repo [stop <pid> | [interactive] <pathname> | signal <name> <pid>]"
 
 if [ $# = 0 ]
 then
-  echo "usage: ccn_repo [stop <pid> | [interactive] <pathname> | signal <name> <pid>]"
+  echo $usage
 else
   if [ ! "$CCN_LOCAL_PORT" = "" ]; then
   	  LOCAL_PORT="-Dccn.agent.port=$CCN_LOCAL_PORT"

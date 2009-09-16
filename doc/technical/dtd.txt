@@ -1,0 +1,11 @@
+CCNx DTD
+========
+
+== CCNx DTD
+
+This corresponds to the XML schema link:xsd.html[ccnx.xsd].
+
+.ccnx.dtd
+------------------------------------
+include::../../schema/ccnx.dtd[]
+------------------------------------

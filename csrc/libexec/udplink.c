@@ -453,7 +453,7 @@ main (int argc, char * const argv[]) {
     udplink_note("connected to %s:%s\n", canonical_remote, options.remoteport);
 
 
-    /* announce our presence to ccnd and request CCN PDU encapsulation */
+    /* announce our presence to ccnd and request CCNx PDU encapsulation */
     result = send(localsock_rw, CCN_EMPTY_PDU, CCN_EMPTY_PDU_LENGTH, 0);
     if (result == -1) {
         udplink_fatal(__LINE__, "initial send: %s\n", strerror(errno));
@@ -544,7 +544,7 @@ main (int argc, char * const argv[]) {
                         udplink_fatal(__LINE__, "sendto(remotesock_w, rbuf, %ld): %s\n", (long)ld->index - msgstart, strerror(errno));
                 }
                 else if (result == -2) {
-                    udplink_note("protocol error, missing CCN PDU encapsulation. Message dropped\n");
+                    udplink_note("protocol error, missing CCNx PDU encapsulation. Message dropped\n");
                 }
 
                 msgstart = ld->index;

@@ -1,12 +1,12 @@
-CCN Interest Message
-====================
+CCNx Interest Message
+=====================
 
 == Source references
-link:../../schema/ccn.xsd[ccn.xsd] is the xml schema that describes what the xml rendition of ccn data (including Interest messages) should look like.
+link:xsd.html[ccn.xsd] is the xml schema that describes what the xml rendition of ccn data (including Interest messages) should look like.
 
-link:../../schema/ccn.dtd[ccn.dtd] is a dtd that should describe the same, in a less strongly-typed fashion.
+link:dtd.html[ccn.dtd] is a dtd that should describe the same, in a less strongly-typed fashion.
 
-link:../../schema/tagname.csvdict[tagname.csvdict] contains the mapping between the DTAG values used in the binary encoding and the element names used in the XML representation.
+link:DTAG.html[tagname.csvdict] contains the mapping between the DTAG values used in the binary encoding and the element names used in the XML representation.
 
 Below we will use a less formal abstract syntax to indicate how the pieces fit together.
 
@@ -40,7 +40,7 @@ A Name element simply contains a sequence of *Component* elements. Each Componen
 
 The Name element in an interest is synonymous with the term 'prefix'.
 
-Here is an example of an Interest containing a name prefix with 2 components (`ccn:/PARC/%00%01%02`):
+Here is an example of an Interest containing a name prefix with 2 components (`ccnx:/PARC/%00%01%02`):
 ...........................................................
 <Interest>
   <Name>
@@ -90,7 +90,7 @@ Any ::= (empty)
 Bloom ::= BLOB
 ...........................................................
 The Exclude element embodies a description of name components that should not appear as a continuation of the Name prefix in the response to the interest.
-The Components in the exclusion list must occur in strictly increasing order according to the link:CanonicalOrder.html[canonical CCN ordering].  Call the pieces in the exclude list B[0], C[1], B[1], C[2], B[2], ... C[m], B[m].  (Here the B[i] are the Bloom elements and the C[i] are the Component elements.  The omission of a Bloom element is equivalent to a bloom filter that describes the empty set.) Furthermore, take C[0] as negative infinity and C[m+1] as infinity. Then a component C is a member of the exclusion set iff C = C[k] for some k in [1..m] or if C[k] < C < C[k+1] for some k in [0..m] and C matches B[k].
+The Components in the exclusion list must occur in strictly increasing order according to the link:CanonicalOrder.html[canonical CCNx ordering].  Call the pieces in the exclude list B[0], C[1], B[1], C[2], B[2], ... C[m], B[m].  (Here the B[i] are the Bloom elements and the C[i] are the Component elements.  The omission of a Bloom element is equivalent to a bloom filter that describes the empty set.) Furthermore, take C[0] as negative infinity and C[m+1] as infinity. Then a component C is a member of the exclusion set iff C = C[k] for some k in [1..m] or if C[k] < C < C[k+1] for some k in [0..m] and C matches B[k].
 
 A client could choose to simply enumerate the elements of the exclusion set if that is sufficiently compact (using no Bloom filters at all).  At the other extreme, it could simply supply a single Bloom filter to describe the exclusion set.
 
@@ -114,7 +114,7 @@ and the remaining bytes hold the bits of the bloom filter.  The bits in the filt
 ...........................................................
 ChildSelector ::= nonNegativeInteger
 ...........................................................
-Often a given interest will match more than one ContentObject within a given content store. The *ChildSelector* provides a way of expressing a preference for which of these should be returned.  If the (low order bit of) the value is 0, the leftmost child is preferred. If 1, the rightmost child is preferred. Here leftmost and rightmost refer to the least and greatest components according to the link:CanonicalOrder.html[canonical CCN ordering].  This ordering is only done at the level of the name hierarchy one past the name prefix.
+Often a given interest will match more than one ContentObject within a given content store. The *ChildSelector* provides a way of expressing a preference for which of these should be returned.  If the (low order bit of) the value is 0, the leftmost child is preferred. If 1, the rightmost child is preferred. Here leftmost and rightmost refer to the least and greatest components according to the link:CanonicalOrder.html[canonical CCNx ordering].  This ordering is only done at the level of the name hierarchy one past the name prefix.
 
 == AnswerOriginKind
 ...........................................................
