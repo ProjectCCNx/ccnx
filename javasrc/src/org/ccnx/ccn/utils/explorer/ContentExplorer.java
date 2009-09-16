@@ -36,7 +36,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.logging.Level;
 
 import javax.swing.AbstractAction;
@@ -61,7 +60,6 @@ import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellRenderer;
-import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
@@ -75,7 +73,15 @@ import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
-
+/**
+ * The ContentExplorer is an experimental app still under development.  This application
+ * explores ContentObjects that are available in a GUI.  The ContentExplorer uses CCNNameEnumeration
+ * to populate the GUI and can open .txt and .text files in a preview pane or separate window.  The
+ * ContentExplorer can also be used to store files in a repository.  Finally, the ContentExplorer is
+ * intended to be used as a first test of AccessControl functionality with CCN.  This is in an extremely
+ * early state and will be updated in future releases. 
+ *
+ */
 public class ContentExplorer extends JFrame implements BasicNameEnumeratorListener,ActionListener{
 
 	private static ContentName root;
@@ -136,23 +142,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			Log.exitApplication();
 		}
 		
-		System.out.println("root has "+root.count()+" components");
-		
-		//DefaultMutableTreeNode top = new DefaultMutableTreeNode(new IconData(ICON_COMPUTER, null,new Name(root.toString(), slash, true)));
-
-		//usableRoot = top;
-		//DefaultMutableTreeNode node = top;
-		
-		 //attempt to put each component of the root path in its own tree node.
-		//DefaultMutableTreeNode top = new DefaultMutableTreeNode(new IconData(ICON_COMPUTER, null,"/"));
-
-		//usableRoot = top;
-		
 		DefaultMutableTreeNode top = new DefaultMutableTreeNode(new IconData(ICON_FOLDER, null, new Name(slash.component(0), null, true)));
-		//newNode = top;
-		//node = top;
-		
-		//DefaultMutableTreeNode top = null;
+
 		DefaultMutableTreeNode node = top;
 		DefaultMutableTreeNode newNode = null;
 		//add each component of the root
