@@ -1,7 +1,7 @@
 
 cat <<EOF
-CCN Technical Documentation Index
-=================================
+CCNx Technical Documentation Index
+==================================
 
 == Technical Documentation
 EOF

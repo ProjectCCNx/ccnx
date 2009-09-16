@@ -1,5 +1,5 @@
-CCN DTD
-=======
+CCNx DTD
+========
 
 == CCNx DTD
 

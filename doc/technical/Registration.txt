@@ -1,5 +1,5 @@
-CCN Face Management and Registration Protocol
-=============================================
+CCNx Face Management and Registration Protocol
+==============================================
 Revision 8/06/2009
 
 == Source references

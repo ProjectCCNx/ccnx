@@ -1,5 +1,5 @@
-CCN URI Scheme
-==============
+CCNx URI Scheme
+===============
 
 == CCNx URI Scheme
    * Please refer to RFC 3986 (URI Generic Syntax) for background
