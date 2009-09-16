@@ -1,18 +1,19 @@
-== ccnb Binary Encoding  
+CCNx Binary Encoding (ccnb)
+===========================
 
-=== Design Target: 
+== Design Target: 
 
    * Custom binary encoding format for XML to meet specific needs of CCNx
       * Various existing proposed standards are not suitable [why?]
    * Encoding that would be attractive for others to adopt for general use independent of CCNx<br />
 
-=== Goals: 
+== Goals: 
 
    * binary to xml to binary: output should exactly match input
    * xml to binary to xml: output not guaranteed to exactly match input
    * support evolution while still making binary to xml to binary transformation possible
 
-=== Format: 
+== Format: 
 
    * transmission unit: octet, high-order transmitted first
    * encoding unit: "blocks": (like ASN1) represents start of XML element or attribute, or character data
@@ -24,7 +25,7 @@
       * single octet (0x00)
          
 
-=== "Block" Types: 
+== "Block" Types: 
 
    * BLOB: Arbitrary binary value, arbitrary length (including 0), no alignment requirements
       ** number value is length in octets
@@ -44,12 +45,12 @@
    * KitchenSink: Anything other than the XML structures covered by explicit types above, e.g. processing instructions.<br />
       ** number value is extension subtype identifier (identifiers to be allocated as extensions are defined)
 
-=== External Dependencies 
+== External Dependencies 
 
    * Dictionary: interpretation depends on agreed external dictionaries for tags and attributes that will be commonly used
    * Extension subtype definitions
 
-=== Text Conversions
+== Text Conversions
 
    * When decoding to standard XML text, the arbitrary octets of a BLOB value will be encoded as a sequence of UTF-8 characters according to a standard encoding
       ** Base 64 is the default encoding

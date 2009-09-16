@@ -1,5 +1,5 @@
-CCN DTAG Values
-===============
+CCNx DTAG Values
+================
 
 .The DTAG values as defined by schema/tagname.csvdict
 [format="csv",cols="^1,4,2",options="header"]

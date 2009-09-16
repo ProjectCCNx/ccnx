@@ -1,5 +1,5 @@
-CCN Name Conventions
-====================
+CCNx Name Conventions
+=====================
 
 == Generic name structure
    * First component for globally-routable content will usually be a DNS name.  For more local scopes, other names can be used.

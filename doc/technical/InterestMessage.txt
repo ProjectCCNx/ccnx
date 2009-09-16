@@ -1,5 +1,5 @@
-CCN Interest Message
-====================
+CCNx Interest Message
+=====================
 
 == Source references
 link:xsd.html[ccn.xsd] is the xml schema that describes what the xml rendition of ccn data (including Interest messages) should look like.

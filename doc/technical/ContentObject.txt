@@ -1,5 +1,5 @@
-CCN Content Object
-==================
+CCNx Content Object
+===================
 
 == Source references
 link:xsd.html[ccn.xsd] is the xml schema that describes what the xml rendition of ccn data (including ContentObject messages) should look like.

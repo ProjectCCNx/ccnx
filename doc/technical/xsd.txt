@@ -1,4 +1,4 @@
-CCN Main Schema
+CCNx Main Schema
 ===============
 
 == CCNx XML schema
