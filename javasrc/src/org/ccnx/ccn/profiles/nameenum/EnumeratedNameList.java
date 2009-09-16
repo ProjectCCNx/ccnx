@@ -207,14 +207,16 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 */
 	public void waitForNewData(long timeout) {
 		synchronized(_childLock) {
-			long timeRemaining = timeout;
 			CCNTime lastUpdate = _lastUpdate;
+			long timeRemaining = timeout;
+			long startTime = System.currentTimeMillis();
 			while (((null == _lastUpdate) || ((null != lastUpdate) && !_lastUpdate.after(lastUpdate))) && 
 				   ((timeout == SystemConfiguration.TIMEOUT_FOREVER) || (timeRemaining > 0))) {
 				try {
 					_childLock.wait((timeout != SystemConfiguration.TIMEOUT_FOREVER) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
-					if (timeout != SystemConfiguration.TIMEOUT_FOREVER)
-						timeRemaining -= CHILD_WAIT_INTERVAL;
+					if (timeout != SystemConfiguration.TIMEOUT_FOREVER) {
+						timeRemaining = timeout - (System.currentTimeMillis() - startTime);
+					}
 				} catch (InterruptedException e) {
 				}
 				Log.info("Waiting for new data on prefix: {0}, updated {1}, our update {2}, now have " + 
