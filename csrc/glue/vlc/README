@@ -10,15 +10,21 @@ On Mac OS X, you can use macports to install VLC:
 
 $ sudo port install VLC
 
-Next you should make the CCN library prior to compiling
-the vlc plugin.
+
+Two system-dependent makefiles are provided, Makefile.Linux and Makefile.OSX.
+In the csrc/glue/vlc directory, make a symlink that reflects the
+appropriate one for your system, e.g.
+
+$ ln -s Makefile.Linux Makefile
+
+If you have not already compiled the CCN library, do so:
 
 $ ( cd ../.. && ./configure && make )
 
-Two system-dependent makefiles are provided, Makefile.Linux and Makefile.OSX.
-Make a symlink that reflects the appropriate one for your system, e. g.
+Now compile the vlc plugin and install it:
 
-ln -s Makefile.Linux Makefile
+$ make 
+$ sudo make install
 
 The CCN vlc plugin Makefile makes use of the pkg-config info
 to locate the necessary vlc include files, and the correct
