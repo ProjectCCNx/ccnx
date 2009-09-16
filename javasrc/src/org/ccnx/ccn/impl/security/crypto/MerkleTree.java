@@ -170,34 +170,42 @@ public class MerkleTree {
 		computeNodeValues();		
 	}
 	
+	/**
+	 * Returns the digest algorithm used by this tree.
+	 * @return the digest algorithm used
+	 */
 	public String digestAlgorithm() { return _digestAlgorithm; }
 	
 	/**
-	 * Returns 0 if this node has no parent (is the root).
-	 * @param i is a (1-based) node index.
-	 * @return
+	 * Find the index of the parent of this node. 
+	 * @param nodeIndex is a (1-based) node index whose parent we want to find.
+	 * @return Returns 0 if this node has no parent (is the root), otherwise
+	 * 	the parent's index
 	 */
 	public static int parent(int nodeIndex) { 
 		return (int)Math.floor(nodeIndex/2.0); 
 	}
 	
 	/**
-	 * Will return size() if no left child.
-	 * @param nodeIndex
-	 * @return
+	 * Find the index of the left child of a given node.
+	 * @param nodeIndex the (1-based) index of the node whose child we want to find
+	 * @return the index of the left child, or size() if no left child.
 	 */
 	public int leftChild(int nodeIndex) { return 2*nodeIndex; }
 	
 	/**
-	 * Will return size() if no right child.
-	 * @param nodeIndex
-	 * @return
+	 * Find the index of the right child of a given node.
+	 * @param nodeIndex the (1-based) index of the node whose child we want to find
+	 * @return the index of the right child, or size() if no left child.
 	 */
 	public int rightChild(int nodeIndex) { return 2*nodeIndex + 1; }
 	
 	/**
+	 * Find the index of this node's sibling.
 	 * Everything always has a sibling, in this formulation of 
 	 * (not-necessarily-complete binary trees). For root, returns 0.
+	 * @param nodeIndex the (1-based) index of the node whose sibling we want to find
+	 * @return the (1-based) index of the sibling, or 0 for if nodeIndex is the root.
 	 */
 	public static int sibling(int nodeIndex) {
 		return nodeIndex^1; // Java has xor! who knew?
@@ -210,19 +218,44 @@ public class MerkleTree {
 	 * member. Every other layer has an even number of nodes (except for
 	 * possibly a dangling child at the end). So, left nodes have even
 	 * indices, and right nodes have odd ones.
-	 * @param nodeIndex
-	 * @return
+	 * @param nodeIndex node to check whether it is a right child
+	 * @return true if it is a right child, false if a left child
 	 */
 	public static boolean isRight(int nodeIndex) { return (0 != (nodeIndex % 2)); }
+
+	/**
+	 * Check internal node index (not translated to leaves) to see if it
+	 * is a left or right child. Internal nodes for a layer always start
+	 * with an even index, as 1 is the root and the only layer with one
+	 * member. Every other layer has an even number of nodes (except for
+	 * possibly a dangling child at the end). So, left nodes have even
+	 * indices, and right nodes have odd ones.
+	 * @param nodeIndex node to check whether it is a left child
+	 * @return true if it is a left child, false if a right child
+	 */
 	public static boolean isLeft(int nodeIndex) { return (0 == (nodeIndex % 2)); }
 		
+	/**
+	 * Return the root digest
+	 * @return the root digest
+	 */
 	public byte [] root() { 
 		if ((null == _tree) || (_tree.length == 0))
 			return new byte[0];
 		return get(ROOT_NODE);
 	} 
 	
+	/**
+	 * Get the DEROctetString wrapped digest of the root node.
+	 * @return a DEROctetString object containing the root node digest.
+	 */
 	public DEROctetString derRoot() { return derGet(ROOT_NODE); }
+	
+	/**
+	 * Get the size of the tree, in nodes. (This is the number of nodes,
+	 * not the number of leaves.)
+	 * @return the tree size.
+	 */
 	public int size() { return _tree.length; }
 	
 	/**
