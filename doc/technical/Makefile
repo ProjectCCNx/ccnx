@@ -21,7 +21,9 @@ DERIVED_INDEX = ../index.html index.html index.txt
 DEBRIS = .tagname.csv
 SRC_HTML = # any checked-in html files should go here
 INDEXED_HTML = $(DERIVED_HTML) $(SRC_HTML)
-
+SCHEMA = ../../schema
+XSDSRC = $(SCHEMA)/ccnx.xsd $(SCHEMA)/repository.xsd $(SCHEMA)/security.xsd
+DTDSRC = $(SCHEMA)/ccnx.dtd $(SCHEMA)/repository.dtd $(SCHEMA)/security.dtd
 default:
 	: To build the documentation: $(MAKE) documentation
 
@@ -37,16 +39,16 @@ clean:
 DigestComponent.html: DigestComponent.txt
 	asciidoc DigestComponent.txt
 
-DTAG.html: DTAG.txt ../../schema/tagname.csvdict
-	sed -e 's/$$/,,,,/g' ../../schema/tagname.csvdict | \
+DTAG.html: DTAG.txt $(SCHEMA)/tagname.csvdict
+	sed -e 's/$$/,,,,/g' $(SCHEMA)/tagname.csvdict | \
 					cut -d , -f 1-3   > .tagname.csv
 	asciidoc --unsafe DTAG.txt
 	rm -f .tagname.csv
 
-dtd.html: dtd.txt ../../schema/ccn.dtd
+dtd.html: dtd.txt $(XSDSRC)
 	asciidoc --unsafe dtd.txt
 
-xsd.html: xsd.txt ../../schema/ccn.xsd
+xsd.html: xsd.txt $(DTDSRC)
 	asciidoc --unsafe xsd.txt
 
 InterestMessage.html: InterestMessage.txt
