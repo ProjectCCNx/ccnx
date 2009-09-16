@@ -31,9 +31,6 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 /**
  * Policy is the interface used by the RepositoryStore for interpreting and applying policy 
  * data to CCN repositories.
- * 
- * @author rasmusse
- *
  */
 
 public interface Policy {
