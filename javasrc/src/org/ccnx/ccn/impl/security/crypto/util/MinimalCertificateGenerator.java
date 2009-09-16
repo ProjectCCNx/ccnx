@@ -52,7 +52,6 @@ import org.ccnx.ccn.impl.support.Log;
 
 
 /**
- * @author smetters
  * Wrap BouncyCastle's X.509 certificate generator in a slightly more user-friendly way.
  */
 public class MinimalCertificateGenerator {
