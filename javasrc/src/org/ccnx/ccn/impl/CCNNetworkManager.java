@@ -189,7 +189,7 @@ public class CCNNetworkManager implements Runnable {
 	protected abstract class ListenerRegistration implements Runnable {
 		protected Object listener;
 		protected CCNNetworkManager manager;
-		public Semaphore sema = null;
+		public Semaphore sema = null;	//used to block thread waiting for data or null if none
 		public Object owner = null;
 		protected boolean deliveryPending = false;
 		protected long id;
@@ -278,22 +278,16 @@ public class CCNNetworkManager implements Runnable {
 	
 	/**
 	 * Record of Interest
-	 * @field interest Interest itself
-	 * @field listener Listener to be notified of data matching the Interest.  The
 	 * listener must be set (non-null) for cases of standing Interest that holds 
 	 * until canceled by the application.  The listener should be null when a 
 	 * thread is blocked waiting for data, in which case the thread will be 
 	 * blocked on semaphore.
-	 * @field semaphore used to block thread waiting for data or null if none
-	 * @field data data for waiting thread
-	 * @field lastRefresh last time this interest was refreshed
-	 * @field data Holds data responsive to the interest for a waiting thread
 	 */
 	protected class InterestRegistration extends ListenerRegistration {
 		public final Interest interest;
-		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1);
-		protected long nextRefresh;
-		protected long nextRefreshPeriod = PERIOD * 2;
+		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1); //data for waiting thread
+		protected long nextRefresh;		// next time to refresh the interest
+		protected long nextRefreshPeriod = PERIOD * 2;	// period to wait before refresh
 		
 		// All internal client interests must have an owner
 		public InterestRegistration(CCNNetworkManager mgr, Interest i, CCNInterestListener l, Object owner) {
@@ -659,8 +653,8 @@ public class CCNNetworkManager implements Runnable {
 	 * serving any useful purpose.
 	 *
 	 * @param caller 	must not be null
-	 * @param interest
-	 * @param callbackListener
+	 * @param interest	an Interest
+	 * @param callbackListener CCNInterestListener to callback
 	 */
 	public void cancelInterest(Object caller, Interest interest, CCNInterestListener callbackListener) {
 		if (null == callbackListener) {

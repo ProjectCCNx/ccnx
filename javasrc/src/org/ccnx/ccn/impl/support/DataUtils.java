@@ -27,7 +27,9 @@ import java.util.ArrayList;
 import org.bouncycastle.util.encoders.Base64;
 import org.ccnx.ccn.config.SystemConfiguration;
 
-
+/**
+ * Miscellaneous utility routines for CCN
+ */
 public class DataUtils {
 	
 	public static class Tuple<A, B> {
@@ -63,7 +65,7 @@ public class DataUtils {
 	}
 	
 	/**
-	 * Perform a lexigraphical comparison
+	 * Perform a lexigraphical comparison of byte arrays in canonical CCN ordering
 	 * @param left
 	 * @param right
 	 * @return < 0 if left comes before right, 0 if they are equal, > 0 if left comes after right
@@ -138,20 +140,32 @@ public class DataUtils {
 		return result;
 	}
 
+	/**
+	 * Used to print non ASCII components for logging, etc.
+	 * 
+	 * @param bytes
+	 * @return the data as a BigInteger String
+	 */
 	public static String printBytes(byte [] bytes) {
 		BigInteger bi = new BigInteger(1, bytes);
 		return bi.toString(SystemConfiguration.DEBUG_RADIX);
 	}
 	
+	/**
+	 * Used to print components to be interpreted as hexadecimal such as segments
+	 * @param bytes
+	 * @return the data as a Hexadecimal String
+	 */
 	public static String printHexBytes(byte [] bytes) {
 		BigInteger bi = new BigInteger(1, bytes);
 		return bi.toString(16);
 	}
 	
-	/*
+	/**
 	 * A place to centralize interfaces to base64 encoding/decoding, as the classes
 	 * we use change depending on what ships with Java.
 	 */
+	
 	public static byte [] base64Decode(byte [] input) throws IOException {
 		return Base64.decode(input);
 	}
@@ -160,6 +174,12 @@ public class DataUtils {
 		return Base64.encode(input);
 	}
 
+	/**
+	 * byte array compare
+	 * @param left
+	 * @param right
+	 * @return true if equal
+	 */
 	public static boolean arrayEquals(byte[] left, byte[] right) {
 		if (left == null) {
 			return ((right == null) ? true : false);
@@ -176,6 +196,13 @@ public class DataUtils {
 		return true;
 	}
 	
+	/**
+	 * byte array compare
+	 * @param left
+	 * @param right
+	 * @param length
+	 * @return true if equal
+	 */
 	public static boolean arrayEquals(byte[] left, byte[] right, int length) {
 		if (left == null) {
 			return ((right == null) ? true : false);
@@ -192,6 +219,14 @@ public class DataUtils {
 		return true;
 	}
 	
+	/**
+	 * Used to check for binary prefixes used to mark certain ContentName components
+	 * for special purposes.
+	 * 
+	 * @param prefix
+	 * @param data
+	 * @return
+	 */
 	public static boolean isBinaryPrefix(byte [] prefix,
 										 byte [] data) {
 		if ((null == prefix) || (prefix.length == 0))
@@ -212,7 +247,7 @@ public class DataUtils {
 	 * Similar to org.apache.commons.io.FileUtils.deleteDirectory
 	 * but avoids dependency on that library for minimal use.
 	 * @param directory
-	 * @throws IOException
+	 * @throws IOException if "directory" is a file
 	 */
 	public static void deleteDirectory(File directory) throws IOException {
 		if (!directory.exists()) {
@@ -231,6 +266,13 @@ public class DataUtils {
 		directory.delete();
 	}
 
+	/**
+	 * Currently unused - anyone know what the purpose of this is supposed to be?
+	 * 
+	 * @param file
+	 * @return
+	 * @throws IOException
+	 */
 	public static byte[] getBytesFromFile(File file) throws IOException {
 	    InputStream is = new FileInputStream(file);
 	
@@ -264,7 +306,7 @@ public class DataUtils {
 
 	/**
 	 * @param count Lexicographically compare two byte arrays, looking at at most count bytes.
-	 * @return
+	 * @return < 0 if left comes before right, 0 if they are equal, > 0 if left comes after right
 	 */
 	public static int bytencmp(byte[] arr1, byte[] arr2, int count) {
 		if (null == arr1) {

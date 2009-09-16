@@ -404,7 +404,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	public void afterPutAction(ContentObject co) throws IOException {
 		_nOut++;
 		_holdingArea.remove(co.name());
-		_holdingArea.notifyAll();
+		_holdingArea.notify();
 	}
 	
 	/**
@@ -502,7 +502,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	/**
 	 * Set the time to wait for buffer to drain on close
-	 * @param timeout
+	 * @param timeout timeout in ms
 	 */
 	public void setTimeout(int timeout) {
 		_timeout = timeout;
