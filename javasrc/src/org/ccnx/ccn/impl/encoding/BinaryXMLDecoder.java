@@ -55,10 +55,13 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 	public void beginDecoding(InputStream istream) throws XMLStreamException {
 		if (null == istream)
 			throw new IllegalArgumentException("BinaryXMLEncoder: input stream cannot be null!");
-		_istream = istream;		
+		_istream = istream;	
+		readStartDocument();
 	}
 	
-	public void endDecoding() throws XMLStreamException {}
+	public void endDecoding() throws XMLStreamException {
+		readEndDocument();
+	}
 
 	public void readStartDocument() throws XMLStreamException {
 		// Currently no start document in binary encoding.

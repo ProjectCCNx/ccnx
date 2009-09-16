@@ -32,6 +32,14 @@ import javax.xml.stream.events.XMLEvent;
 
 import org.ccnx.ccn.protocol.CCNTime;
 
+/**
+ * An implementation of XMLDecoder for the Text codec. Uses javax.xml.stream interfaces.
+ * These are standard in Java 1.6, but require installing an add on package from JSR 173
+ * for Java 1.5. See README for details.
+ * 
+ * @see TextXMLCodec
+ * @see XMLDecoder
+ */
 public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 
 	protected InputStream _istream = null;
@@ -108,10 +116,11 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 		}	
 		return true;
 	}
+	
 	/**
-	 * Consumes the end element.
-	 * @return
-	 * @throws XMLStreamException
+	 * Helper method to decode text (UTF-8) and binary elements. Consumes the end element.
+	 * @return the read data, as a String
+	 * @throws XMLStreamException if there is a problem decoding the data
 	 */
 	public String readElementText() throws XMLStreamException {
 		StringBuffer buf = new StringBuffer();
@@ -165,9 +174,6 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 		}
 	}
 	
-	/**
-	 * Keep text timestamps for text encoding/decoding.
-	 */
 	public CCNTime readDateTime(String startTag) throws XMLStreamException {
 		String strTimestamp = readUTF8Element(startTag);
 		CCNTime timestamp;
