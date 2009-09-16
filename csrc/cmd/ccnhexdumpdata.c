@@ -1,6 +1,7 @@
 /**
  * @file ccnhexdumpdata.c
- * 
+ * Parse a ccnb-encoded ContentObject in a file and dump the content as hex data to stdout.
+ *
  * A CCNx command-line utility.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.

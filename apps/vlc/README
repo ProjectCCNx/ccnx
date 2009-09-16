@@ -12,7 +12,7 @@ $ sudo port install VLC
 
 
 Two system-dependent makefiles are provided, Makefile.Linux and Makefile.OSX.
-In the csrc/glue/vlc directory, make a symlink that reflects the
+In the apps/vlc directory, make a symlink that reflects the
 appropriate one for your system, e.g.
 
 $ ln -s Makefile.Linux Makefile

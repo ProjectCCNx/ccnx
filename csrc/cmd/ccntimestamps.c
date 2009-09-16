@@ -1,5 +1,5 @@
 /**
- * @file ccndumptimestamps.c
+ * @file ccntimestamps.c
  * Dumps timestamps of everything quickly retrievable.
  *
  * A CCNx command-line utility.

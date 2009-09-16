@@ -182,6 +182,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 */
 	public void startWrite(ContentName name, Shape shape) throws IOException {
 		
+		Log.info("RepositoryFlowControl.startWrite called for name {0}, shape {1}", name, shape);
 		Client client = new Client(name, shape);
 		_clients.add(client);
 		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"

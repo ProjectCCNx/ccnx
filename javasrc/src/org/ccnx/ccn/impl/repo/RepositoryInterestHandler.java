@@ -111,7 +111,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		
 		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
 		try {
-			Log.info("Processing write request for " + listeningName);
+			Log.info("Processing write request for {0}", listeningName);
 			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null);
 			RepositoryDataListener listener = _server.addListener(interest, readInterest);
 			_server.getWriter().put(interest.name(), _server.getRepository().getRepoInfo(null), null, null,
