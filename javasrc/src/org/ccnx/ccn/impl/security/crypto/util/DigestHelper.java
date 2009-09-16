@@ -35,7 +35,6 @@ import org.ccnx.ccn.impl.support.Log;
  * Includes methods for computing Merkle hash trees (hash computation of the 
  * concatenation of two or more arrays of bytes.)
  */
-
 public class DigestHelper {
 
 	public static String DEFAULT_DIGEST_ALGORITHM = "SHA-1";

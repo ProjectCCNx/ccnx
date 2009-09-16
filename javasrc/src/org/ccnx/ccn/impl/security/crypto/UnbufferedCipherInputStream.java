@@ -24,6 +24,7 @@ import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 
 /**
+ * CipherInputStream subclass that hides block-related boundaries in buffering.
  * Java's CipherInputStream exposes the buffering done to accommodate a block
  * Cipher, and hence reads/skip/available only return the data available in the current
  * Cipher block, rather than the perhaps larger amount of data expected from the underlying
