@@ -35,26 +35,7 @@ import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
  * CCNNetworkManager to interface with a "real" virtual CCN,
  * and KeyManager to interface with the user's collection of
  * signing and verification keys. 
- * 
- * Need to expand get-side interface to allow querier better
- * access to signing information and trust path building.
- * 
- * @author smetters,rasmussen
- * 
- * * <META> tag under which to store metadata (either on name or on version)
- * <V> tag under which to put versions
- * n/<V>/<number> -> points to header
- * <B> tag under which to put actual fragments
- * n/<V>/<number>/<B>/<number> -> fragments
- * n/<latest>/1/2/... has pointer to latest version
- *  -- use latest to get header of latest version, otherwise get via <v>/<n>
- * configuration parameters:
- * blocksize -- size of chunks to fragment into
- * 
- * get always reconstructs fragments and traverses links
- * can getLink to get link info
- *
- */
+  */
 public class CCNHandle extends CCNBase {
 	
 	static {
