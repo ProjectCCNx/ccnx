@@ -33,15 +33,15 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
- * Wrapping class for CCNNameEnumerator.  This class allows applications to wrap the methods of
- * CCNNameEnumerator and call blocking functions (with optional timeouts) to wait for name
- * enumeration responses for a given name prefix. 
- * 
+ * Blocking and background interface to name enumeration. This allows a caller to specify a prefix
+ * under which to enumerate available children, and name enumeration to proceed in the background
+ * for as long as desired, providing updates whenever new data is published.
+ * Currently implemented as a wrapper around CCNNameEnumerator, will likely directly aggregate
+ * name enumeration responses in the future.
  * 
  * @see CCNNameEnumerator
  * @see BasicNameEnumeratorListener
  */
-
 public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	
 	protected static final long CHILD_WAIT_INTERVAL = 1000;
@@ -57,16 +57,14 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	
 	/**
 	 * Creates an EnumeratedNameList object
-	 * <p>
 	 * 
-	 * This constructor creates a new EnumeratedNameList object that will wrap name enumeration
-	 * for the prefix passed to the constructor.  The new EnumeratedNameList will use the CCNHandle passed
-	 * in to the constructor, or create a new one if it is null.
+	 * This constructor creates a new EnumeratedNameList object that will begin enumerating
+	 * the children of the specified prefix.  The new EnumeratedNameList will use the CCNHandle passed
+	 * in to the constructor, or create a new one using CCNHandle#open() if it is null.
 	 *  
-	 * @param  handle The CCNHandle object for sending interests and receiving content object responses.
-	 * @param  namePrefix The ContentName to enumerate.
+	 * @param  namePrefix the ContentName whose children we wish to list.
+	 * @param  handle the CCNHandle object for sending interests and receiving content object responses.
 	 */
-
 	public EnumeratedNameList(ContentName namePrefix, CCNHandle handle) throws IOException {
 		if (null == namePrefix) {
 			throw new IllegalArgumentException("namePrefix cannot be null!");
@@ -85,15 +83,13 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	/**
 	 * Method to return the ContentName used for enumeration.
 	 * 
-	 * @return ContentName Returns the prefix used for enumeration.
+	 * @return ContentName returns the prefix under which we are enumerating children.
 	 */
-	
 	public ContentName getName() { return _namePrefix; }
 	
-	/** StopEnumerating
-	 * <p>
-	 * Sends a cancel interest on the namePrefix assigned in the 
-	 * constructor. Cancels the enumeration on that prefix.
+	/** 
+	 * Cancels ongoing name enumeration. Previously-accumulated information about
+	 * children of this name are still stored and available for use.
 	 * 
 	 * @return void
 	 * */
@@ -102,11 +98,14 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 	
 	/**
-	 * Method providing a blocking call for enumeration.  This method blocks and
+	 * First-come first-served interface to retrieve only new data from
+	 * enumeration responses as it arrives.  This method blocks and
 	 * waits for data, but grabs the new data for processing
 	 * (thus removing it from every other listener), in effect handing the
 	 * new children to the first consumer to wake up and makes the other
-	 * ones go around again.
+	 * ones go around again. Useful for assigning work to a thread pool,
+	 * somewhat dangerous in other contexts -- if there is more than
+	 * one waiter, many waiters can wait forever.
 	 * 
 	 * @param timeout maximum amount of time to wait, 0 to wait forever.
 	 * @return SortedSet<ContentName> Returns the array of single-component
@@ -145,8 +144,9 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	/**
 	 * Returns single-component ContentName objects containing the name components of the children.
 	 * @return SortedSet<ContentName> Returns the array of single-component
-	 * 	content name children that are new to us, or null if we reached the
-	 *  timeout before new data arrived
+	 * 	content name children that have been retrieved so far, or null if no responses
+	 *  have yet been received. The latter may indicate either that no children of this prefix
+	 *  are known to any responders, or that they have not had time to respond.
 	 */
 	public SortedSet<ContentName> getChildren() {
 		if (!hasChildren())
@@ -156,32 +156,30 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	
 	/**
 	 * Returns true if the prefix has new names that have not been handled by the calling application.
-	 * 
-	 * @return boolean Returns a boolean indicating if there are new children available to process.
+	 * @return true if there are new children available to process
 	 */
-	
 	public boolean hasNewData() {
 		return ((null != _newChildren) && (_newChildren.size() > 0));
 	}
 	
 	/**
-	 * Returns true if the prefix has names stored from received enumeration responses.
+	 * Returns true if we have received any responses listing available child names.
+	 * If no names have yet been received, this may mean either that responses
+	 * have not had time to arrive, or there are know children known to available
+	 * responders.
 	 * 
-	 * @return boolean
+	 * @return true if we have child names received from enumeration responses
 	 */
-	
 	public boolean hasChildren() {
 		return ((null != _children) && (_children.size() > 0));
 	}
 	
 	/**
-	 * Returns true if the prefix has a child matching the given name component.
+	 * Returns true if we know the prefix has a child matching the given name component.
 	 * 
-	 * @param childComponent Name component to check for in the stored child names.
-	 * 
-	 * @return boolean
+	 * @param childComponent name component to check for in the stored child names.
+	 * @return true if that child is in our list of known children
 	 */
-	
 	public boolean hasChild(byte [] childComponent) {
 		for (ContentName child : _children) {
 			if (Arrays.areEqual(childComponent, child.component(0))) {
@@ -192,34 +190,33 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 	
 	/**
-	 * Returns whether a child is present in the list of enumerated names.
+	 * Returns whether a child is present in the list known children.
 	 * <p>
 	 * 
 	 * @param childName String version of a child name to look for
-	 * 
-	 * @return boolean Returns true if the name is present in the enumerated name list.
+	 * @return boolean Returns true if the name is present in the list of known children.
 	 * */
 	public boolean hasChild(String childName) {
 		return hasChild(ContentName.componentParseNative(childName));
 	}
 	
 	/**
-	 * Wait for new name enumeration data to arrive, whether it actually signals children or not.
+	 * Wait for new children to arrive.
 	 * 
 	 * @param timeout Maximum time to wait for new data.
-	 * 
-	 * @return void
 	 */
 	public void waitForNewData(long timeout) {
 		synchronized(_childLock) {
-			long timeRemaining = timeout;
 			CCNTime lastUpdate = _lastUpdate;
+			long timeRemaining = timeout;
+			long startTime = System.currentTimeMillis();
 			while (((null == _lastUpdate) || ((null != lastUpdate) && !_lastUpdate.after(lastUpdate))) && 
 				   ((timeout == SystemConfiguration.TIMEOUT_FOREVER) || (timeRemaining > 0))) {
 				try {
 					_childLock.wait((timeout != SystemConfiguration.TIMEOUT_FOREVER) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
-					if (timeout != SystemConfiguration.TIMEOUT_FOREVER)
-						timeRemaining -= CHILD_WAIT_INTERVAL;
+					if (timeout != SystemConfiguration.TIMEOUT_FOREVER) {
+						timeRemaining = timeout - (System.currentTimeMillis() - startTime);
+					}
 				} catch (InterruptedException e) {
 				}
 				Log.info("Waiting for new data on prefix: {0}, updated {1}, our update {2}, now have " + 
@@ -227,27 +224,25 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 						((null == _newChildren) ? 0 : _newChildren.size()) + ".", _lastUpdate, lastUpdate);
 			}
 		}
-	}
-	
+	}	
 	
 	/**
-	 * Wait for new name enumeration data to arrive, whether it actually signals children or not.
+	 * Wait for new children to arrive.
 	 * This method does not have a timeout and will wait forever.
 	 * 
 	 * @return void
 	 */
-	
 	public void waitForNewData() {
 		waitForNewData(SystemConfiguration.TIMEOUT_FOREVER);
 	}
 
 	/**
-	 * Waits until there is any data at all. Right now, waits for actual
-	 * children, not just a CCNNameEnumeration response. That means it could block
+	 * Waits until there is any data at all. Right now, waits for the first response containing actual
+	 * children, not just a name enumeration response. That means it could block
 	 * forever if no children exist in a repository or there are not any applications responding to
-	 * CCNNameEnumeration requests.
+	 * name enumeration requests. Once we have an initial set of children, this method
+	 * returns immediately.
 	 * @param timeout Maximum amount of time to wait, if 0, waits forever.
-	 * @return void
 	 */
 	public void waitForData(long timeout) {
 		while ((null == _children) || _children.size() == 0) {
@@ -258,24 +253,23 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 	
 	/**
-	 * Wait (block) for data to arrive, possibly forever. See {@link #waitForData(long)}.
-	 * 
-	 * @return void
+	 * Wait (block) for initial data to arrive, possibly forever. See {@link #waitForData(long)}.
 	 */
 	public void waitForData() {
 		waitForData(SystemConfiguration.TIMEOUT_FOREVER);
 	}
 
 	/**
-	 * The name enumerator should hand back a list of 
-	 * single-component names.
+	 * Handle responses from CCNNameEnumerator that give us a list of single-component child
+	 * names. Filter out the names new to us, add them to our list of known children, postprocess
+	 * them with processNewChildren(SortedSet<ContentName>), and signal waiters if we
+	 * have new data.
 	 * 
 	 * @param prefix Prefix used for name enumeration.
-	 * @param names The list of names returned in name enumeration.
+	 * @param names The list of names returned in this name enumeration response.
 	 * 
 	 * @return int 
 	 */
-	
 	public int handleNameEnumerator(ContentName prefix,
 								    ArrayList<ContentName> names) {
 		
@@ -315,7 +309,6 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	/**
 	 * Method to allow subclasses to do post-processing on incoming names
 	 * before handing them to customers.
-	 * TODO -- make sure we only signal on new new children
 	 * Note that the set handed in here is not the set that will be handed
 	 * out; only the name objects are the same.
 	 * 
@@ -326,11 +319,11 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 
 	/**
-	 * Returns the latest version name of the child version components that were returned through enumeration.
+	 * If some or all of the children of this name are versions, returns the latest version
+	 * among them.
 	 * 
 	 * @return ContentName The latest version component
 	 * */
-	
 	public ContentName getLatestVersionChildName() {
 		// of the available names in _children that are version components,
 		// find the latest one (version-wise)
@@ -362,11 +355,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 	
 	/**
-	 * Returns the latest version as a CCNTime object.
+	 * Returns the latest version availble under this prefix as a CCNTime object.
 	 * 
 	 * @return CCNTime Latest child version as CCNTime
 	 */
-	
 	public CCNTime getLatestVersionChildTime() {
 		ContentName latestVersion = getLatestVersionChildName();
 		if (null != latestVersion) {
@@ -377,7 +369,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 
 	/**
 	 * A static method that performs a one-shot call that returns the complete name of the latest
-	 * version of content with the prefix name.
+	 * version of content with the given prefix. An alternative route to finding the name of the
+	 * latest version of a piece of content, rather than using methods in the VersioningProfile
+	 * to retrieve an arbitrary block of content under that version. Useful when the data under
+	 * a version is complex in structure.
 	 * 
 	 * @param name ContentName to find the latest version of 
 	 * @param handle CCNHandle to use for enumeration

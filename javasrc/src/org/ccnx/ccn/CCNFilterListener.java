@@ -21,13 +21,25 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.protocol.Interest;
 
-
+/**
+ * A CCN filter is essentially an "interest in Interests" -- it allows a caller to register
+ * to see Interest messages that come in from the network, and optionally generate (or
+ * merely provide) data in response. Filters are registered using 
+ * CCNBase#registerFilter(ContentName, CCNFilterListener). Note that we will only see
+ * interests that match the name we registered in our filter -- in other words, Interests
+ * in that name or its children; not its parents. We will also only see Interests that
+ * were not already satisfied out of ccnd's own cache (or on the network path to our node).
+ * 
+ * @see CCNBase
+ * @see CCNHandle
+ */
 public interface CCNFilterListener {
 
 	/**
 	 * Callback called when we get new interests matching our filter.
 	 * @param interests The matching interests
-	 * @return
+	 * @return an integer representing the number of interests this listener has handled
+	 * 	(returned data in response to).
 	 */
     public int handleInterests(ArrayList<Interest> interests);
     

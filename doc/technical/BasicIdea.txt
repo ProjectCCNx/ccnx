@@ -1,0 +1,12 @@
+Basic Idea
+==========
+
+The basic idea behind CCN is move 
+link:ContentObject.html[signed, named data]
+from wherever it is
+to where it is needed,
+in response to the
+link:InterestMessage.html[interest]
+of the receiving side.
+
+link:index.html[Index]

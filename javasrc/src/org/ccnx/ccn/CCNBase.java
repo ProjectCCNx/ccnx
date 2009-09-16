@@ -25,22 +25,33 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
-
 /**
- * @author smetters, rasmussen
- *
+ * This is the lowest-level interface to CCN. It consists of only a small number
+ * of methods, all other operations in CCN are built on top of these methods together
+ * with the contstraint specifications allowed by Interest.
+ * 
+ * Clients wishing to build simple test programs can access an implementation of
+ * these methods most easily using the CCNReader and CCNWriter class. Clients wishing
+ * to do more sophisticated IO should look at the options available in the
+ * org.ccnx.ccn.io and org.ccnx.ccn.io.content packages.
+ * 
+ * @see CCNHandle
  */
 public class CCNBase {
 	
 	public final static int NO_TIMEOUT = -1;
 	
 	/**
-	 * Allow separate per-instance to control reading/writing within
-	 * same app. Get default one if use static VM instance of StandardCCNLibrary,
-	 * but if you make a new instance, get a new connection to ccnd.
+	 * A CCNNetworkManager embodies a connection to ccnd.
 	 */
 	protected CCNNetworkManager _networkManager = null;
 	
+	/**
+	 * Retrieve a static singleton CCNNetworkManager. Care must be used to
+	 * determine when to use a shared network manager, and when to make a new
+	 * one. Clients should not call this method directly, and instead should
+	 * create/retrieve a CCNHandle.
+	 */
 	public CCNNetworkManager getNetworkManager() { 
 		if (null == _networkManager) {
 			synchronized(this) {
@@ -59,11 +70,15 @@ public class CCNBase {
 	}
 	
 	/**
-	 * Implementation of CCNBase.put.
-	 * @param co
-	 * @return
+	 * Put a single content object into the network. This is a low-level put,
+	 * and typically should only be called by a flow controller, in response to
+	 * a received Interest. Attempting to write to ccnd without having first
+	 * received a corresponding Interest violates flow balance, and the content
+	 * will be dropped.
+	 * @param co the content object to write. This should be complete and well-formed -- signed and
+	 * 	so on.
+	 * @return the object that was put if successful, otherwise null.
 	 * @throws IOException
-	 * @throws InterruptedException
 	 */
 	public ContentObject put(ContentObject co) throws IOException {
 		boolean interrupted = false;
@@ -79,12 +94,12 @@ public class CCNBase {
 	}
 	
 	/**
-	 * Implementation of CCNBase get
+	 * Get a single piece of content from CCN. This is a blocking get, it will return
+	 * when matching content is found or it times out, whichever comes first.
 	 * @param interest
 	 * @param timeout
 	 * @return
 	 * @throws IOException
-	 * @throws InterruptedException
 	 */
 	public ContentObject get(Interest interest, long timeout) throws IOException {
 		while (true) {

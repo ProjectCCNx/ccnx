@@ -21,34 +21,42 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
-
+/**
+ * A class encapsulating user-specific configuration information and default variable values.
+ * Eventually will be handled more sensibly by a user configuration file. This is likely
+ * to change extensively as user model evolves.
+ */
 public class UserConfiguration {
 	
 	/**
-	 * TODO Eventually move some options into config file.
+	 * Our eventual configuration file location.
 	 */
 	protected static final String USER_CONFIG_FILE = "ccn_config.xml";
 
 	/**
-	 * Where all user metadata is kept.
+	 * Directory (subdirectory of User.home) where all user metadata is kept.
 	 */
 	protected static final String CCN_DIR_NAME = ".ccn";
+	
 	protected static final String KEYSTORE_FILE_NAME = ".ccn_keystore";
 	protected static final String KEY_DIRECTORY = "keyCache";
 	protected static final String ADDRESSBOOK_FILE_NAME = "ccn_addressbook.xml";
 
-	protected static final String DEFAULT_CCN_NAMESPACE_STRING = "/parc.com";
+	protected static final String DEFAULT_CCN_NAMESPACE_STRING = "/ccnx.org";
 	protected static final String DEFAULT_USER_NAMESPACE_AREA = DEFAULT_CCN_NAMESPACE_STRING + "/home";
 	protected static final String DEFAULT_USER_KEY_NAME = "Key";
 	protected static ContentName DEFAULT_CCN_NAMESPACE;
 	protected static ContentName DEFAULT_USER_NAMESPACE;
 	
-	// TODO: DKS improve handling
+	/**
+	 * Currently very cheezy keystore handling. Will improve when we can actually use
+	 * java 1.6-only features.
+	 */
 	protected static final String KEYSTORE_PASSWORD = "Th1s1sn0t8g00dp8ssw0rd.";
 	protected static final int DEFAULT_KEY_LENGTH = 1024;
 	protected static final String DEFAULT_KEY_ALG = "RSA";
 	protected static final String DEFAULT_KEY_ALIAS = "CCNUser";
-	protected static final String DEFAULT_KEYSTORE_TYPE = "PKCS12"; // "JCEKS"; // want JCEKS, but don't want to force regen yet
+	protected static final String DEFAULT_KEYSTORE_TYPE = "PKCS12"; // "JCEKS"; // want JCEKS, but don't want to force keystore regeneration yet
 	
 	protected static String CCN_DIR;
 	protected static String USER_DIR;

@@ -44,9 +44,12 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * interests and matches immediately if a content object matching a
  * held interest is put.
  * 
- * Implements a highwater mark in the holding buffer. If the buffer size
- * reaches the highwater mark, a put will block until there is more
- * room in the buffer. Currently this is only per "flow controller". There
+ * Implements a highwater mark in the holding buffer. If the buffer consumption
+ * reaches the highwater mark, any subsequent put will block until there is more
+ * room in the buffer. Note that this means that the buffer may hold as many objects as the 
+ * highwater value, and the object held by any later blocked put is extra, meaning the total
+ * number of objects waiting to be sent is not bounded by the highwater mark alone.
+ * Currently this is only per "flow controller". There
  * is nothing to stop multiple streams writing to the repo for instance to
  * independently all fill their buffers and cause a lot of memory to be used.
  * 
@@ -285,43 +288,51 @@ public class CCNFlowControl implements CCNFilterListener {
 		if (_flowControlEnabled) {
 			synchronized (_holdingArea) {
 				Entry<UnmatchedInterest> match = null;
-				Log.finest("Holding " + co.name());
-				_holdingArea.put(co.name(), co);
 				match = _unmatchedInterests.removeMatch(co);
 				if (match != null) {
 					Log.finest("Found pending matching interest for " + co.name() + ", putting to network.");
 					_handle.put(co);
 					afterPutAction(co);
-				}
-				if (_holdingArea.size() >= _highwater) {
-					boolean interrupted;
-					long ourTime = new Date().getTime();
-					Entry<UnmatchedInterest> removeIt;
-					do {
-						removeIt = null;
-						for (Entry<UnmatchedInterest> uie : _unmatchedInterests.values()) {
-							if ((ourTime - uie.value().timestamp) > PURGE) {
-								removeIt = uie;
-								break;
+				} else {
+					// No pending interest was waiting, so we must wait for interest to come in
+					Log.finest("Holding {0}", co.name());
+					if (_holdingArea.size() >= _highwater) {
+						long ourTime = new Date().getTime();
+						Entry<UnmatchedInterest> removeIt;
+						// TODO Verify the following note
+						// When we're going to be blocked waiting for a reader anyway, 
+						// purge old unmatched interests
+						do {
+							removeIt = null;
+							for (Entry<UnmatchedInterest> uie : _unmatchedInterests.values()) {
+								if ((ourTime - uie.value().timestamp) > PURGE) {
+									removeIt = uie;
+									break;
+								}
 							}
-						}
-						if (removeIt != null)
-							_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
-					} while (removeIt != null);
-					do {
-						interrupted = false;
-						try {
-							Log.finest("Waiting for drain");
-							_holdingArea.wait(_timeout);
+							if (removeIt != null)
+								_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
+						} while (removeIt != null);
+						// Now wait for space to be cleared or timeout
+						// Must guard against "spurious wakeup" so must check elapsed time directly
+						long elapsed = 0;
+						do {
+							try {
+								Log.finest("Waiting for drain ({0}, {1})", _holdingArea.size(), elapsed);
+								_holdingArea.wait(_timeout-elapsed);
+							} catch (InterruptedException e) {
+								// intentional no-op
+							}
+							elapsed = new Date().getTime() - ourTime;
+						} while (_holdingArea.size() >= _highwater && elapsed < _timeout);						
 						if (_holdingArea.size() >= _highwater)
 							throw new IOException("Flow control buffer full and not draining");
-						} catch (InterruptedException e) {
-							interrupted = true;
-						}
-					} while (interrupted);
+					}
+					assert(_holdingArea.size() < _highwater);
+					_holdingArea.put(co.name(), co);
 				}
 			}
-		} else
+		} else // Flow control disabled entirely: put to network immediately
 			_handle.put(co);
 		return co;
 	}
@@ -361,9 +372,11 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param co
 	 */
 	public void afterPutAction(ContentObject co) throws IOException {
-		_nOut++;
-		_holdingArea.remove(co.name());	
-		_holdingArea.notify();
+		synchronized(_holdingArea) {
+			_nOut++;
+			_holdingArea.remove(co.name());
+			_holdingArea.notify();
+		}
 	}
 	
 	/**
@@ -506,7 +519,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	/**
 	 * Change the highwater mark for the maximum amount of data to buffer before
-	 * causing putters to wait.
+	 * causing putters to wait.  The highwater value is the number of content objects
+	 * that will be buffered on behalf of client threads.
 	 * 
 	 * @param value
 	 */

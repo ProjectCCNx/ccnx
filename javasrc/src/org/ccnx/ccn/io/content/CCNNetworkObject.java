@@ -734,7 +734,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	/**
 	 * Will return immediately if this object already has data, otherwise
-	 * will wait indefinitely for new data to appear.
+	 * will wait indefinitely for the initial data to appear.
 	 */
 	public void waitForData() {
 		if (available())
@@ -758,15 +758,22 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * updates, call wait() on the object itself.
 	 * @param timeout In milliseconds. If 0, will wait forever (if data does not arrive).
 	 */
-	public void waitForData(long timeout) {
-		
+	public void waitForData(long timeout) {		
 		if (available())
 			return;
 		synchronized (this) {
-			try {
-				wait(timeout);
-			} catch (InterruptedException e) {
-			}
+			long startTime = System.currentTimeMillis();
+			boolean keepTrying = true;
+			while (!available() && keepTrying) {
+				// deal with spontaneous returns from wait()
+				try {
+					long waitTime = timeout - (System.currentTimeMillis() - startTime);
+					if (waitTime > 0)
+						wait(waitTime);
+					else
+						keepTrying = false;
+				} catch (InterruptedException ie) {}
+			} 
 		}
 	}
 

@@ -138,6 +138,7 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		// The segmenter contains the flow controller. Should do the right thing whether this
 		// is a raw stream or a repo stream. It should also already have the keys. Could just share
 		// the segmenter. For now, use our own.
+		Log.info("Writing header.");
 		HeaderObject header = new HeaderObject(headerName, headerData, this._publisher, this._locator, this.getSegmenter().getFlowControl());
 		header.save();
 		Log.info("Wrote header: " + header.getVersionedName());

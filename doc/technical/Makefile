@@ -1,23 +1,51 @@
 # Makefile for ccn/doc/technical
 
-DERIVED_HTML = DigestComponent.html InterestMessage.html NameConventions.html Staleness.html Registration.html URI.html Name.html ContentObject.html
+# The order here determines the order in the generated index.
+DERIVED_HTML =				\
+	BasicIdea.html			\
+	Name.html			\
+	URI.html			\
+	ContentObject.html		\
+	InterestMessage.html		\
+	NameConventions.html		\
+	DigestComponent.html		\
+	Registration.html		\
+	Staleness.html			\
+	dtd.html			\
+	xsd.html			\
+	DTAG.html			\
 
 DERIVED_INDEX = ../index.html index.html index.txt
+DEBRIS = .tagname.csv
 SRC_HTML = # any checked-in html files should go here
+INDEXED_HTML = $(DERIVED_HTML) $(SRC_HTML)
 
 default:
-	@: do nothing by default, and be quiet about it
+	: To build the documentation: $(MAKE) documentation
 
 all documentation: $(DERIVED_HTML) $(DERIVED_INDEX)
 
 clean-documentation: _always
-	rm -f $(DERIVED_HTML) $(DERIVED_INDEX)
+	rm -f $(DERIVED_HTML) $(DERIVED_INDEX) $(DEBRIS)
 
 clean:
-	@: intentional NOP - clean-documentation really does this
+	: To clean the documentation: $(MAKE) clean-documentation 
+	rm -f $(DEBRIS)
 
 DigestComponent.html: DigestComponent.txt
 	asciidoc DigestComponent.txt
+
+DTAG.html: DTAG.txt ../../schema/tagname.csvdict
+	sed -e 's/$$/,,,,/g' ../../schema/tagname.csvdict | \
+					cut -d , -f 1-3   > .tagname.csv
+	asciidoc --unsafe DTAG.txt
+	rm -f .tagname.csv
+
+dtd.html: dtd.txt ../../schema/ccn.dtd
+	asciidoc --unsafe dtd.txt
+
+xsd.html: xsd.txt ../../schema/ccn.xsd
+	asciidoc --unsafe xsd.txt
 
 InterestMessage.html: InterestMessage.txt
 	asciidoc InterestMessage.txt
@@ -40,15 +68,18 @@ ContentObject.html: ContentObject.txt
 Name.html: Name.txt
 	asciidoc Name.txt
 
-../index.html: ../index.txt
-	asciidoc ../index.txt
+BasicIdea.html: BasicIdea.txt
+	asciidoc BasicIdea.txt
+
+../index.html: ../index.txt ../../README ../../LICENSE
+	asciidoc --unsafe ../index.txt
 
 index.html: index.txt
 	asciidoc index.txt
 
-index.txt: $(DERIVED_HTML) .genindex.sh $(SRC_HTML)
+index.txt: $(INDEXED_HTML) .genindex.sh
 	rm -f index.html
-	sh .genindex.sh > index.txt
+	sh .genindex.sh $(INDEXED_HTML) > index.txt
 
 default all clean depend test check shared documentation testinstall install uninstall: _always
 

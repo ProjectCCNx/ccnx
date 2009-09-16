@@ -2783,10 +2783,9 @@ expire_content(struct ccn_schedule *sched,
 }
 
 /**
- * Schedules content expiration based on its FreshnessSeconds..
+ * Schedules content expiration based on its FreshnessSeconds.
  *
  */
-
 static void
 set_content_timer(struct ccnd_handle *h, struct content_entry *content,
                   struct ccn_parsed_ContentObject *pco)

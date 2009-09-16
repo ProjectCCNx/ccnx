@@ -303,6 +303,18 @@ public class RepositoryServer {
 		return _ephemeralFreshness;
 	}
 	
+	
+	/**
+	 * Method to write out name enumeration responses.  This is called directly
+	 * to respond to incoming name enumeration interests and can also be called
+	 * when a content object is saved in the repo and the interest flag is set
+	 * by a previous name enumeration interest where there was not new information
+	 * available.
+	 * 
+	 * @param ner NameEnumerationResponse object to send out
+	 * 
+	 * @return void
+	 */
 	public void sendEnumerationResponse(NameEnumerationResponse ner){
 		if(ner!=null && ner.getPrefix()!=null && ner.hasNames()){
 			CollectionObject co = null;

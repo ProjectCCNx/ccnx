@@ -17,7 +17,13 @@
 
 package org.ccnx.ccn.config;
 
-public class ConfigurationException extends Exception {
+import org.ccnx.ccn.CCNException;
+
+/**
+ * A marker exception thrown to indicate some problem with the user or system configuration,
+ * that cannot be overcome without some intervention to manually correct the problem.
+ */
+public class ConfigurationException extends CCNException {
 	
 	private static final long serialVersionUID = -8498363015808971905L;
 
