@@ -45,12 +45,17 @@ import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 
 
 /**
- * @author D.K. Smetters
- *
- * Collection of crypto utility functions specific to bouncy castle.
+ * A collection of crypto-related utility methods largely related to BouncyCastle.
+ * 
  */
 public class CryptoUtil {
     
+	/**
+	 * Helper function to DER encode content.
+	 * @param encodable content to encode
+	 * @return encoded content
+	 * @throws CertificateEncodingException if there is a problem encoding the content
+	 */
 	public static byte [] encode(DEREncodable encodable) throws CertificateEncodingException {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
@@ -63,6 +68,12 @@ public class CryptoUtil {
 		return baos.toByteArray();
 	}		
 	
+	/**
+	 * Helper function to decode DER content.
+	 * @param decodable content to decode
+	 * @return generic DERObject, result of decoding
+	 * @throws CertificateEncodingException if there is a problem decoding the content
+	 */
 	public static DERObject decode(byte [] decodable) throws CertificateEncodingException {
 		DERObject dobj = null;
 		try {
@@ -76,6 +87,14 @@ public class CryptoUtil {
 		return dobj;
 	}	
 
+	/**
+	 * Helper function to unpack public keys from DER encoding into Java PublicKey format
+	 * @param spki a decoded SubjectPublicKeyInfo containing the desired public key
+	 * @return the decoded PublicKey
+	 * @throws CertificateEncodingException if there is a problem decoding the content
+	 * @throws NoSuchAlgorithmException if the key algorithm is unknown
+	 * @throws InvalidKeySpecException if the data in the SubjectPublicKeyInfo doesn't correctly represent a key
+	 */
 	public static PublicKey getPublicKey(SubjectPublicKeyInfo spki) 
 				throws CertificateEncodingException, NoSuchAlgorithmException, 
 								InvalidKeySpecException {
@@ -93,10 +112,17 @@ public class CryptoUtil {
 		return fact.generatePublic(keySpec);
 	}
 	
-	public static PublicKey getPublicKey(byte [] derEncodedPublicKey) throws 
-			InvalidKeySpecException, 
-			CertificateEncodingException, NoSuchAlgorithmException {
-		
+	/**
+	 * Helper function to decode and unpack a public key from DER encoding to a Java PublicKey
+	 * @param derEncodedPublicKey DER encoding of public key in standard format (SubjectPublicKeyInfo)
+	 * @return the decoded PublicKey
+	 * @throws CertificateEncodingException if there is a problem decoding the content
+	 * @throws NoSuchAlgorithmException if the key algorithm is unknown
+	 * @throws InvalidKeySpecException if the data in the SubjectPublicKeyInfo doesn't correctly represent a key
+	 */
+	public static PublicKey getPublicKey(byte [] derEncodedPublicKey) throws CertificateEncodingException, NoSuchAlgorithmException, 
+										InvalidKeySpecException {
+
 		// Problem is, we need the algorithm identifier inside
 		// the key to decode it. So in essence we need to
 		// decode it twice.
@@ -121,6 +147,12 @@ public class CryptoUtil {
 		return fact.generatePublic(keySpec);
 	}
 	
+	/**
+	 * Helper method to decode a certificate.
+	 * @param encodedCert DER encoded X.509 certificate
+	 * @return the decoded X509Certificate
+	 * @throws CertificateException if there is an error in decoding
+	 */
 	public static X509Certificate getCertificate(byte [] encodedCert) throws CertificateException {
 		// Will make default provider's certificate if it has one.
 		CertificateFactory cf = CertificateFactory.getInstance("X.509");
@@ -135,6 +167,8 @@ public class CryptoUtil {
 	/**
 	 * Generates a CertID -- the digest of the DER encoding
 	 * of a java.security.cert.Certificate
+	 * @param digestAlg the digest algorithm to use
+	 * @param cert the certificate to digest
 	 */
 	public static byte [] generateCertID(String digestAlg, Certificate cert)  throws CertificateEncodingException {
 		byte [] id = null;
@@ -148,6 +182,10 @@ public class CryptoUtil {
 		return id;
 	}
 	
+	/**
+	 * Generates a CertID -- the digest of the DER encoding
+	 * of a java.security.cert.Certificate
+	 */	
 	public static byte [] generateCertID(Certificate cert) throws CertificateEncodingException {
 		return generateCertID(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, cert);
 	}
@@ -155,7 +193,12 @@ public class CryptoUtil {
 	/**
 	 * Generates a KeyID -- the digest of the DER encoding
 	 * of a SubjectPublicKeyInfo, or of a raw encoding of a 
-	 * symmetric key. 
+	 * symmetric key.  Note that the former is slightly uncommon;
+	 * but it is more general and complete than digesting the BIT STRING
+	 * component of the SubjectPublicKeyInfo itself (and no standard dictates
+	 * how you must generate a key ID).
+	 * @param digestAlg the digest algorithm to use
+	 * @param key the key to digest
 	 */
 	public static byte [] generateKeyID(String digestAlg, Key key)  {
 		
@@ -170,15 +213,26 @@ public class CryptoUtil {
 	    return id;
 	}
 
+	/**
+	 * Generates a KeyID -- the digest of the DER encoding
+	 * of a SubjectPublicKeyInfo, or of a raw encoding of a 
+	 * symmetric key.  Note that the former is slightly uncommon;
+	 * but it is more general and complete than digesting the BIT STRING
+	 * component of the SubjectPublicKeyInfo itself (and no standard dictates
+	 * how you must generate a key ID).
+	 * @param key the key to digest
+	 */
 	public static byte [] generateKeyID(Key key) {
 		return generateKeyID(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, key);
 	}
 
 	/**
-	 * Get the keyID from a CA certificate to use as the key id in an AuthorityKeyIdentifier
+	 * Get the keyID from a CA certificate to use as the key ID in an AuthorityKeyIdentifier
 	 * extension for certificates issued by that CA. This should come out of the SubjectKeyIdentifier
 	 * extension of the certificate if present. If that extension is missing, this function
-	 * will return null, and generateKeyID can be used to generate a new key id.
+	 * will return null, and generateKeyID can be used to generate a new key ID.
+	 * @param issuerCert the issuer certificate to extract the key ID from
+	 * @return the key ID
 	 **/
 	public static byte [] getKeyIDFromCertificate(X509Certificate issuerCert) 
 		throws IOException, CertificateEncodingException {
