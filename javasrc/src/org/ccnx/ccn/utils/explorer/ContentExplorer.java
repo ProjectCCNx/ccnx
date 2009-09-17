@@ -51,7 +51,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
 import javax.swing.JTree;
-import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.event.TreeExpansionEvent;
 import javax.swing.event.TreeExpansionListener;
@@ -677,22 +676,16 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 			Thread runner = new Thread() {
 				public void run() {
-					Runnable runnable = new Runnable() {
-						public void run() {
-							Name fnode = getNameNode(node);
-							if (fnode != null) {
-								Log.finer("In the tree expansion listener with node: " + node.toString());
-								getNodes(fnode);
-								m_model.reload(node);
-							} else {
-								// selected top component, switch to top usable node
-								Log.finer("In the tree expansion listener with null node and " + node.toString());
-							}
-						}
-					};
-					SwingUtilities.invokeLater(runnable);
+					Name fnode = getNameNode(node);
+					if (fnode != null) {
+						Log.finer("In the tree expansion listener with node: " + node.toString());
+						getNodes(fnode);
+						m_model.reload(node);
+					} else {
+						// selected top component, switch to top usable node
+						Log.finer("In the tree expansion listener with null node and " + node.toString());
+					}
 				}
-
 			};
 			runner.start();
 		}
@@ -750,25 +743,20 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			if (tree.getRowForPath(event.getPath()) > -1) {
 				Thread runner = new Thread() {
 					public void run() {
-						Runnable runnable = new Runnable() {
-							public void run() {
-								Log.fine("getting name node: " + node.toString());
-								Name fnode = getNameNode(node);
+						Log.fine("getting name node: " + node.toString());
+						Name fnode = getNameNode(node);
 
-								if (fnode == null) {
-									Log.fine("fnode path is null...");
-									// selected top component, switch to top
-									// usable node
-									fnode = getNameNode(usableRoot);
-								}
+						if (fnode == null) {
+							Log.fine("fnode path is null...");
+							// selected top component, switch to top
+							// usable node
+							fnode = getNameNode(usableRoot);
+						}
 								
-								Log.fine("In the tree selection listener with "	+ fnode.name + " and " + node.toString());
-								String p = getNodes(fnode);
-								selectedPath = p;
-								selectedPrefix = p;
-							}
-						};
-						SwingUtilities.invokeLater(runnable);
+						Log.fine("In the tree selection listener with "	+ fnode.name + " and " + node.toString());
+						String p = getNodes(fnode);
+						selectedPath = p;
+						selectedPrefix = p;
 					}
 				};
 				runner.start();
