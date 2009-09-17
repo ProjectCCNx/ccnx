@@ -498,6 +498,7 @@ public class MerkleTree {
 	}
 
 	/**
+	 * Compute the digest of the leaf nodes.
 	 * Separate this out so that it can be overridden.
 	 * @param leafIndex The number of the leaf we are computing.
 	 * @param contentBlocks The array of content blocks containing the leaf content.
@@ -517,20 +518,45 @@ public class MerkleTree {
 		return computeBlockDigest(_digestAlgorithm, contentBlocks[leafIndex+baseBlockIndex]);
 	}
 	
+	/**
+	 * Compute the digest of a specific leaf node.
+	 * @param leafIndex
+	 * @param block
+	 * @param offset
+	 * @param length
+	 * @return
+	 * @throws NoSuchAlgorithmException
+	 */
 	protected byte [] computeBlockDigest(int leafIndex, byte [] block, int offset, int length) throws NoSuchAlgorithmException {
 		return CCNDigestHelper.digest(_digestAlgorithm, block, offset, length);		
 	}
 	
+	/**
+	 * Compute a leaf digest
+	 * @param algorithm
+	 * @param block
+	 * @return
+	 * @throws NoSuchAlgorithmException
+	 */
 	public static byte [] computeBlockDigest(String algorithm, byte [] block) throws NoSuchAlgorithmException {
 		return CCNDigestHelper.digest(algorithm, block);		
 	}
 
+	/**
+	 * Compute leaf digest from a segment of a buffer.
+	 * @param algorithm
+	 * @param block
+	 * @param offset
+	 * @param length
+	 * @return
+	 * @throws NoSuchAlgorithmException
+	 */
 	public static byte [] computeBlockDigest(String algorithm, byte [] block, int offset, int length) throws NoSuchAlgorithmException {
 		return CCNDigestHelper.digest(algorithm, block, offset, length);		
 	}
 
 	/**
-	 * DKS TODO - used by MerklePath to compute digest for root without
+	 * DKS TODO - check -- was being by MerklePath to compute digest for root without
 	 * properly recovering OID from encoded path.
 	 * @param block
 	 * @return
@@ -546,7 +572,7 @@ public class MerkleTree {
 	}
 	
 	/**
-	 * Compute an intermediate node. If this is a last left child (right is null),
+	 * Compute the digest for an intermediate node. If this is a last left child (right is null),
 	 * simply hash left alone.
 	 * @throws NoSuchAlgorithmException 
 	 */
@@ -554,6 +580,12 @@ public class MerkleTree {
 		return CCNDigestHelper.digest(algorithm, left, right);
 	}
 	
+	/**
+	 * Compute the digest for an intermediate node with two children.
+	 * @param left
+	 * @param right
+	 * @return
+	 */
 	public static byte [] computeNodeDigest(byte [] left, byte [] right) {
 		try {
 			return computeNodeDigest(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, left, right);
@@ -564,6 +596,11 @@ public class MerkleTree {
 		}		
 	}
 	
+	/**
+	 * Does this algorithm identifier indicate a Merkle tree?
+	 * @param algorithmId the algorithm identifier
+	 * @return true if its a merkle tree, false otherwise
+	 */
 	public static boolean isMerkleTree(AlgorithmIdentifier algorithmId) {
 		// Use a hack -- all MHT OIDs use same prefix.
 		String strAlg = algorithmId.toString();
@@ -572,10 +609,21 @@ public class MerkleTree {
 		return false;
 	}
 	
+	/**
+	 * Helper method
+	 * @param arg
+	 * @return log base 2 of arg
+	 */
 	public static double log2(int arg) {
 		return Math.log(arg)/Math.log(2);
 	}
 	
+	/**
+	 * The number of blocks of blockWidth length in a buffer of length bytes
+	 * @param length the buffer length
+	 * @param blockWidth the segment with
+	 * @return the number of blocks
+	 */
 	public static int blockCount(int length, int blockWidth) {
 		if (0 == length)
 			return 0;
