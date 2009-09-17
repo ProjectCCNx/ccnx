@@ -32,9 +32,17 @@ import org.ccnx.ccn.impl.support.DataUtils;
 
 
 /**
- * Helper wrapper class for publisher IDs.
- * @author smetters
- *
+ * Wrapper class around the digest of public keys used as a publisher identifier in ContentObjects.
+ * The digest algorithm used to compute publisherKeyIDs is specified by the CCNx protocol, and changes
+ * rarely with the CCNx protocol version (for example, now it is SHA-256, it will shift to SHA-3).
+ * As this is a convenience filtering mechanism to help consumers retrieve content signed by the
+ * specific publishers they want, failure in the digest algorithm used will only decrease the efficiency
+ * of this filtering method, or potentially help an attacker prevent a user from finding legitimate
+ * content. It will never cause the consumer to accept invalid content. We therefore opted to make
+ * this one of the small number of fixed-algorithm components in CCNx, to vastly simplify what is
+ * required of network routers that have to check and interpret this field.
+ * 
+ * To generate a PublisherPublicKeyDigest, we use the digest of the encoded PublicKey (the encoded SubjectPublicKeyInfo).
  */
 public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XMLEncodable, Comparable<PublisherPublicKeyDigest> {
     
@@ -42,13 +50,21 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XML
 
     protected byte [] _publisherPublicKeyDigest;
     
+    /**
+     * Create a PublisherPublicKeyDigest from a PublicKey
+     * @param key the key
+     */
     public PublisherPublicKeyDigest(PublicKey key) {
     	_publisherPublicKeyDigest = PublisherID.generatePublicKeyDigest(key);
     }
     	
+    /**
+     * Create a PublisherPublicKeyDigest from an existing digest
+     * @param key the key
+     */
 	public PublisherPublicKeyDigest(byte [] publisherPublicKeyDigest) {
 		// Alas, Arrays.copyOf doesn't exist in 1.5, and we'd like
-		// to be mostly 1.5 compatible for the macs...
+		// to be mostly 1.5 compatible for now...
 		// _publisherPublicKeyDigest = Arrays.copyOf(publisherID, PUBLISHER_ID_LEN);
 		_publisherPublicKeyDigest = new byte[PublisherID.PUBLISHER_ID_LEN];
 		System.arraycopy(publisherPublicKeyDigest, 0, _publisherPublicKeyDigest, 0, PublisherID.PUBLISHER_ID_LEN);
@@ -56,14 +72,21 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XML
 	
 	/**
 	 * Expects the equivalent of publisherKeyID.toString
-	 * @param publisherPublicKeyDigest
+	 * @param publisherPublicKeyDigest the string representation of the digest.
 	 */
 	public PublisherPublicKeyDigest(String publisherPublicKeyDigest) {
 		this(CCNDigestHelper.scanBytes(publisherPublicKeyDigest, 32));
 	}
 	
-    public PublisherPublicKeyDigest() {} // for use by decoders
-	
+	/**
+	 * For use by decoders
+	 */
+    public PublisherPublicKeyDigest() {}
+
+    /**
+     * Return the digest
+     * @return the digest itself
+     */
 	public byte [] digest() { return _publisherPublicKeyDigest; }
 	
 	@Override
@@ -127,6 +150,11 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XML
 		return (null != digest());
 	}
 
+	/**
+	 * Implement Comparable
+	 * @param o the other thing to compare to
+	 * @return -1, 0 or 1 depending on whether we are before, equal to or lexicographically after o
+	 */
 	public int compareTo(PublisherPublicKeyDigest o) {
 		int result = DataUtils.compare(this.digest(), o.digest());
 		return result;
