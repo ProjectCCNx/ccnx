@@ -221,13 +221,25 @@ public class AccessControlManager {
 	private SecureRandom _random = new SecureRandom();
 	
 	public AccessControlManager(ContentName namespace) throws ConfigurationException, IOException {
-		this(namespace, AccessControlProfile.groupNamespaceName(namespace), AccessControlProfile.userNamespaceName(namespace));
+		this(namespace, null);
+	}
+
+	public AccessControlManager(ContentName namespace, CCNHandle handle) throws ConfigurationException, IOException {
+		this(namespace, AccessControlProfile.groupNamespaceName(namespace), AccessControlProfile.userNamespaceName(namespace), handle);
+	}
+
+	public AccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws ConfigurationException, IOException {
+		this(namespace, groupStorage, userStorage, null);
 	}
 	
-	public AccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws ConfigurationException, IOException {
+	public AccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage, CCNHandle handle) throws ConfigurationException, IOException {
 		_namespace = namespace;
 		_userStorage = userStorage;
-		_handle = CCNHandle.open();
+		if (null == handle) {
+			_handle = CCNHandle.open();
+		} else {
+			_handle = handle;
+		}
 		// start enumerating users in the background
 		userList();
 		_groupManager = new GroupManager(this, groupStorage, _handle);
