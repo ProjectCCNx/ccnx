@@ -132,7 +132,7 @@ public class SignatureHelper {
 	 * @throws InvalidKeyException
 	 */
 	public static boolean verify(
-			byte [][] data,
+			byte[][] data,
 			byte [] signature,
 			String digestAlgorithm,
 			PublicKey verificationKey) throws SignatureException, 
