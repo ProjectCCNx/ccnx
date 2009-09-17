@@ -24,12 +24,12 @@ import java.io.OutputStream;
 import org.ccnx.ccn.impl.support.Log;
 
 /**
- * The ccnb compressed binary XMLCodec. This class contains utility functions used by 
+ * The ccnb compressed binary XML codec. This class contains utility functions used by 
  * BinaryXMLEncoder and BinaryXMLDecoder as well as setup to use this codec with XMLCodecFactory.
  * 
- * Basically ccnb encoding uses a dictionary to turn tag and attribute names into short
+ * Ccnb encoding uses a dictionary to turn tag and attribute names into short
  * binary identifiers, and uses a compressed encoding for those identifiers and the lengths
- * of atomic UTF-8 and binary data. For easy encoding/decoding there are no lengths of elements;
+ * of atomic UTF-8 and binary data. For easy encoding & decoding there are no lengths of elements;
  * this means encoding can be done as a single pass because the length of an encoded child
  * element does not need to be known in order to write the start of the parent element.
  * 
@@ -41,14 +41,13 @@ import org.ccnx.ccn.impl.support.Log;
  *  - utf8 string
  *  - binary data
  *  
- * See protocol documentation for more details of the ccnb format.
+ * See the protocol documentation for more details of the ccnb format.
  */
 public class BinaryXMLCodec implements XMLCodec {
 	
 	/**
 	 * Class for managing the paired type/value representation used to encode tags
 	 * and content lengths.
-	 * @author smetters
 	 */
 	public static class TypeAndVal {
 		protected int _type;
@@ -455,11 +454,10 @@ public class BinaryXMLCodec implements XMLCodec {
 	 * Encode the special case the UStrings that represent TAG and ATTR.
 	 * The lengths of these strings are represented as length-1, as they
 	 * can never be 0 length. The decrement is done here, rather than
-	 * in encodeTypeAndVal. Alternatively, we could make this generic, and
-	 * either provide another encoder specifically for tags, or allow
-	 * caller to give us a length.
+	 * in encodeTypeAndVal.
 	 * @param ostream the stream to encode to
-	 * @param ustring the String containing the TAG or ATTR value
+	 * @param ustring the String containing the TAG or ATTR value. If null or a zero length string is
+	 * passed in then nothing is written to the output.
 	 * @param type the type to encode (XML_TAG or XML_ATTR)
 	 * @throws IOException if there is an error encoding or writing the data
 	 **/

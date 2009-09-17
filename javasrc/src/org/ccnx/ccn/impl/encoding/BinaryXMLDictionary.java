@@ -25,7 +25,12 @@ import java.util.HashMap;
 
 import org.ccnx.ccn.impl.support.Log;
 
-
+/**
+ * Encapsulates the mapping from textual XML element and attribute names to the ccnb binary encoding
+ * of those elements and attributes.
+ *
+ * @see BinaryXMLCodec
+ */
 public class BinaryXMLDictionary {
 	
 	// Should not necessarily tie this to CCN...
@@ -55,7 +60,6 @@ public class BinaryXMLDictionary {
 		} catch (IOException fe) {
 			Log.warning("Cannot parse default CCN encoding dictionary: " + DEFAULT_DICTIONARY_RESNAME + ":" + 
 					fe.getMessage());
-			
 		}
 	}
 	

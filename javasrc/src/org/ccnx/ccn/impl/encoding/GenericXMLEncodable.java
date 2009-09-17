@@ -33,9 +33,9 @@ import org.ccnx.ccn.impl.support.Log;
  * Implementation of generic XML encode/decode functionality for objects.
  * Subclasses will be capable of being encoded to and decoded from both normal
  * text-based XML and the ccnb compact binary encoding. (Though a subclass could
- * mandate only one be used, or a caller can choose to specify. This is useful,
- * for example, to use this approach to easily write classes that can be encoded/
- * decoded to/from user-editable text XML only. See GenericXMLEncodable#toString()
+ * mandate only one be used, or a caller can choose to specify. It is useful,
+ * for example, to use this approach to write classes that can be encoded &
+ * decoded to & from user-editable text XML only. See GenericXMLEncodable#toString()
  * for an example.)
  * 
  * This class handles most of the generic methods required by XMLEncodable, leaving
@@ -134,7 +134,7 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 		return new String(encoded);
 	}
 
-	/**
+	/*
 	 * These are the methods that a subclass really does need to implement.
 	 */
 	
