@@ -190,7 +190,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 	
 	/**
-	 * Returns whether a child is present in the list known children.
+	 * Returns whether a child is present in the list of known children.
 	 * <p>
 	 * 
 	 * @param childName String version of a child name to look for
@@ -243,6 +243,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * name enumeration requests. Once we have an initial set of children, this method
 	 * returns immediately.
 	 * @param timeout Maximum amount of time to wait, if 0, waits forever.
+	 * @return void
 	 */
 	public void waitForData(long timeout) {
 		while ((null == _children) || _children.size() == 0) {
@@ -254,6 +255,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	
 	/**
 	 * Wait (block) for initial data to arrive, possibly forever. See {@link #waitForData(long)}.
+	 * 
+	 * @return void
 	 */
 	public void waitForData() {
 		waitForData(SystemConfiguration.TIMEOUT_FOREVER);
@@ -312,7 +315,9 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * Note that the set handed in here is not the set that will be handed
 	 * out; only the name objects are the same.
 	 * 
-	 * @param newChildren SortedSet of children available for processing 
+	 * @param newChildren SortedSet of children available for processing
+	 * 
+	 * @return void
 	 */
 	protected void processNewChildren(SortedSet<ContentName> newChildren) {
 		// default -- do nothing.
@@ -355,7 +360,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 	
 	/**
-	 * Returns the latest version availble under this prefix as a CCNTime object.
+	 * Returns the latest version available under this prefix as a CCNTime object.
 	 * 
 	 * @return CCNTime Latest child version as CCNTime
 	 */
