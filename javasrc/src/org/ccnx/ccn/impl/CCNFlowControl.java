@@ -313,49 +313,59 @@ public class CCNFlowControl implements CCNFilterListener {
 	private ContentObject waitForMatch(ContentObject co) throws IOException {
 		if (_flowControlEnabled) {
 			synchronized (_holdingArea) {
+				// Always place the object in the _holdingArea, even if it will be 
+				// transmitted immediately.  The reason for always holding objects
+				// is that there may be different buffer draining policies implemented by
+				// subclasses.  For example, a flow control may retain objects until it 
+				// has verified by separate communication that an intended recipient has 
+				// received them.
+				Log.finest("Holding {0}", co.name());
+				// Must verify space in _holdingArea or block waiting for space
+				if (_holdingArea.size() >= _highwater) {
+					long ourTime = new Date().getTime();
+					Entry<UnmatchedInterest> removeIt;
+					// TODO Verify the following note
+					// When we're going to be blocked waiting for a reader anyway, 
+					// purge old unmatched interests
+					do {
+						removeIt = null;
+						for (Entry<UnmatchedInterest> uie : _unmatchedInterests.values()) {
+							if ((ourTime - uie.value().timestamp) > PURGE) {
+								removeIt = uie;
+								break;
+							}
+						}
+						if (removeIt != null)
+							_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
+					} while (removeIt != null);
+					// Now wait for space to be cleared or timeout
+					// Must guard against "spurious wakeup" so must check elapsed time directly
+					long elapsed = 0;
+					do {
+						try {
+							Log.finest("Waiting for drain ({0}, {1})", _holdingArea.size(), elapsed);
+							_holdingArea.wait(_timeout-elapsed);
+						} catch (InterruptedException e) {
+							// intentional no-op
+						}
+						elapsed = new Date().getTime() - ourTime;
+					} while (_holdingArea.size() >= _highwater && elapsed < _timeout);						
+					if (_holdingArea.size() >= _highwater)
+						throw new IOException("Flow control buffer full and not draining");
+				}
+				assert(_holdingArea.size() < _highwater);
+				// Space verified so now can hold object. See note above for reason to always hold.
+				_holdingArea.put(co.name(), co);
+
+				// Check for pending interest match to allow immediate transmit
 				Entry<UnmatchedInterest> match = null;
 				match = _unmatchedInterests.removeMatch(co);
 				if (match != null) {
 					Log.finest("Found pending matching interest for " + co.name() + ", putting to network.");
 					_handle.put(co);
+					// afterPutAction may immediately remove the object from _holdingArea or retain it 
+					// depending upon the buffer drain policy being implemented.
 					afterPutAction(co);
-				} else {
-					// No pending interest was waiting, so we must wait for interest to come in
-					Log.finest("Holding {0}", co.name());
-					if (_holdingArea.size() >= _highwater) {
-						long ourTime = new Date().getTime();
-						Entry<UnmatchedInterest> removeIt;
-						// TODO Verify the following note
-						// When we're going to be blocked waiting for a reader anyway, 
-						// purge old unmatched interests
-						do {
-							removeIt = null;
-							for (Entry<UnmatchedInterest> uie : _unmatchedInterests.values()) {
-								if ((ourTime - uie.value().timestamp) > PURGE) {
-									removeIt = uie;
-									break;
-								}
-							}
-							if (removeIt != null)
-								_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
-						} while (removeIt != null);
-						// Now wait for space to be cleared or timeout
-						// Must guard against "spurious wakeup" so must check elapsed time directly
-						long elapsed = 0;
-						do {
-							try {
-								Log.finest("Waiting for drain ({0}, {1})", _holdingArea.size(), elapsed);
-								_holdingArea.wait(_timeout-elapsed);
-							} catch (InterruptedException e) {
-								// intentional no-op
-							}
-							elapsed = new Date().getTime() - ourTime;
-						} while (_holdingArea.size() >= _highwater && elapsed < _timeout);						
-						if (_holdingArea.size() >= _highwater)
-							throw new IOException("Flow control buffer full and not draining");
-					}
-					assert(_holdingArea.size() < _highwater);
-					_holdingArea.put(co.name(), co);
 				}
 			}
 		} else // Flow control disabled entirely: put to network immediately
