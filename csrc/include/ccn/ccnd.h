@@ -25,7 +25,8 @@
 #define CCN_DEFAULT_LOCAL_SOCKNAME "/tmp/.ccnd.sock"
 #define CCN_LOCAL_PORT_ENVNAME "CCN_LOCAL_PORT"
 
-#define CCN_DEFAULT_UNICAST_PORT "4485"
+#define CCN_DEFAULT_UNICAST_PORT_NUMBER 64206U
+#define CCN_DEFAULT_UNICAST_PORT       "64206"
 
 /* link adapters sign on by sending this greeting to ccnd */
 #define CCN_EMPTY_PDU "CCN\202\000"

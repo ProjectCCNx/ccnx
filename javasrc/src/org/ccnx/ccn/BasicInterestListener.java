@@ -29,7 +29,6 @@ import org.ccnx.ccn.protocol.Interest;
 /**
  * A base class handling standard query listener
  * functionality.
- * @author smetters
  *
  */
 public abstract class BasicInterestListener implements CCNInterestListener {

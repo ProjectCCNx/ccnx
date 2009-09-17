@@ -19,7 +19,9 @@ package org.ccnx.ccn.impl.security.crypto.jce;
 
 import org.bouncycastle.crypto.engines.AESEngine;
 
-
+/**
+ * Hook the new wrapping algorithm into the BouncyCastle engine hierarchy.
+ */
 public class AESWrapWithPadEngine extends RFC3394WrapWithPadEngine {
 
 	public AESWrapWithPadEngine() {

@@ -35,7 +35,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 /**
  * This class records the membership list of <Group>.
  * Eventually should extend Collection, when that moves onto encodable objects.
- * @author smetters
  *
  */
 public class MembershipList extends CCNEncodableObject<Collection> {

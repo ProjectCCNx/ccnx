@@ -35,7 +35,6 @@ import org.ccnx.ccn.impl.support.Log;
  * Includes methods for computing Merkle hash trees (hash computation of the 
  * concatenation of two or more arrays of bytes.)
  */
-
 public class DigestHelper {
 
 	public static String DEFAULT_DIGEST_ALGORITHM = "SHA-1";
@@ -67,8 +66,8 @@ public class DigestHelper {
 	}
 		
 	/**
-	 * Returns the default digest algorithm.
 	 * This method is non-static so subclasses can override it.
+	 * @return the default digest algorithm.
 	 */
 	public String getDefaultDigest() { return DEFAULT_DIGEST_ALGORITHM; }
 	

@@ -33,6 +33,7 @@
 
 #include <pcap.h>
 #include <ccn/ccn.h>
+#include <ccn/ccnd.h>
 
 #define LLC_LENGTH 4
 #define IP_OFFSET LLC_LENGTH
@@ -50,7 +51,7 @@
 #define DATA_OFFSET UDP_OFFSET + UDP_HDR_LENGTH
 #define MAX_PACKET 65536
 #define DEFAULT_SRC_PORT 55555
-#define DEFAULT_DEST_PORT 4485
+#define DEFAULT_DEST_PORT CCN_DEFAULT_UNICAST_PORT_NUMBER
 
 static void
 usage(const char *progname)
@@ -69,7 +70,7 @@ dump_udp_packet(pcap_dumper_t *dump_file,
                 unsigned char *ip_src_addr, /*  ipv4, localhost if NULL */
                 unsigned char *ip_dest_addr, /* localhost if NULL */
                 unsigned short udp_src_port, /* 55555 if 0 */
-                unsigned short udp_dest_port, /* 4485 if 0 */
+                unsigned short udp_dest_port,
                 const unsigned char *data, size_t data_len,  /* data; could be whole ccnb, could
                                                            just be contents */
                 struct timeval *ts) { /* timing info */
@@ -139,7 +140,7 @@ process_test(pcap_dumper_t *pcap_out, int content_only,
              unsigned char *ip_src_addr, /*  ipv4, localhost if NULL */
              unsigned char *ip_dest_addr, /* localhost if NULL */
              unsigned short udp_src_port, /* 55555 if 0 */
-             unsigned short udp_dest_port, /* 4485 if 0 */
+             unsigned short udp_dest_port,
              unsigned char *data, size_t n)
 {
     struct ccn_skeleton_decoder skel_decoder = {0};
@@ -223,7 +224,7 @@ process_fd(pcap_dumper_t *pcap_out, int fd, int content_only,
            unsigned char *ip_src_addr, /*  ipv4, localhost if NULL */
            unsigned char *ip_dest_addr, /* localhost if NULL */
            unsigned short udp_src_port, /* 55555 if 0 */
-           unsigned short udp_dest_port /* 4485 if 0 */
+           unsigned short udp_dest_port
     )
 {
     unsigned char *buf;

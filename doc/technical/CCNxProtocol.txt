@@ -92,5 +92,10 @@ Content Identification
 ----------------------
 
 CCNx accomplishes transfers of content by _name_, irrespective of the
-identities or locations of machines involved.
+identities or locations of machines involved.  CCNx content names are
+hierarchically-structured like IP addresses, but with fixed, explicitly
+identified divisions between parts associated with each level of the
+hierarchy (unlike the classless model of IP address interpretation).  CCNx
+content names are opaque at the CCNx protocol level.
+
 

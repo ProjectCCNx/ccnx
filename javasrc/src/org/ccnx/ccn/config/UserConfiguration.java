@@ -23,8 +23,8 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
  * A class encapsulating user-specific configuration information and default variable values.
- * Eventually will be handled more sensibly by a user configuration file. This is likely
- * to change extensively as user model evolves.
+ * Eventually this will be handled more sensibly by a user configuration file. This is likely
+ * to change extensively as the user model evolves.
  */
 public class UserConfiguration {
 	

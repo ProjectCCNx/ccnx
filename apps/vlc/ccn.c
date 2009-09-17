@@ -367,6 +367,9 @@ static void *ccn_event_thread(vlc_object_t *p_this)
     access_sys_t *p_sys = p_access->p_sys;
     struct ccn *ccn = p_sys->ccn;
     int res = 0;
+#ifndef VLCPLUGINVER099
+    int cancel = vlc_savecancel();
+#endif
 
     while (res >= 0 && vlc_object_alive(p_access)) {
         res = ccn_run(ccn, 500);
@@ -375,6 +378,9 @@ static void *ccn_event_thread(vlc_object_t *p_this)
         vlc_object_kill(p_access);
         block_FifoWake(p_sys->p_fifo);
     }
+#ifndef VLCPLUGINVER099
+    vlc_restorecancel(cancel);
+#endif
 }
 
 enum ccn_upcall_res

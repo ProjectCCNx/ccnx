@@ -30,7 +30,6 @@ import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
@@ -58,8 +57,6 @@ import org.ccnx.ccn.protocol.PublisherID;
  * Right now dynamically load both public key and membership list.
  * For efficiency might want to only load public key, and pull membership
  * list only when we need to.
- * 
- * @author smetters
  *
  */
 public class Group {
@@ -77,6 +74,16 @@ public class Group {
 	 */
 	private KeyDirectory _privKeyDirectory = null;
 	
+	/**
+	 * Group constructor
+	 * @param namespace the group namespace
+	 * @param groupFriendlyName the friendly name by which the group is known
+	 * @param handle the CCN handle
+	 * @param manager the group manager
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 * @throws XMLStreamException
+	 */
 	public Group(ContentName namespace, String groupFriendlyName, CCNHandle handle,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
 		_handle = handle;
 		_groupNamespace = namespace;
@@ -86,16 +93,30 @@ public class Group {
 		_groupManager = manager;
 	}
 	
-	public Group(ContentName groupName, CCNHandle handle,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
+	/**
+	 * Constructor
+	 * @param groupName
+	 * @param handle
+	 * @param manager
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 * @throws XMLStreamException
+	 */
+	public Group(ContentName groupName, CCNHandle handle, GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
 		this(groupName.parent(), AccessControlProfile.groupNameToFriendlyName(groupName), handle,manager);
 	}
 	
 	/**
 	 * Package constructor.
-	 * @return
+	 * @param namespace the group namespace
+	 * @param groupFriendlyName the friendly name by which the group is known
+	 * @param members the membership list of the group
+	 * @param publicKey the group public key
+	 * @param handle the CCN handle
+	 * @param manager the group manager
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
-		  PublicKeyObject publicKey, CCNHandle handle,GroupManager manager) {
+		  PublicKeyObject publicKey, CCNHandle handle, GroupManager manager) {
 		_handle = handle;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
@@ -106,11 +127,15 @@ public class Group {
 	
 	/**
 	 * Constructor that creates a new group and generates a first key pair for it.
-	 * @return
-	 * @throws ConfigurationException 
-	 * @throws IOException 
-	 * @throws XMLStreamException 
-	 * @throws InvalidKeyException 
+	 * @param namespace the group namespace
+	 * @param groupFriendlyName the friendly name by which the group is known
+	 * @param members the membership list of the group
+	 * @param handle the CCN handle
+	 * @param manager the group manager
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 * @throws InvalidKeyException
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
 					CCNHandle handle, GroupManager manager) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {		
@@ -120,6 +145,16 @@ public class Group {
 		_groupMembers.saveToRepository();
 	}
 	
+	/**
+	 * Add new users to an existing group
+	 * @param newUsers the list of new users
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws InvalidCipherTextException
+	 * @throws AccessDeniedException
+	 * @throws ConfigurationException
+	 */
 	public void addMembers(ArrayList<Link> newUsers)
 			throws XMLStreamException, IOException, InvalidKeyException,
 			InvalidCipherTextException, AccessDeniedException,
@@ -127,6 +162,16 @@ public class Group {
 		modify(newUsers, null);						
 	}
 
+	/**
+	 * Remove users from an existing group
+	 * @param removedUsers the list of users to be removed.
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws InvalidCipherTextException
+	 * @throws AccessDeniedException
+	 * @throws ConfigurationException
+	 */
 	public void removeMembers( ArrayList<Link> removedUsers) throws XMLStreamException,
 			IOException, InvalidKeyException, InvalidCipherTextException,
 			AccessDeniedException, ConfigurationException {
@@ -146,8 +191,8 @@ public class Group {
 	 * in the public keys of the members of the group.
 	 * A new private key directory is created if it does not already exist
 	 * and if the group public key is ready. 
-	 * @param manager
-	 * @return
+	 * @param manager the access control manager
+	 * @return the key directory of the group
 	 * @throws IOException
 	 */
 	public KeyDirectory privateKeyDirectory(AccessControlManager manager) throws IOException {
@@ -163,22 +208,35 @@ public class Group {
 		return null;
 	}
 	
+	/**
+	 * Stop enumerating the private key directory.
+	 * @throws IOException
+	 */
 	protected void stopPrivateKeyDirectoryEnumeration() throws IOException{
 		if(_privKeyDirectory != null){
 			_privKeyDirectory.stopEnumerating();
 		}
 	}
 	
+	/**
+	 * Restart the enumeration of the private key directory.
+	 * @param manager the access control manager.
+	 * @throws IOException
+	 */
 	public void restartPrivateKeyDirectoryEnumeration(AccessControlManager manager) throws IOException{
 		stopPrivateKeyDirectoryEnumeration();
 		_privKeyDirectory = null;
 		privateKeyDirectory(manager);
 	}
 	
+	/**
+	 * Get the friendly name by which the group is known
+	 * @return the group friendly name.
+	 */
 	public String friendlyName() { return _groupFriendlyName; }
 
 	/**
-	 * Returns a list containing all the members of a Group object.
+	 * Returns a list containing all the members of a Group.
 	 * Sets up the list to automatically update in the background.
 	 * @return MembershipList a list containing all the members of a Group object
 	 * @throws XMLStreamException
@@ -197,10 +255,24 @@ public class Group {
 		return _groupMembers; 
 	}
 	
+	/**
+	 * Get the versioned name of the group membership list
+	 * @return the versioned name of the group membership list
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
 	public ContentName membershipListName() throws XMLStreamException, IOException, ConfigurationException { 
 		return membershipList().getVersionedName(); 
 	}
 	
+	/**
+	 * Get the version of the membership list
+	 * @return the version of the membership list
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
 	public CCNTime membershipListVersion() throws XMLStreamException, IOException, ConfigurationException {
 		ContentName name = membershipListName();
 		if (VersioningProfile.hasTerminalVersion(name)) {
@@ -214,6 +286,7 @@ public class Group {
 	}
 	
 	/**
+	 * Clear the cached membership list.
 	 * This does not actually remove any members from the group, it just
 	 * clears out our in-memory copy of the membership list.
 	 */
@@ -224,22 +297,41 @@ public class Group {
 		}
 	}
 
+	/**
+	 * Get the public key of the group
+	 * @return the group public key
+	 */
 	PublicKeyObject publicKeyObject() { return _groupPublicKey; }
 	
+	/**
+	 * Get the group public key
+	 * @return the group public key
+	 * @throws ContentNotReadyException
+	 * @throws ContentGoneException
+	 */
 	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException { return _groupPublicKey.publicKey(); }
 	
+	/**
+	 * Get the versioned name of the group public key
+	 * @return the versioned name of the group public key
+	 */
 	public ContentName publicKeyName() { 
 		return _groupPublicKey.getVersionedName();
 	}
 	
+	/**
+	 * Get the version of the group public key
+	 * @return the version of the group public key
+	 * @throws IOException
+	 */
 	public CCNTime publicKeyVersion() throws IOException {
 		return _groupPublicKey.getVersion();
 	}
 
 	/**
 	 * Sets the membership list of the group. Existing members of the group are removed.
-	 * @param groupManager
-	 * @param newMembers
+	 * @param groupManager the group manager
+	 * @param newMembers the list of new group members
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 * @throws InvalidKeyException
@@ -268,8 +360,8 @@ public class Group {
 	 * The new key is created with a call to createGroupPublicKey. This method also wraps
 	 * the new private key under the public keys of all the members of the group.
 	 * Finally, a superseded block and a link to the previous key are written to the repository.
-	 * @param manager
-	 * @param ml
+	 * @param manager the group manager
+	 * @param ml the new membership list
 	 * @throws AccessDeniedException
 	 * @throws IOException
 	 * @throws XMLStreamException
@@ -296,7 +388,7 @@ public class Group {
 		// Write superseded block in old key directory
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
 		// Write link back to previous key
-		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(KeyManager.getKeyManager().getDefaultKeyID())));
+		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _handle);
 		precededByBlock.saveToRepository();
 	}
@@ -388,7 +480,7 @@ public class Group {
 	 * We need to wrap the group public key wrapping key in the latest public
 	 * keys of the members to add.
 	 * Since members are only added, there is no need to replace the group key.
-	 * @param membersToAdd
+	 * @param membersToAdd the members added to the group
 	 * @throws IOException 
 	 * @throws XMLStreamException 
 	 * @throws InvalidCipherTextException 
@@ -470,8 +562,8 @@ public class Group {
 	 * If both lists are passed in, then the items in the membersToAdd list are added and the
 	 * items in the membersToRemove are then removed from the Group members list.
 	 *  
-	 * @param membersToAdd - list of group members to be added
-	 * @param membersToRemove - list of group members to be removed
+	 * @param membersToAdd list of group members to be added
+	 * @param membersToRemove list of group members to be removed
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 * @throws InvalidKeyException

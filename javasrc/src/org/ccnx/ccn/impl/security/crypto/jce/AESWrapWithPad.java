@@ -28,7 +28,11 @@ import org.bouncycastle.jce.provider.WrapCipherSpi;
 import org.ccnx.ccn.io.content.WrappedKey;
 
 
-
+/**
+ * Engine wrapper around RFC3394WrapWithPadEngine, which as part of a signed Provider
+ * will let it be used via the JCE crypto interfaces. In the short term, expose the
+ * wrap and unwrap functionality directly to allow it to be used without having to be signed.
+ */
 public class AESWrapWithPad extends WrapCipherSpi {
 	
 	protected SecureRandom _random = new SecureRandom();
@@ -40,14 +44,26 @@ public class AESWrapWithPad extends WrapCipherSpi {
 	/**
 	 * Temporarily expose internal wrapping functions till
 	 * can make this a provider.
-	 * @throws IllegalBlockSizeException 
-	 * @throws InvalidKeyException 
+	 * @param wrappingKey key to use to wrap another key
+	 * @param keyToBeWrapped key to be wrapped
+	 * @return the wrapped key
+	 * @throws IllegalBlockSizeException if the wrapped key or its padded version does not match the block size of the ciphar
+	 * @throws InvalidKeyException  if the wrappingKey is invalid
 	 */
 	public byte [] wrap(Key wrappingKey, Key keyToBeWrapped) throws InvalidKeyException, IllegalBlockSizeException {
 		engineInit(Cipher.WRAP_MODE, wrappingKey, _random);
 		return engineWrap(keyToBeWrapped);
 	}
 	
+	/**
+	 * Temporarily expose internal unwrapping functions till
+	 * can make this a provider.
+	 * @param wrappingKey key to use to wrap another key
+	 * @param wrappedKey key to be unwrapped
+	 * @param wrappedKeyAlgorithm algorithm to decode wrappedKey into a key for
+	 * @return the unwrapped key
+	 * @throws InvalidKeyException  if the wrappingKey is invalid
+	 */
 	public Key unwrap(Key wrappingKey, byte [] wrappedKey, String wrappedKeyAlgorithm) throws InvalidKeyException {
 		engineInit(Cipher.UNWRAP_MODE, wrappingKey, _random);
 		return engineUnwrap(wrappedKey, wrappedKeyAlgorithm, WrappedKey.getCipherType(wrappedKeyAlgorithm));
