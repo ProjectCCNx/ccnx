@@ -50,7 +50,6 @@ public class MembershipList extends CCNEncodableObject<Collection> {
 	
 	/**
 	 * Read constructor -- opens existing object.
-	 * @param type
 	 * @param name
 	 * @param handle
 	 * @throws XMLStreamException
