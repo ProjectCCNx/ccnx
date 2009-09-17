@@ -163,6 +163,7 @@ public class CCNHandle implements CCNBase {
 	 * determine when to use a shared network manager, and when to make a new
 	 * one. Clients should not call this method directly, and instead should
 	 * create/retrieve a CCNHandle.
+	 * @return the CCN network manager
 	 */
 	public CCNNetworkManager getNetworkManager() { 
 		if (null == _networkManager) {
@@ -289,7 +290,7 @@ public class CCNHandle implements CCNBase {
 	 * Unregister a standing interest filter
 	 * @param filter
 	 * @param callbackListener
-	 */
+	 */	
 	public void unregisterFilter(ContentName filter,
 			CCNFilterListener callbackListener) {
 		getNetworkManager().cancelInterestFilter(this, filter, callbackListener);		
@@ -313,6 +314,8 @@ public class CCNHandle implements CCNBase {
 	 * repositories we manage, particularly the primary.
 	 * Each might generate their own CCNQueryDescriptor,
 	 * so we need to group them together.
+	 * @param interest
+	 * @param listener
 	 */
 	public void expressInterest(
 			Interest interest,
