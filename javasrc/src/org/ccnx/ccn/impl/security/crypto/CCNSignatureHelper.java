@@ -75,7 +75,7 @@ public class CCNSignatureHelper extends SignatureHelper {
 	 */
 	public static byte [] sign(String digestAlgorithm,
 							   XMLEncodable [] toBeSigneds,
-							   byte [][] additionalToBeSigneds,
+							   byte additionalToBeSigneds[][],
 							   PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
 		
 		if (null == toBeSigneds) {
@@ -140,7 +140,7 @@ public class CCNSignatureHelper extends SignatureHelper {
 	 * @throws XMLStreamException  if the object cannot be encoded
 	 */
 	public static boolean verify(XMLEncodable [] xmlData,
-								 byte [][] auxiliaryData,
+								 byte auxiliaryData[][],
 								 byte [] signature,
 								 String digestAlgorithm,
 								 PublicKey verificationKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
@@ -196,7 +196,7 @@ public class CCNSignatureHelper extends SignatureHelper {
 	 * @throws InvalidKeyException
 	 */
 	public static byte [] sign(String digestAlgorithm,
-			   byte [][] toBeSigneds,
+			   byte toBeSigneds[][],
 			   PrivateKey signingKey) throws SignatureException,
 			   	NoSuchAlgorithmException, InvalidKeyException {
 		return SignatureHelper.sign(((null == digestAlgorithm) || (digestAlgorithm.length() == 0)) ?
@@ -218,7 +218,7 @@ public class CCNSignatureHelper extends SignatureHelper {
 	 * @throws InvalidKeyException
 	 */
 	public static boolean verify(
-			byte [][] data,
+			byte data[][],
 			byte [] signature,
 			String digestAlgorithm,
 			PublicKey verificationKey) throws SignatureException, 

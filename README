@@ -75,14 +75,18 @@ random number generator, which causes major delays for certain
 operations such as generating the initial keystore file.  We recommend
 using JDK1.6 on Fedora.
 
+[Solaris]
+
+You will need to use gmake rather than make.
+
 ==================================================
 3. Build and install instructions
 ==================================================
 
-Roughly:
+Roughly, at the top level:
 
 ./configure
-make 
+make
 
 (the above is sufficient to run programs locally out of bin/ and lib/)
 
@@ -90,11 +94,23 @@ To install to a standard location on your machine you may also use
 
 make install
 
+See the notes in the Content-Centric Networking in C in the top-level documentation.
+
 ==================================================
 4. Running the programs
 ==================================================
 
-<to be completed>
+All CCNx programs require that a ccnd be running.
+See bin/ccndstart.
+
+For experiments on one machine it is sufficient to have a ccnd running without
+using a ccnd configuration file, however for multiple machine experimentation
+you will need to use ccndc to configure the inter-machine forwarding of
+interest/content.
+
+If a $HOME/.ccn/ccndrc file is present then bin/ccndstart will execute it.
+It should contain ccndc commands (or a ccndc command specifying a config
+file -- see csrc/libexec/ccnd.conf.sample)
 
 ==================================================
 5. Support and contact information

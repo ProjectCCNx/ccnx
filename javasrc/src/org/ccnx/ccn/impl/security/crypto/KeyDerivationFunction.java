@@ -216,7 +216,7 @@ public class KeyDerivationFunction {
 	 * @param outputLengthInBits bit length of key to derive
 	 * @param label a text label to allow derivation of multiple key types from a single
 	 * 	source key/path pair
-	 * @param contentName name to derive a key for
+	 * @param nodeName name to derive a key for
 	 * @return returns a key for this object
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
