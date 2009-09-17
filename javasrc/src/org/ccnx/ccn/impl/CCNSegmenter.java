@@ -79,6 +79,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  *    blocks to accommodate padding (a minimum of 1 bytes for PKCS5 padding,
  *    for example). 
  *    DKS TODO -- deal with the padding and length expansion
+ *    	For the moment, until we deal with padding we use only AES-CTR.
  *    
  *    For this, we use the standard Java encryption mechanisms, augmented by
  *    alternative providers (e.g. BouncyCastle for AES-CTR). We just need
@@ -92,11 +93,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * within this class. Even better, provide functionality that let client stream
  * classes limit copies (e.g. by partially creating data-filled content objects,
  * and not signing them till flush()). But start with the former.
- * 
- *  
- * DKS TODO -- sort out name increments for all segmenter clients
- * @author smetters
- *
  */
 public class CCNSegmenter {
 
@@ -109,46 +105,78 @@ public class CCNSegmenter {
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
 	
 	protected CCNHandle _handle;
-	// Eventually may not contain this; callers may access it exogenously.
+	
+	/**
+	 * Eventually may not contain this; callers may access it exogenously.
+	 */
 	protected CCNFlowControl _flowControl;
 	
-	// Handle multi-block amortized signing. If null, default to single-block signing.
+	/**
+	 * Handle multi-block amortized signing. If null, default to single-block signing.
+	 */
 	protected CCNAggregatedSigner _bulkSigner;
 	
-	// Encryption/decryption handler
+	/**
+	 * Encryption/decryption handler
+	 */
 	protected ContentKeys _keys;
 
 	/**
-	 * Eventually add encryption, allow control of authentication algorithm.
-	 * @param baseName
-	 * @param locator
-	 * @param signingKey
-	 * @throws IOException 
-	 * @throws ConfigurationException 
+	 * Create a segmenter with default (Merkle hash tree) bulk signing
+	 * behavior, making a new handle for it to use.
+	 * @throws ConfigurationException if there is a problem creating the handle
+	 * @throws IOException if there is a problem creating the handle
 	 */
 	public CCNSegmenter() throws ConfigurationException, IOException {
 		this(CCNHandle.open());
 	}
 	
+	/**
+	 * Create a segmenter with default (Merkle hash tree) bulk signing
+	 * behavior, making a new handle for it to use.
+	 * @param keys encryption keys to use to encrypt content
+	 * @throws ConfigurationException if there is a problem creating the handle
+	 * @throws IOException if there is a problem creating the handle
+	 */
 	public CCNSegmenter(ContentKeys keys) throws ConfigurationException, IOException {
 		this(CCNHandle.open(), keys);
 	}
 
-	public CCNSegmenter(CCNHandle library) throws IOException {
-		this(new CCNFlowControl(library));
+	/**
+	 * Create a segmenter with default (Merkle hash tree) bulk signing
+	 * behavior.
+	 * @param handle the handle to use, will open a new one if null
+	 * @throws IOException if there is a problem creating the handle
+	 */
+	public CCNSegmenter(CCNHandle handle) throws IOException {
+		this(new CCNFlowControl(handle));
 	}
 
-	public CCNSegmenter(CCNHandle library, ContentKeys keys) throws IOException {
-		this(new CCNFlowControl(library), null, keys);
-	}
 	/**
-	 * Create an object with default Merkle hash tree aggregated signing.
-	 * @param flowControl
+	 * Create a segmenter with default (Merkle hash tree) bulk signing
+	 * behavior.
+	 * @param handle the handle to use, will open a new one if null
+	 * @param keys encryption keys to use to encrypt content
+	 * @throws IOException if there is a problem creating the handle
+	 */
+	public CCNSegmenter(CCNHandle handle, ContentKeys keys) throws IOException {
+		this(new CCNFlowControl(handle), null, keys);
+	}
+	
+	/**
+	 * Create a segmenter with default (Merkle hash tree) bulk signing
+	 * behavior.
+	 * @param flowControl the specified flow controller to use
 	 */
 	public CCNSegmenter(CCNFlowControl flowControl) {
 		this(flowControl, null);
 	}
 	
+	/**
+	 * Create a segmenter, specifying the signing behavior to use.
+	 * @param flowControl the specified flow controller to use
+	 * @param signer the bulk signer to use. If null, will use default Merkle hash tree behavior.
+	 */
 	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer) {
 		if ((null == flowControl) || (null == flowControl.getHandle())) {
 			// Tries to get a library or make a flow control, yell if we fail.
@@ -165,6 +193,12 @@ public class CCNSegmenter {
 		initializeBlockSize();
 	}
 
+	/**
+	 * Create a segmenter, specifying the signing behavior to use.
+	 * @param flowControl the specified flow controller to use
+	 * @param signer the bulk signer to use. If null, will use default Merkle hash tree behavior.
+	 * @param keys encryption keys to use
+	 */
 	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer,
 						ContentKeys keys) {
 		this(flowControl, signer);
@@ -188,6 +222,12 @@ public class CCNSegmenter {
 		}
 	}
 	
+	/**
+	 * Factory method to create a standard segmenter that 
+	 * @param blockSize
+	 * @param flowControl
+	 * @return
+	 */
 	public static CCNSegmenter getBlockSegmenter(int blockSize, CCNFlowControl flowControl) {
 		CCNSegmenter segmenter = new CCNSegmenter(flowControl);
 		segmenter.useFixedIncrementSequenceNumbers(1);
