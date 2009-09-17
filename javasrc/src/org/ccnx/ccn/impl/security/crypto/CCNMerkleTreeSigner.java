@@ -27,6 +27,14 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentObject;
 
 
+/**
+ * A CCNAggregatedSigner that builds a Merkle hash tree over a set of blocks 
+ * and signs the root, incorporating the MerklePath information necessary
+ * to verify each object as the Witness component of the Signature.
+ * 
+ * @see CCNAggregatedSigner
+ * @see CCNMerkleTree
+ */
 public class CCNMerkleTreeSigner implements CCNAggregatedSigner {
 	
 	public void signBlocks(

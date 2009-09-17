@@ -36,7 +36,7 @@ import org.ccnx.ccn.impl.support.Log;
 
 
 /**
- * Specifies encryption algorithm and keys to use for encrypting content.
+ * Specifies encryption algorithm, keys, and if necessary, IV to use for encrypting content.
  */
 public class ContentKeys {
 	/**
@@ -75,7 +75,7 @@ public class ContentKeys {
 	}
 
 	public ContentKeys(String encryptionAlgorithm, SecretKeySpec encryptionKey,
-			IvParameterSpec masterIV) throws NoSuchAlgorithmException, NoSuchPaddingException {
+						IvParameterSpec masterIV) throws NoSuchAlgorithmException, NoSuchPaddingException {
 		// ensure NoSuchPaddingException cannot be thrown later when a Cipher is made
 		Cipher.getInstance(encryptionAlgorithm);
 		// TODO check secret key/iv not empty?
