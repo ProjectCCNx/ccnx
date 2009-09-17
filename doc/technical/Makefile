@@ -16,11 +16,11 @@
 DERIVED_HTML =				\
 	BasicIdea.html			\
 	CCNxProtocol.html		\
-	ccnb.html			\
 	Name.html			\
 	URI.html			\
 	ContentObject.html		\
 	InterestMessage.html		\
+	BinaryEncoding.html		\
 	NameConventions.html		\
 	DigestComponent.html		\
 	Registration.html		\
@@ -87,8 +87,8 @@ Name.html: Name.txt
 BasicIdea.html: BasicIdea.txt
 	asciidoc BasicIdea.txt
 
-ccnb.html: ccnb.txt
-	asciidoc ccnb.txt
+BinaryEncoding.html: BinaryEncoding.txt
+	asciidoc BinaryEncoding.txt
 
 CCNxProtocol.html: CCNxProtocol.txt
 	asciidoc CCNxProtocol.txt
