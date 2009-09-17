@@ -152,7 +152,7 @@ public class KeyDerivationFunction {
 	}
 
 	/**
-	 * Parameterization of algorithm that returns a key and IV for a particular object. Requested bit lengths must
+	 * Derive a key and IV for a particular object. Requested bit lengths must
 	 * be divisible by 8.
 	 * @param masterKeyBytes master key to derive a new key from
 	 * @param keyBitLength bit length of key to derive
@@ -185,7 +185,15 @@ public class KeyDerivationFunction {
 
 
 	/**
-	 * Parameterization of KDF to use standard objects for context
+	 * Derive a key for a particular object. Requested bit lengths must
+	 * be divisible by 8.
+	 * @param masterKeyBytes master key to derive a new key from
+	 * @param outputLengthInBits bit length of key to derive
+	 * @param label a text label to allow derivation of multiple key types from a single
+	 * 	source key/path pair
+	 * @param contentName name to derive a key for
+	 * @param publisher publisher whose version of contentName we want to derive for
+	 * @return returns a key for this object
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
@@ -201,6 +209,18 @@ public class KeyDerivationFunction {
 				new XMLEncodable[]{contentName, publisher});
 	}
 	
+	/**
+	 * Derive a key for a particular object. Requested bit lengths must
+	 * be divisible by 8.
+	 * @param masterKeyBytes master key to derive a new key from
+	 * @param outputLengthInBits bit length of key to derive
+	 * @param label a text label to allow derivation of multiple key types from a single
+	 * 	source key/path pair
+	 * @param contentName name to derive a key for
+	 * @return returns a key for this object
+	 * @throws XMLStreamException 
+	 * @throws InvalidKeyException 
+	 */
 	public static final byte [] DeriveKeyForNode(
 			byte [] masterKeyBytes, int outputLengthInBits,
 			String label, ContentName nodeName) throws InvalidKeyException, XMLStreamException {
@@ -211,12 +231,14 @@ public class KeyDerivationFunction {
 	}
 
 	/**
-	 * Master function building generic key derivation mechanism.
-	 * @param masterKeyBytes
-	 * @param outputLengthInBits
-	 * @param label
-	 * @param contextObjects
-	 * @return
+	 * Core key derivation mechanism.
+	 * @param masterKeyBytes master key to derive a new key from
+	 * @param outputLengthInBits bit length of key to derive
+	 * @param label a text label to allow derivation of multiple key types from a single
+	 * 	source key/path pair
+	 * @param contextObjects objects to add into the KDF as context. Usually at least the name
+	 * 	of the node, also possibly the publisher.
+	 * @return the derived key
 	 * @throws InvalidKeyException
 	 * @throws XMLStreamException
 	 */
