@@ -31,7 +31,7 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-a] [-c] ccn:/a/b\n"
+            "%s [-a] [-c] ccnx:/a/b\n"
             "   Get one content item matching the name prefix and write it to stdout"
             "\n"
             "   -a - allow stale data\n"
