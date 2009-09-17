@@ -61,7 +61,6 @@ import org.ccnx.ccn.protocol.WirePacket;
  * It also handles the low level output "tap" functionality.
  * 
  * Starts a separate thread to listen to, decode and handle incoming data from ccnd.
- * 
  */
 public class CCNNetworkManager implements Runnable {
 	
