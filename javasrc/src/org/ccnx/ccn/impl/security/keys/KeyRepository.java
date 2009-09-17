@@ -32,7 +32,6 @@ import java.util.Iterator;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
-import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
@@ -220,9 +219,6 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 				} catch (InvalidKeySpecException e) {
 					Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 					throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-				} catch (NoSuchAlgorithmException e) {
-					Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-					throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 				}
 			}
 		}	
@@ -286,9 +282,6 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 					} catch (InvalidKeySpecException e) {
-						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-					} catch (NoSuchAlgorithmException e) {
 						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 					}
