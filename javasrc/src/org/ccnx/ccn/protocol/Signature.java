@@ -33,7 +33,23 @@ import org.ccnx.ccn.impl.security.crypto.util.OIDLookup;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 
-
+/**
+ * A class to encapsulate Signature data within a ContentObject. 
+ * A Signature contains three components: the digestAlgorithm used to generate the
+ * digest, the bits of the signature itself, and an optional "witness" which is used in the
+ * verification of aggregated signatures -- signatures that are generated over
+ * multiple objects at once. Each object in such a signature group has its own
+ * witness, which is necessary to verify that object with respect to that signature.
+ * For example, if a set of content objects is digested into a Merkle hash tree,
+ * the signature bits for each member of set would contain the same public
+ * key signature on the root of the hash tree, and the witness would contain
+ * a representation of the path through the Merkle tree that one needs to traverse
+ * to verify that individual block.
+ * 
+ * For an explanation of why we separate the digest algorithm in the signature
+ * (rather than no algorithm at all, or a composite signature algorithm), see
+ * ccnx.xsd.
+ */
 public class Signature extends GenericXMLEncodable implements XMLEncodable,
 		Comparable<Signature> {
 	
@@ -46,32 +62,57 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 	byte [] _signature;
 	String _digestAlgorithm;
 	
+	/**
+	 * Build a Signature
+	 * @param digestAlgorithm if null, will use default
+	 * @param witness can be null
+	 * @param signature
+	 */
 	public Signature(String digestAlgorithm, byte [] witness, byte [] signature) {
     	_witness = witness;
     	_signature = signature;
     	_digestAlgorithm = digestAlgorithm;
 	}
 
+	/**
+	 * Builds a Signature using the default digest algorithm.
+	 * @param witness can be null
+	 * @param signature
+	 */
 	public Signature(byte [] witness,
 					 byte [] signature) {
 		this(null, witness, signature);
 	}
 
+	/**
+	 * Builds a Signature with the default digest algorithm and no witness
+	 * @param signature
+	 */
 	public Signature(byte [] signature) {
 		this(null, null, signature);
 	}
 	
-	public Signature() {} // for use by decoders
+	/**
+	 * For use by decoders
+	 */
+	public Signature() {} 
 	
 	/**
-	 * DKS return these as final for now, eventually change decode/constructor
-	 * relationship so they are final internally.
-	 * @return
+	 * Get the signature
+	 * @return the signature
 	 */
 	public final byte [] signature() { return _signature; }
 	
+	/**
+	 * Get the witness
+	 * @return the witness
+	 */
 	public final byte [] witness() { return _witness; }
 
+	/**
+	 * Get the digest algorithm
+	 * @return the digest algorithm
+	 */
 	public String digestAlgorithm() {
 		if (null == _digestAlgorithm)
 			return CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM;
@@ -126,10 +167,16 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 		return null != signature();
 	}
 
+	/**
+	 * Implement Cloneable
+	 */
 	public Signature clone() {
 		return new Signature(digestAlgorithm(), (null != _witness) ? _witness.clone() : null, _signature.clone());
 	}
 
+	/**
+	 * Implement Comparable
+	 */
 	public int compareTo(Signature o) {
 		int result = 0;
 		if (null == digestAlgorithm()) {
@@ -179,6 +226,13 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 		return true;
 	}
 
+	/**
+	 * Compute the content proxy for a given node. This should likely move somewhere else
+	 * @param nodeContent the content stored at this node
+	 * @param isDigest is the content already digested
+	 * @return the proxy digest (for example, the computed root of the Merkle hash tree) for this node
+	 * @throws CertificateEncodingException if we cannot decode the witness
+	 */
 	public byte[] computeProxy(byte[] nodeContent, boolean isDigest) throws CertificateEncodingException {
 		if (null == witness())
 			return null;

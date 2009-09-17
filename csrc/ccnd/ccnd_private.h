@@ -292,7 +292,7 @@ void ccnd_internal_client_stop(struct ccnd_handle *);
 
 /**
  * The internal client calls this with the argument portion ARG of
- * a self-registration request (/ccn/reg/self/ARG)
+ * a self-registration request (/ccnx/reg/self/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
  */
 struct ccn_charbuf *ccnd_reg_self(struct ccnd_handle *h,
@@ -300,7 +300,7 @@ struct ccn_charbuf *ccnd_reg_self(struct ccnd_handle *h,
 
 /**
  * The internal client calls this with the argument portion ARG of
- * a face-creation request (/ccn/CCNDID/newface/ARG)
+ * a face-creation request (/ccnx/CCNDID/newface/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
  */
 struct ccn_charbuf *ccnd_req_newface(struct ccnd_handle *h,
@@ -308,7 +308,7 @@ struct ccn_charbuf *ccnd_req_newface(struct ccnd_handle *h,
 
 /**
  * The internal client calls this with the argument portion ARG of
- * a prefix-registration request (/ccn/CCNDID/prefixreg/ARG)
+ * a prefix-registration request (/ccnx/CCNDID/prefixreg/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
  */
 struct ccn_charbuf *ccnd_req_prefixreg(struct ccnd_handle *h,
