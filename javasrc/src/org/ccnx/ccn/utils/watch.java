@@ -29,14 +29,19 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
-
+/**
+ * Express interest in a name and report content retrieved.
+ * This program has not been updated to handle interests in a sophisticated way
+ * and so it is likely to receive the same content over and over.
+ *
+ */
 public class watch extends Thread implements CCNInterestListener {
 	
 	protected boolean _stop = false;
 	protected ArrayList<Interest> _interests = new ArrayList<Interest>();
-	protected CCNHandle _library = null;
+	protected CCNHandle _handle = null;
 	
-	public watch(CCNHandle library) {_library = library;}
+	public watch(CCNHandle handle) {_handle = handle;}
 	
 	public void initialize() {}
 	public void work() {}
@@ -74,13 +79,9 @@ public class watch extends Thread implements CCNInterestListener {
 		for (int i=0; i < results.size(); ++i) {
 			System.out.println("New content: " + results.get(i).name());
 		}
-		return null;
+		return interest;
 	}
-	
-	public void interestCanceled(Interest interest) {
-		System.out.println("Canceled interest in: " + interest.name());
-	}
-	
+		
 
 	/**
 	 * @param args
