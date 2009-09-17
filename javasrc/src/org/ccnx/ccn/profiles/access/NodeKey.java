@@ -73,8 +73,8 @@ public class NodeKey {
 	/**
 	 * Constructor for a node key specified by its name and key bytes
 	 * interpreted as a key for DEFAULT_NODE_KEY_ALGORITHM.
-	 * @param nodeKeyName
-	 * @param unwrappedNodeKey
+	 * @param nodeKeyName the name of the node key
+	 * @param unwrappedNodeKey the unwrapped node key
 	 */
 	public NodeKey(ContentName nodeKeyName, byte [] unwrappedNodeKey) {
 		this(nodeKeyName, new SecretKeySpec(unwrappedNodeKey, DEFAULT_NODE_KEY_ALGORITHM));
@@ -82,8 +82,8 @@ public class NodeKey {
 	
 	/**
 	 * Constructor for a node key specified by its name and key. 
-	 * @param nodeKeyName
-	 * @param unwrappedNodeKey
+	 * @param nodeKeyName the name of the node key
+	 * @param unwrappedNodeKey the unwrapped node key
 	 */
 	public NodeKey(ContentName nodeKeyName, Key unwrappedNodeKey) {
 		if ((null == nodeKeyName) || (null == unwrappedNodeKey)) {
@@ -105,10 +105,10 @@ public class NodeKey {
 	/**
 	 * Constructor for a node key derived (via a key derivation function)
 	 * from an ancestor node key. 
-	 * @param nodeName
-	 * @param derivedNodeKey
-	 * @param ancestorNodeKeyName
-	 * @param ancestorNodeKeyID
+	 * @param nodeName the name of the node
+	 * @param derivedNodeKey the derived node key
+	 * @param ancestorNodeKeyName the name of the ancestor node key
+	 * @param ancestorNodeKeyID the digest of the ancestor node key
 	 */
 	protected NodeKey(ContentName nodeName, byte [] derivedNodeKey, 
 					  ContentName ancestorNodeKeyName, byte [] ancestorNodeKeyID) {
@@ -125,9 +125,9 @@ public class NodeKey {
 	/**
 	 * Computes the descendant node key for a specified descendant node
 	 * using the key derivation function. 
-	 * @param descendantNodeName
-	 * @param keyLabel
-	 * @return
+	 * @param descendantNodeName the name of the descendant node
+	 * @param keyLabel the label of the key
+	 * @return the node key
 	 * @throws InvalidKeyException
 	 * @throws XMLStreamException
 	 */
@@ -147,15 +147,43 @@ public class NodeKey {
 		return computeDescendantNodeKey(descendantNodeName, DEFAULT_KEY_LABEL);
 	}
 	
+	/**
+	 * Get the node name.
+	 * @return the node name.
+	 */
 	public ContentName nodeName() { return _nodeName; }
+	
+	/**
+	 * Get the stored node key name.
+	 * @return the stored node key name.
+	 */
 	public ContentName storedNodeKeyName() { return _storedNodeKeyName; }
+
+	/**
+	 * Get the stored node key ID
+	 * @return the stored node key ID
+	 */
 	public byte [] storedNodeKeyID() { return _storedNodeKeyID; }
+	
+	/**
+	 * Get the node key
+	 * @return the node key
+	 */
 	public Key nodeKey() { return _nodeKey; }
 	
+	/**
+	 * Check whether the node key is derived from an ancestor node key
+	 * via the key derivation function
+	 * @return
+	 */
 	public boolean isDerivedNodeKey() {
 		return (!nodeName().isPrefixOf(storedNodeKeyName()));
 	}
 	
+	/**
+	 * Get the version of the stored node key name
+	 * @return the version
+	 */
 	public CCNTime nodeKeyVersion() { 
 		try {
 			return VersioningProfile.getLastVersionAsTimestamp(storedNodeKeyName());
@@ -166,17 +194,27 @@ public class NodeKey {
 	}
 	
 	/**
-	 * Returns a hash of the node key.
-	 * @return
+	 * Returns a digest of the node key.
+	 * @return the digest
 	 */
 	public byte [] generateKeyID() { 
 		return generateKeyID(nodeKey().getEncoded());
 	}
 	
+	/**
+	 * Returns a digest of a specified key
+	 * @param key the key
+	 * @return the digest
+	 */
 	public static byte [] generateKeyID(byte [] key) {
 		return CCNDigestHelper.digest(key);
 	}
 
+	/**
+	 * Returns a digest of a specified key
+	 * @param key the key
+	 * @return the digest
+	 */
 	public static byte [] generateKeyID(Key key) {
 		if (null == key)
 			return null;

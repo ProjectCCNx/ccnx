@@ -19,13 +19,10 @@ package org.ccnx.ccn;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
-import java.security.cert.CertificateEncodingException;
-import java.security.spec.InvalidKeySpecException;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -46,7 +43,7 @@ public abstract class KeyManager {
 	
 	/**
 	 * Currently default to SHA-256. Only thing that associates a specific digest algorithm
-	 * with a version of the CCN protocol is the calculation of the vestigal content digest component
+	 * with a version of the CCN protocol is the calculation of the vestigial content digest component
 	 * of ContentName used in Interest matching, and publisher digests. Changing the latter
 	 * is handled by backwards-compatible changes to the protocol encoding. All other digests are 
 	 * stored prefaced with an algorithm identifier, to allow them to be modified.
@@ -122,7 +119,7 @@ public abstract class KeyManager {
 	 * @return the key manager
 	 * @throws ConfigurationException if there is a problem with the user or system configuration
 	 * 	that requires intervention to fix
-	 * @throws IOException if there is an operational problem loading data or intializing the key store
+	 * @throws IOException if there is an operational problem loading data or initializing the key store
 	 */
 	protected static synchronized KeyManager createKeyManager() throws ConfigurationException, IOException {
 		if (null == _defaultKeyManager) {
@@ -138,6 +135,10 @@ public abstract class KeyManager {
 	 */
 	public abstract void initialize() throws ConfigurationException;
 	
+	/**
+	 * Get the key repository
+	 * @return the key repository
+	 */
 	public static KeyRepository getKeyRepository() {
 		return getKeyManager().keyRepository();
 	}
@@ -191,6 +192,7 @@ public abstract class KeyManager {
 	 * Get the public key associated with a given publisher
 	 * @param publisher the digest of the desired key
 	 * @return the key, or null if no such key known to our cache
+	 * @throws IOException
 	 */
 	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws IOException;
 
@@ -204,7 +206,7 @@ public abstract class KeyManager {
 	/**
 	 * Get the default key locator associated with one of our signing keys
 	 * @param signingKey key whose locator data we want
-	 * @return the default key locatr for that key
+	 * @return the default key locator for that key
 	 */
 	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
 
@@ -256,10 +258,10 @@ public abstract class KeyManager {
 	 * Publish a key at a certain name, signed by our default identity. Usually used to
 	 * publish our own keys, but can specify other keys we have in our cache.
 	 * 
-	 * This publishes our key to our own internal key server, from whence it can be retrieved
+	 * This publishes our key to our own internal key server, from where it can be retrieved
 	 * as long as this KeyManager is running. It does not put it on the wire until someone
 	 * requests it. 
-	 * Implementation Note: This code is used in CCNHandle intialization, and as such it
+	 * Implementation Note: This code is used in CCNHandle initialization, and as such it
 	 * cannot use a CCNHandle or any of the standard network operations without introducing
 	 * a circular dependency. The code is very low-level and should only be modified with
 	 * great caution.
@@ -268,11 +270,8 @@ public abstract class KeyManager {
 	 * 		  unversioned.
 	 * @param keyToPublish can be null, in which case we publish our own default public key
 	 * @throws InvalidKeyException 
+	 * @throws IOException
 	 * @throws ConfigurationException 
-	 * @throws ConfigurationException 
-	 * @throws NoSuchAlgorithmException 
-	 * @throws InvalidKeySpecException 
-	 * @throws CertificateEncodingException 
 	 */
 	public abstract void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException;
 	

@@ -23,7 +23,10 @@ import java.util.logging.Level;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 
-
+/**
+ * Factory class that given a string codec name, returns the XMLEncoder and XMLDecoder
+ * that handle that codec. Allows new codecs to be registered on the fly for extensibility.
+ */
 public class XMLCodecFactory {
 	
 	protected static String _defaultCodec = null;

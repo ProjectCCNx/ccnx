@@ -32,10 +32,10 @@ import org.ccnx.ccn.impl.support.Log;
  * in length. This poses challenges when wrapping private or public keys.
  * draft-housley-aes-key-wrap-with-pad-02.txt modifies RFC3394 to add
  * padding bytes, as supported in RFC3394 to remove this restriction.
+ * This is an implementation of that Internet-Draft, which is not yet
+ * supported by BouncyCastle. 
  * 
  * Code relies on BouncyCastle library for most of its infrastructure.
- * @author smetters
- *
  */
 public class RFC3394WrapWithPadEngine implements Wrapper {
 

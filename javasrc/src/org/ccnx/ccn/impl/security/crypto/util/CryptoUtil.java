@@ -169,6 +169,8 @@ public class CryptoUtil {
 	 * of a java.security.cert.Certificate
 	 * @param digestAlg the digest algorithm to use
 	 * @param cert the certificate to digest
+	 * @return the CertID
+	 * @throws CertificateEncodingException if there is an error in the certificate encoding
 	 */
 	public static byte [] generateCertID(String digestAlg, Certificate cert)  throws CertificateEncodingException {
 		byte [] id = null;
@@ -185,6 +187,8 @@ public class CryptoUtil {
 	/**
 	 * Generates a CertID -- the digest of the DER encoding
 	 * of a java.security.cert.Certificate
+	 * @param cert the certificate
+	 * @return the CertID
 	 */	
 	public static byte [] generateCertID(Certificate cert) throws CertificateEncodingException {
 		return generateCertID(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, cert);
@@ -199,6 +203,7 @@ public class CryptoUtil {
 	 * how you must generate a key ID).
 	 * @param digestAlg the digest algorithm to use
 	 * @param key the key to digest
+	 * @return the KeyID
 	 */
 	public static byte [] generateKeyID(String digestAlg, Key key)  {
 		
@@ -221,6 +226,7 @@ public class CryptoUtil {
 	 * component of the SubjectPublicKeyInfo itself (and no standard dictates
 	 * how you must generate a key ID).
 	 * @param key the key to digest
+	 * @return the KeyID
 	 */
 	public static byte [] generateKeyID(Key key) {
 		return generateKeyID(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, key);
@@ -233,7 +239,9 @@ public class CryptoUtil {
 	 * will return null, and generateKeyID can be used to generate a new key ID.
 	 * @param issuerCert the issuer certificate to extract the key ID from
 	 * @return the key ID
-	 **/
+	 * @throws IOException
+	 * @throws CertificateEncodingException
+	 */
 	public static byte [] getKeyIDFromCertificate(X509Certificate issuerCert) 
 		throws IOException, CertificateEncodingException {
 		byte [] keyIDExtensionValue = issuerCert.getExtensionValue(X509Extensions.SubjectKeyIdentifier.toString());
