@@ -25,8 +25,6 @@ import java.io.OutputStream;
 
 /**
  * Needed to route output from the daemon stdout/stderr to a file
- * @author rasmusse
- *
  */
 public class DaemonOutput extends Thread {
 	private InputStream _is;

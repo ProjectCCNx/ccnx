@@ -30,7 +30,7 @@ OUTPUT_FILE=
 LOCAL_PORT=
 DEBUG_DAEMON=
 PROFILE_INFO=
-usage="usage: ccn_repo [stop <pid> | [interactive] <pathname> | signal <name> <pid>]"
+usage="usage: ccn_repo [-memory <memory>] [-debug <portno>] [-output <output_file] \n\t\t [-debug-daemon <portno>] [-profile <profile_info>] \n\t\t [<pathname> | interactive <pathname> \n\t\t\t| stop <pid> | signal <name> <pid>]"
 
 if [ $# = 0 ]
 then
@@ -59,7 +59,11 @@ else
   	  	  break
   	  fi
   done
-  if [ "$1" = "stop" ]; then
+  
+  test=`echo "$1" | sed 's/\(.\).*/\1/'`
+  if [ "$test" = "-" ]; then
+  	   echo $usage
+  elif [ "$1" = "stop" ]; then
 	  $JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -stop $2
   elif [ "$1" = "signal" ]; then
           $JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -signal $2 $3

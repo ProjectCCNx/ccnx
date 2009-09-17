@@ -45,10 +45,20 @@ import org.ccnx.ccn.impl.CCNNetworkManager;
 
 
 /**
- * Wrapper class for things that run as daemons. Based
- * on the CA issuer daemon.
- * @author smetters, rasmussen
- *
+ * Wrapper class for things that run as daemons. In the normal case a daemon is started up and then runs in
+ * the background after the starting process exits. An RMI file is created to allow outside processes to
+ * communicate with the daemon to "signal" it or stop it.<p>
+ * 
+ * Daemons have several modes as seen below:
+ * 
+ * <pre>
+ * MODE_START - used to start a daemon which will be run in the background
+ * MODE_STOP  - used to stop a daemon currently running in the background
+ * MODE_INTERACTIVE - used to run a daemon interactively rather than in the background
+ * MODE_DAEMON - a daemon started up by a "starter" is started in MODE_DAEMON.
+ * MODE_SIGNAL - used to signal a daemon from outside to get the daemon to perform implementation defined
+ * 			     services
+ * </pre>
  */
 public class Daemon {
 

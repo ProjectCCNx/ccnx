@@ -38,7 +38,11 @@ import org.ccnx.ccn.protocol.Interest;
  * matching.  An InterestTable may be used to hold real Interests, or merely 
  * ContentNames only, though mixing the two in the same instance of InterestTable
  * is not recommended.
- *
+ * 
+ * Since interests can be reexpressed we could end up with duplicate
+ * interests in the table. To avoid that an LRU algorithm is
+ * optionally implemented to keep the table from growing without
+ * bounds.
  */
 
 public class InterestTable<V> {
@@ -183,10 +187,7 @@ public class InterestTable<V> {
 	}
 	
 	/**
-	 * Since interests can be reexpressed we could end up with duplicate
-	 * interests in the table. To avoid that an LRU algorithm is
-	 * optionally implemented to keep the table from growing without
-	 * bounds.
+	 * Add a value holder - could be interest or content
 	 * 
 	 * @param holder
 	 */

@@ -29,8 +29,6 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 
-
-
 /**
  * The exclude filters are used with Interest matching to exclude content with components
  * which match the filters 1 level below the prefix length of the interest.
@@ -278,6 +276,10 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 		return;		
 	}
 
+	/**
+	 * Check for exclude with no elements
+	 * @return true if exclude has no elements
+	 */
 	public boolean empty() {
 		synchronized (_values) {
 			return ((null == _values) || (_values.isEmpty()));
@@ -359,6 +361,10 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 		}
 	}
 
+	/**
+	 * Gets the number of values in the Exclude
+	 * @return number of values
+	 */
 	public int size() {
 		synchronized (_values) {
 			return _values.size();
