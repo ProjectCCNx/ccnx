@@ -66,9 +66,14 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  *    or scaled byte count makes sense for this) can override by setting
  *    counter on a call.
  *    
+ *    NOTE: the CCNSegmenter class currently supports a range of quite complex
+ *    segmentation options. At this point, only a subset of these are supported
+ *    by the higher level io interfaces.
+ *    
  * b) signing control -- per-block signing with a choice of signature algorithm,
  *    or amortized signing, first Merkle Hash Tree based amortization, later
  *    options for other things.
+ *    
  * c) stock low-level encryption. Given a key K, an IV, and a chosen encryption
  *    algorithm (standard: AES-CTR, also eventually AES-CBC and other padded
  *    block cipher options), segment content so as
@@ -223,10 +228,11 @@ public class CCNSegmenter {
 	}
 	
 	/**
-	 * Factory method to create a standard segmenter that 
-	 * @param blockSize
-	 * @param flowControl
-	 * @return
+	 * Factory method to create a standard segmenter that generates blocks of fixed length in bytes.
+	 * @param blockSize number of bytes to put in each block (the last block will have an odd number of
+	 * 	bytes)
+	 * @param flowControl the flow controller to use
+	 * @return the new segmenter
 	 */
 	public static CCNSegmenter getBlockSegmenter(int blockSize, CCNFlowControl flowControl) {
 		CCNSegmenter segmenter = new CCNSegmenter(flowControl);
@@ -235,12 +241,34 @@ public class CCNSegmenter {
 		return segmenter;
 	}
 
+	/**
+	 * Factory method to create a standard segmenter that generates blocks of variable length in bytes,
+	 * whose segment numbers are scaled by a fixed increment. This could be used, for example to generate
+	 * segments that had variable number of bytes in each, and naming them by scaling the byte
+	 * offset by a scale useful to the application - e.g. to end up with millisecond offsets
+	 * for a video or audio stream, etc.
+	 * NOTE: the reader infrastructure currently expects incrementing segment numbers; a special
+	 * stream class is necessary to read data generated this way. That would not be difficult to
+	 * write.
+	 * @param scale multiplier to apply to the byte count before recording it as a sequence number
+	 * @param flowControl the flow controller to use
+	 * @return the new segmenter
+	 */
 	public static CCNSegmenter getScaledByteCountSegmenter(int scale, CCNFlowControl flowControl) {
 		CCNSegmenter segmenter = new CCNSegmenter(flowControl);
 		segmenter.useScaledByteCountSequenceNumbers(scale);
 		return segmenter;
 	}
 	
+	/**
+	 * Factory method to create a standard segmenter that generates blocks of variable length in bytes,
+	 * whose segment numbers are scaled by a fixed increment. This could be used, for example to generate
+	 * segments that had variable number of bytes in each, and naming them by byte offset.
+	 * NOTE: This is used by CCNBlockInputStream and CCNBlockOutputStream; the other stream classes
+	 *   will not read data generated this way.
+	 * @param flowControl the flow controller to use
+	 * @return the new segmenter
+	 */
 	public static CCNSegmenter getByteCountSegmenter(CCNFlowControl flowControl) {
 		return getScaledByteCountSegmenter(1, flowControl);
 	}
@@ -250,13 +278,17 @@ public class CCNSegmenter {
 	public CCNFlowControl getFlowControl() { return _flowControl; }
 
 	/**
-	 * Set the fragmentation block size to use
-	 * @param blockSize
+	 * Set the segmentation block size to use
+	 * @param blockSize block size in bytes
 	 */
 	public void setBlockSize(int blockSize) {
 		_blockSize = blockSize;
 	}
 
+	/**
+	 * Get the current block size
+	 * @return block size in bytes
+	 */
 	public int getBlockSize() {
 		return _blockSize;
 	}
@@ -283,6 +315,11 @@ public class CCNSegmenter {
 	 * @param blockWidth
 	 */
 	public void setBlockIncrement(int blockIncrement) { _blockIncrement = blockIncrement; }
+	
+	/**
+	 * Get the increment between block numbers.
+	 * @return
+	 */
 	public int getBlockIncrement() { return _blockIncrement; }
 
 	public void setByteScale(int byteScale) { _byteScale = byteScale; }
@@ -290,8 +327,8 @@ public class CCNSegmenter {
 
 
 	/**
-	 * Put a complete data item, potentially fragmented. The
-	 * assumption of this API is that this single call puts
+	 * Put a complete data item, segmenting it if necessary. The
+	 * assumption of this method is that this single call puts
 	 * all the blocks of the item; if multiple calls to the
 	 * segmenter will be required to output an item, use other
 	 * methods to manage segment identifiers.
@@ -359,18 +396,18 @@ public class CCNSegmenter {
 	 * prior to arrival -- name is not already segmented, type is set, etc.
 	 * 
 	 * Starts segmentation at segment SegmentationProfile().baseSegment().
-	 * @param name
+	 * @param name name prefix to use for the segments
 	 * @param content content buffer containing content to put
 	 * @param offset offset into buffer at which to start reading content to put
 	 * @param length number of bytes of buffer to put
 	 * @param finalSegmentIndex the expected segment number of the last segment of this stream,
 	 * 				null to omit, Long(-1) to set as the last segment of this put, whatever
 	 * 				its number turns out to be
-	 * @param type
+	 * @param type the type for the content
 	 * @param freshnessSeconds the number of seconds this content should be considered fresh, or null
 	 * 			to leave unset
-	 * @param locator
-	 * @param publisher
+	 * @param locator the key locator to use
+	 * @param publisher the publisher to use
 	 * @return returns the segment identifier for the next segment to be written, if any.
 	 * 		If the caller doesn't want to override this, they can hand this number back
 	 * 	    to a subsequent call to fragmentedPut.
@@ -397,8 +434,29 @@ public class CCNSegmenter {
 	}
 	
 	/** 
+	 * @param name name prefix to use for the segments
+	 * @param baseSegmentNumber the segment number to start this batch with
+	 * @param content content buffer containing content to put
+	 * @param offset offset into buffer at which to start reading content to put
+	 * @param length number of bytes of buffer to put
+	 * @param blockWidth the block size to use
+	 * @param type the type for the content
+	 * @param the timestamp for the content
+	 * @param freshnessSeconds the number of seconds this content should be considered fresh, or null
+	 * 			to leave unset
+	 * @param finalSegmentIndex the expected segment number of the last segment of this stream,
+	 * 				null to omit, Long(-1) to set as the last segment of this put, whatever
+	 * 				its number turns out to be
+	 * @param locator the key locator to use
+	 * @param publisher the publisher to use
+	 * @return returns the segment identifier for the next segment to be written, if any.
+	 * 		If the caller doesn't want to override this, they can hand this number back
+	 * 	    to a subsequent call to fragmentedPut.
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 * @throws IOException 
 	 * @throws InvalidAlgorithmParameterException 
-	 * @throws NoSuchAlgorithmException 
 	 * @see CCNSegmenter#fragmentedPut(ContentName, byte[], int, int, Long, ContentType, Integer, KeyLocator, PublisherPublicKeyDigest)
 	 * Starts segmentation at segment SegmentationProfile().baseSegment().
 	 */
