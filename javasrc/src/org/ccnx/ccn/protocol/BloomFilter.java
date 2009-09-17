@@ -133,6 +133,11 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 		return true;
 	}
 	
+	/**
+	 * Returns the value given on creation by estimatedMembers 
+	 * @see BloomFilter.BloomFilter
+	 * @return the estimated members of this filter
+	 */
 	public int size() {
 		return _size;
 	}
