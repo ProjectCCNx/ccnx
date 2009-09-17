@@ -74,6 +74,14 @@ public class ContentKeys {
 		// TODO: this assumes the default algorithms are available. Should probably check during startup
 	}
 
+	/**
+	 * Create a set of ContentKeys.
+	 * @param encryptionAlgorithm algorithm to use
+	 * @param encryptionKey encryption key
+	 * @param masterIV iv
+	 * @throws NoSuchAlgorithmException if encryptionAlgorithm unknown
+	 * @throws NoSuchPaddingException if encryptionAlgorithm specifies an unknown padding type
+	 */
 	public ContentKeys(String encryptionAlgorithm, SecretKeySpec encryptionKey,
 						IvParameterSpec masterIV) throws NoSuchAlgorithmException, NoSuchPaddingException {
 		// ensure NoSuchPaddingException cannot be thrown later when a Cipher is made
@@ -103,6 +111,11 @@ public class ContentKeys {
 		}
 	}
 	
+	/**
+	 * @return The base algorithm used in the encryption algorithm specified for this
+	 * ContentKeys. For example, if the encryptionAlgorithm is "AES/CTR/NoPadding",
+	 * the base algorithm is AES.
+	 */
 	public String getBaseAlgorithm() {
 		if (_encryptionAlgorithm.contains("/")) {
 			return _encryptionAlgorithm.substring(0, _encryptionAlgorithm.indexOf("/"));
@@ -110,6 +123,10 @@ public class ContentKeys {
 		return _encryptionAlgorithm;
 	}
 	
+	/**
+	 * Create a cipher for the encryption algorithm used by this ContentKeys
+	 * @return the cipher
+	 */
 	public Cipher getCipher() {
 		// We have tried a dummy call to Cipher.getInstance on construction of this ContentKeys - so
 		// further "NoSuch" exceptions should not happen here.
@@ -169,6 +186,7 @@ public class ContentKeys {
 	 * 	    have more space, use it for the block counter.
 	 * IV value is the block width of the cipher.
 	 * 
+	 * @param segmentNumber the segment number to create an encryption cipher for
 	 * @throws InvalidAlgorithmParameterException 
 	 * @throws InvalidKeyException 
 	 */
@@ -177,11 +195,29 @@ public class ContentKeys {
 		return getSegmentCipher(segmentNumber, true);
 	}
 
+	/**
+	 * Create a decryption cipher for the specified segment.
+	 * @param segmentNumber the segment to decrypt
+	 * @return the Cipher
+	 * @throws InvalidKeyException
+	 * @throws InvalidAlgorithmParameterException
+	 * @see getSegmentEncryptionCipher(long)
+	 */
 	public Cipher getSegmentDecryptionCipher(long segmentNumber)
 		throws InvalidKeyException, InvalidAlgorithmParameterException {
 		return getSegmentCipher(segmentNumber, true);
 	}
 
+	/**
+	 * Generate a segment encryption or decryption cipher using these ContentKeys
+	 * to encrypt or decrypt a particular segment.
+	 * @param segmentNumber segment to encrypt/decrypt
+	 * @param encryption true for encryption, false for decryption
+	 * @return the Cipher
+	 * @throws InvalidKeyException
+	 * @throws InvalidAlgorithmParameterException
+	 * @see getSegmentEncryptionCipher(long)
+	 */
 	protected Cipher getSegmentCipher(long segmentNumber, boolean encryption)
 		throws InvalidKeyException, InvalidAlgorithmParameterException {
 
@@ -216,6 +252,13 @@ public class ContentKeys {
 		return cipher;
 	}
 
+	/**
+	 * Turn a master IV and a segment number into an IV for this segment
+	 * @param masterIV the master IV
+	 * @param segmentNumber the segment number
+	 * @param ivLen the output IV length requested
+	 * @return the IV
+	 */
 	public static IvParameterSpec buildIVCtr(IvParameterSpec masterIV, long segmentNumber, int ivLen) {
 
 		Log.finest("Thread="+Thread.currentThread()+" Building IV - master="+DataUtils.printHexBytes(masterIV.getIV())+" segment="+segmentNumber+" ivLen="+ivLen);
@@ -233,6 +276,11 @@ public class ContentKeys {
 		return iv_ctrSpec;
 	}
 	
+	/**
+	 * Converts a segment number to a byte array representation (big-endian).
+	 * @param segmentNumber the segment number to convert
+	 * @return the byte array representation of segmentNumber
+	 */
 	public static byte [] segmentNumberToByteArray(long segmentNumber) {
 		byte [] ba = new byte[SEGMENT_NUMBER_LENGTH];
 		// Is this the fastest way to do this?
