@@ -51,6 +51,15 @@ public class NetworkKeyManager extends BasicKeyManager {
 	PublisherPublicKeyDigest _publisher;
 	CCNHandle _handle;
 
+	/** Constructor
+	 * @param userName
+	 * @param keystoreName
+	 * @param publisher
+	 * @param password
+	 * @param handle
+	 * @throws ConfigurationException
+	 * @throws IOException
+	 */
 	public NetworkKeyManager(String userName, ContentName keystoreName, PublisherPublicKeyDigest publisher,
 							char [] password, CCNHandle handle) throws ConfigurationException, IOException {
 		// key repository created by default superclass constructor
@@ -66,7 +75,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 	/**
 	 * The default key name is the publisher ID itself,
 	 * under the keystore namespace.
-	 * @param keyID
+	 * @param keyID[]
 	 * @return
 	 */
 	@Override

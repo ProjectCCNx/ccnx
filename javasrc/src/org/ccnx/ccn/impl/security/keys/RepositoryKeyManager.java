@@ -40,6 +40,16 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 public class RepositoryKeyManager extends NetworkKeyManager {
 
+	/** Constructor
+	 * 
+	 * @param userName
+	 * @param keystoreName
+	 * @param publisher
+	 * @param password
+	 * @param handle
+	 * @throws ConfigurationException
+	 * @throws IOException
+	 */
 	public RepositoryKeyManager(String userName, ContentName keystoreName,
 			PublisherPublicKeyDigest publisher, char[] password,
 			CCNHandle handle) throws ConfigurationException, IOException {

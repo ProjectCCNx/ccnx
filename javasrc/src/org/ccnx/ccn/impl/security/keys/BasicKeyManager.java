@@ -81,6 +81,11 @@ public class BasicKeyManager extends KeyManager {
 	
 	private char [] _password = null;
 		
+	/** Constructor
+	 * 
+	 * @throws ConfigurationException
+	 * @throws IOException
+	 */
 	public BasicKeyManager() throws ConfigurationException, IOException {
 		_keyRepository = new KeyRepository();
 		_userName = UserConfiguration.userName();
@@ -342,21 +347,38 @@ public class BasicKeyManager extends KeyManager {
 		throw new ConfigurationException(message, e);
 	}
 
+	/**
+	 * Get default key id
+	 * @return default key id
+	 */
 	@Override
 	public PublisherPublicKeyDigest getDefaultKeyID() {
 		return _defaultKeyID;
 	}
 
+	/**
+	 * Get default public key
+	 * @return default public key 
+	 */
 	@Override
 	public PublicKey getDefaultPublicKey() {
 		return _certificate.getPublicKey();
 	}
 	
+	/**
+	 * Get default key locator
+	 * @return default key locator
+	 */
 	@Override
 	public KeyLocator getDefaultKeyLocator() {
 		return _keyLocator;
 	}
 	
+	/**
+	 * Get key locator given a public key digest
+	 * @param key public key digest
+	 * @return key locator
+	 */
 	@Override
 	public KeyLocator getKeyLocator(PublisherPublicKeyDigest key) {
 		if ((null == key) || (key.equals(_defaultKeyID)))
@@ -369,6 +391,10 @@ public class BasicKeyManager extends KeyManager {
 		return null;
 	}
 	
+	/**
+	 * Get private key
+	 * @return private key
+	 */
 	@Override
 	public PrivateKey getDefaultSigningKey() {
 		return _privateKey;
@@ -387,7 +413,12 @@ public class BasicKeyManager extends KeyManager {
 				   			UserConfiguration.defaultKeyName());
 		return new ContentName(keyDir, keyID);
 	}
-
+	
+	/** 
+	 * Get public key given a string alias
+	 * @param alias alias for certificate
+	 * @return public key
+	 */
 	@Override
 	public PublicKey getPublicKey(String alias) {
 		Certificate cert = null;;
@@ -399,10 +430,15 @@ public class BasicKeyManager extends KeyManager {
 		}
 		return cert.getPublicKey();
 	}
-
+	
+	/**
+	 * Get signing key given string alias
+	 * @param alias certificate alias
+	 * @return private signing key
+	 */
 	@Override
 	public PrivateKey getSigningKey(String alias) {
-		PrivateKey key = null;;
+		PrivateKey key = null;
 		try {
 			key = (PrivateKey)_keystore.getKey(alias, _password);
 		} catch (Exception e) {
@@ -412,13 +448,23 @@ public class BasicKeyManager extends KeyManager {
 		}
 		return key;
 	}
-	
+
+	/**
+	 * Get signing keys
+	 * @return private signing keys
+	 */
 	@Override
 	public PrivateKey [] getSigningKeys() {
 		// For now just return our default key. Eventually return multiple identity keys.
 		return new PrivateKey[]{getDefaultSigningKey()};
 	}
 	
+	/**
+	 * Get public key for publisher
+	 * @param publisher publisher public key digest
+	 * @return public key
+	 * @throws IOException
+	 */
 	@Override
 	public PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws IOException {
 		// TODO Auto-generated method stub
@@ -429,6 +475,13 @@ public class BasicKeyManager extends KeyManager {
 		return keyRepository().getPublicKey(publisher);
 	}
 
+	/**
+	 * Get private signing key for a publisher. 
+	 * If I am the publisher, return signing key;
+	 * otherwise, return null.
+	 * @param publisher publisher public key digest
+	 * @return private signing key or null
+	 */
 	@Override
 	public PrivateKey getSigningKey(PublisherPublicKeyDigest publisher) {
 		// TODO Auto-generated method stub
@@ -438,6 +491,14 @@ public class BasicKeyManager extends KeyManager {
 		return null;
 	}
 
+	/**
+	 * Get public key for a publisher, given a key locator.
+	 * Times out after timeout amount of time elapsed 
+	 * @param publisherID publisher public key digest
+	 * @param keyLocator key locator
+	 * @param timeout timeout value
+	 * @return public key
+	 */
 	@Override
 	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherID, KeyLocator keyLocator, long timeout) throws IOException {		
 		Log.finer("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
@@ -448,6 +509,11 @@ public class BasicKeyManager extends KeyManager {
 		return keyRepository().getPublicKey(publisherID, keyLocator, timeout);
 	}
 
+	/**
+	 * Get publisher ID
+	 * @param signingkey private signing key
+	 * @return publisher public key digest
+	 */
 	@Override
 	public PublisherPublicKeyDigest getPublisherKeyID(PrivateKey signingKey) {
 		if (_privateKey.equals(signingKey))
@@ -455,6 +521,11 @@ public class BasicKeyManager extends KeyManager {
 		return null;
 	}
 	
+	/** 
+	 * Get key locator for publisher
+	 * @param signingkey private signing key
+	 * @return key locator
+	 */
 	@Override
 	public KeyLocator getKeyLocator(PrivateKey signingKey) {
 		if (signingKey.equals(_privateKey))
@@ -464,6 +535,10 @@ public class BasicKeyManager extends KeyManager {
 		return null;
 	}
 
+	/** 
+	 * Get key repository
+	 * @return key repository
+	 */
 	@Override
 	public KeyRepository keyRepository() {
 		return _keyRepository;
