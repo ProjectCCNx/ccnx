@@ -56,7 +56,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * This is a basic (default) implementation of key manager.
+ * This is a basic implementation of key manager.
  * The user's private key is encrypted under the user's password, and stored under
  * the user's home directory.
  * BasicKeyManager reads the user's key pair and certificate from disk,
@@ -139,7 +139,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	/**
-	 * reads in a user's private/public keys and certificate from a key store
+	 * Reads in a user's private/public keys and certificate from a key store
 	 * Must have set _password.
 	 * @param in input stream
 	 * @throws ConfigurationException
@@ -191,7 +191,6 @@ public class BasicKeyManager extends KeyManager {
 	/**
 	 * Read data from a newly opened, or newly created keystore.
 	 * @param keyStore
-	 * @return
 	 * @throws ConfigurationException 
 	 */
 	protected boolean loadValuesFromKeystore(KeyStore keyStore) throws ConfigurationException {
@@ -237,7 +236,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	/**
-	 * creates a key store file
+	 * Creates a key store file
 	 * @throws ConfigurationException
 	 */
 	synchronized protected KeyStore createKeyStore() throws ConfigurationException {
@@ -265,7 +264,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	/**
-	 * generates a key pair and a certificate, and stores them to the key store
+	 * Generates a key pair and a certificate, and stores them to the key store
 	 * @throws ConfigurationException
 	 */
 	synchronized protected KeyStore createKeyStore(OutputStream out) throws ConfigurationException {

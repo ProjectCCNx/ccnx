@@ -25,7 +25,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
  * This is a very basic implementation of a TrustManager.
- * It checks whether a content's publisher matches its desired role for a consumer.
+ * It checks whether a content's publisher matches the expected publisher for a consumer.
  */
 
 public class BasicTrustManager extends TrustManager {

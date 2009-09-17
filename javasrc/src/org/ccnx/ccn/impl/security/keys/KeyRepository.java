@@ -125,7 +125,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	}
 	
 	/**
-	 * remember a public key and the corresponding key object.
+	 * Remember a public key and the corresponding key object.
 	 * @param theKey public key to remember
 	 * @param keyObject key Object to remember
 	 */
@@ -143,7 +143,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	}
 	
 	/**
-	 * remember a public key 
+	 * Remember a public key 
 	 * @param theKey public key to remember
 	 */
 	public void remember(PublicKey theKey) {
@@ -151,7 +151,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	}
 	
 	/**
-	 * remember a certificate.
+	 * Remember a certificate.
 	 * @param theCertificate the certificate to remember
 	 */
 	public void remember(Certificate theCertificate) {
@@ -160,7 +160,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 
 	
 	/**
-	 * write key to file for debugging purposes.
+	 * Write key to file for debugging purposes.
 	 */
 	protected void recordKeyToFile(PublisherPublicKeyDigest id, ContentObject keyObject) {
 		File keyDir = new File(UserConfiguration.keyRepositoryDirectory());
@@ -191,7 +191,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	}
 	
 	/**
-	 * retrieve the public key from cache given a key digest 
+	 * Retrieve the public key from cache given a key digest 
 	 * @param desiredKeyID the digest of the desired public key.
 	 */
 	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) throws IOException {
@@ -225,7 +225,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	}
 
 	/**
-	 * retrieve the public key from CCN given a key digest and a key locator
+	 * Retrieve the public key from CCN given a key digest and a key locator
 	 * the function blocks and waits for the public key until a certain timeout
 	 * @param desiredKeyID the digest of the desired public key.
 	 * @param locator locator for the key
@@ -308,7 +308,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	}
 	
 	/**
-	 * retrieve key object from cache given content name and publisher id
+	 * Retrieve key object from cache given content name and publisher id
 	 * check if the retrieved content has the expected publisher id 
 	 * @param name contentname of the key
 	 * @param name publisherID publisher id
@@ -328,7 +328,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	}
 	
 	/**
-	 * retrieve content object given an interest 
+	 * Retrieve content object given an interest 
 	 * @param interest interest
 	 */
 	public ContentObject retrieve(Interest interest) {
