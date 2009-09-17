@@ -30,12 +30,14 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
+ * This is a repo-based implementation of key manager.
+ * In comparison with BasicKeyManager, this class reads (or writes) the user's
+ * private key from (or to) a CCN repository.   
  * You actually only need to use a repository key manager the first time
  * you create a keystore. After that, you can use a standard NetworkKeyManager,
  * as long as the data is still in the repo.
- * @author smetters
- *
  */
+
 public class RepositoryKeyManager extends NetworkKeyManager {
 
 	public RepositoryKeyManager(String userName, ContentName keystoreName,
@@ -46,6 +48,7 @@ public class RepositoryKeyManager extends NetworkKeyManager {
 
 	/**
 	 * Override to give different storage behavior.
+	 * Output stream is repo
 	 * @return
 	 * @throws XMLStreamException
 	 * @throws IOException

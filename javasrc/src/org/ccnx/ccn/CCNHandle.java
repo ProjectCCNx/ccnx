@@ -30,12 +30,14 @@ import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
 
 
 /**
- * An implementation of the basic CCN library.
- * rides on top of the CCNBase low-level interface. It uses
- * CCNNetworkManager to interface with a "real" virtual CCN,
- * and KeyManager to interface with the user's collection of
- * signing and verification keys. 
-  */
+ * The core class encapsulating a Java interface to the CCN network.
+ * It implements the CCNBase core methods for reading and writing to CCN,
+ * using an encapsulated CCNNetworkManager to interface with the local
+ * CCN agent. It encapsulates a KeyManager to interface with the user's
+ * collection of signing and verification keys. A typical application
+ * may have one CCNHandle or many; each encapsulates a single connection
+ * to the local CCN agent.
+ */
 public class CCNHandle extends CCNBase {
 	
 	static {
@@ -46,11 +48,16 @@ public class CCNHandle extends CCNBase {
 	
 	protected static CCNHandle _handle = null;
 
-	/**
-	 * Do we want to do this this way, or everything static?
-	 */
 	protected KeyManager _userKeyManager = null;
 	
+	/**
+	 * Create a new CCNHandle, opening a new connection to the CCN network
+	 * @return the CCNHandle
+	 * @throws ConfigurationException if there is an issue in the user or system configuration
+	 * 	which we cannot overcome without outside intervention. See the error message for details.
+	 * @throws IOException if we encounter an error reading system, configuration, or keystore
+	 * 		data that we expect to be well-formed.
+	 */
 	public static CCNHandle open() throws ConfigurationException, IOException { 
 		synchronized (CCNHandle.class) {
 			try {
@@ -65,12 +72,23 @@ public class CCNHandle extends CCNBase {
 		}
 	}
 	
+	/**
+	 * Create a new CCNHandle, opening a new connection to the CCN network, and
+	 * specifying the KeyManager it should use. Particularly useful in testing, to 
+	 * run as if you were a different "user", with a different collection of keys.
+	 * @param keyManager the KeyManager to use
+	 * @return the CCNHandle
+	 */
 	public static CCNHandle open(KeyManager keyManager) { 
 		synchronized (CCNHandle.class) {
 			return new CCNHandle(keyManager);
 		}
 	}
 	
+	/**
+	 * Returns a static CCNHandle that is made available as a default.
+	 * @return the shared static CCNHandle
+	 */
 	public static CCNHandle getHandle() { 
 		if (null != _handle) 
 			return _handle;
@@ -87,6 +105,14 @@ public class CCNHandle extends CCNBase {
 		}
 	}
 
+	/**
+	 * Internal synchronized creation method
+	 * @return a new CCNHandle
+	 * @throws ConfigurationException if there is an issue in the user or system configuration
+	 * 	which we cannot overcome without outside intervention. See the error message for details.
+	 * @throws IOException if we encounter an error reading system, configuration, or keystore
+	 * 		data that we expect to be well-formed.
+	 */
 	protected static synchronized CCNHandle create() throws ConfigurationException, IOException {
 		if (null == _handle) {
 			_handle = new CCNHandle();
@@ -94,6 +120,10 @@ public class CCNHandle extends CCNBase {
 		return _handle;
 	}
 
+	/**
+	 * Create a CCNHandle using the specified KeyManager
+	 * @param keyManager the KeyManager to use. cannot be null.
+	 */
 	protected CCNHandle(KeyManager keyManager) {
 		_userKeyManager = keyManager;
 		// force initialization of network manager
@@ -106,15 +136,26 @@ public class CCNHandle extends CCNBase {
 		}
 	}
 
+	/**
+	 * Create a CCNHandle using the default KeyManager for this user
+	 * @throws ConfigurationException if there is an issue in the user or system configuration
+	 * 	which we cannot overcome without outside intervention. See the error message for details.
+	 * @throws IOException if we encounter an error reading system, configuration, or keystore
+	 * 		data that we expect to be well-formed.
+	 */
 	protected CCNHandle() throws ConfigurationException, IOException {
 		this(KeyManager.getDefaultKeyManager());
 	}
 	
-	/*
+	/**
 	 * For testing only
 	 */
 	protected CCNHandle(boolean useNetwork) {}
 	
+	/**
+	 * Change the KeyManager this CCNHandle is using.
+	 * @param keyManager the new KeyManager to use
+	 */
 	public void setKeyManager(KeyManager keyManager) {
 		if (null == keyManager) {
 			Log.warning("StandardCCNLibrary::setKeyManager: Key manager cannot be null!");
@@ -123,24 +164,49 @@ public class CCNHandle extends CCNBase {
 		_userKeyManager = keyManager;
 	}
 	
+	/**
+	 * Return the KeyManager we are using.
+	 * @return our current KeyManager
+	 */
 	public KeyManager keyManager() { return _userKeyManager; }
 
+	/**
+	 * Get the publisher ID of the default public key we use to sign content
+	 * @return our default publisher ID
+	 */
 	public PublisherPublicKeyDigest getDefaultPublisher() {
 		return keyManager().getDefaultKeyID();
 	}	
 	
+	/**
+	 * Helper method wrapped around CCNBase#get(Interest, long)
+	 * @param name name to query for
+	 * @param timeout timeout for get
+	 * @return the object retrieved, or null if timed out
+	 * @throws IOException on error
+	 * @see CCNBase#get(Interest, long)
+	 */
 	public ContentObject get(ContentName name, long timeout) throws IOException {
 		Interest interest = new Interest(name);
 		return get(interest, timeout);
 	}
 	
+	/**
+	 * Helper method wrapped around CCNBase#get(Interest, long)
+	 * @param name name to query for
+	 * @param publisher the desired publisher for the content
+	 * @param timeout timeout for get
+	 * @return the object retrieved, or null if timed out
+	 * @throws IOException on error
+	 * @see CCNBase#get(Interest, long)
+	 */
 	public ContentObject get(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
 		Interest interest = new Interest(name, publisher);
 		return get(interest, timeout);
 	}
 
 	/**
-	 * Shutdown the handle and it's associated resources
+	 * Shutdown the handle and its associated resources
 	 */
 	public void close() {
 		if (null != _networkManager)
@@ -149,8 +215,11 @@ public class CCNHandle extends CCNBase {
 	}
 
 	/**
-	 * Allow default verification behavior to be replaced.
-	 * @return
+	 * Provide a default verification implementation for users that do not want to
+	 * alter the standard verification process.
+	 * @return a basic ContentVerifier that simply verifies that a piece of content was
+	 * 	correctly signed by the key it claims to have been published by, implying no
+	 * 	semantics about the "trustworthiness" of that content or its publisher
 	 */
 	public ContentVerifier defaultVerifier() {
 		return SimpleVerifier.getDefaultVerifier();

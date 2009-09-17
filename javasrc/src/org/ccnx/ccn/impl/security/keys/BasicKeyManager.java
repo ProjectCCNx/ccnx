@@ -56,10 +56,16 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * A simple implementation of KeyManager.
- *
+ * This is a basic implementation of key manager.
+ * The user's private key is encrypted under the user's password, and stored under
+ * the user's home directory.
+ * BasicKeyManager reads the user's key pair and certificate from disk,
+ * and decrypts the private key. 
+ * If the file does not exist, BasicKeyManager generates a public/private key pair 
+ * and a certificate and stores them to disk.  
  * @see KeyManager
  */
+
 public class BasicKeyManager extends KeyManager {
 	
 	protected KeyStore _keystore = null;
@@ -82,6 +88,8 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	/**
+	 * This initializes and loads the private key of the user. If a key store file exists,
+	 * reads in the key; otherwise, create a key store file and a key pair.
 	 * Separate this for the usual reasons; so subclasses can get set up before it's called.
 	 * Could make fake base class constructor, and call loadKeyStore in subclass constructors,
 	 * but this wouldn't work past one level, and this allows subclasses to override initialize behavior.
@@ -100,6 +108,11 @@ public class BasicKeyManager extends KeyManager {
 		_password = password;
 	}
 	
+	/**
+	 * If a key store file exists, reads in the key; 
+	 * otherwise, create a key store file and a key pair.
+	 * @throws ConfigurationException
+	 */
 	protected void loadKeyStore() throws ConfigurationException {
 		File keyStoreFile = new File(UserConfiguration.keystoreFileName());
 		if (!keyStoreFile.exists()) {
@@ -126,8 +139,9 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	/**
+	 * Reads in a user's private/public keys and certificate from a key store
 	 * Must have set _password.
-	 * @param in
+	 * @param in input stream
 	 * @throws ConfigurationException
 	 */
 	protected void readKeyStore(InputStream in) throws ConfigurationException {
@@ -177,7 +191,6 @@ public class BasicKeyManager extends KeyManager {
 	/**
 	 * Read data from a newly opened, or newly created keystore.
 	 * @param keyStore
-	 * @return
 	 * @throws ConfigurationException 
 	 */
 	protected boolean loadValuesFromKeystore(KeyStore keyStore) throws ConfigurationException {
@@ -222,6 +235,10 @@ public class BasicKeyManager extends KeyManager {
 		return true;
 	}
 	
+	/**
+	 * Creates a key store file
+	 * @throws ConfigurationException
+	 */
 	synchronized protected KeyStore createKeyStore() throws ConfigurationException {
 		
 		File ccnDir = new File(UserConfiguration.ccnDirectory());
@@ -246,6 +263,10 @@ public class BasicKeyManager extends KeyManager {
 	    return createKeyStore(out);	    
 	}
 	
+	/**
+	 * Generates a key pair and a certificate, and stores them to the key store
+	 * @throws ConfigurationException
+	 */
 	synchronized protected KeyStore createKeyStore(OutputStream out) throws ConfigurationException {
 
 		KeyStore ks = null;
@@ -448,6 +469,14 @@ public class BasicKeyManager extends KeyManager {
 		return _keyRepository;
 	}
 
+	/**
+	 * Make the public key available to other ccn agents
+	 * @param keyName content name of the public key
+	 * @param keyToPublish public key digest
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws ConfigurationException 
+	 */
 	@Override
 	public void publishKey(ContentName keyName,
 			PublisherPublicKeyDigest keyToPublish) throws IOException, InvalidKeyException, ConfigurationException {
@@ -463,6 +492,15 @@ public class BasicKeyManager extends KeyManager {
 		keyRepository().publishKey(keyName, key, getDefaultKeyID(), getDefaultSigningKey());
 	}
 
+	/**
+	 * publish my public key to repository
+	 * @param keyName content name of the public key
+	 * @param keyToPublish public key digest
+	 * @CCNHandle handle for ccn
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws ConfigurationException
+	 */
 	@Override
 	public void publishKeyToRepository(ContentName keyName, 
 									   PublisherPublicKeyDigest keyToPublish, 
@@ -506,6 +544,13 @@ public class BasicKeyManager extends KeyManager {
 		}
 	}
 	
+	/**
+	 * publish my public key to repository
+	 * @CCNHandle handle for ccn
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws ConfigurationException
+	 */
 	@Override
 	public void publishKeyToRepository(CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException {
 		publishKeyToRepository(_keyLocator.name().name(), null, handle);
