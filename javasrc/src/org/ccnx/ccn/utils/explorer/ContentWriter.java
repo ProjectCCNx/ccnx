@@ -11,6 +11,10 @@ import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 
+/**
+ * Class used by the ContentExplorer to write files to a repository.
+ *
+ */
 public class ContentWriter implements Runnable{
 
 	private File file = null;
@@ -18,6 +22,15 @@ public class ContentWriter implements Runnable{
 	private CCNHandle handle = null;
 	private JEditorPane htmlPane = null;
 	
+	
+	/**
+	 * Constructor for a ContentWriter.
+	 * 
+	 * @param h CCNHandle
+	 * @param name ContentName to write the file to
+	 * @param f The File selected to store in a repo
+	 * @param pane JEditorPane for displaying status
+	 */
 	public ContentWriter(CCNHandle h, ContentName name, File f, JEditorPane pane){
 		handle = h;
 		file = f;
@@ -25,22 +38,53 @@ public class ContentWriter implements Runnable{
 		htmlPane = pane;
 	}
 	
+	/**
+	 * Method to set the JEditorPane.
+	 * @param pane JEditorPane used for displaying status.
+	 * @return void
+	 */
 	public void setHTMLPane(JEditorPane pane){
 		htmlPane = pane;
 	}
 	
+	/**
+	 * Method to set the file selected for storing in a repository
+	 * @param f File to store in a repository
+	 * @return void
+	 */
 	public void setFile(File f){
 		file = f;
 	}
 	
-	public void setHTMLPane(ContentName name){
+	/**
+	 * Method to set the ContentName to write the file to.
+	 * 
+	 * @param name ContentName for the file to store in a repository
+	 * @return void
+	 */
+	public void setContentName(ContentName name){
 		ccnName = name;
 	}
 	
+	/**
+	 * Method to set the CCNHandle for storing the file in a repository.
+	 * @param h CCNHandle for writing out the file
+	 * @return void
+	 */
 	public void setCCNHandle(CCNHandle h){
 		handle = h;
 	}
 	
+	/**
+	 * Run method for the ContentWriter thread.  The method checks if all of the
+	 * relevant variables are not null. The thread then creates a RepositoryFileOutputStream
+	 * to write the file out to a repository.  The preview pane is used to
+	 * display the status of the upload and if it fails, the exception message.
+	 * 
+	 * @return void
+	 * 
+	 * @see RepositoryFileOutputStream
+	 */
 	public void run() {
 		
 		if (htmlPane == null) {
