@@ -24,7 +24,9 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.protocol.CCNTime;
 
-
+/**
+ * @see XMLDecoder
+ */
 public interface XMLEncoder {
 	
 	/**

@@ -24,7 +24,7 @@ import org.ccnx.ccn.impl.encoding.XMLEncoder;
 
 
 /**
- * This element in an #Exclude filter matches all components.
+ * This element in an Exclude filter matches all components.
  */
 public class ExcludeAny extends Exclude.Filler implements Comparable<ExcludeAny> {
 	public static final String ANY = "Any";

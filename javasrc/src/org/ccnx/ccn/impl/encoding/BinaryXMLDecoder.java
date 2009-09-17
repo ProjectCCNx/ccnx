@@ -31,7 +31,12 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.CCNTime;
 
 
-
+/**
+ * An implementation of XMLDecoder for the Binary (ccnb) codec.
+ * 
+ * @see BinaryXMLCodec
+ * @see XMLDecoder
+ */
 public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 	
 	protected static final int MARK_LEN = 512; // tag length in UTF-8 encoded bytes, plus length/val bytes
