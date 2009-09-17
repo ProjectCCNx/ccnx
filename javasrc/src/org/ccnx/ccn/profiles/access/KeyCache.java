@@ -30,7 +30,6 @@ import org.ccnx.ccn.protocol.ContentName;
 
 /**
  * A cache for decrypted symmetric keys for access control.
- * @author smetters
  *
  */
 public class KeyCache {
@@ -52,6 +51,10 @@ public class KeyCache {
 		this(KeyManager.getKeyManager());
 	}
 	
+	/**
+	 * Constructor that loads keys from a KeyManager
+	 * @param keyManagerToLoadFrom the key manager
+	 */
 	public KeyCache(KeyManager keyManagerToLoadFrom) {
 		PrivateKey [] pks = keyManagerToLoadFrom.getSigningKeys();
 		for (PrivateKey pk : pks) {
@@ -61,8 +64,8 @@ public class KeyCache {
 	
 	/**
 	 * Retrieve a key specified by its digest
-	 * @param desiredKeyIdentifier
-	 * @return
+	 * @param desiredKeyIdentifier the digest
+	 * @return the key
 	 */
 	Key getKey(byte [] desiredKeyIdentifier) {
 		Key theKey = _keyMap.get(desiredKeyIdentifier);
@@ -97,6 +100,11 @@ public class KeyCache {
 		return _keyNameMap.get(keyIdentifier);
 	}
 	
+	/**
+	 * Get the name of a specified key
+	 * @param key the key
+	 * @return the name
+	 */
 	public ContentName getKeyName(Key key) {
 		return getKeyName(getKeyIdentifier(key));
 	}
@@ -116,9 +124,9 @@ public class KeyCache {
 	
 	/**
 	 * Records a private key and the name and digest of the corresponding public key.
-	 * @param keyName
-	 * @param publicKeyIdentifier
-	 * @param pk
+	 * @param keyName the name of the public key
+	 * @param publicKeyIdentifier the digest of the public key
+	 * @param pk the private key
 	 */
 	void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyMap.put(publicKeyIdentifier, pk);
@@ -151,7 +159,7 @@ public class KeyCache {
 	/**
 	 * Returns the digest of a specified key.
 	 * @param key the key.
-	 * @return
+	 * @return the digest.
 	 */
 	public static byte [] getKeyIdentifier(Key key) {
 		// Works on symmetric and public.
