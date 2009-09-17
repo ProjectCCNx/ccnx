@@ -174,7 +174,7 @@ public class CCNDigestHelper extends DigestHelper {
 	 * @param contents the arrays of content to digest
 	 * @return digest of concatenated content using DEFAULT_DIGEST_ALGORITHM
 	 */
-	public static byte [] digest(byte [][] contents) {
+	public static byte [] digest(byte contents[][]) {
 		CCNDigestHelper dh = new CCNDigestHelper();
 		for (int i=0; i < contents.length; ++i) {
 			if (null != contents[i])
@@ -191,7 +191,7 @@ public class CCNDigestHelper extends DigestHelper {
 	 * @return digest of concatenated content using specified algorithm
 	 * @throws NoSuchAlgorithmException if the algorithm is unknown to any of our providers
 	 */
-	public static byte [] digest(String digestAlgorithm, byte [][] contents) throws NoSuchAlgorithmException {
+	public static byte [] digest(String digestAlgorithm, byte contents[][]) throws NoSuchAlgorithmException {
 		CCNDigestHelper dh = new CCNDigestHelper(digestAlgorithm);
 		for (int i=0; i < contents.length; ++i) {
 			if (null != contents[i])
