@@ -69,6 +69,10 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	protected HashMap<PublisherPublicKeyDigest, PublicKey> _rawKeyMap = new HashMap<PublisherPublicKeyDigest,PublicKey>();
 	protected HashMap<PublisherPublicKeyDigest, Certificate> _rawCertificateMap = new HashMap<PublisherPublicKeyDigest,Certificate>();
 	
+	/** Constructor
+	 * 
+	 * @throws IOException
+	 */
 	public KeyRepository() throws IOException {
 		_networkManager = new CCNNetworkManager(); // maintain our own connection to the agent, so
 			// everyone can ask us for keys
@@ -371,6 +375,9 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		return 0;
 	}
 
+	/** Handle content returned by CCN.
+	 * nothing to be done here.
+	 */
 	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		// TODO Auto-generated method stub
 		return null;

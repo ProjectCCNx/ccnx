@@ -30,9 +30,15 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 public class BasicTrustManager extends TrustManager {
 
+	/**Constructor
+	 * 
+	 */
 	public BasicTrustManager() {
 	}
 
+	/**
+	 * Checks if the publisher is the expected one.
+	 */
 	@Override
 	public boolean matchesRole(PublisherID desiredRole, PublisherPublicKeyDigest thisKey) {
 		if (desiredRole.type() != PublisherID.PublisherType.KEY) {
