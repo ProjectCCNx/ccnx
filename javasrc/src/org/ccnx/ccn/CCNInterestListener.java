@@ -36,9 +36,8 @@ public interface CCNInterestListener {
 	
 	/**
 	 * Callback called when we get new results for our query.
-	 * @param results Change to a content object, as that is what
-	 * 			ccnd is currently handing back anyway.
-	 * @param interest Interest that we matched
+	 * @param results list of ContentObjects that matched our Interest
+	 * @param interest Interest that they matched
 	 * @return new Interest to be expressed
 	 */
     public Interest handleContent(ArrayList<ContentObject> results, Interest interest);
