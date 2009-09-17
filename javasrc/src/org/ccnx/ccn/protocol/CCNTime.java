@@ -41,25 +41,32 @@ import org.ccnx.ccn.impl.support.DataUtils;
  * CCNTime, all though it implements methods like getNanos, only
  * represents time with a granularity equal to the underlying
  * CCN wire format -- i.e. ~.25 msec.
- * 
- * @author smetters
- *
  */
 public class CCNTime extends Timestamp {
 
 	private static final long serialVersionUID = -1537142893653443100L;
 
 	/**
+	 * Create a CCNTime.
 	 * @param time in msec
 	 */
 	public CCNTime(long msec) {
 		this((msec/1000) * 1000, (msec % 1000) * 1000000L);
 	}
 
+	/**
+	 * Create a CCNTime
+	 * @param timestamp source timestamp to initialize from, some precision will be lost
+	 */
 	public CCNTime(Timestamp timestamp) {
 		this(timestamp.getTime(), timestamp.getNanos());
 	}
 	
+	/**
+	 * Create a CCNTime
+	 * @param time source Date to initialize from, some precision will be lost
+	 * as CCNTime does not round to unitary milliseconds
+	 */
 	public CCNTime(Date time) {
 		this(time.getTime());
 	}

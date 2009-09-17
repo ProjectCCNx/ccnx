@@ -259,9 +259,9 @@ public class MerkleTree {
 	public int size() { return _tree.length; }
 	
 	/**
-	 * Returns null if there is no node nodeIndex.
+	 * Returns the digest at the specified node.
 	 * @param nodeIndex 1-based node index
-	 * @return
+	 * @return the digest for this node
 	 */
 	public byte [] get(int nodeIndex) { 
 		DEROctetString dv = derGet(nodeIndex);
@@ -271,9 +271,9 @@ public class MerkleTree {
 	}
 	
 	/**
-	 * Returns null if there is no node nodeIndex.
-	 * @param nodeIndex
-	 * @return
+	 * Returns the digest at the specified node as a DEROctetString
+	 * @param nodeIndex 1-based node index
+	 * @return the digest for this node
 	 */
 	public DEROctetString derGet(int nodeIndex) { 
 		if ((nodeIndex < ROOT_NODE) || (nodeIndex > size())) 
@@ -281,34 +281,58 @@ public class MerkleTree {
 		return _tree[nodeIndex-1]; 
 	}
 
+	/**
+	 * The number of leaves in the tree.
+	 * @return returns the number of leaves
+	 */
 	public int numLeaves() { return _numLeaves; }
 	
+	/**
+	 * Calculate the number of nodes in a tree with a given number of leaves.
+	 * @param numLeaves the number of leaves
+	 * @return the number of nodes in the tree
+	 */
 	public static int nodeCount(int numLeaves) {
 		// How many entries do we need? 2*numLeaves + 1
 		return 2*numLeaves-1;
 	}
 	
+	/**
+	 * Calculates the number of nodes in this tree
+	 * @return  the number of nodes
+	 */
 	public int nodeCount() { return nodeCount(numLeaves()); }
 
-	public int firstLeaf() { // node index of the 
-		// first leaf is either size()-numleaves(), or
-		// nodeIndex = numLeaves
+	/**
+	 * Returns the node index of the first leaf.
+	 * The node index of the first leaf is either size()-numleaves(), or
+	 * nodeIndex = numLeaves.
+	 * @return the first leaf's node index
+	 */
+	public int firstLeaf() { 
 		return numLeaves();
 	}
 	
+	/**
+	 * The node index of a given leaf
+	 * @param leafIndex the index of a leaf
+	 * @return its node index
+	 */
 	public int leafNodeIndex(int leafIndex) { return firstLeaf() + leafIndex; }
 	
 	/**
-	 * Retrieve just the leaf nodes. Returns null if there is
+	 * Retrieve the digest of a given leaf node. Returns null if there is
 	 * no leaf leafIndex.
 	 * @param leafIndex leaf index, starting at 0 for the first leaf.
-	 * @return
+	 * @return its digest
 	 */
 	public byte [] leaf(int leafIndex) {
 		return get(leafNodeIndex(leafIndex));
 	}
 	
 	/**
+	 * Generate a MerklePath for a given leaf, to use in verifying that
+	 * leaf.
 	 * There are a variety of traversal algorithms for 
 	 * computing/reading Merkle hash trees.
 	 * 
@@ -332,8 +356,9 @@ public class MerkleTree {
 	 *  the nodes list contains neither the digest of the
 	 *  leaf itself nor the root of the tree.
 	 *  
-	 * @param leafNum
-	 * @return
+	 * @param leafNum the leaf index of the leaf
+	 * @return the MerklePath
+	 * @see MerklePath
 	 */
 	public MerklePath path(int leafNum) {
 		
@@ -370,7 +395,9 @@ public class MerkleTree {
 	
 	/**
 	 * What is the maximum path length to a node with this node index,
-	 * including its sibling but not the root?
+	 * including its sibling but not including the root?
+	 * @param nodeIndex the node to find the path length for
+	 * @return the maximum path length
 	 */
 	public static int maxPathLength(int nodeIndex) {
 		int baseLog = (int)Math.floor(MerkleTree.log2(nodeIndex));
@@ -378,11 +405,11 @@ public class MerkleTree {
 	}
 			
 	/**
-	 * What is the maximum path length of a Merkle tree with
+	 * What is the maximum depth of a Merkle tree with
 	 * a given number of leaves. If the tree isn't balanced,
-	 * many nodes may have shorter paths.
-	 * @param numLeaves
-	 * @return
+	 * many nodes may have shorter paths than maxDepth.
+	 * @param numLeaves the number of leaves in the tree.
+	 * @return the maximum depth of the tree
 	 */
 	public static int maxDepth(int numLeaves) {
 
@@ -395,6 +422,10 @@ public class MerkleTree {
 		return pathLength; 
 	}
 	
+	/**
+	 * The maximum depth of this MerkleTree.
+	 * @return the depth
+	 */
 	public int maxDepth() { return maxDepth(numLeaves()); }
 	
 	/**
