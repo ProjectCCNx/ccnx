@@ -108,9 +108,11 @@ using a ccnd configuration file, however for multiple machine experimentation
 you will need to use ccndc to configure the inter-machine forwarding of
 interest/content.
 
-If a $HOME/.ccn/ccndrc file is present then bin/ccndstart will execute it.
-It should contain ccndc commands (or a ccndc command specifying a config
-file -- see csrc/libexec/ccnd.conf.sample)
+If a $HOME/.ccn/ccnd.conf file is present then ccndstart will execute
+
+ccndc -f $HOME/.ccn/ccnd.conf
+
+For a sample file, see csrc/libexec/ccnd.conf.sample
 
 ==================================================
 5. Support and contact information
