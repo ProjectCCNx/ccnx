@@ -32,6 +32,7 @@ import java.util.Iterator;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
@@ -49,13 +50,20 @@ import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
+/**
+ * This class performs the following:
+ * - manages published public keys.
+ * - answers CCN interestes for these public keys.
+ * - allow the caller to look for public keys: retrieve the keys from cache or CCN 
+ */
+
 public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	
 	protected static final boolean _DEBUG = true;
 	public static final long SHORT_KEY_TIMEOUT = 300;
 	public static final long DEFAULT_KEY_TIMEOUT = 2000;
 	
-	protected  CCNNetworkManager _networkManager = null;
+	protected CCNNetworkManager _networkManager = null;
 	protected HashMap<ContentName,ContentObject> _keyMap = new HashMap<ContentName,ContentObject>();
 	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest,ContentName>();
 	protected HashMap<PublisherPublicKeyDigest, PublicKey> _rawKeyMap = new HashMap<PublisherPublicKeyDigest,PublicKey>();
@@ -116,6 +124,11 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		remember(key, keyObject);
 	}
 	
+	/**
+	 * Remember a public key and the corresponding key object.
+	 * @param theKey public key to remember
+	 * @param keyObject key Object to remember
+	 */
 	public void remember(PublicKey theKey, ContentObject keyObject) {
 		PublisherPublicKeyDigest id = new PublisherPublicKeyDigest(theKey);
 		_idMap.put(id, keyObject.name());
@@ -129,14 +142,26 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		_networkManager.setInterestFilter(this, keyObject.name(), this);
 	}
 	
+	/**
+	 * Remember a public key 
+	 * @param theKey public key to remember
+	 */
 	public void remember(PublicKey theKey) {
 		_rawKeyMap.put(new PublisherPublicKeyDigest(theKey), theKey);
 	}
 	
+	/**
+	 * Remember a certificate.
+	 * @param theCertificate the certificate to remember
+	 */
 	public void remember(Certificate theCertificate) {
 		_rawCertificateMap.put(new PublisherPublicKeyDigest(theCertificate.getPublicKey()), theCertificate);
 	}
 
+	
+	/**
+	 * Write key to file for debugging purposes.
+	 */
 	protected void recordKeyToFile(PublisherPublicKeyDigest id, ContentObject keyObject) {
 		File keyDir = new File(UserConfiguration.keyRepositoryDirectory());
 		if (!keyDir.exists()) {
@@ -165,6 +190,10 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		Log.info("Logged key " + id.toString() + " to file: " + keyFile.getAbsolutePath());
 	}
 	
+	/**
+	 * Retrieve the public key from cache given a key digest 
+	 * @param desiredKeyID the digest of the desired public key.
+	 */
 	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) throws IOException {
 		ContentObject keyObject = null;
 		PublicKey theKey = _rawKeyMap.get(desiredKeyID);
@@ -195,6 +224,14 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		return theKey;
 	}
 
+	/**
+	 * Retrieve the public key from CCN given a key digest and a key locator
+	 * the function blocks and waits for the public key until a certain timeout
+	 * @param desiredKeyID the digest of the desired public key.
+	 * @param locator locator for the key
+	 * @param timeout timeout value
+	 * @throws IOException 
+	 */
 	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
 	
 		// Look for it in our cache first.
@@ -258,6 +295,10 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		return null;
 	}
 	
+	/**
+	 * retrieve key object from cache given key name 
+	 * @param keyName key digest
+	 */
 	public ContentObject retrieve(PublisherPublicKeyDigest keyName) {
 		ContentName name = _idMap.get(keyName);
 		if (null != name) {
@@ -266,6 +307,12 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		return null;
 	}
 	
+	/**
+	 * Retrieve key object from cache given content name and publisher id
+	 * check if the retrieved content has the expected publisher id 
+	 * @param name contentname of the key
+	 * @param name publisherID publisher id
+	 */
 	public ContentObject retrieve(ContentName name, PublisherID publisherID) {
 		ContentObject result = _keyMap.get(name);
 		if (null != result) {
@@ -280,6 +327,10 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		return null;
 	}
 	
+	/**
+	 * Retrieve content object given an interest 
+	 * @param interest interest
+	 */
 	public ContentObject retrieve(Interest interest) {
 		ContentObject result = retrieve(interest.name(), interest.publisherID());
 		if (null != result)
@@ -297,6 +348,11 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		return null;
 	}
 
+	/**
+	 * Answers interests for published public keys.
+	 * @param interests interests expressed by other parties.
+	 */
+	
 	public int handleInterests(ArrayList<Interest> interests) {
 		Iterator<Interest> it = interests.iterator();
 		
