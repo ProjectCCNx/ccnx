@@ -179,6 +179,10 @@ public class CCNTime extends Timestamp {
 		return super.after(new CCNTime(when));
 	}
 
+	/**
+	 * Create a CCNTime initialized to the current date/time.
+	 * @return the new CCNTime
+	 */
 	public static CCNTime now() {
 		return new CCNTime();
 	}
