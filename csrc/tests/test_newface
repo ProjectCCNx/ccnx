@@ -23,7 +23,7 @@ ccn_xmltoccnb -w - <<EOF >newface.ccnb
   <Action>newface</Action>
   <IPProto>17</IPProto>
   <Host>10.211.55.8</Host>
-  <Port>4485</Port>
+  <Port>64206</Port>
   <FreshnessSeconds>3600</FreshnessSeconds>
 </FaceInstance>
 EOF
