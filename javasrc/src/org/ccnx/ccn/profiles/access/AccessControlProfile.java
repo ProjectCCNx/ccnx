@@ -28,17 +28,16 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 
+/**
+ * This class specifies how a number of access control elements are named:
+ * - users, and their keys
+ * - groups, and their keys
+ * - access control lists (ACLs)
+ * - node keys, and their encryption under ACL member keys
+ * - if used, markers indicating where to find ACLs/node keys
+ */
 
 public class AccessControlProfile implements CCNProfile {
-	
-	/**
-	 * We need to specify how a number of things are named:
-	 * - users, and their keys
-	 * - groups, and their keys
-	 * - access control lists
-	 * - node keys, and their encryption under ACL member keys
-	 * - if used, markers indicating where to find ACLs/node keys
-	 */
 	
 	// Is it better to use .access or _access_? The former might be used by "real" data more often...
 	public static final String ACCESS_CONTROL_MARKER = CCNProfile.MARKER + "access" + CCNProfile.MARKER;
@@ -71,6 +70,14 @@ public class AccessControlProfile implements CCNProfile {
 
 	public static final String SUPERSEDED_MARKER = "SupersededBy";
 	
+	/**
+	 * This class records information about a CCN principal.
+	 * This information includes: 
+	 * - principal type (group, etc),
+	 * - friendly name (the name the principal is known by)
+	 * - version
+	 *
+	 */
 	public static class PrincipalInfo {
 		private byte [] _typeMarker;
 		private String _friendlyName;
@@ -87,15 +94,29 @@ public class AccessControlProfile implements CCNProfile {
 		public CCNTime versionTimestamp() { return _versionTimestamp; }
 	}
 	
-	
+	/**
+	 * Returns whether the specified name contains the access control marker
+	 * @param name the name
+	 * @return
+	 */
 	public static boolean isAccessName(ContentName name) {
 		return name.contains(ACCESS_CONTROL_MARKER_BYTES);
 	}
-	
+
+	/**
+	 * Truncates the specified name at the access control marker
+	 * @param name the name
+	 * @return the truncated name
+	 */
 	public static ContentName accessRoot(ContentName name) {
 		return name.cut(ACCESS_CONTROL_MARKER_BYTES);
 	}
 	
+	/**
+	 * Returns whether the specified name is the name of a node key
+	 * @param name the name
+	 * @return
+	 */
 	public static boolean isNodeKeyName(ContentName name) {
 		if (!isAccessName(name) || !VersioningProfile.hasTerminalVersion(name)) {
 			return false;
@@ -110,8 +131,8 @@ public class AccessControlProfile implements CCNProfile {
 	/**
 	 * Get the name of the node key for a given content node, if there is one.
 	 * This is <nodeName>/_access_/NK, with a version then added for a specific node key.
-	 * @param nodeName
-	 * @return
+	 * @param nodeName the name of the content node
+	 * @return the name of the corresponding node key
 	 */
 	public static ContentName nodeKeyName(ContentName nodeName) {
 		ContentName rootName = accessRoot(nodeName);
@@ -119,18 +140,35 @@ public class AccessControlProfile implements CCNProfile {
 		return nodeKeyName;
 	}
 	
+	/**
+	 * Get the name of the access control list (ACL) for a given content node.
+	 * This is <nodeName>/_access_/ACL.
+	 * @param nodeName the name of the content node
+	 * @return the name of the corresponding ACL
+	 */
 	public static ContentName aclName(ContentName nodeName) {
 		ContentName baseName = accessRoot(nodeName);
 		ContentName aclName = new ContentName(baseName, ACCESS_CONTROL_MARKER_BYTES, ACL_NAME_BYTES);
 		return aclName;
 	}
 	
+	/**
+	 * Get the name of the data key for a given content node.
+	 * This is <nodeName>/_access_/DK.
+	 * @param nodeName the name of the content node
+	 * @return the name of the corresponding data key
+	 */	
 	public static ContentName dataKeyName(ContentName nodeName) {
 		ContentName baseName = accessRoot(nodeName);
 		ContentName dataKeyName = new ContentName(baseName, ACCESS_CONTROL_MARKER_BYTES, DATA_KEY_NAME_BYTES);
 		return dataKeyName;
 	}
 	
+	/**
+	 * Returns whether the specified name is a data key name
+	 * @param name the name
+	 * @return
+	 */
 	public static boolean isDataKeyName(ContentName name) {
 		if (!isAccessName(name) || VersioningProfile.hasTerminalVersion(name)) {
 			return false;
@@ -143,69 +181,120 @@ public class AccessControlProfile implements CCNProfile {
 	}
 	
 	/**
-	 * Assumes a top-level namespace, where the group information is stored in 
+	 * Get the name of the user namespace.
+	 * This assumes a top-level namespace, where the group information is stored in 
 	 * <namespace>/Groups and <namespace>/Users..
-	 * @param namespace
-	 * @param groupFriendlyName
-	 * @return
+	 * @param namespace the top-level name space
+	 * @return the name of the user namespace
 	 */
 	public static ContentName userNamespaceName(ContentName namespace) {
 		return new ContentName(accessRoot(namespace), USER_PREFIX_BYTES);
 	}
 
+	/**
+	 * Get the name of the namespace for a specified user.
+	 * @param userNamespace the name of the user namespace
+	 * @param userName the user name
+	 * @return the name of the namespace for the user
+	 */
 	public static ContentName userNamespaceName(ContentName userNamespace,
 			String userName) {
 		return ContentName.fromNative(userNamespace, userName);
 	}
 	
+	/**
+	 * Get the name of the group namespace.
+	 * This assumes a top-level namespace, where the group information is stored in 
+	 * <namespace>/Groups and <namespace>/Users..
+	 * @param namespace the top-level name space
+	 * @return the name of the group namespace
+	 */
 	public static ContentName groupNamespaceName(ContentName namespace) {
 		return new ContentName(accessRoot(namespace), GROUP_PREFIX_BYTES);
 	}
 	
+	/**
+	 * Get the name of the namespace for a specified group.
+	 * @param namespace the top-level namespace
+	 * @param groupFriendlyName the name of the group
+	 * @return the name of the namespace for the group
+	 */
 	public static ContentName groupName(ContentName namespace, String groupFriendlyName) {
 		return ContentName.fromNative(groupNamespaceName(namespace), groupFriendlyName);
 	}
 	
 	/**
+	 * Get the name of a group public key.
 	 * This is the unversioned root. The actual public key is stored at the latest version of
 	 * this name. The private key and decoding blocks are stored under that version, with
 	 * the segments of the group public key.
-	 * @param namespace
-	 * @param groupFriendlyName
-	 * @return
+	 * @param groupNamespaceName the namespace of the group
+	 * @param groupFriendlyName the name of the group
+	 * @return the name of the group public key
 	 */
 	public static ContentName groupPublicKeyName(ContentName groupNamespaceName, String groupFriendlyName) {
 		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName, groupFriendlyName),  GROUP_PUBLIC_KEY_NAME);
 	}
 	
+	/**
+	 * Get the name of the public key of a group specified by its full name
+	 * @param groupFullName the full name of the group
+	 * @return the name of the group public key
+	 */
 	public static ContentName groupPublicKeyName(ContentName groupFullName) {
 		return ContentName.fromNative(groupFullName,  GROUP_PUBLIC_KEY_NAME);
 	}
 	
+	/**
+	 * Get the name of a group membership list for a specified group
+	 * @param groupNamespaceName the namespace of the group
+	 * @param groupFriendlyName the name of the group
+	 * @return the name of the group membership list
+	 */
 	public static ContentName groupMembershipListName(ContentName groupNamespaceName, String groupFriendlyName) {
 		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName, groupFriendlyName),  GROUP_MEMBERSHIP_LIST_NAME);
 	}
 
+	/**
+	 * Get the friendly name of a specified group
+	 * @param groupName the full name of the group
+	 * @return the friendly name of the group
+	 */
 	public static String groupNameToFriendlyName(ContentName groupName) {
 		return ContentName.componentPrintNative(groupName.lastComponent());
 	}
 
-	public static ContentName groupPrivateKeyDirectory(
-			ContentName groupPublicKeyNameAndVersion) {
-		// We hang the wrapped private key directly off the public key version.
+	/**
+	 * Get the name of a group private key.
+	 * We hang the wrapped private key directly off the public key version.
+	 * @param groupPublicKeyNameAndVersion the versioned name of the group public key
+	 * @return the versioned name of the group private key
+	 */
+	public static ContentName groupPrivateKeyDirectory(ContentName groupPublicKeyNameAndVersion) {
 		return groupPublicKeyNameAndVersion;
 	}
 
+	/**
+	 * Returns whether a specified name component is the name of a principal
+	 * @param nameComponent the name component
+	 * @return
+	 */
 	public static boolean isPrincipalNameComponent(byte [] nameComponent) {
 		return (DataUtils.isBinaryPrefix(PRINCIPAL_PREFIX, nameComponent) ||
 				DataUtils.isBinaryPrefix(GROUP_PRINCIPAL_PREFIX, nameComponent));
 	}
 
+	/**
+	 * Returns whether a specified name component is the name of a wrapped key
+	 * @param wnkNameComponent the name component
+	 * @return
+	 */
 	public static boolean isWrappedKeyNameComponent(byte [] wnkNameComponent) {
 		return DataUtils.isBinaryPrefix(WRAPPING_KEY_PREFIX, wnkNameComponent);
 	}
 
 	/**
+	 * Get the target keyID from a name component.
 	 * Wrapped key blocks are stored under a name whose last (pre content digest) component
 	 * identifies the key used to wrap them, as 
 	 * WRAPPING_KEY_PREFIX COMPONENT_SEPARATOR base64Encode(keyID)
@@ -214,8 +303,8 @@ public class AccessControlProfile implements CCNProfile {
 	 * The reason for the prefix is to allow unique separation from the principal name
 	 * links, the reason for the base 64 encoding is to allow unique separation from the
 	 * prefix.
-	 * @param childName
-	 * @return
+	 * @param childName the name component
+	 * @return the keyID
 	 * @throws IOException
 	 */
 	public static byte[] getTargetKeyIDFromNameComponent(byte[] childName) throws IOException {
@@ -227,6 +316,11 @@ public class AccessControlProfile implements CCNProfile {
 		return keyid;
 	}
 
+	/**
+	 * Get the name component corresponding to a specified keyID
+	 * @param keyID the keyID
+	 * @return the corresponding name component
+	 */
 	public static byte[] targetKeyIDToNameComponent(byte[] keyID) {
 		if (null == keyID)
 			return null;
@@ -237,6 +331,11 @@ public class AccessControlProfile implements CCNProfile {
 		return output;
 	}
 
+	/**
+	 * Get the principalInfo corresponding to a specified name component
+	 * @param childName the name component
+	 * @return the corresponding principal info
+	 */
 	public static PrincipalInfo parsePrincipalInfoFromNameComponent(
 			byte[] childName) {
 		if (!isPrincipalNameComponent(childName) || (childName.length <= PRINCIPAL_PREFIX.length))
@@ -275,6 +374,7 @@ public class AccessControlProfile implements CCNProfile {
 	 * private keys the keys are wrapped under (also determinable from the contents of the
 	 * wrapped key blocks, but to do that you have to pull the wrapped key block).
 	 * These serve as the name of a link to the actual wrapped key block.
+	 * @param isGroup
 	 * @param principalName
 	 * @param timestamp
 	 * @return
@@ -292,28 +392,40 @@ public class AccessControlProfile implements CCNProfile {
 		System.arraycopy(COMPONENT_SEPARATOR, 0, component, prefix.length+bytePrincipal.length, COMPONENT_SEPARATOR.length);
 		System.arraycopy(byteTime, 0, component, prefix.length+bytePrincipal.length+COMPONENT_SEPARATOR.length, 
 							byteTime.length);
-		
+
 		return component;
 	}
 
-	/*
+	/**
 	 * Parses the principal name from a group public key.
 	 * For groups, the last component of the public key is GROUP_PUBLIC_KEY_NAME = "Key".
 	 * The principal name is the one-before-last component.
+	 * @param publicKeyName the name of the group public key
+	 * @return the corresponding principal name
 	 */
 	public static String parsePrincipalNameFromGroupPublicKeyName(ContentName publicKeyName) {
 		ContentName cn = VersioningProfile.cutTerminalVersion(publicKeyName).first();
 		return ContentName.componentPrintNative(cn.component(cn.count() - 2));
 	}
 	
-	/*
+	/**
+	 * Parses the principal name from a public key name.
 	 * Do not use this method for group public keys.
 	 * For groups, use instead parsePrincipalNameFromGroupPublicKeyName
+	 * @param publicKeyName the public key name
+	 * @return the corresponding principal name
 	 */
 	public static String parsePrincipalNameFromPublicKeyName(ContentName publicKeyName) {
 		return ContentName.componentPrintNative(VersioningProfile.cutTerminalVersion(publicKeyName).first().lastComponent());
 	}
-	
+
+	/**
+	 * Parse the principal info for a specified public key name
+	 * @param isGroup whether the principal is a group
+	 * @param publicKeyName the public key name
+	 * @return the corresponding principal info
+	 * @throws VersionMissingException
+	 */
 	public static PrincipalInfo parsePrincipalInfoFromPublicKeyName(boolean isGroup, ContentName publicKeyName) throws VersionMissingException {
 		byte [] type = (isGroup ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
 		CCNTime version = VersioningProfile.getLastVersionAsTimestamp(publicKeyName);
