@@ -182,7 +182,7 @@ get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_storage_siz
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *resultbuf = NULL;
     struct ccn_parsed_ContentObject pcobuf = {0};
-    char ping_uri[] = "ccnx:/ccn/ping";
+    char ping_uri[] = "ccnx:/ccnx/ping";
     const unsigned char *ccndid_result;
     static size_t ccndid_result_size;
     int res;
@@ -324,9 +324,9 @@ register_prefix(struct ccn *h, struct ccn_keystore *keystore, struct ccn_charbuf
         ON_ERROR_CLEANUP(-1);
     }
     ON_ERROR_CLEANUP(ccn_name_init(name));
-    ON_ERROR_CLEANUP(ccn_name_append(name, "ccn", 3));
+    ON_ERROR_CLEANUP(ccn_name_append_str(name, "ccnx"));
     ON_ERROR_CLEANUP(ccn_name_append(name, face_instance->ccnd_id, face_instance->ccnd_id_size));
-    ON_ERROR_CLEANUP(ccn_name_append(name, "newface", 7));
+    ON_ERROR_CLEANUP(ccn_name_append_str(name, "newface"));
     ON_ERROR_CLEANUP(ccn_name_append(name, temp->buf, temp->length));
     res = ccn_get(h, name, local_scope_template, 1000, resultbuf, &pcobuf, NULL, 0);
     ON_ERROR_CLEANUP(res);
@@ -361,7 +361,7 @@ register_prefix(struct ccn *h, struct ccn_keystore *keystore, struct ccn_charbuf
                                    ccn_keystore_private_key(keystore));
     ON_ERROR_CLEANUP(res);
     ON_ERROR_CLEANUP(ccn_name_init(name));
-    ON_ERROR_CLEANUP(ccn_name_append(name, "ccn", 3));
+    ON_ERROR_CLEANUP(ccn_name_append_str(name, "ccnx"));
     ON_ERROR_CLEANUP(ccn_name_append(name, face_instance->ccnd_id, face_instance->ccnd_id_size));
     ON_ERROR_CLEANUP(ccn_name_append_str(name, "prefixreg"));
     ON_ERROR_CLEANUP(ccn_name_append(name, temp->buf, temp->length));
