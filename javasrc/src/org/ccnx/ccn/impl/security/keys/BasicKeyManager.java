@@ -513,7 +513,7 @@ public class BasicKeyManager extends KeyManager {
 
 	/**
 	 * Get publisher ID
-	 * @param signingkey private signing key
+	 * @param signingKey private signing key
 	 * @return publisher public key digest
 	 */
 	@Override
@@ -525,7 +525,7 @@ public class BasicKeyManager extends KeyManager {
 	
 	/** 
 	 * Get key locator for publisher
-	 * @param signingkey private signing key
+	 * @param signingKey private signing key
 	 * @return key locator
 	 */
 	@Override
@@ -573,7 +573,7 @@ public class BasicKeyManager extends KeyManager {
 	 * Publish my public key to repository
 	 * @param keyName content name of the public key
 	 * @param keyToPublish public key digest
-	 * @param CCNHandle handle for ccn
+	 * @param handle handle for ccn
 	 * @throws IOException
 	 * @throws InvalidKeyException
 	 * @throws ConfigurationException
@@ -623,7 +623,7 @@ public class BasicKeyManager extends KeyManager {
 	
 	/**
 	 * publish my public key to repository
-	 * @param CCNHandle handle for ccn
+	 * @param handle handle for ccn
 	 * @throws IOException
 	 * @throws InvalidKeyException
 	 * @throws ConfigurationException
