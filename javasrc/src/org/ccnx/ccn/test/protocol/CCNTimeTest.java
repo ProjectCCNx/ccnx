@@ -57,7 +57,7 @@ public class CCNTimeTest {
 	}
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.protocol.CCNTime#setTime(long)}.
+	 * Test method for CCNTime#setTime(long).
 	 */
 	@Test
 	public void testSetTime() {
@@ -81,7 +81,7 @@ public class CCNTimeTest {
 	}
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.protocol.CCNTime#setNanos(int)}.
+	 * Test method for CCNTime#setNanos(int).
 	 */
 	@Test
 	public void testSetNanos() {
@@ -106,7 +106,7 @@ public class CCNTimeTest {
 	}
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.protocol.CCNTime#CCNTime(long)}.
+	 * Test method for CCNTime#CCNTime(long).
 	 */
 	@Test
 	public void testCCNTimeLong() {
@@ -119,7 +119,7 @@ public class CCNTimeTest {
 	}
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.protocol.CCNTime#CCNTime(java.sql.Timestamp)}.
+	 * Test method for CCNTime#CCNTime(java.sql.Timestamp).
 	 */
 	@Test
 	public void testCCNTimeTimestamp() {
@@ -133,7 +133,7 @@ public class CCNTimeTest {
 	}
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.protocol.CCNTime#CCNTime(java.util.Date)}.
+	 * Test method for CCNTime#CCNTime(java.util.Date).
 	 */
 	@Test
 	public void testCCNTimeDate() {
@@ -146,7 +146,7 @@ public class CCNTimeTest {
 	}
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.protocol.CCNTime#CCNTime()}.
+	 * Test method for CCNTime#CCNTime().
 	 */
 	@Test
 	public void testCCNTime() {
@@ -169,7 +169,7 @@ public class CCNTimeTest {
 	}
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.protocol.CCNTime#compareTo(java.util.Date)}.
+	 * Test method for CCNTime#compareTo(java.util.Date).
 	 */
 	@Test
 	public void testCompareToDate() {
@@ -186,7 +186,7 @@ public class CCNTimeTest {
 	}
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.protocol.CCNTime#compareTo(java.sql.Timestamp)}.
+	 * Test method for CCNTime#compareTo(java.sql.Timestamp).
 	 */
 	@Test
 	public void testCompareToTimestamp() {
@@ -208,7 +208,7 @@ public class CCNTimeTest {
 	}
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.protocol.CCNTime#before(java.sql.Timestamp)} and {@link org.ccnx.ccn.protocol.CCNTime#after(java.sql.Timestamp)}.
+	 * Test method for CCNTime#before(java.sql.Timestamp) and CCNTime#after(java.sql.Timestamp).
 	 */
 	@Test
 	public void testBeforeAfterTimestamp() {
@@ -231,7 +231,7 @@ public class CCNTimeTest {
 
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.protocol.CCNTime#before(java.util.Date)} and {@link org.ccnx.ccn.protocol.CCNTime#after(java.util.Date)}.
+	 * Test method for CCNTime#before(java.util.Date) and CCNTime#after(java.util.Date).
 	 */
 	@Test
 	public void testBeforeAfterDate() {
@@ -248,7 +248,7 @@ public class CCNTimeTest {
 	}
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.protocol.CCNTime#now()}.
+	 * Test method for CCNTime#now().
 	 */
 	@Test
 	public void testNow() {

@@ -91,7 +91,7 @@ public class SignatureHelper {
 	 * @throws InvalidKeyException
 	 */
 	public static byte [] sign(String digestAlgorithm,
-							   byte [][] toBeSigneds,
+							   byte[][] toBeSigneds,
 							   PrivateKey signingKey) throws SignatureException,
 							   	NoSuchAlgorithmException, InvalidKeyException {
 		if (null == toBeSigneds) {
@@ -132,7 +132,7 @@ public class SignatureHelper {
 	 * @throws InvalidKeyException
 	 */
 	public static boolean verify(
-			byte [][] data,
+			byte[][] data,
 			byte [] signature,
 			String digestAlgorithm,
 			PublicKey verificationKey) throws SignatureException, 
@@ -269,13 +269,10 @@ public class SignatureHelper {
 	/**
 	 * Gets the JCA string name of a signature algorithm, to be used with
 	 * a Signature object.
-	 *
 	 * @param hashAlgorithm the JCA standard name of the digest algorithm
 	 * (e.g. "SHA1").
-	 * @param signingKey the private key that will be used to compute the
-	 * signature.
-	 *
-	 * @returns the JCA string alias for the signature algorithm.
+	 * @param keyAlgorithm the key algorithm.
+	 * @return the JCA string alias for the signature algorithm.
 	 */
 	public static String getSignatureAlgorithmName(
 			String hashAlgorithm, String keyAlgorithm)
@@ -291,13 +288,10 @@ public class SignatureHelper {
 	/**
 	 * Gets the OID of a signature algorithm, to be used with
 	 * a Signature object.
-	 *
 	 * @param hashAlgorithm the JCA standard name of the digest algorithm
 	 * (e.g. "SHA1").
-	 * @param signingKey the private key that will be used to compute the
-	 * signature.
-	 *
-	 * @returns the JCA string alias for the signature algorithm.
+	 * @param keyAlgorithm the key algorithm.
+	 * @return the JCA string alias for the signature algorithm.
 	 */
 	public static String getSignatureAlgorithmOID(
 			String hashAlgorithm, String keyAlgorithm)

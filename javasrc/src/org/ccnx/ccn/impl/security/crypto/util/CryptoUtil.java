@@ -41,6 +41,7 @@ import org.bouncycastle.asn1.DEROutputStream;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.asn1.x509.X509Extensions;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.support.Log;
 
 
 
@@ -120,9 +121,10 @@ public class CryptoUtil {
 	 * @throws NoSuchAlgorithmException if the key algorithm is unknown
 	 * @throws InvalidKeySpecException if the data in the SubjectPublicKeyInfo doesn't correctly represent a key
 	 */
-	public static PublicKey getPublicKey(byte [] derEncodedPublicKey) throws CertificateEncodingException, NoSuchAlgorithmException, 
+	public static PublicKey getPublicKey(byte [] derEncodedPublicKey) throws CertificateEncodingException, 
 										InvalidKeySpecException {
 
+		X509EncodedKeySpec keySpec = new X509EncodedKeySpec(derEncodedPublicKey);
 		// Problem is, we need the algorithm identifier inside
 		// the key to decode it. So in essence we need to
 		// decode it twice.
@@ -133,18 +135,26 @@ public class CryptoUtil {
 		
 		// At this point it might also be a certificate, or
 		// any number of things. 
-		SubjectPublicKeyInfo spki = 
+		SubjectPublicKeyInfo keyInfo = 
 			new SubjectPublicKeyInfo((ASN1Sequence)genericObject);
 		
-		X509EncodedKeySpec keySpec = new X509EncodedKeySpec(derEncodedPublicKey);
-		String algorithmOID= 
-			spki.getAlgorithmId().getObjectId().getId();
-		String algorithm = OIDLookup.getCipherName(algorithmOID);
-		if (algorithm == null) {
-			throw new NoSuchAlgorithmException("Unknown key algorithm: " + algorithmOID);
+		String keyType = OIDLookup.getCipherName(keyInfo.getAlgorithmId().getObjectId().toString());
+		if (keyType == null) {
+			Log.info("Cannot find key type corresponding to OID: " + keyInfo.getAlgorithmId().getObjectId().toString());
+			Log.warning("Unknown key type " + keyType + " in stored key.");
+			throw new InvalidKeySpecException("Unknown key type " + keyType + " in stored key.");
 		}
-		KeyFactory fact = KeyFactory.getInstance(algorithm);
-		return fact.generatePublic(keySpec);
+		
+		KeyFactory keyFactory = null;
+		PublicKey key = null;
+		try {
+			keyFactory = KeyFactory.getInstance(keyType);
+			key = keyFactory.generatePublic(keySpec);
+		} catch (NoSuchAlgorithmException e) {
+			Log.warning("Unknown key type " + keyType + " in stored key.");
+			throw new InvalidKeySpecException("Unknown key type " + keyType + " in stored key.");
+		}
+		return key;
 	}
 	
 	/**
@@ -259,4 +269,5 @@ public class CryptoUtil {
 		}
 		return ((ASN1OctetString)keyID).getOctets();
 	}
+
 }

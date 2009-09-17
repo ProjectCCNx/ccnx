@@ -54,6 +54,7 @@ import java.util.Set;
  * that signature algorithm.  This is only a problem for signature algorithms without
  * a corresponding cipher component. The most common of these, DSA and ECDSA,
  * are handled by default.
+ * </ul>
  */
 public class OIDLookup {
 

@@ -148,7 +148,7 @@
 		 Putting the signature up front along with this algorithm
 		 forces us to store the signature till we need it, but
 		 allows us to not repeat the algorithm. Expressing just a
-		 digest algorithm forces us to assume that a give key can
+		 digest algorithm forces us to assume that a given key can
 		 only be used for one algorithm (depending on how we encode
 		 the signature). Also, if we digest the content before including
 		 it in the signature, we need to know what digest algorithm to

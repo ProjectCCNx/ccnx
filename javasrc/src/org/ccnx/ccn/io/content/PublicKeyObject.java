@@ -21,7 +21,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.spec.InvalidKeySpecException;
@@ -96,9 +95,6 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 		} catch (InvalidKeySpecException e) {
 			Log.warning("Cannot decode public key from block: " + ((CCNInputStream)input).currentSegmentName() + "  " + e.getClass().getName() + ": " + e.getMessage());
-			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
-		} catch (NoSuchAlgorithmException e) {
-			Log.warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 		}
 	}
