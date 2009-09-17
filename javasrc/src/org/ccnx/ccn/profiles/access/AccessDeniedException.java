@@ -20,8 +20,6 @@ package org.ccnx.ccn.profiles.access;
 import java.io.IOException;
 
 /**
- * @author smetters
- *
  * A real AccessDeniedException doesn't appear in Java until 1.7. Till then,
  * make our own. Even then so far it doesn't take sub-exceptions as constructor
  * arguments.
