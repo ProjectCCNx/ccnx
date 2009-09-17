@@ -60,7 +60,7 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XML
     	
     /**
      * Create a PublisherPublicKeyDigest from an existing digest
-     * @param key the key
+     * @param publisherPublicKeyDigest the key
      */
 	public PublisherPublicKeyDigest(byte [] publisherPublicKeyDigest) {
 		// Alas, Arrays.copyOf doesn't exist in 1.5, and we'd like

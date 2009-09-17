@@ -70,9 +70,11 @@ public class TestUserData {
 	 * Will incur timeouts the first time, as it checks for data first, and will take time
 	 * to generate keys.
 	 * TODO eventually use this "for real" with real passwords.
-	 * @param userKeystoreDataPrefix
+	 * @param userKeyStorePrefix
 	 * @param userCount
 	 * @param storeInRepo
+	 * @param password
+	 * @param handle
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 

@@ -204,7 +204,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 
 	/**
 	 * Name conversion routines for enums. Unnecessary and will be elided.
-	 * @param type
+	 * @param name
 	 * @return
 	 */
 	public static PublisherType nameToType(String name) {
