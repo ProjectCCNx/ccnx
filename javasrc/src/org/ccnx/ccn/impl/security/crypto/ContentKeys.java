@@ -55,6 +55,24 @@ public class ContentKeys {
 	public static final int SEGMENT_NUMBER_LENGTH = 6; // bytes
 	public static final int BLOCK_COUNTER_LENGTH = 2; // bytes
 	private static final byte [] INITIAL_BLOCK_COUNTER_VALUE = new byte[]{0x00, 0x01};
+	
+	/** 
+	 * A simple source of key derivation material. 
+	 */
+	private static SecureRandom _random; 
+	
+	private synchronized static SecureRandom getRandom() {
+		// see http://www.cigital.com/justiceleague/2009/08/14/proper-use-of-javas-securerandom/
+		if (null != _random)
+			return _random;
+		try {
+			_random = SecureRandom.getInstance("SHA1PRNG", KeyManager.getDefaultProvider());
+		} catch (NoSuchAlgorithmException e) {
+			Log.warning("Cannot find random number generation algorithm SHA1PRNG: " + e.getMessage());
+			_random = new SecureRandom();
+		}
+		return _random;
+	}
 
 	public String _encryptionAlgorithm;
 	public SecretKeySpec _encryptionKey;
@@ -147,9 +165,14 @@ public class ContentKeys {
 	 * Create a set of random encryption/decryption keys using the default algorithm.
 	 * @return a randomly-generated set of keys and IV that can be used for encryption
 	 */
-	public static ContentKeys generateRandomKeys() {
-		return new ContentKeys(SecureRandom.getSeed(DEFAULT_KEY_LENGTH),
-				SecureRandom.getSeed(IV_MASTER_LENGTH));
+	public synchronized static ContentKeys generateRandomKeys() {
+		byte [] key = new byte[DEFAULT_KEY_LENGTH];
+		byte [] iv = new byte[IV_MASTER_LENGTH];
+		// do we want additional whitening?
+		SecureRandom random = getRandom();
+		random.nextBytes(key);
+		random.nextBytes(iv);
+		return new ContentKeys(key, iv);
 	}
 	
 	/**
