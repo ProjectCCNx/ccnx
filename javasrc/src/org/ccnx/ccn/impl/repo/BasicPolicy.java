@@ -297,7 +297,8 @@ public class BasicPolicy implements Policy {
 				event = reader.nextEvent();
 			} else if (event.isEndDocument()) {
 				finished = true;
-			}
+			} else
+				event = reader.nextEvent();
 		}
 		return event;
 	}
