@@ -71,6 +71,10 @@ public class CCNTime extends Timestamp {
 		this(time.getTime());
 	}
 	
+	/**
+	 * Create a CCNTime from its binary encoding
+	 * @param binaryTime12 the binary representation of a CCNTime
+	 */
 	public CCNTime(byte [] binaryTime12) {
 		this(new BigInteger(1, binaryTime12).longValue(), true);
 		if ((null == binaryTime12) || (binaryTime12.length == 0)) {
@@ -87,16 +91,30 @@ public class CCNTime extends Timestamp {
 		this(System.currentTimeMillis());
 	}
 	
+	/**
+	 * Creates a CCNTime from a specification of msec and nanos, to ease implementing
+	 * compatibility with Timestamp and Date. Note that there is redundant data here --
+	 * the last 3 significant digits of msec are also represented as the top 3 of nanos.
+	 * We take the version in the nanos. This is derived from Java's slightly odd Timestamp handling.
+	 * @param msec milliseconds
+	 * @param nanos nanoseconds
+	 */
 	protected CCNTime(long msec, long nanos) {
 		this(toBinaryTimeAsLong(msec, nanos), true);
 	}
 	
+	/**
+	 * Creates a CCNTime from the internal long representation of the quantized time.
+	 * @param binaryTimeAsLong the time in our internal units
+	 * @param unused a marker parameter to separate this from another constructor
+	 */
 	protected CCNTime(long binaryTimeAsLong, boolean unused) {
 		super((binaryTimeAsLong / 4096L) * 1000L);
 		super.setNanos((int)(((binaryTimeAsLong % 4096L) * 1000000000L) / 4096L));
 	}
 	
 	/**
+	 * Factory method to generate a CCNTime from our internal long time representation.
 	 * Make this a static method to avoid confusion; should be little used
 	 * @return
 	 */
@@ -104,19 +122,30 @@ public class CCNTime extends Timestamp {
 		return new CCNTime(binaryTimeAsLong, true);
 	}
 	
+	/**
+	 * Generate the binary representation of a CCNTime
+	 * @return the binary representation we use for encoding
+	 */
 	public byte [] toBinaryTime() {
 		return BigInteger.valueOf(toBinaryTimeAsLong()).toByteArray();
 	}
 	
+	/**
+	 * Generate the internal long representation of a CCNTime, useful for comparisons
+	 * and used internally
+	 * @return the long representation of this time in our internal units
+	 */
 	public long toBinaryTimeAsLong() {
 		return toBinaryTimeAsLong(getTime(), getNanos());
 	}
 	
 	/**
+	 * Static method to convert from milliseconds and nanoseconds to our
+	 * internal long representation.
 	 * Assumes that nanos also contains the integral milliseconds for this
 	 * time. Ignores msec component in msec.
-	 * @param msec
-	 * @param nanos
+	 * @param msec milliseconds
+	 * @param nanos nanoseconds
 	 * @return
 	 */
 	public static long toBinaryTimeAsLong(long msec, long nanos) {
