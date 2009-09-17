@@ -38,7 +38,7 @@ import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
  * may have one CCNHandle or many; each encapsulates a single connection
  * to the local CCN agent.
  */
-public class CCNHandle extends CCNBase {
+public class CCNHandle implements CCNBase {
 	
 	static {
 		// This needs to be done once. Do it here to be sure it happens before 
@@ -49,6 +49,12 @@ public class CCNHandle extends CCNBase {
 	protected static CCNHandle _handle = null;
 
 	protected KeyManager _userKeyManager = null;
+	
+	/**
+	 * A CCNNetworkManager embodies a connection to ccnd.
+	 */
+	protected CCNNetworkManager _networkManager = null;
+	
 	
 	/**
 	 * Create a new CCNHandle, opening a new connection to the CCN network
@@ -153,6 +159,29 @@ public class CCNHandle extends CCNBase {
 	protected CCNHandle(boolean useNetwork) {}
 	
 	/**
+	 * Retrieve a static singleton CCNNetworkManager. Care must be used to
+	 * determine when to use a shared network manager, and when to make a new
+	 * one. Clients should not call this method directly, and instead should
+	 * create/retrieve a CCNHandle.
+	 */
+	public CCNNetworkManager getNetworkManager() { 
+		if (null == _networkManager) {
+			synchronized(this) {
+				if (null == _networkManager) {
+					try {
+						_networkManager = new CCNNetworkManager();
+					} catch (IOException ex){
+						Log.warning("IOException instantiating network manager: " + ex.getMessage());
+						ex.printStackTrace();
+						_networkManager = null;
+					}
+				}
+			}
+		}
+		return _networkManager;
+	}
+
+	/**
 	 * Change the KeyManager this CCNHandle is using.
 	 * @param keyManager the new KeyManager to use
 	 */
@@ -203,6 +232,103 @@ public class CCNHandle extends CCNBase {
 	public ContentObject get(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
 		Interest interest = new Interest(name, publisher);
 		return get(interest, timeout);
+	}
+	
+	/**
+	 * Get a single piece of content from CCN. This is a blocking get, it will return
+	 * when matching content is found or it times out, whichever comes first.
+	 * @param interest
+	 * @param timeout
+	 * @return the content object
+	 * @throws IOException
+	 */
+	public ContentObject get(Interest interest, long timeout) throws IOException {
+		while (true) {
+			try {
+				return getNetworkManager().get(interest, timeout);
+			} catch (InterruptedException e) {}
+		}
+	}
+	
+	/**
+	 * Put a single content object into the network. This is a low-level put,
+	 * and typically should only be called by a flow controller, in response to
+	 * a received Interest. Attempting to write to ccnd without having first
+	 * received a corresponding Interest violates flow balance, and the content
+	 * will be dropped.
+	 * @param co the content object to write. This should be complete and well-formed -- signed and
+	 * 	so on.
+	 * @return the object that was put if successful, otherwise null.
+	 * @throws IOException
+	 */
+	public ContentObject put(ContentObject co) throws IOException {
+		boolean interrupted = false;
+		do {
+			try {
+				Log.finest("Putting content on wire: " + co.name());
+				return getNetworkManager().put(co);
+			} catch (InterruptedException e) {
+				interrupted = true;
+			}
+		} while (interrupted);
+		return null;
+	}
+
+	/**
+	 * Register a standing interest filter with callback to receive any 
+	 * matching interests seen
+	 * @param filter
+	 * @param callbackListener
+	 */
+	public void registerFilter(ContentName filter,
+			CCNFilterListener callbackListener) {
+		getNetworkManager().setInterestFilter(this, filter, callbackListener);
+	}
+	
+	/**
+	 * Unregister a standing interest filter
+	 * @param filter
+	 * @param callbackListener
+	 */
+	public void unregisterFilter(ContentName filter,
+			CCNFilterListener callbackListener) {
+		getNetworkManager().cancelInterestFilter(this, filter, callbackListener);		
+	}
+	
+	/**
+	 * Query, or express an interest in particular
+	 * content. This request is sent out over the
+	 * CCN to other nodes. On any results, the
+	 * callbackListener if given, is notified.
+	 * Results may also be cached in a local repository
+	 * for later retrieval by get().
+	 * Get and expressInterest could be implemented
+	 * as a single function that might return some
+	 * content immediately and others by callback;
+	 * we separate the two for now to simplify the
+	 * interface.
+	 * 
+	 * Pass it on to the CCNInterestManager to
+	 * forward to the network. Also express it to the
+	 * repositories we manage, particularly the primary.
+	 * Each might generate their own CCNQueryDescriptor,
+	 * so we need to group them together.
+	 */
+	public void expressInterest(
+			Interest interest,
+			CCNInterestListener listener) throws IOException {
+		// Will add the interest to the listener.
+		getNetworkManager().expressInterest(this, interest, listener);
+	}
+
+	/**
+	 * Cancel this interest. 
+	 * @param interest
+	 * @param listener Used to distinguish the same interest
+	 * 	requested by more than one listener.
+	 */
+	public void cancelInterest(Interest interest, CCNInterestListener listener) {
+		getNetworkManager().cancelInterest(this, interest, listener);
 	}
 
 	/**

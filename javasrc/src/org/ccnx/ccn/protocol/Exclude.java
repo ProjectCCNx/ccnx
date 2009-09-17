@@ -65,7 +65,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	/**
 	 * @param values Must be a list of ExcludeElements - Components must be in increasing order
 	 * and there must not be more than one BloomFilter in a row.
-	 * @throws #IllegalArgumentException
+	 * @throws IllegalArgumentException
 	 */
 	public Exclude(ArrayList<Element> values) {
 		// Make sure the values are valid
@@ -89,10 +89,10 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	/**
 	 * Create an Exclude filter that excludes exactly the listed name components.
 	 * @param omissions The name components to be excluded. Passing in null or a zero length array
-	 * here will result in an #IllegalArgumentException exception
-	 * @throws #IllegalArgumentException
+	 * here will result in an IllegalArgumentException exception
+	 * @throws IllegalArgumentException
 	 */
-	public Exclude(byte [][] omissions) {
+	public Exclude(byte omissions[][]) {
 		if (omissions == null || omissions.length == 0)
 			throw new IllegalArgumentException("No omissions");
 		Arrays.sort(omissions, new ByteArrayCompare());
@@ -122,9 +122,9 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	/**
 	 * @param omissions List of names to exclude, or null
 	 * @return returns null if list is null or empty, or a new Exclude filter that excludes the listed names.
-	 * @see #Exclude(byte [][])
+	 * @see Exclude(byte [][])
 	 */
-	public static Exclude factory(byte [][] omissions) {
+	public static Exclude factory(byte omissions [][] ) {
 		if (omissions == null || omissions.length == 0)
 			return null;
 		return new Exclude(omissions);
@@ -166,7 +166,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	 * @param omissions
 	 * @return new Exclude filter object or null in case of error
 	 */
-	public void add(byte[][] omissions) {
+	public void add(byte omissions[][] ) {
 		if (omissions == null || omissions.length == 0)
 			return;
 

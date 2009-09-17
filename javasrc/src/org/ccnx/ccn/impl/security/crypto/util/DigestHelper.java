@@ -179,7 +179,7 @@ public class DigestHelper {
 	 * @param contents the array of byte arrays.
 	 * @return the array of bytes for the resulting hash value.
 	 */
-	public static byte [] digest(byte [][] contents) {
+	public static byte [] digest(byte[][] contents) {
 		DigestHelper dh = new DigestHelper();
 		for (int i=0; i < contents.length; ++i) {
 			dh.update(contents[i], 0, contents[i].length);
@@ -196,7 +196,7 @@ public class DigestHelper {
 	 * @return the array of bytes of the resulting hash value.
 	 * @throws NoSuchAlgorithmException
 	 */
-	public static byte [] digest(String digestAlgorithm, byte [][] contents) throws NoSuchAlgorithmException {
+	public static byte [] digest(String digestAlgorithm, byte[][] contents) throws NoSuchAlgorithmException {
 		DigestHelper dh = new DigestHelper(digestAlgorithm);
 		for (int i=0; i < contents.length; ++i) {
 			dh.update(contents[i], 0, contents[i].length);

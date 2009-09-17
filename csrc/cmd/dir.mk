@@ -30,13 +30,13 @@ PROGRAMS = $(INSTALLED_PROGRAMS) \
 EXPAT_PROGRAMS = ccn_xmltoccnb
 #PCAP_PROGRAMS = ccndumppcap
 BROKEN_PROGRAMS =
-DEBRIS = ccntimestamps ccndump
+DEBRIS =
 SCRIPTSRC = ccn_initkeystore.sh
-CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c ccnbuzz.c\
-       ccnbx.c ccncat.c ccncatchunks.c ccncatchunks2.c ccndump.c \
+CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
+       ccnbuzz.c ccnbx.c ccncat.c ccncatchunks.c ccncatchunks2.c \
        ccndumpnames.c ccndumppcap.c ccnget.c ccnhexdumpdata.c \
        ccnls.c ccnput.c ccnrm.c ccnsendchunks.c \
-       ccnslurp.c ccntimestamps.c dataresponsetest.c 
+       ccnslurp.c dataresponsetest.c 
 
 default all: $(PROGRAMS)
 # Don't try to build broken programs right now.
@@ -72,12 +72,6 @@ dataresponsetest: dataresponsetest.o
 
 encodedecodetest: encodedecodetest.o
 	$(CC) $(CFLAGS) -o $@ encodedecodetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
-
-ccntimestamps: ccntimestamps.o
-	$(CC) $(CFLAGS) -o $@ ccntimestamps.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
-
-ccndump: ccndump.o
-	$(CC) $(CFLAGS) -o $@ ccndump.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccndumpnames: ccndumpnames.o
 	$(CC) $(CFLAGS) -o $@ ccndumpnames.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -181,13 +175,12 @@ ccncatchunks2.o: ccncatchunks2.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/schedule.h \
   ../include/ccn/uri.h
-ccndump.o: ccndump.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccndumpnames.o: ccndumpnames.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccndumppcap.o: ccndumppcap.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/ccnd.h
 ccnget.o: ccnget.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
@@ -207,9 +200,6 @@ ccnsendchunks.o: ccnsendchunks.c ../include/ccn/ccn.h \
 ccnslurp.o: ccnslurp.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccntimestamps.o: ccntimestamps.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h
 dataresponsetest.o: dataresponsetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h

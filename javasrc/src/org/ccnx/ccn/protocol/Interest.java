@@ -350,7 +350,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param prefixCount	may be null
 	 * @return
 	 */
-	public static Interest last(ContentName name, byte[] [] omissions, Integer prefixCount) {
+	public static Interest last(ContentName name, byte omissions[][], Integer prefixCount) {
 		return nextOrLast(name, Exclude.factory(omissions), new Integer(CHILD_SELECTOR_RIGHT), prefixCount);
 	}
 	
@@ -380,16 +380,16 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	/**
 	 * Construct an Interest to exclude the objects in the filter
 	 * @param name
-	 * @param exclude components to exclude
+	 * @param omissions components to exclude
 	 * @return the Interest
 	 */
-	public static Interest exclude(ContentName name, byte[][] omissions) {
+	public static Interest exclude(ContentName name, byte omissions[][]) {
 		return constructInterest(name, null == omissions ? null : new Exclude(omissions), null);
 	}
 	
 	/**
 	 * Construct an Interest that will exclude the values in omissions and require maxSuffixComponents and
-	 * minSuffixComponents as specifiec
+	 * minSuffixComponents as specific
 	 * @param name
 	 * @param omissions			components to exclude
 	 * @param publisherID
@@ -397,7 +397,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param minSuffixComponents
 	 * @return the Interest
 	 */
-	public static Interest exclude(ContentName name, byte[][] omissions, PublisherID publisherID, Integer maxSuffixComponents, Integer minSuffixComponents) {
+	public static Interest exclude(ContentName name, byte omissions[][], PublisherID publisherID, Integer maxSuffixComponents, Integer minSuffixComponents) {
 		return constructInterest(name, null == omissions ? null : new Exclude(omissions), null, publisherID, maxSuffixComponents, minSuffixComponents);
 	}
 	

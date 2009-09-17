@@ -73,6 +73,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 	}
 
 	/**
+	 * Get the content name for a given key id.
 	 * The default key name is the publisher ID itself,
 	 * under the keystore namespace.
 	 * @param keyID[]

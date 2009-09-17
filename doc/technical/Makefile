@@ -54,7 +54,7 @@ DigestComponent.html: DigestComponent.txt
 DTAG.html: DTAG.txt $(SCHEMA)/tagname.csvdict
 	sed -e 's/$$/,,,,/g' $(SCHEMA)/tagname.csvdict | \
 					cut -d , -f 1-3   > .tagname.csv
-	asciidoc --unsafe DTAG.txt
+	asciidoc --unsafe DTAG.txt || : might fail if your asciidoc is too old
 	rm -f .tagname.csv
 
 dtd.html: dtd.txt $(XSDSRC)

@@ -19,14 +19,13 @@ package org.ccnx.ccn;
 
 import java.io.IOException;
 
-import org.ccnx.ccn.impl.CCNNetworkManager;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
 /**
- * This is the lowest-level interface to CCN. It consists of only a small number
+ * This is the lowest-level interface to CCN, and describes in its entirety,
+ * the interface the library has to speak to the CCN network layer. It consists of only a small number
  * of methods, all other operations in CCN are built on top of these methods together
  * with the constraint specifications allowed by Interest.
  * 
@@ -37,37 +36,9 @@ import org.ccnx.ccn.protocol.Interest;
  * 
  * @see CCNHandle
  */
-public class CCNBase {
+public interface CCNBase {
 	
 	public final static int NO_TIMEOUT = -1;
-	
-	/**
-	 * A CCNNetworkManager embodies a connection to ccnd.
-	 */
-	protected CCNNetworkManager _networkManager = null;
-	
-	/**
-	 * Retrieve a static singleton CCNNetworkManager. Care must be used to
-	 * determine when to use a shared network manager, and when to make a new
-	 * one. Clients should not call this method directly, and instead should
-	 * create/retrieve a CCNHandle.
-	 */
-	public CCNNetworkManager getNetworkManager() { 
-		if (null == _networkManager) {
-			synchronized(this) {
-				if (null == _networkManager) {
-					try {
-						_networkManager = new CCNNetworkManager();
-					} catch (IOException ex){
-						Log.warning("IOException instantiating network manager: " + ex.getMessage());
-						ex.printStackTrace();
-						_networkManager = null;
-					}
-				}
-			}
-		}
-		return _networkManager;
-	}
 	
 	/**
 	 * Put a single content object into the network. This is a low-level put,
@@ -80,18 +51,7 @@ public class CCNBase {
 	 * @return the object that was put if successful, otherwise null.
 	 * @throws IOException
 	 */
-	public ContentObject put(ContentObject co) throws IOException {
-		boolean interrupted = false;
-		do {
-			try {
-				Log.finest("Putting content on wire: " + co.name());
-				return getNetworkManager().put(co);
-			} catch (InterruptedException e) {
-				interrupted = true;
-			}
-		} while (interrupted);
-		return null;
-	}
+	public ContentObject put(ContentObject co) throws IOException;
 	
 	/**
 	 * Get a single piece of content from CCN. This is a blocking get, it will return
@@ -101,13 +61,7 @@ public class CCNBase {
 	 * @return the content object
 	 * @throws IOException
 	 */
-	public ContentObject get(Interest interest, long timeout) throws IOException {
-		while (true) {
-			try {
-				return getNetworkManager().get(interest, timeout);
-			} catch (InterruptedException e) {}
-		}
-	}
+	public ContentObject get(Interest interest, long timeout) throws IOException;
 	
 	/**
 	 * Register a standing interest filter with callback to receive any 
@@ -116,9 +70,7 @@ public class CCNBase {
 	 * @param callbackListener
 	 */
 	public void registerFilter(ContentName filter,
-			CCNFilterListener callbackListener) {
-		getNetworkManager().setInterestFilter(this, filter, callbackListener);
-	}
+							   CCNFilterListener callbackListener);
 	
 	/**
 	 * Unregister a standing interest filter
@@ -126,9 +78,7 @@ public class CCNBase {
 	 * @param callbackListener
 	 */
 	public void unregisterFilter(ContentName filter,
-			CCNFilterListener callbackListener) {
-		getNetworkManager().cancelInterestFilter(this, filter, callbackListener);		
-	}
+								 CCNFilterListener callbackListener);
 	
 	/**
 	 * Query, or express an interest in particular
@@ -151,10 +101,7 @@ public class CCNBase {
 	 */
 	public void expressInterest(
 			Interest interest,
-			CCNInterestListener listener) throws IOException {
-		// Will add the interest to the listener.
-		getNetworkManager().expressInterest(this, interest, listener);
-	}
+			CCNInterestListener listener) throws IOException;
 
 	/**
 	 * Cancel this interest. 
@@ -162,7 +109,5 @@ public class CCNBase {
 	 * @param listener Used to distinguish the same interest
 	 * 	requested by more than one listener.
 	 */
-	public void cancelInterest(Interest interest, CCNInterestListener listener) {
-		getNetworkManager().cancelInterest(this, interest, listener);
-	}
+	public void cancelInterest(Interest interest, CCNInterestListener listener);
 }

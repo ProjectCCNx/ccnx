@@ -92,10 +92,11 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	
 	/**
 	 * Published a signed record for this key.
-	 * @param name
-	 * @param key
-	 * @param signingKey
-	 * @return
+	 * @param keyName the key's content name
+	 * @param key the public key
+	 * @param keyID the publisher id
+	 * @param signingKey the private signing key
+	 * @return void
 	 * @throws ConfigurationException
 	 */
 	public void publishKey(ContentName keyName, PublicKey key, PublisherPublicKeyDigest keyID, PrivateKey signingKey) throws ConfigurationException {
@@ -315,7 +316,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	 * Retrieve key object from cache given content name and publisher id
 	 * check if the retrieved content has the expected publisher id 
 	 * @param name contentname of the key
-	 * @param name publisherID publisher id
+	 * @param publisherID publisher id
 	 */
 	public ContentObject retrieve(ContentName name, PublisherID publisherID) {
 		ContentObject result = _keyMap.get(name);
