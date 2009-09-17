@@ -42,7 +42,7 @@ IsolatePubID () {
                -e 's@</PublisherPublicKeyDigest.*$@@p'
 }
 
-ccnget ccnx:/ccn/ping/$$ | ccn_ccnbtoxml -bx - | IsolatePubID > ccndid.out
+ccnget ccnx:/ccnx/ping/$$ | ccn_ccnbtoxml -bx - | IsolatePubID > ccndid.out
 grep '^[0-9A-F][0-9A-F]*$' ccndid.out || SkipTest could not determine CCNDID
 CCNDID=`cat ccndid.out`
 
@@ -51,7 +51,7 @@ CCNDID=`cat ccndid.out`
 cat <<EOF >newface-request.xml
 <Interest>
   <Name>
-    <Component ccnbencoding="text">ccn</Component>
+    <Component ccnbencoding="text">ccnx</Component>
     <Component ccnbencoding="hexBinary">$CCNDID</Component>
     <Component ccnbencoding="text">newface</Component>
     <Component ccnbencoding="base64Binary">$NFBLOB</Component>

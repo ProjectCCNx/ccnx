@@ -30,7 +30,7 @@ echo NBLOB is $NBLOB >&2
 ccn_xmltoccnb -w - <<EOF >registration-request.ccnb
 <Interest>
   <Name>
-    <Component ccnbencoding="text">ccn</Component>
+    <Component ccnbencoding="text">ccnx</Component>
     <Component ccnbencoding="text">reg</Component>
     <Component ccnbencoding="text">self</Component>
     <Component ccnbencoding="base64Binary">$NBLOB</Component>

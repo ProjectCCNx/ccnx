@@ -101,6 +101,7 @@ public class puttap implements CCNInterestListener {
 	        byte[] bytes = new byte[CHUNK_SIZE];
 	        int i = 0;
 	        CCNWriter writer = new CCNWriter(name, handle);
+	        writer.disableFlowControl();
 	        while (is.read(bytes) >= 0) {
 	        	writer.put(ContentName.fromNative(name, new Integer(i++).toString()), bytes);
 	        }
