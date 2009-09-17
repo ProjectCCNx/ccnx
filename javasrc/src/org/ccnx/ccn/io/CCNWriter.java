@@ -72,6 +72,11 @@ public class CCNWriter {
 		this(new CCNFlowControl(namespace, handle));
 	}
 	
+	/**
+	 * Construct a writer that will decide later what namespace is should write into
+	 * @param handle The ccn context it will use to write, if null one will be created with CCNHandle#open().
+	 * @throws IOException If network initialization fails.
+	 */
 	public CCNWriter(CCNHandle handle) throws IOException {
 		this(new CCNFlowControl(handle));
 	}
@@ -268,6 +273,7 @@ public class CCNWriter {
 	
 	/**
 	 * Set the default timeout for this writer.
+	 * Default is 10 seconds
 	 * @param timeout in msec.
 	 */
 	public void setTimeout(int timeout) {

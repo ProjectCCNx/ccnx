@@ -221,7 +221,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	/**
 	 * Set the timeout that will be used for all content retrievals on this stream.
-	 * @param timeout
+	 * Default is 5 seconds.
+	 * @param timeout Milliseconds
 	 */
 	public void setTimeout(int timeout) {
 		_timeout = timeout;
@@ -286,7 +287,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * unless they really know what they are doing. Calls #setCurrentSegment(ContentObject)
 	 * for the first segment.
 	 * @param newSegment Must not be null
-	 * @throws IOException
+	 * @throws IOException If newSegment is null or decryption keys set up incorrectly
 	 */
 	protected void setFirstSegment(ContentObject newSegment) throws IOException {
 		if (null == newSegment) {
@@ -303,7 +304,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * Set up current segment for reading, including preparation for decryption if necessary.
 	 * Called after getSegment/getFirstSegment/getNextSegment, which take care of verifying
 	 * the segment for us. Assumes newSegment has been verified.
-	 * @throws IOException 
+	 * @throws IOException If decryption keys set up incorrectly
 	 */
 	protected void setCurrentSegment(ContentObject newSegment) throws IOException {
 		_currentSegment = null;
@@ -437,7 +438,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * (see #CCNAbstractInputStream(ContentName, Long, PublisherPublicKeyDigest, ContentKeys, CCNHandle)).
 	 * Convenience method, uses #getSegment(long).
 	 * @return the first segment, if found.
-	 * @throws IOException
+	 * @throws IOException If can't get a valid starting segment number
 	 */
 	protected ContentObject getFirstSegment() throws IOException {
 		if (null != _startingSegmentNumber) {
@@ -649,7 +650,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 
 	/**
-	 * @return Whether this stream believes it as at eof (has read past the end of the 
+	 * @return Whether this stream believes it is at eof (has read past the end of the 
 	 *   last segment of the stream).
 	 */
 	public boolean eof() { 

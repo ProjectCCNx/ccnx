@@ -197,7 +197,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	 * 		We assume that the signature on this segment was verified by our caller.
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
 	 * 		given by CCNHandle#getHandle() will be used.
-	 * @throws IOException
+	 * @throws IOException if startingSegment does not contain a valid segment ID
 	 */
 	public CCNVersionedInputStream(ContentObject startingSegment,
 			CCNHandle handle) throws IOException {
@@ -214,7 +214,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	 * 				process will be used to retrieve the keys.
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
 	 * 		given by CCNHandle#getHandle() will be used.
-	 * @throws IOException
+	 * @throws IOException if startingSegment does not contain a valid segment ID
 	 */
 	public CCNVersionedInputStream(ContentObject startingSegment, ContentKeys keys, CCNHandle handle) throws IOException {
 		super(startingSegment, keys, handle);

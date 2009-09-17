@@ -71,10 +71,9 @@ public class RepositoryVersionedOutputStream extends CCNVersionedOutputStream {
 										   ContentKeys keys, 
 										   CCNHandle handle)
 			throws IOException {
-		/*
-		 * The Flow Controller must register a Filter above the version no. for someone else's
-		 * getLatestVersion interests to see this stream.
-		 */
+	
+		 // The Flow Controller must register a Filter above the version no. for someone else's
+		 // getLatestVersion interests to see this stream.
 		super(name, locator, publisher, type, keys, 
 			  new RepositoryFlowControl(VersioningProfile.cutTerminalVersion(name).first(), handle));
 	}

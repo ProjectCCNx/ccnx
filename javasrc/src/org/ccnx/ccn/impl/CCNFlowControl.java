@@ -401,10 +401,15 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Allow override of action after co is put to ccnd
+	 * Remove content from holding buffer, increment nOut which is used by waitForPutDrain to test whether
+	 * anything has been drained from the buffer during it's wait and notify waiters.
+	 * 
+	 * Can be overridden to implement a different drain policy.
 	 * 
 	 * NOTE: Don't need to sync on holding area because this is only called within
 	 * holding area sync
+	 * NOTE: Any subclass overriding this method must either make sure to call it eventually (in a _holdingArea sync)
+	 * or understand the use of _nOut and update it appropriately.
 	 * 
 	 * @param co ContentObject to remove
 	 * 
