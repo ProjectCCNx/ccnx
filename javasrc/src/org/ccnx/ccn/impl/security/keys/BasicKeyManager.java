@@ -93,7 +93,8 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	/**
-	 * This initializes and loads the private key of the user. If a key store file exists,
+	 * This initializes and loads the key pair and certificate of the user. 
+	 * If a key store file exists,
 	 * reads in the key; otherwise, create a key store file and a key pair.
 	 * Separate this for the usual reasons; so subclasses can get set up before it's called.
 	 * Could make fake base class constructor, and call loadKeyStore in subclass constructors,
@@ -401,10 +402,11 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	/**
+	 * Return the key's content name for a given key id. 
 	 * The default key name is the publisher ID itself,
 	 * under the user's key collection. 
-	 * @param keyID
-	 * @return
+	 * @param keyID[] publisher ID
+	 * @return content name
 	 */
 	@Override
 	public ContentName getDefaultKeyName(byte [] keyID) {
@@ -568,10 +570,10 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	/**
-	 * publish my public key to repository
+	 * Publish my public key to repository
 	 * @param keyName content name of the public key
 	 * @param keyToPublish public key digest
-	 * @CCNHandle handle for ccn
+	 * @param CCNHandle handle for ccn
 	 * @throws IOException
 	 * @throws InvalidKeyException
 	 * @throws ConfigurationException
@@ -621,7 +623,7 @@ public class BasicKeyManager extends KeyManager {
 	
 	/**
 	 * publish my public key to repository
-	 * @CCNHandle handle for ccn
+	 * @param CCNHandle handle for ccn
 	 * @throws IOException
 	 * @throws InvalidKeyException
 	 * @throws ConfigurationException
