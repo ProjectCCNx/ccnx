@@ -645,18 +645,6 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 	
-<<<<<<< HEAD
-	/**
-	 * Cancel this query with all the repositories we sent
-	 * it to.
-	 * 
-	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
-	 * serving any useful purpose.
-	 *
-	 * @param caller 	must not be null
-	 * @param interest	an Interest
-	 * @param callbackListener CCNInterestListener to callback
-=======
 	/**
 	 * Cancel this query with all the repositories we sent
 	 * it to.
@@ -667,7 +655,6 @@ public class CCNNetworkManager implements Runnable {
 	 * @param caller 	must not be null
 	 * @param interest
 	 * @param callbackListener
->>>>>>> 9220914f697feb1afa09928ff3b126af08d3fba8
 	 */
 	public void cancelInterest(Object caller, Interest interest, CCNInterestListener callbackListener) {
 		if (null == callbackListener) {
