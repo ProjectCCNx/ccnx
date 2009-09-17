@@ -512,7 +512,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	/**
 	 * Set the time to wait for buffer to drain on close
-	 * @param timeout
+	 * @param timeout timeout in ms
 	 */
 	public void setTimeout(int timeout) {
 		_timeout = timeout;

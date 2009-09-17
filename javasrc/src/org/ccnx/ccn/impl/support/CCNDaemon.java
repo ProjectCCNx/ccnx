@@ -27,10 +27,11 @@ import org.ccnx.ccn.impl.CCNNetworkManager;
 
 /**
  * Start a ccnd that we can control for testing
- * @author rasmusse
- *
+ * Allows start & stop of ccnd via command. Otherwise ccnd can be difficult to control
+ * in automated ant based testing.
+ * 
+ * TODO This is not actually yet used in any tests and therefore is itself not well tested
  */
-
 public class CCNDaemon extends Daemon {
 	
 	public static final String PROP_CCND_DEBUG = "ccnd.debug";
@@ -40,6 +41,9 @@ public class CCNDaemon extends Daemon {
 	protected Process _ccndProcess = null;
 	protected CCNDaemon _daemon = null;
 	
+	/**
+	 * Stop ccnd on exit from daemon
+	 */
 	protected class CCNDShutdownHook extends Thread {
 		public void run() {
 			if (_ccndProcess != null)
@@ -70,6 +74,9 @@ public class CCNDaemon extends Daemon {
 			}
 		}
 		
+		/**
+		 * Start ccnd but set up a shutdown hook to allow it to stop
+		 */
 		public void initialize() {
 			Runtime.getRuntime().addShutdownHook(new CCNDShutdownHook());
 			ProcessBuilder pb = new ProcessBuilder(_command);		
@@ -99,6 +106,7 @@ public class CCNDaemon extends Daemon {
 				}
 			}
 		}
+		
 		
 		public void finish() {
 			synchronized (this) {
@@ -137,8 +145,6 @@ public class CCNDaemon extends Daemon {
 	
 	protected void usage() {
 		try {
-			// Without parsing args, we don't know which repo impl we will get, so show the default 
-			// impl usage and allow for differences 
 			String msg = "usage: " + this.getClass().getName() + "[-start | -stop | -interactive | -signal <signal>] [-command <command>]";
 			System.out.println(msg);
 			Log.severe(msg);
@@ -153,8 +159,6 @@ public class CCNDaemon extends Daemon {
 		CCNDaemon daemon = null;
 		try {
 			daemon = new CCNDaemon();
-			//if (args[0].equals("-interactive"))
-				//daemon.setInteractive();
 			runDaemon(daemon, args);
 		} catch (Exception e) {
 			System.err.println("Error attempting to start daemon.");

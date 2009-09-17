@@ -34,6 +34,11 @@ import org.ccnx.ccn.config.SystemConfiguration;
 
 /**
  * Wrapper for the standard java.util Logging classes.
+ * 
+ * A major purpose is to allow log messages which will not actually be output due to being at a lower
+ * level than the current logging level to not affect performance by performing expensive calculations to
+ * compute their parameters.
+ * 
  * To send log entries to file, specify the log output directory using either the system property
  * org.ccnx.ccn.LogDir or the environment variable CCN_LOG_DIR.  To override the default 
  * log level for whatever program you are running, set the system property org.ccnx.ccn.LogLevel.
@@ -44,7 +49,7 @@ public class Log {
 	 * Allow override on command line or from configuration file.
 	 */
 	public static final String DEFAULT_APPLICATION_CLASS =
-		"com.parc.ccn.Library";
+		"org.ccnx.ccn.CCNHandle";
 
 	public static final String DEFAULT_LOG_FILE = "ccn_";
 	public static final String DEFAULT_LOG_SUFFIX = ".log";
@@ -205,10 +210,20 @@ public class Log {
 		} // else we're not using the default level and should not change what is set
 	}
 	
+	/**
+	 * Gets the current log level
+	 * @return
+	 */
 	public static Level getLevel() {
 		return _systemLogger.getLevel();
 	}
 
+	/**
+	 * The main logging wrapper. Allows for variable parameters to the message.
+	 * @param l
+	 * @param msg
+	 * @param params
+	 */
 	public static void log(Level l, String msg, Object... params) {
 		// we must call doLog() to ensure caller is in right place on stack
 		doLog(l, msg, params);

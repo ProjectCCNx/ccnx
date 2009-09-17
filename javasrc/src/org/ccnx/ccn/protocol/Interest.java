@@ -66,9 +66,6 @@ import org.ccnx.ccn.profiles.CommandMarkers;
  *			minOccurs="0" maxOccurs="1"/>
  * </xs:sequence>
  * </xs:complexType>
- *
- * @author smetters, rasmusse
- *
  */
 public class Interest extends GenericXMLEncodable implements XMLEncodable, Comparable<Interest>, Cloneable {
 	
@@ -83,8 +80,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final String SCOPE_ELEMENT = "Scope";
 	public static final String NONCE_ELEMENT = "Nonce";
 	
-	// OrderPreference values.  These are bitmapped
-	public static final int CHILD_SELECTOR_LEFT = 0;		// bit 0
+	// ChildSelector values
+	public static final int CHILD_SELECTOR_LEFT = 0;
 	public static final int CHILD_SELECTOR_RIGHT = 1;
 	
 	/**
@@ -116,8 +113,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * TODO: DKS figure out how to handle encoding faster,
 	 * and how to handle shorter version of names without
 	 * copying, particularly without 1.6 array ops.
-	 * @param name
-	 * @param publisher
+	 * @param name ContentName of Interest
+	 * @param publisher PublisherID of Interest or null
 	 */
 	public Interest(ContentName name, 
 			   PublisherID publisher) {
@@ -125,10 +122,18 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		_publisher = publisher;
 	}
 	
+	/**
+	 * @param name ContentName of Interest
+	 * @param publisher PublisherPublicKeyDigest or null
+	 */
 	public Interest(ContentName name, PublisherPublicKeyDigest publisher) {
 		this(name, (null != publisher) ? new PublisherID(publisher) : (PublisherID)null);
 	}
 	
+	/**
+	 * Creates Interest with null publisher ID
+	 * @param name
+	 */
 	public Interest(ContentName name) {
 		this(name, (PublisherID)null);
 	}
@@ -166,18 +171,23 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public byte[] nonce() { return _nonce; }
 	public void nonce(byte[] nonce) { _nonce = nonce; }
 
-	public boolean matches(ContentObject result) {
-		return matches(result, (null != result.signedInfo()) ? result.signedInfo().getPublisherKeyID() : null);
+	/**
+	 * Determine whether a piece of content matches the Interest
+	 * @param test
+	 * @return true if the test co matches the Interest
+	 */
+	public boolean matches(ContentObject test) {
+		return matches(test, (null != test.signedInfo()) ? test.signedInfo().getPublisherKeyID() : null);
 	}
 
 	/**
-	 * Determine whether a piece of content's name (without digest component) matches this interest.
+	 * Determine whether a piece of content's name (without digest component) matches this Interest.
 	 * 
-	 * This doesn't match if we specify the digest in the interest.
+	 * This doesn't match if we specify the digest in the Interest.
 	 *
 	 * @param name - Name of a content object without a digest component
 	 * @param resultPublisherKeyID
-	 * @return
+	 * @return true if the content/publisherPublicKeyDigest matches the Interest
 	 */
 	public boolean matches(ContentName name, PublisherPublicKeyDigest resultPublisherKeyID) {
 		if (null == name() || null == name)
@@ -191,11 +201,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	/**
-	 * Determine whether a piece of content matches this interest.
+	 * Determine whether a piece of content matches this Interest.
 	 * 
 	 * @param co - ContentObject
 	 * @param resultPublisherKeyID
-	 * @return
+	 * @return true if the content & publisherID match the Interest
 	 */
 	public boolean matches(ContentObject co, PublisherPublicKeyDigest resultPublisherKeyID) {
 		if (null == name() || null == co)
@@ -250,17 +260,34 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	/**
-	 * Construct an interest that will give you the next content after the
+	 * Construct an Interest that will give you the next content after the
 	 * argument name
+	 * @param name
+	 * @return new Interest
 	 */
 	public static Interest next(ContentName name) {
 		return next(name, (byte[][])null, null);
 	}
 	
+	/**
+	 * Construct an Interest that will give you the next content after the argument
+	 * name's first prefixCount components
+	 * @param name
+	 * @param prefixCount  may be null
+	 * @return new Interest
+	 */
 	public static Interest next(ContentName name, int prefixCount) {
 		return next(name, (byte[][])null, prefixCount);
 	}
 	
+	/**
+	 * Construct an Interest that will give you the next content after the argument
+	 * names's first prefixCount components excluding the components specified in the omissions
+	 * @param name
+	 * @param omissions 	components to exclude - may be null
+	 * @param prefixCount	may be null
+	 * @return
+	 */
 	public static Interest next(ContentName name, byte[][] omissions, Integer prefixCount) {
 		return nextOrLast(name, Exclude.factory(omissions), new Integer(CHILD_SELECTOR_LEFT), prefixCount);
 	}
@@ -271,10 +298,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * prefix level.
 	 * 
 	 * @param name
-	 * @param exclude
-	 * @param order
-	 * @param prefixCount
-	 * @return
+	 * @param exclude 	contains elements to exclude
+	 * @param order		corresponds to ChildSelector values
+	 * @param prefixCount	may be null
+	 * @return the Interest
 	 */
 	private static Interest nextOrLast(ContentName name, Exclude exclude, Integer order, Integer prefixCount)  {
 		if (null != prefixCount) {
@@ -304,40 +331,83 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return last(name, (byte[][])null, null);
 	}
 	
+	/**
+	 * Construct an Interest that will give you the last content after the argument
+	 * name's first prefixCount components
+	 * @param name
+	 * @param prefixCount  may be null
+	 * @return new Interest
+	 */
 	public static Interest last(ContentName name, Integer prefixCount) {
 		return last(name, (byte[][])null, prefixCount);
 	}
 	
+	/**
+	 * Construct an Interest that will give you the last content after the argument
+	 * names's first prefixCount components excluding the components specified in the omissions
+	 * @param name
+	 * @param omissions 	components to exclude - may be null
+	 * @param prefixCount	may be null
+	 * @return
+	 */
 	public static Interest last(ContentName name, byte[] [] omissions, Integer prefixCount) {
 		return nextOrLast(name, Exclude.factory(omissions), new Integer(CHILD_SELECTOR_RIGHT), prefixCount);
 	}
 	
+	/**
+	 * Construct an Interest that will give you the last content after the argument
+	 * name excluding the components specified in the Exclude
+	 * @param name
+	 * @param exclude contains components to exclude - may be null
+	 * @return the Interest
+	 */
 	public static Interest last(ContentName name, Exclude exclude) {
 		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), null);
 	}
 	
+	/**
+	 * Construct an Interest that will give you the last content after the argument
+	 * name excluding the components specified in the Exclude
+	 * @param name
+	 * @param exclude 	contains components to exclude - may be null
+	 * @param prefixCount	may be null
+	 * @return the Interest
+	 */
 	public static Interest last(ContentName name, Exclude exclude, Integer prefixCount) {
 		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), prefixCount);
 	}
 	
 	/**
-	 * Construct an interest to exclude the objects in the filter
-	 * @param co
-	 * @param exclude
-	 * @return
+	 * Construct an Interest to exclude the objects in the filter
+	 * @param name
+	 * @param exclude components to exclude
+	 * @return the Interest
 	 */
 	public static Interest exclude(ContentName name, byte[][] omissions) {
 		return constructInterest(name, null == omissions ? null : new Exclude(omissions), null);
 	}
 	
+	/**
+	 * Construct an Interest that will exclude the values in omissions and require maxSuffixComponents and
+	 * minSuffixComponents as specifiec
+	 * @param name
+	 * @param omissions			components to exclude
+	 * @param publisherID
+	 * @param maxSuffixComponents
+	 * @param minSuffixComponents
+	 * @return the Interest
+	 */
 	public static Interest exclude(ContentName name, byte[][] omissions, PublisherID publisherID, Integer maxSuffixComponents, Integer minSuffixComponents) {
 		return constructInterest(name, null == omissions ? null : new Exclude(omissions), null, publisherID, maxSuffixComponents, minSuffixComponents);
 	}
 	
-	
 	/**
-	 * Construct an interest that will give you the next content after the
+	 * Construct an Interest that will give you the next content after the
 	 * argument ContentObject
+	 *
+	 * @param co
+	 * @param prefixCount
+	 * @return
 	 */
 	public static Interest next(ContentObject co, Integer prefixCount) {
 		ArrayList<byte []>components = byteArrayClone(co.name().components());
@@ -346,15 +416,39 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return next(nextName, prefixCount == null ? components.size() - 2 : prefixCount);
 	}
 	
+	/**
+	 * Construct an Interest that will give you the next content after the
+	 * argument ContentObject
+	 *
+	 * @param co
+	 * @return the Interest
+	 */
 	public static Interest next(ContentObject co) {
 		return next(co, null);
 	}
 
+	/**
+	 * Construct an Interest with specified values set
+	 * @param name
+	 * @param filter 			may be null
+	 * @param orderPreference 	may be null
+	 * @return the Interest
+	 */
 	public static Interest constructInterest(ContentName name,  Exclude filter,
 			Integer orderPreference) {
 		return constructInterest(name, filter, orderPreference, null, null, null);
 	}
 	
+	/**
+	 * Construct an Interest with specified values set
+	 * @param name
+	 * @param filter 			may be null
+	 * @param childSelector		may be null
+	 * @param publisherID		may be null
+	 * @param maxSuffixComponents	may be null
+	 * @param minSuffixComponents	may be null
+	 * @return the Interest
+	 */
 	public static Interest constructInterest(ContentName name,  Exclude filter,
 			Integer childSelector, PublisherID publisherID, Integer maxSuffixComponents, Integer minSuffixComponents) {
 		Interest interest = new Interest(name);
@@ -372,10 +466,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	/**
-	 * Currently used as an interest name component to disambiguate multiple requests for the
+	 * Currently used as an Interest name component to disambiguate multiple requests for the
 	 * same content.
 	 * 
-	 * @return
+	 * @return the nonce in component form
 	 */
 	public static byte[] generateNonce() {
 		byte [] nonce = new byte[8];
@@ -386,6 +480,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return wholeNonce;
 	}
 
+	/**
+	 * Determine if this Interest's name is a prefix of the specified name
+	 * @param name
+	 * @return true if our name is a prefix of the specified name
+	 */
 	public boolean isPrefixOf(ContentName name) {
 		int count = name().count();
 		if (null != maxSuffixComponents() && 0 == maxSuffixComponents()) {
@@ -397,16 +496,25 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return name().isPrefixOf(name, count);
 	}
 	
+	/**
+	 * Determine if this Interest's name is a prefix of the first "count" components of the input name
+	 * @param name
+	 * @param count
+	 * @return true if our name is a prefix of the specified name's first "count" components
+	 */
 	public boolean isPrefixOf(ContentName name, int count) {
 		return name().isPrefixOf(name, count);
 	}
 	
+	/**
+	 * Deteremine if this Interest's name is a prefix of the specified ContentObject's name
+	 * @param other
+	 * @return true if our name is a prefix of the specified ContentObject's name
+	 */
 	public boolean isPrefixOf(ContentObject other) {
 		return name().isPrefixOf(other, name().count());
 	}
-	
-	public boolean recursive() { return true; }
-	
+		
 	private static ArrayList<byte[]> byteArrayClone(ArrayList<byte[]> input) {
 		ArrayList<byte[]> al = new ArrayList<byte[]>();
 		for (int i = 0; i < input.size(); i++) {
@@ -465,7 +573,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			decoder.readEndElement();
 		} catch (XMLStreamException e) {
 			// DKS TODO -- get Michael to update schema!
-			Log.info("Catching exception reading interest end element, and moving on. Waiting for schema updates...");
+			Log.info("Catching exception reading Interest end element, and moving on. Waiting for schema updates...");
 		}
 	}
 

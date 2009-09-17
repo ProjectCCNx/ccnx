@@ -32,6 +32,8 @@ import org.ccnx.ccn.impl.support.Log;
 
 /**
  * Implement bloom filter operations
+ * 
+ * Bloom filters are used to exclude keys that are inserted into the filter
  */
 public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilter> {
 	public static final String BLOOM_ELEMENT = "Bloom";
@@ -48,6 +50,11 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 	private byte [] _bloom = new byte[1024];
 	private int _size = 0;
 	
+	/**
+	 * Constructor
+	 * @param size estimated members
+	 * @param seed random seed data must be length 4
+	 */
 	public BloomFilter(int size, byte [] seed) {
 		if (seed.length != 4)
 			throw new IllegalArgumentException("Bloom seed length must be 4"); // for now
@@ -71,19 +78,26 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
             _nHash = 32;
 	}
 	
-	/*
+	/**
 	 * Create a seed from random values
+	 * @return the seed
 	 */
-	public static void createSeed(byte[] seed) {
+	public static byte[] createSeed() {
+		byte[] seed = new byte[4];
 		Random rand = new Random();
 		rand.nextBytes(seed);
+		return seed;
 	}
 	
 	/**
 	 * For decoding
 	 */
-	public BloomFilter() {}
+	public BloomFilter() {} 
 	
+	/**
+	 * Insert a key 
+	 * @param key a key to exclude
+	 */
 	public void insert(byte [] key) {
 		long s = computeSeed();
 		for (int i = 0; i < key.length; i++) 
@@ -103,8 +117,8 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 	 * Test if the bloom filter matches a particular key.
 	 * Note - a negative result means the key was definitely not set, but a positive result only means the
 	 * key was likely set.
-	 * @param key
-	 * @return
+	 * @param key key to test
+	 * @return false if not set
 	 */
 	public boolean match(byte [] key) {
 		int m = ((8*_bloom.length) - 1) & ((1 << _lgBits) - 1);
@@ -124,10 +138,13 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 		return _size;
 	}
 	
+	/**
+	 * Get a copy of the seed
+	 * @return copy of seed
+	 */
 	public byte[] seed() {
 		byte [] outSeed = new byte[_seed.length];
-		for (int i = 0; i < _seed.length; i++)
-			outSeed[i] = (byte) _seed[i];
+		System.arraycopy(_seed, 0, outSeed, 0, _seed.length);
 		return outSeed;
 	}
 	
@@ -143,6 +160,9 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 		return 1 << (_lgBits - 3);
 	}
 	
+	/**
+	 * Gets the type of element this is within an exclude filter
+	 */
 	@Override
 	public String getElementLabel() { return BLOOM_ELEMENT; }
 	
