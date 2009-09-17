@@ -84,10 +84,8 @@ are defined to contain arbitrary binary values.
 The wire format of CCNx messages is an efficient binary encoding of
 XML structures called link:ccnb.html[ccnb], which defines such things
 as the byte order. There is also a text XML encoding which is useful
-for debugging, testing, examples in documentation, etc. and MAY be
-used on the wire in special circumstances.  Parties are NOT REQUIRED
-to support text XML encoding on the wire.
-
+for debugging, testing, presentation in documentation, etc. but MUST
+NOT be used on the wire.
 
 Content Identification
 ----------------------
@@ -115,7 +113,7 @@ collection, just as an IPv4 network address gives a prefix of the IP
 addresses of member hosts.  For this reason, a CCNx name may be
 referred to as a 'name prefix' or simply 'prefix'.
 
-See link:Name.txt[CCNx Name] for details of the structure and
+See link:Name.html[CCNx Name] for details of the structure and
 representation of names.
 
 The CCNx name of a chunk of data always contains as its final, most specific
@@ -123,7 +121,7 @@ component a value that is derived from the data (and possibly also
 from its attestation).  This final component is called the 'digest
 component', and because it is derived from the data it is redundant
 when data is transmitted and so is not sent on the wire but is
-implicit.  For more details see link:DigestComponent.txt[Implicit
+implicit.  For more details see link:DigestComponent.html[Implicit
 Digest Component].
 
 CCNx Message Types
@@ -132,13 +130,13 @@ CCNx Message Types
 There are two message types in the CCNx protocol: 'Interest' and
 'Data' (also called 'Content' or 'Content Object').
 
-The link:InterestMessage.txt[Interest message] is used to request data
+The link:InterestMessage.html[Interest message] is used to request data
 by name.  An Interest message can identify a chunk of content to
 retrieve very specifically.  Alternatively, an Interest message can
 provide a name prefix and other qualifications to restrict what data
 is acceptable from the collection named by the prefix.
 
-The link:ContentObject.txt[Content Object] is used to supply data.  A
+The link:ContentObject.html[Content Object] is used to supply data.  A
 Content Object message not only contains a data payload but the
 identifying name (without the implicit digest component),  a
 cryptographic signature, and identification of the signer (called the
@@ -178,7 +176,7 @@ Communication with the CCNx protocol is receiver-controlled.  A
 consumer of data transmits an Interest message over available
 connectivity and any party receiving the message and having data that
 matches, or 'satisfies', the request (according to the specifications in the
-link:Interest.txt[Interest Message]) may transmit a matching Content
+link:Interest.html[Interest Message]) may transmit a matching Content
 Object message. Data MUST only be transmitted in response to an
 Interest that matches the Data.  An Interest message MAY be
 transmitted using broadcast or multicast facilities of the underlying
@@ -239,7 +237,15 @@ buffering/caching and loop-free forwarding.
 
 Content Store (CS)::
    A buffer memory organized for retrieval by longest prefix match
-   lookup on names.
+   lookup on names.  Since CCNx Content Object messages are
+   self-identifying and self-authenticating, each one is potentially
+   useful to many consumers.  The CS SHOULD implement a replacement
+   policy that maximizes the possibility of reuse such as
+   Least Recently Used (LRU) or Least Frequently Used (LFU).  The CS
+   MUST also implement the link:Staleness.html[Staleness Bit].  The CS
+   MAY retain Content Object messages indefinitely but is not required
+   to take any special measures to preserve them; the CS is a cache not
+   a persistent store.
 Forwarding Information Base (FIB)::
    A table of destinations for Interests, organized for retrieval by
    longest prefix match lookup on names.  Each prefix entry in the FIB
