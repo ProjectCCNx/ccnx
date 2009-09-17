@@ -40,16 +40,29 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
-
+/**
+ * This class represents Access Control Lists (ACLs).
+ * An ACL maintains information about who is allowed to read, write
+ * and manage (i.e. edit access rights to) the content in a CCN namespace.  
+ *
+ */
 
 
 public class ACL extends Collection {
 	
+	/** Readers can read content */
 	public static final String LABEL_READER = "r";
+	/** Writers can read and write (or edit) content */
 	public static final String LABEL_WRITER = "rw";
+	/** Managers can read and write content, and edit access rights to content */
 	public static final String LABEL_MANAGER = "rw+";
 	public static final String [] ROLE_LABELS = {LABEL_READER, LABEL_WRITER, LABEL_MANAGER};
 	
+	/**
+	 * This class represents the operations that can be performed on an ACL,
+	 * such as add or delete readers, writers or managers.
+	 *
+	 */
 	public static class ACLOperation extends Link {
 		public static final String ACL_OPERATION_ELEMENT = "ACLOperation";
 		
@@ -88,11 +101,20 @@ public class ACL extends Collection {
 		public String getElementLabel() { return ACL_OPERATION_ELEMENT; }
 	}
 	
-	// maintain a set of index structures. want to match on unversioned link target name only,
-	// not label and potentially not signer if specified. Use a set class that can
-	// allow us to specify a comparator; use one that ignores labels and versions on names.
+	/**
+	 * This class is for matching on unversioned link target name only,
+	 * not label and potentially not signer if specified. Use a set class that can
+	 * allow us to specify a comparator; use one that ignores labels and versions on names.
+	 * 
+	 */
 	public static class SuperficialLinkComparator implements Comparator<Link> {
 
+		/**
+		 * Compare two links
+		 * @param first link
+		 * @param second link
+		 * @return result of comparison
+		 */
 		public int compare(Link o1, Link o2) {
 			int result = 0;
 			if (null != o1) {
@@ -128,12 +150,33 @@ public class ACL extends Collection {
 	protected TreeSet<Link> _writers = new TreeSet<Link>(_comparator);
 	protected TreeSet<Link> _managers = new TreeSet<Link>(_comparator);
 
+	/**
+	 * ACL CCN objects.
+	 *
+	 */
 	public static class ACLObject extends CCNEncodableObject<ACL> {
 
+		/**
+		 * Constructor
+		 * @param name the object name
+		 * @param data the ACL
+		 * @param handle the CCN handle
+		 * @throws ConfigurationException
+		 * @throws IOException
+		 */
 		public ACLObject(ContentName name, ACL data, CCNHandle handle) throws ConfigurationException, IOException {
 			super(ACL.class, name, data, handle);
 		}
-		
+
+		/**
+		 * Constructor
+		 * @param name the object name
+		 * @param publisher the publisher
+		 * @param handle the CCN handle
+		 * @throws ConfigurationException
+		 * @throws IOException
+		 * @throws XMLStreamException
+		 */
 		public ACLObject(ContentName name, PublisherPublicKeyDigest publisher,
 				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
 			super(ACL.class, name, publisher, handle);
@@ -141,12 +184,11 @@ public class ACL extends Collection {
 		
 		/**
 		 * Read constructor -- opens existing object.
-		 * @param type
-		 * @param name
-		 * @param handle
-		 * @throws XMLStreamException
+		 * @param name the object name
+		 * @param handle the CCN handle
+		 * @throws ConfigurationException
 		 * @throws IOException
-		 * @throws ClassNotFoundException 
+		 * @throws XMLStreamException
 		 */
 		public ACLObject(ContentName name, 
 				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
@@ -165,24 +207,44 @@ public class ACL extends Collection {
 		super();
 	}
 
+	/**
+	 * Constructor
+	 * @param contents the contents of the ACL
+	 */
 	public ACL(ArrayList<Link> contents) {
 		super(contents);
 		if (!validate()) {
 			throw new IllegalArgumentException("Invalid contents for ACL.");
 		}
 	}
-		
+	
+	/**
+	 * Return whether an ACL element is valid
+	 * @param lr the element
+	 * @return
+	 */
 	public boolean validLabel(Link lr) {
 		return LABEL_MANAGER.contains(lr.targetLabel());
 	}
 	
 	/**
-	 * DKS -- add placeholder for public content. These will be represented by some
+	 * Placeholder for public content. These will be represented by some
 	 * form of marker entry, and need to be handled specially.
+	 * @return
 	 */
 	public boolean publiclyReadable() { return false; }
+	
+	/**
+	 * Placeholder for public content. These will be represented by some
+	 * form of marker entry, and need to be handled specially.
+	 * @return
+	 */	
 	public boolean publiclyWritable() { return false; }
 
+	/**
+	 * Return whether an ACL is valid
+	 * @return
+	 */
 	@Override
 	public boolean validate() {
 		if (!super.validate())
@@ -195,14 +257,26 @@ public class ACL extends Collection {
 		return true;
 	}
 	
+	/**
+	 * Add a specified reader to the ACL
+	 * @param reader the reader
+	 */
 	public void addReader(Link reader) {
 		addLabeledLink(reader, LABEL_READER);
 	}
-	
+
+	/**
+	 * Add a specified writer to the ACL
+	 * @param writer the writer
+	 */
 	public void addWriter(Link writer) {
 		addLabeledLink(writer, LABEL_WRITER);
 	}
 	
+	/**
+	 * Add a specified manager to the ACL
+	 * @param manager the manager
+	 */
 	public void addManager(Link manager) {
 		addLabeledLink(manager, LABEL_MANAGER);
 	}
@@ -210,7 +284,6 @@ public class ACL extends Collection {
 	/**
 	 * Batch perform a set of ACL update Operations
 	 * @param ACLUpdates: ordered set of ACL update operations
-	 * 
 	 * @return We return a LinkedList<Link> of the principals newly granted read
 	 *   access on this ACL. If no individuals are granted read access, we return a 0-length
 	 *   LinkedList. If any individuals are completely removed, requiring the caller to generate
@@ -323,11 +396,16 @@ public class ACL extends Collection {
 		return newReaders;
 		
 	}
-		
+	
+	/**
+	 * Add a labeled link.
+	 * Assume that the reference has link's name and authentication information,
+	 * but possibly not the right label. Also assume that the link object might
+	 * be used in multiple places, and we can't modify it.
+	 * @param link the link
+	 * @param desiredLabel the desired label
+	 */
 	protected void addLabeledLink(Link link, String desiredLabel) {
-		// assume that the reference has link's name and authentication information,
-		// but possibly not the right label. Also assume that the link object might
-		// be used in multiple places, and we can't modify it.
 		if (((null == desiredLabel) && (null != link.targetLabel()))
 			|| (!desiredLabel.equals(link.targetLabel()))) {
 			link = new Link(link.targetName(), desiredLabel, link.targetAuthenticator());
@@ -335,10 +413,15 @@ public class ACL extends Collection {
 		add(link);
 	}
 
+	/**
+	 * Remove a labeled link
+ 	 * Assume that the reference has link's name and authentication information,
+	 * but possibly not the right label. Also assume that the link object might
+	 * be used in multiple places, and we can't modify it.
+	 * @param link the link
+	 * @param desiredLabel the desired label
+	 */
 	protected void removeLabeledLink(Link link, String desiredLabel) {
-		// assume that the reference has link's name and authentication information,
-		// but possibly not the right label. Also assume that the link object might
-		// be used in multiple places, and we can't modify it.
 		if (((null == desiredLabel) && (null != link.targetLabel()))
 			|| (!desiredLabel.equals(link.targetLabel()))) {
 			link = new Link(link.targetName(), desiredLabel, link.targetAuthenticator());
@@ -390,6 +473,10 @@ public class ACL extends Collection {
 		_managers.clear();
 	}
 	
+	/**
+	 * Add a new ACL entry to the correct index (reader, writer or manager)
+	 * @param link the entry
+	 */
 	protected void index(Link link) {
 		if (LABEL_READER.equals(link.targetLabel())) {
 			_readers.add(link);
@@ -402,6 +489,11 @@ public class ACL extends Collection {
 		}
 	}
 	
+	/**
+	 * Delete an ACL entry from the index specified by a label
+	 * @param label the label of the index (reader, writer or manager)
+	 * @param link the link
+	 */
 	protected void deindex(String label, Link link) {
 		if (LABEL_READER.equals(label)) {
 			_readers.remove(link);
