@@ -40,7 +40,7 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s ccn:/prefix/to/register proto host [port]\n"
+            "%s ccnx:/prefix/to/register proto host [port]\n"
             "   Bring up a link to another ccnd, registering a prefix\n",
             progname);
     exit(1);
@@ -187,7 +187,7 @@ main(int argc, char **argv)
 
     /* We need to figure out our local ccnd's CCIDID */
     name->length = 0;
-    CHKRES(res = ccn_name_from_uri(name, "ccn:/ccn/ping/XXX")); // XXX - ideally use a nonce instead
+    CHKRES(res = ccn_name_from_uri(name, "ccnx:/ccn/ping/XXX")); // XXX - ideally use a nonce instead
     CHKRES(res = ccn_get(h, name, templ, 200, resultbuf, &pcobuf, NULL, 0));
     res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
                         resultbuf->buf,
