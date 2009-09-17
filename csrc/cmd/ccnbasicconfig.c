@@ -187,7 +187,7 @@ main(int argc, char **argv)
 
     /* We need to figure out our local ccnd's CCIDID */
     name->length = 0;
-    CHKRES(res = ccn_name_from_uri(name, "ccnx:/ccn/ping/XXX")); // XXX - ideally use a nonce instead
+    CHKRES(res = ccn_name_from_uri(name, "ccnx:/ccnx/ping/XXX")); // XXX - ideally use a nonce instead
     CHKRES(res = ccn_get(h, name, templ, 200, resultbuf, &pcobuf, NULL, 0));
     res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
                         resultbuf->buf,
@@ -202,7 +202,7 @@ main(int argc, char **argv)
     
     /* Create the new face */
     CHKRES(ccn_name_init(name));
-    CHKRES(ccn_name_append(name, "ccn", 3));
+    CHKRES(ccn_name_append_str(name, "ccnx"));
     CHKRES(ccn_name_append(name, ccndid, ccndid_size));
     CHKRES(ccn_name_append(name, "newface", 7));
     CHKRES(ccn_name_append(name, temp->buf, temp->length));
@@ -239,7 +239,7 @@ main(int argc, char **argv)
                                    ccn_keystore_private_key(keystore));
     CHKRES(res);
     CHKRES(ccn_name_init(name));
-    CHKRES(ccn_name_append(name, "ccn", 3));
+    CHKRES(ccn_name_append_str(name, "ccnx"));
     CHKRES(ccn_name_append(name, ccndid, ccndid_size));
     CHKRES(ccn_name_append_str(name, "prefixreg"));
     CHKRES(ccn_name_append(name, temp->buf, temp->length));

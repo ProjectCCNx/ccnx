@@ -48,7 +48,7 @@ CCNDID=`cat ccndid.out`
 cat <<EOF >prefixreg-request.xml
 <Interest>
   <Name>
-    <Component ccnbencoding="text">ccn</Component>
+    <Component ccnbencoding="text">ccnx</Component>
     <Component ccnbencoding="hexBinary">$CCNDID</Component>
     <Component ccnbencoding="text">prefixreg</Component>
     <Component ccnbencoding="base64Binary">$PRBLOB</Component>

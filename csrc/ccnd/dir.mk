@@ -23,7 +23,7 @@ BROKEN_PROGRAMS =
 CSRC = ccnd.c ccnd_msg.c ccnd_stats.c ccnd_internal_client.c ccndsmoketest.c
 HSRC = ccnd_private.h
 SCRIPTSRC = testbasics fortunes.ccnb contenthash.ref anything.ref \
-            ccnd-init-keystore-helper.sh
+            ccnd-init-keystore-helper.sh minsuffix.ref
  
 default: $(PROGRAMS)
 
