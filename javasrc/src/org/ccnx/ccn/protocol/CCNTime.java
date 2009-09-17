@@ -48,7 +48,7 @@ public class CCNTime extends Timestamp {
 
 	/**
 	 * Create a CCNTime.
-	 * @param time in msec
+	 * @param msec time in msec
 	 */
 	public CCNTime(long msec) {
 		this((msec/1000) * 1000, (msec % 1000) * 1000000L);
