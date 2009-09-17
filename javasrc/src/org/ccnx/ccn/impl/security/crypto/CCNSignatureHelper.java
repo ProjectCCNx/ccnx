@@ -31,19 +31,20 @@ import org.ccnx.ccn.impl.support.Log;
 
 
 /** 
- * Helper class for generating signatures.
- * @author smetters
- *
+ * Helper class for generating signatures, supporting CCN-specific operations.
  */
 public class CCNSignatureHelper extends SignatureHelper {
 	
 	/**
-	 * Encodes and canonicalizes an XML object before
-	 * signing it.
-	 * @throws SignatureException 
-	 * @throws NoSuchAlgorithmException 
-	 * @throws InvalidKeyException 
-	 * @throws XMLStreamException 
+	 * Helper method that encodes and then signs an XMLEncodable object.
+	 * @param digestAlgorithm the digest algorithm to use for the signature
+	 * @param toBeSigned the object to encode and sign
+	 * @param signingKey the private key to sign with
+	 * @return the signature
+	 * @throws SignatureException if the content is null, or there is an error generating the signature
+	 * @throws NoSuchAlgorithmException if the digestAlgorithm is not recognized
+	 * @throws InvalidKeyException if the signingKey is not valid
+	 * @throws XMLStreamException  if the object cannot be encoded
 	 */
 	public static byte [] sign(String digestAlgorithm, 
 							   XMLEncodable toBeSigned,
@@ -58,6 +59,20 @@ public class CCNSignatureHelper extends SignatureHelper {
 					signingKey);
 	}
 	
+	/**
+	 * Helper method that encodes, concatenates and then signs a set of
+	 * XMLEncodable objects and auxilliary data
+	 * @param digestAlgorithm the digest algorithm to use for the signature
+	 * @param toBeSigneds the objects to encode, concatenate and sign
+	 * @param additionalToBeSigneds additional data to be concatenated with the
+	 * 	encoded toBeSigneds prior to signing
+	 * @param signingKey the private key to sign with
+	 * @return the signature
+	 * @throws SignatureException if the content is null, or there is an error generating the signature
+	 * @throws NoSuchAlgorithmException if the digestAlgorithm is not recognized
+	 * @throws InvalidKeyException if the signingKey is not valid
+	 * @throws XMLStreamException  if the object cannot be encoded
+	 */
 	public static byte [] sign(String digestAlgorithm,
 							   XMLEncodable [] toBeSigneds,
 							   byte [][] additionalToBeSigneds,
@@ -82,12 +97,16 @@ public class CCNSignatureHelper extends SignatureHelper {
 	}
 
 	/**
-	 * Encodes and canonicalizes an XML object before
-	 * signing it.
-	 * @throws SignatureException 
-	 * @throws NoSuchAlgorithmException 
-	 * @throws InvalidKeyException 
-	 * @throws XMLStreamException 
+	 * Helper method that encodes and then verifies a signature on an XMLEncodable object.
+	 * @param xmlData the object to encode and verify
+	 * @param signature the signature
+	 * @param digestAlgorithm the digest algorithm used for the signature
+	 * @param verificationKey the public key to verify with
+	 * @return true if valid, false otherwise
+	 * @throws SignatureException if the content is null, or there is an error generating the signature
+	 * @throws NoSuchAlgorithmException if the digestAlgorithm is not recognized
+	 * @throws InvalidKeyException if the signingKey is not valid
+	 * @throws XMLStreamException  if the object cannot be encoded
 	 */
 	public static boolean verify(
 			XMLEncodable xmlData,
@@ -106,8 +125,22 @@ public class CCNSignatureHelper extends SignatureHelper {
 				verificationKey);
 	}
 
+	/**
+	 * Helper method that encodes, concatenates and then verifies a signature on a
+	 * set of XMLEncodable objects and auxiliary data.
+	 * @param xmlData the objects to encode and verify
+	 * @param auxiliaryData
+	 * @param signature the signature
+	 * @param digestAlgorithm the digest algorithm used for the signature
+	 * @param verificationKey the public key to verify with
+	 * @return true if valid, false otherwise
+	 * @throws SignatureException if the content is null, or there is an error generating the signature
+	 * @throws NoSuchAlgorithmException if the digestAlgorithm is not recognized
+	 * @throws InvalidKeyException if the signingKey is not valid
+	 * @throws XMLStreamException  if the object cannot be encoded
+	 */
 	public static boolean verify(XMLEncodable [] xmlData,
-								 byte [][] binaryData,
+								 byte [][] auxiliaryData,
 								 byte [] signature,
 								 String digestAlgorithm,
 								 PublicKey verificationKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
@@ -116,13 +149,13 @@ public class CCNSignatureHelper extends SignatureHelper {
 			Log.info("Value to be verified and signature must not be null.");
 			throw new SignatureException("verify: Value to be verified and signature must not be null.");
 		}
-		byte [][] encodedData = new byte [xmlData.length + ((null != binaryData) ? binaryData.length : 0)][];
+		byte [][] encodedData = new byte [xmlData.length + ((null != auxiliaryData) ? auxiliaryData.length : 0)][];
 		for (int i=0; i < xmlData.length; ++i) {
 			encodedData[i] = xmlData[i].encode();
 		} // DKS TODO -- switch to ostreams to handle binary end/begin tags
-		if (null != binaryData) {
+		if (null != auxiliaryData) {
 			for (int i=0,j=xmlData.length; j < encodedData.length; ++i,++j) {
-				encodedData[j] = binaryData[i];
+				encodedData[j] = auxiliaryData[i];
 			}
 		}
 		return verify(
@@ -133,9 +166,16 @@ public class CCNSignatureHelper extends SignatureHelper {
 	}
 	
 	/**
-	 * Overrides to get correct default digest.
+	 * Signs an array of bytes with a private signing key and specified digest algorithm. 
+	 * Overrides SignatureHelper to get correct default digest.
+	 * @param digestAlgorithm the digest algorithm. if null uses DEFAULT_DIGEST_ALGORITHM
+	 * @param toBeSigned the array of bytes to be signed.
+	 * @param signingKey the signing key.
+	 * @return the signature.
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 * @throws InvalidKeyException
 	 */
-
 	public static byte [] sign(String digestAlgorithm,
 			byte [] toBeSigned,
 			PrivateKey signingKey) throws SignatureException, 
@@ -144,6 +184,17 @@ public class CCNSignatureHelper extends SignatureHelper {
 				CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm, toBeSigned, signingKey);
 	}
 
+	/**
+	 * Sign concatenation of the toBeSigneds.
+	 * Overrides SignatureHelper to get correct default digest.
+	 * @param digestAlgorithm the digest algorithm. if null uses DEFAULT_DIGEST_ALGORITHM
+	 * @param toBeSigneds the content to be signed.
+	 * @param signingKey the signing key.
+	 * @return the signature.
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 * @throws InvalidKeyException
+	 */
 	public static byte [] sign(String digestAlgorithm,
 			   byte [][] toBeSigneds,
 			   PrivateKey signingKey) throws SignatureException,
@@ -152,6 +203,20 @@ public class CCNSignatureHelper extends SignatureHelper {
 					CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm, toBeSigneds, signingKey);
 	}
 
+	/**
+	 * Verifies the signature on the concatenation of a set of individual
+	 * data items, given the verification key and digest algorithm. 
+	 * Overrides SignatureHelper to get correct default digest.
+	 * @param data the data; which are expected to have been concatenated before 
+	 * 	signing. Any null arrays are skipped.
+	 * @param signature the signature.
+	 * @param digestAlgorithm the digest algorithm. if null uses DEFAULT_DIGEST_ALGORITHM
+	 * @param verificationKey the public verification key.
+	 * @return the correctness of the signature as a boolean.
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 * @throws InvalidKeyException
+	 */
 	public static boolean verify(
 			byte [][] data,
 			byte [] signature,
@@ -163,6 +228,19 @@ public class CCNSignatureHelper extends SignatureHelper {
 						CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm, verificationKey);
 	}
 	
+	/**
+	 * Verify a standalone signature.
+	 * Overrides SignatureHelper to get correct default digest.
+	 * @param data the data whose signature we want to verify
+	 * @param signature the signature itself
+	 * @param digestAlgorithm the digest algorithm used to generate the signature. 
+	 * 		if null uses DEFAULT_DIGEST_ALGORITHM
+	 * @param verificationKey the public key to verify the signature with
+	 * @return true if signature valid, false otherwise
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 */
 	public static boolean verify(byte [] data, byte [] signature, String digestAlgorithm,
 			PublicKey verificationKey) 
 	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {

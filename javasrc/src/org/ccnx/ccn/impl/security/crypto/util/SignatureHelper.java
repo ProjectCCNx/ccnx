@@ -47,7 +47,7 @@ public class SignatureHelper {
 	
 	/**
 	 * Signs an array of bytes with a private signing key and specified digest algorithm. 
-	 * @param digestAlgorithm the digest algorithm.
+	 * @param digestAlgorithm the digest algorithm. if null uses DEFAULT_DIGEST_ALGORITHM
 	 * @param toBeSigned the array of bytes to be signed.
 	 * @param signingKey the signing key.
 	 * @return the signature.
@@ -82,7 +82,7 @@ public class SignatureHelper {
 	
 	/**
 	 * Sign concatenation of the toBeSigneds.
-	 * @param digestAlgorithm the digest algorithm.
+	 * @param digestAlgorithm the digest algorithm. if null uses DEFAULT_DIGEST_ALGORITHM
 	 * @param toBeSigneds the content to be signed.
 	 * @param signingKey the signing key.
 	 * @return the signature.
@@ -119,10 +119,12 @@ public class SignatureHelper {
 	}
 	
 	/**
-	 * Verifies the signature on some data, given the verification key and digest algorithm. 
-	 * @param data the data.
+	 * Verifies the signature on the concatenation of a set of individual
+	 * data items, given the verification key and digest algorithm. 
+	 * @param data the data; which are expected to have been concatenated before 
+	 * 	signing. Any null arrays are skipped.
 	 * @param signature the signature.
-	 * @param digestAlgorithm the digest algorithm.
+	 * @param digestAlgorithm the digest algorithm. if null uses DEFAULT_DIGEST_ALGORITHM
 	 * @param verificationKey the public verification key.
 	 * @return the correctness of the signature as a boolean.
 	 * @throws SignatureException
@@ -150,12 +152,25 @@ public class SignatureHelper {
 		sig.initVerify(verificationKey);
 		if (null != data) {
 			for (int i=0; i < data.length; ++i) {
-				sig.update(data[i]);
+				if (data[i] != null)
+					sig.update(data[i]);
 			}
 		}
 		return sig.verify(signature);
 	}
 	
+	/**
+	 * Verify a standalone signature.
+	 * @param data the data whose signature we want to verify
+	 * @param signature the signature itself
+	 * @param digestAlgorithm the digest algorithm used to generate the signature,
+	 * 		if null uses DEFAULT_DIGEST_ALGORITHM
+	 * @param verificationKey the public key to verify the signature with
+	 * @return true if signature valid, false otherwise
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 */
 	public static boolean verify(byte [] data, byte [] signature, String digestAlgorithm,
 										PublicKey verificationKey) 
 					throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
