@@ -36,7 +36,16 @@ import org.ccnx.ccn.impl.support.Log;
 
 public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName> {
 
-	public static final String SCHEME = "ccn:";
+	/**
+	 * Official CCN URI scheme.
+	 */
+	public static final String SCHEME = "ccnx:";
+	
+	/**
+	 * Still want to accept this one, but prefer SCHEME.
+	 */
+	public static final String ORIGINAL_SCHEME = "ccn:";
+	
 	public static final String SEPARATOR = "/";
 	public static final ContentName ROOT = new ContentName(0, (ArrayList<byte []>)null);
 	public static final String CONTENT_NAME_ELEMENT = "Name";
@@ -186,7 +195,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
      * Any query (starting '?') or fragment (starting '#') is ignored which means that these
      * reserved delimiters must be percent-encoded if they are to be part of the name. 
 	 * <p>
-	 * The URI must begin with either the "/" delimiter or the scheme specification "ccn:"
+	 * The URI must begin with either the "/" delimiter or the scheme specification "ccnx:"
 	 * plus delimiter to make URI absolute.
 	 * <p>
 	 * The decoding from a URI String to a ContentName translates each legal 
@@ -235,10 +244,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				String[] parts;
 				String justname = name;
 				if (!name.startsWith(SEPARATOR)){
-					if (!name.startsWith(SCHEME + SEPARATOR)) {
+					if ((!name.startsWith(SCHEME + SEPARATOR)) && (!name.startsWith(ORIGINAL_SCHEME + SEPARATOR))) {
 						throw new MalformedContentNameStringException("ContentName strings must begin with " + SEPARATOR + " or " + SCHEME + SEPARATOR);
 					}
-					justname = name.substring(SCHEME.length());
+					if (name.startsWith(SCHEME)) {
+						justname = name.substring(SCHEME.length());
+					} else if (name.startsWith(ORIGINAL_SCHEME)) {
+						justname = name.substring(ORIGINAL_SCHEME.length());
+					}
 				}
 				parts = justname.split(SEPARATOR);
 				if (parts.length == 0) {

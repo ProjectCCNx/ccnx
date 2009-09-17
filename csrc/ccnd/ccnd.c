@@ -1799,7 +1799,7 @@ register_new_face(struct ccnd_handle *h, struct face *face)
     int res;
     if (h->flood && face->faceid != 0 &&
           (face->flags & CCN_FACE_UNDECIDED) == 0) {
-        res = ccnd_reg_uri(h, "ccn:/", face->faceid,
+        res = ccnd_reg_uri(h, "ccnx:/", face->faceid,
                            CCN_FORW_CHILD_INHERIT, 0x7FFFFFFF);
     }
 }
@@ -1877,7 +1877,7 @@ ccnd_req_newface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     int save;
 
     save = h->flood;
-    h->flood = 0; /* never auto-register ccn:/ for these */
+    h->flood = 0; /* never auto-register ccnx:/ for these */
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
         goto Finish;        

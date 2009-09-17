@@ -70,9 +70,9 @@ public class ContentNameTest {
 			{(byte) 0xe0, (byte) 0x8e, (byte) 0xb7},
 			}; 
 	public String escapedSubName1 = "%62%72%69%67%67%73";
-	public String withScheme = "ccn:/test/briggs/test.txt";
-	public String dotSlash = "ccn:/.../.%2e./...././.....///?...";
-	public String dotSlashResolved = "ccn:/.../.../..../.....";
+	public String withScheme = "ccnx:/test/briggs/test.txt";
+	public String dotSlash = "ccnx:/.../.%2e./...././.....///?...";
+	public String dotSlashResolved = "ccnx:/.../.../..../.....";
 	public String withQuery = "/abc/def/q?foo=bar";
 	public String withFragment = "/abc/def/ghi#rst";
 	public String withQueryAndFragment = "/abc/def/qr?st=bat#notch";
@@ -162,7 +162,7 @@ public class ContentNameTest {
 	
 		//----------------------------- tests specific to URI-encoded cases
 
-		// string with ccn: scheme on front
+		// string with ccnx: scheme on front
 		ContentName name3 = null;
 		System.out.println("ContentName: parsing name string \"" + withScheme +"\"");
 		try {
@@ -174,7 +174,7 @@ public class ContentNameTest {
 		}
 		assertNotNull(name3);
 		System.out.println("Name: " + name3);
-		assertEquals(name3.toString(), withScheme.substring(4));
+		assertEquals(name3.toString(), withScheme.substring(withScheme.indexOf(":") + 1));
 		
 		ContentName input3 = null;
 		try {
@@ -198,7 +198,7 @@ public class ContentNameTest {
 		}
 		assertNotNull(name4);
 		System.out.println("Name: " + name4);
-		assertEquals(name4.toString(), dotSlashResolved.substring(4));
+		assertEquals(name4.toString(), dotSlashResolved.substring(dotSlashResolved.indexOf(":") + 1));
 		
 		// empty name
 		System.out.println("ContentName: testing empty name round trip: /");
@@ -219,7 +219,7 @@ public class ContentNameTest {
 		System.out.println("ContentName: testing empty name round trip: /");
 		ContentName name6= null;
 		try {
-			name6 = ContentName.fromURI("ccn:/");
+			name6 = ContentName.fromURI("ccnx:/");
 		} catch (MalformedContentNameStringException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
@@ -258,10 +258,10 @@ public class ContentNameTest {
 	public void testContentNameStringException() throws MalformedContentNameStringException {
 		// Require an absolute URI
 		parseWithException("expectingAnException");
-		parseWithException("ccn:a/relative/name");
+		parseWithException("ccnx:a/relative/name");
 		parseWithException("relative/no/scheme");
 		// Not too many .. components
-		parseWithException("ccn:/a/b/c/../../../..");
+		parseWithException("ccnx:/a/b/c/../../../..");
 		// Broken percent encodings
 		parseWithException("/a/short/percent/%e");
 		parseWithException("/a/bogus/%AQE/hex/value");

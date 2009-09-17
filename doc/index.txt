@@ -1,8 +1,8 @@
-CCN Documentation Index
+CCNx Documentation Index
 =========================
 
 == Technical Documentation
- - link:technical/InterestMessage.html[Interest Message]
+ - link:technical/CCNxProtocol.html[Protocol overview]
  - link:technical/index.html[All technical docs]
 
 == Documentation derived from the code

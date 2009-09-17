@@ -28,7 +28,7 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-o outfile] ccn:/a/b ...\n"
+            "%s [-o outfile] ccnx:/a/b ...\n"
             "   Remove (mark stale) content matching the given ccn URIs\n"
             "   -o outfile - write the ccnb-encoded content to the named file\n",
             progname);
