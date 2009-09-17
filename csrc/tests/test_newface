@@ -42,7 +42,7 @@ IsolatePubID () {
                -e 's@</PublisherPublicKeyDigest.*$@@p'
 }
 
-ccnget ccn:/ccn/ping/$$ | ccn_ccnbtoxml -bx - | IsolatePubID > ccndid.out
+ccnget ccnx:/ccn/ping/$$ | ccn_ccnbtoxml -bx - | IsolatePubID > ccndid.out
 grep '^[0-9A-F][0-9A-F]*$' ccndid.out || SkipTest could not determine CCNDID
 CCNDID=`cat ccndid.out`
 

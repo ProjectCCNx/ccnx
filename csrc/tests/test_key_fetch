@@ -95,8 +95,8 @@ EOF
 ccndsmoketest
 dataresponsetest keyfetchdata.ccnb keyfetchpkey.ccnb &
 ccndsmoketest -t 100 recv
-ccnls ccn:/ccnd/test_keyfetch > unverified.out
-CCN_VERIFY=1 ccnls ccn:/ccnd/test_keyfetch > verified.out
+ccnls ccnx:/ccnd/test_keyfetch > unverified.out
+CCN_VERIFY=1 ccnls ccnx:/ccnd/test_keyfetch > verified.out
 
 fgrep '[unverified]' unverified.out || Fail should have gotten unverified data without key
 fgrep '[verified]' verified.out || Fail should have gotten verified data with key
@@ -118,12 +118,12 @@ rm -rf ~/test_key_fetch.ccn
 test -d ~/x.ccn || mv ~/.ccn ~/x.ccn
 tools/ccn_repo /tmp/test_key_fetch_repo
 echo "Where are my keys?" > /tmp/test_key_fetch.data
-./jrun com.parc.ccn.apps.put_file ccn:/ccnd/test_keyfetch /tmp/test_key_fetch.data
+./jrun com.parc.ccn.apps.put_file ccnx:/ccnd/test_keyfetch /tmp/test_key_fetch.data
 tools/ccn_repo stop
 killall java
 mv ~/.ccn ~/test_key_fetch.ccn && mv ~/x.ccn ~/.ccn
 popd
-ccnget ccn:/ccnd/test_keyfetch > keyfetchdata.ccnb
+ccnget ccnx:/ccnd/test_keyfetch > keyfetchdata.ccnb
 cat ~/test_key_fetch.ccn/*/*.ccnb > keyfetchpkey.ccnb
 ccndumpnames
 ccndsmoketest kill

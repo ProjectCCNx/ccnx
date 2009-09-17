@@ -130,7 +130,6 @@ public class CCNFlowControl implements CCNFilterListener {
 	 */
 	public CCNFlowControl(CCNHandle handle) throws IOException {
 		if (null == handle) {
-			// Could make this create a handle.
 			try {
 				handle = CCNHandle.open();
 			} catch (ConfigurationException e) {

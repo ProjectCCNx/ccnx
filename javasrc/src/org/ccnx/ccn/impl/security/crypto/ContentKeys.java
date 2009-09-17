@@ -36,7 +36,7 @@ import org.ccnx.ccn.impl.support.Log;
 
 
 /**
- * Specifies encryption algorithm and keys to use for encrypting content.
+ * Specifies encryption algorithm, keys, and if necessary, IV to use for encrypting content.
  */
 public class ContentKeys {
 	/**
@@ -55,6 +55,24 @@ public class ContentKeys {
 	public static final int SEGMENT_NUMBER_LENGTH = 6; // bytes
 	public static final int BLOCK_COUNTER_LENGTH = 2; // bytes
 	private static final byte [] INITIAL_BLOCK_COUNTER_VALUE = new byte[]{0x00, 0x01};
+	
+	/** 
+	 * A simple source of key derivation material. 
+	 */
+	private static SecureRandom _random; 
+	
+	private synchronized static SecureRandom getRandom() {
+		// see http://www.cigital.com/justiceleague/2009/08/14/proper-use-of-javas-securerandom/
+		if (null != _random)
+			return _random;
+		try {
+			_random = SecureRandom.getInstance("SHA1PRNG", KeyManager.getDefaultProvider());
+		} catch (NoSuchAlgorithmException e) {
+			Log.warning("Cannot find random number generation algorithm SHA1PRNG: " + e.getMessage());
+			_random = new SecureRandom();
+		}
+		return _random;
+	}
 
 	public String _encryptionAlgorithm;
 	public SecretKeySpec _encryptionKey;
@@ -74,8 +92,16 @@ public class ContentKeys {
 		// TODO: this assumes the default algorithms are available. Should probably check during startup
 	}
 
+	/**
+	 * Create a set of ContentKeys.
+	 * @param encryptionAlgorithm algorithm to use
+	 * @param encryptionKey encryption key
+	 * @param masterIV iv
+	 * @throws NoSuchAlgorithmException if encryptionAlgorithm unknown
+	 * @throws NoSuchPaddingException if encryptionAlgorithm specifies an unknown padding type
+	 */
 	public ContentKeys(String encryptionAlgorithm, SecretKeySpec encryptionKey,
-			IvParameterSpec masterIV) throws NoSuchAlgorithmException, NoSuchPaddingException {
+						IvParameterSpec masterIV) throws NoSuchAlgorithmException, NoSuchPaddingException {
 		// ensure NoSuchPaddingException cannot be thrown later when a Cipher is made
 		Cipher.getInstance(encryptionAlgorithm);
 		// TODO check secret key/iv not empty?
@@ -103,6 +129,11 @@ public class ContentKeys {
 		}
 	}
 	
+	/**
+	 * @return The base algorithm used in the encryption algorithm specified for this
+	 * ContentKeys. For example, if the encryptionAlgorithm is "AES/CTR/NoPadding",
+	 * the base algorithm is AES.
+	 */
 	public String getBaseAlgorithm() {
 		if (_encryptionAlgorithm.contains("/")) {
 			return _encryptionAlgorithm.substring(0, _encryptionAlgorithm.indexOf("/"));
@@ -110,6 +141,10 @@ public class ContentKeys {
 		return _encryptionAlgorithm;
 	}
 	
+	/**
+	 * Create a cipher for the encryption algorithm used by this ContentKeys
+	 * @return the cipher
+	 */
 	public Cipher getCipher() {
 		// We have tried a dummy call to Cipher.getInstance on construction of this ContentKeys - so
 		// further "NoSuch" exceptions should not happen here.
@@ -130,9 +165,14 @@ public class ContentKeys {
 	 * Create a set of random encryption/decryption keys using the default algorithm.
 	 * @return a randomly-generated set of keys and IV that can be used for encryption
 	 */
-	public static ContentKeys generateRandomKeys() {
-		return new ContentKeys(SecureRandom.getSeed(DEFAULT_KEY_LENGTH),
-				SecureRandom.getSeed(IV_MASTER_LENGTH));
+	public synchronized static ContentKeys generateRandomKeys() {
+		byte [] key = new byte[DEFAULT_KEY_LENGTH];
+		byte [] iv = new byte[IV_MASTER_LENGTH];
+		// do we want additional whitening?
+		SecureRandom random = getRandom();
+		random.nextBytes(key);
+		random.nextBytes(iv);
+		return new ContentKeys(key, iv);
 	}
 	
 	/**
@@ -169,6 +209,7 @@ public class ContentKeys {
 	 * 	    have more space, use it for the block counter.
 	 * IV value is the block width of the cipher.
 	 * 
+	 * @param segmentNumber the segment number to create an encryption cipher for
 	 * @throws InvalidAlgorithmParameterException 
 	 * @throws InvalidKeyException 
 	 */
@@ -177,11 +218,29 @@ public class ContentKeys {
 		return getSegmentCipher(segmentNumber, true);
 	}
 
+	/**
+	 * Create a decryption cipher for the specified segment.
+	 * @param segmentNumber the segment to decrypt
+	 * @return the Cipher
+	 * @throws InvalidKeyException
+	 * @throws InvalidAlgorithmParameterException
+	 * @see getSegmentEncryptionCipher(long)
+	 */
 	public Cipher getSegmentDecryptionCipher(long segmentNumber)
 		throws InvalidKeyException, InvalidAlgorithmParameterException {
 		return getSegmentCipher(segmentNumber, true);
 	}
 
+	/**
+	 * Generate a segment encryption or decryption cipher using these ContentKeys
+	 * to encrypt or decrypt a particular segment.
+	 * @param segmentNumber segment to encrypt/decrypt
+	 * @param encryption true for encryption, false for decryption
+	 * @return the Cipher
+	 * @throws InvalidKeyException
+	 * @throws InvalidAlgorithmParameterException
+	 * @see getSegmentEncryptionCipher(long)
+	 */
 	protected Cipher getSegmentCipher(long segmentNumber, boolean encryption)
 		throws InvalidKeyException, InvalidAlgorithmParameterException {
 
@@ -216,6 +275,13 @@ public class ContentKeys {
 		return cipher;
 	}
 
+	/**
+	 * Turn a master IV and a segment number into an IV for this segment
+	 * @param masterIV the master IV
+	 * @param segmentNumber the segment number
+	 * @param ivLen the output IV length requested
+	 * @return the IV
+	 */
 	public static IvParameterSpec buildIVCtr(IvParameterSpec masterIV, long segmentNumber, int ivLen) {
 
 		Log.finest("Thread="+Thread.currentThread()+" Building IV - master="+DataUtils.printHexBytes(masterIV.getIV())+" segment="+segmentNumber+" ivLen="+ivLen);
@@ -233,6 +299,11 @@ public class ContentKeys {
 		return iv_ctrSpec;
 	}
 	
+	/**
+	 * Converts a segment number to a byte array representation (big-endian).
+	 * @param segmentNumber the segment number to convert
+	 * @return the byte array representation of segmentNumber
+	 */
 	public static byte [] segmentNumberToByteArray(long segmentNumber) {
 		byte [] ba = new byte[SEGMENT_NUMBER_LENGTH];
 		// Is this the fastest way to do this?

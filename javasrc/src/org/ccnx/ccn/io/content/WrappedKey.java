@@ -46,6 +46,14 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
+ * A representation of wrapped (encrypted) keys for strorage in CCN. These are used
+ * to transfer symmetric and private keys between users, store them for backup, do
+ * key distribution for access control, and so on. They use standard key wrapping
+ * algorithms, and try to be fairly general. You can use them to wrap almost any
+ * type of key in any other type of key (as long as the latter is capable of
+ * encryption), though use of this class with some key types or key lengths
+ * may require installation of the Java unlimited strength cryptography policy
+ * files to succeed.
  * 
  * For now, we have a very loose definition of default -- the default wrap algorithm
  * depends on the type of key being used to wrap; similarly the default key algorithm
@@ -57,9 +65,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * If the caller specifies values they will be encoded on the wire and decoded on 
  * the other end; defaults will not currently be enforced automatically. This means
  * equals behavior should be watched closely. 
-
- * @author smetters
- *
  */
 public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
@@ -75,6 +80,10 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	protected static final String NONCE_KEY_ALGORITHM = "AES";
 	protected static final int NONCE_KEY_LENGTH = 128;
 	
+	/**
+	 * A subtype of ContentName that encodes on the wire with a different
+	 * label.
+	 */
 	public class WrappingKeyName extends ContentName {
 
 		public WrappingKeyName(ContentName name) {
@@ -137,7 +146,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		_WrapAlgorithmMap.put("RSA", "RSA/NONE/OAEPWithSHA256AndMGF1Padding");
 	}
 	
-	/**
+	/*
 	 * Factory methods to build wrapped keys out of their components, wrapping 
 	 * in the process. For the moment, these use only the default wrapping algorithms.
 	 */
@@ -384,27 +393,76 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	    return unwrappedKey;
 	}
 
+	/**
+	 * 
+	 * @return the wrappingKeyIdentfier for this object
+	 */
 	public byte [] wrappingKeyIdentifier() { return _wrappingKeyIdentifier; }
 	
+	/**
+	 * Sets the wrappingKeyIdentifier
+	 * @param wrappingKeyIdentifier new identifier
+	 */
 	public void setWrappingKeyIdentifier(byte [] wrappingKeyIdentifier) {
 		_wrappingKeyIdentifier = wrappingKeyIdentifier;
 	}
 	
+	/**
+	 * Sets the wrappingKeyIdentifier
+	 * @param wrappingKey key from which to generate the new identifier
+	 */
 	public void setWrappingKeyIdentifier(Key wrappingKey) {
 		setWrappingKeyIdentifier(wrappingKeyIdentifier(wrappingKey));
 	}
 	
+	/**
+	 * Calculate the wrappingKeyIdentifier corresponding to this key
+	 * @param wrappingKey the key
+	 * @return the identifier
+	 */
 	public static byte [] wrappingKeyIdentifier(Key wrappingKey) {
 		return CCNDigestHelper.digest(wrappingKey.getEncoded());
 	}
 	
+	/**
+	 * @return the wrappingKeyName if specified
+	 */
 	public ContentName wrappingKeyName() { return _wrappingKeyName; }
+	
+	/**
+	 * Set the wrappingKeyName
+	 * @param keyName the new name
+	 */
 	public void setWrappingKeyName(ContentName keyName) { _wrappingKeyName = new WrappingKeyName(keyName); }
 	
+	/**
+	 * Returns the wrapping algorithm identifier, if specified
+	 * @return the wrap algorithm
+	 */
 	public String wrapAlgorithm() { return _wrapAlgorithm; }
+	
+	/**
+	 * Returns the key algorithm identifier, if specified
+	 * @return the key algorithm
+	 */
 	public String keyAlgorithm() { return _keyAlgorithm; }
+	
+	/**
+	 * Returns the label if we have one
+	 * @return the label
+	 */
 	public String label() { return _label; }
+
+	/**
+	 * Returns the encrypted nonce key if we have one.
+	 * @return the encryptedNonceKey, if one is present
+	 */
 	public byte [] encryptedNonceKey() { return _encryptedNonceKey; }
+	
+	/**
+	 * Get the encrypted key
+	 * @return the encrypted key
+	 */
 	public byte [] encryptedKey() { return _encryptedKey; }
 
 	@Override
@@ -595,10 +653,8 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	 * (see AESWrapWithPadEngine) that is not currently included in any signed provider. Once it
 	 * is, we will drop this special-case code.
 	 * @param wrappingKey key to use to encrypt
-	 * @param input encoded key to encrypt
-	 * @param offset offset into encoded data buffer
-	 * @param length length of data to encrypt.
-	 * @return encrypted data.
+	 * @param keyToBeWrapped key to encrypt
+	 * @return encrypted key.
 	 * @throws IllegalBlockSizeException 
 	 * @throws InvalidKeyException 
 	 */

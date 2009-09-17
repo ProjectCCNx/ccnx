@@ -61,29 +61,28 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * to 1.
  * 
  * The KDF implemented herein is from NIST special publication 108-008,
- * and is described here:
- * http://twiki.parc.xerox.com/twiki/bin/view/CCN/KeyDerivation
- * 
- * @author smetters
- *
+ * and is described in more detail in the CCN documentation.
  */
 public class KeyDerivationFunction {
 
 	/**
-	 * MAC algorithm used as PRF.
+	 * MAC algorithm used as a PRF.
 	 * We use HMAC-SHA256 as our primary PRF, because it is the most commonly
-	 * implemented acceptable option. CMAC would potentially be preferable,
-	 * but is not universally availalble yet.
+	 * implemented acceptable option. CMAC would be preferable,
+	 * but is not universally available yet.
 	 */
 	protected static final String MAC_ALGORITHM = "HmacSHA256";
 	protected static final String EMPTY = "";
 
 	/**
-	 * Default parameterization of KDF for standard algorithm type. This is the
+	 * Default parameterization of the KDF for standard algorithm type. This is the
 	 * routine that will be typically used by code that does not want to override
 	 * default algorithms.
-	 * @param contentName Name of this specific object, including the version (but not including
+	 * @param masterKeyBytes the source key from which to derive a subkey
+	 * @param label a text label for additional parameterization, if desired
+	 * @param contentName name of the specific object to derive a key for, including the version (but not including
 	 *     segment information).
+	 * @param publisher for this particular set of objects
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
@@ -101,6 +100,10 @@ public class KeyDerivationFunction {
 	 * Used to derive keys for nodes in a name hierarchy. The key must be independent of
 	 * publisher, as it is used to derive keys for intermediate nodes. As this is used as
 	 * input to another key derivation call, no IV is derived.
+	 * @param parentNodeKeyBytes the initial source key to derive further keys from
+	 * @param label a text label to allow derivation of multiple key types from a single
+	 * 	source key/path pair
+	 * @param nodeName the name of the node to derive a key for
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
@@ -115,7 +118,11 @@ public class KeyDerivationFunction {
 	 * Hierarchically derive keys for a child node, given an ancestor key. Why not do this in 
 	 * one step, with no intervening keys? This way we can delegate/install backlinks to keys
 	 * in the middle of the hierarchy and things continue to work.
-	 * @param ancestorNodeName the node with whom ancestorNodeKeyBytes is associated.
+	 * @param ancestorNodeName the node with whom ancestorNodeKey is associated.
+	 * @param ancestorNodeKey the key associated with that ancestor node
+	 * @param label a text label to allow derivation of multiple key types from a single
+	 * 	source key/path pair
+	 * @param nodeName the name of the node to derive a key for
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
@@ -145,13 +152,16 @@ public class KeyDerivationFunction {
 	}
 
 	/**
-	 * Parameterization of algorithm that returns a key and IV. Requested bit lengths must
+	 * Derive a key and IV for a particular object. Requested bit lengths must
 	 * be divisible by 8.
-	 * @param masterKeyBytes
-	 * @param label
-	 * @param name
-	 * @param publisher
-	 * @return returns an array of {key, iv/counter seed} suitable for use in segment encryption
+	 * @param masterKeyBytes master key to derive a new key from
+	 * @param keyBitLength bit length of key to derive
+	 * @param ivBitLength bit length of iv to derive
+	 * @param label a text label to allow derivation of multiple key types from a single
+	 * 	source key/path pair
+	 * @param contentName name to derive a key for
+	 * @param publisher publisher whose version of contentName we want to derive for
+	 * @return returns an {key, iv/counter seed} pair suitable for use in segment encryption
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
@@ -175,7 +185,15 @@ public class KeyDerivationFunction {
 
 
 	/**
-	 * Parameterization of KDF to use standard objects for context
+	 * Derive a key for a particular object. Requested bit lengths must
+	 * be divisible by 8.
+	 * @param masterKeyBytes master key to derive a new key from
+	 * @param outputLengthInBits bit length of key to derive
+	 * @param label a text label to allow derivation of multiple key types from a single
+	 * 	source key/path pair
+	 * @param contentName name to derive a key for
+	 * @param publisher publisher whose version of contentName we want to derive for
+	 * @return returns a key for this object
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
@@ -191,6 +209,18 @@ public class KeyDerivationFunction {
 				new XMLEncodable[]{contentName, publisher});
 	}
 	
+	/**
+	 * Derive a key for a particular object. Requested bit lengths must
+	 * be divisible by 8.
+	 * @param masterKeyBytes master key to derive a new key from
+	 * @param outputLengthInBits bit length of key to derive
+	 * @param label a text label to allow derivation of multiple key types from a single
+	 * 	source key/path pair
+	 * @param nodeName name to derive a key for
+	 * @return returns a key for this object
+	 * @throws XMLStreamException 
+	 * @throws InvalidKeyException 
+	 */
 	public static final byte [] DeriveKeyForNode(
 			byte [] masterKeyBytes, int outputLengthInBits,
 			String label, ContentName nodeName) throws InvalidKeyException, XMLStreamException {
@@ -201,12 +231,14 @@ public class KeyDerivationFunction {
 	}
 
 	/**
-	 * Master function building generic key derivation mechanism.
-	 * @param masterKeyBytes
-	 * @param outputLengthInBits
-	 * @param label
-	 * @param contextObjects
-	 * @return
+	 * Core key derivation mechanism.
+	 * @param masterKeyBytes master key to derive a new key from
+	 * @param outputLengthInBits bit length of key to derive
+	 * @param label a text label to allow derivation of multiple key types from a single
+	 * 	source key/path pair
+	 * @param contextObjects objects to add into the KDF as context. Usually at least the name
+	 * 	of the node, also possibly the publisher.
+	 * @return the derived key
 	 * @throws InvalidKeyException
 	 * @throws XMLStreamException
 	 */

@@ -342,15 +342,15 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
     if (ccnd_init_internal_keystore(ccnd) < 0)
         return(-1);
     ccnd->internal_client = h = ccn_create();
-    ccnd_uri_listen(ccnd, "ccn:/ccn/ping",
+    ccnd_uri_listen(ccnd, "ccnx:/ccn/ping",
                     &ccnd_answer_req, OP_PING);
-    ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/ping",
+    ccnd_uri_listen(ccnd, "ccnx:/ccn/" CCND_ID_TEMPL "/ping",
                     &ccnd_answer_req, OP_PING);
-    ccnd_uri_listen(ccnd, "ccn:/ccn/reg/self",
+    ccnd_uri_listen(ccnd, "ccnx:/ccn/reg/self",
                     &ccnd_answer_req, OP_REG_SELF + 1);
-    ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/newface",
+    ccnd_uri_listen(ccnd, "ccnx:/ccn/" CCND_ID_TEMPL "/newface",
                     &ccnd_answer_req, OP_NEWFACE + 1);
-    ccnd_uri_listen(ccnd, "ccn:/ccn/" CCND_ID_TEMPL "/prefixreg",
+    ccnd_uri_listen(ccnd, "ccnx:/ccn/" CCND_ID_TEMPL "/prefixreg",
                     &ccnd_answer_req, OP_PREFIXREG + 1);
     ccnd->internal_client_refresh =
     ccn_schedule_event(ccnd->sched, 200000,

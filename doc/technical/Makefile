@@ -16,11 +16,11 @@
 DERIVED_HTML =				\
 	BasicIdea.html			\
 	CCNxProtocol.html		\
-	ccnb.html			\
 	Name.html			\
 	URI.html			\
 	ContentObject.html		\
 	InterestMessage.html		\
+	BinaryEncoding.html		\
 	NameConventions.html		\
 	DigestComponent.html		\
 	Registration.html		\
@@ -54,7 +54,7 @@ DigestComponent.html: DigestComponent.txt
 DTAG.html: DTAG.txt $(SCHEMA)/tagname.csvdict
 	sed -e 's/$$/,,,,/g' $(SCHEMA)/tagname.csvdict | \
 					cut -d , -f 1-3   > .tagname.csv
-	asciidoc --unsafe DTAG.txt
+	asciidoc --unsafe DTAG.txt || : might fail if your asciidoc is too old
 	rm -f .tagname.csv
 
 dtd.html: dtd.txt $(XSDSRC)
@@ -87,8 +87,8 @@ Name.html: Name.txt
 BasicIdea.html: BasicIdea.txt
 	asciidoc BasicIdea.txt
 
-ccnb.html: ccnb.txt
-	asciidoc ccnb.txt
+BinaryEncoding.html: BinaryEncoding.txt
+	asciidoc BinaryEncoding.txt
 
 CCNxProtocol.html: CCNxProtocol.txt
 	asciidoc CCNxProtocol.txt

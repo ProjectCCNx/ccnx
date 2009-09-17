@@ -182,7 +182,7 @@ get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_storage_siz
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *resultbuf = NULL;
     struct ccn_parsed_ContentObject pcobuf = {0};
-    char ping_uri[] = "ccn:/ccn/ping";
+    char ping_uri[] = "ccnx:/ccn/ping";
     const unsigned char *ccndid_result;
     static size_t ccndid_result_size;
     int res;
@@ -740,8 +740,8 @@ incoming_interest(
     }
  
     /* now process the results */
-    /* pflhead, lineno=0, "add" "ccn:/asdfasdf.com/" "tcp|udp", host, portstring, NULL NULL NULL */
-    sprintf(srv_name, "ccn:/%.*s", (int)comp0_size, comp0);
+    /* pflhead, lineno=0, "add" "ccnx:/asdfasdf.com/" "tcp|udp", host, portstring, NULL NULL NULL */
+    sprintf(srv_name, "ccnx:/%.*s", (int)comp0_size, comp0);
     sprintf(portstring, "%d", port);
     res = process_command_tokens(pflhead, 0,
                                  "add",

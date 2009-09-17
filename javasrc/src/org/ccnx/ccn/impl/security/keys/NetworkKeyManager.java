@@ -24,6 +24,7 @@ import java.security.KeyStore;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
@@ -36,11 +37,12 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * A Key Manager designed to make dynamic key stores and back them up to CCN.
- * Used for creating test users to start, might be generally useful.
- * @author smetters
- *
+ * This is a network-based implementation of key manager.
+ * In comparison with BasicKeyManager, this class reads (or writes) the user's
+ * private key from (or to) CCN.   
+ * @see BasicKeyManager, KeyManager
  */
+
 public class NetworkKeyManager extends BasicKeyManager {
 	
 	static final long DEFAULT_TIMEOUT = 1000;
@@ -49,6 +51,15 @@ public class NetworkKeyManager extends BasicKeyManager {
 	PublisherPublicKeyDigest _publisher;
 	CCNHandle _handle;
 
+	/** Constructor
+	 * @param userName
+	 * @param keystoreName
+	 * @param publisher
+	 * @param password
+	 * @param handle
+	 * @throws ConfigurationException
+	 * @throws IOException
+	 */
 	public NetworkKeyManager(String userName, ContentName keystoreName, PublisherPublicKeyDigest publisher,
 							char [] password, CCNHandle handle) throws ConfigurationException, IOException {
 		// key repository created by default superclass constructor
@@ -62,9 +73,10 @@ public class NetworkKeyManager extends BasicKeyManager {
 	}
 
 	/**
+	 * Get the content name for a given key id.
 	 * The default key name is the publisher ID itself,
 	 * under the keystore namespace.
-	 * @param keyID
+	 * @param keyID[]
 	 * @return
 	 */
 	@Override
@@ -74,7 +86,11 @@ public class NetworkKeyManager extends BasicKeyManager {
 				   			UserConfiguration.defaultKeyName());
 		return new ContentName(keyDir, keyID);
 	}
-
+	
+	/**
+	 * Reads the user's keys from CCN
+	 * @throws ConfigurationException
+	 */
 	protected void loadKeyStore() throws ConfigurationException {
 		// Is there an existing version of this key store? don't assume repo, so don't enumerate.
 		// timeouts should be ok.
@@ -108,6 +124,10 @@ public class NetworkKeyManager extends BasicKeyManager {
 		}
 	}
 
+	/**
+	 * Creates a CCN versioned output stream as the key storage 
+	 * @throws ConfigurationException
+	 */
 	synchronized protected KeyStore createKeyStore() throws ConfigurationException {
 		
 		OutputStream out = null;
@@ -125,6 +145,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 	
 	/**
 	 * Override to give different storage behavior.
+	 * Output stream is CCN
 	 * @return
 	 * @throws XMLStreamException
 	 * @throws IOException

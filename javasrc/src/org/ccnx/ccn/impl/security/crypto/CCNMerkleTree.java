@@ -61,30 +61,28 @@ import org.ccnx.ccn.protocol.SignedInfo;
  *     
  * So, we either need to hand in all the names, or a function to call to get
  * the name for each block.
- * @author smetters
- *
  */
 public class CCNMerkleTree extends MerkleTree {
 	
 	public static final String DEFAULT_MHT_ALGORITHM = "SHA256MHT";
 	
 	byte [] _rootSignature = null;
-	ContentObject [] _blockObjects = null;
+	ContentObject [] _segmentObjects = null;
 	
 	/**
-	 * Build a CCNMerkleTree. 
+	 * Build a CCNMerkleTree from a set of leaf content objects. 
 	 * @param contentObjects must be at least 2 blocks, or will throw IllegalArgumentException.
-	 * @param signingKey
-	 * @throws NoSuchAlgorithmException
-	 * @throws InvalidKeyException
-	 * @throws SignatureException
+	 * @param signingKey key to sign root with
+	 * @throws NoSuchAlgorithmException if key or DEFAULT_DIGEST_ALGORITHM are unknown
+	 * @throws InvalidKeyException if signingKey is invalid
+	 * @throws SignatureException if we cannot sign
 	 */
 	public CCNMerkleTree(ContentObject [] contentObjects, 
 			PrivateKey signingKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
 
 		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, ((null != contentObjects) ? contentObjects.length : 0));
-		_blockObjects = contentObjects;
-		if (null == _blockObjects) {
+		_segmentObjects = contentObjects;
+		if (null == _segmentObjects) {
 			throw new IllegalArgumentException("Contained objects cannot be null!");
 		}
 		
@@ -97,42 +95,46 @@ public class CCNMerkleTree extends MerkleTree {
 		Log.info("CCNMerkleTree: built a tree of " + contentObjects.length + " objects.");
 	}
 
+	/**
+	 * Returns the root signature on the tree.
+	 * @return the root signature
+	 */
 	public byte [] rootSignature() { return _rootSignature; }
 	
 	/**
-	 * The name of block leafIndex, where leafIndex is the leaf number in this
+	 * Generate the name of segment leafIndex, where leafIndex is the leaf number in this
 	 * tree. The overall index of leafIndex should be leafIndex + baseNameIndex().
-	 * @param leafIndex
-	 * @return
+	 * @param leafIndex the leaf whose blockName to generate
+	 * @return the name
 	 */
-	public ContentName blockName(int leafIndex) {
-		if ((leafIndex < 0) || (leafIndex > _blockObjects.length))
+	public ContentName segmentName(int leafIndex) {
+		if ((leafIndex < 0) || (leafIndex > _segmentObjects.length))
 			throw new IllegalArgumentException("Index out of range!");
 				
-		if ((null != _blockObjects) && (leafIndex < _blockObjects.length) && (null != _blockObjects[leafIndex])) 
-			return _blockObjects[leafIndex].name();
+		if ((null != _segmentObjects) && (leafIndex < _segmentObjects.length) && (null != _segmentObjects[leafIndex])) 
+			return _segmentObjects[leafIndex].name();
 		return null;
 	}
 	
-	public SignedInfo blockSignedInfo(int leafIndex) {
-		if ((leafIndex < 0) || (leafIndex > _blockObjects.length))
+	public SignedInfo segmentSignedInfo(int leafIndex) {
+		if ((leafIndex < 0) || (leafIndex > _segmentObjects.length))
 			throw new IllegalArgumentException("Index out of range!");
 		
-		if ((null != _blockObjects) && (null != _blockObjects[leafIndex])) {
-			return _blockObjects[leafIndex].signedInfo();
+		if ((null != _segmentObjects) && (null != _segmentObjects[leafIndex])) {
+			return _segmentObjects[leafIndex].signedInfo();
 		}
 		return null;
 	}
 	
-	public Signature blockSignature(int leafIndex) {
-		if ((leafIndex < 0) || (leafIndex > _blockObjects.length))
+	public Signature segmentSignature(int leafIndex) {
+		if ((leafIndex < 0) || (leafIndex > _segmentObjects.length))
 			throw new IllegalArgumentException("Index out of range!");
 		
-		if ((null != _blockObjects) && (null != _blockObjects[leafIndex])) {
-			if (null == _blockObjects[leafIndex].signature()) {
-				_blockObjects[leafIndex].setSignature(computeSignature(leafIndex));
+		if ((null != _segmentObjects) && (null != _segmentObjects[leafIndex])) {
+			if (null == _segmentObjects[leafIndex].signature()) {
+				_segmentObjects[leafIndex].setSignature(computeSignature(leafIndex));
 			}
-			return _blockObjects[leafIndex].signature();
+			return _segmentObjects[leafIndex].signature();
 		}
 		
 		return null;
@@ -144,7 +146,7 @@ public class CCNMerkleTree extends MerkleTree {
 	 */
 	public void setSignatures() {
 		for (int i=0; i < numLeaves(); ++i) {
-			blockSignature(i); // DKS TODO refactor, sets signature as a side effect
+			segmentSignature(i); // DKS TODO refactor, sets signature as a side effect
 		}
 	}
 			
@@ -198,8 +200,8 @@ public class CCNMerkleTree extends MerkleTree {
 		byte[] blockDigest = null;
 		try {
 			blockDigest = CCNDigestHelper.digest(
-									ContentObject.prepareContent(blockName(leafIndex), 
-																 blockSignedInfo(leafIndex),
+									ContentObject.prepareContent(segmentName(leafIndex), 
+																 segmentSignedInfo(leafIndex),
 																 content, offset, length));
 			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 				Log.info("offset: " + offset + " block length: " + length + " blockDigest " + 
