@@ -41,37 +41,36 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 	private int _lgBits;
 	private int _nHash;
 	
-	/*
-	 * I am using a short for seed internally - even though it's
-	 * supposed to be a byte array - to get around unsigned arithmetic 
-	 * issues. Is there a better way to handle this?
-	 */
+	// I am using a short for seed internally - even though it's
+	// supposed to be a byte array - to get around unsigned arithmetic 
+	// issues.
 	private short [] _seed;
 	private byte [] _bloom = new byte[1024];
 	private int _size = 0;
 	
 	/**
 	 * Constructor
-	 * @param size estimated members
-	 * @param seed random seed data must be length 4
+	 * @param estimatedMembers The performance of the bloom filter can be improved by accurately
+	 * 			estimating the number of members that will be inserted into it. Too low a number
+	 * 			will increase the likelihood of false positives. Too high a number will cause the
+	 * 			filter to be larger than necessary, impacting performance. It is better for this
+	 * 			number to be too low than too high.
+	 * @param seed Random seed data must be of length 4
 	 */
-	public BloomFilter(int size, byte [] seed) {
+	public BloomFilter(int estimatedMembers, byte [] seed) {
 		if (seed.length != 4)
 			throw new IllegalArgumentException("Bloom seed length must be 4"); // for now
 		_seed = new short[seed.length];
 		for (int i = 0; i < seed.length; i++)
 			_seed[i] = (short)((seed[i]) & 0xff);
-		_size = size;
-		/*
-		 * Michael's comment: try for about m = 12*n (m = bits in Bloom filter)
-		 */
+		_size = estimatedMembers;
+		
+		 // Michael's comment: try for about m = 12*n (m = bits in Bloom filter)
 		_lgBits = 13;
-		while (_lgBits > 3 && (1 << _lgBits) > size * 12)
+		while (_lgBits > 3 && (1 << _lgBits) > estimatedMembers * 12)
            _lgBits--;
-		/*
-		 * Michael's comment: optimum number of hash functions is ln(2)*(m/n); use ln(2) ~= 9/13
-		 */
-		_nHash = (9 << _lgBits) / (13 * size + 1);
+		 // Michael's comment: optimum number of hash functions is ln(2)*(m/n); use ln(2) ~= 9/13
+		_nHash = (9 << _lgBits) / (13 * estimatedMembers + 1);
         if (_nHash < 2)
             _nHash = 2;           
         if (_nHash > 32)
@@ -134,6 +133,11 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 		return true;
 	}
 	
+	/**
+	 * Returns the value given on creation by estimatedMembers 
+	 * @see BloomFilter.BloomFilter
+	 * @return the estimated members of this filter
+	 */
 	public int size() {
 		return _size;
 	}

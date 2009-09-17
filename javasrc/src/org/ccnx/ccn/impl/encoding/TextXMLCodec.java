@@ -30,9 +30,11 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.CCNTime;
 
 /**
- * A text-based XMLCodec. Basically standard text XML, though limited support
- * for things like namespaces. This class contains utility functions used by TextXMLEncoder
- * and TextXMLDecoder as well as setup to use this codec with XMLCodecFactory.
+ * A text-based XML codec.
+ * 
+ * Close to standard text XML, though with limited support for things like namespaces.
+ * This class contains utility functions used by TextXMLEncoder and TextXMLDecoder
+ * as well as setup to use this codec with XMLCodecFactory.
  */
 public class TextXMLCodec implements XMLCodec {
 
