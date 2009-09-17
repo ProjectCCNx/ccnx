@@ -45,6 +45,9 @@ import org.ccnx.ccn.impl.support.Log;
  */
 public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Comparable<PublisherID> {
 
+	/**
+	 * Move this to a centralized configuration location.
+	 */
 	public static final String PUBLISHER_ID_DIGEST_ALGORITHM = "SHA-256";
     public static final int PUBLISHER_ID_LEN = 256/8;
     public enum PublisherType {KEY, CERTIFICATE, ISSUER_KEY, ISSUER_CERTIFICATE};
@@ -70,16 +73,31 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
     protected byte [] _publisherID;
     protected PublisherType _publisherType;
     
+    /**
+     * Create a PublisherID specifying a public key as a signer or issuer
+     * @param key the key
+     * @param isIssuer false if it signed the content directly, true if it signed the key of the content signer
+     */
     public PublisherID(PublicKey key, boolean isIssuer) {
     	_publisherID = generatePublicKeyDigest(key);
     	_publisherType = isIssuer ? PublisherType.ISSUER_KEY : PublisherType.KEY;
     }
     
-    public PublisherID(X509Certificate cert, boolean isIssuer) throws CertificateEncodingException {
+    /**
+     * Create a PublisherID specifying a public key in a certificate as a signer or issuer
+     * @param cert the certificate
+     * @param isIssuer false if it signed the content directly, true if it signed the key of the content signer
+     */
+   public PublisherID(X509Certificate cert, boolean isIssuer) throws CertificateEncodingException {
     	_publisherID = generateCertificateDigest(cert);
     	_publisherType = isIssuer ? PublisherType.ISSUER_CERTIFICATE : PublisherType.CERTIFICATE;
     }
 	
+   /**
+    * Create a PublisherID from a raw digest and a type
+    * @param publisherID the digest
+    * @param publisherType the type
+    */
 	public PublisherID(byte [] publisherID, PublisherType publisherType) {
 		if ((null == publisherID) || (publisherID.length != PUBLISHER_ID_LEN)) {
 			throw new IllegalArgumentException("Invalid publisherID!");
@@ -92,19 +110,31 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 		_publisherType = publisherType;
 	}
 	
+	/**
+	 * Create a signer PublisherID from an existing PublisherPublicKeyDigest
+	 * @param keyID the key digest
+	 */
 	public PublisherID(PublisherPublicKeyDigest keyID) {
 		this(keyID.digest(), PublisherType.KEY);
 	}
 	
-    public PublisherID() {} // for use by decoders
+	/**
+	 * For use by decoders
+	 */
+    public PublisherID() {} 
 	
+    /**
+     * Get the id
+     * @return id
+     */
 	public byte [] id() { return _publisherID; }
+	
+	/**
+	 * Get the type
+	 * @return type
+	 */
 	public PublisherType type() { return _publisherType; }
 	
-	public static byte [] generatePublicKeyDigest(PublicKey key) {
-		return CryptoUtil.generateKeyID(PUBLISHER_ID_DIGEST_ALGORITHM, key);
-	}
-
 	@Override
 	public int hashCode() {
 		final int PRIME = 31;
@@ -139,24 +169,46 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 		return true;
 	}
 		
+	/**
+	 * Type classification methods
+	 * @return
+	 */
 	public boolean isSigner() {
 		return ((PublisherType.KEY == type()) || (PublisherType.CERTIFICATE == type()));
 	}
 	
+	/**
+	 * Type classification methods
+	 * @return
+	 */
 	public boolean isCertifier() {
 		return ((PublisherType.ISSUER_CERTIFICATE == type()) || (PublisherType.ISSUER_KEY == type()));
 	}
-
+	
+	/**
+	 * Type classification methods
+	 * @return
+	 */
+	public static boolean isPublisherType(String name) {
+		return NameTypes.containsKey(name);
+	}
+	
+	/**
+	 * Name conversion routines for enums. Unnecessary and will be removed.
+	 * @param type
+	 * @return
+	 */
 	public static String typeToName(PublisherType type) {
 		return TypeNames.get(type);
 	}
 
+	/**
+	 * Name conversion routines for enums. Unnecessary and will be elided.
+	 * @param name
+	 * @return
+	 */
 	public static PublisherType nameToType(String name) {
 		return NameTypes.get(name);
-	}
-	
-	public static boolean isPublisherType(String name) {
-		return NameTypes.containsKey(name);
 	}
 	
 	/**
@@ -207,7 +259,22 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	public boolean validate() {
 		return ((null != id() && (null != type())));
 	}
+	
+	/**
+	 * Helper method to generate a public key digest
+	 * @param key the key to digest
+	 * @return the digest
+	 */
+	public static byte [] generatePublicKeyDigest(PublicKey key) {
+		return CryptoUtil.generateKeyID(PUBLISHER_ID_DIGEST_ALGORITHM, key);
+	}
 
+	/**
+	 * Helper method to generate a certificate digest
+	 * @param cert the certificate to digest
+	 * @return the digest
+	 * @throws CertificateEncodingException
+	 */
 	public static byte [] generateCertificateDigest(X509Certificate cert) throws CertificateEncodingException {
 		try {
 			return generateCertificateDigest(PUBLISHER_ID_DIGEST_ALGORITHM, cert);
@@ -218,6 +285,14 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 	
+	/**
+	 * Helper method to generate a certificate digest
+	 * @param digestAlg the digest algorithm to use
+	 * @param cert the certificate to digest
+	 * @return the digest
+	 * @throws CertificateEncodingException
+	 * @throws NoSuchAlgorithmException
+	 */
     public static byte [] generateCertificateDigest(String digestAlg, X509Certificate cert) 
     							throws CertificateEncodingException, NoSuchAlgorithmException  {
     	
@@ -233,6 +308,9 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
         return id;
     }
 
+    /**
+     * Implement Comparable
+     */
  	public int compareTo(PublisherID o) {
 		int result = DataUtils.compare(this.id(), o.id());
 		if (0 == result) {

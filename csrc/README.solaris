@@ -1,0 +1,18 @@
+Required software for building CCNx on Solaris:
+
+	GNU make (usually /usr/bin/gmake or /usr/sfw/bin/gmake)
+	GNU install (usually /usr/bin/ginstall or /usr/sfw/bin/ginstall)
+	Sun Studio C compiler
+		Tested with Studio 11, should work with Studio 12.
+		See http://developers.sun.com/sunstudio/downloads/previous/index.jsp
+		Versions are available on OpenSolaris through the IPS repository.
+
+A future release will likely include a configuration file for using GNU cc.
+You might have some success creating a csrc/conf/local.mk containing
+
+	CC = gcc
+	PLATCFLAGS=-fPIC
+	CWARNFLAGS = -Wall -Wpointer-arith -Wreturn-type -Wstrict-prototypes
+	CPREFLAGS= -I../include -D_REENTRANT
+
+before you run "configure"

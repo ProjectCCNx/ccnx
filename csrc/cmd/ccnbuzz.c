@@ -58,7 +58,7 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-a] [-n count] ccn:/a/b\n"
+            "%s [-a] [-n count] ccnx:/a/b\n"
             "   Pre-reads stuff written by ccnsendchunks, produces no output\n"
             "   -a - allow stale data\n"
             "   -n count - specify number of pipeline slots\n",

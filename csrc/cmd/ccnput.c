@@ -50,7 +50,7 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-v] [-x freshness_seconds] [-t type] ccn:/some/place\n"
+                "%s [-h] [-v] [-x freshness_seconds] [-t type] ccnx:/some/place\n"
                 " Reads data from stdin and sends it to the local ccnd "
                 "as a single ContentObject "
                 "under the given URI\n", progname);

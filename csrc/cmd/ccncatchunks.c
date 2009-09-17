@@ -29,7 +29,7 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-a] ccn:/a/b\n"
+            "%s [-a] ccnx:/a/b\n"
             "   Reads stuff written by ccnsendchunks under"
             " the given uri and writes to stdout\n"
             "   -a - allow stale data\n",

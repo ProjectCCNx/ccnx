@@ -27,12 +27,17 @@ import org.ccnx.ccn.impl.encoding.XMLEncoder;
 
 
 /**
- * We sometimes need to refer to the "complete" name
- * of an object -- the unique combination of a ContentName
- * and a SignedInfo. The authenticator can
- * be null, as can any of its fields.
- * @author smetters
- *
+ * We wish to securely refer to a key. We do that by specifying a ContentName
+ * where it can be retrieved, and (optionally) information about who must
+ * have signed it for us to consider it valid. This can be a direct specification
+ * of who must have signed it -- effectively saying that a specific key, corresponding
+ * to an individual, most have signed the target for us to find it acceptable.
+ * More powerfully, this can incorporate a level of indirection -- we can say that
+ * an acceptable key is one signed by anyone whose own key was signed by the
+ * specified publisher, effectively allowing for a form of certification. 
+ * 
+ * For now we allow a variety of specification of publisher, including some using
+ * digital certificates. These may be unnecessary and elided in the future.
  */
 public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 	
@@ -42,11 +47,10 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 	protected PublisherID _publisher;
 	
 	/**
-	 * TODO: DKS figure out how to handle encoding faster,
-	 * and how to handle shorter version of names without
-	 * copying, particularly without 1.6 array ops.
-	 * @param name
-	 * @param authenticator
+	 * Build a KeyName
+	 * @param name the name at which we can find the key
+	 * @param publisher the publisher we require to have signed the key, or to have signed
+	 * 	the key that signed the key
 	 */
 	public KeyName(ContentName name, 
 				   PublisherID publisher) {
@@ -54,14 +58,29 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 		_publisher = publisher;
 	}
 	
+	/**
+	 * Build a KeyName
+	 * @param name the name at which we can find the key
+	 */
 	public KeyName(ContentName name) {
 		this(name, null);
 	}
 
-	public KeyName() {} // for use by decoders
+	/**
+	 * For use by decoders
+	 */
+	public KeyName() {}
 
+	/**
+	 * Get the name
+	 * @return the name
+	 */
 	public ContentName name() { return _name; }
 	
+	/**
+	 * Get the required publisher information, if specified.
+	 * @return the publisher specification
+	 */
 	public PublisherID publisher() { return _publisher; }
 	
 	/**

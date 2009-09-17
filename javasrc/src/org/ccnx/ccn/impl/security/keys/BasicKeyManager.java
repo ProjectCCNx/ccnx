@@ -56,10 +56,16 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * A simple implementation of KeyManager.
- *
+ * This is a basic implementation of key manager.
+ * The user's private key is encrypted under the user's password, and stored under
+ * the user's home directory.
+ * BasicKeyManager reads the user's key pair and certificate from disk,
+ * and decrypts the private key. 
+ * If the file does not exist, BasicKeyManager generates a public/private key pair 
+ * and a certificate and stores them to disk.  
  * @see KeyManager
  */
+
 public class BasicKeyManager extends KeyManager {
 	
 	protected KeyStore _keystore = null;
@@ -75,6 +81,11 @@ public class BasicKeyManager extends KeyManager {
 	
 	private char [] _password = null;
 		
+	/** Constructor
+	 * 
+	 * @throws ConfigurationException
+	 * @throws IOException
+	 */
 	public BasicKeyManager() throws ConfigurationException, IOException {
 		_keyRepository = new KeyRepository();
 		_userName = UserConfiguration.userName();
@@ -82,6 +93,9 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	/**
+	 * This initializes and loads the key pair and certificate of the user. 
+	 * If a key store file exists,
+	 * reads in the key; otherwise, create a key store file and a key pair.
 	 * Separate this for the usual reasons; so subclasses can get set up before it's called.
 	 * Could make fake base class constructor, and call loadKeyStore in subclass constructors,
 	 * but this wouldn't work past one level, and this allows subclasses to override initialize behavior.
@@ -100,6 +114,11 @@ public class BasicKeyManager extends KeyManager {
 		_password = password;
 	}
 	
+	/**
+	 * If a key store file exists, reads in the key; 
+	 * otherwise, create a key store file and a key pair.
+	 * @throws ConfigurationException
+	 */
 	protected void loadKeyStore() throws ConfigurationException {
 		File keyStoreFile = new File(UserConfiguration.keystoreFileName());
 		if (!keyStoreFile.exists()) {
@@ -126,8 +145,9 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	/**
+	 * Reads in a user's private/public keys and certificate from a key store
 	 * Must have set _password.
-	 * @param in
+	 * @param in input stream
 	 * @throws ConfigurationException
 	 */
 	protected void readKeyStore(InputStream in) throws ConfigurationException {
@@ -177,7 +197,6 @@ public class BasicKeyManager extends KeyManager {
 	/**
 	 * Read data from a newly opened, or newly created keystore.
 	 * @param keyStore
-	 * @return
 	 * @throws ConfigurationException 
 	 */
 	protected boolean loadValuesFromKeystore(KeyStore keyStore) throws ConfigurationException {
@@ -222,6 +241,10 @@ public class BasicKeyManager extends KeyManager {
 		return true;
 	}
 	
+	/**
+	 * Creates a key store file
+	 * @throws ConfigurationException
+	 */
 	synchronized protected KeyStore createKeyStore() throws ConfigurationException {
 		
 		File ccnDir = new File(UserConfiguration.ccnDirectory());
@@ -246,6 +269,10 @@ public class BasicKeyManager extends KeyManager {
 	    return createKeyStore(out);	    
 	}
 	
+	/**
+	 * Generates a key pair and a certificate, and stores them to the key store
+	 * @throws ConfigurationException
+	 */
 	synchronized protected KeyStore createKeyStore(OutputStream out) throws ConfigurationException {
 
 		KeyStore ks = null;
@@ -321,21 +348,38 @@ public class BasicKeyManager extends KeyManager {
 		throw new ConfigurationException(message, e);
 	}
 
+	/**
+	 * Get default key id
+	 * @return default key id
+	 */
 	@Override
 	public PublisherPublicKeyDigest getDefaultKeyID() {
 		return _defaultKeyID;
 	}
 
+	/**
+	 * Get default public key
+	 * @return default public key 
+	 */
 	@Override
 	public PublicKey getDefaultPublicKey() {
 		return _certificate.getPublicKey();
 	}
 	
+	/**
+	 * Get default key locator
+	 * @return default key locator
+	 */
 	@Override
 	public KeyLocator getDefaultKeyLocator() {
 		return _keyLocator;
 	}
 	
+	/**
+	 * Get key locator given a public key digest
+	 * @param key public key digest
+	 * @return key locator
+	 */
 	@Override
 	public KeyLocator getKeyLocator(PublisherPublicKeyDigest key) {
 		if ((null == key) || (key.equals(_defaultKeyID)))
@@ -348,16 +392,21 @@ public class BasicKeyManager extends KeyManager {
 		return null;
 	}
 	
+	/**
+	 * Get private key
+	 * @return private key
+	 */
 	@Override
 	public PrivateKey getDefaultSigningKey() {
 		return _privateKey;
 	}
 	
 	/**
+	 * Return the key's content name for a given key id. 
 	 * The default key name is the publisher ID itself,
 	 * under the user's key collection. 
-	 * @param keyID
-	 * @return
+	 * @param keyID[] publisher ID
+	 * @return content name
 	 */
 	@Override
 	public ContentName getDefaultKeyName(byte [] keyID) {
@@ -366,7 +415,12 @@ public class BasicKeyManager extends KeyManager {
 				   			UserConfiguration.defaultKeyName());
 		return new ContentName(keyDir, keyID);
 	}
-
+	
+	/** 
+	 * Get public key given a string alias
+	 * @param alias alias for certificate
+	 * @return public key
+	 */
 	@Override
 	public PublicKey getPublicKey(String alias) {
 		Certificate cert = null;;
@@ -378,10 +432,15 @@ public class BasicKeyManager extends KeyManager {
 		}
 		return cert.getPublicKey();
 	}
-
+	
+	/**
+	 * Get signing key given string alias
+	 * @param alias certificate alias
+	 * @return private signing key
+	 */
 	@Override
 	public PrivateKey getSigningKey(String alias) {
-		PrivateKey key = null;;
+		PrivateKey key = null;
 		try {
 			key = (PrivateKey)_keystore.getKey(alias, _password);
 		} catch (Exception e) {
@@ -391,13 +450,23 @@ public class BasicKeyManager extends KeyManager {
 		}
 		return key;
 	}
-	
+
+	/**
+	 * Get signing keys
+	 * @return private signing keys
+	 */
 	@Override
 	public PrivateKey [] getSigningKeys() {
 		// For now just return our default key. Eventually return multiple identity keys.
 		return new PrivateKey[]{getDefaultSigningKey()};
 	}
 	
+	/**
+	 * Get public key for publisher
+	 * @param publisher publisher public key digest
+	 * @return public key
+	 * @throws IOException
+	 */
 	@Override
 	public PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws IOException {
 		// TODO Auto-generated method stub
@@ -408,6 +477,13 @@ public class BasicKeyManager extends KeyManager {
 		return keyRepository().getPublicKey(publisher);
 	}
 
+	/**
+	 * Get private signing key for a publisher. 
+	 * If I am the publisher, return signing key;
+	 * otherwise, return null.
+	 * @param publisher publisher public key digest
+	 * @return private signing key or null
+	 */
 	@Override
 	public PrivateKey getSigningKey(PublisherPublicKeyDigest publisher) {
 		// TODO Auto-generated method stub
@@ -417,6 +493,14 @@ public class BasicKeyManager extends KeyManager {
 		return null;
 	}
 
+	/**
+	 * Get public key for a publisher, given a key locator.
+	 * Times out after timeout amount of time elapsed 
+	 * @param publisherID publisher public key digest
+	 * @param keyLocator key locator
+	 * @param timeout timeout value
+	 * @return public key
+	 */
 	@Override
 	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherID, KeyLocator keyLocator, long timeout) throws IOException {		
 		Log.finer("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
@@ -427,6 +511,11 @@ public class BasicKeyManager extends KeyManager {
 		return keyRepository().getPublicKey(publisherID, keyLocator, timeout);
 	}
 
+	/**
+	 * Get publisher ID
+	 * @param signingKey private signing key
+	 * @return publisher public key digest
+	 */
 	@Override
 	public PublisherPublicKeyDigest getPublisherKeyID(PrivateKey signingKey) {
 		if (_privateKey.equals(signingKey))
@@ -434,6 +523,11 @@ public class BasicKeyManager extends KeyManager {
 		return null;
 	}
 	
+	/** 
+	 * Get key locator for publisher
+	 * @param signingKey private signing key
+	 * @return key locator
+	 */
 	@Override
 	public KeyLocator getKeyLocator(PrivateKey signingKey) {
 		if (signingKey.equals(_privateKey))
@@ -443,11 +537,23 @@ public class BasicKeyManager extends KeyManager {
 		return null;
 	}
 
+	/** 
+	 * Get key repository
+	 * @return key repository
+	 */
 	@Override
 	public KeyRepository keyRepository() {
 		return _keyRepository;
 	}
 
+	/**
+	 * Make the public key available to other ccn agents
+	 * @param keyName content name of the public key
+	 * @param keyToPublish public key digest
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws ConfigurationException 
+	 */
 	@Override
 	public void publishKey(ContentName keyName,
 			PublisherPublicKeyDigest keyToPublish) throws IOException, InvalidKeyException, ConfigurationException {
@@ -463,6 +569,15 @@ public class BasicKeyManager extends KeyManager {
 		keyRepository().publishKey(keyName, key, getDefaultKeyID(), getDefaultSigningKey());
 	}
 
+	/**
+	 * Publish my public key to repository
+	 * @param keyName content name of the public key
+	 * @param keyToPublish public key digest
+	 * @param handle handle for ccn
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws ConfigurationException
+	 */
 	@Override
 	public void publishKeyToRepository(ContentName keyName, 
 									   PublisherPublicKeyDigest keyToPublish, 
@@ -506,6 +621,13 @@ public class BasicKeyManager extends KeyManager {
 		}
 	}
 	
+	/**
+	 * publish my public key to repository
+	 * @param handle handle for ccn
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws ConfigurationException
+	 */
 	@Override
 	public void publishKeyToRepository(CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException {
 		publishKeyToRepository(_keyLocator.name().name(), null, handle);

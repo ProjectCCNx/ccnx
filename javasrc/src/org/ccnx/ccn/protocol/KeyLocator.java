@@ -19,39 +19,34 @@ package org.ccnx.ccn.protocol;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedKeySpec;
 import java.util.HashMap;
 import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.bouncycastle.asn1.ASN1InputStream;
-import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.DERObject;
-import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
-import org.ccnx.ccn.impl.security.crypto.util.OIDLookup;
+import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.Log;
 
 
+/**
+ * A KeyLocator specifies where a content consumer or intermediary can find the public key
+ * necessary to verify a piece of content. It might include the key itself, a certificate
+ * containing the key, or a CCN name pointing to a location where the key can be found.
+ */
 public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 	/**
 	 * KeyLocator(name) must allow for a complete name -- i.e.
 	 * a name and authentication information.
-	 * @author smetters
-	 *
 	 */
     public enum KeyLocatorType { NAME, KEY, CERTIFICATE }
 
@@ -77,43 +72,96 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
     protected PublicKey _key;
     protected X509Certificate _certificate;
     
+    /**
+     * Make a KeyLocator containing only a name
+     * @param name the name
+     */
     public KeyLocator(ContentName name) {
     	this (name, null);
     }
     
+    /**
+     * Make a KeyLocator containing a key name and the desired publisher
+     * @param name the key name
+     * @param publisher the desired publisher
+     */
     public KeyLocator(ContentName name, PublisherID publisher) {
     	this(new KeyName(name, publisher));
     }
     
-    public KeyLocator(KeyName keyName) {
+    /**
+     * Make a KeyLocator specifying a KeyName -- a structure combining the name
+     * at which to find the key and authentication information by which to verify it
+     * @param keyName the KeyName to use to retrieve and authenticate the key
+     */
+   public KeyLocator(KeyName keyName) {
     	_keyName = keyName;
     }
 
+   /**
+    * Make a KeyLocator containing an explicit public key
+    * @param key the key
+    */
     public KeyLocator(PublicKey key) {
     	_key = key;
     }
     
+    /**
+     * Make a KeyLocator containing an explicit X509Certificate. 
+     * @param certificate the certificate
+     */
     public KeyLocator(X509Certificate certificate) {
     	_certificate = certificate;
     }
     
+    /**
+     * Internal constructor.
+     * @param name
+     * @param key
+     * @param certificate
+     */
     protected KeyLocator(KeyName name, PublicKey key, X509Certificate certificate) {
     	_keyName = name;
     	_key = key;
     	_certificate = certificate;
     }
     
+    /**
+     * Implement Cloneable
+     */
     public KeyLocator clone() {
     	return new KeyLocator(name(),
     						  key(),
     						  certificate());
     }
     
-    public KeyLocator() {} // for use by decoders
+    /**
+     * For use by decoders.
+     */
+    public KeyLocator() {} 
     
+    /**
+ 	 * Get the key if present
+     * @return the key or null
+     */
 	public PublicKey key() { return _key; }
+	
+	/**
+	 * Get the KeyName if present
+	 * @return the KeyName or null
+	 */
     public KeyName name() { return _keyName; }
+    
+    /**
+     * Get the certificate if present
+     * @return the certificate or null
+     */
     public X509Certificate certificate() { return _certificate; }
+    
+    /**
+     * Return the type of data stored in this KeyLocator - KEY, CERTIFICATE, or NAME.
+     * @return the type
+     */
     public KeyLocatorType type() { 
     	if (null != certificate())
     		return KeyLocatorType.CERTIFICATE;
@@ -162,8 +210,8 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 			try {
 				byte [] encodedKey = decoder.readBinaryElement(PUBLISHER_KEY_ELEMENT);
 				// This is a DER-encoded SubjectPublicKeyInfo.
-				_key = decodeKey(encodedKey);
-			} catch (IOException e) {
+				_key = CryptoUtil.getPublicKey(encodedKey);
+			} catch (CertificateEncodingException e) {
 				Log.warning("Cannot parse stored key: error: " + e.getMessage());
 				throw new XMLStreamException("Cannot parse key: ", e);
 			} catch (InvalidKeySpecException e) {
@@ -227,37 +275,24 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 	@Override
 	public String getElementLabel() { return KEY_LOCATOR_ELEMENT; }
 	
+	/**
+	 * Conversion methods for dealing with enums. Not necessary, and will
+	 * be removed.
+	 * @param type
+	 * @return
+	 */
 	public static String typeToName(KeyLocatorType type) {
 		return TypeNames.get(type);
 	}
 
+	/**
+	 * Conversion methods for dealing with enums. Not necessary, and will
+	 * be removed.
+	 * @param name
+	 * @return
+	 */
 	public static KeyLocatorType nameToType(String name) {
 		return NameTypes.get(name);
-	}
-	
-	protected static PublicKey decodeKey(byte [] encodedKey) throws InvalidKeySpecException, IOException {
-		
-		X509EncodedKeySpec keySpec = new X509EncodedKeySpec(encodedKey);
-		// Have to know what kind of key factory to make. Should be able
-		// to pull it out of the encoding, but Java is kind of dumb.
-		// We know it's a SubjectPublicKeyInfo, so get the algorithmID.
-		ASN1InputStream as = new ASN1InputStream(encodedKey);
-		DERObject object = as.readObject();
-		SubjectPublicKeyInfo keyInfo = new SubjectPublicKeyInfo((ASN1Sequence)object);
-		String keyType = OIDLookup.getCipherName(keyInfo.getAlgorithmId().getObjectId().toString());
-		if (null == keyType) {
-			Log.info("Cannot find key type corresponding to OID: " + keyInfo.getAlgorithmId().getObjectId().toString());
-		}
-		KeyFactory keyFactory = null;
-		PublicKey key = null;
-		try {
-			keyFactory = KeyFactory.getInstance(keyType);
-			key = keyFactory.generatePublic(keySpec);
-		} catch (NoSuchAlgorithmException e) {
-			Log.warning("Unknown key type " + keyType + " in stored key.");
-			throw new InvalidKeySpecException("Unknown key type " + keyType + " in stored key.");
-		}
-		return key;
 	}
 	
 	@Override

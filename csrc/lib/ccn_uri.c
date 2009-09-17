@@ -72,8 +72,7 @@ ccn_uri_append_percentescaped(struct ccn_charbuf *c,
  * Components that consist of solely of zero or more dots are converted
  * by adding 3 more dots so there are no ambiguities with . or .. or whether
  * a component is empty or absent.
- * Will prepend "ccn:" unless includescheme is 0
- * @bug should be ccnx:
+ * Will prepend "ccnx:" unless includescheme is 0
  */
 
 int
@@ -96,7 +95,7 @@ ccn_uri_append(struct ccn_charbuf *c,
     if (!ccn_buf_match_dtag(d, CCN_DTAG_Name))
         return(-1);
     if (includescheme)
-        ccn_charbuf_append(c, "ccn:", 4);
+        ccn_charbuf_append_string(c, "ccnx:");
     ccn_buf_advance(d);
     while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
         ccn_buf_advance(d);

@@ -18,30 +18,30 @@ CCNx Binary Encoding (ccnb)
    * encoding unit: "blocks": represents start of XML element or attribute, or character data
       ** Header
          *** number value (non-negative integer, variable-length big-endian representation, high order 1 is terminator, packed 7 bits per byte except for the last byte, which gets 4 bits)
-         *** 3 bits type (low-order bits): determines interpretation of rest of "block"
-      ** Value
+         *** 3 bits type (low-order bits): (TT) determines interpretation of rest of "block"
+      ** Value - presence and length depend on the block type TT
    * Ending delimiter: represents close of XML element
       ** single octet (0x00)
          
 
 == "Block" Types: 
 
-   * BLOB: Arbitrary binary value, arbitrary length (including 0), no alignment requirements
+   * BLOB(TT=5): Arbitrary binary value, arbitrary length (including 0), no alignment requirements
       ** number value is length in octets
       ** Value will encoded as base 64 when converted to text XML
-   * UData: same as BLOB but value restricted to valid UTF-8 sequences
-   * Tag: XML element tag name in UTF-8 encoding
+   * UDATA(TT=6): same as BLOB but value restricted to valid UTF-8 sequences
+   * TAG(TT=1): XML element tag name in UTF-8 encoding
       ** number value is length in octets of UTF-8 encoding of tag name - 1 (minimum tag name length is 1)
       ** may be followed by anything due to XML nesting
-   * Attr: XML attribute name in UTF-8 encoding
+   * ATTR(TT=3): XML attribute name in UTF-8 encoding
       ** number value is length in octets of UTF-8 encoding of attribute name - 1 (minimum attribute name length is 1)
-      ** UData must follow immediately representing attribute value (though 0 length value may be represented)
-   * DTag: Dictionary Tag
-      ** Same as Tag except number value is an index into a dictionary of tag names (for compressed encoding of tag names)
+      ** UDATA must follow immediately representing attribute value (though 0 length value may be represented)
+   * DTAG(TT=2): Dictionary Tag
+      ** Same as TAG except number value is an index into a dictionary of tag names (for compressed encoding of tag names)
       ** Dictionary must be agreed separately or from context
-   * DAttr: same as DTag but for attribute names
+   * DATTR(TT=4): same as DTag but for attribute names
       ** Distinct dictionary for tags and attributes
-   * KitchenSink: Anything other than the XML structures covered by explicit types above, e.g. processing instructions.
+   * EXT(TT=0): Anything other than the XML structures covered by explicit types above, e.g. processing instructions.
       ** number value is extension subtype identifier (identifiers to be allocated as extensions are defined)
 
 == Environment 
@@ -58,5 +58,4 @@ CCNx Binary Encoding (ccnb)
       ** A special attribute value named _ccnbencoding_ will be added to the tag of any element containing such BLOB values so that the XML text may be encoded to produce the original binary encoding - i.e. the UTF-8 encoding of the arbitrary value will be reversed when the special attribute value is specified on the containing element
       ** The special attribute value may be specified implicitly by the governing schema definition rather than explicitly included in every tag where it applies
       ** XML attributes may not have BLOB-encoded values so that no issue arises for converting them to text representation
-
 

@@ -30,5 +30,6 @@ The CCN vlc plugin Makefile makes use of the pkg-config info
 to locate the necessary vlc include files, and the correct
 directory in which to install the vlc access plugins.
 
-Remember that to vlc, a CCN URI starts ccn:///
+Note that to vlc, a CCN URI must start ccnx:/// (because of the URI parser in VLC).
+
 

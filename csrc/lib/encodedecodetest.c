@@ -170,7 +170,7 @@ static void init_all_chars_percent_encoded(void) {
 }
 
 static const char *all_chars_percent_encoded_canon =
- "ccn:/"
+ "ccnx:/"
  "%00%01%02%03%04%05%06%07%08%09%0A%0B%0C%0D%0E%0F"
  "%10%11%12%13%14%15%16%17%18%19%1A%1B%1C%1D%1E%1F"
  "%20%21%22%23%24%25%26%27%28%29%2A%2B%2C-.%2F"
@@ -308,18 +308,18 @@ main (int argc, char *argv[]) {
         
     init_all_chars_percent_encoded();
     const char *uri_tests[] = {
-        "_+4", "ccn:/this/is/a/test",       "",     "ccn:/this/is/a/test",
-        ".+4", "../test2?x=2",              "?x=2", "ccn:/this/is/a/test2",
+        "_+4", "ccnx:/this/is/a/test",       "",     "ccnx:/this/is/a/test",
+        ".+4", "../test2?x=2",              "?x=2", "ccnx:/this/is/a/test2",
         "_-X", "../should/error",           "",     "",
-        "_+2", "/missing/scheme",           "",     "ccn:/missing/scheme",
-        ".+0", "../../../../../././#/",     "#/",   "ccn:/",
+        "_+2", "/missing/scheme",           "",     "ccnx:/missing/scheme",
+        ".+0", "../../../../../././#/",     "#/",   "ccnx:/",
         ".+1", all_chars_percent_encoded,   "",     all_chars_percent_encoded_canon,
         "_+1", all_chars_percent_encoded_canon, "", all_chars_percent_encoded_canon,
-        ".+4", "ccn:/.../.%2e./...././.....///?...", "?...", "ccn:/.../.../..../.....",
+        ".+4", "ccnx:/.../.%2e./...././.....///?...", "?...", "ccnx:/.../.../..../.....",
         "_-X", "/%3G?bad-pecent-encode",    "",     "",
         "_-X", "/%3?bad-percent-encode",    "",     "",
         "_-X", "/%#bad-percent-encode",    "",     "",
-        "_+3", "ccn://joe@example.com:42/ignore/host/part of uri", "", "ccn:/ignore/host/part%20of%20uri",
+        "_+3", "ccnx://joe@example.com:42/ignore/host/part of uri", "", "ccnx:/ignore/host/part%20of%20uri",
         NULL, NULL, NULL, NULL
     };
     const char **u;
@@ -368,10 +368,10 @@ main (int argc, char *argv[]) {
     ccn_charbuf_destroy(&uri_out);
     printf("Name marker tests\n");
     do {
-        const char *expected_uri = "ccn:/example.com/.../%01/%FE/%01%02%03%04%05%06%07%08/%FD%10%10%10%10%1F%FF/%00%81";
-        const char *expected_chopped_uri = "ccn:/example.com/.../%01/%FE";
-        const char *expected_bumped_uri = "ccn:/example.com/.../%01/%FF";
-        const char *expected_bumped2_uri = "ccn:/example.com/.../%01/%00%00";
+        const char *expected_uri = "ccnx:/example.com/.../%01/%FE/%01%02%03%04%05%06%07%08/%FD%10%10%10%10%1F%FF/%00%81";
+        const char *expected_chopped_uri = "ccnx:/example.com/.../%01/%FE";
+        const char *expected_bumped_uri = "ccnx:/example.com/.../%01/%FF";
+        const char *expected_bumped2_uri = "ccnx:/example.com/.../%01/%00%00";
 
         printf("Unit test case %d\n", i++);
         buffer = ccn_charbuf_create();

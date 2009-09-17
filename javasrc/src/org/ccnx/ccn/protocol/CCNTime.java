@@ -41,29 +41,40 @@ import org.ccnx.ccn.impl.support.DataUtils;
  * CCNTime, all though it implements methods like getNanos, only
  * represents time with a granularity equal to the underlying
  * CCN wire format -- i.e. ~.25 msec.
- * 
- * @author smetters
- *
  */
 public class CCNTime extends Timestamp {
 
 	private static final long serialVersionUID = -1537142893653443100L;
 
 	/**
-	 * @param time in msec
+	 * Create a CCNTime.
+	 * @param msec time in msec
 	 */
 	public CCNTime(long msec) {
 		this((msec/1000) * 1000, (msec % 1000) * 1000000L);
 	}
 
+	/**
+	 * Create a CCNTime
+	 * @param timestamp source timestamp to initialize from, some precision will be lost
+	 */
 	public CCNTime(Timestamp timestamp) {
 		this(timestamp.getTime(), timestamp.getNanos());
 	}
 	
+	/**
+	 * Create a CCNTime
+	 * @param time source Date to initialize from, some precision will be lost
+	 * as CCNTime does not round to unitary milliseconds
+	 */
 	public CCNTime(Date time) {
 		this(time.getTime());
 	}
 	
+	/**
+	 * Create a CCNTime from its binary encoding
+	 * @param binaryTime12 the binary representation of a CCNTime
+	 */
 	public CCNTime(byte [] binaryTime12) {
 		this(new BigInteger(1, binaryTime12).longValue(), true);
 		if ((null == binaryTime12) || (binaryTime12.length == 0)) {
@@ -80,16 +91,30 @@ public class CCNTime extends Timestamp {
 		this(System.currentTimeMillis());
 	}
 	
+	/**
+	 * Creates a CCNTime from a specification of msec and nanos, to ease implementing
+	 * compatibility with Timestamp and Date. Note that there is redundant data here --
+	 * the last 3 significant digits of msec are also represented as the top 3 of nanos.
+	 * We take the version in the nanos. This is derived from Java's slightly odd Timestamp handling.
+	 * @param msec milliseconds
+	 * @param nanos nanoseconds
+	 */
 	protected CCNTime(long msec, long nanos) {
 		this(toBinaryTimeAsLong(msec, nanos), true);
 	}
 	
+	/**
+	 * Creates a CCNTime from the internal long representation of the quantized time.
+	 * @param binaryTimeAsLong the time in our internal units
+	 * @param unused a marker parameter to separate this from another constructor
+	 */
 	protected CCNTime(long binaryTimeAsLong, boolean unused) {
 		super((binaryTimeAsLong / 4096L) * 1000L);
 		super.setNanos((int)(((binaryTimeAsLong % 4096L) * 1000000000L) / 4096L));
 	}
 	
 	/**
+	 * Factory method to generate a CCNTime from our internal long time representation.
 	 * Make this a static method to avoid confusion; should be little used
 	 * @return
 	 */
@@ -97,19 +122,30 @@ public class CCNTime extends Timestamp {
 		return new CCNTime(binaryTimeAsLong, true);
 	}
 	
+	/**
+	 * Generate the binary representation of a CCNTime
+	 * @return the binary representation we use for encoding
+	 */
 	public byte [] toBinaryTime() {
 		return BigInteger.valueOf(toBinaryTimeAsLong()).toByteArray();
 	}
 	
+	/**
+	 * Generate the internal long representation of a CCNTime, useful for comparisons
+	 * and used internally
+	 * @return the long representation of this time in our internal units
+	 */
 	public long toBinaryTimeAsLong() {
 		return toBinaryTimeAsLong(getTime(), getNanos());
 	}
 	
 	/**
+	 * Static method to convert from milliseconds and nanoseconds to our
+	 * internal long representation.
 	 * Assumes that nanos also contains the integral milliseconds for this
 	 * time. Ignores msec component in msec.
-	 * @param msec
-	 * @param nanos
+	 * @param msec milliseconds
+	 * @param nanos nanoseconds
 	 * @return
 	 */
 	public static long toBinaryTimeAsLong(long msec, long nanos) {
@@ -172,6 +208,10 @@ public class CCNTime extends Timestamp {
 		return super.after(new CCNTime(when));
 	}
 
+	/**
+	 * Create a CCNTime initialized to the current date/time.
+	 * @return the new CCNTime
+	 */
 	public static CCNTime now() {
 		return new CCNTime();
 	}

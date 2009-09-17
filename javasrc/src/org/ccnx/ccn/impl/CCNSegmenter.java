@@ -66,9 +66,14 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  *    or scaled byte count makes sense for this) can override by setting
  *    counter on a call.
  *    
+ *    NOTE: the CCNSegmenter class currently supports a range of quite complex
+ *    segmentation options. At this point, only a subset of these are supported
+ *    by the higher level io interfaces.
+ *    
  * b) signing control -- per-block signing with a choice of signature algorithm,
  *    or amortized signing, first Merkle Hash Tree based amortization, later
  *    options for other things.
+ *    
  * c) stock low-level encryption. Given a key K, an IV, and a chosen encryption
  *    algorithm (standard: AES-CTR, also eventually AES-CBC and other padded
  *    block cipher options), segment content so as
@@ -79,6 +84,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  *    blocks to accommodate padding (a minimum of 1 bytes for PKCS5 padding,
  *    for example). 
  *    DKS TODO -- deal with the padding and length expansion
+ *    	For the moment, until we deal with padding we use only AES-CTR.
  *    
  *    For this, we use the standard Java encryption mechanisms, augmented by
  *    alternative providers (e.g. BouncyCastle for AES-CTR). We just need
@@ -92,11 +98,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * within this class. Even better, provide functionality that let client stream
  * classes limit copies (e.g. by partially creating data-filled content objects,
  * and not signing them till flush()). But start with the former.
- * 
- *  
- * DKS TODO -- sort out name increments for all segmenter clients
- * @author smetters
- *
  */
 public class CCNSegmenter {
 
@@ -109,46 +110,78 @@ public class CCNSegmenter {
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
 	
 	protected CCNHandle _handle;
-	// Eventually may not contain this; callers may access it exogenously.
+	
+	/**
+	 * Eventually may not contain this; callers may access it exogenously.
+	 */
 	protected CCNFlowControl _flowControl;
 	
-	// Handle multi-block amortized signing. If null, default to single-block signing.
+	/**
+	 * Handle multi-block amortized signing. If null, default to single-block signing.
+	 */
 	protected CCNAggregatedSigner _bulkSigner;
 	
-	// Encryption/decryption handler
+	/**
+	 * Encryption/decryption handler
+	 */
 	protected ContentKeys _keys;
 
 	/**
-	 * Eventually add encryption, allow control of authentication algorithm.
-	 * @param baseName
-	 * @param locator
-	 * @param signingKey
-	 * @throws IOException 
-	 * @throws ConfigurationException 
+	 * Create a segmenter with default (Merkle hash tree) bulk signing
+	 * behavior, making a new handle for it to use.
+	 * @throws ConfigurationException if there is a problem creating the handle
+	 * @throws IOException if there is a problem creating the handle
 	 */
 	public CCNSegmenter() throws ConfigurationException, IOException {
 		this(CCNHandle.open());
 	}
 	
+	/**
+	 * Create a segmenter with default (Merkle hash tree) bulk signing
+	 * behavior, making a new handle for it to use.
+	 * @param keys encryption keys to use to encrypt content
+	 * @throws ConfigurationException if there is a problem creating the handle
+	 * @throws IOException if there is a problem creating the handle
+	 */
 	public CCNSegmenter(ContentKeys keys) throws ConfigurationException, IOException {
 		this(CCNHandle.open(), keys);
 	}
 
-	public CCNSegmenter(CCNHandle library) throws IOException {
-		this(new CCNFlowControl(library));
+	/**
+	 * Create a segmenter with default (Merkle hash tree) bulk signing
+	 * behavior.
+	 * @param handle the handle to use, will open a new one if null
+	 * @throws IOException if there is a problem creating the handle
+	 */
+	public CCNSegmenter(CCNHandle handle) throws IOException {
+		this(new CCNFlowControl(handle));
 	}
 
-	public CCNSegmenter(CCNHandle library, ContentKeys keys) throws IOException {
-		this(new CCNFlowControl(library), null, keys);
-	}
 	/**
-	 * Create an object with default Merkle hash tree aggregated signing.
-	 * @param flowControl
+	 * Create a segmenter with default (Merkle hash tree) bulk signing
+	 * behavior.
+	 * @param handle the handle to use, will open a new one if null
+	 * @param keys encryption keys to use to encrypt content
+	 * @throws IOException if there is a problem creating the handle
+	 */
+	public CCNSegmenter(CCNHandle handle, ContentKeys keys) throws IOException {
+		this(new CCNFlowControl(handle), null, keys);
+	}
+	
+	/**
+	 * Create a segmenter with default (Merkle hash tree) bulk signing
+	 * behavior.
+	 * @param flowControl the specified flow controller to use
 	 */
 	public CCNSegmenter(CCNFlowControl flowControl) {
 		this(flowControl, null);
 	}
 	
+	/**
+	 * Create a segmenter, specifying the signing behavior to use.
+	 * @param flowControl the specified flow controller to use
+	 * @param signer the bulk signer to use. If null, will use default Merkle hash tree behavior.
+	 */
 	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer) {
 		if ((null == flowControl) || (null == flowControl.getHandle())) {
 			// Tries to get a library or make a flow control, yell if we fail.
@@ -165,6 +198,12 @@ public class CCNSegmenter {
 		initializeBlockSize();
 	}
 
+	/**
+	 * Create a segmenter, specifying the signing behavior to use.
+	 * @param flowControl the specified flow controller to use
+	 * @param signer the bulk signer to use. If null, will use default Merkle hash tree behavior.
+	 * @param keys encryption keys to use
+	 */
 	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer,
 						ContentKeys keys) {
 		this(flowControl, signer);
@@ -188,6 +227,13 @@ public class CCNSegmenter {
 		}
 	}
 	
+	/**
+	 * Factory method to create a standard segmenter that generates blocks of fixed length in bytes.
+	 * @param blockSize number of bytes to put in each block (the last block will have an odd number of
+	 * 	bytes)
+	 * @param flowControl the flow controller to use
+	 * @return the new segmenter
+	 */
 	public static CCNSegmenter getBlockSegmenter(int blockSize, CCNFlowControl flowControl) {
 		CCNSegmenter segmenter = new CCNSegmenter(flowControl);
 		segmenter.useFixedIncrementSequenceNumbers(1);
@@ -195,12 +241,34 @@ public class CCNSegmenter {
 		return segmenter;
 	}
 
+	/**
+	 * Factory method to create a standard segmenter that generates blocks of variable length in bytes,
+	 * whose segment numbers are scaled by a fixed increment. This could be used, for example to generate
+	 * segments that had variable number of bytes in each, and naming them by scaling the byte
+	 * offset by a scale useful to the application - e.g. to end up with millisecond offsets
+	 * for a video or audio stream, etc.
+	 * NOTE: the reader infrastructure currently expects incrementing segment numbers; a special
+	 * stream class is necessary to read data generated this way. That would not be difficult to
+	 * write.
+	 * @param scale multiplier to apply to the byte count before recording it as a sequence number
+	 * @param flowControl the flow controller to use
+	 * @return the new segmenter
+	 */
 	public static CCNSegmenter getScaledByteCountSegmenter(int scale, CCNFlowControl flowControl) {
 		CCNSegmenter segmenter = new CCNSegmenter(flowControl);
 		segmenter.useScaledByteCountSequenceNumbers(scale);
 		return segmenter;
 	}
 	
+	/**
+	 * Factory method to create a standard segmenter that generates blocks of variable length in bytes,
+	 * whose segment numbers are scaled by a fixed increment. This could be used, for example to generate
+	 * segments that had variable number of bytes in each, and naming them by byte offset.
+	 * NOTE: This is used by CCNBlockInputStream and CCNBlockOutputStream; the other stream classes
+	 *   will not read data generated this way.
+	 * @param flowControl the flow controller to use
+	 * @return the new segmenter
+	 */
 	public static CCNSegmenter getByteCountSegmenter(CCNFlowControl flowControl) {
 		return getScaledByteCountSegmenter(1, flowControl);
 	}
@@ -210,13 +278,17 @@ public class CCNSegmenter {
 	public CCNFlowControl getFlowControl() { return _flowControl; }
 
 	/**
-	 * Set the fragmentation block size to use
-	 * @param blockSize
+	 * Set the segmentation block size to use
+	 * @param blockSize block size in bytes
 	 */
 	public void setBlockSize(int blockSize) {
 		_blockSize = blockSize;
 	}
 
+	/**
+	 * Get the current block size
+	 * @return block size in bytes
+	 */
 	public int getBlockSize() {
 		return _blockSize;
 	}
@@ -240,9 +312,14 @@ public class CCNSegmenter {
 
 	/**
 	 * Set increment between block numbers.
-	 * @param blockWidth
+	 * @param blockIncrement
 	 */
 	public void setBlockIncrement(int blockIncrement) { _blockIncrement = blockIncrement; }
+	
+	/**
+	 * Get the increment between block numbers.
+	 * @return
+	 */
 	public int getBlockIncrement() { return _blockIncrement; }
 
 	public void setByteScale(int byteScale) { _byteScale = byteScale; }
@@ -250,8 +327,8 @@ public class CCNSegmenter {
 
 
 	/**
-	 * Put a complete data item, potentially fragmented. The
-	 * assumption of this API is that this single call puts
+	 * Put a complete data item, segmenting it if necessary. The
+	 * assumption of this method is that this single call puts
 	 * all the blocks of the item; if multiple calls to the
 	 * segmenter will be required to output an item, use other
 	 * methods to manage segment identifiers.
@@ -315,22 +392,24 @@ public class CCNSegmenter {
 	}
 
 	/** 
+	 * Segments content, builds segment names and ContentObjects, signs
+	 * them, and writes them to the flow controller to go out to the network.
 	 * Low-level segmentation interface. Assume arguments have been cleaned
 	 * prior to arrival -- name is not already segmented, type is set, etc.
 	 * 
 	 * Starts segmentation at segment SegmentationProfile().baseSegment().
-	 * @param name
+	 * @param name name prefix to use for the segments
 	 * @param content content buffer containing content to put
 	 * @param offset offset into buffer at which to start reading content to put
 	 * @param length number of bytes of buffer to put
 	 * @param finalSegmentIndex the expected segment number of the last segment of this stream,
 	 * 				null to omit, Long(-1) to set as the last segment of this put, whatever
 	 * 				its number turns out to be
-	 * @param type
+	 * @param type the type for the content
 	 * @param freshnessSeconds the number of seconds this content should be considered fresh, or null
 	 * 			to leave unset
-	 * @param locator
-	 * @param publisher
+	 * @param locator the key locator to use
+	 * @param publisher the publisher to use
 	 * @return returns the segment identifier for the next segment to be written, if any.
 	 * 		If the caller doesn't want to override this, they can hand this number back
 	 * 	    to a subsequent call to fragmentedPut.
@@ -357,8 +436,31 @@ public class CCNSegmenter {
 	}
 	
 	/** 
+	 * Segments content, builds segment names and ContentObjects, signs
+	 * them, and writes them to the flow controller to go out to the network.
+	 * @param name name prefix to use for the segments
+	 * @param baseSegmentNumber the segment number to start this batch with
+	 * @param content content buffer containing content to put
+	 * @param offset offset into buffer at which to start reading content to put
+	 * @param length number of bytes of buffer to put
+	 * @param blockWidth the block size to use
+	 * @param type the type for the content
+	 * @param timestamp the timestamp for the content
+	 * @param freshnessSeconds the number of seconds this content should be considered fresh, or null
+	 * 			to leave unset
+	 * @param finalSegmentIndex the expected segment number of the last segment of this stream,
+	 * 				null to omit, Long(-1) to set as the last segment of this put, whatever
+	 * 				its number turns out to be
+	 * @param locator the key locator to use
+	 * @param publisher the publisher to use
+	 * @return returns the segment identifier for the next segment to be written, if any.
+	 * 		If the caller doesn't want to override this, they can hand this number back
+	 * 	    to a subsequent call to fragmentedPut.
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 * @throws IOException 
 	 * @throws InvalidAlgorithmParameterException 
-	 * @throws NoSuchAlgorithmException 
 	 * @see CCNSegmenter#fragmentedPut(ContentName, byte[], int, int, Long, ContentType, Integer, KeyLocator, PublisherPublicKeyDigest)
 	 * Starts segmentation at segment SegmentationProfile().baseSegment().
 	 */
@@ -432,9 +534,40 @@ public class CCNSegmenter {
 				contentObjects[contentObjects.length - 1].contentLength());
 	}
 
+	/** 
+	 * Takes pre-segmented content, builds segment names and ContentObjects, signs
+	 * them, and writes them to the flow controller to go out to the network.
+	 * @param name name prefix to use for the segments
+	 * @param baseSegmentNumber the segment number to start this batch with
+	 * @param contentBlocks content buffers containing content to put, one buffer per ContentObject
+	 * @param blockCount the number of these content buffers to write
+	 * @param firstBlockIndex the index into the content buffer array to start writing blocks
+	 * @param lastBlockLength the number of bytes of the last block to be written to use -- this
+	 * 	allows a fixed set of byte [] to be used to buffer content for segmentation, and still cope
+	 * 	with variable-length last blocks
+	 * @param type the type for the content
+	 * @param timestamp the timestamp for the content
+	 * @param freshnessSeconds the number of seconds this content should be considered fresh, or null
+	 * 			to leave unset
+	 * @param finalSegmentIndex the expected segment number of the last segment of this stream,
+	 * 				null to omit, Long(-1) to set as the last segment of this put, whatever
+	 * 				its number turns out to be
+	 * @param locator the key locator to use
+	 * @param publisher the publisher to use
+	 * @return returns the segment identifier for the next segment to be written, if any.
+	 * 		If the caller doesn't want to override this, they can hand this number back
+	 * 	    to a subsequent call to fragmentedPut.
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 * @throws IOException 
+	 * @throws InvalidAlgorithmParameterException 
+	 * @see CCNSegmenter#fragmentedPut(ContentName, byte[], int, int, Long, ContentType, Integer, KeyLocator, PublisherPublicKeyDigest)
+	 * Starts segmentation at segment SegmentationProfile().baseSegment().
+	 */
 	public long fragmentedPut(
 			ContentName name, long baseSegmentNumber,
-			byte [][] contentBlocks, int blockCount, 
+			byte contentBlocks[][], int blockCount, 
 			int firstBlockIndex, int lastBlockLength,
 			ContentType type, 
 			CCNTime timestamp,
@@ -498,22 +631,29 @@ public class CCNSegmenter {
 	}
 
 	/**
-	 * Puts a single block of content using a fragment naming convention.
-	 * @param name
-	 * @param segmentNumber
-	 * @param content
-	 * @param timestamp
-	 * @param publisher
-	 * @param locator
-	 * @param signingKey
-	 * @return
+	 * Puts a single block of content of arbitrary length using a segment naming convention.
+	 * @param name name prefix to use for the object, without the segment number
+	 * @param segmentNumber the segment number to use for this object
+	 * @param content content buffer containing content to put
+	 * @param offset offset into buffer at which to start reading content to put
+	 * @param length number of bytes of buffer to put
+	 * @param type the type for the content
+	 * @param timestamp the timestamp for the content
+	 * @param freshnessSeconds the number of seconds this content should be considered fresh, or null
+	 * 			to leave unset
+	 * @param finalSegmentIndex the expected segment number of the last segment of this stream,
+	 * 				null to omit, Long(-1) to set as the last segment of this put, whatever
+	 * 				its number turns out to be
+	 * @param locator the key locator to use
+	 * @param publisher the publisher to use
+	 * @return returns the segment identifier for the next segment to be written, if any.
+	 * 		If the caller doesn't want to override this, they can hand this number back
+	 * 	    to a subsequent call to fragmentedPut.
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
 	 * @throws IOException 
-	 * @throws NoSuchAlgorithmException 
-	 * @throws SignatureException 
-	 * @throws InvalidKeyException 
 	 * @throws InvalidAlgorithmParameterException 
-	 * @throws BadPaddingException 
-	 * @throws IllegalBlockSizeException 
 	 */
 	public long putFragment(
 			ContentName name, long segmentNumber, 
@@ -582,6 +722,20 @@ public class CCNSegmenter {
 		return nextSegmentIndex(segmentNumber, co.contentLength());
 	}
 	
+	/**
+	 * Helper method to build ContentObjects for segments out of a contiguous buffer.
+	 * @param rootName
+	 * @param baseSegmentNumber
+	 * @param signedInfo
+	 * @param content
+	 * @param offset
+	 * @param length
+	 * @param blockWidth
+	 * @return
+	 * @throws InvalidKeyException
+	 * @throws InvalidAlgorithmParameterException
+	 * @throws IOException
+	 */
 	protected ContentObject[] buildBlocks(ContentName rootName,
 			long baseSegmentNumber, SignedInfo signedInfo, 
 			byte[] content, int offset, int length, int blockWidth) 
@@ -625,7 +779,7 @@ public class CCNSegmenter {
 	}
 
 	/**
-	 * Allow callers who have an opinion about how to segment data.
+	 * Helper method to construct ContentObjects from pre-segmented blocks.
 	 * @param rootName
 	 * @param baseSegmentNumber
 	 * @param signedInfo
@@ -635,15 +789,12 @@ public class CCNSegmenter {
 	 * @param firstBlockIndex
 	 * @param lastBlockLength
 	 * @return
-	 * @throws NoSuchAlgorithmException 
-	 * @throws InvalidAlgorithmParameterException 
-	 * @throws InvalidKeyException 
-	 * @throws BadPaddingException 
-	 * @throws IllegalBlockSizeException 
+	 * @throws InvalidKeyException
+	 * @throws InvalidAlgorithmParameterException
 	 */
-	protected ContentObject[] buildBlocks(ContentName rootName,
+	protected ContentObject [] buildBlocks(ContentName rootName,
 			long baseSegmentNumber, SignedInfo signedInfo,
-			byte[][] contentBlocks, boolean isDigest, int blockCount,
+			byte contentBlocks[][], boolean isDigest, int blockCount,
 			int firstBlockIndex, int lastBlockLength) 
 					throws InvalidKeyException, InvalidAlgorithmParameterException {
 		
@@ -716,9 +867,9 @@ public class CCNSegmenter {
 
 
 	/**
-	 * Increment segment number according to the profile.
-	 * @param lastSegmentNumber
-	 * @param lastSegmentLength
+	 * Increment segment number according to the numbering profile in force.
+	 * @param lastSegmentNumber the last segment number we emitted
+	 * @param lastSegmentLength the length of the last segment we emitted
 	 * @return
 	 */
 	public long nextSegmentIndex(long lastSegmentNumber, long lastSegmentLength) {
@@ -734,7 +885,7 @@ public class CCNSegmenter {
 
 	/**
 	 * Compute the index of the last block of a set of segments, according to the
-	 * profile.
+	 * numbering profile.
 	 * @param currentSegmentNumber
 	 * @param bytesIntervening
 	 * @param blocksRemaining
@@ -752,6 +903,10 @@ public class CCNSegmenter {
 		}
 	}
 	
+	/**
+	 * Set the timeout on the contained flow controller.
+	 * @param timeout
+	 */
 	public void setTimeout(int timeout) {
 		getFlowControl().setTimeout(timeout);
     }
@@ -759,10 +914,8 @@ public class CCNSegmenter {
 	/**
 	 * How many content bytes will it take to represent content of length
 	 * length, including any padding incurred by encryption?
-	 * DKS TODO -- this only works on the blocks asked about; if you ask about
-	 *   the length pre-segmentation it will likely give you a wrong answer.
 	 * @param inputLength
-	 * @return
+	 * @return the output length
 	 */
 	public long outputLength(int inputLength) {
 		if (null == _keys) {
