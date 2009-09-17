@@ -130,7 +130,7 @@ public class AccessControlProfile implements CCNProfile {
 	
 	/**
 	 * Get the name of the node key for a given content node, if there is one.
-	 * This is <nodeName>/_access_/NK, with a version then added for a specific node key.
+	 * This is nodeName/_access_/NK, with a version then added for a specific node key.
 	 * @param nodeName the name of the content node
 	 * @return the name of the corresponding node key
 	 */
@@ -142,7 +142,7 @@ public class AccessControlProfile implements CCNProfile {
 	
 	/**
 	 * Get the name of the access control list (ACL) for a given content node.
-	 * This is <nodeName>/_access_/ACL.
+	 * This is nodeName/_access_/ACL.
 	 * @param nodeName the name of the content node
 	 * @return the name of the corresponding ACL
 	 */
@@ -154,7 +154,7 @@ public class AccessControlProfile implements CCNProfile {
 	
 	/**
 	 * Get the name of the data key for a given content node.
-	 * This is <nodeName>/_access_/DK.
+	 * This is nodeName/_access_/DK.
 	 * @param nodeName the name of the content node
 	 * @return the name of the corresponding data key
 	 */	
@@ -183,7 +183,7 @@ public class AccessControlProfile implements CCNProfile {
 	/**
 	 * Get the name of the user namespace.
 	 * This assumes a top-level namespace, where the group information is stored in 
-	 * <namespace>/Groups and <namespace>/Users..
+	 * namespace/Groups and namespace/Users..
 	 * @param namespace the top-level name space
 	 * @return the name of the user namespace
 	 */
@@ -205,7 +205,7 @@ public class AccessControlProfile implements CCNProfile {
 	/**
 	 * Get the name of the group namespace.
 	 * This assumes a top-level namespace, where the group information is stored in 
-	 * <namespace>/Groups and <namespace>/Users..
+	 * namespace/Groups and namespace/Users..
 	 * @param namespace the top-level name space
 	 * @return the name of the group namespace
 	 */
