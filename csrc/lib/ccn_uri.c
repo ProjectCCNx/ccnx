@@ -1,6 +1,6 @@
 /**
  * @file ccn_uri.c
- * @brief Support for ccn:/URI/...
+ * @brief Support for ccnx:/URI/...
  * 
  * Part of the CCNx C Library.
  *
@@ -39,7 +39,8 @@ RFC 3986                   URI Generic Syntax               January 2005
 *********/
 
 void
-ccn_uri_append_percentescaped(struct ccn_charbuf *c, const unsigned char *data, size_t size)
+ccn_uri_append_percentescaped(struct ccn_charbuf *c,
+                              const unsigned char *data, size_t size)
 {
     size_t i;
     unsigned char ch;
@@ -64,8 +65,7 @@ ccn_uri_append_percentescaped(struct ccn_charbuf *c, const unsigned char *data, 
     }
 }
 
-/*
- * ccn_uri_append:
+/**
  * This appends to c a URI representation of the ccnb-encoded Name element
  * passed in.  For convenience, it will also look inside of a ContentObject
  * or Interest object to find the Name.
@@ -73,6 +73,7 @@ ccn_uri_append_percentescaped(struct ccn_charbuf *c, const unsigned char *data, 
  * by adding 3 more dots so there are no ambiguities with . or .. or whether
  * a component is empty or absent.
  * Will prepend "ccn:" unless includescheme is 0
+ * @bug should be ccnx:
  */
 
 int
@@ -228,13 +229,13 @@ ccn_name_last_component_offset(const unsigned char *ccnb, size_t size)
     return ((d->decoder.state >= 0) ? res : -1);
 }
 
-/*
- * ccn_name_from_uri: Convert a ccn-scheme URI to a ccnb-encoded Name.
+/**
+ * Convert a ccnx-scheme URI to a ccnb-encoded Name.
  * The converted result is placed in c.
  * On input, c may contain a base name, in which case relative URIs are allowed.
  * Otherwise c should start out empty, and the URI must be absolute.
- * Returns -1 if an error is found, otherwise returns the number of characters
- * that were processed.
+ * @returns -1 if an error is found, otherwise returns the number of characters
+ *          that were processed.
  */
 int
 ccn_name_from_uri(struct ccn_charbuf *c, const char *uri)
@@ -252,16 +253,18 @@ ccn_name_from_uri(struct ccn_charbuf *c, const char *uri)
         if (res < -2)
             goto Done;
         ccn_charbuf_reserve(compbuf, 1)[0] = 0;
-        if (0 == strcasecmp((const char *)(compbuf->buf), "ccn:") &&
-              s[cont-1] == ':') {
-            s += cont; cont = 0;
+        if ((0 == strcasecmp((const char *)(compbuf->buf), "ccnx:") ||
+             0 == strcasecmp((const char *)(compbuf->buf), "ccn:")) &&
+            s[cont-1] == ':') {
+            s += cont;
+            cont = 0;
         }
-        // XXX - need to error out on other uri schemes
+        /// @bug XXX - need to error out on other uri schemes
     }
     if (s[0] == '/') {
         ccn_name_init(c);
         if (s[1] == '/') {
-            /* Skip over hostname part - not used in ccn scheme */
+            /* Skip over hostname part - not used in ccnx scheme */
             s += 2;
             compbuf->length = 0;
             res = ccn_append_uri_component(compbuf, s, stop - s, &cont);
