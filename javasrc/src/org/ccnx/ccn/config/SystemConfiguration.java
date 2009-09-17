@@ -48,8 +48,6 @@ import org.ccnx.ccn.protocol.ContentObject;
  * control, by turning on and off logging for individual named "modules"; though that has
  * not yet been widely utilized. Eventually we should support separate log Level settings
  * for each module when necessary.
- * @author smetters
- *
  */
 public class SystemConfiguration {
 	
