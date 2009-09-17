@@ -30,7 +30,6 @@ import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
@@ -103,7 +102,7 @@ public class Group {
 	 * @throws ConfigurationException
 	 * @throws XMLStreamException
 	 */
-	public Group(ContentName groupName, CCNHandle handle,GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
+	public Group(ContentName groupName, CCNHandle handle, GroupManager manager) throws IOException, ConfigurationException, XMLStreamException {
 		this(groupName.parent(), AccessControlProfile.groupNameToFriendlyName(groupName), handle,manager);
 	}
 	
@@ -117,7 +116,7 @@ public class Group {
 	 * @param manager the group manager
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
-		  PublicKeyObject publicKey, CCNHandle handle,GroupManager manager) {
+		  PublicKeyObject publicKey, CCNHandle handle, GroupManager manager) {
 		_handle = handle;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
@@ -389,7 +388,7 @@ public class Group {
 		// Write superseded block in old key directory
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
 		// Write link back to previous key
-		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(KeyManager.getKeyManager().getDefaultKeyID())));
+		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _handle);
 		precededByBlock.saveToRepository();
 	}

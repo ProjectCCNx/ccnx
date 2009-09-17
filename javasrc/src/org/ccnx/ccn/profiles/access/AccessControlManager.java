@@ -216,7 +216,7 @@ public class AccessControlManager {
 	private GroupManager _groupManager = null;
 	private HashSet<ContentName> _myIdentities = new HashSet<ContentName>();
 	
-	private KeyCache _keyCache = new KeyCache();
+	private KeyCache _keyCache;
 	private CCNHandle _handle;
 	private SecureRandom _random = new SecureRandom();
 	
@@ -240,6 +240,8 @@ public class AccessControlManager {
 		} else {
 			_handle = handle;
 		}
+		_keyCache = new KeyCache(_handle.keyManager());
+		
 		// start enumerating users in the background
 		userList();
 		_groupManager = new GroupManager(this, groupStorage, _handle);
@@ -249,7 +251,7 @@ public class AccessControlManager {
 	public GroupManager groupManager() { return _groupManager; }
 	
 	public void publishMyIdentity(ContentName identity, PublicKey myPublicKey) throws InvalidKeyException, IOException, ConfigurationException, XMLStreamException {
-		KeyManager km = KeyManager.getKeyManager();
+		KeyManager km = _handle.keyManager();
 		if (null == myPublicKey) {
 			myPublicKey = km.getDefaultPublicKey();
 		}

@@ -96,7 +96,7 @@ public class GroupManager {
 			synchronized(_groupCache) {
 				theGroup = _groupCache.get(groupFriendlyName);
 				if (null == theGroup) {
-					theGroup = new Group(_groupStorage, groupFriendlyName, _handle,this);
+					theGroup = new Group(_groupStorage, groupFriendlyName, _handle, this);
 					// wait for group to be ready?
 					_groupCache.put(groupFriendlyName, theGroup);
 				}
