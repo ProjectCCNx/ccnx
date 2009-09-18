@@ -51,55 +51,62 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
- * This class combines basic segmentation, signing and encryption; 
- * the intent is to provide a user-friendly, efficient, minimum-copy interface,
- * with some support for extensibility.
- * a) simple segmentation -- contiguous blocks (fixed or variable width),
- * 	  or sparse blocks, e.g. at various time offsets. Configurations set
- *    the numbering scheme. The two interfaces are either contiguous writes,
- *    or (for the sparse case), writes of individual segments specified by
- *    offset (can be multi-buffered, as may be multiple KB). 
+ * Combines segmentation, signing and encryption. This is used
+ * to prepare data for writing out to ccnd. The intent is to provide a user-friendly,
+ * efficient, minimum-copy interface, with some support for extensibility.
+ * 
+ * <ul>
+ * <li>
+ *   Segmentation is the division of a large piece of content into multiple
+ *   smaller content objects. A segment component is appended to the content
+ *   name to distinguish different segments.
+ *   @see org.ccnx.ccn.profiles.SegmentationProfile
+ * 
+ *    This class currently supports a range of quite complex
+ *    segmentation options. At this point, only a subset of these are supported
+ *    by the higher level org.ccnx.ccn.io interfaces.
+ *    
+ *    Contiguous blocks (fixed or variable size), or sparse blocks, e.g. at various
+ *    time offsets. Configurations set the numbering scheme. The two interfaces
+ *    are either contiguous writes, or (for the sparse case), writes of individual
+ *    segments specified by offset (can be multi-buffered, as may be multiple KB).
  *    
  *    Simplest way to handle might be to expect contiguous blocks (either
  *    increments or byte count) and remember what we last wrote, so next
  *    call gets next value. Clients writing sparse blocks (only byte count
  *    or scaled byte count makes sense for this) can override by setting
- *    counter on a call.
+ *    counter on a call.</li>
  *    
- *    NOTE: the CCNSegmenter class currently supports a range of quite complex
- *    segmentation options. At this point, only a subset of these are supported
- *    by the higher level io interfaces.
+ * <li>Signing Control -- per ContentObject signing with a choice of signature algorithm,
+ *    or amortized signing. The default is Merkle Hash Tree based amortization, later
+ *    there will be other options.
+ *    @see org.ccnx.ccn.impl.security.crypto.CCNMerkleTreeSigner</li>
  *    
- * b) signing control -- per-block signing with a choice of signature algorithm,
- *    or amortized signing, first Merkle Hash Tree based amortization, later
- *    options for other things.
- *    
- * c) stock low-level encryption. Given a key K, an IV, and a chosen encryption
- *    algorithm (standard: AES-CTR, also eventually AES-CBC and other padded
- *    block cipher options), segment content so as
+ * <li>Stock low-level encryption. --
+ *    Given a key K, an IV, and a chosen encryption algorithm segment content so as
  *    to meet a desired net data length with potential block expansion, and encrypt.
- *    Other specs used to generate K and IV from higher-level data.
- *    
- *    For block ciphers, we require a certain amount of extra space in the
- *    blocks to accommodate padding (a minimum of 1 bytes for PKCS5 padding,
- *    for example). 
- *    DKS TODO -- deal with the padding and length expansion
- *    	For the moment, until we deal with padding we use only AES-CTR.
  *    
  *    For this, we use the standard Java encryption mechanisms, augmented by
  *    alternative providers (e.g. BouncyCastle for AES-CTR). We just need
  *    a Cipher, a SecretKeySpec, and an IvParameterSpec holding the relevant
  *    key data.
  *    
- * Overall, attempt to minimize copying of data. Data must be copied into final
+ *    For block ciphers, we require a certain amount of extra space in the
+ *    blocks to accommodate padding (a minimum of 1 bytes for PKCS5 padding,
+ *    for example). 
+ *    DKS TODO -- deal with the padding and length expansion
+ *    	For the moment, until we deal with padding we use only AES-CTR.</li>
+ * </ul>
+ *    
+ * Overall this class attempts to minimize copying of data. Data must be copied into final
  * ContentObjects returned by the signing operations. On the way, it may need
  * to pass through a block encrypter, which may perform local copies. Higher-level
- * constructs, such as streams, may buffer it above. If possible, limit copies
- * within this class. Even better, provide functionality that let client stream
- * classes limit copies (e.g. by partially creating data-filled content objects,
- * and not signing them till flush()). But start with the former.
+ * constructs, such as streams, may buffer it above.
  */
 public class CCNSegmenter {
+	// TODO: Provide functionality that let client stream
+	// classes limit copies (e.g. by partially creating data-filled content objects,
+	// and not signing them till flush()).
 
 	public static final String PROP_BLOCK_SIZE = "ccn.lib.blocksize";
 	public static final Long LAST_SEGMENT = Long.valueOf(-1);
@@ -278,7 +285,7 @@ public class CCNSegmenter {
 	public CCNFlowControl getFlowControl() { return _flowControl; }
 
 	/**
-	 * Set the segmentation block size to use
+	 * Sets the segmentation block size to use
 	 * @param blockSize block size in bytes
 	 */
 	public void setBlockSize(int blockSize) {
@@ -286,7 +293,7 @@ public class CCNSegmenter {
 	}
 
 	/**
-	 * Get the current block size
+	 * Gets the current block size
 	 * @return block size in bytes
 	 */
 	public int getBlockSize() {
@@ -311,13 +318,13 @@ public class CCNSegmenter {
 	public void setSequenceType(SegmentNumberType seqType) { _sequenceType = seqType; }
 
 	/**
-	 * Set increment between block numbers.
+	 * Sets the increment between block numbers.
 	 * @param blockIncrement
 	 */
 	public void setBlockIncrement(int blockIncrement) { _blockIncrement = blockIncrement; }
 	
 	/**
-	 * Get the increment between block numbers.
+	 * Gets the increment between block numbers.
 	 * @return
 	 */
 	public int getBlockIncrement() { return _blockIncrement; }
@@ -327,19 +334,19 @@ public class CCNSegmenter {
 
 
 	/**
-	 * Put a complete data item, segmenting it if necessary. The
+	 * Puts a complete data item, segmenting it if necessary. The
 	 * assumption of this method is that this single call puts
 	 * all the blocks of the item; if multiple calls to the
 	 * segmenter will be required to output an item, use other
 	 * methods to manage segment identifiers.
 	 * 
-	 * If small enough, doesn't fragment. Otherwise, does.
-	 * Return ContentObject of the thing they put (in the case
-	 * of a fragmented thing, the first fragment). That way the
-	 * caller can then also easily link to that thing if
-	 * it needs to, or put again with a different name.
+	 * If the data is small enough this doesn't fragment. Otherwise, does.
 	 * If multi-fragment, uses the naming profile and specified
-	 * bulk signer (default: MHT) to generate names and signatures.
+	 * bulk signer (default: Merkle Hash Tree) to generate names and signatures.
+	 * @return ContentObject of the data that was put (in the case
+	 * of fragmented data, the first fragment is returned). This way the
+	 * caller can then easily link to the data if
+	 * they need to, or put again with a different name.
 	 * @throws InvalidAlgorithmParameterException 
 	 **/
 	public long put(
@@ -461,7 +468,7 @@ public class CCNSegmenter {
 	 * @throws NoSuchAlgorithmException
 	 * @throws IOException 
 	 * @throws InvalidAlgorithmParameterException 
-	 * @see CCNSegmenter#fragmentedPut(ContentName, byte[], int, int, Long, ContentType, Integer, KeyLocator, PublisherPublicKeyDigest)
+	 * @see fragmentedPut(ContentName, byte[], int, int, Long, ContentType, Integer, KeyLocator, PublisherPublicKeyDigest)
 	 * Starts segmentation at segment SegmentationProfile().baseSegment().
 	 */
 	public long fragmentedPut(
@@ -562,7 +569,7 @@ public class CCNSegmenter {
 	 * @throws NoSuchAlgorithmException
 	 * @throws IOException 
 	 * @throws InvalidAlgorithmParameterException 
-	 * @see CCNSegmenter#fragmentedPut(ContentName, byte[], int, int, Long, ContentType, Integer, KeyLocator, PublisherPublicKeyDigest)
+	 * @see fragmentedPut(ContentName, byte[], int, int, Long, ContentType, Integer, KeyLocator, PublisherPublicKeyDigest)
 	 * Starts segmentation at segment SegmentationProfile().baseSegment().
 	 */
 	public long fragmentedPut(

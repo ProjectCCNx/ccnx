@@ -55,10 +55,10 @@ import org.ccnx.ccn.protocol.WirePacket;
  * to/from the ccnd, starting handler threads to feed interests and content to registered handlers,
  * and refreshing unsatisfied interests. 
  * 
- * It also attempts to notice when a ccnd has died and to
- * reconnect to a ccnd when it is restarted.
+ * This class attempts to notice when a ccnd has died and to reconnect to a ccnd when it is restarted.
  * 
- * It also handles the low level output "tap" functionality.
+ * It also handles the low level output "tap" functionality - this allows inspection or logging of
+ * all the communications with ccnd.
  * 
  * Starts a separate thread to listen to, decode and handle incoming data from ccnd.
  */
@@ -78,7 +78,7 @@ public class CCNNetworkManager implements Runnable {
 	public static final String KEEPALIVE_NAME = "/HereIAm";
 	public static final int THREAD_LIFE = 8;	// in seconds
 	
-	/**
+	/*
 	 * Static singleton.
 	 */
 	
@@ -105,11 +105,10 @@ public class CCNNetworkManager implements Runnable {
 	
 	/**
 	 * Do scheduled writes of heartbeats and interest refreshes
-	 * 
-	 * TODO Interest refresh time is supposed to "decay" over time but there are currently unresolved problems
-	 * with this.
 	 */
 	private class PeriodicWriter extends TimerTask {
+		// TODO Interest refresh time is supposed to "decay" over time but there are currently
+		// unresolved problems with this.
 		public void run() {
 			
 			long ourTime = new Date().getTime();
@@ -613,9 +612,6 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * We express interests to the ccnd and register them within the network manager
 	 * 
-	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
-	 * serving any useful purpose.
-	 *
 	 * @param caller 	must not be null
 	 * @param interest 	the interest
 	 * @param callbackListener	listener to callback on receipt of data
@@ -625,6 +621,8 @@ public class CCNNetworkManager implements Runnable {
 			Object caller,
 			Interest interest,
 			CCNInterestListener callbackListener) throws IOException {
+		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
+		// serving any useful purpose.
 		if (null == callbackListener) {
 			throw new NullPointerException("expressInterest: callbackListener cannot be null");
 		}		
@@ -648,15 +646,14 @@ public class CCNNetworkManager implements Runnable {
 	 * Cancel this query with all the repositories we sent
 	 * it to.
 	 * 
-	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
-	 * serving any useful purpose.
-	 *
 	 * @param caller 	must not be null
 	 * @param interest
 	 * @param callbackListener
 	 */
 	public void cancelInterest(Object caller, Interest interest, CCNInterestListener callbackListener) {
 		if (null == callbackListener) {
+			// TODO - use of "caller" should be reviewed - don't believe this is currently serving
+			// serving any useful purpose.
 			throw new NullPointerException("cancelInterest: callbackListener cannot be null");
 		}
 	
@@ -670,15 +667,14 @@ public class CCNNetworkManager implements Runnable {
 	 * matching interests seen. Any interests whose prefix completely matches "filter" will
 	 * be delivered to the listener
 	 *
-	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
-	 * serving any useful purpose.
-	 *
 	 * @param caller 	must not be null
 	 * @param filter	ContentName containing prefix of interests to match
 	 * @param callbackListener a CCNFilterListener
 	 */
 	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
 		//Library.fine("setInterestFilter: " + filter);
+		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
+		// serving any useful purpose.
 		setupTimers();
 		synchronized (_myFilters) {
 			_myFilters.add(filter, new Filter(this, filter, callbackListener, caller));
@@ -688,14 +684,13 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * Unregister a standing interest filter
 	 *
-	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
-	 * serving any useful purpose.
-	 *
 	 * @param caller 	must not be null
 	 * @param filter	currently registered filter
 	 * @param callbackListener	the CCNFilterListener registered to it
 	 */
 	public void cancelInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
+		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
+		// serving any useful purpose.
 		Log.fine("cancelInterestFilter: {0}", filter);
 		synchronized (_myFilters) {
 			Entry<Filter> found = _myFilters.remove(filter, new Filter(this, filter, callbackListener, caller));
