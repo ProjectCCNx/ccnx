@@ -47,7 +47,6 @@ jar clean test: _always
 	@rm -f _always
 
 documentation: _always
-	doxygen
 
 testinstall:
 	@echo No $@ target for `pwd`
