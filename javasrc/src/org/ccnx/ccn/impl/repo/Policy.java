@@ -39,6 +39,7 @@ public interface Policy {
 	 * Update the policy
 	 * 
 	 * @param stream	a stream of potential repository data
+	 * @param fromNet	true if request is from the network as opposed to reading a local file
 	 * @return			false if update is invalid or not for us
 	 * @throws XMLStreamException	if the policy data is incorrect or inconsistent
 	 * @throws IOException			on stream read errors

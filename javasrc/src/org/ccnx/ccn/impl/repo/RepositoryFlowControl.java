@@ -223,7 +223,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 
 	/**
 	 * Handle acknowledgement packet from the repo
-	 * @param co
+	 * @param name
 	 */
 	public void ack(ContentName name) {
 		synchronized (_holdingArea) {

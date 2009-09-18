@@ -173,8 +173,12 @@ public interface RepositoryStore {
 	
 	/**
 	 * Initialize the repository
-	 * @param args - user arguments to the repository
-	 * @return
+	 * @param handle
+	 * @param repositoryRoot
+	 * @param policyFile policy file to use or null
+	 * @param localName may be null
+	 * @param globalPrefix may be null
+	 * @throws RepositoryException
 	 */
 	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix) throws RepositoryException;
 	
@@ -190,7 +194,7 @@ public interface RepositoryStore {
 	
 	/**
 	 * Return the matching content if it exists
-	 * @param name
+	 * @param interest Interest to match
 	 * @return
 	 */
 	public ContentObject getContent(Interest interest) throws RepositoryException;
@@ -234,7 +238,7 @@ public interface RepositoryStore {
 	 * Get names to respond to name enumeration requests.  Returns null if there
 	 * is nothing after the prefix or if there is nothing new after the prefix if
 	 * there is a version on the incoming interest
-	 * @param Interest
+	 * @param i NameEnumeration Interest defining which names to get
 	 * @return NameEnumerationResponse
 	 */
     public NameEnumerationResponse getNamesWithPrefix(Interest i);
