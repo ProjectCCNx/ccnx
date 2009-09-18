@@ -105,7 +105,7 @@ public class DataUtils {
 	}
 	
 	/**
-	 * @see #compare(byte[], byte[])
+	 * @see compare(byte[], byte[])
 	 */
 	public static int compare(ArrayList<byte []> left, ArrayList<byte []> right) {
 
@@ -305,8 +305,14 @@ public class DataUtils {
 	}
 
 	/**
+	 /**
 	 * @param count Lexicographically compare two byte arrays, looking at at most count bytes.
 	 * @return < 0 if left comes before right, 0 if they are equal, > 0 if left comes after right
+	 *
+	 * @param arr1
+	 * @param arr2
+	 * @param count
+	 * @return
 	 */
 	public static int bytencmp(byte[] arr1, byte[] arr2, int count) {
 		if (null == arr1) {

@@ -90,7 +90,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * Constructor for a simple CCN output stream.
 	 * @param name name prefix under which to write content segments
 	 * @param handle if null, new handle created with CCNHandle#open()
-	 * @throws IOException stream setup fails
+	 * @throws IOException if stream setup fails
 	 */
 	public CCNOutputStream(ContentName name, CCNHandle handle) throws IOException {
 		this(name, (PublisherPublicKeyDigest)null, handle);
@@ -101,7 +101,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param name name prefix under which to write content segments
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
 	 * @param handle if null, new handle created with CCNHandle#open()
-	 * @throws IOException stream setup fails
+	 * @throws IOException if stream setup fails
 	 */
 	public CCNOutputStream(ContentName name,
 						   PublisherPublicKeyDigest publisher,
@@ -115,7 +115,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
 	 * @param handle if null, new handle created with CCNHandle#open()
-	 * @throws IOException stream setup fails
+	 * @throws IOException if stream setup fails
 	 */
 	public CCNOutputStream(ContentName name, ContentKeys keys, CCNHandle handle) throws IOException {
 		this(name, null, null, null, keys, handle);
@@ -129,7 +129,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
 	 * @param handle if null, new handle created with CCNHandle#open()
-	 * @throws IOException stream setup fails
+	 * @throws IOException if stream setup fails
 	 */
 	public CCNOutputStream(ContentName name, 
 			  			   KeyLocator locator, 
@@ -149,7 +149,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
 	 * @param handle if null, new handle created with CCNHandle#open()
-	 * @throws IOException stream setup fails
+	 * @throws IOException if stream setup fails
 	 */
 	public CCNOutputStream(ContentName name, 
 						   KeyLocator locator, 
@@ -230,6 +230,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	/**
 	 * Set the segmentation block size to use. Constraints: needs to be
 	 * a multiple of the likely encryption block size (which is, conservatively, 32 bytes).
+	 * Default is 4096.
 	 * @param blockSize in bytes
 	 */
 	public void setBlockSize(int blockSize) {
@@ -387,7 +388,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		 * XXX - Can the blockbuffers have holes?
 		 *     DKS: no. The blockCount argument to putMerkleTree is intended to tell
 		 *     it how many of the blockBuffers array it should touch (are non-null).
-		 *     If there are holes, there are a bigger problem.
+		 *     If there are holes, there is a bigger problem.
 		 */
 
 		/**

@@ -37,12 +37,15 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
 /**
- * Implements rudimentary data buffering by matching content objects
- * with interests before actually putting them out to ccnd.
+ * This class implements an input buffer for interests and an output buffer
+ * for content objects.
  * 
- * Holds content objects until a matching interest is seen and holds
- * interests and matches immediately if a content object matching a
- * held interest is put.
+ * ccnd will not accept data (content objects) except in response to an
+ * interest. This class allows data sources such as output streams to
+ * generate content objects speculatively, and buffers them until interests
+ * arrive from ccnd. Equally when interests come in from ccnd before the
+ * content has been generated this class will buffer the interests until
+ * the content is generated.
  * 
  * Implements a highwater mark in the holding buffer. If the buffer consumption
  * reaches the highwater mark, any subsequent put will block until there is more
@@ -142,7 +145,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Add a new namespace to the controller
+	 * Add a new namespace to the controller. The controller will register a filter with ccnd to receive
+	 * interests in this namespace.
 	 * @param name
 	 */
 	public void addNameSpace(ContentName name) {
@@ -165,10 +169,23 @@ public class CCNFlowControl implements CCNFilterListener {
 		Log.info("Flow controller addNameSpace: added namespace: " + name);
 	}
 	
+	/**
+	 * Convenience method.
+	 * @see #addNameSpace(ContentName)
+	 * @param name Namespace to be added in string form.
+	 */
 	public void addNameSpace(String name) throws MalformedContentNameStringException, IOException {
 		addNameSpace(ContentName.fromNative(name));
 	}
 	
+	/**
+	 * Convenience method.
+	 * @see #startWrite(ContentName, Shape)
+	 * @throws MalformedContentNameStringException if name is malformed
+	 */
+	public void startWrite(String name, Shape shape) throws MalformedContentNameStringException, IOException {
+		startWrite(ContentName.fromNative(name), shape);
+	}
 	/**
 	 * This is used by the RepoFlowController to indicate that it should start a write for this name
 	 * @param name
@@ -176,15 +193,13 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @throws MalformedContentNameStringException if name is malformed
 	 * @throws IOException used by subclasses
 	 */
-	public void startWrite(String name, Shape shape) throws MalformedContentNameStringException, IOException {
-		startWrite(ContentName.fromNative(name), shape);
-	}
 	public void startWrite(ContentName name, Shape shape) throws IOException {}
 	
 	/**
-	 * For now we don't have any way to remove a partial namespace from
-	 * buffering (would we want to do that?) so we only allow
-	 * removal of a namespace if it actually matches something that was
+	 * Remove a namespace from those we are listening for interests within.
+	 * 
+	 * For now we don't have any way to remove a part of a registered namespace from
+	 * buffering so we only allow removal of a namespace if it actually matches something that was
 	 * registered
 	 * 
 	 * @param name
@@ -207,7 +222,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Decide if this flow controller serves the child namespace
+	 * Test if this flow controller is currently serving a particular namespace.
 	 * 
 	 * @param childName ContentName of test space
 	 * @return The actual namespace the flow controller is using if it does serve the child
@@ -229,8 +244,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Add content objects to this flow controller. They won't be put to ccnd now unless
-	 * a currently waiting interest matches them.
+	 * Add multiple content objects to this flow controller.
+	 * @see #put(ContentObject)
 	 * 
 	 * @param cos 	ArrayList of ContentObjects to put
 	 * @throws IOException if the put fails
@@ -242,8 +257,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Add content objects to this flow controller. They won't be put to ccnd now unless
-	 * a currently waiting interest matches them.
+	 * Add multiple content objects to this flow controller.
+	 * @see #put(ContentObject)
 	 * 
 	 * @param cos Array of ContentObjects
 	 * @throws IOException if the put fails
@@ -255,7 +270,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 
 	/**
-	 * Add namespace and multiple content at the same time
+	 * Add namespace and multiple content at the same time.
+	 * @see #addNameSpace(ContentName)
+	 * @see #put(ArrayList)
 	 * 
 	 * @param name 	ContentName of namespace
 	 * @param cos	ArrayList of ContentObjects
@@ -268,6 +285,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	/**
 	 * Add namespace and content at the same time
+	 * @see #addNameSpace(ContentName)
+	 * @see #put(ContentObject)
 	 * 
 	 * @param name 	ContentName of namespace
 	 * @param co 	ContentObject
@@ -280,8 +299,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Add content object to this flow controller. They won't be put to ccnd now unless
-	 * a currently waiting interest matches them.
+	 * Add a content object to this flow controller. It won't be sent to ccnd immediately unless
+	 * a currently waiting interest matches it.
 	 * 
 	 * @param co	ContentObject to put
 	 * @return		the ContentObject put
@@ -304,9 +323,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Hold content object in buffer until a matching interest has been received.
+	 * Hold a content object in buffer until a matching interest has been received.
 	 * @param co
-	 * @return 
 	 * @throws IOException
 	 */
 	private ContentObject waitForMatch(ContentObject co) throws IOException {
@@ -401,31 +419,29 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Allow override of action after co is put to ccnd
+	 * Allow override of action after a ContentObject is sent to ccnd
 	 * 
 	 * NOTE: Don't need to sync on holding area because this is only called within
 	 * holding area sync
+	 * NOTE: Any subclass overriding this method must either make sure to call it eventually (in a _holdingArea sync)
+	 * or understand the use of _nOut and update it appropriately.
 	 * 
-	 * @param co ContentObject to remove
-	 * 
-	 * TODO doesn't actually throw IOException - need to fix calling code before removing this
+	 * @param co ContentObject to remove from flow controller.
 	 */
 	public void afterPutAction(ContentObject co) throws IOException {
+		// TODO: doesn't actually throw IOException - need to fix calling code before removing this
 		_nOut++;
 		_holdingArea.remove(co.name());
 		_holdingArea.notify();
 	}
 	
-	/**
+	/*
 	 * Try to optimize this by giving preference to "getNext" which is
 	 * presumably going to be the most common kind of get. So we first try
 	 * on a tailmap following the interest, and if that doesn't get us 
 	 * anything, we try all the data.
 	 * XXX there are probably better ways to optimize this that I haven't
 	 * thought of yet also...
-	 * 
-	 * @param interest
-	 * @return
 	 */
 	private ContentObject getBestMatch(Interest interest) {
 		// paul r - following seems broken for some reason - I'll try
@@ -478,7 +494,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	/**
 	 * Implements a wait until all outstanding data has been drained from the
 	 * flow controller. This is required on close to insure that all data is actually
-	 * written.
+	 * sent to ccnd.
 	 * 
 	 * @throws IOException if the data has not been drained after a reasonable period
 	 */
@@ -511,7 +527,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	/**
 	 * Set the time to wait for buffer to drain on close
-	 * @param timeout timeout in ms
+	 * @param timeout timeout in milliseconds
 	 */
 	public void setTimeout(int timeout) {
 		_timeout = timeout;
@@ -519,14 +535,14 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	/**
 	 * Get the current waiting time for the buffer to drain
-	 * @return 	timeout in ms
+	 * @return 	timeout in milliseconds
 	 */
 	public int getTimeout() {
 		return _timeout;
 	}
 	
 	/**
-	 * Shutdown but wait for puts to drain first
+	 * Shutdown but wait for data to be sent to ccnd first
 	 * @throws IOException if buffer doesn't drain within timeout
 	 */
 	public void shutdown() throws IOException {
@@ -551,7 +567,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Reenable disabled buffering.  Buffering is enabled by default.
+	 * Re-enable disabled buffering.  Buffering is enabled by default.
 	 */
 	public void enable() {
 		_flowControlEnabled = true;
@@ -559,18 +575,18 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	/**
 	 * Change the highwater mark for the maximum amount of data to buffer before
-	 * causing putters to wait.  The highwater value is the number of content objects
-	 * that will be buffered on behalf of client threads.
+	 * causing putters to block. The highwater value is the number of content objects
+	 * that will be buffered.
 	 * 
-	 * @param value	highwater size
+	 * @param value number of content objects.
 	 */
 	public void setHighwater(int value) {
 		_highwater = value;
 	}
 	
 	/**
-	 * Change the maximum amount of unmatched interests to buffer
-	 * @param value	highwater size for interests
+	 * Change the maximum number of unmatched interests to buffer.
+	 * @param value	number of interests
 	 */
 	public void setInterestHighwater(int value) {
 		_unmatchedInterests.setHighWater(value);

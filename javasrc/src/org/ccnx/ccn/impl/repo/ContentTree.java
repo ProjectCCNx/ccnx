@@ -369,6 +369,7 @@ public class ContentTree {
 	 * @param node the node rooting a subtree to search
 	 * @param nodeName the full name of this node from the root up to and its component
 	 * @param depth the length of name of node including its component (number of components)
+	 * @param anyOK true if we aren't required to go left at this level
 	 * @param getter a handler to pull actual ContentObjects for final match testing
 	 * @return ContentObject matching the interest or null if not found
 	 */

@@ -53,7 +53,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * can specify an initial block id (default is 0), and an increment (default 1)
  * for fixed-width blocks, or blocks can be identified by byte offset
  * in the running stream, or by another integer metric (e.g. time offset),
- * by supplying a multiplier to conver the byte offset into a metric value.
+ * by supplying a multiplier to convert the byte offset into a metric value.
  * Finally, writers can specify the block identifier with a write.
  * Currently, however, the corresponding reader {@link org.ccnx.ccn.io.CCNBlockInputStream} expects
  * sequential segment numbering (and constraints based on the low-level CCN
