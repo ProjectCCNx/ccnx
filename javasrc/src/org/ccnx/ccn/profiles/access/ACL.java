@@ -111,8 +111,8 @@ public class ACL extends Collection {
 
 		/**
 		 * Compare two links
-		 * @param first link
-		 * @param second link
+		 * @param o1 first link
+		 * @param o2 second link
 		 * @return result of comparison
 		 */
 		public int compare(Link o1, Link o2) {
