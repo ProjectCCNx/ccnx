@@ -123,7 +123,8 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	
 	/**
 	 * Set the timeout that will be used for all content writes on this stream.
-	 * @param timeout
+	 * Default is 10 seconds
+	 * @param timeout in milliseconds
 	 */
 	public void setTimeout(int timeout) {
 		getSegmenter().setTimeout(timeout);

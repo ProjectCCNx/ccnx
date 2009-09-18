@@ -41,7 +41,7 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 	 * @param baseName name prefix under which to write content segments; if it is already
 	 *   versioned, that version is used, otherwise a new version is added.
 	 * @param handle if null, new handle created with CCNHandle#open().
-	 * @throws IOException stream setup fails
+	 * @throws IOException if stream setup fails
 	 */
 	public CCNVersionedOutputStream(ContentName baseName, CCNHandle handle) throws IOException {
 		this(baseName, (PublisherPublicKeyDigest)null, handle);
@@ -53,7 +53,7 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 	 *   versioned, that version is used, otherwise a new version is added.
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
 	 * @param handle if null, new handle created with CCNHandle#open()
-	 * @throws IOException stream setup fails
+	 * @throws IOException if stream setup fails
 	 */
 	public CCNVersionedOutputStream(ContentName baseName,
 						   			PublisherPublicKeyDigest publisher,
@@ -68,7 +68,7 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
 	 * @param handle if null, new handle created with CCNHandle#open()
-	 * @throws IOException stream setup fails
+	 * @throws IOException if stream setup fails
 	 */
 	public CCNVersionedOutputStream(ContentName baseName, 
 									ContentKeys keys, 
@@ -85,7 +85,7 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
 	 * @param handle if null, new handle created with CCNHandle#open()
-	 * @throws IOException stream setup fails
+	 * @throws IOException if stream setup fails
 	 */
 	public CCNVersionedOutputStream(ContentName baseName, 
 			  			   			KeyLocator locator, 
@@ -106,7 +106,7 @@ public class CCNVersionedOutputStream extends CCNOutputStream {
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
 	 * @param handle if null, new handle created with CCNHandle#open().
-	 * @throws IOException stream setup fails
+	 * @throws IOException if stream setup fails
 	 */
 	public CCNVersionedOutputStream(ContentName baseName, 
 									KeyLocator locator,

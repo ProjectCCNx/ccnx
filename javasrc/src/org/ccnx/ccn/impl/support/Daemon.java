@@ -498,7 +498,7 @@ public class Daemon {
 	/**
 	 * Rename RMI file to add PID if available, otherwise do nothing.
 	 * @param daemonName  the name of this daemon
-	 * @param PID  the PID to add to the RMI file name or null if unavailable
+	 * @param pid  the PID to add to the RMI file name or null if unavailable
 	 */
 	protected static void renameRMIFile(String daemonName, String pid) {
 		if (null != pid) {
