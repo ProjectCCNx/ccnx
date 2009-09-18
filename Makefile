@@ -13,7 +13,7 @@
 #
 
 # Subdirectories we build in
-TOPSUBDIRS = csrc schema javasrc doc/technical
+TOPSUBDIRS = csrc schema javasrc doc/technical apps/ccnChat
 # Packing list for packaging
 PACKLIST = Makefile README configure doc/index.txt $(TOPSUBDIRS) apps experiments
 
@@ -25,6 +25,7 @@ default all: _always
 	mkdir -p ./lib ./bin ./include
 	(cd csrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
 	(cd javasrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
+	(cd apps/ccnChat && $(MAKE) install INSTALL_BASE=`pwd`/../..)
 
 clean depend test check shared documentation testinstall install uninstall: _always
 	for i in $(TOPSUBDIRS); do         \
