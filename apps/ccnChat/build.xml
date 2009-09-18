@@ -76,6 +76,10 @@
 		</jar>
 	</target>
 
+        <target name="test" depends="jar">
+                <echo message="No tests defined for ccnChat"/>
+        </target>
+
 	<target name="clean">
 		<delete dir="${build}"/>
 	</target>
