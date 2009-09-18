@@ -36,31 +36,40 @@ import org.ccnx.ccn.protocol.SignedInfo;
 
 
 /**
- * This class extends your basic Merkle tree to 
- * incorporate the block name at each node, so that
+ * This class extends the basic MerkleTree for use in CCN.
+ * It incorporates the CCN ContentName for an object at each node, so that
  * names are authenticated as well as content in a
  * way that intermediary CCN nodes can verify.
  * 
- * For each content node in the CCNMerkleTree, we compute its
- * digest in the same way we would compute the digest of a leaf
- * node for signing (incorporating the name, authentication metadata,
- * and content). We then combine all these together into a MerkleTree,
+ * For each leaf node in the CCNMerkleTree, we compute its
+ * digest in exactly the same way we would compute the digest of a ContentObject
+ * node for signing on its own (incorporating the name, authentication metadata,
+ * and content). We then combine all these leaf digests together into a MerkleTree,
  * and sign the root node.
  * 
  * To generate a leaf block digest, therefore, we need to know
  * - the content of the block
- * - the name for the block (which, for fragmented content, includes the fragment
+ * - the name for the block (which, for segmented content, includes the segmented
  * 	   number. If we're buffering content and building trees per buffer, the
  * 	   fragment numbers may carry across buffers (e.g. leaf 0 of this tree might
  *     be fragment 37 of the content as a whole)
+ *     
  * - the authentication metadata. In the case of fragmented content, this is
  *     likely to be the same for all blocks. In the case of other content, the
  *     publisher is likely to be the same, but the timestamp and even maybe the
  *     type could be different -- i.e. you could use a CCNMerkleTree to amortize
  *     signature costs over any collection of data, not just a set of fragments.
  *     
- * So, we either need to hand in all the names, or a function to call to get
+ * So, we either need to hand in all the names, or have a function to call to get
  * the name for each block.
+ * 
+ * Note: There is no requirement that a CCNMerkleTree be built only from the segments
+ *     of a single piece of content, although that is the most common use. One
+ *     can build and verify a CCNMerkleTree built out of an arbitrary set of
+ *     ContentObjects; this may be a useful way of limiting the number of
+ *     signatures generated on constrained platforms. Eventually the CCNSegmenter
+ *     will be extended to handle such collections of arbitrary objects.
+ *     
  */
 public class CCNMerkleTree extends MerkleTree {
 	
@@ -70,15 +79,15 @@ public class CCNMerkleTree extends MerkleTree {
 	ContentObject [] _segmentObjects = null;
 	
 	/**
-	 * Build a CCNMerkleTree from a set of leaf content objects. 
+	 * Build a CCNMerkleTree from a set of leaf ContentObjects. 
 	 * @param contentObjects must be at least 2 blocks, or will throw IllegalArgumentException.
-	 * @param signingKey key to sign root with
+	 * @param signingKey key to sign the root with
 	 * @throws NoSuchAlgorithmException if key or DEFAULT_DIGEST_ALGORITHM are unknown
 	 * @throws InvalidKeyException if signingKey is invalid
 	 * @throws SignatureException if we cannot sign
 	 */
 	public CCNMerkleTree(ContentObject [] contentObjects, 
-			PrivateKey signingKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+						 PrivateKey signingKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
 
 		super(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, ((null != contentObjects) ? contentObjects.length : 0));
 		_segmentObjects = contentObjects;
@@ -116,6 +125,11 @@ public class CCNMerkleTree extends MerkleTree {
 		return null;
 	}
 	
+	/**
+	 * Return the SignedInfo for a given segment.
+	 * @param leafIndex the index of the leaf whose SignedInfo we want
+	 * @return the SignedInfo
+	 */
 	public SignedInfo segmentSignedInfo(int leafIndex) {
 		if ((leafIndex < 0) || (leafIndex > _segmentObjects.length))
 			throw new IllegalArgumentException("Index out of range!");
@@ -126,6 +140,11 @@ public class CCNMerkleTree extends MerkleTree {
 		return null;
 	}
 	
+	/**
+	 * Set the signature for a particular segment.
+	 * @param leafIndex the leaf segment to set the signature for
+	 * @return the Signature
+	 */
 	public Signature segmentSignature(int leafIndex) {
 		if ((leafIndex < 0) || (leafIndex > _segmentObjects.length))
 			throw new IllegalArgumentException("Index out of range!");
@@ -141,8 +160,7 @@ public class CCNMerkleTree extends MerkleTree {
 	}
 	
 	/**
-	 * Sets the signatures of all the blockObjects.
-	 * TODO DKS refactor this class to remove unused stuff.
+	 * Sets the signatures of all the contained ContentObjects.
 	 */
 	public void setSignatures() {
 		for (int i=0; i < numLeaves(); ++i) {
@@ -150,6 +168,11 @@ public class CCNMerkleTree extends MerkleTree {
 		}
 	}
 			
+	/**
+	 * A version of initializeTree to go with the CCNMerkleTree(ContentObject []) constructor.
+	 * @param contentObjects objects to build into the tree
+	 * @throws NoSuchAlgorithmException if the default digest algorithm unknown
+	 */
 	protected void initializeTree(ContentObject [] contentObjects) throws NoSuchAlgorithmException {
 		if (contentObjects.length < numLeaves())
 			throw new IllegalArgumentException("MerkleTree: cannot build tree from more blocks than given! Have " + contentObjects.length + " blocks, asked to use: " + (numLeaves()));
@@ -158,11 +181,40 @@ public class CCNMerkleTree extends MerkleTree {
 		computeNodeValues();		
 	}
 
+	/**
+	 * Construct the Signature for a given leaf. This is composed of the rootSignature(),
+	 * which is the same for all nodes, and the DER encoded MerklePath for this leaf as the
+	 * witness.
+	 * @param leafIndex the leaf to compute the signature for
+	 * @return the signature
+	 */
 	protected Signature computeSignature(int leafIndex) {
 		MerklePath path = path(leafIndex);
 		return new Signature(path.derEncodedPath(), rootSignature());		
 	}
 	
+	/**
+	 * Compute the signature on the root node. It's already a digest, so in
+	 * theory we could just wrap it up in some PKCS#1 padding, encrypt it
+	 * with our private key, and voila! A signature. But there are basically
+	 * know crypto software packages that provide signature primitives that take
+	 * already-digested data and just do the padding and encryption, and so we'd
+	 * be asking anyone attepmpting to implement CCN MHT signing (including ourselves)
+	 * to re-implement a very complicated wheel, across a number of signature algorithms.
+	 * We might also want to sign with a key that does not support the digest algorithm
+	 * we used to compute the root (for example, DSA).
+	 * So take the computationally very slightly more expensive, but vastly simpler
+	 * (implementation-wise) approach of taking our digest and signing it with
+	 * a standard signing API -- which means digesting it one more time for the
+	 * signature. So we sign (digest + encrypt) the root digest. 
+	 * 
+	 * @param root the root digest to sign
+	 * @param signingKey the key to sign with
+	 * @return the bytes of the signature
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 */
 	protected static byte [] computeRootSignature(byte [] root, PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		// Given the root of the authentication tree, compute a signature over it
 		// Right now, this will digest again. It's actually quite hard to get at the raw
@@ -171,6 +223,11 @@ public class CCNMerkleTree extends MerkleTree {
 		return CCNSignatureHelper.sign(null, root, signingKey);
 	}
 	
+	/**
+	 * Compute the leaf values of the ContentObjects in this tree
+	 * @param contentObjects the content
+	 * @throws NoSuchAlgorithmException if the digestAlgorithm unknown
+	 */
 	protected void computeLeafValues(ContentObject [] contentObjects) throws NoSuchAlgorithmException {
 		// Hash the leaves
 		for (int i=0; i < numLeaves(); ++i) {
@@ -185,11 +242,12 @@ public class CCNMerkleTree extends MerkleTree {
 	 * We need to incorporate the name of the content block
 	 * and the signedInfo into the leaf digest of the tree.
 	 * Essentially, we want the leaf digest to be the same thing
-	 * we would use for signing a stand-alone leaf.
-	 * @param leafIndex
-	 * @param contentBlocks
-	 * @return
-	 * @throws  
+	 * we would use for signing a stand-alone ContentObject.
+	 * @param leafIndex the index of the leaf to sign
+	 * @param content the content array containing the leaf content
+	 * @param offset the offset into content where the leaf start
+	 * @param length the length of content for this leaf
+	 * @return the block digest
 	 */
 	@Override
 	protected byte [] computeBlockDigest(int leafIndex, byte [] content, int offset, int length) {

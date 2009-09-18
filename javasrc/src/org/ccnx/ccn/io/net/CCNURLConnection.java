@@ -27,7 +27,11 @@ import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
-
+/**
+ * Initial steps to making Java's built in URL parsing and loading
+ * infrastructure be able to handle ccnx: URLs. 
+ * Needs additional testing, not guaranteed to work yet.
+ */
 public class CCNURLConnection extends URLConnection {
 
 	public CCNURLConnection(URL url) {

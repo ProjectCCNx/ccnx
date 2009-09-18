@@ -33,6 +33,9 @@ import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.security.crypto.util.OIDLookup;
 
 
+/**
+ * A representation of a path through a MerkleTree.
+ */
 public class MerklePath {
 	
 	int _leafNodeIndex;
@@ -42,11 +45,21 @@ public class MerklePath {
 	// OID from component digest OID. Right now just pull
 	// from CCNMerkleTree.
 	
+	/**
+	 * Create a MerklePath for a given leaf
+	 * @param leafNodeIndex the leaf index
+	 * @param path the node digests necessary to verify that leaf
+	 */
 	public MerklePath(int leafNodeIndex, DEROctetString [] path) {
 		_leafNodeIndex = leafNodeIndex;
 		_path = path;
 	}
 	
+	/**
+	 * Decode a DER encoded MerklePath
+	 * @param derEncodedPath the encoded path
+	 * @throws CertificateEncodingException if there is a decoding error
+	 */
 	public MerklePath(byte [] derEncodedPath) throws CertificateEncodingException {
 		DERObject decoded = CryptoUtil.decode(derEncodedPath);
 		ASN1Sequence seq = (ASN1Sequence)decoded;
@@ -61,6 +74,13 @@ public class MerklePath {
 		}
 	}
 	
+	/**
+	 * Compute the parent digest of the current node
+	 * @param node the current node
+	 * @param length the length of the path at this point
+	 * @param pathDigest the previously computed digest along this path
+	 * @return the parent digest
+	 */
 	protected byte [] computeParent(int node, int length, byte [] pathDigest) {
 		byte [] parentDigest = null;
 		if (MerkleTree.isRight(node)) {
@@ -73,12 +93,14 @@ public class MerklePath {
 	
 	/**
 	 * Take the content block for which this is the MerklePath,
-	 * and verify that it matches. The caller then needs
-	 * to check whether the root is authentic.
+	 * and compute the root digest for verification. The caller then needs
+	 * to check whether it matches the root, and 
+	 * the root is authentic (signed by a trusted key).
 	 * @param nodeContent either the content of the block or its
 	 * 	digest. If a subclass of MerkleTree overrides computeBlockDigest,
 	 *  a caller must hand in the digest, as this uses the MerkleTree default.
-	 * @return
+	 * @param isDigest was this node already digested, or do we need to digest it
+	 * @return the computed root digest
 	 */
 	public byte [] root(byte [] nodeContent, boolean isDigest) {
 		if ((leafNodeIndex() < MerkleTree.ROOT_NODE) || (_path == null) ||
@@ -108,9 +130,9 @@ public class MerklePath {
 	}
 	
 	/**
-	 * Entry in the path, where i is the index into the path array.
-	 * @param i
-	 * @return
+	 * Get an in the path, where i is the index into the path array.
+	 * @param i the entry we want
+	 * @return the entry
 	 */
 	public DEROctetString entry(int i) {
 		if ((i < 0) || (i >= _path.length))
@@ -118,6 +140,10 @@ public class MerklePath {
 		return _path[i];
 	}
 	
+	/**
+	 * Return the leaf node this path is for
+	 * @return the leaf node index
+	 */
 	public int leafNodeIndex() { return _leafNodeIndex; }
 		
 	public int pathLength() { 
@@ -129,6 +155,7 @@ public class MerklePath {
 	/**
 	 * DER-encode the path. Embed it in a DigestInfo
 	 * with the appropriate algorithm identifier.
+	 * @return the DER-encoded path
 	 */
 	public byte [] derEncodedPath() {
 		
@@ -148,6 +175,11 @@ public class MerklePath {
 		return CCNDigestHelper.digestEncoder(CCNMerkleTree.DEFAULT_MHT_ALGORITHM, encodedPath);
 	}
 	
+	/**
+	 * Determine whether a given DigestInfo contains a MerklePath
+	 * @param info the DigestInfo
+	 * @return true if this is a MerklePath, false otherwise
+	 */
 	public static boolean isMerklePath(DigestInfo info) {
 		AlgorithmIdentifier digestAlg = 
 			new AlgorithmIdentifier(OIDLookup.getDigestOID(CCNMerkleTree.DEFAULT_MHT_ALGORITHM));
@@ -178,5 +210,4 @@ public class MerklePath {
 			return false;
 		return true;
 	}
-
 }

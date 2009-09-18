@@ -22,7 +22,11 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
 
-
+/**
+ * Initial steps to making Java's built in URL parsing and loading
+ * infrastructure be able to handle ccnx: URLs. 
+ * Needs additional testing, not guaranteed to work yet.
+ */
 public class Handler extends URLStreamHandler {
 
 	public Handler() {

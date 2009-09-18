@@ -60,6 +60,11 @@ import org.ccnx.ccn.impl.support.Log;
  * The children of node k are:
  * t(k-1)+2, t(k-1)+3,..., tk+1
  * 
+ * In the methods below, we refer to nodes as having a "nodeIndex" -- their
+ * 1-based index into the node array as described above. Leaf nodes also have
+ * a "leafIndex" -- their index into the set of n leaves. Convenience
+ * methods are provided to convert between the two.
+ * 
  * Store node digests internally as DEROctetStrings for more efficient
  * encoding. 
  */
@@ -75,28 +80,43 @@ public class MerkleTree {
 	protected String _digestAlgorithm;
 	
 	/**
-	 * The OID we use to represent Merkle trees. Derived from PARC-s sub-arc of Xerox's OID.
+	 * The OID prefix we use to represent Merkle trees. Derived from PARC-s sub-arc of Xerox's OID.
 	 */
 	protected static final String MERKLE_OID_PREFIX = "1.2.840.113550.11.1.2";
 	
 	/**
-	 * @param contentBlocks the leaf content to be hashed into this 
-	 * Merkle hash tree.
+	 * Build a MerkleTree. This initializes the tree with content, builds the leaf
+	 * and intermediate digests, and derives the root digest.
+	 * @param digestAlgorithm the digest algorithm to use for computing leaf and
+	 *   interior node digests of this tree
+	 * @param contentBlocks the segmented leaf content to be hashed into this 
+	 * Merkle hash tree. One block per leaf.
+	 * @param isDigest are the content blocks raw content (false), or are they already digested
+	 * 	  with digestAlgorithm? (default algorithm: CCNDigestHelper#DEFAULT_DIGEST_ALGORITHM)
 	 * @param blockCount the number of those blocks to include (e.g. we may not
 	 * 	have filled our contentBlocks buffers prior to building the tree). Must be
 	 *  at least 2.
 	 * @param baseBlockIndex the offset into the contentBlocks array at which to start.
-	 * @param isDigest are the content blocks raw content (false), or are they already digested
-	 * 	  with our default algorithm (true)? (default algorithm: DigestHelper.DEFAULT_DIGEST_ALGORITHM)
+	 * @param lastBlockLength the number of bytes of the last block to use
 	 * @throws NoSuchAlgorithmException 
 	 */
 	public MerkleTree(String digestAlgorithm, 
-					  byte [][] contentBlocks, boolean isDigest, int blockCount, 
+					  byte contentBlocks[][], boolean isDigest, int blockCount, 
 					  int baseBlockIndex, int lastBlockLength) throws NoSuchAlgorithmException {
 		this(digestAlgorithm, blockCount);		
 		initializeTree(contentBlocks, isDigest, baseBlockIndex, lastBlockLength);
 	}
 	
+	/**
+	 * Segment content and build a MerkleTree. This initializes the tree with content, builds the leaf
+	 * and intermediate digests, and derives the root digest. Uses CCNDigestHelper#DEFAULT_DIGEST_ALGORITHM.
+	 * @param content the content to segment into leaves and hash into this 
+	 * Merkle hash tree. One blockWidth of content per leaf, except for the last leaf which may
+	 * be shorter.
+	 * @param offset offset into content at which to start processing data.
+	 * @param length number of bytes of content to process
+	 * @param blockWidth the length of leaf blocks to create
+	 */
 	public MerkleTree(byte [] content, int offset, int length, int blockWidth) {
 		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, (int)Math.ceil((1.0*length)/blockWidth));		
 		try {
@@ -108,13 +128,39 @@ public class MerkleTree {
 		}
 	}
 
+	/**
+	 * Segment content and build a MerkleTree. This initializes the tree with content, builds the leaf
+	 * and intermediate digests, and derives the root digest. 
+	 * @param digestAlgorithm the digest algorithm to use for computing leaf and
+	 *   interior node digests of this tree
+	 * @param content the content to segment into leaves and hash into this 
+	 * Merkle hash tree. One blockWidth of content per leaf, except for the last leaf which may
+	 * be shorter.
+	 * @param offset offset into content at which to start processing data.
+	 * @param length number of bytes of content to process
+	 * @param blockWidth the length of leaf blocks to create
+	 */
 	public MerkleTree(String digestAlgorithm, byte [] content, int offset, int length,
 					  int blockWidth) throws NoSuchAlgorithmException {
 		this(digestAlgorithm, blockCount(length, blockWidth));
 		initializeTree(content, offset, length, blockWidth);
 	}
 
-	public MerkleTree(byte [][] contentBlocks, boolean isDigest, 
+	/**
+	 * Build a MerkleTree. This initializes the tree with content, builds the leaf
+	 * and intermediate digests, and derives the root digest. Uses CCNDigestHelper#DEFAULT_DIGEST_ALGORITHM.
+	 * @param contentBlocks the segmented leaf content to be hashed into this 
+	 * Merkle hash tree. One block per leaf.
+	 * @param isDigest are the content blocks raw content (false), or are they already digested
+	 * 	  with digestAlgorithm? (default algorithm: CCNDigestHelper#DEFAULT_DIGEST_ALGORITHM)
+	 * @param blockCount the number of those blocks to include (e.g. we may not
+	 * 	have filled our contentBlocks buffers prior to building the tree). Must be
+	 *  at least 2.
+	 * @param baseBlockIndex the offset into the contentBlocks array at which to start.
+	 * @param lastBlockLength the amount of the last block to use
+	 * @throws NoSuchAlgorithmException 
+	 */
+	public MerkleTree(byte contentBlocks[][], boolean isDigest, 
 					  int blockCount, int baseBlockIndex, int lastBlockLength) {
 		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, blockCount);		
 		try {
@@ -129,8 +175,8 @@ public class MerkleTree {
 	
 	/**
 	 * Subclass constructor.
-	 * @param digestAlgorithm
-	 * @param contentBlocks
+	 * @param digestAlgorithm digest algorithm to use. If null, use CCNDigestHelper#DEFAULT_DIGEST_ALGORITHM.
+	 * @param numLeaves the number of leaf nodes to reserve space for
 	 */
 	protected MerkleTree(String digestAlgorithm, int numLeaves) {
 		if (numLeaves < 2) {
@@ -143,12 +189,14 @@ public class MerkleTree {
 	}
 
 	/**
+	 * Method called by constructors to fill leaf nodes with digests and compute intermediate
+	 * node values up the tree. Does its work by calling computeLeafValues(byte [][], boolean, int, int)
+	 * and computeNodeValues().
 	 * Separate this out to allow subclasses to initialize members before
 	 * building tree.
-	 * @return
-	 * @throws NoSuchAlgorithmException 
+	 * @throws NoSuchAlgorithmException if the digestAlgorithm specified for this tree is unknown
 	 */
-	protected void initializeTree(byte [][] contentBlocks, boolean isDigest, int baseBlockIndex, int lastBlockLength) throws NoSuchAlgorithmException {
+	protected void initializeTree(byte contentBlocks[][], boolean isDigest, int baseBlockIndex, int lastBlockLength) throws NoSuchAlgorithmException {
 		if ((baseBlockIndex < 0) || (contentBlocks.length-baseBlockIndex < numLeaves()))
 			throw new IllegalArgumentException("MerkleTree: cannot build tree from more blocks than given! Have " + (contentBlocks.length-baseBlockIndex) + " blocks, asked to use: " + (numLeaves()));
 		
@@ -157,10 +205,12 @@ public class MerkleTree {
 	}
 	
 	/**
+	 * Method called by constructors to fill leaf nodes with digests and compute intermediate
+	 * node values up the tree. Does its work by calling computeLeafValues(byte [], int, int, int)
+	 * and computeNodeValues().
 	 * Separate this out to allow subclasses to initialize members before
 	 * building tree.
-	 * @return
-	 * @throws NoSuchAlgorithmException 
+	 * @throws NoSuchAlgorithmException if the digestAlgorithm specified for this tree is unknown
 	 */
 	protected void initializeTree(byte [] content, int offset, int length, int blockWidth) throws NoSuchAlgorithmException {
 		if ((offset < 0) || (length > content.length) || (blockCount(length, blockWidth) < numLeaves()))
@@ -282,7 +332,7 @@ public class MerkleTree {
 	}
 
 	/**
-	 * The number of leaves in the tree.
+	 * Get the number of leaves in the tree.
 	 * @return returns the number of leaves
 	 */
 	public int numLeaves() { return _numLeaves; }
@@ -314,7 +364,7 @@ public class MerkleTree {
 	}
 	
 	/**
-	 * The node index of a given leaf
+	 * Get the node index of a given leaf
 	 * @param leafIndex the index of a leaf
 	 * @return its node index
 	 */
@@ -333,6 +383,7 @@ public class MerkleTree {
 	/**
 	 * Generate a MerklePath for a given leaf, to use in verifying that
 	 * leaf.
+	 * 
 	 * There are a variety of traversal algorithms for 
 	 * computing/reading Merkle hash trees.
 	 * 
@@ -347,17 +398,25 @@ public class MerkleTree {
 	 *  
 	 * MerklePath ::= SEQUENCE {
 	 * 	nodeIndex INTEGER, 
-	 *  nodes NodeList }
+	 *  nodes NodeList 
+	 * }
 	 *  
-	 *  NodeList ::= SEQUENCE OF OCTET STRING
+	 * NodeList ::= SEQUENCE OF OCTET STRING
 	 *  
-	 *  the nodeIndex here is the index of the leaf node in
-	 *  the tree as a whole (not just among the leaves), and
-	 *  the nodes list contains neither the digest of the
-	 *  leaf itself nor the root of the tree.
+	 * the nodeIndex here is the index of the leaf node in
+	 * the tree as a whole (not just among the leaves), and
+	 * the nodes list contains neither the digest of the
+	 * leaf itself nor the root of the tree.
+	 * 
+	 * We could probably save a few bytes by not encoding this
+	 * as DER, and simply packing in the bytes to represent this
+	 * data -- this encoding offers a fair amount of ease of parsing
+	 * and clarity, at the cost of probably 5 + 2*pathLength bytes of overhead,
+	 * or 20 bytes in typical paths. At some point this may
+	 * seem too much, and we will move to a more compact encoding.
 	 *  
 	 * @param leafNum the leaf index of the leaf
-	 * @return the MerklePath
+	 * @return the MerklePath for verifying that leaf
 	 * @see MerklePath
 	 */
 	public MerklePath path(int leafNum) {
@@ -423,21 +482,21 @@ public class MerkleTree {
 	}
 	
 	/**
-	 * The maximum depth of this MerkleTree.
+	 * Get the maximum depth of this MerkleTree.
 	 * @return the depth
 	 */
 	public int maxDepth() { return maxDepth(numLeaves()); }
 	
 	/**
-	 * Compute the raw digest of the content blocks, and format them appropriately.
-	 * @param contentBlocks
+	 * Compute the raw digest of the leaf content blocks, and format them appropriately.
+	 * @param contentBlocks the leaf content, one leaf per array
+	 * @param isDigest have these been digested already, or do we need to digest
+	 * 	them using computeBlockDigest(int, byte [][], int, int)?
 	 * @param baseBlockIndex first block in the array to use
 	 * @param lastBlockLength number of bytes of the last block to use; N/A if isDigest is true
-	 * @param isDigest if the content is already digested (must use the default digest algorithm, for
-	 * 	now; we can change that if there is  a need).
-	 * @throws NoSuchAlgorithmException 
+	 * @throws NoSuchAlgorithmException if digestAlgorithm is unknown
 	 */
-	protected void computeLeafValues(byte [][] contentBlocks, boolean isDigest, int baseBlockIndex, int lastBlockLength) throws NoSuchAlgorithmException {
+	protected void computeLeafValues(byte contentBlocks[][], boolean isDigest, int baseBlockIndex, int lastBlockLength) throws NoSuchAlgorithmException {
 		// Hash the leaves
 		for (int i=0; i < numLeaves(); ++i) {
 			_tree[leafNodeIndex(i)-1] = 
@@ -448,13 +507,15 @@ public class MerkleTree {
 	}
 	
 	/**
-	 * Compute the raw digest of the content blocks, and format them appropriately.
-	 * @param contentBlocks
-	 * @param baseBlockIndex first block in the array to use
-	 * @param lastBlockLength number of bytes of the last block to use; N/A if isDigest is true
-	 * @param isDigest if the content is already digested (must use the default digest algorithm, for
-	 * 	now; we can change that if there is  a need).
-	 * @throws NoSuchAlgorithmException 
+	 * Compute the raw digest of the leaf content blocks, and format them appropriately.
+	 * uses computeBlockDigest(int, byte[], int, int) to compute the leaf digest.
+	 * @param content the content to segment into leaves and hash into this 
+	 * Merkle hash tree. One blockWidth of content per leaf, except for the last leaf which may
+	 * be shorter.
+	 * @param offset offset into content at which to start processing data.
+	 * @param length number of bytes of content to process
+	 * @param blockWidth the length of leaf blocks to create
+	 * @throws NoSuchAlgorithmException if digestAlgorithm is unknown
 	 */
 	protected void computeLeafValues(byte [] content, int offset, int length, int blockWidth) throws NoSuchAlgorithmException {
 		// Hash the leaves
@@ -466,6 +527,11 @@ public class MerkleTree {
 		}
 	}
 
+	/**
+	 * Compute the intermediate node values by digesting the concatenation of the
+	 * left and right children (or the left child alone if there is no right child).
+	 * @throws NoSuchAlgorithmException if digestAlgorithm is unknown
+	 */
 	protected void computeNodeValues() throws NoSuchAlgorithmException {
 		// Climb the tree
 		int firstNode = firstLeaf()-1;
@@ -479,6 +545,8 @@ public class MerkleTree {
 	 * Function for validating paths. Given a digest, it returns what node in
 	 * the tree has that digest. If no node has that digest, returns 0. 
 	 * If argument is null, returns -1. Slow.
+	 * @param node the node digest to validate
+	 * @return the nodeIndex of the node with that digest
 	 */
 	public int getNodeIndex(DEROctetString node) {
 		if (null == node)
@@ -490,6 +558,10 @@ public class MerkleTree {
 		return 0;
 	}
 	
+	/**
+	 * Get the root node as an encoded PKCS#1 DigestInfo.
+	 * @return the encoded DigestInfo
+	 */
 	public byte[] getRootAsEncodedDigest() {
 		// Take root and wrap it up as an encoded DigestInfo
 		return CCNDigestHelper.digestEncoder(
@@ -498,18 +570,18 @@ public class MerkleTree {
 	}
 
 	/**
-	 * Compute the digest of the leaf nodes.
+	 * Compute the digest of a leaf node.
 	 * Separate this out so that it can be overridden.
-	 * @param leafIndex The number of the leaf we are computing.
+	 * @param leafIndex The index of the leaf we are computing the digest of.
 	 * @param contentBlocks The array of content blocks containing the leaf content.
 	 * @param baseBlockIndex The first content block in the array containing leaf content (if rolling buffers).
 	 * 					  numLeaves() blocks contain leaf content, so the last block used is blockOffset+numLeaves().
 	 * @param lastBlockLength the number of bytes of the last block to use, can be smaller than
 	 *    the number available
-	 * @return
+	 * @return the digest for this leaf
 	 * @throws NoSuchAlgorithmException 
 	 */
-	protected byte [] computeBlockDigest(int leafIndex, byte [][] contentBlocks, int baseBlockIndex, int lastBlockLength) throws NoSuchAlgorithmException {
+	protected byte [] computeBlockDigest(int leafIndex, byte contentBlocks[][], int baseBlockIndex, int lastBlockLength) throws NoSuchAlgorithmException {
 		if ((leafIndex + baseBlockIndex) > contentBlocks.length) 
 			throw new IllegalArgumentException("Cannot ask for a leaf beyond the number of available blocks!");
 		// Are we on the last block?
@@ -519,47 +591,51 @@ public class MerkleTree {
 	}
 	
 	/**
-	 * Compute the digest of a specific leaf node.
-	 * @param leafIndex
-	 * @param block
-	 * @param offset
-	 * @param length
-	 * @return
-	 * @throws NoSuchAlgorithmException
+	 * Compute the digest of a leaf node.
+	 * Separate this out so that it can be overridden.
+	 * @param leafIndex The index of the leaf we are computing the digest of.
+	 * @param content the content to segment into leaves and hash into this 
+	 * Merkle hash tree.
+	 * @param offset offset into content at which this leaf starts
+	 * @param length number of bytes of content in this leaf
+	 * @return the digest for this leaf
+	 * @throws NoSuchAlgorithmException if digestAlgorithm is unknown
 	 */
-	protected byte [] computeBlockDigest(int leafIndex, byte [] block, int offset, int length) throws NoSuchAlgorithmException {
-		return CCNDigestHelper.digest(_digestAlgorithm, block, offset, length);		
+	protected byte [] computeBlockDigest(int leafIndex, byte [] content, int offset, int length) throws NoSuchAlgorithmException {
+		return CCNDigestHelper.digest(_digestAlgorithm, content, offset, length);		
 	}
 	
 	/**
-	 * Compute a leaf digest
-	 * @param algorithm
-	 * @param block
-	 * @return
-	 * @throws NoSuchAlgorithmException
+	 * Compute the digest of a leaf node.
+	 * @param digestAlgorithm the digest algorithm to use
+	 * @param content the content of this leaf
+	 * @return the digest for this leaf
+	 * @throws NoSuchAlgorithmException if digestAlgorithm is unknown
 	 */
-	public static byte [] computeBlockDigest(String algorithm, byte [] block) throws NoSuchAlgorithmException {
-		return CCNDigestHelper.digest(algorithm, block);		
+	public static byte [] computeBlockDigest(String digestAlgorithm, byte [] content) throws NoSuchAlgorithmException {
+		return CCNDigestHelper.digest(digestAlgorithm, content);		
 	}
 
 	/**
-	 * Compute leaf digest from a segment of a buffer.
-	 * @param algorithm
-	 * @param block
-	 * @param offset
-	 * @param length
-	 * @return
-	 * @throws NoSuchAlgorithmException
+	 * Compute the digest of a leaf node.
+	 * @param digestAlgorithm the digest algorithm to use
+	 * @param content the content to segment into leaves and hash into this 
+	 * Merkle hash tree.
+	 * @param offset offset into content at which this leaf starts
+	 * @param length number of bytes of content in this leaf
+	 * @return the digest for this leaf
+	 * @throws NoSuchAlgorithmException if digestAlgorithm is unknown
 	 */
-	public static byte [] computeBlockDigest(String algorithm, byte [] block, int offset, int length) throws NoSuchAlgorithmException {
-		return CCNDigestHelper.digest(algorithm, block, offset, length);		
+	public static byte [] computeBlockDigest(String digestAlgorithm, byte [] content, int offset, int length) throws NoSuchAlgorithmException {
+		return CCNDigestHelper.digest(digestAlgorithm, content, offset, length);		
 	}
 
 	/**
+	 * Compute the digest of a block using CCNDigestHelper#DEFAULT_DIGEST_ALGORITHM.
 	 * DKS TODO - check -- was being by MerklePath to compute digest for root without
 	 * properly recovering OID from encoded path.
-	 * @param block
-	 * @return
+	 * @param block block to digest
+	 * @return block digest
 	 */
 	public static byte [] computeBlockDigest(byte [] block) {
 		try {
@@ -582,9 +658,9 @@ public class MerkleTree {
 	
 	/**
 	 * Compute the digest for an intermediate node with two children.
-	 * @param left
-	 * @param right
-	 * @return
+	 * @param left left child
+	 * @param right right child
+	 * @return parent digest
 	 */
 	public static byte [] computeNodeDigest(byte [] left, byte [] right) {
 		try {
