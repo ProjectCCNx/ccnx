@@ -92,11 +92,11 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * want a writer to have to pull all the node key blocks to see what version of each
  * group the node key is encrypted under.
  * 
- * We could name the node key blocks <prefix>/_access_/NK/#version/<group name>:<group key id>,
+ * We could name the node key blocks &lt;prefix&gt;/_access_/NK/\#version/&lt;group name&gt;:&lt;group key id&gt;,
  * if we could match on partial components, but we can't.
  * 
- * We can name the node key blocks <prefix>/_access_/NK/#version/<group key id> with
- * a link pointing to that from NK/#version/<group name>. 
+ * We can name the node key blocks &lt;prefix&gt;/_access_/NK/\#version/&lt;group key id&gt; with
+ * a link pointing to that from NK/\#version/&lt;group name&gt;. 
  * 
  * For both read and write, we don't actually care what the ACL says. We only care what
  * the node key is. Most efficient option, if we have a full key cache, is to list the 
