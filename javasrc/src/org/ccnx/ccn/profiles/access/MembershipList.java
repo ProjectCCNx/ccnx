@@ -33,7 +33,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * This class records the membership list of <Group>.
+ * This class records the membership list of Group.
  * Eventually should extend Collection, when that moves onto encodable objects.
  *
  */

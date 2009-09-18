@@ -49,7 +49,7 @@ import org.ccnx.ccn.protocol.PublisherID;
 
 /**
  * Wrapper for Group public key, and a way to access its private keys.
- * The private keys are stored in a <KeyDirectory>, wrapped under the
+ * The private keys are stored in a KeyDirectory, wrapped under the
  * public keys of the members of the group. 
  * Model for private key access: if you're not allowed to get a key,
  * we throw AccessDeniedException.
@@ -187,7 +187,7 @@ public class Group {
 	}
 	
 	/**
-	 * Returns the <KeyDirectory> which stores the group private key wrapped
+	 * Returns the KeyDirectory which stores the group private key wrapped
 	 * in the public keys of the members of the group.
 	 * A new private key directory is created if it does not already exist
 	 * and if the group public key is ready. 
@@ -480,6 +480,7 @@ public class Group {
 	 * We need to wrap the group public key wrapping key in the latest public
 	 * keys of the members to add.
 	 * Since members are only added, there is no need to replace the group key.
+	 * @param manager the group manager
 	 * @param membersToAdd the members added to the group
 	 * @throws IOException 
 	 * @throws XMLStreamException 

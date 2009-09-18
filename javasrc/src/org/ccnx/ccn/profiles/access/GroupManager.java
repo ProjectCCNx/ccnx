@@ -43,6 +43,14 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 
+/**
+ * Class for group management, including in particular:
+ * - Creation of new groups 
+ * - Retrieval of existing groups
+ * - Determination of group membership
+ * - Retrieval of group private and public keys
+ *
+ */
 
 public class GroupManager {
 	
@@ -62,7 +70,12 @@ public class GroupManager {
 	}
 	
 	public AccessControlManager getAccessManager() { return _accessManager; }
-	
+
+	/**
+	 * Enumerate groups
+	 * @return the enumeration of groups
+	 * @throws IOException
+	 */
 	public EnumeratedNameList groupList() throws IOException {
 		if (null == _groupList) {
 			System.out.println("enumerating group: ......");
@@ -71,7 +84,15 @@ public class GroupManager {
 		}
 		return _groupList;
 	}
-	
+
+	/**
+	 * Get a group specified by its friendly name
+	 * @param groupFriendlyName the friendly name of the group
+	 * @return the corresponding group
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 * @throws XMLStreamException
+	 */
 	public Group getGroup(String groupFriendlyName) throws IOException, ConfigurationException, XMLStreamException {
 		if ((null == groupFriendlyName) || (groupFriendlyName.length() == 0)) {
 			Log.info("Asked to retrieve group with empty name.");
@@ -79,8 +100,8 @@ public class GroupManager {
 		}
 		Group theGroup = _groupCache.get(groupFriendlyName);
 		
-		//elaine : need to wait for data and add time out... the first time you run this, 
-		// nothing will be read... 
+		// Need to wait for data and add time out. 
+		// The first time you run this, nothing will be read. 
 		/*if( null == theGroup) {
 			groupList().waitForData();
 			SortedSet<ContentName> children = groupList().getChildren();
@@ -103,10 +124,18 @@ public class GroupManager {
 			}
 		}
 		// either we've got it, or we don't believe it exists.
-		// DKS startup transients? do we need to block for group list?
+		// startup transients? do we need to block for group list?
 		return theGroup;
 	}
 	
+	/**
+	 * Get the group specified by a link
+	 * @param theGroup link to the group
+	 * @return the corresponding group
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 * @throws XMLStreamException
+	 */
 	public Group getGroup(Link theGroup) throws IOException, ConfigurationException, XMLStreamException {
 		if (null == theGroup) {
 			Log.info("Asked to retrieve group with empty link.");
@@ -118,12 +147,30 @@ public class GroupManager {
 		return getGroup(friendlyName);
 	}
 	
+	/**
+	 * Adds the specified group to the cache
+	 * @param newGroup the group
+	 */
 	public void cacheGroup(Group newGroup) {
 		synchronized(_groupCache) {
 			_groupCache.put(newGroup.friendlyName(), newGroup);
 		}
 	}
 	
+	/**
+	 * Create a new group with a specified friendly name and list of members
+	 * The creator of the group ends up knowing the private key of the newly created group
+	 * but is simply assumed to forget it if not a member.
+	 * @param groupFriendlyName the friendly name of the group
+	 * @param newMembers the members of the group
+	 * @return the group
+	 * @throws XMLStreamException
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 * @throws InvalidKeyException
+	 * @throws InvalidCipherTextException
+	 * @throws AccessDeniedException
+	 */
 	public Group createGroup(String groupFriendlyName, ArrayList<Link> newMembers) 
 				throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException, 
 						InvalidCipherTextException, AccessDeniedException {
@@ -139,8 +186,6 @@ public class GroupManager {
 						new Collection(newMembers), _handle);
 			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _handle, this);
 			cacheGroup(newGroup);
-			// If I'm a group member (I end up knowing the private key of the group if I
-			// created it, but I could simply forget it...).
 			if (amCurrentGroupMember(newGroup)) {
 				_myGroupMemberships.add(groupFriendlyName);
 			}
@@ -148,11 +193,16 @@ public class GroupManager {
 		}
 	}
 	
-		
+	/**
+	 * Delete an existing group specified by its friendly name.
+	 * @param friendlyName the friendly name of the group
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 * @throws XMLStreamException
+	 */
 	public void deleteGroup(String friendlyName) throws IOException, ConfigurationException, XMLStreamException {
-		Group existingGroup = getGroup(friendlyName);
-		
-		// DKS we really want to be sure we get the group if it's out there...
+		Group existingGroup = getGroup(friendlyName);		
+		// We really want to be sure we get the group if it's out there...
 		if (null != existingGroup) {
 			Log.info("Got existing group to delete: " + existingGroup);
 			existingGroup.delete();
@@ -192,8 +242,10 @@ public class GroupManager {
 	}
 	
 	/**
-	 * Start out doing this the slow and simple way. Optimize later.
-	 * @param group
+	 * Determine if I am a current group member of a specified group.
+	 * The current implementation of this method is slow and simple. 
+	 * It can be optimized later.
+	 * @param group the group
 	 * @return
 	 * @throws IOException 
 	 * @throws XMLStreamException 
@@ -222,17 +274,17 @@ public class GroupManager {
 	}
 
 	/**
+	 * Get the private key of a group specified by its friendly name.
 	 * I already believe I should have access to this private key.
-	 * @param group
-	 * @param privateKeyVersion
-	 * @return
-	 * @throws XMLStreamException 
-	 * @throws IOException 
-	 * @throws InvalidCipherTextException 
-	 * @throws AccessDeniedException 
-	 * @throws InvalidKeyException 
-	 * @throws AccessDeniedException 
-	 * @throws ConfigurationException 
+	 * @param groupFriendlyName the group friendly name
+	 * @param privateKeyVersion the version of the private key
+	 * @return the group private key
+	 * @throws InvalidKeyException
+	 * @throws InvalidCipherTextException
+	 * @throws IOException
+	 * @throws XMLStreamException
+	 * @throws AccessDeniedException
+	 * @throws ConfigurationException
 	 */
 	public PrivateKey getGroupPrivateKey(String groupFriendlyName, CCNTime privateKeyVersion) throws InvalidKeyException, InvalidCipherTextException, IOException, XMLStreamException, AccessDeniedException, ConfigurationException {
 		// Heuristic check
@@ -286,13 +338,26 @@ public class GroupManager {
 	}
 	
 	/**
+	 * Get the algorithm of the group key.
 	 * Eventually let namespace control this.
-	 * @return
+	 * @return the algorithm of the group key
 	 */
 	public String getGroupKeyAlgorithm() {
 		return AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM;
 	}
 
+	/**
+	 * Get the versioned private key for a group.
+	 * @param keyDirectory the key directory associated with the group
+	 * @param principal the principal
+	 * @return the versioned private key
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws AccessDeniedException
+	 * @throws InvalidCipherTextException
+	 * @throws XMLStreamException
+	 * @throws ConfigurationException
+	 */
 	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) 
 			throws IOException, InvalidKeyException, AccessDeniedException, InvalidCipherTextException, 
 					XMLStreamException, ConfigurationException {
@@ -315,6 +380,14 @@ public class GroupManager {
 		return privateKey;
 	}
 
+	/**
+	 * Get the latest public key for a group specified by its principal name
+	 * @param principal
+	 * @return
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 * @throws XMLStreamException
+	 */
 	public PublicKeyObject getLatestPublicKeyForGroup(Link principal) throws IOException, ConfigurationException, XMLStreamException {
 		Group theGroup = getGroup(principal);
 		if (null == theGroup) 
