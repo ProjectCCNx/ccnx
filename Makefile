@@ -15,7 +15,7 @@
 # Subdirectories we build in
 TOPSUBDIRS = csrc schema javasrc doc/technical apps/ccnChat
 # Packing list for packaging
-PACKLIST = Makefile README configure doc/index.txt $(TOPSUBDIRS) apps experiments
+PACKLIST = Makefile README LICENSE configure doc/index.txt $(TOPSUBDIRS) apps experiments
 
 default all: _always
 	for i in $(TOPSUBDIRS); do         \
@@ -43,10 +43,11 @@ clean-testinstall: _always
 	rm -rf bin include lib
 
 # The rest of this is for packaging purposes.
-_manifester:
+_manifester: clean-documentation documentation
 	rm -f _manifester
 	test -d .svn && { type svn >/dev/null 2>/dev/null; } && ( echo svn list -R $(PACKLIST) > _manifester; ) || :
 	test -f _manifester || ( git branch >/dev/null 2>/dev/null && echo git ls-files $(PACKLIST) > _manifester; ) || :
+	test -f _manifester && ( echo find doc -type f >> _manifester )
 	test -f _manifester || ( test -f MANIFEST && echo cat MANIFEST > _manifester ) || :
 	test -f _manifester || ( test -f 00MANIFEST && echo cat 00MANIFEST > _manifester ) || :
 	test -f _manifester || ( echo false > _manifester )
@@ -55,7 +56,8 @@ MANIFEST: _manifester
 	echo MANIFEST > MANIFEST.new
 	@cat _manifester
 	sh _manifester | grep -v -e '/$$' -e '^MANIFEST$$' -e '[.]gitignore' >> MANIFEST.new
-	mv MANIFEST.new MANIFEST
+	sort MANIFEST.new | uniq > MANIFEST
+	rm MANIFEST.new
 	rm _manifester
 
 tar:	ccnx.tar
