@@ -55,7 +55,7 @@ public class UserConfiguration {
 	protected static final String KEYSTORE_PASSWORD = "Th1s1sn0t8g00dp8ssw0rd.";
 	protected static final int DEFAULT_KEY_LENGTH = 1024;
 	protected static final String DEFAULT_KEY_ALG = "RSA";
-	protected static final String DEFAULT_KEY_ALIAS = "CCNUser";
+	protected static final String DEFAULT_KEY_ALIAS = "CCNxUser";
 	protected static final String DEFAULT_KEYSTORE_TYPE = "PKCS12"; // "JCEKS"; // want JCEKS, but don't want to force keystore regeneration yet
 	
 	protected static String CCN_DIR;
