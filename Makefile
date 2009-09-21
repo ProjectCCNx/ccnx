@@ -68,7 +68,7 @@ ccnx.tar: MANIFEST
 distfile: tar
 	echo $(VERSION) > version
 	# make sure VERSION= has been provided
-	grep '^[0-9].....' version
+	grep '^[0-9]....' version
 	# check the Doxyfiles for good version information
 	# fail on the next step if the directory already exists
 	mkdir ccnx-$(VERSION)
