@@ -257,5 +257,99 @@ Forwarding Information Base (FIB)::
 Pending Interest Table (PIT)::
    A table of sources for unsatisfied Interests, organized for
    retrieval by longest prefix match lookup on names.  Each entry in
-   the PIT may point to a list of sources.
+   the PIT may point to a list of sources.  Entries in the PIT MUST
+   timeout rather than being held indefinitely.
+Face::
+   A 'face' is a generalization of the concept of 'interface': a face
+   may be a connection to a network or directly to an application
+   party.  A face may be configured to send and receive broadcast or
+   multicast packets on a particular network interface, or to send and
+   receive packets using point-to-point addressing in the underlying
+   transport, or using a tunnel (for example a TCP tunnel).  A face
+   may also be the connection to a single application process running
+   on the same machine, via an encapsulation like UDP or an
+   OS-specific interprocess communication path.  All messages arrive
+   through a face and are sent out through a face.
+
+Note that the tables listed above may be interconnected through a
+single index to minimize the cost of lookup operations at the core of
+CCNx message processing and forwarding.  Such an index must be ordered
+or prioritized to achieve the effect of the lookup order specified below.
+
+Processing Interest Messages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An Interest Message is processed according to the following sequence:
+
+1. Lookup is performed on CS.  If a matching ContentObject
+is found, it will be transmitted out the arrival face as a response to
+the Interest Message.  Note that to match a ContentObject must satisfy
+all of the specifications given in the Interest Message.  Note also
+that it may be that multiple ContentObjects simultaneously match in
+which case the specification in the link:InterestMessage.html[Interest
+Message] will be used to determine which object to return.  When a
+match is found in the CS, processing stops and the Interest
+Message is discarded since it has been satisfied.
+1. Lookup is performed on PIT.  If a matching Interest Message is
+found in the PIT it means that an equivalent Interest Message has
+already been forwarded and is pending.  The arrival face of the new
+Interest Message is added to the list of sources of unsatisfied
+Interests in the PIT entry and the the Interest Message is discarded.
+1. Lookup is performed on FIB.  If a matching prefix is found in the
+FIB, an entry is created in the PIT identifying the arrival face of
+the Interest Message and the message is transmitted according to the
+'strategy rules' to one or more of the destination faces registered
+for the prefix in the FIB.  Note that one of the destination faces may
+actually be connected to a local agent that uses the semantics of the
+name to dynamically configure new faces.
+1. If no match is found in the previous steps then the node has no way
+to satisfy the Interest Message and it is discarded.
+
+Processing Content Messages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A ContentObject is processed according to the following sequence:
+
+1. Lookup is performed on CS.  If a matching
+ContentObject is found it means that the newly arrived ContentObject
+is a duplicate which can safely be discarded, because any Interest
+Messages have already been satisfied and new ones will be satisfied
+out of the CS.
+1. Lookup is performed on PIT.  If there is a match in the PIT, the
+ContentObject is transmitted on all of the source faces for the
+Interests represented in the PIT.  A node MAY perform verification of
+the ContentObject before forwarding it, and MAY apply various policy
+restrictions.
+1. If no match is found in the previous steps, then the content is
+unsolicited.  A node MUST NOT forward unsolicited data and SHOULD
+discard unsolicited data but MAY store it in the CS in case it is
+subsequently requested.
+
+Strategy Rules
+~~~~~~~~~~~~~~
+
+Unlike in IP, CCNx FIB entries may point to multiple destinations
+simultaneously.  The self-identifying nature of Interest Messages and
+ContentObjects means that loops can be avoided without establishing a
+spanning tree allowing only one destination for any particular prefix
+at any particular node.  The possibility of multiple destinations
+means that different strategies may be employed to select among them
+for forwarding messages.  A node MUST implement some strategy rule,
+even if it is only to transmit an Interest Message on all listed
+destination faces in sequence. A node MAY implement many different
+strategies.  Strategy rules SHOULD be specified by FIB entries: in
+this case the FIB entry MAY contain effectively a constrained program
+for handling the forwarding of Interest Messages addressing the
+particular prefix.
+
+A node MUST discard PIT entries that have not been refreshed by the
+arrival of new Interest Messages within some timeout.  The new
+Interests confirm that the potential recipients are still interested
+in receiving content.  A node MUST retransmit Interest Messages
+periodically for pending PIT entries.  A node MAY use different
+timeouts for refreshing the liveness of received Interest Messages
+('downstream interests') from those used for retransmitting pending
+Interest Messages ('upstream interests'), and MAY use different
+timeouts associated for different faces.  In this way, each node
+SHOULD match to both to downstream and upstream parties.
 
