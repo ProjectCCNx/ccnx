@@ -1,10 +1,204 @@
-CCNx Built-In Signature Generation
+CCNx Signature Generation and Verification
 ===============
 
+Here we specify how content signatures are generated in CCNx.
+
 == Signed Content
+
+As described in link:./ContentObject.html, a ContentObject in CCNx consists
+of:
+
+.......................................................
+ContentObject ::= Signature
+                  Name
+                  SignedInfo
+                  Content
+.......................................................
+
+The Signature, described below, is computed over the concatenated ccnb
+binary encoding of the `Name`, `SignedInfo` and `Content` components of the 
+ContentObject, with all of their start and end tags, but *without* the
+start or end tag of the ContentObject itself, or any component of the `Signature`.
+This makes possible a signing implementation that takes a packet in over the
+wire, selects the digest algorithm to use to verify the signature based on
+information in the `Signature` component, and then digest the bulk of the 
+packet, exactly as it arrived on the wire, in order to verify its signature.
+
+== Signature
+
+The Signature component of the ContentObject consists of:
+
+
+
 
 == Block-at-a-time Signing
 
 == Aggregated signing - Merkle Hash Trees
+
+	/**
+	 * Generate a MerklePath for a given leaf, to use in verifying that
+	 * leaf.
+	 * 
+	 * There are a variety of traversal algorithms for 
+	 * computing/reading Merkle hash trees.
+	 * 
+	 * We need to represent the leaves so that the user
+	 * a) knows what order they come in, and b) also knows
+	 * which is the leaf being represented. The cheapest
+	 * way to do that is to represent the leaves in order,
+	 * and also start out with an indication of whether
+	 * this leaf is the left or right of the last pair.
+	 * To make this most general and easy to use, we
+	 * will represent this path as
+	 *  
+	 * MerklePath ::= SEQUENCE {
+	 * 	nodeIndex INTEGER, 
+	 *  nodes NodeList 
+	 * }
+	 *  
+	 * NodeList ::= SEQUENCE OF OCTET STRING
+	 *  
+	 * the nodeIndex here is the index of the leaf node in
+	 * the tree as a whole (not just among the leaves), and
+	 * the nodes list contains neither the digest of the
+	 * leaf itself nor the root of the tree.
+	 * 
+	 * We could probably save a few bytes by not encoding this
+	 * as DER, and simply packing in the bytes to represent this
+	 * data -- this encoding offers a fair amount of ease of parsing
+	 * and clarity, at the cost of probably 5 + 2*pathLength bytes of overhead,
+	 * or 20 bytes in typical paths. At some point this may
+	 * seem too much, and we will move to a more compact encoding.
+	 *  
+	 * @param leafNum the leaf index of the leaf
+	 * @return the MerklePath for verifying that leaf
+	 * @see MerklePath
+	 */
+**
+ * This class extends the basic MerkleTree for use in CCN.
+ * It incorporates the CCN ContentName for an object at each node, so that
+ * names are authenticated as well as content in a
+ * way that intermediary CCN nodes can verify.
+ * 
+ * For each leaf node in the CCNMerkleTree, we compute its
+ * digest in exactly the same way we would compute the digest of a ContentObject
+ * node for signing on its own (incorporating the name, authentication metadata,
+ * and content). We then combine all these leaf digests together into a MerkleTree,
+ * and sign the root node.
+ * 
+ * To generate a leaf block digest, therefore, we need to know
+ * - the content of the block
+ * - the name for the block (which, for segmented content, includes the segmented
+ * 	   number. If we're buffering content and building trees per buffer, the
+ * 	   fragment numbers may carry across buffers (e.g. leaf 0 of this tree might
+ *     be fragment 37 of the content as a whole)
+ *     
+ * - the authentication metadata. In the case of fragmented content, this is
+ *     likely to be the same for all blocks. In the case of other content, the
+ *     publisher is likely to be the same, but the timestamp and even maybe the
+ *     type could be different -- i.e. you could use a CCNMerkleTree to amortize
+ *     signature costs over any collection of data, not just a set of fragments.
+ *     
+ * So, we either need to hand in all the names, or have a function to call to get
+ * the name for each block.
+ * 
+ * Note: There is no requirement that a CCNMerkleTree be built only from the segments
+ *     of a single piece of content, although that is the most common use. One
+ *     can build and verify a CCNMerkleTree built out of an arbitrary set of
+ *     ContentObjects; this may be a useful way of limiting the number of
+ *     signatures generated on constrained platforms. Eventually the CCNSegmenter
+ *     will be extended to handle such collections of arbitrary objects.
+ *     
+	/**
+	 * Compute the signature on the root node. It's already a digest, so in
+	 * theory we could just wrap it up in some PKCS#1 padding, encrypt it
+	 * with our private key, and voila! A signature. But there are basically
+	 * know crypto software packages that provide signature primitives that take
+	 * already-digested data and just do the padding and encryption, and so we'd
+	 * be asking anyone attepmpting to implement CCN MHT signing (including ourselves)
+	 * to re-implement a very complicated wheel, across a number of signature algorithms.
+	 * We might also want to sign with a key that does not support the digest algorithm
+	 * we used to compute the root (for example, DSA).
+	 * So take the computationally very slightly more expensive, but vastly simpler
+	 * (implementation-wise) approach of taking our digest and signing it with
+	 * a standard signing API -- which means digesting it one more time for the
+	 * signature. So we sign (digest + encrypt) the root digest. 
+	public static byte [] prepareContent(ContentName name, 
+			SignedInfo signedInfo, 
+			byte [] content, int offset, int length) throws XMLStreamException {
+		if ((null == name) || (null == signedInfo)) {
+			Log.info("Name and signedInfo must not be null.");
+			throw new XMLStreamException("prepareContent: name, signedInfo must not be null.");
+		}
+
+		// Do setup. Binary codec doesn't write a preamble or anything.
+		// If allow to pick, text encoder would sometimes write random stuff...
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		XMLEncoder encoder = XMLCodecFactory.getEncoder(BinaryXMLCodec.CODEC_NAME);
+		encoder.beginEncoding(baos);
+
+		// We include the tags in what we verify, to allow routers to merely
+		// take a chunk of data from the packet and sign/verify it en masse
+		name.encode(encoder);
+		signedInfo.encode(encoder);
+		// We treat content as a blob according to the binary codec. Want to always
+		// sign the same thing, plus it's really hard to do the automated codec
+		// stuff without doing a whole document, unless we do some serious
+		// rearranging.
+		encoder.writeElement(CONTENT_ELEMENT, content, offset, length);
+
+		encoder.endEncoding();	
+
+		return baos.toByteArray();
+	}
+
+	public byte [] computeProxy() throws CertificateEncodingException, XMLStreamException {
+		// Given a witness and an object, compute the proxy.
+		if (null == content())
+			return null;
+		if ((null == signature()) || (null == signature().witness())) {
+			return null;
+		}
+		// Have to eventually handle various forms of witnesses...
+		byte[] blockDigest = CCNDigestHelper.digest(
+					prepareContent(name(), signedInfo(), content()));
+		return signature().computeProxy(blockDigest, true);
+	}
+
+
+<xs:complexType name="SignatureType">
+  <xs:sequence>
+	<!-- We either need to include a digest algorithm or a signature
+		 algorithm here. X.509 uses a sigalg up front (and again in
+		 the signature), PKCS#7 and XML signature uses a digest up
+		 front. Most APIs require us to know the signature algorithm,
+		 not the digest algorithm, to begin the verification process.
+		 Putting the signature up front along with this algorithm
+		 forces us to store the signature till we need it, but
+		 allows us to not repeat the algorithm. Expressing just a
+		 digest algorithm forces us to assume that a given key can
+		 only be used for one algorithm (depending on how we encode
+		 the signature). Also, if we digest the content before including
+		 it in the signature, we need to know what digest algorithm to
+		 use. We either have to assume it's the same one as for the
+		 signature, or standard one (with a separate, elided expression
+		 of version to allow later change if this one is broken).
+		 Right now, take the theory that a) signature algorithms
+		 are likely less standard for us than digest algorithms. So
+		 specify a digest algorithm here to increase our options of
+		 eliding it (default = sha-256). b) for now, sign the content
+		 directly rather than re-hashing it, except for aggregated signatures.  -->
+	<xs:element name="DigestAlgorithm" type="xs:string"
+					 default="2.16.840.1.101.3.4.2.1"
+                                         minOccurs="0" maxOccurs="1" /> 
+	<!-- A Witness is additional information necessary to verify the
+		 signature in some algorithms. For elements authenticated
+		 using a Merkle Hash Tree, the witness information would be
+		 the elements of the hash path through the tree. -->
+	<xs:element name="Witness" type="Base64BinaryType" minOccurs="0" maxOccurs="1" />
+	<!-- The signature over the name, content authenticator, and content. -->
+    <xs:element name="SignatureBits" type="Base64BinaryType"/>
+  </xs:sequence>
+</xs:complexType>
 
 
