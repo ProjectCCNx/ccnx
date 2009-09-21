@@ -1,23 +1,90 @@
-CCNx Name Conventions
-=====================
+CCNx Basic Name Conventions
+===========================
 
-== Generic name structure
-   * First component for globally-routable content will usually be a DNS name.  For more local scopes, other names can be used.
-   * The next several name components (0 or more) are human readable, analogous to file names.  These should use `UTF-8` encoding, and are always case sensitive.
-   * This may be followed by encrypted components, if the application calls for that.
-   * The next-to-last explicit component is used for versioning.  Details below.
-   * The last explicit component is used for sequencing, that is, to distinguish the pieces that make up the whole.  Details below.
-   * The content digest always comes last, and it is not represented explicitly in the wire representation of a ContentObject.
-   * Meta-data associated with a versioned object may have whole hierarchy of its own, rooted at any prefix that makes sense to the application.
-Keep in mind that these are just conventions that have extra support in the libraries to make them efficient and easy to use.  Applications may choose to do their own thing.
+The CCNx protocol does not specify any assignment of meaning to names,
+only their structure.  All assignment of meaning comes from
+application, institution, and/or global conventions.  Application
+developers are free to design their own custom conventions.  In order
+to have globally-routable names, institutional or global conventions
+must be reflected in prefix forwarding rules.
 
-== Coding space
-The specification of `UTF-8` prohibits certain octet values from occurring anywhere in a `UTF-8` encoded string.  These are the (hex) octet values `C0`, `C1`, and `F5` to `FF`.  In addition, the null octet `00` is used for string termination and so does not encode a usable character.  Thus these make good markers to help identify components of a CCNx name that play special roles such as versioning and sequence numbering, since they shouldn't appear in portions of the name intended for humans. In a variety of situations we need components that represent commands or annotations that can appear at arbitrary levels in the name hierarchy, intermixed with the human readable components analogous to pieces of file names.   In these cases, the position in the name is not able to distinguish the component's role and we must rely on the marker and that apps will follow these overall conventions so as to make the markers unambiguous.  Wherever possible, the function or meaning of name component should be determined by its context within the overall name.
+A number of basic issues requiring some convention will arise in many
+applications, and it will be helpful for everyone if common
+conventions are shared by many applications.  In practice, such
+conventions should be implemented consistently in libraries.
 
-== Versioning FD
-Versions, when present, occupy the next-to-last component of the CCNx name, not counting the digest component.  They are chosen based (primarily) on time.  The first byte of the version component is `0xFD`. The remaining bytes are a big-endian binary encoding of the time in link:Timestamp.html[CCNx Timestamp format].
+This document specifies basic conventions implemented in the libraries
+of the CCNx Reference Implementation addressing the following issues:
 
-The client generating the version stamp should try to avoid using a stamp earlier than (or the same as) any version of the file, to the extent that it knows about it.  It should also avoid generating stamps that are unreasonably far in the future.
+ - Encoding of human-readable name components
+ - Globally-unique name prefixes
+ - Encoding of functional name components not intended to be directly
+   human-readable
+ - Naming of versions
+ - Naming of segments (sequence numbering)
+ - Naming file meta-data including headers
+ - Functional/Command name components for constructing
+   application-level protocols
+
+== Human-readable name components
+
+Human readable clear-text components of names, analogous to components of file
+names, should use `UTF-8` encoding and are always case-sensitive.  In
+the case of encrypted names, the unencrypted values may be
+human-readable but the cipher-text names that appear in the messages
+will of course not be human-readable. 
+
+== Globally-unique name prefixes
+
+The first component of a globally-meaningful name should be
+a DNS name.  Although the CCNx protocol does not rely on DNS, as a
+transition strategy it is helpful to take advantage of the existing
+DNS collection of globally-unique names.  Furthermore, the DNS can be
+used to look up IP addresses for creating IP tunnels to provide CCNx
+protocol connectivity between sites.
+
+It is not necessary to use globally-meaningful names exclusively.  In
+some situations a local and context sensitive name prefix is appropriate.
+The specification of such contextual name prefixes is a matter of
+convention for particular applications.  It is also unneccessary to
+use IP tunnels or other large-scale routing to communicate locally using
+globally-meaningful names.
+
+== Markers: Coding space for functional name components
+
+In a variety of situations, name components need to represent commands
+or annotations that can appear at arbitrary levels in the name
+hierarchy, intermixed with the human readable components that are
+analogous to pieces of file names.  In these cases, the position in
+the name is not able to distinguish the component's role and so we
+rely on coding conventions in the component itself.  Applications
+should follow these conventions so as to make the markers unambiguous.
+Wherever possible, however, the function or meaning of a name
+component should be determined by its context within the overall name,
+and human readable components should be used where they will not be
+mistaken for organizational name components.
+
+The specification of `UTF-8` prohibits certain octet values from
+occurring anywhere in a `UTF-8` encoded string.  These are the (hex)
+octet values `C0`, `C1`, and `F5` to `FF`.  In addition, the null
+octet `00` is used for string termination and so does not encode a
+usable character.  Thus these make good 'markers' to identify
+components of a CCNx name that play special functional roles such as
+for versioning and sequence numbering.  
+
+These conventions assign the prohibited octet values to specific
+functions.  A functional name component is constructed using a 'marker
+octet' from the UTF-8 prohibited set as the first octet, followed by
+additional octets according to the conventions for that marker.
+
+== Versions (Marker FD)
+
+The first byte of a version component is `0xFD`. Versions are named
+based (primarily) on time.  The remaining bytes are a big-endian
+binary encoding of the time in link:Timestamp.html[CCNx Timestamp
+format]. 
+
+The publisher generating the version stamp should try to avoid using a stamp earlier than (or the same as) any version of the file, to the extent that it knows about it.  It should also avoid generating stamps that are unreasonably far in the future.
 
 .Example:
 .........
@@ -27,13 +94,27 @@ February 13, 2009 3:31:30 PM PST = 1234567890.000 seconds since January 1, 1970 
 <Component ccnbencoding="base64Binary">/QSZYC0gAA==</Component>
 .........
 
-== Sequencing 00, FB
-Sequence numbers occupy the final component of the CCNx name (again, not counting the digest component).
-For consecutive numbering, the first byte of the sequence component is 0x00.
-The remaining bytes hold the sequence number in big-endian binary, using the minimum number of bytes.
-Thus sequence number 0 is encoded in just one byte, `%00`, and sequence number 1 is `%00%01`.
-Note that this encoding is not quite dense - `%00%00` is unused, as are other components that start with these two bytes.
-For non-consecutive numbering (e.g, using byte offsets) the value 0xFB may be used as a marker.
+Versions, when present, commonly occupy the next-to-last component of the CCNx
+name, not counting the digest component.  It is normal to have
+versions within versions, however, so version components MUST be
+interpreted contextually (see meta-data section).
+
+The content within a version should include only segments and/or
+meta-data.
+
+== Segments (Markers 00, FB)
+
+For consecutive numbering of segments, the first byte of the sequence
+component is 0x00.  For non-consecutive numbering (e.g, using byte
+offsets) the value 0xFB should be used as the marker.  In both cases,
+the remaining bytes of the segment name hold the sequence number in
+big-endian binary, using the minimum number of bytes.  Thus sequence
+number 0 is encoded in just one byte, for example in consecutive
+numbering the name of segment 0 is `%00` and the name of segment 1 is 
+`%00%01`. 
+
+Note that this encoding is not quite dense - `%00%00` is unused, as
+are other components that start with these two bytes. 
 
 .Example: Sequence 257 is
 .......................................................
@@ -42,20 +123,81 @@ or
 <Component ccnbencoding="base64Binary">AAEB</Component>
 .......................................................
 
-== Headers and unfragmented content
-Short content does not require CCNx fragmenting, and so does not need a header object.
-Long content is fragmented and may have an associated header object.
-Generally the single-leaf data should live at the same place in the name hierarchy as would the the header entry for the segmented case, because under normal conditions you would expect to have only one of them present.
-(A CCNx link is another possibility.)
+Sequence numbers typically occupy the final component of the CCNx name
+(again, not counting the digest component).
 
-In the case that versioning is used, it is desirable to preserve the position of the version component in the name even for these items.  Thus a zero-length component is used to hold this place.  The link:URI.html[CCNx URI scheme] spells this as "...", so we might have
+== File meta-data and Headers (\_meta_, .header)
 
-....
- ccnx:/parc.com/diana/favorite_color/%FD%04%99%60%2d%2000/.../<digest>
-....
-as the name for either the header or the single leaf.
+Meta-data content about files is named in a subcollection of the file
+version named '_meta_'.  Note that this is a human-readable UTF-8
+string rather than a component with a marker: since it is
+designed to follow a version component there is not a risk of
+collision with a user-specified file name.  Similarly, the content
+with a \_meta_ collection does not need to be named with markers.
 
-== Extensible Command Markers C1.
+A header is a CCN content stream that provides summary file-level
+information about the set of content to which it is attached by name.
+The name of a header is '.header' (again human-readable UTF-8).  Note
+that a header is itself a file that has its own versions and segments
+within those.
 
-Multiple separate indications may be needed within a command protocol and future extensibility is also required, so we cannot simply allocate each special UTF-8 non-value to a single function.  The first byte of a generic command marker is %C1, the next several bytes identify the command protocol which for common protocols will be chosen to be human readable, and the remaining bytes will be defined within the command protocol.  Note that the Name Enumeration protocol is an example of such a command protocol.
+== Extensible Command Markers (Marker C1)
+
+The marker 0xC1 prefixes namespaces for commands,
+queries, or other special identifiers, all of which will be referred
+to as 'commands' in the following description.
+
+Commands consist of the marker 0xC1 followed by ".", followed by a
+namespace, which is a UTF-8 string possibly containing additional
+periods, followed by an operation name which is a UTF-8 string
+interpreted by the namespace owner in whatever manner they choose.
+Optionally the operation name may be followed by arguments delimited
+by tilde characters (~).  Since a namespace may have one or more interior
+periods so it may be constructed using a reversed DNS name, as with Java
+conventions for collision-free class naming.
+
+.Example of General Command:
+............................
+%C1.org.ccnx.frobnicate~1~37
+............................
+
+would be a command in the namespace `org.ccnx`, where the operation is
+`frobnicate`, which takes two arguments, in this case given as `1` and `37`.
+
+Namespaces containing only capital letters are reserved for CCNx
+standard application protocols.  The protocols defined so far are
+listed below:
+
+=== Repository Protocol (Namespace `R`)
+
+The repository protocol is used for clients to control repositories
+which are stores of CCNx content, usually persistent stores.
+
+Start Write Command::
+   `%C1.R.sw` - request repository to retrieve and store content.  The
+   prefix of the name before this start write command component must
+   be the prefix of the content to be written.
+
+=== Nonce (Namespace `N`)
+
+The nonce namespace is used for marking random nonce values designed
+to make names unique.
+
+Nonce Command::
+   `%C1.N.n _noncevalue_` - where _noncevalue_ is the random
+   value. (There is no space)
+
+=== Name Enumeration (Namespace `E`)
+
+The Name Enumeration Protocol is used to query for names of available
+content without retrieving the content itself.
+
+Basic Enumeration Command::
+   `%C1.E.be` - request first level names under the prefix of this
+   command, much like a single-level directory listing command.
+
+
+
+
+
 
