@@ -8,7 +8,11 @@ CCNx URI Scheme
    * To unambiguously represent name components that would collide with the use of . and .. for relative URIs, any component that consists solely of zero or more periods is encoded using three additional periods.  Note that this means the zero-length component is encoded as three periods "...".
    * The authority component (the part after the initial "//" in the familiar http and ftp URI schemes) is not really relevant to CCNx.  It should normally not be present, and it is ignored if it is present.
 
+//////////////////////////
 == Examples
    * Please!
+//////////////////////////
+
+
 
 
