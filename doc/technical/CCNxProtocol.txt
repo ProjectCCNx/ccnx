@@ -81,8 +81,8 @@ does it require that messages be encoded as human-readable text.  Most
 fields are defined to contain arbitrary binary values, including those
 that identify content.
 
-The wire format of CCNx messages is an link:ccnb.html[efficient binary
-encoding of XML structures] called link:ccnb.html[ccnb], which defines
+The wire format of CCNx messages is an link:BinaryEncoding.html[efficient binary
+encoding of XML structures] called link:BinaryEncoding.html[ccnb], which defines
 such things as the byte order. There is also a text XML encoding which
 is useful for debugging, testing, presentation in documentation,
 etc. but MUST NOT be used on the wire.
@@ -290,19 +290,19 @@ which case the specification in the link:InterestMessage.html[Interest
 Message] will be used to determine which object to return.  When a
 match is found in the CS, processing stops and the Interest
 Message is discarded since it has been satisfied.
-1. Lookup is performed on PIT.  If a matching Interest Message is
+2. Lookup is performed on PIT.  If a matching Interest Message is
 found in the PIT it means that an equivalent Interest Message has
 already been forwarded and is pending.  The arrival face of the new
 Interest Message is added to the list of sources of unsatisfied
 Interests in the PIT entry and the the Interest Message is discarded.
-1. Lookup is performed on FIB.  If a matching prefix is found in the
+3. Lookup is performed on FIB.  If a matching prefix is found in the
 FIB, an entry is created in the PIT identifying the arrival face of
 the Interest Message and the message is transmitted according to the
 'strategy rules' to one or more of the destination faces registered
 for the prefix in the FIB.  Note that one of the destination faces may
 actually be connected to a local agent that uses the semantics of the
 name to dynamically configure new faces.
-1. If no match is found in the previous steps then the node has no way
+4. If no match is found in the previous steps then the node has no way
 to satisfy the Interest Message and it is discarded.
 
 Processing Content Messages
@@ -315,12 +315,12 @@ ContentObject is found it means that the newly arrived ContentObject
 is a duplicate which can safely be discarded, because any Interest
 Messages have already been satisfied and new ones will be satisfied
 out of the CS.
-1. Lookup is performed on PIT.  If there is a match in the PIT, the
+2. Lookup is performed on PIT.  If there is a match in the PIT, the
 ContentObject is transmitted on all of the source faces for the
 Interests represented in the PIT.  A node MAY perform verification of
 the ContentObject before forwarding it, and MAY apply various policy
 restrictions.
-1. If no match is found in the previous steps, then the content is
+3. If no match is found in the previous steps, then the content is
 unsolicited.  A node MUST NOT forward unsolicited data and SHOULD
 discard unsolicited data but MAY store it in the CS in case it is
 subsequently requested.
