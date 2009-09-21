@@ -24,6 +24,7 @@ DERIVED_HTML =				\
 	Timestamp.html			\
 	DigestComponent.html		\
 	Registration.html		\
+	SignatureGeneration.html	\
 	Staleness.html			\
 	dtd.html			\
 	xsd.html			\
@@ -74,6 +75,9 @@ Timestamp.html: Timestamp.txt
 
 Registration.html: Registration.txt
 	asciidoc Registration.txt
+
+SignatureGeneration.html: SignatureGeneration.txt
+	asciidoc SignatureGeneration.txt
 
 Staleness.html: Staleness.txt
 	asciidoc Staleness.txt

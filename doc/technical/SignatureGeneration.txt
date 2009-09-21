@@ -1,5 +1,5 @@
 CCNx Signature Generation and Verification
-===============
+==========================================
 
 == Source references
 link:xsd.html[ccnx.xsd] is the xml schema that describes what the xml rendition of ccn data (including ContentObject messages) should look like.
