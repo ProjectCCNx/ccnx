@@ -144,7 +144,7 @@ You will need:
 
 Eclipse .project and .classpath files are included in the distribution
 so you can create Eclipse projects easily.  There are two Eclipse
-avprojects defined: one in javasrc (Eclipse name Java_CCN) and one in
+Java projects defined: one in javasrc (Eclipse name Java_CCN) and one in
 apps/ccnChat (Eclipse name ccnChat).
 
 Please let us know if JDK1.5 support is important to you, as we plan
