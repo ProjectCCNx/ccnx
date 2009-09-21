@@ -20,7 +20,7 @@ export PATH="$D:$PATH"
 
 # Source a file containing settings, if present.
 # To learn about things that you can set, use this command: ccnd -h
-test -f $HOME/.ccn/ccndrc && . $HOME/.ccn/ccndrc
+test -f $HOME/.ccnx/ccndrc && . $HOME/.ccnx/ccndrc
 
 # Provide defaults
 : ${CCND_CAP:=50000}
@@ -40,7 +40,7 @@ else
 fi
 
 # Stuff cached info about public keys, etc. into ccnd
-ccndsmoketest `find "$HOME/.ccn/keyCache" -type f -name \*.ccnb`
+ccndsmoketest `find "$HOME/.ccnx/keyCache" -type f -name \*.ccnb`
 
 # Run ccndc if a static config file is present.
-test -f $HOME/.ccn/ccnd.conf && ccndc -f $HOME/.ccn/ccnd.conf
+test -f $HOME/.ccnx/ccnd.conf && ccndc -f $HOME/.ccnx/ccnd.conf

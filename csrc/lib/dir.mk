@@ -62,12 +62,12 @@ dtag_check: _always
 	@./gen_dtag_table 2>/dev/null | diff - ccn_dtag_table.c | grep '^[<]' >/dev/null && echo '*** Warning: ccn_dtag_table.c may be out of sync with tagnames.cvsdict' || :
 
 keystore_check: ccn_initkeystore.sh
-	test -f $$HOME/.ccn/.ccn_keystore || $(MAKE) -f dir.mk new_keystore
+	test -f $$HOME/.ccnx/.ccnx_keystore || $(MAKE) -f dir.mk new_keystore
 
 new_keystore:
 	@echo === CCN Keystore not found in your home directory
 	@echo === I will create one for you now '(^C to abort)'
-	sleep 1 && sh ccn_initkeystore.sh && sleep 3 && mv .ccn $(HOME)
+	sleep 1 && sh ccn_initkeystore.sh && sleep 3 && mv .ccnx $(HOME)
 
 libccn.a: $(LIB_OBJS)
 	ar cru $@ $(LIB_OBJS)

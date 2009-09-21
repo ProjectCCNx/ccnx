@@ -141,7 +141,7 @@ main(int argc, char **argv)
     
     CHKRES(res = ccnb_append_face_instance(newface, face_instance));
     temp->length = 0;
-    CHKRES(ccn_charbuf_putf(temp, "%s/.ccn/.ccn_keystore", getenv("HOME")));
+    CHKRES(ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", getenv("HOME")));
     res = ccn_keystore_init(keystore,
                             ccn_charbuf_as_string(temp),
                             "Th1s1sn0t8g00dp8ssw0rd.");

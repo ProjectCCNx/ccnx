@@ -240,9 +240,9 @@ using a ccnd configuration file, however for multiple machine experimentation
 you will need to use ccndc to configure the inter-machine forwarding of
 interest/content.
 
-If a $HOME/.ccn/ccnd.conf file is present then ccndstart will execute
+If a $HOME/.ccnx/ccnd.conf file is present then ccndstart will execute
 
-ccndc -f $HOME/.ccn/ccnd.conf
+ccndc -f $HOME/.ccnx/ccnd.conf
 
 For a sample file, see csrc/libexec/ccnd.conf.sample
 
@@ -313,7 +313,7 @@ inconsistent as of this release.  Here are a few notable utilities:
 Beware that running the experimental software will create a variety of
 files, and that this list may not be complete:
 
-~/.ccn - per-user directory, used primarily for personal keystore and
+~/.ccnx - per-user directory, used primarily for personal keystore and
          key cache
 ~/.rmi-server-* - per-user files Java daemon RMI interface objects.
          These are supposed to be cleared away automatically but that

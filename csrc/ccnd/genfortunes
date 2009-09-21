@@ -17,8 +17,7 @@
 # be adjusted as well.
 export CCN_LOCAL_PORT=8912
 ccnd &
-sleep .1
-# for i in ~/.ccn/*/*.ccnb; do ./ccndsmoketest send $i; done
+ccndsmoketest
 ccnsendchunks /local/test/fortunes/trust <<EOF
 TRUST ME:
 	Translation of the Latin "caveat emptor."
@@ -38,6 +37,6 @@ ccnsendchunks /local/test/fortunes/not/included <<EOF
 This fortune intentionally not included.
 EOF
 
-../cmd/ccndump > fortunes.ccnb
-./ccndsmoketest kill
+ccnrm -o fortunes.ccnb
+ccndsmoketest kill
 wait

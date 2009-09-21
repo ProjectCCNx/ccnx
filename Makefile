@@ -21,7 +21,7 @@ default all: _always
 	for i in $(TOPSUBDIRS); do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
-	(cd csrc/lib && { test -f $$HOME/.ccn/.ccn_keystore || $(MAKE) test; }; )
+	(cd csrc/lib && { test -f $$HOME/.ccnx/.ccnx_keystore || $(MAKE) test; }; )
 	mkdir -p ./lib ./bin ./include
 	(cd csrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
 	(cd javasrc && $(MAKE) install INSTALL_BASE=`pwd`/..)

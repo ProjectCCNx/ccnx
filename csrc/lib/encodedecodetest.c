@@ -207,7 +207,7 @@ main (int argc, char *argv[]) {
     struct path * cur_path = NULL;
     struct ccn_keystore *keystore = ccn_keystore_create();
     char *home = getenv("HOME");
-    char *keystore_suffix = "/.ccn/.ccn_keystore";
+    char *keystore_suffix = "/.ccnx/.ccnx_keystore";
     char *keystore_name = NULL;
 
     int i;

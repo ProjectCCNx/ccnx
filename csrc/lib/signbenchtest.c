@@ -47,7 +47,7 @@ main(int argc, char **argv)
 
   struct ccn_charbuf *temp = ccn_charbuf_create();
   keystore = ccn_keystore_create();
-  ccn_charbuf_putf(temp, "%s/.ccn/.ccn_keystore", getenv("HOME"));
+  ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", getenv("HOME"));
   res = ccn_keystore_init(keystore,
 			  ccn_charbuf_as_string(temp),
 			  "Th1s1sn0t8g00dp8ssw0rd.");

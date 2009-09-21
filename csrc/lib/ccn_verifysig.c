@@ -51,7 +51,7 @@ main(int argc, char **argv)
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
     struct ccn_keystore *keystore;
     char *home = getenv("HOME");
-    char *keystore_suffix = "/.ccn/.ccn_keystore";
+    char *keystore_suffix = "/.ccnx/.ccnx_keystore";
     char *keystore_name = NULL;
 
     int status = 0;

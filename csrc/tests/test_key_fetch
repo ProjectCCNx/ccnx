@@ -106,25 +106,24 @@ rm keyfetchdata.ccnb keyfetchpkey.ccnb unverified.out verified.out
 : <<'EOF'
 # Instructions for creating pre-signed data
 # This will need re-doing if/when schema or encoding changes.
-# Need Java_CCN for this.  WARNING: mucks with ~/.ccn
+# Need java for this.  WARNING: mucks with ~/.ccnx
+# WARNING: these instructions may be outdated, apply NaCl
 
-pushd ../../Java_CCN
 CCND_DEBUG=7 ccnd &
 tools/ccn_repo stop
 killall java
 rm -rf /tmp/test_key_fetch_repo
 mkdir /tmp/test_key_fetch_repo
-rm -rf ~/test_key_fetch.ccn
-test -d ~/x.ccn || mv ~/.ccn ~/x.ccn
+rm -rf ~/test_key_fetch.ccnx
+test -d ~/x.ccnx || mv ~/.ccnx ~/x.ccnx
 tools/ccn_repo /tmp/test_key_fetch_repo
 echo "Where are my keys?" > /tmp/test_key_fetch.data
-./jrun com.parc.ccn.apps.put_file ccnx:/ccnd/test_keyfetch /tmp/test_key_fetch.data
-tools/ccn_repo stop
+ccnputfile ccnx:/ccnd/test_keyfetch /tmp/test_key_fetch.data
+ccn_repo stop
 killall java
-mv ~/.ccn ~/test_key_fetch.ccn && mv ~/x.ccn ~/.ccn
-popd
+mv ~/.ccnx ~/test_key_fetch.ccnx && mv ~/x.ccnx ~/.ccnx
 ccnget ccnx:/ccnd/test_keyfetch > keyfetchdata.ccnb
-cat ~/test_key_fetch.ccn/*/*.ccnb > keyfetchpkey.ccnb
+cat ~/test_key_fetch.ccnx/*/*.ccnb > keyfetchpkey.ccnb
 ccndumpnames
 ccndsmoketest kill
 
