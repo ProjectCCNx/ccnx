@@ -602,6 +602,8 @@ read_configfile(const char *filename, struct prefix_face_list_item *pfltail)
             *cp = '\0';
 
         cmd = strtok_r(buf, seps, &last);
+        if (cmd == NULL)	/* blank line */
+            continue;
         uri = strtok_r(NULL, seps, &last);
         proto = strtok_r(NULL, seps, &last);
         host = strtok_r(NULL, seps, &last);
