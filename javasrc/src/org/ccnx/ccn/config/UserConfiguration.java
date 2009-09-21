@@ -31,16 +31,16 @@ public class UserConfiguration {
 	/**
 	 * Our eventual configuration file location.
 	 */
-	protected static final String USER_CONFIG_FILE = "ccn_config.xml";
+	protected static final String USER_CONFIG_FILE = "ccnx_config.xml";
 
 	/**
 	 * Directory (subdirectory of User.home) where all user metadata is kept.
 	 */
-	protected static final String CCN_DIR_NAME = ".ccn";
+	protected static final String CCN_DIR_NAME = ".ccnx";
 	
-	protected static final String KEYSTORE_FILE_NAME = ".ccn_keystore";
+	protected static final String KEYSTORE_FILE_NAME = ".ccnx_keystore";
 	protected static final String KEY_DIRECTORY = "keyCache";
-	protected static final String ADDRESSBOOK_FILE_NAME = "ccn_addressbook.xml";
+	protected static final String ADDRESSBOOK_FILE_NAME = "ccnx_addressbook.xml";
 
 	protected static final String DEFAULT_CCN_NAMESPACE_STRING = "/ccnx.org";
 	protected static final String DEFAULT_USER_NAMESPACE_AREA = DEFAULT_CCN_NAMESPACE_STRING + "/home";
