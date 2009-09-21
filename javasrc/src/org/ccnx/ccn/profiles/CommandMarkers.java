@@ -23,7 +23,7 @@ import org.ccnx.ccn.protocol.ContentName;
 /**
  * The command marker prefix allows profiles to register a namespace
  * for commands, queries, or other special identifiers, beginning with 
- * the special prefix marker byte C0 (COMMAND_MARKER_BYTE).
+ * the special prefix marker byte C1 (COMMAND_MARKER_BYTE).
  * 
  * Commands are separated into namespaces, which are UTF-8 strings,
  * followed by an operation, which is a UTF-8 string component following
@@ -44,16 +44,16 @@ import org.ccnx.ccn.protocol.ContentName;
  * 
  * The repository uses a command namespace of "R", and commands like:
  * start_write:
- * %CO.R.sw
+ * %C1.R.sw
  * (where R is the namespace marker, sw is the specific command, and it takes no arguments)
  * 
- * %C0.org.ccnx.frobnicate~1~37
+ * %C1.org.ccnx.frobnicate~1~37
  * would be a command in the namespace "org.ccnx", where the command is "frobnicate",
  * which takes two arguments, in this case 1 and 37
  * 
  * The nonce protocol has only one operation, generating a nonce, with an optional argument
  * of a nonce length.
- * %C0.N.n[~<length<]
+ * %C1.N.n[~<length<]
  * 
  * For now put the built-in commands here as well, though as we get ones that take
  * arguments we should start to break them out to profile-specific locations. But
@@ -74,9 +74,9 @@ public class CommandMarkers {
 	public static final byte COMMAND_PREFIX_BYTE = (byte)0xC1;
 	
 	/**
-	 * %C0.
+	 * %C1.
 	 */
-	public static final byte [] COMMAND_PREFIX = {(byte)0xC0, (byte)0x2E};
+	public static final byte [] COMMAND_PREFIX = {COMMAND_PREFIX_BYTE, (byte)0x2E};
 	
 	public static final String COMMAND_SEPARATOR = ".";
 	public static final String ARGUMENT_SEPARATOR = "~";
