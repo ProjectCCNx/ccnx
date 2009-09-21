@@ -14,7 +14,6 @@
 
 # The order here determines the order in the generated index.
 DERIVED_HTML =				\
-	BasicIdea.html			\
 	CCNxProtocol.html		\
 	Name.html			\
 	URI.html			\
@@ -87,9 +86,6 @@ ContentObject.html: ContentObject.txt
 
 Name.html: Name.txt
 	asciidoc Name.txt
-
-BasicIdea.html: BasicIdea.txt
-	asciidoc BasicIdea.txt
 
 BinaryEncoding.html: BinaryEncoding.txt
 	asciidoc BinaryEncoding.txt
