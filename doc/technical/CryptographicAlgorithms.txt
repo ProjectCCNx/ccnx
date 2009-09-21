@@ -1,5 +1,5 @@
 CCNx Algorithm Use
-===============
+==================
 
 CCNx makes heavy use of cryptography.
 Here we present a brief discussion of algorithm agility in CCNx.

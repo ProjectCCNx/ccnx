@@ -18,6 +18,7 @@ DERIVED_HTML =				\
 	Name.html			\
 	URI.html			\
 	ContentObject.html		\
+	CryptographicAlgorithms.html	\
 	InterestMessage.html		\
 	BinaryEncoding.html		\
 	NameConventions.html		\
@@ -63,6 +64,9 @@ dtd.html: dtd.txt $(XSDSRC)
 
 xsd.html: xsd.txt $(DTDSRC)
 	asciidoc --unsafe xsd.txt
+
+CryptographicAlgorithms.html: CryptographicAlgorithms.txt
+	asciidoc CryptographicAlgorithms.txt
 
 InterestMessage.html: InterestMessage.txt
 	asciidoc InterestMessage.txt
