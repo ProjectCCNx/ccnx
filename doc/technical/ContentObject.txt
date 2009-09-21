@@ -25,7 +25,7 @@ Signature of the other three elements.
 
 == Signature 
 
-See the link:Signature.html[Signature Specification].
+See the link:SignatureGeneration.html[Signature Specification].
 
 == Name
 
@@ -87,7 +87,7 @@ all parties can find the key by other means.  Name conventions can be used
 to find the name of the key for a piece of content from the name of
 the ContentObject.
 
-The *PublisherKeyID* is used as the fast selector to identify the
+The *PublisherPublicKeyDigest* is used as the fast selector to identify the
 signer of the content, not this locator.
 
 .......................................................
