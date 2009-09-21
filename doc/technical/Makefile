@@ -22,6 +22,7 @@ DERIVED_HTML =				\
 	InterestMessage.html		\
 	BinaryEncoding.html		\
 	NameConventions.html		\
+	Timestamp.html			\
 	DigestComponent.html		\
 	Registration.html		\
 	Staleness.html			\
@@ -68,6 +69,9 @@ InterestMessage.html: InterestMessage.txt
 
 NameConventions.html: NameConventions.txt
 	asciidoc NameConventions.txt
+
+Timestamp.html: Timestamp.txt
+	asciidoc Timestamp.txt
 
 Registration.html: Registration.txt
 	asciidoc Registration.txt

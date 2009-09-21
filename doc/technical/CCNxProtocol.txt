@@ -11,8 +11,8 @@ Networking (CCN) built on _named data_.  CCN has no notion of host at
 its lowest level -- a packet "address" names content, not location.
 The CCNx protocol efficiently delivers named content rather than connecting
 hosts to other hosts.  Every packet of data may be cached at any CCNx
-router -- this combined with intrinsic support for multicast or broadcast
-delivery leads to a very efficient use of the network when many
+router -- combined with intrinsic support for multicast or broadcast
+delivery this leads to a very efficient use of the network when many
 people are interested in the same content.
 
 Introduction
@@ -31,7 +31,7 @@ lower-layer service: it may be a physical transport or another network
 or transport protocol.  For example, applications will typically run
 the CCNx protocol on top of UDP to take advantage of existing IP connectivity.
 Since content is named independent of location in the CCNx protocol,
-it may also be preserved indefinitely in the network providing
+it may also be preserved indefinitely in the network, providing
 effectively a form of distributed filesystem service.
 
 The CCNx protocol is general, supporting a wide range of network
@@ -61,8 +61,7 @@ node::
 buffering
 party::
   any entity in the network using the CCNx protocol to communicate.  Note
-that parties are not just machines but applications using the protocol are
-themselves parties.
+that parties are not just machines, but also applications using the protocol.
 message:: 
   a CCNx packet.  We use this term to avoid confusion with the
 lower-layer packet that may be carrying CCNx messages.  A single lower-layer
@@ -72,37 +71,43 @@ CCNx message.
 Message Format and Encodings
 ----------------------------
 
-Unlike many other protocols, CCNx protocol does not have any fixed-length
-fields.  Instead, CCNx data formats are defined by XML schemas and
-encoded with explicitly identified field boundaries.  This design
-permits field values of arbitrary length, optional fields that consume no
-packet space when omitted, and nested structures.  The use of XML
-structure does not imply that field values are text strings nor
-require that messages be encoded as human-readable text.  Most fields
-are defined to contain arbitrary binary values.
+Unlike many other protocols, the CCNx protocol does not have any
+fixed-length fields.  Instead, CCNx data formats are defined by XML
+schemas and encoded with explicitly identified field boundaries.  This
+design permits field values of arbitrary length, optional fields that
+consume no packet space when omitted, and nested structures.  The use
+of XML structure does not imply that field values are text strings nor
+does it require that messages be encoded as human-readable text.  Most
+fields are defined to contain arbitrary binary values, including those
+that identify content.
 
-The wire format of CCNx messages is an efficient binary encoding of
-XML structures called link:ccnb.html[ccnb], which defines such things
-as the byte order. There is also a text XML encoding which is useful
-for debugging, testing, presentation in documentation, etc. but MUST
-NOT be used on the wire.
+The wire format of CCNx messages is an link:ccnb.html[efficient binary
+encoding of XML structures] called link:ccnb.html[ccnb], which defines
+such things as the byte order. There is also a text XML encoding which
+is useful for debugging, testing, presentation in documentation,
+etc. but MUST NOT be used on the wire.
 
 Content Identification
 ----------------------
 
 The CCNx protocol accomplishes transfers of content by _name_,
 irrespective of the identities or locations of machines involved.
+
 CCNx content names are hierarchically-structured, consisting of a
 number of 'components'.  The hierarchical structure is like that of IP
 addresses, but CCNx names and name components have arbitrary lengths
 and the component divisions are explicitly identified unlike in the classless
-model of IP addresses.  CCNx content names are not interpreted in the
-operation of the CCNx protocol itself, just matched.  All
-interpretation of names is left up to the applications that use the
-protocol.
+model of IP addresses.  The protocol does not depend on anything but
+the hierarchical structure of the names so they may contain arbitrary
+binary data such as encrypted data.
+
+CCNx content names are not interpreted in the operation of the CCNx
+protocol itself, just matched.  All assignment of meaning to names or
+their component parts comes from application, institution, and/or global
+conventions reflected in prefix forwarding rules.
 
 A CCNx name sometimes identifies a specific chunk of data, but in other
-cases a CCNx name identifies a collection of data, by naming a point in
+cases identifies a collection of data by naming a point in
 the name tree under which there may be multiple pieces of data.
 A name identifying a collection of data is analogous to 
 the address of a network in the host addressing scheme of IP, where the
@@ -116,13 +121,11 @@ referred to as a 'name prefix' or simply 'prefix'.
 See link:Name.html[CCNx Name] for details of the structure and
 representation of names.
 
-The CCNx name of a chunk of data always contains as its final, most specific
-component a value that is derived from the data (and possibly also
-from its attestation).  This final component is called the 'digest
-component', and because it is derived from the data it is redundant
-when data is transmitted and so is not sent on the wire but is
-implicit.  For more details see link:DigestComponent.html[Implicit
-Digest Component].
+The CCNx name of a chunk of data always contains as its final, most
+specific component a value that is derived from the data, called the
+'digest component'.  Since it is derived from the data itself, the
+digest component is redundant and so is not transmitted.  For more
+details see link:DigestComponent.html[Implicit Digest Component].
 
 CCNx Message Types
 ------------------
@@ -159,10 +162,10 @@ using the general features of the protocol.  Profiles for key
 distribution are separate specifications, not part of the CCNx
 protocol itself.  Signature verification can confirm that a Content
 Object message has not been corrupted in transit (intentionally or
-otherwise) since it was originally signed, and that it was signed but
+otherwise) since it was originally signed, and that it was signed by
 the identified publisher, but these verifications are not the same as
 determining that the publisher in question is a trustworthy source of
-data for a partiular application purpose.  CCNx parties SHOULD use
+data for a particular application purpose.  CCNx parties SHOULD use
 trust management practices to decide whether to trust data from
 particular publishers for particular purposes, but such practices are
 not specified as part of the CCNx protocol itself.  The CCNx protocol
@@ -172,11 +175,11 @@ decisions about key distribution and trust management.
 Basic Exchange
 --------------
 
-Communication with the CCNx protocol is receiver-controlled.  A
+Communication using the CCNx protocol is receiver-controlled.  A
 consumer of data transmits an Interest message over available
 connectivity and any party receiving the message and having data that
 matches, or 'satisfies', the request (according to the specifications in the
-link:Interest.html[Interest Message]) may transmit a matching Content
+link:InterestMessage.html[Interest Message]) may transmit a matching Content
 Object message. Data MUST only be transmitted in response to an
 Interest that matches the Data.  An Interest message MAY be
 transmitted using broadcast or multicast facilities of the underlying
@@ -186,17 +189,18 @@ minimal bandwidth cost.
 A party MUST transmit at most one Content Object message in response
 to a single received Interest message, even if the party has many
 Content Objects that match.  This one-for-one mapping between Interest
-and Data packets maintains a 'flow balance' that allows the receiver
+and Data messages maintains a 'flow balance' that allows the receiver
 to control the rate at which data is transmitted from a sender, and
 avoids consuming bandwidth to send data anywhere it is not wanted.
 
-Nodes SHOULD implement 'suppression' mechanisms to minimize the potential
-for two different nodes to transmit two Content Object messages in
-response to a single Interest received by both nodes via broadcast
-or multicast.  The suppression mechanisms SHOULD include randomizing
-response times and detecting the fact that another node has broadcast
-or multicast a response so the Interest may be discarded. This version
-of the CCNx protocol does not specify suppression rules.
+Nodes SHOULD implement 'suppression' mechanisms to minimize the
+potential for two different nodes to transmit two Content Object
+messages in response to a single Interest received by both nodes (for
+example via broadcast or multicast).  The suppression mechanisms
+SHOULD include randomizing response times and detecting the fact that
+another node has broadcast or multicast a response so the Interest may
+be discarded. This version of the CCNx protocol does not specify
+suppression rules.
 
 A receiver that desires to retrieve a large collection of data
 requiring multiple Content Object messages must transmit a sequence of
@@ -205,13 +209,13 @@ Interest messages without waiting for data in response to each one before
 sending the next.  This is only possible if the receiver knows enough
 about the names of the Content Objects to construct different
 Interests in advance.  Sending multiple Interest messages with
-identical requests will frequently cause the same Content Object to be
+identical requests will usually cause the same Content Object to be
 transmitted repeatedly, since senders MUST respond to Interests based
-only on what content they have available at the time and not on any
+only on what content they have available at the time, and not on any
 memory of what Content Objects they have previously transmitted.
 
-The CCNx protocol does not require that underlying transport of
-messages be reliable.  To provide reliable delivery, Interest messages
+The CCNx protocol does not assume that underlying transport of
+messages is reliable.  To provide reliable delivery, Interest messages
 that are not satisfied in some reasonable period of time must be
 retransmitted.  A receiver MUST maintain a timer on unsatisfied
 Interests for which it still wants the data, and retransmit
@@ -223,10 +227,10 @@ communication, that is communication between peers which directly
 receive message transmissions from each other.  Since the CCNx
 protocol may be used on top of any packet transport, this definition
 of local is quite broad, including pairs of nodes physically far apart
-but using a long-distance connection such as a TCP connection to
+but using a long-distance connection such as a TCP connection as a tunnel to
 transmit CCNx messages directly.  Multihop CCNx protocol communication
 requires forwarding of CCNx message which is specified in terms of the
-following node model.
+node model described in the next section.
 
 CCNx Node Model
 ---------------

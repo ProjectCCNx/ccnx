@@ -1,0 +1,13 @@
+CCNx Timestamp Format
+=====================
+
+CCNx Timestamps are expressed in units of 2^-12^ seconds since the start of Unix time, using the minimum number of bytes.  The time portion will thus take 48 bits until quite a few centuries from now (_Sun, 20 Aug 4147 07:32:16 GMT_, if you must know), at which point an additional byte will be required. With 12 bits of fraction, this format allows for sub-millisecond resolution.
+
+Note that this format does not exactly represent even numbers of
+milliseconds.  Some rounding is required for conversions from/to common
+time representations.
+
+The CCNx Timestamp format is used for:
+
+ - link:ContentObject.html[ContentObject] timestamps in *SignedInfo*
+ - link:NameConventions.html[Version numbering Name Convention]

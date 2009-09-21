@@ -19,9 +19,82 @@ ContentObject ::= Signature
 .......................................................
 
 The ContentObject element represents some arbitrary binary data
-(held in the link:Content element) together with its link:Name.html[Name], some
+(held in the Content element) together with its link:Name.html[Name], some
 additional bits of information (the SignedInfo), and a digital
 Signature of the other three elements.
+
+== Signature 
+
+See the link:Signature.html[Signature Specification].
+
+== Name
+
+See the link:Name.html[CCNx Name Specification].
+
+== SignedInfo
+
+.......................................................
+SignedInfo ::= PublisherPublicKeyDigest
+	       Timestamp
+	       Type?
+	       FreshnessSeconds?
+	       FinalBlockID?
+	       KeyLocator?
+.......................................................
+
+=== PublisherPublicKeyDigest
+
+The PublisherPublicKeyDigest identifies the publisher that signed this
+content.  The value is a SHA-256 digest of the public key of the publisher.
+
+=== Timestamp
+
+See link:Timestamp.html[CCNx Timestamp Specification]
+
+=== Type
+
+The primitive type of the ContentObject *Content*.
+
+[width="90%"]
+|=======
+| DATA | default when Type element is absent
+| ENCR | content is encrypted
+| GONE | whiteout marker
+| KEY  | public key
+| LINK | link
+| NACK | no content at this time
+|=======
+
+=== FreshnessSeconds 
+
+The optional FreshnessSeconds indicates how many seconds a node should
+wait after the arrival of this ContentObject before marking it as
+stale.  See link:Staleness.html[Staleness Specification].
+
+=== FinalBlockID
+
+The optional FinalBlockID indicates the identifier of the final block
+in a sequence of fragments.  It should be present in the final block
+itself, and may also be present in other fragments to provide advanced
+warning of the end to consumers.  The value here should be equal to
+the last explicit Name Component of the final block.
+
+=== KeyLocator
+
+A KeyLocator tells where to find the key to verify this content.  The
+KeyLocator may be be omitted when the signer is really sure that
+all parties can find the key by other means.  Name conventions can be used
+to find the name of the key for a piece of content from the name of
+the ContentObject.
+
+The *PublisherKeyID* is used as the fast selector to identify the
+signer of the content, not this locator.
+
+.......................................................
+KeyLocator ::= Key
+	     | Certificate
+	     | KeyName
+.......................................................
 
 == Content
 .......................................................

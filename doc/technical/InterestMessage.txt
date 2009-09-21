@@ -29,44 +29,19 @@ The remaining elements fall into several categories:
 1. those that further qualify the ContentObjects that may match the Interest *MinSuffixComponents*, *MaxSuffixComponents*, *PublisherPublicKeyDigest*, *Exclude*)
 2. those that limit where the answer might come from (*AnswerOriginKind*, *Scope*)
 3. those that advise the selection of what to send when there are multiple ContentObjects that match (*ChildSelector*)
-4. special (*Nonce*)
+4. duplicate suppression (*Nonce*)
+
+See the xref:example[Example] for encodings of a minimal Interest
+Message.
 
 == Name
-.......................................................
-Name ::= Component*
-Component ::= BLOB
-.......................................................
-A Name element simply contains a sequence of *Component* elements. Each Component element contains a sequence of zero or more bytes.  There are no restrictions on what byte sequences may be used, so when displayed as xml, a base64Binary encoding may be needed.  When the bytes happen to be printable UTF-8, a more human-friendly "text" alternative is available (although this is not shown in the official schema).  There is also a "hexBinary" available.
+
+See the link:Name.html[CCNx Name Specification].
 
 The Name element in an interest is synonymous with the term 'prefix'.
 
-Here is an example of an Interest containing a name prefix with 2 components (`ccnx:/PARC/%00%01%02`):
-...........................................................
-<Interest>
-  <Name>
-    <Component ccnbencoding="base64Binary">UEFSQw==</Component>
-    <Component ccnbencoding="base64Binary">AAEC</Component>
-  </Name>
-</Interest>
-...........................................................
-or, equivalently,
-...........................................................
-<Interest>
-  <Name>
-    <Component ccnbencoding="text">PARC</Component>
-    <Component ccnbencoding="base64Binary">AAEC</Component>
-  </Name>
-</Interest>
-...........................................................
 
-The binary encoding for this would appear in hexdump form as
-..............................................................................
-00000000  01 d2 f2 fa a5 50 41 52  43 00 fa 9d 00 01 02 00  |.....PARC.......|
-00000010  00 00                                             |..|
-..............................................................................
-We won't dwell on the details of the binary encoding here, but keep in mind that this is the form that actually appears on the wire.
-
-The Name of every piece of content includes as its final component a link:DigestComponent.html[computed digest] that serves to make the entire name unique. This may occur in an Interest Name as an ordinary Component (the last).  However, this final component is never included explicitly in the ContentObject as it appears on the wire.
+The Name of every piece of content includes as its final component a link:DigestComponent.html[derived digest] that serves to make the entire name unique. This may occur in an Interest Name as an ordinary Component (the last).  However, this final component is never included explicitly in the ContentObject as it appears on the wire.
 
 == MinSuffixComponents, MaxSuffixComponents
 ...........................................................
@@ -143,4 +118,43 @@ This limits where the Interest may propagate. Scope 0 prevents propagation beyon
 ...........................................................
 Nonce ::= BLOB
 ...........................................................
-The Nonce carries a randomly-genenerated bytestring that is used to detect and discard duplicate Interest messages.  Applications generally do not need to generate or check the Nonce.
+The Nonce carries a randomly-genenerated bytestring that is used to detect and discard duplicate Interest messages.  Applications generally do not need to generate or check the Nonce.  Note that the Nonce is not the only basis for detecting and discarding duplicate Interest messages that arrive at a node, but can be used to improve the efficiency of the detection.
+
+[[example]]
+== Example
+
+Here is an example of an Interest containing a name prefix with 2
+ components.
+
+In the link:URI.html[CCNx URI scheme] the name for this example is
+`ccnx:/PARC/%00%01%02`.
+
+In XML, the Interest Message is:
+
+...........................................................
+<Interest>
+  <Name>
+    <Component ccnbencoding="base64Binary">UEFSQw==</Component>
+    <Component ccnbencoding="base64Binary">AAEC</Component>
+  </Name>
+</Interest>
+...........................................................
+or, equivalently,
+...........................................................
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">PARC</Component>
+    <Component ccnbencoding="base64Binary">AAEC</Component>
+  </Name>
+</Interest>
+...........................................................
+
+The link:BinaryEncoding.html[ccnb binary encoding] for this message would appear
+in hexdump form as 
+
+..............................................................................
+00000000  01 d2 f2 fa a5 50 41 52  43 00 fa 9d 00 01 02 00  |.....PARC.......|
+00000010  00 00                                             |..|
+..............................................................................
+
+This is the form that actually appears on the wire.

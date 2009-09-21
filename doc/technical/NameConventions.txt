@@ -12,10 +12,10 @@ CCNx Name Conventions
 Keep in mind that these are just conventions that have extra support in the libraries to make them efficient and easy to use.  Applications may choose to do their own thing.
 
 == Coding space
-The specification of `UTF-8` prohibits certain octet values from occurring anywhere in a `UTF-8` encoded string.  These are the (hex) octet values `C0`, `C1`, and `F5` to `FF`.  In addition, the null octet `00` is used for string termination and so does not encode a usable character.  Thus these make good markers to help identify components of a CCNx name that play special roles such as versioning and sequence numbering, since they won't appear in portions of the name intended for humans.  Note, though, that the primary indication of the component's role is its position in the name, the marker byte simply acting as a check that the component is indeed intended to play that role.  The marker appears as the _first_ byte of the component.
+The specification of `UTF-8` prohibits certain octet values from occurring anywhere in a `UTF-8` encoded string.  These are the (hex) octet values `C0`, `C1`, and `F5` to `FF`.  In addition, the null octet `00` is used for string termination and so does not encode a usable character.  Thus these make good markers to help identify components of a CCNx name that play special roles such as versioning and sequence numbering, since they shouldn't appear in portions of the name intended for humans. In a variety of situations we need components that represent commands or annotations that can appear at arbitrary levels in the name hierarchy, intermixed with the human readable components analogous to pieces of file names.   In these cases, the position in the name is not able to distinguish the component's role and we must rely on the marker and that apps will follow these overall conventions so as to make the markers unambiguous.  Wherever possible, the function or meaning of name component should be determined by its context within the overall name.
 
 == Versioning FD
-Versions, when present, occupy the next-to-last component of the CCNx name, not counting the digest component.  They are chosen based (primarily) on time.  The first byte of the version component is `0xFD`. The remaining bytes are a big-endian binary encoding of the time, expressed in units of 2**(-12) seconds since the start of Unix time, using the minimum number of bytes.  The time portion will thus take 48 bits until quite a few centuries from now (_Sun, 20 Aug 4147 07:32:16 GMT_, if you must know), at which point an additional byte will be required. With 12 bits of fraction, this format allows for sub-millisecond resolution.
+Versions, when present, occupy the next-to-last component of the CCNx name, not counting the digest component.  They are chosen based (primarily) on time.  The first byte of the version component is `0xFD`. The remaining bytes are a big-endian binary encoding of the time in link:Timestamp.html[CCNx Timestamp format].
 
 The client generating the version stamp should try to avoid using a stamp earlier than (or the same as) any version of the file, to the extent that it knows about it.  It should also avoid generating stamps that are unreasonably far in the future.
 
@@ -55,9 +55,7 @@ In the case that versioning is used, it is desirable to preserve the position of
 ....
 as the name for either the header or the single leaf.
 
-== Extensible Command Markers C0
+== Extensible Command Markers C1.
 
-In a variety of situations we need components that represent commands or annotations that can appear at arbitrary levels in the name hierarchy, intermixed with the human readable components analogous to pieces of file names.   In these cases, the position in the name is not able to distinguish the component's role and we must rely on the marker and that apps will follow these overall conventions so as to make the markers unambiguous.
-
-Multiple separate indications may be needed within a command protocol and future extensibility is also required, so we cannot simply allocate each special UTF-8 non-value to a single function.  The first byte of a generic command marker is %C0, the next several bytes identify the command protocol which for common protocols will be chosen to be human readable, and the remaining bytes will be defined within the command protocol.  Note that the Name Enumeration protocol is an example of such a command protocol.
+Multiple separate indications may be needed within a command protocol and future extensibility is also required, so we cannot simply allocate each special UTF-8 non-value to a single function.  The first byte of a generic command marker is %C1, the next several bytes identify the command protocol which for common protocols will be chosen to be human readable, and the remaining bytes will be defined within the command protocol.  Note that the Name Enumeration protocol is an example of such a command protocol.
 
