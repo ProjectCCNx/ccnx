@@ -18,7 +18,8 @@ mkdir -p $DIR
 cd $DIR || exit 1
 scp $DISTHOST:ccnx.tar.gz .
 tar xfz ccnx.tar.gz
-make TOPSUBDIRS=csrc CFLAGS='-g -O3'
+mkdir -p bin  lib include
+(cd csrc && make CFLAGS='-g -O3' && make install INSTALL_BASE=$DIR)
 (cd csrc/ccnd && make test)
 cd experiments/multicast
 ./startccnd
