@@ -427,9 +427,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * or understand the use of _nOut and update it appropriately.
 	 * 
 	 * @param co ContentObject to remove from flow controller.
+	 * @throws IOException may be thrown by overriding subclasses
 	 */
 	public void afterPutAction(ContentObject co) throws IOException {
-		// TODO: doesn't actually throw IOException - need to fix calling code before removing this
 		_nOut++;
 		_holdingArea.remove(co.name());
 		_holdingArea.notify();

@@ -169,7 +169,7 @@ public class RepositoryServer {
 	 * Stop serving requests
 	 */
 	public void shutDown() {
-		// TODO: implement
+		_repo.shutDown();
 	}
 	
 	/**
@@ -319,18 +319,20 @@ public class RepositoryServer {
 		if(ner!=null && ner.getPrefix()!=null && ner.hasNames()){
 			CollectionObject co = null;
 			try{
-				Log.finer("returning names for prefix: "+ner.getPrefix());
+				Log.finer("returning names for prefix: {0}", ner.getPrefix());
 
 				for (int x = 0; x < ner.getNames().size(); x++) {
-					Log.finer("name: "+ner.getNames().get(x));
+					Log.finer("name: {0}", ner.getNames().get(x));
 				}
 				if (ner.getTimestamp()==null)
 					Log.info("node.timestamp was null!!!");
 				Collection cd = ner.getNamesInCollectionData();
 				co = new CollectionObject(ner.getPrefix(), cd, _handle);
+				// TODO this is only temporary until flow control issues can
+				// be worked out here
 				co.disableFlowControl();
 				co.save(ner.getTimestamp());
-				Log.finer("saved collection object: "+co.getVersionedName());
+				Log.finer("saved collection object: {0}", co.getVersionedName());
 				return;
 
 			} catch(IOException e){

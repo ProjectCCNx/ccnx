@@ -63,7 +63,6 @@ public class RepositoryDaemon extends Daemon {
 		
 		public void finish() {
 			_server.shutDown();
-			_repo.shutDown();
 			synchronized (this) {
 				notifyAll(); // notifyAll ensures shutdown in interactive case when main thread is join()'ing
 			}
