@@ -62,6 +62,7 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
         (long)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), fmt);
     va_start(ap, fmt);
     vfprintf(stderr, (const char *)b->buf, ap);
+    va_end(ap);
     ccn_charbuf_destroy(&b);
     /* if there's no one to hear, don't make a sound */
     if (ferror(stderr))
