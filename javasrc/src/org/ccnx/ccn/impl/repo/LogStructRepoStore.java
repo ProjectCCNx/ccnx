@@ -445,8 +445,6 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 
 	/**
 	 * Cleanup on shutdown
-	 * 
-	 * TODO I'm not sure the higher level code actually calls this currently
 	 */
 	public void shutDown() {
 		if (null != _activeWriteFile.openFile) {
