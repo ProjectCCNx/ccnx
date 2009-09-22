@@ -30,13 +30,13 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
- * A subclass of {@link CCNFileOutputStream} which writes its segments to a repository,
+ * A subclass of CCNFileOutputStream which writes its segments to a repository,
  * using versioned names and writing file-level metadata. 
  * If the specified name includes a version, it will write that specific
  * version; otherwise it will add a version to the name of the stream it writes.
  * If no repository is available, it will throw an exception.
  * 
- * Data written using this class can be read using a normal {@link CCNFileInputStream}; that
+ * Data written using this class can be read using a normal CCNFileInputStream; that
  * class doesn't care whether its content comes from a repository or a cache (or a mix of the two).
  */
 public class RepositoryFileOutputStream extends CCNFileOutputStream {
