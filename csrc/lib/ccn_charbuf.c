@@ -125,6 +125,7 @@ ccn_charbuf_putf(struct ccn_charbuf *c, const char *fmt, ...)
     if (buf == NULL) return(-1);
     va_start(ap, fmt);
     sz = vsnprintf(buf, c->limit - c->length, fmt, ap);
+    va_end(ap);
     if (sz < 0)
         return(sz);
     if (c->length + sz < c->limit) {
@@ -136,6 +137,7 @@ ccn_charbuf_putf(struct ccn_charbuf *c, const char *fmt, ...)
     if (buf == NULL) return(-1);
     va_start(ap, fmt);
     sz = vsnprintf(buf, c->limit - c->length, fmt, ap);
+    va_end(ap);
     if (c->length + sz < c->limit) {
         c->length += sz;
         return(sz);

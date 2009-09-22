@@ -104,10 +104,10 @@ ccndc_warn(int lineno, char *format, ...)
     struct timeval t;
     va_list ap;
     va_start(ap, format);
-
     gettimeofday(&t, NULL);
     fprintf(stderr, "%d.%06d ccndc[%d]:%d: ", (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), lineno);
     vfprintf(stderr, format, ap);
+    va_end(ap);
 }
 
 void
@@ -116,10 +116,10 @@ ccndc_fatal(int line, char *format, ...)
     struct timeval t;
     va_list ap;
     va_start(ap, format);
-
     gettimeofday(&t, NULL);
     fprintf(stderr, "%d.%06d ccndc[%d]:%d: ", (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), line);
     vfprintf(stderr, format, ap);
+    va_end(ap);
     exit(1);
 }
 
