@@ -88,10 +88,10 @@ udplink_fatal(int line, char *format, ...)
     struct timeval t;
     va_list ap;
     va_start(ap, format);
-
     gettimeofday(&t, NULL);
     fprintf(stderr, "%d.%06d udplink[%d] line %d: ", (int)t.tv_sec, (unsigned)t.tv_usec, getpid(), line);
     vfprintf(stderr, format, ap);
+    va_end(ap);
     exit(1);
 }
 
@@ -101,10 +101,10 @@ udplink_note(char *format, ...)
     struct timeval t;
     va_list ap;
     va_start(ap, format);
-
     gettimeofday(&t, NULL);
     fprintf(stderr, "%d.%06d udplink[%d]: ", (int)t.tv_sec, (unsigned)t.tv_usec, getpid());
     vfprintf(stderr, format, ap);
+    va_end(ap);
 }
 
 void
