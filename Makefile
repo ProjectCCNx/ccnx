@@ -59,8 +59,6 @@ MANIFEST: _manifester
 	rm MANIFEST.new
 	rm _manifester
 
-DOCMANIFEST:
-	
 tar:	ccnx.tar
 ccnx.tar: MANIFEST
 	tar cf ccnx.tar -T MANIFEST
