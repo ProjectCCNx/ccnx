@@ -227,7 +227,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * <p>
 	 * Note that this URI encoding is very similar to but not the same as the 
 	 * application/x-www-form-urlencoded MIME format that is used by the Java 
-	 * {@link java.net.URLDecoder}.
+	 * java.net.URLDecoder.
 	 * 
 	 * TODO: Inconsistent with C lib in that it does not strip authority part
 	 * TODO: Inconsistent with C lib in that it does not fully strip query and fragment parts (within component only)

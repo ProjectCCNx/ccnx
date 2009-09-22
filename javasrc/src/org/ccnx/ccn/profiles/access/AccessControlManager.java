@@ -54,7 +54,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
 /**
- * This class is used in updating node keys and by {@link #getEffectiveNodeKey(ContentName)}.
+ * This class is used in updating node keys and by #getEffectiveNodeKey(ContentName).
  * To achieve this, we walk up the tree for this node. At each point, we check to
  * see if a node key exists. If one exists, we decrypt it if we know an appropriate
  * key. Otherwise we return null.
@@ -850,7 +850,7 @@ public class AccessControlManager {
 	}
 	
 	/**
-	 * Like {@link #getEffectiveNodeKey(ContentName)}, except checks to see if node
+	 * Like #getEffectiveNodeKey(ContentName), except checks to see if node
 	 * key is dirty and updates it if necessary.
 	 * @param nodeName
 	 * @return
@@ -1136,7 +1136,7 @@ public class AccessControlManager {
 	 * Given a data location, pull the data key block and decrypt it using
 	 * whatever node keys are necessary.
 	 * To turn the result of this into a key for decrypting content,
-	 * follow the steps in the comments to {@link #generateAndStoreDataKey(ContentName)}.
+	 * follow the steps in the comments to #generateAndStoreDataKey(ContentName).
 	 * @param dataNodeName
 	 * @return
 	 * @throws IOException 

@@ -42,7 +42,7 @@ public class RepositoryInfoTest {
 	}
 
 	/**
-	 * Test method for {@link org.ccnx.ccn.impl.repo.RepositoryInfo#encode(org.ccnx.ccn.impl.encoding.XMLEncoder)}.
+	 * Test method for org.ccnx.ccn.impl.repo.RepositoryInfo#encode(org.ccnx.ccn.impl.encoding.XMLEncoder).
 	 */
 	@Test
 	public void testDecodeInputStream() throws Exception {

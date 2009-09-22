@@ -53,7 +53,7 @@ public class CCNReader {
 	 * @param timeout milliseconds to wait for data
 	 * @return data matching the name or null
 	 * @throws IOException
-	 * @see {@link CCNBase#get(ContentName, long)}
+	 * @see CCNBase#get(ContentName, long)
 	 */
 	public ContentObject get(ContentName name, long timeout) throws IOException {
 		return _handle.get(name, timeout);

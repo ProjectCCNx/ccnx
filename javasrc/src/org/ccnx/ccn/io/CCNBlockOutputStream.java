@@ -55,7 +55,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * in the running stream, or by another integer metric (e.g. time offset),
  * by supplying a multiplier to convert the byte offset into a metric value.
  * Finally, writers can specify the block identifier with a write.
- * Currently, however, the corresponding reader {@link org.ccnx.ccn.io.CCNBlockInputStream} expects
+ * Currently, however, the corresponding reader org.ccnx.ccn.io.CCNBlockInputStream expects
  * sequential segment numbering (and constraints based on the low-level CCN
  * Interest specification may make this difficult to overcome).
  */

@@ -132,7 +132,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 	
 	/**
-	 * Block and wait as long as it takes for new data to appear. See {@link #getNewData(long)}.
+	 * Block and wait as long as it takes for new data to appear. See #getNewData(long).
 	 * @return SortedSet<ContentName> Returns the array of single-component
 	 * 	content name children that are new to us, or null if we reached the
 	 *  timeout before new data arrived
@@ -254,7 +254,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 	
 	/**
-	 * Wait (block) for initial data to arrive, possibly forever. See {@link #waitForData(long)}.
+	 * Wait (block) for initial data to arrive, possibly forever. See #waitForData(long).
 	 * 
 	 * @return void
 	 */
