@@ -31,10 +31,10 @@ import org.junit.BeforeClass;
 
 /**
  * 
- * @author rasmusse
+ * A base class for repository-specific tests. 
+ * Defines a few common parameters.
  *
  */
-
 public class RepoTestBase extends LibraryTestBase {
 	
 	public static final String TOP_DIR = "ccn.test.topdir";

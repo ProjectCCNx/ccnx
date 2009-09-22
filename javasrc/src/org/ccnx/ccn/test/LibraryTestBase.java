@@ -48,6 +48,13 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 
 
+/**
+ * 
+ * A base class for the old style of library tests. 
+ * Defines a few common parameters, and a test-running framework.
+ * New tests should probably not use this.
+ *
+ */
 public class LibraryTestBase {
 
 	protected static boolean exit = false;
