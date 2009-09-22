@@ -32,6 +32,9 @@ import org.ccnx.ccn.protocol.ContentObject;
  * An example aggregated signer computes a Merkle hash tree over
  * the component blocks and then constructs signatures for each.
  * 
+ * Signing can be a computationally expensive operation; aggregated
+ * signing mitigates this.
+ * 
  * This could be a base abstract class or an interface; the former
  * would have a set of constructors or static factory methods that
  * made an object returning blocks. Instead, we try an interface
