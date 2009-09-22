@@ -33,6 +33,9 @@ import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 
+/**
+ * Class for manipulating ContentNames
+ */
 
 public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName> {
 
@@ -189,11 +192,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * The legal characters in the URI are limited to the <i>unreserved</i> characters 
 	 * "a" through "z", "A" through "Z", "0" through "9", and "-", "_", ".", and "~"
 	 * plus the <i>reserved</i> delimiters  "!", "$" "&", "'", "(", ")",
-     * "*", "+", ",", ";", "=".
-     * The reserved delimiter "/" is a special case interpreted as component separator and so
-     * may not be used within a component unescaped.
-     * Any query (starting '?') or fragment (starting '#') is ignored which means that these
-     * reserved delimiters must be percent-encoded if they are to be part of the name. 
+	 * "*", "+", ",", ";", "=".
+	 * The reserved delimiter "/" is a special case interpreted as component separator and so
+	 * may not be used within a component unescaped.
+	 * Any query (starting '?') or fragment (starting '#') is ignored which means that these
+	 * reserved delimiters must be percent-encoded if they are to be part of the name. 
 	 * <p>
 	 * The URI must begin with either the "/" delimiter or the scheme specification "ccnx:"
 	 * plus delimiter to make URI absolute.
