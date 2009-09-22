@@ -373,14 +373,15 @@ ccnb_tagged_putf(struct ccn_charbuf *c, enum ccn_dtag dtag, const char *fmt, ...
     va_list ap;
     char *ptr;
     
-    va_start(ap, fmt);
     res = ccn_charbuf_append_tt(c, dtag, CCN_DTAG);
     if (res < 0)
         return(-1);
     ptr = (char *)ccn_charbuf_reserve(c, strlen(fmt) + 20);
     if (ptr == NULL)
         return(-1);
+    va_start(ap, fmt);
     size = vsnprintf(ptr + 2, (c->limit - c->length - 2), fmt, ap);
+    va_end(ap);
     if (size < 0)
         return(-1);
     if (size > 0) {
@@ -395,7 +396,9 @@ ccnb_tagged_putf(struct ccn_charbuf *c, enum ccn_dtag dtag, const char *fmt, ...
         }
         else {
             ptr = (char *)ccn_charbuf_reserve(c, size + 1);
+            va_start(ap, fmt);
             size = vsnprintf(ptr, size + 1, fmt, ap);
+            va_end(ap);
             if (size < 0)
                 return(-1);
             c->length += size;
