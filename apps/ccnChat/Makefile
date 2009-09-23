@@ -46,8 +46,8 @@ real_install: _always
 	$(CP) -R tools/. $(INSTALL_BIN)
 
 uninstall:
-	for i in $(LIBS) ""; do test -z "$$i" || $(RM) $(INSTALL_LIB)/`basename $$i`; done
-	for i in `$(LS) tools` "" ; do test -z "$$i" || $(RM) $(INSTALL_BIN)/`basename $$i`; done
+	for i in $(LIBS) ""; do test -z "$$i" || rm -f $(INSTALL_LIB)/`basename $$i`; done
+	for i in `$(LS) tools` "" ; do test -z "$$i" || rm -f $(INSTALL_BIN)/`basename $$i`; done
 
 # Use ant to actually do the work for these targets
 jar clean test: _always
