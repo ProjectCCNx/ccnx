@@ -672,7 +672,7 @@ public class CCNNetworkManager implements Runnable {
 	 * @param callbackListener a CCNFilterListener
 	 */
 	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
-		//Library.fine("setInterestFilter: " + filter);
+		Log.fine("setInterestFilter: {0}", filter);
 		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
 		// serving any useful purpose.
 		setupTimers();

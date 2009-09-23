@@ -63,13 +63,17 @@ struct mydata {
     struct ccn_scheduled_event *holefiller;
     intmax_t interests_sent;
     intmax_t pkts_recvd;
+    intmax_t co_bytes_recvd;
     intmax_t delivered;
+    intmax_t delivered_bytes;
     intmax_t junk;
     intmax_t holes;
     intmax_t timeouts;
     intmax_t dups;
     intmax_t lastcheck;
     intmax_t unverified;
+    struct timeval start_tv;
+    struct timeval stop_tv;
     struct ooodata ooo[PIPELIMIT];
 };
 
@@ -187,6 +191,39 @@ reporter(struct ccn_schedule *sched, void *clienth,
         return(0);
     }
     return(3000000);
+}
+
+void
+print_summary(struct mydata *md)
+{
+    const char *expid;
+    const char *dlm = " ";
+    double elapsed = 0.0;
+    long delivered_bytes;
+    double rate = 0.0;
+    
+    expid = getenv("CCN_EXPERIMENT_ID");
+    if (expid == NULL)
+        expid = dlm = "";
+    gettimeofday(&md->stop_tv, 0);
+    elapsed = (double)(long)(md->stop_tv.tv_sec - md->start_tv.tv_sec);
+    elapsed += ((int)md->stop_tv.tv_usec - (int)md->start_tv.tv_usec)/1000000.0;
+    delivered_bytes = md->delivered_bytes;
+    if (elapsed > 0.00001)
+        rate = delivered_bytes/elapsed;
+    fprintf(stderr,
+            "%ld.%06u ccncatchunks2[%d]: %s%s"
+            "%ld bytes transferred in %.6f seconds (%.0f bytes/sec)"
+            "\n",
+            (long)md->stop_tv.tv_sec,
+            (unsigned)md->stop_tv.tv_usec,
+            (int)getpid(),
+            expid,
+            dlm,
+            delivered_bytes,
+            elapsed,
+            rate
+            );
 }
 
 struct ccn_charbuf *
@@ -354,6 +391,7 @@ GOT_HERE();
     if (res < 0) abort();
 GOT_HERE();
     /* OK, we will accept this block. */
+    md->co_bytes_recvd += data_size;
     slot = ((uintptr_t)selfp->intdata) % PIPELIMIT;
     assert(selfp == &md->ooo[slot].closure);
     if (slot != md->ooo_base || md->ooo_count == 0) {
@@ -376,6 +414,7 @@ GOT_HERE();
         update_rtt(md, 1, slot);
         md->ooo[slot].closure.intdata = -1;
         md->delivered++;
+        md->delivered_bytes += data_size;
 GOT_HERE();
         written = fwrite(data, data_size, 1, stdout);
         if (written != 1)
@@ -383,6 +422,7 @@ GOT_HERE();
         /* A short block signals EOF for us. */
         if (data_size < CHUNK_SIZE) {
             ccn_schedule_destroy(&md->sched);
+            print_summary(md);
             exit(0);
         }
         md->ooo_count--;
@@ -392,6 +432,7 @@ GOT_HERE();
         while (md->ooo_count > 0 && md->ooo[slot].raw_data_size != 0) {
             struct ooodata *ooo = &md->ooo[slot];
             md->delivered++;
+            md->delivered_bytes += (ooo->raw_data_size - 1);
             written = fwrite(ooo->raw_data, ooo->raw_data_size - 1, 1, stdout);
             if (written != 1)
                 exit(1);
@@ -488,6 +529,7 @@ main(int argc, char **argv)
     mydata->ooo_base = 0;
     mydata->ooo_count = 0;
     mydata->curwindow = 1;
+    gettimeofday(&mydata->start_tv, 0);
     logstream = NULL;
     // logstream = fopen("xxxxxxxxxxxxxxlogstream" + (unsigned)getpid()%10, "wb"); 
     ask_more(mydata, 0);
@@ -505,6 +547,7 @@ main(int argc, char **argv)
         res = ccn_run(ccn, micros / 1000);
     }
     ccn_schedule_destroy(&mydata->sched);
+    print_summary(mydata);
     ccn_destroy(&ccn);
     exit(res < 0);
 }
