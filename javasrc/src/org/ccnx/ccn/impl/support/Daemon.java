@@ -45,7 +45,7 @@ import org.ccnx.ccn.impl.CCNNetworkManager;
 
 
 /**
- * Wrapper class for things that run as daemons. In the normal case a daemon is started up and then runs in
+ * Implements command line daemon functionality. In the normal case a daemon is started up and then runs in
  * the background after the starting process exits. An RMI file is created to allow outside processes to
  * communicate with the daemon to "signal" it or stop it.<p>
  * 
@@ -608,6 +608,10 @@ public class Daemon {
 		_interactive = true;
 	}
 
+	/**
+	 * Main entry point for command line invocation.
+	 * @param args Arguments passed in from command line.
+	 */
 	public static void main(String[] args) {
 		
 		// Need to override in each subclass to make proper class.
