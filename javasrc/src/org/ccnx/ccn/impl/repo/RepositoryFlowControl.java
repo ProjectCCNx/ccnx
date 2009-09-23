@@ -90,8 +90,10 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 				switch (repoInfo.getType()) {
 				case INFO:
 					for (Client client : _clients) {
-						if (client._name.isPrefixOf(co.name()))
+						if (client._name.isPrefixOf(co.name())) {
+							Log.fine("Marked client {0} initialized", client._name);
 							client._initialized = true;
+						}
 					}
 					//_writeInterest = null;
 					synchronized (this) {
@@ -190,17 +192,17 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		// A nonce is used because if we tried to write data with the same name more than once, we could retrieve the
 		// the previous answer from the cache, and the repo would never be informed of our start write.
 		ContentName repoWriteName = new ContentName(name, CommandMarkers.COMMAND_MARKER_REPO_START_WRITE, Interest.generateNonce());
-
 		Interest writeInterest = new Interest(repoWriteName);
-		_handle.expressInterest(writeInterest, this);
-		_writeInterests.add(writeInterest);
-		if (! _bestEffort) {
-			_ackHandler = new RepoAckHandler();
-			_ackne = new CCNNameEnumerator(_handle, _ackHandler);
-		}
 
-		//Wait for information to be returned from a repo
 		synchronized (this) {
+			_handle.expressInterest(writeInterest, this);
+			_writeInterests.add(writeInterest);
+			if (! _bestEffort) {
+				_ackHandler = new RepoAckHandler();
+				_ackne = new CCNNameEnumerator(_handle, _ackHandler);
+			}
+			
+			//Wait for information to be returned from a repo
 			boolean interrupted;
 			long startTime = System.currentTimeMillis();
 			do {
@@ -216,7 +218,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			} while (interrupted || (!client._initialized && ((getTimeout() + startTime) > System.currentTimeMillis())));
 		}
 		if (!client._initialized) {
-			Log.finest("No response from a repository, cannot add name space : " + name);
+			Log.info("No response from a repository, cannot add name space : " + name);
 			throw new IOException("No response from a repository for " + name);
 		}
 	}
