@@ -36,7 +36,7 @@ install:
 	@test -f $(JAR) && $(MAKE) real_install \
             INSTALL_BASE=$(INSTALL_BASE)        \
             INSTALL_LIB=$(INSTALL_LIB)          \
-            INSTALL_BIN=$(INSTALL_LIB) || $(WARN_NO_INSTALL)
+            INSTALL_BIN=$(INSTALL_BIN) || $(WARN_NO_INSTALL)
 
 real_install: _always
 	test -d $(INSTALL_LIB) 
@@ -52,7 +52,6 @@ uninstall:
 # Use ant to actually do the work for these targets
 jar clean test: _always
 	@type $(ANT) > /dev/null && $(ANT) -k $@ || $(WHINE)
-	@rm -f _always
 
 documentation: _always
 	doxygen
