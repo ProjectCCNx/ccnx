@@ -32,7 +32,6 @@ import org.ccnx.ccn.protocol.ContentObject;
  * and signs the root, incorporating the MerklePath information necessary
  * to verify each object as the Witness component of the Signature.
  * 
- * @see CCNAggregatedSigner
  * @see CCNMerkleTree
  */
 public class CCNMerkleTreeSigner implements CCNAggregatedSigner {

@@ -35,6 +35,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 /**
  * This class takes a master symmetric key, and derives from it a key
  * and initialization vector to be used to encrypt a specific content object.
+ * 
  * This simplifies key management by allowing the same master key to be
  * used for families of related content (e.g. all the versions of a file,
  * all of the intrinsic metadata associated with that file, etc.), without

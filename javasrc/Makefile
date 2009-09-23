@@ -13,10 +13,12 @@
 #
 
 ANT = ant
-LIBS = ccn.jar lib/bcprov-jdk16-143.jar
+JAR = ccn.jar
+LIBS = $(JAR) lib/bcprov-jdk16-143.jar
 WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
                echo Skipping java build in $$(pwd -L) -    \
                     $(ANT) is not installed; "
+WARN_NO_INSTALL = echo Nothing installed from javasrc/
 # Default, the top-level Makefile default target will
 # call the install target here but override INSTALL_BASE
 # with dir in the source tree
@@ -30,7 +32,13 @@ LS = /bin/ls
 default all: jar
 check: test
 
-install: jar
+install:
+	@test -f $(JAR) && $(MAKE) real_install \
+            INSTALL_BASE=$(INSTALL_BASE)        \
+            INSTALL_LIB=$(INSTALL_LIB)          \
+            INSTALL_BIN=$(INSTALL_BIN) || $(WARN_NO_INSTALL)
+
+real_install: _always
 	test -d $(INSTALL_LIB) 
 	for i in $(LIBS) ""; do test -z "$$i" || $(INSTALL) $$i $(INSTALL_LIB); done
 	test -d $(INSTALL_BIN)
@@ -38,13 +46,12 @@ install: jar
 	$(CP) -R tools/. $(INSTALL_BIN)
 
 uninstall:
-	for i in $(LIBS) ""; do test -z "$$i" || $(RM) $(INSTALL_LIB)/`basename $$i`; done
-	for i in `$(LS) tools` "" ; do test -z "$$i" || $(RM) $(INSTALL_BIN)/`basename $$i`; done
+	for i in $(LIBS) ""; do test -z "$$i" || rm -f $(INSTALL_LIB)/`basename $$i`; done
+	for i in `$(LS) tools` "" ; do test -z "$$i" || rm -f $(INSTALL_BIN)/`basename $$i`; done
 
 # Use ant to actually do the work for these targets
 jar clean test: _always
 	@type $(ANT) > /dev/null && $(ANT) -k $@ || $(WHINE)
-	@rm -f _always
 
 documentation: _always
 	doxygen

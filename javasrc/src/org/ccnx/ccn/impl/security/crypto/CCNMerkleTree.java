@@ -36,7 +36,7 @@ import org.ccnx.ccn.protocol.SignedInfo;
 
 
 /**
- * This class extends the basic MerkleTree for use in CCN.
+ * Extends the basic MerkleTree for use in CCN.
  * It incorporates the CCN ContentName for an object at each node, so that
  * names are authenticated as well as content in a
  * way that intermediary CCN nodes can verify.
@@ -197,9 +197,9 @@ public class CCNMerkleTree extends MerkleTree {
 	 * Compute the signature on the root node. It's already a digest, so in
 	 * theory we could just wrap it up in some PKCS#1 padding, encrypt it
 	 * with our private key, and voila! A signature. But there are basically
-	 * know crypto software packages that provide signature primitives that take
+	 * no crypto software packages that provide signature primitives that take
 	 * already-digested data and just do the padding and encryption, and so we'd
-	 * be asking anyone attepmpting to implement CCN MHT signing (including ourselves)
+	 * be asking anyone attempting to implement CCN MHT signing (including ourselves)
 	 * to re-implement a very complicated wheel, across a number of signature algorithms.
 	 * We might also want to sign with a key that does not support the digest algorithm
 	 * we used to compute the root (for example, DSA).

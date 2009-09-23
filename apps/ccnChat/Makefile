@@ -1,4 +1,4 @@
-# javasrc/Makefile
+# apps/ccnChat/Makefile
 # 
 # Part of the CCNx distribution.
 #
@@ -13,10 +13,12 @@
 #
 
 ANT = ant
-LIBS = ccnChat.jar
+JAR = ccnChat.jar
+LIBS = $(JAR)
 WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
                echo Skipping java build in $$(pwd -L) -    \
                     $(ANT) is not installed; "
+WARN_NO_INSTALL = echo nothing installed from apps/ccnChat/
 # Default, the top-level Makefile default target will
 # call the install target here but override INSTALL_BASE
 # with dir in the source tree
@@ -30,7 +32,13 @@ LS = /bin/ls
 default all: jar
 check: test
 
-install: jar
+install:
+	@test -f $(JAR) && $(MAKE) real_install \
+            INSTALL_BASE=$(INSTALL_BASE)        \
+            INSTALL_LIB=$(INSTALL_LIB)          \
+            INSTALL_BIN=$(INSTALL_BIN) || $(WARN_NO_INSTALL)
+
+real_install: _always
 	test -d $(INSTALL_LIB) 
 	for i in $(LIBS) ""; do test -z "$$i" || $(INSTALL) $$i $(INSTALL_LIB); done
 	test -d $(INSTALL_BIN)
@@ -38,8 +46,8 @@ install: jar
 	$(CP) -R tools/. $(INSTALL_BIN)
 
 uninstall:
-	for i in $(LIBS) ""; do test -z "$$i" || $(RM) $(INSTALL_LIB)/`basename $$i`; done
-	for i in `$(LS) tools` "" ; do test -z "$$i" || $(RM) $(INSTALL_BIN)/`basename $$i`; done
+	for i in $(LIBS) ""; do test -z "$$i" || rm -f $(INSTALL_LIB)/`basename $$i`; done
+	for i in `$(LS) tools` "" ; do test -z "$$i" || rm -f $(INSTALL_BIN)/`basename $$i`; done
 
 # Use ant to actually do the work for these targets
 jar clean test: _always

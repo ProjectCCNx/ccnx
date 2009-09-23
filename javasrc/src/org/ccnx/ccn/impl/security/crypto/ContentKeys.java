@@ -36,10 +36,11 @@ import org.ccnx.ccn.impl.support.Log;
 
 
 /**
- * Specifies encryption algorithm, keys, and if necessary, IV to use for encrypting content.
+ * Specifies encryption algorithm, keys and if necessary IV to use for encrypting
+ * or decrypting content.
  */
 public class ContentKeys {
-	/**
+	/*
 	 * The core encryption algorithms supported. Any native encryption
 	 * mode supported by Java *should* work, but these are compactly
 	 * encodable.
@@ -79,7 +80,7 @@ public class ContentKeys {
 	public IvParameterSpec _masterIV;
 	
 	/**
-	 * Create a set of ContentKeys using the default cipher and key algorithm.
+	 * ContentKeys constructor using default cipher and key algorithm.
 	 * @param key key material to be used with the default key algorithm.
 	 * @param iv iv key material to be used with default key algorithm 
 	 */
@@ -93,7 +94,7 @@ public class ContentKeys {
 	}
 
 	/**
-	 * Create a set of ContentKeys.
+	 * ContentKeys constructor.
 	 * @param encryptionAlgorithm algorithm to use
 	 * @param encryptionKey encryption key
 	 * @param masterIV iv
@@ -115,7 +116,8 @@ public class ContentKeys {
 	}
 	
 	/**
-	 * A number of users of ContentKeys only support using the default algorithm.
+	 * Test if this is using the default encryption algorithm.
+	 * A number of users of ContentKeys only support using the default algorithm, and use this to verify.
 	 * @throws UnsupportedOperationException if the algorithm for this object is not the default.
 	 */
 	public void requireDefaultAlgorithm() {

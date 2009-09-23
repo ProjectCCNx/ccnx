@@ -26,9 +26,8 @@ import org.ccnx.ccn.impl.CCNNetworkManager;
 
 
 /**
- * Start a ccnd that we can control for testing
- * Allows start & stop of ccnd via command. Otherwise ccnd can be difficult to control
- * in automated ant based testing.
+ * Main ccnd command line daemon.
+ * Allows start & stop of ccnd, as well as interactive runs.
  * 
  * TODO This is not actually yet used in any tests and therefore is itself not well tested
  */
