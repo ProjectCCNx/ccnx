@@ -36,7 +36,7 @@ install:
 	@test -f $(JAR) && $(MAKE) real_install \
             INSTALL_BASE=$(INSTALL_BASE)        \
             INSTALL_LIB=$(INSTALL_LIB)          \
-            INSTALL_BIN=$(INSTALL_LIB) || $(WARN_NO_INSTALL)
+            INSTALL_BIN=$(INSTALL_BIN) || $(WARN_NO_INSTALL)
 
 real_install: _always
 	test -d $(INSTALL_LIB) 
