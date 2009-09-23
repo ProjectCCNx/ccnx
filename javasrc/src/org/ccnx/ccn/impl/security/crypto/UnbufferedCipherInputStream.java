@@ -24,12 +24,13 @@ import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 
 /**
- * CipherInputStream subclass that hides block-related boundaries in buffering.
- * Java's CipherInputStream exposes the buffering done to accommodate a block
+ * Hides block-related boundaries in buffering.
+ * 
+ * Java's javax.crypto.CipherInputStream exposes the buffering done to accommodate a block
  * Cipher, and hence reads/skip/available only return the data available in the current
  * Cipher block, rather than the perhaps larger amount of data expected from the underlying
- * stream. This class wraps CipherInputStream to provide more natural semantics, and
- * avoid having repeated code to handle incomplete reads/etc.
+ * stream. This class wraps javax.crypto.CipherInputStream to provide more natural semantics, and
+ * avoids having repeated code to handle incomplete reads/etc.
  */
 public class UnbufferedCipherInputStream extends CipherInputStream {
 

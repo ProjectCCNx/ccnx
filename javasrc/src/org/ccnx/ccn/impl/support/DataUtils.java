@@ -28,7 +28,7 @@ import org.bouncycastle.util.encoders.Base64;
 import org.ccnx.ccn.config.SystemConfiguration;
 
 /**
- * Miscellaneous utility routines for CCN
+ * Miscellaneous utility routines for CCN, mostly data comparison and conversion.
  */
 public class DataUtils {
 	
@@ -220,12 +220,13 @@ public class DataUtils {
 	}
 	
 	/**
-	 * Used to check for binary prefixes used to mark certain ContentName components
-	 * for special purposes.
+	 * Check if a byte array starts with a certain prefix.
 	 * 
-	 * @param prefix
-	 * @param data
-	 * @return
+	 * Used to check for binary prefixes used to mark certain ContentName components for special purposes.
+	 * 
+	 * @param prefix bytes to look for, if null this method always returns true.
+	 * @param data data to inspect. If null this method always returns false.
+	 * @return true if data starts with prefix.
 	 */
 	public static boolean isBinaryPrefix(byte [] prefix,
 										 byte [] data) {
@@ -305,14 +306,11 @@ public class DataUtils {
 	}
 
 	/**
-	 /**
-	 * @param count Lexicographically compare two byte arrays, looking at at most count bytes.
-	 * @return < 0 if left comes before right, 0 if they are equal, > 0 if left comes after right
-	 *
+	 * Lexicographically compare two byte arrays, looking at a limited number of bytes.
 	 * @param arr1
 	 * @param arr2
-	 * @param count
-	 * @return
+	 * @param count Maximum number of bytes to inspect.
+	 * @return < 0 if left comes before right, 0 if they are equal, > 0 if left comes after right
 	 */
 	public static int bytencmp(byte[] arr1, byte[] arr2, int count) {
 		if (null == arr1) {

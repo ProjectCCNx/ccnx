@@ -35,7 +35,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 /**
  * Wrapper for the standard java.util Logging classes.
  * 
- * A major purpose is to allow log messages which will not actually be output due to being at a lower
+ * This allows log messages which will not actually be output due to being at a lower
  * level than the current logging level to not affect performance by performing expensive calculations to
  * compute their parameters.
  * 
