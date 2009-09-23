@@ -18,8 +18,10 @@
 package org.ccnx.ccn.test.endtoend;
 
 import java.util.concurrent.Semaphore;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.junit.BeforeClass;
 
@@ -36,7 +38,7 @@ public class BaseLibrarySink {
 	public static void setUpBeforeClass() throws Exception {
 		handle = CCNHandle.open();
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		// Library.setLevel(Level.FINEST);
+		Log.setLevel(Level.FINEST);
 	}
 
 	/**
