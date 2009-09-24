@@ -14,4 +14,4 @@
 #
 . ./settings
 ccnslurp ccnx:/experiments/multicast/results
-ccnrm -o - >> results.ccnb
+ccnrm -o - ccnx:/experiments/multicast/results >> results.ccnb

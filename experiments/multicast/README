@@ -38,18 +38,23 @@ or you will end up spending a lot of time typing your password.
 	will (re)start the test ccnd.  It is the last thing in the
 	./setup script.
 
-./connectsource
-	should be done on one of the machines designated as the upstream
-	source.  This machine should have a ccnd running on the default
+./connectsource upstream
+	should be done on one or more of the machines designated as
+	having a direct to the upstream source.
+	This machine should have a ccnd running on the default
 	port (ccndstart will start one) which has been populated with
 	test data, for example:
 	(jot 1000000 | ccnsendchunks /experiments/multicast/DATA/1e6 &)
+	The default for upstream is taken from the settings file.
 
 ./sink
 	should be executed on each of the "sink" machines - it will
 	do nothing until the "go" signal is given.
 
-./go
+./tcpsink
+	is for running a control using tcp; use instead of ./sink.
+
+./go 
 	can be executed on any of the machines (typically the source) to start
 	a test.  It works by providing a CCN content object that all the
 	sink machines are patiently waiting for.
@@ -57,5 +62,7 @@ or you will end up spending a lot of time typing your password.
 ./waitgo
 	is used by the sink script to await the go signal.
 
+./gather
+	uses ccnx to gather the results for posterity.
 
 
