@@ -222,7 +222,8 @@ public class CCNTime extends Timestamp {
 	 * not milliseconds or nanoseconds.
 	 */
 	public String toShortString() {
-		SimpleDateFormat df = new SimpleDateFormat("yy-MM-dd-HH:mm:ss");
+		// use . instead of : as URI printer will make it look nicer in the logs
+		SimpleDateFormat df = new SimpleDateFormat("yy-MM-dd-HH.mm.ss");
 		return df.format(this);
 	}
 }
