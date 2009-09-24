@@ -36,8 +36,9 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
-
-
+/**
+ * Part of older test infrastructure. 
+ */
 public class BlockReadWriteTest extends BasePutGetTest {
 	
 	protected static final String fileName = "medium_file.txt";

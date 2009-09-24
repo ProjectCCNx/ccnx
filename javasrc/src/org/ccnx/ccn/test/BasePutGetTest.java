@@ -20,7 +20,9 @@ package org.ccnx.ccn.test;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.junit.Test;
 
-
+/**
+ * Part of older test infrastructure.
+ */
 public class BasePutGetTest extends LibraryTestBase {
 	
 	@Test
