@@ -501,7 +501,7 @@ public class CCNNetworkObjectTest {
 	}
 
 	public CCNTime updateAndLog(String name, CCNNetworkObject<?> ecd, ContentName updateName) throws XMLStreamException, IOException {
-		if (((null == updateName) && ecd.update()) || (ecd.update(updateName, null)))
+		if ((null == updateName) ? ecd.update() : ecd.update(updateName, null))
 			Log.info("Updated " + name + ", to name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		else 
 			Log.info("No update found for " + name + ((null != updateName) ? (" at name " + updateName) : "") + ", still: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
