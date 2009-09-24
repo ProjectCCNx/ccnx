@@ -13,4 +13,5 @@
 # FOR A PARTICULAR PURPOSE.
 #
 . ./settings
-ccndc add ccnx:/experiments/multicast/DATA tcp localhost
+ping -c 1 ${1:-localhost}
+ccndc add ccnx:/experiments/multicast/DATA udp ${1:-localhost}
