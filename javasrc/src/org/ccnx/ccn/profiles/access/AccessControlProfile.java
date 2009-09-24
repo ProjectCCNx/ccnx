@@ -379,23 +379,21 @@ public class AccessControlProfile implements CCNProfile {
 	 * @param timestamp
 	 * @return
 	 */
-	public static byte[] principalInfoToNameComponent(boolean isGroup,
-													  String principalName,
-													  CCNTime timestamp) {
-		byte [] bytePrincipal = ContentName.componentParseNative(principalName);
-		byte [] byteTime = timestamp.toBinaryTime();
-		byte [] prefix = (isGroup ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
+	public static byte[] principalInfoToNameComponent(PrincipalInfo pi) {
+		byte [] bytePrincipal = ContentName.componentParseNative(pi.friendlyName());
+		byte [] byteTime = pi.versionTimestamp().toBinaryTime();
+		byte [] prefix = (pi.isGroup() ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
 		byte [] component = new byte[prefix.length + bytePrincipal.length + COMPONENT_SEPARATOR.length + byteTime.length];
 		// java 1.6 has much better functions for array copying
 		System.arraycopy(prefix, 0, component, 0, prefix.length);
 		System.arraycopy(bytePrincipal, 0, component, prefix.length, bytePrincipal.length);
 		System.arraycopy(COMPONENT_SEPARATOR, 0, component, prefix.length+bytePrincipal.length, COMPONENT_SEPARATOR.length);
 		System.arraycopy(byteTime, 0, component, prefix.length+bytePrincipal.length+COMPONENT_SEPARATOR.length, 
-							byteTime.length);
-
+				byteTime.length);
+		
 		return component;
 	}
-
+	
 	/**
 	 * Parses the principal name from a group public key.
 	 * For groups, the last component of the public key is GROUP_PUBLIC_KEY_NAME = "Key".

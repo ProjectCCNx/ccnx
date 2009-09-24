@@ -336,7 +336,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			Log.info("No block available for principal: " + principalName);
 			return null;
 		}
-		ContentName principalLinkName = getWrappedKeyNameForPrincipal(pi.isGroup(), pi.friendlyName(), pi.versionTimestamp());
+		ContentName principalLinkName = getWrappedKeyNameForPrincipal(pi);
 		// This should be a link to the actual key block
 		// TODO DKS should wait on link data...
 		LinkObject principalLink = new LinkObject(principalLinkName, _manager.handle());
@@ -352,11 +352,9 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @param principalVersion the version of the principal.
 	 * @return the corresponding wrapped key name. 
 	 */
-	public ContentName getWrappedKeyNameForPrincipal(boolean isGroup, String principalName, CCNTime principalVersion) {
+	public ContentName getWrappedKeyNameForPrincipal(PrincipalInfo pi) {
 		ContentName principalLinkName = new ContentName(_namePrefix, 
-				AccessControlProfile.principalInfoToNameComponent(isGroup,
-																  principalName,
-																  principalVersion));
+				AccessControlProfile.principalInfoToNameComponent(pi));
 		return principalLinkName;
 	}
 	
@@ -369,7 +367,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	public ContentName getWrappedKeyNameForPrincipal(ContentName principalPublicKeyName) throws VersionMissingException {
 		PrincipalInfo info = AccessControlProfile.parsePrincipalInfoFromPublicKeyName(_manager.groupManager().isGroup(principalPublicKeyName),
 																					  principalPublicKeyName);
-		return getWrappedKeyNameForPrincipal(info.isGroup(), info.friendlyName(), info.versionTimestamp());
+		return getWrappedKeyNameForPrincipal(info);
 	}
 
 	/**

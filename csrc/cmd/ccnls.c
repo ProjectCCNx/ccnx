@@ -167,8 +167,10 @@ incoming_content(
 void
 usage(const char *prog)
 {
-    errno = EINVAL;
-    perror(prog);
+    fprintf(stderr, "Usage: %s uri\n"
+            "   Prints names with uri as prefix\n"
+            "     environment var CCN_LINGER is no-data timeout (seconds) default 0.5s\n"
+            "     environment var CCN_VERIFY indicates signature verification is required (non-zero)\n", prog);
     exit(1);
 }
 
