@@ -38,6 +38,7 @@ import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.test.Flosser;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.Assert;
@@ -47,6 +48,11 @@ import org.junit.Test;
 
 
 public class WrappedKeyTest {
+
+	/**
+	 * Handle naming for the test
+	 */
+	static CCNTestHelper testHelper = new CCNTestHelper(PublicKeyObjectTestRepo.class);
 
 	public static KeyPair wrappingKeyPair = null;
 	public static KeyPair wrappedKeyPair = null;
@@ -138,7 +144,8 @@ public class WrappedKeyTest {
 		sr.nextBytes(key);
 		wrappedAESKey = new SecretKeySpec(key, "AES");
 		
-		storedKeyName = ContentName.fromNative("/test/content/File1.txt/_access_/NK");
+		storedKeyName = new ContentName(testHelper.getClassNamespace(), 
+										ContentName.fromNative("/test/content/File1.txt/_access_/NK").components());
 	}
 
 	@Test

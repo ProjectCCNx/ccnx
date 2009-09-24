@@ -40,16 +40,20 @@ import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.test.Flosser;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
-
-
 public class PublicKeyObjectTestRepo {
+
+
+	/**
+	 * Handle naming for the test
+	 */
+	static CCNTestHelper testHelper = new CCNTestHelper(PublicKeyObjectTestRepo.class);
 
 	public static KeyPair pair1 = null;
 	public static KeyPair pair2 = null;
@@ -94,7 +98,7 @@ public class PublicKeyObjectTestRepo {
 	    g.initialize(192);
 	    eciesPair = g.generateKeyPair();
 	     
-	    namespace = ContentName.fromNative("/parc/Users");
+	    namespace = ContentName.fromNative(testHelper.getClassNamespace(), "Users");
 	    for (int i=0; i < storedKeyNames.length; ++i) {
 		    int randomTrial = new Random().nextInt(10000);
 			storedKeyNames[i][0] = ContentName.fromNative(namespace, "testRSAUser-" + Integer.toString(randomTrial), "KEY");

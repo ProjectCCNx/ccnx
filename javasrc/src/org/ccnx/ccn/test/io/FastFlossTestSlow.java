@@ -27,6 +27,7 @@ import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.test.Flosser;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -41,6 +42,7 @@ public class FastFlossTestSlow {
 	public static Random random = new Random();
 	public static CCNHandle readLibrary;
 	public static CCNHandle writeLibrary;
+	public static CCNTestHelper testHelper = new CCNTestHelper(FastFlossTestSlow.class);
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -52,7 +54,8 @@ public class FastFlossTestSlow {
 	public void fastFlossTest() {
 		Flosser flosser = null;
 		try {
-			ContentName ns = ContentName.fromNative("/test/content/media/bigMediaTests/FlosserFile");			
+			ContentName namespace = testHelper.getTestNamespace("fastFlossTest");
+			ContentName ns = ContentName.fromNative(namespace, "FlossFile");
 			flosser = new Flosser(ns);
 			CCNVersionedOutputStream vos = new CCNVersionedOutputStream(ns, writeLibrary);
 			streamData(vos);
@@ -68,7 +71,8 @@ public class FastFlossTestSlow {
 	@Test
 	public void fastRepoTest() {
 		try {
-			ContentName ns = ContentName.fromNative("/test/content/media/bigMediaTests/RepoFile");			
+			ContentName namespace = testHelper.getTestNamespace("fastRepoTest");			
+			ContentName ns = ContentName.fromNative(namespace, "RepoFile");
 			RepositoryVersionedOutputStream vos = new RepositoryVersionedOutputStream(ns, writeLibrary);
 			streamData(vos);
 		} catch (Exception e) {

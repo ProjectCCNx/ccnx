@@ -20,7 +20,6 @@ package org.ccnx.ccn.test.io.content;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InvalidObjectException;
-import java.util.Random;
 import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
@@ -42,6 +41,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.PublisherID.PublisherType;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.test.Flosser;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -58,9 +58,13 @@ import org.junit.Test;
  */
 public class CCNNetworkObjectTest {
 	
-	static ContentName namespace;
-	static ContentName stringObjName;
-	static ContentName collectionObjName;
+	/**
+	 * Handle naming for the test
+	 */
+	static CCNTestHelper testHelper = new CCNTestHelper(CCNNetworkObjectTest.class);
+
+	static String stringObjName = "StringObject";
+	static String collectionObjName = "CollectionObject";
 	static String prefix = "CollectionObject-";
 	static ContentName [] ns = null;
 	
@@ -109,13 +113,10 @@ public class CCNNetworkObjectTest {
 		Log.setLevel(Level.FINE);
 		
 		handle = CCNHandle.open();
-		namespace = ContentName.fromNative("/parc/test/data/CCNNetworkObjectTest-" + + new Random().nextInt(10000));
-		stringObjName = ContentName.fromNative(namespace, "StringObject");
-		collectionObjName = ContentName.fromNative(namespace, "CollectionObject");
 		
 		ns = new ContentName[NUM_LINKS];
 		for (int i=0; i < NUM_LINKS; ++i) {
-			ns[i] = ContentName.fromNative(namespace, "Links", prefix+Integer.toString(i));
+			ns[i] = ContentName.fromNative(testHelper.getClassNamespace(), "Links", prefix+Integer.toString(i));
 		}
 		Arrays.fill(publisherid1, (byte)6);
 		Arrays.fill(publisherid2, (byte)3);
@@ -161,7 +162,7 @@ public class CCNNetworkObjectTest {
 		CCNHandle lput = CCNHandle.open();
 		CCNHandle lget = CCNHandle.open();
 		
-		ContentName testName = ContentName.fromNative(stringObjName, "testVersioning");
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testVersioning"), stringObjName);
 		try {
 
 			CCNStringObject so = new CCNStringObject(testName, "First value", lput);
@@ -208,7 +209,7 @@ public class CCNNetworkObjectTest {
 		// object than a collection.
 		CCNHandle lput = CCNHandle.open();
 		CCNHandle lget = CCNHandle.open();
-		ContentName testName = ContentName.fromNative(stringObjName, "testSaveToVersion");
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testSaveToVersion"), stringObjName);
 		try {
 
 			CCNTime desiredVersion = CCNTime.now();
@@ -239,7 +240,7 @@ public class CCNNetworkObjectTest {
 	@Test
 	public void testEmptySave() throws Exception {
 		boolean caught = false;
-		ContentName testName = ContentName.fromNative(stringObjName, "testEmptySave");
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testEmptySave"), collectionObjName);
 		try {
 			CollectionObject emptycoll = 
 				new CollectionObject(testName, (Collection)null, handle);
@@ -260,7 +261,7 @@ public class CCNNetworkObjectTest {
 	@Test
 	public void testStreamUpdate() throws Exception {
 
-		ContentName testName = ContentName.fromNative(collectionObjName, "testStreamUpdate");
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testStreamUpdate"), collectionObjName);
 		try {
 			CollectionObject testCollectionObject = new CollectionObject(testName, small1, CCNHandle.open());
 			setupNamespace(testName);
@@ -313,8 +314,8 @@ public class CCNNetworkObjectTest {
 	
 	@Test
 	public void testVersionOrdering() throws Exception {
-		ContentName testName = ContentName.fromNative(collectionObjName, "testVersionOrdering", "name1");
-		ContentName testName2 = ContentName.fromNative(collectionObjName, "testVersionOrdering", "name2");
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name1");
+		ContentName testName2 = ContentName.fromNative(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name2");
 
 		try {
 
@@ -341,8 +342,8 @@ public class CCNNetworkObjectTest {
 	
 	@Test
 	public void testUpdateOtherName() throws Exception {
-		ContentName testName = ContentName.fromNative(collectionObjName, "testUpdateOtherName", "name1");
-		ContentName testName2 = ContentName.fromNative(collectionObjName, "testUpdateOtherName", "name2");
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name1");
+		ContentName testName2 = ContentName.fromNative(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name2");
 		try {
 
 			CollectionObject c0 = new CollectionObject(testName, empty, handle);
@@ -378,7 +379,7 @@ public class CCNNetworkObjectTest {
 	@Test
 	public void testUpdateInBackground() throws Exception {
 		
-		ContentName testName = ContentName.fromNative(stringObjName, "testUpdateInBackground", "name1");
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateInBackground"), stringObjName, "name1");
 		try {
 			CCNStringObject c0 = new CCNStringObject(testName, (String)null, CCNHandle.open());
 			c0.updateInBackground();
@@ -416,7 +417,7 @@ public class CCNNetworkObjectTest {
 	
 	@Test
 	public void testSaveAsGone() throws Exception {
-		ContentName testName = ContentName.fromNative(collectionObjName, "testSaveAsGone");
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testSaveAsGone"), collectionObjName);
 
 		try {
 			CollectionObject c0 = new CollectionObject(testName, empty, handle);
@@ -463,7 +464,7 @@ public class CCNNetworkObjectTest {
 	
 	@Test
 	public void testUpdateDoesNotExist() throws Exception {
-		ContentName testName = ContentName.fromNative(collectionObjName, "testUpdateDoesNotExist");
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateDoesNotExist"), collectionObjName);
 		try {
 			CCNStringObject so = new CCNStringObject(testName, handle);
 			setupNamespace(testName);

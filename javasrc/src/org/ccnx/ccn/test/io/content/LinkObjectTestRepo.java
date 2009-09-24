@@ -33,28 +33,29 @@ import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
-
 /**
- * @author smetters
- *
+ * Test Link objects, written to a repository.
  */
 public class LinkObjectTestRepo {
 
-	static ContentName baseName;
+
+	/**
+	 * Handle naming for the test
+	 */
+	static CCNTestHelper testHelper = new CCNTestHelper(LinkObjectTestRepo.class);
+
 	static CCNHandle getLibrary;
 	static CCNHandle putLibrary;
-	static Random random;
+	
 	/**
 	 * @throws java.lang.Exception
 	 */
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		random = new Random();
-		baseName = ContentName.fromNative("/libraryTest/LinkObjectTestRepo-" + random.nextInt(10000));
 		putLibrary = CCNHandle.open();
 		getLibrary = CCNHandle.open();
 	}
@@ -62,12 +63,11 @@ public class LinkObjectTestRepo {
 	@Test
 	public void testLinks() throws Exception {
 		
-		ContentName testPrefix  = ContentName.fromNative(baseName, "testLinks");
-		ContentName nonLinkName = ContentName.fromNative(testPrefix, "myNonLink");
-		ContentName linkName = ContentName.fromNative(testPrefix, "myLink");
+		ContentName nonLinkName = ContentName.fromNative(testHelper.getTestNamespace("testLinks"), "myNonLink");
+		ContentName linkName = ContentName.fromNative(testHelper.getTestNamespace("testLinks"), "myLink");
 		
 		// Write something that isn't a collection
-		CCNStringObject so = new CCNStringObject(nonLinkName, "This is not a link, number " + random.nextInt(10000), putLibrary);
+		CCNStringObject so = new CCNStringObject(nonLinkName, "This is not a link, number " + new Random().nextInt(10000), putLibrary);
 		so.saveToRepository();
 		
 		try {

@@ -51,6 +51,7 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.test.Flosser;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -66,7 +67,7 @@ public class CCNSecureInputStreamTest {
 		int encrLength = 25*1024+301;
 		byte [] encrData;
 		public StreamFactory(String file_name) throws NoSuchAlgorithmException, XMLStreamException, IOException, InterruptedException {
-			name = ContentName.fromNative(defaultStreamName, file_name);
+			name = ContentName.fromNative(testHelper.getClassNamespace(), file_name);
 			flosser.handleNamespace(name);
 			keys = ContentKeys.generateRandomKeys();
 			writeFile(encrLength);
@@ -206,7 +207,11 @@ public class CCNSecureInputStreamTest {
 		}
 	}
 
-	static ContentName defaultStreamName;
+	/**
+	 * Handle naming for the test
+	 */
+	static CCNTestHelper testHelper = new CCNTestHelper(CCNSecureInputStreamTest.class);
+	
 	static CCNHandle outputLibrary;
 	static CCNHandle inputLibrary;
 	static Flosser flosser;
@@ -222,10 +227,7 @@ public class CCNSecureInputStreamTest {
 		SystemConfiguration.setDebugFlag(SystemConfiguration.DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
 		outputLibrary = CCNHandle.open();
 		inputLibrary = CCNHandle.open();
-		
-		// Write a set of output
-		defaultStreamName = ContentName.fromNative("/test/CCNSecureInputStreamTest-" + new Random().nextInt(10000));
-		
+				
 		flosser = new Flosser();
 		
 		basic = new StreamFactory("basic.txt"){

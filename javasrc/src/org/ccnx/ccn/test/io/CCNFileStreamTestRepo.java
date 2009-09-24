@@ -34,22 +34,25 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 
 /**
- * @author smetters
- *
+ * Test class for CCNFileStream; tests writing file streams to a repository.
  */
 public class CCNFileStreamTestRepo {
 	
-	static ContentName baseName;
-	static ContentName fileName;
-	static Random random = new Random();
 	static CCNHandle writeLib;
 	static CCNHandle readLib;
+	static Random random = new Random();
+	
+	/**
+	 * Handle naming for the test
+	 */
+	static CCNTestHelper testHelper = new CCNTestHelper(CCNFileStreamTestRepo.class);
 	
 	static final int BUF_SIZE = 1024;
 	
@@ -73,14 +76,13 @@ public class CCNFileStreamTestRepo {
 	public static void setUpBeforeClass() throws Exception {
 		writeLib = CCNHandle.open();
 		readLib = CCNHandle.open();
-		baseName = ContentName.fromNative("/test/CCNFileStreamTestRepo-" + random.nextInt(10000));
 	}
 	
 	@Test
 	public void testRepoFileOutputStream() throws Exception {
 		
 		int fileSize = random.nextInt(50000);
-		fileName = ContentName.fromNative(baseName, "testRepoFileOutputStream", "outputFile.bin");
+		ContentName fileName = ContentName.fromNative(testHelper.getTestNamespace("testRepoFileOutputStream"), "outputFile.bin");
 		
 		// Write to a repo. Read it back in. See if repo gets the header.
 		RepositoryFileOutputStream rfos = new RepositoryFileOutputStream(fileName, writeLib);
