@@ -19,7 +19,7 @@ For more information about CCNx, see our website at http://www.ccnx.org
 This file provides introductory information in the following sections:
 
 1. Package contents
-2. Supported platforms
+2. Supported platforms and development tools
 3. Build and install instructions
 4. Running the programs
 5. Runtime files
@@ -113,7 +113,7 @@ on Ubuntu Linux, MacOS, Solaris, and FreeBSD.  Some packaging for
 Cygwin is currently provided but is not fully supported and there is
 no other support for Windows platforms yet.
 
-C LANGUAGE REQUIREMENTS
+C LANGUAGE REQUIREMENTS AND TOOLS
 
 For parts of the system written in C, you will require a standard
 toolchain including gcc, make etc. and the following libraries which
@@ -133,7 +133,7 @@ for more information.
 See csrc/README* files for further notes about what needs to be installed or
 configured on each OS.
 
-JAVA LANGUAGE REQUIREMENTS
+JAVA LANGUAGE REQUIREMENTS AND TOOLS
 
 For parts of the system written in Java, CCNx code is tested with Sun
 Java JDK 1.5 and 1.6 only, with ant used as the canonical build tool.
@@ -143,9 +143,15 @@ You will need:
   extra libraries for JDK1.5 only (see below)
 
 Eclipse .project and .classpath files are included in the distribution
-so you can create Eclipse projects easily.  There are two Eclipse
-Java projects defined: one in javasrc (Eclipse name Java_CCN) and one in
-apps/ccnChat (Eclipse name ccnChat).
+so you can create Eclipse projects easily that will resolve
+dependencies correctly.  There are two Eclipse Java projects defined:
+one in javasrc (Eclipse project name CCNx-Java) and one in apps/ccnChat
+(Eclipse project name ccnChat).  To import one of these projects into
+your Eclipse workspace, choose File/Import... from the menu, open the
+General category in the Import dialog and select "Existing Projects
+into Workspace".  Type in (or browse to) the appropriate directory and
+you should see the named Project listed and selected so you can click
+Finish to complete the import.
 
 Please let us know if JDK1.5 support is important to you, as we plan
 to eliminate it in the near future.  The CCNx distribution includes
