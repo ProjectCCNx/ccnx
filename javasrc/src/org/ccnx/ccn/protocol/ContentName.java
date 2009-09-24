@@ -104,6 +104,26 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			}
 		}
 	}
+	
+	/**
+	 * Now that components() returns an ArrayList<byte []>, make a constructor that takes that
+	 * as input.
+	 * @param parent
+	 * @param childComponents the additional name components to add at the end of parent
+	 */
+	public ContentName(ContentName parent, ArrayList<byte []> childComponents) {
+		this(parent.count() + 
+				((null != childComponents) ? childComponents.size() : 0), parent.components());
+		if (null != childComponents) {
+			for (byte [] b : childComponents) {
+				if (null == b)
+					continue;
+				byte [] c = new byte[b.length];
+				System.arraycopy(b,0,c,0,b.length);
+				_components.add(c);
+			}
+		}
+	}
 
 	public ContentName(ContentName parent, byte[] name1, byte[] name2) {
 		this (parent.count() +
