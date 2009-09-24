@@ -19,6 +19,7 @@ package org.ccnx.ccn.protocol;
 
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -214,5 +215,14 @@ public class CCNTime extends Timestamp {
 	 */
 	public static CCNTime now() {
 		return new CCNTime();
+	}
+	
+	/**
+	 * Generate a string representation of a CCNTime containing only date and HH:MM:SS,
+	 * not milliseconds or nanoseconds.
+	 */
+	public String toShortString() {
+		SimpleDateFormat df = new SimpleDateFormat("yy-MM-dd-HH:mm:ss");
+		return df.format(this);
 	}
 }
