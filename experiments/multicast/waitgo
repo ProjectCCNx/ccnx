@@ -14,8 +14,9 @@
 #
 . ./settings
 export CCN_LINGER=60
-ccndsmoketest presence.ccnb
-until ccnget /experiments/multicast/GO >/dev/null; do
-   echo `hostname` waiting for go signal - `date`
-   ccndsmoketest presence.ccnb
+ccndsmoketest presence.ccnb >&2
+until ccnget -c /experiments/multicast/GO >/tmp/gostamp$$; do
+   echo `hostname` waiting for go signal - `date` >&2
+   ccndsmoketest presence.ccnb >&2
 done
+cat /tmp/gostamp$$ && rm /tmp/gostamp$$

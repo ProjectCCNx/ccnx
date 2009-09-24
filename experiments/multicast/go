@@ -13,4 +13,4 @@
 # FOR A PARTICULAR PURPOSE.
 #
 . ./settings
-date | ccnput -x 1 /experiments/multicast/GO
+echo ${1:-run}-`date "+%s"` | ccnput -x 1 /experiments/multicast/GO

@@ -14,7 +14,7 @@
 #
 . ./settings
 ccnrm /experiments/multicast/DATA
-./waitgo
+export CCN_EXPERIMENT_ID="`./waitgo`"
 netstat -s | grep 'dropped due to full socket buffers' > netstat.before
 time ccncatchunks2 -p $PIPELINE /experiments/multicast/DATA/$DATASET | dd of=/dev/null
 netstat -s | grep 'dropped due to full socket buffers' | diff  netstat.before -
