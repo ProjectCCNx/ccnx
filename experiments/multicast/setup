@@ -23,3 +23,9 @@ mkdir -p bin  lib include
 (cd csrc/ccnd && make test)
 cd experiments/multicast
 ./startccnd
+echo ==== suggested commands to execute ====
+echo cd `pwd`
+cat <<'EOF'
+PS1='\t \h:\W \$ '
+EOF
+echo =======================================
