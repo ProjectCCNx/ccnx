@@ -32,6 +32,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
@@ -107,7 +108,8 @@ public class RepositoryServer {
 				}
 			
 				if (_currentListeners.size() == 0 && _pendingNameSpaceChange) {
-					Log.finer("InterestTimer - resetting nameSpace");
+					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+						Log.finer("InterestTimer - resetting nameSpace");
 					try {
 						resetNameSpace();
 					} catch (IOException e) {
@@ -184,7 +186,8 @@ public class RepositoryServer {
 				resetNameSpace();
 			else
 				_pendingNameSpaceChange = true;
-			Log.finer("ResetNameSpaceFromHandler: pendingNameSpaceChange is " + _pendingNameSpaceChange);
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+				Log.finer("ResetNameSpaceFromHandler: pendingNameSpaceChange is {0}", _pendingNameSpaceChange);
 		}	
 	}
 	
@@ -200,12 +203,14 @@ public class RepositoryServer {
 				getUnMatched(_repoFilters, newNameSpace, unMatchedOld, unMatchedNew);
 				for (NameAndListener oldName : unMatchedOld) {
 					_handle.unregisterFilter(oldName.name, oldName.listener);
-					Log.info("Dropping namespace " + oldName.name);
+					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+						Log.info("Dropping namespace {0}", oldName.name);
 				}
 				for (ContentName newName : unMatchedNew) {
 					RepositoryInterestHandler iHandler = new RepositoryInterestHandler(this);
 					_handle.registerFilter(newName, iHandler);
-					Log.info("Adding namespace " + newName);
+					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+						Log.info("Adding namespace {0}", newName);
 					newIL.add(new NameAndListener(newName, iHandler));
 				}
 				_repoFilters = newIL;
@@ -319,28 +324,30 @@ public class RepositoryServer {
 		if(ner!=null && ner.getPrefix()!=null && ner.hasNames()){
 			CollectionObject co = null;
 			try{
-				Log.finer("returning names for prefix: {0}", ner.getPrefix());
+				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+					Log.finer("returning names for prefix: {0}", ner.getPrefix());
 
-				for (int x = 0; x < ner.getNames().size(); x++) {
-					Log.finer("name: {0}", ner.getNames().get(x));
+				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+					for (int x = 0; x < ner.getNames().size(); x++) {
+						Log.finer("name: {0}", ner.getNames().get(x));
+					}
 				}
 				if (ner.getTimestamp()==null)
-					Log.info("node.timestamp was null!!!");
+					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+						Log.info("node.timestamp was null!!!");
 				Collection cd = ner.getNamesInCollectionData();
 				co = new CollectionObject(ner.getPrefix(), cd, _handle);
 				// TODO this is only temporary until flow control issues can
 				// be worked out here
 				co.disableFlowControl();
 				co.save(ner.getTimestamp());
-				Log.finer("saved collection object: {0}", co.getVersionedName());
+				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+					Log.finer("saved collection object: {0}", co.getVersionedName());
 				return;
 
 			} catch(IOException e){
 				Log.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+co.getVersionedName()+")", e);
 			}
-
 		}
 	}
-	
-
 }

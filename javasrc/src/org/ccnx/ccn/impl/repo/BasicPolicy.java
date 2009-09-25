@@ -29,6 +29,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.XMLEvent;
 
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -157,7 +158,9 @@ public class BasicPolicy implements Policy {
 			return false;	// Wasn't really an update stream (probably a header)
 		}
 		
-		Log.info("Policy file update requested");
+		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+			Log.info("Policy file update requested");
+		}
 		XMLEvent event = reader.nextEvent();
 		_version = null;
 		_localNameMatched = false;
@@ -240,7 +243,9 @@ public class BasicPolicy implements Policy {
 					switch (PolicyValue.valueFromString(value)) {
 					case NAMESPACE:
 						String charValue = event.asCharacters().getData();
-						Log.fine("New namespace requested: " + charValue);
+						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+							Log.fine("New namespace requested: " + charValue);
+						}
 						// Note - need to synchronize on "this" to synchronize with events reading
 						// the name space in the policy clients which have access only to this object
 						synchronized (this) {

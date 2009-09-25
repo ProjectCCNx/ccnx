@@ -47,6 +47,7 @@ public interface RepositoryStore {
 	public static final String REPO_POLICY = "policy.xml";
 	public static final String REPO_NAMESPACE = "/ccn/repository";
 	public static final String REPO_DATA = "data";
+	public static final String REPO_LOGGING = "repo";
 	
 	
 	/**

@@ -22,6 +22,7 @@ import java.util.HashMap;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -175,7 +176,9 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	public synchronized ContentName getPolicyName() {
 		if (null == _policyName) {
 			_policyName = BasicPolicy.getPolicyName(_globalPrefix, _localName);
-			Log.info("REPO: Policy name for repository: {0}", _policyName);
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+				Log.info("REPO: Policy name for repository: {0}", _policyName);
+			}
 		}
 		return _policyName;
 	}

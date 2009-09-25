@@ -28,6 +28,7 @@ import java.util.logging.Level;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -51,17 +52,20 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 */
 	public boolean checkPolicyUpdate(ContentObject co)
 			throws RepositoryException {
-		Log.info("Got potential policy update: {0}, expected prefix {1}.", co.name(), _info.getPolicyName());
+		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+			Log.info("Got potential policy update: {0}, expected prefix {1}.", co.name(), _info.getPolicyName());
 		if (_info.getPolicyName().isPrefixOf(co.name())) {
 			ByteArrayInputStream bais = new ByteArrayInputStream(co.content());
 			try {
 				if (_policy.update(bais, true)) {
 					ContentName policyName = VersioningProfile.addVersion(
 							ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY));
-					Log.info("REPO: got policy update, global name {0} local name {1}, saving to {2}", _policy.getGlobalPrefix(), _policy.getLocalName(), policyName);
+					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+						Log.info("REPO: got policy update, global name {0} local name {1}, saving to {2}", _policy.getGlobalPrefix(), _policy.getLocalName(), policyName);
 					ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
 	   				saveContent(policyCo);
-	   				Log.info("REPO: Saved policy to repository: {0}", policyCo.name());
+	   				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+	   					Log.info("REPO: Saved policy to repository: {0}", policyCo.name());
 	   				return true;
 				}
 			} catch (Exception e) {
@@ -163,7 +167,8 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	public void readPolicy(String localName) throws RepositoryException {
 		if (null != localName) {
 			try {
-				Log.info("REPO: reading policy from network: " + REPO_NAMESPACE+"/" + localName + "/" + REPO_POLICY);
+				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+					Log.info("REPO: reading policy from network: {0}/{1}/{2}", REPO_NAMESPACE, localName, REPO_POLICY);
 				ContentObject policyObject = getContent(
 						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + localName + "/" + REPO_POLICY)));
 				if (policyObject != null) {

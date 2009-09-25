@@ -105,7 +105,7 @@ public class RepositoryDaemon extends Daemon {
 		try {
 			_handle = CCNHandle.open();
 
-			SystemConfiguration.setLogging("repo", false);
+			SystemConfiguration.setLogging(RepositoryStore.REPO_LOGGING, false);
 			String repositoryRoot = null;
 			File policyFile = null;
 			String localName = null;
@@ -159,7 +159,7 @@ public class RepositoryDaemon extends Daemon {
 			}
 
 			if (!useLogging)
-				SystemConfiguration.setLogging("repo", false);
+				SystemConfiguration.setLogging(RepositoryStore.REPO_LOGGING, false);
 			
 			if (_repo == null)	// default lower half
 				_repo = new LogStructRepoStore();

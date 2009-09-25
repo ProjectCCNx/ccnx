@@ -67,7 +67,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		private ContentObject _content;
 		
 		private DataHandler(ContentObject co) {
-			if (SystemConfiguration.getLogging("repo"))
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
 				Log.info("Saw data: {0}", co.name());
 			_content = co;
 		}
@@ -82,7 +82,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		 */
 		public void run() {
 			try {
-				if (SystemConfiguration.getLogging("repo")) {
+				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
 					Log.finer("Saving content in: " + _content.name().toString());
 				}
 				
@@ -111,7 +111,9 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_server = server;
 		_handle = server.getHandle();
 		_timer = new Date().getTime();
-		Log.info("Starting up repository listener on original interest: " + origInterest + " interest " + interest);
+		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+			Log.info("Starting up repository listener on original interest: {0} interest {1}", origInterest, interest);
+		}
 	}
 	
 	/**
@@ -189,7 +191,9 @@ public class RepositoryDataListener implements CCNInterestListener {
 						cancelHigherInterests(_finalBlockID);
 				}
 				
-				Log.finest("REPO: Got block: " + co.name() + " expressing " + nOutput + " more interests, current block " + _currentBlock + " final block " + _finalBlockID + " last block? " + isFinalBlock);
+				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+					Log.finest("REPO: Got block: " + co.name() + " expressing {0} more interests, current block {1} final block {2} last block? {3}", co.name(),nOutput, _currentBlock, _finalBlockID, isFinalBlock);
+				}
 				for (int i = 0; i < nOutput; i++) {
 					ContentName name = SegmentationProfile.segmentName(co.name(), firstInterestToRequest + i);
 					// DKS - should use better interest generation to only get segments (TBD, in SegmentationProfile)

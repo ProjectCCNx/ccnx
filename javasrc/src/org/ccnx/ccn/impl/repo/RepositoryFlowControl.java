@@ -81,7 +81,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		
 		Interest interestToReturn = null;
 		for (ContentObject co : results) {
-			Log.info("handleContent: got potential repo message: " + co.name());
+			Log.info("handleContent: got potential repo message: {0}", co.name());
 			if (co.signedInfo().getType() != ContentType.DATA)
 				continue;
 			RepositoryInfo repoInfo = new RepositoryInfo();
@@ -104,7 +104,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 					break;
 				}
 			} catch (XMLStreamException e) {
-				Log.info("XMLStreamException parsing RepositoryInfo: " + e.getMessage() + " from content object " + co.name() + ", skipping.");
+				Log.info("XMLStreamException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());
 			}
 		}
 		// So far, we seem never to have anything to return.
@@ -119,7 +119,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	private class RepoAckHandler implements BasicNameEnumeratorListener {
 
 		public int handleNameEnumerator(ContentName prefix, ArrayList<ContentName> names) {
-			Log.info("Enumeration response for " + names.size() + " children of " + prefix + ".");
+			Log.info("Enumeration response for {0} children of {1}.",  names.size(), prefix);
 			for (ContentName name : names)
 				ack(new ContentName(prefix, name.component(0)));
 			return names.size();
@@ -218,7 +218,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			} while (interrupted || (!client._initialized && ((getTimeout() + startTime) > System.currentTimeMillis())));
 		}
 		if (!client._initialized) {
-			Log.info("No response from a repository, cannot add name space : " + name);
+			Log.warning("No response from a repository, cannot add name space : " + name);
 			throw new IOException("No response from a repository for " + name);
 		}
 	}
@@ -229,10 +229,10 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 */
 	public void ack(ContentName name) {
 		synchronized (_holdingArea) {
-			Log.fine("Handling ACK " + name);
+			Log.fine("Handling ACK {0}", name);
 			if (_holdingArea.get(name) != null) {
 				ContentObject co = _holdingArea.get(name);
-				Log.fine("CO " + co.name() + " acked");
+				Log.fine("CO {0} acked", co.name());
 				_holdingArea.remove(co.name());
 				if (_holdingArea.size() < _highwater)
 					_holdingArea.notify();

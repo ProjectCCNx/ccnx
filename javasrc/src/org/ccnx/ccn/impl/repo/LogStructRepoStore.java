@@ -34,6 +34,7 @@ import java.util.logging.Level;
 import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -152,7 +153,9 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 						rfile.openFile = new RandomAccessFile(rfile.file, "r");
 						InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile));
 						
-						Log.fine("Creating index for " + filenames[i]);
+						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+							Log.fine("Creating index for {0}", filenames[i]);
+						}
 						while (true) {
 							FileRef ref = new FileRef();
 							ref.id = index.intValue();
@@ -166,7 +169,9 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 									tmp.decode(is);
 								}
 								else{
-									Log.info("at the end of the file");
+									if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+										Log.info("at the end of the file");
+									}
 									rfile.openFile.close();
 									rfile.openFile = null;
 									break;
@@ -278,10 +283,14 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 
 		checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, handle, globalFromArgs);
 		globalPrefix = checkName != null ? checkName : globalPrefix;
-		Log.info("REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
+		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+			Log.info("REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
+		}
 		try {
 			_policy.setGlobalPrefix(globalPrefix);
-			Log.info("REPO: initializing policy location: {0} for global prefix {1} and local name {2}", localName, globalPrefix,  localName);
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+				Log.info("REPO: initializing policy location: {0} for global prefix {1} and local name {2}", localName, globalPrefix,  localName);
+			}
 		} catch (MalformedContentNameStringException e2) {
 			throw new RepositoryException(e2.getMessage());
 		}
@@ -312,7 +321,9 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			}
 		}
 		if (!nameSpaceOK) {
-			Log.info("Repo rejecting content: {0}, not in registered namespace.", content.name());
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+				Log.info("Repo rejecting content: {0}, not in registered namespace.", content.name());
+			}
 			return null;
 		}
 		try {	
@@ -328,9 +339,13 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
 				_index.insert(content, ref, System.currentTimeMillis(), this, ner);
 				if(ner==null || ner.getPrefix()==null){
-					Log.fine("new content did not trigger an interest flag");
+					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+						Log.fine("new content did not trigger an interest flag");
+					}
 				} else {
-					Log.fine("new content was added where there was a name enumeration response interest flag");
+					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+						Log.fine("new content was added where there was a name enumeration response interest flag");
+					}
 				}
 				return ner;
 			}
@@ -416,7 +431,9 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		// Debug: dump names tree to file
 		File namesFile = new File(_repositoryFile, DEBUG_TREEDUMP_FILE);
 		try {
-			Log.info("Dumping names to " + namesFile.getAbsolutePath() + " (len " + nodelen + ")");
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+				Log.info("Dumping names to " + namesFile.getAbsolutePath() + " (len " + nodelen + ")");
+			}
 			PrintStream namesOut = new PrintStream(namesFile);
 			if (null != _index) {
 				_index.dumpNamesTree(namesOut, nodelen);

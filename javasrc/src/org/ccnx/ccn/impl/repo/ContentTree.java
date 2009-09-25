@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -150,7 +151,9 @@ public class ContentTree {
 	 */
 	public boolean insert(ContentObject content, ContentRef ref, long ts, ContentGetter getter, NameEnumerationResponse ner) {
 		final ContentName name = new ContentName(content.name(), content.contentDigest());
-		Log.fine("inserting content: "+name.toString());
+		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+			Log.fine("inserting content: {0}", name);
+		}
 		TreeNode node = _root; // starting point
 		assert(null != _root);
 		boolean added = false;
@@ -160,7 +163,9 @@ public class ContentTree {
 				//Library.finest("getting node for component: "+new String(component));
 				TreeNode child = node.getChild(component);
 				if (null == child) {
-					Log.finest("child was null: adding here");
+					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+						Log.finest("child was null: adding here");
+					}
 					// add it
 					added = true;
 					child = new TreeNode();
@@ -183,13 +188,17 @@ public class ContentTree {
 					if (node.interestFlag && (ner==null || ner.getPrefix()==null)){
 						//we have added something to this node and someone was interested
 						//we need to get the child names and the prefix to send back
-						Log.info("we added at least one child, need to send a name enumeration response");
+						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+							Log.info("we added at least one child, need to send a name enumeration response");
+						}
 						ContentName prefix = name.cut(component);
 	
 						prefix = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 						//prefix = VersioningProfile.addVersion(prefix, new CCNTime(node.timestamp));
-						Log.info("prefix for FastNEResponse: "+prefix);
-						Log.info("response name will be: "+ VersioningProfile.addVersion(new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), new CCNTime(node.timestamp)));
+						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+							Log.info("prefix for FastNEResponse: {0}"+prefix);
+							Log.info("response name will be: {0}", VersioningProfile.addVersion(new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), new CCNTime(node.timestamp)));
+						}
 	
 						ArrayList<ContentName> names = new ArrayList<ContentName>();
 						// the parent has children we need to return
@@ -206,7 +215,9 @@ public class ContentTree {
 						ner.setPrefix(prefix);
 						ner.setNameList(names);
 						ner.setTimestamp(new CCNTime(node.timestamp));
-						Log.info("resetting interestFlag to false");
+						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+							Log.info("resetting interestFlag to false");
+						}
 						node.interestFlag = false;
 					}
 				}
@@ -246,7 +257,9 @@ public class ContentTree {
 			node.content.add(ref);
 			node.oneContent = null;
 		}
-		Log.fine("Inserted: " + content.name());
+		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+			Log.fine("Inserted: {0}", content.name());
+		}
 		return true;
 	}
 
@@ -528,7 +541,9 @@ public class ContentTree {
 		//first chop off NE marker
 		ContentName prefix = interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 
-		Log.fine("checking for content names under: "+prefix);
+		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+			Log.fine("checking for content names under: {0}", prefix);
+		}
 		
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
@@ -536,9 +551,13 @@ public class ContentTree {
 		    potentialCollectionName = SegmentationProfile.segmentName(potentialCollectionName, SegmentationProfile.baseSegment());
 			//check if we should respond...
 			if (interest.matches(potentialCollectionName, null)) {
-				Log.info("the new version is a match with the interest!  we should respond: interest = "+interest+" potentialCollectionName = "+potentialCollectionName);
+				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+					Log.info("the new version is a match with the interest!  we should respond: interest = {0} potentialCollectionName = {1}", interest, potentialCollectionName);
+				}
 			} else {
-				Log.info("the new version doesn't match, no response needed: interest = "+interest+" would be collection name: "+potentialCollectionName);
+				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+					Log.info("the new version doesn't match, no response needed: interest = {0} would be collection name: {1}", interest, potentialCollectionName);
+				}
 				parent.interestFlag = true;
 				return null;
 			}
@@ -554,8 +573,11 @@ public class ContentTree {
 				}
 			}
 			
-			if (names.size()>0)
-				Log.finer("sending back "+names.size()+" names in the enumeration response for prefix "+prefix);
+			if (names.size()>0) {
+				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+					Log.finer("sending back {0} names in the enumeration response for prefix {1}", names.size(), prefix);
+				}
+			}
 			parent.interestFlag = false;
 			
 			return new NameEnumerationResponse(new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), names, new CCNTime(parent.timestamp));

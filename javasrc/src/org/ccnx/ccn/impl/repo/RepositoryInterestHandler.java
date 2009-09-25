@@ -59,8 +59,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	public int handleInterests(ArrayList<Interest> interests) {
 		for (Interest interest : interests) {
 			try {
-				if (SystemConfiguration.getLogging("repo"))
-					Log.finer("Saw interest: " + interest.name());
+				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+					Log.finer("Saw interest: {0}", interest.name());
 				if (interest.name().contains(CommandMarkers.COMMAND_MARKER_REPO_START_WRITE)) {
 					startReadProcess(interest);
 				} else if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
@@ -68,10 +68,12 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				} else {
 					ContentObject content = _server.getRepository().getContent(interest);
 					if (content != null) {
-						Log.finest("Satisfying interest: " + interest + " with content " + content.name());
+						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+							Log.finest("Satisfying interest: {0} with content {1}", interest, content.name());
 						_handle.put(content);
 					} else {
-						Log.fine("Unsatisfied interest: " + interest);
+						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+							Log.fine("Unsatisfied interest: {0}", interest);
 					}
 				}
 			} catch (Exception e) {
@@ -92,7 +94,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		synchronized (_server.getDataListeners()) {
 			for (RepositoryDataListener listener : _server.getDataListeners()) {
 				if (listener.getOrigInterest().equals(interest)) {
-					Log.info("Write request " + interest.name() + " is a duplicate, ignoring");
+					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+						Log.info("Write request {0} is a duplicate, ignoring", interest.name());
 					return;
 				}
 			}
@@ -105,13 +108,15 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		 // to allow new sessions that are within the new namespace to start but figuring out all
 		 // the locking/startup issues surrounding this is complex so for now we just don't allow it.
 		if (_server.getPendingNameSpaceState()) {
-			Log.info("Discarding write request " + interest.name() + " due to pending namespace change");
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+				Log.info("Discarding write request {0} due to pending namespace change", interest.name());
 			return;
 		}
 		
 		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
 		try {
-			Log.info("Processing write request for {0}", listeningName);
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+				Log.info("Processing write request for {0}", listeningName);
 			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null);
 			RepositoryDataListener listener = _server.addListener(interest, readInterest);
 			_server.getWriter().put(interest.name(), _server.getRepository().getRepoInfo(null), null, null,
@@ -134,9 +139,11 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 
 		if (ner!=null && ner.hasNames()) {
 			_server.sendEnumerationResponse(ner);
-			Log.fine("sending back name enumeration response "+ner.getPrefix());
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+				Log.fine("sending back name enumeration response {0}", ner.getPrefix());
 		} else {
-			Log.fine("we are not sending back a response to the name enumeration interest (interest.name() = "+interest.name()+")");
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+				Log.fine("we are not sending back a response to the name enumeration interest (interest.name() = {0})", interest.name());
 		}
 	}
 }
