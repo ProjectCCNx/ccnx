@@ -38,7 +38,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * Test Link objects, written to a repository.
+ * Test versioned Link objects, written to a repository.
  */
 public class LinkObjectTestRepo {
 

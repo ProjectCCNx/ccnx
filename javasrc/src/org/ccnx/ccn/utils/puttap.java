@@ -38,8 +38,6 @@ import org.ccnx.ccn.protocol.Interest;
  * Low-level writing of packets to file.  This program is designed to 
  * generate signed and encoded packets using only the base library facilities,
  * i.e. not even fragmentation and versioning but just basic interest and data
- * @author jthornto
- *
  */
 public class puttap implements CCNInterestListener {
 

@@ -47,8 +47,10 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+/**
+ * Test reading and writing versioned, encoded PublicKeys to a repository.
+ */
 public class PublicKeyObjectTestRepo {
-
 
 	/**
 	 * Handle naming for the test

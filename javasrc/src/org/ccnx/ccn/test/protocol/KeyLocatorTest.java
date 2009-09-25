@@ -35,7 +35,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-
+/**
+ * Test the KeyLocator data structure.
+ *
+ */
 public class KeyLocatorTest {
 
 	static final String rootDN = "C=US,O=Organization,OU=Organizational Unit,CN=Issuer";

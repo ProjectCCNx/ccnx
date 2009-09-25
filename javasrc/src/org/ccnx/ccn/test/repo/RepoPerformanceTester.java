@@ -39,11 +39,8 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
 /**
- * 
- * @author rasmusse
- *
+ * Part of repository test infrastructure.
  */
-
 public class RepoPerformanceTester extends CCNOutputStream {	
 
 	private static RepoPerformanceTester _rpt = new RepoPerformanceTester();

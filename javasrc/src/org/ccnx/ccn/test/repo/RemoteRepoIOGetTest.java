@@ -28,13 +28,10 @@ import org.junit.Test;
 
 
 /**
+ * Part of repository test infrastructure.
  * For now to run this you need to first run the RepoIoPutTest, then restart
  * the local ccnd, then run this
- * 
- * @author rasmusse
- *
  */
-
 public class RemoteRepoIOGetTest extends RepoTestBase {
 	
 	@Test

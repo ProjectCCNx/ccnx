@@ -40,12 +40,8 @@ import org.junit.Test;
 
 /**
  * 
- * @author rasmusse
- * 
- * NOTE: This test requires ccnd to be running
- *
+ * A test of basic Interest mechanisms, using older test infrastructure.
  */
-
 public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	
 	private static ArrayList<Integer> currentSet;

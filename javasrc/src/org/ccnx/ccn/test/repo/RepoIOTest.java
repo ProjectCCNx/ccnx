@@ -39,14 +39,11 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-/**
- * 
- * @author rasmusse
- * 
- * To run this test you must first unzip repotest.zip into the directory "repotest"
- * and then run the ccnd and the repository with that directory as its root.
- */
 
+/**
+ * Part of repository test infrastructure. Requires at least repository to be running,
+ * and RFSTest to have been run.
+ */
 public class RepoIOTest extends RepoTestBase {
 	
 	protected static String _repoTestDir = "repotest";

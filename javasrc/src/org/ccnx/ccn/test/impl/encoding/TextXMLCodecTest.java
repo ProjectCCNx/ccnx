@@ -28,7 +28,10 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
+/**
+ * Test portions of the encoder/decoder infrastructure related to encoding dates
+ * and times. Largely superseded by CCNTime.
+ */
 public class TextXMLCodecTest {
 
 	@BeforeClass

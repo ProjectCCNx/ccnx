@@ -26,7 +26,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-
+/**
+ * Test the PublisherID data structure.
+ *
+ */
 public class PublisherIDTest {
 
 	static public byte [] publisherid = new byte[32];

@@ -30,8 +30,10 @@ import org.ccnx.ccn.protocol.Interest;
 import org.junit.Test;
 
 
-// NOTE: This test requires ccnd to be running and complementary source process
-
+/**
+ * Part of the end to end test infrastructure.
+ * NOTE: This test requires ccnd to be running and complementary source process
+ */
 public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestListener {
 
 	@Test

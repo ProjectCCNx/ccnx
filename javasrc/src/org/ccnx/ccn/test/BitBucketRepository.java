@@ -30,7 +30,9 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
-
+/**
+ * Test repository backend. Should not be used in production code.
+ */
 public class BitBucketRepository implements RepositoryStore {
 	
 	public boolean checkPolicyUpdate(ContentObject co)

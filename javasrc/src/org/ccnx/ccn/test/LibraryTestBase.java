@@ -51,8 +51,9 @@ import org.junit.BeforeClass;
 /**
  * 
  * A base class for the old style of library tests. 
- * Defines a few common parameters, and a test-running framework.
- * New tests should probably not use this.
+ * Defines a few common parameters, and a test-running framework which passes data
+ * between different threads or objects, via ccnd.
+ * New tests should probably not use this without some additional cleanup.
  *
  */
 public class LibraryTestBase {

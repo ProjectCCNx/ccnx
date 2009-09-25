@@ -40,7 +40,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-
+/**
+ * Test the generation and matching functionality of Interests.
+  */
 public class InterestTest {
 	
 	public static String testName = "/test/parc/home/smetters/interestingData.txt/v/5";

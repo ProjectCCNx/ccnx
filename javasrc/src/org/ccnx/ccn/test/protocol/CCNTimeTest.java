@@ -31,8 +31,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * @author smetters
- *
+ * Test CCN quantized time wrapper.
  */
 public class CCNTimeTest {
 

@@ -30,7 +30,9 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
-
+/**
+ * An enhanced CCNHandle used for logging/tracking during tests.
+ */
 public class CCNLibraryTestHarness extends CCNHandle {
 	
 	private ConcurrentLinkedQueue<ContentObject> _outputQueue = new ConcurrentLinkedQueue<ContentObject>();

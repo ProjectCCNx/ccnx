@@ -48,10 +48,8 @@ import org.junit.Test;
 
 
 /**
- * Works. Currently very slow, as it's timing
- * out lots of blocks. End of stream markers will help with that, as
- * will potentially better binary ccnb decoding.
- */
+ * Test basic network object functionality, writing objects to a repository.
+ **/
 public class CCNNetworkObjectTestRepo {
 	
 	/**

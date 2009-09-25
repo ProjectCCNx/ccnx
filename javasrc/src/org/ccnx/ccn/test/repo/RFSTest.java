@@ -44,9 +44,6 @@ import org.junit.Test;
 
 
 /**
- * 
- * @author rasmusse
- * 
  * Test repository backend implementation(s) using filesystem (FS) as stable storage.  In principle,
  * there could be multiple FS-backed implementations exercised by these tests.
  * 
@@ -54,7 +51,6 @@ import org.junit.Test;
  * with ccnd running.
  *
  */
-
 public class RFSTest extends RepoTestBase {
 	
 	RepositoryStore repolog; // Instance of simple log-based repo implementation under test

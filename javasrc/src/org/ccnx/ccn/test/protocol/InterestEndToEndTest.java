@@ -33,13 +33,10 @@ import org.junit.Test;
 
 
 /**
- * Test sending interests across ccnd
+ * Test sending interests across ccnd.
  * Requires a running ccnd
- * 
- * @author rasmusse
  *
  */
-
 public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterListener, CCNInterestListener {
 	private Interest _interestSent;
 	private String _prefix = "/interestEtoETest/test-" + rand.nextInt(10000);

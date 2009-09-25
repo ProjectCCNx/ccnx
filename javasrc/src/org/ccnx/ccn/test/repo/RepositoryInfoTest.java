@@ -26,8 +26,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * @author smetters
- *
+ * Tests the RepositoryInfo data structure.
+ * Part of repository test infrastructure.
  */
 public class RepositoryInfoTest {
 

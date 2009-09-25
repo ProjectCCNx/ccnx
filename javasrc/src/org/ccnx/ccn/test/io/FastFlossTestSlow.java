@@ -34,7 +34,11 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-
+/**
+ * Stress test comparing writing long streams to a Flosser and to a repository.
+ * Deliberately named so that it will not be run as part of the normal test suite, as it
+ * takes a long time.
+ */
 public class FastFlossTestSlow {
 	
 	public static final int BUF_SIZE = 1024;

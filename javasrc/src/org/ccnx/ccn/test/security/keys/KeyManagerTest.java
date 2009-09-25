@@ -41,7 +41,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-
+/**
+ * Initial test of KeyManager functionality.
+ *
+ */
 public class KeyManagerTest {
 
 	protected static Random _rand = new Random(); // don't need SecureRandom

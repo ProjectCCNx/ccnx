@@ -37,15 +37,14 @@ import org.junit.Test;
 
 
 /**
+ * Test CCNNetworkManager.
+ * 
  * This should eventually have more tests but for now at least we will
  * test the re-expression of interests
  * 
  * Note - this test requires ccnd to be running
- * 
- * @author rasmusse
  *
  */
-
 public class NetworkTest {
 	
 	protected static final int WAIT_MILLIS = 8000;

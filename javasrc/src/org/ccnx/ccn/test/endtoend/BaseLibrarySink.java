@@ -26,8 +26,10 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.junit.BeforeClass;
 
 
-// NOTE: This test requires ccnd to be running and complementary source process
-
+/**
+ * Part of the end to end test infrastructure.
+ * NOTE: This test requires ccnd to be running and complementary source process
+ */
 public class BaseLibrarySink {
 	static CCNHandle handle = null;
 	Semaphore sema = new Semaphore(0);

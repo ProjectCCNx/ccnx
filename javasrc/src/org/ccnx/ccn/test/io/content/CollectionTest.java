@@ -33,6 +33,9 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+/**
+ * Test the Collection data representation.
+ */
 public class CollectionTest {
 
 	static final  String baseName = "test";
