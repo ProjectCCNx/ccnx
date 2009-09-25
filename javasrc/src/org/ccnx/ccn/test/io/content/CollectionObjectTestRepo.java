@@ -21,7 +21,6 @@ package org.ccnx.ccn.test.io.content;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.Random;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -33,6 +32,7 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -44,7 +44,11 @@ import org.junit.Test;
  */
 public class CollectionObjectTestRepo {
 
-	static ContentName baseName;
+	/**
+	 * Handle naming for the test
+	 */
+	static CCNTestHelper testHelper = new CCNTestHelper(CollectionObjectTestRepo.class);
+	
 	static CCNHandle getLibrary;
 	static CCNHandle putLibrary;
 	/**
@@ -52,16 +56,14 @@ public class CollectionObjectTestRepo {
 	 */
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		baseName = ContentName.fromNative("/libraryTest/CollectionObjectTestRepo-" + new Random().nextInt(10000));
 		putLibrary = CCNHandle.open();
 		getLibrary = CCNHandle.open();
 	}
 	
 	@Test
 	public void testCollections() throws Exception {
-		ContentName testPrefix  = ContentName.fromNative(baseName, "testCollections");
-		ContentName nonCollectionName = ContentName.fromNative(testPrefix, "myNonCollection");
-		ContentName collectionName = ContentName.fromNative(testPrefix, "myCollection");
+		ContentName nonCollectionName = ContentName.fromNative(testHelper.getTestNamespace("testCollections"), "myNonCollection");
+		ContentName collectionName = ContentName.fromNative(testHelper.getTestNamespace("testCollections"), "myCollection");
 		
 		// Write something that isn't a collection
 		CCNStringObject so = new CCNStringObject(nonCollectionName, "This is not a collection.", putLibrary);

@@ -43,11 +43,8 @@ import org.junit.BeforeClass;
 
 
 /**
- * 
- * @author rasmusse
- *
+ * Basic stream test. Relies on old test infrastructure, 
  */
-
 public class StreamTest extends BlockReadWriteTest {
 	
 	static int longSegments = (TEST_LONG_CONTENT.length()/SegmentationProfile.DEFAULT_BLOCKSIZE);

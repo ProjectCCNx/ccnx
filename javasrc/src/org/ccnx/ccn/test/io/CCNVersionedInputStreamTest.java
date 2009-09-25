@@ -37,6 +37,7 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -62,7 +63,11 @@ public class CCNVersionedInputStreamTest {
 	static CCNReader reader;
 	static final int MAX_FILE_SIZE = 1024*1024; // 1 MB
 	static final int BUF_SIZE = 4096;
-	
+
+	/**
+	 * Handle naming for the test
+	 */
+	static CCNTestHelper testHelper = new CCNTestHelper(CCNVersionedInputStreamTest.class);
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -72,7 +77,7 @@ public class CCNVersionedInputStreamTest {
 		reader = new CCNReader(inputHandle);
 		
 		// Write a set of output
-		defaultStreamName = ContentName.fromNative("/test/stream/versioning/LongOutput.bin");
+		defaultStreamName = ContentName.fromNative(testHelper.getClassNamespace(), "LongOutput.bin");
 		
 		firstVersionName = VersioningProfile.addVersion(defaultStreamName);
 		firstVersionLength = randBytes.nextInt(MAX_FILE_SIZE);

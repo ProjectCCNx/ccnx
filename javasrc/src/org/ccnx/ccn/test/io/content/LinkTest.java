@@ -30,8 +30,9 @@ import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
-
+/**
+ * Test encoding and decoding Links.
+ */
 public class LinkTest {
 
 	static final  String baseName = "test";

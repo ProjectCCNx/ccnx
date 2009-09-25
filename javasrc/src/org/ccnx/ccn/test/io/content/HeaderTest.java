@@ -35,10 +35,8 @@ import org.junit.Test;
 
 
 /**
- * @author briggs, rasmusse, smetters
- *
- * DKS - Make this back into the Header test it ought to be.
- */
+ * Test the Header structures.
+ **/
 public class HeaderTest {
 	
 	@Test
@@ -63,6 +61,7 @@ public class HeaderTest {
 		assertEquals(SegmentationProfile.DEFAULT_BLOCKSIZE, seq.blockSize());
 		assertEquals((length + SegmentationProfile.DEFAULT_BLOCKSIZE - 1) / SegmentationProfile.DEFAULT_BLOCKSIZE, seq.count());
 	}
+	
 	@Test
 	public void testHeaderConstructor3() throws Exception {
 		int length = SegmentationProfile.DEFAULT_BLOCKSIZE;
@@ -74,6 +73,7 @@ public class HeaderTest {
 		assertEquals(SegmentationProfile.DEFAULT_BLOCKSIZE, seq.blockSize());
 		assertEquals(1, seq.count());
 	}
+	
 	@Test
 	public void testEncodeOutputStream() throws Exception {
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
