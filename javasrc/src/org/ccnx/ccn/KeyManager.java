@@ -296,8 +296,7 @@ public abstract class KeyManager {
 	 * @throws ConfigurationException
 	 */
 	public abstract void publishKeyToRepository(ContentName keyName, 
-												PublisherPublicKeyDigest keyToPublish, 
-												CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException;
+												PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException;
 
 	/**
 	 * Publish our default key to a repository at its default location.
@@ -306,7 +305,7 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 * @throws ConfigurationException
 	 */
-	public abstract void publishKeyToRepository(CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException;
+	public abstract void publishKeyToRepository() throws InvalidKeyException, IOException, ConfigurationException;
 
 	/**
 	 * Access our internal key store/key server.

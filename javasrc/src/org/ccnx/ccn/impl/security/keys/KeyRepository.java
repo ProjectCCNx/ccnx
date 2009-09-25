@@ -20,6 +20,7 @@ package org.ccnx.ccn.impl.security.keys;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -31,13 +32,16 @@ import java.util.HashMap;
 import java.util.Iterator;
 
 import org.ccnx.ccn.CCNFilterListener;
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.impl.CCNNetworkManager;
+import org.ccnx.ccn.impl.CCNFlowControl.Shape;
+import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -54,26 +58,39 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * - manages published public keys.
  * - answers CCN interestes for these public keys.
  * - allow the caller to look for public keys: retrieve the keys from cache or CCN 
+ * 
+ * This class is used by the initial KeyManager bootstrapping code. As such,
+ * it has to be very careful not to introduce a circular dependency -- to rely
+ * on parts of the network stack that need that boostrapping to be complete in
+ * order to work. At the same time, we'd like to not have to reimplement segmentation,
+ * etc, in order to cache keys; we'd like to be able to use those parts of
+ * the library. So we allow the KeyRepository to have a CCNHandle, 
  */
 
-public class KeyRepository implements CCNFilterListener, CCNInterestListener {
+public class KeyRepository implements CCNFilterListener {
 	
 	protected static final boolean _DEBUG = true;
 	
-	protected CCNNetworkManager _networkManager = null;
+	protected CCNHandle _handle = null;
 	protected HashMap<ContentName,ContentObject> _keyMap = new HashMap<ContentName,ContentObject>();
 	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest,ContentName>();
 	protected HashMap<PublisherPublicKeyDigest, PublicKey> _rawKeyMap = new HashMap<PublisherPublicKeyDigest,PublicKey>();
 	protected HashMap<PublisherPublicKeyDigest, Certificate> _rawCertificateMap = new HashMap<PublisherPublicKeyDigest,Certificate>();
 	
-	/** Constructor
+	/** 
+	 * Constructor. Must be called carefully; either with a fully constructed and
+	 * initialized KeyManager, or as is used by the implementation, a sufficiently
+	 * initialized KeyManager to allow us to make a CCNHandle that we can use to
+	 * publish keys.
 	 * 
 	 * @throws IOException
 	 */
-	public KeyRepository() throws IOException {
-		_networkManager = new CCNNetworkManager(); // maintain our own connection to the agent, so
-			// everyone can ask us for keys
+	public KeyRepository(KeyManager keyManager) {
+		_handle = CCNHandle.open(keyManager); // maintain our own connection to the agent, so
+			// everyone can ask us for keys even if we have no repository
 	}
+	
+	public CCNHandle handle() { return _handle; }
 	
 	/**
 	 * Track an existing key object and make it available.
@@ -127,6 +144,52 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	}
 	
 	/**
+	 * Publish my public key to repository
+	 * @param keyName content name of the public key
+	 * @param keyToPublish public key digest
+	 * @param handle handle for ccn
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 * @throws ConfigurationException
+	 */
+	public void publishKeyToRepository(ContentName keyName, 
+									   PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException {
+
+		
+		PublicKey key = getPublicKey(keyToPublish);
+		if (null == key) {
+			throw new InvalidKeyException("Cannot retrieive key " + keyToPublish);
+		}
+
+		// HACK - want to use repo confirmation protocol to make sure data makes it to a repo
+		// even if it doesn't come from us. Problem is, we may have already written it, and don't
+		// want to write a brand new version of identical data. If we try to publish it under
+		// the same (unversioned) name, the repository may get some of the data from the ccnd
+		// cache, which will cause us to think it hasn't been written. So for the moment, we use the
+		// name enumeration protocol to determine whether this key has been written to a repository
+		// already.
+		// This works because the last explicit name component of the key is its publisherID. 
+		// We then use a further trick, just calling startWrite on the key, to get the repo
+		// to read it -- not from here, but from the key server embedded in the KeyManager.
+		EnumeratedNameList enl = new EnumeratedNameList(keyName.parent(), handle());
+		enl.waitForData(500); // have to time out, may be nothing there.
+		enl.stopEnumerating();
+		if (enl.hasChildren()) {
+			Log.info("Looking for children of {0} matching {1}.", keyName.parent(), keyName);
+			for (ContentName name: enl.getChildren()) {
+				Log.info("Child: {0}", name);
+			}
+		}
+		if (!enl.hasChildren() || !enl.hasChild(keyName.lastComponent())) {
+			RepositoryFlowControl rfc = new RepositoryFlowControl(keyName, handle());
+			rfc.startWrite(keyName, Shape.STREAM);
+			Log.info("Key {0} published to repository.", keyName);
+		} else {
+			Log.info("Key {0} already published to repository, not re-publishing.", keyName);
+		}
+	}
+
+	/**
 	 * Remember a public key and the corresponding key object.
 	 * @param theKey public key to remember
 	 * @param keyObject key Object to remember
@@ -141,7 +204,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		}
 		
 		// DKS TODO -- do we want to put in a prefix filter...?
-		_networkManager.setInterestFilter(this, keyObject.name(), this);
+		_handle.registerFilter(keyObject.name(), this);
 	}
 	
 	/**
@@ -262,12 +325,10 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			//  it would be really good to know how many additional name components to expect...
 			try {
 				Log.info("Trying network retrieval of key: " + keyInterest.name());
-				keyObject = _networkManager.get(keyInterest, timeout);
+				keyObject = _handle.get(keyInterest, timeout);
 			} catch (IOException e) {
 				Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 				Log.warningStackTrace(e);
-			} catch (InterruptedException e) {
-				Log.warning("Interrupted attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 			}
 			if (null != keyObject) {
 				if (keyObject.signedInfo().getType().equals(ContentType.KEY)) {
@@ -357,7 +418,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			if (null != keyObject) {
 				try {
 					ContentObject co = new ContentObject(keyObject.name(), keyObject.signedInfo(), keyObject.content(), keyObject.signature()); 
-					_networkManager.put(co);
+					_handle.put(co);
 				} catch (Exception e) {
 					Log.info("KeyRepository::handleInterests, exception in put: " + e.getClass().getName() + " message: " + e.getMessage());
 					Log.infoStackTrace(e);
@@ -365,13 +426,5 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			}
 		}
 		return 0;
-	}
-
-	/** Handle content returned by CCN.
-	 * nothing to be done here.
-	 */
-	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 }

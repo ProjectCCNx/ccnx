@@ -36,17 +36,13 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
-import org.ccnx.ccn.impl.CCNFlowControl.Shape;
-import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -113,6 +109,7 @@ public class BasicKeyManager extends KeyManager {
 		_keyStoreFileName = (null != keyStoreFileName) ? 
 				keyStoreFileName : UserConfiguration.keystoreFileName();
 	    _keyStoreDirectory = (null != keyStoreDirectory) ? keyStoreDirectory : UserConfiguration.ccnDirectory();
+		_userName = UserConfiguration.userName();
 		// must call initialize
 	}
 	
@@ -138,6 +135,15 @@ public class BasicKeyManager extends KeyManager {
 		if (_initialized)
 			return;
 		loadKeyStore();
+		// we've put together enough of this KeyManager to let the
+		// KeyRepository use it to make a CCNHandle, even though we're
+		// not done...
+		_keyRepository = new KeyRepository(this);
+		try {
+			publishDefaultKey();
+		} catch (IOException e) {
+			throw new ConfigurationException("IOException publishing default key: " + e.getMessage(), e);
+		}
 		_initialized = true;
 	}
 	
@@ -256,19 +262,6 @@ public class BasicKeyManager extends KeyManager {
 		    _keyLocator = new KeyLocator(keyName, new PublisherID(_defaultKeyID));
 			Log.info("Default key locator for user " + _userName + ": " + _keyLocator);
 
-		    if (null == getPublicKey(_defaultKeyID, _keyLocator, SystemConfiguration.SHORT_TIMEOUT)) {
-		    	boolean resetFlag = false;
-		    	if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-		    		resetFlag = true;
-		    		SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, false);
-		    	}
-		    	keyRepository().publishKey(_keyLocator.name().name(), _certificate.getPublicKey(), 
-		    								_defaultKeyID, _privateKey);
-		    	if (resetFlag) {
-		    		SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
-		    	}
-		    }
-		
 		} catch (Exception e) {
 			generateConfigurationException("Cannot retrieve default user keystore entry.", e);
 		}    
@@ -595,7 +588,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public void publishKey(ContentName keyName,
-			PublisherPublicKeyDigest keyToPublish) throws IOException, InvalidKeyException, ConfigurationException {
+						   PublisherPublicKeyDigest keyToPublish) throws IOException, InvalidKeyException, ConfigurationException {
 		PublicKey key = null;
 		if (null == keyToPublish) {
 			key = getDefaultPublicKey();
@@ -606,6 +599,22 @@ public class BasicKeyManager extends KeyManager {
 			}
 		}
 		keyRepository().publishKey(keyName, key, getDefaultKeyID(), getDefaultSigningKey());
+	}
+	
+	
+	protected void publishDefaultKey() throws ConfigurationException, IOException {
+	    if (null == getPublicKey(_defaultKeyID, _keyLocator, SystemConfiguration.SHORT_TIMEOUT)) {
+	    	boolean resetFlag = false;
+	    	if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+	    		resetFlag = true;
+	    		SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, false);
+	    	}
+	    	keyRepository().publishKey(_keyLocator.name().name(), _certificate.getPublicKey(), 
+	    								_defaultKeyID, _privateKey);
+	    	if (resetFlag) {
+	    		SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
+	    	}
+	    }
 	}
 
 	/**
@@ -619,57 +628,24 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public void publishKeyToRepository(ContentName keyName, 
-									   PublisherPublicKeyDigest keyToPublish, 
-									   CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException {
-		PublicKey key = null;
+									   PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException {
 		if (null == keyToPublish) {
-			key = getDefaultPublicKey();
 			keyToPublish = getDefaultKeyID();
-		} else {
-			key = getPublicKey(keyToPublish);
-			if (null == key) {
-				throw new InvalidKeyException("Cannot retrieive key " + keyToPublish);
-			}
-		}
-
-		// HACK - want to use repo confirmation protocol to make sure data makes it to a repo
-		// even if it doesn't come from us. Problem is, we may have already written it, and don't
-		// want to write a brand new version of identical data. If we try to publish it under
-		// the same (unversioned) name, the repository may get some of the data from the ccnd
-		// cache, which will cause us to think it hasn't been written. So for the moment, we use the
-		// name enumeration protocol to determine whether this key has been written to a repository
-		// already.
-		// This works because the last explicit name component of the key is its publisherID. 
-		// We then use a further trick, just calling startWrite on the key, to get the repo
-		// to read it -- not from here, but from the key server embedded in the KeyManager.
-		EnumeratedNameList enl = new EnumeratedNameList(keyName.parent(), handle);
-		enl.waitForData(500); // have to time out, may be nothing there.
-		enl.stopEnumerating();
-		if (enl.hasChildren()) {
-			Log.info("Looking for children of {0} matching {1}.", keyName.parent(), keyName);
-			for (ContentName name: enl.getChildren()) {
-				Log.info("Child: {0}", name);
-			}
-		}
-		if (!enl.hasChildren() || !enl.hasChild(keyName.lastComponent())) {
-			RepositoryFlowControl rfc = new RepositoryFlowControl(keyName, handle);
-			rfc.startWrite(keyName, Shape.STREAM);
-			Log.info("Key {0} published to repository.", keyName);
-		} else {
-			Log.info("Key {0} already published to repository, not re-publishing.", keyName);
-		}
+		} 
+		_keyRepository.publishKeyToRepository(keyName, keyToPublish);
 	}
 	
 	/**
-	 * publish my public key to repository
+	 * Publish my public key to repository
 	 * @param handle handle for ccn
 	 * @throws IOException
 	 * @throws InvalidKeyException
 	 * @throws ConfigurationException
 	 */
 	@Override
-	public void publishKeyToRepository(CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException {
-		publishKeyToRepository(_keyLocator.name().name(), null, handle);
+	public void publishKeyToRepository() throws InvalidKeyException, IOException, ConfigurationException {
+		publishKeyToRepository(_keyLocator.name().name(), null);
 	}
 
 }
+
