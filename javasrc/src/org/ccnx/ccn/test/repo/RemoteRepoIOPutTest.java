@@ -26,11 +26,8 @@ import org.ccnx.ccn.protocol.ContentName;
 
 
 /**
- * 
- * @author rasmusse
- * 
+ * Part of repository test infrastructure.
  */
-
 public class RemoteRepoIOPutTest extends RepoIOTest {
 	
 	protected boolean checkDataFromFile(File testFile, byte[] data, int block, boolean inMeta) throws RepositoryException {

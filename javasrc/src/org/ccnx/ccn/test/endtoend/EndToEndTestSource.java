@@ -29,8 +29,10 @@ import org.ccnx.ccn.protocol.Interest;
 import org.junit.Test;
 
 
-//NOTE: This test requires ccnd to be running and complementary sink process 
-
+/**
+ * Part of the end to end test infrastructure.
+ * NOTE: This test requires ccnd to be running and complementary sink process
+ */
 public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterListener {
 	protected CCNWriter _writer;
 	

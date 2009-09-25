@@ -21,7 +21,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.junit.Test;
 
 /**
- * Part of older test infrastructure.
+ * Part of older test infrastructure. Simple object-base read/write test.
  */
 public class BasePutGetTest extends LibraryTestBase {
 	

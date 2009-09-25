@@ -41,11 +41,8 @@ import org.junit.Test;
 
 
 /**
- * 
- * @author rasmusse
- *
+ * Test flow controller functionality.
  */
-
 public class CCNFlowControlTest {
 	static private CCNLibraryTestHarness _handle ;
 	static private CCNReader _reader;

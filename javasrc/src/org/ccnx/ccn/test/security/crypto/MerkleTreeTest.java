@@ -30,7 +30,9 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
+/**
+ * Test the low-level Merkle hash tree implementation.
+ */
 public class MerkleTreeTest {
 
 	protected static Random _rand = new Random(); // don't need SecureRandom

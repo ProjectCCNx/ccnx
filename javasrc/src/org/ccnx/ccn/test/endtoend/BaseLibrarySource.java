@@ -30,8 +30,10 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 
 
-//NOTE: This test requires ccnd to be running and complementary sink process 
-
+/**
+ * Part of the end to end test infrastructure.
+ * NOTE: This test requires ccnd to be running and complementary sink process
+ */
 public class BaseLibrarySource {
 	public static int count = 43;
 	protected static CCNHandle handle = null;

@@ -32,6 +32,9 @@ import org.junit.Test;
 
 import junit.framework.Assert;
 
+/**
+ * Test the asynchronous interface to name enumeration.
+ */
 public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	
 	CCNHandle putLibrary;

@@ -28,7 +28,11 @@ import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.TextXMLCodec;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 
-
+/**
+ * Helper class for writing tests for classes implementing XMLEncodable.
+ * Provides a basic test harness for testing encoding and decoding under
+ * both binary and text codecs; would be easy to make it test all registered codecs.
+ */
 public class XMLEncodableTester {
 
 	/**

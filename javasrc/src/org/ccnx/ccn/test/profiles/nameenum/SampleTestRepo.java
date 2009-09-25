@@ -29,7 +29,10 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
+/**
+ * Used in some early name enumeration tests. Currently unused.
+ *
+ */
 public class SampleTestRepo {
 	static final String base = "/parc.com/csl/ccn/repositories/SampleTestRepo";
 	static final String file_name = "/simon.txt";

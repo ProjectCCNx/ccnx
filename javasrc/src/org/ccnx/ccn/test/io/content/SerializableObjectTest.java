@@ -33,8 +33,9 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
-
+/**
+ * Test low level (non-CCN) SerializableObject functionality, backing objects to ByteArrayOutputStreams.
+ **/
 public class SerializableObjectTest {
 	
 	static KeyPair kp1 = null;

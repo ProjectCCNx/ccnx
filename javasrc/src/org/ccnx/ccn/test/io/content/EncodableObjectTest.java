@@ -39,7 +39,9 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
+/**
+ * Test low level (non-CCN) EncodableObject functionality, backing objects to ByteArrayOutputStreams.
+ **/
 public class EncodableObjectTest {
 	
 	static final  String baseName = "test";

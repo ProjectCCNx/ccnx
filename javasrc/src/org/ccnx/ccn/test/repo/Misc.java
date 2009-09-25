@@ -24,6 +24,10 @@ import java.util.TreeSet;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+/**
+ * Utility for repository tests.
+ *
+ */
 public class Misc {
 	
 	public static class CompareTester implements Comparable<CompareTester> {

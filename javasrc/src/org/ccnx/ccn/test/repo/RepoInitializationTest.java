@@ -25,11 +25,8 @@ import org.junit.Test;
 
 
 /**
- * Test to insure repo is up before continuing
- * @author rasmusse
- *
+ * Test to ensure repo is up before continuing
  */
-
 public class RepoInitializationTest extends RepoTestBase {
 	public static final int TEST_TIME = 15000; // ms - 30 seconds
 	public static final int TEST_INTERVAL = 3000;

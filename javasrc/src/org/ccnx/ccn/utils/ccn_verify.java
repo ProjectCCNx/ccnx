@@ -32,7 +32,9 @@ import javax.xml.stream.XMLStreamException;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.protocol.ContentObject;
 
-
+/**
+ * Command-line utility program to verify CCNx objects stored in a file.
+ */
 public class ccn_verify {
 	
 	public static void usage() {

@@ -32,7 +32,11 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
+/**
+ * Test the KeyDerivationFunction (KDF) used to map from symmetric keys
+ * to keys for a particular node in the content tree.
+ *
+ */
 public class KeyDerivationFunctionTest {
 
 	static SecureRandom random = new SecureRandom();

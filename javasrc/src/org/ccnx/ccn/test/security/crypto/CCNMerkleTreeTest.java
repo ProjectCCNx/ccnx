@@ -38,7 +38,9 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
+/**
+ * Test CCN-specific Merkle tree functionality.
+ */
 public class CCNMerkleTreeTest {
 
 	protected static Random _rand = new Random(); // don't need SecureRandom

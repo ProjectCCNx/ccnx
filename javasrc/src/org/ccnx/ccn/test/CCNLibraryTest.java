@@ -56,8 +56,8 @@ import org.junit.Test;
 
 
 /**
- * @author briggs,smetters,rasmusse
- *
+ * Part of older test infrastructure. Tests a set of library read functionality; some
+ * of which could be aggregated into other tests.
  */
 public class CCNLibraryTest extends LibraryTestBase {
 	static final String contentString = "This is a very small amount of content";

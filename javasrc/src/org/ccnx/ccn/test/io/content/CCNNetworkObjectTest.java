@@ -50,11 +50,13 @@ import org.junit.Test;
 
 
 /**
- * Works. Currently very slow, as it's timing
- * out lots of blocks. End of stream markers will help with that, as
- * will potentially better binary ccnb decoding.
- * @author smetters
- *
+ * Test basic network object functionality, writing objects to a Flosser.
+ * Much slower than it needs to be -- seems to hit some kind of ordering
+ * bug which requires waiting for interest reexpression before it can go
+ * forward (shows up as mysterious 4-second delays in the log).  The corresponding
+ * repo-backed test, CCNNetorkObjectTestRepo runs much faster to do exactly
+ * the same work.
+ * TODO track down slowness
  */
 public class CCNNetworkObjectTest {
 	

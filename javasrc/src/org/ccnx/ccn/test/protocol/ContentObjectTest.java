@@ -40,7 +40,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-
+/**
+ * Test basic ContentObject functionality.
+ *
+ */
 public class ContentObjectTest {
 
 	static final String baseName = "test";

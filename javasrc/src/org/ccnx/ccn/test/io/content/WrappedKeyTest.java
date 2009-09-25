@@ -46,7 +46,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-
+/**
+ * Test both encoding/decoding of WrappedKey data structures and writing them
+ * to CCN using WrappedKeyObjects.
+ */
 public class WrappedKeyTest {
 
 	/**

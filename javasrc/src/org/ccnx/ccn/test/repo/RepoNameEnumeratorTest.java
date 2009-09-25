@@ -34,7 +34,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 
-
+/**
+ * Part of repository test infrastructure. Test repository side of name enumeration.
+ */
 public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	CCNHandle getLibrary;
 	CCNNameEnumerator getne;

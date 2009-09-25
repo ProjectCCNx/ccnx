@@ -22,7 +22,9 @@ import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.EncodableObject;
 
-
+/**
+ * Helper class testing low-level (non-CCN) encodable object functionality.
+ */
 public class EncodableCollectionData extends EncodableObject<Collection> {
 
 	private static final long serialVersionUID = 1233491939485391189L;

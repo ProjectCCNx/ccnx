@@ -35,7 +35,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-
+/**
+ * Test basic ContentName operation.
+ */
 public class ContentNameTest {
 
 	public String baseName = "test";

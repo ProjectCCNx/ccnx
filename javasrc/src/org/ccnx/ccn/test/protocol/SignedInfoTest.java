@@ -41,7 +41,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-
+/**
+ * Test the SignedInfo data structure.
+ *
+ */
 public class SignedInfoTest {
 
 	static final String baseName = "test";

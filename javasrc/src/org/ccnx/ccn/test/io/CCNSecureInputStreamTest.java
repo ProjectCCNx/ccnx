@@ -58,7 +58,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 
-
+/**
+ * Test for stream encryption/decryption.
+ */
 public class CCNSecureInputStreamTest {
 	
 	static protected abstract class StreamFactory {

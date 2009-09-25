@@ -44,7 +44,10 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
+/**
+ * Tests InterestTable, the core implementation of interest matching
+ * and dispatching.
+ */
 public class InterestTableTest {
 
 

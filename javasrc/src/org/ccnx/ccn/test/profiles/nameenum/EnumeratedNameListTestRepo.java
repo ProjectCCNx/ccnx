@@ -39,6 +39,7 @@ import org.junit.Test;
 
 
 /**
+ * Test the synchronous interface to name enumeration.
  * Put a bunch of data in repo (in one directory)
  * Make a enumerate name list of directory (check that it works)
  * call update in background on enumerated name list (asynchronously)

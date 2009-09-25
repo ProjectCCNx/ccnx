@@ -31,6 +31,9 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * Part of repository test infrastructure.
+ */
 public class RepoInitialReadTest extends RepoTestBase {
 	
 	@Test

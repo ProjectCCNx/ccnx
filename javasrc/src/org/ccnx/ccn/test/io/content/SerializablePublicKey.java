@@ -26,9 +26,7 @@ import org.ccnx.ccn.io.content.SerializableObject;
 
 
 /**
- * Used in SerializableObjectTest.
- * @author smetters
- *
+ * Helper class testing low-level (non-CCN) serializable object functionality.
  */
 public class SerializablePublicKey extends SerializableObject<PublicKey> implements Serializable {
 	

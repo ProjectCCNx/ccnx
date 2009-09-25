@@ -39,13 +39,12 @@ import org.junit.Test;
 
 
 /**
- * @author smetters
- *
+ * Tests writing versioned Collection objects to a repository.
  */
 public class CollectionObjectTestRepo {
 
 	/**
-	 * Handle naming for the test
+	 * Handle naming for the test.
 	 */
 	static CCNTestHelper testHelper = new CCNTestHelper(CollectionObjectTestRepo.class);
 	

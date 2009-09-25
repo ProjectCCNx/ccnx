@@ -30,7 +30,10 @@ import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
-//Note class name needs to match command name to work with ccn_run
+/**
+ * A command-line utility for pulling files out of ccnd or a repository.
+ * Note class name needs to match command name to work with ccn_run
+ */
 public class ccngetfile {
 	
 	public static Integer timeout = null;

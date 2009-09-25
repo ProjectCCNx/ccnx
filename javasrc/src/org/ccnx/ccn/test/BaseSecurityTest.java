@@ -29,6 +29,10 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
 
+/**
+ * Part of older test infrastructure. Tests signature generation and verification
+ * as part of simple object/based read/write test.
+ */
 public class BaseSecurityTest extends BasePutGetTest {
 	
 	protected static final String testName = "/test/smetters/signTestContent.txt";

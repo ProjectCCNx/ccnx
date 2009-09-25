@@ -35,7 +35,7 @@ import org.junit.Test;
 
 
 /**
- * Test the Header structures.
+ * Test the Header data structure.
  **/
 public class HeaderTest {
 	

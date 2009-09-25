@@ -24,15 +24,15 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.util.Arrays;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
-import org.ccnx.ccn.impl.security.crypto.UnbufferedCipherInputStream;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.NoMatchingContentFoundException;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -338,7 +338,42 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					Log.warning("InvalidAlgorithmParameterException: " + e.getMessage());
 					throw new IOException("InvalidAlgorithmParameterException: " + e.getMessage());
 				}
-				_segmentReadStream = new UnbufferedCipherInputStream(_segmentReadStream, _cipher);
+				
+				// Let's optimize random access to this buffer (e.g. as used by the decoders) by
+				// decrypting a whole ContentObject at a time. It's not a huge security risk,
+				// and right now we can't rewind the buffers so if we do try to decode out of
+				// an encrypted block we constantly restart from the beginning and redecrypt
+				// the content. 
+				// Previously we used our own UnbufferedCipherInputStream class directly as
+				// our _segmentReadStream for encrypted data, as Java's CipherInputStreams
+				// assume block-oriented boundaries for decryption, and buffer incorrectly as a result.
+				// If we want to go back to incremental decryption, putting a small cache into that
+				// class to optimize going backwards would help.
+				
+				// Unless we use a compressing cipher, the maximum data length for decrypted data
+				//  is _currentSegment.content().length. But we might as well make something
+				// general that will handle all cases. There may be a more efficient way to
+				// do this; want to minimize copies. 
+				byte [] bodyData = _cipher.update(_currentSegment.content());
+				byte[] tailData;
+				try {
+					tailData = _cipher.doFinal();
+				} catch (IllegalBlockSizeException e) {
+					Log.warning("IllegalBlockSizeException: " + e.getMessage());
+					throw new IOException("IllegalBlockSizeException: " + e.getMessage());
+				} catch (BadPaddingException e) {
+					Log.warning("BadPaddingException: " + e.getMessage());
+					throw new IOException("BadPaddingException: " + e.getMessage());
+				}
+				if ((null == tailData) || (0 == tailData.length)) {
+					_segmentReadStream = new ByteArrayInputStream(bodyData);
+				} else {
+					byte [] allData = new byte[bodyData.length + tailData.length];
+					// Still avoid 1.6 array ops
+					System.arraycopy(bodyData, 0, allData, 0, bodyData.length);
+					System.arraycopy(tailData, 0, allData, bodyData.length, tailData.length);
+					_segmentReadStream = new ByteArrayInputStream(allData);
+				}
 			} else {
 				if (_currentSegment.signedInfo().getType().equals(ContentType.ENCR)) {
 					Log.warning("Asked to read encrypted content, but not given a key to decrypt it. Decryption happening at higher level?");

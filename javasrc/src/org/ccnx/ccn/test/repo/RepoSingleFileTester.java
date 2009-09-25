@@ -31,7 +31,9 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.WirePacket;
 
-
+/**
+ * Part of repository test infrastructure.
+ */
 public class RepoSingleFileTester extends RepoPerformanceTester {
 	
 	private static RepoSingleFileTester _rpt = new RepoSingleFileTester();

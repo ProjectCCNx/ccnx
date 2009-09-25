@@ -42,7 +42,11 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
+/**
+ * Test for versioned input streams. Uses a slightly simpler mechanism to set
+ * up data in ccnd for the test, namely writing and simultaneously reading the
+ * data in the setupBeforeClass. That could be replaced by a Flosser.
+ */
 public class CCNVersionedInputStreamTest {
 	
 	static ContentName defaultStreamName;

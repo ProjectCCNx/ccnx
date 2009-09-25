@@ -40,17 +40,28 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
 /**
- *  A class to help write tests without a repo. Pulls things
- *  through ccnd, under a set of namespaces.
- *  Cheesy -- uses excludes to not get the same content back.
+ *  A class to help write tests without a repository or setting up a separate
+ *  thread to read data. A Flosser tries to pull all content written under
+ *  a set of specified namespaces; essentially loading that content into ccnd. 
+ *  Based on ccnslurp, uses excludes to not get the same data back. Not as efficient
+ *  as it could be; currently stops enumerating underneath segments (assumes that there 
+ *  is only one content object per segment of a given version; very likely
+ *  in the absence of adversarial data). 
  *  
- *  TODO FIX -- not entirely correct. Gets more duplicates than it needs to.
+ *  Call stopMonitoringNamespace as soon as you are done with a namespace to improve
+ *  performance. 
  *  
- *  See CCNVersionedInputStream for related stream-based flossing code.
+ *  Still has a few performance snags -- mysterious delays for the interest reexpression
+ *  interval; so Flosser-based tests can be slow. Shouldn't be like that, there
+ *  is likely a lingering bug somewhere.
+ *  
+ *  See CCNVersionedInputStream for related stream-based flossing code (basically
+ *  a precursor to the full Flosser).
+ *  
  *  The "floss" term refers to "mental floss" -- think a picture of
- *  someone running dental floss in and out through their ears.
- * @author smetters
- *
+ *  someone running dental floss in and out through their ears; here we are
+ *  running content from an app, in through ccnd, to the flosser, so other
+ *  parts of the (test) app can pull it back from ccnd later.
  */
 public class Flosser implements CCNInterestListener {
 	

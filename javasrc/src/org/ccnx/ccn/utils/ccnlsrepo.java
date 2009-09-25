@@ -35,7 +35,9 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
 /**
- * Java utility to explore content stored under a prefix.  The program defaults to a prefix of "/"
+ * Java utility to explore content stored under a given prefix in a repository.  Uses name
+ * enumeration to limit responses to repositories and other NE responders.
+ * The program defaults to a prefix of "/"
  * but takes a prefix as the first command-line argument.  The tool displays names under the prefix
  * after collecting names for a given time period.  The initial default setting is 2 seconds.  To enumerate
  * names for more than 2 seconds (for example, if you have a long round trip time to a repository, the time

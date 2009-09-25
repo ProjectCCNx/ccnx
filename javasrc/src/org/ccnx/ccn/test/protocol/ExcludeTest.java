@@ -32,7 +32,10 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
+/**
+ * Test the Exclude structures used in Interests.
+ *
+ */
 public class ExcludeTest {
 
 	static ArrayList<Exclude.Element> al;

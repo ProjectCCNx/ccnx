@@ -35,8 +35,12 @@ import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
-//Note class name needs to match command name to work with ccn_run
-public class ccnputfile {
+/**
+ * Command-line utiltiy to write a file to ccnd; requires a corresponding ccngetfile
+ * to pull the data or it will not move (flow balance).
+ **/
+ public class ccnputfile {
+ 
 	
 	private static int BLOCK_SIZE = 8096;
 	private static boolean rawMode = false;
