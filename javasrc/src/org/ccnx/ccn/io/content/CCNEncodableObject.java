@@ -35,9 +35,11 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * Subclass of CCNNetworkObject that wraps classes implementing XMLEncodable, and uses
- * XMLEncodable's encode() and decode() methods to read and write those objects to 
- * CCN.
+ * Provides persistence for classes implementing XMLEncodable using a CCN network to store/load
+ * the data. This is similar to the Data Access Object pattern.
+ * 
+ * The data supplier (class implementing XMLEncodable's encode() and decode() methods) is called
+ * to read and write those objects to CCN.
  */
 public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject<E> {
 	
