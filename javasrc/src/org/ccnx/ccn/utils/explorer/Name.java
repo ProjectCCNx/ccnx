@@ -18,6 +18,8 @@
 package org.ccnx.ccn.utils.explorer;
 
 import java.net.URL;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.ccnx.ccn.protocol.ContentName;
 
@@ -27,16 +29,15 @@ public class Name {
     public ContentName path;
     public URL fileURL;
     public boolean isDirectory;
+    //public ArrayList<ContentName> versions;
+    public Set<ContentName> versions;
 
     public Name(byte[] cn, ContentName prefix, boolean type) {
         name = cn;
         path = prefix;
         isDirectory = type;
-        //fileURL = getClass().getResource(filename);
-//        if (fileURL == null) {
-//            System.err.println("Couldn't find file: "
-//                               + filename);
-//        }
+        //versions = new ArrayList<ContentName>();
+        versions = new HashSet<ContentName>();
     }
 
     
@@ -44,16 +45,22 @@ public class Name {
     	isDirectory = b;
     	return isDirectory;
     }
-    
-    public Object getObject() {
-		// TODO Auto-generated method stub
-		return this;
-	}
 
 	public String toString() {
 		if(name==null)
 			return new String("/");
-        return new String(name);
+		ContentName n = new ContentName(new ContentName(),name);
+        return n.toString().replaceFirst("/", "");
     }
+
+	public void addVersion(ContentName v) {
+		synchronized(versions) {
+			versions.add(v);
+		}
+	}
+	
+	public Set<ContentName> getVersions() {
+		return versions;
+	}
 	
 }

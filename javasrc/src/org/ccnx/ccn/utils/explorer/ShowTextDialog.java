@@ -31,17 +31,16 @@ import javax.swing.JScrollPane;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
 public class ShowTextDialog extends JDialog implements ActionListener{
-/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
-private Name nodeSelected;
-private JEditorPane editorPane;
-private JButton finishedButton;
+
+	private static final long serialVersionUID = 2975715488713355433L;
+
+	private ContentName contentname;
+	private JEditorPane editorPane;
+	private JButton finishedButton;
+	private CCNHandle handle;
 
 	public void actionPerformed(ActionEvent e) {
 		if(finishedButton== e.getSource()){
@@ -50,16 +49,27 @@ private JButton finishedButton;
 		}
 		
 	}
-	public ShowTextDialog(Name name,CCNHandle handle) {	
-		super();
+	public ShowTextDialog(ContentName name, CCNHandle h) {	
 		
+		if (name==null) {
+			System.err.println("null filename, returning");
+			return;
+		}
+		
+		if (h==null) {
+			System.err.println("CCNHandle is null, returning");
+			return;
+		}
+		
+		
+		contentname = name;
+		handle = h;
 		
 		getContentPane().setLayout(null);
-		this.nodeSelected = name;
 		this.setBounds(100, 100, 500, 500);
 		final JLabel label = new JLabel();
 		label.setBounds(0, 0, 490, 51);
-		label.setText("Displaying File: " + new String(nodeSelected.name));
+		label.setText("Displaying File: " + contentname);
 		getContentPane().add(label);
 		
 
@@ -69,23 +79,7 @@ private JButton finishedButton;
 
 		this.editorPane = new JEditorPane();
 		scrollPane.setViewportView(editorPane);
-		
-		System.out.println("File Name is "+ name);
-		
-		//get the file name as a ContentName
-		//write the content to the content pane to be displayed in the UI
-		ContentName fileName = null;
-		try {
-			if(name.path.count() < 1)
-				fileName = ContentName.fromNative("/"+new String(name.name));
-			else
-				fileName = ContentName.fromNative(name.path.toString()+"/"+new String(name.name));
-			displayText(fileName, handle);
-		} catch (MalformedContentNameStringException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
+			
 		finishedButton = new JButton();
 		finishedButton.setName("buttonDone");
 		finishedButton.setBounds(215, 424, 112, 36);
@@ -105,21 +99,27 @@ private JButton finishedButton;
 	 * a content name object that points to an existing file in the repo to be displayed
 	 *@param handle
 	 * */
-	private void displayText(ContentName fileName, CCNHandle handle) {
+	public void displayText() throws IOException {
 		try {
+			if(this.contentname==null) {
+				System.err.println("fileName was null");
+				return;
+			}
 			
-			CCNFileInputStream fis = new CCNFileInputStream(fileName, handle);
+			CCNFileInputStream fis = new CCNFileInputStream(contentname, this.handle);
 			
-			editorPane.read(fis, fileName);
+			editorPane.read(fis, contentname);
 			
 		} catch (FileNotFoundException e) {
 
-			System.out.println("the file was not found...  "+fileName);
+			System.err.println("the file was not found...  "+contentname);
 			e.printStackTrace();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			throw e;
 		} 
 
 	}
+	
 }

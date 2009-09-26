@@ -26,7 +26,6 @@ import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
@@ -36,6 +35,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.logging.Level;
 
 import javax.swing.AbstractAction;
@@ -65,8 +65,6 @@ import javax.swing.tree.TreeSelectionModel;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.SegmentationProfile;
-import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
@@ -106,23 +104,26 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	public static final ImageIcon ICON_DOCUMENT = new ImageIcon(getScaledImage(
 			(new ImageIcon("./src/org/ccnx/ccn/utils/explorer/Document.png")).getImage(), 32, 32));
 
-	private ArrayList<ContentName> names;
 	private JEditorPane htmlPane;
 	public String selectedPrefix;
 	public String selectedPath;
 	protected JTree tree;
 	protected DefaultTreeModel m_model;
-	protected JTextField m_display;
+	//protected JTextField m_display;
+	private JTextField textArea;
 
 	private JButton openACL = null;
 	private JButton openGroup = null;
 
 	private ContentName currentPrefix = null;
-	
-	protected JPopupMenu m_popup;
-	protected Action m_action;
-	protected TreePath m_clickedPath;
+
 	private DefaultMutableTreeNode usableRoot = null;
+	
+	private DirExpansionListener dirExpansionListener = null;
+	private DirSelectionListener dirSelectionListener = null;
+	
+	protected JPopupMenu tree_popup;
+	protected Action tree_popupaction;
 
 	/**
 	 * Constructor for ContentExplorer application.  This sets up the swing elements and listeners for the GUI.
@@ -182,66 +183,116 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		TreeCellRenderer renderer = new IconCellRenderer();
 		tree.setCellRenderer(renderer);
 
-		tree.addTreeExpansionListener(new DirExpansionListener());
-		tree.addTreeSelectionListener(new DirSelectionListener());
+		dirExpansionListener = new DirExpansionListener();
+		tree.addTreeExpansionListener(dirExpansionListener);
+		dirSelectionListener = new DirSelectionListener();
+		tree.addTreeSelectionListener(dirSelectionListener);
 
-		MouseListener ml = new MouseAdapter() {
-			/**
-			 * Class to handle mouse events.  This includes a single click to begin enumeration for folders.
-			 * If the selected item is a .txt or .text file, it will preview in the lower pane.
-			 * @param e MouseEvent
-			 */
-			public void mousePressed(MouseEvent e) {
-				int selRow = tree.getRowForLocation(e.getX(), e.getY());
-				TreePath selPath = tree.getPathForLocation(e.getX(), e.getY());
+		tree_popup = new JPopupMenu();
+		tree_popupaction = new AbstractAction() {
 
-				if (selRow != -1) {
-					if (e.getClickCount() == 2) {
-						myDoubleClick(selRow, selPath);
+			private static final long serialVersionUID = 9114007083621952181L;
+
+			public void actionPerformed(ActionEvent e){
+				TreePath p = (TreePath)(tree_popupaction.getValue("PATH"));
+				if(p==null) {
+					//System.err.println("path is null");
+					return;
+				}
+				else if(tree.isExpanded(p)) {
+					tree.collapsePath(p);
+				}
+				else {
+					if (e.getActionCommand().equals("Expand")) {
+						TreeExpansionEvent t = new TreeExpansionEvent(tree, p);
+						dirExpansionListener.treeExpanded(t);
+						tree.expandPath(p);
+					} else if (e.getActionCommand().equals("Select")) {
+						tree.setSelectionPath(p);
+
 					}
 				}
+				
 			}
+		};
+		tree_popup.add(tree_popupaction);
+		tree_popup.addSeparator();
+		
+		
+		Action displayName = new AbstractAction("Display Full Prefix") {
 
-			/**
-			 * Double click action.  If a .txt or .text file is double clicked, it will open in a separate window.
-			 * The file is obtained through CCN.  If the file is no longer available, a message will appear in
-			 * the preview pane.
-			 * 
-			 * @param selRow Swing row selection
-			 * @param selPath Path selected
-			 */
-			private void myDoubleClick(int selRow, TreePath selPath) {
-				final Name node = getNameNode((DefaultMutableTreeNode) selPath.getLastPathComponent());
+			private static final long serialVersionUID = 6373543410642021178L;
 
-				String name = new String(node.name);
+			public void actionPerformed(ActionEvent e){
+				tree.repaint();
+				
+				TreePath p = (TreePath)(tree_popupaction.getValue("PATH"));
 
-				if (name.toLowerCase().endsWith(".txt")	|| name.toLowerCase().endsWith(".text")) {
-					if (node.path.count() == 0)
-						retrieveFromRepo("/" + name);
-					else
-						retrieveFromRepo(node.path.toString() + "/" + name);
-					EventQueue.invokeLater(new Runnable() {
-						public void run() {
-							try {
-								ShowTextDialog dialog = new ShowTextDialog(node, _handle);
-								dialog.setVisible(true);
-							} catch (Exception e) {
-								Log.logException("Could not display the file", e);
-							}
-						}
-					});
+				Name node = getNameNode((DefaultMutableTreeNode) p.getLastPathComponent());
+				
+				ContentName n = new ContentName(node.path, node.name);
+				htmlPane.setText(n.toString());
+			}
+		};
+		
+		tree_popup.add(displayName);
+		
+		Action saveFile = new AbstractAction("Save File") {
+
+			private static final long serialVersionUID = -3770094703319020441L;
+
+			public void actionPerformed(ActionEvent e){
+				tree.repaint();
+				htmlPane.setText("save file to local machine not implemented yet");
+				
+			}
+		};
+		
+		tree_popup.add(saveFile);
+		
+		Action playFile = new AbstractAction("Play File") {
+
+			private static final long serialVersionUID = -2932828512965050415L;
+
+			public void actionPerformed(ActionEvent e){
+				tree.repaint();
+				htmlPane.setText("play file with VLC not implemented yet");
+				
+			}
+		};
+		
+		tree_popup.add(playFile);
+		
+		Action showVersions = new AbstractAction("Show Versions") {
+
+			private static final long serialVersionUID = -827879841202976452L;
+
+			public void actionPerformed(ActionEvent e){
+				tree.repaint();
+				htmlPane.setText("display versions of file not implemented yet");
+				String toDisplay = "";
+				TreePath p = (TreePath)(tree_popupaction.getValue("PATH"));
+
+				Name node = getNameNode((DefaultMutableTreeNode) p.getLastPathComponent());
+				Set<ContentName> versions = node.getVersions();
+				synchronized(versions) {
+					for(ContentName c: versions) {
+						toDisplay = toDisplay+c.toString()+"\n";
+					}
+				}
+				
+				if (toDisplay.equals("")) {
+					htmlPane.setText("Version numbers are currently not available for this name. \nThis can occur if the node was not previously selected.");
 				} else {
-					// Can't handle filetype
-					JOptionPane.showMessageDialog(ContentExplorer.this, "Cannot Open file "
-									+ name + " Currently only opens .txt and .text files.",
-									"Only handles .txt and .text files at this time.",
-									JOptionPane.ERROR_MESSAGE);
+					htmlPane.setText(toDisplay);
 				}
 			}
-
 		};
-		tree.addMouseListener(ml);
-
+		
+		tree_popup.add(showVersions);
+		
+		tree.add(tree_popup);
+		
 		tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
 		tree.setShowsRootHandles(true);
 		tree.setEditable(false);
@@ -324,16 +375,24 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		initHelp();
 		JScrollPane htmlView = new JScrollPane(htmlPane);
 
+		textArea = new JTextField();
+		textArea.setEditable(false);
+		textArea.setText("here is where names will appear");
+		
+		//Component c1 = new ExplorerPanel();
+		//Component c2 = new TextPanel();
+		
 		// Add the scroll panes to a split pane.
 		JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
 		splitPane.setContinuousLayout(true);
 		splitPane.setOneTouchExpandable(true);
 		splitPane.setTopComponent(treeView);
 		splitPane.setBottomComponent(htmlView);
-		Dimension minimumSize = new Dimension(100, 300);
+		//splitPane.setBottomComponent(textArea);
+		Dimension minimumSize = new Dimension(100, 50);
 		htmlView.setMinimumSize(minimumSize);
 		treeView.setMinimumSize(minimumSize);
-		splitPane.setDividerLocation(200);
+		splitPane.setDividerLocation(250);
 		splitPane.setPreferredSize(new Dimension(500, 300));
 
 		setLayout(new GridBagLayout());
@@ -371,51 +430,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		tree.expandPath(new TreePath(node.getPath()));
 		tree.setSelectionPath(new TreePath(node.getPath()));
 
-		// POPUP Related - not working currently
-		m_popup = new JPopupMenu();
-		m_action = new AbstractAction() {
-
-			private static final long serialVersionUID = -3875007136742502632L;
-
-			public void actionPerformed(ActionEvent e) {
-				if (m_clickedPath == null)
-					return;
-				if (tree.isExpanded(m_clickedPath)) {
-					tree.collapsePath(m_clickedPath);
-					TreePath[] p = (TreePath[]) m_clickedPath.getPath();
-					Log.fine("collapsed path: " + p.toString());
-				} else
-					tree.expandPath(m_clickedPath);
-			}
-		};
-		m_popup.add(m_action);
-		m_popup.addSeparator();
-
-		Action a1 = new AbstractAction("Delete") {
-			private static final long serialVersionUID = 1L;
-
-			public void actionPerformed(ActionEvent e) {
-				tree.repaint();
-				JOptionPane.showMessageDialog(ContentExplorer.this,
-						"Delete option is not implemented", "Info",
-						JOptionPane.INFORMATION_MESSAGE);
-			}
-		};
-		m_popup.add(a1);
-
-		Action a2 = new AbstractAction("Rename") {
-			private static final long serialVersionUID = 1L;
-
-			public void actionPerformed(ActionEvent e) {
-				tree.repaint();
-				JOptionPane.showMessageDialog(ContentExplorer.this,
-						"Rename option is not implemented", "Info",
-						JOptionPane.INFORMATION_MESSAGE);
-			}
-		};
-		m_popup.add(a2);
-		tree.add(m_popup);
-		tree.addMouseListener(new PopupTrigger());
+		tree.addMouseListener(new MouseActions());
 
 		WindowListener wndCloser = new WindowAdapter() {
 			public void windowClosing(WindowEvent e) {
@@ -434,16 +449,30 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 * the text of the file when the download is complete.
 	 * 
 	 * @param name Name of the file to retrieve
+	 * @param txtPopup True if the file should be opened in a text popup
 	 */
 
-	public void retrieveFromRepo(String name) {
+	public void retrieveFromRepo(String name, boolean textPopup) {
 
 		htmlPane.setText("Retrieving content... "+name);
 
 		HTMLPaneContentRetriever retriever = new HTMLPaneContentRetriever(_handle, htmlPane, name);
+		retriever.setTextPopup(textPopup);
 
 		Thread t = new Thread(retriever);
 		t.start();
+	}
+	
+	/**
+	 * Method to trigger a thread to retrieve a file. A new thread is created to get the file.
+	 * This method displays a message about the file to retrieve in the preview pane and displays
+	 * the text of the file when the download is complete.
+	 * 
+	 * @param name Name of the file to retrieve
+	 */
+
+	public void retrieveFromRepo(String name) {
+		retrieveFromRepo(name, false);
 	}
 
 	
@@ -491,6 +520,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		int ind = 0;
 		for (byte[] n : nbytes) {
 			names[ind] = new String(n);
+			//TODO: switch to the following line after current changes are checked in
+			//names[ind] = ContentName.fromNative(new ContentName(), n).toString();
 			ind++;
 		}
 
@@ -636,24 +667,113 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 * Experimental code - not tested
 	 *
 	 */
-	class PopupTrigger extends MouseAdapter {
-		public void mouseReleased(MouseEvent e) {
-			// if (e.isPopupTrigger()) // apparently doesn't work.
-			// http://forums.java.net/jive/thread.jspa?threadID=35178
-			if ((e.getButton() != MouseEvent.BUTTON1) && (e.getID() == MouseEvent.MOUSE_PRESSED)) {
-				int x = e.getX();
-				int y = e.getY();
-				TreePath path = tree.getPathForLocation(x, y);
-				if (path != null) {
-					if (tree.isExpanded(path))
-						m_action.putValue(Action.NAME, "Collapse");
-					else
-						m_action.putValue(Action.NAME, "Expand");
-					m_popup.show(tree, x, y);
-					m_clickedPath = path;
+	
+	class MouseActions implements MouseListener {
+		
+		/**
+		 * Class to handle mouse events.  This includes a single click to begin enumeration for folders.
+		 * If the selected item is a .txt or .text file, it will preview in the lower pane.
+		 * @param e MouseEvent
+		 */
+		public void mousePressed(MouseEvent e) {
+
+			int selRow = tree.getRowForLocation(e.getX(), e.getY());
+			TreePath selPath = tree.getPathForLocation(e.getX(), e.getY());
+
+			if (selRow != -1) {
+				if (e.getClickCount() == 2) {
+					myDoubleClick(selRow, selPath);
 				}
 			}
+			
+			if(e.isPopupTrigger()) {
+				popup(selPath, e.getX(), e.getY(), tree.getRowForLocation(e.getX(), e.getY()));
+			}		
+			
 		}
+		
+		public void mouseReleased(MouseEvent e) {
+			
+			if(e.isPopupTrigger()) {
+				popup(tree.getPathForLocation(e.getX(), e.getY()), e.getX(), e.getY(), tree.getRowForLocation(e.getX(), e.getY()));
+			}
+		}
+		
+		
+		public void mouseClicked(MouseEvent e) {
+			
+			if(e.isPopupTrigger()) {
+				popup(tree.getPathForLocation(e.getX(), e.getY()), e.getX(), e.getY(), tree.getRowForLocation(e.getX(), e.getY()));
+			}
+			
+		}
+
+		private void popup(TreePath selPath, int x, int y, int row){
+			tree_popupaction.putValue("PATH", selPath);
+			if(selPath!=null) {
+				if(tree.isExpanded(selPath)) {
+					tree_popupaction.putValue(Action.NAME, "Collapse");
+				} else {
+					
+					if(tree.isRowSelected(row)) {
+											
+						//if this is the first selection, the node needs to be selected first
+						//TreeExpansionEvent t = new TreeExpansionEvent(tree, selPath);
+						//dirExpansionListener.treeExpanded(t);
+						tree_popupaction.putValue(Action.NAME, "Expand");
+					}
+					else {
+						tree_popupaction.putValue(Action.NAME, "Select");
+					}
+				}
+				tree_popup.show(tree, x, y);
+				//tree_clickedpath = selPath;
+			}
+		}
+		
+		
+		/**
+		 * Double click action.  If a .txt or .text file is double clicked, it will open in a separate window.
+		 * The file is obtained through CCN.  If the file is no longer available, a message will appear in
+		 * the preview pane.
+		 * 
+		 * @param selRow Swing row selection
+		 * @param selPath Path selected
+		 */
+		private void myDoubleClick(int selRow, TreePath selPath) {
+			final Name node = getNameNode((DefaultMutableTreeNode) selPath.getLastPathComponent());
+
+			ContentName cn = ContentName.fromNative(new ContentName(), node.name);
+			String name = cn.toString();
+			
+			if (name.toLowerCase().endsWith(".txt")	|| name.toLowerCase().endsWith(".text")) {
+				if (node.path.count() == 0) {
+					//retrieveFromRepo("/" + name);
+					retrieveFromRepo(name, true);
+				}
+				else {
+					//retrieveFromRepo(node.path.toString() + "/" + name);
+					retrieveFromRepo(node.path.toString() + name, true);
+				}
+				
+			} else {
+				// Can't handle filetype
+				JOptionPane.showMessageDialog(ContentExplorer.this, "Cannot Open file "
+								+ cn + " Currently only opens .txt and .text files.",
+								"Only handles .txt and .text files at this time.",
+								JOptionPane.ERROR_MESSAGE);
+			}
+		}
+		
+		
+		public void mouseEntered(MouseEvent e) {
+			// we do not have actions for this yet
+		}
+		
+		public void mouseExited(MouseEvent e) {
+			// we do not have actions for this yet
+		}
+
 	}
 
 
@@ -665,29 +785,18 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	class DirExpansionListener implements TreeExpansionListener {
 		
 		/**
-		 * Method to expand a tree node and display the children in the GUI.
+		 * Method called when a tree node is expanded, currently not used.
 		 * 
 		 * @param event Swing TreeExpansionEvent object
 		 * @return void
 		 */
 		public void treeExpanded(TreeExpansionEvent event) {
-
-			final DefaultMutableTreeNode node = getTreeNode(event.getPath());
-
-			Thread runner = new Thread() {
-				public void run() {
-					Name fnode = getNameNode(node);
-					if (fnode != null) {
-						Log.finer("In the tree expansion listener with node: " + node.toString());
-						getNodes(fnode);
-						m_model.reload(node);
-					} else {
-						// selected top component, switch to top usable node
-						Log.finer("In the tree expansion listener with null node and " + node.toString());
-					}
-				}
-			};
-			runner.start();
+			DefaultMutableTreeNode node = getTreeNode(event.getPath());
+			Name fnode = getNameNode(node);
+            if (fnode != null) {
+            	getNodes(fnode);
+            	m_model.reload(node);
+            }
 		}
 
 		/**
@@ -699,7 +808,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		 * @return void
 		 */
 		public void treeCollapsed(TreeExpansionEvent event) {
-			final DefaultMutableTreeNode node = getTreeNode(event.getPath());
+			DefaultMutableTreeNode node = getTreeNode(event.getPath());
 			Name nodeName = getNameNode(node);
 			Log.finer("nodeName: " + nodeName.toString());
 			ContentName prefixToCancel = new ContentName();
@@ -711,6 +820,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			}
 			Log.fine("cancelling prefix: " + prefixToCancel);
 			_nameEnumerator.cancelEnumerationsWithPrefix(prefixToCancel);
+			
 		}
 	}
 
@@ -740,7 +850,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			// is being
 			// selected as part of a collapse, so we don't want to re-register
 			// it for enumerating
+			
 			if (tree.getRowForPath(event.getPath()) > -1) {
+				tree.setSelectionPath(event.getPath());
 				Thread runner = new Thread() {
 					public void run() {
 						Log.fine("getting name node: " + node.toString());
@@ -828,7 +940,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		if (fnode.path == null)
 			Log.finer("the path is null");
 		else
-			Log.finer("fnode: " + new String(fnode.name) + " path: " + fnode.path.toString());
+			Log.finer("fnode: " + ContentName.fromNative(new ContentName(), fnode.name) + " path: " + fnode.path.toString());
 		ContentName toExpand = null;
 		if (fnode.path == null)
 			toExpand = new ContentName();
@@ -838,30 +950,26 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		String p = toExpand.toString();
 		Log.finer("toExpand: " + toExpand + " p: " + p);
 
-		if (fnode.name != null && (new String(fnode.name).endsWith(".txt") || new String(fnode.name).endsWith(".text"))) {
+		if (fnode.name != null && (ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".txt") || ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".text"))) {
 			// get the file from the repo
 			Log.fine("Retrieve from Repo: " + p);
 			retrieveFromRepo(p);
-
-			return p;
-		} else {
-			// this is a directory that we want to enumerate...
-			if (fnode.path == null)
-				Log.finer("the path is null");
-			else
-				Log.finer("this is the path: " + fnode.path.toString()
-						+ " this is the name: " + new String(fnode.name));
-			Log.info("Registering Prefix: " + p);
-			registerPrefix(p);
-
-			initHelp();
-			return p;
 		}
+		
+		// this is a directory that we want to enumerate...  if it is a text file, we will still want to get the versions
+		if (fnode.path == null)
+			Log.finer("the path is null");
+		else
+			Log.finer("this is the path: " + fnode.path.toString() + " this is the name: " + ContentName.fromNative(new ContentName(), fnode.name));
+		Log.info("Registering Prefix: " + p);
+		registerPrefix(p);
 
+		initHelp();
+		return p;
 	}
 
 	/**
-	 * Method to create the GUI and set it to look like the system GUIs.
+	 * Static method to create and display the GUI.
 	 */
 	private static void createAndShowGUI() {
 		if (useSystemLookAndFeel) {
@@ -874,143 +982,32 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		new ContentExplorer();
 	}
 
-	/**
-	 * Method to add nodes to a tree at a given prefix.
-	 * 
-	 * @param n The children to add under a prefix
-	 * @param prefix The prefix to add children under
-	 * 
-	 * @return void
-	 */
-	private void addTreeNodes(ArrayList<ContentName> n, ContentName prefix) {
-
-		Log.finer("addTreeNodes: prefix = " + prefix + " names: " + n.toString());
-
-		DefaultMutableTreeNode parentNode = getTreeNode(prefix);
-		synchronized (parentNode) {
-
-			if (parentNode == null) {
-				Log.finer("PARENT NODE IS NULL!!!" + prefix.toString());
-				Log.finer("can't add anything to a null parent...  cancel prefix and return");
-				_nameEnumerator.cancelPrefix(prefix);
-				return;
-			}
-
-			int numChildren = parentNode.getChildCount();
-			Log.finer("the parent has " + numChildren + " children: ");
-			DefaultMutableTreeNode temp = null;
-			for (int i = 0; i < numChildren; i++) {
-				temp = (DefaultMutableTreeNode) parentNode.getChildAt(i);
-				if (temp.getUserObject() instanceof IconData) {
-					IconData id = (IconData) temp.getUserObject();
-					ContentName childName = ContentName.fromNative(new ContentName(), ((Name) id.m_data).name);
-					Log.finer(" " + childName);
-				}
-			}
-			Log.finer("");
-
-			// while we are getting things, wait for stuff to happen
-			Log.finer("Getting Content Names");
-			boolean addToParent = true;
-			DefaultMutableTreeNode toRemove = null;
-			for (ContentName cn : n) {
-				addToParent = true;
-
-				// check if a version marker
-				if (VersioningProfile.containsVersion(cn)) {
-					addToParent = false;
-
-					// this name is a version, that means the parent is
-					// something we can grab...
-					// we should change the icon for the parent to be a file and
-					// not a folder
-
-					Name parentNameNode = getNameNode(parentNode);
-					parentNameNode.setIsDirectory(false);
-
-					((IconData) parentNode.getUserObject()).setIcon(ICON_DOCUMENT);
-					m_model.nodeChanged(parentNode);
-
-				}
-				// check if a segment marker
-				if (SegmentationProfile.isSegment(cn)) {
-					addToParent = false;
-				}
-
-				if (addToParent && parentNode.getChildCount() > 0) {
-					numChildren = parentNode.getChildCount();
-
-					for (int i = 0; i < numChildren; i++) {
-						temp = (DefaultMutableTreeNode) parentNode.getChildAt(i);
-						// check if this name is already in there!
-						if (temp.getUserObject() instanceof Boolean) {
-							toRemove = temp;
-						} else {
-							if (temp.getUserObject() instanceof IconData) {
-								IconData id = (IconData) temp.getUserObject();
-								ContentName nodeName = ContentName.fromNative(new ContentName(), ((Name) id.m_data).name);
-
-								// check if already there...
-								if (cn.compareTo(nodeName) == 0) {
-									addToParent = false;
-								}
-							}
-						}
-					}
-					if (toRemove != null) {
-						m_model.removeNodeFromParent(toRemove);
-						toRemove = null;
-					}
-				}
-				final DefaultMutableTreeNode node;
-				if (addToParent) {
-					// name wasn't there, go ahead and add to the parent
-					if (cn.toString().toLowerCase().endsWith(".txt") || cn.toString().toLowerCase().endsWith(".text")) {
-						node = new DefaultMutableTreeNode(new IconData(ICON_DOCUMENT, null, new Name(cn.component(0), prefix, false)));
-					} else {
-						node = new DefaultMutableTreeNode(new IconData(ICON_FOLDER, null, new Name(cn.component(0), prefix, true)));
-					}
-
-					m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());
-					Log.fine("inserted node...  parent now has " + parentNode.getChildCount());
-				}
-			}
-			Log.finer("the parent node now has " + parentNode.getChildCount()+ " children: ");
-			numChildren = parentNode.getChildCount();
-			for (int i = 0; i < numChildren; i++) {
-				temp = (DefaultMutableTreeNode) parentNode.getChildAt(i);
-				if (temp.getUserObject() instanceof IconData) {
-					IconData id = (IconData) temp.getUserObject();
-					ContentName childName = ContentName.fromNative(new ContentName(), ((Name) id.m_data).name);
-					Log.finer(" " + childName);
-				}
-			}
-		}
-		Log.finer("");
-		Log.finer("Done Getting Content Names");
-	}
 
 	/**
-	 * Method to handle CCNNameEnumeration callbacks.  This implementation assumes the application will handle duplicates.
+	 * Method to handle CCNNameEnumeration callbacks.  This implementation assumes the
+	 * application handles duplicates. This method creates an instance of the Runnable
+	 * AddChildren class to process the names returned through CCNNameEnumeration.
 	 * 
 	 * @param prefix ContentName of the prefix for returned names
 	 * @param n ArrayList<ContentNames> of children returned by enumeration.
 	 */
 	public int handleNameEnumerator(ContentName prefix, ArrayList<ContentName> n) {
 
-		Log.fine("got a callback!");
-		this.names = n;
-		Log.fine("here are the returned names: ");
-		for (ContentName cn : this.names) {
-			if (!prefix.equals(new ContentName()))
-				Log.fine(cn.toString() + " (" + prefix.toString() + cn.toString() + ")");
-			else
-				Log.fine(cn.toString() + " (" + cn.toString() + ")");
+		if (Log.getLevel()==Level.FINE) {
+			Log.fine("got a callback! Here are the returned names: ");
+			for (ContentName cn : n) {
+				if (!prefix.equals(new ContentName()))
+					Log.fine(cn.toString() + " (" + prefix.toString() + cn.toString() + ")");
+				else
+					Log.fine(cn.toString() + " (" + cn.toString() + ")");
+			}
 		}
-		this.addTreeNodes(n, prefix);
-
+		
+		AddChildren adder = new AddChildren(this, n, prefix);
+		Thread t = new Thread(adder);
+		t.start();
+		
 		return 0;
-
 	}
 
 	/**
@@ -1101,5 +1098,14 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				}
 			});
 		}
+	}
+
+	/**
+	 * Method to return the CCNNameEnumerator for the ContentExplorer application
+	 * 
+	 * @return CCNNameEnumerator
+	 */
+	public CCNNameEnumerator getNameEnumerator() {
+		return _nameEnumerator;
 	}
 }

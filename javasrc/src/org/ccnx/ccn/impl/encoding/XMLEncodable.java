@@ -24,9 +24,9 @@ import java.nio.ByteBuffer;
 import javax.xml.stream.XMLStreamException;
 
 /**
- * Top-level interface implemented by objects that want to make use of our dual compact
- * binary (ccnb)/text XML encoding and decoding infrastructure. Used by almost all the 
- * XML encoded objects in the Java library; eventually all such objects will use it. 
+ * Top-level interface implemented by objects that want to make use of our stream encoding
+ * and decoding infrastructure. Note - this uses a compact binary encoding (ccnb) normally
+ * rather than text XML.
  * 
  * The choice between compact binary encoding and text encoding is made for the
  * general case using a system-wide configuration parameter set in SystemConfiguration.
