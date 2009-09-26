@@ -34,9 +34,12 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 
 /**
- * Class for manipulating ContentNames
+ * ContentNames consist of a sequence of byte[] components which may not 
+ * be assumed to follow any string encoding, or any other particular encoding.
+ * The constructors therefore provide for creation only from byte[]s.
+ * To create a ContentName from Strings, a client must call one of the static 
+ * methods that implements a conversion.
  */
-
 public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName> {
 
 	/**
@@ -45,7 +48,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public static final String SCHEME = "ccnx:";
 	
 	/**
-	 * Still want to accept this one, but prefer SCHEME.
+	 * This scheme has been deprecated, but we still want to accept it.
 	 */
 	public static final String ORIGINAL_SCHEME = "ccn:";
 	
@@ -60,12 +63,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}; 
 
     // Constructors
-	// ContentNames consist of a sequence of byte[] components which may not 
-	// be assumed to follow any string encoding, or any other particular encoding.
-	// The constructors therefore provide for creation only from byte[]s. 
-	// To create a ContentName from Strings, a client must call one of the static 
-	// methods that implements a conversion.
-	
 	public ContentName() {
 		this(0, (ArrayList<byte[]>)null);
 	}
@@ -81,6 +78,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 		
+	/**
+	 * Constructor given another ContentName, appends an extra component.
+	 * @param parent used for the base of the name.
+	 * @param name component to be appended.
+	 */
 	public ContentName(ContentName parent, byte [] name) {
 		this(parent.count() + 
 				((null != name) ? 1 : 0), parent.components());
@@ -91,6 +93,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 	
+	/**
+	 * Constructor given another ContentName, appends extra components.
+	 * @param parent used for the base of the name.
+	 * @param childComponents components to be appended.
+	 */
 	public ContentName(ContentName parent, byte [][] childComponents) {
 		this(parent.count() + 
 				((null != childComponents) ? childComponents.length : 0), parent.components());
@@ -108,7 +115,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	/**
 	 * Now that components() returns an ArrayList<byte []>, make a constructor that takes that
 	 * as input.
-	 * @param parent
+	 * @param parent used for the base of the name.
 	 * @param childComponents the additional name components to add at the end of parent
 	 */
 	public ContentName(ContentName parent, ArrayList<byte []> childComponents) {
@@ -142,8 +149,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
-	 * Basic constructor for extending or contracting names.
-	 * @param count
+	 * Constructor for extending or contracting names.
+	 * @param count only this number of name components are taken from components.
 	 * @param components
 	 */
 	public ContentName(int count, byte components[][]) {
@@ -163,8 +170,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
-	 * Basic constructor for extending or contracting names.
-	 * Shallow copy, as we don't tend to alter name components
+	 * Constructor for extending or contracting names.
+	 * Performs a faster shallow copy of the components, as we don't tend to alter name components
 	 * once created.
 	 * @param count Only this number of name components are copied into the new name.
 	 * @param components These are the name components to be copied. Can be null, empty, or longer or shorter than count.
@@ -306,6 +313,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 	
+	/**
+	 * Given an array of strings, apply URI decoding and create a ContentName
+	 * @see fromURI(String)
+	 * @throws MalformedContentNameStringException
+	 */
 	public static ContentName fromURI(String parts[]) throws MalformedContentNameStringException {
 		try {
 			ContentName result = new ContentName();
@@ -339,9 +351,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Return the <code>ContentName</code> created by appending one component
 	 * to the supplied parent.  The new component is converted from URI 
 	 * string encoding.
-	 * @param parent
-	 * @param name
-	 * @return
+	 * @see fromURI(String)
+	 * @param parent used for the base of the name.
+	 * @param name sequence of URI encoded name components, appended to the base.
 	 * @throws MalformedContentNameStringException
 	 */
 	public static ContentName fromURI(ContentName parent, String name) throws MalformedContentNameStringException {
@@ -375,9 +387,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Native String representations do not incorporate a URI scheme, and so must
 	 * begin with the component delimiter "/".
 	 * TODO use Java string escaping rules?
-	 * @param parent
 	 * @param name
-	 * @return
 	 * @throws MalformedContentNameStringException if name does not start with "/"
 	 */
 	public static ContentName fromNative(String name) throws MalformedContentNameStringException {
@@ -409,13 +419,12 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 
 	/**
 	 * Return the <code>ContentName</code> created by appending one component
-	 * to the supplied parent.  The new component is specified by a native 
-	 * Java String which will be encoded as UTF-8 in the output <code>ContentName</code>
+	 * to the supplied parent.
 	 * This method intentionally throws no declared exceptions
-	 * so you can be confident in encoding any native Java String
-	 * @param parent
-	 * @param name
-	 * @return
+	 * so you can be confident in encoding any native Java String.
+	 * @param parent used for the base of the name.
+	 * @param name Native Java String which will be encoded as UTF-8 in the output
+	 * <code>ContentName</code>
 	 */
 	public static ContentName fromNative(ContentName parent, String name) {
 		ContentName result = new ContentName(parent.count(), parent.components());
@@ -615,22 +624,22 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return bi.toString(16);
 	}
 
-	/*
-	 * Parse the URI Generic Syntax of RFC 3986  
-	 * including handling percent encoding of sequences that are not legal character
+	/**
+	 * Parse the URI Generic Syntax of RFC 3986.
+	 * Including handling percent encoding of sequences that are not legal character
 	 * encodings in any character set.  This method is the inverse of 
 	 * printComponent() and for any input sequence of bytes it must be the case
 	 * that parseComponent(printComponent(input)) == input.  Note that the inverse
 	 * is NOT true printComponent(parseComponent(input)) != input in general.
 	 *  
-	 * Please see fromURI() documentation for more detail.
+	 * @see fromURI(String)
 	 * 
 	 * Note in particular that this method interprets sequences of more than
 	 * two dots ('.') as representing an empty component or dot component value
 	 * as encoded by componentPrint.  That is, the component value will be 
 	 * the value obtained by removing three dots.
-	 * @param name a single component of a name
-	 * @return
+	 * @param name a single component of a name, URI encoded
+	 * @return a name component
      */
 	public static byte[] componentParseURI(String name) throws DotDotComponent, URISyntaxException {
 		byte[] decodedName = null;
@@ -716,8 +725,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * This method intentionally throws no declared exceptions
 	 * so you can be confident in encoding any native Java String
 	 * TODO make this use Java string escaping rules?
-	 * @param name
-	 * @return
+	 * @param name Component as native Java string
 	 */
 	public static byte[] componentParseNative(String name) {
 		try {
@@ -796,7 +804,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	/**
 	 * Get the i'th component, indexed from 0.
 	 * @param i
-	 * @return
+	 * @return null if i is out of range.
 	 */
 	public final byte[] component(int i) { 
 		if ((null == _components) || (i >= _components.size())) return null;
@@ -809,11 +817,18 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return _components.get(_components.size()-1);
 	}
 	
+	/**
+	 * @return The i'th component, converted using URI encoding.
+	 */
 	public String stringComponent(int i) {
 		if ((null == _components) || (i >= _components.size())) return null;
 		return componentPrintURI(_components.get(i));
 	}
 	
+	/**
+	 * Used by NetworkObject to decode the object from a network stream.
+	 * @see org.ccnx.ccn.impl.encoding.XMLEncodable
+	 */
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(getElementLabel());
 		
@@ -831,12 +846,16 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * name being compared with. Note there do not need to be any more components in the name
 	 * being compared with. 
 	 * @param name name being compared with.
-	 * @return
 	 */
 	public boolean isPrefixOf(ContentName name) {
 		return isPrefixOf(name, count());
 	}
 	
+	/**
+	 * Tests if the first n components are a prefix of name
+	 * @param name
+	 * @param count number of components to check
+	 */
 	public boolean isPrefixOf(ContentName name, int count) {
 		if (null == name)
 			return false;
@@ -942,10 +961,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 	
 	/**
-	 * Uses the canonical URI representation
-	 * @param str
-	 * @return
-	 * @throws MalformedURIException 
+	 * Looks for a component.
+	 * @param str Component to search for, encoded using URI encoding.
+	 * @return The index of the first component that matched. Starts at 0.
+	 * @throws URISyntaxException
 	 */
 	public int containsWhere(String str) throws URISyntaxException {
 		try {
@@ -961,9 +980,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 	
 	/**
-	 * Return component # of first matching component if it exists
-	 * @param component
-	 * @return -1 on failure, component # otherwise
+	 * Return component index of the first matching component if it exists.
+	 * @param component Component to search for.
+	 * @return -1 on failure, component index otherwise (starts at 0).
 	 */
 	public int containsWhere(byte [] component) {
 		int i=0;
@@ -995,9 +1014,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 
 	/**
 	 * Slice the name off right before the given component
-	 * @param name
 	 * @param component
-	 * @return
 	 */
 	public ContentName cut(byte [] component) {
 		int offset = this.containsWhere(component);
@@ -1011,6 +1028,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return new ContentName(offset, this.components());
 	}
 	
+	/**
+	 * Slice the name off right before the given component
+	 * @param component In URI encoded form.
+	 */
 	public ContentName cut(String component) throws URISyntaxException {
 		try {
 			byte[] parsed = componentParseURI(component);
@@ -1024,6 +1045,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 	
+	/**
+	 * Used by NetworkObject to encode the object to a network stream.
+	 * @see org.ccnx.ccn.impl.encoding.XMLEncodable
+	 */
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
