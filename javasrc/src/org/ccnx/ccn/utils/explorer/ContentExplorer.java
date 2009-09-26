@@ -90,19 +90,25 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	private static boolean useSystemLookAndFeel = false;
 
 	private static final long serialVersionUID = 1L;
+	
+	static java.net.URL netURL = ContentExplorer.class.getResource("Network.png");
 	public static final ImageIcon ICON_COMPUTER = new ImageIcon(getScaledImage(
-			(new ImageIcon("./src/org/ccnx/ccn/utils/explorer/Network.png")).getImage(), 32, 32));
+			(new ImageIcon(netURL)).getImage(), 32, 32));
+	
+	static java.net.URL compURL = ContentExplorer.class.getResource("Computer.png");
 	public static final ImageIcon ICON_DISK = new ImageIcon(getScaledImage(
-			(new ImageIcon("./src/org/ccnx/ccn/utils/explorer/Computer.png")).getImage(), 32, 32));
-
+			(new ImageIcon(compURL)).getImage(), 32, 32));
+	
+	static java.net.URL imageURL = ContentExplorer.class.getResource("Folder.png");
 	public static final ImageIcon ICON_FOLDER = new ImageIcon(getScaledImage(
-			(new ImageIcon("./src/org/ccnx/ccn/utils/explorer/Folder.png")).getImage(), 32, 32));
+			(new ImageIcon(imageURL)).getImage(), 32, 32));
 
+	static java.net.URL docURL = ContentExplorer.class.getResource("Document.png");
 	public static final ImageIcon ICON_EXPANDEDFOLDER = new ImageIcon(getScaledImage(
-			(new ImageIcon("./src/org/ccnx/ccn/utils/explorer/Document.png")).getImage(), 32, 32));
+			(new ImageIcon(docURL)).getImage(), 32, 32));
 
 	public static final ImageIcon ICON_DOCUMENT = new ImageIcon(getScaledImage(
-			(new ImageIcon("./src/org/ccnx/ccn/utils/explorer/Document.png")).getImage(), 32, 32));
+			(new ImageIcon(docURL)).getImage(), 32, 32));
 
 	private JEditorPane htmlPane;
 	public String selectedPrefix;
