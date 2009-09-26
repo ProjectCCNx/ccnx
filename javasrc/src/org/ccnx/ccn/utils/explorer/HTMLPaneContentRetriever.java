@@ -34,6 +34,7 @@ public class HTMLPaneContentRetriever implements Runnable {
 	private String name = null;
 	private JEditorPane htmlPane = null;
 	private CCNHandle handle = null;
+	private boolean txtpopup = false;
 	
 	/**
 	 * Constructor for the HTMLPaneContentRetriever.
@@ -46,6 +47,11 @@ public class HTMLPaneContentRetriever implements Runnable {
 		handle = h;
 		htmlPane = p;
 		name = n;
+	}
+	
+	
+	public void setTextPopup(boolean b) {
+		txtpopup = b;
 	}
 	
 	/**
@@ -104,10 +110,11 @@ public class HTMLPaneContentRetriever implements Runnable {
 			return;
 		}
 			
-
+		ContentName fileName = null;
+		
 		try{
 			//get the file name as a ContentName
-			ContentName fileName = ContentName.fromURI(name);
+			fileName = ContentName.fromURI(name);
 
 			CCNFileInputStream fis = new CCNFileInputStream(fileName, handle);
 				
@@ -116,6 +123,18 @@ public class HTMLPaneContentRetriever implements Runnable {
 			System.err.println("Could not retrieve file: "+name);
 			htmlPane.setText(name + " is not available at this time.");
 			e.printStackTrace();
+		}
+		
+		if (txtpopup && fileName!=null) {
+			try {
+				//System.out.println("attempting to open: "+fileName);
+				ShowTextDialog dialog = new ShowTextDialog(fileName, handle);
+				dialog.displayText();
+				dialog.setVisible(true);
+			} catch (Exception e) {
+				//Log.logException("Could not display the file", e);
+				e.printStackTrace();
+			}
 		}
 
 	}
