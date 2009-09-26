@@ -58,7 +58,6 @@ public class AddChildren implements Runnable {
 	/**
 	 * run() method for the thread adding children
 	 */
-	@Override
 	public void run() {
 
 		Log.finer("addTreeNodes: prefix = " + prefix + " names: " + names.toString());

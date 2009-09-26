@@ -675,7 +675,6 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		 * If the selected item is a .txt or .text file, it will preview in the lower pane.
 		 * @param e MouseEvent
 		 */
-		@Override
 		public void mousePressed(MouseEvent e) {
 
 			int selRow = tree.getRowForLocation(e.getX(), e.getY());
@@ -693,7 +692,6 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			
 		}
 		
-		@Override
 		public void mouseReleased(MouseEvent e) {
 			
 			if(e.isPopupTrigger()) {
@@ -702,7 +700,6 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		}
 		
 		
-		@Override
 		public void mouseClicked(MouseEvent e) {
 			
 			if(e.isPopupTrigger()) {
@@ -769,12 +766,10 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		}
 		
 		
-		@Override
 		public void mouseEntered(MouseEvent e) {
 			// we do not have actions for this yet
 		}
 		
-		@Override
 		public void mouseExited(MouseEvent e) {
 			// we do not have actions for this yet
 		}
