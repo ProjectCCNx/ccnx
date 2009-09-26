@@ -49,6 +49,9 @@ objtree: conf.mk _always
 documentation: _always
 	doxygen
 
+dist-docs: _always
+	doxygen Doxyfile.dist
+
 _always:
 
 .PHONY: _always
