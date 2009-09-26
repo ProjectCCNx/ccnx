@@ -1,0 +1,33 @@
+Changes between 0.1.0 and 0.1.1:
+--------------------------------
+
+  * Fixed timing window bug in RepositoryFlowControl affecting repository writing.
+  * Minor improvements to logging in Java library.
+  * Minor changes in build/packaging, Java import list.
+  * Fixed varargs handling in C library for C99 compliance and to fix operation on
+    FreeBSD/amd64.
+  * Auto-generated documentation has been improved, particularly in some Java classes.
+  * ccncatchunks2 now produces a summary output.
+  * org.ccnx.ccn.profiles.access.AccessControlProfile.principalInfoToNameComponent now
+    takes a PrincipalInfo object as input rather than individual values from such object.
+  * The logging level for the Java end-to-end test has been increased to help track down
+    intermittent bugs.
+  * Bugs have been fixed in org.ccnx.ccn.test.io.content.CCNNetworkObjectTest, 
+    CCNNetworkObjectTestRepo.
+  * ccnls now prints a usage message if not given useful input (#100004).
+  * Java ContentName now has additional convenience constructor.
+  * New naming structure for test data has been introduced to use test-specific, timestamped
+    names for unit tests.  This is not yet fully implemented in test suite.
+  * Java Eclipse project name is now CCNx-Java, and the README now explains how to import
+    the Eclipse projects from files in the distribution to get the cross-references.
+  * The BinaryEncoding and SignatureGeneration technical documentation has been slightly 
+    repaired.
+  * Java lib CCNAbstractInputStream now decrypts content objects as a unit, improving
+    random access performance for streams without significant security penalty. (#100007).
+  * ContentExplorer now handles errors better and has fewer blocking threads and new UI 
+    menu options that are not fully implemented.
+
+Version 0.1.0:
+--------------
+
+Initial public release.
