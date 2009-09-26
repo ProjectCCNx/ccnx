@@ -21,6 +21,8 @@ default all clean depend coverage check test shared testinstall install uninstal
 
 documentation: _always
 
+dist-docs: _always
+
 _always: 
 
 .PHONY: _always 
