@@ -34,6 +34,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ECParameterSpec;
 import org.bouncycastle.jce.spec.ElGamalParameterSpec;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
@@ -88,15 +89,15 @@ public class PublicKeyObjectTestRepo {
 		pair2 = kpg.generateKeyPair();
 		ElGamalParameterSpec egp = new ElGamalParameterSpec(
 				new BigInteger(1, WrappedKeyTest.pbytes), new BigInteger(1, WrappedKeyTest.gbytes));
-		KeyPairGenerator ekpg = KeyPairGenerator.getInstance("ElGamal");
+		KeyPairGenerator ekpg = KeyPairGenerator.getInstance("ElGamal", KeyManager.getDefaultProvider());
 		ekpg.initialize(egp); // go for fast
 		egPair = ekpg.generateKeyPair();
-		KeyPairGenerator eckpg = KeyPairGenerator.getInstance("EC", "BC");
+		KeyPairGenerator eckpg = KeyPairGenerator.getInstance("EC", KeyManager.getDefaultProvider());
 		ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("P-384");
 		eckpg.initialize(ecSpec);
 		eccPair = eckpg.generateKeyPair();
 		
-		KeyPairGenerator g = KeyPairGenerator.getInstance("ECIES", "BC");
+		KeyPairGenerator g = KeyPairGenerator.getInstance("ECIES", KeyManager.getDefaultProvider());
 	    g.initialize(192);
 	    eciesPair = g.generateKeyPair();
 	     
