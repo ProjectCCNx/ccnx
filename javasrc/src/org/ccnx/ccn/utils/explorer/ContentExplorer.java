@@ -250,7 +250,15 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			public void actionPerformed(ActionEvent e){
 				tree.repaint();
 				htmlPane.setText("save file to local machine not implemented yet");
+
+				TreePath p = (TreePath)(tree_popupaction.getValue("PATH"));
+
+				Name node = getNameNode((DefaultMutableTreeNode) p.getLastPathComponent());
 				
+				ContentName name = new ContentName(node.path, node.name);
+				LocalSaveContentRetriever localsave = new LocalSaveContentRetriever(_handle, name, htmlPane);
+				Thread t = new Thread(localsave);
+				t.start();
 			}
 		};
 		
