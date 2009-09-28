@@ -235,8 +235,14 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				TreePath p = (TreePath)(tree_popupaction.getValue("PATH"));
 
 				Name node = getNameNode((DefaultMutableTreeNode) p.getLastPathComponent());
+
+				ContentName n = null;
 				
-				ContentName n = new ContentName(node.path, node.name);
+				if(node.name == null && node.path == null)
+					n = new ContentName();
+				else
+					n = new ContentName(node.path, node.name);
+				
 				htmlPane.setText(n.toString());
 			}
 		};
@@ -249,8 +255,21 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 			public void actionPerformed(ActionEvent e){
 				tree.repaint();
-				htmlPane.setText("save file to local machine not implemented yet");
+
+				TreePath p = (TreePath)(tree_popupaction.getValue("PATH"));
+
+				Name node = getNameNode((DefaultMutableTreeNode) p.getLastPathComponent());
+					
+				ContentName name = null;
 				
+				if(node.name == null && node.path == null)
+					name = new ContentName();
+				else
+					name = new ContentName(node.path, node.name);
+				LocalSaveContentRetriever localsave = new LocalSaveContentRetriever(_handle, name, htmlPane);
+				Thread t = new Thread(localsave);
+				t.start();
+			
 			}
 		};
 		
