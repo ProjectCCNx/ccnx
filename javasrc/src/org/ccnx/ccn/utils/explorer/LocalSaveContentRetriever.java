@@ -95,13 +95,13 @@ public class LocalSaveContentRetriever implements Runnable {
         	htmlPane.setText("Save File cancelled");
         	return;
         }
-		
+		boolean overwrite = false;
         //check the file and make sure we can write to it
         try {
         	if (f.exists()) {
         		//the file exists...   don't need to create a new file
         		htmlPane.setText("Overwriting contents of "+f.getPath());
-        	
+        		overwrite = true;
         	} else {
         	//we need to create the file
         		f.createNewFile();
@@ -118,8 +118,10 @@ public class LocalSaveContentRetriever implements Runnable {
         }
         		
 		try{
-			
-			htmlPane.setText("saving "+name+" to "+ f.getCanonicalPath());
+			if (!overwrite)
+				htmlPane.setText("saving "+name+" to "+ f.getCanonicalPath());
+			else
+				htmlPane.setText("overwriting contents of "+ f.getCanonicalPath()+" to save "+name);
 			
 			CCNFileInputStream fis = new CCNFileInputStream(name, handle);
 			FileOutputStream output = new FileOutputStream(f);
@@ -135,9 +137,8 @@ public class LocalSaveContentRetriever implements Runnable {
 			}
 			htmlPane.setText("Saved "+name+" to "+f.getCanonicalPath());	
 		} catch (Exception e) {
-			htmlPane.setText("Could not save "+name+" to "+f.getPath());
+			htmlPane.setText("Could not save "+name+" to "+f.getPath() +" This may be a prefix for an object or just may not be available at this time.");
 			System.err.println("Could not retrieve file: "+name);
-			e.printStackTrace();
 		}
 		
 	}
