@@ -456,8 +456,7 @@ public class AccessControlManager {
 		EnumeratedNameList aclNameList = EnumeratedNameList.exists(AccessControlProfile.aclName(aclNodeName), aclNodeName, handle());
 		
 		if (null != aclNameList) {
-			ContentName aclName = new ContentName(AccessControlProfile.aclName(aclNodeName),
-												  aclNameList.getLatestVersionChildName().lastComponent());
+			ContentName aclName = new ContentName(AccessControlProfile.aclName(aclNodeName));
 			Log.info("Found latest version of acl for " + aclNodeName + " at " + aclName);
 			ACLObject aclo = new ACLObject(aclName, handle());
 			aclo.update();
