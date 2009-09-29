@@ -1168,7 +1168,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			String line = null;
 			BufferedReader brCleanUp = new BufferedReader (new InputStreamReader (output));
 			while ((line = brCleanUp.readLine ()) != null) {
-				System.out.println ("[Stdout] " + line);
+				//System.out.println ("[Stdout] " + line);
 				if(line.toLowerCase().contains("ccn")) {
 					check = true;
 					Log.fine("ContentExplorer found CCN VLC plugin, enabling play option");
