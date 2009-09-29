@@ -451,7 +451,7 @@ public class CCNNetworkManager implements Runnable {
 				
 				if (null != results) {								
 					// Call into client code without holding any library locks
-					Log.finer("Filter callback (" + results.size() + " interests) for: {0}", name);
+					Log.finer("Filter callback ({0} interests) for: {1}", results.size(), name);
 					listener.handleInterests(results);
 				} else {
 					Log.finer("Filter callback skipped (no interests) for: {0}", name);
