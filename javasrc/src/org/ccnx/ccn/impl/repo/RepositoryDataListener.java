@@ -131,7 +131,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 			if (SegmentationProfile.isSegment(co.name())) {
 				long thisBlock = SegmentationProfile.getSegmentNumber(co.name());
 				if (thisBlock >= _currentBlock)
-					_currentBlock = thisBlock + 1;
+					_currentBlock = thisBlock;
 				
 				// For now, only set _finalBlockID when we *know* we have the correct final
 				// block number -- i.e. we get a block whose segment number matches the encoded
@@ -173,22 +173,24 @@ public class RepositoryDataListener implements CCNInterestListener {
 				int nOutput = _interests.size() >= _server.getWindowSize() ? 0 : _server.getWindowSize() - _interests.size();
 				
 				// Make sure we don't go past prospective last block.
-				if (_finalBlockID >= 0 && _finalBlockID < (firstInterestToRequest + nOutput - 1)) {
+				if (_finalBlockID >= 0 && _finalBlockID < (firstInterestToRequest + nOutput)) {
 					// want max to be _finalBlockID or firstInterestToRequest, whichever is larger,
 					// unless isFinalBlock is true, in which case max is _finalBlockID (i.e. no more interests)
 					nOutput = (int)(_finalBlockID - firstInterestToRequest + 1);
 					if (nOutput < 0)
 						nOutput = 0;
 					// If we're confident about the final block ID, cancel previous extra interests
-					if (isFinalBlock)
+					if (isFinalBlock) {
 						cancelHigherInterests(_finalBlockID);
+						break;
+					}
 				}
 				
 				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-					Log.finest("REPO: Got block: " + co.name() + " expressing {0} more interests, current block {1} final block {2} last block? {3}", co.name(),nOutput, _currentBlock, _finalBlockID, isFinalBlock);
+					Log.finest("REPO: Got block: {0} expressing {1} more interests, current block {2} final block {3} last block? {4}", co.name(), nOutput, _currentBlock, _finalBlockID, isFinalBlock);
 				}
 				for (int i = 0; i < nOutput; i++) {
-					ContentName name = SegmentationProfile.segmentName(co.name(), firstInterestToRequest + i);
+					ContentName name = SegmentationProfile.segmentName(co.name(), firstInterestToRequest + 1 + i);
 					// DKS - should use better interest generation to only get segments (TBD, in SegmentationProfile)
 					Interest newInterest = new Interest(name);
 					try {
