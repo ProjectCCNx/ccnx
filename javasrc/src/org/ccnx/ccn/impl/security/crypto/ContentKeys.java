@@ -105,7 +105,7 @@ public class ContentKeys {
 	public ContentKeys(String encryptionAlgorithm, SecretKeySpec encryptionKey,
 						IvParameterSpec masterIV) throws NoSuchAlgorithmException, NoSuchPaddingException {
 		// ensure NoSuchPaddingException cannot be thrown later when a Cipher is made
-		Cipher.getInstance(encryptionAlgorithm);
+		Cipher.getInstance(_encryptionAlgorithm, KeyManager.getDefaultProvider());
 		// TODO check secret key/iv not empty?
 		this._encryptionAlgorithm = encryptionAlgorithm;
 		this._encryptionKey = encryptionKey;
