@@ -32,8 +32,12 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.logging.Level;
@@ -130,6 +134,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	
 	protected JPopupMenu tree_popup;
 	protected Action tree_popupaction;
+	
+	protected boolean vlcSupported = false;
 
 	/**
 	 * Constructor for ContentExplorer application.  This sets up the swing elements and listeners for the GUI.
@@ -137,6 +143,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 */
 	public ContentExplorer() {
 		super("CCN Content Explorer");
+		
+		//vlcSupported = checkVLCsupport();
 
 		setupNameEnumerator();
 
@@ -285,8 +293,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				
 			}
 		};
-		
-		tree_popup.add(playFile);
+		if(vlcSupported)
+			tree_popup.add(playFile);
 		
 		Action showVersions = new AbstractAction("Show Versions") {
 
@@ -1132,5 +1140,53 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 */
 	public CCNNameEnumerator getNameEnumerator() {
 		return _nameEnumerator;
+	}
+	
+	/**
+	 * Method to check for CCN Plugin for VLC.  Returns true if the ccn plugin is 
+	 * installed for VLC.  If it is not found, the "Play File" option is disabled
+	 * for files.
+	 * 
+	 * Currently not tested on non-linux platforms.
+	 * 
+	 * @return  boolean True if the text ccn is found in the vlc --list output.
+	 */
+	
+	public boolean checkVLCsupport() {
+		
+		InputStream output = null;
+		//InputStream stderr = null;
+		
+		boolean check = false;
+		
+		String[] cmd = {"/bin/sh", "-c", "vlc --list | grep ccn"};
+		try {
+			Process p = Runtime.getRuntime().exec(cmd);
+			output = p.getInputStream();
+			//stderr = p.getErrorStream();
+			
+			String line = null;
+			BufferedReader brCleanUp = new BufferedReader (new InputStreamReader (output));
+			while ((line = brCleanUp.readLine ()) != null) {
+				System.out.println ("[Stdout] " + line);
+				if(line.toLowerCase().contains("ccn")) {
+					check = true;
+					Log.fine("ContentExplorer found CCN VLC plugin, enabling play option");
+				}
+			}
+			brCleanUp.close();
+		      
+			//brCleanUp = new BufferedReader (new InputStreamReader (stderr));
+			//while ((line = brCleanUp.readLine ()) != null) {
+			//}
+			//brCleanUp.close();
+
+			
+		} catch (IOException e) {
+			Log.warning("ContentExplorer could not check for CCN VLC plugin, disabling play file option");
+			Log.logException("Error checking for VLC CCN plugin", e);
+		}
+
+		return check;
 	}
 }
