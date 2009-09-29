@@ -1,0 +1,31 @@
+#!/bin/sh
+# multicast/setup
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+DISTHOST="${1:-sylvester}"
+DIR=/tmp/$USER/mcast
+mkdir -p $DIR
+cd $DIR || exit 1
+scp $DISTHOST:ccnx.tar.gz .
+tar xfz ccnx.tar.gz
+mkdir -p bin  lib include
+(cd csrc && make CFLAGS='-g -O3' && make install INSTALL_BASE=$DIR)
+(cd csrc/ccnd && make test)
+cd experiments/multicast
+./startccnd
+echo ==== suggested commands to execute ====
+echo cd `pwd`
+cat <<'EOF'
+PS1='\t \h:\W \$ '
+EOF
+echo =======================================
