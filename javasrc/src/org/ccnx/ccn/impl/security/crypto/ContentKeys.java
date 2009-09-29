@@ -64,10 +64,11 @@ public class ContentKeys {
 	
 	private synchronized static SecureRandom getRandom() {
 		// see http://www.cigital.com/justiceleague/2009/08/14/proper-use-of-javas-securerandom/
+		// also Fedora seems to have screwed up the built in PRNG provider, slowing thing down dramatically
 		if (null != _random)
 			return _random;
 		try {
-			_random = SecureRandom.getInstance("SHA1PRNG", KeyManager.getDefaultProvider());
+			_random = SecureRandom.getInstance("SHA1PRNG");
 		} catch (NoSuchAlgorithmException e) {
 			Log.warning("Cannot find random number generation algorithm SHA1PRNG: " + e.getMessage());
 			_random = new SecureRandom();
