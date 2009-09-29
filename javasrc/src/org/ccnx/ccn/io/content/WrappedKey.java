@@ -143,7 +143,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	static {
 		// In Java 1.5, many of these require BouncyCastle. They are typically built in in 1.6.
 		_WrapAlgorithmMap.put("AES", "AESWRAPWITHPAD");
-		_WrapAlgorithmMap.put("RSA", "RSA/NONE/OAEPWithSHA256AndMGF1Padding");
+		_WrapAlgorithmMap.put("RSA", "RSA/NONE/OAEPWithSHA-256AndMGF1Padding");
 	}
 	
 	/*
@@ -202,12 +202,13 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			Cipher wrapCipher = null;
 			try {
 				wrapCipher = Cipher.getInstance(wrappingAlgorithm);
+				Log.info("Wrap cipher {0}, provider {1}.", wrapCipher.getAlgorithm(), wrapCipher.getProvider());
 			} catch (NoSuchAlgorithmException e) {
-				Log.warning("Unexpected NoSuchAlgorithmException attempting to instantiate wrapping algorithm.");
-				throw new InvalidKeyException("Unexpected NoSuchAlgorithmException attempting to instantiate wrapping algorithm.");
+				Log.warning("Unexpected NoSuchAlgorithmException attempting to instantiate wrapping algorithm: "+ wrappingAlgorithm);
+				throw new InvalidKeyException("Unexpected NoSuchAlgorithmException attempting to instantiate wrapping algorithm: "+ wrappingAlgorithm);
 			} catch (NoSuchPaddingException e) {
-				Log.warning("Unexpected NoSuchPaddingException attempting to instantiate wrapping algorithm.");
-				throw new InvalidKeyException("Unexpected NoSuchPaddingException attempting to instantiate wrapping algorithm");
+				Log.warning("Unexpected NoSuchPaddingException attempting to instantiate wrapping algorithm: "+ wrappingAlgorithm);
+				throw new InvalidKeyException("Unexpected NoSuchPaddingException attempting to instantiate wrapping algorithm: "+ wrappingAlgorithm);
 			}
 			wrapCipher.init(Cipher.WRAP_MODE, wrappingKey);
 			
