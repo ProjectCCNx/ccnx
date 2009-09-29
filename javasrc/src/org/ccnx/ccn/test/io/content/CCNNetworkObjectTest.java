@@ -112,7 +112,7 @@ public class CCNNetworkObjectTest {
 	public static void setUpBeforeClass() throws Exception {
 		System.out.println("Making stuff.");
 		oldLevel = Log.getLevel();
-		Log.setLevel(Level.FINE);
+		Log.setLevel(Level.FINEST);
 		
 		handle = CCNHandle.open();
 		
