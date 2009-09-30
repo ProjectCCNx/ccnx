@@ -73,6 +73,9 @@ public class ContentKeys {
 			Log.warning("Cannot find random number generation algorithm SHA1PRNG: " + e.getMessage());
 			_random = new SecureRandom();
 		}
+		if (null == _random) {
+			Log.severe("ERROR: Cannot create secure random number generator!");
+		}
 		return _random;
 	}
 

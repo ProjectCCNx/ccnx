@@ -86,7 +86,10 @@ public abstract class KeyManager {
 				Provider bc = new BouncyCastleProvider();
 				Security.addProvider(bc);
 				BC_PROVIDER = bc;
-				Log.warning("Installed BouncyCastle provider.");
+				if (null != BC_PROVIDER)
+					Log.warning("Installed BouncyCastle provider.");
+				else
+					Log.severe("ERROR: NULL default provider! Cannot load BouncyCastle!");
 			}
 		}
 	}
@@ -100,7 +103,7 @@ public abstract class KeyManager {
 			initializeProvider();
 		}
 		if (null == BC_PROVIDER) {
-			Log.severe("Unexpected: NULL default provider!");
+			Log.severe("ERROR: NULL default provider! Cannot load BouncyCastle!");
 		}
 		return BC_PROVIDER;
 	}
