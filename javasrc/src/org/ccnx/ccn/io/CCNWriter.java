@@ -268,7 +268,8 @@ public class CCNWriter {
 	 * @throws IOException If readers do not empty the buffer.
 	 */
 	public void close() throws IOException {
-		_segmenter.getFlowControl().waitForPutDrain();
+		_segmenter.getFlowControl().beforeClose();
+		_segmenter.getFlowControl().afterClose();
 	}
 	
 	/**

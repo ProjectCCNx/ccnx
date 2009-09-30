@@ -529,12 +529,12 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	/**
 	 * Implements a wait until all outstanding data has been drained from the
-	 * flow controller. This is required on close to insure that all data is actually
+	 * flow controller. This is required on close to ensure that all data is actually
 	 * sent to ccnd.
 	 * 
 	 * @throws IOException if the data has not been drained after a reasonable period
 	 */
-	public void waitForPutDrain() throws IOException {
+	protected void waitForPutDrain() throws IOException {
 		synchronized (_holdingArea) {
 			long startSize = _nOut;
 			while (_holdingArea.size() > 0) {
