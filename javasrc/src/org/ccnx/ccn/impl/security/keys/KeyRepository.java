@@ -37,6 +37,7 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.impl.CCNFlowServer;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
@@ -64,7 +65,9 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * on parts of the network stack that need that boostrapping to be complete in
  * order to work. At the same time, we'd like to not have to reimplement segmentation,
  * etc, in order to cache keys; we'd like to be able to use those parts of
- * the library. So we allow the KeyRepository to have a CCNHandle, 
+ * the library. So we allow the KeyRepository to have a CCNHandle, we can use
+ * all of the library functionality to write keys once that handle is sufficiently
+ * initialized.
  */
 
 public class KeyRepository implements CCNFilterListener {
@@ -72,6 +75,8 @@ public class KeyRepository implements CCNFilterListener {
 	protected static final boolean _DEBUG = true;
 	
 	protected CCNHandle _handle = null;
+	protected CCNFlowServer _keyServer = null;
+	
 	protected HashMap<ContentName,ContentObject> _keyMap = new HashMap<ContentName,ContentObject>();
 	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest,ContentName>();
 	protected HashMap<PublisherPublicKeyDigest, PublicKey> _rawKeyMap = new HashMap<PublisherPublicKeyDigest,PublicKey>();
@@ -85,9 +90,11 @@ public class KeyRepository implements CCNFilterListener {
 	 * 
 	 * @throws IOException
 	 */
-	public KeyRepository(KeyManager keyManager) {
+	public KeyRepository(KeyManager keyManager) throws IOException {
 		_handle = CCNHandle.open(keyManager); // maintain our own connection to the agent, so
 			// everyone can ask us for keys even if we have no repository
+		// make a buffered server to return key data
+		_keyServer = new CCNFlowServer(null, _handle);
 	}
 	
 	public CCNHandle handle() { return _handle; }

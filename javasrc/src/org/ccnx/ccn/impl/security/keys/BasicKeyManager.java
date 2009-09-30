@@ -89,11 +89,11 @@ public class BasicKeyManager extends KeyManager {
 	protected BasicKeyManager(String userName, String keyStoreType,
 							  String defaultAlias, char [] password) throws ConfigurationException, IOException {
 		
-		_keyRepository = new KeyRepository();
 		_userName = (null != userName) ? userName : UserConfiguration.userName();
 		_password = (null != password) ? password : UserConfiguration.keystorePassword().toCharArray();
 		_keyStoreType = (null != keyStoreType) ? keyStoreType : UserConfiguration.defaultKeystoreType();
 	    _defaultAlias = (null != defaultAlias) ? defaultAlias : UserConfiguration.defaultKeyAlias();
+	    // must call initialize
 	}
 		
 	/** 
@@ -135,11 +135,11 @@ public class BasicKeyManager extends KeyManager {
 		if (_initialized)
 			return;
 		loadKeyStore();
-		// we've put together enough of this KeyManager to let the
-		// KeyRepository use it to make a CCNHandle, even though we're
-		// not done...
-		_keyRepository = new KeyRepository(this);
 		try {
+			// we've put together enough of this KeyManager to let the
+			// KeyRepository use it to make a CCNHandle, even though we're
+			// not done...
+			_keyRepository = new KeyRepository(this);
 			publishDefaultKey();
 		} catch (IOException e) {
 			throw new ConfigurationException("IOException publishing default key: " + e.getMessage(), e);
