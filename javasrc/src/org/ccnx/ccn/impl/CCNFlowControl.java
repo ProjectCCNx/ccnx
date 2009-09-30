@@ -48,16 +48,16 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * content has been generated this class will buffer the interests until
  * the content is generated.
  * 
- * Implements a highwater mark in the holding buffer. If the buffer consumption
- * reaches the highwater mark, any subsequent put will block until there is more
+ * Implements a capacity limit in the holding buffer. If the buffer consumption
+ * reaches the specified capacity, any subsequent put will block until there is more
  * room in the buffer. Note that this means that the buffer may hold as many objects as the 
- * highwater value, and the object held by any later blocked put is extra, meaning the total
- * number of objects waiting to be sent is not bounded by the highwater mark alone.
+ * capacity value, and the object held by any later blocked put is extra, meaning the total
+ * number of objects waiting to be sent is not bounded by the capacity alone.
  * Currently this is only per "flow controller". There
  * is nothing to stop multiple streams writing to the repo for instance to
  * independently all fill their buffers and cause a lot of memory to be used.
  * 
- * Also implements a highwater mark for held interests.
+ * Also implements a limited capacity for held interests.
  * 
  * The buffer emptying policy in "afterPutAction" can be overridden by 
  * subclasses to implement a different way of draining the buffer. This is used 
@@ -75,12 +75,12 @@ public class CCNFlowControl implements CCNFilterListener {
 	protected static final int MAX_TIMEOUT = 10000;
 	
 	// Designed to allow a CCNOutputStream to flush its current output once without
-	// causing the highwater blocking to be triggered
-	protected static final int HIGHWATER_DEFAULT = CCNOutputStream.BLOCK_BUF_COUNT + 1;
+	// causing the over-capacity blocking to be triggered
+	protected static final int DEFAULT_CAPACITY = CCNOutputStream.BLOCK_BUF_COUNT + 1;
 	
-	protected static final int INTEREST_HIGHWATER_DEFAULT = 40;
+	protected static final int DEFAULT_INTEREST_CAPACITY = 40;
 	protected int _timeout = MAX_TIMEOUT;
-	protected int _highwater = HIGHWATER_DEFAULT;
+	protected int _capacity = DEFAULT_CAPACITY;
 	
 	// Value used to determine whether the buffer is draining in waitForPutDrain
 	protected long _nOut = 0;
@@ -114,7 +114,7 @@ public class CCNFlowControl implements CCNFilterListener {
 			_filteredNames.add(name);
 			_handle.registerFilter(name, this);
 		}
-		_unmatchedInterests.setHighWater(INTEREST_HIGHWATER_DEFAULT);
+		_unmatchedInterests.setCapacity(DEFAULT_INTEREST_CAPACITY);
 	}
 	
 	/**
@@ -142,7 +142,7 @@ public class CCNFlowControl implements CCNFilterListener {
 			}
 		}
 		_handle = handle;
-		_unmatchedInterests.setHighWater(INTEREST_HIGHWATER_DEFAULT);
+		_unmatchedInterests.setCapacity(DEFAULT_INTEREST_CAPACITY);
 	}
 	
 	/**
@@ -365,7 +365,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				// received them.
 				Log.finest("Holding {0}", co.name());
 				// Must verify space in _holdingArea or block waiting for space
-				if (_holdingArea.size() >= _highwater) {
+				if (_holdingArea.size() >= _capacity) {
 					long ourTime = new Date().getTime();
 					Entry<UnmatchedInterest> removeIt;
 					// TODO Verify the following note
@@ -393,11 +393,11 @@ public class CCNFlowControl implements CCNFilterListener {
 							// intentional no-op
 						}
 						elapsed = new Date().getTime() - ourTime;
-					} while (_holdingArea.size() >= _highwater && elapsed < _timeout);						
-					if (_holdingArea.size() >= _highwater)
+					} while (_holdingArea.size() >= _capacity && elapsed < _timeout);						
+					if (_holdingArea.size() >= _capacity)
 						throw new IOException("Flow control buffer full and not draining");
 				}
-				assert(_holdingArea.size() < _highwater);
+				assert(_holdingArea.size() < _capacity);
 				// Space verified so now can hold object. See note above for reason to always hold.
 				_holdingArea.put(co.name(), co);
 
@@ -621,33 +621,31 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Change the highwater mark for the maximum amount of data to buffer before
-	 * causing putters to block. The highwater value is the number of content objects
+	 * Change the capacity for the maximum amount of data to buffer before
+	 * causing putters to block. The capacity value is the number of content objects
 	 * that will be buffered.
 	 * 
 	 * @param value number of content objects.
 	 */
-	public void setHighwater(int value) {
-		_highwater = value;
+	public void setCapacity(int value) {
+		_capacity = value;
 	}
 	
 	/**
 	 * Change the maximum number of unmatched interests to buffer.
 	 * @param value	number of interests
 	 */
-	public void setInterestHighwater(int value) {
-		_unmatchedInterests.setHighWater(value);
+	public void setInterestCapacity(int value) {
+		_unmatchedInterests.setCapacity(value);
 	}
 	
 	/**
 	 * What is the total capacity of this flow controller?
-	 * This is equal to the highwater value; it might be useful to change
-	 * "highwater" to "capacity".
 	 * @return the total capacity of this flow controller; in other words the
 	 *   number of segments that can be written to it before writes will block
 	 */
-	public int totalCapacity() {
-		return _highwater;
+	public int getCapacity() {
+		return _capacity;
 	}
 	
 	/**
@@ -663,7 +661,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @return the number of additional objects that can currently be written to this controller
 	 */
 	public int availableCapacity() {
-		return totalCapacity() - size(); // off by 1? synchronization?
+		return getCapacity() - size(); // off by 1? synchronization?
 	}
 	
 	/**

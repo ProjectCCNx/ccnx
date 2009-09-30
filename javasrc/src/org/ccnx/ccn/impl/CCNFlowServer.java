@@ -11,20 +11,20 @@ public class CCNFlowServer extends CCNFlowControl {
 	public CCNFlowServer(ContentName name, Integer capacity, CCNHandle handle) throws IOException {
 		super(name, handle);
 		if (null != capacity)
-			setHighwater(capacity);
+			setCapacity(capacity);
 	}
 
 	public CCNFlowServer(String name, Integer capacity, CCNHandle handle)
 			throws MalformedContentNameStringException, IOException {
 		super(name, handle);
 		if (null != capacity)
-			setHighwater(capacity);
+			setCapacity(capacity);
 	}
 
 	public CCNFlowServer(Integer capacity, CCNHandle handle) throws IOException {
 		super(handle);
 		if (null != capacity)
-			setHighwater(capacity);
+			setCapacity(capacity);
 	}
 	
 	/**

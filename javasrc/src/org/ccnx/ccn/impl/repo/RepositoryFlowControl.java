@@ -236,7 +236,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 				ContentObject co = _holdingArea.get(name);
 				Log.fine("CO {0} acked", co.name());
 				_holdingArea.remove(co.name());
-				if (_holdingArea.size() < _highwater)
+				if (_holdingArea.size() < _capacity)
 					_holdingArea.notify();
 			}
 		}
