@@ -64,6 +64,7 @@ public class ContentKeys {
 	
 	private synchronized static SecureRandom getRandom() {
 		// see http://www.cigital.com/justiceleague/2009/08/14/proper-use-of-javas-securerandom/
+		// also Fedora seems to have screwed up the built in PRNG provider, slowing thing down dramatically
 		if (null != _random)
 			return _random;
 		try {
@@ -71,6 +72,9 @@ public class ContentKeys {
 		} catch (NoSuchAlgorithmException e) {
 			Log.warning("Cannot find random number generation algorithm SHA1PRNG: " + e.getMessage());
 			_random = new SecureRandom();
+		}
+		if (null == _random) {
+			Log.severe("ERROR: Cannot create secure random number generator!");
 		}
 		return _random;
 	}
@@ -104,7 +108,7 @@ public class ContentKeys {
 	public ContentKeys(String encryptionAlgorithm, SecretKeySpec encryptionKey,
 						IvParameterSpec masterIV) throws NoSuchAlgorithmException, NoSuchPaddingException {
 		// ensure NoSuchPaddingException cannot be thrown later when a Cipher is made
-		Cipher.getInstance(encryptionAlgorithm);
+		Cipher.getInstance(_encryptionAlgorithm, KeyManager.getDefaultProvider());
 		// TODO check secret key/iv not empty?
 		this._encryptionAlgorithm = encryptionAlgorithm;
 		this._encryptionKey = encryptionKey;

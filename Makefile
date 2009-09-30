@@ -15,7 +15,7 @@
 # Subdirectories we build in
 TOPSUBDIRS = csrc schema javasrc doc/technical apps/ccnChat
 # Packing list for packaging
-PACKLIST = Makefile README LICENSE configure doc/index.txt $(TOPSUBDIRS) apps experiments
+PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt $(TOPSUBDIRS) apps experiments
 
 default all: _always
 	for i in $(TOPSUBDIRS); do         \
@@ -27,7 +27,7 @@ default all: _always
 	(cd javasrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
 	(cd apps/ccnChat && $(MAKE) install INSTALL_BASE=`pwd`/../..)
 
-clean depend test check shared documentation testinstall install uninstall: _always
+clean depend test check shared documentation dist-docs testinstall install uninstall: _always
 	for i in $(TOPSUBDIRS); do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
@@ -73,13 +73,13 @@ distfile: tar
 	mkdir ccnx-$(VERSION)
 	( cd ccnx-$(VERSION) && tar xf ../ccnx.tar && $(MAKE) fixupversions VERSION=$(VERSION) && $(MAKE) MD5 SHA1 )
 	# Build the documentation
-	( cd ccnx-$(VERSION) && $(MAKE) documentation 2>&1) > ccnx-$(VERSION)-documentation.log
+	( cd ccnx-$(VERSION) && $(MAKE) dist-docs 2>&1) > ccnx-$(VERSION)-documentation.log
 	tar cf ccnx-$(VERSION).tar ccnx-$(VERSION)
 	gzip -9 ccnx-$(VERSION).tar
 	ls -l ccnx-$(VERSION).tar.gz
 
 fixupversions: _always
-	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 javasrc/Doxyfile
+	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 csrc/Doxyfile.dist && Fix1 javasrc/Doxyfile && Fix1 javasrc/Doxyfile.dist
 
 MD5: _always
 	xargs openssl dgst < MANIFEST > MD5

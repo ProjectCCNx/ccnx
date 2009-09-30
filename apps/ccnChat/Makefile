@@ -56,6 +56,8 @@ jar clean test: _always
 
 documentation: _always
 
+dist-docs: _always
+
 testinstall:
 	@echo No $@ target for `pwd`
  

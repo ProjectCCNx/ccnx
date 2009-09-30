@@ -63,7 +63,6 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 		_seed = new short[seed.length];
 		for (int i = 0; i < seed.length; i++)
 			_seed[i] = (short)((seed[i]) & 0xff);
-		_size = estimatedMembers;
 		
 		 // Michael's comment: try for about m = 12*n (m = bits in Bloom filter)
 		_lgBits = 13;
@@ -98,6 +97,8 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 	 * @param key a key to exclude
 	 */
 	public void insert(byte [] key) {
+		if (_size < 0)
+			throw new IllegalArgumentException("Can't reuse bloomfilter from the network");
 		long s = computeSeed();
 		for (int i = 0; i < key.length; i++) 
 			s = nextHash(s, key[i] + 1);
@@ -188,6 +189,7 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 		if (i != usedBits()) {
 			Log.warning("Unexpected result in decoding BloomFilter: expecting " + usedBits() + " bytes, got " + i);
 		}
+		_size = -1;
 	}
 	
 	@Override

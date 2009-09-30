@@ -436,13 +436,14 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			parentEnumerator = new EnumeratedNameList(parentName, handle);
 			parentEnumerator.waitForData(); // we're only getting the first round here... 
 			// could wrap this bit in a loop if want to try harder
-			if (parentEnumerator.hasChild(childName.component(childIndex))) {
+			byte[] childNameComponent = childName.component(childIndex);
+			if (parentEnumerator.hasChild(childNameComponent)) {
 				childIndex++;
 				if (childIndex == childName.count()) {
 					return parentEnumerator;
 				}
 				parentEnumerator.stopEnumerating();
-				parentName = new ContentName(parentName, childName.component(childIndex));
+				parentName = new ContentName(parentName, childNameComponent);
 				continue;
 			} else {
 				break;

@@ -17,8 +17,6 @@
 
 package org.ccnx.ccn.test.io.content;
 
-import static org.junit.Assert.fail;
-
 import java.math.BigInteger;
 import java.security.Key;
 import java.security.KeyPair;
@@ -29,10 +27,10 @@ import java.security.Security;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ElGamalParameterSpec;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.jce.CCNCryptoProvider;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -121,7 +119,6 @@ public class WrappedKeyTest {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Security.addProvider(new BouncyCastleProvider());
 		Security.addProvider(new CCNCryptoProvider());
 		
 		SecureRandom sr = new SecureRandom();
@@ -149,118 +146,102 @@ public class WrappedKeyTest {
 		
 		storedKeyName = new ContentName(testHelper.getClassNamespace(), 
 										ContentName.fromNative("/test/content/File1.txt/_access_/NK").components());
+		Log.info("Initialized keys for WrappedKeyTest");
 	}
 
 	@Test
-	public void testWrapUnwrapKey() {
+	public void testWrapUnwrapKey() throws Exception {
 		// for each wrap case, wrap, unwrap, and make sure it matches.
-		try {
-			// Wrap secret in secret
-			WrappedKey wks = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingAESKey);
-			Key unwrappedKey = wks.unwrapKey(wrappingAESKey);
-			Assert.assertArrayEquals(wrappedAESKey.getEncoded(), unwrappedKey.getEncoded());
-			// wrap secret in public			
-			WrappedKey wksp = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingKeyPair.getPublic());
-			unwrappedKey = wksp.unwrapKey(wrappingKeyPair.getPrivate());
-			Assert.assertArrayEquals(wrappedAESKey.getEncoded(), unwrappedKey.getEncoded());
-			// wrap private in public
-			WrappedKey wkpp = WrappedKey.wrapKey(wrappingKeyPair.getPrivate(), null, aLabel, wrappingKeyPair.getPublic());
-			unwrappedKey = wkpp.unwrapKey(wrappingKeyPair.getPrivate());
-			Assert.assertArrayEquals(wrappingKeyPair.getPrivate().getEncoded(), unwrappedKey.getEncoded());
-			// wrap private in secret
-			System.out.println("wpk length " + wrappingKeyPair.getPrivate().getEncoded().length);
-			WrappedKey wkp = WrappedKey.wrapKey(wrappingKeyPair.getPrivate(), null, aLabel, wrappingAESKey);
-			unwrappedKey = wkp.unwrapKey(wrappingAESKey);
-			Assert.assertArrayEquals(wrappingKeyPair.getPrivate().getEncoded(), unwrappedKey.getEncoded());
-			// ditto for el gamal
-			/*
-			 * ElGamal encryption requires unlimited strength crypto. This used to be installed
-			 * by default on OSX, but not anymore, and not on Ubuntu or Windows.
-			 * 
+		Log.info("Entering testWrapUnwrapKey");
+		// Wrap secret in secret
+		Log.info("Wrap secret key in secret key.");
+		WrappedKey wks = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingAESKey);
+		Key unwrappedKey = wks.unwrapKey(wrappingAESKey);
+		Assert.assertArrayEquals(wrappedAESKey.getEncoded(), unwrappedKey.getEncoded());
+		// wrap secret in public			
+		Log.info("Wrap secret key in public key.");
+		WrappedKey wksp = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingKeyPair.getPublic());
+		unwrappedKey = wksp.unwrapKey(wrappingKeyPair.getPrivate());
+		Assert.assertArrayEquals(wrappedAESKey.getEncoded(), unwrappedKey.getEncoded());
+		// wrap private in public
+		Log.info("Wrap private key in public key.");
+		WrappedKey wkpp = WrappedKey.wrapKey(wrappingKeyPair.getPrivate(), null, aLabel, wrappingKeyPair.getPublic());
+		unwrappedKey = wkpp.unwrapKey(wrappingKeyPair.getPrivate());
+		Assert.assertArrayEquals(wrappingKeyPair.getPrivate().getEncoded(), unwrappedKey.getEncoded());
+		// wrap private in secret
+		Log.info("Wrap private key in secret key.");
+		Log.info("wpk length " + wrappingKeyPair.getPrivate().getEncoded().length);
+		WrappedKey wkp = WrappedKey.wrapKey(wrappingKeyPair.getPrivate(), null, aLabel, wrappingAESKey);
+		unwrappedKey = wkp.unwrapKey(wrappingAESKey);
+		Assert.assertArrayEquals(wrappingKeyPair.getPrivate().getEncoded(), unwrappedKey.getEncoded());
+		// ditto for el gamal
+		/*
+		 * ElGamal encryption requires unlimited strength crypto. This used to be installed
+		 * by default on OSX, but not anymore, and not on Ubuntu or Windows. Remove test.
+		 * 
 			wksp = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingEGKeyPair.getPublic());
 			unwrappedKey = wksp.unwrapKey(wrappingEGKeyPair.getPrivate());
 			Assert.assertEquals(new BigInteger(1, wrappedAESKey.getEncoded()), new BigInteger(1, unwrappedKey.getEncoded()));
 			wkpp = WrappedKey.wrapKey(wrappingEGKeyPair.getPrivate(), null, aLabel, wrappingKeyPair.getPublic());
 			unwrappedKey = wkpp.unwrapKey(wrappingKeyPair.getPrivate());
 			Assert.assertArrayEquals(wrappingEGKeyPair.getPrivate().getEncoded(), unwrappedKey.getEncoded());
-			*/
-		} catch (Exception e) {
-			e.printStackTrace();
-			fail("Exception in wrapUnwrapKey: " + e.getClass().getName() + ":  " + e.getMessage());
-		} 
-		
+		 */		
+		Log.info("Leaving testWrapUnwrapKey");
 	}
 
 	@Test
-	public void testWrappedKeyByteArrayStringStringStringByteArrayByteArray() {
+	public void testWrappedKeyByteArrayStringStringStringByteArrayByteArray() throws Exception {
+		Log.info("Entering testWrappedKeyByteArrayStringStringStringByteArrayByteArray");
 		WrappedKey wka = null;
-		try {
-			wka = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, 
-									 wrappingKeyPair.getPublic());
-			WrappedKey wk2 = new WrappedKey(wrappingKeyID,
-											WrappedKey.wrapAlgorithmForKey(wrappingKeyPair.getPublic().getAlgorithm()),
-											wrappedAESKey.getAlgorithm(),
-											aLabel,
-											wka.encryptedNonceKey(),
-											wka.encryptedKey());
-											
-			WrappedKey dwk = new WrappedKey();
-			WrappedKey bdwk = new WrappedKey();
-			XMLEncodableTester.encodeDecodeTest("WrappedKey(full)", wk2, dwk, bdwk);
-		} catch (Exception e) {
-			fail("Exception in wrapKey: " + e.getClass().getName() + ":  " + e.getMessage());
-		}
+		wka = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, 
+				wrappingKeyPair.getPublic());
+		WrappedKey wk2 = new WrappedKey(wrappingKeyID,
+				WrappedKey.wrapAlgorithmForKey(wrappingKeyPair.getPublic().getAlgorithm()),
+				wrappedAESKey.getAlgorithm(),
+				aLabel,
+				wka.encryptedNonceKey(),
+				wka.encryptedKey());
+
+		WrappedKey dwk = new WrappedKey();
+		WrappedKey bdwk = new WrappedKey();
+		XMLEncodableTester.encodeDecodeTest("WrappedKey(full)", wk2, dwk, bdwk);
 		wka.setWrappingKeyIdentifier(wrappingKeyID);
+		Log.info("Leaving testWrappedKeyByteArrayStringStringStringByteArrayByteArray");
 	}
 	
 	@Test
-	public void testDecodeInputStream() {
+	public void testDecodeInputStream() throws Exception {
+		Log.info("Entering testDecodeInputStream");
 		WrappedKey wk = new WrappedKey(wrappingKeyID, dummyWrappedKey);
 		WrappedKey dwk = new WrappedKey();
 		WrappedKey bdwk = new WrappedKey();
 		XMLEncodableTester.encodeDecodeTest("WrappedKey(dummy)", wk, dwk, bdwk);
 
-		WrappedKey wks = null;
-		try {
-			wks = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingAESKey);
-		} catch (Exception e) {
-			fail("Exception in wrapKey: " + e.getClass().getName() + ":  " + e.getMessage());
-		}
+		WrappedKey wks = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingAESKey);
+
 		WrappedKey dwks = new WrappedKey();
 		WrappedKey bdwks = new WrappedKey();
 		XMLEncodableTester.encodeDecodeTest("WrappedKey(symmetric, real)", wks, dwks, bdwks);
 
-		WrappedKey wka = null;
-		try {
-			wka = WrappedKey.wrapKey(wrappedAESKey, NISTObjectIdentifiers.id_aes128_CBC.toString(), 
+		WrappedKey wka = WrappedKey.wrapKey(wrappedAESKey, NISTObjectIdentifiers.id_aes128_CBC.toString(), 
 										aLabel, wrappingKeyPair.getPublic());
-		} catch (Exception e) {
-			fail("Exception in wrapKey: " + e.getClass().getName() + ":  " + e.getMessage());
-		}
+
 		wka.setWrappingKeyIdentifier(wrappingKeyID);
 		wka.setWrappingKeyName(wrappingKeyName);
 		WrappedKey dwka = new WrappedKey();
 		WrappedKey bdwka = new WrappedKey();
 		XMLEncodableTester.encodeDecodeTest("WrappedKey(assymmetric wrap symmetric, with id and name)", wka, dwka, bdwka);
 		Assert.assertArrayEquals(dwka.wrappingKeyIdentifier(), wrappingKeyID);
+		Log.info("Leaving testDecodeInputStream");
 	}
 	
 	@Test
-	public void testWrappedKeyObject() {
+	public void testWrappedKeyObject() throws Exception {
 		
-		WrappedKey wks = null;
-		try {
-			wks = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingAESKey);
-		} catch (Exception e) {
-			fail("Exception in wrapKey: " + e.getClass().getName() + ":  " + e.getMessage());
-		}
-		WrappedKey wka = null;
-		try {
-			wka = WrappedKey.wrapKey(wrappedAESKey, NISTObjectIdentifiers.id_aes128_CBC.toString(), 
+		Log.info("Entering testWrappedKeyObject");
+		WrappedKey wks = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingAESKey);
+		WrappedKey wka = WrappedKey.wrapKey(wrappedAESKey, NISTObjectIdentifiers.id_aes128_CBC.toString(), 
 										aLabel, wrappingKeyPair.getPublic());
-		} catch (Exception e) {
-			fail("Exception in wrapKey: " + e.getClass().getName() + ":  " + e.getMessage());
-		}
 		wka.setWrappingKeyIdentifier(wrappingKeyID);
 		wka.setWrappingKeyName(wrappingKeyName);
 		
@@ -284,13 +265,11 @@ public class WrappedKeyTest {
 			Assert.assertEquals(wkoread.getVersionedName(), wko.getVersionedName());
 			Assert.assertEquals(wkoread.wrappedKey(), wko.wrappedKey());
 			Assert.assertEquals(wko.wrappedKey(), wka);
-		} catch (Exception e) {
-			fail("Exception in wrapKeyObject testing: " + e.getClass().getName() + ":  " + e.getMessage());
-			
 		} finally {
 			if (null != flosser)
 				flosser.stop();
 		}
+		Log.info("Leaving testWrappedKeyObject");
 	}
 
 }

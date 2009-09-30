@@ -56,6 +56,9 @@ jar clean test: _always
 documentation: _always
 	doxygen
 
+dist-docs: _always
+	doxygen Doxyfile.dist
+
 testinstall:
 	@echo No $@ target for `pwd`
  

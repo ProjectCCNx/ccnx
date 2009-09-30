@@ -1,0 +1,68 @@
+experiments/multicast/README
+
+The scripts in this directory may be used to experiment with
+content distribution performance using CCN over a local multicast group.
+
+Before using, make sure that the ports and addresses in the settings
+file are consistent with local use.
+
+You should also change the default DISTHOST hostname in
+./pushtar and ./setup to name a machine that you can log into with ssh.
+
+Speaking of ssh, you will want to configure the machines you are
+using to allow you to login without having to type your password,
+or you will end up spending a lot of time typing your password.
+
+./pushtar
+	bundles up a compressed tar file of the ccn sources from
+	your working tree, and copies it over to the DISTHOST.
+
+./setup
+	fetches, unpacks, and builds the tarball created by pushtar,
+	and starts the experimental ccnd.
+	This is all done in a subdirectory of /tmp, so it will
+	not conflict with anything in your home directory.
+	This is to be run on each of your test machines.
+	Since the build is done for reach machine, they may be of
+	various architectures. 
+	To bootstrap the process, simply paste the contents
+	of ./setup into a terminal window on the test machine
+	(get into a Bourne shell, first, though).  Or else copy the
+	the setup script over and execute it.  If you do that,
+	make sure you get into the right directory (the script prints
+	out a cd command for you to copy).
+	Re-executing the setup script on a test machine will redo
+	the setup.
+
+./startccnd
+	will (re)start the test ccnd.  It is the last thing in the
+	./setup script.
+
+./connectsource upstream
+	should be done on one or more of the machines designated as
+	having a direct to the upstream source.
+	This machine should have a ccnd running on the default
+	port (ccndstart will start one) which has been populated with
+	test data, for example:
+	(jot 1000000 | ccnsendchunks /experiments/multicast/DATA/1e6 &)
+	The default for upstream is taken from the settings file.
+
+./sink
+	should be executed on each of the "sink" machines - it will
+	do nothing until the "go" signal is given.
+
+./tcpsink
+	is for running a control using tcp; use instead of ./sink.
+
+./go 
+	can be executed on any of the machines (typically the source) to start
+	a test.  It works by providing a CCN content object that all the
+	sink machines are patiently waiting for.
+
+./waitgo
+	is used by the sink script to await the go signal.
+
+./gather
+	uses ccnx to gather the results for posterity.
+
+

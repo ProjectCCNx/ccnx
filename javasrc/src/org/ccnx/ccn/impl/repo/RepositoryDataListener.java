@@ -50,7 +50,6 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private Interest _origInterest;		// The interest which originally triggered the creation of
 										// this listener. Used to filter out duplicate or overlapping
 										// requests for listeners
-	private ContentName _versionedName;	// The name associated with this listener
 	private InterestTable<Object> _interests = new InterestTable<Object>();	// Used to hold outstanding interests
 										// expressed but not yet satisfied.  Also used to decide how many interests
 										// may be expressed to satisfy the current pipelining window
@@ -107,7 +106,6 @@ public class RepositoryDataListener implements CCNInterestListener {
 	 */
 	public RepositoryDataListener(Interest origInterest, Interest interest, RepositoryServer server) {
 		_origInterest = interest;
-		_versionedName = interest.name();
 		_server = server;
 		_handle = server.getHandle();
 		_timer = new Date().getTime();
@@ -130,14 +128,10 @@ public class RepositoryDataListener implements CCNInterestListener {
 			
 			boolean isFinalBlock = false;
 			
-			if (VersioningProfile.hasTerminalVersion(co.name()) && !VersioningProfile.hasTerminalVersion(_versionedName)) {
-				_versionedName = co.name().cut(VersioningProfile.findLastVersionComponent(co.name()) + 1);
-			}
-				
 			if (SegmentationProfile.isSegment(co.name())) {
 				long thisBlock = SegmentationProfile.getSegmentNumber(co.name());
 				if (thisBlock >= _currentBlock)
-					_currentBlock = thisBlock + 1;
+					_currentBlock = thisBlock;
 				
 				// For now, only set _finalBlockID when we *know* we have the correct final
 				// block number -- i.e. we get a block whose segment number matches the encoded
@@ -166,13 +160,12 @@ public class RepositoryDataListener implements CCNInterestListener {
 			}
 			synchronized (_interests) {
 				_interests.remove(interest, null);
-			}
-			
-			// Compute next interests to ask for and ask for them
-			// Note that this should only ask for 1 interest except for the first time through this code when it
-			// should ask for "windowSize" interests.
-			synchronized (_interests) {
+				
+				// Compute next interests to ask for and ask for them
+				// Note that this should only ask for 1 interest except for the first time through this code when it
+				// should ask for "windowSize" interests.
 				long firstInterestToRequest = getNextBlockID();
+				Log.finest("First interest to request is {0}", firstInterestToRequest);
 				if (_currentBlock > firstInterestToRequest) // Can happen if last requested interest precedes all others
 															// out of order
 					firstInterestToRequest = _currentBlock;
@@ -180,22 +173,24 @@ public class RepositoryDataListener implements CCNInterestListener {
 				int nOutput = _interests.size() >= _server.getWindowSize() ? 0 : _server.getWindowSize() - _interests.size();
 				
 				// Make sure we don't go past prospective last block.
-				if (_finalBlockID >= 0 && _finalBlockID < (firstInterestToRequest + nOutput - 1)) {
+				if (_finalBlockID >= 0 && _finalBlockID < (firstInterestToRequest + nOutput)) {
 					// want max to be _finalBlockID or firstInterestToRequest, whichever is larger,
 					// unless isFinalBlock is true, in which case max is _finalBlockID (i.e. no more interests)
 					nOutput = (int)(_finalBlockID - firstInterestToRequest + 1);
 					if (nOutput < 0)
 						nOutput = 0;
 					// If we're confident about the final block ID, cancel previous extra interests
-					if (isFinalBlock)
+					if (isFinalBlock) {
 						cancelHigherInterests(_finalBlockID);
+						break;
+					}
 				}
 				
 				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-					Log.finest("REPO: Got block: " + co.name() + " expressing {0} more interests, current block {1} final block {2} last block? {3}", co.name(),nOutput, _currentBlock, _finalBlockID, isFinalBlock);
+					Log.finest("REPO: Got block: {0} expressing {1} more interests, current block {2} final block {3} last block? {4}", co.name(), nOutput, _currentBlock, _finalBlockID, isFinalBlock);
 				}
 				for (int i = 0; i < nOutput; i++) {
-					ContentName name = SegmentationProfile.segmentName(co.name(), firstInterestToRequest + i);
+					ContentName name = SegmentationProfile.segmentName(co.name(), firstInterestToRequest + 1 + i);
 					// DKS - should use better interest generation to only get segments (TBD, in SegmentationProfile)
 					Interest newInterest = new Interest(name);
 					try {
@@ -314,14 +309,6 @@ public class RepositoryDataListener implements CCNInterestListener {
 	 */
 	public Interest getOrigInterest() {
 		return _origInterest;
-	}
-	
-	/**
-	 * Gets the namespace served by this listener as a ContentName
-	 * @return
-	 */
-	public ContentName getVersionedName() {
-		return _versionedName;
 	}
 	
 	/**

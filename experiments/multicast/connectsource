@@ -1,4 +1,5 @@
-# schema/Makefile
+#!/bin/sh
+# multicast/connectsource
 # 
 # Part of the CCNx distribution.
 #
@@ -11,18 +12,6 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-
-SUBDIRS = validation
-
-default all clean depend coverage check test shared testinstall install uninstall: _always
-	for i in $(SUBDIRS); do         \
-	  (cd "$$i" && pwd && $(MAKE) $@) || break;			\
-	done
-
-documentation: _always
-
-dist-docs: _always
-
-_always: 
-
-.PHONY: _always 
+. ./settings
+ping -c 1 ${1:-$DATAHOST}
+ccndc add ccnx:/experiments/multicast/DATA udp ${1:-$DATAHOST}
