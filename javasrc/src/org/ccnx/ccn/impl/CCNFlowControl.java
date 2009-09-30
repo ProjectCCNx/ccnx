@@ -468,9 +468,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @throws IOException may be thrown by overriding subclasses
 	 */
 	public void afterPutAction(ContentObject co) throws IOException {
-		_nOut++;
-		_holdingArea.remove(co.name());
-		_holdingArea.notify();
+		remove(co);
 	}
 	
 	/*
@@ -639,6 +637,61 @@ public class CCNFlowControl implements CCNFilterListener {
 	 */
 	public void setInterestHighwater(int value) {
 		_unmatchedInterests.setHighWater(value);
+	}
+	
+	/**
+	 * What is the total capacity of this flow controller?
+	 * This is equal to the highwater value; it might be useful to change
+	 * "highwater" to "capacity".
+	 * @return the total capacity of this flow controller; in other words the
+	 *   number of segments that can be written to it before writes will block
+	 */
+	public int totalCapacity() {
+		return _highwater;
+	}
+	
+	/**
+	 * Get the number of objects this flow controller is currently holding.
+	 * @return the number of objects (segments) in the buffer
+	 */
+	public int size() {
+		return _holdingArea.size();
+	}
+	
+	/**
+	 * Get the amount of remaining space available in this flow controller's buffer.
+	 * @return the number of additional objects that can currently be written to this controller
+	 */
+	public int availableCapacity() {
+		return totalCapacity() - size(); // off by 1? synchronization?
+	}
+	
+	/**
+	 * Remove a ContentObject from the set buffered by this flow controller, either
+	 * because we're done with it, or because we don't want to buffer it anymore.
+	 * Need a way to get the CO to remove; might want a remove(ContentName) or
+	 * something like it.
+	 */
+	public void remove(ContentObject co) {
+		// do synchronize on _holdingArea as we may be called directly; if called
+		// with lock on _holdingArea will be fine (reentrant locks), though
+		// should evaluate performance cost
+		synchronized(_holdingArea) {
+			_nOut++; // do we need to do this, or only in afterPutAction?
+			_holdingArea.remove(co.name());
+			_holdingArea.notify();
+		}
+	}
+	
+	/**
+	 * Remove all the held objects from this buffer.
+	 */
+	public void clear() {
+		synchronized(_holdingArea) {
+			_nOut += size();
+			_holdingArea.clear();
+			_holdingArea.notify();
+		}
 	}
 	
 	/**
