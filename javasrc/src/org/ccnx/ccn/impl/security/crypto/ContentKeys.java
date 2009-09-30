@@ -68,7 +68,7 @@ public class ContentKeys {
 		if (null != _random)
 			return _random;
 		try {
-			_random = SecureRandom.getInstance("SHA1PRNG");
+			_random = SecureRandom.getInstance("SHA1PRNG", KeyManager.getDefaultProvider());
 		} catch (NoSuchAlgorithmException e) {
 			Log.warning("Cannot find random number generation algorithm SHA1PRNG: " + e.getMessage());
 			_random = new SecureRandom();
