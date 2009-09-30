@@ -135,13 +135,14 @@ public class PublicKeyObjectTestRepo {
 	public void testRawKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException, VersionMissingException {
 		
 
-		System.out.println("Reading and writing key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
+		Log.info("Reading and writing raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 		if (null == flosser) {
 			flosser = new Flosser();
 		} 
 		flosser.handleNamespace(keyName);
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, handle);
 		pko.save();
+		Log.info("Saved " + pko.getVersionedName() + ", now trying to read.");
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getVersionedName()));
 		// should update in another thread
 		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new handle
@@ -154,10 +155,7 @@ public class PublicKeyObjectTestRepo {
 			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
 		}
 		if (null != optional2ndKey) {
-			// if we save on pkoread and attempt to update on pko, the interests don't
-			// get delivered and we end up on a wait for put drain, even though there
-			// is a perfectly good matching interest coming from the flosser -- it somehow
-			// only makes it to the object that doesn't have data.
+			Log.info("Reading and writing second raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 			pkoread.save(optional2ndKey);
 			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
 			pko.update();
@@ -165,12 +163,14 @@ public class PublicKeyObjectTestRepo {
 			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
 			Assert.assertEquals(pko.publicKey(), optional2ndKey);
 		}
+		Log.info("Finished reading and writing raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
+
 	}
 
 	public void testRepoKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException, VersionMissingException {
 		
 
-		System.out.println("Reading and writing key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
+		Log.info("Reading and writing key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, handle);
 		pko.saveToRepository();
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getVersionedName()));
@@ -187,11 +187,7 @@ public class PublicKeyObjectTestRepo {
 			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
 		}
 		if (null != optional2ndKey) {
-			// if we save on pkoread and attempt to update on pko, the interests don't
-			// get delivered and we end up on a wait for put drain, even though there
-			// is a perfectly good matching interest coming from the flosser -- it somehow
-			// only makes it to the object that doesn't have data.
-			// TODO DKS FIX
+			Log.info("Reading and writing second key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 			pkoread.saveToRepository(optional2ndKey);
 			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
 			pko.update();
@@ -199,5 +195,6 @@ public class PublicKeyObjectTestRepo {
 			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
 			Assert.assertEquals(pko.publicKey(), optional2ndKey);
 		}
+		Log.info("Finished reading and writing key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 	}
 }
