@@ -30,6 +30,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -75,7 +76,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	// Designed to allow a CCNOutputStream to flush its current output once without
 	// causing the highwater blocking to be triggered
-	protected static final int HIGHWATER_DEFAULT = 128 + 1;
+	protected static final int HIGHWATER_DEFAULT = CCNOutputStream.BLOCK_BUF_COUNT + 1;
 	
 	protected static final int INTEREST_HIGHWATER_DEFAULT = 40;
 	protected int _timeout = MAX_TIMEOUT;
