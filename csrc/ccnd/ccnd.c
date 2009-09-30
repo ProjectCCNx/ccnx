@@ -2844,7 +2844,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         res = -__LINE__;
         goto Bail;
     }
-    /* Make the content-digest name component explicit */
+    /* Make the ContentObject-digest name component explicit */
     ccn_digest_ContentObject(msg, &obj);
     if (obj.digest_bytes != 32) {
         ccnd_debug_ccnb(h, __LINE__, "indigestible", face, msg, size);

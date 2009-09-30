@@ -17,12 +17,13 @@ CCNLIBDIR = ../lib
 
 INSTALLED_PROGRAMS = ccnd ccndsmoketest ccnd-init-keystore-helper
 PROGRAMS = $(INSTALLED_PROGRAMS)
-DEBRIS = anything.ccnb contenthash.ccnb contentmishash.ccnb smoketestccnd
+DEBRIS = anything.ccnb contentobjecthash.ccnb contentmishash.ccnb \
+         contenthash.ccnb
 
 BROKEN_PROGRAMS = 
 CSRC = ccnd.c ccnd_msg.c ccnd_stats.c ccnd_internal_client.c ccndsmoketest.c
 HSRC = ccnd_private.h
-SCRIPTSRC = testbasics fortunes.ccnb contenthash.ref anything.ref \
+SCRIPTSRC = testbasics fortunes.ccnb contentobjecthash.ref anything.ref \
             ccnd-init-keystore-helper.sh minsuffix.ref
  
 default: $(PROGRAMS)

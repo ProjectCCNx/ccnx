@@ -565,11 +565,12 @@ struct ccn_parsed_ContentObject {
  * ccn_digest_ContentObject.
  */
 int ccn_parse_ContentObject(const unsigned char *msg, size_t size,
-                   struct ccn_parsed_ContentObject *x,
-                   struct ccn_indexbuf *components);
+                            struct ccn_parsed_ContentObject *x,
+                            struct ccn_indexbuf *components);
 
 void ccn_digest_ContentObject(const unsigned char *msg,
                               struct ccn_parsed_ContentObject *pc);
+
 /*
  * ccn_parse_Name: Parses a ccnb-encoded name
  * components may be NULL, otherwise is filled in with Component boundary offsets

@@ -25,26 +25,24 @@
 #include <ccn/coding.h>
 #include <ccn/digest.h>
 
+/**
+ * Compute the digest of the entire ContentObject if necessary,
+ * caching the result in pc->digest, pc->digest_bytes.
+ */
 void
 ccn_digest_ContentObject(const unsigned char *content_object,
                          struct ccn_parsed_ContentObject *pc)
 {
     int res;
     struct ccn_digest *d = NULL;
-    const unsigned char *content = NULL;
-    size_t content_bytes = 0;
+
     if (pc->magic < 20080000) abort();
     if (pc->digest_bytes == sizeof(pc->digest))
         return;
     if (pc->digest_bytes != 0) abort();
     d = ccn_digest_create(CCN_DIGEST_SHA256);
     ccn_digest_init(d);
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, content_object,
-          pc->offset[CCN_PCO_B_Content],
-          pc->offset[CCN_PCO_E_Content],
-          &content, &content_bytes);
-    if (res < 0) abort();
-    res = ccn_digest_update(d, content, content_bytes);
+    res = ccn_digest_update(d, content_object, pc->offset[CCN_PCO_E]);
     if (res < 0) abort();
     res = ccn_digest_final(d, pc->digest, sizeof(pc->digest));
     if (res < 0) abort();
