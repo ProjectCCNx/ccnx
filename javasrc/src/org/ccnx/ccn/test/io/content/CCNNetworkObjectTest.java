@@ -396,7 +396,7 @@ public class CCNNetworkObjectTest {
 			
 			CCNStringObject c2 = new CCNStringObject(testName, (String)null, CCNHandle.open());
 			CCNTime t1 = saveAndLog("First string", c2, null, "Here is the first string.");
-			System.out.println("Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
+			Log.info("Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
 			c0.waitForData();
 			Assert.assertEquals("c0 update", c0.getVersion(), c2.getVersion());
 			c1.waitForData();
@@ -422,15 +422,17 @@ public class CCNNetworkObjectTest {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testSaveAsGone"), collectionObjName);
 
 		try {
+			Log.info("Entering testSaveAsGone");
 			CollectionObject c0 = new CollectionObject(testName, empty, handle);
 			setupNamespace(testName); // this sends the interest, doing it after the object gives it
 						// a chance to catch it.
 			
 			
-			CCNTime t0 = saveAsGoneAndLog("Gone", c0);
+			CCNTime t0 = saveAsGoneAndLog("FirstGoneSave", c0);
 			Assert.assertTrue("Should be gone", c0.isGone());
 			ContentName goneVersionName = c0.getVersionedName();
 			
+			Log.info("T1");
 			CCNTime t1 = saveAndLog("NotGone", c0, null, small1);
 			Assert.assertFalse("Should not be gone", c0.isGone());
 			Assert.assertTrue(t1.after(t0));
@@ -486,20 +488,20 @@ public class CCNNetworkObjectTest {
 	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws XMLStreamException, IOException {
 		CCNTime oldVersion = ecd.getVersion();
 		ecd.save(version, data);
-		Log.info("Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+		Log.info("SAL: Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 	
 	public <T> CCNTime saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws XMLStreamException, IOException {
 		CCNTime oldVersion = ecd.getVersion();
 		ecd.saveAsGone();
-		Log.info("Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+		Log.info("SAGAL Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 	
 	public CCNTime waitForDataAndLog(String name, CCNNetworkObject<?> ecd) throws XMLStreamException, IOException {
 		ecd.waitForData();
-		Log.info("Initial read " + name + ", name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+		Log.info("WFDAL: Initial read " + name + ", name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 
@@ -507,7 +509,7 @@ public class CCNNetworkObjectTest {
 		if ((null == updateName) ? ecd.update() : ecd.update(updateName, null))
 			Log.info("Updated " + name + ", to name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		else 
-			Log.info("No update found for " + name + ((null != updateName) ? (" at name " + updateName) : "") + ", still: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
+			Log.info("UAL: No update found for " + name + ((null != updateName) ? (" at name " + updateName) : "") + ", still: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 
