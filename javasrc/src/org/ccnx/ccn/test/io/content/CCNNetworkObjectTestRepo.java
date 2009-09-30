@@ -328,6 +328,7 @@ public class CCNNetworkObjectTestRepo {
 		}
 		Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
 		Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
+		c1.cancelInterest();
 	}
 	
 	@Test
