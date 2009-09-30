@@ -84,7 +84,6 @@ static struct ccn_charbuf *no_name = NULL;
 static unsigned char ccndid_storage[32] = {0};
 static const unsigned char *ccndid = ccndid_storage;
 static size_t ccndid_size;
-/* static struct __res_state *state = NULL; */
 
 static void
 usage(const char *progname)
@@ -612,7 +611,11 @@ read_configfile(const char *filename, struct prefix_face_list_item *pfltail)
         mcastttl = strtok_r(NULL, seps, &last);
         mcastif = strtok_r(NULL, seps, &last);
         res = process_command_tokens(pfltail, lineno, cmd, uri, proto, host, port, flags, mcastttl, mcastif);
-        if (res < 0) configerrors--;
+        if (res < 0) {
+            configerrors--;
+        } else {
+            pfltail = pfltail->next;
+        }
     }
     fclose(cfg);
     return (configerrors);
