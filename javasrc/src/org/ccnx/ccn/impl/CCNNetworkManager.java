@@ -64,7 +64,7 @@ import org.ccnx.ccn.protocol.WirePacket;
  */
 public class CCNNetworkManager implements Runnable {
 	
-	public static final int DEFAULT_AGENT_PORT = 64206;
+	public static final int DEFAULT_AGENT_PORT = 9695; // ccnx registered port
 	public static final String DEFAULT_AGENT_HOST = "localhost";
 	public static final String PROP_AGENT_PORT = "ccn.agent.port";
 	public static final String PROP_AGENT_HOST = "ccn.agent.host";
