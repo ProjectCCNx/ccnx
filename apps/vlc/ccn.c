@@ -81,8 +81,9 @@ struct access_sys_t
     vlc_url_t  url;
     block_fifo_t *p_fifo;
     unsigned char buf[BUF_SIZE];
-    int i_offset;
+    int i_bufoffset;
     int timeouts;
+    int64_t i_pos;
     struct ccn *ccn;
     struct ccn_closure *incoming;
 };
@@ -225,9 +226,12 @@ static block_t *CCNBlock(access_t *p_access)
     if (p_block == NULL)
         return NULL;
 
+    msg_Dbg(p_access, "CCNBlock %d bytes @ %"PRId64, p_block->i_buffer, p_access->info.i_pos);
     p_access->info.i_pos += p_block->i_buffer;
-    if (p_block->i_buffer == 0)
+    if (p_block->i_buffer == 0) {
+        p_access->info.i_size = p_access->info.i_pos;
         p_access->info.b_eof = true;
+    }
 
     return (p_block);
 }
@@ -246,7 +250,7 @@ static ssize_t CCNRead(access_t *p_access, uint8_t *buf, size_t size)
 
 
 
-    msg_Dbg(p_access, "CCN Read size %d @ %lld", size, p_access->info.i_pos);
+    msg_Dbg(p_access, "CCN Read size %d @ %"PRId64, size, p_access->info.i_pos);
     while(result_size < size) {
         p_block = block_FifoShow(p_sys->p_fifo);
         if (p_block == NULL) 
@@ -286,10 +290,14 @@ static int CCNSeek(access_t *p_access, int64_t i_pos)
     struct ccn_charbuf *p_name;
     int i_ret;
 
+    if (i_pos < 0) {
+        msg_Warn(p_access, "Attempting to seek before the beginning %"PRId64".", i_pos);
+        i_pos = 0;
+    }
     /* flush the FIFO, restart from the specified point */
     block_FifoEmpty(p_sys->p_fifo);
     /* forget any data in the intermediate buffer */
-    p_sys->i_offset = 0;
+    p_sys->i_bufoffset = 0;
     p_sys->incoming = calloc(1, sizeof(struct ccn_closure));
     if (p_sys->incoming == NULL) {
         return (VLC_EGENERIC);
@@ -297,15 +305,14 @@ static int CCNSeek(access_t *p_access, int64_t i_pos)
     msg_Dbg(p_access, "CCN.Seek to %"PRId64", closure 0x%08x", i_pos, (int) p_sys->incoming);
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
-    p_sys->incoming->intdata = i_pos;
-
+    p_sys->i_pos = i_pos;
     p_name = ccn_charbuf_create();
     i_ret = ccn_name_from_uri(p_name, p_access->psz_path);
     if (i_ret < 0) {
         ccn_charbuf_destroy(&p_name);
         return (VLC_EGENERIC);
     }
-    ccn_name_append_numeric(p_name, CCN_MARKER_SEQNUM, p_sys->incoming->intdata / CCN_CHUNK_SIZE);
+    ccn_name_append_numeric(p_name, CCN_MARKER_SEQNUM, p_sys->i_pos / CCN_CHUNK_SIZE);
     ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, NULL);
     ccn_charbuf_destroy(&p_name);    
     p_access->info.i_pos = i_pos;
@@ -395,7 +402,7 @@ incoming_content(struct ccn_closure *selfp,
 {
     access_t *p_access = (access_t *)(selfp->data);
     access_sys_t *p_sys = p_access->p_sys;
-    int start_offset = 0;
+    int64_t start_offset = 0;
     block_t *p_block = NULL;
     bool b_last = false;
     struct ccn_charbuf *name = NULL;
@@ -507,20 +514,20 @@ incoming_content(struct ccn_closure *selfp,
         b_last = true;
     /* something to process */
     if (data_size > 0) {
-        start_offset = selfp->intdata % CCN_CHUNK_SIZE;
+        start_offset = p_sys->i_pos % CCN_CHUNK_SIZE;
         if (start_offset > data_size) {
-            msg_Err(p_access, "start_offset %d > data_size %d", start_offset, data_size);
+            msg_Err(p_access, "start_offset %"PRId64" > data_size %d", start_offset, data_size);
         } else {
-            if ((data_size - start_offset) + p_sys->i_offset > BUF_SIZE) {
+            if ((data_size - start_offset) + p_sys->i_bufoffset > BUF_SIZE) {
                 /* won't fit in buffer, release the buffer upstream */
-                p_block = block_New(p_access, p_sys->i_offset);
-                memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_offset);
+                p_block = block_New(p_access, p_sys->i_bufoffset);
+                memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_bufoffset);
                 block_FifoPut(p_sys->p_fifo, p_block);
-                p_sys->i_offset = 0;
+                p_sys->i_bufoffset = 0;
             }
             /* will fit in buffer */
-            memcpy(p_sys->buf + p_sys->i_offset, data + start_offset, data_size - start_offset);
-            p_sys->i_offset += (data_size - start_offset);
+            memcpy(p_sys->buf + p_sys->i_bufoffset, data + start_offset, data_size - start_offset);
+            p_sys->i_bufoffset += (data_size - start_offset);
         }
     }
 
@@ -528,11 +535,11 @@ incoming_content(struct ccn_closure *selfp,
      * and don't express an interest
      */
         if (b_last) {
-            if (p_sys->i_offset > 0) {
-                p_block = block_New(p_access, p_sys->i_offset);
-                memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_offset);
+            if (p_sys->i_bufoffset > 0) {
+                p_block = block_New(p_access, p_sys->i_bufoffset);
+                memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_bufoffset);
                 block_FifoPut(p_sys->p_fifo, p_block);
-                p_sys->i_offset = 0;
+                p_sys->i_bufoffset = 0;
             }
             block_FifoPut(p_sys->p_fifo, block_New(p_access, 0));
             return (CCN_UPCALL_RESULT_OK);
@@ -549,8 +556,8 @@ incoming_content(struct ccn_closure *selfp,
     if (ic->n < 2) abort();
     res = ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 2]);
     if (res < 0) abort();
-    selfp->intdata = CCN_CHUNK_SIZE * (1 + selfp->intdata / CCN_CHUNK_SIZE);
-    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, selfp->intdata / CCN_CHUNK_SIZE);
+    p_sys->i_pos = CCN_CHUNK_SIZE * (1 + (p_sys->i_pos / CCN_CHUNK_SIZE));
+    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, p_sys->i_pos / CCN_CHUNK_SIZE);
 #if 0
     clear_excludes(p_sys);
     templ = make_template(p_sys, info);
