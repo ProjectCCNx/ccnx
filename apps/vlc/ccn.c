@@ -73,12 +73,15 @@ vlc_module_end();
  *****************************************************************************/
 #define CCN_FIFO_MAX_PACKETS 512
 #define CCN_CHUNK_SIZE 4096
+#define BUF_SIZE (1024 * 1024)
 #define CCN_VERSION_TIMEOUT 5000
 
 struct access_sys_t
 {
     vlc_url_t  url;
     block_fifo_t *p_fifo;
+    unsigned char buf[BUF_SIZE];
+    int i_offset;
     int timeouts;
     struct ccn *ccn;
     struct ccn_closure *incoming;
@@ -285,6 +288,8 @@ static int CCNSeek(access_t *p_access, int64_t i_pos)
 
     /* flush the FIFO, restart from the specified point */
     block_FifoEmpty(p_sys->p_fifo);
+    /* forget any data in the intermediate buffer */
+    p_sys->i_offset = 0;
     p_sys->incoming = calloc(1, sizeof(struct ccn_closure));
     if (p_sys->incoming == NULL) {
         return (VLC_EGENERIC);
@@ -506,17 +511,32 @@ incoming_content(struct ccn_closure *selfp,
         if (start_offset > data_size) {
             msg_Err(p_access, "start_offset %d > data_size %d", start_offset, data_size);
         } else {
-            p_block = block_New(p_access, data_size - start_offset);
-            memcpy(p_block->p_buffer, data + start_offset, data_size - start_offset);
-            block_FifoPut(p_sys->p_fifo, p_block);
+            if ((data_size - start_offset) + p_sys->i_offset > BUF_SIZE) {
+                /* won't fit in buffer, release the buffer upstream */
+                p_block = block_New(p_access, p_sys->i_offset);
+                memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_offset);
+                block_FifoPut(p_sys->p_fifo, p_block);
+                p_sys->i_offset = 0;
+            }
+            /* will fit in buffer */
+            memcpy(p_sys->buf + p_sys->i_offset, data + start_offset, data_size - start_offset);
+            p_sys->i_offset += (data_size - start_offset);
         }
     }
 
-    /* if we're done, indicate so with a 0-byte block, and don't express an interest */
-    if (b_last) {
-        block_FifoPut(p_sys->p_fifo, block_New(p_access, 0));
-        return (CCN_UPCALL_RESULT_OK);
-    }
+    /* if we're done, indicate so with a 0-byte block, release any buffered data upstream,
+     * and don't express an interest
+     */
+        if (b_last) {
+            if (p_sys->i_offset > 0) {
+                p_block = block_New(p_access, p_sys->i_offset);
+                memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_offset);
+                block_FifoPut(p_sys->p_fifo, p_block);
+                p_sys->i_offset = 0;
+            }
+            block_FifoPut(p_sys->p_fifo, block_New(p_access, 0));
+            return (CCN_UPCALL_RESULT_OK);
+        }
 
     /* need to do this with a condition variable, since we don't want to sleep the thread */
     while (block_FifoCount(p_sys->p_fifo) > CCN_FIFO_MAX_PACKETS) {
