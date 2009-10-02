@@ -49,10 +49,8 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
- * Utility class for grouping all of the bits associated
- * with a piece of content.
- * @author smetters
- *
+ * Represents a CCNx data packet.
+ * cf. Interest
  */
 public class ContentObject extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentObject> {
 
@@ -106,8 +104,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 
 	/**
 	 * We copy the content when we get it. The intent is for this object to
-	 * be immutable. Rules for constructor immutability are explained well
-	 * here: 
+	 * be immutable.
 	 * @param digestAlgorithm
 	 * @param name
 	 * @param signedInfo
@@ -232,18 +229,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			byte [] content, PrivateKey signingKey) throws InvalidKeyException, SignatureException {
 		this(name, signedInfo, content, 0, ((null == content) ? 0 : content.length), signingKey);
 	}
-	/**
-	 * DKS - temporary subclass constructor to get around brokenness in current
-	 * header, etc implementation. Remove after those no longer derive from CO.
-	 */
-	protected ContentObject(ContentName name, SignedInfo signedInfo) {
-		_name = name;
-		_signedInfo = signedInfo;
-		// must set content and signature.
-	}
-
-	/**
-	 * Used not only for testing, but for building small content objects deep in the
+	
+	/*
+	 * Used for testing and  for building small content objects deep in the
 	 * library code for specialized applications.
 	 */
 	public static ContentObject buildContentObject(ContentName name, ContentType type, byte[] contents, 
@@ -305,12 +293,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	/**
 	 * DKS -- return these as final for now; stopgap till refactor that makes
 	 * internal version final.
-	 * @return Name of the content object - without the digest component.
+	 * @return Name of the content object - without the final implicit digest component.
 	 */
 	public final ContentName name() { return _name; }
 
 	/**
-	 * @return Name of the content object, complete with digest.
+	 * @return Name of the content object, complete with the final implicit digest component.
 	 */
 	public ContentName fullName() {
 		return new ContentName(_name, contentDigest());
@@ -328,12 +316,16 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	
 	/**
 	 * Avoid problems where content().length might be expensive.
-	 * @return
+	 * @return content length in bytes
 	 */
 	public final int contentLength() { return ((null == _content) ? 0 : _content.length); }
 
 	public final Signature signature() { return _signature; }
 
+	/**
+	 * Used by NetworkObject to decode the object from a network stream.
+	 * @see org.ccnx.ccn.impl.encoding.XMLEncodable
+	 */
 	public void decode(XMLDecoder decoder) throws XMLStreamException {
 		decoder.readStartElement(getElementLabel());
 
@@ -351,6 +343,10 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		decoder.readEndElement();
 	}
 
+	/**
+	 * Used by NetworkObject to encode the object to a network stream.
+	 * @see org.ccnx.ccn.impl.encoding.XMLEncodable
+	 */
 	public void encode(XMLEncoder encoder) throws XMLStreamException {
 		if (!validate()) {
 			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
@@ -494,6 +490,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		return new Signature(digestAlgorithm, null, signature);
 	}
 
+	/**
+	 * @see ContentObject#verify(ContentObject, PublicKey)
+	 */
 	public boolean verify(PublicKey publicKey) 
 	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
 	XMLStreamException, InterruptedException {
@@ -736,7 +735,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		return name().compareTo(o.name());
 	}
 
-	/**
+	/*
 	 * Type-checkers for built-in types.
 	 */
 	public boolean isType(ContentType type) {
