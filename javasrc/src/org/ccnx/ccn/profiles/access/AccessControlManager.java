@@ -1051,7 +1051,9 @@ public class AccessControlManager {
 					entryPublicKey = groupManager().getLatestPublicKeyForGroup(aclEntry);
 				} else {
 					// Calls update. Will get latest version if name unversioned.
-					entryPublicKey = new PublicKeyObject(aclEntry.targetName(), aclEntry.targetAuthenticator().publisher(), handle());
+					if (aclEntry.targetAuthenticator() != null)
+						entryPublicKey = new PublicKeyObject(aclEntry.targetName(), aclEntry.targetAuthenticator().publisher(), handle());
+					else entryPublicKey = new PublicKeyObject(aclEntry.targetName(), handle());
 				}
 				try {
 					nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getVersionedName(), entryPublicKey.publicKey());
