@@ -434,7 +434,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		EnumeratedNameList parentEnumerator = null;
 		while (childIndex < childName.count()) {
 			parentEnumerator = new EnumeratedNameList(parentName, handle);
-			parentEnumerator.waitForData(); // we're only getting the first round here... 
+			parentEnumerator.waitForData(CHILD_WAIT_INTERVAL); // we're only getting the first round here... 
 			// could wrap this bit in a loop if want to try harder
 			byte[] childNameComponent = childName.component(childIndex);
 			if (parentEnumerator.hasChild(childNameComponent)) {
