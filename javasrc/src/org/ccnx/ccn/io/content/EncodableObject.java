@@ -41,13 +41,21 @@ public class EncodableObject<E extends XMLEncodable> extends NetworkObject<E> {
 		super(type, contentIsMutable, data);
 	}
 	
-	protected void writeObjectImpl(OutputStream output) throws IOException, XMLStreamException {
-		_data.encode(output);
+	protected void writeObjectImpl(OutputStream output) throws ContentEncodingException, IOException {
+		try {
+			_data.encode(output);
+		} catch (XMLStreamException e) {
+			throw new ContentEncodingException(e);
+		}
 	}
 
-	protected E readObjectImpl(InputStream input) throws IOException, XMLStreamException {
+	protected E readObjectImpl(InputStream input) throws ContentDecodingException, IOException {
 		E newData = factory();
-		newData.decode(input);	
+		try {
+			newData.decode(input);
+		} catch (XMLStreamException e) {
+			throw new ContentDecodingException(e);
+		}	
 		return newData;
 	}
 }

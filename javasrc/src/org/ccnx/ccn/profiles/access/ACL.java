@@ -25,13 +25,12 @@ import java.util.LinkedList;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
@@ -164,24 +163,10 @@ public class ACL extends Collection {
 		 * @throws ConfigurationException
 		 * @throws IOException
 		 */
-		public ACLObject(ContentName name, ACL data, CCNHandle handle) throws ConfigurationException, IOException {
+		public ACLObject(ContentName name, ACL data, CCNHandle handle) throws IOException {
 			super(ACL.class, true, name, data, handle);
 		}
 
-		/**
-		 * Constructor
-		 * @param name the object name
-		 * @param publisher the publisher
-		 * @param handle the CCN handle
-		 * @throws ConfigurationException
-		 * @throws IOException
-		 * @throws XMLStreamException
-		 */
-		public ACLObject(ContentName name, PublisherPublicKeyDigest publisher,
-				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
-			super(ACL.class, true, name, publisher, handle);
-		}
-		
 		/**
 		 * Read constructor -- opens existing object.
 		 * @param name the object name
@@ -190,13 +175,27 @@ public class ACL extends Collection {
 		 * @throws IOException
 		 * @throws XMLStreamException
 		 */
-		public ACLObject(ContentName name, 
-				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+		public ACLObject(ContentName name, CCNHandle handle) 
+					throws ContentDecodingException, IOException {
 			super(ACL.class, true, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
-		public ACLObject(ContentObject firstBlock,
-				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+		/**
+		 * Read constructor
+		 * @param name the object name
+		 * @param publisher the required publisher
+		 * @param handle the CCN handle
+		 * @throws ConfigurationException
+		 * @throws IOException
+		 * @throws XMLStreamException
+		 */
+		public ACLObject(ContentName name, PublisherPublicKeyDigest publisher,
+						CCNHandle handle) throws ContentDecodingException, IOException {
+			super(ACL.class, true, name, publisher, handle);
+		}
+		
+		public ACLObject(ContentObject firstBlock, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 			super(ACL.class, true, firstBlock, handle);
 		}
 		

@@ -22,12 +22,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
-import javax.xml.stream.XMLStreamException;
-
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -78,11 +78,17 @@ public class CollectionObjectTestRepo {
 			CollectionObject notAnObject = new CollectionObject(nonCollectionName, getLibrary);
 			notAnObject.waitForData();
 			Assert.fail("Reading collection from non-collection succeeded.");
-		} catch (IOException ioe) {
-		} catch (XMLStreamException ex) {
+		} catch (ContentDecodingException ex) {
 			// this is what we actually expect
+			System.out.println("Got expected exception reading collection from non-collection.");
+		} catch (IOException ioe) {
+			System.out.println("Got another type of IOException reading link from non-collection: " + ioe);
+			Log.info("Unexpected: got IOException that wasn't a ContentDecodingException reading collection from non-collection: {0}", ioe);
+		} catch (Exception e) {
+			System.out.println("Got unexpected exception type reading collection from non-collection: " + e);
+			Assert.fail("Got unexpected exception type reading collection from non-collection: " + e);
 		}
-			
+
 		// test reading latest version
 		CollectionObject readCollection = new CollectionObject(collectionName, getLibrary);
 		readCollection.waitForData();

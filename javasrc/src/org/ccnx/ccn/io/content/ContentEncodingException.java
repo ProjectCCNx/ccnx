@@ -19,22 +19,22 @@ package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
 
-public class ContentDecodingException extends IOException {
+public class ContentEncodingException extends IOException {
 
-	private static final long serialVersionUID = -3241398413568999091L;
+	private static final long serialVersionUID = -3241398413568999092L;
 
-	public ContentDecodingException() {
+	public ContentEncodingException() {
 	}
 
-	public ContentDecodingException(String message) {
+	public ContentEncodingException(String message) {
 		super(message);
 	}
 
-	public ContentDecodingException(Throwable cause) {
+	public ContentEncodingException(Throwable cause) {
 		super(cause);
 	}
 
-	public ContentDecodingException(String message, Throwable cause) {
+	public ContentEncodingException(String message, Throwable cause) {
 		super(message, cause);
 	}
 

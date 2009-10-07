@@ -110,19 +110,20 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		public WrappedKeyObject(ContentName name, WrappedKey data, CCNHandle handle) throws IOException {
 			super(WrappedKey.class, true, name, data, handle);
 		}
-		
+
+		public WrappedKeyObject(ContentName name, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+			super(WrappedKey.class, true, name, (PublisherPublicKeyDigest)null, handle);
+		}
+
 		public WrappedKeyObject(ContentName name, PublisherPublicKeyDigest publisher,
-				CCNHandle handle) throws IOException, XMLStreamException {
+								CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 			super(WrappedKey.class, true, name, publisher, handle);
 		}
 		
-		public WrappedKeyObject(ContentName name, 
-				CCNHandle handle) throws IOException, XMLStreamException {
-			super(WrappedKey.class, true, name, (PublisherPublicKeyDigest)null, handle);
-		}
-		
-		public WrappedKeyObject(ContentObject firstBlock,
-				CCNHandle handle) throws IOException, XMLStreamException {
+		public WrappedKeyObject(ContentObject firstBlock, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 			super(WrappedKey.class, true, firstBlock, handle);
 		}
 		

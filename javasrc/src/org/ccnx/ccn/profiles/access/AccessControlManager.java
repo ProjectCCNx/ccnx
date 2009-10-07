@@ -36,6 +36,7 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.io.content.WrappedKey;
@@ -427,7 +428,8 @@ public class AccessControlManager {
 	 * @throws XMLStreamException 
 	 * @throws ConfigurationException 
 	 */
-	public ACLObject getACLObjectForNode(ContentName aclNodeName) throws XMLStreamException, IOException, ConfigurationException {
+	public ACLObject getACLObjectForNode(ContentName aclNodeName) 
+				throws ContentDecodingException, IOException {
 		
 		// Get the latest version of the acl. We don't care so much about knowing what version it was.
 		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(aclNodeName), handle());

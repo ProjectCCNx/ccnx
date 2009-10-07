@@ -21,13 +21,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNFilterListener;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.CommandMarkers;
@@ -304,8 +303,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						}
 						//strip off NEMarker before passing through callback
 						callback.handleNameEnumerator(interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), names);
-					} catch(XMLStreamException e) {
-						Log.warning("Error getting Collection from ContentObject in CCNNameEnumerator");
+					} catch(ContentDecodingException e) {
+						Log.warning("Error parsing Collection from ContentObject in CCNNameEnumerator");
 						Log.warningStackTrace(e);
 					} catch(IOException e) {
 						Log.warning("error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");

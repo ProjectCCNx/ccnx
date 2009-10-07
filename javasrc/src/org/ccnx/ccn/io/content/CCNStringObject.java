@@ -19,10 +19,7 @@ package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -35,22 +32,24 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class CCNStringObject extends CCNSerializableObject<String> {
 
-	public CCNStringObject(ContentName name, String data, CCNHandle handle) throws ConfigurationException, IOException {
+	public CCNStringObject(ContentName name, String data, CCNHandle handle) 
+				throws IOException {
 		super(String.class, false, name, data, handle);
 	}
 	
 	public CCNStringObject(ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+							CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 		super(String.class, false, name, publisher, handle);
 	}
 	
-	public CCNStringObject(ContentName name, 
-			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+	public CCNStringObject(ContentName name, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 		super(String.class, false, name, (PublisherPublicKeyDigest)null, handle);
 	}
 	
-	public CCNStringObject(ContentObject firstBlock,
-			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+	public CCNStringObject(ContentObject firstBlock, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 		super(String.class, false, firstBlock, handle);
 	}
 	

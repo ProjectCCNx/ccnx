@@ -67,19 +67,23 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 
 		public HeaderObject(ContentName name,
 				Header data, PublisherPublicKeyDigest publisher,
-				KeyLocator keyLocator, CCNFlowControl flowControl) throws IOException, XMLStreamException {
+				KeyLocator keyLocator, CCNFlowControl flowControl) 
+				throws ContentDecodingException, IOException {
 			super(Header.class, true, name, data, publisher, keyLocator, flowControl);
 		}
 	
-		public HeaderObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
+		public HeaderObject(ContentName name, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 			super(Header.class, true, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
-		public HeaderObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
+		public HeaderObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 			super(Header.class, true, name, publisher, handle);
 		}
 		
-		public HeaderObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
+		public HeaderObject(ContentObject firstBlock, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 			super(Header.class, true, firstBlock, handle);
 		}
 		

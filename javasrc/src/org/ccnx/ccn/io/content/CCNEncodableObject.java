@@ -56,7 +56,8 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 
 	public CCNEncodableObject(Class<E> type, boolean contentIsMutable,
 							 ContentName name, E data,
-			boolean raw, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+							 boolean raw, PublisherPublicKeyDigest publisher, 
+							 KeyLocator keyLocator, CCNHandle handle) throws IOException {
 		super(type, contentIsMutable, name, data, raw, publisher, keyLocator, handle);
 	}
 
@@ -67,61 +68,69 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	}
 	
 	public CCNEncodableObject(Class<E> type, boolean contentIsMutable, ContentName name, 
-			CCNHandle handle) throws IOException, XMLStreamException {
+							  CCNHandle handle) 
+			throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, name, (PublisherPublicKeyDigest)null, handle);
 	}
 	
-	public CCNEncodableObject(Class<E> type, boolean contentIsMutable, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle handle) throws IOException, XMLStreamException {
+	public CCNEncodableObject(Class<E> type, boolean contentIsMutable, 
+							  ContentName name, PublisherPublicKeyDigest publisher,
+							  CCNHandle handle) 
+			throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, name, publisher, handle);
 	}
 
 	public CCNEncodableObject(Class<E> type, boolean contentIsMutable,
 							  ContentName name,
 							  PublisherPublicKeyDigest publisher, boolean raw, CCNHandle handle)
-			throws IOException, XMLStreamException {
+			throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, name, publisher, raw, handle);
 	}
 
 	protected CCNEncodableObject(Class<E> type, boolean contentIsMutable, ContentName name,
 								 PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
-			throws IOException, XMLStreamException {
+			throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, name, publisher, flowControl);
 	}
 
 	public CCNEncodableObject(Class<E> type, boolean contentIsMutable, ContentObject firstBlock,
-							  CCNHandle handle) throws IOException, XMLStreamException {
+							  CCNHandle handle) 
+			throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, firstBlock, handle);
 	}
 
 	public CCNEncodableObject(Class<E> type, boolean contentIsMutable, ContentObject firstBlock,
-							  boolean raw, CCNHandle handle) throws IOException, XMLStreamException {
+							  boolean raw, CCNHandle handle) 
+			throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, firstBlock, raw, handle);
 	}
 
 	protected CCNEncodableObject(Class<E> type, boolean contentIsMutable, ContentObject firstBlock,
-								CCNFlowControl flowControl) throws IOException, XMLStreamException {
+								CCNFlowControl flowControl) 
+			throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, firstBlock, flowControl);
 	}
 
 	@Override
-	protected E readObjectImpl(InputStream input) throws IOException,
-			XMLStreamException {
+	protected E readObjectImpl(InputStream input) throws ContentDecodingException, IOException {
 		E newData = factory();
 		try {
 			newData.decode(input);	
 		} catch (XMLStreamException xe) {
 			Log.info("XML exception parsing data in block: " + ((CCNInputStream)input).currentSegmentName());
-			throw xe;
+			throw new ContentDecodingException(xe);
 		}
 		return newData;
 	}
 
 	@Override
-	protected void writeObjectImpl(OutputStream output) throws IOException,
-			XMLStreamException {
+	protected void writeObjectImpl(OutputStream output) throws ContentEncodingException, IOException {
 		if (null == _data)
 			throw new ContentNotReadyException("No content available to save for object " + getBaseName());
-		_data.encode(output);
+		try {
+			_data.encode(output);
+		} catch (XMLStreamException e) {
+			throw new ContentEncodingException(e);
+		}
 	}
 }

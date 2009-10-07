@@ -23,8 +23,6 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.GenericObjectInputStream;
 
@@ -47,7 +45,7 @@ public class SerializableObject<E extends Serializable> extends NetworkObject<E>
 	}
 		
 	@Override
-	protected E readObjectImpl(InputStream input) throws IOException, XMLStreamException {
+	protected E readObjectImpl(InputStream input) throws ContentDecodingException, IOException {
 		GenericObjectInputStream<E> ois = new GenericObjectInputStream<E>(input);
 		E newData;
 		try {
@@ -60,8 +58,7 @@ public class SerializableObject<E extends Serializable> extends NetworkObject<E>
 	}
 
 	@Override
-	protected void writeObjectImpl(OutputStream output) throws IOException,
-			XMLStreamException {
+	protected void writeObjectImpl(OutputStream output) throws ContentEncodingException, IOException {
 		ObjectOutputStream oos = new ObjectOutputStream(output);		
 		oos.writeObject(_data);
 		oos.flush();

@@ -21,13 +21,12 @@ package org.ccnx.ccn.test.io.content;
 import java.io.IOException;
 import java.util.Random;
 
-import javax.xml.stream.XMLStreamException;
-
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.protocol.ContentName;
@@ -74,10 +73,15 @@ public class LinkObjectTestRepo {
 			LinkObject notAnObject = new LinkObject(nonLinkName, getLibrary);
 			notAnObject.waitForData();
 			Assert.fail("Reading link from non-link succeeded.");
-		} catch (IOException ioe) {
-		} catch (XMLStreamException ex) {
+		} catch (ContentDecodingException ex) {
 			// this is what we actually expect
 			System.out.println("Got expected exception reading link from non-link.");
+		} catch (IOException ioe) {
+			System.out.println("Got another type of IOException reading link from non-link: " + ioe);
+			Log.info("Unexpected: got IOException that wasn't a ContentDecodingException reading link from non-link: {0}", ioe);
+		} catch (Exception e) {
+			System.out.println("Got unexpected exception type reading link from non-link: " + e);
+			Assert.fail("Got unexpected exception type reading link from non-link: " + e);
 		}
 
 		Link lr = new Link(so.getVersionedName());

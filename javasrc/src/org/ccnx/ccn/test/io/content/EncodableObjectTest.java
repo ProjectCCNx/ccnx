@@ -23,10 +23,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
@@ -174,10 +173,10 @@ public class EncodableObjectTest {
 			boolean be = Arrays.areEqual(baos.toByteArray(), baos3.toByteArray());
 			Assert.assertFalse("Two different objects shouldn't have matching output.", be);
 			System.out.println("Saved two collection datas, lengths " + baos.toByteArray().length + " and " + baos3.toByteArray().length);
+		} catch (ContentDecodingException e) {
+			fail("ContentDecodingException! " + e.getMessage());
 		} catch (IOException e) {
 			fail("IOException! " + e.getMessage());
-		} catch (XMLStreamException e) {
-			fail("XMLStreamException! " + e.getMessage());
 		} 
 	}
 }

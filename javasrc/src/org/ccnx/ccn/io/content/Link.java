@@ -69,19 +69,23 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 			super(Link.class, true, name, data, handle);
 		}
 		
-		public LinkObject(ContentName name, Link data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+		public LinkObject(ContentName name, Link data, PublisherPublicKeyDigest publisher, 
+						  KeyLocator keyLocator, CCNHandle handle) throws IOException {
 			super(Link.class, true, name, data, publisher, keyLocator, handle);
 		}
 
-		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
-			super(Link.class, true, name, publisher, handle);
-		}
-		
-		public LinkObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
+		public LinkObject(ContentName name, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 			super(Link.class, true, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
-		public LinkObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
+		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+			super(Link.class, true, name, publisher, handle);
+		}
+
+		public LinkObject(ContentObject firstBlock, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 			super(Link.class, true, firstBlock, handle);
 		}
 		

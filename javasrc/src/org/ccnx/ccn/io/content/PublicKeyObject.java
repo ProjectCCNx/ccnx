@@ -25,9 +25,8 @@ import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.spec.InvalidKeySpecException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
@@ -59,25 +58,77 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		super(PublicKey.class, false, name, data, publisher, locator, handle);
 	}
 
-	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
+	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, 
+							CCNHandle handle) 
+			throws ContentDecodingException, IOException {
 		super(PublicKey.class, false, name, publisher, handle);
 	}
 	
-	public PublicKeyObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
+	public PublicKeyObject(ContentName name, CCNHandle handle) 
+			throws ContentDecodingException, IOException {
 		super(PublicKey.class, false, name, (PublisherPublicKeyDigest)null, handle);
 	}
 	
-	public PublicKeyObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
+	public PublicKeyObject(ContentObject firstBlock, CCNHandle handle) 
+			throws ContentDecodingException, IOException {
 		super(PublicKey.class, false, firstBlock, handle);
 	}
 	
+	/**
+	 * Internal constructor used by low-level network operations. Don't use unless you know what 
+	 * you are doing.
+	 * @param name name under which to save data
+	 * @param data data to save when save() is called; or null if the next call will be updateInBackground()
+	 * @param publisher key (identity) to use to sign the content (null for default)
+	 * @param locator key locator to use to tell people where to find our key, should match publisher, (null for default for key)
+	 * @param flowControl flow controller to use for network output
+	 * @throws IOException
+	 */
+	public PublicKeyObject(ContentName name, PublicKey data, 
+			PublisherPublicKeyDigest publisher, 
+			KeyLocator locator,
+			CCNFlowControl flowControl) throws IOException {
+		super(PublicKey.class, false, name, data, publisher, locator, flowControl);
+	}
+		
+	/**
+	 * Internal constructor used by low-level network operations. Don't use unless you know what 
+	 * you are doing.
+	 * @param name name under which to save data
+	 * @param data data to save when save() is called; or null if the next call will be updateInBackground()
+	 * @param publisher key (identity) to use to sign the content (null for default)
+	 * @param locator key locator to use to tell people where to find our key, should match publisher, (null for default for key)
+	 * @param flowControl flow controller to use for network output
+	 * @throws IOException
+	 */
+	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher,
+						   CCNFlowControl flowControl) throws ContentDecodingException, IOException {
+		super(PublicKey.class, false, name, publisher, flowControl);
+	}
+
+	/**
+	 * Internal constructor used by low-level network operations. Don't use unless you know what 
+	 * you are doing.
+	 * @param name name under which to save data
+	 * @param data data to save when save() is called; or null if the next call will be updateInBackground()
+	 * @param publisher key (identity) to use to sign the content (null for default)
+	 * @param locator key locator to use to tell people where to find our key, should match publisher, (null for default for key)
+	 * @param flowControl flow controller to use for network output
+	 * @throws IOException
+	 */
+	public PublicKeyObject(ContentObject firstSegment, CCNFlowControl flowControl) 
+					throws ContentDecodingException, IOException {
+		super(PublicKey.class, false, firstSegment, flowControl);
+	}
+
+				
 	@Override
 	public ContentType contentType() { return ContentType.KEY; }
 
 	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException { return data(); }
 
 	@Override
-	protected PublicKey readObjectImpl(InputStream input) throws IOException, XMLStreamException {
+	protected PublicKey readObjectImpl(InputStream input) throws ContentDecodingException, IOException {
 		// assume we read until we have all the bytes, then decode.
 		// Doesn't give us a good opportunity to check whether it's of type KEY. TODO
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -100,8 +151,7 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	}
 
 	@Override
-	protected void writeObjectImpl(OutputStream output) throws IOException,
-			XMLStreamException {
+	protected void writeObjectImpl(OutputStream output) throws ContentEncodingException, IOException {
 		if (null == data())
 			throw new ContentNotReadyException("No content available to save for object " + getBaseName());
 		byte [] encoded = data().getEncoded();

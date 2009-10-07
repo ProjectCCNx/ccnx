@@ -33,6 +33,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
@@ -239,11 +240,10 @@ public class Group {
 	 * Returns a list containing all the members of a Group.
 	 * Sets up the list to automatically update in the background.
 	 * @return MembershipList a list containing all the members of a Group object
-	 * @throws XMLStreamException
+	 * @throws ContentDecodingException
 	 * @throws IOException
-	 * @throws ConfigurationException
 	 */
-	public MembershipList membershipList() throws XMLStreamException, IOException, ConfigurationException { 
+	public MembershipList membershipList() throws ContentDecodingException, IOException { 
 		if (null == _groupMembers) {
 			// Read constructor. Synchronously updates. 
 			// Throws an exception if no membership list is found or upon error.

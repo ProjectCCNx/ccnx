@@ -23,8 +23,6 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
@@ -64,19 +62,21 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 	}
 
 	public CCNSerializableObject(Class<E> type, boolean contentIsMutable, 
-								 ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
+								 ContentName name, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, name, (PublisherPublicKeyDigest)null, handle);
 	}
 	
 	public CCNSerializableObject(Class<E> type, boolean contentIsMutable, 
 								 ContentName name, PublisherPublicKeyDigest publisher,
-								 CCNHandle handle) throws IOException, XMLStreamException {
+								 CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, name, publisher, handle);
 	}
 	
 	public CCNSerializableObject(Class<E> type, boolean contentIsMutable, ContentName name,
 								 PublisherPublicKeyDigest publisher, boolean raw, CCNHandle handle)
-					throws IOException, XMLStreamException {
+				throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, name, publisher, raw, handle);
 	}
 
@@ -84,33 +84,32 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 									ContentName name,
 									PublisherPublicKeyDigest publisher, 
 									CCNFlowControl flowControl)
-			throws IOException, XMLStreamException {
+				throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, name, publisher, flowControl);
 	}
 
 	public CCNSerializableObject(Class<E> type, boolean contentIsMutable, 
 								ContentObject firstBlock, CCNHandle handle) 
-				throws IOException, XMLStreamException {
+				throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, firstBlock, handle);
 	}
 
 	public CCNSerializableObject(Class<E> type, boolean contentIsMutable, 
 								 ContentObject firstBlock,
 								 boolean raw, CCNHandle handle) 
-		throws IOException, XMLStreamException {
+				throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, firstBlock, raw, handle);
 	}
 
 	protected CCNSerializableObject(Class<E> type, boolean contentIsMutable, 
 									ContentObject firstBlock,
 									CCNFlowControl flowControl) 
-		throws IOException, XMLStreamException {
+				throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, firstBlock, flowControl);
 	}
 
 	@Override
-	protected E readObjectImpl(InputStream input) throws IOException,
-			XMLStreamException {
+	protected E readObjectImpl(InputStream input) throws ContentDecodingException, IOException {
 		GenericObjectInputStream<E> ois = new GenericObjectInputStream<E>(input);
 		E newData;
 		try {
@@ -123,8 +122,7 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 	}
 
 	@Override
-	protected void writeObjectImpl(OutputStream output) throws IOException,
-			XMLStreamException {
+	protected void writeObjectImpl(OutputStream output) throws ContentEncodingException, IOException {
 		if (null == _data)
 			throw new ContentNotReadyException("No content available to save for object " + getBaseName());
 		ObjectOutputStream oos = new ObjectOutputStream(output);		

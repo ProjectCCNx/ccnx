@@ -74,27 +74,33 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 			this(name, new Collection(contents), handle);			
 		}
 
-		public CollectionObject(ContentName name, Collection data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+		public CollectionObject(ContentName name, Collection data, PublisherPublicKeyDigest publisher, 
+								KeyLocator keyLocator, CCNHandle handle) throws IOException {
 			super(Collection.class, true, name, data, publisher, keyLocator, handle);
 		}
 
-		public CollectionObject(ContentName name, java.util.Collection<Link> contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+		public CollectionObject(ContentName name, java.util.Collection<Link> contents, 
+								PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
 			this(name, new Collection(contents), publisher, keyLocator, handle);
 		}
 		
-		public CollectionObject(ContentName name, Link [] contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+		public CollectionObject(ContentName name, Link [] contents, PublisherPublicKeyDigest publisher, 
+								KeyLocator keyLocator, CCNHandle handle) throws IOException {
 			this(name, new Collection(contents), publisher, keyLocator, handle);			
 		}
 
-		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
+		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 			super(Collection.class, true, name, publisher, handle);
 		}
 		
-		public CollectionObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
+		public CollectionObject(ContentObject firstBlock, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 			super(Collection.class, true, firstBlock, handle);
 		}
 		
-		public CollectionObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
+		public CollectionObject(ContentName name, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
 			super(Collection.class, true, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
