@@ -155,6 +155,7 @@ public class CCNNetworkObjectTest {
 		}
 		
 		flosser = new Flosser();
+		Log.info("Finished setting up CCNNetworkObjectTest, prefix is: {0}.", testHelper.getClassNamespace());
 	}
 
 	@Test

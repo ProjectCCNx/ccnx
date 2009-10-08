@@ -55,6 +55,7 @@ public class WrappedKeyTest {
 	 */
 	static CCNTestHelper testHelper = new CCNTestHelper(PublicKeyObjectTestRepo.class);
 
+	public static boolean setupDone = false;
 	public static KeyPair wrappingKeyPair = null;
 	public static KeyPair wrappedKeyPair = null;
 	public static KeyPair wrappingEGKeyPair = null;
@@ -120,6 +121,17 @@ public class WrappedKeyTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		Security.addProvider(new CCNCryptoProvider());
+	}
+	
+	/**
+	 * Do this in the first test. Were doing it in setupBeforeClass, but I think
+	 * it was failing sometimes, possibly because it was too slow.
+	 * @throws Exception
+	 */
+	public void setupTest() throws Exception {
+		if (setupDone) {
+			return;
+		}
 		
 		SecureRandom sr = new SecureRandom();
 		sr.nextBytes(dummyWrappedKey);
@@ -146,11 +158,14 @@ public class WrappedKeyTest {
 		
 		storedKeyName = new ContentName(testHelper.getClassNamespace(), 
 										ContentName.fromNative("/test/content/File1.txt/_access_/NK").components());
-		Log.info("Initialized keys for WrappedKeyTest");
+		setupDone = true;
+		Log.info("Initialized keys for WrappedKeyTest");		
 	}
 
 	@Test
 	public void testWrapUnwrapKey() throws Exception {
+		// don't use setUpBeforeClass, may not be handling slow initialization well
+		setupTest(); 
 		// for each wrap case, wrap, unwrap, and make sure it matches.
 		Log.info("Entering testWrapUnwrapKey");
 		// Wrap secret in secret
@@ -191,6 +206,8 @@ public class WrappedKeyTest {
 
 	@Test
 	public void testWrappedKeyByteArrayStringStringStringByteArrayByteArray() throws Exception {
+		// don't use setUpBeforeClass, may not be handling slow initialization well
+		setupTest(); 
 		Log.info("Entering testWrappedKeyByteArrayStringStringStringByteArrayByteArray");
 		WrappedKey wka = null;
 		wka = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, 
@@ -211,6 +228,8 @@ public class WrappedKeyTest {
 	
 	@Test
 	public void testDecodeInputStream() throws Exception {
+		// don't use setUpBeforeClass, may not be handling slow initialization well
+		setupTest(); 
 		Log.info("Entering testDecodeInputStream");
 		WrappedKey wk = new WrappedKey(wrappingKeyID, dummyWrappedKey);
 		WrappedKey dwk = new WrappedKey();
@@ -237,6 +256,8 @@ public class WrappedKeyTest {
 	
 	@Test
 	public void testWrappedKeyObject() throws Exception {
+		// don't use setUpBeforeClass, may not be handling slow initialization well
+		setupTest(); 
 		
 		Log.info("Entering testWrappedKeyObject");
 		WrappedKey wks = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingAESKey);
