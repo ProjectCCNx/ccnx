@@ -104,7 +104,7 @@ public class AddChildren implements Runnable {
 					Name parentNameNode = app.getNameNode(parentNode);
 					if (parentNameNode.isDirectory) {
 						parentNameNode.setIsDirectory(false);
-						((IconData) parentNode.getUserObject()).setIcon(app.ICON_DOCUMENT);
+						((IconData) parentNode.getUserObject()).setIcon(ContentExplorer.ICON_DOCUMENT);
 						app.m_model.nodeChanged(parentNode);
 					}
 					
@@ -119,7 +119,7 @@ public class AddChildren implements Runnable {
 					Name parentNameNode = app.getNameNode(parentNode);
 					if (parentNameNode.isDirectory) {
 						parentNameNode.setIsDirectory(false);
-						((IconData) parentNode.getUserObject()).setIcon(app.ICON_DOCUMENT);
+						((IconData) parentNode.getUserObject()).setIcon(ContentExplorer.ICON_DOCUMENT);
 						app.m_model.nodeChanged(parentNode);
 					}
 				}
@@ -153,9 +153,9 @@ public class AddChildren implements Runnable {
 				if (addToParent) {
 					// name wasn't there, go ahead and add to the parent
 					if (cn.toString().toLowerCase().endsWith(".txt") || cn.toString().toLowerCase().endsWith(".text")) {
-						node = new DefaultMutableTreeNode(new IconData(app.ICON_DOCUMENT, null, new Name(cn.component(0), prefix, false)));
+						node = new DefaultMutableTreeNode(new IconData(ContentExplorer.ICON_DOCUMENT, null, new Name(cn.component(0), prefix, false)));
 					} else {
-						node = new DefaultMutableTreeNode(new IconData(app.ICON_FOLDER, null, new Name(cn.component(0), prefix, true)));
+						node = new DefaultMutableTreeNode(new IconData(ContentExplorer.ICON_FOLDER, null, new Name(cn.component(0), prefix, true)));
 					}
 
 					app.m_model.insertNodeInto(node, parentNode, parentNode.getChildCount());

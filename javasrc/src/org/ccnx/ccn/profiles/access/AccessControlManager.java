@@ -20,7 +20,6 @@ package org.ccnx.ccn.profiles.access;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
@@ -28,8 +27,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.stream.XMLStreamException;
 
@@ -1170,16 +1167,15 @@ public class AccessControlManager {
 	 * @param newRandomDataKey
 	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
-	 * @throws IllegalBlockSizeException 
-	 * @throws NoSuchPaddingException 
-	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 * @throws AccessDeniedException 
 	 * @throws InvalidCipherTextException 
 	 */
-	public void storeDataKey(ContentName dataNodeName, Key newRandomDataKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public void storeDataKey(ContentName dataNodeName, Key newRandomDataKey) 
+		throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, 
+				AccessDeniedException, InvalidCipherTextException {
 		NodeKey effectiveNodeKey = getFreshEffectiveNodeKey(dataNodeName);
 		if (null == effectiveNodeKey) {
 			throw new AccessDeniedException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
