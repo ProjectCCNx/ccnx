@@ -63,7 +63,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	public static class CollectionObject extends CCNEncodableObject<Collection> {
 		
 		public CollectionObject(ContentName name, Collection data, CCNHandle handle) throws IOException {
-			super(Collection.class, name, data, handle);
+			super(Collection.class, true, name, data, handle);
 		}
 		
 		public CollectionObject(ContentName name, java.util.Collection<Link> contents, CCNHandle handle) throws IOException {
@@ -75,7 +75,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		}
 
 		public CollectionObject(ContentName name, Collection data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
-			super(Collection.class, name, data, publisher, keyLocator, handle);
+			super(Collection.class, true, name, data, publisher, keyLocator, handle);
 		}
 
 		public CollectionObject(ContentName name, java.util.Collection<Link> contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
@@ -87,15 +87,15 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		}
 
 		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
-			super(Collection.class, name, publisher, handle);
+			super(Collection.class, true, name, publisher, handle);
 		}
 		
 		public CollectionObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
-			super(Collection.class, firstBlock, handle);
+			super(Collection.class, true, firstBlock, handle);
 		}
 		
 		public CollectionObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
-			super(Collection.class, name, (PublisherPublicKeyDigest)null, handle);
+			super(Collection.class, true, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
 		public Collection collection() throws ContentNotReadyException, ContentGoneException {

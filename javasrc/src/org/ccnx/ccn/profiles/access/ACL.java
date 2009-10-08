@@ -165,7 +165,7 @@ public class ACL extends Collection {
 		 * @throws IOException
 		 */
 		public ACLObject(ContentName name, ACL data, CCNHandle handle) throws ConfigurationException, IOException {
-			super(ACL.class, name, data, handle);
+			super(ACL.class, true, name, data, handle);
 		}
 
 		/**
@@ -179,7 +179,7 @@ public class ACL extends Collection {
 		 */
 		public ACLObject(ContentName name, PublisherPublicKeyDigest publisher,
 				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
-			super(ACL.class, name, publisher, handle);
+			super(ACL.class, true, name, publisher, handle);
 		}
 		
 		/**
@@ -192,12 +192,12 @@ public class ACL extends Collection {
 		 */
 		public ACLObject(ContentName name, 
 				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
-			super(ACL.class, name, (PublisherPublicKeyDigest)null, handle);
+			super(ACL.class, true, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
 		public ACLObject(ContentObject firstBlock,
 				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
-			super(ACL.class, firstBlock, handle);
+			super(ACL.class, true, firstBlock, handle);
 		}
 		
 		public ACL acl() throws ContentNotReadyException, ContentGoneException { return data(); }

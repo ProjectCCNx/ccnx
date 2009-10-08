@@ -33,12 +33,12 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
  */
 public class EncodableObject<E extends XMLEncodable> extends NetworkObject<E> {
 		
-	public EncodableObject(Class<E> type) {
-		super(type);
+	public EncodableObject(Class<E> type, boolean contentIsMutable) {
+		super(type, contentIsMutable);
 	}
 	
-	public EncodableObject(Class<E> type, E data) {
-		super(type, data);
+	public EncodableObject(Class<E> type, boolean contentIsMutable, E data) {
+		super(type, contentIsMutable, data);
 	}
 	
 	protected void writeObjectImpl(OutputStream output) throws IOException, XMLStreamException {

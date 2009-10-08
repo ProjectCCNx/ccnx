@@ -36,22 +36,22 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 public class CCNStringObject extends CCNSerializableObject<String> {
 
 	public CCNStringObject(ContentName name, String data, CCNHandle handle) throws ConfigurationException, IOException {
-		super(String.class, name, data, handle);
+		super(String.class, false, name, data, handle);
 	}
 	
 	public CCNStringObject(ContentName name, PublisherPublicKeyDigest publisher,
 			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
-		super(String.class, name, publisher, handle);
+		super(String.class, false, name, publisher, handle);
 	}
 	
 	public CCNStringObject(ContentName name, 
 			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
-		super(String.class, name, (PublisherPublicKeyDigest)null, handle);
+		super(String.class, false, name, (PublisherPublicKeyDigest)null, handle);
 	}
 	
 	public CCNStringObject(ContentObject firstBlock,
 			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
-		super(String.class, firstBlock, handle);
+		super(String.class, false, firstBlock, handle);
 	}
 	
 	public String string() throws ContentNotReadyException, ContentGoneException { return data(); }

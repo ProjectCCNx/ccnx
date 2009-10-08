@@ -52,23 +52,23 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 
 	public PublicKeyObject(ContentName name, PublicKey data, CCNHandle handle) throws IOException {
-		super(PublicKey.class, name, data, handle);
+		super(PublicKey.class, false, name, data, handle);
 	}
 	
 	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNHandle handle) throws IOException {
-		super(PublicKey.class, name, data, publisher, locator, handle);
+		super(PublicKey.class, false, name, data, publisher, locator, handle);
 	}
 
 	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
-		super(PublicKey.class, name, publisher, handle);
+		super(PublicKey.class, false, name, publisher, handle);
 	}
 	
 	public PublicKeyObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
-		super(PublicKey.class, name, (PublisherPublicKeyDigest)null, handle);
+		super(PublicKey.class, false, name, (PublisherPublicKeyDigest)null, handle);
 	}
 	
 	public PublicKeyObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
-		super(PublicKey.class, firstBlock, handle);
+		super(PublicKey.class, false, firstBlock, handle);
 	}
 	
 	@Override

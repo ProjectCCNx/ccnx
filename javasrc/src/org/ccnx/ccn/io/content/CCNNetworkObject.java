@@ -126,13 +126,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * to the network. If saveToRepository() is called on the first save, it will override backing 
 	 * store behavior and store the object to a repository.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name under which to save object.
 	 * @param data Data to save.
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNHandle handle) throws IOException {
-		this(type, name, data, DEFAULT_RAW, null, null, handle);
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							ContentName name, E data, CCNHandle handle) throws IOException {
+		this(type, contentIsMutable, name, data, DEFAULT_RAW, null, null, handle);
 	}
 		
 	/**
@@ -141,6 +143,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * to the network. If saveToRepository() is called on the first save, it will override backing 
 	 * store behavior and store the object to a repository.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name under which to save object.
 	 * @param data Data to save.
 	 * @param publisher The key to use to sign this data, or our default if null.
@@ -148,8 +151,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNHandle handle) throws IOException {
-		this(type, name, data, DEFAULT_RAW, publisher, locator, handle);
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							ContentName name, E data, PublisherPublicKeyDigest publisher, 
+							KeyLocator locator, CCNHandle handle) throws IOException {
+		this(type, contentIsMutable, name, data, DEFAULT_RAW, publisher, locator, handle);
 	}
 		
 	/**
@@ -158,6 +163,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * to the network. If saveToRepository() is called on the first save, it will override backing 
 	 * store behavior and store the object to a repository.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name under which to save object.
 	 * @param data Data to save.
 	 * @param raw If true, saves to network by default, if false, saves to repository by default.
@@ -166,12 +172,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, 
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							ContentName name, E data, boolean raw, 
 							PublisherPublicKeyDigest publisher, KeyLocator locator,
 							CCNHandle handle) throws IOException {
 		// Don't start pulling a namespace till we actually write something. We may never write
 		// anything on this object. In fact, don't make a flow controller at all till we need one.
-		super(type, data);
+		super(type, contentIsMutable, data);
 		if (null == handle) {
 			try {
 				handle = CCNHandle.open();
@@ -190,6 +197,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Specialized constructor, allowing subclasses to override default flow controller 
 	 * (and hence backing store) behavior.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name under which to save object.
 	 * @param data Data to save.
 	 * @param publisher The key to use to sign this data, or our default if null.
@@ -199,11 +207,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 *   CCNFlowControl#startWrite(ContentName, Shape) on each save.
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
-	protected CCNNetworkObject(Class<E> type, ContentName name, E data, 
+	protected CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+								ContentName name, E data, 
 								PublisherPublicKeyDigest publisher, 
 								KeyLocator locator,
 								CCNFlowControl flowControl) throws IOException {
-		this(type, name, data, publisher, locator, flowControl.getHandle());
+		this(type, contentIsMutable, name, data, publisher, locator, flowControl.getHandle());
 		_flowControl = flowControl;
 	}
 
@@ -213,15 +222,16 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * its uninitialized state, and continue attempting to update it (one time) in the
 	 * background.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
 	 * 	version. If unversioned, will attempt to read the latest version available.
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws IOException If there is an error setting up network backing store.
 	 * @throws XMLStreamException If there is a problem decoding the object.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, 
-			CCNHandle handle) throws IOException, XMLStreamException {
-		this(type, name, (PublisherPublicKeyDigest)null, handle);
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
+		this(type, contentIsMutable, name, (PublisherPublicKeyDigest)null, handle);
 	}
 
 	/**
@@ -230,6 +240,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * its uninitialized state, and continue attempting to update it (one time) in the
 	 * background.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
 	 * 	version. If unversioned, will attempt to read the latest version available.
 	 * @param publisher Particular publisher we require to have signed the content, or null for any publisher.
@@ -237,9 +248,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException If there is an error setting up network backing store.
 	 * @throws XMLStreamException If there is a problem decoding the object.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle handle) throws IOException, XMLStreamException {
-		this(type, name, publisher, DEFAULT_RAW, handle);
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+						    ContentName name, PublisherPublicKeyDigest publisher,
+						    CCNHandle handle) throws IOException, XMLStreamException {
+		this(type, contentIsMutable, name, publisher, DEFAULT_RAW, handle);
 	}
 
 	/**
@@ -248,6 +260,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * its uninitialized state, and continue attempting to update it (one time) in the
 	 * background.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
 	 * 	version. If unversioned, will attempt to read the latest version available.
 	 * @param publisher Particular publisher we require to have signed the content, or null for any publisher.
@@ -257,9 +270,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException If there is an error setting up network backing store.
 	 * @throws XMLStreamException If there is a problem decoding the object.
 	 */
-	protected CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNFlowControl flowControl) throws IOException, XMLStreamException {
-		super(type);
+	protected CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							  ContentName name, PublisherPublicKeyDigest publisher,
+							  CCNFlowControl flowControl) throws IOException, XMLStreamException {
+		super(type, contentIsMutable);
 		_flowControl = flowControl;
 		_handle = flowControl.getHandle();
 		update(name, publisher);
@@ -271,6 +285,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * its uninitialized state, and continue attempting to update it (one time) in the
 	 * background.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
 	 * 	version. If unversioned, will attempt to read the latest version available.
 	 * @param publisher Particular publisher we require to have signed the content, or null for any publisher.
@@ -279,9 +294,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException If there is an error setting up network backing store.
 	 * @throws XMLStreamException If there is a problem decoding the object.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							ContentName name, PublisherPublicKeyDigest publisher,
 			boolean raw, CCNHandle handle) throws IOException, XMLStreamException {
-		super(type);
+		super(type, contentIsMutable);
 		if (null == handle) {
 			try {
 				handle = CCNHandle.open();
@@ -297,26 +313,30 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	/**
 	 * Read constructor if you already have a segment of the object. Used by streams.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param firstSegment First segment of the object, retrieved by other means.
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws IOException If there is an error setting up network backing store.
 	 * @throws XMLStreamException If there is a problem decoding the object.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, CCNHandle handle) throws IOException, XMLStreamException {
-		this(type, firstSegment, DEFAULT_RAW, handle);
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+						    ContentObject firstSegment, CCNHandle handle) throws IOException, XMLStreamException {
+		this(type, contentIsMutable, firstSegment, DEFAULT_RAW, handle);
 	}
 	
 	/**
 	 * Read constructor if you already have a segment of the object. Used by streams.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param firstSegment First segment of the object, retrieved by other means.
 	 * @param raw If true, defaults to raw network writes, if false, repository writes.
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws IOException If there is an error setting up network backing store.
 	 * @throws XMLStreamException If there is a problem decoding the object.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, boolean raw, CCNHandle handle) throws IOException, XMLStreamException {
-		super(type);
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							ContentObject firstSegment, boolean raw, CCNHandle handle) throws IOException, XMLStreamException {
+		super(type, contentIsMutable);
 		if (null == handle) {
 			try {
 				handle = CCNHandle.open();
@@ -331,6 +351,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	/**
 	 * Read constructor if you already have a segment of the object. Used by streams.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param firstSegment First segment of the object, retrieved by other means.
 	 * @param flowControl Flow controller to use. A single flow controller object
 	 *   is used for all this instance's writes, we use underlying streams to call
@@ -338,8 +359,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException If there is an error setting up network backing store.
 	 * @throws XMLStreamException If there is a problem decoding the object.
 	 */
-	protected CCNNetworkObject(Class<E> type, ContentObject firstSegment, CCNFlowControl flowControl) throws IOException, XMLStreamException {
-		super(type);
+	protected CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							   ContentObject firstSegment, CCNFlowControl flowControl) throws IOException, XMLStreamException {
+		super(type, contentIsMutable);
 		if (null == flowControl)
 			throw new IllegalArgumentException("flowControl cannot be null!");
 		_flowControl = flowControl;
