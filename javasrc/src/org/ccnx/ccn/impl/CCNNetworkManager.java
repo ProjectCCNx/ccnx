@@ -679,6 +679,7 @@ public class CCNNetworkManager implements Runnable {
 		synchronized (_myFilters) {
 			_myFilters.add(filter, new Filter(this, filter, callbackListener, caller));
 		}
+		// tell ccnd to send me interests that start to filter
 	}
 	
 	/**
