@@ -498,10 +498,8 @@ public class BasicKeyManager extends KeyManager {
 	 * @param publisher publisher public key digest
 	 * @return public key
 	 * @throws IOException
-	 */
 	@Override
 	public PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws IOException {
-		// TODO Auto-generated method stub
 		Log.finer("getPublicKey: retrieving key: " + publisher);
 		
 		if (_defaultKeyID.equals(publisher))
@@ -518,7 +516,6 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PrivateKey getSigningKey(PublisherPublicKeyDigest publisher) {
-		// TODO Auto-generated method stub
 		Log.finer("getSigningKey: retrieving key: " + publisher);
 		if (_defaultKeyID.equals(publisher))
 			return _privateKey;
@@ -541,6 +538,15 @@ public class BasicKeyManager extends KeyManager {
 		// All this tells us is that the key matches the publisher. For whether
 		// or not we should trust it for some reason, we have to get fancy.
 		return keyRepository().getPublicKey(publisherID, keyLocator, timeout);
+	}
+	
+	/**
+	 * Attempt to retrieve public key from cache.
+	 * @throws IOException 
+	 */
+	@Override
+	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) throws IOException {
+		return keyRepository().getPublicKey(desiredKeyID);
 	}
 
 	/**
@@ -598,7 +604,7 @@ public class BasicKeyManager extends KeyManager {
 				throw new InvalidKeyException("Cannot retrieive key " + keyToPublish);
 			}
 		}
-		keyRepository().publishKey(keyName, key, getDefaultKeyID(), getDefaultSigningKey());
+		keyRepository().publishKey(keyName, key, getDefaultKeyID());
 	}
 	
 	
@@ -610,7 +616,7 @@ public class BasicKeyManager extends KeyManager {
 	    		SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, false);
 	    	}
 	    	keyRepository().publishKey(_keyLocator.name().name(), _certificate.getPublicKey(), 
-	    								_defaultKeyID, _privateKey);
+	    							   _defaultKeyID);
 	    	if (resetFlag) {
 	    		SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
 	    	}

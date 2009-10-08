@@ -21,27 +21,22 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.spec.InvalidKeySpecException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
-import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.impl.CCNFlowServer;
+import org.ccnx.ccn.impl.CCNPersistentFlowServer;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
@@ -70,14 +65,13 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * initialized.
  */
 
-public class KeyRepository implements CCNFilterListener {
+public class KeyRepository {
 	
 	protected static final boolean _DEBUG = true;
 	
 	protected CCNHandle _handle = null;
-	protected CCNFlowServer _keyServer = null;
+	protected CCNPersistentFlowServer _keyServer = null;
 	
-	protected HashMap<ContentName,ContentObject> _keyMap = new HashMap<ContentName,ContentObject>();
 	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest,ContentName>();
 	protected HashMap<PublisherPublicKeyDigest, PublicKey> _rawKeyMap = new HashMap<PublisherPublicKeyDigest,PublicKey>();
 	protected HashMap<PublisherPublicKeyDigest, Certificate> _rawCertificateMap = new HashMap<PublisherPublicKeyDigest,Certificate>();
@@ -94,60 +88,52 @@ public class KeyRepository implements CCNFilterListener {
 		_handle = CCNHandle.open(keyManager); // maintain our own connection to the agent, so
 			// everyone can ask us for keys even if we have no repository
 		// make a buffered server to return key data
-		_keyServer = new CCNFlowServer(null, _handle);
+		_keyServer = new CCNPersistentFlowServer(null, _handle);
 	}
 	
 	public CCNHandle handle() { return _handle; }
-	
+		
 	/**
-	 * Track an existing key object and make it available.
-	 * @param keyObject
-	 * @throws NoSuchAlgorithmException 
-	 * @throws InvalidKeySpecException 
-	 * @throws CertificateEncodingException 
-	 */
-	public void publishKey(ContentObject keyObject) throws CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
-		PublicKey key = CryptoUtil.getPublicKey(keyObject.content());
-		remember(key, keyObject);
-	}
-	
-	/**
-	 * Published a signed record for this key.
+	 * Published a signed record for this key if one doesn't exist.
+	 * (if it does exist, pulls it at least to our ccnd, and optionally
+	 * makes it available).
 	 * @param keyName the key's content name
 	 * @param key the public key
 	 * @param keyID the publisher id
-	 * @param signingKey the private signing key
+	 * @param signingKeyID the key id of the key pair to sign with
 	 * @return void
 	 * @throws ConfigurationException
 	 */
-	public void publishKey(ContentName keyName, PublicKey key, PublisherPublicKeyDigest keyID, PrivateKey signingKey) throws ConfigurationException {
-		byte [] encodedKey = key.getEncoded();
-		// Need a key locator to stick in data entry for
-		// locator. Could use key itself, but then would have
-		// key both in the content for this item and in the
-		// key locator, which is redundant. Use naming form
-		// that allows for self-referential key names -- the
-		// CCN equivalent of a "self-signed cert". Means that
-		// we will refer to only the base key name and the publisher ID,
-		// not the uniqueified key name...
+	public void publishKey(ContentName keyName, PublicKey key, PublisherPublicKeyDigest signingKeyID) 
+						throws IOException {
 
-		KeyLocator locatorLocator = 
-			new KeyLocator(keyName, new PublisherID(keyID));
-
-		ContentObject keyObject = null;
-		try {
-			keyObject = new ContentObject(
-					keyName,
-					new SignedInfo(keyID,
-							CCNTime.now(),
-							SignedInfo.ContentType.KEY,
-							locatorLocator),
-							encodedKey,
-							signingKey);
-		} catch (Exception e) {
-			BasicKeyManager.generateConfigurationException("Exception generating key locator and publishing key.", e);
+		// First attempt to read... look for something with same publisher.
+		// Eventually may want to find something already published and link to it, but be simple here.
+		PublicKeyObject keyObject = new PublicKeyObject(keyName, signingKeyID, _keyServer);
+		keyObject.waitForData(SHORT_KEY_TIMEOUT); // gets the latest version
+		
+		if (!keyObject.available() || (!keyObject.publicKey().equals(key))) {
+			// Need a key locator to stick in data entry for
+			// locator. Could use key itself, but then would have
+			// key both in the content for this item and in the
+			// key locator, which is redundant. Use naming form
+			// that allows for self-referential key names -- the
+			// CCN equivalent of a "self-signed cert". Means that
+			// we will refer to only the base key name and the publisher ID.
+			
+			// DKS -- versions???
+			KeyLocator locatorLocator = 
+				new KeyLocator(keyName, new PublisherID(signingKeyID));
+			
+			// nobody's written it where we can find it fast enough.
+			keyObject.setData(key);
+			// TODO -- set our locator and desired signing key
+			if (!keyObject.save()) {
+				Log.info("Not saving key when we thought we needed to: desired key value {0}, have key value {1}, " +
+							new PublisherPublicKeyDigest(key), new PublisherPublicKeyDigest(keyObject.publicKey()));
+			}
 		}
-		remember(key, keyObject);
+		remember(keyName, key);
 	}
 	
 	/**
@@ -201,17 +187,16 @@ public class KeyRepository implements CCNFilterListener {
 	 * @param theKey public key to remember
 	 * @param keyObject key Object to remember
 	 */
-	public void remember(PublicKey theKey, ContentObject keyObject) {
+	public void remember(ContentName keyName, PublicKey theKey) {
 		PublisherPublicKeyDigest id = new PublisherPublicKeyDigest(theKey);
-		_idMap.put(id, keyObject.name());
-		_keyMap.put(keyObject.name(), keyObject);
+		_idMap.put(id, keyName);
 		_rawKeyMap.put(id, theKey);
 		if (_DEBUG) {
 			recordKeyToFile(id, keyObject);
 		}
 		
 		// DKS TODO -- do we want to put in a prefix filter...?
-		_handle.registerFilter(keyObject.name(), this);
+		_handle.registerFilter(keyName, this);
 	}
 	
 	/**
@@ -227,7 +212,9 @@ public class KeyRepository implements CCNFilterListener {
 	 * @param theCertificate the certificate to remember
 	 */
 	public void remember(Certificate theCertificate) {
-		_rawCertificateMap.put(new PublisherPublicKeyDigest(theCertificate.getPublicKey()), theCertificate);
+		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(theCertificate.getPublicKey());
+		_rawCertificateMap.put(keyDigest, theCertificate);
+		_rawKeyMap.put(keyDigest, theCertificate.getPublicKey());
 	}
 
 	
@@ -267,7 +254,6 @@ public class KeyRepository implements CCNFilterListener {
 	 * @param desiredKeyID the digest of the desired public key.
 	 */
 	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) throws IOException {
-		ContentObject keyObject = null;
 		PublicKey theKey = _rawKeyMap.get(desiredKeyID);
 		if (null == theKey) {
 			Certificate theCertificate = _rawCertificateMap.get(desiredKeyID);
@@ -275,21 +261,6 @@ public class KeyRepository implements CCNFilterListener {
 				theKey = theCertificate.getPublicKey();
 			}
 		}
-		ContentName name = _idMap.get(desiredKeyID);
-		if (null != name) {
-			keyObject = _keyMap.get(name);
-			if (null != keyObject) {
-				try {
-					theKey = CryptoUtil.getPublicKey(keyObject.content());
-				} catch (CertificateEncodingException e) {
-					Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-					throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-				} catch (InvalidKeySpecException e) {
-					Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-					throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-				}
-			}
-		}	
 		return theKey;
 	}
 
@@ -369,69 +340,5 @@ public class KeyRepository implements CCNFilterListener {
 			return _keyMap.get(name);
 		}		
 		return null;
-	}
-	
-	/**
-	 * Retrieve key object from cache given content name and publisher id
-	 * check if the retrieved content has the expected publisher id 
-	 * @param name contentname of the key
-	 * @param publisherID publisher id
-	 */
-	public ContentObject retrieve(ContentName name, PublisherID publisherID) {
-		ContentObject result = _keyMap.get(name);
-		if (null != result) {
-			if (null != publisherID) {
-				if (TrustManager.getTrustManager().matchesRole(
-						publisherID,
-						result.signedInfo().getPublisherKeyID())) {
-					return result;
-				}
-			}
-		}
-		return null;
-	}
-	
-	/**
-	 * Retrieve content object given an interest 
-	 * @param interest interest
-	 */
-	public ContentObject retrieve(Interest interest) {
-		ContentObject result = retrieve(interest.name(), interest.publisherID());
-		if (null != result)
-			return result;
-		
-		// OK, the straight match didn't cut it; maybe we're just close.
-		Iterator<ContentObject> it = _keyMap.values().iterator();
-		while (it.hasNext()) {
-			ContentObject co = it.next();
-			if (interest.matches(co)) {
-				// doesn't handle preventing returning same thing over and over
-				return co;	
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Answers interests for published public keys.
-	 * @param interests interests expressed by other parties.
-	 */
-	
-	public int handleInterests(ArrayList<Interest> interests) {
-		Iterator<Interest> it = interests.iterator();
-		
-		while (it.hasNext()) {
-			ContentObject keyObject = retrieve(it.next());
-			if (null != keyObject) {
-				try {
-					ContentObject co = new ContentObject(keyObject.name(), keyObject.signedInfo(), keyObject.content(), keyObject.signature()); 
-					_handle.put(co);
-				} catch (Exception e) {
-					Log.info("KeyRepository::handleInterests, exception in put: " + e.getClass().getName() + " message: " + e.getMessage());
-					Log.infoStackTrace(e);
-				}
-			}
-		}
-		return 0;
 	}
 }
