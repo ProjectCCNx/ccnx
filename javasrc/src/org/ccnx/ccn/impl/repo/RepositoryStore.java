@@ -245,9 +245,14 @@ public interface RepositoryStore {
     public NameEnumerationResponse getNamesWithPrefix(Interest i);
     
     /**
-     * 
+     * Hook to shutdown the store (close files for example)
      */
     public void shutDown();
+    
+    /**
+     * Get the global prefix for this repository
+     */
+    public ContentName getGlobalPrefix();
     
     /**
      * Execute diagnostic operation.  The diagnostic operations are 

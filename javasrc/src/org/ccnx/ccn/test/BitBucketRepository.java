@@ -22,9 +22,9 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.repo.Policy;
-import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryInfo;
+import org.ccnx.ccn.impl.repo.RepositoryStoreBase;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -33,7 +33,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 /**
  * Test repository backend. Should not be used in production code.
  */
-public class BitBucketRepository implements RepositoryStore {
+public class BitBucketRepository extends RepositoryStoreBase {
 	
 	public boolean checkPolicyUpdate(ContentObject co)
 			throws RepositoryException {
@@ -95,6 +95,12 @@ public class BitBucketRepository implements RepositoryStore {
 	}
 
 	public Policy getPolicy() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String getVersion() {
 		// TODO Auto-generated method stub
 		return null;
 	}

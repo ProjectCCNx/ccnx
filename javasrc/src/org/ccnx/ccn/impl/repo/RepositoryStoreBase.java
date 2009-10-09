@@ -49,6 +49,10 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * Decide whether incoming data is a request to update the repository policy and attempt to
 	 * update the policy if so. This is done by simply comparing the prefix of the name to the prefix
 	 * expected for a policy file.
+	 * 
+	 * TODO: This assumes that an entire policy update is contained within 1 ContentObject. To fix this
+	 * we need to assemble multiple packets into a file somewhere - probably this needs support from the
+	 * upper layer.
 	 */
 	public boolean checkPolicyUpdate(ContentObject co)
 			throws RepositoryException {
@@ -195,7 +199,10 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	public void setPolicy(Policy policy) {
 		_policy = policy;
 	}
+	
+	public ContentName getGlobalPrefix() {
+		return _policy.getGlobalPrefix();
+	}
 
 	public abstract void shutDown();
-
 }
