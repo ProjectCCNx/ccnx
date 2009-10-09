@@ -810,7 +810,7 @@ main(int argc, char **argv)
         }
         /* (add|delete) uri type host [port [flags [mcast-ttl [mcast-if]]]] */
 
-        if (argc - optind < 4 || argc - optind > 7)
+        if (argc - optind < 4 || argc - optind > 8)
             usage(progname);
 
         res = process_command_tokens(pflhead, 0,
