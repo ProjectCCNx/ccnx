@@ -58,29 +58,29 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	public static class HeaderObject extends CCNEncodableObject<Header> {
 		
 		public HeaderObject(ContentName name, Header data, CCNHandle handle) throws IOException {
-			super(Header.class, name, data, handle);
+			super(Header.class, true, name, data, handle);
 		}
 		
 		public HeaderObject(ContentName name, Header data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
-			super(Header.class, name, data, publisher, keyLocator, handle);
+			super(Header.class, true, name, data, publisher, keyLocator, handle);
 		}
 
 		public HeaderObject(ContentName name,
 				Header data, PublisherPublicKeyDigest publisher,
 				KeyLocator keyLocator, CCNFlowControl flowControl) throws IOException, XMLStreamException {
-			super(Header.class, name, data, publisher, keyLocator, flowControl);
+			super(Header.class, true, name, data, publisher, keyLocator, flowControl);
 		}
 	
 		public HeaderObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
-			super(Header.class, name, (PublisherPublicKeyDigest)null, handle);
+			super(Header.class, true, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
 		public HeaderObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
-			super(Header.class, name, publisher, handle);
+			super(Header.class, true, name, publisher, handle);
 		}
 		
 		public HeaderObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
-			super(Header.class, firstBlock, handle);
+			super(Header.class, true, firstBlock, handle);
 		}
 		
 		public long start() throws ContentGoneException, ContentNotReadyException { 

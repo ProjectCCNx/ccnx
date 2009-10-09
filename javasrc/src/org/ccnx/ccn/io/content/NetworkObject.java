@@ -67,6 +67,18 @@ public abstract class NetworkObject<E> {
 	protected E _data;
 	protected boolean _isDirty = false;
 	protected boolean _isPotentiallyDirty = false;
+	/**
+	 * Is it possible to modify the type of data we contain directly
+	 * from a pointer to the object, or do we have to replace the whole
+	 * thing to change its value? For example, a Java String or BigInteger
+	 * is immutable (modulo reflection-based abstraction violations). A
+	 * complex structure whose fields can be set would be mutable. We want
+	 * to track whether the content of the object has been changed either
+	 * using setData or outside of the object interface; this is an 
+	 * optimization to allow us to avoid the outside-the-object checks
+	 * for immutable objects.
+	 */
+	protected boolean _contentIsMutable = false; 
 	protected byte [] _lastSaved; // save digest of serialized item, so can tell if updated outside
 								  // of setData
 	protected boolean _available = false; // false until first time data is set or updated
@@ -75,18 +87,31 @@ public abstract class NetworkObject<E> {
 	 * Subclasses need to specify the type as an argument as well as a template
 	 * parameter in order to make factory methods work properly.
 	 * @param type Should be same as class template parameter.
+	 * @param contentIsMutable Is the class we are encapsulating mutable (its content can
+	 * 	be modified without replacing the object reference) or immutable (the only
+	 * 	way to change it is to replace it, or here set it with setData). Unfortunately
+	 *  there is no way to determine this via reflection. You could also set this to
+	 *  false if you do not expose the data directly, but merely expose methods to modify
+	 *  its values, and manage _isPotentiallyDirty directly.
 	 */
-	public NetworkObject(Class<E> type) {
+	public NetworkObject(Class<E> type, boolean contentIsMutable) {
 		_type = type;
+		_contentIsMutable = contentIsMutable;
 	}
 	
 	/**
 	 * Specify type as well as initial data.
 	 * @param type Should be same as class template parameter.
+	 * @param contentIsMutable Is the class we are encapsulating mutable (its content can
+	 * 	be modified without replacing the object reference) or immutable (the only
+	 * 	way to change it is to replace it, or here set it with setData). Unfortunately
+	 *  there is no way to determine this via reflection. You could also set this to
+	 *  false if you do not expose the data directly, but merely expose methods to modify
+	 *  its values, and manage _isPotentiallyDirty directly.
 	 * @param data Initial data value.
 	 */
-	public NetworkObject(Class<E> type, E data) {
-		this(type);
+	public NetworkObject(Class<E> type, boolean contentIsMutable, E data) {
+		this(type, contentIsMutable);
 		setData(data); // marks data as available if non-null
 	}
 
@@ -190,8 +215,10 @@ public abstract class NetworkObject<E> {
 			throw new ContentNotReadyException("No data yet saved or retrieved!");
 		}
 		// Mark that we've given out access to the internal data, so we know someone might
-		// have changed it.
-		_isPotentiallyDirty = true;
+		// have changed it. If it can't be changed outside this interface, don't
+		// mark it potentially dirty as an optimization.
+		if (_contentIsMutable)
+			_isPotentiallyDirty = true;
 		// return a pointer to the current data. No guarantee that this will continue
 		// to be what we think our data unless caller holds read lock.
 		return _data; 
@@ -267,15 +294,15 @@ public abstract class NetworkObject<E> {
 			byte [] currentValue = digestContent();
 
 			if (Arrays.equals(currentValue, _lastSaved)) {
-				Log.info("Last saved value for object still current.");
+				Log.finest("Last saved value for object still current.");
 				_isDirty = false;
 			} else {
-				Log.info("Last saved value for object not current -- object changed.");
+				Log.finer("Last saved value for object not current -- object changed.");
 				_isDirty = true;
 			}
 		} else {
 			// We've never set the data, nor given out access to it. It can't be dirty.
-			Log.finer("NetworkObject: data cannot be dirty.");
+			Log.finest("NetworkObject: data cannot be dirty.");
 			_isDirty = false;
 		}
 

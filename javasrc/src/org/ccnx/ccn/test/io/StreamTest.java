@@ -23,7 +23,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 
 import javax.xml.stream.XMLStreamException;
@@ -96,7 +95,6 @@ public class StreamTest extends BlockReadWriteTest {
 	 * @throws MalformedContentNameStringException 
 	 * @throws SignatureException 
 	 * @throws XMLStreamException 
-	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
 	@Override

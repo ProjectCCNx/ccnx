@@ -15,10 +15,13 @@ libdir = $(shell pkg-config --variable=libdir vlc-plugin )
 vlclibdir = $(libdir)/vlc
 VLCPLUGINVERDEF = `pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER\1/;s/\.//g;'`
 
+# You may have to specify ARCHOPT in some cases, for instance:
+#ARCHOPT = -arch `/usr/bin/arch`
+
 all: libaccess_ccn_plugin.dylib
 
 libaccess_ccn_plugin.dylib: libaccess_ccn_plugin.o
-	gcc $< `pkg-config  --libs vlc-plugin` -arch `/usr/bin/arch` -o $@ -bundle -L../../lib -L/usr/local/lib -L/opt/local/lib -lccn -lcrypto
+	gcc $< `pkg-config  --libs vlc-plugin` $(ARCHOPT) -o $@ -bundle -L../../lib -L/usr/local/lib -L/opt/local/lib -lccn -lcrypto
 
 libaccess_ccn_plugin.o: ccn.c
 	gcc -c -g -O3 -std=gnu99  $< -I../../include/ `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" $(VLCPLUGINVERDEF) -o $@  

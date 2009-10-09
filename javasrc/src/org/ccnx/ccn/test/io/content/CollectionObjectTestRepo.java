@@ -110,6 +110,7 @@ public class CollectionObjectTestRepo {
 		
 		collection.contents().removeAll(newReferences);
 		collection.save();
+		System.out.println("New version: " + collection.getVersion() + " old version " + oldVersion);
 		readCollection.update(5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(collection.getVersion(), readCollection.getVersion());

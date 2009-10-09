@@ -33,11 +33,11 @@ public class SerializablePublicKey extends SerializableObject<PublicKey> impleme
 	private static final long serialVersionUID = 1235874939485391189L;
 
 	public SerializablePublicKey() {
-		super(PublicKey.class);
+		super(PublicKey.class, false);
 	}
 	
 	public SerializablePublicKey(PublicKey publicKey) {
-		super(PublicKey.class, publicKey);
+		super(PublicKey.class, false, publicKey);
 	}
 	
 	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException { return data(); }

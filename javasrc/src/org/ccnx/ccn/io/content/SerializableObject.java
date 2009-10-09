@@ -38,12 +38,12 @@ import org.ccnx.ccn.io.GenericObjectInputStream;
 public class SerializableObject<E extends Serializable> extends NetworkObject<E> {
 	
 
-	public SerializableObject(Class<E> type) {
-		super(type);
+	public SerializableObject(Class<E> type, boolean contentIsMutable) {
+		super(type, contentIsMutable);
 	}
 	
-	public SerializableObject(Class<E> type, E data) {
-		super(type, data);
+	public SerializableObject(Class<E> type, boolean contentIsMutable, E data) {
+		super(type, contentIsMutable, data);
 	}
 		
 	@Override
