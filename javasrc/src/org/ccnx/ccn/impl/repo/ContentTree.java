@@ -434,7 +434,10 @@ public class ContentTree {
 		}
 		if (null != children) {
 			byte[] interestComp = interest.name().component(depth);
-			for (TreeNode child : children) {
+			TreeNode testNode = new TreeNode();
+			testNode.component = interestComp;
+			SortedSet<TreeNode> set = anyOK || null == interestComp ? children : children.tailSet(testNode);
+			for (TreeNode child : set) {
 				int comp = DataUtils.compare(child.component, interestComp);
 				//if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0) {
 				if (anyOK || comp >= 0) {
@@ -454,27 +457,40 @@ public class ContentTree {
 	
 	/**
 	 * Get all nodes below the given one
+	 * If there is a minimum length specified, we at least don't get nodes that are shorter than
+	 * the minimum length.  Likewsise we don't return nodes longer than the maximum length
 	 * 
 	 * @param node the starting node
 	 * @param result list of nodes we are looking for
-	 * @param components depth
+	 * @param minComponents minimum depth below here
+	 * @param maxComponents maximum depth below here
 	 */
-	protected void getSubtreeNodes(TreeNode node, List<TreeNode> result, Integer components) {
-		result.add(node);
-		if (components != null) {
-			components--;
-			if (components == 0)
-				return;
+	protected boolean getSubtreeNodes(TreeNode node, List<TreeNode> result, Integer minComponents, Integer maxComponents) {
+		boolean found = false;
+		if (minComponents != null) {
+			minComponents--;
+		}
+		if (maxComponents != null) {
+			if (--maxComponents < 0)
+				return false;
 		}
 		synchronized(node) {
 			if (null != node.oneChild) {
-				getSubtreeNodes(node.oneChild, result, components);
+				found = getSubtreeNodes(node.oneChild, result, minComponents, maxComponents);
 			} else if (null != node.children) {
 				for (TreeNode child : node.children) {
-					getSubtreeNodes(child, result, components);
+					boolean tmpFound = getSubtreeNodes(child, result, minComponents, maxComponents);
+					if (!found && tmpFound)
+						found = tmpFound;
 				}
+			} else {
+				found = (minComponents == null || minComponents < 0);
 			}
 		}
+		if (found)
+			result.add(node);
+		Log.finest("getSubtreeNodes - found was {0} and components was {1} ", found, minComponents);
+		return found;
 	}
 	
 	/**
@@ -495,10 +511,10 @@ public class ContentTree {
 		// TODO This is very inefficient for all but the most optimal case where the last thing in the
 		// subtree happens to be a perfect match
 		ArrayList<TreeNode> options = new ArrayList<TreeNode>();
-		Integer totalComponents = null;
-		if (interest.minSuffixComponents() != null)
-			totalComponents = interest.name().count() + interest.minSuffixComponents();
-		getSubtreeNodes(node, options, totalComponents);
+		Integer maxComponents = interest.maxSuffixComponents();
+		if (null != maxComponents)
+			maxComponents++;
+		getSubtreeNodes(node, options, interest.minSuffixComponents(), maxComponents);
 		for (int i = options.size()-1; i >= 0 ; i--) {
 			TreeNode candidate = options.get(i);
 			if (null != candidate.oneContent || null != candidate.content) {
