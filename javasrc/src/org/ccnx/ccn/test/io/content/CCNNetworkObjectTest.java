@@ -423,7 +423,7 @@ public class CCNNetworkObjectTest {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testSaveAsGone"), collectionObjName);
 
 		try {
-			Log.info("Entering testSaveAsGone");
+			Log.info("TSAG: Entering testSaveAsGone");
 			CollectionObject c0 = new CollectionObject(testName, empty, handle);
 			setupNamespace(testName); // this sends the interest, doing it after the object gives it
 						// a chance to catch it.
@@ -460,7 +460,7 @@ public class CCNNetworkObjectTest {
 			Log.info("TSAG: Waited for: {0}", c2.getVersionedName());
 			Assert.assertTrue("Read back of " + c0.getVersionedName() + " should be gone, got " + c2.getVersionedName(), c2.isGone());
 			Assert.assertEquals(t4, t0);
-			Log.info("T5");
+			Log.info("TSAG: Leaving testSaveAsGone.");
 
 		} finally {
 			removeNamespace(testName);
@@ -471,16 +471,18 @@ public class CCNNetworkObjectTest {
 	public void testUpdateDoesNotExist() throws Exception {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateDoesNotExist"), collectionObjName);
 		try {
+			Log.info("Entering testUpdateDoesNotExist");
 			CCNStringObject so = new CCNStringObject(testName, handle);
 			setupNamespace(testName);
 			// so should catch exception thrown by underlying stream when it times out.
 			Assert.assertFalse(so.available());
 			CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", CCNHandle.open());
-			saveAndLog("Delayed write", sowrite, null, "Now we write something.");
+			saveAndLog("testUpdateDoesNotExist: Delayed write", sowrite, null, "Now we write something.");
 			so.waitForData();
 			Assert.assertTrue(so.available());
 			Assert.assertEquals(so.string(), sowrite.string());
 			Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
+			Log.info("Leaving testUpdateDoesNotExist");
 		} finally {
 			removeNamespace(testName);
 		}
