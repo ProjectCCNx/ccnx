@@ -101,16 +101,18 @@ public class CCNNetworkObjectTest {
 
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
+		Log.info("Tearing down CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
 		Log.setLevel(oldLevel);
 		if (flosser != null) {
 			flosser.stop();
 			flosser = null;
 		}
+		Log.info("Finished tearing down CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
 	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		System.out.println("Making stuff.");
+		Log.info("Setting up CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
 		oldLevel = Log.getLevel();
 		Log.setLevel(Level.FINEST);
 		
@@ -471,7 +473,7 @@ public class CCNNetworkObjectTest {
 	public void testUpdateDoesNotExist() throws Exception {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateDoesNotExist"), collectionObjName);
 		try {
-			Log.info("Entering testUpdateDoesNotExist");
+			Log.info("CCNNetworkObjectTest: Entering testUpdateDoesNotExist");
 			CCNStringObject so = new CCNStringObject(testName, handle);
 			setupNamespace(testName);
 			// so should catch exception thrown by underlying stream when it times out.
@@ -482,10 +484,17 @@ public class CCNNetworkObjectTest {
 			Assert.assertTrue(so.available());
 			Assert.assertEquals(so.string(), sowrite.string());
 			Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
-			Log.info("Leaving testUpdateDoesNotExist");
+			Log.info("CCNNetworkObjectTest: Leaving testUpdateDoesNotExist");
 		} finally {
 			removeNamespace(testName);
 		}
+	}
+	
+	@Test
+	public void testVeryLast() throws Exception {
+		Log.info("CCNNetworkObjectTest: Entering testVeryLast -- dummy test to help track down blowup. Prefix {0}", testHelper.getClassNamespace());
+		Thread.sleep(1000);
+		Log.info("CCNNetworkObjectTest: Leaving testVeryLast -- dummy test to help track down blowup. Prefix {0}", testHelper.getClassNamespace());	
 	}
 	
 	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws XMLStreamException, IOException {
