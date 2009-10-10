@@ -101,13 +101,18 @@ public class CCNNetworkObjectTest {
 
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
-		Log.info("Tearing down CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
-		Log.setLevel(oldLevel);
-		if (flosser != null) {
-			flosser.stop();
-			flosser = null;
+		try {
+			Log.info("Tearing down CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
+			Log.setLevel(oldLevel);
+			if (flosser != null) {
+				flosser.stop();
+				flosser = null;
+			}
+			Log.info("Finished tearing down CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
+		} catch (Exception e) {
+			Log.severe("Exception in tearDownAfterClass: type {0} msg {0}", e.getClass().getName(), e.getMessage());
+			Log.warningStackTrace(e);
 		}
-		Log.info("Finished tearing down CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
 	}
 
 	@BeforeClass
