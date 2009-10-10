@@ -247,7 +247,14 @@ public class Log {
 		}
 		_systemLogger.logp(l, c.getCanonicalName(), ste.getMethodName(), msg, params);
 	}
-
+	
+	public static void flush() {
+		Handler [] handlers = _systemLogger.getHandlers();
+		for (int i=0; i < handlers.length; ++i) {
+			handlers[i].flush();
+		}
+	}
+	
 	public static void warningStackTrace(Throwable t) {
 		logStackTrace(Level.WARNING, t);
 	}

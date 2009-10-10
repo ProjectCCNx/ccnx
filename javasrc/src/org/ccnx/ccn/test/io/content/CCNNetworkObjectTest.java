@@ -103,12 +103,14 @@ public class CCNNetworkObjectTest {
 	public static void tearDownAfterClass() throws Exception {
 		try {
 			Log.info("Tearing down CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
+			Log.flush();
 			Log.setLevel(oldLevel);
 			if (flosser != null) {
 				flosser.stop();
 				flosser = null;
 			}
 			Log.info("Finished tearing down CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
+			Log.flush();
 		} catch (Exception e) {
 			Log.severe("Exception in tearDownAfterClass: type {0} msg {0}", e.getClass().getName(), e.getMessage());
 			Log.warningStackTrace(e);
@@ -485,11 +487,13 @@ public class CCNNetworkObjectTest {
 			Assert.assertFalse(so.available());
 			CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", CCNHandle.open());
 			saveAndLog("testUpdateDoesNotExist: Delayed write", sowrite, null, "Now we write something.");
+			Log.flush();
 			so.waitForData();
 			Assert.assertTrue(so.available());
 			Assert.assertEquals(so.string(), sowrite.string());
 			Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
 			Log.info("CCNNetworkObjectTest: Leaving testUpdateDoesNotExist");
+			Log.flush();
 		} finally {
 			removeNamespace(testName);
 		}
