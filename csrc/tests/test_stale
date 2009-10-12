@@ -20,25 +20,28 @@ echo '<Interest><Name><Component ccnbencoding="text">Dummy</Component></Name></I
 ccnd &
 trap "ccndsmoketest -t 55 recv kill recv" 0
 until CheckForCCND 6; do :; done
-date | ccnsendchunks -x 1 /test/ephemeral$$
+uptime
+date | ccnsendchunks -x 4 /test/ephemeral$$
 ccnget /test/ephemeral$$ > ephemeral$$.ccnb || Fail init fetch of ephemeral
 ccncatchunks /test/ephemeral$$ > ephemeral$$_0
-ccndsmoketest -t 500 recv # delay for 1/2 sec
+ccndsmoketest -t 2000 recv # delay for 2 sec
 ccncatchunks /test/ephemeral$$ > ephemeral$$_1
-diff ephemeral$$_0 ephemeral$$_1 || Fail after only 1/2 sec data should not be stale
-sleep 1
+diff ephemeral$$_0 ephemeral$$_1 || Fail after only 2 sec data should not be stale
+sleep 4
 # By now the data should be stale.
 ccncatchunks -a /test/ephemeral$$ > ephemeral$$_2
 ccncatchunks /test/ephemeral$$ > ephemeral$$_3
 diff ephemeral$$_0 ephemeral$$_2 || Fail should have forced fetch of stale data
 : | diff - ephemeral$$_3 || Fail test data did not go stale as expected
-ccndsmoketest -t 10 recv send dummy.ccnb timeo 300 recv send ephemeral$$.ccnb &
+ccndsmoketest -t 40 recv send dummy.ccnb timeo 600 recv send ephemeral$$.ccnb &
 ccndsmoketest -t 100 recv # try to close race a bit.
-( ccncatchunks /test/ephemeral$$ || ccncatchunks /test/ephemeral$$; ) > ephemeral$$_4
+( ccncatchunks /test/ephemeral$$ || ccncatchunks /test/ephemeral$$ || \
+  ccncatchunks /test/ephemeral$$ || ccncatchunks /test/ephemeral$$ ;  \
+  ) > ephemeral$$_4
 diff ephemeral$$_0 ephemeral$$_4 || Fail did not get re-injected stale content
 ccncatchunks /test/ephemeral$$ > ephemeral$$_5
 diff ephemeral$$_0 ephemeral$$_5 || Fail test data did not become fresh again
-sleep 2
+sleep 5
 ccncatchunks /test/ephemeral$$ > ephemeral$$_6
 : | diff - ephemeral$$_6 || Fail test data did not go stale the second time
 rm ephemeral$$_* ephemeral$$.ccnb dummy.ccnb
