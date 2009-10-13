@@ -48,7 +48,9 @@ OUTPUT_FILE=
 LOCAL_PORT=
 DEBUG_DAEMON=
 PROFILE_INFO=
-usage="usage: ccn_repo [-memory <memory>] [-debug <portno>] [-output <output_file] \n\t\t [-debug-daemon <portno>] [-profile <profile_info>] \n\t\t [<pathname> | interactive <pathname> \n\t\t\t| stop <pid> | signal <name> <pid>]"
+usage="usage: ccn_repo [-memory <memory>] [-debug <portno>] [-output <output_file>] \n\t\t[-debug-daemon <portno>] [-profile <profile_info>] \
+		\n\t\t<repository_directory> [-log <loglevel>] [-prefix <prefix>]\n\t\t[-global <global_prefix>] [-local <localname>]\
+		\n\t| interactive <respository_directory> \n\t| stop <pid> \n\t| signal <name> <pid>]"
 
 if [ $# = 0 ]
 then
@@ -79,6 +81,7 @@ else
   done
   
   test=`echo "$1" | sed 's/\(.\).*/\1/'`
+  cmd="-start"
   if [ "$test" = "-" ]; then
   	   echo $usage
   elif [ "$1" = "stop" ]; then
@@ -87,8 +90,7 @@ else
           $JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -signal $2 $3
   elif [ "$1" = "interactive" ]; then
           shift
-	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY $DEBUG_PORT $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -interactive -root $*
-  else
-	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY $DEBUG_PORT $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -start -root $*
+          cmd="-interactive"
   fi
+  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY $DEBUG_PORT $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon $cmd -root $*
 fi

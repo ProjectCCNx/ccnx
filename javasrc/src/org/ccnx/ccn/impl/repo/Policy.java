@@ -55,6 +55,11 @@ public interface Policy {
 	public ArrayList<ContentName> getNameSpace();
 	
 	/**
+	 * 
+	 */
+	public void setNameSpace(ArrayList<ContentName> nameSpace);
+	
+	/**
 	 * Gets the current policy file as a CCN ContentObject
 	 * 
 	 * @return			the policy ContentObject

@@ -53,7 +53,8 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
 		return CURRENT_VERSION;
 	}
 	
-	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix) throws RepositoryException {
+	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix,
+				String nameSpace) throws RepositoryException {
 		if (null != _index) {
 			throw new RepositoryException("Attempt to re-initialize " + this.getClass().getName());
 		}
@@ -64,7 +65,7 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
 			_policy = new BasicPolicy(null, ns);
 			_policy.setVersion(CURRENT_VERSION);
 		} else {
-			startInitPolicy(policyFile);
+			startInitPolicy(policyFile, nameSpace);
 		}
 		// We never have any persistent content so don't try to read policy from there with readPolicy()
 		try {

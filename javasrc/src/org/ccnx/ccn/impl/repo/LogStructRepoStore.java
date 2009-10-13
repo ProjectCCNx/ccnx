@@ -211,17 +211,18 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * @param policyFile a file containing policy data to define the initial repository policy (see BasicPolicy)
 	 * @param localName the local name for this repository as a slash separated String (defaults if null)
 	 * @param globalPrefix the global prefix for this repository as a slash separated String (defaults if null)
+	 * @param An initial namespace (defaults to namespace stored in repository, or / if none)
 	 * @throws RepositoryException if the policyFile, localName, or globalName are improperly formatted
 	 */
-	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix) throws RepositoryException {
-		boolean policyFromFile = (null != policyFile);
+	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix,
+				String namespace) throws RepositoryException {
 		boolean nameFromArgs = (null != localName);
 		boolean globalFromArgs = (null != globalPrefix);
 		if (null == localName)
 			localName = DEFAULT_LOCAL_NAME;
 		if (null == globalPrefix) 
 			globalPrefix = DEFAULT_GLOBAL_NAME;
-		startInitPolicy(policyFile);
+		startInitPolicy(policyFile, namespace);
 
 		if (repositoryRoot == null) {
 			throw new InvalidParameterException();
@@ -277,10 +278,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		/**
 		 * Try to read policy from storage if we don't have full policy source yet
 		 */
-		if (!policyFromFile) {
+		if (null == policyFile) {
 			readPolicy(localName);
 		}
-
+		
 		checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, handle, globalFromArgs);
 		globalPrefix = checkName != null ? checkName : globalPrefix;
 		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {

@@ -188,6 +188,10 @@ public class BasicPolicy implements Policy {
 		return _nameSpace;
 	}
 	
+	public void setNameSpace(ArrayList<ContentName> nameSpace) {
+		_nameSpace = nameSpace;
+	}
+	
 	/**
 	 * Parses the XML file
 	 * @param reader

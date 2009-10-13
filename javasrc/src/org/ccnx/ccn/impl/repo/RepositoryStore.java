@@ -179,9 +179,11 @@ public interface RepositoryStore {
 	 * @param policyFile policy file to use or null
 	 * @param localName may be null
 	 * @param globalPrefix may be null
+	 * @param nameSpace initial namespace for repository
 	 * @throws RepositoryException
 	 */
-	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix) throws RepositoryException;
+	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix,
+					String nameSpace) throws RepositoryException;
 	
 	/**
 	 * Save the specified content in the repository.  If content is added to a name that has

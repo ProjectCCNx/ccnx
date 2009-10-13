@@ -64,7 +64,8 @@ public class BitBucketRepository extends RepositoryStoreBase {
 		return null;
 	}
 
-	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix) throws RepositoryException {
+	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix,
+				String nameSpace) throws RepositoryException {
 		// TODO Auto-generated method stub
 	}
 

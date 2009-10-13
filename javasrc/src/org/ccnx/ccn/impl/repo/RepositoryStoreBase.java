@@ -137,7 +137,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * Initialize a repository
 	 */
 	public abstract void initialize(CCNHandle handle, String repositoryRoot,
-			File policyFile, String localName, String globalPrefix)
+			File policyFile, String localName, String globalPrefix, String nameSpace)
 			throws RepositoryException;
 	
 	/**
@@ -145,19 +145,35 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * This method is intended to be called at the beginning of a subclass initialize()
 	 * method to handle the generic policy setup, after which the subclass initialize() 
 	 * should adjust policy (including calling readPolicy) as appropriate.
+	 * If both "policy file" and "initial namespace are non-null" the policy file takes precedence
 	 * @param policyFile policy file
+	 * @param initial namespace
 	 * @throws RepositoryException
+	 * @throws MalformedContentNameStringException 
 	 */
-	public void startInitPolicy(File policyFile) throws RepositoryException {
+	public void startInitPolicy(File policyFile, String nameSpace) throws RepositoryException {
+		boolean policySet = false;
 		_policy = new BasicPolicy(null);
 		_policy.setVersion(getVersion());
 
 		if (null != policyFile) {
 			try {
 				_policy.update(new FileInputStream(policyFile), false);
+				policySet = true;
 			} catch (Exception e) {
 				throw new InvalidParameterException(e.getMessage());
 			}
+		}
+		
+		// Try setting an initial namespace from the namespace parameter
+		if (!policySet && null != nameSpace) {
+			ArrayList<ContentName> nameSpaceAL = new ArrayList<ContentName>(1);
+			try {
+				nameSpaceAL.add(ContentName.fromNative(nameSpace));
+			} catch (MalformedContentNameStringException e) {
+				Log.warning("Invalid namespace specified: {0}", nameSpace);
+			}
+			_policy.setNameSpace(nameSpaceAL);
 		}
 	}
 	
