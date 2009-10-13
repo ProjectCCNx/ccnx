@@ -117,7 +117,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		synchronized(_childLock) { // reentrant?
 			while ((null == _children) || _children.size() == 0) {
 				waitForNewData(timeout);
-				if (timeout != SystemConfiguration.TIMEOUT_FOREVER)
+				if (timeout != SystemConfiguration.NO_TIMEOUT)
 					break;
 			}
 			Log.info("Waiting for new data on prefix: " + _namePrefix + " got " + ((null == _newChildren) ? 0 : _newChildren.size())
@@ -138,7 +138,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 *  timeout before new data arrived
 	 */
 	public SortedSet<ContentName> getNewData() {
-		return getNewData(SystemConfiguration.TIMEOUT_FOREVER);
+		return getNewData(SystemConfiguration.NO_TIMEOUT);
 	}
 	
 	/**
@@ -211,10 +211,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			long timeRemaining = timeout;
 			long startTime = System.currentTimeMillis();
 			while (((null == _lastUpdate) || ((null != lastUpdate) && !_lastUpdate.after(lastUpdate))) && 
-				   ((timeout == SystemConfiguration.TIMEOUT_FOREVER) || (timeRemaining > 0))) {
+				   ((timeout == SystemConfiguration.NO_TIMEOUT) || (timeRemaining > 0))) {
 				try {
-					_childLock.wait((timeout != SystemConfiguration.TIMEOUT_FOREVER) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
-					if (timeout != SystemConfiguration.TIMEOUT_FOREVER) {
+					_childLock.wait((timeout != SystemConfiguration.NO_TIMEOUT) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
+					if (timeout != SystemConfiguration.NO_TIMEOUT) {
 						timeRemaining = timeout - (System.currentTimeMillis() - startTime);
 					}
 				} catch (InterruptedException e) {
@@ -233,7 +233,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @return void
 	 */
 	public void waitForNewData() {
-		waitForNewData(SystemConfiguration.TIMEOUT_FOREVER);
+		waitForNewData(SystemConfiguration.NO_TIMEOUT);
 	}
 
 	/**
@@ -248,7 +248,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	public void waitForData(long timeout) {
 		while ((null == _children) || _children.size() == 0) {
 			waitForNewData(timeout);
-			if (timeout != SystemConfiguration.TIMEOUT_FOREVER)
+			if (timeout != SystemConfiguration.NO_TIMEOUT)
 				break;
 		}
 	}
@@ -259,7 +259,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @return void
 	 */
 	public void waitForData() {
-		waitForData(SystemConfiguration.TIMEOUT_FOREVER);
+		waitForData(SystemConfiguration.NO_TIMEOUT);
 	}
 
 	/**

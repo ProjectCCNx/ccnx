@@ -32,11 +32,11 @@ import java.util.logging.Level;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.CCNBase;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
@@ -170,7 +170,7 @@ public class LibraryTestBase {
 	//	while (!done) {
 			Thread.sleep(rand.nextInt(50));
 			System.out.println("getResults getting " + baseName + " subitem " + i);
-			ContentObject contents = handle.get(ContentName.fromNative(baseName, Integer.toString(i)), CCNBase.NO_TIMEOUT);
+			ContentObject contents = handle.get(ContentName.fromNative(baseName, Integer.toString(i)), SystemConfiguration.NO_TIMEOUT);
 		
 			try {
 				int val = Integer.parseInt(new String(contents.content()));
