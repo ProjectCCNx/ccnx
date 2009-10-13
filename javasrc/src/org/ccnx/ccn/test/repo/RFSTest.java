@@ -27,6 +27,7 @@ import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -243,6 +244,7 @@ public class RFSTest extends RepoTestBase {
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
 		Interest interest = new Interest(new ContentName(nerpre, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION));
+		Log.info("RFSTEST: Name enumeration prefix:{0}", interest.name());
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
 		//now saving the first piece of content in the repo.  interest flag not set, so it should not get an object back
