@@ -428,8 +428,7 @@ public class ContentTree {
 				children = new TreeSet<TreeNode>(); // Don't bother with comparator, will only hold one element
 				children.add(node.oneChild);
 			} else {
-				children = new TreeSet<TreeNode>(new TreeNodeComparator());
-				children.addAll(node.children);
+				children = node.children;
 			}
 		}
 		if (null != children) {
