@@ -87,11 +87,12 @@ public class CCNNetworkObjectTestRepo {
 	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
+		Log.info("Tearing down CCNNetworkObjectTestRepo, prefix {0}", testHelper.getClassNamespace());
 	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		System.out.println("Making stuff.");
+		Log.info("Setting up CCNNetworkObjectTestRepo, prefix {0}", testHelper.getClassNamespace());
 		
 		handle = CCNHandle.open();
 		
@@ -132,6 +133,7 @@ public class CCNNetworkObjectTestRepo {
 		for (int i=0; i < NUM_LINKS; ++i) {
 			big.add(lrs[i]);
 		}
+		Log.info("Finihed setting up CCNNetworkObjectTestRepo, prefix {0}", testHelper.getClassNamespace());
 	}
 
 	@Test

@@ -35,8 +35,8 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.BasicInterestListener;
 import org.ccnx.ccn.CCNBase;
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -98,7 +98,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			
 			CCNReader reader = new CCNReader(getLibrary);
 			ArrayList<ContentObject> availableNames =
-				reader.enumerate(new Interest("/CPOF"), CCNHandle.NO_TIMEOUT);
+				reader.enumerate(new Interest("/CPOF"), SystemConfiguration.NO_TIMEOUT);
 
 			Iterator<ContentObject> nameIt = availableNames.iterator();
 
@@ -270,7 +270,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			CCNWriter writer = new CCNWriter(keyName, putLibrary);
 			ContentName name = writer.put(keyName, BigInteger.valueOf(time.getTime()).toByteArray());
 			System.out.println("Put under name: " + name);
-			ContentObject result = getLibrary.get(name, CCNBase.NO_TIMEOUT);
+			ContentObject result = getLibrary.get(name, SystemConfiguration.NO_TIMEOUT);
 
 			System.out.println("Querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -280,7 +280,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 				System.out.println("Final name: " + name);
 				//Assert.fail("Didn't get back content we just put!");
 
-				result = getLibrary.get(name, CCNBase.NO_TIMEOUT);
+				result = getLibrary.get(name, SystemConfiguration.NO_TIMEOUT);
 
 				System.out.println("Recursive querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -296,7 +296,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 						time.equals(new Timestamp(new BigInteger(1, content).longValue())));
 			}
 
-			result = getLibrary.get(keyName, CCNBase.NO_TIMEOUT);
+			result = getLibrary.get(keyName, SystemConfiguration.NO_TIMEOUT);
 
 			System.out.println("Querying for inserted name, Got back: " 
 							+ (result == null ? "0"  : "1") + " results.");
@@ -336,7 +336,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		ContentVerifier putVerifier = new ContentObject.SimpleVerifier(putLibrary.getDefaultPublisher());
 		ContentObject latestVersion =
-			VersioningProfile.getLatestVersion(docName, null, CCNHandle.NO_TIMEOUT, putVerifier, getLibrary);
+			VersioningProfile.getLatestVersion(docName, null, SystemConfiguration.NO_TIMEOUT, putVerifier, getLibrary);
 		Assert.assertTrue(latestVersion.verify(null));
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
 		System.out.println("Latest version name: " + latestVersion.name());
@@ -348,7 +348,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		System.out.println("Inserted second version as: " + version2);
 
 		ContentObject newLatestVersion = 
-			VersioningProfile.getLatestVersion(docName, null, CCNHandle.NO_TIMEOUT, putVerifier, getLibrary);
+			VersioningProfile.getLatestVersion(docName, null, SystemConfiguration.NO_TIMEOUT, putVerifier, getLibrary);
 		Assert.assertTrue(newLatestVersion.verify(null));
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
 		System.out.println("Latest version name: " + newLatestVersion.name());

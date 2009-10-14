@@ -284,12 +284,11 @@ public class RepositoryServer {
 		return _repoFilters;
 	}
 	
-	public RepositoryDataListener addListener(Interest interest, Interest readInterest) throws XMLStreamException, IOException {
-		RepositoryDataListener listener = new RepositoryDataListener(interest, readInterest, this);
+	public void addListener(Interest interest, Interest readInterest, RepositoryDataListener listener) 
+				throws XMLStreamException, IOException {
 		synchronized(_currentListeners) {
 			_currentListeners.add(listener);
 		}
-		return listener;
 	}
 	
 	public boolean getPendingNameSpaceState() {

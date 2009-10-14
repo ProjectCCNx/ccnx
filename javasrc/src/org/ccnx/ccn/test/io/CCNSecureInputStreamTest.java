@@ -73,6 +73,7 @@ public class CCNSecureInputStreamTest {
 			flosser.handleNamespace(name);
 			keys = ContentKeys.generateRandomKeys();
 			writeFile(encrLength);
+			flosser.stopMonitoringNamespace(name);
 		}
 		public abstract CCNInputStream makeInputStream() throws IOException, XMLStreamException;
 		public abstract OutputStream makeOutputStream() throws IOException, XMLStreamException;

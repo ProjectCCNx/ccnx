@@ -54,7 +54,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 			super(name, handle);
 			if (repoName != null) {
 				_repo = new LogStructRepoStore();
-				_repo.initialize(handle, repoName, null, null, null);
+				_repo.initialize(handle, repoName, null, null, null, null);
 			}
 		}
 		

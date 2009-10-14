@@ -21,8 +21,8 @@ import java.io.IOException;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.CCNBase;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
@@ -62,13 +62,13 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber,
 							   PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException {
 		super(baseName, startingSegmentNumber, publisher, null, handle);
-		setTimeout(CCNBase.NO_TIMEOUT);
+		setTimeout(SystemConfiguration.NO_TIMEOUT);
 	}
 
 	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber, 
 			   PublisherPublicKeyDigest publisher, ContentKeys keys, CCNHandle handle) throws IOException {
 		super(baseName, startingSegmentNumber, publisher, keys, handle);
-		setTimeout(CCNBase.NO_TIMEOUT);
+		setTimeout(SystemConfiguration.NO_TIMEOUT);
 	}
 
 	public CCNBlockInputStream(ContentObject firstSegment, CCNHandle handle) throws IOException {

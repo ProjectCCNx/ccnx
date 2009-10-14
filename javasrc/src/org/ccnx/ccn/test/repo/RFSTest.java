@@ -27,6 +27,7 @@ import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -79,7 +80,7 @@ public class RFSTest extends RepoTestBase {
 						
 	public void initRepoLog() throws Exception {
 		repolog = new LogStructRepoStore();
-		repolog.initialize(putLibrary, _fileTestDir, null, _repoName, _globalPrefix);
+		repolog.initialize(putLibrary, _fileTestDir, null, _repoName, _globalPrefix, null);
 	}
 	
 	@Test
@@ -243,6 +244,7 @@ public class RFSTest extends RepoTestBase {
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
 		Interest interest = new Interest(new ContentName(nerpre, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION));
+		Log.info("RFSTEST: Name enumeration prefix:{0}", interest.name());
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
 		//now saving the first piece of content in the repo.  interest flag not set, so it should not get an object back
@@ -311,15 +313,15 @@ public class RFSTest extends RepoTestBase {
 	public void testPolicy() throws Exception {
 		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
-			repo.initialize(putLibrary, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null);
+			repo.initialize(putLibrary, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
 		try {	// Test bad version
-			repo.initialize(putLibrary, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null);
+			repo.initialize(putLibrary, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
 		repo.initialize(putLibrary, _fileTestDir,  
-					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix);
+					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null);
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
 		repo.saveContent(content);
@@ -329,8 +331,7 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(oonsContent);
 		ContentObject testContent = repo.getContent(new Interest(outOfNameSpaceName));
 		Assert.assertTrue(testContent == null);
-		repo.initialize(putLibrary, _fileTestDir, 
-				new File(_topdir + "/org/ccnx/ccn/test/repo/origPolicy.xml"), _repoName, _globalPrefix);
+		repo.initialize(putLibrary, _fileTestDir, null, _repoName, _globalPrefix, "/");
 		repo.saveContent(oonsContent);
 		checkData(repo, outOfNameSpaceName, "Shouldn't see this");	
 	}

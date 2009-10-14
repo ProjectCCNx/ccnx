@@ -48,7 +48,9 @@ OUTPUT_FILE=
 LOCAL_PORT=
 DEBUG_DAEMON=
 PROFILE_INFO=
-usage="usage: ccn_repo [-memory <memory>] [-debug <portno>] [-output <output_file] \n\t\t [-debug-daemon <portno>] [-profile <profile_info>] \n\t\t [<pathname> | interactive <pathname> \n\t\t\t| stop <pid> | signal <name> <pid>]"
+usage="usage: ccn_repo [-memory <memory>] [-debug <portno>] [-output <output_file>] \n\t\t[-debug-daemon <portno>] [-profile <profile_info>] \
+		\n\t\t<repository_directory> [-log <loglevel>] [-prefix <prefix>]\n\t\t[-global <global_prefix>] [-local <localname>]\
+		\n\t| interactive <respository_directory> \n\t| stop <pid> \n\t| signal <name> <pid>]"
 
 if [ $# = 0 ]
 then
@@ -59,7 +61,8 @@ else
   fi
   while [ $# -gt 2 ]; do
   	  if [ "$1" = "-memory" ]; then
-  	      MEMORY="-Dccn.daemon.memory=$2"
+  	      MEMORY_INFO="-Dccn.daemon.memory=$2"
+  	      MEMORY=-Xmx$2
   	      shift 2
   	  elif [ "$1" = "-debug" ]; then
   	      DEBUG_PORT="-Dccn.daemon.debug=$2"
@@ -71,7 +74,8 @@ else
   	      DEBUG_DAEMON=" -Xrunjdwp:transport=dt_socket,address=$2,server=y,suspend=y";
   	      shift 2
   	  elif [ "$1" = "-profile" ]; then
-  	      PROFILE_INFO="-Dccn.daemon.profile=$2";
+  	  	  PROFILE=$2
+  	      PROFILE_INFO="-Dccn.daemon.profile=$2"
   	      shift 2
   	  else
   	  	  break
@@ -84,11 +88,11 @@ else
   elif [ "$1" = "stop" ]; then
 	  $JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -stop $2
   elif [ "$1" = "signal" ]; then
-          $JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -signal $2 $3
+      $JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -signal $2 $3
   elif [ "$1" = "interactive" ]; then
-          shift
-	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY $DEBUG_PORT $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -interactive -root $*
+ 	  shift
+      $JAVA -cp $CLASSPATH $PROFILE $MEMORY org.ccnx.ccn.impl.repo.RepositoryDaemon -interactive -root $*
   else
-	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY $DEBUG_PORT $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -start -root $*
+  	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY_INFO $DEBUG_PORT $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -start -root $*
   fi
 fi

@@ -287,8 +287,11 @@ public class WrappedKeyTest {
 			Assert.assertEquals(wkoread.wrappedKey(), wko.wrappedKey());
 			Assert.assertEquals(wko.wrappedKey(), wka);
 		} finally {
-			if (null != flosser)
+			if (null != flosser) {
+				Log.info("WrappedKeyTest: Stopping flosser.");
 				flosser.stop();
+				Log.info("WrappedKeyTest: flosser stopped.");
+			}
 		}
 		Log.info("Leaving testWrappedKeyObject");
 	}

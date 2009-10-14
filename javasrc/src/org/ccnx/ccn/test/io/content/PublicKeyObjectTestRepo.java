@@ -118,9 +118,10 @@ public class PublicKeyObjectTestRepo {
 			testRawKeyReadWrite(storedKeyNames[0][1], egPair.getPublic(), null);
 			testRawKeyReadWrite(storedKeyNames[0][2], eccPair.getPublic(), eciesPair.getPublic());
 		} finally {
-			System.out.println("Stopping flosser.");
+			Log.info("PublicKeyObjectTestRepo: Stopping flosser.");
 			flosser.stop();
 			flosser = null;
+			Log.info("PublicKeyObjectTestRepo: Flosser stopped.");
 		}
 	}
 

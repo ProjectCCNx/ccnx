@@ -69,7 +69,12 @@ public class SystemConfiguration {
 	/** 
 	 * Tunable timeouts as well as timeout defaults.
 	 */
-	public static long TIMEOUT_FOREVER = 0;
+	
+	/**
+	 * No timeout. Should be single value used in all places in the code where you
+	 * want to block forever.
+	 */
+	public final static int NO_TIMEOUT = -1;
 	
 	/**
 	 * Can set compile-time default encoding here. Choices are

@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import org.ccnx.ccn.CCNInterestListener;
-import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -42,7 +42,7 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 		Random rand = new Random();
 		for (int i = 0; i < BaseLibrarySource.count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			ContentObject contents = handle.get(ContentName.fromNative("/BaseLibraryTest/gets/" + i), CCNHandle.NO_TIMEOUT);
+			ContentObject contents = handle.get(ContentName.fromNative("/BaseLibraryTest/gets/" + i), SystemConfiguration.NO_TIMEOUT);
 			int value = contents.content()[0];
 			// Note that we cannot be guaranteed to pick up every value:
 			// due to timing we may miss a value that arrives while we are not

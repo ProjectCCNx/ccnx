@@ -34,38 +34,11 @@ import org.ccnx.ccn.profiles.CommandMarkers;
 
 
 /**
- * This class represents all the allowed specializations
- * of queries recognized and supported (in a best-effort
- * fashion) at the CCN level.
+ * Represents a CCN Interest packet, and performs all the allowed specializations
+ * of queries recognized and supported by them.
+ * cf. ContentObject
  * 
- * Implement Comparable to make it much easier to store in
- * a Set and avoid duplicates.
- * 
- * xs:complexType name="InterestType">
- * <xs:sequence>
- *   <xs:element name="Name" type="NameType"/>
- *   <xs:element name="MinSuffixComponents" type="xs:nonNegativeInteger"
- *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="MaxSuffixComponents" type="xs:nonNegativeInteger"
- *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:choice minOccurs="0" maxOccurs="1">
- *       <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
- *       <xs:element name="PublisherCertificateDigest" type="DigestType"/>
- *       <xs:element name="PublisherIssuerKeyDigest" type="DigestType"/>
- *       <xs:element name="PublisherIssuerCertificateDigest" type="DigestType"/>
- *   </xs:choice>
- *   <xs:element name="Exclude" type="ExcludeType"
- *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="ChildSelector" type="xs:nonNegativeInteger"
- *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="AnswerOriginKind" type="xs:nonNegativeInteger"
- *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="Scope" type="xs:nonNegativeInteger"
- *			minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="Nonce" type="Base64BinaryType"
- *			minOccurs="0" maxOccurs="1"/>
- * </xs:sequence>
- * </xs:complexType>
+ * Implements Comparable to make it easy to store in a Set and avoid duplicates.
  */
 public class Interest extends GenericXMLEncodable implements XMLEncodable, Comparable<Interest>, Cloneable {
 	
@@ -174,18 +147,19 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	/**
 	 * Determine whether a piece of content matches the Interest
 	 * @param test
-	 * @return true if the test co matches the Interest
+	 * @return true if the test data packet matches the Interest
 	 */
 	public boolean matches(ContentObject test) {
 		return matches(test, (null != test.signedInfo()) ? test.signedInfo().getPublisherKeyID() : null);
 	}
 
 	/**
-	 * Determine whether a piece of content's name (without digest component) matches this Interest.
+	 * Determine whether a piece of content's name *without* digest component matches this Interest.
 	 * 
-	 * This doesn't match if we specify the digest in the Interest.
+	 * This doesn't match if the digest is specified in the Interest.
+	 * @see Interest#matches(ContentObject, PublisherPublicKeyDigest)
 	 *
-	 * @param name - Name of a content object without a digest component
+	 * @param name - Name of a content object missing it's implied digest component
 	 * @param resultPublisherKeyID
 	 * @return true if the content/publisherPublicKeyDigest matches the Interest
 	 */
@@ -202,6 +176,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	/**
 	 * Determine whether a piece of content matches this Interest.
+	 * Note: this computes the digest for the ContentObject, to know the full name. This is
+	 * computationally expensive.
+	 * @see Interest#matches(ContentName, PublisherPublicKeyDigest)
+	 * TODO: compute digests once when ContentObjects are received into the machine, and pass them
+	 * around with the ContentObjects.
 	 * 
 	 * @param co - ContentObject
 	 * @param resultPublisherKeyID

@@ -234,7 +234,9 @@ public class SegmentationProfile implements CCNProfile {
 	 * @return
 	 * @throws IOException
 	 */
-	public static ContentObject getSegment(ContentName desiredContent, Long desiredSegmentNumber, PublisherPublicKeyDigest publisher, long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
+	public static ContentObject getSegment(ContentName desiredContent, Long desiredSegmentNumber, 
+											PublisherPublicKeyDigest publisher, long timeout, 
+											ContentVerifier verifier, CCNHandle handle) throws IOException {
 		
 	    // Block name requested should be interpreted literally, not taken
 	    // relative to baseSegment().

@@ -37,10 +37,10 @@ import java.util.concurrent.TimeUnit;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.ccnx.ccn.CCNBase;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
@@ -597,7 +597,7 @@ public class CCNNetworkManager implements Runnable {
 		expressInterest(reg);
 		Log.finest("blocking for {0} on {1}", interest.name(), reg.sema);
 		// Await data to consume the interest
-		if (timeout == CCNBase.NO_TIMEOUT)
+		if (timeout == SystemConfiguration.NO_TIMEOUT)
 			reg.sema.acquire(); // currently no timeouts
 		else
 			reg.sema.tryAcquire(timeout, TimeUnit.MILLISECONDS);
