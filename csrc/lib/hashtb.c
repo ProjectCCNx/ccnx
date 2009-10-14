@@ -67,6 +67,10 @@ hashtb_create(size_t item_size, const struct hashtb_param *param)
         ht->n = 0;
         ht->n_buckets = 7;
         ht->bucket = calloc(ht->n_buckets, sizeof(ht->bucket[0]));
+	if (ht->bucket == NULL) {
+		free(ht);
+		return (NULL); /*ENOMEM*/
+	}
         if (param != NULL)
             ht->param = *param;
     }
