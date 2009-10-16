@@ -50,11 +50,11 @@ DEBUG_DAEMON=
 PROFILE_INFO=
 usage="usage: ccn_repo [-memory <memory>] [-debug <portno>] [-output <output_file>] \n\t\t[-debug-daemon <portno>] [-profile <profile_info>] \
 		\n\t\t<repository_directory> [-log <loglevel>] [-prefix <prefix>]\n\t\t[-global <global_prefix>] [-local <localname>]\
-		\n\t| interactive <respository_directory> \n\t| stop <pid> \n\t| signal <name> <pid>]"
+		\n\t| interactive <respository_directory> \n\t| stop <pid> \n\t| stopall \n\t| signal <name> <pid>]"
 
 if [ $# = 0 ]
 then
-  echo $usage
+  echo -e $usage
 else
   if [ ! "$CCN_LOCAL_PORT" = "" ]; then
   	  LOCAL_PORT="-Dccn.agent.port=$CCN_LOCAL_PORT"
