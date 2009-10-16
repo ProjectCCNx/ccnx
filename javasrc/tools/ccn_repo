@@ -87,6 +87,12 @@ else
   	   echo $usage
   elif [ "$1" = "stop" ]; then
 	  $JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -stop $2
+  elif [ "$1" = "stopall" ]; then
+	  allrepos=`ps aux | grep RepositoryDaemon | grep java  | awk '{print $2}'`
+	  for pid in $allrepos
+	   do
+		$JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -stop $pid
+           done
   elif [ "$1" = "signal" ]; then
       $JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -signal $2 $3
   elif [ "$1" = "interactive" ]; then
