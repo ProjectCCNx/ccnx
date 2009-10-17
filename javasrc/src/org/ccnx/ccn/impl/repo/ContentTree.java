@@ -19,11 +19,10 @@ package org.ccnx.ccn.impl.repo;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.Map;
+import java.util.TreeMap;
 
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
@@ -59,13 +58,13 @@ public class ContentTree {
 	 * but presumably different publisher etc. that is not 
 	 * visible in this tree)
 	 */
-	public class TreeNode {
+	public class TreeNode implements Comparable<TreeNode>{
 		byte[] component; // name of this node in the tree, null for root only
 		// oneChild is special case when there is only 
 		// a single child (to save obj overhead).
 		// either oneChild or children should be null
 		TreeNode oneChild;
-		SortedSet<TreeNode> children;
+		Map<TreeNode, TreeNode> children;
 		// oneContent is special case when there is only 
 		// a single content object here (to save obj overhead).
 		// either oneContent or content should be null
@@ -83,13 +82,9 @@ public class ContentTree {
 					return oneChild;
 				}
 			} else if (null != children) {
-				TreeNode testNode = new TreeNode();
-				testNode.component = component;
-				SortedSet<TreeNode> tailSet = children.tailSet(testNode);
-				if (tailSet.size() > 0) {
-					if (tailSet.first().compEquals(component))
-						return tailSet.first();
-				}
+				TreeNode child = new TreeNode();
+				child.component = component;
+				return children.get(child);
 			}
 			return null;
 		}
@@ -108,10 +103,15 @@ public class ContentTree {
 			}
 			else if(children!=null){
 				s+= " children: ";
-				for(TreeNode t: children){
+				int i = 0;
+				for(TreeNode c: children.keySet()){
 					//append each child to string
-					s+=" "+ContentName.componentPrintURI(t.component);
+					s+=" "+ContentName.componentPrintURI(c.component);
 					//s+=new String(t.component)+" ";
+					if (++i > 50) {
+						s+= "...";
+						break;
+					}
 				}
 			}
 			else
@@ -119,13 +119,12 @@ public class ContentTree {
 
 			return s;
 		}
-	}
-	public class TreeNodeComparator implements Comparator<TreeNode> {
-		public int compare(TreeNode o1, TreeNode o2) {
-			return DataUtils.compare(o1.component, o2.component);
+		
+		public int compareTo(TreeNode o1) {
+			return DataUtils.compare(o1.component, component);
 		}
 	}
-
+	
 	protected TreeNode _root;
 	
 	public ContentTree() {
@@ -175,12 +174,12 @@ public class ContentTree {
 						node.oneChild = child;
 					} else if (null == node.oneChild) {
 						// Multiple children already, just add this one to current node
-						node.children.add(child);
+						node.children.put(child, child);
 					} else {
 						// Second child in current node, need to switch to list
-						node.children = new TreeSet<TreeNode>(new TreeNodeComparator());
-						node.children.add(node.oneChild);
-						node.children.add(child);
+						node.children = new TreeMap<TreeNode, TreeNode>();
+						node.children.put(node.oneChild, node.oneChild);
+						node.children.put(child, child);
 						node.oneChild = null;
 					}
 					node.timestamp = ts;
@@ -208,7 +207,7 @@ public class ContentTree {
 									node.oneChild.component));
 						} else {
 							if (node.children != null) {
-								for (TreeNode ch : node.children)
+								for (TreeNode ch : node.children.keySet())
 									names.add(new ContentName(c, ch.component));
 							}
 						}
@@ -352,7 +351,7 @@ public class ContentTree {
 			dumpRecurse(output, node.oneChild, String.format("%s%" + mylen + "s   ", indent, ""), maxNodeLen);
 		} else if (null != node.children) {
 			int count = 1; int last = node.children.size();
-			for (TreeNode child : node.children) {
+			for (TreeNode child : node.children.values()) {
 				if (1 == count) {
 					// First child
 					output.print("-+-");
@@ -422,11 +421,11 @@ public class ContentTree {
 			// checking children
 			return null;
 		}
-		SortedSet<TreeNode> children = null;
+		Map<TreeNode, TreeNode> children = null;
 		synchronized(node) {
 			if (null != node.oneChild) {
-				children = new TreeSet<TreeNode>(); // Don't bother with comparator, will only hold one element
-				children.add(node.oneChild);
+				children = new TreeMap<TreeNode, TreeNode>(); // Don't bother with comparator, will only hold one element
+				children.put(node.oneChild, node.oneChild);
 			} else {
 				children = node.children;
 			}
@@ -435,8 +434,8 @@ public class ContentTree {
 			byte[] interestComp = interest.name().component(depth);
 			TreeNode testNode = new TreeNode();
 			testNode.component = interestComp;
-			SortedSet<TreeNode> set = anyOK || null == interestComp ? children : children.tailSet(testNode);
-			for (TreeNode child : set) {
+			//SortedSet<TreeNode> set = anyOK || null == interestComp ? children : children.tailSet(testNode);
+			for (TreeNode child : children.values()) {
 				int comp = DataUtils.compare(child.component, interestComp);
 				//if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0) {
 				if (anyOK || comp >= 0) {
@@ -477,7 +476,7 @@ public class ContentTree {
 			if (null != node.oneChild) {
 				found = getSubtreeNodes(node.oneChild, result, minComponents, maxComponents);
 			} else if (null != node.children) {
-				for (TreeNode child : node.children) {
+				for (TreeNode child : node.children.values()) {
 					boolean tmpFound = getSubtreeNodes(child, result, minComponents, maxComponents);
 					if (!found && tmpFound)
 						found = tmpFound;
@@ -583,7 +582,7 @@ public class ContentTree {
 				names.add(new ContentName(c, parent.oneChild.component));
 			} else {
 				if (parent.children!=null) {
-					for (TreeNode ch:parent.children)
+					for (TreeNode ch:parent.children.keySet())
 						names.add(new ContentName(c, ch.component));
 				}
 			}
