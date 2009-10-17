@@ -564,7 +564,23 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException 
 	 */
 	public boolean save() throws IOException {
-		return saveInternal(null, false);
+		return saveInternal(null, false, null);
+	}
+	
+	/**
+	 * Method for CCNFilterListeners to save an object in response to an Interest
+	 * callback. An Interest has already been received, so the object can output
+	 * one ContentObject as soon as one is ready. Ideally this Interest will have
+	 * been received on the CCNHandle the object is using for output. If the object
+	 * is not dirty, it will not be saved, and the Interest will not be consumed.
+	 * If the Interest does not match this object, the Interest will not be consumed;
+	 * it is up to the caller to ensure that the Interest would be matched by writing
+	 * this object. (If the Interest doesn't match, no initial block will be output
+	 * even if the object is saved; the object will wait for matching Interests prior
+	 * to writing its blocks.)
+	 */
+	public boolean save(Interest outstandingInterest) throws IOException {
+		return saveInternal(null, false, outstandingInterest);
 	}
 
 	/**
@@ -579,7 +595,24 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException 
 	 */
 	public boolean save(CCNTime version) throws IOException {
-		return saveInternal(version, false);
+		return saveInternal(version, false, null);
+	}
+
+	/**
+	 * Save to existing name, if content is dirty. Saves to specified version.
+	 * Method for CCNFilterListeners to save an object in response to an Interest
+	 * callback. An Interest has already been received, so the object can output
+	 * one ContentObject as soon as one is ready. Ideally this Interest will have
+	 * been received on the CCNHandle the object is using for output. If the object
+	 * is not dirty, it will not be saved, and the Interest will not be consumed.
+	 * If the Interest does not match this object, the Interest will not be consumed;
+	 * it is up to the caller to ensure that the Interest would be matched by writing
+	 * this object. (If the Interest doesn't match, no initial block will be output
+	 * even if the object is saved; the object will wait for matching Interests prior
+	 * to writing its blocks.)
+	 */
+	public boolean save(CCNTime version, Interest outstandingInterest) throws IOException {
+		return saveInternal(version, false, outstandingInterest);
 	}
 
 	/**
@@ -592,7 +625,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * TODO allow freshness specification
 	 * @throws IOException 
 	 */
-	protected boolean saveInternal(CCNTime version, boolean gone) throws IOException {
+	protected boolean saveInternal(CCNTime version, boolean gone, Interest outstandingInterest) throws IOException {
 
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
@@ -636,6 +669,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// If it gets a versioned name, will respect it. 
 			// This will call startWrite on the flow controller.
 			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _keys, _flowControl);
+			if (null != outstandingInterest) {
+				cos.addOutstandingInterest(outstandingInterest);
+			}
 			save(cos); // superclass stream save. calls flush but not close on a wrapping
 			// digest stream; want to make sure we end up with a single non-MHT signed
 			// segment and no header on small objects
@@ -713,14 +749,26 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * is *not* already versioned; throw an IOException if it is.
 	 * @throws IOException
 	 */
-	public synchronized boolean saveAsGone() throws IOException {	
+	public synchronized boolean saveAsGone() throws IOException {
+		return saveAsGone(null);
+	}
+	
+	/**
+	 * For use by CCNFilterListeners, saves a GONE object and emits an inital
+	 * block in response to an already-received Interest.
+	 * Save this object as GONE. Intended to mark the latest version, rather
+	 * than a specific version as GONE. So for now, require that name handed in
+	 * is *not* already versioned; throw an IOException if it is.
+	 * @throws IOException
+	 */
+	public synchronized boolean saveAsGone(Interest outstandingInterest) throws IOException {	
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
 		_data = null;
 		_isGone = true;
 		setDirty(true);
-		return saveInternal(null, true);
+		return saveInternal(null, true, outstandingInterest);
 	}
 
 	/**

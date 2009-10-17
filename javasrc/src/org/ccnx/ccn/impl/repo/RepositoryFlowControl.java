@@ -157,8 +157,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 * @throws IOException if handle is null and a new CCNHandle can't be created
 	 */
 	public RepositoryFlowControl(ContentName name, CCNHandle handle) throws IOException {
-		this(handle);
-		addNameSpace(name);
+		super(name, handle);
 	}
 	
 	/**
@@ -170,8 +169,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 * @see	CCNFlowControl
 	 */
 	public RepositoryFlowControl(ContentName name, CCNHandle handle, Shape shape) throws IOException {
-		this(handle);
-		addNameSpace(name);
+		super(name, handle);
 	}
 
 	@Override
@@ -187,7 +185,11 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		Log.info("RepositoryFlowControl.startWrite called for name {0}, shape {1}", name, shape);
 		Client client = new Client(name, shape);
 		_clients.add(client);
-		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
+		// We no longer do separate getLatestVersion queries. We pull the first block with a single Interest.
+		// clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
+		// DKS -- don't think we want to clear old interests; bad if we're writing multiple streams
+		// in parallel through the same FC. Log just to see what would have happened.
+		logUnmatchedInterests("RepositoryFlowController: startWrite would have cleared the following interests:");
 		
 		// A nonce is used because if we tried to write data with the same name more than once, we could retrieve the
 		// the previous answer from the cache, and the repo would never be informed of our start write.

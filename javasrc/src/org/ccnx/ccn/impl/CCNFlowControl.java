@@ -145,6 +145,23 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
+	 * Filter handler constructor -- an Interest has already come in, and
+	 * we are writing a stream in response. So we can write out the first
+	 * matching block that we get as soon as we get it (in response to this
+	 * preexisting interest). Caller has the responsibilty to ensure that
+	 * this Interest is only handed to one CCNFlowControl to emit a block.
+	 * @param name an initial namespace to handle
+	 * @param outstandingInterest an Interest we have already received; the
+	 * 	flow controller will immediately emit the first matching block
+	 * @param handle the handle to use. May need to be the same handle
+	 * 	that the Interest was received on.
+	 */
+	public CCNFlowControl(ContentName name, Interest outstandingInterest, CCNHandle handle) throws IOException {
+		this(name, handle);
+		handleInterest(outstandingInterest);
+	}
+	
+	/**
 	 * Add a new namespace to the controller. The controller will register a filter with ccnd to receive
 	 * interests in this namespace.
 	 * @param name
@@ -179,6 +196,14 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
+	 * Filter handler method, add a namespace and respond to an existing Interest.
+	 */
+	public void addNameSpace(ContentName name, Interest outstandingInterest) {
+		addNameSpace(name);
+		handleInterest(outstandingInterest);
+	}
+	
+	/**
 	 * Convenience method.
 	 * @see #startWrite(ContentName, Shape)
 	 * @throws MalformedContentNameStringException if name is malformed
@@ -187,7 +212,8 @@ public class CCNFlowControl implements CCNFilterListener {
 		startWrite(ContentName.fromNative(name), shape);
 	}
 	/**
-	 * This is used by the RepoFlowController to indicate that it should start a write for this name
+	 * This is used to indicate that it should start a write for a stream with this
+	 * name, and should do any stream-specific setup.
 	 * @param name
 	 * @param shape currently unused and may be deprecated in the future. Can only be Shape.STREAM
 	 * @throws MalformedContentNameStringException if name is malformed
@@ -419,6 +445,17 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
+	 * Convenience method.
+	 */
+	public int handleInterest(Interest outstandingInterest) {
+		if (null == outstandingInterest)
+			return 0;
+		ArrayList<Interest> tmpInterests = new ArrayList<Interest>();
+		tmpInterests.add(outstandingInterest);
+		return handleInterests(tmpInterests);
+	}
+	
+	/**
 	 * Allow override of action after a ContentObject is sent to ccnd
 	 * 
 	 * NOTE: Don't need to sync on holding area because this is only called within
@@ -564,6 +601,17 @@ public class CCNFlowControl implements CCNFilterListener {
 	public void clearUnmatchedInterests() {
 		Log.info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
 		_unmatchedInterests.clear();
+	}
+	
+	/**
+	 * Debugging function to log unmatched interests.
+	 */
+	public void logUnmatchedInterests(String logMessage) {
+		Log.info("{0}: {1} unmatched interest entries.", logMessage, _unmatchedInterests.size());
+		for (Entry<UnmatchedInterest> interestEntry : _unmatchedInterests.values()) {
+			if (null != interestEntry.interest())
+				Log.info("   Unmatched interest: {0}", interestEntry.interest());
+		}
 	}
 	
 	/**

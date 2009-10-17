@@ -25,6 +25,7 @@ import java.security.SignatureException;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNSegmenter;
 import org.ccnx.ccn.impl.security.crypto.CCNBlockSigner;
@@ -63,12 +64,15 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 
 	protected SignedInfo.ContentType _type;
 
+	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type) throws XMLStreamException, IOException {
+		this(baseName, type, null, null);
+	}
+		
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
 								PublisherPublicKeyDigest publisher,
-								CCNFlowControl flowControl)
+								CCNHandle handle)
 								throws XMLStreamException, IOException {
-		super(null, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner()));
-		init(baseName, type);
+		this(baseName, type, null, publisher, null, new CCNFlowControl((null == handle) ? CCNHandle.getHandle() : handle));
 	}
 
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
@@ -79,10 +83,6 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 		init(baseName, type);
 	}
 
-	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type) throws XMLStreamException, IOException {
-		this(baseName, type, null, null);
-	}
-		
 	private void init(ContentName baseName, SignedInfo.ContentType type) {
 		_type = type;
 

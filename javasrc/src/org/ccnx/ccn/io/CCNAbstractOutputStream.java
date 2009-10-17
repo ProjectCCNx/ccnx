@@ -25,6 +25,7 @@ import org.ccnx.ccn.impl.CCNSegmenter;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -86,6 +87,25 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	 */
 	protected void startWrite() throws IOException {}
 
+	/**
+	 * Method for streams used by CCNFilterListeners to output a block
+	 * in response to an Interest callback.
+	 * We've received an Interest prior to setting up this stream. Use
+	 * a method to push this Interest, rather than passing it in in the 
+	 * constructor to make sure we have completed initializing the stream,
+	 * and to limit the number of constructor types.
+	 * (If the Interest doesn't match this stream's content, 
+	 * no initial block will be output; the stream will wait for matching Interests prior
+	 * to writing its blocks.)
+	 * @param outstandingInterest An interest received prior to constructing
+	 *   this stream, ideally on the same CCNHandle that the stream is using
+	 *   for output. Only one stream should attempt to put() a block in response
+	 *   to this Interest; it is up to the caller to make sure that is the case.
+	 */
+	public void addOutstandingInterest(Interest outstandingInterest) {
+		_segmenter.getFlowControl().handleInterest(outstandingInterest);
+	}
+	
 	@Override
 	public void write(byte[] b) throws IOException {
 		write(b, 0, b.length);
