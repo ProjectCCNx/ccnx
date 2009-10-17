@@ -113,9 +113,17 @@ public class BinaryXMLDictionary {
 			new BufferedReader(new InputStreamReader(in));
 		
 		String line = null;
+		final int NULLCOUNT_MAX = 20;
+		int nullcount = 0; // deal with platforms where reader.ready doesn't work. allow some number of blank
+						   // lines, then decide we've had a problem
 		
-		while (reader.ready()) {
+		while (reader.ready() && (nullcount < NULLCOUNT_MAX)) {
 			line = reader.readLine();
+			if (null == line) {
+				nullcount++;
+				continue;
+			}
+			nullcount = 0;
 			String [] parts = line.split(",");
 			
 			// Format: <num>,<name>[,<modifier>]  where <modifier> is one of Deprecated or Obsolete
@@ -133,6 +141,9 @@ public class BinaryXMLDictionary {
 			
 			_encodingDictionary.put(tag, value);
 			_decodingDictionary.put(value, tag);
+		}
+		if (nullcount >= NULLCOUNT_MAX) {
+			Log.info("Finished reading dictionary file because we either read too many blank lines, or our reader couldn't decide it was done. Validate reading on this platform.");
 		}
 	}
 }
