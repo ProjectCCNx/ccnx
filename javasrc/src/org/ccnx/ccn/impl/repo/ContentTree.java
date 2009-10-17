@@ -21,7 +21,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
+import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -64,7 +64,7 @@ public class ContentTree {
 		// a single child (to save obj overhead).
 		// either oneChild or children should be null
 		TreeNode oneChild;
-		Map<TreeNode, TreeNode> children;
+		SortedMap<TreeNode, TreeNode> children;
 		// oneContent is special case when there is only 
 		// a single content object here (to save obj overhead).
 		// either oneContent or content should be null
@@ -121,7 +121,7 @@ public class ContentTree {
 		}
 		
 		public int compareTo(TreeNode o1) {
-			return DataUtils.compare(o1.component, component);
+			return DataUtils.compare(component, o1.component);
 		}
 	}
 	
@@ -421,7 +421,7 @@ public class ContentTree {
 			// checking children
 			return null;
 		}
-		Map<TreeNode, TreeNode> children = null;
+		SortedMap<TreeNode, TreeNode> children = null;
 		synchronized(node) {
 			if (null != node.oneChild) {
 				children = new TreeMap<TreeNode, TreeNode>(); // Don't bother with comparator, will only hold one element
@@ -434,8 +434,8 @@ public class ContentTree {
 			byte[] interestComp = interest.name().component(depth);
 			TreeNode testNode = new TreeNode();
 			testNode.component = interestComp;
-			//SortedSet<TreeNode> set = anyOK || null == interestComp ? children : children.tailSet(testNode);
-			for (TreeNode child : children.values()) {
+			SortedMap<TreeNode, TreeNode> set = anyOK || null == interestComp ? children : children.tailMap(testNode);
+			for (TreeNode child : set.keySet()) {
 				int comp = DataUtils.compare(child.component, interestComp);
 				//if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0) {
 				if (anyOK || comp >= 0) {
