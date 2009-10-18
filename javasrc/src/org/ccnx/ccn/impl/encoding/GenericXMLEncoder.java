@@ -17,14 +17,14 @@
 
 package org.ccnx.ccn.impl.encoding;
 
-import javax.xml.stream.XMLStreamException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 /**
  * This class contains methods for content encoding/decoding common to all or many codecs.
  */
 public abstract class GenericXMLEncoder implements XMLEncoder {
 
-	public void writeIntegerElement(String tag, Integer value) throws XMLStreamException {
+	public void writeIntegerElement(String tag, Integer value) throws ContentEncodingException {
 		writeElement(tag, value.toString());
 	}
 }

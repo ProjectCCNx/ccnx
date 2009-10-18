@@ -21,7 +21,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-import javax.xml.stream.XMLStreamException;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 /**
  * Top-level interface implemented by objects that want to make use of our stream encoding
@@ -53,20 +54,20 @@ public interface XMLEncodable {
 	 * reading it from an InputStream. Reads document start and end. Assumes
 	 * default encoding.
 	 * @param istream input stream to read from
-	 * @throws XMLStreamException if there is an error decoding the content
+	 * @throws ContentDecodingException if there is an error decoding the content
 	 */
-	public void decode(InputStream istream) throws XMLStreamException;
+	public void decode(InputStream istream) throws ContentDecodingException;
 	
 	/**
 	 * Decode this object as the top-level item in a new XML document, 
 	 * reading it from an InputStream. Reads document start and end. 
 	 * @param istream input stream to read from
 	 * @param codec the codec to use; must be recognized by XMLCodecFactory
-	 * @throws XMLStreamException if there is an error decoding the content
+	 * @throws ContentDecodingException if there is an error decoding the content
 	 * 
 	 * @see XMLCodecFactory
 	 */
-	public void decode(InputStream istream, String codec) throws XMLStreamException;
+	public void decode(InputStream istream, String codec) throws ContentDecodingException;
 
 	/**
 	 * Helper method to decode from a byte array rather than an
@@ -74,11 +75,11 @@ public interface XMLEncodable {
 	 * XML document. Reads document start and end. Assumes
 	 * default encoding.
 	 * @param objectBuffer input buffer to read from
-	 * @throws XMLStreamException if there is an error decoding the content
+	 * @throws ContentDecodingException if there is an error decoding the content
 	 * 
 	 * @see decode(InputStream)
 	 */
-	public void decode(byte [] objectBuffer) throws XMLStreamException;
+	public void decode(byte [] objectBuffer) throws ContentDecodingException;
 	
 	/**
 	 * Helper method to decode from a byte array rather than an
@@ -86,32 +87,32 @@ public interface XMLEncodable {
 	 * XML document. Reads document start and end. 
 	 * @param objectBuffer input buffer to read from
 	 * @param codec the codec to use; must be recognized by XMLCodecFactory
-	 * @throws XMLStreamException if there is an error decoding the content
+	 * @throws ContentDecodingException if there is an error decoding the content
 	 * 
 	 * @see decode(InputStream,String)
 	 * @see XMLCodecFactory
 	 */
-	public void decode(byte [] objectBuffer, String codec) throws XMLStreamException;
+	public void decode(byte [] objectBuffer, String codec) throws ContentDecodingException;
 
 	/**
 	 * Decode this object as the top-level item in a new XML document, 
 	 * reading it from a network buffer. Reads document start and end. Assumes
 	 * default encoding.
 	 * @param buf input stream to read from
-	 * @throws XMLStreamException if there is an error decoding the content
+	 * @throws ContentDecodingException if there is an error decoding the content
 	 */
-	public void decode(ByteBuffer buf) throws XMLStreamException;
+	public void decode(ByteBuffer buf) throws ContentDecodingException;
 	
 	/**
 	 * Decode this object as the top-level item in a new XML document, 
 	 * reading it from a network buffer. Reads document start and end. 
 	 * @param buf input stream to read from
 	 * @param codec the codec to use; must be recognized by XMLCodecFactory
-	 * @throws XMLStreamException if there is an error decoding the content
+	 * @throws ContentDecodingException if there is an error decoding the content
 	 * 
 	 * @see XMLCodecFactory
 	 */
-	public void decode(ByteBuffer buf, String codec) throws XMLStreamException;
+	public void decode(ByteBuffer buf, String codec) throws ContentDecodingException;
 
 	/**
 	 * Decode this object during an ongoing decoding pass; this is what subclasses
@@ -122,26 +123,26 @@ public interface XMLEncodable {
 	 * @param decoder the decoder being used; encapsulates state including the 
 	 * 	codec being used as well as the input source and current offset
 	 */
-	public void decode(XMLDecoder decoder) throws XMLStreamException;
+	public void decode(XMLDecoder decoder) throws ContentDecodingException;
 
 	/**
 	 * Encode this object as the top-level item in a new 
 	 * XML document. Writes start and end document. Assumes default encoding.
 	 * @param ostream stream to encode object to
-	 * @throws XMLStreamException if there is an error encoding the object
+	 * @throws ContentEncodingException if there is an error encoding the object
 	 */
-	public void encode(OutputStream ostream) throws XMLStreamException;
+	public void encode(OutputStream ostream) throws ContentEncodingException;
 
 	/**
 	 * Encode this object as the top-level item in a new 
 	 * XML document. Writes start and end document. 
 	 * @param ostream stream to encode object to
 	 * @param codec the codec to use; must be recognized by XMLCodecFactory
-	 * @throws XMLStreamException if there is an error encoding the object
+	 * @throws ContentEncodingException if there is an error encoding the object
 	 * 
 	 * @see XMLCodecFactory
 	 */
-	public void encode(OutputStream ostream, String codec) throws XMLStreamException;
+	public void encode(OutputStream ostream, String codec) throws ContentEncodingException;
 	
 	/**
 	 * Helper method to encode to a byte array rather than an
@@ -149,11 +150,11 @@ public interface XMLEncodable {
 	 * XML document. Writes document start and end. Assumes
 	 * default encoding.
 	 * @return returns the encoded object
-	 * @throws XMLStreamException if there is an error decoding the content
+	 * @throws ContentEncodingException if there is an error encoding the content
 	 * 
 	 * @see encode(OutputStream)
 	 */
-	public byte [] encode() throws XMLStreamException;
+	public byte [] encode() throws ContentEncodingException;
 	
 	/**
 	 * Helper method to encode to a byte array rather than an
@@ -161,12 +162,12 @@ public interface XMLEncodable {
 	 * XML document. Writes document start and end. 
 	 * @param codec the codec to use; must be recognized by XMLCodecFactory
 	 * @return returns the encoded object
-	 * @throws XMLStreamException if there is an error decoding the content
+	 * @throws ContentEncodingException if there is an error encoding the content
 	 * 
 	 * @see encode(OutputStream,String)
 	 * @see XMLCodecFactory
 	 */
-	public byte [] encode(String codec) throws XMLStreamException;
+	public byte [] encode(String codec) throws ContentEncodingException;
 
 	/**
 	 * Encode this object during an ongoing encoding pass; this is what subclasses
@@ -177,7 +178,7 @@ public interface XMLEncodable {
 	 * @param encoder the encoder being used; encapsulates state including the 
 	 * 	codec being used as well as the output destination and current offset
 	 */
-	public void encode(XMLEncoder encoder) throws XMLStreamException;
+	public void encode(XMLEncoder encoder) throws ContentEncodingException;
 	
 	/** 
 	 * Allow the encoder/decoder to retrieve the top-level element name

@@ -24,10 +24,10 @@ import java.security.NoSuchAlgorithmException;
 import javax.crypto.Mac;
 import javax.crypto.ShortBufferException;
 import javax.crypto.spec.SecretKeySpec;
-import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -84,14 +84,14 @@ public class KeyDerivationFunction {
 	 * @param contentName name of the specific object to derive a key for, including the version (but not including
 	 *     segment information).
 	 * @param publisher for this particular set of objects
-	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
+	 * @throws ContentEncodingException
 	 */
 	public static final ContentKeys DeriveKeysForObject(
 			byte [] masterKeyBytes, 
 			String label,
 			ContentName contentName, 
-			PublisherPublicKeyDigest publisher) throws InvalidKeyException, XMLStreamException {
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, ContentEncodingException {
 		byte [][] keyiv = DeriveKeysForObject(masterKeyBytes, ContentKeys.DEFAULT_AES_KEY_LENGTH*8, ContentKeys.IV_MASTER_LENGTH*8,
 				label, contentName, publisher);
 		return new ContentKeys(keyiv[0], keyiv[1]);
@@ -105,13 +105,13 @@ public class KeyDerivationFunction {
 	 * @param label a text label to allow derivation of multiple key types from a single
 	 * 	source key/path pair
 	 * @param nodeName the name of the node to derive a key for
-	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
+	 * @throws ContentEncodingException
 	 */
 	public static final byte [] DeriveKeyForNode(
 			byte [] parentNodeKeyBytes,
 			String label,
-			ContentName nodeName) throws InvalidKeyException, XMLStreamException {
+			ContentName nodeName) throws InvalidKeyException, ContentEncodingException {
 		return DeriveKeyForNode(parentNodeKeyBytes, ContentKeys.DEFAULT_AES_KEY_LENGTH*8, label, nodeName);
 	}
 	
@@ -124,14 +124,14 @@ public class KeyDerivationFunction {
 	 * @param label a text label to allow derivation of multiple key types from a single
 	 * 	source key/path pair
 	 * @param nodeName the name of the node to derive a key for
-	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
+	 * @throws ContentEncodingException
 	 */
 	public static final byte [] DeriveKeyForNode(
 			ContentName ancestorNodeName, 
 			byte [] ancestorNodeKey,
 			String label,
-			ContentName nodeName) throws InvalidKeyException, XMLStreamException {
+			ContentName nodeName) throws InvalidKeyException, ContentEncodingException {
 		
 		if ((null == ancestorNodeName) || (null == ancestorNodeKey) || (null == nodeName)) {
 			throw new IllegalArgumentException("Names and keys cannot be null!");
@@ -163,15 +163,15 @@ public class KeyDerivationFunction {
 	 * @param contentName name to derive a key for
 	 * @param publisher publisher whose version of contentName we want to derive for
 	 * @return returns an {key, iv/counter seed} pair suitable for use in segment encryption
-	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
+	 * @throws ContentEncodingException
 	 */
 	public static final byte [][] DeriveKeysForObject(
 			byte [] masterKeyBytes, 
 			int keyBitLength, int ivBitLength,
 			String label,
 			ContentName contentName, 
-			PublisherPublicKeyDigest publisher) throws InvalidKeyException, XMLStreamException {
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, ContentEncodingException {
 		byte [] key = new byte[keyBitLength/8];
 		byte [] iv = new byte[ivBitLength/8];
 
@@ -195,14 +195,14 @@ public class KeyDerivationFunction {
 	 * @param contentName name to derive a key for
 	 * @param publisher publisher whose version of contentName we want to derive for
 	 * @return returns a key for this object
-	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
+	 * @throws ContentEncodingException
 	 */
 	public static final byte [] DeriveKeyForObject(
 			byte [] masterKeyBytes, int outputLengthInBits, 
 			String label, 
 			ContentName contentName, 
-			PublisherPublicKeyDigest publisher) throws InvalidKeyException, XMLStreamException {
+			PublisherPublicKeyDigest publisher) throws InvalidKeyException, ContentEncodingException {
 		if ((null == contentName) || (null == publisher)) {
 			throw new IllegalArgumentException("Content name and publisher cannot be null!");
 		}
@@ -219,12 +219,12 @@ public class KeyDerivationFunction {
 	 * 	source key/path pair
 	 * @param nodeName name to derive a key for
 	 * @return returns a key for this object
-	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
+	 * @throws ContentEncodingException
 	 */
 	public static final byte [] DeriveKeyForNode(
 			byte [] masterKeyBytes, int outputLengthInBits,
-			String label, ContentName nodeName) throws InvalidKeyException, XMLStreamException {
+			String label, ContentName nodeName) throws InvalidKeyException, ContentEncodingException {
 		if (null == nodeName) {
 			throw new IllegalArgumentException("Content name cannot be null!");			
 		}
@@ -241,10 +241,10 @@ public class KeyDerivationFunction {
 	 * 	of the node, also possibly the publisher.
 	 * @return the derived key
 	 * @throws InvalidKeyException
-	 * @throws XMLStreamException
+	 * @throws ContentEncodingException
 	 */
 	public static final byte [] DeriveKey(byte [] masterKeyBytes, int outputLengthInBits, 
-			String label, XMLEncodable [] contextObjects) throws InvalidKeyException, XMLStreamException {
+			String label, XMLEncodable [] contextObjects) throws InvalidKeyException, ContentEncodingException {
 
 		if ((null == masterKeyBytes) || (masterKeyBytes.length == 0)) {
 			throw new IllegalArgumentException("Master key bytes cannot be null or empty!");

@@ -22,13 +22,12 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.bouncycastle.asn1.DEROctetString;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Signature;
@@ -266,7 +265,7 @@ public class CCNMerkleTree extends MerkleTree {
 						DataUtils.printBytes(blockDigest) + " content digest: " + 
 						DataUtils.printBytes(CCNDigestHelper.digest(content, offset, length)));
 			}
-		} catch (XMLStreamException e) {
+		} catch (ContentEncodingException e) {
 			Log.info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
 			// DKS todo -- what to throw?
 		} 

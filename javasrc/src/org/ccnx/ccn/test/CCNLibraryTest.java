@@ -29,8 +29,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
 
-import javax.xml.stream.XMLStreamException;
-
 import junit.framework.Assert;
 
 import org.ccnx.ccn.BasicInterestListener;
@@ -42,6 +40,7 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.CCNWriter;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -230,7 +229,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 		f.put(cos[1]);
 		// java lacks nested functions, so use a class here...
 		class t {
-			void check(ContentObject o, int i) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
+			void check(ContentObject o, int i) throws InvalidKeyException, ContentEncodingException,
+						SignatureException, NoSuchAlgorithmException, InterruptedException {
 				System.out.println("Got content: " + o.name());
 				System.out.println("Original value: " + i + " returned value: " + Byte.toString(o.content()[0]));
 				Assert.assertTrue(o.verify(null));
@@ -239,12 +239,14 @@ public class CCNLibraryTest extends LibraryTestBase {
 			/**
 			 * Make sure the data is written to ccnd by reading it
 			 * @throws InterruptedException 
-			 * @throws XMLStreamException 
 			 * @throws NoSuchAlgorithmException 
 			 * @throws SignatureException 
 			 * @throws InvalidKeyException 
 			 */
-			void readAndCheck(ContentName name, int index) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
+			void readAndCheck(ContentName name, int index) 
+					throws ContentEncodingException,
+						IOException, InvalidKeyException, 
+						SignatureException, NoSuchAlgorithmException, InterruptedException {
 				System.out.println("Getting content: " + name);
 				check(getLibrary.get(name, 2000), index);
 			}

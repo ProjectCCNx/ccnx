@@ -19,8 +19,6 @@ package org.ccnx.ccn.io.content;
 
 import java.util.Arrays;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -145,7 +143,7 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 	}
 	
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 		
 		if (PublisherID.peek(decoder)) {
@@ -165,14 +163,14 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 			String strType = decoder.readUTF8Element(CONTENT_TYPE_ELEMENT);
 			_type = SignedInfo.nameToType(strType);
 			if (null == _type) {
-				throw new XMLStreamException("Cannot parse authenticator type: " + strType);
+				throw new ContentDecodingException("Cannot parse authenticator type: " + strType);
 			}
 		}
 		
 		if (decoder.peekStartElement(CONTENT_DIGEST_ELEMENT)) {
 			_contentDigest = decoder.readBinaryElement(CONTENT_DIGEST_ELEMENT);
 			if (null == _contentDigest) {
-				throw new XMLStreamException("Cannot parse content hash.");
+				throw new ContentDecodingException("Cannot parse content hash.");
 			}
 		}
 				
@@ -180,9 +178,9 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 	}
 
 	@Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
 		

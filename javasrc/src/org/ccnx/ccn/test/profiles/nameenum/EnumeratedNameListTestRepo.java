@@ -22,8 +22,6 @@ import java.util.ArrayList;
 import java.util.Random;
 import java.util.SortedSet;
 
-import javax.xml.stream.XMLStreamException;
-
 import junit.framework.Assert;
 
 import org.bouncycastle.util.Arrays;
@@ -273,7 +271,7 @@ public class EnumeratedNameListTestRepo {
 	 * Adds data to the repo for testing
 	 * DKS -- previous version that used repo streams somehow wasn't getting data in.
 	 * */
-	private ContentName addContentToRepo(ContentName name, CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+	private ContentName addContentToRepo(ContentName name, CCNHandle handle) throws ConfigurationException, IOException {
 		//method to load something to repo for testing
 		// DKS -- don't know why this wasn't working
 		/*

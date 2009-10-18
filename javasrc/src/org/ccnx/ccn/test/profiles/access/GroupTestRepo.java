@@ -27,8 +27,6 @@ import java.util.Iterator;
 import java.util.Random;
 import java.util.SortedSet;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.bouncycastle.crypto.CryptoException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
@@ -47,7 +45,6 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
 
 
 public class GroupTestRepo {
@@ -109,7 +106,7 @@ public class GroupTestRepo {
 		}
 	}
 
-	private void testRemoveUsers(ArrayList<Link> removeMembers, Group grp) throws InvalidKeyException, CryptoException, XMLStreamException, IOException, ConfigurationException{
+	private void testRemoveUsers(ArrayList<Link> removeMembers, Group grp) throws InvalidKeyException, CryptoException, IOException, ConfigurationException{
 		boolean succeed = false;
 		int retries = 0;
 		while(!succeed){
@@ -127,7 +124,7 @@ public class GroupTestRepo {
 		System.out.println(".....................removed user, number of retries:..............." + retries);
 	}
 	
-	private void testAddUsers(ArrayList<Link> removeMembers, Group grp) throws InvalidKeyException, CryptoException, XMLStreamException, IOException, ConfigurationException{
+	private void testAddUsers(ArrayList<Link> removeMembers, Group grp) throws InvalidKeyException, CryptoException, IOException, ConfigurationException{
 		boolean succeed = false;
 		int retries = 0;
 		while(!succeed){

@@ -27,8 +27,6 @@ import java.security.Security;
 import java.util.Random;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ECParameterSpec;
@@ -133,7 +131,7 @@ public class PublicKeyObjectTestRepo {
 		testRepoKeyReadWrite(storedKeyNames[1][2], eccPair.getPublic(), eciesPair.getPublic());
 	}
 
-	public void testRawKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException, VersionMissingException {
+	public void testRawKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, VersionMissingException {
 		
 
 		Log.info("Reading and writing raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
@@ -178,7 +176,7 @@ public class PublicKeyObjectTestRepo {
 
 	}
 
-	public void testRepoKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException, VersionMissingException {
+	public void testRepoKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, VersionMissingException {
 
 		Log.info("Reading and writing key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, handle);

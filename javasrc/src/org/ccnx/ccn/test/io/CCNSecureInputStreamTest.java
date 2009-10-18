@@ -32,7 +32,6 @@ import java.util.logging.Level;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
-import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -68,17 +67,17 @@ public class CCNSecureInputStreamTest {
 		ContentKeys keys;
 		int encrLength = 25*1024+301;
 		byte [] encrData;
-		public StreamFactory(String file_name) throws NoSuchAlgorithmException, XMLStreamException, IOException, InterruptedException {
+		public StreamFactory(String file_name) throws NoSuchAlgorithmException, IOException, InterruptedException {
 			name = ContentName.fromNative(testHelper.getClassNamespace(), file_name);
 			flosser.handleNamespace(name);
 			keys = ContentKeys.generateRandomKeys();
 			writeFile(encrLength);
 			flosser.stopMonitoringNamespace(name);
 		}
-		public abstract CCNInputStream makeInputStream() throws IOException, XMLStreamException;
-		public abstract OutputStream makeOutputStream() throws IOException, XMLStreamException;
+		public abstract CCNInputStream makeInputStream() throws IOException;
+		public abstract OutputStream makeOutputStream() throws IOException;
 
-		public void writeFile(int fileLength) throws XMLStreamException, IOException, NoSuchAlgorithmException, InterruptedException {
+		public void writeFile(int fileLength) throws IOException, NoSuchAlgorithmException, InterruptedException {
 			Random randBytes = new Random(0); // always same sequence, to aid debugging
 			OutputStream os = makeOutputStream();
 
@@ -104,7 +103,7 @@ public class CCNSecureInputStreamTest {
 			encrData = data.toByteArray();
 		}
 
-		public void streamEncryptDecrypt() throws XMLStreamException, IOException {
+		public void streamEncryptDecrypt() throws IOException {
 			// check we get identical data back out
 			CCNInputStream vfirst = makeInputStream();
 			byte [] read_data = readFile(vfirst, encrLength);
@@ -123,7 +122,7 @@ public class CCNSecureInputStreamTest {
 			Assert.assertFalse(encrData.equals(read_data));
 		}
 
-		public void seeking() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+		public void seeking() throws IOException, NoSuchAlgorithmException {
 			// check really small seeks/reads (smaller than 1 Cipher block)
 			doSeeking(10);
 
@@ -134,7 +133,7 @@ public class CCNSecureInputStreamTest {
 			doSeeking(4096*5+350);
 		}
 
-		private void doSeeking(int length) throws XMLStreamException, IOException, NoSuchAlgorithmException {
+		private void doSeeking(int length) throws IOException, NoSuchAlgorithmException {
 			CCNInputStream i = makeInputStream();
 			// make sure we start mid ContentObject and past the first Cipher block
 			int start = ((int) (encrLength*0.3) % 4096) +600;
@@ -144,7 +143,7 @@ public class CCNSecureInputStreamTest {
 			readAndCheck(i, start, length);
 		}
 
-		public void markReset() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+		public void markReset() throws IOException, NoSuchAlgorithmException {
 			// check really small seeks/reads (smaller than 1 Cipher block)
 			doMarkReset(10);
 
@@ -155,7 +154,7 @@ public class CCNSecureInputStreamTest {
 			doMarkReset(4096*2+350);
 		}
 
-		private void doMarkReset(int length) throws XMLStreamException, IOException, NoSuchAlgorithmException {
+		private void doMarkReset(int length) throws IOException, NoSuchAlgorithmException {
 			CCNInputStream i = makeInputStream();
 			i.skip(length);
 			i.reset();
@@ -168,7 +167,7 @@ public class CCNSecureInputStreamTest {
 		}
 
 		private void readAndCheck(CCNInputStream i, int start, int length)
-				throws IOException, XMLStreamException, NoSuchAlgorithmException {
+				throws IOException, NoSuchAlgorithmException {
 			byte [] origData = new byte[length];
 			System.arraycopy(encrData, start, origData, 0, length);
 			byte [] readData = new byte[length];
@@ -176,7 +175,7 @@ public class CCNSecureInputStreamTest {
 			Assert.assertArrayEquals(origData, readData);
 		}
 
-		public void skipping() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+		public void skipping() throws IOException, NoSuchAlgorithmException {
 			// read some data, skip some data, read some more data
 			CCNInputStream inStream = makeInputStream();
 
@@ -234,28 +233,28 @@ public class CCNSecureInputStreamTest {
 		flosser = new Flosser();
 		
 		basic = new StreamFactory("basic.txt"){
-			public CCNInputStream makeInputStream() throws IOException, XMLStreamException {
+			public CCNInputStream makeInputStream() throws IOException {
 				return new CCNInputStream(name, null, null, keys, inputLibrary);
 			}
-			public OutputStream makeOutputStream() throws IOException, XMLStreamException {
+			public OutputStream makeOutputStream() throws IOException {
 				return new CCNOutputStream(name, null, null, null, keys, outputLibrary);
 			}
 		};
 
 		versioned = new StreamFactory("versioned.txt"){
-			public CCNInputStream makeInputStream() throws IOException, XMLStreamException {
+			public CCNInputStream makeInputStream() throws IOException {
 				return new CCNVersionedInputStream(name, 0L, null, keys, inputLibrary);
 			}
-			public OutputStream makeOutputStream() throws IOException, XMLStreamException {
+			public OutputStream makeOutputStream() throws IOException {
 				return new CCNVersionedOutputStream(name, null, null, keys, outputLibrary);
 			}
 		};
 
 		file = new StreamFactory("file.txt"){
-			public CCNInputStream makeInputStream() throws IOException, XMLStreamException {
+			public CCNInputStream makeInputStream() throws IOException {
 				return new CCNFileInputStream(name, null, null, keys, inputLibrary);
 			}
-			public OutputStream makeOutputStream() throws IOException, XMLStreamException {
+			public OutputStream makeOutputStream() throws IOException {
 				return new CCNFileOutputStream(name, keys, outputLibrary);
 			}
 		};
@@ -357,15 +356,15 @@ public class CCNSecureInputStreamTest {
 	 * Test stream encryption & decryption work, and that using different keys for decryption fails
 	 */
 	@Test
-	public void basicStreamEncryptDecrypt() throws XMLStreamException, IOException {
+	public void basicStreamEncryptDecrypt() throws IOException {
 		basic.streamEncryptDecrypt();
 	}
 	@Test
-	public void versionedStreamEncryptDecrypt() throws XMLStreamException, IOException {
+	public void versionedStreamEncryptDecrypt() throws IOException {
 		versioned.streamEncryptDecrypt();
 	}
 	@Test
-	public void fileStreamEncryptDecrypt() throws XMLStreamException, IOException {
+	public void fileStreamEncryptDecrypt() throws IOException {
 		file.streamEncryptDecrypt();
 	}
 
@@ -374,15 +373,15 @@ public class CCNSecureInputStreamTest {
 	 * do it for different size parts of the data
 	 */
 	@Test
-	public void basicSeeking() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+	public void basicSeeking() throws IOException, NoSuchAlgorithmException {
 		basic.seeking();
 	}
 	@Test
-	public void versionedSeeking() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+	public void versionedSeeking() throws IOException, NoSuchAlgorithmException {
 		versioned.seeking();
 	}
 	@Test
-	public void fileSeeking() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+	public void fileSeeking() throws IOException, NoSuchAlgorithmException {
 		file.seeking();
 	}
 
@@ -391,15 +390,15 @@ public class CCNSecureInputStreamTest {
 	 * Tries small/medium/large skips
 	 */
 	@Test
-	public void basicSkipping() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+	public void basicSkipping() throws IOException, NoSuchAlgorithmException {
 		basic.skipping();
 	}
 	@Test
-	public void versionedSkipping() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+	public void versionedSkipping() throws IOException, NoSuchAlgorithmException {
 		versioned.skipping();
 	}
 	@Test
-	public void fileSkipping() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+	public void fileSkipping() throws IOException, NoSuchAlgorithmException {
 		file.skipping();
 	}
 
@@ -408,15 +407,15 @@ public class CCNSecureInputStreamTest {
 	 * Tries small/medium/large jumps
 	 */
 	@Test
-	public void basicMarkReset() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+	public void basicMarkReset() throws IOException, NoSuchAlgorithmException {
 		basic.markReset();
 	}
 	@Test
-	public void versionedMarkReset() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+	public void versionedMarkReset() throws IOException, NoSuchAlgorithmException {
 		versioned.markReset();
 	}
 	@Test
-	public void fileMarkReset() throws XMLStreamException, IOException, NoSuchAlgorithmException {
+	public void fileMarkReset() throws IOException, NoSuchAlgorithmException {
 		file.markReset();
 	}
 }

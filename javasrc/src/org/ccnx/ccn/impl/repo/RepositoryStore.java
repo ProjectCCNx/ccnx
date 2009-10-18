@@ -182,8 +182,9 @@ public interface RepositoryStore {
 	 * @param nameSpace initial namespace for repository
 	 * @throws RepositoryException
 	 */
-	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix,
-					String nameSpace) throws RepositoryException;
+	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, 
+						   String localName, String globalPrefix,
+						   String nameSpace) throws RepositoryException;
 	
 	/**
 	 * Save the specified content in the repository.  If content is added to a name that has

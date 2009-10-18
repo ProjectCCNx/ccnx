@@ -21,13 +21,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
-import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -114,12 +110,7 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	@Override
 	protected E readObjectImpl(InputStream input) throws ContentDecodingException, IOException {
 		E newData = factory();
-		try {
-			newData.decode(input);	
-		} catch (XMLStreamException xe) {
-			Log.info("XML exception parsing data in block: " + ((CCNInputStream)input).currentSegmentName());
-			throw new ContentDecodingException(xe);
-		}
+		newData.decode(input);	
 		return newData;
 	}
 
@@ -127,10 +118,6 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 	protected void writeObjectImpl(OutputStream output) throws ContentEncodingException, IOException {
 		if (null == _data)
 			throw new ContentNotReadyException("No content available to save for object " + getBaseName());
-		try {
-			_data.encode(output);
-		} catch (XMLStreamException e) {
-			throw new ContentEncodingException(e);
-		}
+		_data.encode(output);
 	}
 }

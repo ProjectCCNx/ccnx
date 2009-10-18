@@ -21,8 +21,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 
 
@@ -42,20 +40,12 @@ public class EncodableObject<E extends XMLEncodable> extends NetworkObject<E> {
 	}
 	
 	protected void writeObjectImpl(OutputStream output) throws ContentEncodingException, IOException {
-		try {
-			_data.encode(output);
-		} catch (XMLStreamException e) {
-			throw new ContentEncodingException(e);
-		}
+		_data.encode(output);
 	}
 
 	protected E readObjectImpl(InputStream input) throws ContentDecodingException, IOException {
 		E newData = factory();
-		try {
-			newData.decode(input);
-		} catch (XMLStreamException e) {
-			throw new ContentDecodingException(e);
-		}	
+		newData.decode(input);
 		return newData;
 	}
 }

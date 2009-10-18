@@ -27,12 +27,11 @@ import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
@@ -190,7 +189,7 @@ public class SystemConfiguration {
 		try {
 			byte [] encoded = data.encode();
 			outputDebugData(name, encoded);
-		} catch (XMLStreamException ex) {
+		} catch (ContentEncodingException ex) {
 			Log.warning("Cannot encode object : " + name + " to output for debug.");
 		}
 	}
@@ -249,7 +248,7 @@ public class SystemConfiguration {
 			Log.log(level, message + " name: {0} timestamp: {1} digest: {2}  tbs: {3}.",
 					co.name(), co.signedInfo().getTimestamp(), CCNDigestHelper.printBytes(coDigest, DEBUG_RADIX),
 					CCNDigestHelper.printBytes(tbsDigest, DEBUG_RADIX));
-		} catch (XMLStreamException xs) {
+		} catch (ContentEncodingException xs) {
 			Log.log(level, "Cannot encode object for logging: {0}.", co.name());
 		}
 		

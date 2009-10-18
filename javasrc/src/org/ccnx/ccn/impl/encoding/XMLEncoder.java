@@ -20,8 +20,7 @@ package org.ccnx.ccn.impl.encoding;
 import java.io.OutputStream;
 import java.util.TreeMap;
 
-import javax.xml.stream.XMLStreamException;
-
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.CCNTime;
 
 /**
@@ -33,23 +32,23 @@ public interface XMLEncoder {
 	 * Initiates encoding and handles any startup steps, including writing the start
 	 * document if one is defined for this codec.
 	 * @param ostream the output stream to encode to
-	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
-	public void beginEncoding(OutputStream ostream) throws XMLStreamException;
+	public void beginEncoding(OutputStream ostream) throws ContentEncodingException;
 	
 	/**
 	 * Handles any necessary steps for ending the encoding, including writing the end
 	 * document if one is defined for this codec.
-	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
-	public void endEncoding() throws XMLStreamException;
+	public void endEncoding() throws ContentEncodingException;
 	
 	/**
 	 * Writes a start element tag in the format defined by this codec to the stream.
 	 * @param tag the element start tag
-	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
-	public void writeStartElement(String tag) throws XMLStreamException;
+	public void writeStartElement(String tag) throws ContentEncodingException;
 	
 	/**
 	 * Writes a start element tag in the format defined by this codec to the stream, together with
@@ -57,41 +56,41 @@ public interface XMLEncoder {
 	 * @param tag the element start tag
 	 * @param attributes the (attribute, value) pairs to write as attributes of the element start tag,
 	 * 	if null or empty no attributes are written
-	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
-	public void writeStartElement(String tag, TreeMap<String,String> attributes) throws XMLStreamException;
+	public void writeStartElement(String tag, TreeMap<String,String> attributes) throws ContentEncodingException;
 	
 	/**
 	 * Writes the end element defined by this codec to the stream.
-	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
-	public void writeEndElement() throws XMLStreamException;   		
+	public void writeEndElement() throws ContentEncodingException;   		
 	
 	/**
 	 * Writes a UTF-8 encoded string to the stream formatted according to this codec.
 	 * @param tag start tag to use
 	 * @param utf8Content the string data to encode
-	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
-	public void writeElement(String tag, String utf8Content) throws XMLStreamException;
+	public void writeElement(String tag, String utf8Content) throws ContentEncodingException;
 	
 	/**
 	 * Writes a UTF-8 encoded string to the stream formatted according to this codec.
 	 * @param tag start tag to use
 	 * @param utf8Content the string data to encode
 	 * @param attributes the XML attributes to add to this tag
-	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
 	public void writeElement(String tag, String utf8Content, 
-			TreeMap<String,String> attributes) throws XMLStreamException;
+			TreeMap<String,String> attributes) throws ContentEncodingException;
 	
 	/**
 	 * Writes a binary element to the stream formatted according to this codec.
 	 * @param tag start tag to use
 	 * @param binaryContent the binary data to encode
-	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
-	public void writeElement(String tag, byte [] binaryContent) throws XMLStreamException;
+	public void writeElement(String tag, byte [] binaryContent) throws ContentEncodingException;
 	
 	/**
 	 * Writes a binary element to the stream formatted according to this codec.
@@ -99,19 +98,19 @@ public interface XMLEncoder {
 	 * @param binaryContent the binary data to encode
 	 * @param offset the offset into binaryContent at which to start
 	 * @param length the number of bytes of binaryContent to encode
-	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
-	public void writeElement(String tag, byte [] binaryContent, int offset, int length) throws XMLStreamException;
+	public void writeElement(String tag, byte [] binaryContent, int offset, int length) throws ContentEncodingException;
 	
 	/**
 	 * Writes a binary element to the stream formatted according to this codec.
 	 * @param tag start tag to use
 	 * @param binaryContent the binary data to encode
 	 * @param attributes the XML attributes to add to this tag
-	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
 	public void writeElement(String tag, byte [] binaryContent, 
-			TreeMap<String,String> attributes) throws XMLStreamException;
+			TreeMap<String,String> attributes) throws ContentEncodingException;
 
 	/**
 	 * Writes a binary element to the stream formatted according to this codec.
@@ -120,26 +119,26 @@ public interface XMLEncoder {
 	 * @param offset the offset into binaryContent at which to start
 	 * @param length the number of bytes of binaryContent to encode
 	 * @param attributes the XML attributes to add to this tag
-	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
 	public void writeElement(String tag, byte [] binaryContent, int offset, int length,
-			TreeMap<String,String> attributes) throws XMLStreamException;
+			TreeMap<String,String> attributes) throws ContentEncodingException;
 	
 	/**
 	 * Writes an integer to the stream formatted according to this codec.
 	 * @param tag start tag to use
 	 * @param value the integer to encode
-	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
-	public void writeIntegerElement(String tag, Integer value) throws XMLStreamException;
+	public void writeIntegerElement(String tag, Integer value) throws ContentEncodingException;
 	
 	/**
 	 * Writes a quantized timestamp to the stream formatted according to this codec.
 	 * @param tag start tag to use
 	 * @param dateTime the timestamp to encode
-	 * @throws XMLStreamException if there is an error encoding or writing the content
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
-	public void writeDateTime(String tag, CCNTime dateTime) throws XMLStreamException;
+	public void writeDateTime(String tag, CCNTime dateTime) throws ContentEncodingException;
 	
 	/**
 	 * Some codecs use a dictionary to make encoding and decoding more efficient. Those

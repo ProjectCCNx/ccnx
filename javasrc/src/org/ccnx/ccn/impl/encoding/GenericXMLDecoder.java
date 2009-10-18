@@ -17,18 +17,18 @@
 
 package org.ccnx.ccn.impl.encoding;
 
-import javax.xml.stream.XMLStreamException;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 
 /**
  * This class contains methods for content encoding/decoding common to all or many codecs.
  */
 public abstract class GenericXMLDecoder implements XMLDecoder {
 
-	public Integer readIntegerElement(String startTag) throws XMLStreamException {
+	public Integer readIntegerElement(String startTag) throws ContentDecodingException {
 		String strVal = readUTF8Element(startTag); 
 		Integer value = Integer.valueOf(strVal);
 		if (null == value) {
-			throw new XMLStreamException("Cannot parse " + startTag + ": " + strVal);
+			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal);
 		}
 		return value;
 	}

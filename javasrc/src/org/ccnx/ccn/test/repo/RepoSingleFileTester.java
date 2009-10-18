@@ -21,14 +21,12 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.repo.RepositoryException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.WirePacket;
 
 /**
@@ -44,7 +42,7 @@ public class RepoSingleFileTester extends RepoPerformanceTester {
 		private FileOutputStream _fos = null;
 		
 		public TestFlowControl(String repoName, ContentName name, CCNHandle handle)
-				throws MalformedContentNameStringException, RepositoryException, IOException {
+				throws RepositoryException, IOException {
 			super(name, handle);
 			_tfc = this;
 			if (repoName != null) {
@@ -67,8 +65,7 @@ public class RepoSingleFileTester extends RepoPerformanceTester {
 				try {
 					WirePacket packet = new WirePacket(co);
 					_fos.write(packet.encode());
-				} catch (XMLStreamException e) {
-					// TODO Auto-generated catch block
+				} catch (ContentEncodingException e) {
 					e.printStackTrace();
 				}
 			}
@@ -79,11 +76,12 @@ public class RepoSingleFileTester extends RepoPerformanceTester {
 	public RepoSingleFileTester() {}
 	
 	public RepoSingleFileTester(String repoName, ContentName name, CCNHandle handle)
-			throws XMLStreamException, IOException, MalformedContentNameStringException, RepositoryException {
+			throws IOException, RepositoryException {
 		super(name, _rpt.new TestFlowControl(repoName, name, handle));
 	}
 	
-	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle handle) throws MalformedContentNameStringException, XMLStreamException, IOException, RepositoryException {
+	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle handle) 
+			throws IOException, RepositoryException {
 		return new RepoSingleFileTester(repoName, name, handle);
 	}
 	

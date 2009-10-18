@@ -22,11 +22,11 @@ import static org.junit.Assert.assertEquals;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.TextXMLCodec;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 /**
  * Helper class for writing tests for classes implementing XMLEncodable.
@@ -71,7 +71,7 @@ public class XMLEncodableTester {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
 			toEncode.encode(baos, codec);
-		} catch (XMLStreamException e) {
+		} catch (ContentEncodingException e) {
 			handleException(e);
 		}
 		System.out.println("Encoded " + label + ": " );
@@ -81,7 +81,7 @@ public class XMLEncodableTester {
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
 		try {
 			decodeTarget.decode(bais, codec);
-		} catch (XMLStreamException e) {
+		} catch (ContentDecodingException e) {
 			handleException(e);
 		}
 		System.out.println("Decoded " + label + ": " + decodeTarget);
@@ -96,7 +96,7 @@ public class XMLEncodableTester {
 		byte [] bao = null;
 		try {
 			bao = toEncode.encode(codec);
-		} catch (XMLStreamException e) {
+		} catch (ContentEncodingException e) {
 			handleException(e);
 		}
 		System.out.println("Encoded " + label + ": " );
@@ -104,7 +104,7 @@ public class XMLEncodableTester {
 		System.out.println("Decoding " + label + ": ");
 		try {
 			decodeTarget.decode(bao, codec);
-		} catch (XMLStreamException e) {
+		} catch (ContentDecodingException e) {
 			handleException(e);
 		}
 		System.out.println("Decoded " + label + ": " + decodeTarget);

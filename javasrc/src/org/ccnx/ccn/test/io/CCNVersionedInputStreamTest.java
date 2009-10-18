@@ -25,8 +25,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
@@ -110,11 +108,10 @@ public class CCNVersionedInputStreamTest {
 	 * @param fileLength
 	 * @param randBytes
 	 * @return
-	 * @throws XMLStreamException
 	 * @throws IOException
 	 * @throws NoSuchAlgorithmException
 	 */
-	public static byte [] writeFileFloss(ContentName completeName, int fileLength, Random randBytes) throws XMLStreamException, IOException, NoSuchAlgorithmException {
+	public static byte [] writeFileFloss(ContentName completeName, int fileLength, Random randBytes) throws IOException, NoSuchAlgorithmException {
 		CCNOutputStream stockOutputStream = new CCNOutputStream(completeName, outputHandle);
 		
 		DigestOutputStream digestStreamWrapper = new DigestOutputStream(stockOutputStream, MessageDigest.getInstance("SHA1"));
@@ -158,13 +155,13 @@ public class CCNVersionedInputStreamTest {
 	    }.start();
 	}
 	
-	public static byte [] readFile(ContentName completeName, int fileLength) throws XMLStreamException, IOException {
+	public static byte [] readFile(ContentName completeName, int fileLength) throws IOException {
 		CCNInputStream inputStream = new CCNInputStream(completeName);
 		System.out.println("Reading file : " + completeName);
 		return readFile(inputStream, fileLength);
 	}
 	
-	public static byte [] readFile(InputStream inputStream, int fileLength) throws IOException, XMLStreamException {
+	public static byte [] readFile(InputStream inputStream, int fileLength) throws IOException {
 		
 		DigestInputStream dis = null;
 		try {

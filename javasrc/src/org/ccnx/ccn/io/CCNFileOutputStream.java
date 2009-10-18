@@ -22,12 +22,11 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.Header;
 import org.ccnx.ccn.io.content.Header.HeaderObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
@@ -92,15 +91,9 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 	 * Writes the header to the network.
 	 * @throws IOException
 	 */
-	protected void writeHeader() throws IOException {
+	protected void writeHeader() throws ContentEncodingException, IOException {
 		// What do we put in the header if we have multiple merkle trees?
-		try {
-			putHeader(_baseName, lengthWritten(), getBlockSize(), _dh.digest(), null);
-		} catch (XMLStreamException e) {
-			Log.fine("XMLStreamException in writing header: " + e.getMessage());
-			// TODO throw nested exception
-			throw new IOException("Exception in writing header: " + e);
-		}
+		putHeader(_baseName, lengthWritten(), getBlockSize(), _dh.digest(), null);
 	}
 	
 	/**
@@ -110,15 +103,17 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 	 * 
 	 * When we can, we might want to write the header earlier. Here we wait
 	 * till we know how many bytes are in the file.
+	 * @throws ContentEncodingException 
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
-	 * @throws XMLStreamException 
 	 */
 	@Override
-	protected void closeNetworkData() throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException  {
+	protected void closeNetworkData() 
+			throws ContentEncodingException, IOException, InvalidKeyException, SignatureException, 
+						NoSuchAlgorithmException, InterruptedException  {
 		super.closeNetworkData();
 		writeHeader();
 	}
@@ -128,7 +123,7 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 	 */
 	protected void putHeader(
 			ContentName name, long contentLength, int blockSize, byte [] contentDigest, 
-			byte [] contentTreeAuthenticator) throws XMLStreamException, IOException  {
+			byte [] contentTreeAuthenticator) throws ContentEncodingException, IOException  {
 
 
 		ContentName headerName = SegmentationProfile.headerName(name);

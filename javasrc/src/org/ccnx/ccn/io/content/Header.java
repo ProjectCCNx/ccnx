@@ -21,8 +21,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
@@ -231,8 +229,7 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	 */
 	public Header(long length,
 			byte [] contentDigest,
-			byte [] rootDigest, int blockSize
-	) throws XMLStreamException {
+			byte [] rootDigest, int blockSize)  {
 		this(SegmentationProfile.baseSegment(), 
 				(length + blockSize - 1) / blockSize, blockSize, length,
 				contentDigest, rootDigest);
@@ -280,7 +277,7 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	 * @see com.parc.ccn.data.util.XMLEncodable#decode(javax.xml.stream.XMLEventReader)
 	 */
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 		_start = Integer.valueOf(decoder.readUTF8Element(START_ELEMENT));
 		_count = Integer.valueOf(decoder.readUTF8Element(COUNT_ELEMENT));
@@ -288,13 +285,13 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		_length = Integer.valueOf(decoder.readUTF8Element(LENGTH_ELEMENT));
 		_contentDigest = decoder.readBinaryElement(CONTENT_DIGEST_ELEMENT);
 		if (null == _contentDigest) {
-			throw new XMLStreamException("Cannot parse content digest.");
+			throw new ContentDecodingException("Cannot parse content digest.");
 		}
 		
 		if (decoder.peekStartElement(MERKLE_ROOT_ELEMENT)) {
 			_rootDigest = decoder.readBinaryElement(MERKLE_ROOT_ELEMENT);
 			if (null == _rootDigest) {
-				throw new XMLStreamException("Cannot parse root digest.");
+				throw new ContentDecodingException("Cannot parse root digest.");
 			}
 		}
 		decoder.readEndElement();
@@ -308,9 +305,9 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	 */
 	@Override
 	public void encode(XMLEncoder encoder)
-			throws XMLStreamException {
+			throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
 		encoder.writeElement(START_ELEMENT,	 Long.toString(_start));

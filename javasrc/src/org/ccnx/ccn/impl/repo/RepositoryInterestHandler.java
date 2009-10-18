@@ -20,8 +20,6 @@ package org.ccnx.ccn.impl.repo;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -88,9 +86,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 * Handle start write requests
 	 * 
 	 * @param interest
-	 * @throws XMLStreamException
 	 */
-	private void startReadProcess(Interest interest) throws XMLStreamException {
+	private void startReadProcess(Interest interest) {
 		synchronized (_server.getDataListeners()) {
 			for (RepositoryDataListener listener : _server.getDataListeners()) {
 				if (listener.getOrigInterest().equals(interest)) {
