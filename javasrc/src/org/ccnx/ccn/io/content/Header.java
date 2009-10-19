@@ -273,9 +273,6 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		return typeToName(type());
 	}
 	
-	/* (non-Javadoc)
-	 * @see com.parc.ccn.data.util.XMLEncodable#decode(javax.xml.stream.XMLEventReader)
-	 */
 	@Override
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
@@ -300,9 +297,6 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		_type = SegmentationType.SIMPLE_BLOCK;
 	}
 
-	/* (non-Javadoc)
-	 * @see com.parc.ccn.data.util.XMLEncodable#encode(javax.xml.stream.XMLStreamWriter, boolean)
-	 */
 	@Override
 	public void encode(XMLEncoder encoder)
 			throws ContentEncodingException {
