@@ -425,7 +425,7 @@ public class CCNFlowControl implements CCNFilterListener {
 		synchronized (_holdingArea) {
 			for (Interest interest : interests) {
 				Log.fine("Flow controller: got interest: " + interest);
-				ContentObject co = getBestMatch(interest);
+				ContentObject co = getBestMatch(interest, _holdingArea.keySet());
 				if (co != null) {
 					Log.finest("Found content " + co.name() + " matching interest: " + interest);
 					try {
@@ -471,23 +471,6 @@ public class CCNFlowControl implements CCNFilterListener {
 		remove(co);
 	}
 	
-	/*
-	 * Try to optimize this by giving preference to "getNext" which is
-	 * presumably going to be the most common kind of get. So we first try
-	 * on a tailmap following the interest, and if that doesn't get us 
-	 * anything, we try all the data.
-	 * XXX there are probably better ways to optimize this that I haven't
-	 * thought of yet also...
-	 */
-	private ContentObject getBestMatch(Interest interest) {
-		// paul r - following seems broken for some reason - I'll try
-		// to sort it out later
-		//SortedMap<ContentName, ContentObject> matchMap = _holdingArea.tailMap(interest.name());
-		//ContentObject result = getBestMatch(interest, matchMap.keySet());
-		//if (result != null)
-		//	return result;
-		return getBestMatch(interest, _holdingArea.keySet());
-	}
 	
 	private ContentObject getBestMatch(Interest interest, Set<ContentName> set) {
 		ContentObject bestMatch = null;
