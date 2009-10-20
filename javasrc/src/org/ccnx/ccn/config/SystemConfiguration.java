@@ -70,6 +70,49 @@ public class SystemConfiguration {
 	 */
 	
 	/**
+	 * System operation timeout. Very long timeout used to wait for system events
+	 * such as stopping Daemons.
+	 */
+	public final static int SYSTEM_STOP_TIMEOUT = 30000;
+	
+	/**
+	 * Very long timeout for network operations, in msec..
+	 */
+	public final static int MAX_TIMEOUT = 10000;
+	
+	/**
+	 * Longer timeout, for e.g. waiting for a latest version and being sure you
+	 * have anything available locally in msec.
+	 */
+	public final static int LONG_TIMEOUT = 3000;
+	
+	/**
+	 * Medium timeout, used as system default.
+	 */
+	public static final int MEDIUM_TIMEOUT = 1000;
+	
+	/**
+	 * Short timeout; for things you expect to exist or not exist locally.
+	 */
+	public static final int SHORT_TIMEOUT = 300;
+	
+	/**
+	 * Settable system default timeout.
+	 */
+	protected static int _defaultTimeout = MEDIUM_TIMEOUT;
+	
+	/**
+	 * Get system default timeout.
+	 * @return the default timeout.
+	 */
+	public static int getDefaultTimeout() { return _defaultTimeout; }
+	
+	/**
+	 * Set system default timeout.
+	 */
+	public static void setDefaultTimeout(int newTimeout) { _defaultTimeout = newTimeout; }
+	
+	/**
 	 * No timeout. Should be single value used in all places in the code where you
 	 * want to block forever.
 	 */

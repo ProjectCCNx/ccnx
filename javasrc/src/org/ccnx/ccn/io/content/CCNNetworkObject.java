@@ -25,6 +25,7 @@ import java.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
@@ -76,7 +77,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNInterestListener {
 
 	protected static boolean DEFAULT_RAW = true;
-	protected static long DEFAULT_TIMEOUT = 3000; // msec
 	protected static final byte [] GONE_OUTPUT = "GONE".getBytes();
 	
 	/**
@@ -416,13 +416,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
-	 * Calls update(long) with the default timeout DEFAULT_TIMEOUT.
+	 * Calls update(long) with the default timeout SystemConfiguration.getDefaultTimeout().
 	 * @return see update(long).
 	 * @throws ContentDecodingException if there is a problem decoding the object.
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	public boolean update() throws ContentDecodingException, IOException {
-		return update(DEFAULT_TIMEOUT);
+		return update(SystemConfiguration.getDefaultTimeout());
 	}
 	
 	/**

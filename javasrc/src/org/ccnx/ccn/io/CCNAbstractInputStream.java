@@ -30,6 +30,7 @@ import javax.crypto.IllegalBlockSizeException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -50,8 +51,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * @see SegmentationProfile for description of CCN segmentation
  */
 public abstract class CCNAbstractInputStream extends InputStream implements ContentVerifier {
-
-	protected static final int MAX_TIMEOUT = 5000;
 
 	protected CCNHandle _handle;
 
@@ -90,9 +89,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	
 	/**
 	 * The timeout to use for segment retrieval. 
-	 * TODO -- provide constructor arguments to set.
 	 */
-	protected int _timeout = MAX_TIMEOUT;
+	protected int _timeout = SystemConfiguration.getDefaultTimeout();
 	
 	/**
 	 *  Encryption/decryption handler.
