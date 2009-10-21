@@ -17,24 +17,13 @@
 
 package org.ccnx.ccn.io.content;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.security.PublicKey;
-import java.security.cert.CertificateEncodingException;
-import java.security.spec.InvalidKeySpecException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
-import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.CCNInputStream;
-import org.ccnx.ccn.io.content.CCNSerializableObject;
-import org.ccnx.ccn.io.content.ContentDecodingException;
-import org.ccnx.ccn.io.content.ContentGoneException;
-import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -164,6 +153,22 @@ public class CCNStringObject extends CCNNetworkObject<String> {
 	public CCNStringObject(ContentObject firstSegment, CCNFlowControl flowControl) 
 					throws ContentDecodingException, IOException {
 		super(String.class, false, firstSegment, flowControl);
+	}
+
+	@Override
+	protected String readObjectImpl(InputStream input) throws ContentDecodingException, IOException {
+		// assume we read until we have all the bytes, then decode.
+		byte [] contentBytes = DataUtils.getBytesFromStream(input);
+		// do something if contentBytes is null?
+		return DataUtils.getUTF8StringFromBytes(contentBytes);
+	}
+
+	@Override
+	protected void writeObjectImpl(OutputStream output) throws ContentEncodingException, IOException {
+		if (null == data())
+			throw new ContentNotReadyException("No content available to save for object " + getBaseName());
+		byte [] stringData = DataUtils.getBytesFromUTF8String(data());
+		output.write(stringData);
 	}
 
 	public String string() throws ContentNotReadyException, ContentGoneException { return data(); }
