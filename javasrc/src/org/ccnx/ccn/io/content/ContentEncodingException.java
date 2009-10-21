@@ -31,7 +31,9 @@ public class ContentEncodingException extends IOException {
 	}
 
 	public ContentEncodingException(Throwable cause) {
-		super(cause);
+		// Can't do this on 1.5
+		// super(cause);
+		super("Caused by " + cause.getClass() + ": " + cause.getMessage());
 	}
 
 	public ContentEncodingException(String message, Throwable cause) {

@@ -31,7 +31,9 @@ public class ContentDecodingException extends IOException {
 	}
 
 	public ContentDecodingException(Throwable cause) {
-		super(cause);
+		// Can't do this on 1.5
+		// super(cause);
+		super("Caused by " + cause.getClass() + ": " + cause.getMessage());
 	}
 
 	public ContentDecodingException(String message, Throwable cause) {
