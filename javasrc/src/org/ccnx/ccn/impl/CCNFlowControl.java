@@ -28,6 +28,7 @@ import java.util.TreeMap;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNOutputStream;
@@ -69,17 +70,17 @@ public class CCNFlowControl implements CCNFilterListener {
 	public enum Shape {STREAM};
 	
 	protected CCNHandle _handle = null;
-	
-	// Temporarily default to very high timeout so that puts have a good
-	// chance of going through.  We actually may want to keep this.
-	protected static final int MAX_TIMEOUT = 10000;
-	
+		
 	// Designed to allow a CCNOutputStream to flush its current output once without
 	// causing the over-capacity blocking to be triggered
 	protected static final int DEFAULT_CAPACITY = CCNOutputStream.BLOCK_BUF_COUNT + 1;
 	
 	protected static final int DEFAULT_INTEREST_CAPACITY = 40;
-	protected int _timeout = MAX_TIMEOUT;
+	
+	// Temporarily default to very high timeout so that puts have a good
+	// chance of going through.  We actually may want to keep this.
+	protected int _timeout = SystemConfiguration.MAX_TIMEOUT;
+	
 	protected int _capacity = DEFAULT_CAPACITY;
 	
 	// Value used to determine whether the buffer is draining in waitForPutDrain

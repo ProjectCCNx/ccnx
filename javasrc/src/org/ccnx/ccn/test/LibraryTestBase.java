@@ -67,9 +67,7 @@ public class LibraryTestBase {
 	protected static ContentName PARENT_NAME = null;
 	
 	protected static final boolean DO_TAP = true;
-	
-	protected static int CONFIRMATION_TIMEOUT = 10;
-	
+		
 	protected HashSet<Integer> _resultSet = new HashSet<Integer>();
 	
 	protected static CCNHandle putLibrary = null;

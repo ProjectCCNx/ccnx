@@ -18,7 +18,6 @@
 package org.ccnx.ccn.test;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -143,11 +142,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 //		SignedInfo.ContentType type = SignedInfo.ContentType.LEAF;
 		PublisherPublicKeyDigest publisher = null;
 
-		try {
-			content = contentString.getBytes("UTF-8");	
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
+		content = DataUtils.getBytesFromUTF8String(contentString);
 
 		try {
 			name = ContentName.fromNative("/test/briggs/foo.txt");

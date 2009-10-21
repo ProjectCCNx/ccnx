@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import org.ccnx.ccn.CCNBase;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -249,7 +248,7 @@ public class CCNReader {
 		int count = query.name().count();
 		while (true) {
 			ContentObject co = null;
-			co = _handle.get(query, timeout == SystemConfiguration.NO_TIMEOUT ? 5000 : timeout);
+			co = _handle.get(query, timeout);
 			if (co == null)
 				break;
 			Log.info("enumerate: retrieved " + co.name() + 
