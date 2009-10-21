@@ -81,6 +81,11 @@ public class SystemConfiguration {
 	public final static int MAX_TIMEOUT = 10000;
 	
 	/**
+	 * Extra-long timeout, e.g. to get around reexpression timing issues.
+	 */
+	public final static int EXTRA_LONG_TIMEOUT = 6000;
+	
+	/**
 	 * Longer timeout, for e.g. waiting for a latest version and being sure you
 	 * have anything available locally in msec.
 	 */
@@ -99,7 +104,7 @@ public class SystemConfiguration {
 	/**
 	 * Settable system default timeout.
 	 */
-	protected static int _defaultTimeout = MEDIUM_TIMEOUT;
+	protected static int _defaultTimeout = EXTRA_LONG_TIMEOUT;
 	
 	/**
 	 * Get system default timeout.
