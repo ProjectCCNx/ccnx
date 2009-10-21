@@ -156,7 +156,6 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		return digestStreamWrapper.getMessageDigest().digest();
 	}
 	
-	@Override
 	public int handleInterests(ArrayList<Interest> interests) {
 		Interest interest = interests.get(0);
 		// we only deal with the first interest, at least for now
