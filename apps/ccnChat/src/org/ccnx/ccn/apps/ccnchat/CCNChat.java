@@ -36,11 +36,11 @@ import javax.swing.JTextField;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.io.content.CCNSerializableStringObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.test.io.content.CCNSerializableStringObject;
 
 /**
  * Based on a client/server chat example in Robert Sedgewick's Algorithms

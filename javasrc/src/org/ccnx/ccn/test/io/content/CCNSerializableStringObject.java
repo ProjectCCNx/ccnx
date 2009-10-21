@@ -15,11 +15,15 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.io.content;
+package org.ccnx.ccn.test.io.content;
 
 import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.io.content.CCNSerializableObject;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentGoneException;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;

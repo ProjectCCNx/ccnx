@@ -28,9 +28,9 @@ import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.CCNSerializableStringObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.io.content.CCNSerializableStringObject;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
