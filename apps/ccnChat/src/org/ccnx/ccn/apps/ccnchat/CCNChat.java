@@ -36,11 +36,11 @@ import javax.swing.JTextField;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.test.io.content.CCNSerializableStringObject;
 
 /**
  * Based on a client/server chat example in Robert Sedgewick's Algorithms
@@ -55,8 +55,8 @@ public class CCNChat extends JFrame implements ActionListener {
 	protected ContentName _namespace;
 	// Separate read and write libraries so we will read our own updates,
 	// and don't have to treat our inputs differently than others.
-	protected CCNSerializableStringObject _readString;
-	protected CCNSerializableStringObject _writeString;
+	protected CCNStringObject _readString;
+	protected CCNStringObject _writeString;
 	protected Timestamp _lastUpdate;
 	boolean _finished = false;
 	
@@ -135,11 +135,11 @@ public class CCNChat extends JFrame implements ActionListener {
 	}
 	
 	public void listen() throws ConfigurationException, IOException {
-		_readString = new CCNSerializableStringObject(_namespace, (String)null, CCNHandle.open());
+		_readString = new CCNStringObject(_namespace, (String)null, CCNHandle.open());
 		_readString.updateInBackground(true);
 		
 		String introduction = UserConfiguration.userName() + " has entered " + _namespace;
-		_writeString = new CCNSerializableStringObject(_namespace, introduction, CCNHandle.open());
+		_writeString = new CCNStringObject(_namespace, introduction, CCNHandle.open());
 		_writeString.save();
 		
 		// Need to do synchronization for updates that come in while we're processing last one.
