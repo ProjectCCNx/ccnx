@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.impl.support;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -268,8 +269,7 @@ public class DataUtils {
 	}
 
 	/**
-	 * Currently unused - anyone know what the purpose of this is supposed to be?
-	 * 
+	 * This was used in early content demos; keep it around as it may be generally useful.
 	 * @param file
 	 * @return
 	 * @throws IOException
@@ -304,7 +304,24 @@ public class DataUtils {
 	    is.close();
 	    return bytes;
 	}
-
+	
+	/**
+	 * Read a stream (usually small) completely in to a byte array. Used to get all of the
+	 * bytes out of one or more content objects for decoding or other processing, where the
+	 * content needs to be handed to something else as a unit.
+	 */
+	public static byte [] getBytesFromStream(InputStream input) throws IOException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		byte [] buf = new byte[1024];
+		int byteCount = 0;
+		byteCount = input.read(buf);
+		while (byteCount > 0) {
+			baos.write(buf, 0, byteCount);
+			byteCount = input.read(buf);
+		}
+		return baos.toByteArray();
+	}
+	
 	/**
 	 * Lexicographically compare two byte arrays, looking at a limited number of bytes.
 	 * @param arr1
