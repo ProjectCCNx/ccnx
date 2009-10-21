@@ -26,9 +26,13 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * A CCNNetworkObject wrapper around Java Strings. Allows reading and writing of
+ * A CCNNetworkObject wrapper around Java Strings, which uses Java serialization
+ * to write those strings. Allows reading and writing of
  * versioned strings to CCN, and background updating of same. Very useful class
- * for writing simple tests and applications. See CCNChat for an example.
+ * for writing simple tests and applications, but requires both communicating
+ * partners to speak Java Serialization. See CCNStringObject for a more generally
+ * useful string object that serializes the string in pure UTF-8, making
+ * something that can be more easily read from other languages.
  */
 public class CCNStringObject extends CCNSerializableObject<String> {
 
