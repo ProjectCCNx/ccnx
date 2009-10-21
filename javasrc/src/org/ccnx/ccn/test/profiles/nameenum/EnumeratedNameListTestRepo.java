@@ -28,7 +28,7 @@ import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.CCNStringObject;
+import org.ccnx.ccn.io.content.CCNSerializableStringObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
@@ -283,7 +283,7 @@ public class EnumeratedNameListTestRepo {
 		return name;
 		*/
 		
-		CCNStringObject cso = new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), handle);
+		CCNSerializableStringObject cso = new CCNSerializableStringObject(name, ContentName.componentPrintNative(name.lastComponent()), handle);
 		cso.saveToRepository();
 		System.out.println("Saved new object: " + cso.getVersionedName());
 		return cso.getVersionedName();

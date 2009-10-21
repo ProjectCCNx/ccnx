@@ -28,7 +28,7 @@ import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.content.CCNNetworkObject;
-import org.ccnx.ccn.io.content.CCNStringObject;
+import org.ccnx.ccn.io.content.CCNSerializableStringObject;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
@@ -175,31 +175,31 @@ public class CCNNetworkObjectTest {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testVersioning"), stringObjName);
 		try {
 
-			CCNStringObject so = new CCNStringObject(testName, "First value", lput);
-			CCNStringObject ro = null;
-			CCNStringObject ro2 = null;
-			CCNStringObject ro3, ro4; // make each time, to get a new handle.
+			CCNSerializableStringObject so = new CCNSerializableStringObject(testName, "First value", lput);
+			CCNSerializableStringObject ro = null;
+			CCNSerializableStringObject ro2 = null;
+			CCNSerializableStringObject ro3, ro4; // make each time, to get a new handle.
 			CCNTime soTime, srTime, sr2Time, sr3Time, sr4Time, so2Time;
 			setupNamespace(testName);
 			for (int i=0; i < numbers.length; ++i) {
 				soTime = saveAndLog(numbers[i], so, null, numbers[i]);
 				if (null == ro) {
-					ro = new CCNStringObject(testName, lget);
+					ro = new CCNSerializableStringObject(testName, lget);
 					srTime = waitForDataAndLog(numbers[i], ro);
 				} else {
 					srTime = updateAndLog(numbers[i], ro, null);				
 				}
 				if (null == ro2) {
-					ro2 = new CCNStringObject(testName, null);
+					ro2 = new CCNSerializableStringObject(testName, null);
 					sr2Time = waitForDataAndLog(numbers[i], ro2);
 				} else {
 					sr2Time = updateAndLog(numbers[i], ro2, null);				
 				}
-				ro3 = new CCNStringObject(ro.getVersionedName(), null); // read specific version
+				ro3 = new CCNSerializableStringObject(ro.getVersionedName(), null); // read specific version
 				sr3Time = waitForDataAndLog("UpdateToROVersion", ro3);
 				// Save a new version and pull old
 				so2Time = saveAndLog(numbers[i] + "-Update", so, null, numbers[i] + "-Update");
-				ro4 = new CCNStringObject(ro.getVersionedName(), null); // read specific version
+				ro4 = new CCNSerializableStringObject(ro.getVersionedName(), null); // read specific version
 				sr4Time = waitForDataAndLog("UpdateAnotherToROVersion", ro4);
 				System.out.println("Update " + i + ": Times: " + soTime + " " + srTime + " " + sr2Time + " " + sr3Time + " different: " + so2Time);
 				Assert.assertEquals("SaveTime doesn't match first read", soTime, srTime);
@@ -224,12 +224,12 @@ public class CCNNetworkObjectTest {
 
 			CCNTime desiredVersion = CCNTime.now();
 
-			CCNStringObject so = new CCNStringObject(testName, "First value", lput);
+			CCNSerializableStringObject so = new CCNSerializableStringObject(testName, "First value", lput);
 			setupNamespace(testName);
 			saveAndLog("SpecifiedVersion", so, desiredVersion, "Time: " + desiredVersion);
 			Assert.assertEquals("Didn't write correct version", desiredVersion, so.getVersion());
 
-			CCNStringObject ro = new CCNStringObject(testName, lget);
+			CCNSerializableStringObject ro = new CCNSerializableStringObject(testName, lget);
 			ro.waitForData(); 
 			Assert.assertEquals("Didn't read correct version", desiredVersion, ro.getVersion());
 			ContentName versionName = ro.getVersionedName();
@@ -239,7 +239,7 @@ public class CCNNetworkObjectTest {
 			Assert.assertTrue("New version " + so.getVersion() + " should be later than old version " + desiredVersion, (desiredVersion.before(so.getVersion())));
 			Assert.assertEquals("Didn't read correct version", so.getVersion(), ro.getVersion());
 
-			CCNStringObject ro2 = new CCNStringObject(versionName, null);
+			CCNSerializableStringObject ro2 = new CCNSerializableStringObject(versionName, null);
 			ro2.waitForData();
 			Assert.assertEquals("Didn't read correct version", desiredVersion, ro2.getVersion());
 		} finally {
@@ -391,10 +391,10 @@ public class CCNNetworkObjectTest {
 		
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateInBackground"), stringObjName, "name1");
 		try {
-			CCNStringObject c0 = new CCNStringObject(testName, (String)null, CCNHandle.open());
+			CCNSerializableStringObject c0 = new CCNSerializableStringObject(testName, (String)null, CCNHandle.open());
 			c0.updateInBackground();
 			
-			CCNStringObject c1 = new CCNStringObject(testName, (String)null, CCNHandle.open());
+			CCNSerializableStringObject c1 = new CCNSerializableStringObject(testName, (String)null, CCNHandle.open());
 			c1.updateInBackground(true);
 			
 			Assert.assertFalse(c0.available());
@@ -402,7 +402,7 @@ public class CCNNetworkObjectTest {
 			Assert.assertFalse(c1.available());
 			Assert.assertFalse(c1.isSaved());
 			
-			CCNStringObject c2 = new CCNStringObject(testName, (String)null, CCNHandle.open());
+			CCNSerializableStringObject c2 = new CCNSerializableStringObject(testName, (String)null, CCNHandle.open());
 			CCNTime t1 = saveAndLog("First string", c2, null, "Here is the first string.");
 			Log.info("Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
 			c0.waitForData();
@@ -479,11 +479,11 @@ public class CCNNetworkObjectTest {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateDoesNotExist"), collectionObjName);
 		try {
 			Log.info("CCNNetworkObjectTest: Entering testUpdateDoesNotExist");
-			CCNStringObject so = new CCNStringObject(testName, handle);
+			CCNSerializableStringObject so = new CCNSerializableStringObject(testName, handle);
 			setupNamespace(testName);
 			// so should catch exception thrown by underlying stream when it times out.
 			Assert.assertFalse(so.available());
-			CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", CCNHandle.open());
+			CCNSerializableStringObject sowrite = new CCNSerializableStringObject(testName, "Now we write something.", CCNHandle.open());
 			saveAndLog("testUpdateDoesNotExist: Delayed write", sowrite, null, "Now we write something.");
 			Log.flush();
 			so.waitForData();

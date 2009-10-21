@@ -34,25 +34,25 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * useful string object that serializes the string in pure UTF-8, making
  * something that can be more easily read from other languages.
  */
-public class CCNStringObject extends CCNSerializableObject<String> {
+public class CCNSerializableStringObject extends CCNSerializableObject<String> {
 
-	public CCNStringObject(ContentName name, String data, CCNHandle handle) 
+	public CCNSerializableStringObject(ContentName name, String data, CCNHandle handle) 
 				throws IOException {
 		super(String.class, false, name, data, handle);
 	}
 	
-	public CCNStringObject(ContentName name, PublisherPublicKeyDigest publisher,
+	public CCNSerializableStringObject(ContentName name, PublisherPublicKeyDigest publisher,
 							CCNHandle handle) 
 				throws ContentDecodingException, IOException {
 		super(String.class, false, name, publisher, handle);
 	}
 	
-	public CCNStringObject(ContentName name, CCNHandle handle) 
+	public CCNSerializableStringObject(ContentName name, CCNHandle handle) 
 				throws ContentDecodingException, IOException {
 		super(String.class, false, name, (PublisherPublicKeyDigest)null, handle);
 	}
 	
-	public CCNStringObject(ContentObject firstBlock, CCNHandle handle) 
+	public CCNSerializableStringObject(ContentObject firstBlock, CCNHandle handle) 
 				throws ContentDecodingException, IOException {
 		super(String.class, false, firstBlock, handle);
 	}
