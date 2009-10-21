@@ -19,7 +19,6 @@ package org.ccnx.ccn.impl.encoding;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.sql.Timestamp;
 import java.util.Iterator;
 import java.util.Set;
@@ -189,9 +188,6 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 				
 			}
 			
-		} catch (UnsupportedEncodingException e) {
-			Log.severe("We don't understand UTF-8! Giving up!");
-			throw new RuntimeException("Do not know UTF-8 charset! Significant configuration error!");
 		} catch (IOException e) {
 			throw new ContentEncodingException(e.getMessage(),e);
 		}

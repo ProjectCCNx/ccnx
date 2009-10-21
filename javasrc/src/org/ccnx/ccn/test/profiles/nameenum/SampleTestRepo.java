@@ -23,6 +23,7 @@ import java.util.SortedSet;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
@@ -37,14 +38,13 @@ public class SampleTestRepo {
 	static final String base = "/parc.com/csl/ccn/repositories/SampleTestRepo";
 	static final String file_name = "/simon.txt";
 	static final String txt =  "Sample text file from Simon.";
-	static final String UTF8 = "UTF-8";
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		ContentName name = ContentName.fromNative(base + file_name);
 		RepositoryOutputStream os = new RepositoryOutputStream(name, CCNHandle.getHandle());
 		
-		os.write(txt.getBytes(UTF8));
+		os.write(DataUtils.getBytesFromUTF8String(txt));
 		os.close();
 	}
 
