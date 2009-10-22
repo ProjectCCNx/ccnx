@@ -78,14 +78,14 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	@Test
 	public void getNextTest() throws Throwable {
 		System.out.println("getNext test started");
-		CCNWriter writer = new CCNWriter("/getNext", putLibrary);
-		CCNReader reader = new CCNReader(getLibrary);
+		CCNWriter writer = new CCNWriter("/getNext", putHandle);
+		CCNReader reader = new CCNReader(getHandle);
 		for (int i = 0; i < count; i++) {
 			writer.put("/getNext/" + Integer.toString(i), Integer.toString(count - i));
 			Thread.sleep(rand.nextInt(50));
 			
 			// Pull it into ccnd so we have everything there to check nexts from
-			ContentObject testCo = getLibrary.get(ContentName.fromNative("/getNext/" + Integer.toString(i)), 3000);
+			ContentObject testCo = getHandle.get(ContentName.fromNative("/getNext/" + Integer.toString(i)), 3000);
 			Assert.assertTrue(testCo != null);
 		}
 		System.out.println("Put sequence finished");
@@ -104,8 +104,8 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	public void getLatestTest() throws Throwable {
 		int highest = 0;
 		System.out.println("getLatest test started");
-		CCNWriter writer = new CCNWriter("/getLatest", putLibrary);
-		CCNReader reader = new CCNReader(getLibrary);
+		CCNWriter writer = new CCNWriter("/getLatest", putHandle);
+		CCNReader reader = new CCNReader(getHandle);
 		for (int i = 0; i < count; i++) {
 			int tValue = getRandomFromSet(count, false);
 			if (tValue > highest)
@@ -116,7 +116,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			
 			// Make sure ccnd has what we're looking for
 			Thread.sleep(500);
-			ContentObject testCo = getLibrary.get(ContentName.fromNative(name), 3000);
+			ContentObject testCo = getHandle.get(ContentName.fromNative(name), 3000);
 			Assert.assertTrue(testCo != null);
 			
 			if (i > 1) {
@@ -135,19 +135,19 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	public void excludeTest() throws Throwable {
 		System.out.println("excludeTest test started");
 		excludeSetup();
-		CCNWriter writer = new CCNWriter("/excludeTest", putLibrary);
+		CCNWriter writer = new CCNWriter("/excludeTest", putHandle);
 		for (String value : bloomTestValues) {
 			writer.put("/excludeTest/" + value, value);
 		}
 		writer.put("/excludeTest/aaa", "aaa");
 		writer.put("/excludeTest/zzzzzzzz", "zzzzzzzz");
 		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeTest/"), ef, null);
-		ContentObject content = getLibrary.get(interest, 3000);
+		ContentObject content = getHandle.get(interest, 3000);
 		Assert.assertTrue(content == null);
 		
 		String shouldGetIt = "/excludeTest/weShouldGetThis";
 		writer.put(shouldGetIt, shouldGetIt);
-		content = getLibrary.get(interest, 3000);
+		content = getHandle.get(interest, 3000);
 		Assert.assertFalse(content == null);
 		assertTrue(content.name().toString().startsWith(shouldGetIt));
 		System.out.println("excludeTest test finished");
@@ -166,7 +166,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	private void excludeTest(String prefix, int nFilters) throws Throwable {
 	
 		System.out.println("Starting exclude test - nFilters is " + nFilters);
-		CCNWriter writer = new CCNWriter(prefix, putLibrary);
+		CCNWriter writer = new CCNWriter(prefix, putHandle);
 		byte [][] excludes = new byte[nFilters - 1][];
 		for (int i = 0; i < nFilters; i++) {
 			String value = new Integer(i).toString();
@@ -175,7 +175,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			String name = prefix + "/" + value;
 			writer.put(name, value);
 		}
-		CCNReader reader = new CCNReader(getLibrary);
+		CCNReader reader = new CCNReader(getHandle);
 		ContentObject content = reader.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
 		if (null == content || !Arrays.equals(content.content(), new Integer((nFilters - 1)).toString().getBytes())) {
 			// Try one more time in case we got a false positive

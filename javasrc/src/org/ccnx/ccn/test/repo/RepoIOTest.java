@@ -22,10 +22,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 import org.ccnx.ccn.impl.repo.BasicPolicy;
+import org.ccnx.ccn.impl.repo.PolicyXML;
+import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.RepositoryOutputStream;
-import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
@@ -56,7 +57,7 @@ public class RepoIOTest extends RepoTestBase {
 		byte value = 1;
 		for (int i = 0; i < data.length; i++)
 			data[i] = value++;
-		RepositoryOutputStream ros = new RepositoryOutputStream(ContentName.fromNative(_testPrefix), putLibrary); 
+		RepositoryOutputStream ros = new RepositoryOutputStream(ContentName.fromNative(_testPrefix), putHandle); 
 		ros.setBlockSize(100);
 		ros.setTimeout(4000);
 		ros.write(data, 0, data.length);
@@ -86,7 +87,7 @@ public class RepoIOTest extends RepoTestBase {
 	public void testReadFromRepo() throws Exception {
 		System.out.println("Testing reading a stream from the repo");
 		Thread.sleep(5000);
-		CCNInputStream input = new CCNInputStream(ContentName.fromNative(_testPrefix), getLibrary);
+		CCNInputStream input = new CCNInputStream(ContentName.fromNative(_testPrefix), getHandle);
 		byte[] testBytes = new byte[data.length];
 		input.read(testBytes);
 		Assert.assertArrayEquals(data, testBytes);
@@ -115,14 +116,12 @@ public class RepoIOTest extends RepoTestBase {
 	
 	private void changePolicy(String policyFile) throws Exception {
 		FileInputStream fis = new FileInputStream(_topdir + policyFile);
-		byte [] content = new byte[fis.available()];
-		fis.read(content);
+		PolicyXML pxml = BasicPolicy.createPolicyXML(fis);
 		fis.close();
 		ContentName basePolicy = BasicPolicy.getPolicyName(ContentName.fromNative(_globalPrefix), _repoName);
 		ContentName policyName = new ContentName(basePolicy, Interest.generateNonce());
-		RepositoryVersionedOutputStream rfos = new RepositoryVersionedOutputStream(policyName, putLibrary);
-		rfos.write(content, 0, content.length);
-		rfos.close();
+		PolicyObject po = new PolicyObject(policyName, pxml, putHandle);
+		po.saveToRepository();
 		Thread.sleep(4000);
 	}
 }

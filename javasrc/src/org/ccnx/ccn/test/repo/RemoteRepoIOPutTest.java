@@ -36,7 +36,7 @@ public class RemoteRepoIOPutTest extends RepoIOTest {
 	
 	protected void checkNameSpace(String contentName, boolean expected) throws Exception {
 		ContentName name = ContentName.fromNative(contentName);
-		RepositoryOutputStream ros = new RepositoryOutputStream(name, putLibrary); 
+		RepositoryOutputStream ros = new RepositoryOutputStream(name, putHandle); 
 		byte [] data = "Testing 1 2 3".getBytes();
 		ros.write(data, 0, data.length);
 		try {

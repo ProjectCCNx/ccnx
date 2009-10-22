@@ -100,13 +100,15 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 
 		XMLEvent event;
 		try {
-			event = _reader.nextEvent();
+			do {
+				event = _reader.nextEvent();
+			} while (!event.isStartElement());		// Assume if its not a startElement it's a comment
 		} catch (XMLStreamException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		}
 		// Use getLocalPart to strip namespaces.
 		// Assumes we are working with a global default namespace of CCN.
-		if (!event.isStartElement() || (!startTag.equals(event.asStartElement().getName().getLocalPart()))) {
+		if (!startTag.equals(event.asStartElement().getName().getLocalPart())) {
 			// Coming back with namespace decoration doesn't match
 			throw new ContentDecodingException("Expected start element: " + startTag + " got: " + event.toString());
 		}	
@@ -124,7 +126,14 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	public String peekStartElement() throws ContentDecodingException {
 		XMLEvent event;
 		try {
-			event = _reader.peek();
+			while (true) {
+				event = _reader.peek();
+				if (event.isCharacters())
+					event = _reader.nextEvent();
+				else
+					break;
+			}
+			
 		} catch (XMLStreamException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		}

@@ -61,7 +61,7 @@ public class RepoInitialReadTest extends RepoTestBase {
 		checkData(badCharName, "Funny characters!");
 		checkData(badCharLongName, "Long and funny");
 		
-		CCNReader reader = new CCNReader(getLibrary);
+		CCNReader reader = new CCNReader(getHandle);
 		ArrayList<ContentObject>keys = reader.enumerate(new Interest(keyprefix), 4000);
 		for (ContentObject keyObject : keys) {
 			checkDataAndPublisher(name, "Testing2", new PublisherPublicKeyDigest(keyObject.content()));
@@ -81,7 +81,7 @@ public class RepoInitialReadTest extends RepoTestBase {
 	}
 	
 	private void checkData(Interest interest, byte[] data) throws IOException, InterruptedException{
-		ContentObject testContent = getLibrary.get(interest, 10000);
+		ContentObject testContent = getHandle.get(interest, 10000);
 		Assert.assertFalse(testContent == null);
 		Assert.assertTrue(Arrays.equals(data, testContent.content()));		
 	}
@@ -89,7 +89,7 @@ public class RepoInitialReadTest extends RepoTestBase {
 	private void checkDataAndPublisher(ContentName name, String data, PublisherPublicKeyDigest publisher) 
 				throws IOException, InterruptedException {
 		Interest interest = new Interest(name, new PublisherID(publisher));
-		ContentObject testContent = getLibrary.get(interest, 10000);
+		ContentObject testContent = getHandle.get(interest, 10000);
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));
 		Assert.assertTrue(testContent.signedInfo().getPublisherKeyID().equals(publisher));

@@ -23,6 +23,7 @@ import java.util.ArrayList;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
@@ -38,13 +39,20 @@ public interface Policy {
 	/**
 	 * Update the policy
 	 * 
-	 * @param stream	a stream of potential repository data
+	 * @param pxml	an XML decoded policy structure
 	 * @param fromNet	true if request is from the network as opposed to reading a local file
-	 * @return			false if update is invalid or not for us
 	 * @throws XMLStreamException	if the policy data is incorrect or inconsistent
 	 * @throws IOException			on stream read errors
 	 */
-	boolean update(InputStream stream, boolean fromNet) throws XMLStreamException, IOException;
+	public void update(PolicyXML pxml, boolean fromNet) throws RepositoryException;
+	
+	/**
+	 * Update the policy from a file
+	 * This assumes that the update is not "from the network"
+	 * 
+	 * @param is stream for the file
+	 */
+	public void updateFromInputStream(InputStream is) throws ContentDecodingException, RepositoryException;
 
 	/**
 	 * Gets the current namespace covered by this repository. Any name not included within

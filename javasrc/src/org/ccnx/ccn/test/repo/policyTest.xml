@@ -14,11 +14,11 @@
   Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
   Boston, MA 02110-1301, USA.
 -->
-<policy>
-	<version id="1.4"/>
-	<localname> TestRepository </localname>
-	<globalname> parc.com/csl/ccn/repositories </globalname>
-	<namespace> /testNameSpace </namespace>
-	<namespace> /testNameSpace2 </namespace>
-</policy>
+<Policy>
+	<Version> 1.4 </Version>
+	<LocalName> TestRepository </LocalName>
+	<GlobalPrefix> parc.com/csl/ccn/repositories </GlobalPrefix>
+	<Namespace> /testNameSpace </Namespace>
+	<Namespace> /testNameSpace2 </Namespace>
+</Policy>
 

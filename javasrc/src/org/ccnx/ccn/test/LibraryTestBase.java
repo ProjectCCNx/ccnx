@@ -70,15 +70,15 @@ public class LibraryTestBase {
 		
 	protected HashSet<Integer> _resultSet = new HashSet<Integer>();
 	
-	protected static CCNHandle putLibrary = null;
-	protected static CCNHandle getLibrary = null;
+	protected static CCNHandle putHandle = null;
+	protected static CCNHandle getHandle = null;
 	
 	protected static ArrayList<Integer> usedIds = new ArrayList<Integer>();
 
 	static {
 		try {
-			putLibrary = CCNHandle.open();
-			getLibrary = CCNHandle.open();
+			putHandle = CCNHandle.open();
+			getHandle = CCNHandle.open();
 		} catch (ConfigurationException e) {
 			e.printStackTrace();
 		} catch (IOException e) {

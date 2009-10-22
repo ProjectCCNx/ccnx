@@ -80,7 +80,7 @@ public class RFSTest extends RepoTestBase {
 						
 	public void initRepoLog() throws Exception {
 		repolog = new LogStructRepoStore();
-		repolog.initialize(putLibrary, _fileTestDir, null, _repoName, _globalPrefix, null);
+		repolog.initialize(putHandle, _fileTestDir, null, _repoName, _globalPrefix, null);
 	}
 	
 	@Test
@@ -313,14 +313,14 @@ public class RFSTest extends RepoTestBase {
 	public void testPolicy() throws Exception {
 		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
-			repo.initialize(putLibrary, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null);
+			repo.initialize(putHandle, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
 		try {	// Test bad version
-			repo.initialize(putLibrary, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null);
+			repo.initialize(putHandle, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
-		repo.initialize(putLibrary, _fileTestDir,  
+		repo.initialize(putHandle, _fileTestDir,  
 					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null);
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
@@ -331,7 +331,7 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(oonsContent);
 		ContentObject testContent = repo.getContent(new Interest(outOfNameSpaceName));
 		Assert.assertTrue(testContent == null);
-		repo.initialize(putLibrary, _fileTestDir, null, _repoName, _globalPrefix, "/");
+		repo.initialize(putHandle, _fileTestDir, null, _repoName, _globalPrefix, "/");
 		repo.saveContent(oonsContent);
 		checkData(repo, outOfNameSpaceName, "Shouldn't see this");	
 	}

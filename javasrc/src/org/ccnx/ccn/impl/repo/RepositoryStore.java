@@ -228,15 +228,6 @@ public interface RepositoryStore {
 	 * @return
 	 */
 	public byte [] getRepoInfo(ArrayList<ContentName> names);
-	
-	/**
-	 * Check whether data is a policy update. Update the
-	 * policy if so
-	 * @param co
-	 * @return true if policy update data
-	 * @throws RepositoryException 
-	 */
-	public boolean checkPolicyUpdate(ContentObject co) throws RepositoryException;
 		
 	/**
 	 * Get names to respond to name enumeration requests.  Returns null if there
@@ -256,6 +247,11 @@ public interface RepositoryStore {
      * Get the global prefix for this repository
      */
     public ContentName getGlobalPrefix();
+    
+    /**
+     * Get the local name for this repository
+     */
+    public String getLocalName();
     
     /**
      * Execute diagnostic operation.  The diagnostic operations are 

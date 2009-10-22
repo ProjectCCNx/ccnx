@@ -117,15 +117,19 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null);
 			RepositoryDataListener listener;
 			
-			// If this is a special case repo file, use special listener
-			if (_server.getRepository().getGlobalPrefix().isPrefixOf(listeningName)) {
-				listener = new RepositoryPolicyListener(interest, readInterest, _server);
-			} else {
-				listener = new RepositoryDataListener(interest, readInterest, _server);
-			}
-			_server.addListener(interest, readInterest, listener);
 			_server.getWriter().put(interest.name(), _server.getRepository().getRepoInfo(null), null, null,
 					_server.getFreshness());
+			
+			// Check for special case file written to repo
+			ContentName globalPrefix = _server.getRepository().getGlobalPrefix();
+			String localName = _server.getRepository().getLocalName();
+			if (BasicPolicy.getPolicyName(globalPrefix, localName).isPrefixOf(listeningName)) {
+				new RepositoryPolicyHandler(interest, readInterest, _server);
+				return;
+			}
+			
+			listener = new RepositoryDataListener(interest, readInterest, _server);
+			_server.addListener(interest, readInterest, listener);
 			listener.getInterests().add(readInterest, null);
 			_handle.expressInterest(readInterest, listener);
 		} catch (Exception e) {

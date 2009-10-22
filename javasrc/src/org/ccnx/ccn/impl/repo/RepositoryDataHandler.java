@@ -1,6 +1,5 @@
 package org.ccnx.ccn.impl.repo;
 
-import java.io.IOException;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -39,7 +38,6 @@ public class RepositoryDataHandler implements Runnable {
 			}
 			
 			NameEnumerationResponse ner = _server.getRepository().saveContent(_content);
-			specialFunctionality(_content);
 			if (ner!=null && ner.hasNames()) {
 				_server.sendEnumerationResponse(ner);
 			}
@@ -48,10 +46,4 @@ public class RepositoryDataHandler implements Runnable {
 			Log.logStackTrace(Level.WARNING, e);
 		}
 	}
-	
-	/**
-	 * Allow subclass override
-	 * @param co
-	 */
-	public void specialFunctionality(ContentObject co) throws RepositoryException, IOException {}
 }

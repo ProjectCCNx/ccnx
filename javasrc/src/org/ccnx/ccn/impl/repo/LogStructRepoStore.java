@@ -213,6 +213,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * @param globalPrefix the global prefix for this repository as a slash separated String (defaults if null)
 	 * @param An initial namespace (defaults to namespace stored in repository, or / if none)
 	 * @throws RepositoryException if the policyFile, localName, or globalName are improperly formatted
+	 * @throws ContentDecodingException 
 	 */
 	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix,
 				String namespace) throws RepositoryException {
@@ -279,7 +280,11 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		 * Try to read policy from storage if we don't have full policy source yet
 		 */
 		if (null == policyFile) {
-			readPolicy(localName);
+			try {
+				readPolicy(localName);
+			} catch (ContentDecodingException e) {
+				throw new RepositoryException(e.getMessage());
+			}
 		}
 		
 		checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, handle, globalFromArgs);

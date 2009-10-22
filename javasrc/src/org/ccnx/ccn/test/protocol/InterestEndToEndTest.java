@@ -45,7 +45,7 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	
 	@Test
 	public void testInterestEndToEnd() throws MalformedContentNameStringException, IOException, InterruptedException {
-		getLibrary.registerFilter(ContentName.fromNative(_prefix), this);
+		getHandle.registerFilter(ContentName.fromNative(_prefix), this);
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
 		doTest();
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
@@ -67,7 +67,7 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	
 	private void doTest() throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
-		putLibrary.expressInterest(_interestSent, this);
+		putHandle.expressInterest(_interestSent, this);
 		synchronized (this) {
 			wait(TIMEOUT);
 		}
