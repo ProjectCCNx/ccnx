@@ -23,16 +23,14 @@ import static org.junit.Assert.assertNotNull;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
-import javax.xml.stream.XMLStreamException;
-
 import junit.framework.Assert;
 
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.Header;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.Test;
-
-
 
 /**
  * Test the Header data structure.
@@ -83,7 +81,7 @@ public class HeaderTest {
 		System.out.println("Encoding Header...");
 		try {
 			seq.encode(baos);
-		} catch (XMLStreamException e) {
+		} catch (ContentEncodingException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
 		}
@@ -109,7 +107,7 @@ public class HeaderTest {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
 			seqIn.encode(baos);
-		} catch (XMLStreamException e) {
+		} catch (ContentEncodingException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
 		}
@@ -120,7 +118,7 @@ public class HeaderTest {
 
 		try {
 			seqOut.decode(bais);
-		} catch (XMLStreamException e) {
+		} catch (ContentDecodingException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
 		}

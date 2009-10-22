@@ -24,12 +24,11 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
@@ -103,8 +102,8 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 				default:
 					break;
 				}
-			} catch (XMLStreamException e) {
-				Log.info("XMLStreamException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());
+			} catch (ContentDecodingException e) {
+				Log.info("ContentDecodingException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());
 			}
 		}
 		// So far, we seem never to have anything to return.

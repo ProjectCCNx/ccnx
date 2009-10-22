@@ -27,9 +27,8 @@ import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.spec.InvalidKeySpecException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.ContentObject;
 
 /**
@@ -69,7 +68,8 @@ public class ccn_verify {
 		}
 	}
 		
-	public static ContentObject readObjectFile(String filePath) throws FileNotFoundException, XMLStreamException {
+	public static ContentObject readObjectFile(String filePath) 
+			throws ContentDecodingException, FileNotFoundException {
 		FileInputStream fis = new FileInputStream(filePath);
 		BufferedInputStream bis = new BufferedInputStream(fis);
 		ContentObject co = new ContentObject();
@@ -78,7 +78,9 @@ public class ccn_verify {
 		
 	}
 	
-	public static PublicKey readKeyFile(String filePath) throws IOException, FileNotFoundException, XMLStreamException, CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
+	public static PublicKey readKeyFile(String filePath) 
+			throws ContentDecodingException, IOException, FileNotFoundException, 
+				CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
 		ContentObject keyObject = readObjectFile(filePath);
 		try {
 			return CryptoUtil.getPublicKey(keyObject.content());

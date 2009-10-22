@@ -19,8 +19,6 @@ package org.ccnx.ccn.io;
 
 import java.io.IOException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
@@ -46,7 +44,7 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 		this(baseName, null, null, null);
 	}
 
-	public CCNBlockInputStream(ContentName baseName, CCNHandle handle) throws XMLStreamException, IOException {
+	public CCNBlockInputStream(ContentName baseName, CCNHandle handle) throws IOException {
 		this(baseName, null, null, handle);
 	}
 

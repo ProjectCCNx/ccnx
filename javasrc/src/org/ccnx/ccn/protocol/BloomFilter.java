@@ -22,12 +22,12 @@ import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
 import java.util.Random;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 
 /**
@@ -172,7 +172,7 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 	public String getElementLabel() { return BLOOM_ELEMENT; }
 	
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		ByteArrayInputStream bais = new ByteArrayInputStream(decoder.readBinaryElement(getElementLabel()));
 		_lgBits = bais.read();
 		_nHash = bais.read();
@@ -193,7 +193,7 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 	}
 	
 	@Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		baos.write((byte)_lgBits);
 		baos.write((byte)_nHash);

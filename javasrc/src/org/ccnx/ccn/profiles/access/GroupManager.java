@@ -26,14 +26,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -89,11 +90,10 @@ public class GroupManager {
 	 * Get a group specified by its friendly name
 	 * @param groupFriendlyName the friendly name of the group
 	 * @return the corresponding group
-	 * @throws IOException
-	 * @throws ConfigurationException
-	 * @throws XMLStreamException
+	 * @throws IOException 
+	 * @throws ContentDecodingException 
 	 */
-	public Group getGroup(String groupFriendlyName) throws IOException, ConfigurationException, XMLStreamException {
+	public Group getGroup(String groupFriendlyName) throws ContentDecodingException, IOException {
 		if ((null == groupFriendlyName) || (groupFriendlyName.length() == 0)) {
 			Log.info("Asked to retrieve group with empty name.");
 			return null;
@@ -132,11 +132,10 @@ public class GroupManager {
 	 * Get the group specified by a link
 	 * @param theGroup link to the group
 	 * @return the corresponding group
-	 * @throws IOException
-	 * @throws ConfigurationException
-	 * @throws XMLStreamException
+	 * @throws IOException 
+	 * @throws ContentDecodingException 
 	 */
-	public Group getGroup(Link theGroup) throws IOException, ConfigurationException, XMLStreamException {
+	public Group getGroup(Link theGroup) throws ContentDecodingException, IOException {
 		if (null == theGroup) {
 			Log.info("Asked to retrieve group with empty link.");
 			return null;
@@ -164,16 +163,14 @@ public class GroupManager {
 	 * @param groupFriendlyName the friendly name of the group
 	 * @param newMembers the members of the group
 	 * @return the group
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws ConfigurationException
-	 * @throws InvalidKeyException
-	 * @throws InvalidCipherTextException
-	 * @throws AccessDeniedException
+	 * @throws IOException 
+	 * @throws ConfigurationException 
+	 * @throws ContentEncodingException 
+	 * @throws InvalidKeyException 
+	 * @throws InvalidCipherTextException 
 	 */
 	public Group createGroup(String groupFriendlyName, ArrayList<Link> newMembers) 
-				throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException, 
-						InvalidCipherTextException, AccessDeniedException {
+			throws InvalidKeyException, ContentEncodingException, ConfigurationException, IOException, InvalidCipherTextException {
 		Group existingGroup = getGroup(groupFriendlyName);
 		if (null != existingGroup) {
 			existingGroup.setMembershipList(this, newMembers);
@@ -196,11 +193,10 @@ public class GroupManager {
 	/**
 	 * Delete an existing group specified by its friendly name.
 	 * @param friendlyName the friendly name of the group
-	 * @throws IOException
-	 * @throws ConfigurationException
-	 * @throws XMLStreamException
+	 * @throws IOException 
+	 * @throws ContentDecodingException 
 	 */
-	public void deleteGroup(String friendlyName) throws IOException, ConfigurationException, XMLStreamException {
+	public void deleteGroup(String friendlyName) throws ContentDecodingException, IOException {
 		Group existingGroup = getGroup(friendlyName);		
 		// We really want to be sure we get the group if it's out there...
 		if (null != existingGroup) {
@@ -237,7 +233,7 @@ public class GroupManager {
 		return _myGroupMemberships.contains(principal);
 	}
 
-	public boolean amCurrentGroupMember(String principal) throws IOException, XMLStreamException, ConfigurationException {
+	public boolean amCurrentGroupMember(String principal) throws ContentDecodingException, IOException {
 		return amCurrentGroupMember(getGroup(principal));
 	}
 	
@@ -248,10 +244,9 @@ public class GroupManager {
 	 * @param group the group
 	 * @return
 	 * @throws IOException 
-	 * @throws XMLStreamException 
-	 * @throws ConfigurationException 
+	 * @throws ContentDecodingException 
 	 */
-	public boolean amCurrentGroupMember(Group group) throws IOException, XMLStreamException, ConfigurationException {
+	public boolean amCurrentGroupMember(Group group) throws ContentDecodingException, IOException {
 		MembershipList ml = group.membershipList(); // will update
 		for (Link lr : ml.membershipList().contents()) {
 			if (isGroup(lr)) {
@@ -279,14 +274,13 @@ public class GroupManager {
 	 * @param groupFriendlyName the group friendly name
 	 * @param privateKeyVersion the version of the private key
 	 * @return the group private key
-	 * @throws InvalidKeyException
-	 * @throws InvalidCipherTextException
-	 * @throws IOException
-	 * @throws XMLStreamException
-	 * @throws AccessDeniedException
-	 * @throws ConfigurationException
+	 * @throws IOException 
+	 * @throws ContentDecodingException 
+	 * @throws InvalidCipherTextException 
+	 * @throws InvalidKeyException 
 	 */
-	public PrivateKey getGroupPrivateKey(String groupFriendlyName, CCNTime privateKeyVersion) throws InvalidKeyException, InvalidCipherTextException, IOException, XMLStreamException, AccessDeniedException, ConfigurationException {
+	public PrivateKey getGroupPrivateKey(String groupFriendlyName, CCNTime privateKeyVersion) 
+			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException {
 		// Heuristic check
 		if (!amKnownGroupMember(groupFriendlyName)) {
 			Log.info("Unexpected: we don't think we're a group member of group " + groupFriendlyName);
@@ -351,16 +345,15 @@ public class GroupManager {
 	 * @param keyDirectory the key directory associated with the group
 	 * @param principal the principal
 	 * @return the versioned private key
-	 * @throws IOException
-	 * @throws InvalidKeyException
-	 * @throws AccessDeniedException
-	 * @throws InvalidCipherTextException
-	 * @throws XMLStreamException
-	 * @throws ConfigurationException
+	 * @throws IOException 
+	 * @throws InvalidCipherTextException 
+	 * @throws ContentNotReadyException
+	 * @throws ContentDecodingException
+	 * @throws InvalidKeyException 
 	 */
 	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) 
-			throws IOException, InvalidKeyException, AccessDeniedException, InvalidCipherTextException, 
-					XMLStreamException, ConfigurationException {
+			throws InvalidKeyException, ContentNotReadyException, ContentDecodingException, 
+					InvalidCipherTextException, IOException {
 		PrincipalInfo pi = null;
 		pi = keyDirectory.getPrincipalInfo(principal);
 		if (null == pi) {
@@ -384,11 +377,10 @@ public class GroupManager {
 	 * Get the latest public key for a group specified by its principal name
 	 * @param principal
 	 * @return
-	 * @throws IOException
-	 * @throws ConfigurationException
-	 * @throws XMLStreamException
+	 * @throws IOException 
+	 * @throws ContentDecodingException 
 	 */
-	public PublicKeyObject getLatestPublicKeyForGroup(Link principal) throws IOException, ConfigurationException, XMLStreamException {
+	public PublicKeyObject getLatestPublicKeyForGroup(Link principal) throws ContentDecodingException, IOException {
 		Group theGroup = getGroup(principal);
 		if (null == theGroup) 
 			return null;

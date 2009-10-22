@@ -73,8 +73,6 @@ public class Daemon {
 	public static final String PROP_DAEMON_OUTPUT = "ccn.daemon.output";
 	public static final String PROP_DAEMON_PROFILE = "ccn.daemon.profile";
 	
-	public static final int STOP_TIMEOUT = 30000;  // 30 seconds
-
 	/**
 	 * Interface describing the RMI server object sitting inside
 	 * the daemon 
@@ -438,7 +436,7 @@ public class Daemon {
 		}
 		
 		Timer stopTimer = new Timer(false);
-		stopTimer.schedule(daemon.new StopTimer(daemonName, pid), STOP_TIMEOUT);
+		stopTimer.schedule(daemon.new StopTimer(daemonName, pid), SystemConfiguration.SYSTEM_STOP_TIMEOUT);
 
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, pid)));
 

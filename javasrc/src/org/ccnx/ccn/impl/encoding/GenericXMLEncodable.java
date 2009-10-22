@@ -24,9 +24,9 @@ import java.io.OutputStream;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 
 /**
@@ -58,33 +58,33 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 	 */
 	protected GenericXMLEncodable() {}
 	
- 	public void decode(InputStream istream) throws XMLStreamException {
+ 	public void decode(InputStream istream) throws ContentDecodingException {
  		decode(istream, null);
  	}
  	
-	public void decode(InputStream istream, String codec) throws XMLStreamException {
+	public void decode(InputStream istream, String codec) throws ContentDecodingException {
 		XMLDecoder decoder = XMLCodecFactory.getDecoder(codec);
 		decoder.beginDecoding(istream);
 		decode(decoder);
 		decoder.endDecoding();
 	}
  	
-	public void decode(byte [] content) throws XMLStreamException {
+	public void decode(byte [] content) throws ContentDecodingException {
 		decode(content, null);
 	}
 
-	public void decode(byte [] content, String codec) throws XMLStreamException {
+	public void decode(byte [] content, String codec) throws ContentDecodingException {
  		ByteArrayInputStream bais = new ByteArrayInputStream(content);
  		decode(bais, codec);
  	}
 	
-	public void decode(ByteBuffer buf) throws XMLStreamException {
+	public void decode(ByteBuffer buf) throws ContentDecodingException {
 		decode(buf, null);
 	}
 	
-	public void decode(ByteBuffer buf, String codec) throws XMLStreamException {
+	public void decode(ByteBuffer buf, String codec) throws ContentDecodingException {
 		if (!buf.hasArray()) {
-			throw new XMLStreamException("Unusable ByteBuffer: has no array");
+			throw new ContentDecodingException("Unusable ByteBuffer: has no array");
 		}
 		byte[] array = buf.array();
 		
@@ -97,22 +97,22 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 		decode(bais, codec);
 	}
 	
-	public void encode(OutputStream ostream) throws XMLStreamException {
+	public void encode(OutputStream ostream) throws ContentEncodingException {
 		encode(ostream, null);
 	}
 
-	public void encode(OutputStream ostream, String codec) throws XMLStreamException {
+	public void encode(OutputStream ostream, String codec) throws ContentEncodingException {
 		XMLEncoder encoder = XMLCodecFactory.getEncoder(codec);
 		encoder.beginEncoding(ostream);
 		encode(encoder);
 		encoder.endEncoding();	
 	}
 
-	public byte [] encode() throws XMLStreamException {
+	public byte [] encode() throws ContentEncodingException {
 		return encode((String)null);
 	}
 	
-	public byte [] encode(String codec) throws XMLStreamException {
+	public byte [] encode(String codec) throws ContentEncodingException {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		encode(baos, codec);
 		return baos.toByteArray();
@@ -127,7 +127,7 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 		byte[] encoded;
 		try {
 			encoded = encode(TextXMLCodec.codecName());
-		} catch (XMLStreamException e) {
+		} catch (ContentEncodingException e) {
 			Log.info("GenericXMLEncodable.toString(): cannot encode: " + e.getMessage());
 			return new String();
 		}
@@ -138,9 +138,9 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 	 * These are the methods that a subclass really does need to implement.
 	 */
 	
-	public abstract void decode(XMLDecoder decoder) throws XMLStreamException;
+	public abstract void decode(XMLDecoder decoder) throws ContentDecodingException;
 	
-	public abstract void encode(XMLEncoder encoder) throws XMLStreamException;
+	public abstract void encode(XMLEncoder encoder) throws ContentEncodingException;
 	
 	public abstract String getElementLabel();
 

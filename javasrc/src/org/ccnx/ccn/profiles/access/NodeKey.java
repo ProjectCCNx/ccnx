@@ -21,11 +21,11 @@ import java.security.InvalidKeyException;
 import java.security.Key;
 
 import javax.crypto.spec.SecretKeySpec;
-import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -129,9 +129,10 @@ public class NodeKey {
 	 * @param keyLabel the label of the key
 	 * @return the node key
 	 * @throws InvalidKeyException
-	 * @throws XMLStreamException
+	 * @throws ContentEncodingException
 	 */
-	public NodeKey computeDescendantNodeKey(ContentName descendantNodeName, String keyLabel) throws InvalidKeyException, XMLStreamException {
+	public NodeKey computeDescendantNodeKey(ContentName descendantNodeName, String keyLabel) 
+			throws InvalidKeyException, ContentEncodingException {
 		if (nodeName().equals(descendantNodeName)) {
 			Log.info("Asked to compute ourselves as our own descendant (node key " + nodeName() +"), returning this.");
 			return this;
@@ -143,7 +144,8 @@ public class NodeKey {
 		return new NodeKey(descendantNodeName, derivedKey, storedNodeKeyName(), storedNodeKeyID());
 	}
 	
-	public NodeKey computeDescendantNodeKey(ContentName descendantNodeName) throws InvalidKeyException, XMLStreamException {
+	public NodeKey computeDescendantNodeKey(ContentName descendantNodeName) 
+			throws InvalidKeyException, ContentEncodingException {
 		return computeDescendantNodeKey(descendantNodeName, DEFAULT_KEY_LABEL);
 	}
 	

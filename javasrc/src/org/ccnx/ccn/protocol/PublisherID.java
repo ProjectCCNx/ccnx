@@ -24,8 +24,6 @@ import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -34,6 +32,8 @@ import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 
 /**
@@ -215,36 +215,36 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	 * This is a choice. Make it possible for users of this class to peek it
 	 * when it might be optional, without them having to know about the structure.
 	 */
-	public static boolean peek(XMLDecoder decoder) throws XMLStreamException {
+	public static boolean peek(XMLDecoder decoder) throws ContentDecodingException {
 		String nextTag = decoder.peekStartElement();
 		return (null != nameToType(nextTag));
 	}
 
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		
 		// We have a choice here of one of 4 binary element types.
 		String nextTag = decoder.peekStartElement();
 		
 		if (null == nextTag) {
-			throw new XMLStreamException("Cannot parse publisher ID.");
+			throw new ContentDecodingException("Cannot parse publisher ID.");
 		} 
 		
 		_publisherType = nameToType(nextTag); 
 		
 		if (null == _publisherType) {
-			throw new XMLStreamException("Invalid publisher ID, got unexpected type: " + nextTag);
+			throw new ContentDecodingException("Invalid publisher ID, got unexpected type: " + nextTag);
 		}
 		_publisherID = decoder.readBinaryElement(nextTag);
 		if (null == _publisherID) {
-			throw new XMLStreamException("Cannot parse publisher ID of type : " + nextTag + ".");
+			throw new ContentDecodingException("Cannot parse publisher ID of type : " + nextTag + ".");
 		}
 	}
 
 	@Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		// The format of a publisher ID is a choice, a binary element tagged with
 		// one of the 4 publisher types.

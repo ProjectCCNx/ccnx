@@ -20,8 +20,6 @@ package org.ccnx.ccn.protocol;
 import java.security.cert.CertificateEncodingException;
 import java.util.Arrays;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.bouncycastle.asn1.x509.DigestInfo;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
@@ -32,6 +30,8 @@ import org.ccnx.ccn.impl.security.crypto.MerklePath;
 import org.ccnx.ccn.impl.security.crypto.util.OIDLookup;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 /**
  * A class to encapsulate Signature data within a ContentObject. 
@@ -120,7 +120,7 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 	}
 	
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
 		if (decoder.peekStartElement(DIGEST_ALGORITHM_ELEMENT)) {
@@ -137,10 +137,10 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 	}
 
     @Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
     	
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		
 		encoder.writeStartElement(getElementLabel());

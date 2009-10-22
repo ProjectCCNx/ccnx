@@ -21,14 +21,14 @@ import java.math.BigInteger;
 import java.security.PublicKey;
 import java.util.Arrays;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 
 /**
@@ -122,20 +122,20 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XML
 	}
 	
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		
 		// The format of a publisher ID is an octet string.
 
 		_publisherPublicKeyDigest = decoder.readBinaryElement(getElementLabel());
 		if (null == _publisherPublicKeyDigest) {
-			throw new XMLStreamException("Cannot parse publisher key digest.");
+			throw new ContentDecodingException("Cannot parse publisher key digest.");
 		}
 	}
 
 	@Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		// The format of a publisher ID is:
 		// <PublisherID type=<type> id_content />

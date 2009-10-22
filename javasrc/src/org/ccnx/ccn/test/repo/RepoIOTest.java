@@ -21,8 +21,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.repo.BasicPolicy;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
@@ -99,7 +97,7 @@ public class RepoIOTest extends RepoTestBase {
 	// of data not already in the ccnd cache, thus testing 
 	// what happens if we pull latest version and try to read
 	// content in order
-	public void testVersionedRead() throws InterruptedException, MalformedContentNameStringException, XMLStreamException, IOException {
+	public void testVersionedRead() throws InterruptedException, IOException, MalformedContentNameStringException {
 		System.out.println("Testing reading a versioned stream");
 		Thread.sleep(5000);
 		ContentName versionedNameNormal = ContentName.fromNative("/testNameSpace/testVersionNormal");

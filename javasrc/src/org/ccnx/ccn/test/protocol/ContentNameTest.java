@@ -17,14 +17,18 @@
 
 package org.ccnx.ccn.test.protocol;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
@@ -434,7 +438,7 @@ public class ContentNameTest {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
 			name.encode(baos);
-		} catch (XMLStreamException e) {
+		} catch (ContentEncodingException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
 		}
@@ -456,7 +460,7 @@ public class ContentNameTest {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
 			name.encode(baos);
-		} catch (XMLStreamException e) {
+		} catch (ContentEncodingException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
 		}
@@ -468,7 +472,7 @@ public class ContentNameTest {
 		ContentName name2 = new ContentName();
 		try {
 			name2.decode(bais);
-		} catch (XMLStreamException e) {
+		} catch (ContentDecodingException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
 		}

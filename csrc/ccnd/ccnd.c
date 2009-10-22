@@ -3097,7 +3097,8 @@ process_input(struct ccnd_handle *h, int fd)
         source->recvcount++;
         source->surplus = 0;
         if (res <= 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
-            ccnd_msg(h, "%d-byte heartbeat on %d", (int)res, source->faceid);
+            if (h->debug & 128)
+                ccnd_msg(h, "%d-byte heartbeat on %d", (int)res, source->faceid);
             return;
         }
         face->inbuf->length += res;

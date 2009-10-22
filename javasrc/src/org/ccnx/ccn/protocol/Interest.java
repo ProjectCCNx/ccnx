@@ -21,8 +21,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
@@ -30,6 +28,8 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.CommandMarkers;
 
 
@@ -508,7 +508,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * Thought about encoding and decoding as flat -- no wrapping
 	 * declaration. But then couldn't use these solo.
 	 */
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
 		_name = new ContentName();
@@ -550,15 +550,14 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		
 		try {
 			decoder.readEndElement();
-		} catch (XMLStreamException e) {
-			// DKS TODO -- get Michael to update schema!
+		} catch (ContentDecodingException e) {
 			Log.info("Catching exception reading Interest end element, and moving on. Waiting for schema updates...");
 		}
 	}
 
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
 		

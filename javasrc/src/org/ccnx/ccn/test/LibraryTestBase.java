@@ -30,8 +30,6 @@ import java.util.Random;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
@@ -69,9 +67,7 @@ public class LibraryTestBase {
 	protected static ContentName PARENT_NAME = null;
 	
 	protected static final boolean DO_TAP = true;
-	
-	protected static int CONFIRMATION_TIMEOUT = 10;
-	
+		
 	protected HashSet<Integer> _resultSet = new HashSet<Integer>();
 	
 	protected static CCNHandle putLibrary = null;
@@ -156,13 +152,12 @@ public class LibraryTestBase {
 	 * @param handle
 	 * @return
 	 * @throws InterruptedException
-	 * @throws MalformedContentNameStringException
 	 * @throws IOException
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
-	 * @throws XMLStreamException 
+	 * @throws InterruptedException 
 	 */
-	public void getResults(ContentName baseName, int count, CCNHandle handle) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNHandle handle) throws IOException, InvalidKeyException, SignatureException, InterruptedException {
 		Random rand = new Random();
 	//	boolean done = false;
 		System.out.println("getResults: getting children of " + baseName);
@@ -202,10 +197,10 @@ public class LibraryTestBase {
 	 * @throws IOException 
 	 * @throws MalformedContentNameStringException 
 	 * @throws SignatureException 
-	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
-	public void doPuts(ContentName baseName, int count, CCNHandle handle) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
+	public void doPuts(ContentName baseName, int count, CCNHandle handle) 
+			throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, InvalidKeyException {
 
 		CCNWriter writer = new CCNWriter(baseName, handle);
 		Random rand = new Random();

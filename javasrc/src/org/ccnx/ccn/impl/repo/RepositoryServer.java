@@ -28,8 +28,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -284,8 +282,7 @@ public class RepositoryServer {
 		return _repoFilters;
 	}
 	
-	public void addListener(Interest interest, Interest readInterest, RepositoryDataListener listener) 
-				throws XMLStreamException, IOException {
+	public void addListener(Interest interest, Interest readInterest, RepositoryDataListener listener) {
 		synchronized(_currentListeners) {
 			_currentListeners.add(listener);
 		}

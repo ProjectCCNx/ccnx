@@ -43,9 +43,8 @@ public class MembershipList extends Collection.CollectionObject {
 	 * Read constructor -- opens existing object.
 	 * @param name
 	 * @param handle
-	 * @throws XMLStreamException
+	 * @throws ContentDecodingException
 	 * @throws IOException
-	 * @throws ClassNotFoundException 
 	 */
 	public MembershipList(ContentName name, CCNHandle handle) throws ContentDecodingException, IOException {
 		super(name, (PublisherPublicKeyDigest)null, handle);

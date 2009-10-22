@@ -171,9 +171,8 @@ public class ACL extends Collection {
 		 * Read constructor -- opens existing object.
 		 * @param name the object name
 		 * @param handle the CCN handle
-		 * @throws ConfigurationException
 		 * @throws IOException
-		 * @throws XMLStreamException
+		 * @throws ContentDecodingException
 		 */
 		public ACLObject(ContentName name, CCNHandle handle) 
 					throws ContentDecodingException, IOException {
@@ -185,9 +184,8 @@ public class ACL extends Collection {
 		 * @param name the object name
 		 * @param publisher the required publisher
 		 * @param handle the CCN handle
-		 * @throws ConfigurationException
 		 * @throws IOException
-		 * @throws XMLStreamException
+		 * @throws ContentDecodingException
 		 */
 		public ACLObject(ContentName name, PublisherPublicKeyDigest publisher,
 						CCNHandle handle) throws ContentDecodingException, IOException {

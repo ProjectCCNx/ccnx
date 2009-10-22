@@ -11,8 +11,6 @@ import java.util.ArrayList;
 import java.util.Random;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -99,7 +97,7 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		Assert.assertArrayEquals(resultDigest, writeDigest);
 	}
 	
-	public static byte [] readFile(InputStream inputStream) throws IOException, XMLStreamException {
+	public static byte [] readFile(InputStream inputStream) throws IOException {
 		
 		DigestInputStream dis = null;
 		try {
@@ -158,7 +156,6 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		return digestStreamWrapper.getMessageDigest().digest();
 	}
 	
-	@Override
 	public int handleInterests(ArrayList<Interest> interests) {
 		Interest interest = interests.get(0);
 		// we only deal with the first interest, at least for now

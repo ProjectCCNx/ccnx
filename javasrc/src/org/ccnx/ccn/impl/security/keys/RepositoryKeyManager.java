@@ -20,11 +20,10 @@ package org.ccnx.ccn.impl.security.keys;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -60,10 +59,10 @@ public class RepositoryKeyManager extends NetworkKeyManager {
 	 * Override to give different storage behavior.
 	 * Output stream is repo
 	 * @return
-	 * @throws XMLStreamException
+	 * @throws ContentEncodingException
 	 * @throws IOException
 	 */
-	protected OutputStream createKeyStoreWriteStream() throws XMLStreamException, IOException {
+	protected OutputStream createKeyStoreWriteStream() throws ContentEncodingException, IOException {
 		return new RepositoryVersionedOutputStream(_keystoreName, _handle);
 	}
 }

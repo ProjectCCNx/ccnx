@@ -21,8 +21,8 @@ import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 
-import javax.xml.stream.XMLStreamException;
-
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.BloomFilter;
 import org.ccnx.ccn.protocol.ExcludeAny;
 import org.ccnx.ccn.protocol.ExcludeComponent;
@@ -183,7 +183,7 @@ public class ExcludeTest {
 	}
 
 	@Test
-	public void testEncodeDecode() throws XMLStreamException {
+	public void testEncodeDecode() throws ContentEncodingException, ContentDecodingException {
 		al.add(c1);
 		al.add(any);
 		al.add(c3);

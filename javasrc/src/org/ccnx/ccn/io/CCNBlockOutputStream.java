@@ -23,8 +23,6 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNSegmenter;
@@ -64,21 +62,21 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 
 	protected SignedInfo.ContentType _type;
 
-	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type) throws XMLStreamException, IOException {
+	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type) throws IOException {
 		this(baseName, type, null, null);
 	}
 		
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
 								PublisherPublicKeyDigest publisher,
 								CCNHandle handle)
-								throws XMLStreamException, IOException {
+								throws IOException {
 		this(baseName, type, null, publisher, null, new CCNFlowControl((null == handle) ? CCNHandle.getHandle() : handle));
 	}
 
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type,
 			KeyLocator locator, PublisherPublicKeyDigest publisher,
 			ContentKeys keys, CCNFlowControl flowControl)
-			throws XMLStreamException, IOException {
+			throws IOException {
 		super(locator, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner(), keys));
 		init(baseName, type);
 	}

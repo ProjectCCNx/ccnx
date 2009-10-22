@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
@@ -50,7 +48,7 @@ public class RepoPerformanceTester extends CCNOutputStream {
 		private RepositoryStore _repo = null;
 		
 		public TestFlowControl(String repoName, ContentName name, CCNHandle handle)
-				throws MalformedContentNameStringException, RepositoryException, IOException {
+				throws RepositoryException, IOException {
 			super(name, handle);
 			if (repoName != null) {
 				_repo = new LogStructRepoStore();
@@ -73,16 +71,17 @@ public class RepoPerformanceTester extends CCNOutputStream {
 	public RepoPerformanceTester() {}
 	
 	public RepoPerformanceTester(String repoName, ContentName name, CCNHandle handle)
-			throws XMLStreamException, IOException, MalformedContentNameStringException, RepositoryException {
+			throws IOException, RepositoryException {
 		super(name, null, null, null, null, _rpt.new TestFlowControl(repoName, name, handle));
 	}
 	
 	public RepoPerformanceTester(ContentName name, CCNFlowControl cf)
-			throws XMLStreamException, IOException, MalformedContentNameStringException, RepositoryException {
+			throws IOException, RepositoryException {
 		super(name, null, null, null, null, cf);
 	}
 	
-	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle handle) throws MalformedContentNameStringException, XMLStreamException, IOException, RepositoryException {
+	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle handle) 
+			throws MalformedContentNameStringException, IOException, RepositoryException {
 		return new RepoPerformanceTester(repoName, name, handle);
 	}
 	
@@ -110,9 +109,6 @@ public class RepoPerformanceTester extends CCNOutputStream {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (XMLStreamException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (RepositoryException e) {

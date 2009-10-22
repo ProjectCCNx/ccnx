@@ -21,14 +21,14 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.security.KeyStore;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -43,9 +43,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 
 public class NetworkKeyManager extends BasicKeyManager {
-	
-	static final long DEFAULT_TIMEOUT = 1000;
-	
+		
 	ContentName _keystoreName;
 	PublisherPublicKeyDigest _publisher;
 	CCNHandle _handle;
@@ -97,7 +95,9 @@ public class NetworkKeyManager extends BasicKeyManager {
 		ContentObject keystoreObject = null;
 		try {
 			keystoreObject = 
-				VersioningProfile.getFirstBlockOfLatestVersion(_keystoreName, null, _publisher, DEFAULT_TIMEOUT, new ContentObject.SimpleVerifier(_publisher),  _handle);
+				VersioningProfile.getFirstBlockOfLatestVersion(_keystoreName, null, _publisher, 
+																SystemConfiguration.getDefaultTimeout(), 
+																new ContentObject.SimpleVerifier(_publisher),  _handle);
 			if (null == keystoreObject) {
 				Log.info("Creating new CCN key store..." + _keystoreName);
 				_keystore = createKeyStore();	
@@ -132,7 +132,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 		OutputStream out = null;
 		try {
 			out = createKeyStoreWriteStream();
-		} catch (XMLStreamException e) {
+		} catch (ContentEncodingException e) {
 			Log.warning("Cannot create key store: " + _keystoreName);
 			throw new ConfigurationException("Cannot create key store: " + _keystoreName + ": " + e.getMessage(), e);
 		} catch (IOException e) {
@@ -146,10 +146,10 @@ public class NetworkKeyManager extends BasicKeyManager {
 	 * Override to give different storage behavior.
 	 * Output stream is CCN
 	 * @return
-	 * @throws XMLStreamException
+	 * @throws ContentEncodingException
 	 * @throws IOException
 	 */
-	protected OutputStream createKeyStoreWriteStream() throws XMLStreamException, IOException {
+	protected OutputStream createKeyStoreWriteStream() throws ContentEncodingException, IOException {
 		return new CCNVersionedOutputStream(_keystoreName, _handle);
 	}
 }

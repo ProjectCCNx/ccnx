@@ -31,11 +31,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -164,7 +164,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 								ref.offset = ref.offset - is.available();
 							ContentObject tmp = new ContentObject();
 							try {
-								if(rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0){
+								if (rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0) {
 									//tmp.decode(is);
 									tmp.decode(is);
 								}
@@ -177,7 +177,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 									break;
 								}
 
-							} catch (XMLStreamException e) {
+							} catch (ContentDecodingException e) {
 								Log.logStackTrace(Level.WARNING, e);
 								e.printStackTrace();
 								// Failed to decode, must be end of this one
@@ -350,10 +350,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				}
 				return ner;
 			}
+		} catch (ContentEncodingException e) {
+			throw new RepositoryException("Failed to encode content: " + e.getMessage());
 		} catch (IOException e) {
 			throw new RepositoryException("Failed to write content: " + e.getMessage());
-		} catch (XMLStreamException e) {
-			throw new RepositoryException("Failed to encode content: " + e.getMessage());
 		}
 	}
 
@@ -386,9 +386,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			return null;
 		} catch (FileNotFoundException e) {
 			return null;
-		} catch (IOException e) {
-			return null;
-		} catch (XMLStreamException e) {
+		} catch (IOException e) { // handles ContentDecodingException
 			return null;
 		}
 	}

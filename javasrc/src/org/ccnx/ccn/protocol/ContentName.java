@@ -17,21 +17,19 @@
 
 package org.ccnx.ccn.protocol;
 
-import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 /**
  * ContentNames consist of a sequence of byte[] components which may not 
@@ -645,76 +643,72 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		byte[] decodedName = null;
 		boolean alldots = true; // does this component contain only dots after unescaping?
 		boolean quitEarly = false;
-		try {
-			ByteBuffer result = ByteBuffer.allocate(name.length());
-			for (int i = 0; i < name.length() && !quitEarly; i++) {
-				char ch = name.charAt(i);
-				switch (ch) {
-				case '%': 
-					// This is a byte string %xy where xy are hex digits
-					// Since the input string must be compatible with the output
-					// of componentPrint(), we may convert the byte values directly.
-					// There is no need to go through a character representation.
-					if (name.length()-1 < i+2) {
-						throw new URISyntaxException(name, "malformed %xy byte representation: too short", i);
-					}
-					if (name.charAt(i+1) == '-') {
-						throw new URISyntaxException(name, "malformed %xy byte representation: negative value not permitted", i);
-					}
-					try {
-						result.put(new Integer(Integer.parseInt(name.substring(i+1, i+3),16)).byteValue());
-					} catch (NumberFormatException e) {
-						throw new URISyntaxException(name, "malformed %xy byte representation: not legal hex number: " + name.substring(i+1, i+3), i);
-					}
-					i+=2; // for loop will increment by one more to get net +3 so past byte string
-					break;
+
+		ByteBuffer result = ByteBuffer.allocate(name.length());
+		for (int i = 0; i < name.length() && !quitEarly; i++) {
+			char ch = name.charAt(i);
+			switch (ch) {
+			case '%': 
+				// This is a byte string %xy where xy are hex digits
+				// Since the input string must be compatible with the output
+				// of componentPrint(), we may convert the byte values directly.
+				// There is no need to go through a character representation.
+				if (name.length()-1 < i+2) {
+					throw new URISyntaxException(name, "malformed %xy byte representation: too short", i);
+				}
+				if (name.charAt(i+1) == '-') {
+					throw new URISyntaxException(name, "malformed %xy byte representation: negative value not permitted", i);
+				}
+				try {
+					result.put(new Integer(Integer.parseInt(name.substring(i+1, i+3),16)).byteValue());
+				} catch (NumberFormatException e) {
+					throw new URISyntaxException(name, "malformed %xy byte representation: not legal hex number: " + name.substring(i+1, i+3), i);
+				}
+				i+=2; // for loop will increment by one more to get net +3 so past byte string
+				break;
 				// Note in C lib case 0 is handled like the two general delimiters below that terminate processing 
 				// but that case should never arise in Java which uses real unicode characters.
-				case '/':
-				case '?':
-				case '#':
-					quitEarly = true; // early exit from containing loop
-					break;
-	            case ':': case '[': case ']': case '@':
-	            case '!': case '$': case '&': case '\'': case '(': case ')':
-	            case '*': case '+': case ',': case ';': case '=':
-	            	// Permit unescaped reserved characters
-	            	result.put(name.substring(i, i+1).getBytes("UTF-8"));
-	            	break;
-				default: 
-					if (('a' <= ch && ch <= 'z') ||
-							('A' <= ch && ch <= 'Z') ||
-							('0' <= ch && ch <= '9') ||
-							ch == '-' || ch == '.' || ch == '_' || ch == '~') {
-
-						// This character remains the same
-						result.put(name.substring(i, i+1).getBytes("UTF-8"));
-					} else {
-						throw new URISyntaxException(name, "Illegal characters in URI", i);
-					}
+			case '/':
+			case '?':
+			case '#':
+				quitEarly = true; // early exit from containing loop
 				break;
-				}
-				if (!quitEarly && result.get(result.position()-1) != '.') {
-					alldots = false;
-				}
-			}
-			result.flip();
-			if (alldots) {
-				if (result.limit() <= 1) {
-					return null;
-				} else if (result.limit() == 2) {
-					throw new DotDotComponent();
+			case ':': case '[': case ']': case '@':
+			case '!': case '$': case '&': case '\'': case '(': case ')':
+			case '*': case '+': case ',': case ';': case '=':
+				// Permit unescaped reserved characters
+				result.put(DataUtils.getBytesFromUTF8String(name.substring(i, i+1)));
+				break;
+			default: 
+				if (('a' <= ch && ch <= 'z') ||
+						('A' <= ch && ch <= 'Z') ||
+						('0' <= ch && ch <= '9') ||
+						ch == '-' || ch == '.' || ch == '_' || ch == '~') {
+
+					// This character remains the same
+					result.put(DataUtils.getBytesFromUTF8String(name.substring(i, i+1)));
 				} else {
-					// Remove the three '.' extra
-					result.limit(result.limit()-3);
+					throw new URISyntaxException(name, "Illegal characters in URI", i);
 				}
+				break;
 			}
-			decodedName = new byte[result.limit()];
-			System.arraycopy(result.array(), 0, decodedName, 0, result.limit());
-		} catch (UnsupportedEncodingException e) {
-			Log.severe("UTF-8 not supported.");
-			throw new RuntimeException("UTF-8 not supported", e);
+			if (!quitEarly && result.get(result.position()-1) != '.') {
+				alldots = false;
+			}
 		}
+		result.flip();
+		if (alldots) {
+			if (result.limit() <= 1) {
+				return null;
+			} else if (result.limit() == 2) {
+				throw new DotDotComponent();
+			} else {
+				// Remove the three '.' extra
+				result.limit(result.limit()-3);
+			}
+		}
+		decodedName = new byte[result.limit()];
+		System.arraycopy(result.array(), 0, decodedName, 0, result.limit());
 		return decodedName;
 	}
 
@@ -728,12 +722,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param name Component as native Java string
 	 */
 	public static byte[] componentParseNative(String name) {
-		try {
-			return name.getBytes("UTF-8");
-		} catch (UnsupportedEncodingException e) {
-			Log.severe("UTF-8 not supported.");
-			throw new RuntimeException("UTF-8 not supported", e);
-		}
+		// Handle exception s around missing UTF-8
+		return DataUtils.getBytesFromUTF8String(name);
 	}
 	
 	// UrlEncoded in case we want to enable it again 
@@ -829,7 +819,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Used by NetworkObject to decode the object from a network stream.
 	 * @see org.ccnx.ccn.impl.encoding.XMLEncodable
 	 */
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 		
 		_components = new ArrayList<byte []>();
@@ -1049,9 +1039,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Used by NetworkObject to encode the object to a network stream.
 	 * @see org.ccnx.ccn.impl.encoding.XMLEncodable
 	 */
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 
 		encoder.writeStartElement(getElementLabel());
