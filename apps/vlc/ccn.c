@@ -545,11 +545,15 @@ incoming_content(struct ccn_closure *selfp,
             return (CCN_UPCALL_RESULT_OK);
         }
 
-    /* need to do this with a condition variable, since we don't want to sleep the thread */
+#ifdef VLCPLUGINVER099
+        /* 0.9.9 did not include the block_FifoPace function */
     while (block_FifoCount(p_sys->p_fifo) > CCN_FIFO_MAX_PACKETS) {
         msleep(1000);
         if (!vlc_object_alive(p_access)) return(CCN_UPCALL_RESULT_OK);
     }
+#else
+    block_FifoPace(p_sys->p_fifo, CCN_FIFO_MAX_PACKETS, SIZE_MAX);
+#endif
     /* Ask for the next fragment */
     name = ccn_charbuf_create();
     ccn_name_init(name);
