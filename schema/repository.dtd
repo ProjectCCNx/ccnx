@@ -13,8 +13,8 @@
 
 <!ELEMENT RepositoryVersion	(#PCDATA)>	<!-- UTF-8 -->
 
-<!ELEMENT GlobalPrefix		(Component*)>
-<!ATTLIST GlobalPrefix		%commonattrs;>
+<!ELEMENT GlobalPrefixName		(Component*)>
+<!ATTLIST GlobalPrefixName		%commonattrs;>
 
 <!ELEMENT LocalName	(#PCDATA)>	<!-- UTF-8 -->
 
@@ -23,3 +23,12 @@
 
 <!ELEMENT Component	(#PCDATA)>	<!-- base64Binary -->
 <!ATTLIST Component     ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT Policy (PolicyVersion | LocalName | GlobalPrefix, Namespace)*>
+<!ATTLIST RepositoryInfo %commonattrs;>
+
+<!ELEMENT PolicyVersion	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT GlobalPrefix	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT Namespace	(#PCDATA)>	<!-- UTF-8 -->
