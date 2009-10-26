@@ -52,7 +52,7 @@ public interface Policy {
 	 * 
 	 * @param is stream for the file
 	 */
-	public void updateFromInputStream(InputStream is) throws ContentDecodingException, RepositoryException;
+	public PolicyXML updateFromInputStream(InputStream is) throws ContentDecodingException, RepositoryException;
 
 	/**
 	 * Gets the current namespace covered by this repository. Any name not included within

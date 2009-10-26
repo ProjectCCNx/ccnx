@@ -41,7 +41,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	
-	protected static double _version = 1.0;
+	protected static double _version = 1.1;
 	
 	protected String _repoVersion = null;
 	protected String _localName = null;
@@ -54,7 +54,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	private static final String REPOSITORY_INFO_TYPE_ELEMENT = "Type";
 	private static final String REPOSITORY_INFO_VERSION_ELEMENT = "Version";
 	private static final String REPOSITORY_VERSION_ELEMENT = "RepositoryVersion";
-	private static final String GLOBAL_PREFIX_ELEMENT = "GlobalPrefix";
+	private static final String GLOBAL_PREFIX_ELEMENT = "GlobalPrefixName";
 	private static final String LOCAL_NAME_ELEMENT = "LocalName";
 	
 	/**

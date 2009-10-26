@@ -15,7 +15,7 @@
   Boston, MA 02110-1301, USA.
 -->
 <Policy>
-	<Version> 1.4 </Version>
+	<PolicyVersion> 1.5 </PolicyVersion>
 	<LocalName> TestRepository </LocalName>
 	<GlobalPrefix> parc.com/csl/ccn/repositories </GlobalPrefix>
 	<Namespace> /testNameSpace </Namespace>

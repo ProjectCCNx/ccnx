@@ -331,6 +331,14 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(oonsContent);
 		ContentObject testContent = repo.getContent(new Interest(outOfNameSpaceName));
 		Assert.assertTrue(testContent == null);
+		
+		// Test reading policy file from the repo
+		repolog.initialize(putHandle, _fileTestDir, null, _repoName, _globalPrefix, null);
+		repo.saveContent(oonsContent);
+		ContentObject testContentAgain = repo.getContent(new Interest(outOfNameSpaceName));
+		Assert.assertTrue(testContentAgain == null);
+		
+		// Test setting prefix from the prefix parameter
 		repo.initialize(putHandle, _fileTestDir, null, _repoName, _globalPrefix, "/");
 		repo.saveContent(oonsContent);
 		checkData(repo, outOfNameSpaceName, "Shouldn't see this");	

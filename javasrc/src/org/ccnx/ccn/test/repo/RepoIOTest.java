@@ -120,7 +120,7 @@ public class RepoIOTest extends RepoTestBase {
 		fis.close();
 		ContentName basePolicy = BasicPolicy.getPolicyName(ContentName.fromNative(_globalPrefix), _repoName);
 		ContentName policyName = new ContentName(basePolicy, Interest.generateNonce());
-		PolicyObject po = new PolicyObject(policyName, pxml, putHandle);
+		PolicyObject po = new PolicyObject(policyName, pxml, putHandle, null);
 		po.saveToRepository();
 		Thread.sleep(4000);
 	}

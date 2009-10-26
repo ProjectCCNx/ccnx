@@ -15,7 +15,7 @@
   Boston, MA 02110-1301, USA.
 -->
 <Policy>
-	<Version> foobar </Version>
+	<PolicyVersion> foobar </PolicyVersion>
 	<LocalName> TestRepository </LocalName>
 	<Namespace> /testNameSpace </Namespace>
 </Policy>

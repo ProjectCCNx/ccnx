@@ -113,14 +113,15 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * @throws RepositoryException
 	 * @throws MalformedContentNameStringException 
 	 */
-	public void startInitPolicy(File policyFile, String nameSpace) throws RepositoryException {
+	public PolicyXML startInitPolicy(File policyFile, String nameSpace) throws RepositoryException {
+		PolicyXML pxml = null;
 		boolean policySet = false;
 		_policy = new BasicPolicy(null);
 		_policy.setVersion(getVersion());
 
 		if (null != policyFile) {
 			try {
-				_policy.updateFromInputStream(new FileInputStream(policyFile));
+				pxml = _policy.updateFromInputStream(new FileInputStream(policyFile));
 				policySet = true;
 			} catch (Exception e) {
 				throw new InvalidParameterException(e.getMessage());
@@ -137,6 +138,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 			}
 			_policy.setNameSpace(nameSpaceAL);
 		}
+		return pxml;
 	}
 	
 	/**

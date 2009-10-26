@@ -33,6 +33,7 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -217,13 +218,14 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 */
 	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix,
 				String namespace) throws RepositoryException {
+		PolicyXML pxml = null;
 		boolean nameFromArgs = (null != localName);
 		boolean globalFromArgs = (null != globalPrefix);
 		if (null == localName)
 			localName = DEFAULT_LOCAL_NAME;
 		if (null == globalPrefix) 
 			globalPrefix = DEFAULT_GLOBAL_NAME;
-		startInitPolicy(policyFile, namespace);
+		pxml = startInitPolicy(policyFile, namespace);
 
 		if (repositoryRoot == null) {
 			throw new InvalidParameterException();
@@ -300,7 +302,17 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		} catch (MalformedContentNameStringException e2) {
 			throw new RepositoryException(e2.getMessage());
 		}
-		saveContent(_policy.getPolicyContent());
+		
+		// If we didn't read in our policy from a previous saved policy file, save the policy now
+		if (null != pxml) {
+			ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), _policy.getLocalName());
+			try {
+				PolicyObject po = new PolicyObject(policyName, pxml, null, this);
+				po.save();
+			} catch (IOException e) {
+				throw new RepositoryException(e.getMessage());
+			}
+		}
 		try {
 			finishInitPolicy(globalPrefix, localName);
 		} catch (MalformedContentNameStringException e) {

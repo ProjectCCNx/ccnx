@@ -51,7 +51,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * <pre>
  * For example:
  * 	<Policy>
- *		<version id="1.4"/>
+ *		<PolicyVersion> 1.5 </PolicyVersion>
  *		<LocalName> TestRepository </LocalName>
  *		<GlobalPrefix> parc.com/csl/ccn/repositories </GlobalPrefix>
  *		<Namespace> /testNameSpace </Namespace>
@@ -63,13 +63,14 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 public class BasicPolicy implements Policy {
 	
 	public static final String POLICY = "POLICY";
+	public String POLICY_VERSION = "1.5";
+
 	
 	private byte [] _content = null;
 	private ContentName _globalPrefix = null;
 	private String _localName = null;
 	
-	protected String _repoVersion = null;	// set from repo
-	
+	protected String _repoVersion = null;	// set from repo	
 	private ArrayList<ContentName> _nameSpace = new ArrayList<ContentName>(0);
 	
 	/**
@@ -99,8 +100,10 @@ public class BasicPolicy implements Policy {
 		}
 	}
 	
-	public void updateFromInputStream(InputStream stream) throws ContentDecodingException, RepositoryException {
-		update(createPolicyXML(stream), false);
+	public PolicyXML updateFromInputStream(InputStream stream) throws ContentDecodingException, RepositoryException {
+		PolicyXML pxml = createPolicyXML(stream);
+		update(pxml, false);
+		return pxml;
 	}
 	
 	/**
@@ -113,7 +116,7 @@ public class BasicPolicy implements Policy {
 	public void update(PolicyXML pxml, boolean fromNet) throws RepositoryException {
 		if (pxml._version == null)
 			throw new RepositoryException("No version in policy file");
-		if (!pxml._version.equals(_repoVersion)) {
+		if (!pxml._version.equals(POLICY_VERSION)) {
 			Log.warning("Bad version in policy file: {0}", pxml._version);
 			throw new RepositoryException("Bad version in policy file");
 		}
