@@ -17,11 +17,15 @@
 
 package org.ccnx.ccn.impl.support;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.nio.charset.Charset;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 
 import org.bouncycastle.util.encoders.Base64;
@@ -32,6 +36,24 @@ import org.ccnx.ccn.config.SystemConfiguration;
  */
 public class DataUtils {
 	
+	/**
+	 * Useful when we move over to 1.6, and can avoid UnsupportedCharsetExceptions this way.
+	 */
+	public static Charset UTF8_CHARSET;
+	
+	static {
+		try {
+			UTF8_CHARSET = Charset.forName("UTF-8");
+			if (null == UTF8_CHARSET) {
+				// This shouldn't happen, but be noisy about it if it does...
+				throw new UnsupportedCharsetException("Attempt to retrieve the UTF-8 charset returned null! Significant configuration error!");
+			}
+		} catch (Exception e) { // Should be UnsupportedCharsetException or IllegalCharsetNameException
+			Log.severe("Unknown encoding UTF-8! This is a significant configuration problem.");
+			throw new RuntimeException("Cannot find UTF-8 encoding. Significant configuration error");
+		}
+	}
+		
 	public static class Tuple<A, B> {
 		
 		A _first;
@@ -268,8 +290,7 @@ public class DataUtils {
 	}
 
 	/**
-	 * Currently unused - anyone know what the purpose of this is supposed to be?
-	 * 
+	 * This was used in early content demos; keep it around as it may be generally useful.
 	 * @param file
 	 * @return
 	 * @throws IOException
@@ -304,7 +325,56 @@ public class DataUtils {
 	    is.close();
 	    return bytes;
 	}
-
+	
+	/**
+	 * Read a stream (usually small) completely in to a byte array. Used to get all of the
+	 * bytes out of one or more content objects for decoding or other processing, where the
+	 * content needs to be handed to something else as a unit.
+	 */
+	public static byte [] getBytesFromStream(InputStream input) throws IOException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		byte [] buf = new byte[1024];
+		int byteCount = 0;
+		byteCount = input.read(buf);
+		while (byteCount > 0) {
+			baos.write(buf, 0, byteCount);
+			byteCount = input.read(buf);
+		}
+		return baos.toByteArray();
+	}
+	
+	/**
+	 * Wrap up handling of UTF-8 encoding in one place (as much as possible), because
+	 * an UnsupportedEncodingException in response to a request for UTF-8 signals
+	 * a significant configuration error; we should catch it and signal a RuntimeException
+	 * in one place and let the rest of the code not worry about it.
+	 */
+	public static String getUTF8StringFromBytes(byte [] stringBytes) {
+		try {
+			// Version taking a Charset not available till 1.6. 
+			return new String(stringBytes, "UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			Log.severe("Unknown encoding UTF-8! This is a significant configuration problem.");
+			throw new RuntimeException("Unknown encoding UTF-8! This is a significant configuration problem.");
+		}
+	}
+	
+	/**
+	 * Wrap up handling of UTF-8 encoding in one place (as much as possible), because
+	 * an UnsupportedEncodingException in response to a request for UTF-8 signals
+	 * a significant configuration error; we should catch it and signal a RuntimeException
+	 * in one place and let the rest of the code not worry about it.
+	 */
+	public static byte [] getBytesFromUTF8String(String stringData) {
+		try {
+			// Version taking a Charset not available till 1.6. 
+			return stringData.getBytes("UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			Log.severe("Unknown encoding UTF-8! This is a significant configuration problem.");
+			throw new RuntimeException("Unknown encoding UTF-8! This is a significant configuration problem.");
+		}
+	}
+	
 	/**
 	 * Lexicographically compare two byte arrays, looking at a limited number of bytes.
 	 * @param arr1

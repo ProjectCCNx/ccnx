@@ -26,6 +26,7 @@ import java.security.Security;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.KeyRepository;
 import org.ccnx.ccn.impl.support.Log;
@@ -259,7 +260,7 @@ public abstract class KeyManager {
 	 * @throws IOException if we run into an error attempting to read the key
 	 */
 	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) throws IOException {
-		return getPublicKey(publisherKeyID, keyLocator,KeyRepository.DEFAULT_KEY_TIMEOUT);
+		return getPublicKey(publisherKeyID, keyLocator, SystemConfiguration.getDefaultTimeout());
 	}
 	
 	/**

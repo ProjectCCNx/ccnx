@@ -25,7 +25,6 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Link.LinkObject;
@@ -66,7 +65,7 @@ public class LinkObjectTestRepo {
 		ContentName linkName = ContentName.fromNative(testHelper.getTestNamespace("testLinks"), "myLink");
 		
 		// Write something that isn't a collection
-		CCNStringObject so = new CCNStringObject(nonLinkName, "This is not a link, number " + new Random().nextInt(10000), putLibrary);
+		CCNSerializableStringObject so = new CCNSerializableStringObject(nonLinkName, "This is not a link, number " + new Random().nextInt(10000), putLibrary);
 		so.saveToRepository();
 		
 		try {
@@ -108,7 +107,7 @@ public class LinkObjectTestRepo {
 		
 		// TODO -- not a good test; does dereference get us back the first block? What about the
 		// first block of the latest version? What if thing isn't versioned? (e.g. intermediate node)
-		CCNStringObject readString = new CCNStringObject(firstBlock, getLibrary);
+		CCNSerializableStringObject readString = new CCNSerializableStringObject(firstBlock, getLibrary);
 		readString.waitForData();
 		
 		Assert.assertEquals(readString.string(), so.string());

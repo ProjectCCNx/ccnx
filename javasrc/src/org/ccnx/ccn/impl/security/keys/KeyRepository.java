@@ -59,8 +59,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	
 	protected static final boolean _DEBUG = true;
-	public static final long SHORT_KEY_TIMEOUT = 300;
-	public static final long DEFAULT_KEY_TIMEOUT = 2000;
 	
 	protected CCNNetworkManager _networkManager = null;
 	protected HashMap<ContentName,ContentObject> _keyMap = new HashMap<ContentName,ContentObject>();

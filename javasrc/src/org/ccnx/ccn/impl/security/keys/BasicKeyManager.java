@@ -222,7 +222,7 @@ public class BasicKeyManager extends KeyManager {
 		    _keyLocator = new KeyLocator(keyName, new PublisherID(_defaultKeyID));
 			Log.info("Default key locator for user " + _userName + ": " + _keyLocator);
 
-		    if (null == getPublicKey(_defaultKeyID, _keyLocator, KeyRepository.SHORT_KEY_TIMEOUT)) {
+		    if (null == getPublicKey(_defaultKeyID, _keyLocator, SystemConfiguration.SHORT_TIMEOUT)) {
 		    	boolean resetFlag = false;
 		    	if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 		    		resetFlag = true;

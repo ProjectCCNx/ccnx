@@ -26,7 +26,6 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
@@ -65,7 +64,7 @@ public class CollectionObjectTestRepo {
 		ContentName collectionName = ContentName.fromNative(testHelper.getTestNamespace("testCollections"), "myCollection");
 		
 		// Write something that isn't a collection
-		CCNStringObject so = new CCNStringObject(nonCollectionName, "This is not a collection.", putLibrary);
+		CCNSerializableStringObject so = new CCNSerializableStringObject(nonCollectionName, "This is not a collection.", putLibrary);
 		so.saveToRepository();
 		
 		Link[] references = new Link[2];

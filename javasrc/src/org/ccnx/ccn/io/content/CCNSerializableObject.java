@@ -35,8 +35,12 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
  * Subclass of CCNNetworkObject that wraps classes implementing Serializable, and uses
- * Java serialization to read and write those objects to 
- * CCN.
+ * Java serialization to read and write those objects to CCN. Note that using Java
+ * serialization writes Java-specific object headers for all built-in objects that
+ * already define serialization formats. Using this as a serialization format for
+ * CCN objects works extremely well when those objects will be read and written
+ * from Java. If objects will be read or written from languages other than Java,
+ * Java serialization may not be the best backing representation.
  */
 public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObject<E> {
 	

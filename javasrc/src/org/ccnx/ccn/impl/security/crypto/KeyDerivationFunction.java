@@ -17,7 +17,6 @@
 
 package org.ccnx.ccn.impl.security.crypto;
 
-import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 
@@ -26,6 +25,7 @@ import javax.crypto.ShortBufferException;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
@@ -292,14 +292,12 @@ public class KeyDerivationFunction {
 				// 32-bit representation of i
 				hmac.update(new byte[] { (byte)(i>>24), (byte)(i>>16), (byte)(i>>8), (byte)i});
 				// UTF-8 representation of label, including null terminator, or "" if empty
-				if (null == label)
+				if (null == label) {
 					label = EMPTY;
-				try {
-					hmac.update(label.getBytes("UTF-8"));
-				} catch (UnsupportedEncodingException e) {
-					Log.severe("No UTF-8 encoding available! Serious configuration issue!");
-					throw new RuntimeException("No UTF-8 encoding available! Serious configuration issue!");
 				}
+
+				hmac.update(DataUtils.getBytesFromUTF8String(label));
+
 				// a 0 byte
 				hmac.update((byte)0x00);
 				// encoded context objects

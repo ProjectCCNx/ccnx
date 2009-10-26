@@ -17,7 +17,6 @@
 
 package org.ccnx.ccn.io.content;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -28,6 +27,7 @@ import java.security.spec.InvalidKeySpecException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
@@ -50,25 +50,64 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  */
 public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 
+	/**
+	 * Write constructor.
+	 * @param name
+	 * @param data
+	 * @param handle
+	 * @throws IOException
+	 */
 	public PublicKeyObject(ContentName name, PublicKey data, CCNHandle handle) throws IOException {
 		super(PublicKey.class, false, name, data, handle);
 	}
 	
-	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNHandle handle) throws IOException {
+	/**
+	 * Write constructor.
+	 * @param name
+	 * @param data
+	 * @param publisher
+	 * @param locator
+	 * @param handle
+	 * @throws IOException
+	 */
+	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, 
+							KeyLocator locator, CCNHandle handle) throws IOException {
 		super(PublicKey.class, false, name, data, publisher, locator, handle);
 	}
 
+	/**
+	 * Read constructor.
+	 * @param name
+	 * @param handle
+	 * @throws ContentDecodingException
+	 * @throws IOException
+	 */
+	public PublicKeyObject(ContentName name, CCNHandle handle) 
+			throws ContentDecodingException, IOException {
+		super(PublicKey.class, false, name, (PublisherPublicKeyDigest)null, handle);
+	}
+	
+	/**
+	 * Read constructor.
+	 * @param name
+	 * @param publisher
+	 * @param handle
+	 * @throws ContentDecodingException
+	 * @throws IOException
+	 */
 	public PublicKeyObject(ContentName name, PublisherPublicKeyDigest publisher, 
 							CCNHandle handle) 
 			throws ContentDecodingException, IOException {
 		super(PublicKey.class, false, name, publisher, handle);
 	}
 	
-	public PublicKeyObject(ContentName name, CCNHandle handle) 
-			throws ContentDecodingException, IOException {
-		super(PublicKey.class, false, name, (PublisherPublicKeyDigest)null, handle);
-	}
-	
+	/**
+	 * Read constructor if you already have a block.
+	 * @param firstBlock
+	 * @param handle
+	 * @throws ContentDecodingException
+	 * @throws IOException
+	 */
 	public PublicKeyObject(ContentObject firstBlock, CCNHandle handle) 
 			throws ContentDecodingException, IOException {
 		super(PublicKey.class, false, firstBlock, handle);
@@ -131,16 +170,9 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	protected PublicKey readObjectImpl(InputStream input) throws ContentDecodingException, IOException {
 		// assume we read until we have all the bytes, then decode.
 		// Doesn't give us a good opportunity to check whether it's of type KEY. TODO
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		byte [] buf = new byte[1024];
-		int byteCount = 0;
-		byteCount = input.read(buf);
-		while (byteCount > 0) {
-			baos.write(buf, 0, byteCount);
-			byteCount = input.read(buf);
-		}
 		try {
-			return CryptoUtil.getPublicKey(baos.toByteArray());
+			byte [] contentBytes = DataUtils.getBytesFromStream(input);
+			return CryptoUtil.getPublicKey(contentBytes);
 		} catch (CertificateEncodingException e) {
 			Log.warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());

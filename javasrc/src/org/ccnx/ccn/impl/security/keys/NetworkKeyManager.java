@@ -23,6 +23,7 @@ import java.security.KeyStore;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
@@ -42,9 +43,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 
 public class NetworkKeyManager extends BasicKeyManager {
-	
-	static final long DEFAULT_TIMEOUT = 1000;
-	
+		
 	ContentName _keystoreName;
 	PublisherPublicKeyDigest _publisher;
 	CCNHandle _handle;
@@ -96,7 +95,9 @@ public class NetworkKeyManager extends BasicKeyManager {
 		ContentObject keystoreObject = null;
 		try {
 			keystoreObject = 
-				VersioningProfile.getFirstBlockOfLatestVersion(_keystoreName, null, _publisher, DEFAULT_TIMEOUT, new ContentObject.SimpleVerifier(_publisher),  _handle);
+				VersioningProfile.getFirstBlockOfLatestVersion(_keystoreName, null, _publisher, 
+																SystemConfiguration.getDefaultTimeout(), 
+																new ContentObject.SimpleVerifier(_publisher),  _handle);
 			if (null == keystoreObject) {
 				Log.info("Creating new CCN key store..." + _keystoreName);
 				_keystore = createKeyStore();	

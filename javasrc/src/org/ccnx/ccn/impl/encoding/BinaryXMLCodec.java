@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 
 /**
@@ -436,8 +437,7 @@ public class BinaryXMLCodec implements XMLCodec {
 		
 		byte [] stringBytes = decodeBlob(istream, byteLength);
 		
-		String ustring = new String(stringBytes, "UTF-8");
-		return ustring;
+		return DataUtils.getUTF8StringFromBytes(stringBytes);
 	}
 	
 	/**
@@ -469,7 +469,7 @@ public class BinaryXMLCodec implements XMLCodec {
 			return;
 		}
 		
-		byte [] strBytes = ustring.getBytes("UTF-8");
+		byte [] strBytes = DataUtils.getBytesFromUTF8String(ustring);
 		
 		encodeTypeAndVal(type, 
 							(((type == XML_TAG) || (type == XML_ATTR)) ?
