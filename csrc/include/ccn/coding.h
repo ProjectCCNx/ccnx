@@ -126,6 +126,10 @@ enum ccn_dtag {
     CCN_DTAG_RepositoryVersion = 88,
     CCN_DTAG_GlobalPrefix = 89,
     CCN_DTAG_LocalName = 90,
+    CCN_DTAG_Policy = 91,
+    CCN_DTAG_Namespace = 92,
+    CCN_DTAG_GlobalPrefixName = 93,
+    CCN_DTAG_PolicyVersion = 94,
     CCN_DTAG_CCNProtocolDataUnit = 17702112
 };
 
