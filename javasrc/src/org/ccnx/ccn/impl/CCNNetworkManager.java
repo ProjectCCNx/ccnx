@@ -118,7 +118,7 @@ public class CCNNetworkManager implements Runnable {
 
 			long minRefreshTime = PERIOD + ourTime;
 			// Library.finest("Refreshing interests (size " + _myInterests.size() + ")");
-			
+
 			// Re-express interests that need to be re-expressed
 			try {
 				synchronized (_myInterests) {
@@ -136,7 +136,6 @@ public class CCNNetworkManager implements Runnable {
 						}
 						if(minRefreshTime > reg.nextRefresh)
 							minRefreshTime = reg.nextRefresh;
-						
 					}
 				}
 			} catch (ContentEncodingException xmlex) {
