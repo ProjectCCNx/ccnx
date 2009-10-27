@@ -116,6 +116,7 @@ public class CCNNetworkManager implements Runnable {
 				heartbeat();
 			}
 
+			long minRefreshTime = PERIOD + ourTime;
 			// Library.finest("Refreshing interests (size " + _myInterests.size() + ")");
 			
 			// Re-express interests that need to be re-expressed
@@ -133,6 +134,9 @@ public class CCNNetworkManager implements Runnable {
 								write(reg.interest);
 							} catch (NotYetConnectedException nyce) {}
 						}
+						if(minRefreshTime > reg.nextRefresh)
+							minRefreshTime = reg.nextRefresh;
+						
 					}
 				}
 			} catch (ContentEncodingException xmlex) {
@@ -140,7 +144,13 @@ public class CCNNetworkManager implements Runnable {
 				Log.warningStackTrace(xmlex);
 			}
 			
-			_periodicTimer.schedule(new PeriodicWriter(), PERIOD);
+			long checkDelay = minRefreshTime - System.currentTimeMillis();
+			if(checkDelay < 0)
+				checkDelay = 0;
+			if(checkDelay > PERIOD)
+				checkDelay = PERIOD;
+			
+			_periodicTimer.schedule(new PeriodicWriter(), checkDelay);
 		}
 	}
 	
