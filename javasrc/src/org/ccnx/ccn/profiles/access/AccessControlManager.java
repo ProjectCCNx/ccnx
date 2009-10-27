@@ -804,6 +804,7 @@ public class AccessControlManager {
 		try {
 
 			keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
+			keyDirectory.waitForData();
 			// this will handle the caching.
 			Key unwrappedKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
 			if (null != unwrappedKey) {
