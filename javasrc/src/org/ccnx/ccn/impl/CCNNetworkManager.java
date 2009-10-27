@@ -134,7 +134,7 @@ public class CCNNetworkManager implements Runnable {
 								write(reg.interest);
 							} catch (NotYetConnectedException nyce) {}
 						}
-						if(minRefreshTime > reg.nextRefresh)
+						if (minRefreshTime > reg.nextRefresh)
 							minRefreshTime = reg.nextRefresh;
 					}
 				}
@@ -144,9 +144,9 @@ public class CCNNetworkManager implements Runnable {
 			}
 			
 			long checkDelay = minRefreshTime - System.currentTimeMillis();
-			if(checkDelay < 0)
+			if (checkDelay < 0)
 				checkDelay = 0;
-			if(checkDelay > PERIOD)
+			if (checkDelay > PERIOD)
 				checkDelay = PERIOD;
 			
 			_periodicTimer.schedule(new PeriodicWriter(), checkDelay);
