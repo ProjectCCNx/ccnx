@@ -207,10 +207,12 @@ public class BasicPolicy implements Policy {
 	}
 	
 	public static PolicyXML createPolicyXML(InputStream stream) throws ContentDecodingException {
+		Log.info("Creating policy file");
 		XMLDecoder decoder = XMLCodecFactory.getDecoder(TextXMLCodec.codecName());
 		decoder.beginDecoding(stream);
 		PolicyXML pxml = new PolicyXML();
 		pxml.decode(decoder);
+		Log.fine("Finished pxml decoding");
 		decoder.endDecoding();
 		return pxml;
 	}

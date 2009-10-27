@@ -8,6 +8,7 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -117,8 +118,10 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 					break;
 				}		
 			}
-			if (null != foundElement)
+			if (null != foundElement) {
 				foundElement._putter.put(this, decoder.readUTF8Element(foundElement._stringValue));
+				Log.fine("Found policy element {0} with value {1}", foundElement._stringValue, decoder.readUTF8Element(foundElement._stringValue));
+			}
 		} while (null != foundElement);
 		decoder.readEndElement();
 	}
