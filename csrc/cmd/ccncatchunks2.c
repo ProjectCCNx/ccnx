@@ -46,6 +46,7 @@ struct ooodata {
 struct mydata {
     struct ccn *h;
     int allow_stale;
+    int use_decimal;
     unsigned ooo_base;
     unsigned ooo_count;
     unsigned curwindow;
@@ -55,6 +56,7 @@ struct mydata {
     unsigned rtt;
     unsigned rtte;
     unsigned backoff;
+    unsigned finalslot;
     struct ccn_charbuf *name;
     struct ccn_charbuf *templ;
     struct excludestuff *excl;
@@ -90,7 +92,8 @@ usage(const char *progname)
             "   Reads stuff written by ccnsendchunks under"
             " the given uri and writes to stdout\n"
             "   -a - allow stale data\n"
-            "   -p n - use up to n pipeline slots\n",
+            "   -p n - use up to n pipeline slots\n"
+            "   -s - use new-style segmentation markers\n",
             progname);
     exit(1);
 }
@@ -253,11 +256,15 @@ sequenced_name(struct mydata *md, uintmax_t seq)
     struct ccn_charbuf *temp = NULL;
     
     name = ccn_charbuf_create();
-    temp = ccn_charbuf_create();
     ccn_charbuf_append(name, md->name->buf, md->name->length);
-    ccn_charbuf_putf(temp, "%ju", seq);
-    ccn_name_append(name, temp->buf, temp->length);
-    ccn_charbuf_destroy(&temp);
+    if (md->use_decimal) {
+        temp = ccn_charbuf_create();
+        ccn_charbuf_putf(temp, "%ju", seq);
+        ccn_name_append(name, temp->buf, temp->length);
+        ccn_charbuf_destroy(&temp);
+    }
+    else
+        ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, seq);
     return(name);
 }
 
@@ -346,6 +353,41 @@ fill_holes(struct ccn_schedule *sched, void *clienth,
     return(delay);
 }
 
+static int
+is_final(struct ccn_upcall_info *info)
+{
+        // XXX The test below should get refactored into the library
+    const unsigned char *ccnb;
+    size_t ccnb_size;
+    ccnb = info->content_ccnb;
+    if (ccnb == NULL || info->pco == NULL)
+        return(0);
+    ccnb_size = info->pco->offset[CCN_PCO_E];
+    if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
+        info->pco->offset[CCN_PCO_E_FinalBlockID]) {
+        const unsigned char *finalid = NULL;
+        size_t finalid_size = 0;
+        const unsigned char *nameid = NULL;
+        size_t nameid_size = 0;
+        struct ccn_indexbuf *cc = info->content_comps;
+        ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
+                            info->pco->offset[CCN_PCO_B_FinalBlockID],
+                            info->pco->offset[CCN_PCO_E_FinalBlockID],
+                            &finalid,
+                            &finalid_size);
+        if (cc->n < 2) abort();
+        ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
+                            cc->buf[cc->n - 2],
+                            cc->buf[cc->n - 1],
+                            &nameid,
+                            &nameid_size);
+        if (finalid_size == nameid_size &&
+              0 == memcmp(finalid, nameid, nameid_size))
+            return(1);
+    }
+    return(0);
+}
+
 enum ccn_upcall_res
 incoming_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
@@ -378,8 +420,12 @@ GOT_HERE();
     if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_ERR);
     assert(md != NULL);
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED) {
+        if (md->pkts_recvd == 0)
+            return(CCN_UPCALL_RESULT_VERIFY);
+        md->unverified++;
+    }
     md->pkts_recvd++;
-    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED) md->unverified++;
     if (selfp->intdata == -1) {
         /* Outside the window we care about. Toss it. */
         md->dups++;
@@ -394,6 +440,10 @@ GOT_HERE();
     md->co_bytes_recvd += data_size;
     slot = ((uintptr_t)selfp->intdata) % PIPELIMIT;
     assert(selfp == &md->ooo[slot].closure);
+    if (is_final(info)) {
+        GOT_HERE();
+        md->finalslot = slot;
+    }
     if (slot != md->ooo_base || md->ooo_count == 0) {
         /* out-of-order data, save for later */
         struct ooodata *ooo = &md->ooo[slot];
@@ -415,12 +465,12 @@ GOT_HERE();
         md->ooo[slot].closure.intdata = -1;
         md->delivered++;
         md->delivered_bytes += data_size;
-GOT_HERE();
         written = fwrite(data, data_size, 1, stdout);
         if (written != 1)
             exit(1);
-        /* A short block signals EOF for us. */
-        if (data_size < CHUNK_SIZE) {
+        /* Check for EOF */
+        if (slot == md->finalslot || data_size < CHUNK_SIZE) {
+            GOT_HERE();
             ccn_schedule_destroy(&md->sched);
             print_summary(md);
             exit(0);
@@ -436,8 +486,9 @@ GOT_HERE();
             written = fwrite(ooo->raw_data, ooo->raw_data_size - 1, 1, stdout);
             if (written != 1)
                 exit(1);
-            /* A short block signals EOF for us. */
-            if (ooo->raw_data_size - 1 < CHUNK_SIZE) {
+            /* Check for EOF */
+            if (slot == md->finalslot || ooo->raw_data_size - 1 < CHUNK_SIZE) {
+                GOT_HERE();
                 ccn_schedule_destroy(&md->sched);
                 exit(0);
             }
@@ -471,13 +522,14 @@ main(int argc, char **argv)
     char ch;
     struct mydata *mydata;
     int allow_stale = 0;
+    int use_decimal = 1;
     int i;
     unsigned maxwindow = PIPELIMIT-1;
     
     if (maxwindow > 31)
         maxwindow = 31;
     
-    while ((ch = getopt(argc, argv, "hap:")) != -1) {
+    while ((ch = getopt(argc, argv, "hap:s")) != -1) {
         switch (ch) {
             case 'a':
                 allow_stale = 1;
@@ -488,6 +540,9 @@ main(int argc, char **argv)
                     maxwindow = res;
                 else
                     usage(argv[0]);
+                break;
+            case 's':
+                use_decimal = 0;
                 break;
             case 'h':
             default:
@@ -515,11 +570,13 @@ main(int argc, char **argv)
     mydata->h = ccn;
     mydata->name = name;
     mydata->allow_stale = allow_stale;
+    mydata->use_decimal = use_decimal;
     mydata->excl = NULL;
     mydata->sched = ccn_schedule_create(mydata, &myticker);
     mydata->report = ccn_schedule_event(mydata->sched, 0, &reporter, NULL, 0);
     mydata->holefiller = NULL;
     mydata->maxwindow = maxwindow;
+    mydata->finalslot = ~0;
     for (i = 0; i < PIPELIMIT; i++) {
         incoming = &mydata->ooo[i].closure;
         incoming->p = &incoming_content;
