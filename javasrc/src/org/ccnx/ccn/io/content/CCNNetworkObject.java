@@ -1011,6 +1011,21 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			return _currentPublisherKeyLocator;		
 		return null;
 	}
+	
+	/**
+	 * Change the publisher information we use when we sign commits to this object.
+	 * Takes effect on the next save(). Useful for objects created with a read constructor,
+	 * but who want to override default publisher information.
+	 * @param signingKey indicates the identity we want to use to sign future writes to this
+	 * 	object. If null, will default to key manager's (user's) default key.
+	 * @param locator the key locator (key lookup location) information to attach to future
+	 * 	writes to this object. If null, will be the default value associated with the 
+	 * 	chosen signing key.
+	 */
+	public synchronized void setOurPublisherInformation(PublisherPublicKeyDigest publisherIdentity, KeyLocator keyLocator) {
+		_publisher = publisherIdentity;
+		_keyLocator = keyLocator;
+	}
 
 	public synchronized Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
 		try {
