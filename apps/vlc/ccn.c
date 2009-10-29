@@ -56,8 +56,8 @@ static int CCNControl(access_t *, int, va_list);
 static void *ccn_event_thread(vlc_object_t *p_this);
 
 vlc_module_begin();
-    set_shortname(N_("CCN"));
-    set_description(N_("CCN input"));
+    set_shortname(N_("CCNx"));
+    set_description(N_("CCNx input"));
     set_category(CAT_INPUT);
     set_subcategory(SUBCAT_INPUT_ACCESS);
     add_integer("ccn-caching", 4 * DEFAULT_PTS_DELAY / 1000, NULL,
@@ -65,6 +65,7 @@ vlc_module_begin();
     change_safe();
     set_capability("access", 0);
     add_shortcut("ccn");
+    add_shortcut("ccnx");
     set_callbacks(CCNOpen, CCNClose);
 vlc_module_end();
 
