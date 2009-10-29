@@ -594,7 +594,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public void publishKey(ContentName keyName,
-						   PublisherPublicKeyDigest keyToPublish) throws IOException, InvalidKeyException, ConfigurationException {
+						   PublisherPublicKeyDigest keyToPublish) throws IOException, InvalidKeyException {
 		PublicKey key = null;
 		if (null == keyToPublish) {
 			key = getDefaultPublicKey();
@@ -608,7 +608,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	
-	protected void publishDefaultKey() throws ConfigurationException, IOException {
+	protected void publishDefaultKey() throws IOException {
 	    if (null == getPublicKey(_defaultKeyID, _keyLocator, SystemConfiguration.SHORT_TIMEOUT)) {
 	    	boolean resetFlag = false;
 	    	if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {

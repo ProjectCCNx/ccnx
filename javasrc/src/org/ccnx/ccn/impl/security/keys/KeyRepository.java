@@ -30,6 +30,7 @@ import java.util.HashMap;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNPersistentFlowServer;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
@@ -102,15 +103,32 @@ public class KeyRepository {
 	 * @param keyID the publisher id
 	 * @param signingKeyID the key id of the key pair to sign with
 	 * @return void
-	 * @throws ConfigurationException
+	 * @throws IOException
 	 */
 	public void publishKey(ContentName keyName, PublicKey key, PublisherPublicKeyDigest signingKeyID) 
+						throws IOException {
+		publishKey(keyName, key, signingKeyID);
+	}
+
+	/**
+	 * Publish a signed record for this key if one doesn't exist.
+	 * (if it does exist, pulls it at least to our ccnd, and optionally
+	 * makes it available).
+	 * @param keyName the key's content name
+	 * @param key the public key
+	 * @param keyID the publisher id
+	 * @param signingKeyID the key id of the key pair to sign with
+	 * @param keyLocator the key locator to use if we save this key (if it is not already published)
+	 * @return void
+	 * @throws IOException
+	 */
+	public void publishKey(ContentName keyName, PublicKey key, PublisherPublicKeyDigest signingKeyID, KeyLocator keyLocator) 
 						throws IOException {
 
 		// First attempt to read... look for something with same publisher.
 		// Eventually may want to find something already published and link to it, but be simple here.
 		PublicKeyObject keyObject = new PublicKeyObject(keyName, signingKeyID, _keyServer);
-		keyObject.waitForData(SHORT_KEY_TIMEOUT); // gets the latest version
+		keyObject.waitForData(SystemConfiguration.SHORT_TIMEOUT); // gets the latest version
 		
 		if (!keyObject.available() || (!keyObject.publicKey().equals(key))) {
 			// Need a key locator to stick in data entry for
@@ -121,7 +139,6 @@ public class KeyRepository {
 			// CCN equivalent of a "self-signed cert". Means that
 			// we will refer to only the base key name and the publisher ID.
 			
-			// DKS -- versions???
 			KeyLocator locatorLocator = 
 				new KeyLocator(keyName, new PublisherID(signingKeyID));
 			
@@ -137,6 +154,8 @@ public class KeyRepository {
 	}
 	
 	/**
+	 * TODO DKS make sure this works if last component of key name is potentially
+	 * a version (using objects to write public keys)
 	 * Publish my public key to repository
 	 * @param keyName content name of the public key
 	 * @param keyToPublish public key digest
