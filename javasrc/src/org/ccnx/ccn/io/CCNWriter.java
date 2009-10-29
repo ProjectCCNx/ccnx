@@ -184,7 +184,7 @@ public class CCNWriter {
 			SignedInfo.ContentType type,
 			PublisherPublicKeyDigest publisher,
 			Integer freshnessSeconds) throws SignatureException, IOException {
-		return put(name, content, type, publisher, freshnessSeconds);
+		return put(name, content, type, publisher, freshnessSeconds, null);
 	}
 	
 	/**
