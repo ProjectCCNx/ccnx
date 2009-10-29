@@ -24,9 +24,9 @@ import java.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
@@ -248,7 +248,7 @@ public class SegmentationProfile implements CCNProfile {
 	
 		// TODO use better exclude filters to ensure we're only getting segments.
 		Log.info("getSegment: getting segment {0}", segmentName);
-		ContentObject segment = CCNReader.getLower(handle, segmentName, 1, publisher, timeout);
+		ContentObject segment = handle.get(Interest.lower(segmentName, 1, publisher), timeout);
 	
 		if (null == segment) {
 			Log.info("Cannot get segment " + desiredSegmentNumber + " of file {0} expected segment: {1}.", desiredContent,  segmentName);

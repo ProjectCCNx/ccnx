@@ -239,6 +239,21 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	/**
+	 * Return data a specified number of levels below us in the hierarchy, with
+	 * order preference of leftmost.
+	 * @param name name prefix for interest
+	 * @param level number of levels below us we want content. Includes the ephemeral
+	 * 	digest component in the count.
+	 * @param publisher who should have signed content (can be null)
+	 */
+	public static Interest lower(ContentName name, int level, PublisherPublicKeyDigest publisher) {
+		Interest interest = new Interest(name, publisher);
+		interest.maxSuffixComponents(level);
+		interest.minSuffixComponents(level);
+		return interest;
+	}
+	
+	/**
 	 * Construct an Interest that will give you the next content after the
 	 * argument name
 	 * @param name
