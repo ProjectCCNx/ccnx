@@ -113,6 +113,24 @@ public class CCNWriter {
 	}
 
 	/**
+	 * Publish a piece of named content signed by our default identity in 
+	 * response to an already-received Interest. The first block of Data
+	 * will be written immediately, if name matches this Interest; otherwise
+	 * both Data and Interest will be held pending later matches.
+	 * @param name name for content.
+	 * @param content content to publish; will be fragmented if necessary.
+	 * @param outstandingInterest an Interest, usually recieved by the handleInterests
+	 * 	method of a CCNFilterListener. Only one responder should write data
+	 * 	in response to a given Interest. The Interest should ideally have been
+	 * 	received on the same CCNHandle used by this CCNWriter to write data.
+	 * @throws SignatureException if there is a problem signing.
+	 * @throws IOException if there is a problem writing data.
+	 */	
+	public ContentName put(ContentName name, byte[] content, Interest outstandingInterest) throws SignatureException, IOException {
+		return put(name, content, null, null, null, outstandingInterest);
+	}
+
+	/**
 	 * Publish a piece of named content signed by a particular identity.
 	 * @param name name for content.
 	 * @param content content to publish; will be fragmented if necessary.
@@ -166,7 +184,29 @@ public class CCNWriter {
 			SignedInfo.ContentType type,
 			PublisherPublicKeyDigest publisher,
 			Integer freshnessSeconds) throws SignatureException, IOException {
+		return put(name, content, type, publisher, freshnessSeconds);
+	}
+	
+	/**
+	 * Publish a piece of named content signed by a particular identity.
+	 * @param name name for content.
+	 * @param content content to publish; will be fragmented if necessary
+	 * @param type type to specify for content. If null, DATA will be used. (see ContentType).
+	 * @param publisher selects one of our identities to publish under
+	 * @param freshnessSeconds how long the content should be considered valid in the cache.
+	 * @param outstandingInterest an interest this data is being written in response to. If the
+	 * 	name matches the Interest, the first Data segment of the content will be written immediately.
+	 *   Otherwise both Interest and Data will be cached.
+	 * @throws SignatureException if there is a problem signing.
+	 * @throws IOException if there is a problem writing data.
+	 */
+	public ContentName put(ContentName name, byte[] content, 
+			SignedInfo.ContentType type,
+			PublisherPublicKeyDigest publisher,
+			Integer freshnessSeconds,
+			Interest outstandingInterest) throws SignatureException, IOException {
 		try {
+			addOutstandingInterest(outstandingInterest);
 			_segmenter.put(name, content, 0, ((null == content) ? 0 : content.length),
 								  true, type, freshnessSeconds, null, publisher);
 			return name;
