@@ -29,6 +29,7 @@ import org.ccnx.ccn.impl.CCNSegmenter;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -112,6 +113,24 @@ public class CCNWriter {
 	}
 
 	/**
+	 * Publish a piece of named content signed by our default identity in 
+	 * response to an already-received Interest. The first block of Data
+	 * will be written immediately, if name matches this Interest; otherwise
+	 * both Data and Interest will be held pending later matches.
+	 * @param name name for content.
+	 * @param content content to publish; will be fragmented if necessary.
+	 * @param outstandingInterest an Interest, usually recieved by the handleInterests
+	 * 	method of a CCNFilterListener. Only one responder should write data
+	 * 	in response to a given Interest. The Interest should ideally have been
+	 * 	received on the same CCNHandle used by this CCNWriter to write data.
+	 * @throws SignatureException if there is a problem signing.
+	 * @throws IOException if there is a problem writing data.
+	 */	
+	public ContentName put(ContentName name, byte[] content, Interest outstandingInterest) throws SignatureException, IOException {
+		return put(name, content, null, null, null, outstandingInterest);
+	}
+
+	/**
 	 * Publish a piece of named content signed by a particular identity.
 	 * @param name name for content.
 	 * @param content content to publish; will be fragmented if necessary.
@@ -165,7 +184,29 @@ public class CCNWriter {
 			SignedInfo.ContentType type,
 			PublisherPublicKeyDigest publisher,
 			Integer freshnessSeconds) throws SignatureException, IOException {
+		return put(name, content, type, publisher, freshnessSeconds);
+	}
+	
+	/**
+	 * Publish a piece of named content signed by a particular identity.
+	 * @param name name for content.
+	 * @param content content to publish; will be fragmented if necessary
+	 * @param type type to specify for content. If null, DATA will be used. (see ContentType).
+	 * @param publisher selects one of our identities to publish under
+	 * @param freshnessSeconds how long the content should be considered valid in the cache.
+	 * @param outstandingInterest an interest this data is being written in response to. If the
+	 * 	name matches the Interest, the first Data segment of the content will be written immediately.
+	 *   Otherwise both Interest and Data will be cached.
+	 * @throws SignatureException if there is a problem signing.
+	 * @throws IOException if there is a problem writing data.
+	 */
+	public ContentName put(ContentName name, byte[] content, 
+			SignedInfo.ContentType type,
+			PublisherPublicKeyDigest publisher,
+			Integer freshnessSeconds,
+			Interest outstandingInterest) throws SignatureException, IOException {
 		try {
+			addOutstandingInterest(outstandingInterest);
 			_segmenter.put(name, content, 0, ((null == content) ? 0 : content.length),
 								  true, type, freshnessSeconds, null, publisher);
 			return name;
@@ -247,9 +288,34 @@ public class CCNWriter {
 	}
 	
 	/**
+	 * Method for writers used by CCNFilterListeners to output a block
+	 * in response to an Interest callback.
+	 * We've received an Interest prior to setting up this writer. Use
+	 * a method to push this Interest, rather than passing it in in the 
+	 * constructor to make sure we have completed initializing the writer,
+	 * and to limit the number of constructor types. (Similarly, we don't
+	 * want to have to repeat each put() in versions that either do or don't
+	 * take an Interest argument, or add potentially confusing Interest arguments
+	 * to some/all of the put() methods that should usually be null. So
+	 * start with this as the simplest option.)
+	 * If the Interest doesn't match this writer's content, 
+	 * no initial block will be output; the writer will wait for matching Interests prior
+	 * to writing its blocks. The Interest will be cached in case future
+	 * content written to this CCNWriter does match it.
+	 * 
+	 * @param outstandingInterest An interest received prior to constructing
+	 *   this writer, ideally on the same CCNHandle that the stream is using
+	 *   for output. Only one block should be put() in response
+	 *   to this Interest; it is up to the caller to make sure that is the case.
+	 */
+	public void addOutstandingInterest(Interest outstandingInterest) {
+		_segmenter.getFlowControl().handleInterest(outstandingInterest);
+	}
+	
+	/**
 	 * @return internal flow buffer.
 	 */
-	public CCNFlowControl getFlowControl() {
+	protected CCNFlowControl getFlowControl() {
 		return _segmenter.getFlowControl();
 	}
 	
