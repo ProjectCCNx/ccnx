@@ -249,7 +249,7 @@ public class CCNWriter {
 	/**
 	 * @return internal flow buffer.
 	 */
-	public CCNFlowControl getFlowControl() {
+	protected CCNFlowControl getFlowControl() {
 		return _segmenter.getFlowControl();
 	}
 	
