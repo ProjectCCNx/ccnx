@@ -29,6 +29,7 @@ import org.ccnx.ccn.impl.CCNSegmenter;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -244,6 +245,31 @@ public class CCNWriter {
 							  true,
 				 			  type, null, locator, publisher);
 		return versionedName;
+	}
+	
+	/**
+	 * Method for writers used by CCNFilterListeners to output a block
+	 * in response to an Interest callback.
+	 * We've received an Interest prior to setting up this writer. Use
+	 * a method to push this Interest, rather than passing it in in the 
+	 * constructor to make sure we have completed initializing the writer,
+	 * and to limit the number of constructor types. (Similarly, we don't
+	 * want to have to repeat each put() in versions that either do or don't
+	 * take an Interest argument, or add potentially confusing Interest arguments
+	 * to some/all of the put() methods that should usually be null. So
+	 * start with this as the simplest option.)
+	 * If the Interest doesn't match this writer's content, 
+	 * no initial block will be output; the writer will wait for matching Interests prior
+	 * to writing its blocks. The Interest will be cached in case future
+	 * content written to this CCNWriter does match it.
+	 * 
+	 * @param outstandingInterest An interest received prior to constructing
+	 *   this writer, ideally on the same CCNHandle that the stream is using
+	 *   for output. Only one block should be put() in response
+	 *   to this Interest; it is up to the caller to make sure that is the case.
+	 */
+	public void addOutstandingInterest(Interest outstandingInterest) {
+		_segmenter.getFlowControl().handleInterest(outstandingInterest);
 	}
 	
 	/**
