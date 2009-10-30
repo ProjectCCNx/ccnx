@@ -27,7 +27,7 @@
 #include <ccn/keystore.h>
 #include <ccn/signing.h>
 
-ssize_t
+static ssize_t
 read_full(int fd, unsigned char *buf, size_t size)
 {
     size_t i;
@@ -49,12 +49,23 @@ read_full(int fd, unsigned char *buf, size_t size)
 static void
 usage(const char *progname)
 {
-        fprintf(stderr,
-                "%s [-h] [-v] [-x freshness_seconds] [-t type] ccnx:/some/place\n"
-                " Reads data from stdin and sends it to the local ccnd "
-                "as a single ContentObject "
-                "under the given URI\n", progname);
-        exit(1);
+    fprintf(stderr,
+            "%s [-h] [-v] [-V seg] [-x freshness_seconds] [-t type]"
+            " ccnx:/some/place\n"
+            " Reads data from stdin and sends it to the local ccnd"
+            " as a single ContentObject under the given URI"
+            "\n"
+            "  -h - print this message and exit"
+            "\n"
+            "  -v - verbose"
+            "\n"
+            "  -V seg - generate version, use seg as name suffix"
+            "\n"
+            "  -x seconds - set FreshnessSeconds"
+            "\n"
+            "  -t ( DATA | ENCR | GONE | KEY | LINK | NACK ) - set type"
+            "\n", progname);
+    exit(1);
 }
 
 
@@ -78,12 +89,13 @@ main(int argc, char **argv)
 {
     const char *progname = argv[0];
     struct ccn *ccn = NULL;
-    struct ccn_charbuf *root = NULL;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *temp = NULL;
     struct ccn_charbuf *templ = NULL;
     struct ccn_charbuf *signed_info = NULL;
     struct ccn_charbuf *keylocator = NULL;
+    struct ccn_charbuf *finalblockid = NULL;
+    struct ccn_indexbuf *ndx = NULL;
     struct ccn_keystore *keystore = NULL;
     long expire = -1;
     int versioned = 0;
@@ -94,8 +106,10 @@ main(int argc, char **argv)
     unsigned char *buf = NULL;
     enum ccn_content_type content_type = CCN_CONTENT_DATA;
     struct ccn_closure in_interest = {.p=&incoming_interest};
+    const char *postver = NULL;
+    int verbose = 0;
     
-    while ((res = getopt(argc, argv, "hlvt:x:")) != -1) {
+    while ((res = getopt(argc, argv, "hlvV:t:x:")) != -1) {
         switch (res) {
             case 'l':
                 // NYI - set FinalBlockID to last comp of name
@@ -106,7 +120,11 @@ main(int argc, char **argv)
                     usage(progname);
                 break;
 	    case 'v':
+                verbose = 1;
+                break;
+            case 'V':
                 versioned = 1;
+                postver = optarg;
                 break;
             case 't':
                 if (0 == strcasecmp(optarg, "DATA")) {
@@ -162,7 +180,15 @@ main(int argc, char **argv)
         perror("Could not connect to ccnd");
         exit(1);
     }
-    
+
+    /* Read the actual user data from standard input */
+    read_res = read_full(0, buf, blocksize);
+    if (read_res < 0) {
+        perror("read");
+        read_res = 0;
+        status = 1;
+    }
+        
     /* Tack on the version component if requested */
     if (versioned) {
         res = ccn_create_version(ccn, name, CCN_V_REPLACE | CCN_V_NOW | CCN_V_HIGH, 0, 0);
@@ -170,11 +196,15 @@ main(int argc, char **argv)
             fprintf(stderr, "%s: ccn_create_version() failed\n", progname);
             exit(1);
         }
-        // XXX - might want to print the new URI here.
+        if (postver != NULL) {
+            res = ccn_name_from_uri(name, postver);
+            if (res < 0) {
+                fprintf(stderr, "-V %s: invalid name suffix\n");
+                exit(0);
+            }
+        }
     }
     buf = calloc(1, blocksize);
-    root = name;
-    name = ccn_charbuf_create();
     temp = ccn_charbuf_create();
     templ = ccn_charbuf_create();
     signed_info = ccn_charbuf_create();
@@ -189,11 +219,12 @@ main(int argc, char **argv)
         exit(1);
     }
     
-    name->length = 0;
-    ccn_charbuf_append(name, root->buf, root->length);
-
     /* Set up a handler for interests */
     ccn_set_interest_filter(ccn, name, &in_interest);
+    
+    /* Set a FinalBlockID if it seems appropriate. */
+    
+    
 
     /* Construct a key locator containing the key itself */
     keylocator = ccn_charbuf_create();
@@ -207,12 +238,7 @@ main(int argc, char **argv)
         ccn_charbuf_append_closer(keylocator); /* </KeyLocator> */
     }
 
-    read_res = read_full(0, buf, blocksize);
-    if (read_res < 0) {
-        perror("read");
-        read_res = 0;
-        status = 1;
-    }
+    /* Create the SignedInfo */
     signed_info->length = 0;
     res = ccn_signed_info_create(signed_info,
                                  /*pubkeyid*/ccn_keystore_public_key_digest(keystore),
@@ -222,14 +248,10 @@ main(int argc, char **argv)
                                  /*freshness*/ expire,
                                  /*finalblockid*/NULL,
                                  keylocator);
-    /* Put the keylocator in the first block only. */
-    ccn_charbuf_destroy(&keylocator);
     if (res < 0) {
         fprintf(stderr, "Failed to create signed_info (res == %d)\n", res);
         exit(1);
     }
-    name->length = 0;
-    ccn_charbuf_append(name, root->buf, root->length);
     temp->length = 0;
     res = ccn_encode_ContentObject(temp,
                                    name,
@@ -256,7 +278,11 @@ main(int argc, char **argv)
     }
     free(buf);
     buf = NULL;
-    ccn_charbuf_destroy(&root);
+    if (verbose) {
+        temp->length = 0;
+        ccn_uri_append(temp, name->buf, name->length, 1);
+        printf("wrote %s\n", ccn_charbuf_as_string(temp));
+    }
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&signed_info);
