@@ -90,7 +90,9 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		Log.info("Finished reading, read result {0}", DataUtils.printHexBytes(resultDigest));
 		if (!writer.isDone()) {
 			synchronized(writer) {
-				writer.wait();
+				while (!writer.isDone()) {
+					writer.wait(500);
+				}
 			}
 		}
 		Log.info("Finished writing, read result {0}, write result {1}", DataUtils.printHexBytes(resultDigest), DataUtils.printHexBytes(writeDigest));
