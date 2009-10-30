@@ -9,7 +9,6 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.profiles.access.AccessControlManager;
@@ -41,14 +40,7 @@ public class AccessControlManagerTestRepo {
 		baseNode = ContentName.fromNative(directoryBase + Integer.toString(rand.nextInt(10000)));
 		childNode = ContentName.fromNative(baseNode, "child");
 		grandchildNode = ContentName.fromNative(childNode, "grandchild");
-		
-		// write some content in grandchild node
-//		RepositoryOutputStream ros = new RepositoryOutputStream(grandchildNode, CCNHandle.open());
-//		ros.setTimeout(5000);
-//		byte [] data = "Grandchild content".getBytes();
-//		ros.write(data, 0, data.length);
-//		ros.close();
-		
+				
 		// create user identities with TestUserData
 		ContentName testPrefix = UserConfiguration.defaultNamespace();
 		userKeyStorePrefix = ContentName.fromNative(testPrefix, "_access_");
