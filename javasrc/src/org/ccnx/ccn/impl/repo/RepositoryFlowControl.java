@@ -184,11 +184,6 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		Log.info("RepositoryFlowControl.startWrite called for name {0}, shape {1}", name, shape);
 		Client client = new Client(name, shape);
 		_clients.add(client);
-		// We no longer do separate getLatestVersion queries. We pull the first block with a single Interest.
-		// clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
-		// DKS -- don't think we want to clear old interests; bad if we're writing multiple streams
-		// in parallel through the same FC. Log just to see what would have happened.
-		logUnmatchedInterests("RepositoryFlowController: startWrite would have cleared the following interests:");
 		
 		// A nonce is used because if we tried to write data with the same name more than once, we could retrieve the
 		// the previous answer from the cache, and the repo would never be informed of our start write.
@@ -217,10 +212,12 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 					interrupted = true;
 				}
 			} while (interrupted || (!client._initialized && ((getTimeout() + startTime) > System.currentTimeMillis())));
-		}
-		if (!client._initialized) {
-			Log.warning("No response from a repository, cannot add name space : " + name);
-			throw new IOException("No response from a repository for " + name);
+			
+			if (!client._initialized) {
+				_clients.remove();
+				Log.warning("No response from a repository, cannot add name space : " + name);
+				throw new IOException("No response from a repository for " + name);
+			}
 		}
 	}
 

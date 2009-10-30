@@ -922,6 +922,7 @@ public class AccessControlManager {
 		KeyDirectory nodeKeyDirectory = null;
 		try {
 			nodeKeyDirectory = new KeyDirectory(this, theNodeKeyName, handle());
+			nodeKeyDirectory.waitForData();
 
 			if (null == nodeKeyDirectory) {
 				throw new IOException("Cannot get node key directory for : " + theNodeKeyName);

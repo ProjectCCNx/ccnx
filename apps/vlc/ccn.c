@@ -87,6 +87,7 @@ struct access_sys_t
     int64_t i_pos;
     struct ccn *ccn;
     struct ccn_closure *incoming;
+    struct ccn_charbuf *p_name;
 };
 
 enum ccn_upcall_res
@@ -145,6 +146,15 @@ static int CCNOpen(vlc_object_t *p_this)
      * if there is no versioned instance of the name, when it should report
      * that a version couldn't be found
      */
+    p_sys->p_name = ccn_charbuf_create();
+    if (p_sys->p_name == NULL) {
+        i_err = VLC_ENOMEM;
+        goto exit_error;
+    }
+    i_ret = ccn_charbuf_append_charbuf(p_sys->p_name, p_name);
+    if (i_ret < 0) {
+        goto exit_error;
+    }
     i_ret = ccn_name_append_numeric(p_name, CCN_MARKER_SEQNUM, 0);
     if (i_ret < 0) {
         goto exit_error;
@@ -181,6 +191,7 @@ static int CCNOpen(vlc_object_t *p_this)
         free(p_sys->incoming);
         p_sys->incoming = NULL;
     }
+    ccn_charbuf_destroy(&p_sys->p_name);
     ccn_destroy(&(p_sys->ccn));
     free(p_sys);
     return (i_err);
@@ -308,7 +319,7 @@ static int CCNSeek(access_t *p_access, int64_t i_pos)
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
     p_sys->i_pos = i_pos;
     p_name = ccn_charbuf_create();
-    i_ret = ccn_name_from_uri(p_name, p_access->psz_path);
+    i_ret = ccn_charbuf_append_charbuf(p_name, p_sys->p_name);
     if (i_ret < 0) {
         ccn_charbuf_destroy(&p_name);
         return (VLC_EGENERIC);
