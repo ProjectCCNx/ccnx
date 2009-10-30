@@ -3,7 +3,7 @@
 <!ENTITY % commonattrs
 	"xmlns %URI; #FIXED 'http://www.ccnx.org/content/schema/20090915'">
 
-<!ELEMENT RepositoryInfo (Version, Type, RepositoryVersion, GlobalPrefix, LocalName, Name*)>
+<!ELEMENT RepositoryInfo (Version, Type, RepositoryVersion, GlobalPrefixName, LocalName, Name*)>
 <!ATTLIST RepositoryInfo %commonattrs;>
 
 <!ELEMENT Type		(#PCDATA)>	<!-- INFO, DATA -->
@@ -24,8 +24,8 @@
 <!ELEMENT Component	(#PCDATA)>	<!-- base64Binary -->
 <!ATTLIST Component     ccnbencoding CDATA #FIXED 'base64Binary'>
 
-<!ELEMENT Policy (PolicyVersion | LocalName | GlobalPrefix, Namespace)*>
-<!ATTLIST RepositoryInfo %commonattrs;>
+<!ELEMENT Policy (PolicyVersion | LocalName | GlobalPrefix | Namespace)* >
+<!ATTLIST Policy %commonattrs;>
 
 <!ELEMENT PolicyVersion	(#PCDATA)>	<!-- UTF-8 -->
 

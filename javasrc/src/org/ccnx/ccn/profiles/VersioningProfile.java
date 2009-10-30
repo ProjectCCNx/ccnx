@@ -485,11 +485,8 @@ public class VersioningProfile implements CCNProfile {
 	 * returned could be any name under this new version - by default it will get the leftmost item,
 	 * but right now that is generally a repo start write, not a segment. Changing the marker values
 	 * used will fix that.
-	 * TODO fix marker values
 	 * @result Returns a matching ContentObject, *unverified*.
 	 * @throws IOException
-	 * DKS TODO -- doesn't use publisher
-	 * DKS TODO -- specify separately latest version known?
 	 */
 	public static ContentObject getLatestVersion(ContentName startingVersion, 
 											     PublisherPublicKeyDigest publisher, 
