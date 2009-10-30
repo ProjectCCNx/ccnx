@@ -3,11 +3,11 @@
   <Version>1.0</Version>
   <Type>INFO</Type>
   <RepositoryVersion>1.4</RepositoryVersion>
-  <GlobalPrefix>
+  <GlobalPrefixName>
     <Component ccnbencoding="base64Binary">cGFyYy5jb20=</Component>
     <Component ccnbencoding="base64Binary">Y3Ns</Component>
     <Component ccnbencoding="base64Binary">Y2Nu</Component>
     <Component ccnbencoding="base64Binary">UmVwb3M=</Component>
-  </GlobalPrefix>
+  </GlobalPrefixName>
   <LocalName>Repository</LocalName>
 </RepositoryInfo>

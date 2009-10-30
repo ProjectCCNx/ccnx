@@ -21,7 +21,7 @@
 <!-- Top-level objects that can appear in 
      documents, messages, etc. -->
 <xs:element name="RepositoryInfo" type="RepositoryInfoType"/>
-<xs:element name="PolicyXML" type="PolicyType"/>
+<xs:element name="Policy" type="PolicyType"/>
 
 <xs:complexType name="RepositoryInfoDataType">
   <xs:simpleContent>
@@ -56,9 +56,8 @@
 	<xs:element name="PolicyVersion" type="xs:string"/> 
 	<xs:element name="LocalName" type="xs:string"/>
 	<xs:element name="GlobalPrefix" type="xs:string"/>
-	<xs:element name="LocalName" type="xs:string"/>
     <!-- 0 or more names -->
-	<xs:element name="Namespace" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    	<xs:element name="Namespace" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
   </xs:sequence>
 </xs:complexType>
 
