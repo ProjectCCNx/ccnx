@@ -182,6 +182,7 @@ main(int argc, char **argv)
     }
 
     /* Read the actual user data from standard input */
+    buf = calloc(1, blocksize);
     read_res = read_full(0, buf, blocksize);
     if (read_res < 0) {
         perror("read");
@@ -199,12 +200,11 @@ main(int argc, char **argv)
         if (postver != NULL) {
             res = ccn_name_from_uri(name, postver);
             if (res < 0) {
-                fprintf(stderr, "-V %s: invalid name suffix\n");
+                fprintf(stderr, "-V %s: invalid name suffix\n", postver);
                 exit(0);
             }
         }
     }
-    buf = calloc(1, blocksize);
     temp = ccn_charbuf_create();
     templ = ccn_charbuf_create();
     signed_info = ccn_charbuf_create();
@@ -222,10 +222,23 @@ main(int argc, char **argv)
     /* Set up a handler for interests */
     ccn_set_interest_filter(ccn, name, &in_interest);
     
-    /* Set a FinalBlockID if it seems appropriate. */
+    /* Set a FinalBlockID if appropriate. */
+#if (CCN_API_VERSION > 1001)
+#error "Fix me - check if ccn_signed_info_create() API has changed"
+#endif
+    if (postver != NULL && 0 == memcmp(postver, "%00", 3)) {
+        int ncomp;
+        const unsigned char *comp;
+        size_t size;
+        finalblockid = ccn_charbuf_create();
+        ndx = ccn_indexbuf_create();
+        ncomp = ccn_name_split(name, ndx);
+        ccn_name_comp_get(name->buf, ndx, ncomp - 1, &comp, &size);
+        ccn_charbuf_append_tt(finalblockid, size, CCN_BLOB);
+        ccn_charbuf_append(finalblockid, comp, size);
+        ccn_indexbuf_destroy(&ndx);
+    }
     
-    
-
     /* Construct a key locator containing the key itself */
     keylocator = ccn_charbuf_create();
     ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG);
@@ -246,7 +259,7 @@ main(int argc, char **argv)
                                  /*datetime*/NULL,
                                  /*type*/content_type,
                                  /*freshness*/ expire,
-                                 /*finalblockid*/NULL,
+                                 finalblockid,
                                  keylocator);
     if (res < 0) {
         fprintf(stderr, "Failed to create signed_info (res == %d)\n", res);
@@ -285,6 +298,7 @@ main(int argc, char **argv)
     }
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&temp);
+    ccn_charbuf_destroy(&finalblockid);
     ccn_charbuf_destroy(&signed_info);
     ccn_keystore_destroy(&keystore);
     ccn_destroy(&ccn);
