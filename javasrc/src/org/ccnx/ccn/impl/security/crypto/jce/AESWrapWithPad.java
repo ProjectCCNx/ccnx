@@ -19,6 +19,7 @@ package org.ccnx.ccn.impl.security.crypto.jce;
 
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 
 import javax.crypto.Cipher;
@@ -63,8 +64,13 @@ public class AESWrapWithPad extends WrapCipherSpi {
 	 * @param wrappedKeyAlgorithm algorithm to decode wrappedKey into a key for
 	 * @return the unwrapped key
 	 * @throws InvalidKeyException  if the wrappingKey is invalid
+	 * @throws NoSuchAlgorithmException if the wrappedKeyAlgorithm is unknown. Thrown only
+	 * 	in older versions of BouncyCastle, here for compatibility. (Later versions catch it
+	 * 	and rethrow as an InvalidKeyException, which we do upstream from here. Can't do it
+	 * 	here or we'd hit an unthrown exception error when running against newer BouncyCastle
+	 * 	libraries.)
 	 */
-	public Key unwrap(Key wrappingKey, byte [] wrappedKey, String wrappedKeyAlgorithm) throws InvalidKeyException {
+	public Key unwrap(Key wrappingKey, byte [] wrappedKey, String wrappedKeyAlgorithm) throws InvalidKeyException, NoSuchAlgorithmException {
 		engineInit(Cipher.UNWRAP_MODE, wrappingKey, _random);
 		return engineUnwrap(wrappedKey, wrappedKeyAlgorithm, WrappedKey.getCipherType(wrappedKeyAlgorithm));
 	}

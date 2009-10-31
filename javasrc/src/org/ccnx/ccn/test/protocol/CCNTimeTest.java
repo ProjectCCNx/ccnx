@@ -93,7 +93,7 @@ public class CCNTimeTest {
 			Assert.assertTrue(timestampEquals(e2, c2));
 			Assert.assertTrue(c2.equals(e2));			
 
-			int newNanos = random.nextInt(1000000000);
+			int newNanos = random.nextInt(999999999);
 
 			e2.setNanos(newNanos);
 			c2.setNanos(newNanos);
