@@ -76,6 +76,7 @@ vlc_module_end();
 #define CCN_CHUNK_SIZE 4096
 #define BUF_SIZE (1024 * 1024)
 #define CCN_VERSION_TIMEOUT 5000
+#define PREFETCH_OFFSET 5
 
 struct access_sys_t
 {
@@ -87,13 +88,24 @@ struct access_sys_t
     int64_t i_pos;
     struct ccn *ccn;
     struct ccn_closure *incoming;
+    struct ccn_closure *prefetch;
     struct ccn_charbuf *p_name;
+    struct ccn_charbuf *p_template;
 };
 
 enum ccn_upcall_res
 incoming_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info);
+enum ccn_upcall_res
+prefetch_content(struct ccn_closure *selfp,
+                 enum ccn_upcall_kind kind,
+                 struct ccn_upcall_info *info);
+static struct ccn_charbuf *
+sequenced_name(struct ccn_charbuf *basename, uintmax_t seq);
+
+struct ccn_charbuf *make_data_template();
+
 /*****************************************************************************
  * CCNOpen: 
  *****************************************************************************/
@@ -118,8 +130,10 @@ static int CCNOpen(vlc_object_t *p_this)
     p_access->info.i_size = -1;
     /* Update default_pts */
     var_Create(p_access, "ccn-caching", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
+    p_sys->p_template = make_data_template();
+    p_sys->prefetch = calloc(1, sizeof(struct ccn_closure));
     p_sys->incoming = calloc(1, sizeof(struct ccn_closure));
-    if (p_sys->incoming == NULL) {
+    if (p_sys->incoming == NULL || p_sys->prefetch == NULL) {
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
@@ -127,6 +141,9 @@ static int CCNOpen(vlc_object_t *p_this)
             p_access->psz_path, (int)p_sys->incoming);    /*XXX: fix format */
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
+    p_sys->prefetch->data = p_access;
+    p_sys->prefetch->p = &prefetch_content; /* will discard any content received */
+
     p_sys->ccn = ccn_create();
     if (p_sys->ccn == NULL || ccn_connect(p_sys->ccn, NULL) == -1) {
         goto exit_error;
@@ -151,19 +168,22 @@ static int CCNOpen(vlc_object_t *p_this)
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
-    i_ret = ccn_charbuf_append_charbuf(p_sys->p_name, p_name);
-    if (i_ret < 0) {
-        goto exit_error;
-    }
-    i_ret = ccn_name_append_numeric(p_name, CCN_MARKER_SEQNUM, 0);
-    if (i_ret < 0) {
-        goto exit_error;
-    }
-    i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, NULL);
-    if (i_ret < 0) {
-        goto exit_error;
-    }
+    ccn_charbuf_append_charbuf(p_sys->p_name, p_name);
     ccn_charbuf_destroy(&p_name);
+
+    p_name = sequenced_name(p_sys->p_name, 0);
+    i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_template);
+    ccn_charbuf_destroy(&p_name);
+    if (i_ret < 0) {
+        goto exit_error;
+    }
+
+    p_name = sequenced_name(p_sys->p_name, 0 + PREFETCH_OFFSET);
+    i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch, NULL);
+    ccn_charbuf_destroy(&p_name);
+    if (i_ret < 0) {
+        goto exit_error;
+    }
 
     p_sys->p_fifo = block_FifoNew();
     if (p_sys->p_fifo == NULL) {
@@ -318,15 +338,14 @@ static int CCNSeek(access_t *p_access, int64_t i_pos)
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
     p_sys->i_pos = i_pos;
-    p_name = ccn_charbuf_create();
-    i_ret = ccn_charbuf_append_charbuf(p_name, p_sys->p_name);
-    if (i_ret < 0) {
-        ccn_charbuf_destroy(&p_name);
-        return (VLC_EGENERIC);
-    }
-    ccn_name_append_numeric(p_name, CCN_MARKER_SEQNUM, p_sys->i_pos / CCN_CHUNK_SIZE);
-    ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, NULL);
+    p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / CCN_CHUNK_SIZE);
+    ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_template);
     ccn_charbuf_destroy(&p_name);    
+
+    p_name = sequenced_name(p_sys->p_name, PREFETCH_OFFSET + (p_sys->i_pos / CCN_CHUNK_SIZE));
+    ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch, NULL);
+    ccn_charbuf_destroy(&p_name);    
+
     p_access->info.i_pos = i_pos;
     p_access->info.b_eof = false;
     return (VLC_SUCCESS);
@@ -475,25 +494,6 @@ incoming_content(struct ccn_closure *selfp,
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
     if (res < 0) abort();
 
-#if 0
-    if (info->pco->type != CCN_CONTENT_DATA) {
-        /* This is spam, so need to try again excluding this one. */
-        name = ccn_charbuf_create();
-        ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 1]);
-        note_new_exclusion(p_sys, ccnb,
-                           info->pco->offset[CCN_PCO_B_Signature],
-                           info->pco->offset[CCN_PCO_E_Signature]);
-        templ = make_template(p_sys, info);
-        res = ccn_express_interest(info->h, name, selfp, templ);
-        /* TODO: must not abort... */
-        if (res < 0)
-            abort();
-        ccn_charbuf_destroy(&templ);
-        ccn_charbuf_destroy(&name);
-        return(CCN_UPCALL_RESULT_OK);
-    }
-#endif
-
     p_sys->timeouts = 0;
 
     /* was this the last block? */
@@ -557,36 +557,71 @@ incoming_content(struct ccn_closure *selfp,
             return (CCN_UPCALL_RESULT_OK);
         }
 
-#ifdef VLCPLUGINVER099
+#if 1
         /* 0.9.9 did not include the block_FifoPace function */
     while (block_FifoCount(p_sys->p_fifo) > CCN_FIFO_MAX_PACKETS) {
         msleep(1000);
         if (!vlc_object_alive(p_access)) return(CCN_UPCALL_RESULT_OK);
     }
 #else
+    /* and they neglected to VLC_EXPORT it in 1.0.2 ! */
     block_FifoPace(p_sys->p_fifo, CCN_FIFO_MAX_PACKETS, SIZE_MAX);
 #endif
-    /* Ask for the next fragment */
-    name = ccn_charbuf_create();
-    ccn_name_init(name);
-    if (ic->n < 2) abort();
-    res = ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 2]);
-    if (res < 0) abort();
-    p_sys->i_pos = CCN_CHUNK_SIZE * (1 + (p_sys->i_pos / CCN_CHUNK_SIZE));
-    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, p_sys->i_pos / CCN_CHUNK_SIZE);
-#if 0
-    clear_excludes(p_sys);
-    templ = make_template(p_sys, info);
 
-    res = ccn_express_interest(info->h, name, selfp, templ);
-#else
+    /* Ask for the next fragment */
+    p_sys->i_pos = CCN_CHUNK_SIZE * (1 + (p_sys->i_pos / CCN_CHUNK_SIZE));
+    name = sequenced_name(p_sys->p_name, p_sys->i_pos / CCN_CHUNK_SIZE);
     res = ccn_express_interest(info->h, name, selfp, NULL);
-#endif
-    if (res < 0) abort();
-#if 0
-    ccn_charbuf_destroy(&templ);
-#endif
     ccn_charbuf_destroy(&name);
+    /* Prefetch as well */
+    name = sequenced_name(p_sys->p_name, PREFETCH_OFFSET + (p_sys->i_pos / CCN_CHUNK_SIZE));
+    res = ccn_express_interest(info->h, name, p_sys->prefetch, NULL);
+    ccn_charbuf_destroy(&name);
+
+    if (res < 0) abort();
     
     return(CCN_UPCALL_RESULT_OK);
 }
+
+enum ccn_upcall_res
+prefetch_content(struct ccn_closure *selfp,
+                 enum ccn_upcall_kind kind,
+                 struct ccn_upcall_info *info)
+{
+    /* the idea behind the content prefetch is to get it to the local ccnd
+     * so it will be available quickly when we need it.  Therefore, this
+     * routine just discards the data it retrieved.
+     */
+#if 0
+    if (kind == CCN_UPCALL_FINAL) {
+        free(selfp);
+    }
+#endif
+    return(CCN_UPCALL_RESULT_OK);
+}
+
+static struct ccn_charbuf *
+sequenced_name(struct ccn_charbuf *basename, uintmax_t seq)
+{
+    struct ccn_charbuf *name = NULL;
+    
+    name = ccn_charbuf_create();
+    ccn_charbuf_append_charbuf(name, basename);
+    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, seq);
+    return(name);
+}
+
+struct ccn_charbuf *
+make_data_template()
+{
+    struct ccn_charbuf *templ = ccn_charbuf_create();
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
+    ccnb_append_number(templ, 1);
+    ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
+    ccn_charbuf_append_closer(templ); /* </Interest> */
+    return(templ);
+}
+
