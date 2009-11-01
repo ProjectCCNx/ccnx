@@ -37,8 +37,8 @@ import javax.security.auth.x500.X500Principal;
 
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.DERObjectIdentifier;
+import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.DERSequence;
-import org.bouncycastle.asn1.x509.AuthorityKeyIdentifier;
 import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
 import org.bouncycastle.asn1.x509.GeneralName;
@@ -153,8 +153,17 @@ public class MinimalCertificateGenerator {
 									   X509Certificate issuerCertificate, long duration, boolean isCA) throws CertificateEncodingException, IOException {
 
 		this(subjectDN, subjectPublicKey, issuerCertificate.getSubjectX500Principal(), duration, isCA);
+		// Pull the existing subject identifier out of the issuer cert. 
+		byte [] subjectKeyID = issuerCertificate.getExtensionValue(X509Extensions.SubjectKeyIdentifier.toString());
+		if (null == subjectKeyID) {
+			subjectKeyID = CryptoUtil.generateKeyID(subjectPublicKey);
+		} else {
+			// content of extension is wrapped in a DEROctetString
+			DEROctetString content = (DEROctetString)CryptoUtil.decode(subjectKeyID);
+			subjectKeyID = content.getOctets();
+		}
 		AuthorityKeyIdentifier aki = 
-			new AuthorityKeyIdentifier(CryptoUtil.generateKeyID(subjectPublicKey));
+			new AuthorityKeyIdentifier(subjectKeyID);
 		_generator.addExtension(X509Extensions.AuthorityKeyIdentifier, false, aki);
 	}
 
@@ -169,6 +178,7 @@ public class MinimalCertificateGenerator {
 									   long duration, boolean isCA) {
 
 		this(subjectDN, subjectPublicKey, new X500Principal(subjectDN), duration, isCA);
+		// This needs to match what we are using for a subject key identifier.
 		AuthorityKeyIdentifier aki = 
 			new AuthorityKeyIdentifier(CryptoUtil.generateKeyID(subjectPublicKey));
 		_generator.addExtension(X509Extensions.AuthorityKeyIdentifier, false, aki);
@@ -261,6 +271,8 @@ public class MinimalCertificateGenerator {
 
 	/**
 	 * Generate an X509 certificate, based on the current issuer and subject using the default provider.
+	 * Use the old form of the BC certificate generation call for compatibility with older versions
+	 * of BouncyCastle; suppress the deprecation warning on newer platforms.
 	 * @param digestAlgorithm the digest algorithm.
 	 * @param signingKey the signing key.
 	 * @return the X509 certificate.
@@ -270,6 +282,7 @@ public class MinimalCertificateGenerator {
 	 * @throws NoSuchAlgorithmException
 	 * @throws SignatureException
 	 */
+	@SuppressWarnings("deprecation")
 	public X509Certificate sign(String digestAlgorithm, PrivateKey signingKey) throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, SignatureException {
 		/**
 		 * Finalize extensions.
@@ -286,7 +299,9 @@ public class MinimalCertificateGenerator {
 		}
 		_generator.setSignatureAlgorithm(signatureAlgorithm);
 		
-		return _generator.generate(signingKey);
+		// Move back to the older form to allow compatibility with BC 1.34
+		//return _generator.generate(signingKey);
+		return _generator.generateX509Certificate(signingKey);
 	}
 	
 	/**

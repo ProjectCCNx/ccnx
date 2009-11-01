@@ -1,0 +1,11 @@
+This directory contains additional JUnit tests that either require
+algorithms not available on all platforms and configurations, or
+require that your Java installation be configured to support
+unlimited-strength crypto. We want to make our "out of the box"
+test configuration as general as possible, so don't require that
+either of these conditions be met to run the standard tests; hence
+the separation of this code from the main library tests. 
+
+We keep these tests because we want to both test this functionality 
+on platforms that do support it, and demonstrate how to use various
+crypto-related classes with algorithms other than RSA.

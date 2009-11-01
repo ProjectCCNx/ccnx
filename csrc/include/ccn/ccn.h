@@ -27,6 +27,24 @@
 #include <ccn/charbuf.h>
 #include <ccn/indexbuf.h>
 
+/**
+ * A macro that clients may use to cope with an evolving API.
+ *
+ * The decimal digits of this use the pattern MMVVXXX, where MM is the
+ * major release number and VV is the minor version level.
+ * XXX will be bumped when an API change is made, but it will not be
+ * directly tied to the patch level in a release number.
+ * Thus CCN_API_VERSION=1000 would have corresponded to the first public
+ * release (0.1.0), but that version did not have this macro defined.
+ */
+#define CCN_API_VERSION 1001
+
+/**
+ * Global interest lifetime.
+ *
+ * Someday the interest lifetime will vary by situation, but for now
+ * we use a globally applicable constant value.
+ */
 #define CCN_INTEREST_LIFETIME_MICROSEC 4000000
 
 /* opaque declarations */

@@ -610,8 +610,9 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	}
 
 	public static int getCipherType(String cipherAlgorithm) {
-		if (cipherAlgorithm.equalsIgnoreCase("ECIES") || 
-					cipherAlgorithm.equalsIgnoreCase("RSA") || cipherAlgorithm.equalsIgnoreCase("ElGamal")) {
+		if (cipherAlgorithm.equalsIgnoreCase("ECIES") || cipherAlgorithm.equalsIgnoreCase("EC") ||
+				cipherAlgorithm.equalsIgnoreCase("RSA") || cipherAlgorithm.equalsIgnoreCase("ElGamal") ||
+				cipherAlgorithm.equalsIgnoreCase("DH") || cipherAlgorithm.equalsIgnoreCase("DSA")) {
 			return Cipher.PRIVATE_KEY; // right now assume we don't wrap public keys
 		}
 		return Cipher.SECRET_KEY;
@@ -689,6 +690,13 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			System.arraycopy(input, offset, tmpbuf, 0, length);
 			input = tmpbuf;
 		}
-		return engine.unwrap(unwrappingKey, input, wrappedKeyAlgorithm);
+		try {
+			return engine.unwrap(unwrappingKey, input, wrappedKeyAlgorithm);
+		} catch (NoSuchAlgorithmException e) {
+			// engine.unwrap only throws NoSuchAlgorithmException in older versions of BouncyCastle.
+			// Newer versions do exactly what we're doing here; add it here manually to allow 
+			// compatibility with multiple BC versions.
+            throw new InvalidKeyException("Unknown key type " + e.getMessage());
+		}
 	}
 }
