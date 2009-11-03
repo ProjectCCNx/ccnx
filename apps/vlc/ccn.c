@@ -72,11 +72,11 @@ vlc_module_end();
 /*****************************************************************************
  * Local prototypes
  *****************************************************************************/
-#define CCN_FIFO_MAX_PACKETS 512
+#define CCN_FIFO_MAX_PACKETS 100
 #define CCN_CHUNK_SIZE 4096
 #define BUF_SIZE (1024 * 1024)
 #define CCN_VERSION_TIMEOUT 5000
-#define PREFETCH_OFFSET 5
+#define PREFETCH_OFFSET 6
 
 struct access_sys_t
 {
