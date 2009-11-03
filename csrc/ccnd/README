@@ -1,11 +1,10 @@
-PROGRAMS
-ccnd - CCN Daemon
+ccnd - CCNx Daemon
 	options: none
 	arguments: none
 	environment variables:
 		CCND_DEBUG=
-			0 - no stderr messages
-			1 - default stderr messages (any non-zero value gets these)
+			0 - no messages
+			1 - basic messages (any non-zero value gets these)
 			2 - interest messages
 			4 - content messages
 			8 - matching details
@@ -15,9 +14,11 @@ ccnd - CCN Daemon
 			128 - face registration debugging
 			bitwise OR these together for combinations; -1 gets everything
 		CCN_LOCAL_PORT=
-			UDP port for unicast clients (default CCN_DEFAULT_UNICAST_PORT).
+			UDP port for unicast clients (default 9695).
 			Also listens on this TCP port for stream connections.
 			Also affects name of unix-domain socket.
+		CCN_LOCAL_SOCKNAME=
+			Name stem of unix-domain socket (default /tmp/.ccnd.sock).
 		CCND_CAP=
 			Capacity limit, in count of ContentObjects.
 			Not an absolute limit.
@@ -27,6 +28,9 @@ ccnd - CCN Daemon
 			Single items larger than this are not precluded.
 		CCND_DATA_PAUSE_MICROSEC=
 			Adjusts content-send delay time for multicast and udplink faces
+		CCND_KEYSTORE_DIRECTORY=
+			Directory readable only by ccnd where its keystores are kept
+			Defaults to a private subdirectory of /var/tmp
 
 ccndsmoketest - simple-minded program for exercising ccnd
 	options: -t millisconds - sets the timeout for recv operations

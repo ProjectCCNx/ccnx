@@ -34,7 +34,7 @@
 
 /**
  *  Produce ccnd debug output.
- *  Output is produced on stderr under the control of h->debug;
+ *  Output is produced via h->logger under the control of h->debug;
  *  prepends decimal timestamp and process identification.
  *  Caller should not supply newlines.
  *  @param      h  the ccnd handle
@@ -46,26 +46,28 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
     struct timeval t;
     va_list ap;
     struct ccn_charbuf *b;
-    if (h != NULL && h->debug == 0)
+    int res;
+    
+    if (h == NULL || h->debug == 0 || h->logger == 0)
         return;
     b = ccn_charbuf_create();
     gettimeofday(&t, NULL);
-    if ((h != NULL) && ((h->debug & 64) != 0) &&
+    if (((h->debug & 64) != 0) &&
         ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
           t.tv_sec >= h->logtime + 30)) {
-        fprintf(stderr, "%ld.000000 ccnd[%d]: _______________________ %s",
-                (long)t.tv_sec, (int)getpid(), ctime(&t.tv_sec));
+        ccn_charbuf_putf(b, "%ld.000000 ccnd[%d]: _______________________ %s\n",
+                         (long)t.tv_sec, h->logpid, ctime(&t.tv_sec));
         h->logtime = t.tv_sec;
         h->logbreak = 30;
     }
     ccn_charbuf_putf(b, "%ld.%06u ccnd[%d]: %s\n",
-        (long)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), fmt);
+        (long)t.tv_sec, (unsigned)t.tv_usec, h->logpid, fmt);
     va_start(ap, fmt);
-    vfprintf(stderr, (const char *)b->buf, ap);
+    res = (*h->logger)(h->loggerdata, (const char *)b->buf, ap);
     va_end(ap);
     ccn_charbuf_destroy(&b);
     /* if there's no one to hear, don't make a sound */
-    if (ferror(stderr))
+    if (res < 0)
 	h->debug = 0;
 }
 
@@ -118,21 +120,16 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
 }
 
 /**
- * Print the ccnd usage message on stderr.
- *
- * Does not exit.
+ * CCND Usage message
  */
-void
-ccnd_usage(void)
-{
-    static const char ccnd_usage_message[] =
+const char *ccnd_usage_message =
     "ccnd - CCNx Daemon\n"
     "  options: none\n"
     "  arguments: none\n"
     "  environment variables:\n"
     "    CCND_DEBUG=\n"
-    "      0 - no stderr messages\n"
-    "      1 - default stderr messages (any non-zero value gets these)\n"
+    "      0 - no messages\n"
+    "      1 - basic messages (any non-zero value gets these)\n"
     "      2 - interest messages\n"
     "      4 - content messages\n"
     "      8 - matching details\n"
@@ -142,9 +139,11 @@ ccnd_usage(void)
     "      128 - face registration debugging\n"
     "      bitwise OR these together for combinations; -1 gets everything\n"
     "    CCN_LOCAL_PORT=\n"
-    "      UDP port for unicast clients (default %s).\n"
+    "      UDP port for unicast clients (default "CCN_DEFAULT_UNICAST_PORT").\n"
     "      Also listens on this TCP port for stream connections.\n"
     "      Also affects name of unix-domain socket.\n"
+    "    CCN_LOCAL_SOCKNAME=\n"
+    "      Name stem of unix-domain socket (default "CCN_DEFAULT_LOCAL_SOCKNAME").\n"
     "    CCND_CAP=\n"
     "      Capacity limit, in count of ContentObjects.\n"
     "      Not an absolute limit.\n"
@@ -153,7 +152,8 @@ ccnd_usage(void)
     "      If set, interest stuffing is allowed within this budget.\n"
     "      Single items larger than this are not precluded.\n"
     "    CCND_DATA_PAUSE_MICROSEC=\n"
-    "      Adjusts content-send delay time for multicast and udplink faces\n";
-    fprintf(stderr, ccnd_usage_message, CCN_DEFAULT_UNICAST_PORT);
-}
-
+    "      Adjusts content-send delay time for multicast and udplink faces\n"
+    "    CCND_KEYSTORE_DIRECTORY=\n"
+    "      Directory readable only by ccnd where its keystores are kept\n"
+    "      Defaults to a private subdirectory of /var/tmp\n"
+    ;

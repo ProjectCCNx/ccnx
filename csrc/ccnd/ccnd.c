@@ -44,6 +44,7 @@
 
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
+#include <ccn/ccn_private.h>
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/face_mgmt.h>
@@ -59,7 +60,7 @@
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
 static int create_local_listener(const char *sockname, int backlog);
-static void accept_new_local_client(struct ccnd_handle *h);
+static int accept_new_local_client(struct ccnd_handle *h);
 static void process_input_message(struct ccnd_handle *h, struct face *face,
                                   unsigned char *msg, size_t size, int pdu_ok);
 static void process_input(struct ccnd_handle *h, int fd);
@@ -68,7 +69,6 @@ static int ccn_stuff_interest(struct ccnd_handle *h,
 static void do_write(struct ccnd_handle *h, struct face *face,
                      unsigned char *data, size_t size);
 static void do_deferred_write(struct ccnd_handle *h, int fd);
-static void run(struct ccnd_handle *h);
 static void clean_needed(struct ccnd_handle *h);
 static struct face *get_dgram_source(struct ccnd_handle *h, struct face *face,
                                      struct sockaddr *addr, socklen_t addrlen);
@@ -114,7 +114,9 @@ static void
 unlink_at_exit(const char *path)
 {
     if (unlink_this_at_exit == NULL) {
-        unlink_this_at_exit = path;
+        static char namstor[sizeof(struct sockaddr_un)];
+        strncpy(namstor, path, sizeof(namstor));
+        unlink_this_at_exit = namstor;
         signal(SIGTERM, &handle_fatal_signal);
         signal(SIGINT, &handle_fatal_signal);
         signal(SIGHUP, &handle_fatal_signal);
@@ -133,13 +135,6 @@ comm_file_ok(void)
     if (res == -1)
         return(0);
     return(1);
-}
-
-static void
-fatal_err(const char *msg)
-{
-    perror(msg);
-    exit(1);
 }
 
 static struct ccn_charbuf *
@@ -712,7 +707,7 @@ create_local_listener(const char *sockname, int backlog)
     return(sock);
 }
 
-static void
+static int
 accept_new_local_client(struct ccnd_handle *h)
 {
     struct hashtb_enumerator ee;
@@ -724,21 +719,23 @@ accept_new_local_client(struct ccnd_handle *h)
     struct face *face;
     fd = accept(h->local_listener_fd, &who, &wholen);
     if (fd == -1) {
-        perror("accept");
-        return;
+        ccnd_msg(h, "accept: %s", strerror(errno));
+        return(-1);
     }
     res = fcntl(fd, F_SETFL, O_NONBLOCK);
     if (res == -1)
-        perror("fcntl");
+        ccnd_msg(h, "fcntl: %s", strerror(errno));
     hashtb_start(h->faces_by_fd, e);
-    if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_NEW_ENTRY)
-        fatal_err("ccnd: accept_new_local_client");
-    face = e->data;
-    face->recv_fd = face->send_fd = fd;
-    face->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
-    res = enroll_face(h, face);
+    res = -1;
+    if (hashtb_seek(e, &fd, sizeof(fd), 0) == HT_NEW_ENTRY) {
+        face = e->data;
+        face->recv_fd = face->send_fd = fd;
+        face->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
+        res = enroll_face(h, face);
+        ccnd_msg(h, "accepted client fd=%d id=%d", fd, res);
+    }
     hashtb_end(e);
-    ccnd_msg(h, "accepted client fd=%d id=%d", fd, res);
+    return(res);
 }
 
 static int
@@ -774,26 +771,26 @@ record_connection(struct ccnd_handle *h, int fd,
     
     res = fcntl(fd, F_SETFL, O_NONBLOCK);
     if (res == -1)
-        perror("fcntl");
+        ccnd_msg(h, "fcntl: %s", strerror(errno));
     hashtb_start(h->faces_by_fd, e);
-    if (hashtb_seek(e, &fd, sizeof(fd), wholen) != HT_NEW_ENTRY)
-        fatal_err("ccnd: record_connection");
-    face = e->data;
-    face->recv_fd = face->send_fd = fd;
-    if (who->sa_family == AF_INET)
-        face->flags |= CCN_FACE_INET;
-    if (who->sa_family == AF_INET6)
-        face->flags |= CCN_FACE_INET6;
-    face->addrlen = e->extsize;
-    addrspace = ((unsigned char *)e->key) + e->keysize;
-    face->addr = (struct sockaddr *)addrspace;
-    memcpy(addrspace, who, e->extsize);
-    res = enroll_face(h, face);
+    if (hashtb_seek(e, &fd, sizeof(fd), wholen) == HT_NEW_ENTRY) {
+        face = e->data;
+        face->recv_fd = face->send_fd = fd;
+        if (who->sa_family == AF_INET)
+            face->flags |= CCN_FACE_INET;
+        if (who->sa_family == AF_INET6)
+            face->flags |= CCN_FACE_INET6;
+        face->addrlen = e->extsize;
+        addrspace = ((unsigned char *)e->key) + e->keysize;
+        face->addr = (struct sockaddr *)addrspace;
+        memcpy(addrspace, who, e->extsize);
+        res = enroll_face(h, face);
+    }
     hashtb_end(e);
     return(face);
 }
 
-static void
+static int
 accept_connection(struct ccnd_handle *h, int listener_fd)
 {
     struct sockaddr who[4];
@@ -803,14 +800,15 @@ accept_connection(struct ccnd_handle *h, int listener_fd)
 
     fd = accept(listener_fd, who, &wholen);
     if (fd == -1) {
-        perror("accept");
-        return;
+        ccnd_msg(h, "accept: %s", strerror(errno));
+        return(-1);
     }
     face = record_connection(h, fd, who, wholen);
     if (face != NULL) {
         ccnd_msg(h, "accepted client fd=%d id=%u", fd, face->faceid);
         face->flags |= CCN_FACE_UNDECIDED; /* might be http */
     }
+    return(fd);
 }
 
 static struct face *
@@ -840,7 +838,7 @@ make_connection(struct ccnd_handle *h, struct sockaddr *who, socklen_t wholen)
     /* No existing connection, try to make a new one. */
     fd = socket(who->sa_family, SOCK_STREAM, 0);
     if (fd == -1) {
-        perror("socket");
+        ccnd_msg(h, "socket: %s", strerror(errno));
         return(NULL);
     }
     res = connect(fd, who, wholen);
@@ -910,17 +908,17 @@ shutdown_client_fd(struct ccnd_handle *h, int fd)
     struct hashtb_enumerator *e = &ee;
     struct face *face;
     hashtb_start(h->faces_by_fd, e);
-    if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_OLD_ENTRY)
-        fatal_err("ccnd: shutdown_client_fd");
-    face = e->data;
-    if (face->recv_fd != fd) abort();
-    close(fd);
-    if (face->send_fd != fd)
-        close(face->send_fd);
-    face->recv_fd = face->send_fd = -1;
-    ccnd_msg(h, "shutdown client fd=%d id=%d", fd, (int)face->faceid);
-    ccn_charbuf_destroy(&face->inbuf);
-    ccn_charbuf_destroy(&face->outbuf);
+    if (hashtb_seek(e, &fd, sizeof(fd), 0) == HT_OLD_ENTRY) {
+        face = e->data;
+        if (face->recv_fd != fd) abort();
+        close(fd);
+        if (face->send_fd != fd)
+            close(face->send_fd);
+        face->recv_fd = face->send_fd = -1;
+        ccnd_msg(h, "shutdown client fd=%d id=%d", fd, (int)face->faceid);
+        ccn_charbuf_destroy(&face->inbuf);
+        ccn_charbuf_destroy(&face->outbuf);
+    }
     hashtb_delete(e);
     hashtb_end(e);
     check_comm_file(h);
@@ -1495,8 +1493,8 @@ static void
 check_comm_file(struct ccnd_handle *h)
 {
     if (!comm_file_ok()) {
-        ccnd_msg(h, "exiting (%s gone)", unlink_this_at_exit);
-        exit(0);
+        ccnd_msg(h, "stopping (%s gone)", unlink_this_at_exit);
+        h->running = 0;
     }
 }
 
@@ -3206,11 +3204,13 @@ do_write(struct ccnd_handle *h,
         ccnd_msg(h, "sendto short");
         return;
     }
-    face->outbuf = ccn_charbuf_create();
-    if (face->outbuf == NULL)
-        fatal_err("ccnd: ccn_charbuf_create");
-    ccn_charbuf_append(face->outbuf, data + res, size - res);
     face->outbufindex = 0;
+    face->outbuf = ccn_charbuf_create();
+    if (face->outbuf == NULL) {
+        ccnd_msg(h, "do_write: %s", strerror(errno));
+        return;
+    }
+    ccn_charbuf_append(face->outbuf, data + res, size - res);
 }
 
 static void
@@ -3230,7 +3230,7 @@ do_deferred_write(struct ccnd_handle *h, int fd)
                     ccn_charbuf_destroy(&face->outbuf);
                     return;
                 }
-                perror("ccnd: send");
+                ccnd_msg(h, "send: %s", strerror(errno));
                 shutdown_client_fd(h, fd);
                 return;
             }
@@ -3248,8 +3248,11 @@ do_deferred_write(struct ccnd_handle *h, int fd)
     ccnd_msg(h, "ccnd:do_deferred_write: something fishy on %d", fd);
 }
 
-static void
-run(struct ccnd_handle *h)
+/**
+ * Run the main loop of the ccnd
+ */
+void
+ccnd_run(struct ccnd_handle *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -3259,7 +3262,7 @@ run(struct ccnd_handle *h)
     int prev_timeout_ms = -1;
     int usec;
     int specials = 3; /* local_listener_fd, tcp4_fd, tcp6_fd */
-    for (;;) {
+    for (h->running = 1; h->running;) {
         process_internal_client_buffer(h);
         usec = ccn_schedule_run(h->sched);
         timeout_ms = (usec < 0) ? -1 : (usec / 1000);
@@ -3291,7 +3294,7 @@ run(struct ccnd_handle *h)
         res = poll(h->fds, h->nfds, timeout_ms);
         prev_timeout_ms = ((res == 0) ? timeout_ms : 1);
         if (-1 == res) {
-            perror("ccnd: poll");
+            ccnd_msg(h, "poll: %s", strerror(errno));
             sleep(1);
             continue;
         }
@@ -3352,16 +3355,12 @@ ccnd_reseed(struct ccnd_handle *h)
     seed48(h->seed);
 }
 
-static const char *
+static char *
 ccnd_get_local_sockname(void)
 {
-    char *s = getenv(CCN_LOCAL_PORT_ENVNAME);
-    char name_buf[60];
-    if (s == NULL || s[0] == 0 || strlen(s) > 10)
-        return(CCN_DEFAULT_LOCAL_SOCKNAME);
-    snprintf(name_buf, sizeof(name_buf), "%s.%s",
-                     CCN_DEFAULT_LOCAL_SOCKNAME, s);
-    return(strdup(name_buf));
+    struct sockaddr_un sa;
+    ccn_setup_sockaddr_un(NULL, &sa);
+    return(strdup(sa.sun_path));
 }
 
 static void
@@ -3373,12 +3372,18 @@ ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
     result->micros = now.tv_usec;
 }
 
-static struct ccnd_handle *
-ccnd_create(const char *progname)
+/**
+ * Start a new ccnd instance
+ * @param progname - name of program binary, used for locating helpers
+ * @param logger - logger function
+ * @param loggerdata - data to pass to logger function
+ */
+struct ccnd_handle *
+ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    const char *sockname;
+    char *sockname;
     const char *portstr;
     const char *debugstr;
     const char *entrylimit;
@@ -3397,8 +3402,19 @@ ccnd_create(const char *progname)
     sockname = ccnd_get_local_sockname();
     h = calloc(1, sizeof(*h));
     if (h == NULL)
-        exit(1);
+        return(h);
+    h->logger = logger;
+    h->loggerdata = loggerdata;
+    h->logpid = (int)getpid();
     h->progname = progname;
+    debugstr = getenv("CCND_DEBUG");
+    if (debugstr != NULL && debugstr[0] != 0) {
+        h->debug = atoi(debugstr);
+        if (h->debug == 0 && debugstr[0] != '0')
+            h->debug = 1;
+    }
+    else
+        h->debug = (1 << 16);
     h->skiplinks = ccn_indexbuf_create();
     param.finalize_data = h;
     h->face_limit = 1024; /* soft limit */
@@ -3431,19 +3447,13 @@ ccnd_create(const char *progname)
     /* Do keystore setup early, it takes a while the first time */
     ccnd_init_internal_keystore(h);
     fd = create_local_listener(sockname, 42);
-    if (fd == -1) fatal_err(sockname);
-    ccnd_msg(h, "listening on %s", sockname);
+    if (fd == -1)
+        ccnd_msg(h, "%s: %s", sockname, strerror(errno));
+    else
+        ccnd_msg(h, "listening on %s", sockname);
     h->local_listener_fd = fd;
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE;
-    debugstr = getenv("CCND_DEBUG");
-    if (debugstr != NULL && debugstr[0] != 0) {
-        h->debug = atoi(debugstr);
-        if (h->debug == 0 && debugstr[0] != '0')
-            h->debug = 1;
-    }
-    else
-        h->debug = (1 << 16);
     entrylimit = getenv("CCND_CAP");
     h->capacity = ~0;
     if (entrylimit != NULL && entrylimit[0] != 0) {
@@ -3497,25 +3507,27 @@ ccnd_create(const char *progname)
                     }
                     res = fcntl(fd, F_SETFL, O_NONBLOCK);
                     if (res == -1)
-                        perror("fcntl");
+                        ccnd_msg(h, "fcntl: %s", strerror(errno));
                     hashtb_start(h->faces_by_fd, e);
                     if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_NEW_ENTRY)
-                        exit(1);
-                    face = e->data;
-                    face->recv_fd = face->send_fd = fd;
-                    face->flags |= CCN_FACE_DGRAM;
-                    if (a->ai_family == AF_INET) {
-                        face->flags |= CCN_FACE_INET;
-                        h->udp4_fd = fd;
-                        af = "ipv4";
-                    }
-                    else if (a->ai_family == AF_INET6) {
-                        face->flags |= CCN_FACE_INET6;
-                        h->udp6_fd = fd;
-                        af = "ipv6";
+                        close(fd);
+                    else {
+                        face = e->data;
+                        face->recv_fd = face->send_fd = fd;
+                        face->flags |= CCN_FACE_DGRAM;
+                        if (a->ai_family == AF_INET) {
+                            face->flags |= CCN_FACE_INET;
+                            h->udp4_fd = fd;
+                            af = "ipv4";
+                        }
+                        else if (a->ai_family == AF_INET6) {
+                            face->flags |= CCN_FACE_INET6;
+                            h->udp6_fd = fd;
+                            af = "ipv6";
+                        }
+                        ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d", af, fd, rcvbuf);
                     }
                     hashtb_end(e);
-                    ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d", af, fd, rcvbuf);
                 }
             }
             for (a = addrinfo; a != NULL; a = a->ai_next) {
@@ -3558,23 +3570,9 @@ ccnd_create(const char *progname)
     ccnd_reseed(h);
     clean_needed(h);
     age_forwarding_needed(h);
-    return(h);
-}
-
-int
-main(int argc, char **argv)
-{
-    struct ccnd_handle *h;
-    
-    if (argc > 1) {
-        ccnd_usage();
-        exit(1);
-    }
-    signal(SIGPIPE, SIG_IGN);
-    h = ccnd_create(argv[0]);
     enroll_face(h, h->face0);
     ccnd_internal_client_start(h);
-    run(h);
-    ccnd_msg(h, "exiting.");
-    exit(0);
+    free(sockname);
+    sockname = NULL;
+    return(h);
 }

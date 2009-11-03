@@ -25,6 +25,7 @@
 #define CCND_PRIVATE_DEFINED
 
 #include <poll.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/socket.h>
@@ -57,6 +58,8 @@ struct ccn_forwarding;
 
 //typedef uint_least64_t ccn_accession_t;
 typedef unsigned ccn_accession_t;
+
+typedef int (*ccnd_logger)(void *loggerdata, const char *format, va_list ap);
 
 /**
  * We pass this handle almost everywhere within ccnd
@@ -112,9 +115,13 @@ struct ccnd_handle {
     unsigned long interests_sent;
     unsigned long interests_stuffed;
     unsigned short seed[3];         /**< for PRNG */
+    int running;                    /**< true while should be running */
     int debug;                      /**< For controlling debug output */
+    ccnd_logger logger;             /**< For debug output */
+    void *loggerdata;               /**< Passed to logger */
     int logbreak;                   /**< see ccn_msg() */
     unsigned long logtime;          /**< see ccn_msg() */
+    int logpid;                     /**< see ccn_msg() */
     int mtu;                        /**< Target size for stuffing interests */
     int flood;                      // XXX - Temporary, for transition period
     unsigned interest_faceid;       /**< for self_reg internal client */
@@ -340,6 +347,8 @@ void ccnd_debug_ccnb(struct ccnd_handle *h,
                      size_t ccnb_size);
 void shutdown_client_fd(struct ccnd_handle *h, int fd);
 
-void ccnd_usage(void);
+struct ccnd_handle *ccnd_create(const char *, ccnd_logger, void *);
+void ccnd_run(struct ccnd_handle *h);
+extern const char *ccnd_usage_message;
 
 #endif
