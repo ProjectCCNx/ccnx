@@ -233,6 +233,12 @@ public class Group {
 	public String friendlyName() { return _groupFriendlyName; }
 
 	/**
+	 * Get the name of the namespace for the group
+	 * @return the group namespace
+	 */
+	public ContentName groupName() {return AccessControlProfile.groupName(_groupNamespace, _groupFriendlyName);}
+
+	/**
 	 * Returns a list containing all the members of a Group.
 	 * Sets up the list to automatically update in the background.
 	 * @return MembershipList a list containing all the members of a Group object
@@ -477,6 +483,11 @@ public class Group {
 				ContentName pkName = lr.targetName();
 				if (manager.isGroup(lr)){
 					pkName = AccessControlProfile.groupPublicKeyName(pkName);
+					// write a back pointer from child group to parent group
+					Link backPointer = new Link(groupName(), friendlyName(), null);
+					ContentName bpNamespace = AccessControlProfile.groupPointerToParentGroupName(lr.targetName());
+					LinkObject bplo = new LinkObject(ContentName.fromNative(bpNamespace, friendlyName()), backPointer, _handle);
+					bplo.saveToRepository();
 				}
 
 				latestPublicKey = new PublicKeyObject(pkName, _handle);
