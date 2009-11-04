@@ -30,6 +30,7 @@ CSRC = ccn_bloom.c ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
        ccn_matrix.c ccn_merkle_path_asn1.c ccn_name_util.c ccn_schedule.c \
        ccn_signing.c ccn_sockcreate.c ccn_traverse.c ccn_uri.c \
        ccn_verifysig.c ccn_versioning.c \
+       ccn_header.c \
        encodedecodetest.c hashtb.c hashtbtest.c \
        matrixtest.c signbenchtest.c skel_decode_test.c \
        smoketestclientlib.c basicparsetest.c \
@@ -41,7 +42,7 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
        ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o \
        ccn_keystore.o ccn_signing.o ccn_sockcreate.o ccn_traverse.o \
        ccn_match.o hashtb.o ccn_merkle_path_asn1.o \
-       ccn_setup_sockaddr_un.o ccn_bulkdata.o ccn_versioning.o
+       ccn_setup_sockaddr_un.o ccn_bulkdata.o ccn_versioning.o ccn_header.o
 
 default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.
@@ -128,6 +129,9 @@ ccn_traverse.o:
 ccn_merkle_path_asn1.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_merkle_path_asn1.c
 
+ccn_header.o:
+	$(CC) $(CFLAGS) -c ccn_header.c
+
 ccn_verifysig.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_verifysig.c
 
@@ -208,6 +212,9 @@ ccn_versioning.o: ccn_versioning.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h \
   ../include/ccn/ccn_private.h
+ccn_header.o: ccn_header.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/header.h
 encodedecodetest.o: encodedecodetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/bloom.h ../include/ccn/uri.h \

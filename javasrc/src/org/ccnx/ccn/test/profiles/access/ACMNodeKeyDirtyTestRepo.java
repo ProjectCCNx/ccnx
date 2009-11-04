@@ -27,120 +27,152 @@ import org.junit.Test;
 public class ACMNodeKeyDirtyTestRepo {
 
 	static AccessControlManager acm;
-	static ContentName directoryBase, userKeyStorePrefix, userNamespace, groupStore, baseNode;
-	static int userCount = 3;
+	static ContentName directoryBase, userKeyStorePrefix, userNamespace, groupStore;
+	static final int numberOfusers = 3;
 	static TestUserData td;
 	static String[] friendlyNames;
-	static String groupName;
-	static Group userGroup;
+	static final int numberOfGroups = 3;
+	static String[] groupName = new String[numberOfGroups];
+	static Group[] group = new Group[numberOfGroups];
+	static ContentName[] node = new ContentName[numberOfGroups];
 	static CCNHandle handle;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		directoryBase = ContentName.fromNative("/test/ACMNodeKeyDirtyTestRepo");
-		
-		// create user identities with TestUserData		
+		groupStore = AccessControlProfile.groupNamespaceName(directoryBase);
 		userKeyStorePrefix = ContentName.fromNative(directoryBase, "_access_");
 		userNamespace = ContentName.fromNative(directoryBase, "home");
-		td = new TestUserData(userKeyStorePrefix, userCount, true, "password".toCharArray(), CCNHandle.open());
+
+		// create user identities with TestUserData		
+		td = new TestUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
 		td.saveUserPK2Repo(userNamespace);
-		friendlyNames = td.friendlyNames().toArray(new String[0]);		
-	}
-	
-	@Test
-	public void createUserGroup() throws Exception {
-		// create a group containing user0 and user1
-		ArrayList<Link> newMembers = new ArrayList<Link>();
-		newMembers.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[0])));
-		newMembers.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[1])));
-		groupStore = AccessControlProfile.groupNamespaceName(directoryBase);
+		friendlyNames = td.friendlyNames().toArray(new String[0]);				
+		
+		// create ACM
 		handle = td.getHandleForUser(friendlyNames[0]);
 		acm = new AccessControlManager(directoryBase, groupStore, userNamespace, handle);
 		acm.publishMyIdentity(friendlyNames[0], handle.keyManager().getDefaultPublicKey());
-		Random rand = new Random();
-		groupName = "usergroup" + rand.nextInt(10000);
-		userGroup = acm.groupManager().createGroup(groupName, newMembers);
-
-		// check the group is of size 2
-		Assert.assertEquals(2, userGroup.membershipList().membershipList().size());
 	}
 	
 	@Test
-	public void createNodeACL() throws Exception {
+	public void createUserGroups() throws Exception {
 		Random rand = new Random();
-		String baseNodeName = "baseNode" + rand.nextInt(10000);
-		baseNode = ContentName.fromNative(directoryBase, baseNodeName);
+
+		// create group0 containing user0 and user1
+		ArrayList<Link> G1Members = new ArrayList<Link>();
+		G1Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[0])));
+		G1Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[1])));
+		groupName[0] = "usergroup0-" + rand.nextInt(10000);
+		group[0] = acm.groupManager().createGroup(groupName[0], G1Members);
 		
-		// create ACL for base node: make userGroup a reader
-		ContentName userGroup = ContentName.fromNative(groupStore, groupName);
-		Link lk = new Link(userGroup, "rw+", null);
-		ArrayList<Link> ACLcontents = new ArrayList<Link>();
-		ACLcontents.add(lk);
-		ACL baseACL = new ACL(ACLcontents);
-		acm.initializeNamespace(baseACL);
-		acm.setACL(baseNode, baseACL);		
+		// create group1 containing group0
+		ArrayList<Link> G2Members = new ArrayList<Link>();
+		G2Members.add(new Link(ContentName.fromNative(groupStore, groupName[0])));
+		groupName[1] = "usergroup1-" + rand.nextInt(10000);
+		group[1] = acm.groupManager().createGroup(groupName[1], G2Members);
+		
+		// create group2 containing user2
+		ArrayList<Link> G3Members = new ArrayList<Link>();
+		G3Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[2])));
+		groupName[2] = "usergroup2-" + rand.nextInt(10000);
+		group[2] = acm.groupManager().createGroup(groupName[2], G3Members);
+
+		// check the size of the groups
+		Assert.assertEquals(2, group[0].membershipList().membershipList().size());
+		Assert.assertEquals(1, group[1].membershipList().membershipList().size());
+		Assert.assertEquals(1, group[2].membershipList().membershipList().size());
+	}
+	
+	@Test
+	public void createNodeACLs() throws Exception {
+		Random rand = new Random();
+		
+		// create nodes [1-3] and corresponding ACLs that make group[i] a reader of node[i].
+		for (int i=0; i<numberOfGroups; i++) {
+			String nodeName = "node" + i + "-" + rand.nextInt(10000);
+			node[i] = ContentName.fromNative(directoryBase, nodeName);
+			ContentName groupCN = ContentName.fromNative(groupStore, groupName[i]);
+			Link lk = new Link(groupCN, "rw+", null);
+			ArrayList<Link> ACLcontents = new ArrayList<Link>();
+			ACLcontents.add(lk);
+			ACL aclNode = new ACL(ACLcontents);
+			if (i==0) acm.initializeNamespace(aclNode);
+			acm.setACL(node[i], aclNode);
+		}		
 	}
 	
 	@Test
 	public void writeNodeContent() throws Exception {
-		// write some content in base node
-		RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(baseNode, handle);
-		rvos.setTimeout(5000);
-		byte [] data = "base node content".getBytes();
-		rvos.write(data, 0, data.length);
-		rvos.close();
-		
-		// The node key is not dirty
-		ContentName nodeKeyName = AccessControlProfile.nodeKeyName(baseNode);
-		Assert.assertFalse(acm.nodeKeyIsDirty(nodeKeyName));	
+		// write some content in nodes
+		for (int i=0; i<numberOfGroups; i++) {
+			RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(node[i], handle);
+			rvos.setTimeout(5000);
+			byte [] data = "content".getBytes();
+			rvos.write(data, 0, data.length);
+			rvos.close();			
+		}
+				
+		// The node keys are not dirty
+		for (int i=0; i<numberOfGroups; i++) {
+			Assert.assertFalse(acm.nodeKeyIsDirty(node[i]));				
+		}
 	}
 	
 	@Test
-	public void addMemberToUserGroup() throws Exception {
-		// add user2 to the group
+	public void addMemberToGroup0() throws Exception {
+		// add user2 to group0
 		ArrayList<Link> membersToAdd = new ArrayList<Link>();
 		membersToAdd.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[2])));
-		userGroup.addMembers(membersToAdd);
+		group[0].addMembers(membersToAdd);
 		
-		// check the group is now of size 3
-		Assert.assertEquals(3, userGroup.membershipList().membershipList().size());
+		// check that group0 is now of size 3
+		Assert.assertEquals(3, group[0].membershipList().membershipList().size());
 	}
 
 	@Test
 	public void writeMoreNodeContent() throws Exception {
-		RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(baseNode, CCNHandle.open());
-		rvos.setTimeout(5000);
-		byte [] data = "More base node content".getBytes();
-		rvos.write(data, 0, data.length);
-		rvos.close();
+		// write some content in nodes
+		for (int i=0; i<numberOfGroups; i++) {
+			RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(node[i], handle);
+			rvos.setTimeout(5000);
+			byte [] data = "more content".getBytes();
+			rvos.write(data, 0, data.length);
+			rvos.close();			
+		}
 		
-		// The node key is not dirty
-		ContentName nodeKeyName = AccessControlProfile.nodeKeyName(baseNode);
-		Assert.assertFalse(acm.nodeKeyIsDirty(nodeKeyName));	
+		// The node keys are not dirty
+		for (int i=0; i<numberOfGroups; i++) {
+			Assert.assertFalse(acm.nodeKeyIsDirty(node[i]));				
+		}
 	}
 	
 	@Test
-	public void removeMemberFromUserGroup() throws Exception {
-		// delete user1 from the group
+	public void removeMemberFromGroup0() throws Exception {
+		// delete user1 from group0
 		ArrayList<Link> membersToRemove = new ArrayList<Link>();
 		membersToRemove.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[1])));
-		userGroup.removeMembers(membersToRemove);
+		group[0].removeMembers(membersToRemove);
 		
-		// check the group is of size 2 again
-		Assert.assertEquals(2, userGroup.membershipList().membershipList().size());
+		// check group0 is of size 2 again
+		Assert.assertEquals(2, group[0].membershipList().membershipList().size());
 	}
 	
 	@Test
 	public void writeEvenMoreNodeContent() throws Exception {
-		RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(baseNode, CCNHandle.open());
-		rvos.setTimeout(5000);
-		byte [] data = "Even more base node content".getBytes();
-		rvos.write(data, 0, data.length);
-		rvos.close();
+		// write some content in nodes
+		for (int i=0; i<numberOfGroups; i++) {
+			RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(node[i], handle);
+			rvos.setTimeout(5000);
+			byte [] data = "content".getBytes();
+			rvos.write(data, 0, data.length);
+			rvos.close();			
+		}
 		
-		// The node key is dirty
-		ContentName nodeKeyName = AccessControlProfile.nodeKeyName(baseNode);
-		Assert.assertTrue(acm.nodeKeyIsDirty(nodeKeyName));
+		// The node keys are dirty for nodes 0 and 1, but not 2.
+		Assert.assertTrue(acm.nodeKeyIsDirty(node[0]));
+		Assert.assertFalse(acm.nodeKeyIsDirty(node[1]));
+		Assert.assertFalse(acm.nodeKeyIsDirty(node[2]));
 	}
 
 
