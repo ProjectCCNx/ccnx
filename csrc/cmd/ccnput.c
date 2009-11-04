@@ -223,7 +223,7 @@ main(int argc, char **argv)
     ccn_set_interest_filter(ccn, name, &in_interest);
     
     /* Set a FinalBlockID if appropriate. */
-#if (CCN_API_VERSION > 1001)
+#if (CCN_API_VERSION > 1002)
 #error "Fix me - check if ccn_signed_info_create() API has changed"
 #endif
     if (postver != NULL && 0 == memcmp(postver, "%00", 3)) {

@@ -20,7 +20,7 @@ PROGRAMS = $(INSTALLED_PROGRAMS)
 DEBRIS = anything.ccnb contenthash.ccnb contentmishash.ccnb smoketestccnd
 
 BROKEN_PROGRAMS = 
-CSRC = ccnd.c ccnd_msg.c ccnd_stats.c ccnd_internal_client.c ccndsmoketest.c
+CSRC = ccnd_main.c ccnd.c ccnd_msg.c ccnd_stats.c ccnd_internal_client.c ccndsmoketest.c
 HSRC = ccnd_private.h
 SCRIPTSRC = testbasics fortunes.ccnb contenthash.ref anything.ref \
             ccnd-init-keystore-helper.sh minsuffix.ref
@@ -31,7 +31,7 @@ all: default $(BROKEN_PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
-CCND_OBJ = ccnd.o ccnd_msg.o ccnd_stats.o ccnd_internal_client.o
+CCND_OBJ = ccnd_main.o ccnd.o ccnd_msg.o ccnd_stats.o ccnd_internal_client.o
 ccnd: $(CCND_OBJ) 
 	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
@@ -56,13 +56,16 @@ check test: ccnd ccndsmoketest $(SCRIPTSRC)
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
+ccnd_main.o: ccnd_main.c ccnd_private.h ../include/ccn/ccn_private.h \
+  ../include/ccn/coding.h ../include/ccn/reg_mgmt.h \
+  ../include/ccn/charbuf.h ../include/ccn/schedule.h
 ccnd.o: ccnd.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/ccnd.h \
-  ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
-  ../include/ccn/hashtb.h ../include/ccn/schedule.h \
-  ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnd_private.h \
-  ../include/ccn/ccn_private.h
+  ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
+  ../include/ccn/ccnd.h ../include/ccn/face_mgmt.h \
+  ../include/ccn/sockcreate.h ../include/ccn/hashtb.h \
+  ../include/ccn/schedule.h ../include/ccn/reg_mgmt.h \
+  ../include/ccn/uri.h ccnd_private.h
 ccnd_msg.o: ccnd_msg.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccnd.h ../include/ccn/uri.h ccnd_private.h \
@@ -79,4 +82,5 @@ ccnd_internal_client.o: ccnd_internal_client.c ../include/ccn/ccn.h \
   ../include/ccn/keystore.h ../include/ccn/schedule.h \
   ../include/ccn/signing.h ../include/ccn/uri.h ccnd_private.h \
   ../include/ccn/reg_mgmt.h
-ccndsmoketest.o: ccndsmoketest.c ../include/ccn/ccnd.h
+ccndsmoketest.o: ccndsmoketest.c ../include/ccn/ccnd.h \
+  ../include/ccn/ccn_private.h
