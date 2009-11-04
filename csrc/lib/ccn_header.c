@@ -29,16 +29,17 @@
 #include <ccn/header.h>
 
 int
-ccn_parse_tagged_required_uintmax(struct ccn_buf_decoder *d, enum ccn_dtag dtag, uintmax_t *res)
+ccn_parse_tagged_required_uintmax(struct ccn_buf_decoder *d, enum ccn_dtag dtag, uintmax_t *result)
 {
+    int res = -1;
     if (ccn_buf_match_dtag(d, dtag)) {
         ccn_buf_advance(d);
-        res = ccn_parse_uintmax(d, res);
+        res = ccn_parse_uintmax(d, result);
         ccn_buf_check_close(d);
     } else {
         return (d->decoder.state = -__LINE__);
     }
-    return (0);
+    return (res);
 }
 /**
  * Parse a ccnb-encoded Header 
@@ -58,10 +59,10 @@ ccn_header_parse(const unsigned char *p, size_t size)
         return (NULL);
     if (ccn_buf_match_dtag(d, CCN_DTAG_Header)) {
         ccn_buf_advance(d);
-        res |= ccn_parse_tagged_nonNegativeInteger(d, CCN_DTAG_Start, &result->start);
-        res |= ccn_parse_tagged_nonNegativeInteger(d, CCN_DTAG_Count, &result->count);
-        res |= ccn_parse_tagged_nonNegativeInteger(d, CCN_DTAG_BlockSize, &result->block_size);
-        res |= ccn_parse_tagged_nonNegativeInteger(d, CCN_DTAG_Length, &result->length);
+        res |= ccn_parse_tagged_required_uintmax(d, CCN_DTAG_Start, &result->start);
+        res |= ccn_parse_tagged_required_uintmax(d, CCN_DTAG_Count, &result->count);
+        res |= ccn_parse_tagged_required_uintmax(d, CCN_DTAG_BlockSize, &result->block_size);
+        res |= ccn_parse_tagged_required_uintmax(d, CCN_DTAG_Length, &result->length);
         if (res != 0) {
             free(result);
             return (NULL);
@@ -106,10 +107,10 @@ ccnb_append_header(struct ccn_charbuf *c,
 {
     int res;
     res = ccnb_element_begin(c, CCN_DTAG_Header);
-    res |= ccn_tagged_putf(c, CCN_DTAG_Start, "%u", h->start);
-    res |= ccn_tagged_putf(c, CCN_DTAG_Start, "%u", h->count);
-    res |= ccn_tagged_putf(c, CCN_DTAG_Start, "%u", h->block_size);
-    res |= ccn_tagged_putf(c, CCN_DTAG_Start, "%u", h->length);
+    res |= ccnb_tagged_putf(c, CCN_DTAG_Start, "%u", h->start);
+    res |= ccnb_tagged_putf(c, CCN_DTAG_Start, "%u", h->count);
+    res |= ccnb_tagged_putf(c, CCN_DTAG_Start, "%u", h->block_size);
+    res |= ccnb_tagged_putf(c, CCN_DTAG_Start, "%u", h->length);
     if (h->root_digest != NULL)
         res |= ccn_charbuf_append_charbuf(c, h->root_digest);
     if (h->content_digest != NULL)
@@ -141,7 +142,7 @@ ccn_get_header(struct ccn *h, struct ccn_charbuf *name, int timeout)
             hc = ho->buf;
             hcs = ho->length;
             ccn_content_get_value(hc, hcs, &pcobuf, &hc, &hcs);
-            result = ccn_parse_header(hc, hcs);
+            result = ccn_header_parse(hc, hcs);
         }
         ccn_charbuf_destroy(&ho);
     }
