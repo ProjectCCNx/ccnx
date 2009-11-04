@@ -130,7 +130,7 @@ public class SegmentationProfileTest {
 		
 		interest = SegmentationProfile.firstSegmentInterest(name, null);
 		
-		System.out.println("segmentName: "+segmentName+" interestName: "+interest.name());
+		//System.out.println("segmentName: "+segmentName+" interestName: "+interest.name());
 		
 		Assert.assertTrue(interest.name().equals(segmentName));
 		Assert.assertFalse(interest.name().equals(nextSegmentName));
