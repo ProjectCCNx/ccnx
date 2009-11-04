@@ -52,6 +52,7 @@ public class AccessControlProfile implements CCNProfile {
 	public static final String GROUP_PUBLIC_KEY_NAME = "Key";
 	public static final String GROUP_PRIVATE_KEY_NAME = "PrivateKey";
 	public static final String GROUP_MEMBERSHIP_LIST_NAME = "MembershipList";
+	public static final String GROUP_POINTER_TO_PARENT_GROUP_NAME = "PointerToParentGroup";
 	public static final String PREVIOUS_KEY_NAME = "PreviousKey";
 	public static final String ACL_NAME = "ACL";
 	public static final byte [] ACL_NAME_BYTES = ContentName.componentParseNative(ACL_NAME);
@@ -272,6 +273,10 @@ public class AccessControlProfile implements CCNProfile {
 	 */
 	public static ContentName groupPrivateKeyDirectory(ContentName groupPublicKeyNameAndVersion) {
 		return groupPublicKeyNameAndVersion;
+	}
+	
+	public static ContentName groupPointerToParentGroupName(ContentName groupFullName) {
+		return ContentName.fromNative(groupFullName, GROUP_POINTER_TO_PARENT_GROUP_NAME);
 	}
 
 	/**
