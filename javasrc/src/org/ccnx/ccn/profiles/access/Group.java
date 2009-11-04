@@ -135,6 +135,7 @@ public class Group {
 	 * @throws ContentEncodingException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
+	 * @throws InvalidCipherTextException
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
 					CCNHandle handle, GroupManager manager) 
@@ -339,6 +340,7 @@ public class Group {
 	 * @throws ConfigurationException 
 	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws InvalidCipherTextException
 	 */
 	public void setMembershipList(GroupManager groupManager, java.util.Collection<Link> newMembers) 
 			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException, 
@@ -363,12 +365,12 @@ public class Group {
 	 * Finally, a superseded block and a link to the previous key are written to the repository.
 	 * @param manager the group manager
 	 * @param ml the new membership list
-=	 
 	 * @throws IOException 
 	 * @throws ContentEncodingException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException */
+	 * @throws InvalidCipherTextException
+	 */
 	public void newGroupPublicKey(GroupManager manager, MembershipList ml) 
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, 
 					InvalidCipherTextException {
@@ -406,7 +408,8 @@ public class Group {
 	 * @throws IOException 
 	 * @throws ContentEncodingException 
 	 * @throws ConfigurationException 
-	 * @throws InvalidKeyException 
+	 * @throws InvalidKeyException
+	 * @throws InvalidCipherTextException 
 	 */	
 	public Key createGroupPublicKey(GroupManager manager, MembershipList ml) 
 			throws ContentEncodingException, IOException, ConfigurationException, InvalidKeyException, InvalidCipherTextException {
