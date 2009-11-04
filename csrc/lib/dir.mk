@@ -51,11 +51,18 @@ all: basicparsetest ccn_verifysig
 
 install: install_headers
 install_headers:
-	test -d $(INSTALL_INCLUDE) && mkdir -p $(INSTALL_INCLUDE)/ccn && cp ../include/ccn/*.h $(INSTALL_INCLUDE)/ccn	
+	test -d $(INSTALL_INCLUDE)
+	mkdir -p $(INSTALL_INCLUDE)/ccn
+	for i in `cd ../include/ccn && echo *.h`; do                \
+	    cmp -s ../include/ccn/$$i $(INSTALL_INCLUDE)/ccn/$$i || \
+	        cp ../include/ccn/$$i $(INSTALL_INCLUDE)/ccn/$$i || \
+	        exit 1;                                             \
+	done
 
 uninstall: uninstall_headers
 uninstall_headers:
-	$(RM) -r $(INSTALL_INCLUDE)/ccn
+	test -L $(INSTALL_INCLUDE)/ccn && $(RM) $(INSTALL_INCLUDE)/ccn ||:
+	test -L $(INSTALL_INCLUDE) || $(RM) -r $(INSTALL_INCLUDE)/ccn
 
 shlib: $(SHLIBNAME)
 
