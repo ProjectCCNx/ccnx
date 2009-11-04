@@ -138,7 +138,7 @@ public class Group {
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
 					CCNHandle handle, GroupManager manager) 
-			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException {	
+			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, InvalidCipherTextException {	
 		this(namespace, groupFriendlyName, members, null, handle,manager);
 //		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _handle);
 		createGroupPublicKey(manager, members);
@@ -390,8 +390,7 @@ public class Group {
 	}
 	
 	/**
-	 * Creates a public key for the group, and wraps the corresponding private key
-	 * in the public keys of all the members of the group. 
+	 * Creates a public key for the group, 
 	 * We don't expect there to be an existing key. So we just write a new one.
 	 * If we're not supposed to be a member, this is tricky... we just live
 	 * with the fact that we know the private key, and forget it.
@@ -404,7 +403,7 @@ public class Group {
 	 * @throws InvalidKeyException 
 	 */	
 	public Key createGroupPublicKey(GroupManager manager, MembershipList ml) 
-			throws ContentEncodingException, IOException, ConfigurationException, InvalidKeyException {
+			throws ContentEncodingException, IOException, ConfigurationException, InvalidKeyException, InvalidCipherTextException {
 		
 		KeyPairGenerator kpg = null;
 		try {
@@ -441,32 +440,9 @@ public class Group {
 			throw e;
 		}
 		
-		PublicKeyObject latestPublicKey = null;
-		for (Link lr : ml.membershipList().contents()) {
-			try {
-				// DKS TODO verify target public key against publisher, etc in link
-				ContentName pkName = lr.targetName();
-				if (manager.isGroup(lr)){
-					pkName = AccessControlProfile.groupPublicKeyName(pkName);
-				}
-				System.out.println("retrieving pub key from:..." + pkName);
-				
-				latestPublicKey = new PublicKeyObject(pkName, _handle);
-				if (!latestPublicKey.available()) {
-					Log.warning("Could not retrieve public key for " + pkName);
-					continue;
-				}
-				// Need to write wrapped key block and linking principal name.
-				newPrivateKeyDirectory.addWrappedKeyBlock(
-						privateKeyWrappingKey, 
-						latestPublicKey.getVersionedName(), 
-						latestPublicKey.publicKey());
-			} catch (IOException e) {
-				Log.warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
-			} catch (VersionMissingException e) {
-				Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getVersionedName() + ", unable to retrieve principal's public key. Skipping.");
-			}
-		}
+		// Wrap the private key in the public keys of all the members of the group 
+		updateGroupPublicKey(manager, privateKeyWrappingKey, ml.membershipList().contents());
+		
 		return privateKeyWrappingKey;
 	}
 	
@@ -497,6 +473,13 @@ public class Group {
 		for (Link lr : membersToAdd) {
 			try {
 				// DKS TODO verify target public key against publisher, etc in link
+				
+//				ContentName pkName = lr.targetName();
+//				if (manager.isGroup(lr)){
+//					pkName = AccessControlProfile.groupPublicKeyName(pkName);
+//				}
+//				System.out.println("retrieving pub key from:..." + pkName);
+
 				latestPublicKey = new PublicKeyObject(lr.targetName(), _handle);
 				if (!latestPublicKey.available()) {
 					Log.warning("Could not retrieve public key for " + lr.targetName());
