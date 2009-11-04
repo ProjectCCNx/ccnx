@@ -474,15 +474,14 @@ public class Group {
 			try {
 				// DKS TODO verify target public key against publisher, etc in link
 				
-//				ContentName pkName = lr.targetName();
-//				if (manager.isGroup(lr)){
-//					pkName = AccessControlProfile.groupPublicKeyName(pkName);
-//				}
-//				System.out.println("retrieving pub key from:..." + pkName);
+				ContentName pkName = lr.targetName();
+				if (manager.isGroup(lr)){
+					pkName = AccessControlProfile.groupPublicKeyName(pkName);
+				}
 
-				latestPublicKey = new PublicKeyObject(lr.targetName(), _handle);
+				latestPublicKey = new PublicKeyObject(pkName, _handle);
 				if (!latestPublicKey.available()) {
-					Log.warning("Could not retrieve public key for " + lr.targetName());
+					Log.warning("Could not retrieve public key for " + pkName);
 					continue;
 				}
 				// Need to write wrapped key block and linking principal name.
