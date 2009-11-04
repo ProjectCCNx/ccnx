@@ -484,19 +484,13 @@ public class Group {
 	 * @throws ContentDecodingException 
 	 * @throws InvalidCipherTextException 
 	 */
-	public void updateGroupPublicKey(GroupManager manager, 
+	public void updateGroupPublicKey(GroupManager manager, Key privateKeyWrappingKey,
 									 java.util.Collection<Link> membersToAdd) 
 			throws InvalidKeyException, InvalidCipherTextException, ContentDecodingException, AccessDeniedException, IOException {		
 		if ((null == membersToAdd) || (membersToAdd.size() == 0))
 			return;
 		
 		KeyDirectory privateKeyDirectory = privateKeyDirectory(manager.getAccessManager());
-		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
-		if (null == privateKeyWrappingKey) {
-			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
-		}else{
-			stopPrivateKeyDirectoryEnumeration();
-		}
 		
 		PublicKeyObject latestPublicKey = null;
 		for (Link lr : membersToAdd) {
@@ -616,7 +610,7 @@ public class Group {
 			// additions only. Don't have to make  a new key if one exists,
 			// just rewrap it for added members.
 			if (null != _groupPublicKey.publicKey()) {
-				updateGroupPublicKey(_groupManager, membersToAdd);
+				updateGroupPublicKey(_groupManager, privateKeyWrappingKey, membersToAdd);
 			} else {
 				createGroupPublicKey(_groupManager, _groupMembers);
 			}
