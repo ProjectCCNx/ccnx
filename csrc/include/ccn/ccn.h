@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 1001
+#define CCN_API_VERSION 1002
 
 /**
  * Global interest lifetime.
@@ -411,15 +411,17 @@ int ccn_buf_match_udata(struct ccn_buf_decoder *d, const char *s);
 
 int ccn_buf_match_attr(struct ccn_buf_decoder *d, const char *s);
 
+/* On error, the parse routines enter an error state and return a negative value. */
 int ccn_parse_required_tagged_BLOB(struct ccn_buf_decoder *d,
                                    enum ccn_dtag dtag,
                                    int minlen, int maxlen);
 int ccn_parse_optional_tagged_BLOB(struct ccn_buf_decoder *d,
                                    enum ccn_dtag dtag,
                                    int minlen, int maxlen);
+int ccn_parse_nonNegativeInteger(struct ccn_buf_decoder *d);
 int ccn_parse_optional_tagged_nonNegativeInteger(struct ccn_buf_decoder *d,
                                                  enum ccn_dtag dtag);
-
+int ccn_parse_uintmax(struct ccn_buf_decoder *d, uintmax_t *result);
 int ccn_parse_tagged_string(struct ccn_buf_decoder *d,
                             enum ccn_dtag dtag, struct ccn_charbuf *store);
 
