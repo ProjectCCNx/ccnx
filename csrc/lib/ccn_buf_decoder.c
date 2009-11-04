@@ -384,6 +384,8 @@ ccn_parse_Exclude(struct ccn_buf_decoder *d)
     return(res);
 }
 
+
+
 int
 ccn_parse_nonNegativeInteger(struct ccn_buf_decoder *d)
 {
@@ -414,6 +416,47 @@ ccn_parse_nonNegativeInteger(struct ccn_buf_decoder *d)
         }
         ccn_buf_advance(d);
         return(val);
+    }
+    return(d->decoder.state = -__LINE__);
+}
+
+/**
+ * Parse a potentially large non-negative integer.
+ *
+ * @returns 0 for success, and the value is place in *result; for an error
+ * a negative value is returned and *result is unchanged.
+ */
+int
+ccn_parse_uintmax(struct ccn_buf_decoder *d, uintmax_t *result)
+{
+    const unsigned char *p;
+    int i;
+    int n;
+    uintmax_t val;
+    uintmax_t newval;
+    unsigned char c;
+    if (d->decoder.state < 0)
+        return(d->decoder.state);
+    if (CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA) {
+        p = d->buf + d->decoder.index;
+        n = d->decoder.numval;
+        if (n < 1)
+            return(d->decoder.state = -__LINE__);
+        val = 0;
+        for (i = 0; i < n; i++) {
+            c = p[i];
+            if ('0' <= c && c <= '9') {
+                newval = val * 10 + (c - '0');
+                if (newval < val)
+                    return(d->decoder.state = -__LINE__);
+                val = newval;
+            }
+            else
+                return(d->decoder.state = -__LINE__);
+        }
+        ccn_buf_advance(d);
+        *result = val;
+        return(0);
     }
     return(d->decoder.state = -__LINE__);
 }

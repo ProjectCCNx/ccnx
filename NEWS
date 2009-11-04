@@ -1,3 +1,66 @@
+Changes between 0.1.1 and 0.1.2:
+--------------------------------
+  NOTE: ccnChat will not inter-operate with older versions due to fix for #100030.
+  * Changes to crypto implementation for compatibility with older versions of
+    BouncyCastle and configurations with varied crypto support. Also improved
+    handling of crypto providers.
+  * Added stopall argument to ccn_repo command to stop all running repos on
+    machine.
+  * Turned off ccnd message about heartbeats by default (use CCND_DEBUG=128 to
+    get these messages back).
+  * Fixed ccnput to allow name components after the version marker, generate 
+    FinalBlockID where appropriate.
+  * Added support for file segmentation convention to ccncatchunks2.
+  * Centralized timeout definitions in Java library to SystemConfiguration.
+  * Improved VLC plugin, incl. using name "ccnx", supporting versioned files.
+  * Small improvements to ContentExplorer such as option to save a
+    file to filesystem.
+  * Enlarged time scale for C test_scale to reduce chance of spurious failure.
+  * Added scripts for running experiments with content distribution.
+  * Handle null return from readLine for binary decoding in Java library
+    (#100025).
+  * Improvements to CCNFilterListener support in Java library (#100027).
+  * Improvements to repo performance (#100017)
+  * Issues Resolved:
+    * Bug #100009 Repository makes duplicate data requests.
+    * Bug #100014 Update code to use IANA allocated port.
+		  Replaced temporary port number with registered ccnx port
+                  number 9695. See http://www.iana.org/assignments/port-numbers
+    * Bug #100015 ccndc only processes last command in config file.
+    * Bug #100016 Repo should not process each piece of content as a
+                  potential policy update.
+    * Bug #100019 Incorrect marker byte used for enumeration, repo protocols.
+    * Bug #100021 Repo should have a simple way to specify prefix on startup.
+    * Bug #100023 c tests minsuffix and contenthash failing.
+    * Bug #100024 BasicKeyManager passes null to generateConfigurationException.
+    * Bug #100030 ccnChat/default network string shouldn't use Java 
+                  serialization. Converted Java CCNStringObject to use UTF-8
+                  string encoding.
+    * Bug #100039 ccn.h should have an API version identifier.
+  * Introduce Java ContentEncodingException and use IOException rather than
+    using XMLStreamException widely.
+  * Bug fixes and additional tests for AccessControlManager.
+  * Bug fixes for name enumeration.
+  * Improvement of internal state handling in BloomFilter.java.
+  * Adjustments to logging level of some Java tests.
+  * Reorganization of some Java tests to help track down intermittent failures.
+  * ContentExplorer checks for presence of VLC plugin.
+  * Bug fixes for Java test CCNNetworkObjectTestRepo.
+  * Build fixes for Mac OS X 10.6
+  * Added optimization for Java network objects based on immutable values.
+  * Fixed broken parameter check in ccndc.
+  * Merged specifications of infinite timeout values for Java API.
+  * Improvements to Java CCNFlowControl and creation of simple in-memory server
+    to serve keys.
+  * Improved exception handling for Java network objects.
+  * Cleaned up XML handling for repo policy files.
+  * Added new support for local repo write unit tests.
+  * Eliminated timersub from signbenchtest.c for portability.
+  * Improved interest reexpression in Java library.
+  * Minor refinements to Java log messages.
+  * Revisions to Java documentation.
+  * Minor improvements to C library.
+
 Changes between 0.1.0 and 0.1.1:
 --------------------------------
 

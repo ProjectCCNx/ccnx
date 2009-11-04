@@ -39,6 +39,7 @@
 #endif
 
 #include <ccn/ccnd.h>
+#include <ccn/ccn_private.h>
 
 char rawbuf[1024*1024];
 
@@ -57,20 +58,6 @@ printraw(char *p, int n)
         p += l;
         n -= l;
     }
-}
-
-static void
-setup_sockaddr_un(const char *portstr, struct sockaddr_un *result)
-{
-    struct sockaddr_un *sa = result;
-    memset(sa, 0, sizeof(*sa));
-    sa->sun_family = AF_UNIX;
-    if (portstr != NULL && atoi(portstr) > 0 && atoi(portstr) != atoi(CCN_DEFAULT_UNICAST_PORT))
-        snprintf(sa->sun_path, sizeof(sa->sun_path),
-                 CCN_DEFAULT_LOCAL_SOCKNAME ".%s", portstr);
-    else
-        snprintf(sa->sun_path, sizeof(sa->sun_path),
-                 CCN_DEFAULT_LOCAL_SOCKNAME);
 }
 
 static int
@@ -257,7 +244,7 @@ int main(int argc, char **argv)
     }
     argp = optind;
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
-    setup_sockaddr_un(portstr, &addr);
+    ccn_setup_sockaddr_un(portstr, &addr);
     if (udp)
         sock = open_socket(host, portstr, SOCK_DGRAM);
     else if (tcp)

@@ -75,8 +75,8 @@ vlc_module_end();
 #define CCN_FIFO_MAX_PACKETS 100
 #define CCN_CHUNK_SIZE 4096
 #define BUF_SIZE (1024 * 1024)
-#define CCN_VERSION_TIMEOUT 5000
-#define PREFETCH_OFFSET 6
+#define CCN_VERSION_TIMEOUT 500
+#define CCN_HEADER_TIMEOUT 500
 
 struct access_sys_t
 {
@@ -88,17 +88,12 @@ struct access_sys_t
     int64_t i_pos;
     struct ccn *ccn;
     struct ccn_closure *incoming;
-    struct ccn_closure *prefetch;
     struct ccn_charbuf *p_name;
     struct ccn_charbuf *p_template;
 };
 
 enum ccn_upcall_res
 incoming_content(struct ccn_closure *selfp,
-                 enum ccn_upcall_kind kind,
-                 struct ccn_upcall_info *info);
-enum ccn_upcall_res
-prefetch_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info);
 static struct ccn_charbuf *
@@ -127,13 +122,12 @@ static int CCNOpen(vlc_object_t *p_this)
 #ifdef VLCPLUGINVER099
     p_access->info.b_prebuffered = true;
 #endif
-    p_access->info.i_size = -1;
+    p_access->info.i_size = LLONG_MAX;	/* we don't know, but bigger is better */
     /* Update default_pts */
     var_Create(p_access, "ccn-caching", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
     p_sys->p_template = make_data_template();
-    p_sys->prefetch = calloc(1, sizeof(struct ccn_closure));
     p_sys->incoming = calloc(1, sizeof(struct ccn_closure));
-    if (p_sys->incoming == NULL || p_sys->prefetch == NULL) {
+    if (p_sys->incoming == NULL) {
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
@@ -141,14 +135,11 @@ static int CCNOpen(vlc_object_t *p_this)
             p_access->psz_path, (int)p_sys->incoming);    /*XXX: fix format */
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
-    p_sys->prefetch->data = p_access;
-    p_sys->prefetch->p = &prefetch_content; /* will discard any content received */
 
     p_sys->ccn = ccn_create();
     if (p_sys->ccn == NULL || ccn_connect(p_sys->ccn, NULL) == -1) {
         goto exit_error;
     }
-
     p_name = ccn_charbuf_create();
     if (p_name == NULL) {
         i_err = VLC_ENOMEM;
@@ -158,28 +149,27 @@ static int CCNOpen(vlc_object_t *p_this)
     if (i_ret < 0) {
         goto exit_error;
     }
-    i_ret = ccn_resolve_version(p_sys->ccn, p_name, CCN_V_HIGHEST, CCN_VERSION_TIMEOUT);
-    /* XXX: should check for error here, but ccn_resolve_version reports an error
-     * if there is no versioned instance of the name, when it should report
-     * that a version couldn't be found
-     */
     p_sys->p_name = ccn_charbuf_create();
     if (p_sys->p_name == NULL) {
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
+    i_ret = ccn_resolve_version(p_sys->ccn, p_name, CCN_V_HIGHEST,
+                                CCN_VERSION_TIMEOUT);
     ccn_charbuf_append_charbuf(p_sys->p_name, p_name);
-    ccn_charbuf_destroy(&p_name);
 
-    p_name = sequenced_name(p_sys->p_name, 0);
-    i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_template);
-    ccn_charbuf_destroy(&p_name);
-    if (i_ret < 0) {
-        goto exit_error;
+    if (i_ret == 0) {
+        /* name is versioned, so get the header to obtain the length */
+        struct ccn_header *p_header;
+        p_header = ccn_get_header(p_sys->ccn, p_name, CCN_VERSION_TIMEOUT);
+        p_access->info.i_size = p_header->length;
+        ccn_header_destroy(&p_header);
+        }
     }
-
-    p_name = sequenced_name(p_sys->p_name, 0 + PREFETCH_OFFSET);
-    i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch, NULL);
+    ccn_charbuf_destroy(&p_name);
+    p_name = sequenced_name(p_sys->p_name, 0);
+    i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming,
+                                 p_sys->p_template);
     ccn_charbuf_destroy(&p_name);
     if (i_ret < 0) {
         goto exit_error;
@@ -340,10 +330,6 @@ static int CCNSeek(access_t *p_access, int64_t i_pos)
     p_sys->i_pos = i_pos;
     p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / CCN_CHUNK_SIZE);
     ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_template);
-    ccn_charbuf_destroy(&p_name);    
-
-    p_name = sequenced_name(p_sys->p_name, PREFETCH_OFFSET + (p_sys->i_pos / CCN_CHUNK_SIZE));
-    ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch, NULL);
     ccn_charbuf_destroy(&p_name);    
 
     p_access->info.i_pos = i_pos;
@@ -573,30 +559,9 @@ incoming_content(struct ccn_closure *selfp,
     name = sequenced_name(p_sys->p_name, p_sys->i_pos / CCN_CHUNK_SIZE);
     res = ccn_express_interest(info->h, name, selfp, NULL);
     ccn_charbuf_destroy(&name);
-    /* Prefetch as well */
-    name = sequenced_name(p_sys->p_name, PREFETCH_OFFSET + (p_sys->i_pos / CCN_CHUNK_SIZE));
-    res = ccn_express_interest(info->h, name, p_sys->prefetch, NULL);
-    ccn_charbuf_destroy(&name);
 
     if (res < 0) abort();
     
-    return(CCN_UPCALL_RESULT_OK);
-}
-
-enum ccn_upcall_res
-prefetch_content(struct ccn_closure *selfp,
-                 enum ccn_upcall_kind kind,
-                 struct ccn_upcall_info *info)
-{
-    /* the idea behind the content prefetch is to get it to the local ccnd
-     * so it will be available quickly when we need it.  Therefore, this
-     * routine just discards the data it retrieved.
-     */
-#if 0
-    if (kind == CCN_UPCALL_FINAL) {
-        free(selfp);
-    }
-#endif
     return(CCN_UPCALL_RESULT_OK);
 }
 

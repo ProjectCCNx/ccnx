@@ -27,6 +27,7 @@
 
 struct ccn;
 struct ccn_charbuf;
+struct sockaddr_un;
 
 /*
  * Dispatch a message as if it had arrived on the socket
@@ -44,5 +45,7 @@ int ccn_process_scheduled_operations(struct ccn *h);
  * Caller should destroy returned buffer.
  */
 struct ccn_charbuf *ccn_grab_buffered_output(struct ccn *h);
+
+void ccn_setup_sockaddr_un(const char *, struct sockaddr_un *);
 
 #endif
