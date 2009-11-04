@@ -477,6 +477,7 @@ public class Group {
 	 * keys of the members to add.
 	 * Since members are only added, there is no need to replace the group key.
 	 * @param manager the group manager
+	 * @param privateKeyWrappingKey the private key wrapping key
 	 * @param membersToAdd the members added to the group
 	 * @throws InvalidKeyException 
 	 * @throws AccessDeniedException
