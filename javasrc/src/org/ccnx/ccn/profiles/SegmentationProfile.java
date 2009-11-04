@@ -265,4 +265,39 @@ public class SegmentationProfile implements CCNProfile {
 		}
 		return segment;
 	}
+	
+	
+	/**
+	 * Creates an Interest for a specified segment number.
+	 * 
+	 * @param name ContentName for the desired ContentObject
+	 * @param segmentNumber segment number to append to the name, if null, uses the baseSegment number
+	 * @param publisher can be null
+	 * 
+	 * @return interest
+	 **/
+	
+	public static Interest segmentInterest(ContentName name, Long segmentNumber, PublisherPublicKeyDigest publisher){
+		if (null == segmentNumber) {
+			segmentNumber = baseSegment();
+		}
+		ContentName segmentname = segmentName(name, segmentNumber);
+		Log.info("segmentInterest: creating interest for {0}", segmentname);
+		Interest interest = Interest.lower(segmentname, 1, publisher);
+		return interest;
+	}
+	
+	/**
+	 * Creates an Interest for the first segment.
+	 * 
+	 * @param name ContentName for the desired ContentObject
+	 * @param publisher can be null
+	 * 
+	 * @return interest
+	 **/
+	
+	public static Interest firstSegmentInterest(ContentName name, PublisherPublicKeyDigest publisher){
+		return segmentInterest(name, baseSegment(), publisher);
+	}
+	
 }
