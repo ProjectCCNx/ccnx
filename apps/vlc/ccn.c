@@ -253,7 +253,7 @@ static block_t *CCNBlock(access_t *p_access)
     if (p_block == NULL)
         return NULL;
 
-    msg_Dbg(p_access, "CCNBlock %d bytes @ %"PRId64, p_block->i_buffer, p_access->info.i_pos);
+    msg_Dbg(p_access, "CCNBlock %zu bytes @ %"PRId64, p_block->i_buffer, p_access->info.i_pos);
     p_access->info.i_pos += p_block->i_buffer;
     if (p_block->i_buffer == 0) {
         p_access->info.i_size = p_access->info.i_pos;
@@ -521,7 +521,7 @@ incoming_content(struct ccn_closure *selfp,
     if (data_size > 0) {
         start_offset = p_sys->i_pos % CCN_CHUNK_SIZE;
         if (start_offset > data_size) {
-            msg_Err(p_access, "start_offset %"PRId64" > data_size %d", start_offset, data_size);
+            msg_Err(p_access, "start_offset %"PRId64" > data_size %zu", start_offset, data_size);
         } else {
             if ((data_size - start_offset) + p_sys->i_bufoffset > BUF_SIZE) {
                 /* won't fit in buffer, release the buffer upstream */
