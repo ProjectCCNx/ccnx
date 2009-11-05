@@ -184,14 +184,16 @@ ccnd_internal_client_refresh(struct ccn_schedule *sched,
                int flags)
 {
     struct ccnd_handle *ccnd = clienth;
-    int microsec;
-    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
-        return(0);
-    if (ccnd->internal_client == NULL)
-        return(0);
-    microsec = ccn_process_scheduled_operations(ccnd->internal_client);
-    if (microsec > ev->evint)
-        microsec = ev->evint;
+    int microsec = 0;
+    if ((flags & CCN_SCHEDULE_CANCEL) == 0 &&
+          ccnd->internal_client != NULL &&
+          ccnd->internal_client_refresh == ev) {
+        microsec = ccn_process_scheduled_operations(ccnd->internal_client);
+        if (microsec > ev->evint)
+            microsec = ev->evint;
+    }
+    if (microsec <= 0 && ccnd->internal_client_refresh == ev)
+        ccnd->internal_client_refresh = NULL;
     return(microsec);
 }
 
@@ -368,8 +370,6 @@ void
 ccnd_internal_client_stop(struct ccnd_handle *ccnd)
 {
     ccn_destroy(&ccnd->internal_client);
-    if (ccnd->internal_client_refresh != NULL) {
-        ccnd->internal_client_refresh->evint = 0;
-        ccnd->internal_client_refresh = NULL;
-    }
+    if (ccnd->internal_client_refresh != NULL)
+        ccn_schedule_cancel(ccnd->sched, ccnd->internal_client_refresh);
 }

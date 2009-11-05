@@ -236,15 +236,33 @@ ccn_schedule_event(
     return(reschedule_event(sched, micros, ev));
 }
 
-/*
- * ccn_schedule_cancel: cancel a scheduled event
+/* Use a dummy action in cancelled events */ 
+static int
+ccn_schedule_cancelled_event(struct ccn_schedule *sched, void *clienth,
+                             struct ccn_scheduled_event *ev, int flags)
+{
+    return(0);
+}
+
+/**
+ * Cancel a scheduled event.
+ *
  * Cancels the event (calling action with CCN_SCHEDULE_CANCEL set)
- * Returns -1 if this is not possible.
+ * @returns 0 if OK, or -1 if this is not possible.
  */
 int
 ccn_schedule_cancel(struct ccn_schedule *sched, struct ccn_scheduled_event *ev)
 {
-    return(-1);
+    int res;
+    if (ev == NULL)
+        return(-1);
+    res = (ev->action)(sched, sched->clienth, ev, CCN_SCHEDULE_CANCEL);
+    if (res > 0)
+        abort(); /* Bug in ev->action - bad return value */
+    ev->action = &ccn_schedule_cancelled_event;
+    ev->evdata = NULL;
+    ev->evint = 0;
+    return(0);
 }
 
 static void
@@ -260,7 +278,7 @@ ccn_schedule_run_next(struct ccn_schedule *sched)
     heap_sift(sched->heap, sched->heap_n--);
     res = (ev->action)(sched, sched->clienth, ev, 0);
     if (res <= 0) {
-        free(ev); // XXX should maybe quarantine this
+        free(ev);
         return;
     }
     /*
@@ -314,50 +332,39 @@ static void
 testtick(struct ccn_schedule *sched)
 {
     sched->now = sched->heap[0].event_time + 1;
-    printf("%d: ", sched->heap[0].event_time);
+    printf("%ld: ", (long)sched->heap[0].event_time);
     ccn_schedule_run_next(sched);
     printf("\n");
 }
 static char dd[] = "ABDEFGHI";
-static int A(
-    struct ccn_schedule *sched,
-    void *clienth,
-    struct ccn_scheduled_event *ev,
-    int flags) { printf("A"); return 70000000; }
-static int B(
-    struct ccn_schedule *sched,
-    void *clienth,
-    struct ccn_scheduled_event *ev,
-    int flags) { printf("B"); return 0; }
-static int C(
-    struct ccn_schedule *sched,
-    void *clienth,
-    struct ccn_scheduled_event *ev,
-    int flags) { printf("C"); return 0; }
-static int D(
-    struct ccn_schedule *sched,
-    void *clienth,
-    struct ccn_scheduled_event *ev,
-    int flags) { printf("D");  return 30000000; }
+#define SARGS struct ccn_schedule *sched, void *clienth, struct ccn_scheduled_event *ev, int flags
+static int A(SARGS) { if (flags & CCN_SCHEDULE_CANCEL) return(0);
+                      printf("A"); return 70000000; }
+static int B(SARGS) { printf("B"); return 0; }
+static int C(SARGS) { printf("C"); return 0; }
+static int D(SARGS) { if (flags & CCN_SCHEDULE_CANCEL) return(0);
+                      printf("D");  return 30000000; }
 static struct ccn_schedule_heap_item tst[7];
 int TESTSCHEDULE()
 {
     struct ccn_schedule *s = ccn_schedule_create(dd+5, &gt);
     int i;
-    s->heap = tst; // for easy debugger display
-    s->heap_limit = 7;
+    struct ccn_scheduled_event *victim = NULL;
+    // s->heap = tst; s->heap_limit = 7; // uncomment for easy debugger display
     s->time_has_passed = -1; /* don't really ask for time */
     ccn_schedule_event(s, 11111, A, dd+4, 11111);
     ccn_schedule_event(s, 1, A, dd, 1);
     ccn_schedule_event(s, 111, C, dd+2, 111);
-    ccn_schedule_event(s, 1111111, A, dd+6, 1111111);
+    victim = ccn_schedule_event(s, 1111111, A, dd+6, 1111111);
     ccn_schedule_event(s, 11, B, dd+1, 11);
     testtick(s);
     ccn_schedule_event(s, 1111, D, dd+3, 1111);
     ccn_schedule_event(s, 111111, B, dd+5, 111111);
     for (i = 0; i < 100; i++) {
+        if (i == 50) { ccn_schedule_cancel(s, victim); victim = NULL; }
         testtick(s);
     }
+    ccn_schedule_destroy(&s);
     return(0);
 }
 #endif
