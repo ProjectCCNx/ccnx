@@ -268,7 +268,9 @@ public class SegmentationProfile implements CCNProfile {
 	
 	
 	/**
-	 * Creates an Interest for a specified segment number.
+	 * Creates an Interest for a specified segment number.  If the supplied name already
+	 * ends with a segment number, the interest will have the supplied segment in the name
+	 * instead.
 	 * 
 	 * @param name ContentName for the desired ContentObject
 	 * @param segmentNumber segment number to append to the name, if null, uses the baseSegment number
@@ -278,12 +280,23 @@ public class SegmentationProfile implements CCNProfile {
 	 **/
 	
 	public static Interest segmentInterest(ContentName name, Long segmentNumber, PublisherPublicKeyDigest publisher){
+		ContentName interestName = null;
+		//make sure the desired segment number is specified
 		if (null == segmentNumber) {
 			segmentNumber = baseSegment();
 		}
-		ContentName segmentname = segmentName(name, segmentNumber);
-		Log.info("segmentInterest: creating interest for {0}", segmentname);
-		Interest interest = Interest.lower(segmentname, 1, publisher);
+		
+		//check if the name already has a segment in the last spot
+		if (isSegment(name)) {
+			//this already has a segment, trim it off
+			interestName = segmentRoot(name);
+		} else {
+			interestName = name;
+		}
+		
+		interestName = segmentName(interestName, segmentNumber);
+		Log.info("segmentInterest: creating interest for {0} from ContentName {1} and segmentNumber {2}", interestName, name, segmentNumber);
+		Interest interest = Interest.lower(interestName, 1, publisher);
 		return interest;
 	}
 	
@@ -298,6 +311,68 @@ public class SegmentationProfile implements CCNProfile {
 	
 	public static Interest firstSegmentInterest(ContentName name, PublisherPublicKeyDigest publisher){
 		return segmentInterest(name, baseSegment(), publisher);
+	}
+	
+	
+	/**
+	 * Creates an Interest to find the right-most child from the given segment number
+	 * or the base segment if one is not supplied.  This attempts to find the last segment for
+	 * the given content name.  Due to caching, this does not guarantee the interest will find the
+	 * last segment, higher layer code must verify that the ContentObject returned for this interest
+	 * is the last one.
+	 * 
+	 * @param name ContentName for the prefix of the Interest
+	 * @param segmentNumber create an interest for the last segment number after this number
+	 * @param publisher can be null
+	 * @return interest
+	 */
+	
+	public static Interest lastSegmentInterest(ContentName name, Long segmentNumber, PublisherPublicKeyDigest publisher){
+		Interest interest = null;
+		ContentName interestName = null;
+
+		//see if a segment number was supplied
+		if (segmentNumber == null) {
+			segmentNumber = baseSegment();
+		}
+		
+		//check if the name has a segment number
+		if (isSegment(name)) {
+			//this already has a segment
+			//is this segment before or after the segmentNumber
+			if (segmentNumber < getSegmentNumber(name)) {
+				//the segment number in the name is higher...  use this
+				interestName = name;
+			} else {
+				//the segment number provided is bigger...  use that
+				interestName = segmentName(name, segmentNumber);
+			}
+		} else {
+			interestName = segmentName(name, segmentNumber);
+		}
+		
+		Log.info("lastSegmentInterest: creating interest for {0} from ContentName {1} and segmentNumber {2}", interestName, name, segmentNumber);
+		//TODO need to create Interest creation functions with publisher as a param
+		interest = Interest.last(interestName);
+
+		return interest;
+	}
+	
+	
+	/**
+	 * Creates an Interest to find the right-most child from the given segment number
+	 * or the base segment if one is not supplied.  This Interest will attempt to find the last segment for
+	 * the given content name.  Due to caching, this does not guarantee the interest will find the
+	 * last segment, higher layer code must verify that the ContentObject returned for this interest
+	 * is the last one.
+	 * 
+	 * @param name ContentName for the prefix of the Interest
+	 * @param publisher can be null
+	 * @return interest
+	 */
+	
+	public static Interest lastSegmentInterest(ContentName name, PublisherPublicKeyDigest publisher){
+		return lastSegmentInterest(name, baseSegment(), publisher);
 	}
 	
 }

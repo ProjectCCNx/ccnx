@@ -51,6 +51,7 @@ public class SegmentationProfileTest {
 		ContentName segmentName = null;
 		ContentName nextSegmentName = null;
 		ContentName longerName = null;
+		ContentName nameEndingWithSegment = null;
 		Interest interest = null;
 		long segmentNumber = 27;
 		long nextSegmentNumber = 28;
@@ -59,7 +60,8 @@ public class SegmentationProfileTest {
 			name = ContentName.fromURI("/ccnx.org/test/segmentationProfile/");
 			segmentName = SegmentationProfile.segmentName(name, segmentNumber);
 			nextSegmentName = SegmentationProfile.segmentName(name, nextSegmentNumber);
-			longerName = SegmentationProfile.segmentRoot(segmentName);
+			longerName = SegmentationProfile.segmentName(segmentName, nextSegmentNumber);
+			nameEndingWithSegment = SegmentationProfile.segmentName(name, nextSegmentNumber+1);
 		} catch (MalformedContentNameStringException e) {
 			Assert.fail("could not create ContentName for test");
 		}
@@ -73,6 +75,17 @@ public class SegmentationProfileTest {
 		Assert.assertFalse(interest.matches(name, null));
 		Assert.assertFalse(interest.matches(nextSegmentName, null));
 		Assert.assertFalse(interest.matches(longerName, null));
+		
+		interest = SegmentationProfile.segmentInterest(nameEndingWithSegment, segmentNumber, null);
+		
+		Assert.assertTrue(interest.name().equals(segmentName));
+		Assert.assertFalse(interest.name().equals(nextSegmentName));
+		
+		Assert.assertTrue(interest.matches(segmentName, null));
+		Assert.assertFalse(interest.matches(name, null));
+		Assert.assertFalse(interest.matches(nextSegmentName, null));
+		Assert.assertFalse(interest.matches(longerName, null));
+		
 	}
 	
 	/**
@@ -91,7 +104,7 @@ public class SegmentationProfileTest {
 			name = ContentName.fromURI("/ccnx.org/test/segmentationProfile/");
 			segmentName = SegmentationProfile.segmentName(name, SegmentationProfile.baseSegment());
 			nextSegmentName = SegmentationProfile.segmentName(name, nextSegmentNumber);
-			longerName = SegmentationProfile.segmentRoot(segmentName);
+			longerName = SegmentationProfile.segmentName(segmentName, nextSegmentNumber);
 		} catch (MalformedContentNameStringException e) {
 			Assert.fail("could not create ContentName for test");
 		}
@@ -123,15 +136,13 @@ public class SegmentationProfileTest {
 			name = ContentName.fromURI("/ccnx.org/test/segmentationProfile/");
 			segmentName = SegmentationProfile.segmentName(name, SegmentationProfile.baseSegment());
 			nextSegmentName = SegmentationProfile.segmentName(name, nextSegmentNumber);
-			longerName = SegmentationProfile.segmentRoot(segmentName);
+			longerName = SegmentationProfile.segmentName(segmentName, nextSegmentNumber);
 		} catch (MalformedContentNameStringException e) {
 			Assert.fail("could not create ContentName for test");
 		}
 		
 		interest = SegmentationProfile.firstSegmentInterest(name, null);
-		
-		//System.out.println("segmentName: "+segmentName+" interestName: "+interest.name());
-		
+			
 		Assert.assertTrue(interest.name().equals(segmentName));
 		Assert.assertFalse(interest.name().equals(nextSegmentName));
 		
@@ -140,6 +151,8 @@ public class SegmentationProfileTest {
 		Assert.assertFalse(interest.matches(nextSegmentName, null));
 		Assert.assertFalse(interest.matches(longerName, null));
 	}
+	
+	//create a test that makes sure match is true for last on segment where final block id is set and another that fails for an earlier block
 	
 	
 }
