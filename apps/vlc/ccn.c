@@ -25,6 +25,8 @@
 # include "config.h"
 #endif
 
+#include <limits.h>
+
 #include <vlc_common.h>
 #include <vlc_plugin.h>
 #include <vlc_access.h>
@@ -33,6 +35,7 @@
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
+#include <ccn/header.h>
 
 /*****************************************************************************
  * Disable internationalization
@@ -43,9 +46,9 @@
  * Module descriptor
  *****************************************************************************/
 #define CACHING_TEXT N_("Caching value in ms")
-#define CACHING_LONGTEXT N_( \
-    "Caching value for CCN streams. This " \
-    "value should be set in milliseconds.")
+#define CACHING_LONGTEXT N_(                                            \
+                            "Caching value for CCN streams. This "      \
+                            "value should be set in milliseconds.")
 
 static int  CCNOpen(vlc_object_t *);
 static void CCNClose(vlc_object_t *);
@@ -72,11 +75,11 @@ vlc_module_end();
 /*****************************************************************************
  * Local prototypes
  *****************************************************************************/
-#define CCN_FIFO_MAX_PACKETS 100
+#define CCN_FIFO_MAX_PACKETS 128
 #define CCN_CHUNK_SIZE 4096
-#define BUF_SIZE (1024 * 1024)
-#define CCN_VERSION_TIMEOUT 500
-#define CCN_HEADER_TIMEOUT 500
+#define BUF_SIZE (128 * CCN_CHUNK_SIZE)
+#define CCN_VERSION_TIMEOUT 400
+#define CCN_HEADER_TIMEOUT 400
 
 struct access_sys_t
 {
@@ -109,6 +112,7 @@ static int CCNOpen(vlc_object_t *p_this)
     access_t     *p_access = (access_t *)p_this;
     access_sys_t *p_sys = NULL;
     struct ccn_charbuf *p_name = NULL;
+    struct ccn_header *p_header = NULL;
     int i_ret = 0;
     int i_err = VLC_EGENERIC;
 
@@ -131,8 +135,8 @@ static int CCNOpen(vlc_object_t *p_this)
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
-    msg_Dbg(p_access, "CCN.Open %s, closure 0x%08x",
-            p_access->psz_path, (int)p_sys->incoming);    /*XXX: fix format */
+    msg_Dbg(p_access, "CCN.Open %s, closure %p",
+            p_access->psz_path, p_sys->incoming);
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
 
@@ -157,14 +161,14 @@ static int CCNOpen(vlc_object_t *p_this)
     i_ret = ccn_resolve_version(p_sys->ccn, p_name, CCN_V_HIGHEST,
                                 CCN_VERSION_TIMEOUT);
     ccn_charbuf_append_charbuf(p_sys->p_name, p_name);
-
     if (i_ret == 0) {
         /* name is versioned, so get the header to obtain the length */
-        struct ccn_header *p_header;
-        p_header = ccn_get_header(p_sys->ccn, p_name, CCN_VERSION_TIMEOUT);
-        p_access->info.i_size = p_header->length;
-        ccn_header_destroy(&p_header);
+        p_header = ccn_get_header(p_sys->ccn, p_name, CCN_HEADER_TIMEOUT);
+        if (p_header != NULL) {
+            p_access->info.i_size = p_header->length;
+            ccn_header_destroy(&p_header);
         }
+        msg_Dbg(p_access, "Set length %"PRId64, p_access->info.i_size);
     }
     ccn_charbuf_destroy(&p_name);
     p_name = sequenced_name(p_sys->p_name, 0);
@@ -182,8 +186,9 @@ static int CCNOpen(vlc_object_t *p_this)
     }
 #ifdef VLCPLUGINVER099
     i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
-                      VLC_THREAD_PRIORITY_INPUT, false);
+                              VLC_THREAD_PRIORITY_INPUT, false);
 #else
+
     i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
                               VLC_THREAD_PRIORITY_INPUT);
 #endif
@@ -324,7 +329,8 @@ static int CCNSeek(access_t *p_access, int64_t i_pos)
     if (p_sys->incoming == NULL) {
         return (VLC_EGENERIC);
     }
-    msg_Dbg(p_access, "CCN.Seek to %"PRId64", closure 0x%08x", i_pos, (int) p_sys->incoming);
+    msg_Dbg(p_access, "CCN.Seek to %"PRId64", closure %p",
+            i_pos, p_sys->incoming);
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
     p_sys->i_pos = i_pos;
@@ -347,7 +353,7 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
     int64_t      *pi_64;
 
     switch(i_query)
-    {
+        {
         case ACCESS_CAN_SEEK:
         case ACCESS_CAN_FASTSEEK:
         case ACCESS_CAN_CONTROL_PACE:
@@ -386,7 +392,7 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
             msg_Warn(p_access, "CCN unimplemented query in control - %d", i_query);
             return VLC_EGENERIC;
 
-    }
+        }
     return VLC_SUCCESS;
 }
 
@@ -401,7 +407,7 @@ static void *ccn_event_thread(vlc_object_t *p_this)
 #endif
 
     while (res >= 0 && vlc_object_alive(p_access)) {
-        res = ccn_run(ccn, 500);
+        res = ccn_run(ccn, 1000);
     }
     if (res < 0) {
         vlc_object_kill(p_access);
@@ -431,18 +437,19 @@ incoming_content(struct ccn_closure *selfp,
     size_t written;
     const unsigned char *ib = NULL; /* info->interest_ccnb */
     struct ccn_indexbuf *ic = NULL;
+    int first = 0;
     int res;
 
     switch (kind) {
     case CCN_UPCALL_FINAL:
-        msg_Dbg(p_access, "CCN upcall final 0x%08x", (int) selfp);
+        msg_Dbg(p_access, "CCN upcall final %p", selfp);
         if (selfp == p_sys->incoming)
             p_sys->incoming = NULL;
         free(selfp);
         return(CCN_UPCALL_RESULT_OK);
     case CCN_UPCALL_INTEREST_TIMED_OUT:
         if (selfp != p_sys->incoming) {
-            msg_Dbg(p_access, "CCN Interest timed out on dead closure 0x%08x", (int)selfp);
+            msg_Dbg(p_access, "CCN Interest timed out on dead closure %p", selfp);
             return(CCN_UPCALL_RESULT_OK);
         }
         msg_Dbg(p_access, "CCN upcall reexpress -- timed out");
@@ -457,14 +464,14 @@ incoming_content(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_REEXPRESS); // XXX - may need to reseed bloom filter
     case CCN_UPCALL_CONTENT_UNVERIFIED:
         if (selfp != p_sys->incoming) {
-            msg_Dbg(p_access, "CCN unverified content on dead closure 0x%08x", (int)selfp);
+            msg_Dbg(p_access, "CCN unverified content on dead closure %p", selfp);
             return(CCN_UPCALL_RESULT_OK);
         }
         return (CCN_UPCALL_RESULT_VERIFY);
 
     case CCN_UPCALL_CONTENT:
         if (selfp != p_sys->incoming) {
-            msg_Dbg(p_access, "CCN content on dead closure 0x%08x", (int)selfp);
+            msg_Dbg(p_access, "CCN content on dead closure %p", selfp);
             return(CCN_UPCALL_RESULT_OK);
         }
         break;
@@ -532,23 +539,28 @@ incoming_content(struct ccn_closure *selfp,
     /* if we're done, indicate so with a 0-byte block, release any buffered data upstream,
      * and don't express an interest
      */
-        if (b_last) {
-            if (p_sys->i_bufoffset > 0) {
-                p_block = block_New(p_access, p_sys->i_bufoffset);
-                memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_bufoffset);
-                block_FifoPut(p_sys->p_fifo, p_block);
-                p_sys->i_bufoffset = 0;
-            }
-            block_FifoPut(p_sys->p_fifo, block_New(p_access, 0));
-            return (CCN_UPCALL_RESULT_OK);
+    if (b_last) {
+        if (p_sys->i_bufoffset > 0) {
+            p_block = block_New(p_access, p_sys->i_bufoffset);
+            memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_bufoffset);
+            block_FifoPut(p_sys->p_fifo, p_block);
+            p_sys->i_bufoffset = 0;
         }
+        block_FifoPut(p_sys->p_fifo, block_New(p_access, 0));
+        return (CCN_UPCALL_RESULT_OK);
+    }
 
 #if 1
-        /* 0.9.9 did not include the block_FifoPace function */
+    /* 0.9.9 did not include the block_FifoPace function */
     while (block_FifoCount(p_sys->p_fifo) > CCN_FIFO_MAX_PACKETS) {
-        msleep(1000);
+        if (first == 0) {
+            msg_Dbg(p_access, "fifo full");
+        }
+        first++;
+        msleep(100000);
         if (!vlc_object_alive(p_access)) return(CCN_UPCALL_RESULT_OK);
     }
+    if (first > 0) msg_Dbg(p_access, "fifo spun %d", first);
 #else
     /* and they neglected to VLC_EXPORT it in 1.0.2 ! */
     block_FifoPace(p_sys->p_fifo, CCN_FIFO_MAX_PACKETS, SIZE_MAX);
