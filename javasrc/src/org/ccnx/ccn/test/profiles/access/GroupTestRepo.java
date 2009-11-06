@@ -257,17 +257,24 @@ public class GroupTestRepo {
 		Group aSeparateGroupCopy = ourGM.getGroup(_randomGroupName);
 		Assert.assertEquals(ourExistingGroup.publicKeyName(), aSeparateGroupCopy.publicKeyName());
 		Log.info("Original key name {0}, copy key name {1}", ourExistingGroup.publicKeyName(), aSeparateGroupCopy.publicKeyName());
+		System.out.println("Original key version: " + ourExistingGroup.publicKeyVersion());
+		System.out.println("Copy key version    : " + aSeparateGroupCopy.publicKeyVersion());
 		// Now we update the group public key.
 		ArrayList<Link> removeMembers = new ArrayList<Link>();
-		Link memberToRemove = ourExistingGroup.membershipList().contents().getLast();
+		Link memberToRemove = aSeparateGroupCopy.membershipList().contents().getLast();
+//		Link memberToRemove = ourExistingGroup.membershipList().contents().getLast();
 		removeMembers.add(memberToRemove);
 		System.out.println("removing user:.................." + memberToRemove.targetName());
-		testRemoveUsers(removeMembers, ourExistingGroup);
+		testRemoveUsers(removeMembers, aSeparateGroupCopy);
+//		testRemoveUsers(removeMembers, ourExistingGroup);
 		
 		Log.info("Post-write Original key name {0}, copy key name {1}", ourExistingGroup.publicKeyName(), aSeparateGroupCopy.publicKeyName());
+		System.out.println("Post-write original key version: " + ourExistingGroup.publicKeyVersion());
+		System.out.println("Post-write copy key version    : " + aSeparateGroupCopy.publicKeyVersion());
 		Thread.sleep(1000);
 		Log.info("Post-write and sleep Original key name {0}, copy key name {1}", ourExistingGroup.publicKeyName(), aSeparateGroupCopy.publicKeyName());
-
+		System.out.println("Post-write and sleep original key version: " + ourExistingGroup.publicKeyVersion());
+		System.out.println("Post-write and sleep copy key version    : " + aSeparateGroupCopy.publicKeyVersion());
 	}
 	
 	
