@@ -104,26 +104,7 @@ public class Group {
 	public Group(ContentName groupName, CCNHandle handle, GroupManager manager) throws ContentDecodingException, IOException {
 		this(groupName.parent(), AccessControlProfile.groupNameToFriendlyName(groupName), handle,manager);
 	}
-	
-	/**
-	 * Package constructor.
-	 * @param namespace the group namespace
-	 * @param groupFriendlyName the friendly name by which the group is known
-	 * @param members the membership list of the group
-	 * @param publicKey the group public key
-	 * @param handle the CCN handle
-	 * @param manager the group manager
-	 */
-	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
-		  PublicKeyObject publicKey, CCNHandle handle, GroupManager manager) {
-		_handle = handle;
-		_groupNamespace = namespace;
-		_groupFriendlyName = groupFriendlyName;
-		_groupMembers = members;
-		_groupPublicKey = publicKey;
-		_groupManager = manager;
-	}
-	
+		
 	/**
 	 * Constructor that creates a new group and generates a first key pair for it.
 	 * @param namespace the group namespace
@@ -140,10 +121,16 @@ public class Group {
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
 					CCNHandle handle, GroupManager manager) 
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, InvalidCipherTextException {	
-		this(namespace, groupFriendlyName, members, null, handle,manager);
-//		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _handle);
-		createGroupPublicKey(manager, members);
+		_handle = handle;
+		_groupNamespace = namespace;
+		_groupFriendlyName = groupFriendlyName;
+		_groupManager = manager;
+		
+		_groupMembers = members;
 		_groupMembers.saveToRepository();
+
+		createGroupPublicKey(manager, members);
+		_groupPublicKey.updateInBackground(true);
 	}
 	
 	/**
@@ -237,7 +224,7 @@ public class Group {
 	 * Get the name of the namespace for the group
 	 * @return the group namespace
 	 */
-	public ContentName groupName() {return AccessControlProfile.groupName(_groupNamespace, _groupFriendlyName);}
+	public ContentName groupName() {return ContentName.fromNative(_groupNamespace, _groupFriendlyName);}
 
 	/**
 	 * Returns a list containing all the members of a Group.
@@ -375,6 +362,7 @@ public class Group {
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, 
 					InvalidCipherTextException {
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(manager.getAccessManager());
+		oldPrivateKeyDirectory.waitForData();
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have access rights to private key for group " + friendlyName());
@@ -394,7 +382,7 @@ public class Group {
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _handle);
-		precededByBlock.saveToRepository();
+		precededByBlock.saveToRepository();		
 	}
 	
 	/**
@@ -487,6 +475,7 @@ public class Group {
 				if (manager.isGroup(lr)){
 					pkName = AccessControlProfile.groupPublicKeyName(pkName);
 					// write a back pointer from child group to parent group
+					// PG TODO check for existence of back pointer to avoid writing multiple copies of the same pointer
 					Link backPointer = new Link(groupName(), friendlyName(), null);
 					ContentName bpNamespace = AccessControlProfile.groupPointerToParentGroupName(lr.targetName());
 					LinkObject bplo = new LinkObject(ContentName.fromNative(bpNamespace, friendlyName()), backPointer, _handle);
@@ -570,6 +559,7 @@ public class Group {
 		// Assume no concurrent writer.  
 		
 		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
+		privateKeyDirectory.waitForData();
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
