@@ -130,7 +130,6 @@ public class Group {
 		_groupMembers.saveToRepository();
 
 		createGroupPublicKey(manager, members);
-		_groupPublicKey.updateInBackground(true);
 	}
 	
 	/**
@@ -420,6 +419,7 @@ public class Group {
 					AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), 
 					pair.getPublic(),
 					_handle);
+		_groupPublicKey.updateInBackground(true);
 		_groupPublicKey.saveToRepository();
 		
 		stopPrivateKeyDirectoryEnumeration();
