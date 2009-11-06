@@ -36,20 +36,15 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * than block data divided into fragments.
  * Sequence/segment numbers occupy the final component of the CCN name 
  * (again, not counting the digest component). For consecutive numbering, 
- * the first byte of the sequence component is 0xF8. The remaining bytes 
+ * the first byte of the sequence component is 0x00. The remaining bytes 
  * hold the sequence number in big-endian unsigned binary, using the minimum number 
- * of bytes. Thus sequence number 0 is encoded in just one byte, %F8, and 
- * sequence number 1 is %F8%01. Note that this encoding is not quite 
- * dense - %F8%00 is unused, as are other components that start with 
+ * of bytes. Thus sequence number 0 is encoded in just one byte, %00, and 
+ * sequence number 1 is %00%01. Note that this encoding is not quite 
+ * dense - %00%00 is unused, as are other components that start with 
  * these two bytes. 
  * For non-consecutive numbering (e.g, using byte offsets) the value 
  * 0xFB may be used as a marker.
  * 
- * DKS -- add-on to this proposal: use fragment markers on all content,
- * content with only one fragment gets the marker 0xF800, and the last
- * fragment of a given piece of content (when this is known) has
- * a prefix of 0xF800 instead of just 0xF8.
- * @author smetters
  *
  */
 public class SegmentationProfile implements CCNProfile {

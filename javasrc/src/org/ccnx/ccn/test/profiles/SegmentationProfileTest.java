@@ -153,6 +153,65 @@ public class SegmentationProfileTest {
 	}
 	
 	//create a test that makes sure match is true for last on segment where final block id is set and another that fails for an earlier block
-	
+	/**
+	 * Test to create Interest for last segment.
+	 */
+	@Test
+	public void testLastSegmentInterest(){
+		ContentName name = null;
+		ContentName segmentName = null;
+		ContentName nextSegmentName = null;
+		ContentName previousSegmentName = null;
+		Interest interest = null;
+		long segmentNumber = 27;
+		long nextSegmentNumber = 28;
+		long previousSegmentNumber = 26;
+		
+		try {
+			name = ContentName.fromURI("/ccnx.org/test/segmentationProfile/");
+			segmentName = SegmentationProfile.segmentName(name, segmentNumber);
+			nextSegmentName = SegmentationProfile.segmentName(name, nextSegmentNumber);
+			previousSegmentName = SegmentationProfile.segmentName(name, previousSegmentNumber);
+		} catch (MalformedContentNameStringException e) {
+			Assert.fail("could not create ContentName for test");
+		}
+		
+		//create an interest with a segment number
+		interest = SegmentationProfile.lastSegmentInterest(segmentName, null);
+		
+		Assert.assertTrue(interest.matches(nextSegmentName, null));
+		Assert.assertFalse(interest.matches(segmentName, null));
+		Assert.assertFalse(interest.matches(previousSegmentName, null));
+		
+		//create an interest with a segment number for a name that already has a segment number
+		interest = SegmentationProfile.lastSegmentInterest(segmentName, segmentNumber, null);
+		
+		Assert.assertTrue(interest.matches(nextSegmentName, null));
+		Assert.assertFalse(interest.matches(segmentName, null));
+		Assert.assertFalse(interest.matches(previousSegmentName, null));
+		
+		//create an interest with a segment number for a name that already has a lower segment number
+		interest = SegmentationProfile.lastSegmentInterest(previousSegmentName, segmentNumber, null);
+		
+		Assert.assertTrue(interest.matches(nextSegmentName, null));
+		Assert.assertFalse(interest.matches(segmentName, null));
+		Assert.assertFalse(interest.matches(previousSegmentName, null));
+		
+		//create an interest with a segment number for a name that is lower than the segment already in the name
+		interest = SegmentationProfile.lastSegmentInterest(segmentName, previousSegmentNumber, null);
+		
+		Assert.assertTrue(interest.matches(nextSegmentName, null));
+		Assert.assertFalse(interest.matches(segmentName, null));
+		Assert.assertFalse(interest.matches(previousSegmentName, null));
+
+		
+		//create an interest without a segment number (should just be base segment)
+		interest = SegmentationProfile.lastSegmentInterest(name, null);
+		
+		Assert.assertTrue(interest.matches(nextSegmentName, null));
+		Assert.assertTrue(interest.matches(segmentName, null));
+		Assert.assertTrue(interest.matches(previousSegmentName, null));
+		
+	}
 	
 }
