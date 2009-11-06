@@ -182,7 +182,7 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, Interest.next(new ContentName(name1, content1.contentDigest()), 2), "bbb");
 		checkData(repo, Interest.last(new ContentName(name1, content1.contentDigest()), 2), "eee");
 		checkData(repo, Interest.next(new ContentName(name1, content1.contentDigest()), 
-				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2), "ddd");
+				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2, null), "ddd");
 		
 		System.out.println("Repotest - Testing different kinds of interests in a mixture of encoded/standard data");
 		ContentName nonLongName = ContentName.fromNative("/repoTestLong/nextTestLong/aaa");
@@ -199,7 +199,7 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.contentDigest()), 2), "bbb");
 		checkData(repo, Interest.last(new ContentName(nonLongName, nonLongContent.contentDigest()), 2), "eee");
 		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.contentDigest()), 
-				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2), "ddd");
+				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2, null), "ddd");
 		
 		System.out.println("Repotest - testing version and segment files");
 		versionedName = ContentName.fromNative("/repoTest/testVersion");

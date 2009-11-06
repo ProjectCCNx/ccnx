@@ -97,7 +97,7 @@ public class CCNReader {
 	 */
 	public ContentObject getNext(ContentName name, byte omissions[][], long timeout) 
 			throws IOException {
-		return _handle.get(Interest.next(name, omissions, null), timeout);
+		return _handle.get(Interest.next(name, omissions, null, null), timeout);
 	}
 	
 	/**
