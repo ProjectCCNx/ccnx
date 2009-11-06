@@ -408,6 +408,11 @@ static void *ccn_event_thread(vlc_object_t *p_this)
 
     while (res >= 0 && vlc_object_alive(p_access)) {
         res = ccn_run(ccn, 1000);
+        if (res < 0 && ccn_get_connection_fd(ccn) == -1) {
+            /* Try reconnecting, after a bit of delay */
+            msleep((500 + (getpid() % 512)) * 1024);
+            res = ccn_connect(ccn, NULL);
+        }
     }
     if (res < 0) {
         vlc_object_kill(p_access);
