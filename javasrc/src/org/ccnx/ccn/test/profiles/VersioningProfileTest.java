@@ -20,6 +20,7 @@ package org.ccnx.ccn.test.profiles;
 import static org.junit.Assert.fail;
 import junit.framework.Assert;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -37,7 +38,7 @@ public class VersioningProfileTest {
 	private static byte[][] abParts = { { 97 }, { 98 } };
 	private static ContentName abName = new ContentName(abParts);
 	private static byte[] ver = { -3, 16, 64 };
-	private static byte[] seg = { -8, 16 };
+	private static byte[] seg = { 0, 16 };
 	private static ContentName abSegName = new ContentName(abName, ver, seg);
 	private static byte[] v0 = { -3 };
 	private static byte[] notv = { -3, 0 };
@@ -51,6 +52,7 @@ public class VersioningProfileTest {
 	 */
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		Log.warning("Warning! This tests bakes in low-level knowledge of versioning/segmentation conventions, and must be updated when they change!");
 	}
 
 	/**
@@ -142,7 +144,7 @@ public class VersioningProfileTest {
 		if (!VersioningProfile.hasTerminalVersion(abvName))
 			fail("should be versioned");
 		if (!VersioningProfile.hasTerminalVersion(abSegName))
-			fail("should be versioned (with segments)");
+			fail("should be versioned (with segments): " + abSegName);
 		if (VersioningProfile.hasTerminalVersion(new ContentName() ))
 			fail("shouldn't be versioned");
 		
@@ -161,7 +163,7 @@ public class VersioningProfileTest {
 	@Test
 	public void testCutTerminalVersion() {
 		if (!VersioningProfile.cutTerminalVersion(abSegName).first().equals(abName))
-			fail();
+			fail("Not equals: " + VersioningProfile.cutTerminalVersion(abSegName).first() + " and " + abName);
 		if (!VersioningProfile.cutTerminalVersion(abName).first().equals(abName))
 			fail();
 		if (!VersioningProfile.cutTerminalVersion(new ContentName()).first().equals(new ContentName()))
