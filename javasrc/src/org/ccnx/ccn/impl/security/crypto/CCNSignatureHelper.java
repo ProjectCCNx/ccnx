@@ -23,11 +23,10 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.security.crypto.util.SignatureHelper;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 
 /** 
@@ -44,11 +43,12 @@ public class CCNSignatureHelper extends SignatureHelper {
 	 * @throws SignatureException if the content is null, or there is an error generating the signature
 	 * @throws NoSuchAlgorithmException if the digestAlgorithm is not recognized
 	 * @throws InvalidKeyException if the signingKey is not valid
-	 * @throws XMLStreamException  if the object cannot be encoded
+	 * @throws ContentEncodingException  if the object cannot be encoded
 	 */
 	public static byte [] sign(String digestAlgorithm, 
 							   XMLEncodable toBeSigned,
-							   PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
+							   PrivateKey signingKey) 
+			throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, ContentEncodingException {
 		
 		if (null == toBeSigned) {
 			Log.info("Value to be signed must not be null.");
@@ -71,12 +71,13 @@ public class CCNSignatureHelper extends SignatureHelper {
 	 * @throws SignatureException if the content is null, or there is an error generating the signature
 	 * @throws NoSuchAlgorithmException if the digestAlgorithm is not recognized
 	 * @throws InvalidKeyException if the signingKey is not valid
-	 * @throws XMLStreamException  if the object cannot be encoded
+	 * @throws ContentEncodingException  if the object cannot be encoded
 	 */
 	public static byte [] sign(String digestAlgorithm,
 							   XMLEncodable [] toBeSigneds,
 							   byte additionalToBeSigneds[][],
-							   PrivateKey signingKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
+							   PrivateKey signingKey) 
+			throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, ContentEncodingException {
 		
 		if (null == toBeSigneds) {
 			Log.info("Value to be signed must not be null.");
@@ -106,13 +107,14 @@ public class CCNSignatureHelper extends SignatureHelper {
 	 * @throws SignatureException if the content is null, or there is an error generating the signature
 	 * @throws NoSuchAlgorithmException if the digestAlgorithm is not recognized
 	 * @throws InvalidKeyException if the signingKey is not valid
-	 * @throws XMLStreamException  if the object cannot be encoded
+	 * @throws ContentEncodingException  if the object cannot be encoded
 	 */
 	public static boolean verify(
 			XMLEncodable xmlData,
 			byte [] signature,
 			String digestAlgorithm,
-			PublicKey verificationKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
+			PublicKey verificationKey) 
+			throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, ContentEncodingException {
 
 		if ((null == xmlData) || (null == signature)) {
 			Log.info("Value to be verified and signature must not be null.");
@@ -137,13 +139,14 @@ public class CCNSignatureHelper extends SignatureHelper {
 	 * @throws SignatureException if the content is null, or there is an error generating the signature
 	 * @throws NoSuchAlgorithmException if the digestAlgorithm is not recognized
 	 * @throws InvalidKeyException if the signingKey is not valid
-	 * @throws XMLStreamException  if the object cannot be encoded
+	 * @throws ContentEncodingException  if the object cannot be encoded
 	 */
 	public static boolean verify(XMLEncodable [] xmlData,
 								 byte auxiliaryData[][],
 								 byte [] signature,
 								 String digestAlgorithm,
-								 PublicKey verificationKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException {
+								 PublicKey verificationKey) 
+			throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, ContentEncodingException {
 
 		if ((null == xmlData) || (null == signature)) {
 			Log.info("Value to be verified and signature must not be null.");

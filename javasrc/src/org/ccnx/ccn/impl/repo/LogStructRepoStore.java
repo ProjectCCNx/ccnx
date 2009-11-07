@@ -31,11 +31,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -164,7 +165,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 								ref.offset = ref.offset - is.available();
 							ContentObject tmp = new ContentObject();
 							try {
-								if(rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0){
+								if (rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0) {
 									//tmp.decode(is);
 									tmp.decode(is);
 								}
@@ -177,7 +178,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 									break;
 								}
 
-							} catch (XMLStreamException e) {
+							} catch (ContentDecodingException e) {
 								Log.logStackTrace(Level.WARNING, e);
 								e.printStackTrace();
 								// Failed to decode, must be end of this one
@@ -211,17 +212,20 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * @param policyFile a file containing policy data to define the initial repository policy (see BasicPolicy)
 	 * @param localName the local name for this repository as a slash separated String (defaults if null)
 	 * @param globalPrefix the global prefix for this repository as a slash separated String (defaults if null)
+	 * @param An initial namespace (defaults to namespace stored in repository, or / if none)
 	 * @throws RepositoryException if the policyFile, localName, or globalName are improperly formatted
+	 * @throws ContentDecodingException 
 	 */
-	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix) throws RepositoryException {
-		boolean policyFromFile = (null != policyFile);
+	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix,
+				String namespace) throws RepositoryException {
+		PolicyXML pxml = null;
 		boolean nameFromArgs = (null != localName);
 		boolean globalFromArgs = (null != globalPrefix);
 		if (null == localName)
 			localName = DEFAULT_LOCAL_NAME;
 		if (null == globalPrefix) 
 			globalPrefix = DEFAULT_GLOBAL_NAME;
-		startInitPolicy(policyFile);
+		pxml = startInitPolicy(policyFile, namespace);
 
 		if (repositoryRoot == null) {
 			throw new InvalidParameterException();
@@ -277,10 +281,14 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		/**
 		 * Try to read policy from storage if we don't have full policy source yet
 		 */
-		if (!policyFromFile) {
-			readPolicy(localName);
+		if (null == policyFile) {
+			try {
+				readPolicy(localName);
+			} catch (ContentDecodingException e) {
+				throw new RepositoryException(e.getMessage());
+			}
 		}
-
+		
 		checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, handle, globalFromArgs);
 		globalPrefix = checkName != null ? checkName : globalPrefix;
 		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
@@ -294,7 +302,17 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		} catch (MalformedContentNameStringException e2) {
 			throw new RepositoryException(e2.getMessage());
 		}
-		saveContent(_policy.getPolicyContent());
+		
+		// If we didn't read in our policy from a previous saved policy file, save the policy now
+		if (null != pxml) {
+			ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), _policy.getLocalName());
+			try {
+				PolicyObject po = new PolicyObject(policyName, pxml, null, this);
+				po.save();
+			} catch (IOException e) {
+				throw new RepositoryException(e.getMessage());
+			}
+		}
 		try {
 			finishInitPolicy(globalPrefix, localName);
 		} catch (MalformedContentNameStringException e) {
@@ -349,10 +367,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				}
 				return ner;
 			}
+		} catch (ContentEncodingException e) {
+			throw new RepositoryException("Failed to encode content: " + e.getMessage());
 		} catch (IOException e) {
 			throw new RepositoryException("Failed to write content: " + e.getMessage());
-		} catch (XMLStreamException e) {
-			throw new RepositoryException("Failed to encode content: " + e.getMessage());
 		}
 	}
 
@@ -385,9 +403,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			return null;
 		} catch (FileNotFoundException e) {
 			return null;
-		} catch (IOException e) {
-			return null;
-		} catch (XMLStreamException e) {
+		} catch (IOException e) { // handles ContentDecodingException
 			return null;
 		}
 	}

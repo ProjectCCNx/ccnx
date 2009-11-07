@@ -22,8 +22,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
@@ -63,7 +61,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	public static class CollectionObject extends CCNEncodableObject<Collection> {
 		
 		public CollectionObject(ContentName name, Collection data, CCNHandle handle) throws IOException {
-			super(Collection.class, name, data, handle);
+			super(Collection.class, true, name, data, handle);
 		}
 		
 		public CollectionObject(ContentName name, java.util.Collection<Link> contents, CCNHandle handle) throws IOException {
@@ -74,28 +72,34 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 			this(name, new Collection(contents), handle);			
 		}
 
-		public CollectionObject(ContentName name, Collection data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
-			super(Collection.class, name, data, publisher, keyLocator, handle);
+		public CollectionObject(ContentName name, Collection data, PublisherPublicKeyDigest publisher, 
+								KeyLocator keyLocator, CCNHandle handle) throws IOException {
+			super(Collection.class, true, name, data, publisher, keyLocator, handle);
 		}
 
-		public CollectionObject(ContentName name, java.util.Collection<Link> contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+		public CollectionObject(ContentName name, java.util.Collection<Link> contents, 
+								PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
 			this(name, new Collection(contents), publisher, keyLocator, handle);
 		}
 		
-		public CollectionObject(ContentName name, Link [] contents, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+		public CollectionObject(ContentName name, Link [] contents, PublisherPublicKeyDigest publisher, 
+								KeyLocator keyLocator, CCNHandle handle) throws IOException {
 			this(name, new Collection(contents), publisher, keyLocator, handle);			
 		}
 
-		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException, XMLStreamException {
-			super(Collection.class, name, publisher, handle);
+		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+			super(Collection.class, true, name, publisher, handle);
 		}
 		
-		public CollectionObject(ContentObject firstBlock, CCNHandle handle) throws IOException, XMLStreamException {
-			super(Collection.class, firstBlock, handle);
+		public CollectionObject(ContentObject firstBlock, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+			super(Collection.class, true, firstBlock, handle);
 		}
 		
-		public CollectionObject(ContentName name, CCNHandle handle) throws IOException, XMLStreamException {
-			super(Collection.class, name, (PublisherPublicKeyDigest)null, handle);
+		public CollectionObject(ContentName name, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+			super(Collection.class, true, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
 		public Collection collection() throws ContentNotReadyException, ContentGoneException {
@@ -167,7 +171,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	public int size() { return _contents.size(); }
 	
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		_contents.clear();
 		
 		decoder.readStartElement(getElementLabel());
@@ -182,9 +186,9 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	}
 
 	@Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
 		Iterator<Link> linkIt = contents().iterator();

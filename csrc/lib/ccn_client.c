@@ -250,28 +250,21 @@ ccn_connect(struct ccn *h, const char *name)
 {
     struct sockaddr_un addr = {0};
     int res;
-    char name_buf[60];
     if (h == NULL)
         return(-1);
     h->err = 0;
     if (h->sock != -1)
         return(NOTE_ERR(h, EINVAL));
-    if (name == NULL || name[0] == 0) {
-        name = getenv(CCN_LOCAL_PORT_ENVNAME);
-        if (name == NULL || name[0] == 0 || strlen(name) > 10) {
-            name = CCN_DEFAULT_LOCAL_SOCKNAME;
-        }
-        else {
-            snprintf(name_buf, sizeof(name_buf), "%s.%s",
-                     CCN_DEFAULT_LOCAL_SOCKNAME, name);
-            name = name_buf;
-        }
+    addr.sun_family = AF_UNIX;
+    if (name == NULL || name[0] == 0)
+        ccn_setup_sockaddr_un(NULL, &addr);
+    else {
+        addr.sun_family = AF_UNIX;
+        strncpy(addr.sun_path, name, sizeof(addr.sun_path));
     }
     h->sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (h->sock == -1)
         return(NOTE_ERRNO(h));
-    strncpy(addr.sun_path, name, sizeof(addr.sun_path));
-    addr.sun_family = AF_UNIX;
     res = connect(h->sock, (struct sockaddr *)&addr, sizeof(addr));
     if (res == -1)
         return(NOTE_ERRNO(h));

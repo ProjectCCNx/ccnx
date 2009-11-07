@@ -21,8 +21,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
@@ -30,42 +28,17 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.CommandMarkers;
 
 
 /**
- * This class represents all the allowed specializations
- * of queries recognized and supported (in a best-effort
- * fashion) at the CCN level.
+ * Represents a CCN Interest packet, and performs all the allowed specializations
+ * of queries recognized and supported by them.
+ * cf. ContentObject
  * 
- * Implement Comparable to make it much easier to store in
- * a Set and avoid duplicates.
- * 
- * xs:complexType name="InterestType">
- * <xs:sequence>
- *   <xs:element name="Name" type="NameType"/>
- *   <xs:element name="MinSuffixComponents" type="xs:nonNegativeInteger"
- *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="MaxSuffixComponents" type="xs:nonNegativeInteger"
- *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:choice minOccurs="0" maxOccurs="1">
- *       <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
- *       <xs:element name="PublisherCertificateDigest" type="DigestType"/>
- *       <xs:element name="PublisherIssuerKeyDigest" type="DigestType"/>
- *       <xs:element name="PublisherIssuerCertificateDigest" type="DigestType"/>
- *   </xs:choice>
- *   <xs:element name="Exclude" type="ExcludeType"
- *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="ChildSelector" type="xs:nonNegativeInteger"
- *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="AnswerOriginKind" type="xs:nonNegativeInteger"
- *                       minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="Scope" type="xs:nonNegativeInteger"
- *			minOccurs="0" maxOccurs="1"/>
- *   <xs:element name="Nonce" type="Base64BinaryType"
- *			minOccurs="0" maxOccurs="1"/>
- * </xs:sequence>
- * </xs:complexType>
+ * Implements Comparable to make it easy to store in a Set and avoid duplicates.
  */
 public class Interest extends GenericXMLEncodable implements XMLEncodable, Comparable<Interest>, Cloneable {
 	
@@ -174,18 +147,19 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	/**
 	 * Determine whether a piece of content matches the Interest
 	 * @param test
-	 * @return true if the test co matches the Interest
+	 * @return true if the test data packet matches the Interest
 	 */
 	public boolean matches(ContentObject test) {
 		return matches(test, (null != test.signedInfo()) ? test.signedInfo().getPublisherKeyID() : null);
 	}
 
 	/**
-	 * Determine whether a piece of content's name (without digest component) matches this Interest.
+	 * Determine whether a piece of content's name *without* digest component matches this Interest.
 	 * 
-	 * This doesn't match if we specify the digest in the Interest.
+	 * This doesn't match if the digest is specified in the Interest.
+	 * @see Interest#matches(ContentObject, PublisherPublicKeyDigest)
 	 *
-	 * @param name - Name of a content object without a digest component
+	 * @param name - Name of a content object missing it's implied digest component
 	 * @param resultPublisherKeyID
 	 * @return true if the content/publisherPublicKeyDigest matches the Interest
 	 */
@@ -202,6 +176,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	/**
 	 * Determine whether a piece of content matches this Interest.
+	 * Note: this computes the digest for the ContentObject, to know the full name. This is
+	 * computationally expensive.
+	 * @see Interest#matches(ContentName, PublisherPublicKeyDigest)
+	 * TODO: compute digests once when ContentObjects are received into the machine, and pass them
+	 * around with the ContentObjects.
 	 * 
 	 * @param co - ContentObject
 	 * @param resultPublisherKeyID
@@ -260,13 +239,39 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	/**
+	 * Return data a specified number of levels below us in the hierarchy, with
+	 * order preference of leftmost.
+	 * @param name name prefix for interest
+	 * @param level number of levels below us we want content. Includes the ephemeral
+	 * 	digest component in the count.
+	 * @param publisher who should have signed content (can be null)
+	 */
+	public static Interest lower(ContentName name, int level, PublisherPublicKeyDigest publisher) {
+		Interest interest = new Interest(name, publisher);
+		interest.maxSuffixComponents(level);
+		interest.minSuffixComponents(level);
+		return interest;
+	}
+	
+	/**
 	 * Construct an Interest that will give you the next content after the
 	 * argument name
 	 * @param name
 	 * @return new Interest
 	 */
 	public static Interest next(ContentName name) {
-		return next(name, (byte[][])null, null);
+		return next(name, (byte[][])null, null, null);
+	}
+	
+	/**
+	 * Construct an Interest that will give you the next content after the
+	 * argument name
+	 * @param name
+	 * @param publisher		may be null
+	 * @return new Interest
+	 */
+	public static Interest next(ContentName name, PublisherPublicKeyDigest publisher) {
+		return next(name, (byte[][])null, null, publisher);
 	}
 	
 	/**
@@ -277,8 +282,21 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return new Interest
 	 */
 	public static Interest next(ContentName name, int prefixCount) {
-		return next(name, (byte[][])null, prefixCount);
+		return next(name, (byte[][])null, prefixCount, null);
 	}
+	
+	/**
+	 * Construct an Interest that will give you the next content after the argument
+	 * name's first prefixCount components
+	 * @param name
+	 * @param prefixCount   may be null
+	 * @param publisher 	may be null
+	 * @return new Interest
+	 */
+	public static Interest next(ContentName name, int prefixCount, PublisherPublicKeyDigest publisher) {
+		return next(name, (byte[][])null, prefixCount, publisher);
+	}
+	
 	
 	/**
 	 * Construct an Interest that will give you the next content after the argument
@@ -286,10 +304,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param name
 	 * @param omissions 	components to exclude - may be null
 	 * @param prefixCount	may be null
+	 * @param publisher		may be null
 	 * @return
 	 */
-	public static Interest next(ContentName name, byte[][] omissions, Integer prefixCount) {
-		return nextOrLast(name, Exclude.factory(omissions), new Integer(CHILD_SELECTOR_LEFT), prefixCount);
+	public static Interest next(ContentName name, byte[][] omissions, Integer prefixCount, PublisherPublicKeyDigest publisher) {
+		return nextOrLast(name, Exclude.factory(omissions), new Integer(CHILD_SELECTOR_LEFT), prefixCount, publisher);
 	}
 	
 	/**
@@ -301,9 +320,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param exclude 	contains elements to exclude
 	 * @param order		corresponds to ChildSelector values
 	 * @param prefixCount	may be null
+	 * @param publisher may be null
 	 * @return the Interest
 	 */
-	private static Interest nextOrLast(ContentName name, Exclude exclude, Integer order, Integer prefixCount)  {
+	private static Interest nextOrLast(ContentName name, Exclude exclude, Integer order, Integer prefixCount, PublisherPublicKeyDigest publisher )  {
 		if (null != prefixCount) {
 			if (prefixCount > name.count())
 				throw new IllegalArgumentException("Invalid prefixCount > components: " + prefixCount);
@@ -319,7 +339,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			} else
 				exclude.excludeUpto(component);
 		}
-		return constructInterest(name, exclude, order);
+		return constructInterest(name, exclude, order, publisher);
 	}
 	
 	/**
@@ -329,6 +349,16 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 */
 	public static Interest last(ContentName name) {
 		return last(name, (byte[][])null, null);
+	}
+	
+	/**
+	 * Construct an Interest that will give you the last content after the argument name
+	 * @param name
+	 * @param publisher
+	 * @return
+	 */
+	public static Interest last(ContentName name, PublisherPublicKeyDigest publisher) {
+		return last(name, (byte[][])null, null, publisher);
 	}
 	
 	/**
@@ -344,6 +374,18 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	/**
 	 * Construct an Interest that will give you the last content after the argument
+	 * name's first prefixCount components
+	 * @param name
+	 * @param prefixCount   may be null
+	 * @param publisher		may be null
+	 * @return new Interest
+	 */
+	public static Interest last(ContentName name, Integer prefixCount, PublisherPublicKeyDigest publisher) {
+		return last(name, (byte[][])null, prefixCount, publisher);
+	}
+	
+	/**
+	 * Construct an Interest that will give you the last content after the argument
 	 * names's first prefixCount components excluding the components specified in the omissions
 	 * @param name
 	 * @param omissions 	components to exclude - may be null
@@ -351,7 +393,20 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return
 	 */
 	public static Interest last(ContentName name, byte omissions[][], Integer prefixCount) {
-		return nextOrLast(name, Exclude.factory(omissions), new Integer(CHILD_SELECTOR_RIGHT), prefixCount);
+		return nextOrLast(name, Exclude.factory(omissions), new Integer(CHILD_SELECTOR_RIGHT), prefixCount, null);
+	}
+	
+	/**
+	 * Construct an Interest that will give you the last content after the argument
+	 * names's first prefixCount components excluding the components specified in the omissions
+	 * @param name
+	 * @param omissions 	components to exclude - may be null
+	 * @param prefixCount	may be null
+	 * @param publisher 	may be null
+	 * @return
+	 */
+	public static Interest last(ContentName name, byte omissions[][], Integer prefixCount, PublisherPublicKeyDigest publisher) {
+		return nextOrLast(name, Exclude.factory(omissions), new Integer(CHILD_SELECTOR_RIGHT), prefixCount, publisher);
 	}
 	
 	/**
@@ -362,7 +417,19 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return the Interest
 	 */
 	public static Interest last(ContentName name, Exclude exclude) {
-		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), null);
+		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), null, null);
+	}
+	
+	/**
+	 * Construct an Interest that will give you the last content after the argument
+	 * name excluding the components specified in the Exclude
+	 * @param name
+	 * @param exclude contains components to exclude - may be null
+	 * @param publisher may be null
+	 * @return the Interest
+	 */
+	public static Interest last(ContentName name, Exclude exclude, PublisherPublicKeyDigest publisher) {
+		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), null, publisher);
 	}
 	
 	/**
@@ -374,7 +441,20 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return the Interest
 	 */
 	public static Interest last(ContentName name, Exclude exclude, Integer prefixCount) {
-		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), prefixCount);
+		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), prefixCount, null);
+	}
+	
+	/**
+	 * Construct an Interest that will give you the last content after the argument
+	 * name excluding the components specified in the Exclude
+	 * @param name
+	 * @param exclude 	contains components to exclude - may be null
+	 * @param prefixCount	may be null
+	 * @param publisher 	may be null
+	 * @return the Interest
+	 */
+	public static Interest last(ContentName name, Exclude exclude, Integer prefixCount, PublisherPublicKeyDigest publisher) {
+		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), prefixCount, publisher);
 	}
 	
 	/**
@@ -437,6 +517,23 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static Interest constructInterest(ContentName name,  Exclude filter,
 			Integer orderPreference) {
 		return constructInterest(name, filter, orderPreference, null, null, null);
+	}
+	
+	/**
+	 * Construct an Interest with specified values set
+	 * @param name
+	 * @param filter 			may be null
+	 * @param orderPreference 	may be null
+	 * @param publisher			may be null
+	 * @return the Interest
+	 */
+	public static Interest constructInterest(ContentName name,  Exclude filter,
+			Integer orderPreference, PublisherPublicKeyDigest publisher) {
+		
+		PublisherID pubID = null;
+		if (publisher!=null)
+			pubID = new PublisherID(publisher);
+		return constructInterest(name, filter, orderPreference, pubID, null, null);
 	}
 	
 	/**
@@ -529,7 +626,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * Thought about encoding and decoding as flat -- no wrapping
 	 * declaration. But then couldn't use these solo.
 	 */
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
 		_name = new ContentName();
@@ -571,15 +668,14 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		
 		try {
 			decoder.readEndElement();
-		} catch (XMLStreamException e) {
-			// DKS TODO -- get Michael to update schema!
+		} catch (ContentDecodingException e) {
 			Log.info("Catching exception reading Interest end element, and moving on. Waiting for schema updates...");
 		}
 	}
 
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
 		

@@ -1,0 +1,8 @@
+<?xml version='1.0'?>
+<Policy>
+  <PolicyVersion>1.0</PolicyVersion>
+  <LocalName>Repository</LocalName>
+  <GlobalPrefix>/parc.com/csl/ccn/Repos</GlobalPrefix>
+  <Namespace>/testnamespace1</Namespace>
+  <Namespace>/testnamespace2</Namespace>
+</Policy>

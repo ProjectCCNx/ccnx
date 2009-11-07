@@ -20,14 +20,14 @@ package org.ccnx.ccn.impl.repo;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -41,7 +41,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	
-	protected static double _version = 1.0;
+	protected static double _version = 1.1;
 	
 	protected String _repoVersion = null;
 	protected String _localName = null;
@@ -54,7 +54,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	private static final String REPOSITORY_INFO_TYPE_ELEMENT = "Type";
 	private static final String REPOSITORY_INFO_VERSION_ELEMENT = "Version";
 	private static final String REPOSITORY_VERSION_ELEMENT = "RepositoryVersion";
-	private static final String GLOBAL_PREFIX_ELEMENT = "GlobalPrefix";
+	private static final String GLOBAL_PREFIX_ELEMENT = "GlobalPrefixName";
 	private static final String LOCAL_NAME_ELEMENT = "LocalName";
 	
 	/**
@@ -208,7 +208,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	}
 
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 		_version = Double.valueOf(decoder.readUTF8Element(REPOSITORY_INFO_VERSION_ELEMENT));
 		_type = RepoInfoType.valueFromString(decoder.readUTF8Element(REPOSITORY_INFO_TYPE_ELEMENT));
@@ -227,9 +227,9 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	}
 
 	@Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
 		encoder.writeElement(REPOSITORY_INFO_VERSION_ELEMENT, Double.toString(_version));

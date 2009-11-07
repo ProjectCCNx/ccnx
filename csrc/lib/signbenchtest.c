@@ -38,9 +38,9 @@ main(int argc, char **argv)
   int res = 0;
   struct ccn_charbuf *signed_info = ccn_charbuf_create();
   int i;
+  int sec, usec;
   char msgbuf[PAYLOAD_SIZE];
   struct timeval start, end;
-  struct timeval duration;
   struct ccn_charbuf *message = ccn_charbuf_create();
   struct ccn_charbuf *path = ccn_charbuf_create();
   struct ccn_charbuf *seq = ccn_charbuf_create();
@@ -104,9 +104,14 @@ main(int argc, char **argv)
     ccn_charbuf_reset(seq);
   }
   gettimeofday(&end, NULL);
-  timersub(&end, &start, &duration);
+  sec = end.tv_sec - start.tv_sec;
+  usec = (int)end.tv_usec - (int)start.tv_usec;
+  while (usec < 0) {
+    sec--;
+    usec += 1000000;
+  }
 
-  printf("\nComplete in %d.%06u secs\n", (int)duration.tv_sec, (unsigned)duration.tv_usec);
+  printf("\nComplete in %d.%06d secs\n", sec, usec);
 
   return(0);
 }

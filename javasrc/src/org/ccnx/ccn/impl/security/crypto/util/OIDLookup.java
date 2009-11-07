@@ -204,6 +204,9 @@ public class OIDLookup {
 		_c2oid.put("ElGamal", "1.3.14.7.2.1.1");
 		_oid2c.put("1.3.14.7.2.1.1", "ElGamal");
 		
+		_c2oid.put("DH", "1.2.840.113549.1.3.1");
+		_oid2c.put("1.2.840.113549.1.3.1", "DH");
+		
 		_aliasMap = initAliasLookup();
 	}
 

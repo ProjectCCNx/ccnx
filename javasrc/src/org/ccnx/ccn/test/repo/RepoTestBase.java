@@ -69,7 +69,7 @@ public class RepoTestBase extends LibraryTestBase {
 			Assert.fail("Got a repo response on a bad namespace " + contentName);
 		Thread.sleep(1000);
 
-		CCNInputStream input = new CCNInputStream(baseName, getLibrary);
+		CCNInputStream input = new CCNInputStream(baseName, getHandle);
 		byte[] buffer = new byte["Testing 1 2 3".length()];
 		if (expected) {
 			Assert.assertTrue(-1 != input.read(buffer));
@@ -81,7 +81,7 @@ public class RepoTestBase extends LibraryTestBase {
 	}
 	
 	protected ContentName testWriteToRepo(ContentName name) throws Exception {
-		RepositoryFileOutputStream ros = new RepositoryFileOutputStream(name, putLibrary);	
+		RepositoryFileOutputStream ros = new RepositoryFileOutputStream(name, putHandle);	
 		byte [] data = "Testing 1 2 3".getBytes();
 		ros.write(data, 0, data.length);
 		ContentName baseName = ros.getBaseName();

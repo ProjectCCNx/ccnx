@@ -52,6 +52,9 @@ main(int argc, char **argv)
     struct hashtb *h = hashtb_create(sizeof(unsigned *), p.finalize_data ? &p : NULL);
     struct hashtb_enumerator eee;
     struct hashtb_enumerator *e = hashtb_start(h, &eee);
+    struct hashtb_enumerator eee2;
+    struct hashtb_enumerator *e2 = NULL;
+    int nest = 0;
     while (fgets(buf, sizeof(buf), stdin)) {
         int i = strlen(buf);
         if (i > 0 && buf[i-1] == '\n')
@@ -69,6 +72,15 @@ main(int argc, char **argv)
             hashtb_delete(e);
             printf("%d\n", res == HT_OLD_ENTRY);
             }
+        else if (buf[0] == '.' && buf[1] == '[') {
+            if ((nest++) == 0)
+                e2 = hashtb_start(h, &eee2);
+            }
+        else if (buf[0] == '.' && buf[1] == ']') {
+            if ((--nest) == 0 && e2 != NULL)
+                hashtb_end(e2);
+                e2 = NULL;
+            }
         else {
             hashtb_seek(e, buf, i, 1);
             ((unsigned *)(e->data))[0] += 1;
@@ -76,5 +88,7 @@ main(int argc, char **argv)
     }
     hashtb_end(e);
     hashtb_destroy(&h);
+    if (h != NULL)
+        return(1);
     return(0);
 }

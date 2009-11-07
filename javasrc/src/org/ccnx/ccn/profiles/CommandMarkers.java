@@ -125,7 +125,7 @@ public class CommandMarkers {
 		byte [] bc = new byte[csb.length + COMMAND_PREFIX.length];
 		System.arraycopy(COMMAND_PREFIX, 0, bc, 0, COMMAND_PREFIX.length);
 		System.arraycopy(csb, 0, bc, COMMAND_PREFIX.length, csb.length);
-		return csb;
+		return bc;
 	}
 	
 	public static String getNamespace(byte [] commandComponent) {

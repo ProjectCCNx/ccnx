@@ -17,12 +17,12 @@
 
 package org.ccnx.ccn.protocol;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 
 
@@ -88,7 +88,7 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 	 * declaration. But then couldn't use these solo.
 	 */
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
 		_name = new ContentName();
@@ -103,9 +103,9 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 	}
 
 	@Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
 		

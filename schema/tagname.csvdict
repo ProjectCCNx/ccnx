@@ -66,4 +66,8 @@
 88,RepositoryVersion
 89,GlobalPrefix
 90,LocalName
+91,Policy
+92,Namespace
+93,GlobalPrefixName
+94,PolicyVersion
 17702112,CCNProtocolDataUnit

@@ -20,11 +20,10 @@ package org.ccnx.ccn.impl.security.crypto;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateEncodingException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 /**
  * CCN-specific helper methods for working with digests, primarily to support Merkle trees.
@@ -61,17 +60,17 @@ public class CCNDigestHelper extends DigestHelper {
 
 	/**
 	 * Same digest preparation algorithm as ContentObject.
-	 * @throws XMLStreamException 
+	 * @throws ContentEncodingException 
 	 * @throws NoSuchAlgorithmException 
 	 */
 	public static byte [] digestLeaf(
 			String digestAlgorithm,
 			XMLEncodable [] toBeSigneds,
-			byte [][] additionalToBeSigneds) throws XMLStreamException, NoSuchAlgorithmException {
+			byte [][] additionalToBeSigneds) throws ContentEncodingException, NoSuchAlgorithmException {
 		
 		if (null == toBeSigneds) {
 			Log.info("Value to be signed must not be null.");
-			throw new XMLStreamException("Unexpected null content in digestLeaf!");
+			throw new ContentEncodingException("Unexpected null content in digestLeaf!");
 		}
 		byte [][] encodedData = new byte [toBeSigneds.length + ((null != additionalToBeSigneds) ? additionalToBeSigneds.length : 0)][];
 		for (int i=0; i < toBeSigneds.length; ++i) {

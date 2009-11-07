@@ -19,11 +19,10 @@ package org.ccnx.ccn.io;
 
 import java.io.IOException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Header;
@@ -276,9 +275,10 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * @param baseName name of the content, including the version, from which the header name will be derived.
 	 * @param publisher expected publisher
 	 * @throws IOException If the header cannot be retrieved.
-	 * @throws XMLStreamException If the header cannot be decoded.
+	 * @throws ContentDecodingException If the header cannot be decoded.
 	 */
-	protected void requestHeader(ContentName baseName, PublisherPublicKeyDigest publisher) throws IOException, XMLStreamException {
+	protected void requestHeader(ContentName baseName, PublisherPublicKeyDigest publisher) 
+			throws ContentDecodingException, IOException {
 		if (headerRequested())
 			return; // done already
 		// Ask for the header, but update it in the background, as it may not be there yet.
@@ -302,13 +302,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 		}
 		// Have to wait to request the header till we know what version we're looking for.
 		if (!headerRequested()) {
-			try {
-				requestHeader(_baseName, result.signedInfo().getPublisherKeyID());
-			} catch (XMLStreamException e) {
-				Log.fine("XMLStreamException in processing header: " + e.getMessage());
-				// TODO -- throw nested exception in 1.6
-				throw new IOException("Exception in processing header: " + e);
-			}
+			requestHeader(_baseName, result.signedInfo().getPublisherKeyID());
 		}
 		return result;
 	}

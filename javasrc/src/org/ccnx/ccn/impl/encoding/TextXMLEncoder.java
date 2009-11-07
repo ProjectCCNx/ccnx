@@ -25,6 +25,7 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.CCNTime;
 
 /**
@@ -43,51 +44,63 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	
 	public TextXMLEncoder() {}
 
-	public void beginEncoding(OutputStream ostream) throws XMLStreamException {
+	public void beginEncoding(OutputStream ostream) throws ContentEncodingException {
 		if (null == ostream)
 			throw new IllegalArgumentException("TextXMLEncoder: output stream cannot be null!");
 		
 		_ostream = ostream;
 		
-		XMLOutputFactory factory = XMLOutputFactory.newInstance();
-		_writer = factory.createXMLStreamWriter(ostream);
-		_writer.setPrefix(TextXMLCodec.CCN_PREFIX, TextXMLCodec.CCN_NAMESPACE);
-		_writer.setDefaultNamespace(TextXMLCodec.CCN_NAMESPACE);
-		// DKS -- need to set encoding when creating factory, and set it here.
-		_writer.writeStartDocument();
-		// Can't write default namespace till we write an element...
-		_isFirstElement = true;
+		try {
+			XMLOutputFactory factory = XMLOutputFactory.newInstance();
+			_writer = factory.createXMLStreamWriter(ostream);
+			_writer.setPrefix(TextXMLCodec.CCN_PREFIX, TextXMLCodec.CCN_NAMESPACE);
+			_writer.setDefaultNamespace(TextXMLCodec.CCN_NAMESPACE);
+			// DKS -- need to set encoding when creating factory, and set it here.
+			_writer.writeStartDocument();
+			// Can't write default namespace till we write an element...
+			_isFirstElement = true;
+		} catch (XMLStreamException e) {
+			throw new ContentEncodingException(e.getMessage(), e);
+		}
 	}
 	
-	public void endEncoding() throws XMLStreamException {
-		_writer.writeEndDocument();
-		_writer.flush();   				
+	public void endEncoding() throws ContentEncodingException {
+		try {
+			_writer.writeEndDocument();
+			_writer.flush();   		
+		} catch (XMLStreamException e) {
+			throw new ContentEncodingException(e.getMessage(), e);
+		}
 	}
 	
 	public void writeElement(String tag, String utf8Content)
-			throws XMLStreamException {
+			throws ContentEncodingException {
 		writeElement(tag, utf8Content, null);
 	}
 
 	public void writeElement(String tag, String utf8Content,
-			TreeMap<String, String> attributes) throws XMLStreamException {
+			TreeMap<String, String> attributes) throws ContentEncodingException {
 		writeStartElement(tag, attributes);
-		_writer.writeCharacters(utf8Content);
+		try {
+			_writer.writeCharacters(utf8Content);
+		} catch (XMLStreamException e) {
+			throw new ContentEncodingException(e.getMessage(), e);
+		}
 		writeEndElement();
 	}
 
 	public void writeElement(String tag, byte[] binaryContent)
-			throws XMLStreamException {
+			throws ContentEncodingException {
 		writeElement(tag, binaryContent, null);
 	}
 
 	public void writeElement(String tag, byte[] binaryContent, int offset, int length)
-			throws XMLStreamException {
+			throws ContentEncodingException {
 		writeElement(tag, binaryContent, offset, length, null);
 	}
 
 	public void writeElement(String tag, byte[] binaryContent,
-			TreeMap<String, String> attributes) throws XMLStreamException {
+			TreeMap<String, String> attributes) throws ContentEncodingException {
 		if (null == attributes) {
 			attributes = new TreeMap<String,String>();
 		}
@@ -95,12 +108,16 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 			attributes.put(TextXMLCodec.BINARY_ATTRIBUTE, TextXMLCodec.BINARY_ATTRIBUTE_VALUE);
 		}
 		writeStartElement(tag, attributes);
-		_writer.writeCharacters(TextXMLCodec.encodeBinaryElement(binaryContent));
+		try {
+			_writer.writeCharacters(TextXMLCodec.encodeBinaryElement(binaryContent));
+		} catch (XMLStreamException e) {
+			throw new ContentEncodingException(e.getMessage(), e);
+		}
 		writeEndElement();
 	}
 
 	public void writeElement(String tag, byte[] binaryContent, int offset, int length,
-			TreeMap<String, String> attributes) throws XMLStreamException {
+			TreeMap<String, String> attributes) throws ContentEncodingException {
 		if (null == attributes) {
 			attributes = new TreeMap<String,String>();
 		}
@@ -108,44 +125,56 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 			attributes.put(TextXMLCodec.BINARY_ATTRIBUTE, TextXMLCodec.BINARY_ATTRIBUTE_VALUE);
 		}
 		writeStartElement(tag, attributes);
-		_writer.writeCharacters(TextXMLCodec.encodeBinaryElement(binaryContent, offset, length));
+		try {
+			_writer.writeCharacters(TextXMLCodec.encodeBinaryElement(binaryContent, offset, length));
+		} catch (XMLStreamException e) {
+			throw new ContentEncodingException(e.getMessage(), e);
+		}
 		writeEndElement();
 	}
 
-	public void writeDateTime(String tag, CCNTime dateTime) throws XMLStreamException {
+	public void writeDateTime(String tag, CCNTime dateTime) throws ContentEncodingException {
 		writeElement(tag, 
 				TextXMLCodec.formatDateTime(dateTime));
 	}
 
-	public void writeStartElement(String tag) throws XMLStreamException {
+	public void writeStartElement(String tag) throws ContentEncodingException {
 		writeStartElement(tag, null);
 	}
 	
-	public void writeStartElement(String tag, TreeMap<String, String> attributes) throws XMLStreamException {
+	public void writeStartElement(String tag, TreeMap<String, String> attributes) throws ContentEncodingException {
 		writeStartElement(tag, attributes, null);
 	}
 
 	public void writeStartElement(String tag, TreeMap<String, String> attributes, BinaryXMLDictionary dictionary)
-			throws XMLStreamException {
-		_writer.writeStartElement(TextXMLCodec.CCN_NAMESPACE, tag);
-		if (_isFirstElement) {
-			_writer.writeDefaultNamespace(TextXMLCodec.CCN_NAMESPACE);
-			_isFirstElement = false;
-		}
-		
-		if (null != attributes) {
-			// keySet of a TreeMap is ordered
-			Iterator<String> atIt = attributes.keySet().iterator();
-			while (atIt.hasNext()) {
-				String name = atIt.next();
-				// Might not play well if this is the first element (namespace writing issues...)
-				_writer.writeAttribute(TextXMLCodec.CCN_NAMESPACE, name, attributes.get(name));
+			throws ContentEncodingException {
+		try {
+			_writer.writeStartElement(TextXMLCodec.CCN_NAMESPACE, tag);
+			if (_isFirstElement) {
+				_writer.writeDefaultNamespace(TextXMLCodec.CCN_NAMESPACE);
+				_isFirstElement = false;
 			}
+
+			if (null != attributes) {
+				// keySet of a TreeMap is ordered
+				Iterator<String> atIt = attributes.keySet().iterator();
+				while (atIt.hasNext()) {
+					String name = atIt.next();
+					// Might not play well if this is the first element (namespace writing issues...)
+					_writer.writeAttribute(TextXMLCodec.CCN_NAMESPACE, name, attributes.get(name));
+				}
+			}
+		} catch (XMLStreamException e) {
+			throw new ContentEncodingException(e.getMessage(), e);
 		}
 	}
 
-	public void writeEndElement() throws XMLStreamException {
-		_writer.writeEndElement();
+	public void writeEndElement() throws ContentEncodingException {
+		try {
+			_writer.writeEndElement();
+		} catch (XMLStreamException e) {
+			throw new ContentEncodingException(e.getMessage(), e);
+		}		
 	}
 
 	public BinaryXMLDictionary popXMLDictionary() {

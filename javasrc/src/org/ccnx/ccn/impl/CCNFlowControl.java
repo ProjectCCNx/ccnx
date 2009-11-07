@@ -28,8 +28,10 @@ import java.util.TreeMap;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -47,16 +49,16 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * content has been generated this class will buffer the interests until
  * the content is generated.
  * 
- * Implements a highwater mark in the holding buffer. If the buffer consumption
- * reaches the highwater mark, any subsequent put will block until there is more
+ * Implements a capacity limit in the holding buffer. If the buffer consumption
+ * reaches the specified capacity, any subsequent put will block until there is more
  * room in the buffer. Note that this means that the buffer may hold as many objects as the 
- * highwater value, and the object held by any later blocked put is extra, meaning the total
- * number of objects waiting to be sent is not bounded by the highwater mark alone.
+ * capacity value, and the object held by any later blocked put is extra, meaning the total
+ * number of objects waiting to be sent is not bounded by the capacity alone.
  * Currently this is only per "flow controller". There
  * is nothing to stop multiple streams writing to the repo for instance to
  * independently all fill their buffers and cause a lot of memory to be used.
  * 
- * Also implements a highwater mark for held interests.
+ * Also implements a limited capacity for held interests.
  * 
  * The buffer emptying policy in "afterPutAction" can be overridden by 
  * subclasses to implement a different way of draining the buffer. This is used 
@@ -68,18 +70,18 @@ public class CCNFlowControl implements CCNFilterListener {
 	public enum Shape {STREAM};
 	
 	protected CCNHandle _handle = null;
+		
+	// Designed to allow a CCNOutputStream to flush its current output once without
+	// causing the over-capacity blocking to be triggered
+	protected static final int DEFAULT_CAPACITY = CCNOutputStream.BLOCK_BUF_COUNT + 1;
+	
+	protected static final int DEFAULT_INTEREST_CAPACITY = 40;
 	
 	// Temporarily default to very high timeout so that puts have a good
 	// chance of going through.  We actually may want to keep this.
-	protected static final int MAX_TIMEOUT = 10000;
+	protected int _timeout = SystemConfiguration.MAX_TIMEOUT;
 	
-	// Designed to allow a CCNOutputStream to flush its current output once without
-	// causing the highwater blocking to be triggered
-	protected static final int HIGHWATER_DEFAULT = 128 + 1;
-	
-	protected static final int INTEREST_HIGHWATER_DEFAULT = 40;
-	protected int _timeout = MAX_TIMEOUT;
-	protected int _highwater = HIGHWATER_DEFAULT;
+	protected int _capacity = DEFAULT_CAPACITY;
 	
 	// Value used to determine whether the buffer is draining in waitForPutDrain
 	protected long _nOut = 0;
@@ -113,7 +115,7 @@ public class CCNFlowControl implements CCNFilterListener {
 			_filteredNames.add(name);
 			_handle.registerFilter(name, this);
 		}
-		_unmatchedInterests.setHighWater(INTEREST_HIGHWATER_DEFAULT);
+		_unmatchedInterests.setCapacity(DEFAULT_INTEREST_CAPACITY);
 	}
 	
 	/**
@@ -141,7 +143,24 @@ public class CCNFlowControl implements CCNFilterListener {
 			}
 		}
 		_handle = handle;
-		_unmatchedInterests.setHighWater(INTEREST_HIGHWATER_DEFAULT);
+		_unmatchedInterests.setCapacity(DEFAULT_INTEREST_CAPACITY);
+	}
+	
+	/**
+	 * Filter handler constructor -- an Interest has already come in, and
+	 * we are writing a stream in response. So we can write out the first
+	 * matching block that we get as soon as we get it (in response to this
+	 * preexisting interest). Caller has the responsibilty to ensure that
+	 * this Interest is only handed to one CCNFlowControl to emit a block.
+	 * @param name an initial namespace to handle
+	 * @param outstandingInterest an Interest we have already received; the
+	 * 	flow controller will immediately emit the first matching block
+	 * @param handle the handle to use. May need to be the same handle
+	 * 	that the Interest was received on.
+	 */
+	public CCNFlowControl(ContentName name, Interest outstandingInterest, CCNHandle handle) throws IOException {
+		this(name, handle);
+		handleInterest(outstandingInterest);
 	}
 	
 	/**
@@ -179,6 +198,14 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
+	 * Filter handler method, add a namespace and respond to an existing Interest.
+	 */
+	public void addNameSpace(ContentName name, Interest outstandingInterest) {
+		addNameSpace(name);
+		handleInterest(outstandingInterest);
+	}
+	
+	/**
 	 * Convenience method.
 	 * @see #startWrite(ContentName, Shape)
 	 * @throws MalformedContentNameStringException if name is malformed
@@ -187,7 +214,8 @@ public class CCNFlowControl implements CCNFilterListener {
 		startWrite(ContentName.fromNative(name), shape);
 	}
 	/**
-	 * This is used by the RepoFlowController to indicate that it should start a write for this name
+	 * This is used to indicate that it should start a write for a stream with this
+	 * name, and should do any stream-specific setup.
 	 * @param name
 	 * @param shape currently unused and may be deprecated in the future. Can only be Shape.STREAM
 	 * @throws MalformedContentNameStringException if name is malformed
@@ -338,7 +366,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				// received them.
 				Log.finest("Holding {0}", co.name());
 				// Must verify space in _holdingArea or block waiting for space
-				if (_holdingArea.size() >= _highwater) {
+				if (_holdingArea.size() >= _capacity) {
 					long ourTime = new Date().getTime();
 					Entry<UnmatchedInterest> removeIt;
 					// TODO Verify the following note
@@ -366,11 +394,11 @@ public class CCNFlowControl implements CCNFilterListener {
 							// intentional no-op
 						}
 						elapsed = new Date().getTime() - ourTime;
-					} while (_holdingArea.size() >= _highwater && elapsed < _timeout);						
-					if (_holdingArea.size() >= _highwater)
+					} while (_holdingArea.size() >= _capacity && elapsed < _timeout);						
+					if (_holdingArea.size() >= _capacity)
 						throw new IOException("Flow control buffer full and not draining");
 				}
-				assert(_holdingArea.size() < _highwater);
+				assert(_holdingArea.size() < _capacity);
 				// Space verified so now can hold object. See note above for reason to always hold.
 				_holdingArea.put(co.name(), co);
 
@@ -398,7 +426,7 @@ public class CCNFlowControl implements CCNFilterListener {
 		synchronized (_holdingArea) {
 			for (Interest interest : interests) {
 				Log.fine("Flow controller: got interest: " + interest);
-				ContentObject co = getBestMatch(interest);
+				ContentObject co = getBestMatch(interest, _holdingArea.keySet());
 				if (co != null) {
 					Log.finest("Found content " + co.name() + " matching interest: " + interest);
 					try {
@@ -419,6 +447,17 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
+	 * Convenience method.
+	 */
+	public int handleInterest(Interest outstandingInterest) {
+		if (null == outstandingInterest)
+			return 0;
+		ArrayList<Interest> tmpInterests = new ArrayList<Interest>();
+		tmpInterests.add(outstandingInterest);
+		return handleInterests(tmpInterests);
+	}
+	
+	/**
 	 * Allow override of action after a ContentObject is sent to ccnd
 	 * 
 	 * NOTE: Don't need to sync on holding area because this is only called within
@@ -430,28 +469,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @throws IOException may be thrown by overriding subclasses
 	 */
 	public void afterPutAction(ContentObject co) throws IOException {
-		_nOut++;
-		_holdingArea.remove(co.name());
-		_holdingArea.notify();
+		remove(co);
 	}
 	
-	/*
-	 * Try to optimize this by giving preference to "getNext" which is
-	 * presumably going to be the most common kind of get. So we first try
-	 * on a tailmap following the interest, and if that doesn't get us 
-	 * anything, we try all the data.
-	 * XXX there are probably better ways to optimize this that I haven't
-	 * thought of yet also...
-	 */
-	private ContentObject getBestMatch(Interest interest) {
-		// paul r - following seems broken for some reason - I'll try
-		// to sort it out later
-		//SortedMap<ContentName, ContentObject> matchMap = _holdingArea.tailMap(interest.name());
-		//ContentObject result = getBestMatch(interest, matchMap.keySet());
-		//if (result != null)
-		//	return result;
-		return getBestMatch(interest, _holdingArea.keySet());
-	}
 	
 	private ContentObject getBestMatch(Interest interest, Set<ContentName> set) {
 		ContentObject bestMatch = null;
@@ -493,12 +513,12 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	/**
 	 * Implements a wait until all outstanding data has been drained from the
-	 * flow controller. This is required on close to insure that all data is actually
+	 * flow controller. This is required on close to ensure that all data is actually
 	 * sent to ccnd.
 	 * 
 	 * @throws IOException if the data has not been drained after a reasonable period
 	 */
-	public void waitForPutDrain() throws IOException {
+	protected void waitForPutDrain() throws IOException {
 		synchronized (_holdingArea) {
 			long startSize = _nOut;
 			while (_holdingArea.size() > 0) {
@@ -567,6 +587,17 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
+	 * Debugging function to log unmatched interests.
+	 */
+	public void logUnmatchedInterests(String logMessage) {
+		Log.info("{0}: {1} unmatched interest entries.", logMessage, _unmatchedInterests.size());
+		for (Entry<UnmatchedInterest> interestEntry : _unmatchedInterests.values()) {
+			if (null != interestEntry.interest())
+				Log.info("   Unmatched interest: {0}", interestEntry.interest());
+		}
+	}
+	
+	/**
 	 * Re-enable disabled buffering.  Buffering is enabled by default.
 	 */
 	public void enable() {
@@ -574,22 +605,75 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Change the highwater mark for the maximum amount of data to buffer before
-	 * causing putters to block. The highwater value is the number of content objects
+	 * Change the capacity for the maximum amount of data to buffer before
+	 * causing putters to block. The capacity value is the number of content objects
 	 * that will be buffered.
 	 * 
 	 * @param value number of content objects.
 	 */
-	public void setHighwater(int value) {
-		_highwater = value;
+	public void setCapacity(int value) {
+		_capacity = value;
 	}
 	
 	/**
 	 * Change the maximum number of unmatched interests to buffer.
 	 * @param value	number of interests
 	 */
-	public void setInterestHighwater(int value) {
-		_unmatchedInterests.setHighWater(value);
+	public void setInterestCapacity(int value) {
+		_unmatchedInterests.setCapacity(value);
+	}
+	
+	/**
+	 * What is the total capacity of this flow controller?
+	 * @return the total capacity of this flow controller; in other words the
+	 *   number of segments that can be written to it before writes will block
+	 */
+	public int getCapacity() {
+		return _capacity;
+	}
+	
+	/**
+	 * Get the number of objects this flow controller is currently holding.
+	 * @return the number of objects (segments) in the buffer
+	 */
+	public int size() {
+		return _holdingArea.size();
+	}
+	
+	/**
+	 * Get the amount of remaining space available in this flow controller's buffer.
+	 * @return the number of additional objects that can currently be written to this controller
+	 */
+	public int availableCapacity() {
+		return getCapacity() - size(); // off by 1? synchronization?
+	}
+	
+	/**
+	 * Remove a ContentObject from the set buffered by this flow controller, either
+	 * because we're done with it, or because we don't want to buffer it anymore.
+	 * Need a way to get the CO to remove; might want a remove(ContentName) or
+	 * something like it.
+	 */
+	public void remove(ContentObject co) {
+		// do synchronize on _holdingArea as we may be called directly; if called
+		// with lock on _holdingArea will be fine (reentrant locks), though
+		// should evaluate performance cost
+		synchronized(_holdingArea) {
+			_nOut++; // do we need to do this, or only in afterPutAction?
+			_holdingArea.remove(co.name());
+			_holdingArea.notify();
+		}
+	}
+	
+	/**
+	 * Remove all the held objects from this buffer.
+	 */
+	public void clear() {
+		synchronized(_holdingArea) {
+			_nOut += size();
+			_holdingArea.clear();
+			_holdingArea.notify();
+		}
 	}
 	
 	/**

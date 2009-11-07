@@ -17,10 +17,10 @@
 
 package org.ccnx.ccn.protocol;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 
 /**
@@ -34,13 +34,13 @@ public class ExcludeAny extends Exclude.Filler implements Comparable<ExcludeAny>
 	}
 
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 		decoder.readEndElement();
 	}
 
 	@Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		encoder.writeStartElement(getElementLabel());
 		encoder.writeEndElement();
 	}

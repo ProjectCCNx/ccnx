@@ -110,6 +110,7 @@ public class RepositoryDaemon extends Daemon {
 			File policyFile = null;
 			String localName = null;
 			String globalPrefix = null;
+			String nameSpace = null;
 			for (int i = 0; i < args.length; i++) {
 				if (args[i].equals("-log")) {
 					if (args.length < i + 2) {
@@ -148,6 +149,13 @@ public class RepositoryDaemon extends Daemon {
 					if (!globalPrefix.startsWith("/"))
 						globalPrefix = "/" + globalPrefix;
 					i++;
+				} else if (args[i].equals("-prefix")) {
+					if (args.length < i + 2)
+						throw new InvalidParameterException();
+					nameSpace = args[i + 1];
+					if (!nameSpace.startsWith("/"))
+						nameSpace = "/" + nameSpace;
+					i++;
 				} else if (args[i].equals("-bb")) {
 					// Following is for upper half performance testing for writes
 					_repo = new BitBucketRepository();
@@ -164,7 +172,7 @@ public class RepositoryDaemon extends Daemon {
 			if (_repo == null)	// default lower half
 				_repo = new LogStructRepoStore();
 			
-			_repo.initialize(_handle, repositoryRoot, policyFile, localName, globalPrefix);
+			_repo.initialize(_handle, repositoryRoot, policyFile, localName, globalPrefix, nameSpace);
 			_server = new RepositoryServer(_handle, _repo);
 			
 		} catch (InvalidParameterException ipe) {

@@ -30,6 +30,7 @@ import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.Characters;
 import javax.xml.stream.events.XMLEvent;
 
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.CCNTime;
 
 /**
@@ -48,47 +49,68 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	public TextXMLDecoder() {
 	}
 	
-	public void beginDecoding(InputStream istream) throws XMLStreamException {
+	public void beginDecoding(InputStream istream) throws ContentDecodingException {
 		if (null == istream)
 			throw new IllegalArgumentException("TextXMLDecoder: input stream cannot be null!");
 		_istream = istream;		
 		XMLInputFactory factory = XMLInputFactory.newInstance();
-		_reader = factory.createXMLEventReader(_istream);
+		try {
+			_reader = factory.createXMLEventReader(_istream);
+		} catch (XMLStreamException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		}
 		
 		readStartDocument();
 	}
 	
-	public void endDecoding() throws XMLStreamException {
+	public void endDecoding() throws ContentDecodingException {
 		readEndDocument();
 	}
 
-	public void readStartDocument() throws XMLStreamException {
-		XMLEvent event = _reader.nextEvent();
+	public void readStartDocument() throws ContentDecodingException {
+		XMLEvent event;
+		try {
+			event = _reader.nextEvent();
+		} catch (XMLStreamException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		}
 		if (!event.isStartDocument()) {
-			throw new XMLStreamException("Expected start document, got: " + event.toString());
+			throw new ContentDecodingException("Expected start document, got: " + event.toString());
 		}
 	}
 
-	public void readEndDocument() throws XMLStreamException {
-		XMLEvent event = _reader.nextEvent();
+	public void readEndDocument() throws ContentDecodingException {
+		XMLEvent event;
+		try {
+			event = _reader.nextEvent();
+		} catch (XMLStreamException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		}
 		if (!event.isEndDocument()) {
-			throw new XMLStreamException("Expected end document, got: " + event.toString());
+			throw new ContentDecodingException("Expected end document, got: " + event.toString());
 		}
 	}
 
-	public void readStartElement(String startTag) throws XMLStreamException {
+	public void readStartElement(String startTag) throws ContentDecodingException {
 		readStartElement(startTag, null);
 	}
 
 	public void readStartElement(String startTag,
-								TreeMap<String, String> attributes) throws XMLStreamException {
+								TreeMap<String, String> attributes) throws ContentDecodingException {
 
-		XMLEvent event = _reader.nextEvent();
+		XMLEvent event;
+		try {
+			do {
+				event = _reader.nextEvent();
+			} while (!event.isStartElement());		// Assume if its not a startElement it's a comment
+		} catch (XMLStreamException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		}
 		// Use getLocalPart to strip namespaces.
 		// Assumes we are working with a global default namespace of CCN.
-		if (!event.isStartElement() || (!startTag.equals(event.asStartElement().getName().getLocalPart()))) {
+		if (!startTag.equals(event.asStartElement().getName().getLocalPart())) {
 			// Coming back with namespace decoration doesn't match
-			throw new XMLStreamException("Expected start element: " + startTag + " got: " + event.toString());
+			throw new ContentDecodingException("Expected start element: " + startTag + " got: " + event.toString());
 		}	
 		if (null != attributes) {
 			// we might be expecting attributes
@@ -101,15 +123,27 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 		}
 	}
 
-	public String peekStartElement() throws XMLStreamException {
-		XMLEvent event = _reader.peek();
+	public String peekStartElement() throws ContentDecodingException {
+		XMLEvent event;
+		try {
+			while (true) {
+				event = _reader.peek();
+				if (event.isCharacters())
+					event = _reader.nextEvent();
+				else
+					break;
+			}
+			
+		} catch (XMLStreamException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		}
 		if ((null == event) || !event.isStartElement()) {
 			return null;
 		}
 		return event.asStartElement().getName().getLocalPart();
 	}
 
-	public boolean peekStartElement(String startTag) throws XMLStreamException {
+	public boolean peekStartElement(String startTag) throws ContentDecodingException {
 		String decodedTag = peekStartElement();
 		if ((null == decodedTag) || (!startTag.equals(decodedTag))) {
 			return false;
@@ -120,61 +154,75 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	/**
 	 * Helper method to decode text (UTF-8) and binary elements. Consumes the end element.
 	 * @return the read data, as a String
-	 * @throws XMLStreamException if there is a problem decoding the data
+	 * @throws ContentDecodingException if there is a problem decoding the data
 	 */
-	public String readElementText() throws XMLStreamException {
+	public String readElementText() throws ContentDecodingException {
 		StringBuffer buf = new StringBuffer();
-		XMLEvent event = _reader.nextEvent();
+		XMLEvent event;
+		try {
+			event = _reader.nextEvent();
+		} catch (XMLStreamException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		}
 		
 		// Handles empty text element.
 		while (event.isCharacters()) {
 			buf.append(((Characters)event).getData());
-			event = _reader.nextEvent();
+			try {
+				event = _reader.nextEvent();
+			} catch (XMLStreamException e) {
+				throw new ContentDecodingException(e.getMessage(), e);
+			}
 		}
 		if (event.isStartElement()) {
-			throw new XMLStreamException("readElementText expects start element to have been previously consumed, got: " + event.toString());
+			throw new ContentDecodingException("readElementText expects start element to have been previously consumed, got: " + event.toString());
 		} else if (!event.isEndElement()) {
-			throw new XMLStreamException("Expected end of text element, got: " + event.toString());
+			throw new ContentDecodingException("Expected end of text element, got: " + event.toString());
 		}
 		return buf.toString();
 	}
 
-	public void readEndElement() throws XMLStreamException {
-		XMLEvent event = _reader.nextEvent();
+	public void readEndElement() throws ContentDecodingException {
+		XMLEvent event;
+		try {
+			event = _reader.nextEvent();
+		} catch (XMLStreamException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		}
 		if (!event.isEndElement()) {
-			throw new XMLStreamException("Expected end element, got: " + event.toString());
+			throw new ContentDecodingException("Expected end element, got: " + event.toString());
 		}
 	}
 
-	public String readUTF8Element(String startTag) throws XMLStreamException {
+	public String readUTF8Element(String startTag) throws ContentDecodingException {
 		return readUTF8Element(startTag, null);
 	}
 
 	public String readUTF8Element(String startTag,
-								  TreeMap<String, String> attributes) throws XMLStreamException {
+								  TreeMap<String, String> attributes) throws ContentDecodingException {
 		readStartElement(startTag, attributes); // can't use getElementText, can't get attributes
 		String strElementText = readElementText();
 		// readEndElement(); // readElementText consumes end element
 		return strElementText;
 	}
 
-	public byte[] readBinaryElement(String startTag) throws XMLStreamException {
+	public byte[] readBinaryElement(String startTag) throws ContentDecodingException {
 		return readBinaryElement(startTag, null);
 	}
 
 	public byte[] readBinaryElement(String startTag,
-			TreeMap<String, String> attributes) throws XMLStreamException {
+			TreeMap<String, String> attributes) throws ContentDecodingException {
 		try {
 			readStartElement(startTag, attributes); // can't use getElementText, can't get attributes
 			String strElementText = readElementText();
 			// readEndElement(); // readElementText consumes end element
 			return TextXMLCodec.decodeBinaryElement(strElementText);
 		} catch (IOException e) {
-			throw new XMLStreamException(e.getMessage(), e);
+			throw new ContentDecodingException(e.getMessage(), e);
 		}
 	}
 	
-	public CCNTime readDateTime(String startTag) throws XMLStreamException {
+	public CCNTime readDateTime(String startTag) throws ContentDecodingException {
 		String strTimestamp = readUTF8Element(startTag);
 		CCNTime timestamp;
 		try {
@@ -183,7 +231,7 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 			timestamp = null;
 		}
 		if (null == timestamp) {
-			throw new XMLStreamException("Cannot parse timestamp: " + strTimestamp);
+			throw new ContentDecodingException("Cannot parse timestamp: " + strTimestamp);
 		}		
 		return timestamp;
 	}

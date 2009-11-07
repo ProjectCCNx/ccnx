@@ -44,7 +44,8 @@ struct hashtb {
     unsigned n_buckets;
     int n;                      /* Number of entries */
     int refcount;               /* Number of open enumerators */
-    struct hashtb_param param;
+    struct node *deferred;      /* deferred cleanup */
+    struct hashtb_param param;  /* saved client parameters */
 };
 
 size_t
@@ -67,6 +68,10 @@ hashtb_create(size_t item_size, const struct hashtb_param *param)
         ht->n = 0;
         ht->n_buckets = 7;
         ht->bucket = calloc(ht->n_buckets, sizeof(ht->bucket[0]));
+	if (ht->bucket == NULL) {
+		free(ht);
+		return (NULL); /*ENOMEM*/
+	}
         if (param != NULL)
             ht->param = *param;
     }
@@ -119,9 +124,8 @@ hashtb_lookup(struct hashtb *ht, const void *key, size_t keysize)
             continue;
         if (p->hash > h)
             break;
-        if (keysize == p->keysize && 0 == memcmp(key, KEY(ht, p), keysize)) {
+        if (keysize == p->keysize && 0 == memcmp(key, KEY(ht, p), keysize))
             return(DATA(ht, p));
-        }
     }
     return(NULL);
 }
@@ -175,13 +179,24 @@ void
 hashtb_end(struct hashtb_enumerator *hte)
 {
     struct hashtb *ht = hte->ht;
+    struct node *p;
+    hashtb_finalize_proc f;
     if (!CHECKHTE(ht, hte) || ht->refcount <= 0) abort();
+    if (ht->refcount == 1) {
+        /* do deferred deallocation */
+        f = ht->param.finalize;
+        while (ht->deferred != NULL) {
+            setpos(hte, &(ht->deferred));
+            if (f != NULL)
+                (*f)(hte);
+            p = ht->deferred;
+            ht->deferred = p->link;
+            free(p);
+        }
+    }
     hte->priv[0] = 0;
     hte->priv[1] = 0;
     ht->refcount--;
-    if (ht->refcount == 0) {
-        /* XXX - do deferred deallocation */;
-    }
 }
 
 void
@@ -259,7 +274,10 @@ hashtb_delete(struct hashtb_enumerator *hte)
                 (*f)(hte);
             free(p);
         }
-        /* XXX - fix leak! */
+        else {
+            p->link = ht->deferred;
+            ht->deferred = p;
+        }
         setpos(hte, pp);
     }
 }

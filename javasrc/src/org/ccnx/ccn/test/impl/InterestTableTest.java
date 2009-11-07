@@ -654,7 +654,7 @@ public class InterestTableTest {
 	@Test
 	public void testLRU() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
 		InterestTable<Integer> table = new InterestTable<Integer>();
-		table.setHighWater(6);
+		table.setCapacity(6);
 		addEntry(table, a, new Integer(1));
 		addEntry(table, ab, new Integer(2));
 		addEntry(table, c, new Integer(3));

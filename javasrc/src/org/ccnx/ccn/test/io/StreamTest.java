@@ -23,10 +23,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
-
-import javax.xml.stream.XMLStreamException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
@@ -58,7 +55,9 @@ public class StreamTest extends BlockReadWriteTest {
 	}
 	
 	@Override
-	public void getResults(ContentName baseName, int count, CCNHandle handle) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNHandle handle) 
+			throws InterruptedException, IOException, 
+					InvalidKeyException, SignatureException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
 		CCNInputStream istream = new CCNInputStream(thisName, handle);
@@ -95,8 +94,6 @@ public class StreamTest extends BlockReadWriteTest {
 	 * @throws IOException 
 	 * @throws MalformedContentNameStringException 
 	 * @throws SignatureException 
-	 * @throws XMLStreamException 
-	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
 	@Override

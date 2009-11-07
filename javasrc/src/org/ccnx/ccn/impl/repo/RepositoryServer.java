@@ -28,8 +28,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -284,12 +282,10 @@ public class RepositoryServer {
 		return _repoFilters;
 	}
 	
-	public RepositoryDataListener addListener(Interest interest, Interest readInterest) throws XMLStreamException, IOException {
-		RepositoryDataListener listener = new RepositoryDataListener(interest, readInterest, this);
+	public void addListener(Interest interest, Interest readInterest, RepositoryDataListener listener) {
 		synchronized(_currentListeners) {
 			_currentListeners.add(listener);
 		}
-		return listener;
 	}
 	
 	public boolean getPendingNameSpaceState() {

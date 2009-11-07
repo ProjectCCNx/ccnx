@@ -38,8 +38,6 @@ import org.ccnx.ccn.protocol.Interest;
  */
 public interface CCNBase {
 	
-	public final static int NO_TIMEOUT = -1;
-	
 	/**
 	 * Put a single content object into the network. This is a low-level put,
 	 * and typically should only be called by a flow controller, in response to

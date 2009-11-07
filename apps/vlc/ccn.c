@@ -25,6 +25,8 @@
 # include "config.h"
 #endif
 
+#include <limits.h>
+
 #include <vlc_common.h>
 #include <vlc_plugin.h>
 #include <vlc_access.h>
@@ -33,6 +35,7 @@
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
+#include <ccn/header.h>
 
 /*****************************************************************************
  * Disable internationalization
@@ -43,9 +46,9 @@
  * Module descriptor
  *****************************************************************************/
 #define CACHING_TEXT N_("Caching value in ms")
-#define CACHING_LONGTEXT N_( \
-    "Caching value for CCN streams. This " \
-    "value should be set in milliseconds.")
+#define CACHING_LONGTEXT N_(                                            \
+                            "Caching value for CCN streams. This "      \
+                            "value should be set in milliseconds.")
 
 static int  CCNOpen(vlc_object_t *);
 static void CCNClose(vlc_object_t *);
@@ -56,8 +59,8 @@ static int CCNControl(access_t *, int, va_list);
 static void *ccn_event_thread(vlc_object_t *p_this);
 
 vlc_module_begin();
-    set_shortname(N_("CCN"));
-    set_description(N_("CCN input"));
+    set_shortname(N_("CCNx"));
+    set_description(N_("CCNx input"));
     set_category(CAT_INPUT);
     set_subcategory(SUBCAT_INPUT_ACCESS);
     add_integer("ccn-caching", 4 * DEFAULT_PTS_DELAY / 1000, NULL,
@@ -65,16 +68,18 @@ vlc_module_begin();
     change_safe();
     set_capability("access", 0);
     add_shortcut("ccn");
+    add_shortcut("ccnx");
     set_callbacks(CCNOpen, CCNClose);
 vlc_module_end();
 
 /*****************************************************************************
  * Local prototypes
  *****************************************************************************/
-#define CCN_FIFO_MAX_PACKETS 512
+#define CCN_FIFO_MAX_PACKETS 128
 #define CCN_CHUNK_SIZE 4096
-#define BUF_SIZE (1024 * 1024)
-#define CCN_VERSION_TIMEOUT 5000
+#define BUF_SIZE (128 * CCN_CHUNK_SIZE)
+#define CCN_VERSION_TIMEOUT 400
+#define CCN_HEADER_TIMEOUT 400
 
 struct access_sys_t
 {
@@ -86,12 +91,19 @@ struct access_sys_t
     int64_t i_pos;
     struct ccn *ccn;
     struct ccn_closure *incoming;
+    struct ccn_charbuf *p_name;
+    struct ccn_charbuf *p_template;
 };
 
 enum ccn_upcall_res
 incoming_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info);
+static struct ccn_charbuf *
+sequenced_name(struct ccn_charbuf *basename, uintmax_t seq);
+
+struct ccn_charbuf *make_data_template();
+
 /*****************************************************************************
  * CCNOpen: 
  *****************************************************************************/
@@ -100,6 +112,7 @@ static int CCNOpen(vlc_object_t *p_this)
     access_t     *p_access = (access_t *)p_this;
     access_sys_t *p_sys = NULL;
     struct ccn_charbuf *p_name = NULL;
+    struct ccn_header *p_header = NULL;
     int i_ret = 0;
     int i_err = VLC_EGENERIC;
 
@@ -113,23 +126,24 @@ static int CCNOpen(vlc_object_t *p_this)
 #ifdef VLCPLUGINVER099
     p_access->info.b_prebuffered = true;
 #endif
-    p_access->info.i_size = -1;
+    p_access->info.i_size = LLONG_MAX;	/* we don't know, but bigger is better */
     /* Update default_pts */
     var_Create(p_access, "ccn-caching", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
+    p_sys->p_template = make_data_template();
     p_sys->incoming = calloc(1, sizeof(struct ccn_closure));
     if (p_sys->incoming == NULL) {
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
-    msg_Dbg(p_access, "CCN.Open %s, closure 0x%08x",
-            p_access->psz_path, (int)p_sys->incoming);    /*XXX: fix format */
+    msg_Dbg(p_access, "CCN.Open %s, closure %p",
+            p_access->psz_path, p_sys->incoming);
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
+
     p_sys->ccn = ccn_create();
     if (p_sys->ccn == NULL || ccn_connect(p_sys->ccn, NULL) == -1) {
         goto exit_error;
     }
-
     p_name = ccn_charbuf_create();
     if (p_name == NULL) {
         i_err = VLC_ENOMEM;
@@ -139,20 +153,31 @@ static int CCNOpen(vlc_object_t *p_this)
     if (i_ret < 0) {
         goto exit_error;
     }
-    i_ret = ccn_resolve_version(p_sys->ccn, p_name, CCN_V_HIGHEST, CCN_VERSION_TIMEOUT);
-    /* XXX: should check for error here, but ccn_resolve_version reports an error
-     * if there is no versioned instance of the name, when it should report
-     * that a version couldn't be found
-     */
-    i_ret = ccn_name_append_numeric(p_name, CCN_MARKER_SEQNUM, 0);
-    if (i_ret < 0) {
+    p_sys->p_name = ccn_charbuf_create();
+    if (p_sys->p_name == NULL) {
+        i_err = VLC_ENOMEM;
         goto exit_error;
     }
-    i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, NULL);
-    if (i_ret < 0) {
-        goto exit_error;
+    i_ret = ccn_resolve_version(p_sys->ccn, p_name, CCN_V_HIGHEST,
+                                CCN_VERSION_TIMEOUT);
+    ccn_charbuf_append_charbuf(p_sys->p_name, p_name);
+    if (i_ret == 0) {
+        /* name is versioned, so get the header to obtain the length */
+        p_header = ccn_get_header(p_sys->ccn, p_name, CCN_HEADER_TIMEOUT);
+        if (p_header != NULL) {
+            p_access->info.i_size = p_header->length;
+            ccn_header_destroy(&p_header);
+        }
+        msg_Dbg(p_access, "Set length %"PRId64, p_access->info.i_size);
     }
     ccn_charbuf_destroy(&p_name);
+    p_name = sequenced_name(p_sys->p_name, 0);
+    i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming,
+                                 p_sys->p_template);
+    ccn_charbuf_destroy(&p_name);
+    if (i_ret < 0) {
+        goto exit_error;
+    }
 
     p_sys->p_fifo = block_FifoNew();
     if (p_sys->p_fifo == NULL) {
@@ -161,8 +186,9 @@ static int CCNOpen(vlc_object_t *p_this)
     }
 #ifdef VLCPLUGINVER099
     i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
-                      VLC_THREAD_PRIORITY_INPUT, false);
+                              VLC_THREAD_PRIORITY_INPUT, false);
 #else
+
     i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
                               VLC_THREAD_PRIORITY_INPUT);
 #endif
@@ -180,6 +206,7 @@ static int CCNOpen(vlc_object_t *p_this)
         free(p_sys->incoming);
         p_sys->incoming = NULL;
     }
+    ccn_charbuf_destroy(&p_sys->p_name);
     ccn_destroy(&(p_sys->ccn));
     free(p_sys);
     return (i_err);
@@ -226,7 +253,7 @@ static block_t *CCNBlock(access_t *p_access)
     if (p_block == NULL)
         return NULL;
 
-    msg_Dbg(p_access, "CCNBlock %d bytes @ %"PRId64, p_block->i_buffer, p_access->info.i_pos);
+    msg_Dbg(p_access, "CCNBlock %zu bytes @ %"PRId64, p_block->i_buffer, p_access->info.i_pos);
     p_access->info.i_pos += p_block->i_buffer;
     if (p_block->i_buffer == 0) {
         p_access->info.i_size = p_access->info.i_pos;
@@ -302,19 +329,15 @@ static int CCNSeek(access_t *p_access, int64_t i_pos)
     if (p_sys->incoming == NULL) {
         return (VLC_EGENERIC);
     }
-    msg_Dbg(p_access, "CCN.Seek to %"PRId64", closure 0x%08x", i_pos, (int) p_sys->incoming);
+    msg_Dbg(p_access, "CCN.Seek to %"PRId64", closure %p",
+            i_pos, p_sys->incoming);
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
     p_sys->i_pos = i_pos;
-    p_name = ccn_charbuf_create();
-    i_ret = ccn_name_from_uri(p_name, p_access->psz_path);
-    if (i_ret < 0) {
-        ccn_charbuf_destroy(&p_name);
-        return (VLC_EGENERIC);
-    }
-    ccn_name_append_numeric(p_name, CCN_MARKER_SEQNUM, p_sys->i_pos / CCN_CHUNK_SIZE);
-    ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, NULL);
+    p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / CCN_CHUNK_SIZE);
+    ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_template);
     ccn_charbuf_destroy(&p_name);    
+
     p_access->info.i_pos = i_pos;
     p_access->info.b_eof = false;
     return (VLC_SUCCESS);
@@ -330,7 +353,7 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
     int64_t      *pi_64;
 
     switch(i_query)
-    {
+        {
         case ACCESS_CAN_SEEK:
         case ACCESS_CAN_FASTSEEK:
         case ACCESS_CAN_CONTROL_PACE:
@@ -369,7 +392,7 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
             msg_Warn(p_access, "CCN unimplemented query in control - %d", i_query);
             return VLC_EGENERIC;
 
-    }
+        }
     return VLC_SUCCESS;
 }
 
@@ -384,7 +407,12 @@ static void *ccn_event_thread(vlc_object_t *p_this)
 #endif
 
     while (res >= 0 && vlc_object_alive(p_access)) {
-        res = ccn_run(ccn, 500);
+        res = ccn_run(ccn, 1000);
+        if (res < 0 && ccn_get_connection_fd(ccn) == -1) {
+            /* Try reconnecting, after a bit of delay */
+            msleep((500 + (getpid() % 512)) * 1024);
+            res = ccn_connect(ccn, NULL);
+        }
     }
     if (res < 0) {
         vlc_object_kill(p_access);
@@ -414,18 +442,19 @@ incoming_content(struct ccn_closure *selfp,
     size_t written;
     const unsigned char *ib = NULL; /* info->interest_ccnb */
     struct ccn_indexbuf *ic = NULL;
+    int first = 0;
     int res;
 
     switch (kind) {
     case CCN_UPCALL_FINAL:
-        msg_Dbg(p_access, "CCN upcall final 0x%08x", (int) selfp);
+        msg_Dbg(p_access, "CCN upcall final %p", selfp);
         if (selfp == p_sys->incoming)
             p_sys->incoming = NULL;
         free(selfp);
         return(CCN_UPCALL_RESULT_OK);
     case CCN_UPCALL_INTEREST_TIMED_OUT:
         if (selfp != p_sys->incoming) {
-            msg_Dbg(p_access, "CCN Interest timed out on dead closure 0x%08x", (int)selfp);
+            msg_Dbg(p_access, "CCN Interest timed out on dead closure %p", selfp);
             return(CCN_UPCALL_RESULT_OK);
         }
         msg_Dbg(p_access, "CCN upcall reexpress -- timed out");
@@ -440,14 +469,14 @@ incoming_content(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_REEXPRESS); // XXX - may need to reseed bloom filter
     case CCN_UPCALL_CONTENT_UNVERIFIED:
         if (selfp != p_sys->incoming) {
-            msg_Dbg(p_access, "CCN unverified content on dead closure 0x%08x", (int)selfp);
+            msg_Dbg(p_access, "CCN unverified content on dead closure %p", selfp);
             return(CCN_UPCALL_RESULT_OK);
         }
         return (CCN_UPCALL_RESULT_VERIFY);
 
     case CCN_UPCALL_CONTENT:
         if (selfp != p_sys->incoming) {
-            msg_Dbg(p_access, "CCN content on dead closure 0x%08x", (int)selfp);
+            msg_Dbg(p_access, "CCN content on dead closure %p", selfp);
             return(CCN_UPCALL_RESULT_OK);
         }
         break;
@@ -462,25 +491,6 @@ incoming_content(struct ccn_closure *selfp,
     ic = info->interest_comps;
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
     if (res < 0) abort();
-
-#if 0
-    if (info->pco->type != CCN_CONTENT_DATA) {
-        /* This is spam, so need to try again excluding this one. */
-        name = ccn_charbuf_create();
-        ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 1]);
-        note_new_exclusion(p_sys, ccnb,
-                           info->pco->offset[CCN_PCO_B_Signature],
-                           info->pco->offset[CCN_PCO_E_Signature]);
-        templ = make_template(p_sys, info);
-        res = ccn_express_interest(info->h, name, selfp, templ);
-        /* TODO: must not abort... */
-        if (res < 0)
-            abort();
-        ccn_charbuf_destroy(&templ);
-        ccn_charbuf_destroy(&name);
-        return(CCN_UPCALL_RESULT_OK);
-    }
-#endif
 
     p_sys->timeouts = 0;
 
@@ -516,7 +526,7 @@ incoming_content(struct ccn_closure *selfp,
     if (data_size > 0) {
         start_offset = p_sys->i_pos % CCN_CHUNK_SIZE;
         if (start_offset > data_size) {
-            msg_Err(p_access, "start_offset %"PRId64" > data_size %d", start_offset, data_size);
+            msg_Err(p_access, "start_offset %"PRId64" > data_size %zu", start_offset, data_size);
         } else {
             if ((data_size - start_offset) + p_sys->i_bufoffset > BUF_SIZE) {
                 /* won't fit in buffer, release the buffer upstream */
@@ -534,43 +544,66 @@ incoming_content(struct ccn_closure *selfp,
     /* if we're done, indicate so with a 0-byte block, release any buffered data upstream,
      * and don't express an interest
      */
-        if (b_last) {
-            if (p_sys->i_bufoffset > 0) {
-                p_block = block_New(p_access, p_sys->i_bufoffset);
-                memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_bufoffset);
-                block_FifoPut(p_sys->p_fifo, p_block);
-                p_sys->i_bufoffset = 0;
-            }
-            block_FifoPut(p_sys->p_fifo, block_New(p_access, 0));
-            return (CCN_UPCALL_RESULT_OK);
+    if (b_last) {
+        if (p_sys->i_bufoffset > 0) {
+            p_block = block_New(p_access, p_sys->i_bufoffset);
+            memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_bufoffset);
+            block_FifoPut(p_sys->p_fifo, p_block);
+            p_sys->i_bufoffset = 0;
         }
+        block_FifoPut(p_sys->p_fifo, block_New(p_access, 0));
+        return (CCN_UPCALL_RESULT_OK);
+    }
 
-    /* need to do this with a condition variable, since we don't want to sleep the thread */
+#if 1
+    /* 0.9.9 did not include the block_FifoPace function */
     while (block_FifoCount(p_sys->p_fifo) > CCN_FIFO_MAX_PACKETS) {
-        msleep(1000);
+        if (first == 0) {
+            msg_Dbg(p_access, "fifo full");
+        }
+        first++;
+        msleep(100000);
         if (!vlc_object_alive(p_access)) return(CCN_UPCALL_RESULT_OK);
     }
-    /* Ask for the next fragment */
-    name = ccn_charbuf_create();
-    ccn_name_init(name);
-    if (ic->n < 2) abort();
-    res = ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 2]);
-    if (res < 0) abort();
-    p_sys->i_pos = CCN_CHUNK_SIZE * (1 + (p_sys->i_pos / CCN_CHUNK_SIZE));
-    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, p_sys->i_pos / CCN_CHUNK_SIZE);
-#if 0
-    clear_excludes(p_sys);
-    templ = make_template(p_sys, info);
-
-    res = ccn_express_interest(info->h, name, selfp, templ);
+    if (first > 0) msg_Dbg(p_access, "fifo spun %d", first);
 #else
+    /* and they neglected to VLC_EXPORT it in 1.0.2 ! */
+    block_FifoPace(p_sys->p_fifo, CCN_FIFO_MAX_PACKETS, SIZE_MAX);
+#endif
+
+    /* Ask for the next fragment */
+    p_sys->i_pos = CCN_CHUNK_SIZE * (1 + (p_sys->i_pos / CCN_CHUNK_SIZE));
+    name = sequenced_name(p_sys->p_name, p_sys->i_pos / CCN_CHUNK_SIZE);
     res = ccn_express_interest(info->h, name, selfp, NULL);
-#endif
-    if (res < 0) abort();
-#if 0
-    ccn_charbuf_destroy(&templ);
-#endif
     ccn_charbuf_destroy(&name);
+
+    if (res < 0) abort();
     
     return(CCN_UPCALL_RESULT_OK);
 }
+
+static struct ccn_charbuf *
+sequenced_name(struct ccn_charbuf *basename, uintmax_t seq)
+{
+    struct ccn_charbuf *name = NULL;
+    
+    name = ccn_charbuf_create();
+    ccn_charbuf_append_charbuf(name, basename);
+    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, seq);
+    return(name);
+}
+
+struct ccn_charbuf *
+make_data_template()
+{
+    struct ccn_charbuf *templ = ccn_charbuf_create();
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
+    ccnb_append_number(templ, 1);
+    ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
+    ccn_charbuf_append_closer(templ); /* </Interest> */
+    return(templ);
+}
+

@@ -20,7 +20,6 @@ package org.ccnx.ccn.profiles.access;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
@@ -28,17 +27,19 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
-import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.io.content.ContentGoneException;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.io.content.WrappedKey;
@@ -199,16 +200,7 @@ public class AccessControlManager {
 
 	public static final String DATA_KEY_LABEL = "Data Key";
 	public static final String NODE_KEY_LABEL = "Node Key";
-	public static final long DEFAULT_TIMEOUT = 1000;
 	
-	public static final long DEFAULT_FRESHNESS_INTERVAL = 100;
-	public static final long DEFAULT_NODE_KEY_FRESHNESS_INTERVAL = DEFAULT_FRESHNESS_INTERVAL;
-	public static final long DEFAULT_DATA_KEY_FRESHNESS_INTERVAL = DEFAULT_FRESHNESS_INTERVAL;
-	public static final long DEFAULT_ACL_FRESHNESS_INTERVAL = DEFAULT_FRESHNESS_INTERVAL;
-	public static final long DEFAULT_GROUP_PUBLIC_KEY_FRESHNESS_INTERVAL = 3600;
-	public static final long DEFAULT_GROUP_PRIVATE_KEY_FRESHNESS_INTERVAL = 3600;
-	public static final long DEFAULT_GROUP_ENCRYPTED_KEY_BLOCK_FRESHNESS_INTERVAL = DEFAULT_FRESHNESS_INTERVAL;
-
 	private ContentName _namespace;
 	private ContentName _userStorage;
 	private EnumeratedNameList _userList;
@@ -254,11 +246,12 @@ public class AccessControlManager {
 	 * @param identity the name
 	 * @param myPublicKey my public key
 	 * @throws InvalidKeyException
+	 * @throws ContentEncodingException
 	 * @throws IOException
 	 * @throws ConfigurationException
-	 * @throws XMLStreamException
 	 */
-	public void publishMyIdentity(ContentName identity, PublicKey myPublicKey) throws InvalidKeyException, IOException, ConfigurationException, XMLStreamException {
+	public void publishMyIdentity(ContentName identity, PublicKey myPublicKey) 
+				throws InvalidKeyException, ContentEncodingException, IOException, ConfigurationException {
 		KeyManager km = _handle.keyManager();
 		if (null == myPublicKey) {
 			myPublicKey = km.getDefaultPublicKey();
@@ -273,11 +266,12 @@ public class AccessControlManager {
 	 * @param userName the user name
 	 * @param myPublicKey my public key
 	 * @throws InvalidKeyException
+	 * @throws ContentEncodingException
 	 * @throws IOException
 	 * @throws ConfigurationException
-	 * @throws XMLStreamException
 	 */
-	public void publishMyIdentity(String userName, PublicKey myPublicKey) throws InvalidKeyException, IOException, ConfigurationException, XMLStreamException {
+	public void publishMyIdentity(String userName, PublicKey myPublicKey) 
+			throws InvalidKeyException, ContentEncodingException, IOException, ConfigurationException {
 		Log.finest("publishing my identity" + AccessControlProfile.userNamespaceName(_userStorage, userName));
 		publishMyIdentity(AccessControlProfile.userNamespaceName(_userStorage, userName), myPublicKey);
 	}
@@ -290,7 +284,8 @@ public class AccessControlManager {
 	 * @throws IOException
 	 * @throws MalformedContentNameStringException
 	 */
-	public void publishUserIdentity(String userName, PublicKey userPublicKey) throws ConfigurationException, IOException, MalformedContentNameStringException {
+	public void publishUserIdentity(String userName, PublicKey userPublicKey) 
+			throws ConfigurationException, IOException, MalformedContentNameStringException {
 		PublicKeyObject pko = new PublicKeyObject(ContentName.fromNative(userName), userPublicKey, handle());
 		System.out.println("saving user pubkey to repo:" + userName);
 		pko.saveToRepository();
@@ -342,11 +337,10 @@ public class AccessControlManager {
 	 * constraints of the link.
 	 * @param principal the principal
 	 * @return the public key object
-	 * @throws XMLStreamException 
 	 * @throws IOException 
-	 * @throws ConfigurationException 
+	 * @throws ContentDecodingException 
 	 */
-	public PublicKeyObject getLatestKeyForPrincipal(Link principal) throws IOException, XMLStreamException, ConfigurationException {
+	public PublicKeyObject getLatestKeyForPrincipal(Link principal) throws ContentDecodingException, IOException {
 		if (null == principal) {
 			Log.info("Cannot retrieve key for empty principal.");
 			return null;
@@ -365,8 +359,15 @@ public class AccessControlManager {
 	 * Creates the root ACL for _namespace.
 	 * This initialization must be done before any other ACL or node key can be read or written.
 	 * @param rootACL the root ACL
+	 * @throws IOException 
+	 * @throws ContentGoneException 
+	 * @throws ContentNotReadyException 
+	 * @throws ContentEncodingException 
+	 * @throws InvalidKeyException 
 	 */
-	public void initializeNamespace(ACL rootACL) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException {
+	public void initializeNamespace(ACL rootACL) 
+				throws InvalidKeyException, ContentEncodingException, ContentNotReadyException, 
+						ContentGoneException, IOException {
 		// generates the new node key		
 		generateNewNodeKey(_namespace, null, rootACL);
 		
@@ -380,12 +381,10 @@ public class AccessControlManager {
 	 * here or at one of its ancestors.
 	 * @param nodeName the name of the node
 	 * @return the ACL object
-	 * @throws ConfigurationException 
 	 * @throws IOException 
-	 * @throws XMLStreamException 
-	 * @throws ConfigurationException 
+	 * @throws ContentDecodingException 
 	 */
-	public ACLObject getEffectiveACLObject(ContentName nodeName) throws XMLStreamException, IOException, ConfigurationException {
+	public ACLObject getEffectiveACLObject(ContentName nodeName) throws ContentDecodingException, IOException {
 		
 		// Find the closest node that has a non-gone ACL
 		ACLObject aclo = findAncestorWithACL(nodeName);
@@ -396,7 +395,7 @@ public class AccessControlManager {
 		return aclo;
 	}
 
-	private ACLObject findAncestorWithACL(ContentName dataNodeName) throws XMLStreamException, IOException, ConfigurationException {
+	private ACLObject findAncestorWithACL(ContentName dataNodeName) throws ContentDecodingException, IOException {
 
 		ACLObject ancestorACLObject = null;
 		ContentName parentName = dataNodeName;
@@ -426,11 +425,11 @@ public class AccessControlManager {
 	 * out. Use enumeration to decide whether to call this to avoid the timeout.
 	 * @param aclNodeName the node name
 	 * @return the ACL object
-	 * @throws IOException 
-	 * @throws XMLStreamException 
-	 * @throws ConfigurationException 
+	 * @throws ContentDecodingException
+	 * @throws IOException
 	 */
-	public ACLObject getACLObjectForNode(ContentName aclNodeName) throws XMLStreamException, IOException, ConfigurationException {
+	public ACLObject getACLObjectForNode(ContentName aclNodeName) 
+				throws ContentDecodingException, IOException {
 		
 		// Get the latest version of the acl. We don't care so much about knowing what version it was.
 		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(aclNodeName), handle());
@@ -447,11 +446,10 @@ public class AccessControlManager {
 	 * Try to pull an ACL for a specified node if it exists.
 	 * @param aclNodeName the name of the node
 	 * @return the ACL object
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws ConfigurationException
+	 * @throws IOException 
+	 * @throws ContentDecodingException 
 	 */
-	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) throws XMLStreamException, IOException, ConfigurationException {
+	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) throws ContentDecodingException, IOException {
 		
 		EnumeratedNameList aclNameList = EnumeratedNameList.exists(AccessControlProfile.aclName(aclNodeName), aclNodeName, handle());
 		
@@ -459,7 +457,6 @@ public class AccessControlManager {
 			ContentName aclName = new ContentName(AccessControlProfile.aclName(aclNodeName));
 			Log.info("Found latest version of acl for " + aclNodeName + " at " + aclName);
 			ACLObject aclo = new ACLObject(aclName, handle());
-			aclo.update();
 			if (aclo.isGone())
 				return null;
 			return aclo;
@@ -472,11 +469,13 @@ public class AccessControlManager {
 	 * Get the effective ACL for a node specified by its name
 	 * @param nodeName the name of the node
 	 * @return the effective ACL
-	 * @throws XMLStreamException
+	 * @throws ContentGoneException 
+	 * @throws ContentNotReadyException 
+	 * @throws ContentDecodingException
 	 * @throws IOException
-	 * @throws ConfigurationException
 	 */
-	public ACL getEffectiveACL(ContentName nodeName) throws XMLStreamException, IOException, ConfigurationException {
+	public ACL getEffectiveACL(ContentName nodeName) 
+			throws ContentNotReadyException, ContentGoneException, ContentDecodingException, IOException {
 		ACLObject aclo = getEffectiveACLObject(nodeName);
 		if (null != aclo) {
 			return aclo.acl();
@@ -493,22 +492,21 @@ public class AccessControlManager {
 	 * @param nodeName the name of the node
 	 * @param newACL the new ACL
 	 * @return
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws InvalidKeyException
-	 * @throws ConfigurationException
-	 * @throws AccessDeniedException
-	 * @throws InvalidCipherTextException
+	 * @throws InvalidKeyException 
+	 * @throws IOException 
+	 * @throws ContentGoneException 
+	 * @throws ContentNotReadyException 
+	 * @throws InvalidCipherTextException 
 	 */
-	public ACL setACL(ContentName nodeName, ACL newACL) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public ACL setACL(ContentName nodeName, ACL newACL) 
+			throws AccessDeniedException, InvalidKeyException, ContentNotReadyException, ContentGoneException, IOException, InvalidCipherTextException {
 		// Throws access denied exception if we can't read the old node key.
 		NodeKey effectiveNodeKey = getEffectiveNodeKey(nodeName);
 		// generates the new node key, wraps it under the new acl, and wraps the old node key
 		generateNewNodeKey(nodeName, effectiveNodeKey, newACL);
 		// write the acl
 		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(nodeName), newACL, handle());
-		// DKS FIX REPO WRITE
-		aclo.save();
+		aclo.saveToRepository();
 		return aclo.acl();
 	}
 	
@@ -523,14 +521,13 @@ public class AccessControlManager {
 	 * if a new ACL is interposed later. In the meantime, all the people with the newly in-force ancestor
 	 * ACL should be able to read this content.
 	 * @param nodeName
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws ConfigurationException
-	 * @throws InvalidKeyException
-	 * @throws InvalidCipherTextException
-	 * @throws AccessDeniedException
+	 * @throws IOException 
+	 * @throws ContentDecodingException 
+	 * @throws InvalidKeyException 
+	 * @throws InvalidCipherTextException 
 	 */
-	public void deleteACL(ContentName nodeName) throws XMLStreamException, IOException, ConfigurationException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException {
+	public void deleteACL(ContentName nodeName) 
+			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException {
 		
 		// First, find ACL at this node if one exists.
 		ACLObject thisNodeACL = getACLObjectForNodeIfExists(nodeName);
@@ -565,14 +562,13 @@ public class AccessControlManager {
 	 * @param nodeName the name of the node
 	 * @param ACLUpdates the updates to the ACL
 	 * @return the updated ACL
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws InvalidKeyException
-	 * @throws ConfigurationException
-	 * @throws AccessDeniedException
-	 * @throws InvalidCipherTextException
+	 * @throws IOException 
+	 * @throws ContentDecodingException 
+	 * @throws InvalidKeyException 
+	 * @throws InvalidCipherTextException 
 	 */
-	public ACL updateACL(ContentName nodeName, ArrayList<ACL.ACLOperation> ACLUpdates) throws XMLStreamException, IOException, InvalidKeyException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public ACL updateACL(ContentName nodeName, ArrayList<ACL.ACLOperation> ACLUpdates) 
+			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException {
 		ACLObject currentACL = getACLObjectForNodeIfExists(nodeName);
 		ACL newACL = null;
 		
@@ -613,7 +609,7 @@ public class AccessControlManager {
 				PublicKeyObject latestKey = getLatestKeyForPrincipal(principal);
 				try {
 					if (!latestKey.available()) {
-						latestKey.wait(DEFAULT_TIMEOUT);
+						latestKey.wait(SystemConfiguration.getDefaultTimeout());
 					}
 				} catch (InterruptedException ex) {
 					// do nothing
@@ -647,14 +643,13 @@ public class AccessControlManager {
 	 * @param nodeName the name of the node
 	 * @param newReaders the list of new readers
 	 * @return the updated ACL
-	 * @throws InvalidKeyException
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws ConfigurationException
-	 * @throws AccessDeniedException
-	 * @throws InvalidCipherTextException
+	 * @throws IOException 
+	 * @throws InvalidCipherTextException 
+	 * @throws ContentDecodingException 
+	 * @throws InvalidKeyException 
 	 */
-	public ACL addReaders(ContentName nodeName, ArrayList<Link> newReaders) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public ACL addReaders(ContentName nodeName, ArrayList<Link> newReaders) 
+			throws InvalidKeyException, ContentDecodingException, InvalidCipherTextException, IOException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
 		for(Link reader : newReaders){
 			ops.add(ACLOperation.addReaderOperation(reader));
@@ -667,14 +662,13 @@ public class AccessControlManager {
 	 * @param nodeName the name of the node
 	 * @param newWriters the list of new writers
 	 * @return the updated ACL
-	 * @throws InvalidKeyException
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws ConfigurationException
-	 * @throws AccessDeniedException
-	 * @throws InvalidCipherTextException
+	 * @throws IOException 
+	 * @throws InvalidCipherTextException 
+	 * @throws ContentDecodingException 
+	 * @throws InvalidKeyException 
 	 */
-	public ACL addWriters(ContentName nodeName, ArrayList<Link> newWriters) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public ACL addWriters(ContentName nodeName, ArrayList<Link> newWriters) 
+			throws InvalidKeyException, ContentDecodingException, InvalidCipherTextException, IOException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
 		for(Link writer : newWriters){
 			ops.add(ACLOperation.addWriterOperation(writer));
@@ -687,14 +681,13 @@ public class AccessControlManager {
 	 * @param nodeName the name of the node
 	 * @param newManagers the list of new managers
 	 * @return the updated ACL
-	 * @throws InvalidKeyException
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws ConfigurationException
-	 * @throws AccessDeniedException
-	 * @throws InvalidCipherTextException
+	 * @throws IOException 
+	 * @throws InvalidCipherTextException 
+	 * @throws ContentDecodingException 
+	 * @throws InvalidKeyException 
 	 */
-	public ACL addManagers(ContentName nodeName, ArrayList<Link> newManagers) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public ACL addManagers(ContentName nodeName, ArrayList<Link> newManagers) 
+			throws InvalidKeyException, ContentDecodingException, InvalidCipherTextException, IOException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
 		for(Link manager: newManagers){
 			ops.add(ACLOperation.addManagerOperation(manager));
@@ -710,14 +703,16 @@ public class AccessControlManager {
 	 * @param nodeName the name of the node
 	 * @return null means while node keys exist, we can't decrypt any of them --
 	 *    we have no read access to this node (which implies no write access)
+	 * @throws IOException 
+	 * @throws ContentDecodingException 
+	 * @throws InvalidCipherTextException 
+	 * @throws AccessDeniedException 
+	 * @throws InvalidKeyException 
 	 * @throws IOException if something is wrong (e.g. no node keys at all)
-	 * @throws XMLStreamException
-	 * @throws ConfigurationException
-	 * @throws InvalidKeyException
-	 * @throws InvalidCipherTextException
-	 * @throws AccessDeniedException
 	 */
-	protected NodeKey findAncestorWithNodeKey(ContentName nodeName) throws IOException, XMLStreamException, ConfigurationException, InvalidKeyException, InvalidCipherTextException, AccessDeniedException {
+	protected NodeKey findAncestorWithNodeKey(ContentName nodeName) 
+			throws InvalidKeyException, AccessDeniedException, InvalidCipherTextException, 
+					ContentDecodingException, IOException {
 		// climb up looking for node keys, then make sure that one isn't GONE
 		// if it isn't, call read-side routine to figure out how to decrypt it
 		ACLObject effectiveACL = findAncestorWithACL(nodeName);
@@ -733,14 +728,15 @@ public class AccessControlManager {
 	 * Write path: get the latest node key for a node.
 	 * @param nodeName the name of the node
 	 * @return the corresponding node key
-	 * @throws IOException
-	 * @throws InvalidKeyException
-	 * @throws InvalidCipherTextException
-	 * @throws XMLStreamException
-	 * @throws ConfigurationException
-	 * @throws AccessDeniedException
+	 * @throws IOException 
+	 * @throws ContentDecodingException 
+	 * @throws InvalidCipherTextException 
+	 * @throws AccessDeniedException 
+	 * @throws InvalidKeyException 
 	 */
-	public NodeKey getLatestNodeKeyForNode(ContentName nodeName) throws IOException, InvalidKeyException, InvalidCipherTextException, XMLStreamException, ConfigurationException, AccessDeniedException {
+	public NodeKey getLatestNodeKeyForNode(ContentName nodeName) 
+			throws InvalidKeyException, AccessDeniedException, InvalidCipherTextException, 
+					ContentDecodingException, IOException {
 		
 		// Could do this using getLatestVersion...
 		// First we need to figure out what the latest version is of the node key.
@@ -764,13 +760,14 @@ public class AccessControlManager {
 	 * @param nodeKeyIdentifier
 	 * @return the node key
 	 * @throws IOException 
-	 * @throws XMLStreamException 
+	 * @throws ContentDecodingException 
 	 * @throws InvalidCipherTextException 
-	 * @throws InvalidKeyException 
-	 * @throws ConfigurationException 
 	 * @throws AccessDeniedException 
+	 * @throws InvalidKeyException 
 	 */
-	public NodeKey getSpecificNodeKey(ContentName nodeKeyName, byte [] nodeKeyIdentifier) throws InvalidKeyException, InvalidCipherTextException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException {
+	public NodeKey getSpecificNodeKey(ContentName nodeKeyName, byte [] nodeKeyIdentifier) 
+			throws InvalidKeyException, AccessDeniedException, InvalidCipherTextException, 
+					ContentDecodingException, IOException {
 		
 		if ((null == nodeKeyName) && (null == nodeKeyIdentifier)) {
 			throw new IllegalArgumentException("Node key name and identifier cannot both be null!");
@@ -792,20 +789,22 @@ public class AccessControlManager {
 	 * @param nodeKeyName
 	 * @param nodeKeyIdentifier
 	 * @return
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws InvalidKeyException
-	 * @throws InvalidCipherTextException
-	 * @throws ConfigurationException
+	 * @throws IOException 
 	 * @throws AccessDeniedException
+	 * @throws ContentDecodingException 
+	 * @throws InvalidCipherTextException 
+	 * @throws InvalidKeyException 
 	 */
-	NodeKey getNodeKeyByVersionedName(ContentName nodeKeyName, byte [] nodeKeyIdentifier) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException, AccessDeniedException {
+	NodeKey getNodeKeyByVersionedName(ContentName nodeKeyName, byte [] nodeKeyIdentifier) 
+			throws AccessDeniedException, InvalidKeyException, InvalidCipherTextException, 
+					ContentDecodingException, IOException {
 
 		NodeKey nk = null;
 		KeyDirectory keyDirectory = null;
 		try {
 
 			keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
+			keyDirectory.waitForData();
 			// this will handle the caching.
 			Key unwrappedKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
 			if (null != unwrappedKey) {
@@ -829,14 +828,16 @@ public class AccessControlManager {
 	 * TODO -- when called by writers, check to see if node key is dirty & update.
 	 * @param nodeName
 	 * @return
-	 * @throws InvalidKeyException
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws AccessDeniedException
+	 * @throws AccessDeniedException 
 	 * @throws InvalidCipherTextException
-	 * @throws ConfigurationException
+	 * @throws ContentEncodingException 
+	 * @throws ContentDecodingException
+	 * @throws IOException
+	 * @throws InvalidKeyException 
 	 */
-	public NodeKey getEffectiveNodeKey(ContentName nodeName) throws InvalidKeyException, XMLStreamException, IOException, AccessDeniedException, InvalidCipherTextException, ConfigurationException {
+	public NodeKey getEffectiveNodeKey(ContentName nodeName) 
+			throws AccessDeniedException, InvalidKeyException, InvalidCipherTextException, ContentEncodingException, 
+					ContentDecodingException, IOException {
 		// Get the ancestor node key in force at this node.
 		NodeKey nodeKey = findAncestorWithNodeKey(nodeName);
 		if (null == nodeKey) {
@@ -853,14 +854,18 @@ public class AccessControlManager {
 	 * key is dirty and updates it if necessary.
 	 * @param nodeName
 	 * @return
-	 * @throws InvalidKeyException
-	 * @throws InvalidCipherTextException
 	 * @throws AccessDeniedException
-	 * @throws IOException
-	 * @throws XMLStreamException
-	 * @throws ConfigurationException
+	 * @throws IOException 
+	 * @throws ContentGoneException 
+	 * @throws ContentNotReadyException 
+	 * @throws ContentEncodingException 
+	 * @throws ContentDecodingException 
+	 * @throws AccessDeniedException, InvalidKeyException 
+	 * @throws InvalidCipherTextException 
 	 */
-	public NodeKey getFreshEffectiveNodeKey(ContentName nodeName) throws InvalidKeyException, InvalidCipherTextException, AccessDeniedException, IOException, XMLStreamException, ConfigurationException {
+	public NodeKey getFreshEffectiveNodeKey(ContentName nodeName) 
+			throws AccessDeniedException, InvalidKeyException, ContentDecodingException, 
+					ContentEncodingException, ContentNotReadyException, ContentGoneException, IOException, InvalidCipherTextException {
 		NodeKey nodeKey = findAncestorWithNodeKey(nodeName);
 		if (null == nodeKey) {
 			throw new AccessDeniedException("Cannot retrieve node key for node: " + nodeName + ".");
@@ -904,10 +909,9 @@ public class AccessControlManager {
 	 *    TODO ephemeral node key naming
 	 * @return
 	 * @throws IOException 
-	 * @throws ConfigurationException 
-	 * @throws XMLStreamException 
+	 * @throws ContentDecodingException 
 	 */
-	public boolean nodeKeyIsDirty(ContentName theNodeKeyName) throws IOException, ConfigurationException, XMLStreamException {
+	public boolean nodeKeyIsDirty(ContentName theNodeKeyName) throws ContentDecodingException, IOException {
 
 		// first, is this a node key name?
 		if (!AccessControlProfile.isNodeKeyName(theNodeKeyName)) {
@@ -918,6 +922,7 @@ public class AccessControlManager {
 		KeyDirectory nodeKeyDirectory = null;
 		try {
 			nodeKeyDirectory = new KeyDirectory(this, theNodeKeyName, handle());
+			nodeKeyDirectory.waitForData();
 
 			if (null == nodeKeyDirectory) {
 				throw new IOException("Cannot get node key directory for : " + theNodeKeyName);
@@ -958,11 +963,11 @@ public class AccessControlManager {
 	 * 
 	 * @param dataName
 	 * @return
-	 * @throws IOException
-	 * @throws XMLStreamException
-	 * @throws ConfigurationException
+	 * @throws IOException 
+	 * @throws ContentNotReadyException 
+	 * @throws ContentDecodingException
 	 */
-	public boolean dataKeyIsDirty(ContentName dataName) throws IOException, XMLStreamException, ConfigurationException {
+	public boolean dataKeyIsDirty(ContentName dataName) throws ContentNotReadyException, IOException {
 		// TODO -- do we need to check whether there *is* a key?
 		// The trick: we need the header information in the wrapped key; we don't need to unwrap it.
 		// ephemeral key naming
@@ -978,15 +983,14 @@ public class AccessControlManager {
 	 * @param wrappingKeyName
 	 * @param wrappingKeyIdentifier
 	 * @return
-	 * @throws XMLStreamException
-	 * @throws IOException
-	 * @throws InvalidKeyException
-	 * @throws InvalidCipherTextException
-	 * @throws ConfigurationException
-	 * @throws AccessDeniedException
+	 * @throws IOException 
+	 * @throws ContentDecodingException 
+	 * @throws InvalidCipherTextException 
+	 * @throws InvalidKeyException 
 	 */
 	protected NodeKey getNodeKeyUsingInterposedACL(ContentName dataNodeName,
-			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException, AccessDeniedException {
+			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) 
+			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException {
 		ACLObject nearestACL = findAncestorWithACL(dataNodeName);
 		
 		if (null == nearestACL) {
@@ -1013,13 +1017,15 @@ public class AccessControlManager {
 	 * @param oldEffectiveNodeKey
 	 * @param effectiveACL
 	 * @return
-	 * @throws IOException
-	 * @throws ConfigurationException
-	 * @throws XMLStreamException
-	 * @throws InvalidKeyException if one of the public keys for someone specified on the ACL is invalid.
+	 * @throws IOException 
+	 * @throws ContentGoneException 
+	 * @throws ContentNotReadyException 
+	 * @throws ContentEncodingException 
+	 * @throws InvalidKeyException 
 	 */
 	protected NodeKey generateNewNodeKey(ContentName nodeName, NodeKey oldEffectiveNodeKey, ACL effectiveACL) 
-					throws IOException, ConfigurationException, XMLStreamException, InvalidKeyException {
+			throws InvalidKeyException, ContentEncodingException, ContentNotReadyException, 
+					ContentGoneException, IOException {
 		// Get the name of the key directory; this is unversioned. Make a new version of it.
 		ContentName nodeKeyDirectoryName = VersioningProfile.addVersion(AccessControlProfile.nodeKeyName(nodeName));
 		Log.info("Generating new node key " + nodeKeyDirectoryName);
@@ -1102,7 +1108,22 @@ public class AccessControlManager {
 		return theNodeKey;
 	}
 	
-	public NodeKey getNodeKeyForObject(ContentName nodeName, WrappedKeyObject wko) throws InvalidKeyException, XMLStreamException, InvalidCipherTextException, IOException, ConfigurationException, AccessDeniedException {
+	/**
+	 * 
+	 * @param nodeName
+	 * @param wko
+	 * @return
+	 * @throws ContentNotReadyException
+	 * @throws ContentGoneException
+	 * @throws InvalidKeyException
+	 * @throws ContentEncodingException
+	 * @throws ContentDecodingException
+	 * @throws IOException
+	 * @throws InvalidCipherTextException
+	 */
+	public NodeKey getNodeKeyForObject(ContentName nodeName, WrappedKeyObject wko) 
+			throws ContentNotReadyException, ContentGoneException, InvalidKeyException, ContentEncodingException,
+					ContentDecodingException, IOException, InvalidCipherTextException {
 		
 		// First, we go and look for the node key where the data key suggests
 		// it should be, and attempt to decrypt it from there.
@@ -1141,15 +1162,13 @@ public class AccessControlManager {
 	 * @param dataNodeName
 	 * @return
 	 * @throws IOException 
-	 * @throws XMLStreamException 
-	 * @throws InvalidKeyException 
+	 * @throws ContentDecodingException 
 	 * @throws InvalidCipherTextException 
-	 * @throws ConfigurationException 
-	 * @throws AccessDeniedException 
+	 * @throws InvalidKeyException 
 	 */
-	public byte [] getDataKey(ContentName dataNodeName) throws XMLStreamException, IOException, InvalidKeyException, InvalidCipherTextException, ConfigurationException, AccessDeniedException {
+	public byte [] getDataKey(ContentName dataNodeName) 
+			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException {
 		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), handle());
-		wdko.update();
 		if (null == wdko.wrappedKey()) {
 			Log.warning("Could not retrieve data key for node: " + dataNodeName);
 			return null;
@@ -1168,18 +1187,14 @@ public class AccessControlManager {
 	 * current node key is dirty, this causes a new one to be generated.
 	 * @param dataNodeName
 	 * @param newRandomDataKey
-	 * @throws XMLStreamException 
-	 * @throws InvalidKeyException 
-	 * @throws IllegalBlockSizeException 
-	 * @throws NoSuchPaddingException 
-	 * @throws NoSuchAlgorithmException 
-	 * @throws InvalidKeyException 
-	 * @throws IOException 
-	 * @throws ConfigurationException 
 	 * @throws AccessDeniedException 
+	 * @throws InvalidKeyException 
+	 * @throws ContentEncodingException
+	 * @throws IOException
 	 * @throws InvalidCipherTextException 
 	 */
-	public void storeDataKey(ContentName dataNodeName, Key newRandomDataKey) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public void storeDataKey(ContentName dataNodeName, Key newRandomDataKey) 
+			throws AccessDeniedException, InvalidKeyException, ContentEncodingException, IOException, InvalidCipherTextException {
 		NodeKey effectiveNodeKey = getFreshEffectiveNodeKey(dataNodeName);
 		if (null == effectiveNodeKey) {
 			throw new AccessDeniedException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
@@ -1207,14 +1222,14 @@ public class AccessControlManager {
 	 * 		KeyDerivationFunction.DeriveKeyForObject(randomDataKey, keyLabel, 
 	 * 												 dataNodeName, dataPublisherPublicKeyDigest)
 	 * and then give keyandiv to the segmenter to encrypt the data.
-	 * @throws InvalidKeyException 
-	 * @throws XMLStreamException 
 	 * @throws IOException 
-	 * @throws ConfigurationException 
+	 * @throws ContentEncodingException 
 	 * @throws AccessDeniedException 
+	 * @throws InvalidKeyException 
 	 * @throws InvalidCipherTextException 
 	 **/
-	public Key generateAndStoreDataKey(ContentName dataNodeName) throws InvalidKeyException, XMLStreamException, IOException, ConfigurationException, AccessDeniedException, InvalidCipherTextException {
+	public Key generateAndStoreDataKey(ContentName dataNodeName) 
+			throws InvalidKeyException, AccessDeniedException, ContentEncodingException, IOException, InvalidCipherTextException {
 		// Generate new random data key of appropriate length
 		byte [] dataKeyBytes = new byte[DEFAULT_DATA_KEY_LENGTH];
 		_random.nextBytes(dataKeyBytes);
@@ -1224,18 +1239,16 @@ public class AccessControlManager {
 	}
 	
 	/**
-	 * Actual output functions. Needs to get this into the repo.
+	 * Actual output functions. 
 	 * @param dataNodeName -- the content node for whom this is the data key.
 	 * @param wrappedDataKey
 	 * @throws IOException 
-	 * @throws XMLStreamException 
-	 * @throws ConfigurationException 
+	 * @throws ContentEncodingException 
 	 */
 	private void storeKeyContent(ContentName dataNodeName,
-								 WrappedKey wrappedKey) throws XMLStreamException, IOException, ConfigurationException {
-		// TODO DKS FIX FOR REPO
+								 WrappedKey wrappedKey) throws ContentEncodingException, IOException {
 		WrappedKeyObject wko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), wrappedKey, handle());
-		wko.save();
+		wko.saveToRepository();
 	}
 	
 	/**

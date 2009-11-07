@@ -22,17 +22,15 @@ import java.util.ArrayList;
 import java.util.Random;
 import java.util.SortedSet;
 
-import javax.xml.stream.XMLStreamException;
-
 import junit.framework.Assert;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.io.content.CCNSerializableStringObject;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -273,7 +271,7 @@ public class EnumeratedNameListTestRepo {
 	 * Adds data to the repo for testing
 	 * DKS -- previous version that used repo streams somehow wasn't getting data in.
 	 * */
-	private ContentName addContentToRepo(ContentName name, CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
+	private ContentName addContentToRepo(ContentName name, CCNHandle handle) throws ConfigurationException, IOException {
 		//method to load something to repo for testing
 		// DKS -- don't know why this wasn't working
 		/*
@@ -285,7 +283,7 @@ public class EnumeratedNameListTestRepo {
 		return name;
 		*/
 		
-		CCNStringObject cso = new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), handle);
+		CCNSerializableStringObject cso = new CCNSerializableStringObject(name, ContentName.componentPrintNative(name.lastComponent()), handle);
 		cso.saveToRepository();
 		System.out.println("Saved new object: " + cso.getVersionedName());
 		return cso.getVersionedName();

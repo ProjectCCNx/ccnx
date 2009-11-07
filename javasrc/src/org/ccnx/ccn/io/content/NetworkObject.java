@@ -26,8 +26,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.NullOutputStream;
 
@@ -67,6 +65,18 @@ public abstract class NetworkObject<E> {
 	protected E _data;
 	protected boolean _isDirty = false;
 	protected boolean _isPotentiallyDirty = false;
+	/**
+	 * Is it possible to modify the type of data we contain directly
+	 * from a pointer to the object, or do we have to replace the whole
+	 * thing to change its value? For example, a Java String or BigInteger
+	 * is immutable (modulo reflection-based abstraction violations). A
+	 * complex structure whose fields can be set would be mutable. We want
+	 * to track whether the content of the object has been changed either
+	 * using setData or outside of the object interface; this is an 
+	 * optimization to allow us to avoid the outside-the-object checks
+	 * for immutable objects.
+	 */
+	protected boolean _contentIsMutable = false; 
 	protected byte [] _lastSaved; // save digest of serialized item, so can tell if updated outside
 								  // of setData
 	protected boolean _available = false; // false until first time data is set or updated
@@ -75,18 +85,31 @@ public abstract class NetworkObject<E> {
 	 * Subclasses need to specify the type as an argument as well as a template
 	 * parameter in order to make factory methods work properly.
 	 * @param type Should be same as class template parameter.
+	 * @param contentIsMutable Is the class we are encapsulating mutable (its content can
+	 * 	be modified without replacing the object reference) or immutable (the only
+	 * 	way to change it is to replace it, or here set it with setData). Unfortunately
+	 *  there is no way to determine this via reflection. You could also set this to
+	 *  false if you do not expose the data directly, but merely expose methods to modify
+	 *  its values, and manage _isPotentiallyDirty directly.
 	 */
-	public NetworkObject(Class<E> type) {
+	public NetworkObject(Class<E> type, boolean contentIsMutable) {
 		_type = type;
+		_contentIsMutable = contentIsMutable;
 	}
 	
 	/**
 	 * Specify type as well as initial data.
 	 * @param type Should be same as class template parameter.
+	 * @param contentIsMutable Is the class we are encapsulating mutable (its content can
+	 * 	be modified without replacing the object reference) or immutable (the only
+	 * 	way to change it is to replace it, or here set it with setData). Unfortunately
+	 *  there is no way to determine this via reflection. You could also set this to
+	 *  false if you do not expose the data directly, but merely expose methods to modify
+	 *  its values, and manage _isPotentiallyDirty directly.
 	 * @param data Initial data value.
 	 */
-	public NetworkObject(Class<E> type, E data) {
-		this(type);
+	public NetworkObject(Class<E> type, boolean contentIsMutable, E data) {
+		this(type, contentIsMutable);
 		setData(data); // marks data as available if non-null
 	}
 
@@ -112,10 +135,10 @@ public abstract class NetworkObject<E> {
 	/**
 	 * Read this object's data from the network.
 	 * @param input InputStream holding the object's data.
-	 * @throws IOException if there is an error reading the object.
-	 * @throws XMLStreamException if there is an error decoding the object.
+	 * @throws ContentDecodingException if there is an error decoding the object
+	 * @throws IOException if there is an error reading the object from the network
 	 */
-	public void update(InputStream input) throws IOException, XMLStreamException {
+	public void update(InputStream input) throws ContentDecodingException, IOException {
 
 		E newData = readObjectImpl(input);
 
@@ -190,8 +213,10 @@ public abstract class NetworkObject<E> {
 			throw new ContentNotReadyException("No data yet saved or retrieved!");
 		}
 		// Mark that we've given out access to the internal data, so we know someone might
-		// have changed it.
-		_isPotentiallyDirty = true;
+		// have changed it. If it can't be changed outside this interface, don't
+		// mark it potentially dirty as an optimization.
+		if (_contentIsMutable)
+			_isPotentiallyDirty = true;
 		// return a pointer to the current data. No guarantee that this will continue
 		// to be what we think our data unless caller holds read lock.
 		return _data; 
@@ -200,9 +225,10 @@ public abstract class NetworkObject<E> {
 	/**
 	 * Save the object regardless of whether it has been modified (isDirty()) or not.
 	 * @param output stream to save to
-	 * @throws IOException if there is an error writing the object
+	 * @throws ContentEncodingException if there is an error encoding the object
+	 * @throws IOException if there is an error writing the object to the network
 	 */
-	public synchronized void forceSave(OutputStream output) throws IOException {
+	public synchronized void forceSave(OutputStream output) throws ContentEncodingException, IOException {
 		if (null == _data) {
 			throw new InvalidObjectException("No data to save!");
 		}
@@ -212,9 +238,10 @@ public abstract class NetworkObject<E> {
 	/**
 	 * Save the object if it is dirty (has been changed).
 	 * @param output stream to write to.
-	 * @throws IOException if there is an error writing the object.
+	 * @throws ContentEncodingException if there is an error encoding the object
+	 * @throws IOException if there is an error writing the object to the network.
 	 */
-	public synchronized void save(OutputStream output) throws IOException {
+	public synchronized void save(OutputStream output) throws ContentEncodingException, IOException {
 
 		if (available() && isDirty()) {
 			forceSave(output);
@@ -226,9 +253,10 @@ public abstract class NetworkObject<E> {
 	 * outside of the object's own interface (for example, if the data is accessed
 	 * using data() and then modified).
 	 * @return
-	 * @throws IOException if there is a problem encoding the object.
+	 * @throws ContentEncodingException if there is a problem encoding the content
+	 * @throws IOException if there is a problem writing the object to the stream.
 	 */
-	protected byte [] digestContent() throws IOException {
+	protected byte [] digestContent() throws ContentEncodingException, IOException {
 		try {
 			// Otherwise, might have been written when we weren't looking (someone accessed
 			// data and then changed it).
@@ -241,9 +269,6 @@ public abstract class NetworkObject<E> {
 		} catch (NoSuchAlgorithmException e) {
 			Log.warning("No pre-configured algorithm {0} available -- configuration error!", DEFAULT_CHECKSUM_ALGORITHM);
 			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_CHECKSUM_ALGORITHM + " available -- configuration error!");
-		} catch (XMLStreamException e) {
-			Log.warning("Encoding exception determining whether an object is dirty: {0}", e);
-			throw new IOException("Encoding exception determining whether an object is dirty: " + e);
 		}
 	}
 
@@ -267,15 +292,15 @@ public abstract class NetworkObject<E> {
 			byte [] currentValue = digestContent();
 
 			if (Arrays.equals(currentValue, _lastSaved)) {
-				Log.info("Last saved value for object still current.");
+				Log.finest("Last saved value for object still current.");
 				_isDirty = false;
 			} else {
-				Log.info("Last saved value for object not current -- object changed.");
+				Log.finer("Last saved value for object not current -- object changed.");
 				_isDirty = true;
 			}
 		} else {
 			// We've never set the data, nor given out access to it. It can't be dirty.
-			Log.finer("NetworkObject: data cannot be dirty.");
+			Log.finest("NetworkObject: data cannot be dirty.");
 			_isDirty = false;
 		}
 
@@ -302,9 +327,10 @@ public abstract class NetworkObject<E> {
 	/**
 	 * Save the object and update the internal tracking digest of its last-saved content.
 	 * @param output stream to write to.
-	 * @throws IOException if there is an error writing the object.
+	 * @throws ContentEncodingException if there is an error encoding the object
+	 * @throws IOException if there is an error writing the object to the network
 	 */
-	protected synchronized void internalWriteObject(OutputStream output) throws IOException {
+	protected synchronized void internalWriteObject(OutputStream output) throws ContentEncodingException, IOException {
 		try {
 			DigestOutputStream dos = new DigestOutputStream(output, MessageDigest.getInstance(DEFAULT_CHECKSUM_ALGORITHM));
 			writeObjectImpl(dos);
@@ -315,27 +341,24 @@ public abstract class NetworkObject<E> {
 		} catch (NoSuchAlgorithmException e) {
 			Log.warning("No pre-configured algorithm {0} available -- configuration error!", DEFAULT_CHECKSUM_ALGORITHM);
 			throw new RuntimeException("No pre-configured algorithm " + DEFAULT_CHECKSUM_ALGORITHM + " available -- configuration error!");
-		} catch (XMLStreamException e) {
-			Log.warning("Encoding exception determining whether an object is dirty: {0}", e);
-			// TODO when move to 1.6, use nested exceptions
-			throw new IOException("Encoding exception determining whether an object is dirty: " + e);
 		}
 	}
 	
 	/**
 	 * Subclasses override. This implements the actual object write. No flush or close necessary.
-	 * @param output
-	 * @throws IOException
-	 * @throws XMLStreamException
+	 * @param output the stream to write to
+	 * @throws ContentEncodingException if there is an error encoding the object
+	 * @throws IOException if there is an error writing it to the network
 	 */
-	protected abstract void writeObjectImpl(OutputStream output) throws IOException, XMLStreamException;
+	protected abstract void writeObjectImpl(OutputStream output) throws ContentEncodingException, IOException;
 
 	/**
 	 * Subclasses override. This implements the actual object read from stream, returning
 	 * the new object.
-	 * @throws ClassNotFoundException 
+	 * @throws ContentDecodingException if there is an error decoding the object
+	 * @throws IOException if there is an error actually reading the data 
 	 */
-	protected abstract E readObjectImpl(InputStream input) throws IOException, XMLStreamException;
+	protected abstract E readObjectImpl(InputStream input) throws ContentDecodingException, IOException;
 	
 	@Override
 	public int hashCode() {

@@ -184,14 +184,16 @@ ccnd_internal_client_refresh(struct ccn_schedule *sched,
                int flags)
 {
     struct ccnd_handle *ccnd = clienth;
-    int microsec;
-    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
-        return(0);
-    if (ccnd->internal_client == NULL)
-        return(0);
-    microsec = ccn_process_scheduled_operations(ccnd->internal_client);
-    if (microsec > ev->evint)
-        microsec = ev->evint;
+    int microsec = 0;
+    if ((flags & CCN_SCHEDULE_CANCEL) == 0 &&
+          ccnd->internal_client != NULL &&
+          ccnd->internal_client_refresh == ev) {
+        microsec = ccn_process_scheduled_operations(ccnd->internal_client);
+        if (microsec > ev->evint)
+            microsec = ev->evint;
+    }
+    if (microsec <= 0 && ccnd->internal_client_refresh == ev)
+        ccnd->internal_client_refresh = NULL;
     return(microsec);
 }
 
@@ -260,7 +262,9 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
     struct ccn_charbuf *temp = NULL;
     struct ccn_charbuf *cmd = NULL;
     struct ccn_keystore *keystore = NULL;
+    struct ccn_charbuf *culprit = NULL;
     struct stat statbuf;
+    const char *dir = NULL;
     int res = -1;
     size_t save;
     char *keystore_path = NULL;
@@ -271,18 +275,17 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
     keystore = ccn_keystore_create();
     temp = ccn_charbuf_create();
     cmd = ccn_charbuf_create();
-    ccn_charbuf_putf(temp, CCN_PATH_VAR_TMP "/.ccnx-user%d/", (int)geteuid());
+    dir = getenv("CCND_KEYSTORE_DIRECTORY");
+    if (dir != NULL && dir[0] == '/')
+        ccn_charbuf_putf(temp, "%s/", dir);
+    else
+        ccn_charbuf_putf(temp, CCN_PATH_VAR_TMP "/.ccnx-user%d/", (int)geteuid());
     res = stat(ccn_charbuf_as_string(temp), &statbuf);
     if (res == -1) {
-        if (errno == ENOENT) {
+        if (errno == ENOENT)
             res = mkdir(ccn_charbuf_as_string(temp), 0700);
-            if (res != 0) {
-                perror(ccn_charbuf_as_string(temp));
-                goto Finish;
-            }
-        }
-        else {
-            perror(ccn_charbuf_as_string(temp));
+        if (res != 0) {
+            culprit = temp;
             goto Finish;
         }
     }
@@ -305,7 +308,7 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
                      ccnd->progname, keystore_path);
     res = system(ccn_charbuf_as_string(cmd));
     if (res != 0) {
-        perror(ccn_charbuf_as_string(cmd));
+        culprit = cmd;
         goto Finish;
     }
     res = ccn_keystore_init(keystore, keystore_path, CCND_KEYSTORE_PASS);
@@ -314,6 +317,10 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
         keystore = NULL;
     }
 Finish:
+    if (culprit != NULL) {
+        ccnd_msg(ccnd, "%s: %s:\n", ccn_charbuf_as_string(culprit), strerror(errno));
+        culprit = NULL;
+    }
     if (ccnd->internal_keys != NULL) {
         if (ccn_keystore_public_key_digest_length(ccnd->internal_keys) !=
             sizeof(ccnd->ccnd_id))
@@ -363,8 +370,6 @@ void
 ccnd_internal_client_stop(struct ccnd_handle *ccnd)
 {
     ccn_destroy(&ccnd->internal_client);
-    if (ccnd->internal_client_refresh != NULL) {
-        ccnd->internal_client_refresh->evint = 0;
-        ccnd->internal_client_refresh = NULL;
-    }
+    if (ccnd->internal_client_refresh != NULL)
+        ccn_schedule_cancel(ccnd->sched, ccnd->internal_client_refresh);
 }

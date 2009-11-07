@@ -28,14 +28,14 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 
 /**
@@ -203,7 +203,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 	}
 
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
 		if (decoder.peekStartElement(PUBLISHER_KEY_ELEMENT)) {
@@ -213,13 +213,13 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 				_key = CryptoUtil.getPublicKey(encodedKey);
 			} catch (CertificateEncodingException e) {
 				Log.warning("Cannot parse stored key: error: " + e.getMessage());
-				throw new XMLStreamException("Cannot parse key: ", e);
+				throw new ContentDecodingException("Cannot parse key: ", e);
 			} catch (InvalidKeySpecException e) {
 				Log.warning("Cannot turn stored key " + " into key of appropriate type.");
-				throw new XMLStreamException("Cannot turn stored key " + " into key of appropriate type.");
+				throw new ContentDecodingException("Cannot turn stored key " + " into key of appropriate type.");
 			}
 			if (null == _key) {
-				throw new XMLStreamException("Cannot parse key: ");
+				throw new ContentDecodingException("Cannot parse key: ");
 			}
 		} else if (decoder.peekStartElement(PUBLISHER_CERTIFICATE_ELEMENT)) {
 			try {
@@ -227,10 +227,10 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 				CertificateFactory factory = CertificateFactory.getInstance("X.509");
 				_certificate = (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(encodedCert));
 			} catch (CertificateException e) {
-				throw new XMLStreamException("Cannot decode certificate: " + e.getMessage(), e);
+				throw new ContentDecodingException("Cannot decode certificate: " + e.getMessage(), e);
 			}
 			if (null == _certificate) {
-				throw new XMLStreamException("Cannot parse certificate! ");
+				throw new ContentDecodingException("Cannot parse certificate! ");
 			}
 		} else {
 			_keyName = new KeyName();
@@ -243,7 +243,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
 			encode(baos);
-		} catch (XMLStreamException e) {
+		} catch (ContentEncodingException e) {
 			Log.log(Level.WARNING, "This should not happen: cannot encode KeyLocator to byte array.");
 			Log.warningStackTrace(e);
 			// DKS currently returning invalid byte array...
@@ -252,9 +252,9 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 	}
 
 	@Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
 		if (type() == KeyLocatorType.KEY) {
@@ -264,7 +264,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 				encoder.writeElement(PUBLISHER_CERTIFICATE_ELEMENT, certificate().getEncoded());
 			} catch (CertificateEncodingException e) {
 				Log.warning("CertificateEncodingException attempting to write key locator: " + e.getMessage());
-				throw new XMLStreamException("CertificateEncodingException attempting to write key locator: " + e.getMessage(), e);
+				throw new ContentEncodingException("CertificateEncodingException attempting to write key locator: " + e.getMessage(), e);
 			}
 		} else if (type() == KeyLocatorType.NAME) {
 			name().encode(encoder);

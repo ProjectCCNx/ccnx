@@ -21,8 +21,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InvalidObjectException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
@@ -87,11 +85,12 @@ public class CCNNetworkObjectTestRepo {
 	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
+		Log.info("Tearing down CCNNetworkObjectTestRepo, prefix {0}", testHelper.getClassNamespace());
 	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		System.out.println("Making stuff.");
+		Log.info("Setting up CCNNetworkObjectTestRepo, prefix {0}", testHelper.getClassNamespace());
 		
 		handle = CCNHandle.open();
 		
@@ -132,6 +131,7 @@ public class CCNNetworkObjectTestRepo {
 		for (int i=0; i < NUM_LINKS; ++i) {
 			big.add(lrs[i]);
 		}
+		Log.info("Finihed setting up CCNNetworkObjectTestRepo, prefix {0}", testHelper.getClassNamespace());
 	}
 
 	@Test
@@ -412,27 +412,27 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
 	}
 
-	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws XMLStreamException, IOException {
+	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws IOException {
 		CCNTime oldVersion = ecd.getVersion();
 		ecd.saveToRepository(version, data);
 		Log.info(name + " Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 	
-	public <T> CCNTime saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws XMLStreamException, IOException {
+	public <T> CCNTime saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws IOException {
 		CCNTime oldVersion = ecd.getVersion();
 		ecd.saveToRepositoryAsGone();
 		Log.info("Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 	
-	public CCNTime waitForDataAndLog(String name, CCNNetworkObject<?> ecd) throws XMLStreamException, IOException {
+	public CCNTime waitForDataAndLog(String name, CCNNetworkObject<?> ecd) throws IOException {
 		ecd.waitForData();
 		Log.info("Initial read " + name + ", name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 
-	public CCNTime updateAndLog(String name, CCNNetworkObject<?> ecd, ContentName updateName) throws XMLStreamException, IOException {
+	public CCNTime updateAndLog(String name, CCNNetworkObject<?> ecd, ContentName updateName) throws IOException {
 		if ((null == updateName) ? ecd.update() : ecd.update(updateName, null))
 			Log.info("Updated " + name + ", to name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		else 

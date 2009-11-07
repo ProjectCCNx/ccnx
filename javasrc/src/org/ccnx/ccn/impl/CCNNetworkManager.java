@@ -35,14 +35,13 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import javax.xml.stream.XMLStreamException;
-
-import org.ccnx.ccn.CCNBase;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -117,8 +116,9 @@ public class CCNNetworkManager implements Runnable {
 				heartbeat();
 			}
 
+			long minRefreshTime = PERIOD + ourTime;
 			// Library.finest("Refreshing interests (size " + _myInterests.size() + ")");
-			
+
 			// Re-express interests that need to be re-expressed
 			try {
 				synchronized (_myInterests) {
@@ -134,14 +134,22 @@ public class CCNNetworkManager implements Runnable {
 								write(reg.interest);
 							} catch (NotYetConnectedException nyce) {}
 						}
+						if (minRefreshTime > reg.nextRefresh)
+							minRefreshTime = reg.nextRefresh;
 					}
 				}
-			} catch (XMLStreamException xmlex) {
+			} catch (ContentEncodingException xmlex) {
 				Log.severe("Processing thread failure (Malformed datagram): {0}", xmlex.getMessage()); 
 				Log.warningStackTrace(xmlex);
 			}
 			
-			_periodicTimer.schedule(new PeriodicWriter(), PERIOD);
+			long checkDelay = minRefreshTime - System.currentTimeMillis();
+			if (checkDelay < 0)
+				checkDelay = 0;
+			if (checkDelay > PERIOD)
+				checkDelay = PERIOD;
+			
+			_periodicTimer.schedule(new PeriodicWriter(), checkDelay);
 		}
 	}
 	
@@ -572,7 +580,7 @@ public class CCNNetworkManager implements Runnable {
 	public ContentObject put(ContentObject co) throws IOException, InterruptedException {	
 		try {
 			write(co);
-		} catch (XMLStreamException e) {
+		} catch (ContentEncodingException e) {
 			Log.warning("Exception in lowest-level put for object {1}! {1}", co.name(), e);
 		}
 		return co;
@@ -597,7 +605,7 @@ public class CCNNetworkManager implements Runnable {
 		expressInterest(reg);
 		Log.finest("blocking for {0} on {1}", interest.name(), reg.sema);
 		// Await data to consume the interest
-		if (timeout == CCNBase.NO_TIMEOUT)
+		if (timeout == SystemConfiguration.NO_TIMEOUT)
 			reg.sema.acquire(); // currently no timeouts
 		else
 			reg.sema.tryAcquire(timeout, TimeUnit.MILLISECONDS);
@@ -636,9 +644,9 @@ public class CCNNetworkManager implements Runnable {
 		try {
 			registerInterest(reg);
 			write(reg.interest);
-		} catch (XMLStreamException e) {
+		} catch (ContentEncodingException e) {
 			unregisterInterest(reg);
-			throw new IOException(e.getMessage());
+			throw e;
 		}
 	}
 	
@@ -679,6 +687,7 @@ public class CCNNetworkManager implements Runnable {
 		synchronized (_myFilters) {
 			_myFilters.add(filter, new Filter(this, filter, callbackListener, caller));
 		}
+		// tell ccnd to send me interests that start to filter
 	}
 	
 	/**
@@ -700,18 +709,19 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 	
-	protected void write(ContentObject data) throws XMLStreamException {
+	protected void write(ContentObject data) throws ContentEncodingException {
 		WirePacket packet = new WirePacket(data);
 		writeInner(packet);
 		Log.finest("Wrote content object: {0}", data.name());
 	}
 
-	protected void write(Interest interest) throws XMLStreamException {
+	protected void write(Interest interest) throws ContentEncodingException {
 		WirePacket packet = new WirePacket(interest);
 		writeInner(packet);
 	}
 
-	private void writeInner(WirePacket packet) throws XMLStreamException {
+	// DKS TODO unthrown exception
+	private void writeInner(WirePacket packet) throws ContentEncodingException {
 		try {
 			byte[] bytes = packet.encode();
 			ByteBuffer datagram = ByteBuffer.wrap(bytes);
@@ -872,9 +882,8 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * Internal delivery of interests to pending filter listeners
 	 * @param ireg
-	 * @throws XMLStreamException
 	 */
-	protected void deliverInterest(InterestRegistration ireg) throws XMLStreamException {
+	protected void deliverInterest(InterestRegistration ireg) {
 		// Call any listeners with matching filters
 		synchronized (_myFilters) {
 			for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
@@ -890,9 +899,8 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 *  Deliver data to blocked getters and registered interests
 	 * @param co
-	 * @throws XMLStreamException
 	 */
-	protected void deliverData(ContentObject co) throws XMLStreamException {
+	protected void deliverData(ContentObject co) {
 		synchronized (_myInterests) {
 			for (InterestRegistration ireg : _myInterests.getValues(co)) {
 				if (ireg.add(co)) { // this is a copy of the data

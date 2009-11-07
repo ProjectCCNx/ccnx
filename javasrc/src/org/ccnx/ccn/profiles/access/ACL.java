@@ -25,13 +25,12 @@ import java.util.LinkedList;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
@@ -164,40 +163,38 @@ public class ACL extends Collection {
 		 * @throws ConfigurationException
 		 * @throws IOException
 		 */
-		public ACLObject(ContentName name, ACL data, CCNHandle handle) throws ConfigurationException, IOException {
-			super(ACL.class, name, data, handle);
+		public ACLObject(ContentName name, ACL data, CCNHandle handle) throws IOException {
+			super(ACL.class, true, name, data, handle);
 		}
 
-		/**
-		 * Constructor
-		 * @param name the object name
-		 * @param publisher the publisher
-		 * @param handle the CCN handle
-		 * @throws ConfigurationException
-		 * @throws IOException
-		 * @throws XMLStreamException
-		 */
-		public ACLObject(ContentName name, PublisherPublicKeyDigest publisher,
-				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
-			super(ACL.class, name, publisher, handle);
-		}
-		
 		/**
 		 * Read constructor -- opens existing object.
 		 * @param name the object name
 		 * @param handle the CCN handle
-		 * @throws ConfigurationException
 		 * @throws IOException
-		 * @throws XMLStreamException
+		 * @throws ContentDecodingException
 		 */
-		public ACLObject(ContentName name, 
-				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
-			super(ACL.class, name, (PublisherPublicKeyDigest)null, handle);
+		public ACLObject(ContentName name, CCNHandle handle) 
+					throws ContentDecodingException, IOException {
+			super(ACL.class, true, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
-		public ACLObject(ContentObject firstBlock,
-				CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
-			super(ACL.class, firstBlock, handle);
+		/**
+		 * Read constructor
+		 * @param name the object name
+		 * @param publisher the required publisher
+		 * @param handle the CCN handle
+		 * @throws IOException
+		 * @throws ContentDecodingException
+		 */
+		public ACLObject(ContentName name, PublisherPublicKeyDigest publisher,
+						CCNHandle handle) throws ContentDecodingException, IOException {
+			super(ACL.class, true, name, publisher, handle);
+		}
+		
+		public ACLObject(ContentObject firstBlock, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+			super(ACL.class, true, firstBlock, handle);
 		}
 		
 		public ACL acl() throws ContentNotReadyException, ContentGoneException { return data(); }
@@ -303,61 +300,60 @@ public class ACL extends Collection {
 		//tm records the previous privileges of those principals
 		TreeMap<Link, Integer> tm = new TreeMap<Link, Integer>(_comparator);
 		
-		for (ACLOperation op: ACLUpdates){
+		for (ACLOperation op: ACLUpdates) {
 			int levelOld = LEVEL_NONE;
-			if(_readers.contains(op)){
+			if (_readers.contains(op)) {
 				levelOld = LEVEL_READ;
-			}else if(_writers.contains(op)){
+			} else if (_writers.contains(op)) {
 				levelOld = LEVEL_WRITE;
-			}else if(_managers.contains(op)){
+			} else if (_managers.contains(op)){
 				levelOld = LEVEL_MANAGE;
 			}
 			
-			
-			if(ACLOperation.LABEL_ADD_READER.equals(op.targetLabel())){
-				if(levelOld > LEVEL_NONE){
+			if (ACLOperation.LABEL_ADD_READER.equals(op.targetLabel())) {
+				if (levelOld > LEVEL_NONE){
 					continue;
 				}
 				
 				addReader(op);
 				
-			}else if(ACLOperation.LABEL_ADD_WRITER.equals(op.targetLabel())) {				
-				if(levelOld > LEVEL_WRITE){
+			} else if (ACLOperation.LABEL_ADD_WRITER.equals(op.targetLabel())) {				
+				if (levelOld > LEVEL_WRITE) {
 					continue;
 				}
 				
-				if(levelOld == LEVEL_READ){
+				if (levelOld == LEVEL_READ) {
 					removeLabeledLink(op, LABEL_READER);
 				}
 				
 				addWriter(op);
-			}else if (ACLOperation.LABEL_ADD_MANAGER.equals(op.targetLabel())) {
-				if(levelOld == LEVEL_MANAGE){
+			} else if (ACLOperation.LABEL_ADD_MANAGER.equals(op.targetLabel())) {
+				if (levelOld == LEVEL_MANAGE) {
 					continue;
 				}
 
-				if(levelOld == LEVEL_READ){
+				if (levelOld == LEVEL_READ) {
 					removeLabeledLink(op, LABEL_READER);
-				}else if(levelOld == LEVEL_WRITE){					
+				} else if(levelOld == LEVEL_WRITE) {					
 					removeLabeledLink(op, LABEL_WRITER);
 				}
 				
 				addManager(op);
-			}else if (ACLOperation.LABEL_DEL_READER.equals(op.targetLabel())){
-				if(levelOld != LEVEL_READ){
+			} else if (ACLOperation.LABEL_DEL_READER.equals(op.targetLabel())) {
+				if (levelOld != LEVEL_READ) {
 					Log.info("trying to remove a non-existent reader, ignoring this operation..."); 
 					continue;
 				}
 
 				removeLabeledLink(op, LABEL_READER);	
-			}else if (ACLOperation.LABEL_DEL_WRITER.equals(op.targetLabel())){
-				if(levelOld != LEVEL_WRITE){ 
+			} else if (ACLOperation.LABEL_DEL_WRITER.equals(op.targetLabel())){
+				if (levelOld != LEVEL_WRITE) { 
 					Log.info("trying to remove a non-existent writer, ignoring this operation...");
 					continue;
 				}
 
 				removeLabeledLink(op, LABEL_WRITER);
-			}else if (ACLOperation.LABEL_DEL_MANAGER.equals(op.targetLabel())){
+			} else if (ACLOperation.LABEL_DEL_MANAGER.equals(op.targetLabel())) {
 				if(levelOld != LEVEL_MANAGE){
 					Log.info("trying to remove a non-existent manager, ignoring this operation...");
 					continue;
@@ -366,7 +362,7 @@ public class ACL extends Collection {
 				removeLabeledLink(op, LABEL_MANAGER);
 			}
 			
-			if(!tm.containsKey(op)){
+			if (!tm.containsKey(op)) {
 				tm.put(op, levelOld);
 			}
 		}
@@ -377,15 +373,15 @@ public class ACL extends Collection {
 		LinkedList<Link> newReaders = new LinkedList<Link>();
 		
 		Iterator<Link> it = tm.keySet().iterator();
-		while(it.hasNext()){
+		while (it.hasNext()) {
 			Link p = it.next();
 			int lvOld = tm.get(p);
 			
-			if (_readers.contains(p) || _writers.contains(p) || _managers.contains(p)){
-				if(lvOld == LEVEL_NONE){
+			if (_readers.contains(p) || _writers.contains(p) || _managers.contains(p)) {
+				if (lvOld == LEVEL_NONE) {
 					newReaders.add(p);
 				}				
-			}else if (lvOld > LEVEL_NONE){
+			} else if (lvOld > LEVEL_NONE) {
 				newKeyRequired = true;				
 			}
 		}

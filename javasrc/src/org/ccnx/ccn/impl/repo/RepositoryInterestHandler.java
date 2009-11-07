@@ -20,8 +20,6 @@ package org.ccnx.ccn.impl.repo;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -88,9 +86,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 * Handle start write requests
 	 * 
 	 * @param interest
-	 * @throws XMLStreamException
 	 */
-	private void startReadProcess(Interest interest) throws XMLStreamException {
+	private void startReadProcess(Interest interest) {
 		synchronized (_server.getDataListeners()) {
 			for (RepositoryDataListener listener : _server.getDataListeners()) {
 				if (listener.getOrigInterest().equals(interest)) {
@@ -118,9 +115,21 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
 				Log.info("Processing write request for {0}", listeningName);
 			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null);
-			RepositoryDataListener listener = _server.addListener(interest, readInterest);
+			RepositoryDataListener listener;
+			
 			_server.getWriter().put(interest.name(), _server.getRepository().getRepoInfo(null), null, null,
 					_server.getFreshness());
+			
+			// Check for special case file written to repo
+			ContentName globalPrefix = _server.getRepository().getGlobalPrefix();
+			String localName = _server.getRepository().getLocalName();
+			if (BasicPolicy.getPolicyName(globalPrefix, localName).isPrefixOf(listeningName)) {
+				new RepositoryPolicyHandler(interest, readInterest, _server);
+				return;
+			}
+			
+			listener = new RepositoryDataListener(interest, readInterest, _server);
+			_server.addListener(interest, readInterest, listener);
 			listener.getInterests().add(readInterest, null);
 			_handle.expressInterest(readInterest, listener);
 		} catch (Exception e) {

@@ -97,7 +97,7 @@ public class InterestTable<V> {
 			return s.toString();
 		}
 	};
-	protected Integer _highWater = null;	// For LRU size control - default is none
+	protected Integer _capacity = null;	// For LRU size control - default is none
 
 	protected abstract class Holder<T> implements Entry<T> {
 		protected T value;
@@ -136,21 +136,21 @@ public class InterestTable<V> {
 	}
 	
 	/**
-	 * Set high water mark for LRU size control. Defaults to
+	 * Set capacity for LRU size control. Defaults to
 	 * no size control
 	 * 
-	 * @param highWater
+	 * @param capacity
 	 */
-	public void setHighWater(int highWater) {
-		_highWater = highWater;
+	public void setCapacity(int capacity) {
+		_capacity = capacity;
 	}
 	
 	/**
-	 * Gets the current high water mark for LRU size control
-	 * @return	the high water mark. null if not set
+	 * Gets the current capacity for LRU size control
+	 * @return	the capacity. null if not set
 	 */
-	public Integer getHighWater() {
-		return _highWater;
+	public Integer getCapacity() {
+		return _capacity;
 	}
 	
 	/**
@@ -196,7 +196,7 @@ public class InterestTable<V> {
 			LongestFirstContentName name = new LongestFirstContentName(holder.name());
 			List<Holder<V>> list = _contents.get(name);
 			list.add(holder);
-			if (null != _highWater) {
+			if (null != _capacity) {
 				synchronized (_contents) {
 					_contents.remove(name);
 					_contents.put(name, list);		// Put us last to avoid LRU removal
@@ -211,7 +211,7 @@ public class InterestTable<V> {
 			// XXX - should we care about whether the key has multiple
 			// interests attached?
 			synchronized (_contents) {
-				if (null != _highWater && _contents.size() >= _highWater)
+				if (null != _capacity && _contents.size() >= _capacity)
 					_contents.remove(_contents.firstKey());
 				_contents.put(new LongestFirstContentName(holder.name()), list);
 			}

@@ -27,12 +27,11 @@ import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
@@ -69,7 +68,60 @@ public class SystemConfiguration {
 	/** 
 	 * Tunable timeouts as well as timeout defaults.
 	 */
-	public static long TIMEOUT_FOREVER = 0;
+	
+	/**
+	 * System operation timeout. Very long timeout used to wait for system events
+	 * such as stopping Daemons.
+	 */
+	public final static int SYSTEM_STOP_TIMEOUT = 30000;
+	
+	/**
+	 * Very long timeout for network operations, in msec..
+	 */
+	public final static int MAX_TIMEOUT = 10000;
+	
+	/**
+	 * Extra-long timeout, e.g. to get around reexpression timing issues.
+	 */
+	public final static int EXTRA_LONG_TIMEOUT = 6000;
+	
+	/**
+	 * Longer timeout, for e.g. waiting for a latest version and being sure you
+	 * have anything available locally in msec.
+	 */
+	public final static int LONG_TIMEOUT = 3000;
+	
+	/**
+	 * Medium timeout, used as system default.
+	 */
+	public static final int MEDIUM_TIMEOUT = 1000;
+	
+	/**
+	 * Short timeout; for things you expect to exist or not exist locally.
+	 */
+	public static final int SHORT_TIMEOUT = 300;
+	
+	/**
+	 * Settable system default timeout.
+	 */
+	protected static int _defaultTimeout = EXTRA_LONG_TIMEOUT;
+	
+	/**
+	 * Get system default timeout.
+	 * @return the default timeout.
+	 */
+	public static int getDefaultTimeout() { return _defaultTimeout; }
+	
+	/**
+	 * Set system default timeout.
+	 */
+	public static void setDefaultTimeout(int newTimeout) { _defaultTimeout = newTimeout; }
+	
+	/**
+	 * No timeout. Should be single value used in all places in the code where you
+	 * want to block forever.
+	 */
+	public final static int NO_TIMEOUT = -1;
 	
 	/**
 	 * Can set compile-time default encoding here. Choices are
@@ -185,7 +237,7 @@ public class SystemConfiguration {
 		try {
 			byte [] encoded = data.encode();
 			outputDebugData(name, encoded);
-		} catch (XMLStreamException ex) {
+		} catch (ContentEncodingException ex) {
 			Log.warning("Cannot encode object : " + name + " to output for debug.");
 		}
 	}
@@ -244,7 +296,7 @@ public class SystemConfiguration {
 			Log.log(level, message + " name: {0} timestamp: {1} digest: {2}  tbs: {3}.",
 					co.name(), co.signedInfo().getTimestamp(), CCNDigestHelper.printBytes(coDigest, DEBUG_RADIX),
 					CCNDigestHelper.printBytes(tbsDigest, DEBUG_RADIX));
-		} catch (XMLStreamException xs) {
+		} catch (ContentEncodingException xs) {
 			Log.log(level, "Cannot encode object for logging: {0}.", co.name());
 		}
 		

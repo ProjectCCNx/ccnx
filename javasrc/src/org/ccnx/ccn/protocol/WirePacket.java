@@ -22,14 +22,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 
 public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
@@ -54,7 +54,7 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 		_contents.clear();
 	}
 	
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		boolean done = false;
 		_contents = new ArrayList<GenericXMLEncodable>();
 		
@@ -71,7 +71,7 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 			} else {
 				done = true;
 				if (_contents.size() == 0) {
-					throw new XMLStreamException("Unrecognized packet content");
+					throw new ContentDecodingException("Unrecognized packet content");
 				}
 			}
 		}
@@ -79,9 +79,9 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 	}
 
 	@Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": bad or missing values.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": bad or missing values.");
 		}
 		for (Iterator<GenericXMLEncodable> iterator = _contents.iterator(); iterator.hasNext();) {
 			GenericXMLEncodable item = iterator.next();

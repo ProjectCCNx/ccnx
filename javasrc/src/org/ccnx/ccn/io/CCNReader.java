@@ -70,26 +70,6 @@ public class CCNReader {
 	public ContentObject get(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
 		return _handle.get(name, publisher, timeout);
 	}
-
-	/**
-	 * Return data the specified number of levels below us in the
-	 * hierarchy, with order preference of leftmost.
-	 * 
-	 * Static version for convenience, so caller does not have to create an instance of this class.
-	 * @param handle handle to use for requests
-	 * @param name of content to get
-	 * @param level number of levels below name in the hierarchy content should sit
-	 * @param publisher the desired publisher of this content, or null for any publisher.
-	 * @param timeout timeout for retrieval
-	 * @return matching content, if found
-	 * @throws IOException
-	 */
-	public static ContentObject getLower(CCNHandle handle, ContentName name, int level, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
-		Interest interest = new Interest(name, publisher);
-		interest.maxSuffixComponents(level);
-		interest.minSuffixComponents(level);
-		return handle.get(interest, timeout);
-	}
 	
 	/**
 	 * Return data the specified number of levels below us in the
@@ -104,7 +84,7 @@ public class CCNReader {
 	 * @throws IOException
 	 */
 	public ContentObject getLower(ContentName name, int level, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
-		return getLower(_handle, name, level, publisher, timeout);
+		return _handle.get(Interest.lower(name, level, publisher), timeout);
 	}
 
 	/**
@@ -117,7 +97,7 @@ public class CCNReader {
 	 */
 	public ContentObject getNext(ContentName name, byte omissions[][], long timeout) 
 			throws IOException {
-		return _handle.get(Interest.next(name, omissions, null), timeout);
+		return _handle.get(Interest.next(name, omissions, null, null), timeout);
 	}
 	
 	/**
@@ -248,7 +228,7 @@ public class CCNReader {
 		int count = query.name().count();
 		while (true) {
 			ContentObject co = null;
-			co = _handle.get(query, timeout == CCNBase.NO_TIMEOUT ? 5000 : timeout);
+			co = _handle.get(query, timeout);
 			if (co == null)
 				break;
 			Log.info("enumerate: retrieved " + co.name() + 

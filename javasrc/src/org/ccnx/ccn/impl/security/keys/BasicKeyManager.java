@@ -222,7 +222,7 @@ public class BasicKeyManager extends KeyManager {
 		    _keyLocator = new KeyLocator(keyName, new PublisherID(_defaultKeyID));
 			Log.info("Default key locator for user " + _userName + ": " + _keyLocator);
 
-		    if (null == getPublicKey(_defaultKeyID, _keyLocator, KeyRepository.SHORT_KEY_TIMEOUT)) {
+		    if (null == getPublicKey(_defaultKeyID, _keyLocator, SystemConfiguration.SHORT_TIMEOUT)) {
 		    	boolean resetFlag = false;
 		    	if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 		    		resetFlag = true;
@@ -343,9 +343,14 @@ public class BasicKeyManager extends KeyManager {
 	 * @throws ConfigurationException
 	 */
 	static void generateConfigurationException(String message, Exception e) throws ConfigurationException {
-		Log.warning(message + " " + e.getClass().getName() + ": " + e.getMessage());
-		Log.warningStackTrace(e);
-		throw new ConfigurationException(message, e);
+		if (null == e) {
+			Log.warning("Throwing ConfigurationException: {0}", message);
+			throw new ConfigurationException(message);
+		} else {
+			Log.warning(message + " " + e.getClass().getName() + ": " + e.getMessage());
+			Log.warningStackTrace(e);
+			throw new ConfigurationException(message, e);
+		}
 	}
 
 	/**

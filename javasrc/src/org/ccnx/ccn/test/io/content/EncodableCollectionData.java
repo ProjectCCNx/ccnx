@@ -30,11 +30,11 @@ public class EncodableCollectionData extends EncodableObject<Collection> {
 	private static final long serialVersionUID = 1233491939485391189L;
 
 	public EncodableCollectionData() {
-		super(Collection.class);
+		super(Collection.class, true);
 	}
 	
 	public EncodableCollectionData(Collection collectionData) {
-		super(Collection.class, collectionData);
+		super(Collection.class, true, collectionData);
 	}
 	
 	public Collection collection() throws ContentNotReadyException, ContentGoneException { return data(); }

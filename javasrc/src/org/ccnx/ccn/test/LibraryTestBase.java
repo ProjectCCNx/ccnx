@@ -30,13 +30,11 @@ import java.util.Random;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
-import org.ccnx.ccn.CCNBase;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
@@ -69,20 +67,18 @@ public class LibraryTestBase {
 	protected static ContentName PARENT_NAME = null;
 	
 	protected static final boolean DO_TAP = true;
-	
-	protected static int CONFIRMATION_TIMEOUT = 10;
-	
+		
 	protected HashSet<Integer> _resultSet = new HashSet<Integer>();
 	
-	protected static CCNHandle putLibrary = null;
-	protected static CCNHandle getLibrary = null;
+	protected static CCNHandle putHandle = null;
+	protected static CCNHandle getHandle = null;
 	
 	protected static ArrayList<Integer> usedIds = new ArrayList<Integer>();
 
 	static {
 		try {
-			putLibrary = CCNHandle.open();
-			getLibrary = CCNHandle.open();
+			putHandle = CCNHandle.open();
+			getHandle = CCNHandle.open();
 		} catch (ConfigurationException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -156,13 +152,12 @@ public class LibraryTestBase {
 	 * @param handle
 	 * @return
 	 * @throws InterruptedException
-	 * @throws MalformedContentNameStringException
 	 * @throws IOException
 	 * @throws SignatureException 
 	 * @throws InvalidKeyException 
-	 * @throws XMLStreamException 
+	 * @throws InterruptedException 
 	 */
-	public void getResults(ContentName baseName, int count, CCNHandle handle) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNHandle handle) throws IOException, InvalidKeyException, SignatureException, InterruptedException {
 		Random rand = new Random();
 	//	boolean done = false;
 		System.out.println("getResults: getting children of " + baseName);
@@ -170,7 +165,7 @@ public class LibraryTestBase {
 	//	while (!done) {
 			Thread.sleep(rand.nextInt(50));
 			System.out.println("getResults getting " + baseName + " subitem " + i);
-			ContentObject contents = handle.get(ContentName.fromNative(baseName, Integer.toString(i)), CCNBase.NO_TIMEOUT);
+			ContentObject contents = handle.get(ContentName.fromNative(baseName, Integer.toString(i)), SystemConfiguration.NO_TIMEOUT);
 		
 			try {
 				int val = Integer.parseInt(new String(contents.content()));
@@ -202,10 +197,10 @@ public class LibraryTestBase {
 	 * @throws IOException 
 	 * @throws MalformedContentNameStringException 
 	 * @throws SignatureException 
-	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
-	public void doPuts(ContentName baseName, int count, CCNHandle handle) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
+	public void doPuts(ContentName baseName, int count, CCNHandle handle) 
+			throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, InvalidKeyException {
 
 		CCNWriter writer = new CCNWriter(baseName, handle);
 		Random rand = new Random();

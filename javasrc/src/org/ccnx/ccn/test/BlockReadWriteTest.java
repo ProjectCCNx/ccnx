@@ -25,8 +25,6 @@ import java.security.InvalidKeyException;
 import java.security.SignatureException;
 import java.util.concurrent.Semaphore;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNDescriptor;
@@ -55,7 +53,8 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	}
 
 	@Override
-	public void getResults(ContentName baseName, int count, CCNHandle handle) throws InterruptedException, MalformedContentNameStringException, IOException, InvalidKeyException, SignatureException, XMLStreamException {
+	public void getResults(ContentName baseName, int count, CCNHandle handle) 
+			throws IOException, InvalidKeyException, SignatureException, InterruptedException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
 		CCNDescriptor desc = new CCNDescriptor(thisName, null, handle, false);
@@ -89,11 +88,12 @@ public class BlockReadWriteTest extends BasePutGetTest {
 	 * @throws IOException 
 	 * @throws MalformedContentNameStringException 
 	 * @throws SignatureException 
-	 * @throws XMLStreamException 
 	 * @throws InvalidKeyException 
 	 */
 	@Override
-	public void doPuts(ContentName baseName, int count, CCNHandle handle) throws InterruptedException, SignatureException, MalformedContentNameStringException, IOException, XMLStreamException, InvalidKeyException {
+	public void doPuts(ContentName baseName, int count, CCNHandle handle) 
+		throws InterruptedException, SignatureException, MalformedContentNameStringException, 
+				IOException, InvalidKeyException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		CCNDescriptor desc = new CCNDescriptor(thisName, null, handle, true);
 		desc.setTimeout(5000);

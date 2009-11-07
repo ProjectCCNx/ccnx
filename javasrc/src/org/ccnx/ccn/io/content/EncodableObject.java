@@ -21,8 +21,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 
 
@@ -33,21 +31,21 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
  */
 public class EncodableObject<E extends XMLEncodable> extends NetworkObject<E> {
 		
-	public EncodableObject(Class<E> type) {
-		super(type);
+	public EncodableObject(Class<E> type, boolean contentIsMutable) {
+		super(type, contentIsMutable);
 	}
 	
-	public EncodableObject(Class<E> type, E data) {
-		super(type, data);
+	public EncodableObject(Class<E> type, boolean contentIsMutable, E data) {
+		super(type, contentIsMutable, data);
 	}
 	
-	protected void writeObjectImpl(OutputStream output) throws IOException, XMLStreamException {
+	protected void writeObjectImpl(OutputStream output) throws ContentEncodingException, IOException {
 		_data.encode(output);
 	}
 
-	protected E readObjectImpl(InputStream input) throws IOException, XMLStreamException {
+	protected E readObjectImpl(InputStream input) throws ContentDecodingException, IOException {
 		E newData = factory();
-		newData.decode(input);	
+		newData.decode(input);
 		return newData;
 	}
 }

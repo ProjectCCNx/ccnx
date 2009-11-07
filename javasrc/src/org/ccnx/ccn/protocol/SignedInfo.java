@@ -21,14 +21,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 
 /**
@@ -407,7 +407,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	}
 	
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 		
 		if (decoder.peekStartElement(PublisherPublicKeyDigest.PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT)) {
@@ -423,7 +423,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			byte [] binType = decoder.readBinaryElement(CONTENT_TYPE_ELEMENT);
 			_type = valueToType(binType);
 			if (null == _type) {
-				throw new XMLStreamException("Cannot parse signedInfo type: " + DataUtils.printHexBytes(binType) + " " + binType.length + " bytes.");
+				throw new ContentDecodingException("Cannot parse signedInfo type: " + DataUtils.printHexBytes(binType) + " " + binType.length + " bytes.");
 			}
 		} else {
 			_type = ContentType.DATA; // default
@@ -446,9 +446,9 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	}
 
 	@Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
 		

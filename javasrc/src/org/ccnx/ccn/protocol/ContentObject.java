@@ -29,8 +29,6 @@ import java.security.cert.CertificateEncodingException;
 import java.util.Arrays;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -45,14 +43,14 @@ import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.CCNSignatureHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
- * Utility class for grouping all of the bits associated
- * with a piece of content.
- * @author smetters
- *
+ * Represents a CCNx data packet.
+ * cf. Interest
  */
 public class ContentObject extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentObject> {
 
@@ -96,7 +94,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 				return false;
 			} catch (NoSuchAlgorithmException e) {
 				return false;
-			} catch (XMLStreamException e) {
+			} catch (ContentEncodingException e) {
 				return false;
 			} catch (InterruptedException e) {
 				return false;
@@ -106,8 +104,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 
 	/**
 	 * We copy the content when we get it. The intent is for this object to
-	 * be immutable. Rules for constructor immutability are explained well
-	 * here: 
+	 * be immutable.
 	 * @param digestAlgorithm
 	 * @param name
 	 * @param signedInfo
@@ -232,18 +229,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			byte [] content, PrivateKey signingKey) throws InvalidKeyException, SignatureException {
 		this(name, signedInfo, content, 0, ((null == content) ? 0 : content.length), signingKey);
 	}
-	/**
-	 * DKS - temporary subclass constructor to get around brokenness in current
-	 * header, etc implementation. Remove after those no longer derive from CO.
-	 */
-	protected ContentObject(ContentName name, SignedInfo signedInfo) {
-		_name = name;
-		_signedInfo = signedInfo;
-		// must set content and signature.
-	}
-
-	/**
-	 * Used not only for testing, but for building small content objects deep in the
+	
+	/*
+	 * Used for testing and  for building small content objects deep in the
 	 * library code for specialized applications.
 	 */
 	public static ContentObject buildContentObject(ContentName name, ContentType type, byte[] contents, 
@@ -305,12 +293,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	/**
 	 * DKS -- return these as final for now; stopgap till refactor that makes
 	 * internal version final.
-	 * @return Name of the content object - without the digest component.
+	 * @return Name of the content object - without the final implicit digest component.
 	 */
 	public final ContentName name() { return _name; }
 
 	/**
-	 * @return Name of the content object, complete with digest.
+	 * @return Name of the content object, complete with the final implicit digest component.
 	 */
 	public ContentName fullName() {
 		return new ContentName(_name, contentDigest());
@@ -328,13 +316,17 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	
 	/**
 	 * Avoid problems where content().length might be expensive.
-	 * @return
+	 * @return content length in bytes
 	 */
 	public final int contentLength() { return ((null == _content) ? 0 : _content.length); }
 
 	public final Signature signature() { return _signature; }
 
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	/**
+	 * Used by NetworkObject to decode the object from a network stream.
+	 * @see org.ccnx.ccn.impl.encoding.XMLEncodable
+	 */
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
 		_signature = new Signature();
@@ -351,9 +343,13 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		decoder.readEndElement();
 	}
 
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	/**
+	 * Used by NetworkObject to encode the object to a network stream.
+	 * @see org.ccnx.ccn.impl.encoding.XMLEncodable
+	 */
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
 
@@ -487,16 +483,19 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 				SystemConfiguration.outputDebugData(name, toBeSigned);
 			}
 	
-		} catch (XMLStreamException e) {
+		} catch (ContentEncodingException e) {
 			Log.logException("Exception encoding internally-generated XML name!", e);
 			throw new SignatureException(e);
 		}
 		return new Signature(digestAlgorithm, null, signature);
 	}
 
+	/**
+	 * @see ContentObject#verify(ContentObject, PublicKey)
+	 */
 	public boolean verify(PublicKey publicKey) 
-	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
-	XMLStreamException, InterruptedException {
+		throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
+				ContentEncodingException, InterruptedException {
 		return verify(this, publicKey);
 	}
 
@@ -520,13 +519,13 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 *   pass it in. Otherwise, the key locator in the object
 	 *   will be used to find the key.
 	 * @throws SignatureException 
-	 * @throws XMLStreamException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 * @throws InterruptedException 
 	 */
 	public static boolean verify(ContentObject object,
-			PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
+			PublicKey publicKey) throws SignatureException, InvalidKeyException, 
+					NoSuchAlgorithmException, ContentEncodingException, InterruptedException {
 
 		// Start with the cheap part. Derive the content proxy that was signed. This is
 		// either the root of the MerkleHash tree, the content itself, or the digest of
@@ -579,8 +578,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * 	be the content itself, a digest of the content, or the root of a Merkle hash tree.
 	 * @return
 	 * @throws SignatureException 
-	 * @throws XMLStreamException 
 	 * @throws NoSuchAlgorithmException 
+	 * @throws ContentEncodingException
 	 * @throws InvalidKeyException 
 	 * @throws InterruptedException 
 	 */
@@ -589,7 +588,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			SignedInfo signedInfo,
 			byte [] content,
 			Signature signature,
-			PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
+			PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, 
+								ContentEncodingException, InterruptedException {
 
 		if (null == publicKey) {
 			// Get a copy of the public key.
@@ -665,7 +665,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		return result;
 	}
 
-	public byte [] computeProxy() throws CertificateEncodingException, XMLStreamException {
+	public byte [] computeProxy() throws CertificateEncodingException, ContentEncodingException {
 		// Given a witness and an object, compute the proxy.
 		if (null == content())
 			return null;
@@ -680,7 +680,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 
 	public static byte [] prepareContent(ContentName name, 
 			SignedInfo signedInfo, 
-			byte [] content) throws XMLStreamException {
+			byte [] content) throws ContentEncodingException {
 		return prepareContent(name, signedInfo, content, 0, 
 				((null == content) ? 0 : content.length));
 	}
@@ -693,10 +693,10 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 */
 	public static byte [] prepareContent(ContentName name, 
 			SignedInfo signedInfo, 
-			byte [] content, int offset, int length) throws XMLStreamException {
+			byte [] content, int offset, int length) throws ContentEncodingException {
 		if ((null == name) || (null == signedInfo)) {
 			Log.info("Name and signedInfo must not be null.");
-			throw new XMLStreamException("prepareContent: name, signedInfo must not be null.");
+			throw new ContentEncodingException("prepareContent: name, signedInfo must not be null.");
 		}
 
 		// Do setup. Binary codec doesn't write a preamble or anything.
@@ -736,7 +736,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		return name().compareTo(o.name());
 	}
 
-	/**
+	/*
 	 * Type-checkers for built-in types.
 	 */
 	public boolean isType(ContentType type) {

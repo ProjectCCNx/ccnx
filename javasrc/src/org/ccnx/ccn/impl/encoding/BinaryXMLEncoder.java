@@ -19,16 +19,15 @@ package org.ccnx.ccn.impl.encoding;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.sql.Timestamp;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Stack;
 import java.util.TreeMap;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 
 
@@ -62,72 +61,72 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 			_dictionary.push(dictionary);
 	}
 	
-	public void beginEncoding(OutputStream ostream) throws XMLStreamException {
+	public void beginEncoding(OutputStream ostream) throws ContentEncodingException {
 		if (null == ostream)
 			throw new IllegalArgumentException("BinaryXMLEncoder: output stream cannot be null!");
 		_ostream = ostream;		
 	}
 	
-	public void endEncoding() throws XMLStreamException {
+	public void endEncoding() throws ContentEncodingException {
 		try {
 			_ostream.flush();
 		} catch (IOException e) {
-			throw new XMLStreamException(e.getMessage(), e);
+			throw new ContentEncodingException(e.getMessage(), e);
 		}
 	}
 
 	public void writeElement(String tag, String utf8Content)
-			throws XMLStreamException {
+			throws ContentEncodingException {
 		writeElement(tag, utf8Content, null);
 	}
 
 	public void writeElement(String tag, String utf8Content,
 			TreeMap<String, String> attributes)
-			throws XMLStreamException {
+			throws ContentEncodingException {
 		try {
 			writeStartElement(tag, attributes);
 			// Will omit if 0-length
 			BinaryXMLCodec.encodeUString(_ostream, utf8Content);
 			writeEndElement();
 		} catch (IOException e) {
-			throw new XMLStreamException(e.getMessage(), e);
+			throw new ContentEncodingException(e.getMessage(), e);
 		}
 	}
 
 	public void writeElement(String tag, byte[] binaryContent)
-			throws XMLStreamException {
+			throws ContentEncodingException {
 		writeElement(tag, binaryContent, null);
 	}
 
 	public void writeElement(String tag, byte[] binaryContent, int offset, int length)
-			throws XMLStreamException {
+			throws ContentEncodingException {
 		writeElement(tag, binaryContent, offset, length, null);
 	}
 
 	public void writeElement(String tag, byte[] binaryContent,
 			TreeMap<String, String> attributes)
-			throws XMLStreamException {
+			throws ContentEncodingException {
 		try {
 			writeStartElement(tag, attributes);
 			// Will omit if 0-length
 			BinaryXMLCodec.encodeBlob(_ostream, binaryContent);
 			writeEndElement();
 		} catch (IOException e) {
-			throw new XMLStreamException(e.getMessage(), e);
+			throw new ContentEncodingException(e.getMessage(), e);
 		}
 	}
 
 	public void writeElement(String tag, byte[] binaryContent,
 			int offset, int length,
 			TreeMap<String, String> attributes)
-			throws XMLStreamException {
+			throws ContentEncodingException {
 		try {
 			writeStartElement(tag, attributes);
 			// Will omit if 0-length
 			BinaryXMLCodec.encodeBlob(_ostream, binaryContent, offset, length);
 			writeEndElement();
 		} catch (IOException e) {
-			throw new XMLStreamException(e.getMessage(), e);
+			throw new ContentEncodingException(e.getMessage(), e);
 		}
 	}
 
@@ -135,19 +134,19 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	 * Compact binary encoding of time, same as used for versions.
 	 * @see VersioningProfile
 	 */
-	public void writeDateTime(String tag, CCNTime dateTime) throws XMLStreamException {
+	public void writeDateTime(String tag, CCNTime dateTime) throws ContentEncodingException {
 		writeElement(tag, dateTime.toBinaryTime());
 	}
 
-	public void writeDateTime(String tag, Timestamp dateTime) throws XMLStreamException {
+	public void writeDateTime(String tag, Timestamp dateTime) throws ContentEncodingException {
 		writeDateTime(tag, new CCNTime(dateTime));
 	}
 
-	public void writeStartElement(String tag) throws XMLStreamException {
+	public void writeStartElement(String tag) throws ContentEncodingException {
 		writeStartElement(tag, null);
 	}
 	
-	public void writeStartElement(String tag, TreeMap<String,String> attributes) throws XMLStreamException {
+	public void writeStartElement(String tag, TreeMap<String,String> attributes) throws ContentEncodingException {
 		try {
 			long dictionaryVal = _dictionary.peek().encodeTag(tag);
 			
@@ -189,19 +188,16 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 				
 			}
 			
-		} catch (UnsupportedEncodingException e) {
-			Log.severe("We don't understand UTF-8! Giving up!");
-			throw new RuntimeException("Do not know UTF-8 charset! Significant configuration error!");
 		} catch (IOException e) {
-			throw new XMLStreamException(e.getMessage(),e);
+			throw new ContentEncodingException(e.getMessage(),e);
 		}
 	}
 	
-	public void writeEndElement() throws XMLStreamException {
+	public void writeEndElement() throws ContentEncodingException {
 		try {
 			_ostream.write(BinaryXMLCodec.XML_CLOSE);
 		} catch (IOException e) {
-			throw new XMLStreamException(e.getMessage(),e);
+			throw new ContentEncodingException(e.getMessage(),e);
 		}
 	}
 

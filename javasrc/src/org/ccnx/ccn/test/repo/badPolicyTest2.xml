@@ -14,8 +14,8 @@
   Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
   Boston, MA 02110-1301, USA.
 -->
-<policy>
-	<version id="foobar"/>
-	<localname> TestRepository </localname>
-	<namespace> /testNameSpace </namespace>
-</policy>
+<Policy>
+	<PolicyVersion> foobar </PolicyVersion>
+	<LocalName> TestRepository </LocalName>
+	<Namespace> /testNameSpace </Namespace>
+</Policy>

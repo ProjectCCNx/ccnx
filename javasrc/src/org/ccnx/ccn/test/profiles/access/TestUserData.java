@@ -153,7 +153,7 @@ public class TestUserData {
 	}
 	
 	public void saveUserPK2Repo(ContentName userNamespace) throws IOException{
-		for(String friendlyName: _userFriendlyNames.keySet()) {
+		for (String friendlyName: _userFriendlyNames.keySet()) {
 			ContentName keyStoreName = _userFriendlyNames.get(friendlyName);
 			KeyManager userKM = _userData.get(keyStoreName);
 			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);

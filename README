@@ -38,7 +38,7 @@ This file provides introductory information in the following sections:
 1. Package contents
 ==================================================
 
-This distribution includes broadly the following things:
+This distribution includes the following things:
 
 A) Preliminary specifications of CCNx protocol, application protocols
    and conventions.
@@ -96,6 +96,8 @@ apps - experimental/sample apps tree
 apps/ccnChat - simple text chat sample in Java
 apps/vlc - vlc plugin for media transport experiments
 apps/wireshark - wireshark plugin dissector for decoding CCNx packets
+experiments/multicast - scripts for running multi-machine experiments in content
+       distribution performance over local multicast group.
 
 After building, the following notable directories will appear:
 

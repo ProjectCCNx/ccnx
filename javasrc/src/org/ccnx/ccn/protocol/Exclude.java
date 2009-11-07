@@ -21,26 +21,29 @@ import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 /**
- * The exclude filters are used with Interest matching to exclude content with components
- * which match the filters 1 level below the prefix length of the interest.
+ * Exclude filters are used during Interest matching to exclude content.
+ * The filter works on the name component after the last one specified in the Interest.
  * 
- * Filters contain at least one element. The elements consist of either a component name,
- * a bloom filter or the 'any' element.
+ * Exclude filters contain at least one element. The elements are either a name component,
+ * a bloom filter or the 'any' element. This allows the specification of individual component values to be
+ * excluded, as well as arbitary ranges of component values and a compact form for long lists of
+ * component values (bloom filters).
  * 
  * The order of elements within an exclude filter must follow 2 rules:
- * 1. Within an exclude filter all component elements must be in ascending order wherever they occur
+ * 1. Within an exclude filter all name component elements must be in ascending order wherever they occur
  * and there should be no duplicates.
  * 2. An any element or a bloom filter element must not be followed by an any element or bloom filter.
- * I.E. Any elements or bloom filters must be separated by at least one component element.
+ * @see Filler
+ * I.E. Any elements or bloom filters must be separated by at least one name component element.
  */
 public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 		Comparable<Exclude> {
@@ -51,11 +54,19 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	
 	/**
 	 * Object to contain elements used in an exclude filter. These elements are either
-	 * components, or 'filler' elements - either Any or a BloomFilter.
+	 * name components, or 'filler' elements - either Any or a BloomFilter.
 	 */
 	public static abstract class Element extends GenericXMLEncodable implements XMLEncodable {
 	}
 	
+	/**
+	 * A filler element occurs in a Exclude filter between 2 name components which may be
+	 * an implied name component if the filler element is the first or last element in the Exclude filter.
+	 * If a filler element is the first element in an Exclude filter there is an implied name component
+	 * before it that matches the first possible name component (in name component ordering). Equally
+	 * If the last element in an Exclude filter the implied name component after it is the last possible
+	 * name component (in name component ordering).
+	 */
 	public static abstract class Filler extends Element {
 		public abstract boolean match(byte [] component);
 	}
@@ -163,7 +174,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	/**
 	 * Return a new Exclude filter that is a copy of this one with 
 	 * the supplied omissions added.
-	 * @param omissions
+	 * @param omissions name components to be excluded.
 	 * @return new Exclude filter object or null in case of error
 	 */
 	public void add(byte omissions[][] ) {
@@ -226,7 +237,8 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	
 	/**
 	 * Take an existing Exclude filter and additionally exclude all components up to and including the
-	 * component passed in. Useful for updating filters during incremental searches.
+	 * component passed in. Useful for updating filters during incremental searches. E.G. for version
+	 * number components.
 	 * @param component if null then the Exclude filter is left unchanged.
 	 */
 	public void excludeUpto(byte [] component) {
@@ -286,7 +298,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 		}
 	}
 
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 		
 		synchronized (_values) {
@@ -302,9 +314,9 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 		}
 	}
 
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		// if everything is null, output nothing
 		if (empty())
@@ -362,8 +374,8 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	}
 
 	/**
-	 * Gets the number of values in the Exclude
-	 * @return number of values
+	 * Gets the number of elements in the Exclude filter
+	 * @return number of elements
 	 */
 	public int size() {
 		synchronized (_values) {

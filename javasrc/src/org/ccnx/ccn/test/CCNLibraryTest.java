@@ -18,7 +18,6 @@
 package org.ccnx.ccn.test;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -29,19 +28,18 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
 
-import javax.xml.stream.XMLStreamException;
-
 import junit.framework.Assert;
 
 import org.ccnx.ccn.BasicInterestListener;
 import org.ccnx.ccn.CCNBase;
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.CCNWriter;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -81,12 +79,12 @@ public class CCNLibraryTest extends LibraryTestBase {
 	
 	@Test
 	public void testEnumerate() {
-		Assert.assertNotNull(putLibrary);
-		Assert.assertNotNull(getLibrary);
+		Assert.assertNotNull(putHandle);
+		Assert.assertNotNull(getHandle);
 
 		try {
 			
-			CCNWriter writer = new CCNWriter("/CPOF", putLibrary);
+			CCNWriter writer = new CCNWriter("/CPOF", putHandle);
 			ArrayList<NameSeen> testNames = new ArrayList<NameSeen>(3);
 			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/foo")));
 			testNames.add(new NameSeen(ContentName.fromNative("/CPOF/bar/lid")));
@@ -96,9 +94,9 @@ public class CCNLibraryTest extends LibraryTestBase {
 				writer.put(testNames.get(i).name, Integer.toString(i).getBytes());
 			}
 			
-			CCNReader reader = new CCNReader(getLibrary);
+			CCNReader reader = new CCNReader(getHandle);
 			ArrayList<ContentObject> availableNames =
-				reader.enumerate(new Interest("/CPOF"), CCNHandle.NO_TIMEOUT);
+				reader.enumerate(new Interest("/CPOF"), SystemConfiguration.NO_TIMEOUT);
 
 			Iterator<ContentObject> nameIt = availableNames.iterator();
 
@@ -107,7 +105,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 				// Just get by name, to test equivalent to current
 				// ONC interface.
-				ContentObject theObject = getLibrary.get(theName.name(), 1000);
+				ContentObject theObject = getHandle.get(theName.name(), 1000);
 
 				if (null == theObject) {
 					System.out.println("Missing content: enumerated name: " + theName.name() + " not gettable.");
@@ -136,19 +134,15 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 	@Test
 	public void testPut() {
-		Assert.assertNotNull(putLibrary);
-		Assert.assertNotNull(getLibrary);
+		Assert.assertNotNull(putHandle);
+		Assert.assertNotNull(getHandle);
 
 		ContentName name = null;
 		byte[] content = null;
 //		SignedInfo.ContentType type = SignedInfo.ContentType.LEAF;
 		PublisherPublicKeyDigest publisher = null;
 
-		try {
-			content = contentString.getBytes("UTF-8");	
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
+		content = DataUtils.getBytesFromUTF8String(contentString);
 
 		try {
 			name = ContentName.fromNative("/test/briggs/foo.txt");
@@ -157,7 +151,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			e.printStackTrace();
 		}
 		try {
-			CCNWriter segmenter = new CCNWriter(name, putLibrary);
+			CCNWriter segmenter = new CCNWriter(name, putHandle);
 			ContentName result = segmenter.put(name, content, publisher);
 			System.out.println("Resulting ContentName: " + result);
 		} catch (SignatureException e) {
@@ -177,7 +171,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		try {
 			ContentName keyName = ContentName.fromNative(key);
-			CCNWriter segmenter = new CCNWriter(keyName, putLibrary);
+			CCNWriter segmenter = new CCNWriter(keyName, putHandle);
 			revision1 = segmenter.newVersion(keyName, data1);
 			revision2 = segmenter.newVersion(keyName, data2);
 			long version1 = VersioningProfile.getLastVersionAsLong(revision1);
@@ -218,7 +212,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		for (int i=0; i < testCount; ++i) {
 			data[i][0] = (byte)i;
 		}
-		CCNFlowControl f = new CCNFlowControl(base, putLibrary);
+		CCNFlowControl f = new CCNFlowControl(base, putHandle);
 		ContentObject [] cos = new ContentObject[testCount];
 		cos[0] = ContentObject.buildContentObject(base, data[0]);
 		for (int i=1; i < testCount; ++i) {
@@ -230,7 +224,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 		f.put(cos[1]);
 		// java lacks nested functions, so use a class here...
 		class t {
-			void check(ContentObject o, int i) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
+			void check(ContentObject o, int i) throws InvalidKeyException, ContentEncodingException,
+						SignatureException, NoSuchAlgorithmException, InterruptedException {
 				System.out.println("Got content: " + o.name());
 				System.out.println("Original value: " + i + " returned value: " + Byte.toString(o.content()[0]));
 				Assert.assertTrue(o.verify(null));
@@ -239,25 +234,27 @@ public class CCNLibraryTest extends LibraryTestBase {
 			/**
 			 * Make sure the data is written to ccnd by reading it
 			 * @throws InterruptedException 
-			 * @throws XMLStreamException 
 			 * @throws NoSuchAlgorithmException 
 			 * @throws SignatureException 
 			 * @throws InvalidKeyException 
 			 */
-			void readAndCheck(ContentName name, int index) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, XMLStreamException, InterruptedException {
+			void readAndCheck(ContentName name, int index) 
+					throws ContentEncodingException,
+						IOException, InvalidKeyException, 
+						SignatureException, NoSuchAlgorithmException, InterruptedException {
 				System.out.println("Getting content: " + name);
-				check(getLibrary.get(name, 2000), index);
+				check(getHandle.get(name, 2000), index);
 			}
 		} t test = new t();
 		test.readAndCheck(base, 0);
 		test.readAndCheck(cos[1].name(), 1);
-		ContentVerifier putVerifier = new ContentObject.SimpleVerifier(putLibrary.getDefaultPublisher());
-		test.check(VersioningProfile.getLatestVersion(base, putLibrary.getDefaultPublisher(), 2000, putVerifier, getLibrary), 1);
+		ContentVerifier putVerifier = new ContentObject.SimpleVerifier(putHandle.getDefaultPublisher());
+		test.check(VersioningProfile.getLatestVersion(base, putHandle.getDefaultPublisher(), 2000, putVerifier, getHandle), 1);
 		// Beef this up a bit...
 		for (int i=2; i < testCount; ++i) {
 			f.put(cos[i]);
 			System.out.println("Wrote content: " + cos[i].name());
-			test.check(VersioningProfile.getLatestVersion(cos[i-1].name(), putLibrary.getDefaultPublisher(), 2000, putVerifier, getLibrary), i);
+			test.check(VersioningProfile.getLatestVersion(cos[i-1].name(), putHandle.getDefaultPublisher(), 2000, putVerifier, getHandle), i);
 		}
 	}
 
@@ -267,10 +264,10 @@ public class CCNLibraryTest extends LibraryTestBase {
 		CCNTime time = CCNTime.now();
 		try {
 			ContentName keyName = ContentName.fromNative(key);
-			CCNWriter writer = new CCNWriter(keyName, putLibrary);
+			CCNWriter writer = new CCNWriter(keyName, putHandle);
 			ContentName name = writer.put(keyName, BigInteger.valueOf(time.getTime()).toByteArray());
 			System.out.println("Put under name: " + name);
-			ContentObject result = getLibrary.get(name, CCNBase.NO_TIMEOUT);
+			ContentObject result = getHandle.get(name, SystemConfiguration.NO_TIMEOUT);
 
 			System.out.println("Querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -280,7 +277,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 				System.out.println("Final name: " + name);
 				//Assert.fail("Didn't get back content we just put!");
 
-				result = getLibrary.get(name, CCNBase.NO_TIMEOUT);
+				result = getHandle.get(name, SystemConfiguration.NO_TIMEOUT);
 
 				System.out.println("Recursive querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
@@ -296,7 +293,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 						time.equals(new Timestamp(new BigInteger(1, content).longValue())));
 			}
 
-			result = getLibrary.get(keyName, CCNBase.NO_TIMEOUT);
+			result = getHandle.get(keyName, SystemConfiguration.NO_TIMEOUT);
 
 			System.out.println("Querying for inserted name, Got back: " 
 							+ (result == null ? "0"  : "1") + " results.");
@@ -329,14 +326,14 @@ public class CCNLibraryTest extends LibraryTestBase {
 			byte [] content1,
 			byte [] content2) throws Exception {
 
-		CCNWriter writer = new CCNWriter(docName, putLibrary);
+		CCNWriter writer = new CCNWriter(docName, putHandle);
 		ContentName version1 = writer.newVersion(docName, content1);
 		System.out.println("Inserted first version as: " + version1);
 		Assert.assertNotNull("New version is null!", version1);
 
-		ContentVerifier putVerifier = new ContentObject.SimpleVerifier(putLibrary.getDefaultPublisher());
+		ContentVerifier putVerifier = new ContentObject.SimpleVerifier(putHandle.getDefaultPublisher());
 		ContentObject latestVersion =
-			VersioningProfile.getLatestVersion(docName, null, CCNHandle.NO_TIMEOUT, putVerifier, getLibrary);
+			VersioningProfile.getLatestVersion(docName, null, SystemConfiguration.NO_TIMEOUT, putVerifier, getHandle);
 		Assert.assertTrue(latestVersion.verify(null));
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
 		System.out.println("Latest version name: " + latestVersion.name());
@@ -348,7 +345,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		System.out.println("Inserted second version as: " + version2);
 
 		ContentObject newLatestVersion = 
-			VersioningProfile.getLatestVersion(docName, null, CCNHandle.NO_TIMEOUT, putVerifier, getLibrary);
+			VersioningProfile.getLatestVersion(docName, null, SystemConfiguration.NO_TIMEOUT, putVerifier, getHandle);
 		Assert.assertTrue(newLatestVersion.verify(null));
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
 		System.out.println("Latest version name: " + newLatestVersion.name());
@@ -362,7 +359,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 	public void testNotFound() throws Exception {
 		try {
 			String key = "/some_strange_key_we_should_never_find";
-			ContentObject result = getLibrary.get(ContentName.fromNative(key), 1000);
+			ContentObject result = getHandle.get(ContentName.fromNative(key), 1000);
 			Assert.assertTrue("found something when there shouldn't have been anything", result == null);
 		} catch (Exception e) {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
@@ -436,10 +433,10 @@ public class CCNLibraryTest extends LibraryTestBase {
 		byte[] data2 = "data2".getBytes();
 
 		try {
-			CCNWriter writer = new CCNWriter(key, putLibrary);
+			CCNWriter writer = new CCNWriter(key, putHandle);
 			Interest ik = new Interest(key);
-			TestListener tl = new TestListener(getLibrary, ik, mainThread);
-			getLibrary.expressInterest(ik, 
+			TestListener tl = new TestListener(getHandle, ik, mainThread);
+			getHandle.expressInterest(ik, 
 					tl);
 			writer.put(ContentName.fromNative(key), data1);
 			// wait a little bit before we move on...
@@ -456,7 +453,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			} catch (InterruptedException e) {
 			}
 
-			getLibrary.cancelInterest(ik, tl);
+			getHandle.cancelInterest(ik, tl);
 
 		} catch (Exception e) {
 			System.out.println("Exception in testing interests: " + e.getClass().getName() + ": " + e.getMessage());

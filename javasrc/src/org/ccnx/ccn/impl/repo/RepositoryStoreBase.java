@@ -20,17 +20,14 @@ package org.ccnx.ccn.impl.repo;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -44,37 +41,6 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	
 	protected Policy _policy = null;
 	protected RepositoryInfo _info = null;
-
-	/**
-	 * Decide whether incoming data is a request to update the repository policy and attempt to
-	 * update the policy if so. This is done by simply comparing the prefix of the name to the prefix
-	 * expected for a policy file.
-	 */
-	public boolean checkPolicyUpdate(ContentObject co)
-			throws RepositoryException {
-		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
-			Log.info("Got potential policy update: {0}, expected prefix {1}.", co.name(), _info.getPolicyName());
-		if (_info.getPolicyName().isPrefixOf(co.name())) {
-			ByteArrayInputStream bais = new ByteArrayInputStream(co.content());
-			try {
-				if (_policy.update(bais, true)) {
-					ContentName policyName = VersioningProfile.addVersion(
-							ContentName.fromNative(REPO_NAMESPACE + "/" + _info.getLocalName() + "/" + REPO_POLICY));
-					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
-						Log.info("REPO: got policy update, global name {0} local name {1}, saving to {2}", _policy.getGlobalPrefix(), _policy.getLocalName(), policyName);
-					ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());
-	   				saveContent(policyCo);
-	   				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
-	   					Log.info("REPO: Saved policy to repository: {0}", policyCo.name());
-	   				return true;
-				}
-			} catch (Exception e) {
-				Log.logStackTrace(Level.WARNING, e);
-				e.printStackTrace();
-			} 
-		}
-		return false;
-	}
 
 	/**
 	 * Handle diagnostic requests
@@ -133,7 +99,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * Initialize a repository
 	 */
 	public abstract void initialize(CCNHandle handle, String repositoryRoot,
-			File policyFile, String localName, String globalPrefix)
+			File policyFile, String localName, String globalPrefix, String nameSpace)
 			throws RepositoryException;
 	
 	/**
@@ -141,20 +107,38 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * This method is intended to be called at the beginning of a subclass initialize()
 	 * method to handle the generic policy setup, after which the subclass initialize() 
 	 * should adjust policy (including calling readPolicy) as appropriate.
+	 * If both "policy file" and "initial namespace are non-null" the policy file takes precedence
 	 * @param policyFile policy file
+	 * @param initial namespace
 	 * @throws RepositoryException
+	 * @throws MalformedContentNameStringException 
 	 */
-	public void startInitPolicy(File policyFile) throws RepositoryException {
+	public PolicyXML startInitPolicy(File policyFile, String nameSpace) throws RepositoryException {
+		PolicyXML pxml = null;
+		boolean policySet = false;
 		_policy = new BasicPolicy(null);
 		_policy.setVersion(getVersion());
 
 		if (null != policyFile) {
 			try {
-				_policy.update(new FileInputStream(policyFile), false);
+				pxml = _policy.updateFromInputStream(new FileInputStream(policyFile));
+				policySet = true;
 			} catch (Exception e) {
 				throw new InvalidParameterException(e.getMessage());
 			}
 		}
+		
+		// Try setting an initial namespace from the namespace parameter
+		if (!policySet && null != nameSpace) {
+			ArrayList<ContentName> nameSpaceAL = new ArrayList<ContentName>(1);
+			try {
+				nameSpaceAL.add(ContentName.fromNative(nameSpace));
+			} catch (MalformedContentNameStringException e) {
+				Log.warning("Invalid namespace specified: {0}", nameSpace);
+			}
+			_policy.setNameSpace(nameSpaceAL);
+		}
+		return pxml;
 	}
 	
 	/**
@@ -163,8 +147,9 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * after it is initialized enough to process getContent() calls 
 	 * @param localName
 	 * @throws RepositoryException
+	 * @throws ContentDecodingException 
 	 */
-	public void readPolicy(String localName) throws RepositoryException {
+	public void readPolicy(String localName) throws RepositoryException, ContentDecodingException {
 		if (null != localName) {
 			try {
 				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
@@ -173,11 +158,9 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + localName + "/" + REPO_POLICY)));
 				if (policyObject != null) {
 					ByteArrayInputStream bais = new ByteArrayInputStream(policyObject.content());
-					_policy.update(bais, false);
+					_policy.updateFromInputStream(bais);
 				}
-			} catch (MalformedContentNameStringException e) {} // None of this should happen
-			catch (XMLStreamException e) {} 
-			catch (IOException e) {}
+			} catch (MalformedContentNameStringException e) {} // this shouldn't happen
 		}
 	}
 	
@@ -195,7 +178,14 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	public void setPolicy(Policy policy) {
 		_policy = policy;
 	}
+	
+	public ContentName getGlobalPrefix() {
+		return _policy.getGlobalPrefix();
+	}
+	
+	public String getLocalName() {
+		return _policy.getLocalName();
+	}
 
 	public abstract void shutDown();
-
 }

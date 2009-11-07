@@ -234,13 +234,15 @@ public class CCNFlowControlTest {
 		
 		System.out.println("Testing \"waitForPutDrain\"");
 		try {
-			fc.waitForPutDrain();
+			// can't call waitForPutDrain directly; call it via afterClose
+			fc.afterClose();
 		} catch (IOException ioe) {
-			Assert.fail("WaitforPutDrain threw unexpecxted exception");
+			Assert.fail("WaitforPutDrain threw unexpected exception");
 		}
 		fc.put(obj1);
 		try {
-			fc.waitForPutDrain();
+			// can't call waitForPutDrain directly; call it via afterClose
+			fc.afterClose();
 			Assert.fail("WaitforPutDrain succeeded when it should have failed");
 		} catch (IOException ioe) {}
 	}
@@ -251,7 +253,7 @@ public class CCNFlowControlTest {
 		// Test that put over highwater fails with nothing draining
 		// the buffer
 		normalReset(name1);
-		fc.setHighwater(4);
+		fc.setCapacity(4);
 		fc.put(objv1s1);
 		fc.put(objv1s2);
 		fc.put(objv1s3);
@@ -264,8 +266,8 @@ public class CCNFlowControlTest {
 		// Test that put over highwater succeeds when buffer is
 		// drained
 		normalReset(name1);
-		fc.setHighwater(4);
-		fc.setHighwater(4);
+		fc.setCapacity(4);
+		fc.setCapacity(4);
 		fc.put(objv1s1);
 		fc.put(objv1s2);
 		fc.put(objv1s3);

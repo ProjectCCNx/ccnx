@@ -24,9 +24,9 @@ import java.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
@@ -36,20 +36,15 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * than block data divided into fragments.
  * Sequence/segment numbers occupy the final component of the CCN name 
  * (again, not counting the digest component). For consecutive numbering, 
- * the first byte of the sequence component is 0xF8. The remaining bytes 
+ * the first byte of the sequence component is 0x00. The remaining bytes 
  * hold the sequence number in big-endian unsigned binary, using the minimum number 
- * of bytes. Thus sequence number 0 is encoded in just one byte, %F8, and 
- * sequence number 1 is %F8%01. Note that this encoding is not quite 
- * dense - %F8%00 is unused, as are other components that start with 
+ * of bytes. Thus sequence number 0 is encoded in just one byte, %00, and 
+ * sequence number 1 is %00%01. Note that this encoding is not quite 
+ * dense - %00%00 is unused, as are other components that start with 
  * these two bytes. 
  * For non-consecutive numbering (e.g, using byte offsets) the value 
  * 0xFB may be used as a marker.
  * 
- * DKS -- add-on to this proposal: use fragment markers on all content,
- * content with only one fragment gets the marker 0xF800, and the last
- * fragment of a given piece of content (when this is known) has
- * a prefix of 0xF800 instead of just 0xF8.
- * @author smetters
  *
  */
 public class SegmentationProfile implements CCNProfile {
@@ -234,7 +229,9 @@ public class SegmentationProfile implements CCNProfile {
 	 * @return
 	 * @throws IOException
 	 */
-	public static ContentObject getSegment(ContentName desiredContent, Long desiredSegmentNumber, PublisherPublicKeyDigest publisher, long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
+	public static ContentObject getSegment(ContentName desiredContent, Long desiredSegmentNumber, 
+											PublisherPublicKeyDigest publisher, long timeout, 
+											ContentVerifier verifier, CCNHandle handle) throws IOException {
 		
 	    // Block name requested should be interpreted literally, not taken
 	    // relative to baseSegment().
@@ -246,7 +243,7 @@ public class SegmentationProfile implements CCNProfile {
 	
 		// TODO use better exclude filters to ensure we're only getting segments.
 		Log.info("getSegment: getting segment {0}", segmentName);
-		ContentObject segment = CCNReader.getLower(handle, segmentName, 1, publisher, timeout);
+		ContentObject segment = handle.get(Interest.lower(segmentName, 1, publisher), timeout);
 	
 		if (null == segment) {
 			Log.info("Cannot get segment " + desiredSegmentNumber + " of file {0} expected segment: {1}.", desiredContent,  segmentName);
@@ -263,4 +260,114 @@ public class SegmentationProfile implements CCNProfile {
 		}
 		return segment;
 	}
+	
+	
+	/**
+	 * Creates an Interest for a specified segment number.  If the supplied name already
+	 * ends with a segment number, the interest will have the supplied segment in the name
+	 * instead.
+	 * 
+	 * @param name ContentName for the desired ContentObject
+	 * @param segmentNumber segment number to append to the name, if null, uses the baseSegment number
+	 * @param publisher can be null
+	 * 
+	 * @return interest
+	 **/
+	
+	public static Interest segmentInterest(ContentName name, Long segmentNumber, PublisherPublicKeyDigest publisher){
+		ContentName interestName = null;
+		//make sure the desired segment number is specified
+		if (null == segmentNumber) {
+			segmentNumber = baseSegment();
+		}
+		
+		//check if the name already has a segment in the last spot
+		if (isSegment(name)) {
+			//this already has a segment, trim it off
+			interestName = segmentRoot(name);
+		} else {
+			interestName = name;
+		}
+		
+		interestName = segmentName(interestName, segmentNumber);
+		Log.info("segmentInterest: creating interest for {0} from ContentName {1} and segmentNumber {2}", interestName, name, segmentNumber);
+		Interest interest = Interest.lower(interestName, 1, publisher);
+		return interest;
+	}
+	
+	/**
+	 * Creates an Interest for the first segment.
+	 * 
+	 * @param name ContentName for the desired ContentObject
+	 * @param publisher can be null
+	 * 
+	 * @return interest
+	 **/
+	
+	public static Interest firstSegmentInterest(ContentName name, PublisherPublicKeyDigest publisher){
+		return segmentInterest(name, baseSegment(), publisher);
+	}
+	
+	
+	/**
+	 * Creates an Interest to find the right-most child from the given segment number
+	 * or the base segment if one is not supplied.  This attempts to find the last segment for
+	 * the given content name.  Due to caching, this does not guarantee the interest will find the
+	 * last segment, higher layer code must verify that the ContentObject returned for this interest
+	 * is the last one.
+	 * 
+	 * @param name ContentName for the prefix of the Interest
+	 * @param segmentNumber create an interest for the last segment number after this number
+	 * @param publisher can be null
+	 * @return interest
+	 */
+	
+	public static Interest lastSegmentInterest(ContentName name, Long segmentNumber, PublisherPublicKeyDigest publisher){
+		Interest interest = null;
+		ContentName interestName = null;
+
+		//see if a segment number was supplied
+		if (segmentNumber == null) {
+			segmentNumber = baseSegment();
+		}
+		
+		//check if the name has a segment number
+		if (isSegment(name)) {
+			//this already has a segment
+			//is this segment before or after the segmentNumber
+			if (segmentNumber < getSegmentNumber(name)) {
+				//the segment number in the name is higher...  use this
+				interestName = name;
+			} else {
+				//the segment number provided is bigger...  use that
+				interestName = segmentName(name, segmentNumber);
+			}
+		} else {
+			interestName = segmentName(name, segmentNumber);
+		}
+		
+		Log.info("lastSegmentInterest: creating interest for {0} from ContentName {1} and segmentNumber {2}", interestName, name, segmentNumber);
+		//TODO need to create Interest creation functions with publisher as a param
+		interest = Interest.last(interestName);
+
+		return interest;
+	}
+	
+	
+	/**
+	 * Creates an Interest to find the right-most child from the given segment number
+	 * or the base segment if one is not supplied.  This Interest will attempt to find the last segment for
+	 * the given content name.  Due to caching, this does not guarantee the interest will find the
+	 * last segment, higher layer code must verify that the ContentObject returned for this interest
+	 * is the last one.
+	 * 
+	 * @param name ContentName for the prefix of the Interest
+	 * @param publisher can be null
+	 * @return interest
+	 */
+	
+	public static Interest lastSegmentInterest(ContentName name, PublisherPublicKeyDigest publisher){
+		return lastSegmentInterest(name, baseSegment(), publisher);
+	}
+	
 }

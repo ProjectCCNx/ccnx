@@ -25,8 +25,6 @@ import java.io.IOException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.junit.Assert;
@@ -107,8 +105,6 @@ public class SerializableObjectTest {
 			System.out.println("Saved two public keys, lengths " + baos.toByteArray().length + " and " + baos3.toByteArray().length);
 		} catch (IOException e) {
 			fail("IOException! " + e.getMessage());
-		} catch (XMLStreamException e) {
-			fail("XMLStreamException! " + e.getMessage());
 		}
 	}
 

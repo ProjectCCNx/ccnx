@@ -17,20 +17,14 @@
 
 package org.ccnx.ccn.impl.repo;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 
-import javax.xml.namespace.QName;
-import javax.xml.stream.XMLEventReader;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.events.Attribute;
-import javax.xml.stream.events.XMLEvent;
-
-import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.encoding.TextXMLCodec;
+import org.ccnx.ccn.impl.encoding.XMLCodecFactory;
+import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
@@ -56,32 +50,28 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * 
  * <pre>
  * For example:
- * 	<policy>
- *		<version id="1.4"/>
- *		<localname> TestRepository </localname>
- *		<globalname> parc.com/csl/ccn/repositories </globalname>
- *		<namespace> /testNameSpace </namespace>
- *		<namespace> /testNameSpace2 </namespace>
- * 	</policy>
+ * 	<Policy>
+ *		<PolicyVersion> 1.5 </PolicyVersion>
+ *		<LocalName> TestRepository </LocalName>
+ *		<GlobalPrefix> parc.com/csl/ccn/repositories </GlobalPrefix>
+ *		<Namespace> /testNameSpace </Namespace>
+ *		<Namespace> /testNameSpace2 </Namespace>
+ * 	</Policy>
  * </pre>
  * 
  */
 public class BasicPolicy implements Policy {
 	
 	public static final String POLICY = "POLICY";
+	public String POLICY_VERSION = "1.5";
+
 	
-	private String _version = null;
 	private byte [] _content = null;
 	private ContentName _globalPrefix = null;
 	private String _localName = null;
-	private boolean _localNameMatched = false;
-	private boolean _globalNameMatched = false;
-	private boolean _nameSpaceChangeRequest = false;
 	
-	protected String _repoVersion = null;	// set from repo
-	
+	protected String _repoVersion = null;	// set from repo	
 	private ArrayList<ContentName> _nameSpace = new ArrayList<ContentName>(0);
-	private ArrayList<ContentName> _prevNameSpace = new ArrayList<ContentName>(0);
 	
 	/**
 	 * Constructor defaulting the initial namespace to "everything"
@@ -110,202 +100,82 @@ public class BasicPolicy implements Policy {
 		}
 	}
 	
-	private enum PolicyValue {
-		VERSION ("VERSION"),
-		NAMESPACE ("NAMESPACE"),
-		GLOBALNAME ("GLOBALNAME"),
-		LOCALNAME ("LOCALNAME"),
-		UNKNOWN();
-		
-		private String _stringValue = null;
-		
-		PolicyValue() {}
-		
-		PolicyValue(String stringValue) {
-			this._stringValue = stringValue;
-		}
-		
-		static PolicyValue valueFromString(String value) {
-			for (PolicyValue pv : PolicyValue.values()) {
-				if (pv._stringValue != null) {
-					if (pv._stringValue.equals(value.toUpperCase()))
-						return pv;
-				}
-			}
-			return UNKNOWN;
-		}
+	public PolicyXML updateFromInputStream(InputStream stream) throws ContentDecodingException, RepositoryException {
+		PolicyXML pxml = createPolicyXML(stream);
+		update(pxml, false);
+		return pxml;
 	}
 	
 	/**
-	 * Reads, parses and applies a new policy file. This can be called to read a policy file specified
-	 * during repository startup or a file sent via the network.
+	 * Applies policy changes
 	 * 
-	 * @param stream	The policy file stream
-	 * @param fromNet	true if the policy file was submitted over the network
-	 * @throws XMLStreamException if the xml is invalid or doesn't contain a version, local name or global name
-	 * @throws IOException on file read errors
+	 * @param pxml policy data
+	 * @return
+	 * @throws XMLStreamException
 	 */
-	public boolean update(InputStream stream, boolean fromNet) throws XMLStreamException, IOException {
-		_content = new byte[stream.available()];
-		stream.read(_content);
-		stream.close();
-		ByteArrayInputStream bais = new ByteArrayInputStream(_content);
-		XMLInputFactory factory = XMLInputFactory.newInstance();
-		XMLEventReader reader;
-		try {
-			reader = factory.createXMLEventReader(bais);
-		} catch (XMLStreamException xse) {
-			return false;	// Wasn't really an update stream (probably a header)
+	public void update(PolicyXML pxml, boolean fromNet) throws RepositoryException {
+		if (pxml._version == null)
+			throw new RepositoryException("No version in policy file");
+		if (!pxml._version.equals(POLICY_VERSION)) {
+			Log.warning("Bad version in policy file: {0}", pxml._version);
+			throw new RepositoryException("Bad version in policy file");
 		}
 		
-		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-			Log.info("Policy file update requested");
+		if (null == pxml._localName)
+			throw new RepositoryException("No local name in policy file");
+		if (fromNet) {
+			if (!pxml._localName.equals(_localName)) {
+				Log.warning("Repository local name doesn't match: request = {0}", pxml._localName);
+				throw new RepositoryException("Repository local name doesn't match policy file");
+			}
+		} else {
+			try {
+				setLocalName(pxml._localName);
+			} catch (MalformedContentNameStringException e) {
+				throw new RepositoryException(e.getMessage());
+			}
 		}
-		XMLEvent event = reader.nextEvent();
-		_version = null;
-		_localNameMatched = false;
-		_globalNameMatched = false;
-		_nameSpaceChangeRequest = false;
-		if (!event.isStartDocument()) {
-			throw new XMLStreamException("Expected start document, got: " + event.toString());
+		
+		if (null == pxml._globalPrefix)
+			throw new RepositoryException("No globalPrefix in policy file");
+		
+		if (fromNet) {
+			try {
+				if (!ContentName.fromNative(fixSlash(pxml._globalPrefix)).equals(_globalPrefix)) {
+					Log.warning("Repository globalPrefix doesn't match: request = {0}", pxml._globalPrefix);
+					throw new RepositoryException("Repository global prefix doesn't match policy file");
+				}
+			} catch (MalformedContentNameStringException e) {
+				throw new RepositoryException(e.getMessage());
+			}
+		} else {
+			try {
+				changeGlobalPrefix(pxml._globalPrefix);
+			} catch (MalformedContentNameStringException e) {
+				Log.warning("Policy file contains invalid global prefix {0}", pxml._globalPrefix);
+				throw new RepositoryException("Policy file specifies invalid global prefix");
+			}
 		}
-		try {
-			parseXML(reader, null, null, POLICY, false, fromNet);
-		} catch (RepositoryException e) {
-			return false; // wrong hostname - i.e. not for us
+			
+		ArrayList<ContentName> tmpNameSpace = new ArrayList<ContentName>();
+		for (String name : pxml._nameSpace) {
+			try {
+				tmpNameSpace.add(ContentName.fromNative(name));
+			} catch (MalformedContentNameStringException e) {
+				Log.warning("Policy file contains invalid namespace {0}", name);
+				throw new RepositoryException("Policy file specifies invalid namespace");
+			}
 		}
-		reader.close();
-		if (_version == null)
-			throw new XMLStreamException("No version in policy file");
-		if (!_localNameMatched)
-			throw new XMLStreamException("No local name in policy file");
-		if (!_globalNameMatched)
-			throw new XMLStreamException("No global name in policy file");
-		return true;
+		_nameSpace = tmpNameSpace;
+		_nameSpace.add(_globalPrefix);
 	}
 
 	public ArrayList<ContentName> getNameSpace() {
 		return _nameSpace;
 	}
 	
-	/**
-	 * Parses the XML file
-	 * @param reader
-	 * @param expectedValue
-	 * @return
-	 * @throws XMLStreamException
-	 * @throws RepositoryException 
-	 */
-	@SuppressWarnings("unchecked")
-	private XMLEvent parseXML(XMLEventReader reader, XMLEvent event, String value, String expectedValue, boolean started,
-				boolean fromNet) 
-				throws XMLStreamException, RepositoryException {
-		if (started) {
-			switch (PolicyValue.valueFromString(value)) {
-			case VERSION:
-				QName id = new QName("id");
-				Attribute idAttr = event.asStartElement().getAttributeByName(id);
-				if (idAttr != null) {
-					if (!idAttr.getValue().trim().equals(_repoVersion)) {
-						Log.warning("Bad version in policy file: " + idAttr.getValue().trim());
-						throw new XMLStreamException("Bad version in policy file");
-					}
-					_version = value;
-				}
-				break;
-			default:
-				break;
-			}
-		}
-		
-		event = reader.nextEvent();
-		boolean finished = false;
-		while (!finished) {
-			if (event.isStartElement()) {
-				String startValue = event.asStartElement().getName().toString();
-				if (expectedValue != null) {
-					if (!startValue.toUpperCase().equals(expectedValue.toUpperCase()))
-						throw new XMLStreamException("Expected " + expectedValue + ", got: " + value);
-					event = reader.nextEvent();
-					value = expectedValue;
-					expectedValue = null;
-				} else {
-					event = parseXML(reader, event, startValue, null, true, fromNet);
-				}
-			} else if (event.isEndElement()) {
-				String newValue = event.asEndElement().getName().toString();
-				if (!newValue.toUpperCase().equals(value.toUpperCase()))
-					throw new XMLStreamException("Expected end of " + value + ", got: " + newValue);
-				event = reader.nextEvent();
-				finished = true;
-			} else if (event.isCharacters()) {
-				if (started) {
-					switch (PolicyValue.valueFromString(value)) {
-					case NAMESPACE:
-						String charValue = event.asCharacters().getData();
-						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-							Log.fine("New namespace requested: " + charValue);
-						}
-						// Note - need to synchronize on "this" to synchronize with events reading
-						// the name space in the policy clients which have access only to this object
-						synchronized (this) {
-							_prevNameSpace = (ArrayList<ContentName>) _nameSpace.clone();
-							if (!_nameSpaceChangeRequest) {
-								_nameSpace.clear();
-								if (null != _globalPrefix)
-									_nameSpace.add(_globalPrefix);
-								_nameSpaceChangeRequest = true;
-							}
-							try {
-								_nameSpace.add(ContentName.fromNative(charValue.trim()));
-							} catch (MalformedContentNameStringException e) {
-								_nameSpace = _prevNameSpace;
-								throw new XMLStreamException("Malformed value in namespace: " + charValue);
-							}
-						}
-						break;
-					case LOCALNAME:
-						charValue = event.asCharacters().getData();
-						String localName = charValue.trim();
-						if (fromNet) {
-							if (!localName.equals(_localName)) {
-								Log.warning("Repository local name doesn't match: request = " + localName);
-								throw new RepositoryException("Repository local name doesn't match");
-							}
-
-						} else {
-							_localName = localName;
-						}
-						_localNameMatched = true;
-						break;
-					case GLOBALNAME:
-						charValue = event.asCharacters().getData();
-						String globalName = charValue.trim();
-						try {
-						if (fromNet) {
-							if (!ContentName.fromNative(fixSlash(globalName)).equals(_globalPrefix)) {
-								Log.warning("Repository global name doesn't match: request = " + globalName);
-								throw new RepositoryException("Repository global name doesn't match");
-							}
-						} else {
-							changeGlobalPrefix(globalName);
-						}
-						} catch (MalformedContentNameStringException e) {
-							throw new RepositoryException(e.getMessage());
-						}
-						_globalNameMatched = true;
-						break;
-					default:
-						break;
-					}
-				}
-				event = reader.nextEvent();
-			} else if (event.isEndDocument()) {
-				finished = true;
-			} else
-				event = reader.nextEvent();
-		}
-		return event;
+	public void setNameSpace(ArrayList<ContentName> nameSpace) {
+		_nameSpace = nameSpace;
 	}
 
 	/**
@@ -334,6 +204,17 @@ public class BasicPolicy implements Policy {
 	 */
 	public static ContentName getPolicyName(ContentName globalPrefix, String localName) {
 		return ContentName.fromNative(globalPrefix, new String[]{localName, RepositoryStore.REPO_DATA, RepositoryStore.REPO_POLICY});
+	}
+	
+	public static PolicyXML createPolicyXML(InputStream stream) throws ContentDecodingException {
+		Log.info("Creating policy file");
+		XMLDecoder decoder = XMLCodecFactory.getDecoder(TextXMLCodec.codecName());
+		decoder.beginDecoding(stream);
+		PolicyXML pxml = new PolicyXML();
+		pxml.decode(decoder);
+		Log.fine("Finished pxml decoding");
+		decoder.endDecoding();
+		return pxml;
 	}
 	
 	/**

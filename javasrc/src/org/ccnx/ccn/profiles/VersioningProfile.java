@@ -19,7 +19,6 @@ package org.ccnx.ccn.profiles;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.security.InvalidParameterException;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
@@ -385,7 +384,6 @@ public class VersioningProfile implements CCNProfile {
 	 * 			from 0 (we don't have a known version we're trying to update). This exclude filter will
 	 * 			find versions *after* the version represented in startingVersionComponent.
 	 * @return An exclude filter.
-	 * @throws InvalidParameterException
 	 */
 	public static Exclude acceptVersions(byte [] startingVersionComponent) {
 		byte [] start = null;
@@ -487,11 +485,8 @@ public class VersioningProfile implements CCNProfile {
 	 * returned could be any name under this new version - by default it will get the leftmost item,
 	 * but right now that is generally a repo start write, not a segment. Changing the marker values
 	 * used will fix that.
-	 * TODO fix marker values
 	 * @result Returns a matching ContentObject, *unverified*.
 	 * @throws IOException
-	 * DKS TODO -- doesn't use publisher
-	 * DKS TODO -- specify separately latest version known?
 	 */
 	public static ContentObject getLatestVersion(ContentName startingVersion, 
 											     PublisherPublicKeyDigest publisher, 

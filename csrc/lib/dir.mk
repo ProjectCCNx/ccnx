@@ -30,12 +30,19 @@ CSRC = ccn_bloom.c ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
        ccn_matrix.c ccn_merkle_path_asn1.c ccn_name_util.c ccn_schedule.c \
        ccn_signing.c ccn_sockcreate.c ccn_traverse.c ccn_uri.c \
        ccn_verifysig.c ccn_versioning.c \
+       ccn_header.c \
        encodedecodetest.c hashtb.c hashtbtest.c \
        matrixtest.c signbenchtest.c skel_decode_test.c \
-       smoketestclientlib.c basicparsetest.c
+       smoketestclientlib.c basicparsetest.c \
+       ccn_setup_sockaddr_un.c
 LIBS = libccn.a
-LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
-    ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o ccn_keystore.o ccn_signing.o ccn_sockcreate.o ccn_traverse.o ccn_match.o hashtb.o ccn_merkle_path_asn1.o ccn_bulkdata.o ccn_versioning.o
+LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
+       ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
+       ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o \
+       ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o \
+       ccn_keystore.o ccn_signing.o ccn_sockcreate.o ccn_traverse.o \
+       ccn_match.o hashtb.o ccn_merkle_path_asn1.o \
+       ccn_setup_sockaddr_un.o ccn_bulkdata.o ccn_versioning.o ccn_header.o
 
 default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.
@@ -45,11 +52,18 @@ all: basicparsetest ccn_verifysig
 
 install: install_headers
 install_headers:
-	test -d $(INSTALL_INCLUDE) && mkdir -p $(INSTALL_INCLUDE)/ccn && cp ../include/ccn/*.h $(INSTALL_INCLUDE)/ccn	
+	test -d $(INSTALL_INCLUDE)
+	mkdir -p $(INSTALL_INCLUDE)/ccn
+	for i in `cd ../include/ccn && echo *.h`; do                \
+	    cmp -s ../include/ccn/$$i $(INSTALL_INCLUDE)/ccn/$$i || \
+	        cp ../include/ccn/$$i $(INSTALL_INCLUDE)/ccn/$$i || \
+	        exit 1;                                             \
+	done
 
 uninstall: uninstall_headers
 uninstall_headers:
-	$(RM) -r $(INSTALL_INCLUDE)/ccn
+	test -L $(INSTALL_INCLUDE)/ccn && $(RM) $(INSTALL_INCLUDE)/ccn ||:
+	test -L $(INSTALL_INCLUDE) || $(RM) -r $(INSTALL_INCLUDE)/ccn
 
 shlib: $(SHLIBNAME)
 
@@ -114,6 +128,9 @@ ccn_traverse.o:
 
 ccn_merkle_path_asn1.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_merkle_path_asn1.c
+
+ccn_header.o:
+	$(CC) $(CFLAGS) -c ccn_header.c
 
 ccn_verifysig.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_verifysig.c
@@ -195,6 +212,9 @@ ccn_versioning.o: ccn_versioning.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h \
   ../include/ccn/ccn_private.h
+ccn_header.o: ccn_header.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/header.h
 encodedecodetest.o: encodedecodetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/bloom.h ../include/ccn/uri.h \
@@ -215,3 +235,5 @@ basicparsetest.o: basicparsetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/face_mgmt.h \
   ../include/ccn/sockcreate.h ../include/ccn/reg_mgmt.h
+ccn_setup_sockaddr_un.o: ccn_setup_sockaddr_un.c ../include/ccn/ccnd.h \
+  ../include/ccn/ccn_private.h

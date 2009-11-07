@@ -24,12 +24,11 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
@@ -103,8 +102,8 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 				default:
 					break;
 				}
-			} catch (XMLStreamException e) {
-				Log.info("XMLStreamException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());
+			} catch (ContentDecodingException e) {
+				Log.info("ContentDecodingException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());
 			}
 		}
 		// So far, we seem never to have anything to return.
@@ -157,8 +156,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 * @throws IOException if handle is null and a new CCNHandle can't be created
 	 */
 	public RepositoryFlowControl(ContentName name, CCNHandle handle) throws IOException {
-		this(handle);
-		addNameSpace(name);
+		super(name, handle);
 	}
 	
 	/**
@@ -170,8 +168,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 * @see	CCNFlowControl
 	 */
 	public RepositoryFlowControl(ContentName name, CCNHandle handle, Shape shape) throws IOException {
-		this(handle);
-		addNameSpace(name);
+		super(name, handle);
 	}
 
 	@Override
@@ -187,7 +184,6 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		Log.info("RepositoryFlowControl.startWrite called for name {0}, shape {1}", name, shape);
 		Client client = new Client(name, shape);
 		_clients.add(client);
-		clearUnmatchedInterests();	// Remove possible leftover interests from "getLatestVersion"
 		
 		// A nonce is used because if we tried to write data with the same name more than once, we could retrieve the
 		// the previous answer from the cache, and the repo would never be informed of our start write.
@@ -216,10 +212,12 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 					interrupted = true;
 				}
 			} while (interrupted || (!client._initialized && ((getTimeout() + startTime) > System.currentTimeMillis())));
-		}
-		if (!client._initialized) {
-			Log.warning("No response from a repository, cannot add name space : " + name);
-			throw new IOException("No response from a repository for " + name);
+			
+			if (!client._initialized) {
+				_clients.remove();
+				Log.warning("No response from a repository, cannot add name space : " + name);
+				throw new IOException("No response from a repository for " + name);
+			}
 		}
 	}
 
@@ -234,7 +232,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 				ContentObject co = _holdingArea.get(name);
 				Log.fine("CO {0} acked", co.name());
 				_holdingArea.remove(co.name());
-				if (_holdingArea.size() < _highwater)
+				if (_holdingArea.size() < _capacity)
 					_holdingArea.notify();
 			}
 		}

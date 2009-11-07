@@ -22,11 +22,10 @@ import java.io.InvalidObjectException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
@@ -78,7 +77,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNInterestListener {
 
 	protected static boolean DEFAULT_RAW = true;
-	protected static long DEFAULT_TIMEOUT = 3000; // msec
 	protected static final byte [] GONE_OUTPUT = "GONE".getBytes();
 	
 	/**
@@ -126,13 +124,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * to the network. If saveToRepository() is called on the first save, it will override backing 
 	 * store behavior and store the object to a repository.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name under which to save object.
 	 * @param data Data to save.
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, CCNHandle handle) throws IOException {
-		this(type, name, data, DEFAULT_RAW, null, null, handle);
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							ContentName name, E data, CCNHandle handle) throws IOException {
+		this(type, contentIsMutable, name, data, DEFAULT_RAW, null, null, handle);
 	}
 		
 	/**
@@ -141,6 +141,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * to the network. If saveToRepository() is called on the first save, it will override backing 
 	 * store behavior and store the object to a repository.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name under which to save object.
 	 * @param data Data to save.
 	 * @param publisher The key to use to sign this data, or our default if null.
@@ -148,8 +149,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator locator, CCNHandle handle) throws IOException {
-		this(type, name, data, DEFAULT_RAW, publisher, locator, handle);
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							ContentName name, E data, PublisherPublicKeyDigest publisher, 
+							KeyLocator locator, CCNHandle handle) throws IOException {
+		this(type, contentIsMutable, name, data, DEFAULT_RAW, publisher, locator, handle);
 	}
 		
 	/**
@@ -158,6 +161,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * to the network. If saveToRepository() is called on the first save, it will override backing 
 	 * store behavior and store the object to a repository.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name under which to save object.
 	 * @param data Data to save.
 	 * @param raw If true, saves to network by default, if false, saves to repository by default.
@@ -166,12 +170,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, E data, boolean raw, 
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							ContentName name, E data, boolean raw, 
 							PublisherPublicKeyDigest publisher, KeyLocator locator,
 							CCNHandle handle) throws IOException {
 		// Don't start pulling a namespace till we actually write something. We may never write
 		// anything on this object. In fact, don't make a flow controller at all till we need one.
-		super(type, data);
+		super(type, contentIsMutable, data);
 		if (null == handle) {
 			try {
 				handle = CCNHandle.open();
@@ -190,6 +195,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Specialized constructor, allowing subclasses to override default flow controller 
 	 * (and hence backing store) behavior.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name under which to save object.
 	 * @param data Data to save.
 	 * @param publisher The key to use to sign this data, or our default if null.
@@ -199,11 +205,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 *   CCNFlowControl#startWrite(ContentName, Shape) on each save.
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
-	protected CCNNetworkObject(Class<E> type, ContentName name, E data, 
+	protected CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+								ContentName name, E data, 
 								PublisherPublicKeyDigest publisher, 
 								KeyLocator locator,
 								CCNFlowControl flowControl) throws IOException {
-		this(type, name, data, publisher, locator, flowControl.getHandle());
+		this(type, contentIsMutable, name, data, publisher, locator, flowControl.getHandle());
 		_flowControl = flowControl;
 	}
 
@@ -213,15 +220,17 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * its uninitialized state, and continue attempting to update it (one time) in the
 	 * background.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
 	 * 	version. If unversioned, will attempt to read the latest version available.
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
-	 * @throws IOException If there is an error setting up network backing store.
-	 * @throws XMLStreamException If there is a problem decoding the object.
+	 * @throws ContentDecodingException if there is a problem decoding the object.
+	 * @throws IOException if there is an error setting up network backing store.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, 
-			CCNHandle handle) throws IOException, XMLStreamException {
-		this(type, name, (PublisherPublicKeyDigest)null, handle);
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							ContentName name, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+		this(type, contentIsMutable, name, (PublisherPublicKeyDigest)null, handle);
 	}
 
 	/**
@@ -230,16 +239,19 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * its uninitialized state, and continue attempting to update it (one time) in the
 	 * background.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
 	 * 	version. If unversioned, will attempt to read the latest version available.
 	 * @param publisher Particular publisher we require to have signed the content, or null for any publisher.
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
-	 * @throws IOException If there is an error setting up network backing store.
-	 * @throws XMLStreamException If there is a problem decoding the object.
+	 * @throws ContentDecodingException if there is a problem decoding the object.
+	 * @throws IOException if there is an error setting up network backing store.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle handle) throws IOException, XMLStreamException {
-		this(type, name, publisher, DEFAULT_RAW, handle);
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+						    ContentName name, PublisherPublicKeyDigest publisher,
+						    CCNHandle handle) 
+			throws ContentDecodingException, IOException {
+		this(type, contentIsMutable, name, publisher, DEFAULT_RAW, handle);
 	}
 
 	/**
@@ -248,18 +260,21 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * its uninitialized state, and continue attempting to update it (one time) in the
 	 * background.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
 	 * 	version. If unversioned, will attempt to read the latest version available.
 	 * @param publisher Particular publisher we require to have signed the content, or null for any publisher.
 	 * @param flowControl Flow controller to use. A single flow controller object
 	 *   is used for all this instance's writes, we use underlying streams to call
 	 *   CCNFlowControl#startWrite(ContentName, Shape) on each save.
-	 * @throws IOException If there is an error setting up network backing store.
-	 * @throws XMLStreamException If there is a problem decoding the object.
+	 * @throws ContentDecodingException if there is a problem decoding the object.
+	 * @throws IOException if there is an error setting up network backing store.
 	 */
-	protected CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			CCNFlowControl flowControl) throws IOException, XMLStreamException {
-		super(type);
+	protected CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							  ContentName name, PublisherPublicKeyDigest publisher,
+							  CCNFlowControl flowControl) 
+				throws ContentDecodingException, IOException {
+		super(type, contentIsMutable);
 		_flowControl = flowControl;
 		_handle = flowControl.getHandle();
 		update(name, publisher);
@@ -271,17 +286,20 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * its uninitialized state, and continue attempting to update it (one time) in the
 	 * background.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
 	 * 	version. If unversioned, will attempt to read the latest version available.
 	 * @param publisher Particular publisher we require to have signed the content, or null for any publisher.
 	 * @param raw If true, defaults to raw network writes, if false, repository writes.
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
-	 * @throws IOException If there is an error setting up network backing store.
-	 * @throws XMLStreamException If there is a problem decoding the object.
+	 * @throws ContentDecodingException if there is a problem decoding the object.
+	 * @throws IOException if there is an error setting up network backing store.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentName name, PublisherPublicKeyDigest publisher,
-			boolean raw, CCNHandle handle) throws IOException, XMLStreamException {
-		super(type);
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							ContentName name, PublisherPublicKeyDigest publisher,
+							boolean raw, CCNHandle handle) 
+			throws ContentDecodingException, IOException {
+		super(type, contentIsMutable);
 		if (null == handle) {
 			try {
 				handle = CCNHandle.open();
@@ -297,26 +315,32 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	/**
 	 * Read constructor if you already have a segment of the object. Used by streams.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param firstSegment First segment of the object, retrieved by other means.
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
-	 * @throws IOException If there is an error setting up network backing store.
-	 * @throws XMLStreamException If there is a problem decoding the object.
+	 * @throws ContentDecodingException if there is a problem decoding the object.
+	 * @throws IOException if there is an error setting up network backing store.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, CCNHandle handle) throws IOException, XMLStreamException {
-		this(type, firstSegment, DEFAULT_RAW, handle);
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+						    ContentObject firstSegment, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+		this(type, contentIsMutable, firstSegment, DEFAULT_RAW, handle);
 	}
 	
 	/**
 	 * Read constructor if you already have a segment of the object. Used by streams.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param firstSegment First segment of the object, retrieved by other means.
 	 * @param raw If true, defaults to raw network writes, if false, repository writes.
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
-	 * @throws IOException If there is an error setting up network backing store.
-	 * @throws XMLStreamException If there is a problem decoding the object.
+	 * @throws ContentDecodingException if there is a problem decoding the object.
+	 * @throws IOException if there is an error setting up network backing store.
 	 */
-	public CCNNetworkObject(Class<E> type, ContentObject firstSegment, boolean raw, CCNHandle handle) throws IOException, XMLStreamException {
-		super(type);
+	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							ContentObject firstSegment, boolean raw, CCNHandle handle) 
+			throws ContentDecodingException, IOException {
+		super(type, contentIsMutable);
 		if (null == handle) {
 			try {
 				handle = CCNHandle.open();
@@ -331,15 +355,18 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	/**
 	 * Read constructor if you already have a segment of the object. Used by streams.
 	 * @param type Wrapped class type.
+	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param firstSegment First segment of the object, retrieved by other means.
 	 * @param flowControl Flow controller to use. A single flow controller object
 	 *   is used for all this instance's writes, we use underlying streams to call
 	 *   CCNFlowControl#startWrite(ContentName, Shape) on each save.
-	 * @throws IOException If there is an error setting up network backing store.
-	 * @throws XMLStreamException If there is a problem decoding the object.
+	 * @throws ContentDecodingException if there is a problem decoding the object.
+	 * @throws IOException if there is an error setting up network backing store.
 	 */
-	protected CCNNetworkObject(Class<E> type, ContentObject firstSegment, CCNFlowControl flowControl) throws IOException, XMLStreamException {
-		super(type);
+	protected CCNNetworkObject(Class<E> type, boolean contentIsMutable,
+							   ContentObject firstSegment, CCNFlowControl flowControl) 
+					throws ContentDecodingException, IOException {
+		super(type, contentIsMutable);
 		if (null == flowControl)
 			throw new IllegalArgumentException("flowControl cannot be null!");
 		_flowControl = flowControl;
@@ -371,10 +398,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Attempts to find a version after the latest one we have, or times out. If
 	 * it times out, it simply leaves the object unchanged.
 	 * @return returns true if it found an update, false if not
-	 * @throws XMLStreamException
-	 * @throws IOException
+	 * @throws ContentDecodingException if there is a problem decoding the object.
+	 * @throws IOException if there is an error setting up network backing store.
 	 */
-	public boolean update(long timeout) throws XMLStreamException, IOException {
+	public boolean update(long timeout) throws ContentDecodingException, IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
 		}
@@ -389,13 +416,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
-	 * Calls update(long) with the default timeout DEFAULT_TIMEOUT.
+	 * Calls update(long) with the default timeout SystemConfiguration.getDefaultTimeout().
 	 * @return see update(long).
-	 * @throws XMLStreamException
-	 * @throws IOException
+	 * @throws ContentDecodingException if there is a problem decoding the object.
+	 * @throws IOException if there is an error setting up network backing store.
 	 */
-	public boolean update() throws XMLStreamException, IOException {
-		return update(DEFAULT_TIMEOUT);
+	public boolean update() throws ContentDecodingException, IOException {
+		return update(SystemConfiguration.getDefaultTimeout());
 	}
 	
 	/**
@@ -403,10 +430,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * name is not versioned, look for latest version. 
 	 * @param name Name of object to read.
 	 * @param publisher Desired publisher, or null for any.
-	 * @throws IOException 
-	 * @throws XMLStreamException 
+	 * @throws ContentDecodingException if there is a problem decoding the object.
+	 * @throws IOException if there is an error setting up network backing store.
 	 */
-	public boolean update(ContentName name, PublisherPublicKeyDigest publisher) throws XMLStreamException, IOException {
+	public boolean update(ContentName name, PublisherPublicKeyDigest publisher) throws ContentDecodingException, IOException {
 		Log.info("Updating object to {0}.", name);
 		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, _handle);
 		return update(is);
@@ -415,10 +442,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	/**
 	 * Load a stream starting with a specific object.
 	 * @param object
-	 * @throws XMLStreamException
-	 * @throws IOException
+	 * @throws ContentDecodingException if there is a problem decoding the object.
+	 * @throws IOException if there is an error setting up network backing store.
 	 */
-	public boolean update(ContentObject object) throws XMLStreamException, IOException {
+	public boolean update(ContentObject object) throws ContentDecodingException, IOException {
 		CCNInputStream is = new CCNInputStream(object, _handle);
 		is.seek(0); // in case it wasn't the first segment
 		return update(is);
@@ -430,10 +457,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * special-purpose use and experimentation.
 	 * @param inputStream Stream to read object from.
 	 * @return true if an update found, false if not.
-	 * @throws IOException
-	 * @throws XMLStreamException
+	 * @throws ContentDecodingException if there is a problem decoding the object.
+	 * @throws IOException if there is an error setting up network backing store.
 	 */
-	public synchronized boolean update(CCNInputStream inputStream) throws IOException, XMLStreamException {
+	public synchronized boolean update(CCNInputStream inputStream) throws ContentDecodingException, IOException {
 		Tuple<ContentName, byte []> nameAndVersion = null;
 		if (inputStream.isGone()) {
 			Log.fine("Reading from GONE stream: {0}", inputStream.getBaseName());
@@ -539,10 +566,27 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * calling saveToRepository() on it for its first save, or specifying false
 	 * to a constructor that allows a raw argument, it will save to a repository.
 	 * Otherwise will perform a raw save.
-	 * @throws IOException 
+	 * @throws ContentEncodingException if there is an error encoding the content
+	 * @throws IOException if there is an error reading the content from the network
 	 */
-	public boolean save() throws IOException {
-		return saveInternal(null, false);
+	public boolean save() throws ContentEncodingException, IOException {
+		return saveInternal(null, false, null);
+	}
+	
+	/**
+	 * Method for CCNFilterListeners to save an object in response to an Interest
+	 * callback. An Interest has already been received, so the object can output
+	 * one ContentObject as soon as one is ready. Ideally this Interest will have
+	 * been received on the CCNHandle the object is using for output. If the object
+	 * is not dirty, it will not be saved, and the Interest will not be consumed.
+	 * If the Interest does not match this object, the Interest will not be consumed;
+	 * it is up to the caller to ensure that the Interest would be matched by writing
+	 * this object. (If the Interest doesn't match, no initial block will be output
+	 * even if the object is saved; the object will wait for matching Interests prior
+	 * to writing its blocks.)
+	 */
+	public boolean save(Interest outstandingInterest) throws ContentEncodingException, IOException {
+		return saveInternal(null, false, outstandingInterest);
 	}
 
 	/**
@@ -554,10 +598,29 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Otherwise will perform a raw save.
 	 * @param version Version to save to.
 	 * @return true if object was saved, false if it was not (if it was not dirty).
-	 * @throws IOException 
+	 * @throws ContentEncodingException if there is an error encoding the content
+	 * @throws IOException if there is an error reading the content from the network
 	 */
-	public boolean save(CCNTime version) throws IOException {
-		return saveInternal(version, false);
+	public boolean save(CCNTime version) throws ContentEncodingException, IOException {
+		return saveInternal(version, false, null);
+	}
+
+	/**
+	 * Save to existing name, if content is dirty. Saves to specified version.
+	 * Method for CCNFilterListeners to save an object in response to an Interest
+	 * callback. An Interest has already been received, so the object can output
+	 * one ContentObject as soon as one is ready. Ideally this Interest will have
+	 * been received on the CCNHandle the object is using for output. If the object
+	 * is not dirty, it will not be saved, and the Interest will not be consumed.
+	 * If the Interest does not match this object, the Interest will not be consumed;
+	 * it is up to the caller to ensure that the Interest would be matched by writing
+	 * this object. (If the Interest doesn't match, no initial block will be output
+	 * even if the object is saved; the object will wait for matching Interests prior
+	 * to writing its blocks.)
+	 */
+	public boolean save(CCNTime version, Interest outstandingInterest) 
+				throws ContentEncodingException, IOException {
+		return saveInternal(version, false, outstandingInterest);
 	}
 
 	/**
@@ -568,9 +631,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @return return Returns true if it saved data, false if it thought data was not dirty and didn't
 	 * 		save. 
 	 * TODO allow freshness specification
-	 * @throws IOException 
+	 * @throws ContentEncodingException if there is an error encoding the content
+	 * @throws IOException if there is an error reading the content from the network
 	 */
-	protected boolean saveInternal(CCNTime version, boolean gone) throws IOException {
+	protected boolean saveInternal(CCNTime version, boolean gone, Interest outstandingInterest) 
+				throws ContentEncodingException, IOException {
 
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
@@ -614,6 +679,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// If it gets a versioned name, will respect it. 
 			// This will call startWrite on the flow controller.
 			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _keys, _flowControl);
+			if (null != outstandingInterest) {
+				cos.addOutstandingInterest(outstandingInterest);
+			}
 			save(cos); // superclass stream save. calls flush but not close on a wrapping
 			// digest stream; want to make sure we end up with a single non-MHT signed
 			// segment and no header on small objects
@@ -648,11 +716,26 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return true;
 	}
 	
-	public boolean save(E data) throws XMLStreamException, IOException {
+	/**
+	 * Convenience method to the data and save it in a single operation.
+	 * @param data new data for object, set with setData
+	 * @return
+	 * @throws ContentEncodingException if there is an error encoding the content
+	 * @throws IOException if there is an error reading the content from the network
+	 */
+	public boolean save(E data) throws ContentEncodingException, IOException {
 		return save(null, data);
 	}
 	
-	public synchronized boolean save(CCNTime version, E data) throws IOException {
+	/**
+	 * Convenience method to the data and save it as a particular version in a single operation.
+	 * @param version the desired version
+	 * @param data new data for object, set with setData
+	 * @return
+	 * @throws ContentEncodingException if there is an error encoding the content
+	 * @throws IOException if there is an error reading the content from the network
+	 */
+	public synchronized boolean save(CCNTime version, E data) throws ContentEncodingException, IOException {
 		setData(data);
 		return save(version);
 	}
@@ -660,8 +743,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	/**
 	 * If raw=true or DEFAULT_RAW=true specified, this must be the first call to save made
 	 * for this object to force repository storage (overriding default).
+	 * @throws ContentEncodingException if there is an error encoding the content
+	 * @throws IOException if there is an error reading the content from the network
 	 */
-	public synchronized boolean saveToRepository(CCNTime version) throws IOException {
+	public synchronized boolean saveToRepository(CCNTime version) throws ContentEncodingException, IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
@@ -672,15 +757,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return save(version);
 	}
 
-	public boolean saveToRepository() throws IOException {		
+	public boolean saveToRepository() throws ContentEncodingException, IOException {		
 		return saveToRepository((CCNTime)null);
 	}
 	
-	public boolean saveToRepository(E data) throws IOException {
+	public boolean saveToRepository(E data) throws ContentEncodingException, IOException {
 		return saveToRepository(null, data);
 	}
 	
-	public synchronized boolean saveToRepository(CCNTime version, E data) throws IOException {
+	public synchronized boolean saveToRepository(CCNTime version, E data) throws ContentEncodingException, IOException {
 		setData(data);
 		return saveToRepository(version);
 	}
@@ -689,23 +774,39 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Save this object as GONE. Intended to mark the latest version, rather
 	 * than a specific version as GONE. So for now, require that name handed in
 	 * is *not* already versioned; throw an IOException if it is.
+	 * @throws ContentEncodingException if there is an error encoding the content
+	 * @throws IOException if there is an error reading the content from the network
+	 */
+	public synchronized boolean saveAsGone() throws ContentEncodingException, IOException {
+		return saveAsGone(null);
+	}
+	
+	/**
+	 * For use by CCNFilterListeners, saves a GONE object and emits an inital
+	 * block in response to an already-received Interest.
+	 * Save this object as GONE. Intended to mark the latest version, rather
+	 * than a specific version as GONE. So for now, require that name handed in
+	 * is *not* already versioned; throw an IOException if it is.
 	 * @throws IOException
 	 */
-	public synchronized boolean saveAsGone() throws IOException {	
+	public synchronized boolean saveAsGone(Interest outstandingInterest) 
+					throws ContentEncodingException, IOException {	
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
 		_data = null;
 		_isGone = true;
 		setDirty(true);
-		return saveInternal(null, true);
+		return saveInternal(null, true, outstandingInterest);
 	}
 
 	/**
 	 * If raw=true or DEFAULT_RAW=true specified, this must be the first call to save made
 	 * for this object.
+	 * @throws ContentEncodingException if there is an error encoding the content
+	 * @throws IOException if there is an error reading the content from the network
 	 */
-	public synchronized boolean saveToRepositoryAsGone() throws XMLStreamException, IOException {
+	public synchronized boolean saveToRepositoryAsGone() throws ContentEncodingException, IOException {
 		if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
 			throw new IOException("Cannot call saveToRepository on raw object!");
 		}
@@ -879,9 +980,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				} catch (IOException ex) {
 					Log.info("Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
 					// alright, that one didn't work, try to go on.    				
-				} catch (XMLStreamException ex) {
-					Log.info("Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
-					// alright, that one didn't work, try to go on.
 				} 
 			}
 			

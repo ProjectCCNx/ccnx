@@ -19,12 +19,9 @@ package org.ccnx.ccn.profiles.access;
 
 import java.io.IOException;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.protocol.ContentName;
@@ -33,37 +30,36 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * This class records the membership list of Group.
- * Eventually should extend Collection, when that moves onto encodable objects.
- *
+ * This class records the membership list of Group. Might want to define its own tag.
  */
-public class MembershipList extends CCNEncodableObject<Collection> {
+public class MembershipList extends Collection.CollectionObject {
 
-	public MembershipList(ContentName name, Collection data, CCNHandle handle) throws ConfigurationException, IOException {
-		super(Collection.class, name, data, handle);
-	}
-	
-	public MembershipList(ContentName name, PublisherPublicKeyDigest publisher,
-			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
-		super(Collection.class, name, publisher, handle);
+	public MembershipList(ContentName name, Collection data, CCNHandle handle) 
+			throws IOException {
+		super(name, data, handle);
 	}
 	
 	/**
 	 * Read constructor -- opens existing object.
 	 * @param name
 	 * @param handle
-	 * @throws XMLStreamException
+	 * @throws ContentDecodingException
 	 * @throws IOException
-	 * @throws ClassNotFoundException 
 	 */
-	public MembershipList(ContentName name, 
-			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
-		super(Collection.class, name, (PublisherPublicKeyDigest)null, handle);
+	public MembershipList(ContentName name, CCNHandle handle) throws ContentDecodingException, IOException {
+		super(name, (PublisherPublicKeyDigest)null, handle);
+	}
+
+	public MembershipList(ContentName name, PublisherPublicKeyDigest publisher,
+			CCNHandle handle) 
+			throws ContentDecodingException, IOException {
+		super(name, publisher, handle);
 	}
 	
-	public MembershipList(ContentObject firstBlock,
-			CCNHandle handle) throws ConfigurationException, IOException, XMLStreamException {
-		super(Collection.class, firstBlock, handle);
+	
+	public MembershipList(ContentObject firstBlock, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+		super(firstBlock, handle);
 	}
 	
 	/**

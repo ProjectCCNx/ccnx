@@ -22,8 +22,6 @@ import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
@@ -101,16 +99,25 @@ public class CCNNetworkObjectTest {
 
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
-		Log.setLevel(oldLevel);
-		if (flosser != null) {
-			flosser.stop();
-			flosser = null;
+		try {
+			Log.info("Tearing down CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
+			Log.flush();
+			Log.setLevel(oldLevel);
+			if (flosser != null) {
+				flosser.stop();
+				flosser = null;
+			}
+			Log.info("Finished tearing down CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
+			Log.flush();
+		} catch (Exception e) {
+			Log.severe("Exception in tearDownAfterClass: type {0} msg {0}", e.getClass().getName(), e.getMessage());
+			Log.warningStackTrace(e);
 		}
 	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		System.out.println("Making stuff.");
+		Log.info("Setting up CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
 		oldLevel = Log.getLevel();
 		Log.setLevel(Level.FINEST);
 		
@@ -155,6 +162,7 @@ public class CCNNetworkObjectTest {
 		}
 		
 		flosser = new Flosser();
+		Log.info("Finished setting up CCNNetworkObjectTest, prefix is: {0}.", testHelper.getClassNamespace());
 	}
 
 	@Test
@@ -422,7 +430,7 @@ public class CCNNetworkObjectTest {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testSaveAsGone"), collectionObjName);
 
 		try {
-			Log.info("Entering testSaveAsGone");
+			Log.info("TSAG: Entering testSaveAsGone");
 			CollectionObject c0 = new CollectionObject(testName, empty, handle);
 			setupNamespace(testName); // this sends the interest, doing it after the object gives it
 						// a chance to catch it.
@@ -459,7 +467,7 @@ public class CCNNetworkObjectTest {
 			Log.info("TSAG: Waited for: {0}", c2.getVersionedName());
 			Assert.assertTrue("Read back of " + c0.getVersionedName() + " should be gone, got " + c2.getVersionedName(), c2.isGone());
 			Assert.assertEquals(t4, t0);
-			Log.info("T5");
+			Log.info("TSAG: Leaving testSaveAsGone.");
 
 		} finally {
 			removeNamespace(testName);
@@ -470,42 +478,53 @@ public class CCNNetworkObjectTest {
 	public void testUpdateDoesNotExist() throws Exception {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateDoesNotExist"), collectionObjName);
 		try {
+			Log.info("CCNNetworkObjectTest: Entering testUpdateDoesNotExist");
 			CCNStringObject so = new CCNStringObject(testName, handle);
 			setupNamespace(testName);
 			// so should catch exception thrown by underlying stream when it times out.
 			Assert.assertFalse(so.available());
 			CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", CCNHandle.open());
-			saveAndLog("Delayed write", sowrite, null, "Now we write something.");
+			saveAndLog("testUpdateDoesNotExist: Delayed write", sowrite, null, "Now we write something.");
+			Log.flush();
 			so.waitForData();
 			Assert.assertTrue(so.available());
 			Assert.assertEquals(so.string(), sowrite.string());
 			Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
+			Log.info("CCNNetworkObjectTest: Leaving testUpdateDoesNotExist");
+			Log.flush();
 		} finally {
 			removeNamespace(testName);
 		}
 	}
 	
-	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws XMLStreamException, IOException {
+	@Test
+	public void testVeryLast() throws Exception {
+		Log.info("CCNNetworkObjectTest: Entering testVeryLast -- dummy test to help track down blowup. Prefix {0}", testHelper.getClassNamespace());
+		Thread.sleep(1000);
+		Log.info("CCNNetworkObjectTest: Leaving testVeryLast -- dummy test to help track down blowup. Prefix {0}", testHelper.getClassNamespace());	
+	}
+	
+	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws IOException {
 		CCNTime oldVersion = ecd.getVersion();
 		ecd.save(version, data);
 		Log.info("SAL: Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 	
-	public <T> CCNTime saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws XMLStreamException, IOException {
+	public <T> CCNTime saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws IOException {
 		CCNTime oldVersion = ecd.getVersion();
 		ecd.saveAsGone();
 		Log.info("SAGAL Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 	
-	public CCNTime waitForDataAndLog(String name, CCNNetworkObject<?> ecd) throws XMLStreamException, IOException {
+	public CCNTime waitForDataAndLog(String name, CCNNetworkObject<?> ecd) throws IOException {
 		ecd.waitForData();
 		Log.info("WFDAL: Initial read " + name + ", name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
 	}
 
-	public CCNTime updateAndLog(String name, CCNNetworkObject<?> ecd, ContentName updateName) throws XMLStreamException, IOException {
+	public CCNTime updateAndLog(String name, CCNNetworkObject<?> ecd, ContentName updateName) throws IOException {
 		if ((null == updateName) ? ecd.update() : ecd.update(updateName, null))
 			Log.info("Updated " + name + ", to name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		else 

@@ -29,10 +29,8 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable;
 import org.ccnx.ccn.impl.InterestTable.Entry;
-import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
-import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -53,50 +51,10 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private InterestTable<Object> _interests = new InterestTable<Object>();	// Used to hold outstanding interests
 										// expressed but not yet satisfied.  Also used to decide how many interests
 										// may be expressed to satisfy the current pipelining window
-	private RepositoryServer _server;
+	protected RepositoryServer _server;
 	private CCNHandle _handle;
 	private long _currentBlock = 0; 	// latest block we're looking for
 	private long _finalBlockID = -1; 	// expected last block of the stream
-	
-	/**
-	 * So the main listener can output interests sooner, we do the data creation work
-	 * in a separate thread.
-	 */
-	private class DataHandler implements Runnable {
-		private ContentObject _content;
-		
-		private DataHandler(ContentObject co) {
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
-				Log.info("Saw data: {0}", co.name());
-			_content = co;
-		}
-	
-		/**
-		 * The content listener runs this thread to store data using the content store.
-		 * The thread also checks for policy updates which may reset the repository's
-		 * namespace and sends "early" nameEnumerationResponses when requested by the
-		 * store.
-		 * 
-		 * @see RepositoryStore
-		 */
-		public void run() {
-			try {
-				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-					Log.finer("Saving content in: " + _content.name().toString());
-				}
-				
-				NameEnumerationResponse ner = _server.getRepository().saveContent(_content);		
-				if (_server.getRepository().checkPolicyUpdate(_content)) {
-					_server.resetNameSpaceFromHandler();
-				} if (ner!=null && ner.hasNames()) {
-					_server.sendEnumerationResponse(ner);
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-				Log.logStackTrace(Level.WARNING, e);
-			}
-		}
-	}
 	
 	/**
 	 * @param origInterest	used only to log the actual interest that created this listener
@@ -124,7 +82,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_timer = new Date().getTime();
 		
 		for (ContentObject co : results) {
-			_server.getThreadPool().execute(new DataHandler(co));
+			handleData(co);
 			
 			boolean isFinalBlock = false;
 			
@@ -204,6 +162,14 @@ public class RepositoryDataListener implements CCNInterestListener {
 			}
 		}
 		return null;
+	}
+	
+	/**
+	 * Allow subclasses to override data handling behavior
+	 * @param co
+	 */
+	public void handleData(ContentObject co) {
+		_server.getThreadPool().execute(new RepositoryDataHandler(co, _server));
 	}
 	
 	/**
@@ -318,5 +284,4 @@ public class RepositoryDataListener implements CCNInterestListener {
 	public InterestTable<Object> getInterests() {
 		return _interests;
 	}
-	
 }

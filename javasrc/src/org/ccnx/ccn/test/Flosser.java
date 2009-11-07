@@ -69,6 +69,7 @@ public class Flosser implements CCNInterestListener {
 	Map<ContentName, Interest> _interests = new HashMap<ContentName, Interest>();
 	Map<ContentName, Set<ContentName>> _subInterests = new HashMap<ContentName, Set<ContentName>>();
 	HashSet<ContentObject> _processedObjects = new HashSet<ContentObject>();
+	boolean _shutdown = false;
 	
 	/**
 	 * Constructors that called handleNamespace() now throwing NullPointerException as this doesn't exist yet.
@@ -82,10 +83,6 @@ public class Flosser implements CCNInterestListener {
 	public Flosser(ContentName namespace) throws ConfigurationException, IOException {
 		this();
 		handleNamespace(namespace);
-	}
-	
-	public void handleNamespace(String namespace) throws MalformedContentNameStringException, IOException {
-		handleNamespace(ContentName.fromNative(namespace));
 	}
 	
 	public void stopMonitoringNamespace(String namespace) throws MalformedContentNameStringException {
@@ -113,6 +110,19 @@ public class Flosser implements CCNInterestListener {
 		}
 	}
 	
+	public void stopMonitoringNamespaces() {
+		synchronized(_interests) {
+			Set<ContentName> namespaceSet = getNamespaces();
+			// Go through a few hoops to avoid a ConcurrentModificationException, as code
+			// other than us is going to remove the things we're iterating over from the Set.
+			ContentName [] namespaces = new ContentName[namespaceSet.size()];
+			namespaces = namespaceSet.toArray(namespaces);
+			for (int i=0; i < namespaces.length; ++i) {
+				stopMonitoringNamespace(namespaces[i]);
+			}
+		}
+	}
+	
 	protected void removeInterest(ContentName namespace) {
 		synchronized(_interests) {
 			if (!_interests.containsKey(namespace)) {
@@ -125,6 +135,10 @@ public class Flosser implements CCNInterestListener {
 		}
 	}
 	
+	public void handleNamespace(String namespace) throws MalformedContentNameStringException, IOException {
+		handleNamespace(ContentName.fromNative(namespace));
+	}
+	
 	/**
 	 * Handle a top-level namespace.
 	 * @param namespace
@@ -132,6 +146,10 @@ public class Flosser implements CCNInterestListener {
 	 */
 	public void handleNamespace(ContentName namespace) throws IOException {
 		synchronized(_interests) {
+			if (_shutdown) {
+				Log.info("FLOSSER: in the process of shutting down. Not handling new namespace {0}.", namespace);
+				return;
+			}
 			if (_interests.containsKey(namespace)) {
 				Log.fine("FLOSSER: Already handling namespace: {0}", namespace);
 				return;
@@ -151,6 +169,11 @@ public class Flosser implements CCNInterestListener {
 	
 	public void handleNamespace(ContentName namespace, ContentName parent) throws IOException {
 		synchronized(_interests) {
+			if (_shutdown) {
+				Log.info("FLOSSER: in the process of shutting down. Not handling new subnamespace {0} under parent {1}.", 
+						namespace, parent);
+				return;
+			}
 			if (_interests.containsKey(namespace)) {
 				Log.fine("Already handling child namespace: {0}", namespace);
 				return;
@@ -269,10 +292,10 @@ public class Flosser implements CCNInterestListener {
 	public void stop() {
 		Log.info("Stop flossing.");
 		synchronized (_interests) {
-			for (Interest interest : _interests.values()) {
-				Log.info("Cancelling pending interest: " + interest);
-				_handle.cancelInterest(interest, this);
-			}
+			_shutdown = true;
+			stopMonitoringNamespaces();
+			Log.info("Stopped flossing: remaining namespaces {0} (should be 0), subnamespaces {1} (should be 0).",
+						_interests.size(), _subInterests.size());
 		}
 	}
 	

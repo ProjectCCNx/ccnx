@@ -30,7 +30,6 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
-import javax.xml.stream.XMLStreamException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
@@ -108,22 +107,23 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	public static class WrappedKeyObject extends CCNEncodableObject<WrappedKey> {
 
 		public WrappedKeyObject(ContentName name, WrappedKey data, CCNHandle handle) throws IOException {
-			super(WrappedKey.class, name, data, handle);
+			super(WrappedKey.class, true, name, data, handle);
 		}
-		
+
+		public WrappedKeyObject(ContentName name, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+			super(WrappedKey.class, true, name, (PublisherPublicKeyDigest)null, handle);
+		}
+
 		public WrappedKeyObject(ContentName name, PublisherPublicKeyDigest publisher,
-				CCNHandle handle) throws IOException, XMLStreamException {
-			super(WrappedKey.class, name, publisher, handle);
+								CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+			super(WrappedKey.class, true, name, publisher, handle);
 		}
 		
-		public WrappedKeyObject(ContentName name, 
-				CCNHandle handle) throws IOException, XMLStreamException {
-			super(WrappedKey.class, name, (PublisherPublicKeyDigest)null, handle);
-		}
-		
-		public WrappedKeyObject(ContentObject firstBlock,
-				CCNHandle handle) throws IOException, XMLStreamException {
-			super(WrappedKey.class, firstBlock, handle);
+		public WrappedKeyObject(ContentObject firstBlock, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+			super(WrappedKey.class, true, firstBlock, handle);
 		}
 		
 		public WrappedKey wrappedKey() throws ContentNotReadyException, ContentGoneException { return data(); }
@@ -467,7 +467,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	public byte [] encryptedKey() { return _encryptedKey; }
 
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
 		if (decoder.peekStartElement(WRAPPING_KEY_IDENTIFIER_ELEMENT)) {
@@ -501,10 +501,10 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	}
 
 	@Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		
 		if (!validate()) {
-			throw new XMLStreamException("Cannot encode " + this.getClass().getName() + ": field values missing.");
+			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		
 		encoder.writeStartElement(getElementLabel());
@@ -610,8 +610,9 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	}
 
 	public static int getCipherType(String cipherAlgorithm) {
-		if (cipherAlgorithm.equalsIgnoreCase("ECIES") || 
-					cipherAlgorithm.equalsIgnoreCase("RSA") || cipherAlgorithm.equalsIgnoreCase("ElGamal")) {
+		if (cipherAlgorithm.equalsIgnoreCase("ECIES") || cipherAlgorithm.equalsIgnoreCase("EC") ||
+				cipherAlgorithm.equalsIgnoreCase("RSA") || cipherAlgorithm.equalsIgnoreCase("ElGamal") ||
+				cipherAlgorithm.equalsIgnoreCase("DH") || cipherAlgorithm.equalsIgnoreCase("DSA")) {
 			return Cipher.PRIVATE_KEY; // right now assume we don't wrap public keys
 		}
 		return Cipher.SECRET_KEY;
@@ -689,6 +690,13 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			System.arraycopy(input, offset, tmpbuf, 0, length);
 			input = tmpbuf;
 		}
-		return engine.unwrap(unwrappingKey, input, wrappedKeyAlgorithm);
+		try {
+			return engine.unwrap(unwrappingKey, input, wrappedKeyAlgorithm);
+		} catch (NoSuchAlgorithmException e) {
+			// engine.unwrap only throws NoSuchAlgorithmException in older versions of BouncyCastle.
+			// Newer versions do exactly what we're doing here; add it here manually to allow 
+			// compatibility with multiple BC versions.
+            throw new InvalidKeyException("Unknown key type " + e.getMessage());
+		}
 	}
 }

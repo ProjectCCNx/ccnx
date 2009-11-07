@@ -27,6 +27,7 @@ import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -79,7 +80,7 @@ public class RFSTest extends RepoTestBase {
 						
 	public void initRepoLog() throws Exception {
 		repolog = new LogStructRepoStore();
-		repolog.initialize(putLibrary, _fileTestDir, null, _repoName, _globalPrefix);
+		repolog.initialize(putHandle, _fileTestDir, null, _repoName, _globalPrefix, null);
 	}
 	
 	@Test
@@ -181,7 +182,7 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, Interest.next(new ContentName(name1, content1.contentDigest()), 2), "bbb");
 		checkData(repo, Interest.last(new ContentName(name1, content1.contentDigest()), 2), "eee");
 		checkData(repo, Interest.next(new ContentName(name1, content1.contentDigest()), 
-				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2), "ddd");
+				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2, null), "ddd");
 		
 		System.out.println("Repotest - Testing different kinds of interests in a mixture of encoded/standard data");
 		ContentName nonLongName = ContentName.fromNative("/repoTestLong/nextTestLong/aaa");
@@ -198,7 +199,7 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.contentDigest()), 2), "bbb");
 		checkData(repo, Interest.last(new ContentName(nonLongName, nonLongContent.contentDigest()), 2), "eee");
 		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.contentDigest()), 
-				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2), "ddd");
+				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2, null), "ddd");
 		
 		System.out.println("Repotest - testing version and segment files");
 		versionedName = ContentName.fromNative("/repoTest/testVersion");
@@ -243,6 +244,7 @@ public class RFSTest extends RepoTestBase {
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
 		Interest interest = new Interest(new ContentName(nerpre, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION));
+		Log.info("RFSTEST: Name enumeration prefix:{0}", interest.name());
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
 		//now saving the first piece of content in the repo.  interest flag not set, so it should not get an object back
@@ -311,15 +313,15 @@ public class RFSTest extends RepoTestBase {
 	public void testPolicy() throws Exception {
 		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
-			repo.initialize(putLibrary, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null);
+			repo.initialize(putHandle, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
 		try {	// Test bad version
-			repo.initialize(putLibrary, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null);
+			repo.initialize(putHandle, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
-		repo.initialize(putLibrary, _fileTestDir,  
-					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix);
+		repo.initialize(putHandle, _fileTestDir,  
+					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null);
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
 		repo.saveContent(content);
@@ -329,8 +331,15 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(oonsContent);
 		ContentObject testContent = repo.getContent(new Interest(outOfNameSpaceName));
 		Assert.assertTrue(testContent == null);
-		repo.initialize(putLibrary, _fileTestDir, 
-				new File(_topdir + "/org/ccnx/ccn/test/repo/origPolicy.xml"), _repoName, _globalPrefix);
+		
+		// Test reading policy file from the repo
+		repolog.initialize(putHandle, _fileTestDir, null, _repoName, _globalPrefix, null);
+		repo.saveContent(oonsContent);
+		ContentObject testContentAgain = repo.getContent(new Interest(outOfNameSpaceName));
+		Assert.assertTrue(testContentAgain == null);
+		
+		// Test setting prefix from the prefix parameter
+		repo.initialize(putHandle, _fileTestDir, null, _repoName, _globalPrefix, "/");
 		repo.saveContent(oonsContent);
 		checkData(repo, outOfNameSpaceName, "Shouldn't see this");	
 	}

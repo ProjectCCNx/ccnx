@@ -17,11 +17,11 @@
 
 package org.ccnx.ccn.protocol;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 
 /**
@@ -39,12 +39,12 @@ public class ExcludeComponent extends Exclude.Element implements Comparable<Excl
 	}
 	
 	@Override
-	public void decode(XMLDecoder decoder) throws XMLStreamException {
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		body = decoder.readBinaryElement(getElementLabel());
 	}
 
 	@Override
-	public void encode(XMLEncoder encoder) throws XMLStreamException {
+	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		encoder.writeElement(getElementLabel(), body);
 	}
 	

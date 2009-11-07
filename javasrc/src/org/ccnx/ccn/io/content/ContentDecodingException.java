@@ -17,9 +17,9 @@
 
 package org.ccnx.ccn.io.content;
 
-import org.ccnx.ccn.CCNException;
+import java.io.IOException;
 
-public class ContentDecodingException extends CCNException {
+public class ContentDecodingException extends IOException {
 
 	private static final long serialVersionUID = -3241398413568999091L;
 
@@ -31,11 +31,15 @@ public class ContentDecodingException extends CCNException {
 	}
 
 	public ContentDecodingException(Throwable cause) {
-		super(cause);
+		// Can't do this on 1.5
+		// super(cause);
+		super("Caused by " + cause.getClass() + ": " + cause.getMessage());
 	}
 
 	public ContentDecodingException(String message, Throwable cause) {
-		super(message, cause);
+		// Can't do this on 1.5
+		// super(message, cause);
+		super(message + ": caused by " + cause.getClass() + ": " + cause.getMessage());
 	}
 
 }

@@ -19,22 +19,14 @@ package org.ccnx.ccn.test.io.content;
 
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PublicKey;
 import java.security.Security;
-import java.util.Random;
 import java.util.logging.Level;
 
-import javax.xml.stream.XMLStreamException;
-
-import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.jce.spec.ECParameterSpec;
-import org.bouncycastle.jce.spec.ElGamalParameterSpec;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
@@ -49,7 +41,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * Test reading and writing versioned, encoded PublicKeys to a repository.
+ * Test reading and writing versioned, encoded PublicKeys to a repository. We have
+ * separated out reading and writing El Gamal and ECC public keys, because BouncyCastle
+ * doesn't support all algorithms out of the box on certain platforms. See 
+ * apps/extras/ExpandedCryptoTests for the full tests.
  */
 public class PublicKeyObjectTestRepo {
 
@@ -60,10 +55,10 @@ public class PublicKeyObjectTestRepo {
 
 	public static KeyPair pair1 = null;
 	public static KeyPair pair2 = null;
-	public static KeyPair egPair = null;
-	public static KeyPair eccPair = null;
-	public static KeyPair eciesPair = null;
-	public static ContentName [][] storedKeyNames = new ContentName[2][3];
+	public static KeyPair dsaPair = null;
+	public static KeyPair dhPair = null;
+	public static int NUM_ALGORITHMS = 3;
+	public static ContentName [][] storedKeyNames = new ContentName[2][NUM_ALGORITHMS];
 	public static ContentName namespace = null;
 	
 	static Level oldLevel;
@@ -87,26 +82,20 @@ public class PublicKeyObjectTestRepo {
 		kpg.initialize(1024); // go for fast
 		pair1 = kpg.generateKeyPair();
 		pair2 = kpg.generateKeyPair();
-		ElGamalParameterSpec egp = new ElGamalParameterSpec(
-				new BigInteger(1, WrappedKeyTest.pbytes), new BigInteger(1, WrappedKeyTest.gbytes));
-		KeyPairGenerator ekpg = KeyPairGenerator.getInstance("ElGamal", KeyManager.getDefaultProvider());
-		ekpg.initialize(egp); // go for fast
-		egPair = ekpg.generateKeyPair();
-		KeyPairGenerator eckpg = KeyPairGenerator.getInstance("EC", KeyManager.getDefaultProvider());
-		ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("P-384");
-		eckpg.initialize(ecSpec);
-		eccPair = eckpg.generateKeyPair();
-		
-		KeyPairGenerator g = KeyPairGenerator.getInstance("ECIES", KeyManager.getDefaultProvider());
-	    g.initialize(192);
-	    eciesPair = g.generateKeyPair();
 	     
+		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DSA");
+        keyGen.initialize(1024);
+        dsaPair = keyGen.genKeyPair();
+    
+        // Generate a 576-bit DH key pair
+        keyGen = KeyPairGenerator.getInstance("DH");
+        keyGen.initialize(576);
+        dhPair = keyGen.genKeyPair();
 	    namespace = ContentName.fromNative(testHelper.getClassNamespace(), "Users");
 	    for (int i=0; i < storedKeyNames.length; ++i) {
-		    int randomTrial = new Random().nextInt(10000);
-			storedKeyNames[i][0] = ContentName.fromNative(namespace, "testRSAUser-" + Integer.toString(randomTrial), "KEY");
-			storedKeyNames[i][1] = ContentName.fromNative(namespace, "testEGUser-" + Integer.toString(randomTrial), "KEY");
-			storedKeyNames[i][2] = ContentName.fromNative(namespace, "testECCUser-" + Integer.toString(randomTrial), "KEY");		    
+			storedKeyNames[i][0] = ContentName.fromNative(namespace, "testRSAUser-" + i, "KEY");
+			storedKeyNames[i][1] = ContentName.fromNative(namespace, "testDSAUser-" + i, "KEY");
+			storedKeyNames[i][2] = ContentName.fromNative(namespace, "testDHUser-" + i, "KEY");
 	    }
 	}
 
@@ -115,12 +104,13 @@ public class PublicKeyObjectTestRepo {
 		
 		try {
 			testRawKeyReadWrite(storedKeyNames[0][0], pair1.getPublic(), pair2.getPublic());
-			testRawKeyReadWrite(storedKeyNames[0][1], egPair.getPublic(), null);
-			testRawKeyReadWrite(storedKeyNames[0][2], eccPair.getPublic(), eciesPair.getPublic());
+			testRawKeyReadWrite(storedKeyNames[0][1], dsaPair.getPublic(), null);
+			testRawKeyReadWrite(storedKeyNames[0][2], dhPair.getPublic(), null);
 		} finally {
-			System.out.println("Stopping flosser.");
+			Log.info("PublicKeyObjectTestRepo: Stopping flosser.");
 			flosser.stop();
 			flosser = null;
+			Log.info("PublicKeyObjectTestRepo: Flosser stopped.");
 		}
 	}
 
@@ -128,11 +118,11 @@ public class PublicKeyObjectTestRepo {
 	public void testRepoPublicKeyObject() throws Exception {
 
 		testRepoKeyReadWrite(storedKeyNames[1][0], pair1.getPublic(), pair2.getPublic());
-		testRepoKeyReadWrite(storedKeyNames[1][1], egPair.getPublic(), null);
-		testRepoKeyReadWrite(storedKeyNames[1][2], eccPair.getPublic(), eciesPair.getPublic());
+		testRepoKeyReadWrite(storedKeyNames[1][1], dsaPair.getPublic(), null);
+		testRepoKeyReadWrite(storedKeyNames[1][2], dhPair.getPublic(), null);
 	}
 
-	public void testRawKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException, VersionMissingException {
+	public void testRawKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, VersionMissingException {
 		
 
 		Log.info("Reading and writing raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
@@ -160,15 +150,24 @@ public class PublicKeyObjectTestRepo {
 			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
 			pko.update();
 			Assert.assertEquals(pkoread.getVersionedName(), pko.getVersionedName());
-			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
-			Assert.assertEquals(pko.publicKey(), optional2ndKey);
+			if (!pkoread.publicKey().equals(pko.publicKey())) {
+				Log.info("Mismatched public keys, chance provider doesn't implement equals()." );
+				Assert.assertArrayEquals(pkoread.publicKey().getEncoded(), pko.publicKey().getEncoded());
+			} else {
+				Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
+			}
+			if (!optional2ndKey.equals(pko.publicKey())) {
+				Log.info("Mismatched public keys, chance provider doesn't implement equals()." );
+				Assert.assertArrayEquals(optional2ndKey.getEncoded(), pko.publicKey().getEncoded());
+			} else {
+				Assert.assertEquals(optional2ndKey, pko.publicKey());
+			}
 		}
 		Log.info("Finished reading and writing raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 
 	}
 
-	public void testRepoKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, XMLStreamException, VersionMissingException {
-		
+	public void testRepoKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, VersionMissingException {
 
 		Log.info("Reading and writing key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, handle);
@@ -192,8 +191,18 @@ public class PublicKeyObjectTestRepo {
 			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
 			pko.update();
 			Assert.assertEquals(pkoread.getVersionedName(), pko.getVersionedName());
-			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
-			Assert.assertEquals(pko.publicKey(), optional2ndKey);
+			if (!pkoread.publicKey().equals(pko.publicKey())) {
+				Log.info("Mismatched public keys, chance provider doesn't implement equals()." );
+				Assert.assertArrayEquals(pkoread.publicKey().getEncoded(), pko.publicKey().getEncoded());
+			} else {
+				Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
+			}
+			if (!optional2ndKey.equals(pko.publicKey())) {
+				Log.info("Mismatched public keys, chance provider doesn't implement equals()." );
+				Assert.assertArrayEquals(optional2ndKey.getEncoded(), pko.publicKey().getEncoded());
+			} else {
+				Assert.assertEquals(optional2ndKey, pko.publicKey());
+			}
 		}
 		Log.info("Finished reading and writing key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 	}
