@@ -335,7 +335,8 @@
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/impl/**/*Test.class"/>
-				    <include name="org/ccnx/ccn/test/profiles/nameenum/NameEnumeratorTest.class"/>
+				    <include name="org/ccnx/ccn/test/profiles/nameenum/*Test.class"/>
+					<include name="org/ccnx/ccn/test/profiles/*Test.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
