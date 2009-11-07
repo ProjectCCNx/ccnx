@@ -202,7 +202,7 @@ print_summary(struct mydata *md)
     const char *expid;
     const char *dlm = " ";
     double elapsed = 0.0;
-    long delivered_bytes;
+    intmax_t delivered_bytes;
     double rate = 0.0;
     
     expid = getenv("CCN_EXPERIMENT_ID");
@@ -216,7 +216,7 @@ print_summary(struct mydata *md)
         rate = delivered_bytes/elapsed;
     fprintf(stderr,
             "%ld.%06u ccncatchunks2[%d]: %s%s"
-            "%ld bytes transferred in %.6f seconds (%.0f bytes/sec)"
+            "%jd bytes transferred in %.6f seconds (%.0f bytes/sec)"
             "\n",
             (long)md->stop_tv.tv_sec,
             (unsigned)md->stop_tv.tv_usec,
