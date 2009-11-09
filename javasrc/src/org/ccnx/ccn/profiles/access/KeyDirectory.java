@@ -48,6 +48,7 @@ import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.access.AccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 
@@ -158,10 +159,10 @@ public class KeyDirectory extends EnumeratedNameList {
 		for (ContentName childName : newChildren) {
 			// currently encapsulated in single-component ContentNames
 			byte [] wkChildName = childName.lastComponent();
-			if (AccessControlProfile.isWrappedKeyNameComponent(wkChildName)) {
+			if (AccessControlProfile.isKeyNameComponent(wkChildName)) {
 				byte[] keyid;
 				try {
-					keyid = AccessControlProfile.getKeyIDFromNameComponent(wkChildName);
+					keyid = KeyProfile.getKeyIDFromNameComponent(wkChildName);
 					try{
 						_keyIDLock.writeLock().lock();
 						_keyIDs.add(keyid);

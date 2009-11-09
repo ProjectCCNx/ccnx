@@ -16,7 +16,11 @@
  */
 package org.ccnx.ccn.profiles.security;
 
+import java.io.IOException;
+
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.profiles.CCNProfile;
+import org.ccnx.ccn.profiles.access.AccessControlProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -86,5 +90,28 @@ public class KeyProfile implements CCNProfile {
 	 */
 	public static ContentName keyName(ContentName parent, PublisherPublicKeyDigest keyToName) {	
 		return new ContentName(parent, keyIDNameComponent(keyToName));
+	}
+
+	/**
+	 * Get the target keyID from a name component.
+	 * Wrapped key blocks are stored under a name whose last (pre content digest) component
+	 * identifies the key used to wrap them, as 
+	 * WRAPPING_KEY_PREFIX COMPONENT_SEPARATOR base64Encode(keyID)
+	 * or 
+	 * keyid:<base 64 encoding of binary key id>
+	 * The reason for the prefix is to allow unique separation from the principal name
+	 * links, the reason for the base 64 encoding is to allow unique separation from the
+	 * prefix.
+	 * @param childName the name component
+	 * @return the keyID
+	 * @throws IOException
+	 */
+	public static byte[] getKeyIDFromNameComponent(byte[] childName) throws IOException {
+		if (!AccessControlProfile.isKeyNameComponent(childName))
+			return null;
+		byte [] base64keyid = new byte[childName.length - KEY_ID_PREFIX.length];
+		System.arraycopy(childName, KEY_ID_PREFIX.length, base64keyid, 0, base64keyid.length);
+		byte [] keyid = DataUtils.base64Decode(base64keyid);
+		return keyid;
 	}
 }
