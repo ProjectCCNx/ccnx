@@ -309,7 +309,7 @@ public class AccessControlProfile implements CCNProfile {
 	 * @return the keyID
 	 * @throws IOException
 	 */
-	public static byte[] getTargetKeyIDFromNameComponent(byte[] childName) throws IOException {
+	public static byte[] getKeyIDFromNameComponent(byte[] childName) throws IOException {
 		if (!isWrappedKeyNameComponent(childName))
 			return null;
 		byte [] base64keyid = new byte[childName.length - KeyProfile.KEY_ID_PREFIX.length];

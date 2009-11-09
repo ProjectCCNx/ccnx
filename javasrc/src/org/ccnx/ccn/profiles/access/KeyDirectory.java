@@ -161,7 +161,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			if (AccessControlProfile.isWrappedKeyNameComponent(wkChildName)) {
 				byte[] keyid;
 				try {
-					keyid = AccessControlProfile.getTargetKeyIDFromNameComponent(wkChildName);
+					keyid = AccessControlProfile.getKeyIDFromNameComponent(wkChildName);
 					try{
 						_keyIDLock.writeLock().lock();
 						_keyIDs.add(keyid);
