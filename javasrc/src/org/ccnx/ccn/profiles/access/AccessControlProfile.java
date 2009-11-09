@@ -61,13 +61,10 @@ public class AccessControlProfile implements CCNProfile {
 	public static final String DATA_KEY_NAME = "DK";
 	public static final byte [] DATA_KEY_NAME_BYTES = ContentName.componentParseNative(DATA_KEY_NAME);
 
-	// Needs to be something not in base64 charset.
-	public static final String COMPONENT_SEPARATOR_STRING = ":";
-	public static final byte [] COMPONENT_SEPARATOR = ContentName.componentParseNative(COMPONENT_SEPARATOR_STRING);
-	public static final byte [] WRAPPING_KEY_PREFIX = ContentName.componentParseNative("keyid" + COMPONENT_SEPARATOR_STRING);
+	public static final byte [] WRAPPING_KEY_PREFIX = ContentName.componentParseNative("keyid" + CCNProfile.COMPONENT_SEPARATOR_STRING);
 	// These two must be the same length
-	public static final byte [] PRINCIPAL_PREFIX = ContentName.componentParseNative("p" + COMPONENT_SEPARATOR_STRING);
-	public static final byte [] GROUP_PRINCIPAL_PREFIX = ContentName.componentParseNative("g" + COMPONENT_SEPARATOR_STRING);
+	public static final byte [] PRINCIPAL_PREFIX = ContentName.componentParseNative("p" + CCNProfile.COMPONENT_SEPARATOR_STRING);
+	public static final byte [] GROUP_PRINCIPAL_PREFIX = ContentName.componentParseNative("g" + CCNProfile.COMPONENT_SEPARATOR_STRING);
 
 	public static final String SUPERSEDED_MARKER = "SupersededBy";
 	
@@ -350,7 +347,7 @@ public class AccessControlProfile implements CCNProfile {
 		// Could jump back based on fixed width of timestamp.
 		int sepIndex = -1;
 		for (sepIndex = PRINCIPAL_PREFIX.length; sepIndex < childName.length; sepIndex++) {
-			if (childName[sepIndex] == COMPONENT_SEPARATOR[0])
+			if (childName[sepIndex] == CCNProfile.COMPONENT_SEPARATOR[0])
 				break;
 		}
 		if (sepIndex == childName.length) {
@@ -388,12 +385,12 @@ public class AccessControlProfile implements CCNProfile {
 		byte [] bytePrincipal = ContentName.componentParseNative(pi.friendlyName());
 		byte [] byteTime = pi.versionTimestamp().toBinaryTime();
 		byte [] prefix = (pi.isGroup() ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
-		byte [] component = new byte[prefix.length + bytePrincipal.length + COMPONENT_SEPARATOR.length + byteTime.length];
+		byte [] component = new byte[prefix.length + bytePrincipal.length + CCNProfile.COMPONENT_SEPARATOR.length + byteTime.length];
 		// java 1.6 has much better functions for array copying
 		System.arraycopy(prefix, 0, component, 0, prefix.length);
 		System.arraycopy(bytePrincipal, 0, component, prefix.length, bytePrincipal.length);
-		System.arraycopy(COMPONENT_SEPARATOR, 0, component, prefix.length+bytePrincipal.length, COMPONENT_SEPARATOR.length);
-		System.arraycopy(byteTime, 0, component, prefix.length+bytePrincipal.length+COMPONENT_SEPARATOR.length, 
+		System.arraycopy(CCNProfile.COMPONENT_SEPARATOR, 0, component, prefix.length+bytePrincipal.length, CCNProfile.COMPONENT_SEPARATOR.length);
+		System.arraycopy(byteTime, 0, component, prefix.length+bytePrincipal.length+CCNProfile.COMPONENT_SEPARATOR.length, 
 				byteTime.length);
 		
 		return component;
