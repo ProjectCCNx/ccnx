@@ -61,7 +61,7 @@ public class AccessControlProfile implements CCNProfile {
 	public static final String DATA_KEY_NAME = "DK";
 	public static final byte [] DATA_KEY_NAME_BYTES = ContentName.componentParseNative(DATA_KEY_NAME);
 
-	public static final byte [] WRAPPING_KEY_PREFIX = ContentName.componentParseNative("keyid" + CCNProfile.COMPONENT_SEPARATOR_STRING);
+	public static final byte [] KEY_ID_PREFIX = ContentName.componentParseNative("keyid" + CCNProfile.COMPONENT_SEPARATOR_STRING);
 	// These two must be the same length
 	public static final byte [] PRINCIPAL_PREFIX = ContentName.componentParseNative("p" + CCNProfile.COMPONENT_SEPARATOR_STRING);
 	public static final byte [] GROUP_PRINCIPAL_PREFIX = ContentName.componentParseNative("g" + CCNProfile.COMPONENT_SEPARATOR_STRING);
@@ -292,7 +292,7 @@ public class AccessControlProfile implements CCNProfile {
 	 * @return
 	 */
 	public static boolean isWrappedKeyNameComponent(byte [] wnkNameComponent) {
-		return DataUtils.isBinaryPrefix(WRAPPING_KEY_PREFIX, wnkNameComponent);
+		return DataUtils.isBinaryPrefix(KEY_ID_PREFIX, wnkNameComponent);
 	}
 
 	/**
@@ -312,8 +312,8 @@ public class AccessControlProfile implements CCNProfile {
 	public static byte[] getTargetKeyIDFromNameComponent(byte[] childName) throws IOException {
 		if (!isWrappedKeyNameComponent(childName))
 			return null;
-		byte [] base64keyid = new byte[childName.length - WRAPPING_KEY_PREFIX.length];
-		System.arraycopy(childName, WRAPPING_KEY_PREFIX.length, base64keyid, 0, base64keyid.length);
+		byte [] base64keyid = new byte[childName.length - KEY_ID_PREFIX.length];
+		System.arraycopy(childName, KEY_ID_PREFIX.length, base64keyid, 0, base64keyid.length);
 		byte [] keyid = DataUtils.base64Decode(base64keyid);
 		return keyid;
 	}
@@ -327,9 +327,9 @@ public class AccessControlProfile implements CCNProfile {
 		if (null == keyID)
 			return null;
 		byte [] encodedKeyIDBytes = DataUtils.base64Encode(keyID);
-		byte [] output = new byte[WRAPPING_KEY_PREFIX.length + encodedKeyIDBytes.length];
-		System.arraycopy(WRAPPING_KEY_PREFIX, 0, output, 0, WRAPPING_KEY_PREFIX.length);
-		System.arraycopy(encodedKeyIDBytes, 0, output, WRAPPING_KEY_PREFIX.length, encodedKeyIDBytes.length);
+		byte [] output = new byte[KEY_ID_PREFIX.length + encodedKeyIDBytes.length];
+		System.arraycopy(KEY_ID_PREFIX, 0, output, 0, KEY_ID_PREFIX.length);
+		System.arraycopy(encodedKeyIDBytes, 0, output, KEY_ID_PREFIX.length, encodedKeyIDBytes.length);
 		return output;
 	}
 
