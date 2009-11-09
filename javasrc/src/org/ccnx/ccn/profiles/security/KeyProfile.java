@@ -44,19 +44,21 @@ public class KeyProfile implements CCNProfile {
 	 * 	be referred to.
 	 * @return The resulting name component.
 	 */
-	public static byte [] keyIDNameComponent(byte [] keyID) {
+	public static byte [] keyIDToNameComponent(byte [] keyID) {
 		
 		if (null == keyID) {
 			// for now, don't complain about 0-length ID
 			throw new IllegalArgumentException("keyID must not be null!");
 		}
 		
+		byte [] encodedKeyIDBytes = DataUtils.base64Encode(keyID);
+		
 		byte [] component = new byte[KEY_ID_PREFIX.length + KEY_ID_POSTFIX.length + 
-		                             keyID.length];
+		                             encodedKeyIDBytes.length];
 		int offset = 0;
 		System.arraycopy(KEY_ID_PREFIX, 0, component, offset, KEY_ID_PREFIX.length);
 		offset += KEY_ID_PREFIX.length;
-		System.arraycopy(keyID, 0, component, offset, keyID.length);
+		System.arraycopy(encodedKeyIDBytes, 0, component, offset, encodedKeyIDBytes.length);
 		offset += keyID.length;
 		System.arraycopy(KEY_ID_POSTFIX, 0, component, offset, KEY_ID_POSTFIX.length);
 		
@@ -70,13 +72,13 @@ public class KeyProfile implements CCNProfile {
 	 * @param keyToName The key to include in the name component.
 	 * @return the binary name component
 	 */
-	public static byte [] keyIDNameComponent(PublisherPublicKeyDigest keyToName) {
+	public static byte [] keyIDToNameComponent(PublisherPublicKeyDigest keyToName) {
 	
 		if (null == keyToName) {
 			throw new IllegalArgumentException("keyToName must not be null!");
 		}
 		
-		return keyIDNameComponent(keyToName.digest());
+		return keyIDToNameComponent(keyToName.digest());
 	}
 	
 	/**
@@ -88,7 +90,19 @@ public class KeyProfile implements CCNProfile {
 	 * @return the resulting name
 	 */
 	public static ContentName keyName(ContentName parent, PublisherPublicKeyDigest keyToName) {	
-		return new ContentName(parent, keyIDNameComponent(keyToName));
+		return new ContentName(parent, keyIDToNameComponent(keyToName));
+	}
+	
+	/**
+	 * This creates a ContentName whose last component represents
+	 * the digest of a key.
+	 * @param parent the parent (prefix) to use for this content name;
+	 * 	if null, the name will contain only the key ID component.
+	 * @param keyID the key ID to refer to in the next name component.
+	 * @return the resulting name
+	 */
+	public static ContentName keyName(ContentName parent, byte [] keyID) {	
+		return new ContentName(parent, keyIDToNameComponent(keyID));
 	}
 
 	/**
