@@ -20,7 +20,6 @@ import java.io.IOException;
 
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.profiles.CCNProfile;
-import org.ccnx.ccn.profiles.access.AccessControlProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -107,11 +106,20 @@ public class KeyProfile implements CCNProfile {
 	 * @throws IOException
 	 */
 	public static byte[] getKeyIDFromNameComponent(byte[] childName) throws IOException {
-		if (!AccessControlProfile.isKeyNameComponent(childName))
+		if (!KeyProfile.isKeyNameComponent(childName))
 			return null;
 		byte [] base64keyid = new byte[childName.length - KEY_ID_PREFIX.length];
 		System.arraycopy(childName, KEY_ID_PREFIX.length, base64keyid, 0, base64keyid.length);
 		byte [] keyid = DataUtils.base64Decode(base64keyid);
 		return keyid;
+	}
+
+	/**
+	 * Returns whether a specified name component is the name of a wrapped key
+	 * @param wnkNameComponent the name component
+	 * @return
+	 */
+	public static boolean isKeyNameComponent(byte [] wnkNameComponent) {
+		return DataUtils.isBinaryPrefix(KEY_ID_PREFIX, wnkNameComponent);
 	}
 }

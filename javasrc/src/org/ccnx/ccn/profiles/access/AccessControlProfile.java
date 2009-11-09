@@ -286,15 +286,6 @@ public class AccessControlProfile implements CCNProfile {
 	}
 
 	/**
-	 * Returns whether a specified name component is the name of a wrapped key
-	 * @param wnkNameComponent the name component
-	 * @return
-	 */
-	public static boolean isKeyNameComponent(byte [] wnkNameComponent) {
-		return DataUtils.isBinaryPrefix(KeyProfile.KEY_ID_PREFIX, wnkNameComponent);
-	}
-
-	/**
 	 * Get the name component corresponding to a specified keyID
 	 * @param keyID the keyID
 	 * @return the corresponding name component

@@ -159,7 +159,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		for (ContentName childName : newChildren) {
 			// currently encapsulated in single-component ContentNames
 			byte [] wkChildName = childName.lastComponent();
-			if (AccessControlProfile.isKeyNameComponent(wkChildName)) {
+			if (KeyProfile.isKeyNameComponent(wkChildName)) {
 				byte[] keyid;
 				try {
 					keyid = KeyProfile.getKeyIDFromNameComponent(wkChildName);
