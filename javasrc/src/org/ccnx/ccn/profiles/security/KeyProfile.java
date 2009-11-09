@@ -27,11 +27,8 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class KeyProfile implements CCNProfile {
 	
-	public static byte [] KEY_PREFIX = {};
-
 	public static final byte [] KEY_ID_PREFIX = ContentName.componentParseNative("keyid" + CCNProfile.COMPONENT_SEPARATOR_STRING);
-
-	public static byte [] KEY_POSTFIX = {}; // probably empty
+	public static byte [] KEY_ID_POSTFIX = {}; // probably empty
 	
 	/**
 	 * This builds a name component which refers to the digest
@@ -51,14 +48,14 @@ public class KeyProfile implements CCNProfile {
 			throw new IllegalArgumentException("keyID must not be null!");
 		}
 		
-		byte [] component = new byte[KEY_PREFIX.length + KEY_POSTFIX.length + 
+		byte [] component = new byte[KEY_ID_PREFIX.length + KEY_ID_POSTFIX.length + 
 		                             keyID.length];
 		int offset = 0;
-		System.arraycopy(KEY_PREFIX, 0, component, offset, KEY_PREFIX.length);
-		offset += KEY_PREFIX.length;
+		System.arraycopy(KEY_ID_PREFIX, 0, component, offset, KEY_ID_PREFIX.length);
+		offset += KEY_ID_PREFIX.length;
 		System.arraycopy(keyID, 0, component, offset, keyID.length);
 		offset += keyID.length;
-		System.arraycopy(KEY_POSTFIX, 0, component, offset, KEY_POSTFIX.length);
+		System.arraycopy(KEY_ID_POSTFIX, 0, component, offset, KEY_ID_POSTFIX.length);
 		
 		return component;
 	}
