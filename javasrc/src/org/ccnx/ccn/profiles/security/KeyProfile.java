@@ -28,6 +28,9 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 public class KeyProfile implements CCNProfile {
 	
 	public static byte [] KEY_PREFIX = {};
+
+	public static final byte [] KEY_ID_PREFIX = ContentName.componentParseNative("keyid" + CCNProfile.COMPONENT_SEPARATOR_STRING);
+
 	public static byte [] KEY_POSTFIX = {}; // probably empty
 	
 	/**
@@ -87,5 +90,4 @@ public class KeyProfile implements CCNProfile {
 	public static ContentName keyName(ContentName parent, PublisherPublicKeyDigest keyToName) {	
 		return new ContentName(parent, keyIDNameComponent(keyToName));
 	}
-
 }
