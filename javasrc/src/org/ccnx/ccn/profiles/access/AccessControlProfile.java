@@ -24,7 +24,6 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 
@@ -283,21 +282,6 @@ public class AccessControlProfile implements CCNProfile {
 	public static boolean isPrincipalNameComponent(byte [] nameComponent) {
 		return (DataUtils.isBinaryPrefix(PRINCIPAL_PREFIX, nameComponent) ||
 				DataUtils.isBinaryPrefix(GROUP_PRINCIPAL_PREFIX, nameComponent));
-	}
-
-	/**
-	 * Get the name component corresponding to a specified keyID
-	 * @param keyID the keyID
-	 * @return the corresponding name component
-	 */
-	public static byte[] keyIDToNameComponent(byte[] keyID) {
-		if (null == keyID)
-			return null;
-		byte [] encodedKeyIDBytes = DataUtils.base64Encode(keyID);
-		byte [] output = new byte[KeyProfile.KEY_ID_PREFIX.length + encodedKeyIDBytes.length];
-		System.arraycopy(KeyProfile.KEY_ID_PREFIX, 0, output, 0, KeyProfile.KEY_ID_PREFIX.length);
-		System.arraycopy(encodedKeyIDBytes, 0, output, KeyProfile.KEY_ID_PREFIX.length, encodedKeyIDBytes.length);
-		return output;
 	}
 
 	/**
