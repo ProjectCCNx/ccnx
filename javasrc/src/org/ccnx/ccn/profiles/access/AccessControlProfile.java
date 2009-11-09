@@ -290,7 +290,7 @@ public class AccessControlProfile implements CCNProfile {
 	 * @param keyID the keyID
 	 * @return the corresponding name component
 	 */
-	public static byte[] targetKeyIDToNameComponent(byte[] keyID) {
+	public static byte[] keyIDToNameComponent(byte[] keyID) {
 		if (null == keyID)
 			return null;
 		byte [] encodedKeyIDBytes = DataUtils.base64Encode(keyID);

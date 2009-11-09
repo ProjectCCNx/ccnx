@@ -305,7 +305,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @return the corresponding wrapped key name.
 	 */
 	public ContentName getWrappedKeyNameForKeyID(byte [] keyID) {
-		return new ContentName(_namePrefix, AccessControlProfile.targetKeyIDToNameComponent(keyID));
+		return new ContentName(_namePrefix, AccessControlProfile.keyIDToNameComponent(keyID));
 	}
 	
 	/**
