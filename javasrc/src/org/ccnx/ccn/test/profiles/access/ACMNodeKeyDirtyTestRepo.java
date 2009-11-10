@@ -171,7 +171,7 @@ public class ACMNodeKeyDirtyTestRepo {
 		
 		// The node keys are dirty for nodes 0 and 1, but not 2.
 		Assert.assertTrue(acm.nodeKeyIsDirty(node[0]));
-		Assert.assertFalse(acm.nodeKeyIsDirty(node[1]));
+		Assert.assertTrue(acm.nodeKeyIsDirty(node[1]));
 		Assert.assertFalse(acm.nodeKeyIsDirty(node[2]));
 	}
 
