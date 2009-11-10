@@ -25,6 +25,7 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.SortedSet;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
@@ -42,6 +43,7 @@ import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
@@ -60,6 +62,8 @@ import org.ccnx.ccn.protocol.PublisherID;
  *
  */
 public class Group {
+	
+	private static final long PARENT_GROUP_ENUMERATION_TIMEOUT = 1000;
 	
 	private ContentName _groupNamespace;
 	private PublicKeyObject _groupPublicKey;
@@ -181,7 +185,10 @@ public class Group {
 	 */
 	public KeyDirectory privateKeyDirectory(AccessControlManager manager) throws IOException {
 		if (_privKeyDirectory != null) {
-			return _privKeyDirectory;
+			// check that our version of KeyDirectory is not stale
+			if (_privKeyDirectory.getName().equals(AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()))) {
+				return _privKeyDirectory;				
+			}
 		}
 		if (_groupPublicKey.available()) {
 			_privKeyDirectory = new KeyDirectory(manager, 
@@ -381,7 +388,23 @@ public class Group {
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _handle);
-		precededByBlock.saveToRepository();		
+		precededByBlock.saveToRepository();
+		
+		// recursively generate new public keys for parent groups
+		ContentName cn = AccessControlProfile.groupPointerToParentGroupName(groupName());
+		EnumeratedNameList parentList = new EnumeratedNameList(cn, _handle);
+		parentList.waitForData(PARENT_GROUP_ENUMERATION_TIMEOUT);
+		if (parentList.hasChildren()) {
+			SortedSet<ContentName> parents = parentList.getChildren();
+			for (ContentName parentLinkName : parents) {
+				ContentName pln = new ContentName(cn, parentLinkName.component(0));
+				LinkObject parentLinkObject = new LinkObject(pln, _handle);
+				Link parentLink = parentLinkObject.link();
+				Group parentGroup = new Group(parentLink.targetName(), _handle, manager);
+				parentGroup.newGroupPublicKey(manager, parentGroup.membershipList());
+			}
+		}
+		parentList.stopEnumerating();
 	}
 	
 	/**
@@ -419,8 +442,8 @@ public class Group {
 					AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), 
 					pair.getPublic(),
 					_handle);
-		_groupPublicKey.updateInBackground(true);
 		_groupPublicKey.saveToRepository();
+		_groupPublicKey.updateInBackground(true);
 		
 		stopPrivateKeyDirectoryEnumeration();
 		_privKeyDirectory = null;

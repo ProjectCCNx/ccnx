@@ -78,12 +78,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		
 	/**
 	 * Constructor given another ContentName, appends an extra component.
-	 * @param parent used for the base of the name.
-	 * @param name component to be appended.
+	 * @param parent used for the base of the name, if null, no prefix
+	 * 	added.
+	 * @param name component to be appended; if null, just copy parent
 	 */
 	public ContentName(ContentName parent, byte [] name) {
-		this(parent.count() + 
-				((null != name) ? 1 : 0), parent.components());
+		this(((parent != null) ? parent.count() : 0) +
+						    ((null != name) ? 1 : 0),
+			 ((parent != null) ? parent.components() : null));
 		if (null != name) {
 			byte [] c = new byte[name.length];
 			System.arraycopy(name,0,c,0,name.length);
