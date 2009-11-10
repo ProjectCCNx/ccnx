@@ -79,8 +79,6 @@ public class GroupManager {
 	 */
 	public EnumeratedNameList groupList() throws IOException {
 		if (null == _groupList) {
-			System.out.println("enumerating group: ......");
-			System.out.println(_groupStorage);
 			_groupList = new EnumeratedNameList(_groupStorage, _handle);
 		}
 		return _groupList;

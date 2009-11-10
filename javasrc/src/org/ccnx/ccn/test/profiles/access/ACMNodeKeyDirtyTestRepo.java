@@ -7,7 +7,6 @@ import java.util.Random;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.access.ACL;
@@ -171,7 +170,7 @@ public class ACMNodeKeyDirtyTestRepo {
 		
 		// The node keys are dirty for nodes 0 and 1, but not 2.
 		Assert.assertTrue(acm.nodeKeyIsDirty(node[0]));
-		Assert.assertFalse(acm.nodeKeyIsDirty(node[1]));
+		Assert.assertTrue(acm.nodeKeyIsDirty(node[1]));
 		Assert.assertFalse(acm.nodeKeyIsDirty(node[2]));
 	}
 

@@ -25,6 +25,8 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.SortedSet;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
@@ -42,6 +44,7 @@ import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
@@ -60,6 +63,8 @@ import org.ccnx.ccn.protocol.PublisherID;
  *
  */
 public class Group {
+	
+	private static final long PARENT_GROUP_ENUMERATION_TIMEOUT = 1000;
 	
 	private ContentName _groupNamespace;
 	private PublicKeyObject _groupPublicKey;
@@ -181,7 +186,10 @@ public class Group {
 	 */
 	public KeyDirectory privateKeyDirectory(AccessControlManager manager) throws IOException {
 		if (_privKeyDirectory != null) {
-			return _privKeyDirectory;
+			// check that our version of KeyDirectory is not stale
+			if (_privKeyDirectory.getName().equals(AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()))) {
+				return _privKeyDirectory;				
+			}
 		}
 		if (_groupPublicKey.available()) {
 			_privKeyDirectory = new KeyDirectory(manager, 
@@ -344,6 +352,51 @@ public class Group {
 	
 	/**
 	 * Generate a new group public key, e.g. after membership update.
+	 * Note that this method does NOT update the public keys of parent and ancestor groups.
+	 * To ensure correct recursive updates of the public keys of all ancestor groups, 
+	 * use instead the public method newGroupPublicKey.
+	 * The caller of this method must have access rights to the existing (soon to be previous)
+	 * private key of the group.
+	 * The new key is created with a call to createGroupPublicKey. This method also wraps
+	 * the new private key under the public keys of all the members of the group.
+	 * Finally, a superseded block and a link to the previous key are written to the repository.
+	 * @param manager the group manager
+	 * @param ml the new membership list
+	 * @throws IOException 
+	 * @throws ContentEncodingException 
+	 * @throws ConfigurationException 
+	 * @throws InvalidKeyException 
+	 * @throws InvalidCipherTextException
+	 */
+	private void newGroupPublicKeyNonRecursive(GroupManager manager, MembershipList ml) 
+			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, 
+					InvalidCipherTextException {
+		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(manager.getAccessManager());
+		oldPrivateKeyDirectory.waitForData();
+		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
+		if (null == oldPrivateKeyWrappingKey) {
+			throw new AccessDeniedException("Cannot update group membership, do not have access rights to private key for group " + friendlyName());
+		}else{
+			stopPrivateKeyDirectoryEnumeration();
+		}
+		
+		// Generate key pair
+		// Write public key to new versioned name
+		// Open key directory under that name
+		// Wrap private key in wrapping key, write that block
+		// For each principal on membership list, write wrapped key block
+		Key privateKeyWrappingKey = createGroupPublicKey(manager, ml);
+		
+		// Write superseded block in old key directory
+		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
+		// Write link back to previous key
+		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
+		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _handle);
+		precededByBlock.saveToRepository();
+	}
+	
+	/**
+	 * Generate a new group public key, e.g. after membership update.
 	 * The caller of this method must have access rights to the existing (soon to be previous)
 	 * private key of the group.
 	 * The new key is created with a call to createGroupPublicKey. This method also wraps
@@ -381,7 +434,15 @@ public class Group {
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _handle);
-		precededByBlock.saveToRepository();		
+		precededByBlock.saveToRepository();
+		
+		// generate new public keys for ancestor groups
+		ArrayList<Link> ancestors = recursiveAncestorList(null);
+		Iterator<Link> iter = ancestors.iterator();
+		while (iter.hasNext()) {
+			Group parentGroup = new Group(iter.next().targetName(), _handle, manager);
+			parentGroup.newGroupPublicKeyNonRecursive(manager, parentGroup.membershipList());
+		}
 	}
 	
 	/**
@@ -419,8 +480,8 @@ public class Group {
 					AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), 
 					pair.getPublic(),
 					_handle);
-		_groupPublicKey.updateInBackground(true);
 		_groupPublicKey.saveToRepository();
+		_groupPublicKey.updateInBackground(true);
 		
 		stopPrivateKeyDirectoryEnumeration();
 		_privKeyDirectory = null;
@@ -612,4 +673,38 @@ public class Group {
 		_groupMembers.saveAsGone();
 		_groupPublicKey.saveAsGone();
 	}
+	
+	/**
+	 * Recursively constructs an ordered list of the ancestors of the group.
+	 * The ancestors are the groups of which the group is a member either directly
+	 * or indirectly via a chain of one or more ancestors.
+	 * The order ensures that a group is always listed after all its children.
+	 * @param ancestorList the ancestor list built up to this point
+	 * @return the recursively updated ancestor list
+	 * @throws IOException
+	 */
+	public ArrayList<Link> recursiveAncestorList(ArrayList<Link> ancestorList) throws IOException {
+		if (ancestorList == null) ancestorList = new ArrayList<Link>();
+		
+		ContentName cn = AccessControlProfile.groupPointerToParentGroupName(groupName());
+		EnumeratedNameList parentList = new EnumeratedNameList(cn, _handle);
+		parentList.waitForData(PARENT_GROUP_ENUMERATION_TIMEOUT);
+		if (parentList.hasChildren()) {
+			SortedSet<ContentName> parents = parentList.getChildren();
+			for (ContentName parentLinkName : parents) {
+				ContentName pln = new ContentName(cn, parentLinkName.component(0));
+				LinkObject parentLinkObject = new LinkObject(pln, _handle);
+				Link parentLink = parentLinkObject.link();
+				// delete the link if already present in the list and re-insert it at the end of the list
+				if (ancestorList.contains(parentLink)) ancestorList.remove(parentLink);
+				ancestorList.add(parentLink);
+				Group parentGroup = new Group(parentLink.targetName(), _handle, _groupManager);
+				parentGroup.recursiveAncestorList(ancestorList);
+			}
+		}
+		parentList.stopEnumerating();
+		
+		return ancestorList;
+	}
+	
 }

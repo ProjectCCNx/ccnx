@@ -125,9 +125,20 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
                     port, sizeof(port),
                     niflags
                     );
-                if (res == 0)
-                    ccn_charbuf_putf(b, " <b>remote:</b> [%s]:%s",
-                                     node, port);
+                if (res == 0) {
+                    int chk = CCN_FACE_MCAST | CCN_FACE_INET | CCN_FACE_UNDECIDED | CCN_FACE_NOSEND;
+                    int want = CCN_FACE_INET;
+                    if ((face->flags & chk) == want)
+                        ccn_charbuf_putf(b,
+                                         " <b>remote:</b> "
+                                         "<a href='http://%s:%s/'>"
+                                         "[%s]:%s</a>",
+                                         node, CCN_DEFAULT_UNICAST_PORT,
+                                         node, port);
+                    else
+                        ccn_charbuf_putf(b, " <b>remote:</b> [%s]:%s",
+                                         node, port);
+                }
             }
             ccn_charbuf_putf(b, "</li>");
         }
@@ -198,7 +209,7 @@ collect_stats_html(struct ccnd_handle *h)
     ccn_charbuf_putf(b,
         "<html>"
         "<head>"
-        "<title>ccnd[%d]</title>"
+        "<title>%s ccnd[%d]</title>"
         //"<meta http-equiv='refresh' content='3'>"
         "<style type='text/css'>"
         " p.header {color: white; background-color: blue} "
@@ -212,6 +223,7 @@ collect_stats_html(struct ccnd_handle *h)
         " %ld pending, %ld propagating, %ld noted</div>"
         "<div><b>Interest totals:</b> %lu accepted,"
         " %lu dropped, %lu sent, %lu stuffed</div>",
+        un.nodename,
         pid,
         un.nodename,
         pid,

@@ -140,8 +140,10 @@ public class GroupTestRepo {
 				grp.addMembers(removeMembers);
 				succeed = true;
 			} catch (ContentNotReadyException e) {
+				e.printStackTrace();
 				succeed = false;
 			} catch (AccessDeniedException e) {
+				e.printStackTrace();
 				succeed = false;
 			}
 		}
@@ -230,6 +232,8 @@ public class GroupTestRepo {
 		System.out.println("child group namespace = " + childGroupNamespace);
 		newMembers.add(new Link(childGroupNamespace));
 		Group newParentGroup = _gm.createGroup(randomParentGroupName, newMembers);
+		
+		Assert.assertTrue(_gm.amCurrentGroupMember(newParentGroup));
 
 		System.out.println("adding users to parent group.........");
 		testAddUsers(addMembers, newParentGroup);
@@ -253,6 +257,7 @@ public class GroupTestRepo {
 		AccessControlManager ourACM = new AccessControlManager(testStorePrefix, groupStore, userNamespace);
 		ourACM.publishMyIdentity(myUserName, KeyManager.getDefaultKeyManager().getDefaultPublicKey());
 		GroupManager ourGM = ourACM.groupManager();
+		Thread.sleep(1000);
 		
 		Group aSeparateGroupCopy = ourGM.getGroup(_randomGroupName);
 		Assert.assertEquals(ourExistingGroup.publicKeyName(), aSeparateGroupCopy.publicKeyName());
