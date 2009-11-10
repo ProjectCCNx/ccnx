@@ -31,6 +31,8 @@ Boston, MA 02110-1301, USA. -->
 		<equals arg1="1.6" arg2="${ant.java.version}"/>
 	</condition>
 	
+	<property name="xml-jar" location="${lib}/jsr173_api.jar"/>
+
 	<!-- CLASSPATH NOTE: This should be a minimal set of what is 
         required, so we have an authoritative list of dependencies 
 		ccn-classpath contains jar files required to compile -->
@@ -39,7 +41,7 @@ Boston, MA 02110-1301, USA. -->
 		<!-- NOTE: jsr173 files are not distributed but may be supplied
 		     in order to use JDK1.5.  We plan to drop support for
 			 for 1.5 soon.  JSR173 is supported natively in JDK1.6 -->
-		<pathelement location="${lib}/jsr173_api.jar"/>
+		<pathelement location="${xml-jar}"/>
 		<pathelement location="${junit-jar}"/>
 	</path>
 
@@ -49,7 +51,7 @@ Boston, MA 02110-1301, USA. -->
 		<!-- NOTE: jsr173 files are not distributed but may be supplied
 		     in order to use JDK1.5.  We plan to drop support for
 			 for 1.5 soon.  JSR173 is supported natively in JDK1.6 -->
-		<pathelement location="${lib}/jsr173_1.0_ri.jar"/>
+		<pathelement location="${xml-jar}"/>
     </path>
 
 </project>
