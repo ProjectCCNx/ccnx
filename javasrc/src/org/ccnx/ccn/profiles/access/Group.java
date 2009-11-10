@@ -635,4 +635,38 @@ public class Group {
 		_groupMembers.saveAsGone();
 		_groupPublicKey.saveAsGone();
 	}
+	
+	/**
+	 * Recursively constructs an ordered list of the ancestors of the group.
+	 * The ancestors are the groups of which the group is a member either directly
+	 * or indirectly via a chain of one or more ancestors.
+	 * The order ensures that a group is always listed after all its children.
+	 * @param ancestorList the ancestor list built up to this point
+	 * @return the recursively updated ancestor list
+	 * @throws IOException
+	 */
+	public ArrayList<Link> recursiveAncestorList(ArrayList<Link> ancestorList) throws IOException {
+		if (ancestorList == null) ancestorList = new ArrayList<Link>();
+		
+		ContentName cn = AccessControlProfile.groupPointerToParentGroupName(groupName());
+		EnumeratedNameList parentList = new EnumeratedNameList(cn, _handle);
+		parentList.waitForData(PARENT_GROUP_ENUMERATION_TIMEOUT);
+		if (parentList.hasChildren()) {
+			SortedSet<ContentName> parents = parentList.getChildren();
+			for (ContentName parentLinkName : parents) {
+				ContentName pln = new ContentName(cn, parentLinkName.component(0));
+				LinkObject parentLinkObject = new LinkObject(pln, _handle);
+				Link parentLink = parentLinkObject.link();
+				// delete the link if already present in the list and re-insert it at the end of the list
+				if (ancestorList.contains(parentLink)) ancestorList.remove(parentLink);
+				ancestorList.add(parentLink);
+				Group parentGroup = new Group(parentLink.targetName(), _handle, _groupManager);
+				parentGroup.recursiveAncestorList(ancestorList);
+			}
+		}
+		parentList.stopEnumerating();
+		
+		return ancestorList;
+	}
+	
 }
