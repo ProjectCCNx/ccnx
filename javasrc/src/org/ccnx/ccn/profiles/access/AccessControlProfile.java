@@ -17,7 +17,6 @@
 
 package org.ccnx.ccn.profiles.access;
 
-import java.io.IOException;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -61,13 +60,9 @@ public class AccessControlProfile implements CCNProfile {
 	public static final String DATA_KEY_NAME = "DK";
 	public static final byte [] DATA_KEY_NAME_BYTES = ContentName.componentParseNative(DATA_KEY_NAME);
 
-	// Needs to be something not in base64 charset.
-	public static final String COMPONENT_SEPARATOR_STRING = ":";
-	public static final byte [] COMPONENT_SEPARATOR = ContentName.componentParseNative(COMPONENT_SEPARATOR_STRING);
-	public static final byte [] WRAPPING_KEY_PREFIX = ContentName.componentParseNative("keyid" + COMPONENT_SEPARATOR_STRING);
 	// These two must be the same length
-	public static final byte [] PRINCIPAL_PREFIX = ContentName.componentParseNative("p" + COMPONENT_SEPARATOR_STRING);
-	public static final byte [] GROUP_PRINCIPAL_PREFIX = ContentName.componentParseNative("g" + COMPONENT_SEPARATOR_STRING);
+	public static final byte [] PRINCIPAL_PREFIX = ContentName.componentParseNative("p" + CCNProfile.COMPONENT_SEPARATOR_STRING);
+	public static final byte [] GROUP_PRINCIPAL_PREFIX = ContentName.componentParseNative("g" + CCNProfile.COMPONENT_SEPARATOR_STRING);
 
 	public static final String SUPERSEDED_MARKER = "SupersededBy";
 	
@@ -290,53 +285,6 @@ public class AccessControlProfile implements CCNProfile {
 	}
 
 	/**
-	 * Returns whether a specified name component is the name of a wrapped key
-	 * @param wnkNameComponent the name component
-	 * @return
-	 */
-	public static boolean isWrappedKeyNameComponent(byte [] wnkNameComponent) {
-		return DataUtils.isBinaryPrefix(WRAPPING_KEY_PREFIX, wnkNameComponent);
-	}
-
-	/**
-	 * Get the target keyID from a name component.
-	 * Wrapped key blocks are stored under a name whose last (pre content digest) component
-	 * identifies the key used to wrap them, as 
-	 * WRAPPING_KEY_PREFIX COMPONENT_SEPARATOR base64Encode(keyID)
-	 * or 
-	 * keyid:<base 64 encoding of binary key id>
-	 * The reason for the prefix is to allow unique separation from the principal name
-	 * links, the reason for the base 64 encoding is to allow unique separation from the
-	 * prefix.
-	 * @param childName the name component
-	 * @return the keyID
-	 * @throws IOException
-	 */
-	public static byte[] getTargetKeyIDFromNameComponent(byte[] childName) throws IOException {
-		if (!isWrappedKeyNameComponent(childName))
-			return null;
-		byte [] base64keyid = new byte[childName.length - WRAPPING_KEY_PREFIX.length];
-		System.arraycopy(childName, WRAPPING_KEY_PREFIX.length, base64keyid, 0, base64keyid.length);
-		byte [] keyid = DataUtils.base64Decode(base64keyid);
-		return keyid;
-	}
-
-	/**
-	 * Get the name component corresponding to a specified keyID
-	 * @param keyID the keyID
-	 * @return the corresponding name component
-	 */
-	public static byte[] targetKeyIDToNameComponent(byte[] keyID) {
-		if (null == keyID)
-			return null;
-		byte [] encodedKeyIDBytes = DataUtils.base64Encode(keyID);
-		byte [] output = new byte[WRAPPING_KEY_PREFIX.length + encodedKeyIDBytes.length];
-		System.arraycopy(WRAPPING_KEY_PREFIX, 0, output, 0, WRAPPING_KEY_PREFIX.length);
-		System.arraycopy(encodedKeyIDBytes, 0, output, WRAPPING_KEY_PREFIX.length, encodedKeyIDBytes.length);
-		return output;
-	}
-
-	/**
 	 * Get the principalInfo corresponding to a specified name component
 	 * @param childName the name component
 	 * @return the corresponding principal info
@@ -350,7 +298,7 @@ public class AccessControlProfile implements CCNProfile {
 		// Could jump back based on fixed width of timestamp.
 		int sepIndex = -1;
 		for (sepIndex = PRINCIPAL_PREFIX.length; sepIndex < childName.length; sepIndex++) {
-			if (childName[sepIndex] == COMPONENT_SEPARATOR[0])
+			if (childName[sepIndex] == CCNProfile.COMPONENT_SEPARATOR[0])
 				break;
 		}
 		if (sepIndex == childName.length) {
@@ -388,12 +336,12 @@ public class AccessControlProfile implements CCNProfile {
 		byte [] bytePrincipal = ContentName.componentParseNative(pi.friendlyName());
 		byte [] byteTime = pi.versionTimestamp().toBinaryTime();
 		byte [] prefix = (pi.isGroup() ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
-		byte [] component = new byte[prefix.length + bytePrincipal.length + COMPONENT_SEPARATOR.length + byteTime.length];
+		byte [] component = new byte[prefix.length + bytePrincipal.length + CCNProfile.COMPONENT_SEPARATOR.length + byteTime.length];
 		// java 1.6 has much better functions for array copying
 		System.arraycopy(prefix, 0, component, 0, prefix.length);
 		System.arraycopy(bytePrincipal, 0, component, prefix.length, bytePrincipal.length);
-		System.arraycopy(COMPONENT_SEPARATOR, 0, component, prefix.length+bytePrincipal.length, COMPONENT_SEPARATOR.length);
-		System.arraycopy(byteTime, 0, component, prefix.length+bytePrincipal.length+COMPONENT_SEPARATOR.length, 
+		System.arraycopy(CCNProfile.COMPONENT_SEPARATOR, 0, component, prefix.length+bytePrincipal.length, CCNProfile.COMPONENT_SEPARATOR.length);
+		System.arraycopy(byteTime, 0, component, prefix.length+bytePrincipal.length+CCNProfile.COMPONENT_SEPARATOR.length, 
 				byteTime.length);
 		
 		return component;
