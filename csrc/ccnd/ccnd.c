@@ -1570,6 +1570,7 @@ clean_deamon(struct ccn_schedule *sched,
     struct content_entry *content = NULL;
     int res = 0;
     int ignore;
+    int i;
     
     /*
      * If we ran into our processing limit (check_limit) last time,
@@ -1583,8 +1584,23 @@ clean_deamon(struct ccn_schedule *sched,
     n = hashtb_n(h->content_tab);
     if (n <= h->capacity)
         return(15000000);
+    /* Toss unsolicited content first */
+    for (i = 0; i < h->unsol->n; i++) {
+        if (i == check_limit) {
+            for (i = check_limit; i < h->unsol->n; i++)
+                h->unsol->buf[i-check_limit] = h->unsol->buf[i];
+            h->unsol->n -= check_limit;
+            return(500);
+        }
+        a = h->unsol->buf[i];
+        content = content_from_accession(h, a);
+        if (content != NULL &&
+            (content->flags & CCN_CONTENT_ENTRY_PRECIOUS) == 0)
+            remove_content(h, content);
+    }
+    h->unsol->n = 0;
     if (h->min_stale <= h->max_stale) {
-        /* clean out stale content first */
+        /* clean out stale content next */
         limit = h->max_stale;
         if (limit > h->accession)
             limit = h->accession;
@@ -2842,7 +2858,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         res = -__LINE__;
         goto Bail;
     }
-    /* Make the content-digest name component explicit */
+    /* Make the ContentObject-digest name component explicit */
     ccn_digest_ContentObject(msg, &obj);
     if (obj.digest_bytes != 32) {
         ccnd_debug_ccnb(h, __LINE__, "indigestible", face, msg, size);
@@ -2936,8 +2952,10 @@ Bail:
         struct content_queue *q;
         n_matches = match_interests(h, content, &obj, NULL, face);
         if (res == HT_NEW_ENTRY && n_matches == 0 &&
-            (face->flags && CCN_FACE_GG) == 0)
+            (face->flags && CCN_FACE_GG) == 0) {
             content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
+            ccn_indexbuf_append_element(h->unsol, content->accession);
+        }
         for (c = 0; c < CCN_CQ_N; c++) {
             q = face->q[c];
             if (q != NULL) {
@@ -3432,6 +3450,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->sparse_straggler_tab = hashtb_create(sizeof(struct sparse_straggler_entry), NULL);
     h->min_stale = ~0;
     h->max_stale = 0;
+    h->unsol = ccn_indexbuf_create();
     h->ticktock.descr[0] = 'C';
     h->ticktock.micros_per_base = 1000000;
     h->ticktock.gettime = &ccnd_gettime;

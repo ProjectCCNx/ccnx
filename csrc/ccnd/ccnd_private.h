@@ -104,6 +104,7 @@ struct ccnd_handle {
     ccn_accession_t max_stale;      /**< largest accession of stale content */
     unsigned long capacity;         /**< may toss content if there more than
                                      this many content objects in the store */
+    struct ccn_indexbuf *unsol;     /**< unsolicited content */
     unsigned long oldformatcontent;
     unsigned long oldformatcontentgrumble;
     unsigned long oldformatinterests;
@@ -188,7 +189,7 @@ struct face {
 #define CCN_FACE_INET   (1 << 4) /**< IPv4 */
 #define CCN_FACE_MCAST  (1 << 5) /**< a party line (e.g. multicast) */
 #define CCN_FACE_INET6  (1 << 6) /**< IPv6 */
-#define CCN_FACE_DC     (1 << 7) /**< Face sends Inject messages */
+#define CCN_FACE_DC     (1 << 7) /**< Direct control face */
 #define CCN_FACE_NOSEND (1 << 8) /**< Don't send anymore */
 #define CCN_FACE_UNDECIDED (1 << 9) /**< Might not be talking ccn */
 #define CCN_FACE_PERMANENT (1 << 10) /**< No timeout for inactivity */
