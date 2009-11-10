@@ -181,7 +181,10 @@ public class Group {
 	 */
 	public KeyDirectory privateKeyDirectory(AccessControlManager manager) throws IOException {
 		if (_privKeyDirectory != null) {
-			return _privKeyDirectory;
+			// check that our version of KeyDirectory is not stale
+			if (_privKeyDirectory.getName().equals(AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()))) {
+				return _privKeyDirectory;				
+			}
 		}
 		if (_groupPublicKey.available()) {
 			_privKeyDirectory = new KeyDirectory(manager, 
