@@ -419,8 +419,8 @@ public class Group {
 					AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), 
 					pair.getPublic(),
 					_handle);
-		_groupPublicKey.updateInBackground(true);
 		_groupPublicKey.saveToRepository();
+		_groupPublicKey.updateInBackground(true);
 		
 		stopPrivateKeyDirectoryEnumeration();
 		_privKeyDirectory = null;
