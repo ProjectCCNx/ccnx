@@ -2,6 +2,7 @@ package org.ccnx.ccn.test.profiles.access;
 
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Random;
 
 import junit.framework.Assert;
@@ -108,6 +109,13 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		Assert.assertEquals(1, group[4].membershipList().membershipList().size());
 	}
 
+	@Test
+	public void testRecursiveGroupAncestors() throws Exception {
+		ArrayList<Link> ancestors = group[0].recursiveAncestorList(null);
+		// Group0 should have 3 ancestors, not 4 (check that Group3 is not double-counted)
+		Assert.assertEquals(3, ancestors.size());
+	}
+	
 	/**
 	 * We delete User0 from Group0 to cause a recursive key update for groups 0, 1, 2 and 3 (but not Group4).
 	 * 
@@ -127,14 +135,17 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		ArrayList<Link> membersToRemove = new ArrayList<Link>();
 		membersToRemove.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[0])));
 		group[0].removeMembers(membersToRemove);
+		Thread.sleep(1000);
 		
 		// check group0 is of size 1 
 		Assert.assertEquals(1, group[0].membershipList().membershipList().size());
 		
 		// check keys of group0, group1, group2 and group3 were updated
-		for (int i=0; i<4; i++) {
-			Assert.assertTrue(group[i].publicKeyVersion().after(groupKeyCreationTime[i]));			
-		}
+		Assert.assertTrue(group[0].publicKeyVersion().after(groupKeyCreationTime[0]));
+		Assert.assertTrue(group[1].publicKeyVersion().after(groupKeyCreationTime[1]));
+		Assert.assertTrue(group[2].publicKeyVersion().after(groupKeyCreationTime[2]));
+		Assert.assertTrue(group[3].publicKeyVersion().after(groupKeyCreationTime[3]));
+		
 		// check key of group4 was not updated
 		Assert.assertTrue(group[4].publicKeyVersion().equals(groupKeyCreationTime[4]));
 	}
