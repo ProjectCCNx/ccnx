@@ -45,10 +45,25 @@
 /*****************************************************************************
  * Module descriptor
  *****************************************************************************/
+#define CCN_FIFO_MAX_BLOCKS 128
+#define CCN_CHUNK_SIZE 4096
+#define CCN_FIFO_BLOCK_SIZE (128 * CCN_CHUNK_SIZE)
+#define CCN_VERSION_TIMEOUT 400
+#define CCN_HEADER_TIMEOUT 400
+
 #define CACHING_TEXT N_("Caching value in ms")
 #define CACHING_LONGTEXT N_(                                            \
                             "Caching value for CCN streams. This "      \
                             "value should be set in milliseconds.")
+#define MAX_FIFO_TEXT N_("FIFO max blocks")
+#define MAX_FIFO_LONGTEXT N_(						\
+	"Maximum number of blocks held in FIFO "			\
+	"used by content fetcher.")
+
+#define BLOCK_FIFO_TEXT N_("FIFO block size")
+#define BLOCK_FIFO_LONGTEXT N_(						\
+	"Size of blocks held in FIFO "			\
+	"used by content fetcher.")
 
 static int  CCNOpen(vlc_object_t *);
 static void CCNClose(vlc_object_t *);
@@ -59,35 +74,34 @@ static int CCNControl(access_t *, int, va_list);
 static void *ccn_event_thread(vlc_object_t *p_this);
 
 vlc_module_begin();
-    set_shortname(N_("CCNx"));
-    set_description(N_("CCNx input"));
-    set_category(CAT_INPUT);
-    set_subcategory(SUBCAT_INPUT_ACCESS);
-    add_integer("ccn-caching", 4 * DEFAULT_PTS_DELAY / 1000, NULL,
-                CACHING_TEXT, CACHING_LONGTEXT, true);
-    change_safe();
-    set_capability("access", 0);
-    add_shortcut("ccn");
-    add_shortcut("ccnx");
-    set_callbacks(CCNOpen, CCNClose);
+set_shortname(N_("CCNx"));
+set_description(N_("CCNx input"));
+set_category(CAT_INPUT);
+set_subcategory(SUBCAT_INPUT_ACCESS);
+add_integer("ccn-caching", 4 * DEFAULT_PTS_DELAY / 1000, NULL,
+            CACHING_TEXT, CACHING_LONGTEXT, true);
+add_integer("ccn-fifo-maxblocks", CCN_FIFO_MAX_BLOCKS, NULL,
+            MAX_FIFO_TEXT, MAX_FIFO_LONGTEXT, true);
+add_integer("ccn-fifo-blocksize", CCN_FIFO_BLOCK_SIZE, NULL,
+            BLOCK_FIFO_TEXT, BLOCK_FIFO_LONGTEXT, true);
+change_safe();
+set_capability("access", 0);
+add_shortcut("ccn");
+add_shortcut("ccnx");
+set_callbacks(CCNOpen, CCNClose);
 vlc_module_end();
 
 /*****************************************************************************
  * Local prototypes
  *****************************************************************************/
-#define CCN_FIFO_MAX_PACKETS 128
-#define CCN_CHUNK_SIZE 4096
-#define BUF_SIZE (128 * CCN_CHUNK_SIZE)
-#define CCN_VERSION_TIMEOUT 400
-#define CCN_HEADER_TIMEOUT 400
-
 struct access_sys_t
 {
     vlc_url_t  url;
     block_fifo_t *p_fifo;
-    unsigned char buf[BUF_SIZE];
+    unsigned char *buf;
     int i_bufoffset;
     int timeouts;
+    int i_fifo_max;
     int64_t i_pos;
     struct ccn *ccn;
     struct ccn_closure *incoming;
@@ -113,6 +127,7 @@ static int CCNOpen(vlc_object_t *p_this)
     access_sys_t *p_sys = NULL;
     struct ccn_charbuf *p_name = NULL;
     struct ccn_header *p_header = NULL;
+    int i_bufsize = 0;
     int i_ret = 0;
     int i_err = VLC_EGENERIC;
 
@@ -129,6 +144,13 @@ static int CCNOpen(vlc_object_t *p_this)
     p_access->info.i_size = LLONG_MAX;	/* we don't know, but bigger is better */
     /* Update default_pts */
     var_Create(p_access, "ccn-caching", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
+    p_sys->i_fifo_max = var_CreateGetInteger(p_access, "ccn-fifo-max");
+    i_bufsize = var_CreateGetInteger(p_access, "ccn-fifo-blocksize");
+    p_sys->buf = calloc(1, i_bufsize);
+    if (p_sys->buf == NULL) {
+        i_err = VLC_ENOMEM;
+        goto exit_error;
+    }
     p_sys->p_template = make_data_template();
     p_sys->incoming = calloc(1, sizeof(struct ccn_closure));
     if (p_sys->incoming == NULL) {
@@ -208,6 +230,10 @@ static int CCNOpen(vlc_object_t *p_this)
     }
     ccn_charbuf_destroy(&p_sys->p_name);
     ccn_destroy(&(p_sys->ccn));
+    if (p_sys->buf) {
+        free(p_sys->buf);
+        p_sys->buf = NULL;
+    }
     free(p_sys);
     return (i_err);
 }
@@ -230,6 +256,7 @@ static void CCNClose(vlc_object_t *p_this)
         p_sys->p_fifo = NULL;
     }
     ccn_destroy(&(p_sys->ccn));
+    if (p_sys->buf != NULL) free(p_sys->buf);
     free(p_sys);
 }
 
@@ -528,7 +555,7 @@ incoming_content(struct ccn_closure *selfp,
         if (start_offset > data_size) {
             msg_Err(p_access, "start_offset %"PRId64" > data_size %zu", start_offset, data_size);
         } else {
-            if ((data_size - start_offset) + p_sys->i_bufoffset > BUF_SIZE) {
+            if ((data_size - start_offset) + p_sys->i_bufoffset > CCN_FIFO_BLOCK_SIZE) {
                 /* won't fit in buffer, release the buffer upstream */
                 p_block = block_New(p_access, p_sys->i_bufoffset);
                 memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_bufoffset);
@@ -557,7 +584,7 @@ incoming_content(struct ccn_closure *selfp,
 
 #if 1
     /* 0.9.9 did not include the block_FifoPace function */
-    while (block_FifoCount(p_sys->p_fifo) > CCN_FIFO_MAX_PACKETS) {
+    while (block_FifoCount(p_sys->p_fifo) > p_sys->i_fifo_max) {
         if (first == 0) {
             msg_Dbg(p_access, "fifo full");
         }
@@ -567,8 +594,10 @@ incoming_content(struct ccn_closure *selfp,
     }
     if (first > 0) msg_Dbg(p_access, "fifo spun %d", first);
 #else
-    /* and they neglected to VLC_EXPORT it in 1.0.2 ! */
-    block_FifoPace(p_sys->p_fifo, CCN_FIFO_MAX_PACKETS, SIZE_MAX);
+    /* it was introduced, but not exported, and we're wating
+     * for it to appear sometime post 1.0.3
+     */
+    block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
 #endif
 
     /* Ask for the next fragment */
