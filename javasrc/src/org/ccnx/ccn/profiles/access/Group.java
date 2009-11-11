@@ -134,7 +134,7 @@ public class Group {
 		_groupMembers = members;
 		_groupMembers.saveToRepository();
 
-		createGroupPublicKey(manager, members);
+		createGroupPublicKey(members);
 	}
 	
 	/**
@@ -360,7 +360,6 @@ public class Group {
 	 * The new key is created with a call to createGroupPublicKey. This method also wraps
 	 * the new private key under the public keys of all the members of the group.
 	 * Finally, a superseded block and a link to the previous key are written to the repository.
-	 * @param manager the group manager
 	 * @param ml the new membership list
 	 * @throws IOException 
 	 * @throws ContentEncodingException 
@@ -368,10 +367,10 @@ public class Group {
 	 * @throws InvalidKeyException 
 	 * @throws InvalidCipherTextException
 	 */
-	private void newGroupPublicKeyNonRecursive(GroupManager manager, MembershipList ml) 
+	private void newGroupPublicKeyNonRecursive(MembershipList ml) 
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, 
 					InvalidCipherTextException {
-		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(manager.getAccessManager());
+		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		oldPrivateKeyDirectory.waitForData();
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
@@ -385,7 +384,7 @@ public class Group {
 		// Open key directory under that name
 		// Wrap private key in wrapping key, write that block
 		// For each principal on membership list, write wrapped key block
-		Key privateKeyWrappingKey = createGroupPublicKey(manager, ml);
+		Key privateKeyWrappingKey = createGroupPublicKey(ml);
 		
 		// Write superseded block in old key directory
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
@@ -402,7 +401,6 @@ public class Group {
 	 * The new key is created with a call to createGroupPublicKey. This method also wraps
 	 * the new private key under the public keys of all the members of the group.
 	 * Finally, a superseded block and a link to the previous key are written to the repository.
-	 * @param manager the group manager
 	 * @param ml the new membership list
 	 * @throws IOException 
 	 * @throws ContentEncodingException 
@@ -410,10 +408,10 @@ public class Group {
 	 * @throws InvalidKeyException 
 	 * @throws InvalidCipherTextException
 	 */
-	public void newGroupPublicKey(GroupManager manager, MembershipList ml) 
+	public void newGroupPublicKey(MembershipList ml) 
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, 
 					InvalidCipherTextException {
-		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(manager.getAccessManager());
+		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		oldPrivateKeyDirectory.waitForData();
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
@@ -427,7 +425,7 @@ public class Group {
 		// Open key directory under that name
 		// Wrap private key in wrapping key, write that block
 		// For each principal on membership list, write wrapped key block
-		Key privateKeyWrappingKey = createGroupPublicKey(manager, ml);
+		Key privateKeyWrappingKey = createGroupPublicKey(ml);
 		
 		// Write superseded block in old key directory
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
@@ -440,8 +438,8 @@ public class Group {
 		ArrayList<Link> ancestors = recursiveAncestorList(null);
 		Iterator<Link> iter = ancestors.iterator();
 		while (iter.hasNext()) {
-			Group parentGroup = new Group(iter.next().targetName(), _handle, manager);
-			parentGroup.newGroupPublicKeyNonRecursive(manager, parentGroup.membershipList());
+			Group parentGroup = new Group(iter.next().targetName(), _handle, _groupManager);
+			parentGroup.newGroupPublicKeyNonRecursive(parentGroup.membershipList());
 		}
 	}
 	
@@ -450,7 +448,6 @@ public class Group {
 	 * We don't expect there to be an existing key. So we just write a new one.
 	 * If we're not supposed to be a member, this is tricky... we just live
 	 * with the fact that we know the private key, and forget it.
-	 * @param manager the group manager.
 	 * @param ml the membership list.
 	 * @return the group private key wrapping key. 
 	 * @throws IOException 
@@ -459,18 +456,18 @@ public class Group {
 	 * @throws InvalidKeyException
 	 * @throws InvalidCipherTextException 
 	 */	
-	public Key createGroupPublicKey(GroupManager manager, MembershipList ml) 
+	public Key createGroupPublicKey(MembershipList ml) 
 			throws ContentEncodingException, IOException, ConfigurationException, InvalidKeyException, InvalidCipherTextException {
 		
 		KeyPairGenerator kpg = null;
 		try {
-			kpg = KeyPairGenerator.getInstance(manager.getGroupKeyAlgorithm());
+			kpg = KeyPairGenerator.getInstance(_groupManager.getGroupKeyAlgorithm());
 		} catch (NoSuchAlgorithmException e) {
-			if (manager.getGroupKeyAlgorithm().equals(AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM)) {
+			if (_groupManager.getGroupKeyAlgorithm().equals(AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM)) {
 				Log.severe("Cannot find default group public key algorithm: " + AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
 				throw new RuntimeException("Cannot find default group public key algorithm: " + AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
 			}
-			throw new ConfigurationException("Specified group public key algorithm " + manager.getGroupKeyAlgorithm() + " not found. " + e.getMessage());
+			throw new ConfigurationException("Specified group public key algorithm " + _groupManager.getGroupKeyAlgorithm() + " not found. " + e.getMessage());
 		}
 		kpg.initialize(AccessControlManager.DEFAULT_GROUP_KEY_LENGTH);
 		KeyPair pair = kpg.generateKeyPair();
@@ -486,7 +483,7 @@ public class Group {
 		stopPrivateKeyDirectoryEnumeration();
 		_privKeyDirectory = null;
 		
-		KeyDirectory newPrivateKeyDirectory = privateKeyDirectory(manager.getAccessManager()); // takes from new public key
+		KeyDirectory newPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager()); // takes from new public key
 		
 		Key privateKeyWrappingKey = WrappedKey.generateNonceKey();
 		
@@ -499,7 +496,7 @@ public class Group {
 		}
 		
 		// Wrap the private key in the public keys of all the members of the group 
-		updateGroupPublicKey(manager, privateKeyWrappingKey, ml.membershipList().contents());
+		updateGroupPublicKey(privateKeyWrappingKey, ml.membershipList().contents());
 		
 		return privateKeyWrappingKey;
 	}
@@ -510,7 +507,6 @@ public class Group {
 	 * We need to wrap the group public key wrapping key in the latest public
 	 * keys of the members to add.
 	 * Since members are only added, there is no need to replace the group key.
-	 * @param manager the group manager
 	 * @param privateKeyWrappingKey the private key wrapping key
 	 * @param membersToAdd the members added to the group
 	 * @throws InvalidKeyException 
@@ -519,13 +515,12 @@ public class Group {
 	 * @throws ContentDecodingException 
 	 * @throws InvalidCipherTextException 
 	 */
-	public void updateGroupPublicKey(GroupManager manager, Key privateKeyWrappingKey,
-									 java.util.Collection<Link> membersToAdd) 
+	public void updateGroupPublicKey(Key privateKeyWrappingKey, java.util.Collection<Link> membersToAdd) 
 			throws InvalidKeyException, InvalidCipherTextException, ContentDecodingException, AccessDeniedException, IOException {		
 		if ((null == membersToAdd) || (membersToAdd.size() == 0))
 			return;
 		
-		KeyDirectory privateKeyDirectory = privateKeyDirectory(manager.getAccessManager());
+		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		
 		PublicKeyObject latestPublicKey = null;
 		for (Link lr : membersToAdd) {
@@ -533,7 +528,7 @@ public class Group {
 				// DKS TODO verify target public key against publisher, etc in link
 				
 				ContentName pkName = lr.targetName();
-				if (manager.isGroup(lr)){
+				if (_groupManager.isGroup(lr)){
 					pkName = AccessControlProfile.groupPublicKeyName(pkName);
 					// write a back pointer from child group to parent group
 					// PG TODO check for existence of back pointer to avoid writing multiple copies of the same pointer
@@ -653,14 +648,14 @@ public class Group {
 		if (removedMembers) {
 			// Don't save membership list till we know we can update private key.
 			// If we can't update the private key, this will throw AccessDeniedException.
-			newGroupPublicKey(_groupManager, _groupMembers); 
+			newGroupPublicKey(_groupMembers); 
 		} else if (addedMembers) {
 			// additions only. Don't have to make  a new key if one exists,
 			// just rewrap it for added members.
 			if (null != _groupPublicKey.publicKey()) {
-				updateGroupPublicKey(_groupManager, privateKeyWrappingKey, membersToAdd);
+				updateGroupPublicKey(privateKeyWrappingKey, membersToAdd);
 			} else {
-				createGroupPublicKey(_groupManager, _groupMembers);
+				createGroupPublicKey(_groupMembers);
 			}
 		}
 		// Don't actually save the new membership list till we're sure we can update the
