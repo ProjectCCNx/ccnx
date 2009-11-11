@@ -10,7 +10,7 @@ Whenever possible CCNx leaves the choice of signature algorithms
 (digest and public key) to use up to individual publishers and
 consumers, and specifies the algorithm used for a particular data item
 as part of the encoding of that item (for example, see
-link:./SignatureGeneration.html).  This is both an attempt to
+link:SignatureGeneration.html[SignatureGeneration]).  This is both an attempt to
 accommodate the needs of different users and to allow for the
 advancement in cryptographic algorithm design over time.
 
@@ -45,8 +45,8 @@ cryptographic digests are used. These are:
   both specified in ContentObjects and used as selectors in Links and
   Interests
 * the calculation of content digests as the implicit last component
-  of content names in Interest matching (see link:./InterestMessage.html and
-  link:./DigestComponent.html)
+  of content names in Interest matching (see link:InterestMessage.html[InterestMessage] and
+  link:DigestComponent.html[DigestComponent])
 * the calculation of ContentObject digests as an Exclude specifier in an
   Interest, to avoid receiving that ContentObject again (this is not
   yet completely implemented)
