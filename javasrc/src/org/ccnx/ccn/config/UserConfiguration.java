@@ -82,6 +82,14 @@ public class UserConfiguration {
 		}
 	}
 	
+	public static void setDirectory(String path) {
+		CCN_DIR = path;
+	}
+	
+	public static void setUserName(String name) {
+		USER_NAME = name;
+	}
+	
 	public static String ccnDirectory() { return CCN_DIR; }
 	
 	public static String userConfigFile() { 

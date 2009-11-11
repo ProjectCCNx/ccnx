@@ -144,7 +144,7 @@ static int CCNOpen(vlc_object_t *p_this)
     p_access->info.i_size = LLONG_MAX;	/* we don't know, but bigger is better */
     /* Update default_pts */
     var_Create(p_access, "ccn-caching", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
-    p_sys->i_fifo_max = var_CreateGetInteger(p_access, "ccn-fifo-max");
+    p_sys->i_fifo_max = var_CreateGetInteger(p_access, "ccn-fifo-maxblocks");
     i_bufsize = var_CreateGetInteger(p_access, "ccn-fifo-blocksize");
     p_sys->buf = calloc(1, i_bufsize);
     if (p_sys->buf == NULL) {
