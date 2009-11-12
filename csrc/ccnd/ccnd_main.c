@@ -42,7 +42,7 @@ main(int argc, char **argv)
         exit(1);
     }
     signal(SIGPIPE, SIG_IGN);
-    h = ccnd_create(argv[0], stdiologger, stderr);
+    h = ccnd_create(argv[0], stdiologger, stderr, NULL);
     if (h == NULL)
         exit(1);
     ccnd_run(h);

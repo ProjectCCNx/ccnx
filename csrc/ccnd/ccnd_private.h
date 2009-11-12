@@ -131,6 +131,8 @@ struct ccnd_handle {
     struct face *face0;             /**< special face for internal client */
     struct ccn_scheduled_event *internal_client_refresh;
     unsigned data_pause_microsec;   /**< tunable, see choose_face_delay() */
+
+	const char *keystore_directory;	/**< allows main() to override keystore directory */
 };
 
 /**
@@ -347,7 +349,7 @@ void ccnd_debug_ccnb(struct ccnd_handle *h,
                      size_t ccnb_size);
 void shutdown_client_fd(struct ccnd_handle *h, int fd);
 
-struct ccnd_handle *ccnd_create(const char *, ccnd_logger, void *);
+struct ccnd_handle *ccnd_create(const char *, ccnd_logger, void *, const char *);
 void ccnd_run(struct ccnd_handle *h);
 extern const char *ccnd_usage_message;
 
