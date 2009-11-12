@@ -3379,7 +3379,7 @@ ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
  * @param loggerdata - data to pass to logger function
  */
 struct ccnd_handle *
-ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata, const char *keystore_dir)
+ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -3571,10 +3571,6 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata, const ch
     clean_needed(h);
     age_forwarding_needed(h);
     enroll_face(h, h->face0);
-
-	// If keystore_dir is NULL, internal_client will do the
-	// normal getenv or default /tmp locations.
-	h->keystore_directory = keystore_dir;
     ccnd_internal_client_start(h);
     free(sockname);
     sockname = NULL;

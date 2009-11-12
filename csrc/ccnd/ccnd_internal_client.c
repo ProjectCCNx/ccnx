@@ -275,17 +275,11 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
     keystore = ccn_keystore_create();
     temp = ccn_charbuf_create();
     cmd = ccn_charbuf_create();
-
-	if( ccnd->keystore_directory == NULL ) {
-		dir = getenv("CCND_KEYSTORE_DIRECTORY");
-		if (dir != NULL && dir[0] == '/')
-			ccn_charbuf_putf(temp, "%s/", dir);
-		else
-			ccn_charbuf_putf(temp, CCN_PATH_VAR_TMP "/.ccnx-user%d/", (int)geteuid());
-	} else {
-			ccn_charbuf_putf(temp, "%s/", ccnd->keystore_directory);
-	}
-
+    dir = getenv("CCND_KEYSTORE_DIRECTORY");
+    if (dir != NULL && dir[0] == '/')
+        ccn_charbuf_putf(temp, "%s/", dir);
+    else
+        ccn_charbuf_putf(temp, CCN_PATH_VAR_TMP "/.ccnx-user%d/", (int)geteuid());
     res = stat(ccn_charbuf_as_string(temp), &statbuf);
     if (res == -1) {
         if (errno == ENOENT)
