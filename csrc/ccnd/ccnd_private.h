@@ -316,6 +316,14 @@ struct ccn_charbuf *ccnd_req_newface(struct ccnd_handle *h,
 
 /**
  * The internal client calls this with the argument portion ARG of
+ * a face-destroy request (/ccnx/CCNDID/destroyface/ARG)
+ * The result, if not NULL, will be used as the Content of the reply.
+ */
+struct ccn_charbuf *ccnd_req_destroyface(struct ccnd_handle *h,
+                                         const unsigned char *msg, size_t size);
+
+/**
+ * The internal client calls this with the argument portion ARG of
  * a prefix-registration request (/ccnx/CCNDID/prefixreg/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
  */

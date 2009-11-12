@@ -459,7 +459,6 @@ finalize_content(struct hashtb_enumerator *content_enumerator)
     }
 }
 
-
 static int
 content_skiplist_findbefore(struct ccnd_handle *h,
                             const unsigned char *key,
@@ -1403,6 +1402,41 @@ check_dgram_faces(struct ccnd_handle *h)
 }
 
 /**
+ * Destroys the face identified by faceid.
+ * @returns 0 for success, -1 for failure.
+ */
+static int
+destroy_face(struct ccnd_handle *h, unsigned faceid)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct face *face;
+    int dgram_chk = CCN_FACE_DGRAM | CCN_FACE_MCAST;
+    int dgram_want = CCN_FACE_DGRAM;
+    
+    ccnd_msg(h, "destroy_face %u", faceid);
+    face = face_from_faceid(h, faceid);
+    if (face == NULL)
+        return(-1);
+    ccnd_msg(h, "destroy_face line %d", __LINE__);
+    if ((face->flags & dgram_chk) == dgram_want) {
+        ccnd_msg(h, "destroy_face line %d", __LINE__);
+        hashtb_start(h->dgram_faces, e);
+        hashtb_seek(e, face->addr, face->addrlen, 0);
+        if (e->data == face)
+            face = NULL;
+        hashtb_delete(e);
+        hashtb_end(e);
+        if (face == NULL)
+            return(0);
+    }
+    ccnd_msg(h, "destroy_face line %d", __LINE__);
+    shutdown_client_fd(h, face->recv_fd);
+    face = NULL;
+    return(0);
+}
+
+/**
  * Remove expired faces from npe->forward_to
  */
 static void
@@ -1986,6 +2020,79 @@ Finish:
     ccn_face_instance_destroy(&face_instance);
     if (addrinfo != NULL)
         freeaddrinfo(addrinfo);
+    return(result);
+}
+
+/**
+ * @brief Process a destroyface request for the ccnd internal client.
+ * @param h is the ccnd handle
+ * @param msg points to a ccnd-encoded ContentObject containing a FaceInstance
+            in its Content.
+ * @param size is its size in bytes
+ * @result on success the returned charbuf holds a new ccnd-encoded
+ *         FaceInstance including faceid;
+ *         returns NULL for any error.
+ *
+ * Is is permitted for the face to already exist.
+ * A newly created face will have no registered prefixes, and so will not
+ * receive any traffic.
+ */
+struct ccn_charbuf *
+ccnd_req_destroyface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+{
+    struct ccn_parsed_ContentObject pco = {0};
+    int res;
+    const unsigned char *req;
+    size_t req_size;
+    struct ccn_charbuf *result = NULL;
+    struct ccn_face_instance *face_instance = NULL;
+    //struct face *face = NULL;
+    struct face *reqface = NULL;
+
+    res = ccn_parse_ContentObject(msg, size, &pco, NULL);
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    if (res < 0)
+        goto Finish;        
+    // XXX - should verify signature.
+    res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
+    if (res < 0)
+        goto Finish;
+    face_instance = ccn_face_instance_parse(req, req_size);
+    if (face_instance == NULL || face_instance->action == NULL)
+        goto Finish;
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    if (strcmp(face_instance->action, "destroyface") != 0)
+        goto Finish;
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    if (face_instance->ccnd_id_size == sizeof(h->ccnd_id)) {
+        if (memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0)
+            goto Finish;
+    }
+    else if (face_instance->ccnd_id_size |= 0)
+        goto Finish;
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    if (face_instance->faceid == 0)
+        goto Finish;
+    /* consider the source ... */
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+        goto Finish;
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    res = destroy_face(h, face_instance->faceid);
+    if (res < 0)
+        goto Finish;
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    result = ccn_charbuf_create();
+    face_instance->action = NULL;
+    face_instance->ccnd_id = h->ccnd_id;
+    face_instance->ccnd_id_size = sizeof(h->ccnd_id);
+    face_instance->lifetime = 0;
+    res = ccnb_append_face_instance(result, face_instance);
+    if (res < 0)
+        ccn_charbuf_destroy(&result);
+Finish:
+    ccn_face_instance_destroy(&face_instance);
     return(result);
 }
 
