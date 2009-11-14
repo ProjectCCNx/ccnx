@@ -57,15 +57,15 @@ public class NetworkKeyManager extends BasicKeyManager {
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
-	public NetworkKeyManager(String userName, ContentName keystoreName, PublisherPublicKeyDigest publisher,
+	public NetworkKeyManager(String userName, 
+							ContentName keystoreName, 
+							PublisherPublicKeyDigest publisher,
 							char [] password, CCNHandle handle) throws ConfigurationException, IOException {
-		// key repository created by default superclass constructor
-		if (null != userName)
-			_userName = userName; // otherwise default for actual user
+		// key repository created by superclass constructor
+		super(userName, null, null, password);
 		_keystoreName = keystoreName;
 		_publisher = publisher;
 		_handle = handle;
-		setPassword(password);
 		// loading done by initialize()
 	}
 
@@ -100,13 +100,13 @@ public class NetworkKeyManager extends BasicKeyManager {
 																new ContentObject.SimpleVerifier(_publisher),  _handle);
 			if (null == keystoreObject) {
 				Log.info("Creating new CCN key store..." + _keystoreName);
-				_keystore = createKeyStore();	
+				_keyStore = createKeyStore();	
 			}
 		} catch (IOException e) {
 			Log.warning("Cannot get first block of existing key store: " + _keystoreName);
 			throw new ConfigurationException("Cannot get first block of existing key store: " + _keystoreName + ": " + e.getMessage(), e);
 		} 
-		if ((null == _keystore) && (null != keystoreObject)){
+		if ((null == _keyStore) && (null != keystoreObject)){
 			CCNVersionedInputStream in = null;
 			Log.info("Loading CCN key store from " + _keystoreName + "...");
 			try {
@@ -118,7 +118,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 			} 
 		}
 		
-		if (!loadValuesFromKeystore(_keystore)) {
+		if (!loadValuesFromKeystore(_keyStore)) {
 			Log.warning("Cannot process keystore!");
 		}
 	}
