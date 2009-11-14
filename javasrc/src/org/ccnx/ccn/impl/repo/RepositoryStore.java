@@ -174,17 +174,35 @@ public interface RepositoryStore {
 	
 	/**
 	 * Initialize the repository
-	 * @param handle
 	 * @param repositoryRoot
 	 * @param policyFile policy file to use or null
 	 * @param localName may be null
 	 * @param globalPrefix may be null
 	 * @param nameSpace initial namespace for repository
+	 * @param handle optional CCNHandle if caller wants to override the
+	 * 	default connection/identity behavior of the repository -- this
+	 * 	provides a KeyManager and handle for the repository to use to 
+	 * 	obtain its keys and communicate with ccnd. If null, the repository
+	 * 	will configure its own based on policy, or if none, create one
+	 * 	using the executing user's defaults.
 	 * @throws RepositoryException
 	 */
-	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, 
+	public void initialize(String repositoryRoot, File policyFile, 
 						   String localName, String globalPrefix,
-						   String nameSpace) throws RepositoryException;
+						   String nameSpace,
+						   CCNHandle handle) throws RepositoryException;
+	
+	
+	/**
+	 * Get the handle the repository is using to communicate with ccnd.
+	 * This encapsulates the repository's KeyManager, which determines
+	 * the identity (set of keys) the repository uses to sign messages
+	 * it generates. That handle couuld be created by the repository
+	 * or provided in a constructor. 
+	 * 
+	 * @return may return null if initialize() has not yet been called.
+	 */
+	public CCNHandle getHandle();
 	
 	/**
 	 * Save the specified content in the repository.  If content is added to a name that has

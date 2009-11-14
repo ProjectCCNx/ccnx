@@ -123,13 +123,15 @@ public class RepositoryServer {
 	/**
 	 * Constructor.  Note that merely creating an instance does not begin service 
 	 * of requests from the network.  For that you must call start().
-	 * @param handle the CCNHandle to use for communication
-	 * @param repo the RepositoryStore instance to use for backing storage
+	 * @param repo the RepositoryStore instance to use for backing storage.
+	 * 	The RepositoryServer uses repo.getHandle() to get the handle to use
+	 * 	for communication, to make sure that it is sending messages under the
+	 * 	identity of the repo.
 	 * @throws IOException
 	 */
-	public RepositoryServer(CCNHandle handle, RepositoryStore repo) throws IOException {
-			_handle = handle;
+	public RepositoryServer(RepositoryStore repo) throws IOException {
 			_repo = repo;
+			_handle = repo.getHandle();
 			_writer = new CCNWriter(_handle);
 
 			 // At some point we may want to refactor the code to

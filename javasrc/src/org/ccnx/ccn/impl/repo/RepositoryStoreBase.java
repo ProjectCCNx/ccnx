@@ -41,7 +41,8 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	
 	protected Policy _policy = null;
 	protected RepositoryInfo _info = null;
-
+	protected CCNHandle _handle = null;
+	
 	/**
 	 * Handle diagnostic requests
 	 * 
@@ -54,6 +55,11 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	public abstract ContentObject getContent(Interest interest) throws RepositoryException;
 
 	public abstract NameEnumerationResponse getNamesWithPrefix(Interest i);
+	
+	/**
+	 * @return returns null prior to calls to initialize()
+	 */
+	public CCNHandle getHandle() { return _handle; }
 
 	/**
 	 * Gets the currently valid namespace for this repository
@@ -98,8 +104,9 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	/**
 	 * Initialize a repository
 	 */
-	public abstract void initialize(CCNHandle handle, String repositoryRoot,
-			File policyFile, String localName, String globalPrefix, String nameSpace)
+	public abstract void initialize(String repositoryRoot,
+			File policyFile, String localName, String globalPrefix, 
+			String nameSpace, CCNHandle handle)
 			throws RepositoryException;
 	
 	/**

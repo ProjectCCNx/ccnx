@@ -80,7 +80,7 @@ public class RFSTest extends RepoTestBase {
 						
 	public void initRepoLog() throws Exception {
 		repolog = new LogStructRepoStore();
-		repolog.initialize(putHandle, _fileTestDir, null, _repoName, _globalPrefix, null);
+		repolog.initialize(_fileTestDir, null, _repoName, _globalPrefix, null, null);
 	}
 	
 	@Test
@@ -313,15 +313,15 @@ public class RFSTest extends RepoTestBase {
 	public void testPolicy() throws Exception {
 		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
-			repo.initialize(putHandle, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null);
+			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
 		try {	// Test bad version
-			repo.initialize(putHandle, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null);
+			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (InvalidParameterException ipe) {}
-		repo.initialize(putHandle, _fileTestDir,  
-					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null);
+		repo.initialize(_fileTestDir,  
+					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
 		repo.saveContent(content);
@@ -333,13 +333,13 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(testContent == null);
 		
 		// Test reading policy file from the repo
-		repolog.initialize(putHandle, _fileTestDir, null, _repoName, _globalPrefix, null);
+		repolog.initialize(_fileTestDir, null, _repoName, _globalPrefix, null, null);
 		repo.saveContent(oonsContent);
 		ContentObject testContentAgain = repo.getContent(new Interest(outOfNameSpaceName));
 		Assert.assertTrue(testContentAgain == null);
 		
 		// Test setting prefix from the prefix parameter
-		repo.initialize(putHandle, _fileTestDir, null, _repoName, _globalPrefix, "/");
+		repo.initialize(_fileTestDir, null, _repoName, _globalPrefix, "/", null);
 		repo.saveContent(oonsContent);
 		checkData(repo, outOfNameSpaceName, "Shouldn't see this");	
 	}
