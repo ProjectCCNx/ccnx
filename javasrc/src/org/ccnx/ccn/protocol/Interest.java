@@ -604,7 +604,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	/**
-	 * Deteremine if this Interest's name is a prefix of the specified ContentObject's name
+	 * Determine if this Interest's name is a prefix of the specified ContentObject's name
 	 * @param other
 	 * @return true if our name is a prefix of the specified ContentObject's name
 	 */
