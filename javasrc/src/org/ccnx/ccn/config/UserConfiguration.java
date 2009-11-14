@@ -96,7 +96,7 @@ public class UserConfiguration {
 		return CCN_DIR + FILE_SEP + USER_CONFIG_FILE; }
 	
 	public static String keystoreFileName() { 
-		return CCN_DIR + FILE_SEP + KEYSTORE_FILE_NAME; }
+		return KEYSTORE_FILE_NAME; }
 	
 	public static String keystorePassword() { 
 		return KEYSTORE_PASSWORD; }

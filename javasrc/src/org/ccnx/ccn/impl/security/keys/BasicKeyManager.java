@@ -156,17 +156,17 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	protected void loadKeyStore() throws ConfigurationException {
 		
-		File keyStoreFile = new File(_keyStoreFileName);
+		File keyStoreFile = new File(_keyStoreDirectory, _keyStoreFileName);
 		if (!keyStoreFile.exists()) {
-			Log.info("Creating new CCN key store..." + _keyStoreFileName);
+			Log.info("Creating new CCN key store..." + keyStoreFile.getAbsolutePath());
 			_keyStore = createKeyStore();
 			Log.info("...created key store.");
 		}
 		if (null == _keyStore) {
 			FileInputStream in = null;
-			Log.info("Loading CCN key store from " + _keyStoreFileName + "...");
+			Log.info("Loading CCN key store from " + keyStoreFile.getAbsolutePath() + "...");
 			try {
-				in = new FileInputStream(_keyStoreFileName);
+				in = new FileInputStream(keyStoreFile);
 				readKeyStore(in);
 			} catch (FileNotFoundException e) {
 				Log.warning("Cannot open existing key store file: " + _keyStoreFileName);
@@ -290,15 +290,15 @@ public class BasicKeyManager extends KeyManager {
 		
 		// Alas, until 1.6, we can't set permissions on the file or directory...
 		// TODO DKS when switch to 1.6, add permission settings.
-		File keyStoreFile  = new File(_keyStoreFileName);
+		File keyStoreFile  = new File(keyStoreDir, _keyStoreFileName);
 		if (keyStoreFile.exists())
 			return null;
 
 	    FileOutputStream out = null;
 		try {
-			out = new FileOutputStream(_keyStoreFileName);
+			out = new FileOutputStream(keyStoreFile);
 		} catch (FileNotFoundException e) {
-			generateConfigurationException("Cannot create keystore file: " + _keyStoreFileName, e);
+			generateConfigurationException("Cannot create keystore file: " + keyStoreFile.getAbsolutePath(), e);
 		} 
 	    return createKeyStore(out);	    
 	}
