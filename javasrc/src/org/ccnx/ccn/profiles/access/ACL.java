@@ -209,10 +209,8 @@ public class ACL extends Collection {
 	 * @param contents the contents of the ACL
 	 */
 	public ACL(ArrayList<Link> contents) {
-		super(contents);
-		if (!validate()) {
-			throw new IllegalArgumentException("Invalid contents for ACL.");
-		}
+		if (validate()) add(contents);
+		else throw new IllegalArgumentException("Invalid contents for ACL."); 
 	}
 	
 	/**
@@ -255,27 +253,124 @@ public class ACL extends Collection {
 	}
 	
 	/**
-	 * Add a specified reader to the ACL
+	 * Add a specified reader to the ACL.
+	 * The method does nothing if the reader is already a reader, a writer or a manager.
 	 * @param reader the reader
 	 */
 	public void addReader(Link reader) {
-		addLabeledLink(reader, LABEL_READER);
+		// add the reader only if it's not already a reader, a writer or a manager.
+		if ((! _readers.contains(reader)) &&
+			(! _writers.contains(reader)) &&
+			(! _managers.contains(reader))) {
+			if (!LABEL_READER.equals(reader.targetLabel())) {
+				reader = new Link(reader.targetName(), LABEL_READER, reader.targetAuthenticator());
+			}
+			super.add(reader);
+			_readers.add(reader);
+		}
+	}
+	
+	/**
+	 * Remove a specified reader from the ACL.
+	 * @param reader the reader
+	 */
+	public boolean removeReader(Link reader) {
+		if (!LABEL_READER.equals(reader.targetLabel())) {	
+			reader = new Link(reader.targetName(), LABEL_READER, reader.targetAuthenticator());	
+		}
+		if (_readers.contains(reader)) {
+			_contents.remove(reader);
+			_readers.remove(reader);
+			return true;
+		}
+		Log.info("trying to remove a non-existent reader, ignoring this operation...");  
+		return false;
 	}
 
 	/**
-	 * Add a specified writer to the ACL
+	 * Add a specified writer to the ACL.
+	 * The method does nothing if the writer is already a writer or a manager.
+	 * If the writer is already a reader, it is deleted from _readers and added to _writers.
 	 * @param writer the writer
 	 */
 	public void addWriter(Link writer) {
-		addLabeledLink(writer, LABEL_WRITER);
+		// add the writer only if it's not already a writer or a manager.
+		if ((! _writers.contains(writer)) && (! _managers.contains(writer))) {
+			if (!LABEL_WRITER.equals(writer.targetLabel())) {
+				writer = new Link(writer.targetName(), LABEL_WRITER, writer.targetAuthenticator());
+			}
+			// if the writer is already a reader, delete it from readers.
+			if (_readers.contains(writer)) {
+				// TODO: this will not work if link has different authenticator
+				removeReader(writer);
+			}
+			// add the writer as a writer
+			super.add(writer);
+			_writers.add(writer);			
+		}
+	}
+	
+	/**
+	 * Remove a specified writer from the ACL.
+	 * @param writer the writer
+	 */
+	public boolean removeWriter(Link writer) {
+		if (!LABEL_WRITER.equals(writer.targetLabel())) {	
+			writer = new Link(writer.targetName(), LABEL_WRITER, writer.targetAuthenticator());	
+		}
+		if (_writers.contains(writer)) {
+			_contents.remove(writer);
+			_writers.remove(writer);
+			return true;
+		}
+		Log.info("trying to remove a non-existent writer, ignoring this operation...");  
+		return false;
 	}
 	
 	/**
 	 * Add a specified manager to the ACL
+	 * This method does nothing if the manager is already a manager.
+	 * If the manager is already a reader or a writer, it is removed from 
+	 * _readers or _writers and added to _managers.
 	 * @param manager the manager
 	 */
 	public void addManager(Link manager) {
-		addLabeledLink(manager, LABEL_MANAGER);
+		// add the manager only if it's not already a manager.
+		if (! _managers.contains(manager)) {
+			if (!LABEL_MANAGER.equals(manager.targetLabel())) {
+				manager = new Link(manager.targetName(), LABEL_MANAGER, manager.targetAuthenticator());
+			}
+			// if the manager is already a reader, delete it from readers.
+			if (_readers.contains(manager)) {
+				// TODO: this will not work if link has different authenticator
+				removeReader(manager);
+			}
+			// if the manager is already a writer, delete it from readers.
+			else if (_writers.contains(manager)) {
+				// TODO: this will not work if link has different authenticator
+				removeWriter(manager);
+			}
+			// add the manager as a manager
+			super.add(manager);
+			_managers.add(manager);
+		}
+	}
+	
+	/**
+	 * Remove a specified manager from the ACL.
+	 * @param manager the manager
+	 */
+	public boolean removeManager(Link manager) {
+		if (!LABEL_MANAGER.equals(manager.targetLabel())) {	
+			manager = new Link(manager.targetName(), LABEL_MANAGER, manager.targetAuthenticator());	
+		}
+		if (_managers.contains(manager)) {
+			_contents.remove(manager);
+			_managers.remove(manager);
+			return true;
+		}
+		Log.info("trying to remove a non-existent manager, ignoring this operation...");  
+		return false;
 	}
 	
 	/**
@@ -311,55 +406,22 @@ public class ACL extends Collection {
 			}
 			
 			if (ACLOperation.LABEL_ADD_READER.equals(op.targetLabel())) {
-				if (levelOld > LEVEL_NONE){
-					continue;
-				}
-				
-				addReader(op);
-				
-			} else if (ACLOperation.LABEL_ADD_WRITER.equals(op.targetLabel())) {				
-				if (levelOld > LEVEL_WRITE) {
-					continue;
-				}
-				
-				if (levelOld == LEVEL_READ) {
-					removeLabeledLink(op, LABEL_READER);
-				}
-				
+				addReader(op);				
+			} 
+			else if (ACLOperation.LABEL_ADD_WRITER.equals(op.targetLabel())) {				
 				addWriter(op);
-			} else if (ACLOperation.LABEL_ADD_MANAGER.equals(op.targetLabel())) {
-				if (levelOld == LEVEL_MANAGE) {
-					continue;
-				}
-
-				if (levelOld == LEVEL_READ) {
-					removeLabeledLink(op, LABEL_READER);
-				} else if(levelOld == LEVEL_WRITE) {					
-					removeLabeledLink(op, LABEL_WRITER);
-				}
-				
+			} 
+			else if (ACLOperation.LABEL_ADD_MANAGER.equals(op.targetLabel())) {
 				addManager(op);
-			} else if (ACLOperation.LABEL_DEL_READER.equals(op.targetLabel())) {
-				if (levelOld != LEVEL_READ) {
-					Log.info("trying to remove a non-existent reader, ignoring this operation..."); 
-					continue;
-				}
-
-				removeLabeledLink(op, LABEL_READER);	
-			} else if (ACLOperation.LABEL_DEL_WRITER.equals(op.targetLabel())){
-				if (levelOld != LEVEL_WRITE) { 
-					Log.info("trying to remove a non-existent writer, ignoring this operation...");
-					continue;
-				}
-
-				removeLabeledLink(op, LABEL_WRITER);
-			} else if (ACLOperation.LABEL_DEL_MANAGER.equals(op.targetLabel())) {
-				if(levelOld != LEVEL_MANAGE){
-					Log.info("trying to remove a non-existent manager, ignoring this operation...");
-					continue;
-				}
-
-				removeLabeledLink(op, LABEL_MANAGER);
+			} 
+			else if (ACLOperation.LABEL_DEL_READER.equals(op.targetLabel())) {
+				removeReader(op);	
+			} 
+			else if (ACLOperation.LABEL_DEL_WRITER.equals(op.targetLabel())){
+				removeWriter(op);
+			} 
+			else if (ACLOperation.LABEL_DEL_MANAGER.equals(op.targetLabel())) {
+				removeManager(op);
 			}
 			
 			if (!tm.containsKey(op)) {
@@ -392,46 +454,14 @@ public class ACL extends Collection {
 		return newReaders;
 		
 	}
-	
-	/**
-	 * Add a labeled link.
-	 * Assume that the reference has link's name and authentication information,
-	 * but possibly not the right label. Also assume that the link object might
-	 * be used in multiple places, and we can't modify it.
-	 * @param link the link
-	 * @param desiredLabel the desired label
-	 */
-	protected void addLabeledLink(Link link, String desiredLabel) {
-		if (((null == desiredLabel) && (null != link.targetLabel()))
-			|| (!desiredLabel.equals(link.targetLabel()))) {
-			link = new Link(link.targetName(), desiredLabel, link.targetAuthenticator());
-		}
-		add(link);
-	}
-
-	/**
-	 * Remove a labeled link
- 	 * Assume that the reference has link's name and authentication information,
-	 * but possibly not the right label. Also assume that the link object might
-	 * be used in multiple places, and we can't modify it.
-	 * @param link the link
-	 * @param desiredLabel the desired label
-	 */
-	protected void removeLabeledLink(Link link, String desiredLabel) {
-		if (((null == desiredLabel) && (null != link.targetLabel()))
-			|| (!desiredLabel.equals(link.targetLabel()))) {
-			link = new Link(link.targetName(), desiredLabel, link.targetAuthenticator());
-		}
-		remove(link);
-	}
 
 	@Override
 	public void add(Link link) {
-		if (validLabel(link)) {
-			super.add(link);
-			index(link);
-		}
-		else throw new IllegalArgumentException("Invalid label: " + link.targetLabel());
+		String label = link.targetLabel();
+		if (label.equals(LABEL_READER)) addReader(link);
+		else if (label.equals(LABEL_WRITER)) addWriter(link);
+		else if (label.equals(LABEL_MANAGER)) addManager(link);
+		else throw new IllegalArgumentException("Invalid ACL label: " + link.targetLabel());
 	}
 	
 	@Override
@@ -443,66 +473,26 @@ public class ACL extends Collection {
 	
 	@Override
 	public Link remove(int i) {
-		Link link = _contents.remove(i);
-		deindex(link);
+		Link link = _contents.get(i);
+		remove(link);
 		return link;
 	}
 	
 	@Override
 	public boolean remove(Link content) {
-		if  (_contents.remove(content)) {
-			deindex(content);
-			return true;
-		}
+		String label = content.targetLabel();
+		if (label.equals(LABEL_READER)) return removeReader(content);
+		else if (label.equals(LABEL_WRITER)) return removeWriter(content);
+		else if (label.equals(LABEL_MANAGER)) return removeManager(content);
 		return false;
 	}
 	
 	@Override
 	public void removeAll() {
 		super.removeAll();
-		clearIndices();
-	}
-	
-	protected void clearIndices() {
 		_readers.clear();
 		_writers.clear();
 		_managers.clear();
 	}
-	
-	/**
-	 * Add a new ACL entry to the correct index (reader, writer or manager)
-	 * @param link the entry
-	 */
-	protected void index(Link link) {
-		if (LABEL_READER.equals(link.targetLabel())) {
-			_readers.add(link);
-		} else if (LABEL_WRITER.equals(link.targetLabel())) {
-			_writers.add(link);
-		} else if (LABEL_MANAGER.equals(link.targetLabel())) {
-			_managers.add(link);
-		} else {
-			Log.info("Unexpected: attempt to index ACL entry with unknown label: " + link.targetLabel());
-		}
-	}
-	
-	/**
-	 * Delete an ACL entry from the index specified by a label
-	 * @param label the label of the index (reader, writer or manager)
-	 * @param link the link
-	 */
-	protected void deindex(String label, Link link) {
-		if (LABEL_READER.equals(label)) {
-			_readers.remove(link);
-		} else if (LABEL_WRITER.equals(label)) {
-			_writers.remove(link);
-		} else if (LABEL_MANAGER.equals(label)) {
-			_managers.remove(link);
-		} else {
-			Log.info("Unexpected: attempt to index ACL entry with unknown label: " + label);
-		}				
-	}
-	
-	protected void deindex(Link link) {
-		deindex(link.targetLabel(), link);
-	}
+
 }
