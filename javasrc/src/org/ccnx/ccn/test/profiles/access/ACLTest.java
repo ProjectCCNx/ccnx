@@ -69,7 +69,7 @@ public class ACLTest {
 	public void testACLCreationFromArrayList() throws Exception {
 		ArrayList<Link> alr = new ArrayList<Link>();
 		alr.add(new Link(ContentName.fromNative("/parc/sds/pgolle"), "r", null));
-		alr.add(new Link(ContentName.fromNative("/parc/sds/eshi"), "w", null));
+		alr.add(new Link(ContentName.fromNative("/parc/sds/eshi"), "rw", null));
 		ACL testACL = new ACL(alr);
 		Assert.assertTrue(testACL.validate());
 	}
