@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<KeyValueSet>
+  <Entry>
+  <Key>Start</Key>
+  <PositiveIntegerValue>21</PositiveIntegerValue>
+  </Entry>
+  <Entry>
+  <Key>BlockSize</Key>
+  </Entry>
+  <Entry>
+  <Key>Length</Key>
+  <PositiveIntegerValue>8345</PositiveIntegerValue>
+  </Entry>
+  <Entry>
+  <BinaryValue ccnbencoding="base64Binary">AQIDBAUGBwgJAAkIBwYFBAMCAQ==</BinaryValue>
+  </Entry>
+  <Entry>
+  <Key>ContentDigest</Key>
+  <BinaryValue ccnbencoding="base64Binary">AQIDBAUGBwgJAAkIBwYFBAMCAQ==</BinaryValue>
+  </Entry>
+  <Entry>
+  <Key>NegativeNumber</Key>
+  <IntegerValue>-3</IntegerValue>
+  </Entry>
+  <Entry>
+  <Key>Pi</Key>
+  <DecimalValue>3.14159</DecimalValue>
+  </Entry>
+</KeyValueSet>

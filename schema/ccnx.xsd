@@ -21,6 +21,7 @@
 <xs:element name="CompleteName" type="CompleteNameType"/>
 <xs:element name="Collection" type="CollectionType"/>
 <xs:element name="Link" type="LinkType"/>
+<xs:element name="KeyValueSet" type="KeyValueSetType"/>
 <xs:element name="Header" type="HeaderType"/>
 <xs:element name="Interest" type="InterestType"/>
 
@@ -50,6 +51,26 @@
     <xs:element name="Timestamp" type="TimestampType" minOccurs="0" maxOccurs="1"/>
     <xs:element name="Type" type="ContentType" minOccurs="0" maxOccurs="1"/>
     <xs:element name="ContentDigest" type="Base64BinaryType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="KeyValuePairType">
+  <xs:sequence>
+      <xs:element name="Key" type="xs:string"/>
+      <xs:choice>
+        <xs:element name="IntegerValue" type="xs:integer"/>
+        <xs:element name="PositiveIntegerValue" type="xs:nonNegativeInteger"/>
+        <xs:element name="DecimalValue" type="xs:decimal"/>
+        <xs:element name="StringValue" type="xs:string"/>
+        <xs:element name="BinaryValue" type="Base64BinaryType"/>
+      </xs:choice>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Maybe there is a way to drop a level of nesting... -->
+<xs:complexType name="KeyValueSetType">
+  <xs:sequence>
+    <xs:element name="Entry" type="KeyValuePairType" minOccurs="0" maxOccurs="unbounded"/>
   </xs:sequence>
 </xs:complexType>
 
