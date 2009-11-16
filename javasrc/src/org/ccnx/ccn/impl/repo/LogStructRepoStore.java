@@ -232,7 +232,6 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * 	obtain its keys and communicate with ccnd. If null, the repository
 	 * 	will configure its own based on policy, or if none, create one
 	 * 	using the executing user's defaults.
-	 * @throws ContentDecodingException 
 	 */
 	public void initialize(String repositoryRoot, File policyFile, String localName, String globalPrefix,
 				String namespace, CCNHandle handle) throws RepositoryException {
@@ -318,17 +317,6 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			throw new RepositoryException(e3.getMessage());
 		}
 		
-		/**
-		 * Try to read policy from storage if we don't have full policy source yet
-		 */
-		if (null == policyFile) {
-			try {
-				readPolicy(localName);
-			} catch (ContentDecodingException e) {
-				throw new RepositoryException(e.getMessage());
-			}
-		}
-		
 		checkName = checkFile(LogStructRepoStoreProfile.REPO_GLOBALPREFIX, globalPrefix, globalFromArgs);
 		globalPrefix = checkName != null ? checkName : globalPrefix;
 		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
@@ -343,8 +331,16 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			throw new RepositoryException(e2.getMessage());
 		}
 		
-		// If we didn't read in our policy from a previous saved policy file, save the policy now
-		if (null != pxml) {
+		/**
+		 * Try to read policy from storage if we don't have full policy source yet
+		 */
+		if (null == pxml) {
+			try {
+				readPolicy(localName);
+			} catch (ContentDecodingException e) {
+				throw new RepositoryException(e.getMessage());
+			}
+		} else { // If we didn't read in our policy from a previous saved policy file, save the policy now
 			ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), _policy.getLocalName());
 			try {
 				PolicyObject po = new PolicyObject(policyName, pxml, null, this);
@@ -371,7 +367,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		// Make sure content is within allowable nameSpace
 		boolean nameSpaceOK = false;
 		synchronized (_policy) {
-			for (ContentName name : _policy.getNameSpace()) {
+			for (ContentName name : _policy.getNamespace()) {
 				if (name.isPrefixOf(content.name())) {
 					nameSpaceOK = true;
 					break;

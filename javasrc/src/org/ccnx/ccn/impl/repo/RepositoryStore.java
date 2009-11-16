@@ -203,7 +203,7 @@ public interface RepositoryStore {
 	 * @return may return null if initialize() has not yet been called.
 	 */
 	public CCNHandle getHandle();
-	
+
 	/**
 	 * Save the specified content in the repository.  If content is added to a name that has
 	 * been the subject of a name enumeration request without a newer version at that time,

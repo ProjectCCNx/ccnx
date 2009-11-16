@@ -20,13 +20,14 @@ package org.ccnx.ccn.impl.repo;
 import java.io.InputStream;
 import java.util.ArrayList;
 
+import javax.xml.stream.XMLStreamException;
+
 import org.ccnx.ccn.impl.encoding.TextXMLCodec;
 import org.ccnx.ccn.impl.encoding.XMLCodecFactory;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
@@ -64,24 +65,21 @@ public class BasicPolicy implements Policy {
 	
 	public static final String POLICY = "POLICY";
 	public String POLICY_VERSION = "1.5";
-
 	
-	private byte [] _content = null;
-	private ContentName _globalPrefix = null;
-	private String _localName = null;
-	
-	protected String _repoVersion = null;	// set from repo	
-	private ArrayList<ContentName> _nameSpace = new ArrayList<ContentName>(0);
+	protected String _repoVersion = null;	// set from repo		
+	protected PolicyXML _pxml = null;
 	
 	/**
 	 * Constructor defaulting the initial namespace to "everything"
 	 * @param name local name for this repository
 	 */
 	public BasicPolicy(String name) {
+		_pxml = new PolicyXML();
 		try {
 			if (null != name)
-				this._localName = name;
-			_nameSpace.add(ContentName.fromNative("/"));
+				_pxml.setLocalName(name);
+			_pxml.setVersion(POLICY_VERSION);
+			_pxml.addNamespace(ContentName.fromNative("/"));
 		} catch (MalformedContentNameStringException e) {}
 	}
 	
@@ -90,20 +88,22 @@ public class BasicPolicy implements Policy {
 	 * @param name local name for this repository
 	 * @param namespace the initial namespace
 	 */
-	@SuppressWarnings("unchecked")
 	public BasicPolicy(String name, ArrayList<ContentName> namespace) {
-		if (null != name) {
-			this._localName = name;
-		}
+		this(name);
 		if (null != namespace) {
-			_nameSpace = (ArrayList<ContentName>) namespace.clone();
+			_pxml.setNamespace(namespace);
 		}
 	}
 	
-	public PolicyXML updateFromInputStream(InputStream stream) throws ContentDecodingException, RepositoryException {
-		PolicyXML pxml = createPolicyXML(stream);
+	public void updateFromInputStream(InputStream stream) throws RepositoryException {
+		PolicyXML pxml;
+		try {
+			pxml = createPolicyXML(stream);
+		} catch (ContentDecodingException e) {
+			throw new RepositoryException(e.getMessage());
+		}
 		update(pxml, false);
-		return pxml;
+		_pxml = pxml;
 	}
 	
 	/**
@@ -124,7 +124,7 @@ public class BasicPolicy implements Policy {
 		if (null == pxml._localName)
 			throw new RepositoryException("No local name in policy file");
 		if (fromNet) {
-			if (!pxml._localName.equals(_localName)) {
+			if (!pxml._localName.equals(_pxml.getLocalName())) {
 				Log.warning("Repository local name doesn't match: request = {0}", pxml._localName);
 				throw new RepositoryException("Repository local name doesn't match policy file");
 			}
@@ -140,59 +140,23 @@ public class BasicPolicy implements Policy {
 			throw new RepositoryException("No globalPrefix in policy file");
 		
 		if (fromNet) {
-			try {
-				if (!ContentName.fromNative(fixSlash(pxml._globalPrefix)).equals(_globalPrefix)) {
-					Log.warning("Repository globalPrefix doesn't match: request = {0}", pxml._globalPrefix);
-					throw new RepositoryException("Repository global prefix doesn't match policy file");
-				}
-			} catch (MalformedContentNameStringException e) {
-				throw new RepositoryException(e.getMessage());
+			if (pxml.getGlobalPrefix().equals(_pxml.getGlobalPrefix())) {
+				Log.warning("Repository globalPrefix doesn't match: request = {0}", pxml._globalPrefix);
+				throw new RepositoryException("Repository global prefix doesn't match policy file");
 			}
 		} else {
-			try {
-				changeGlobalPrefix(pxml._globalPrefix);
-			} catch (MalformedContentNameStringException e) {
-				Log.warning("Policy file contains invalid global prefix {0}", pxml._globalPrefix);
-				throw new RepositoryException("Policy file specifies invalid global prefix");
-			}
+			changeGlobalPrefix(pxml._globalPrefix);
 		}
 			
-		ArrayList<ContentName> tmpNameSpace = new ArrayList<ContentName>();
-		for (String name : pxml._nameSpace) {
-			try {
-				tmpNameSpace.add(ContentName.fromNative(name));
-			} catch (MalformedContentNameStringException e) {
-				Log.warning("Policy file contains invalid namespace {0}", name);
-				throw new RepositoryException("Policy file specifies invalid namespace");
-			}
-		}
-		_nameSpace = tmpNameSpace;
-		_nameSpace.add(_globalPrefix);
+		_pxml.setNamespace(pxml.getNamespace());
 	}
 
-	public ArrayList<ContentName> getNameSpace() {
-		return _nameSpace;
+	public ArrayList<ContentName> getNamespace() {
+		return _pxml.getNamespace();
 	}
 	
-	public void setNameSpace(ArrayList<ContentName> nameSpace) {
-		_nameSpace = nameSpace;
-	}
-
-	/**
-	 * Gets the current policy as a ContentObject
-	 * @return the policy content
-	 */
-	public ContentObject getPolicyContent() {
-		// TODO WARNING: this code should not call a generic content builder meant for
-		// making test content. The repository needs to have its own set of keys, manage
-		// them and use them rather than using the default key manager (which will pull
-		// keys from whatever user keystore that started the repo). The repo should build
-		// a keystore for its own use, and when it starts up instantiate a key manager
-		// that uses that keystore. That key manager should be used for all of its
-		// operations.
-		return ContentObject.buildContentObject(
-				getPolicyName(_globalPrefix, _localName),
-				_content);
+	public void setNamespace(ArrayList<ContentName> namespace) {
+		_pxml.setNamespace(namespace);
 	}
 	
 	/**
@@ -221,7 +185,7 @@ public class BasicPolicy implements Policy {
 	 * Gets the policy path for this repository
 	 * @return the policy path as a ContentName
 	 */
-	public ContentName getPolicyName() { return getPolicyName(_globalPrefix, _localName); }
+	public ContentName getPolicyName() { return getPolicyName(_pxml.getGlobalPrefix(), _pxml.getLocalName()); }
 
 	/**
 	 * Sets the repository version to be used by this policy interpreter. After this call any
@@ -240,9 +204,7 @@ public class BasicPolicy implements Policy {
 	 * @param globalPrefix the global prefix as a slash separated String
 	 */
 	public void setGlobalPrefix(String globalPrefix) throws MalformedContentNameStringException {
-		if (null == _globalPrefix) {
-			changeGlobalPrefix(globalPrefix);
-		}
+		changeGlobalPrefix(ContentName.fromNative(PolicyXML.fixSlash(globalPrefix)));
 	}
 	
 	/**
@@ -250,35 +212,33 @@ public class BasicPolicy implements Policy {
 	 * 
 	 * @return the global prefix as a ContentName
 	 */
-	public ContentName getGlobalPrefix() { return _globalPrefix; }
+	public ContentName getGlobalPrefix() { return _pxml.getGlobalPrefix(); }
 	
 	/**
 	 * Gets the local name currently used by this repository
 	 * 
 	 * @return the local name as a slash separated String
 	 */
-	public String getLocalName() { return _localName; }
+	public String getLocalName() { return _pxml.getLocalName(); }
 
 	public void setLocalName(String localName) throws MalformedContentNameStringException {
-		if (null == _localName) {
-			_localName = localName;
+		if (null == _pxml.getLocalName()) {
+			_pxml.setLocalName(localName);
 		}
 	}
 	
-	private String fixSlash(String name) {
-		if (!name.startsWith("/"))
-			name = "/" + name;
-		return name;
+	public PolicyXML getPolicyXML() {
+		return _pxml;
 	}
 	
-	private void changeGlobalPrefix(String globalPrefix) throws MalformedContentNameStringException {
+	private void changeGlobalPrefix(ContentName globalPrefix) {
 		// Note - need to synchronize on "this" to synchronize with events reading
 		// the name space in the policy clients which have access only to this object
 		synchronized (this) {
-			if (null != _globalPrefix)
-				_nameSpace.remove(_globalPrefix);
-			_globalPrefix = ContentName.fromNative(fixSlash(globalPrefix));
-			_nameSpace.add(_globalPrefix);
+			if (null != _pxml.getGlobalPrefix())
+				_pxml.removeNamespace(_pxml.getGlobalPrefix());
+			_pxml.setGlobalPrefix(globalPrefix);
+			_pxml.addNamespace(globalPrefix);
 		}
 	}
 }

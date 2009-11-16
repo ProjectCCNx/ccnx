@@ -68,7 +68,7 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
 			}
 		}
 		_handle = handle;
-		
+	
 		if (null != _index) {
 			throw new RepositoryException("Attempt to re-initialize " + this.getClass().getName());
 		}
