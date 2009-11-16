@@ -308,7 +308,6 @@ ccn_signed_info_create(
  */
 int ccn_express_interest(struct ccn *h,
                          struct ccn_charbuf *namebuf,
-//                         int prefix_comps,
                          struct ccn_closure *action,
                          struct ccn_charbuf *interest_template);
 
@@ -772,8 +771,6 @@ int ccnb_append_tagged_blob(struct ccn_charbuf *c, enum ccn_dtag dtag,
  */
 int ccnb_tagged_putf(struct ccn_charbuf *c, enum ccn_dtag dtag,
                      const char *fmt, ...);
-
-
 
 /**
  * Versioning
