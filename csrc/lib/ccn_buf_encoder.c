@@ -30,13 +30,6 @@
 #include <ccn/ccn_private.h>
 
 int
-ccn_signed_info_create_default(struct ccn_charbuf *c,
-                        enum ccn_content_type Type)
-{
-    return (ccn_signed_info_create(c, NULL, 0, NULL, Type, -1, NULL, NULL));
-}
-		
-int
 ccn_signed_info_create(struct ccn_charbuf *c,
                        const void *publisher_key_id,	/* input, sha256 hash */
                        size_t publisher_key_id_size, 	/* input, 32 for sha256 hashes */

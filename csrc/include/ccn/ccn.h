@@ -263,15 +263,6 @@ enum ccn_content_type {
 };
 
 /*
- * ccn_signed_info_create_default: create signed info in a charbuf 
- * with defaults.
- * Return value is 0, or -1 for error.
- */
-int
-ccn_signed_info_create_default(struct ccn_charbuf *c, /* output signed info */
-                               enum ccn_content_type Type);
-
-/*
  * ccn_signed_info_create: create signed info in a charbuf 
  * Note that key_locator is optional (may be NULL) and is ccnb encoded
  * Note that freshness is optional (-1 means omit)
