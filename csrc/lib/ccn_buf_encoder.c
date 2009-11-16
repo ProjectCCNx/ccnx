@@ -91,7 +91,7 @@ ccn_signed_info_create(struct ccn_charbuf *c,
     return (res == 0 ? 0 : -1);
 }
 
-int
+static int
 ccn_encode_Signature(struct ccn_charbuf *buf,
                      const char *digest_algorithm,
                      const void *witness,
