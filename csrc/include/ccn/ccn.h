@@ -262,23 +262,6 @@ enum ccn_content_type {
     CCN_CONTENT_NACK = 0x34008A
 };
 
-/*
- * ccn_signed_info_create: create signed info in a charbuf 
- * Note that key_locator is optional (may be NULL) and is ccnb encoded
- * Note that freshness is optional (-1 means omit)
- * Return value is 0, or -1 for error.
- */
-int
-ccn_signed_info_create(
-    struct ccn_charbuf *c,              /* filled with result */
-    const void *publisher_key_id,	/* input, (sha256) hash */
-    size_t publisher_key_id_size, 	/* input, 32 for sha256 hashes */
-    const struct ccn_charbuf *timestamp,/* input ccnb blob, NULL for "now" */
-    enum ccn_content_type type,         /* input */
-    int freshness,			/* input, -1 means omit */
-    const struct ccn_charbuf *finalblockid, /* input, NULL means omit */
-    const struct ccn_charbuf *key_locator); /* input, optional, ccnb encoded */
-
 /***********************************
  * ccn_express_interest: 
  * Use the above routines to set up namebuf.
@@ -643,15 +626,15 @@ int ccn_content_get_value(const unsigned char *data, size_t data_size,
  * Binary encoding
  */
 
-/*
- * ccn_encode_ContentObject:
- *    buf: output buffer where encoded object is written
- *    Name: encoded name from ccn_name_init
- *    SignedInfo: encoded info from ccn_signed_info_create
- *    data, size: the raw data to be encoded
- *    digest_algorithm: to be used for signing
- *    private_key: to be used for signing
- */
+int ccn_signed_info_create(
+    struct ccn_charbuf *c,              /* filled with result */
+    const void *publisher_key_id,	/* input, (sha256) hash */
+    size_t publisher_key_id_size, 	/* input, 32 for sha256 hashes */
+    const struct ccn_charbuf *timestamp,/* input ccnb blob, NULL for "now" */
+    enum ccn_content_type type,         /* input */
+    int freshness,			/* input, -1 means omit */
+    const struct ccn_charbuf *finalblockid, /* input, NULL means omit */
+    const struct ccn_charbuf *key_locator); /* input, optional, ccnb encoded */
 
 int ccn_encode_ContentObject(struct ccn_charbuf *buf,
                              const struct ccn_charbuf *Name,

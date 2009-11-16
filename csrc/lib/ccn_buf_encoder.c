@@ -29,6 +29,21 @@
 #include <ccn/signing.h>
 #include <ccn/ccn_private.h>
 
+/**
+ * Create SignedInfo.
+ *
+ * @param c is used to hold the result.
+ * @param publisher_key_id points to the digest of the publisher key id.
+ * @param publisher_key_id_size is the size in bytes(32) of the pub key digest
+ * @param timestamp holds the timestamp, as a ccnb-encoded blob, or is NULL
+          to use the current time.
+ * @param type indicates the Type of the ContentObject.
+ * @param freshness is the FreshnessSeconds value, or -1 to omit.
+ * @param finalblockid holds the FinalBlockID, as a ccnb-encoded blob, or is
+          NULL to omit.
+ * @param key_locator is the ccnb-encoded KeyLocator element, or NULL to omit.
+ * @returns 0 for success or -1 for error.
+ */
 int
 ccn_signed_info_create(struct ccn_charbuf *c,
                        const void *publisher_key_id,	/* input, sha256 hash */
@@ -43,7 +58,7 @@ ccn_signed_info_create(struct ccn_charbuf *c,
     const char fakepubkeyid[32] = {0};
  
     if (publisher_key_id != NULL && publisher_key_id_size != 32)
-        return (-1);
+        return(-1);
 
     res |= ccn_charbuf_append_tt(c, CCN_DTAG_SignedInfo, CCN_DTAG);
 
@@ -88,7 +103,7 @@ ccn_signed_info_create(struct ccn_charbuf *c,
     
     res |= ccn_charbuf_append_closer(c);
 
-    return (res == 0 ? 0 : -1);
+    return(res == 0 ? 0 : -1);
 }
 
 static int
@@ -102,7 +117,7 @@ ccn_encode_Signature(struct ccn_charbuf *buf,
     int res = 0;
 
     if (signature == NULL)
-        return (-1);
+        return(-1);
 
     res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Signature, CCN_DTAG);
 
@@ -127,9 +142,20 @@ ccn_encode_Signature(struct ccn_charbuf *buf,
     
     res |= ccn_charbuf_append_closer(buf);
 
-    return (res == 0 ? 0 : -1);
+    return(res == 0 ? 0 : -1);
 }
 
+/**
+ * Encode and sign a ContentObject.
+ * @param buf is the output buffer where encoded object is written.
+ * @param Name is the ccnb-encoded name from ccn_name_init and friends.
+ * @param SignedInfo is the ccnb-encoded info from ccn_signed_info_create.
+ * @param data pintes to the raw data to be encoded.
+ * @param size is the size, in bytes, of the raw data to be encoded.
+ * @param digest_algorithm may be NULL for default.
+ * @param private_key is the private key to use for signing.
+ * @returns 0 for success or -1 for error.
+ */
 int
 ccn_encode_ContentObject(struct ccn_charbuf *buf,
                          const struct ccn_charbuf *Name,
@@ -153,35 +179,43 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
         res |= ccn_charbuf_append_tt(content_header, size, CCN_BLOB);
     closer_start = content_header->length;
     res |= ccn_charbuf_append_closer(content_header);
-
+    if (res < 0)
+        return(-1);
     sig_ctx = ccn_sigc_create();
-    if (sig_ctx == NULL) return (-1);
-
-    if (0 != ccn_sigc_init(sig_ctx, digest_algorithm)) return (-1);
-    if (0 != ccn_sigc_update(sig_ctx, Name->buf, Name->length)) return (-1);
-    if (0 != ccn_sigc_update(sig_ctx, SignedInfo->buf, SignedInfo->length)) return (-1);
-    if (0 != ccn_sigc_update(sig_ctx, content_header->buf, closer_start)) return (-1);
-    if (0 != ccn_sigc_update(sig_ctx, data, size)) return (-1);
-    if (0 != ccn_sigc_update(sig_ctx, content_header->buf + closer_start, content_header->length - closer_start)) return (-1);
-
-    signature = (struct ccn_signature *)calloc(1, ccn_sigc_signature_max_size(sig_ctx, private_key));
-    if (signature == NULL) return (-1);
-    if (0 != ccn_sigc_final(sig_ctx, signature, &signature_size, private_key)) {
+    if (sig_ctx == NULL)
+        return(-1);
+    if (0 != ccn_sigc_init(sig_ctx, digest_algorithm))
+        return(-1);
+    if (0 != ccn_sigc_update(sig_ctx, Name->buf, Name->length))
+        return(-1);
+    if (0 != ccn_sigc_update(sig_ctx, SignedInfo->buf, SignedInfo->length))
+        return(-1);
+    if (0 != ccn_sigc_update(sig_ctx, content_header->buf, closer_start))
+        return(-1);
+    if (0 != ccn_sigc_update(sig_ctx, data, size))
+        return(-1);
+    if (0 != ccn_sigc_update(sig_ctx, content_header->buf + closer_start,
+                             content_header->length - closer_start))
+        return(-1);
+    signature = calloc(1, ccn_sigc_signature_max_size(sig_ctx, private_key));
+    if (signature == NULL)
+        return(-1);
+    res = ccn_sigc_final(sig_ctx, signature, &signature_size, private_key);
+    if (0 != res) {
         free(signature);
-        return (-1);
+        return(-1);
     }
     ccn_sigc_destroy(&sig_ctx);
-
     res |= ccn_charbuf_append_tt(buf, CCN_DTAG_ContentObject, CCN_DTAG);
-    res |= ccn_encode_Signature(buf, digest_algorithm, NULL, 0, signature, signature_size);
+    res |= ccn_encode_Signature(buf, digest_algorithm,
+                                NULL, 0, signature, signature_size);
     res |= ccn_charbuf_append_charbuf(buf, Name);
     res |= ccn_charbuf_append_charbuf(buf, SignedInfo);
     res |= ccnb_append_tagged_blob(buf, CCN_DTAG_Content, data, size);
     res |= ccn_charbuf_append_closer(buf);
-    
     free(signature);
     ccn_charbuf_destroy(&content_header);
-    return (res == 0 ? 0 : -1);
+    return(res == 0 ? 0 : -1);
 }
 
 /**
@@ -208,7 +242,7 @@ ccn_charbuf_append_tt(struct ccn_charbuf *c, size_t val, enum ccn_tt tt)
         n++;
         val >>= 7;
     }
-    return (ccn_charbuf_append(c, p, n));
+    return(ccn_charbuf_append(c, p, n));
 }
 
 int
@@ -234,13 +268,13 @@ ccnb_append_number(struct ccn_charbuf *c, int nni)
     int res;
 
     if (nni < 0)
-        return (-1);
+        return(-1);
     nnistringlen = snprintf(nnistring, sizeof(nnistring), "%d", nni);
     if (nnistringlen >= sizeof(nnistring))
         return(-1);
     res = ccn_charbuf_append_tt(c, nnistringlen, CCN_UDATA);
     res |= ccn_charbuf_append_string(c, nnistring);
-    return (res);
+    return(res);
 }
 
 /**
@@ -255,7 +289,9 @@ ccnb_append_number(struct ccn_charbuf *c, int nni)
  * @returns 0 for success or -1 for error.
  */
 int
-ccnb_append_timestamp_blob(struct ccn_charbuf *c, enum ccn_marker marker, intmax_t secs, int nsecs)
+ccnb_append_timestamp_blob(struct ccn_charbuf *c,
+                           enum ccn_marker marker,
+                           intmax_t secs, int nsecs)
 {
     int i;
     int n;
@@ -284,7 +320,7 @@ ccnb_append_timestamp_blob(struct ccn_charbuf *c, enum ccn_marker marker, intmax
 }
 
 /**
- * Append a binary timestamp, using the current time
+ * Append a binary timestamp, using the current time.
  * 
  * Like ccnb_append_timestamp_blob() but uses current time
  * @param c is the buffer to append to.
@@ -298,12 +334,11 @@ ccnb_append_now_blob(struct ccn_charbuf *c, enum ccn_marker marker)
     int res;
 
     gettimeofday(&now, NULL);
-
     res = ccnb_append_timestamp_blob(c, marker, now.tv_sec, now.tv_usec * 1000);
-    return (res);
+    return(res);
 }
 
-/*
+/**
  * Append a start-of-element marker.
  */
 int
@@ -346,7 +381,7 @@ ccnb_append_tagged_blob(struct ccn_charbuf *c,
         res |= ccn_charbuf_append(c, data, size);
     }
     res |= ccn_charbuf_append_closer(c);
-    return (res == 0 ? 0 : -1);
+    return(res == 0 ? 0 : -1);
 }
 
 /**
@@ -359,7 +394,8 @@ ccnb_append_tagged_blob(struct ccn_charbuf *c,
  * @returns 0 for success or -1 for error.
  */
 int
-ccnb_tagged_putf(struct ccn_charbuf *c, enum ccn_dtag dtag, const char *fmt, ...)
+ccnb_tagged_putf(struct ccn_charbuf *c,
+                 enum ccn_dtag dtag, const char *fmt, ...)
 {
     int res;
     int size;
@@ -398,6 +434,6 @@ ccnb_tagged_putf(struct ccn_charbuf *c, enum ccn_dtag dtag, const char *fmt, ...
         }
     }
     res |= ccn_charbuf_append_closer(c);
-    return (res == 0 ? 0 : -1);    
+    return(res == 0 ? 0 : -1);    
 }
 
