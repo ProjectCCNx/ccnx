@@ -20,8 +20,6 @@ package org.ccnx.ccn.impl.repo;
 import java.io.InputStream;
 import java.util.ArrayList;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.ccnx.ccn.impl.encoding.TextXMLCodec;
 import org.ccnx.ccn.impl.encoding.XMLCodecFactory;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;

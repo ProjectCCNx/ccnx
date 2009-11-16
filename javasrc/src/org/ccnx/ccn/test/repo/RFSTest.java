@@ -318,15 +318,9 @@ public class RFSTest extends RepoTestBase {
 		try {	// Test bad version
 			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null, null);
 			Assert.fail("Bad policy file succeeded");
-<<<<<<< HEAD
-		} catch (InvalidParameterException ipe) {}
-		repo.initialize(_fileTestDir,  
-					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
-=======
 		} catch (RepositoryException re) {}
-		repo.initialize(putHandle, _fileTestDir,  
-					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null);
->>>>>>> ca5eb6b... Fixes to allow policy reads using new PolicyXML structure to work correctly refs #100020
+		repo.initialize(_fileTestDir,  
+					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, putHandle);
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
 		repo.saveContent(content);
