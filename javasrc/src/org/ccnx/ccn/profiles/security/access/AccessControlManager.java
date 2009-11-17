@@ -15,7 +15,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.profiles.access;
+package org.ccnx.ccn.profiles.security.access;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -34,6 +34,8 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys;
+import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -46,12 +48,14 @@ import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.access.ACL.ACLObject;
-import org.ccnx.ccn.profiles.access.ACL.ACLOperation;
-import org.ccnx.ccn.profiles.access.AccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.namespace.NamespaceManager;
+import org.ccnx.ccn.profiles.security.access.ACL.ACLObject;
+import org.ccnx.ccn.profiles.security.access.ACL.ACLOperation;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
@@ -1277,6 +1281,75 @@ public class AccessControlManager {
 	 */
 	public void addKey(ContentName name, Key key) {
 		_keyCache.addKey(name, key);
+	}
+
+	
+ 	/**
+	 * Given the name of a content stream, this function verifies that access is allowed and returns the
+	 * keys required to decrypt the stream.
+	 * @param dataNodeName The name of the stream, including version component, but excluding
+	 * segment component.
+	 * @return Returns the keys ready to be used for en/decryption, or null if the content is not encrypted.
+	 * @throws IOException 
+	 * @throws InvalidKeyException 
+	 * @throws InvalidCipherTextException 
+	 * @throws AccessDeniedException 
+	 */
+	public ContentKeys getContentKeys(ContentName dataNodeName, PublisherPublicKeyDigest publisher) 
+        throws InvalidKeyException, InvalidCipherTextException, AccessDeniedException, IOException {
+		byte [] dataKey = getDataKey(dataNodeName);
+		if (null == dataKey)
+			return null;
+		return KeyDerivationFunction.DeriveKeysForObject(dataKey, DATA_KEY_LABEL, dataNodeName, publisher);
+	}
+
+	/**
+	 * Called when a stream is opened for reading, to determine if the name is under a root ACL, and
+	 * if so find or create an AccessControlManager, and get keys for access.
+	 * @param name name of the stream to be opened.
+	 * @param publisher publisher of the stream to be opened.
+	 * @param library CCN Library instance to use for any network operations.
+	 * @return If the stream is under access control then keys to decrypt the data are returned if it's
+	 * encrypted. If the stream is not under access control (no Root ACL block can be found) then null is
+	 * returned.
+	 * @throws IOException if a problem happens getting keys.
+	 */
+	public static ContentKeys keysForInput(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
+						throws IOException {
+		AccessControlManager acm;
+		try {
+			acm = NamespaceManager.findACM(name, handle);
+			if (acm != null)
+				return acm.getContentKeys(name, publisher);
+		} catch (ConfigurationException e) {
+			// TODO: should we throw this as a Runtime Exception?
+			throw new IOException("Opening stream for input", e);
+		} catch (InvalidCipherTextException e) {
+			throw new IOException("Opening stream for input", e);
+		} catch (InvalidKeyException e) {
+			throw new IOException("Opening stream for input", e);
+		}
+		return null;
+	}
+
+	public static ContentKeys keysForOutput(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
+				throws IOException {
+		AccessControlManager acm;
+		try {
+			acm = NamespaceManager.findACM(name, handle);
+			if (acm != null) {
+				Key dataKey = acm.generateAndStoreDataKey(name);
+				return KeyDerivationFunction.DeriveKeysForObject(dataKey.getEncoded(), DATA_KEY_LABEL, name, publisher);
+			}
+		} catch (ConfigurationException e) {
+			// TODO: should we throw this as a Runtime Exception?
+			throw new IOException("Opening stream for input", e);
+		} catch (InvalidCipherTextException e) {
+			throw new IOException("Opening stream for input", e);
+		} catch (InvalidKeyException e) {
+			throw new IOException("Opening stream for input", e);
+		}
+		return null;
 	}
 
 }	

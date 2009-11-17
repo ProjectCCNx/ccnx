@@ -745,7 +745,7 @@
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/profiles/access/*Test.class"/>
+					<include name="org/ccnx/ccn/test/profiles/security/access/*Test.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -766,7 +766,7 @@
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/profiles/access/*TestRepo.class"/>
+					<include name="org/ccnx/ccn/test/profiles/security/access/*TestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>

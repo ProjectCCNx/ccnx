@@ -20,36 +20,29 @@ package org.ccnx.ccn.impl.repo;
 import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 
 /**
- * Special flow controller to write CCN objects to repository internally
- *
+ * Input stream to get data directly from the repository
  */
+public class RepositoryInternalInputHandler extends CCNHandle {
+	protected RepositoryStore _repo = null;
 
-public class RepositoryInternalFlowControl extends CCNFlowControl {
-	RepositoryStore _repo;
-
-	public RepositoryInternalFlowControl(RepositoryStore repo, CCNHandle handle) throws IOException {
-		super(handle);
+	protected RepositoryInternalInputHandler(RepositoryStore repo) throws ConfigurationException,
+			IOException {
+		super();
 		_repo = repo;
 	}
 	
-	/**
-	 * Put to the repository instead of ccnd
-	 */
-	public ContentObject put(ContentObject co) throws IOException {
-		try {
-			_repo.saveContent(co);
-		} catch (RepositoryException e) {
-			throw new IOException(e.getMessage());
+	public ContentObject get(Interest interest, long timeout) throws IOException {
+		while (true) {
+			try {
+				return _repo.getContent(interest);
+			} catch (RepositoryException e) {
+				throw new IOException(e.getMessage());
+			}
 		}
-		return co;
 	}
-	
-	/**
-	 * Don't do waitForPutDrain
-	 */
-	public void afterClose() throws IOException {};
 }

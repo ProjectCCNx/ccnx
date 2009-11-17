@@ -1,4 +1,4 @@
-package org.ccnx.ccn.test.profiles.access;
+package org.ccnx.ccn.test.profiles.security.access;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -11,10 +11,10 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.profiles.access.AccessControlManager;
-import org.ccnx.ccn.profiles.access.ACL;
-import org.ccnx.ccn.profiles.access.ACL.ACLObject;
-import org.ccnx.ccn.test.profiles.access.TestUserData;
+import org.ccnx.ccn.profiles.security.access.ACL;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.ACL.ACLObject;
+import org.ccnx.ccn.test.profiles.security.access.TestUserData;
 
 /**
  * This test relies on org.ccn.ccn.test.profiles.access.TestUserData to generate users

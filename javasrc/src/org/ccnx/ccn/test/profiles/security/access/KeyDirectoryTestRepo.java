@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.profiles.access;
+package org.ccnx.ccn.test.profiles.security.access;
 
 
 import java.lang.reflect.Method;
@@ -38,10 +38,10 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.access.AccessControlManager;
-import org.ccnx.ccn.profiles.access.AccessControlProfile;
-import org.ccnx.ccn.profiles.access.Group;
-import org.ccnx.ccn.profiles.access.KeyDirectory;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.Group;
+import org.ccnx.ccn.profiles.security.access.KeyDirectory;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.AfterClass;
 import org.junit.Assert;

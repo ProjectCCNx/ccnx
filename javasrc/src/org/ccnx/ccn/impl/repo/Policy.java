@@ -21,11 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 
-import javax.xml.stream.XMLStreamException;
-
-import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
@@ -52,7 +48,7 @@ public interface Policy {
 	 * 
 	 * @param is stream for the file
 	 */
-	public PolicyXML updateFromInputStream(InputStream is) throws ContentDecodingException, RepositoryException;
+	public void updateFromInputStream(InputStream is) throws RepositoryException;
 
 	/**
 	 * Gets the current namespace covered by this repository. Any name not included within
@@ -60,19 +56,12 @@ public interface Policy {
 	 * 
 	 * @return			array of ContentNames specifying the namespace
 	 */
-	public ArrayList<ContentName> getNameSpace();
+	public ArrayList<ContentName> getNamespace();
 	
 	/**
 	 * 
 	 */
-	public void setNameSpace(ArrayList<ContentName> nameSpace);
-	
-	/**
-	 * Gets the current policy file as a CCN ContentObject
-	 * 
-	 * @return			the policy ContentObject
-	 */
-	public ContentObject getPolicyContent();
+	public void setNamespace(ArrayList<ContentName> nameSpace);
 	
 	/**
 	 * Set the version of the policy protocol which is currently valid.  Depending on the
@@ -111,4 +100,10 @@ public interface Policy {
 	 * @return - the local name of this repository as a String in the form xxx/yyy/zzz
 	 */
 	public ContentName getGlobalPrefix();
+	
+	/**
+	 * @return - get the associated policyXML
+	 * @return
+	 */
+	public PolicyXML getPolicyXML();
 }

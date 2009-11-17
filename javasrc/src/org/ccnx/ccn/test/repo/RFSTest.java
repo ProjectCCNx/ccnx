@@ -18,13 +18,12 @@
 package org.ccnx.ccn.test.repo;
 
 import java.io.File;
-import java.security.InvalidParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
 import org.ccnx.ccn.impl.repo.LogStructRepoStore;
-import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.repo.RepositoryException;
+import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -315,13 +314,13 @@ public class RFSTest extends RepoTestBase {
 		try {	// Test no version
 			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);
 			Assert.fail("Bad policy file succeeded");
-		} catch (InvalidParameterException ipe) {}
+		} catch (RepositoryException re) {}
 		try {	// Test bad version
 			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null, null);
 			Assert.fail("Bad policy file succeeded");
-		} catch (InvalidParameterException ipe) {}
+		} catch (RepositoryException re) {}
 		repo.initialize(_fileTestDir,  
-					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
+					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, putHandle);
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
 		repo.saveContent(content);

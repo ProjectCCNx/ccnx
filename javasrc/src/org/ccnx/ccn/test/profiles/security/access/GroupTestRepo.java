@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.profiles.access;
+package org.ccnx.ccn.test.profiles.security.access;
 
 import static org.junit.Assert.assertTrue;
 
@@ -35,12 +35,12 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.access.AccessControlManager;
-import org.ccnx.ccn.profiles.access.AccessControlProfile;
-import org.ccnx.ccn.profiles.access.AccessDeniedException;
-import org.ccnx.ccn.profiles.access.Group;
-import org.ccnx.ccn.profiles.access.GroupManager;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
+import org.ccnx.ccn.profiles.security.access.Group;
+import org.ccnx.ccn.profiles.security.access.GroupManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.BeforeClass;

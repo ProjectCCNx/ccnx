@@ -17,15 +17,15 @@
 
 package org.ccnx.ccn.impl.repo;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.security.InvalidParameterException;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.ContentName;
@@ -66,7 +66,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * @return the namespace as an ArrayList of ContentNames containing prefixes of valid namespaces
 	 */
 	public ArrayList<ContentName> getNamespace() {
-		return _policy.getNameSpace();
+		return _policy.getNamespace();
 	}
 
 	/**
@@ -114,38 +114,35 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * This method is intended to be called at the beginning of a subclass initialize()
 	 * method to handle the generic policy setup, after which the subclass initialize() 
 	 * should adjust policy (including calling readPolicy) as appropriate.
-	 * If both "policy file" and "initial namespace are non-null" the policy file takes precedence
+	 * If both "policy file" and "initial namespace" are non-null the policy file takes precedence
 	 * @param policyFile policy file
 	 * @param initial namespace
 	 * @throws RepositoryException
+	 * @throws FileNotFoundException 
+	 * @throws ContentDecodingException 
 	 * @throws MalformedContentNameStringException 
 	 */
 	public PolicyXML startInitPolicy(File policyFile, String nameSpace) throws RepositoryException {
-		PolicyXML pxml = null;
-		boolean policySet = false;
 		_policy = new BasicPolicy(null);
 		_policy.setVersion(getVersion());
 
 		if (null != policyFile) {
 			try {
-				pxml = _policy.updateFromInputStream(new FileInputStream(policyFile));
-				policySet = true;
-			} catch (Exception e) {
-				throw new InvalidParameterException(e.getMessage());
+				_policy.updateFromInputStream(new FileInputStream(policyFile));
+			} catch (FileNotFoundException e) {
+				throw new RepositoryException(e.getMessage());
 			}
-		}
-		
-		// Try setting an initial namespace from the namespace parameter
-		if (!policySet && null != nameSpace) {
+		} else if (null != nameSpace) { // Try setting an initial namespace from the namespace parameter
 			ArrayList<ContentName> nameSpaceAL = new ArrayList<ContentName>(1);
 			try {
 				nameSpaceAL.add(ContentName.fromNative(nameSpace));
 			} catch (MalformedContentNameStringException e) {
 				Log.warning("Invalid namespace specified: {0}", nameSpace);
 			}
-			_policy.setNameSpace(nameSpaceAL);
-		}
-		return pxml;
+			_policy.setNamespace(nameSpaceAL);
+		} else
+			return null;
+		return _policy.getPolicyXML();
 	}
 	
 	/**
@@ -158,16 +155,16 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 */
 	public void readPolicy(String localName) throws RepositoryException, ContentDecodingException {
 		if (null != localName) {
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+				Log.info("REPO: reading policy from network: {0}/{1}/{2}", REPO_NAMESPACE, localName, REPO_POLICY);
 			try {
-				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
-					Log.info("REPO: reading policy from network: {0}/{1}/{2}", REPO_NAMESPACE, localName, REPO_POLICY);
-				ContentObject policyObject = getContent(
-						new Interest(ContentName.fromNative(REPO_NAMESPACE + "/" + localName + "/" + REPO_POLICY)));
+				RepositoryInternalInputHandler riih = new RepositoryInternalInputHandler(this);
+				ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), localName);
+				PolicyObject policyObject = new PolicyObject(policyName, riih);
 				if (policyObject != null) {
-					ByteArrayInputStream bais = new ByteArrayInputStream(policyObject.content());
-					_policy.updateFromInputStream(bais);
+					_policy.update(policyObject.policyXML(), false);
 				}
-			} catch (MalformedContentNameStringException e) {} // this shouldn't happen
+			} catch (Exception e) {}	// presumably there is no currently stored policy file
 		}
 	}
 	
