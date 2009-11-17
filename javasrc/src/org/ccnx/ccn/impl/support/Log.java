@@ -167,26 +167,50 @@ public class Log {
 	// These following methods duplicate methods provided by java.util.Logger
 	// but add varargs functionality which allows args to only have .toString()
 	// called when logging is enabled.
+	/**
+	 * Logs message with level = info
+	 * @see Log#log(Level, String, Object...)
+	 */
 	public static void info(String msg, Object... params) {
 		doLog(Level.INFO, msg, params);
 	}
 
+	/**
+	 * Logs message with level = warning
+	 * @see Log#log(Level, String, Object...)
+	 */
 	public static void warning(String msg, Object... params) {
 		doLog(Level.WARNING, msg, params);
 	}
 
+	/**
+	 * Logs message with level = severe
+	 * @see Log#log(Level, String, Object...)
+	 */
 	public static void severe(String msg, Object... params) {
 		doLog(Level.SEVERE, msg, params);
 	}
 
+	/**
+	 * Logs message with level = fine
+	 * @see Log#log(Level, String, Object...)
+	 */
 	public static void fine(String msg, Object... params) {
 		doLog(Level.FINE, msg, params);
 	}
 
+	/**
+	 * Logs message with level = finer
+	 * @see Log#log(Level, String, Object...)
+	 */
 	public static void finer(String msg, Object... params) {
 		doLog(Level.FINER, msg, params);
 	}
 
+	/**
+	 * Logs message with level = finest
+	 * @see Log#log(Level, String, Object...)
+	 */
 	public static void finest(String msg, Object... params) {
 		doLog(Level.FINEST, msg, params);
 	}
@@ -220,8 +244,13 @@ public class Log {
 
 	/**
 	 * The main logging wrapper. Allows for variable parameters to the message.
-	 * @param l
-	 * @param msg
+	 * Using the variable parameters here rather then constructing the message
+	 * yourself helps reduce CPU load when logging is disabled. (Since the
+	 * params do not have their .toString() methods called if the message is not
+	 * logged).
+	 * @param l Log level.
+	 * @param msg Message or format string.
+	 * @see java.text.MessageFormat
 	 * @param params
 	 */
 	public static void log(Level l, String msg, Object... params) {

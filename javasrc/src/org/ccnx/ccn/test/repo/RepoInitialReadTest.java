@@ -22,9 +22,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.ccnx.ccn.impl.repo.RepositoryException;
+import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -43,15 +46,15 @@ public class RepoInitialReadTest extends RepoTestBase {
 		
 		// Since we have 2 pieces of data with the name /repoTest/data1 we need to compute both
 		// digests to make sure we get the right data.
-		ContentName name1 = new ContentName(name, ContentObject.contentDigest("Here's my data!"));
-		ContentName digestName = new ContentName(name, ContentObject.contentDigest("Testing2"));
+		ContentName name1 = findFullName(name, "Here's my data!");
+		ContentName digestName = findFullName(name, "Testing2");
 		String tooLongName = "0123456789";
 		for (int i = 0; i < 30; i++)
 			tooLongName += "0123456789";
 		
 		// Have 2 pieces of data with the same name here too.
-		ContentName longName = ContentName.fromNative("/repoTest/" + tooLongName);
-		longName = new ContentName(longName, ContentObject.contentDigest("Long name!"));
+		ContentName longName = findFullName(ContentName.fromNative("/repoTest/" + tooLongName),
+				"Long name!");
 		ContentName badCharName = ContentName.fromNative("/repoTest/" + "*x?y<z>u");
 		ContentName badCharLongName = ContentName.fromNative("/repoTest/" + tooLongName + "*x?y<z>u");
 			
@@ -65,6 +68,31 @@ public class RepoInitialReadTest extends RepoTestBase {
 		ArrayList<ContentObject>keys = reader.enumerate(new Interest(keyprefix), 4000);
 		for (ContentObject keyObject : keys) {
 			checkDataAndPublisher(name, "Testing2", new PublisherPublicKeyDigest(keyObject.content()));
+		}
+	}
+	
+	/**
+	 * Find a content object by name (without digest) and content, and return the full name (with digest)
+	 * @param name ContentName without digest component
+	 * @param str The content
+	 * @return ContentName with implicit digest
+	 * @throws IOException 
+	 */
+	private ContentName findFullName(ContentName name, String str) throws IOException {
+		byte[] content = str.getBytes();
+		Exclude e = null;
+		for(;;) {
+			Interest i = Interest.constructInterest(name, e, Interest.CHILD_SELECTOR_LEFT);
+			Log.info("searching for {0} content {1}, exclude {2}", name, str, e);
+			ContentObject co = getLibrary.get(i, 2000);
+			Log.info("got result {0} digest={1}", co, DataUtils.printHexBytes(co.digest()));
+			if (DataUtils.arrayEquals(co.content(), content))
+				return co.fullName();
+			byte [][]omissions = { co.digest() };
+			if (e == null)
+				e = new Exclude(omissions);
+			else
+				e.add(omissions);
 		}
 	}
 	

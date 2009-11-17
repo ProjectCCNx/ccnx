@@ -231,8 +231,8 @@ public class CCNReader {
 			co = _handle.get(query, timeout);
 			if (co == null)
 				break;
-			Log.info("enumerate: retrieved " + co.name() + 
-					" digest: " + ContentName.componentPrintURI(co.contentDigest()) + " on query: " + query.name());
+			Log.info("enumerate: retrieved " + co.fullName() + 
+					" on query: " + query.name());
 			result.add(co);
 			for (int i = co.name().count() - 1; i > count; i--) {
 				result.addAll(enumerate(new Interest(new ContentName(i, co.name().components())), timeout));
@@ -244,8 +244,7 @@ public class CCNReader {
 	}
 
 	private ContentName contentObjectToContentName(ContentObject content, int prefixCount) {
-		ContentName cocn = content.name().clone();
-		cocn.components().add(content.contentDigest());
+		ContentName cocn = content.fullName().clone();
 		return new ContentName(prefixCount, cocn.components());
 	}
 }

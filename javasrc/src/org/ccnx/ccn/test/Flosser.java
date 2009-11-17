@@ -235,19 +235,19 @@ public class Flosser implements CCNInterestListener {
             if (prefixCount == result.name().count()) {
             	if (null == interest.exclude()) {
               		ArrayList<Exclude.Element> excludes = new ArrayList<Exclude.Element>();
-               		excludes.add(new ExcludeComponent(result.contentDigest()));
+               		excludes.add(new ExcludeComponent(result.digest()));
             		interest.exclude(new Exclude(excludes));
             		Log.finest("Creating new exclude filter for interest {0}", interest.name());
             	} else {
-            		if (interest.exclude().match(result.contentDigest())) {
-            			Log.fine("We should have already excluded content digest: " + DataUtils.printBytes(result.contentDigest()));
+            		if (interest.exclude().match(result.digest())) {
+            			Log.fine("We should have already excluded content digest: " + DataUtils.printBytes(result.digest()));
             		} else {
             			// Has to be in order...
             			Log.finest("Adding child component to exclude.");
-            			interest.exclude().add(new byte [][] { result.contentDigest() });
+            			interest.exclude().add(new byte [][] { result.digest() });
             		}
             	}
-            	Log.finer("Excluding content digest: " + DataUtils.printBytes(result.contentDigest()) + " onto interest {0} total excluded: " + interest.exclude().size(), interest.name());
+            	Log.finer("Excluding content digest: " + DataUtils.printBytes(result.digest()) + " onto interest {0} total excluded: " + interest.exclude().size(), interest.name());
             } else {
                	if (null == interest.exclude()) {
                		ArrayList<Exclude.Element> excludes = new ArrayList<Exclude.Element>();
@@ -269,7 +269,7 @@ public class Flosser implements CCNInterestListener {
                 ContentName newNamespace = null;
                 try {
                 	if (interest.name().count() == result.name().count()) {
-                		newNamespace = new ContentName(interest.name(), result.contentDigest());
+                		newNamespace = new ContentName(interest.name(), result.digest());
                 		Log.info("Not adding content exclusion namespace: {0}", newNamespace);
                 	} else {
                 		newNamespace = new ContentName(interest.name(), 
@@ -317,8 +317,7 @@ public class Flosser implements CCNInterestListener {
 	 * @param result
 	 */
 	protected void processContent(ContentObject result) {
-		Log.info("Flosser got: " + result.name() + " Digest: " + 
-				DataUtils.printBytes(result.contentDigest()));
+		Log.info("Flosser got: " + result.fullName());
 	}
 	
 }

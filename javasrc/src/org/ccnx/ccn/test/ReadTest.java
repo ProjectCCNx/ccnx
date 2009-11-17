@@ -92,8 +92,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			int tValue = rand.nextInt(count - 1);
-			ContentName cn = new ContentName(ContentName.fromNative("/getNext/" + new Integer(tValue).toString()), 
-					ContentObject.contentDigest(Integer.toString(count - tValue)));
+			ContentName cn = ContentName.fromNative("/getNext/" + new Integer(tValue).toString());
 			ContentObject result = reader.getNext(cn, 1, 3000);
 			checkResult(result, tValue + 1);
 		}

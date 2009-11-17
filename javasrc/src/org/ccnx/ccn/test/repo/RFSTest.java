@@ -57,6 +57,7 @@ public class RFSTest extends RepoTestBase {
 	RepositoryStore repolog; // Instance of simple log-based repo implementation under test
 	
 	private ContentName longName;
+	private byte[] longNameDigest;
 	private ContentName badCharName;
 	private ContentName badCharLongName;
 	private ContentName versionedName;
@@ -108,7 +109,7 @@ public class RFSTest extends RepoTestBase {
 		System.out.println("Repotest - Testing multiple digests for same data");
 		ContentObject digest2 = ContentObject.buildContentObject(name, "Testing2".getBytes());
 		repo.saveContent(digest2);
-		ContentName digestName = new ContentName(name, digest2.contentDigest());
+		ContentName digestName = new ContentName(name, digest2.digest());
 		checkDataWithDigest(repo, digestName, "Testing2");
 		
 		System.out.println("Repotest - Testing same digest for different data and/or publisher");
@@ -136,11 +137,13 @@ public class RFSTest extends RepoTestBase {
 		for (int i = 0; i < 30; i++)
 			tooLongName += "0123456789";
 		longName = ContentName.fromNative("/repoTest/" + tooLongName);
-		repo.saveContent(ContentObject.buildContentObject(longName, "Long name!".getBytes()));
+		ContentObject co = ContentObject.buildContentObject(longName, "Long name!".getBytes());
+		longNameDigest = co.digest();
+		repo.saveContent(co);
 		checkData(repo, longName, "Long name!");
 		digest2 = ContentObject.buildContentObject(longName, "Testing2".getBytes());
 		repo.saveContent(digest2);
-		digestName = new ContentName(longName, digest2.contentDigest());
+		digestName = new ContentName(longName, digest2.digest());
 		checkDataWithDigest(repo, digestName, "Testing2");
 		String wayTooLongName = tooLongName;
 		for (int i = 0; i < 30; i++)
@@ -179,9 +182,9 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(ContentObject.buildContentObject(name4, "ddd".getBytes()));
 		ContentName name5= ContentName.fromNative("/repoTest/nextTest/eee");
 		repo.saveContent(ContentObject.buildContentObject(name5, "eee".getBytes()));
-		checkData(repo, Interest.next(new ContentName(name1, content1.contentDigest()), 2), "bbb");
-		checkData(repo, Interest.last(new ContentName(name1, content1.contentDigest()), 2), "eee");
-		checkData(repo, Interest.next(new ContentName(name1, content1.contentDigest()), 
+		checkData(repo, Interest.next(new ContentName(name1, content1.digest()), 2), "bbb");
+		checkData(repo, Interest.last(new ContentName(name1, content1.digest()), 2), "eee");
+		checkData(repo, Interest.next(new ContentName(name1, content1.digest()), 
 				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2, null), "ddd");
 		
 		System.out.println("Repotest - Testing different kinds of interests in a mixture of encoded/standard data");
@@ -196,9 +199,9 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(ContentObject.buildContentObject(longName3, "ddd".getBytes()));
 		ContentName longName4 = ContentName.fromNative("/repoTestLong/nextTestLong/eee/" + tooLongName);
 		repo.saveContent(ContentObject.buildContentObject(longName4, "eee".getBytes()));
-		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.contentDigest()), 2), "bbb");
-		checkData(repo, Interest.last(new ContentName(nonLongName, nonLongContent.contentDigest()), 2), "eee");
-		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.contentDigest()), 
+		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.digest()), 2), "bbb");
+		checkData(repo, Interest.last(new ContentName(nonLongName, nonLongContent.digest()), 2), "eee");
+		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.digest()), 
 				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2, null), "ddd");
 		
 		System.out.println("Repotest - testing version and segment files");
@@ -290,7 +293,7 @@ public class RFSTest extends RepoTestBase {
 		System.out.println("Repotest - Testing reinitialization of repo");
 		// Since we have 2 pieces of data with the name "longName" we need to compute the
 		// digest to make sure we get the right data.
-		longName = new ContentName(longName, ContentObject.contentDigest("Long name!"));
+		longName = new ContentName(longName, longNameDigest);
 		checkDataWithDigest(repo, longName, "Long name!");
 		checkData(repo, badCharName, "Funny characters!");
 		checkData(repo, badCharLongName, "Long and funny");

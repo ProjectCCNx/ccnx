@@ -20,7 +20,9 @@ package org.ccnx.ccn.protocol;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.DigestOutputStream;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -45,6 +47,7 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.io.NullOutputStream;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
@@ -62,6 +65,11 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	protected ContentName _name;
 	protected SignedInfo _signedInfo;
 	protected byte [] _content;
+	/**
+	 * Cache of the complete ContentObject's digest. Set when first calculated.
+	 * Used as the implicit last name component.
+	 */
+	protected byte [] _digest = null;
 	protected Signature _signature; 
 	
 	public static class SimpleVerifier implements ContentVerifier {
@@ -211,11 +219,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			Log.info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp());
 			try {
 				if (!this.verify(null)) {
-					Log.warning("ContentObject: " + name + " (length: " + length + ", digest: " + DataUtils.printBytes(contentDigest()) + ") " +
-					" fails to verify!");
+					Log.warning("ContentObject: " + fullName() + " (length: " + length + ") fails to verify!");
 				} else {
-					Log.info("ContentObject: " + name + " (length: " + length + ", digest: " + DataUtils.printBytes(contentDigest()) + ") " +
-					" verified OK.");				
+					Log.info("ContentObject: " + fullName() + " (length: " + length + ") verified OK.");
 				}
 			} catch (Exception e) {
 				Log.warning("Exception attempting to verify signature: " + e.getClass().getName() + ": " + e.getMessage());
@@ -301,7 +307,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * @return Name of the content object, complete with the final implicit digest component.
 	 */
 	public ContentName fullName() {
-		return new ContentName(_name, contentDigest());
+		return new ContentName(_name, digest());
 	}
 
 	public final SignedInfo signedInfo() { return _signedInfo;}
@@ -620,7 +626,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 							publicKey);
 		if (!result) {
 			Log.warning("Verification failure: " + name + " timestamp: " + signedInfo.getTimestamp() + " content length: " + content.length + 
-					" content digest: " + DataUtils.printBytes(ContentObject.contentDigest(content)) + " signed content: " + 
+					" signed content: " + 
 					DataUtils.printBytes(CCNDigestHelper.digest(((signature.digestAlgorithm() == null) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm()), preparedContent)));
 			SystemConfiguration.logObject(Level.FINEST, "Verification failure:", new ContentObject(name, signedInfo, content, signature));
 			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
@@ -720,16 +726,34 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		return baos.toByteArray();
 	}
 
-	public byte [] contentDigest() {
-		return contentDigest(content());
+	/**
+	 * Encode this object and calculate the digest.
+	 */
+	protected byte[] calcDigest() {
+		MessageDigest md;
+		try {
+			md = MessageDigest.getInstance(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			DigestOutputStream dos = new DigestOutputStream(new NullOutputStream(), md);
+			encode(dos);
+		} catch (NoSuchAlgorithmException e) {
+			// Should never happen since we are using a default algorithm.
+			throw new RuntimeException(e);
+		} catch (ContentEncodingException e) {
+			// Should never happen since we are writing out to make a digest only.
+			throw new RuntimeException(e);
+		}
+		return md.digest();
 	}
-
-	public static byte [] contentDigest(String content) {
-		return contentDigest(content.getBytes());
-	}
-
-	public static byte [] contentDigest(byte [] content) {
-		return CCNDigestHelper.digest(content);
+	
+	/**
+	 * Calculates a digest of the wire representation of this ContentObject.
+	 * This is used as the implicit final name component.
+	 * Note: the value is cached, so subsequent calls are fast.
+	 */
+	public byte [] digest() {
+		if (_digest == null)
+			_digest = calcDigest();
+		return _digest;
 	}
 
 	public int compareTo(ContentObject o) {
@@ -761,5 +785,19 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 
 	public boolean isKey() {
 		return isType(ContentType.KEY);
+	}
+	
+	/**
+	 * To aid debugging we output a human readable summary of this object here.
+	 */
+	public String toString() {
+		StringBuffer s = new StringBuffer();
+		s.append(String.format("CObj: name=%s, digest=%s, SI:%s len=%d, data=", _name,
+				DataUtils.printHexBytes(digest()), _signedInfo, _content.length));
+		int len = _content.length;
+		if (len > 16)
+			len = 16;
+		s.append(ContentName.componentPrintURI(_content, 0, len));
+		return s.toString();
 	}
 }

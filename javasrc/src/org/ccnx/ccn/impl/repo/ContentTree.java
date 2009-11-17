@@ -149,7 +149,7 @@ public class ContentTree {
 	 * @return - true if content is not exact duplicate of existing content.
 	 */
 	public boolean insert(ContentObject content, ContentRef ref, long ts, ContentGetter getter, NameEnumerationResponse ner) {
-		final ContentName name = new ContentName(content.name(), content.contentDigest());
+		final ContentName name = content.fullName();
 		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
 			Log.fine("inserting content: {0}", name);
 		}
