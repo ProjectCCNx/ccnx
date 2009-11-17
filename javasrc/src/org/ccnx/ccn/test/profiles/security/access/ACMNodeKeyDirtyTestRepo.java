@@ -1,4 +1,4 @@
-package org.ccnx.ccn.test.profiles.access;
+package org.ccnx.ccn.test.profiles.security.access;
 
 
 import java.util.ArrayList;
@@ -9,10 +9,10 @@ import junit.framework.Assert;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.access.ACL;
-import org.ccnx.ccn.profiles.access.AccessControlManager;
-import org.ccnx.ccn.profiles.access.AccessControlProfile;
-import org.ccnx.ccn.profiles.access.Group;
+import org.ccnx.ccn.profiles.security.access.ACL;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.Group;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 import org.junit.Test;

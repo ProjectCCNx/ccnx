@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.profiles.access;
+package org.ccnx.ccn.test.profiles.security.access;
 
 import junit.framework.Assert;
 
@@ -23,8 +23,8 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
-import org.ccnx.ccn.profiles.access.ACL;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
+import org.ccnx.ccn.profiles.security.access.ACL;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 import org.junit.Test;

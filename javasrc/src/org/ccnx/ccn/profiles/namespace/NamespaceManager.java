@@ -28,11 +28,11 @@ import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
-import org.ccnx.ccn.profiles.access.ACL;
-import org.ccnx.ccn.profiles.access.AccessControlManager;
-import org.ccnx.ccn.profiles.access.AccessControlProfile;
-import org.ccnx.ccn.profiles.access.ACL.ACLObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.security.access.ACL;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
