@@ -42,6 +42,9 @@ public class AccessControlProfile implements CCNProfile {
 	public static final String ACCESS_CONTROL_MARKER = CCNProfile.MARKER + "access" + CCNProfile.MARKER;
 	public static final byte [] ACCESS_CONTROL_MARKER_BYTES = ContentName.componentParseNative(ACCESS_CONTROL_MARKER);
 	
+    public static final String ROOT_NAME = "ROOT";
+	public static final byte [] ROOT_NAME_BYTES = ContentName.componentParseNative(ROOT_NAME);
+
 	// These may eventually want to move somewhere more general
 	public static final String GROUP_PREFIX = "Groups";
 	public static final byte [] GROUP_PREFIX_BYTES = ContentName.componentParseNative(GROUP_PREFIX);
@@ -108,6 +111,16 @@ public class AccessControlProfile implements CCNProfile {
 		return name.cut(ACCESS_CONTROL_MARKER_BYTES);
 	}
 	
+    /**
+     * Return the name of the root access control policy information object,
+     * if it is stored at node nodeName.
+     **/
+	public static ContentName rootName(ContentName nodeName) {
+		ContentName baseName = (isAccessName(nodeName) ? accessRoot(nodeName) : nodeName);
+		ContentName aclRootName = new ContentName(baseName, ACCESS_CONTROL_MARKER_BYTES, ROOT_NAME_BYTES);
+		return aclRootName;
+	}
+
 	/**
 	 * Returns whether the specified name is the name of a node key
 	 * @param name the name
