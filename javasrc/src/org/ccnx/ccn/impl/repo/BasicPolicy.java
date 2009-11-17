@@ -138,12 +138,12 @@ public class BasicPolicy implements Policy {
 			throw new RepositoryException("No globalPrefix in policy file");
 		
 		if (fromNet) {
-			if (pxml.getGlobalPrefix().equals(_pxml.getGlobalPrefix())) {
+			if (!pxml.getGlobalPrefix().equals(_pxml.getGlobalPrefix())) {
 				Log.warning("Repository globalPrefix doesn't match: request = {0}", pxml._globalPrefix);
 				throw new RepositoryException("Repository global prefix doesn't match policy file");
 			}
 		} else {
-			changeGlobalPrefix(pxml._globalPrefix);
+			_pxml.setGlobalPrefixOnly(pxml._globalPrefix);
 		}
 			
 		_pxml.setNamespace(pxml.getNamespace());
@@ -202,7 +202,7 @@ public class BasicPolicy implements Policy {
 	 * @param globalPrefix the global prefix as a slash separated String
 	 */
 	public void setGlobalPrefix(String globalPrefix) throws MalformedContentNameStringException {
-		changeGlobalPrefix(ContentName.fromNative(PolicyXML.fixSlash(globalPrefix)));
+		_pxml.setGlobalPrefix(globalPrefix);
 	}
 	
 	/**
@@ -227,16 +227,5 @@ public class BasicPolicy implements Policy {
 	
 	public PolicyXML getPolicyXML() {
 		return _pxml;
-	}
-	
-	private void changeGlobalPrefix(ContentName globalPrefix) {
-		// Note - need to synchronize on "this" to synchronize with events reading
-		// the name space in the policy clients which have access only to this object
-		synchronized (this) {
-			if (null != _pxml.getGlobalPrefix())
-				_pxml.removeNamespace(_pxml.getGlobalPrefix());
-			_pxml.setGlobalPrefix(globalPrefix);
-			_pxml.addNamespace(globalPrefix);
-		}
 	}
 }

@@ -103,7 +103,7 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 	private static class GlobalPrefixPutter implements ElementPutter {
 
 		public void put(PolicyXML pxml, String value) throws MalformedContentNameStringException {
-			pxml._globalPrefix = ContentName.fromNative(fixSlash(value.trim()));
+			pxml.setGlobalPrefix(value.trim());
 		}
 	}
 	private static class LocalNamePutter implements ElementPutter {
@@ -213,7 +213,24 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 		return _localName;
 	}
 	
-	public void setGlobalPrefix(ContentName globalPrefix) {
+	public void setGlobalPrefix(String globalPrefix) throws MalformedContentNameStringException {
+		// Note - need to synchronize on "this" to synchronize with events reading
+		// the name space in the policy clients which have access only to this object
+		synchronized (this) {
+			if (null != _globalPrefix)
+				_namespace.remove(_globalPrefix);
+			_globalPrefix = ContentName.fromNative(fixSlash(globalPrefix));
+			addNamespace(_globalPrefix);
+		}
+	}
+	
+	/**
+	 * This is a special case for transferring one policyXML to another (so we already have the
+	 * namespace setup correctly).
+	 * 
+	 * @param globalPrefix
+	 */
+	public void setGlobalPrefixOnly(ContentName globalPrefix) {
 		_globalPrefix = globalPrefix;
 	}
 	

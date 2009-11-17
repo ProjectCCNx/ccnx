@@ -302,9 +302,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		} catch (FileNotFoundException e) {
 			Log.warning("Error opening content output file index " + maxFileIndex);
 		}
-		
-		
+			
 		// Verify stored policy info
+		// TODO - we shouldn't do this if the user has specified a policy file which already has
+		// this information
 		String version = checkFile(LogStructRepoStoreProfile.VERSION, CURRENT_VERSION, false);
 		if (version != null && !version.trim().equals(CURRENT_VERSION))
 			throw new RepositoryException("Bad repository version: " + version);
@@ -341,6 +342,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				throw new RepositoryException(e.getMessage());
 			}
 		} else { // If we didn't read in our policy from a previous saved policy file, save the policy now
+			pxml = _policy.getPolicyXML();
 			ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), _policy.getLocalName());
 			try {
 				PolicyObject po = new PolicyObject(policyName, pxml, null, this);
