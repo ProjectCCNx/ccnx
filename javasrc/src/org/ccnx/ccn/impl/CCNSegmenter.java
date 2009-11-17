@@ -110,26 +110,29 @@ public class CCNSegmenter {
 
 	public static final String PROP_BLOCK_SIZE = "ccn.lib.blocksize";
 	public static final Long LAST_SEGMENT = Long.valueOf(-1);
-	
+
 	protected int _blockSize = SegmentationProfile.DEFAULT_BLOCKSIZE;
 	protected int _blockIncrement = SegmentationProfile.DEFAULT_INCREMENT;
 	protected int _byteScale = SegmentationProfile.DEFAULT_SCALE;
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
-	
+
 	protected CCNHandle _handle;
-	
+
 	/**
 	 * Eventually may not contain this; callers may access it exogenously.
 	 */
 	protected CCNFlowControl _flowControl;
-	
+
 	/**
 	 * Handle multi-block amortized signing. If null, default to single-block signing.
 	 */
 	protected CCNAggregatedSigner _bulkSigner;
-	
+
 	/**
-	 * Encryption/decryption handler
+	 * Encryption/decryption keys. DKS TODO -- can't be per-segmenter
+	 * keys, if segmenter might be used to write blocks for a variety
+	 * of content. Need per-prefix keys.
+	 * AccessControlManager.keysForOutput(name, publisher, handle)
 	 */
 	protected ContentKeys _keys;
 
@@ -142,7 +145,7 @@ public class CCNSegmenter {
 	public CCNSegmenter() throws ConfigurationException, IOException {
 		this(CCNHandle.open());
 	}
-	
+
 	/**
 	 * Create a segmenter with default (Merkle hash tree) bulk signing
 	 * behavior, making a new handle for it to use.
@@ -174,7 +177,7 @@ public class CCNSegmenter {
 	public CCNSegmenter(CCNHandle handle, ContentKeys keys) throws IOException {
 		this(new CCNFlowControl(handle), null, keys);
 	}
-	
+
 	/**
 	 * Create a segmenter with default (Merkle hash tree) bulk signing
 	 * behavior.
@@ -183,7 +186,7 @@ public class CCNSegmenter {
 	public CCNSegmenter(CCNFlowControl flowControl) {
 		this(flowControl, null);
 	}
-	
+
 	/**
 	 * Create a segmenter, specifying the signing behavior to use.
 	 * @param flowControl the specified flow controller to use
@@ -201,7 +204,7 @@ public class CCNSegmenter {
 		} else {
 			_bulkSigner = signer; // if null, default to merkle tree
 		}
-		
+
 		initializeBlockSize();
 	}
 
@@ -209,13 +212,14 @@ public class CCNSegmenter {
 	 * Create a segmenter, specifying the signing behavior to use.
 	 * @param flowControl the specified flow controller to use
 	 * @param signer the bulk signer to use. If null, will use default Merkle hash tree behavior.
-	 * @param keys encryption keys to use
+	 * @param keys encryption keys to use. If null, will attempt to look them up using 
+	 *   namespace information.
 	 */
 	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer,
-						ContentKeys keys) {
+			ContentKeys keys) {
 		this(flowControl, signer);
-		
-		if (keys != null) {
+
+		if (null != keys ) {
 			keys.requireDefaultAlgorithm();
 			_keys = keys;
 		}
@@ -233,7 +237,7 @@ public class CCNSegmenter {
 			}
 		}
 	}
-	
+
 	/**
 	 * Factory method to create a standard segmenter that generates blocks of fixed length in bytes.
 	 * @param blockSize number of bytes to put in each block (the last block will have an odd number of
@@ -266,7 +270,7 @@ public class CCNSegmenter {
 		segmenter.useScaledByteCountSequenceNumbers(scale);
 		return segmenter;
 	}
-	
+
 	/**
 	 * Factory method to create a standard segmenter that generates blocks of variable length in bytes,
 	 * whose segment numbers are scaled by a fixed increment. This could be used, for example to generate
@@ -279,9 +283,9 @@ public class CCNSegmenter {
 	public static CCNSegmenter getByteCountSegmenter(CCNFlowControl flowControl) {
 		return getScaledByteCountSegmenter(1, flowControl);
 	}
-	
+
 	public CCNHandle getLibrary() { return _handle; }
-	
+
 	public CCNFlowControl getFlowControl() { return _flowControl; }
 
 	/**
@@ -322,7 +326,7 @@ public class CCNSegmenter {
 	 * @param blockIncrement
 	 */
 	public void setBlockIncrement(int blockIncrement) { _blockIncrement = blockIncrement; }
-	
+
 	/**
 	 * Gets the increment between block numbers.
 	 * @return
@@ -356,7 +360,7 @@ public class CCNSegmenter {
 			Integer freshnessSeconds, 
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) 
-					throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
+	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 
 		if (null == publisher) {
 			publisher = _handle.keyManager().getDefaultKeyID();
@@ -380,7 +384,7 @@ public class CCNSegmenter {
 		// DKS TODO -- hook up last segment
 		if (outputLength(length) >= getBlockSize()) {
 			return fragmentedPut(name, content, offset, length, null,
-								 type, freshnessSeconds, locator, publisher);
+					type, freshnessSeconds, locator, publisher);
 		} else {
 			try {
 				// We should only get here on a single-fragment object, where the lastBlocks
@@ -434,14 +438,14 @@ public class CCNSegmenter {
 			Integer freshnessSeconds, 
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) 
-			throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
-						IOException, InvalidAlgorithmParameterException {
-		
+	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
+	IOException, InvalidAlgorithmParameterException {
+
 		return fragmentedPut(name, SegmentationProfile.baseSegment(),
 				content, offset, length, getBlockSize(), type,
 				null, freshnessSeconds, finalSegmentIndex, locator, publisher);
 	}
-	
+
 	/** 
 	 * Segments content, builds segment names and ContentObjects, signs
 	 * them, and writes them to the flow controller to go out to the network.
@@ -479,9 +483,9 @@ public class CCNSegmenter {
 			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, 
-									SignatureException, IOException, 
-									InvalidAlgorithmParameterException, NoSuchAlgorithmException {
-		
+			SignatureException, IOException, 
+			InvalidAlgorithmParameterException, NoSuchAlgorithmException {
+
 
 		// This will call into CCNBase after picking appropriate credentials
 		// take content, blocksize (static), divide content into array of 
@@ -491,7 +495,7 @@ public class CCNSegmenter {
 		// insert header using mid-level insert, low-level insert for actual blocks.
 		if (length == 0)
 			return baseSegmentNumber;
-		
+
 		if (null == publisher) {
 			publisher = getFlowControl().getHandle().keyManager().getDefaultKeyID();
 		}
@@ -507,7 +511,7 @@ public class CCNSegmenter {
 		if (null == type) {
 			type = ContentType.DATA;
 		}
-		
+
 		byte [] finalBlockID = null;
 		if (null != finalSegmentIndex) {
 			if (finalSegmentIndex.equals(CCNSegmenter.LAST_SEGMENT)) {
@@ -515,13 +519,13 @@ public class CCNSegmenter {
 				// compute final segment number; which might be this one if blockCount == 1
 				int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
 				finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(
-					lastSegmentIndex(baseSegmentNumber, (blockCount-1)*blockWidth, 
-												blockCount));
+						lastSegmentIndex(baseSegmentNumber, (blockCount-1)*blockWidth, 
+								blockCount));
 			} else {
 				finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(finalSegmentIndex);
 			}
 		}
-		
+
 		ContentObject [] contentObjects = 
 			buildBlocks(rootName, baseSegmentNumber, 
 					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
@@ -581,7 +585,7 @@ public class CCNSegmenter {
 			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
-						NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
+			NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 
 		if (blockCount == 0)
 			return baseSegmentNumber;
@@ -670,7 +674,7 @@ public class CCNSegmenter {
 			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
-							NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
+			NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 
 		if (null == publisher) {
 			publisher = _handle.keyManager().getDefaultKeyID();
@@ -686,11 +690,11 @@ public class CCNSegmenter {
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
 		_flowControl.addNameSpace(rootName);
-		
+
 		byte [] finalBlockID = ((null == finalSegmentIndex) ? null : 
-								((finalSegmentIndex.equals(LAST_SEGMENT)) ? 
-										SegmentationProfile.getSegmentNumberNameComponent(segmentNumber) : 
-											SegmentationProfile.getSegmentNumberNameComponent(finalSegmentIndex)));
+			((finalSegmentIndex.equals(LAST_SEGMENT)) ? 
+					SegmentationProfile.getSegmentNumberNameComponent(segmentNumber) : 
+						SegmentationProfile.getSegmentNumberNameComponent(finalSegmentIndex)));
 
 		if (null != _keys) {
 			try {
@@ -705,7 +709,7 @@ public class CCNSegmenter {
 				// side we don't require that encrypted data be marked ENCR -- if you give us a
 				// decryption key, we'll try to decrypt it.
 				type = ContentType.ENCR; 
-				
+
 			} catch (IllegalBlockSizeException e) {
 				Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
 				throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
@@ -714,7 +718,7 @@ public class CCNSegmenter {
 				throw new InvalidAlgorithmParameterException("Unexpected BadPaddingException for an algorithm we have already used!", e);
 			}
 		}
-		
+
 		ContentObject co = 
 			new ContentObject(SegmentationProfile.segmentName(rootName, 
 					segmentNumber),
@@ -725,10 +729,10 @@ public class CCNSegmenter {
 							content, offset, length, signingKey);
 		Log.info("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
 		_flowControl.put(co);
-		
+
 		return nextSegmentIndex(segmentNumber, co.contentLength());
 	}
-	
+
 	/**
 	 * Helper method to build ContentObjects for segments out of a contiguous buffer.
 	 * @param rootName
@@ -746,13 +750,13 @@ public class CCNSegmenter {
 	protected ContentObject[] buildBlocks(ContentName rootName,
 			long baseSegmentNumber, SignedInfo signedInfo, 
 			byte[] content, int offset, int length, int blockWidth) 
-							throws InvalidKeyException, InvalidAlgorithmParameterException, IOException {
-		
+	throws InvalidKeyException, InvalidAlgorithmParameterException, IOException {
+
 		int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
 		ContentObject [] blocks = new ContentObject[blockCount];
 
 		long nextSegmentIndex = baseSegmentNumber;
-		
+
 		for (int i=0; i < blockCount; ++i) {
 			InputStream dataStream = new ByteArrayInputStream(content, offset, length);
 			if (null != _keys) {
@@ -778,7 +782,7 @@ public class CCNSegmenter {
 						dataStream, blockWidth);
 
 			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, 
-												blocks[i].contentLength());
+					blocks[i].contentLength());
 			offset += blockWidth;
 			length -= blockWidth;
 		}
@@ -803,8 +807,8 @@ public class CCNSegmenter {
 			long baseSegmentNumber, SignedInfo signedInfo,
 			byte contentBlocks[][], boolean isDigest, int blockCount,
 			int firstBlockIndex, int lastBlockLength) 
-					throws InvalidKeyException, InvalidAlgorithmParameterException {
-		
+	throws InvalidKeyException, InvalidAlgorithmParameterException {
+
 		ContentObject [] blocks = new ContentObject[blockCount];
 		if (blockCount == 0)
 			return blocks;
@@ -814,7 +818,7 @@ public class CCNSegmenter {
 		 * need this interface, so live with it till we need to improve it.
 		 */
 		long nextSegmentIndex = baseSegmentNumber;
-		
+
 		byte [] blockContent;
 		int i;
 		for (i=firstBlockIndex; i < (firstBlockIndex + blockCount - 1); ++i) {
@@ -831,7 +835,7 @@ public class CCNSegmenter {
 					// side we don't require that encrypted data be marked ENCR -- if you give us a
 					// decryption key, we'll try to decrypt it.
 					signedInfo.setType(ContentType.ENCR);
-					
+
 				} catch (IllegalBlockSizeException e) {
 					Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
 					throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
@@ -854,7 +858,7 @@ public class CCNSegmenter {
 				Cipher thisCipher = _keys.getSegmentEncryptionCipher(nextSegmentIndex);
 				blockContent = thisCipher.doFinal(contentBlocks[i], 0, lastBlockLength);
 				lastBlockLength = blockContent.length;
-				
+
 			} catch (IllegalBlockSizeException e) {
 				Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
 				throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
@@ -909,14 +913,14 @@ public class CCNSegmenter {
 			return currentSegmentNumber + (blocksRemaining - 1);
 		}
 	}
-	
+
 	/**
 	 * Set the timeout on the contained flow controller.
 	 * @param timeout
 	 */
 	public void setTimeout(int timeout) {
 		getFlowControl().setTimeout(timeout);
-    }
+	}
 
 	/**
 	 * How many content bytes will it take to represent content of length
