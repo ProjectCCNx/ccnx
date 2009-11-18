@@ -49,6 +49,7 @@ struct ccn {
     struct ccn_charbuf *interestbuf;
     struct ccn_charbuf *inbuf;
     struct ccn_charbuf *outbuf;
+    struct ccn_charbuf *ccndid;
     struct hashtb *interests_by_prefix;
     struct hashtb *interest_filters;
     struct ccn_skeleton_decoder decoder;
@@ -85,8 +86,9 @@ struct expressed_interest {
 
 struct interest_filter { /* keyed by components of name */
     struct ccn_closure *action;
-    struct timeval expiry;       /* Expiration time */
     struct ccn_reg_closure *ccn_reg_closure;
+    struct timeval expiry;       /* Expiration time */
+    int waiting_ccndid;
 };
 
 struct ccn_reg_closure {
@@ -1262,6 +1264,23 @@ ccn_clean_all_interests(struct ccn *h)
     hashtb_end(e);
 }
 
+static void
+ccn_notify_ccndid_changed(struct ccn *h)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    if (h->interest_filters != NULL) {
+        for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
+            struct interest_filter *i = e->data;
+            if (i->waiting_ccndid) {
+                i->expiry = h->now;
+                i->waiting_ccndid = 0;
+            }
+        }
+        hashtb_end(e);
+    }
+}
+
 /**
  * Process any scheduled operations that are due.
  * This is not used by normal ccn clients, but is made available for use
@@ -1527,6 +1546,61 @@ ccn_get(struct ccn *h,
     return(res);
 }
 
+static enum ccn_upcall_res
+handle_ping_response(struct ccn_closure *selfp,
+                     enum ccn_upcall_kind kind,
+                     struct ccn_upcall_info *info)
+{
+    int res;
+    const unsigned char *ccndid = NULL;
+    size_t size = 0;
+    struct ccn *h = info->h;
+    
+    if (kind == CCN_UPCALL_FINAL) {
+        fprintf(stderr, "ping final\n");
+        free(selfp);
+        return(CCN_UPCALL_RESULT_OK);
+    }
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED);
+    return(CCN_UPCALL_RESULT_VERIFY);
+    if (kind != CCN_UPCALL_CONTENT) {
+        NOTE_ERR(h, -1000 - kind);
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
+                              info->content_ccnb,
+                              info->pco->offset[CCN_PCO_B_PublisherPublicKeyDigest],
+                              info->pco->offset[CCN_PCO_E_PublisherPublicKeyDigest],
+                              &ccndid,
+                              &size);
+    if (res < 0) {
+        NOTE_ERR(h, -1);
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    if (h->ccndid == NULL) {
+        h->ccndid = ccn_charbuf_create();
+        if (h->ccndid == NULL)
+            return(NOTE_ERRNO(h));
+    }
+    h->ccndid->length = 0;
+    ccn_charbuf_append(h->ccndid, ccndid, size);
+    ccn_notify_ccndid_changed(h);
+}
+
+static void
+ccn_initiate_ping(struct ccn *h)
+{
+    struct ccn_charbuf *name = NULL;
+    struct ccn_closure *action = NULL;
+    
+    name = ccn_charbuf_create();
+    ccn_name_from_uri(name, "/ccnx/ping");
+    ccn_name_append(name, &h->now, sizeof(h->now));
+    action = calloc(1, sizeof(*action));
+    action->p = &handle_ping_response;
+    ccn_express_interest(h, name, action, NULL);
+    ccn_charbuf_destroy(&name);
+}
 
 static enum ccn_upcall_res
 handle_prefix_reg_reply(
@@ -1557,7 +1631,7 @@ handle_prefix_reg_reply(
         return(CCN_UPCALL_RESULT_ERR);
     }
     /* Examine response, determine lifetime. */
-    // fprintf(stderr, "GOT TO STUB handle_prefix_reg_reply\n");
+    fprintf(stderr, "GOT TO STUB handle_prefix_reg_reply\n");
     md->interest_filter->expiry = h->now;
     md->interest_filter->expiry.tv_sec += lifetime;
     return(CCN_UPCALL_RESULT_OK);
@@ -1577,7 +1651,12 @@ ccn_initiate_prefix_reg(struct ccn *h,
     /* This test is mainly for the benefit of the ccnd internal client */
     if (h->sock == -1)
         return;
-    // fprintf(stderr, "GOT TO STUB ccn_initiate_prefix_reg()\n");
+    fprintf(stderr, "GOT TO STUB ccn_initiate_prefix_reg()\n");
+    if (h->ccndid == NULL) {
+        ccn_initiate_ping(h);
+        i->waiting_ccndid = 1;
+        return;
+    }
     if (i->ccn_reg_closure != NULL)
         return;
     p = calloc(1, sizeof(*p));
