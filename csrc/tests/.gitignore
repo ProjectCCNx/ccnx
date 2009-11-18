@@ -5,9 +5,7 @@ STATUS/
 testdriver
 ephemeral*
 *.out
-newface-*
-newface.ccnb
-prefixreg-*
-prefixreg.ccnb
-destroyface-*
-destroyface.ccnb
+*face*.ccnb
+*reg*.ccnb
+*-pre.html
+*-post.html

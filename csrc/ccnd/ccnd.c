@@ -1852,6 +1852,7 @@ register_new_face(struct ccnd_handle *h, struct face *face)
     }
 }
 
+// XXX This form is deprecated
 struct ccn_charbuf *
 ccnd_reg_self(struct ccnd_handle *h, const unsigned char *msg, size_t size)
 {
@@ -2096,19 +2097,9 @@ Finish:
     return(result);
 }
 
-/**
- * @brief Process a prefixreg request for the ccnd internal client.
- * @param h is the ccnd handle
- * @param msg points to a ccnd-encoded ContentObject containing a
- *          ForwardingEntry in its Content.
- * @param size is its size in bytes
- * @result on success the returned charbuf holds a new ccnd-encoded
- *         ForwardingEntry;
- *         returns NULL for any error.
- *
- */
-struct ccn_charbuf *
-ccnd_req_prefixreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+static struct ccn_charbuf *
+ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
+                   const unsigned char *msg, size_t size, int selfreg)
 {
     struct ccn_parsed_ContentObject pco = {0};
     int res;
@@ -2130,8 +2121,18 @@ ccnd_req_prefixreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     forwarding_entry = ccn_forwarding_entry_parse(req, req_size);
     if (forwarding_entry == NULL || forwarding_entry->action == NULL)
         goto Finish;
-    if (strcmp(forwarding_entry->action, "prefixreg") != 0)
+    if (selfreg) {
+        if (strcmp(forwarding_entry->action, "selfreg") != 0)
+            goto Finish;
+        if (forwarding_entry->faceid == ~0)
+            forwarding_entry->faceid = h->interest_faceid;
+        else if (forwarding_entry->faceid != h->interest_faceid)
+            goto Finish;
+    }
+    else {
+        if (strcmp(forwarding_entry->action, "prefixreg") != 0)
         goto Finish;
+    }
     if (forwarding_entry->name_prefix == NULL)
         goto Finish;
     if (forwarding_entry->ccnd_id_size == sizeof(h->ccnd_id)) {
@@ -2177,6 +2178,62 @@ Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
     return(result);
+}
+
+/**
+ * @brief Process a prefixreg request for the ccnd internal client.
+ * @param h is the ccnd handle
+ * @param msg points to a ccnd-encoded ContentObject containing a
+ *          ForwardingEntry in its Content.
+ * @param size is its size in bytes
+ * @param selfreg is true if this is actually a self-registration
+ * @result on success the returned charbuf holds a new ccnd-encoded
+ *         ForwardingEntry;
+ *         returns NULL for any error.
+ *
+ */
+struct ccn_charbuf *
+ccnd_req_prefixreg(struct ccnd_handle *h,
+                   const unsigned char *msg, size_t size)
+{
+    return(ccnd_req_prefix_or_self_reg(h, msg, size, 0));
+}
+
+/**
+ * @brief Process a selfreg request for the ccnd internal client.
+ * @param h is the ccnd handle
+ * @param msg points to a ccnd-encoded ContentObject containing a
+ *          ForwardingEntry in its Content.
+ * @param size is its size in bytes
+ * @result on success the returned charbuf holds a new ccnd-encoded
+ *         ForwardingEntry;
+ *         returns NULL for any error.
+ *
+ */
+struct ccn_charbuf *
+ccnd_req_selfreg(struct ccnd_handle *h,
+                   const unsigned char *msg, size_t size)
+{
+    return(ccnd_req_prefix_or_self_reg(h, msg, size, 1));
+}
+
+/**
+ * @brief Process an unreg request for the ccnd internal client.
+ * @param h is the ccnd handle
+ * @param msg points to a ccnd-encoded ContentObject containing a
+ *          ForwardingEntry in its Content.
+ * @param size is its size in bytes
+ * @result on success the returned charbuf holds a new ccnd-encoded
+ *         ForwardingEntry;
+ *         returns NULL for any error.
+ *
+ */
+struct ccn_charbuf *
+ccnd_req_unreg(struct ccnd_handle *h,
+                   const unsigned char *msg, size_t size)
+{
+    ccnd_msg(h, "unreg request not yet implemented");
+    return(NULL);
 }
 
 /**

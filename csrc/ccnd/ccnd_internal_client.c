@@ -49,6 +49,8 @@
 #define OP_NEWFACE     0x0200
 #define OP_DESTROYFACE 0x0300
 #define OP_PREFIXREG   0x0400
+#define OP_SELFREG     0x0500
+#define OP_UNREG       0x0600
 /**
  * Common interest handler for ccnd_internal_client
  */
@@ -119,6 +121,12 @@ ccnd_answer_req(struct ccn_closure *selfp,
             break;
         case OP_PREFIXREG:
             reply_body = ccnd_req_prefixreg(ccnd, final_comp, final_size);
+            break;
+        case OP_SELFREG:
+            reply_body = ccnd_req_selfreg(ccnd, final_comp, final_size);
+            break;
+        case OP_UNREG:
+            reply_body = ccnd_req_unreg(ccnd, final_comp, final_size);
             break;
         default:
             goto Bail;
@@ -365,6 +373,10 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                     &ccnd_answer_req, OP_DESTROYFACE + 1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/prefixreg",
                     &ccnd_answer_req, OP_PREFIXREG + 1);
+    ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/selfreg",
+                    &ccnd_answer_req, OP_SELFREG + 1);
+    ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/unreg",
+                    &ccnd_answer_req, OP_UNREG + 1);
     ccnd->internal_client_refresh =
     ccn_schedule_event(ccnd->sched, 200000,
                        ccnd_internal_client_refresh,

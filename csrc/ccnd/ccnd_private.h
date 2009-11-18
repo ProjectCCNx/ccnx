@@ -302,6 +302,7 @@ void ccnd_internal_client_stop(struct ccnd_handle *);
  * The internal client calls this with the argument portion ARG of
  * a self-registration request (/ccnx/reg/self/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
+ * @deprecated
  */
 struct ccn_charbuf *ccnd_reg_self(struct ccnd_handle *h,
                                   const unsigned char *msg, size_t size);
@@ -330,6 +331,21 @@ struct ccn_charbuf *ccnd_req_destroyface(struct ccnd_handle *h,
 struct ccn_charbuf *ccnd_req_prefixreg(struct ccnd_handle *h,
                                        const unsigned char *msg, size_t size);
 
+/**
+ * The internal client calls this with the argument portion ARG of
+ * a prefix-registration request for self (/ccnx/CCNDID/selfreg/ARG)
+ * The result, if not NULL, will be used as the Content of the reply.
+ */
+struct ccn_charbuf *ccnd_req_selfreg(struct ccnd_handle *h,
+                                     const unsigned char *msg, size_t size);
+
+/**
+ * The internal client calls this with the argument portion ARG of
+ * a prefix-unregistration request (/ccnx/CCNDID/unreg/ARG)
+ * The result, if not NULL, will be used as the Content of the reply.
+ */
+struct ccn_charbuf *ccnd_req_unreg(struct ccnd_handle *h,
+                                   const unsigned char *msg, size_t size);
 
 int ccnd_reg_prefix(struct ccnd_handle *h,
                     const unsigned char *msg,
