@@ -305,7 +305,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @return the corresponding wrapped key name.
 	 */
 	public ContentName getWrappedKeyNameForKeyID(byte [] keyID) {
-		return KeyProfile.keyName(_namePrefix, KeyProfile.keyIDToNameComponent(keyID));
+		return KeyProfile.keyName(_namePrefix, keyID);
 	}
 	
 	/**
