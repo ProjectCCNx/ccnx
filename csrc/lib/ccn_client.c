@@ -41,6 +41,7 @@
 #include <ccn/digest.h>
 #include <ccn/hashtb.h>
 #include <ccn/signing.h>
+#include <ccn/uri.h>
 
 struct ccn {
     int sock;
@@ -64,6 +65,7 @@ struct ccn {
 };
 
 struct expressed_interest;
+struct ccn_reg_closure;
 
 struct interests_by_prefix { /* keyed by components of name prefix */
     struct expressed_interest *list;
@@ -83,6 +85,13 @@ struct expressed_interest {
 
 struct interest_filter { /* keyed by components of name */
     struct ccn_closure *action;
+    struct timeval expiry;       /* Expiration time */
+    struct ccn_reg_closure *ccn_reg_closure;
+};
+
+struct ccn_reg_closure {
+    struct ccn_closure action;
+    struct interest_filter *interest_filter;
 };
 
 #define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, ccn_note_err(h))
@@ -95,6 +104,18 @@ struct interest_filter { /* keyed by components of name */
     do { NOTE_ERR(h, -76); ccn_perror(h, "Please write some more code here"); } while (0)
 
 static void ccn_refresh_interest(struct ccn *, struct expressed_interest *);
+static void ccn_initiate_prefix_reg(struct ccn *,
+                                    const void *, size_t,
+                                    struct interest_filter *);
+static int
+tv_earlier(const struct timeval *a, const struct timeval *b)
+{
+    if (a->tv_sec > b->tv_sec)
+        return(0);
+    if (a->tv_sec < b->tv_sec)
+        return(1);
+    return(a->tv_usec < b->tv_usec);
+}
 
 /**
  * Produce message on standard error output describing the last
@@ -551,6 +572,16 @@ ccn_express_interest(struct ccn *h,
     return(0);
 }
 
+static void
+finalize_interest_filter(struct hashtb_enumerator *e)
+{
+    struct interest_filter *i = e->data;
+    if (i->ccn_reg_closure != NULL) {
+        i->ccn_reg_closure->interest_filter = NULL;
+        i->ccn_reg_closure = NULL;
+    }
+}
+
 int
 ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
                         struct ccn_closure *action)
@@ -560,7 +591,9 @@ ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
     int res;
     struct interest_filter *entry;
     if (h->interest_filters == NULL) {
-        h->interest_filters = hashtb_create(sizeof(struct interest_filter), NULL);
+        struct hashtb_param param = {0};
+        param.finalize = &finalize_interest_filter;
+        h->interest_filters = hashtb_create(sizeof(struct interest_filter), &param);
         if (h->interest_filters == NULL)
             return(NOTE_ERRNO(h));
     }
@@ -1127,6 +1160,22 @@ ccn_process_input(struct ccn *h)
 }
 
 static void
+ccn_update_refresh_us(struct ccn *h, struct timeval *tv)
+{
+    int delta;
+    if (tv->tv_sec < h->now.tv_sec)
+        return;
+    if (tv->tv_sec > h->now.tv_sec + CCN_INTEREST_LIFETIME_MICROSEC / 100000)
+        return;
+    delta = (h->now.tv_sec  - tv->tv_sec)*1000000 +
+            (h->now.tv_usec - tv->tv_usec);
+    if (delta < 0)
+        delta = 0;
+    if (delta < h->refresh_us)
+        h->refresh_us = delta;
+}
+
+static void
 ccn_age_interest(struct ccn *h,
                  struct expressed_interest *interest,
                  const unsigned char *key, size_t keysize)
@@ -1236,9 +1285,12 @@ ccn_process_scheduled_operations(struct ccn *h)
     if (h->interest_filters != NULL) {
         for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
             struct interest_filter *i = e->data;
-            // XXX If the registration is expiring, refresh it
-            // Otherwise update h->refresh_us
-            if (i == NULL) abort(); // Silence unused var warning for now.
+            if (tv_earlier(&i->expiry, &h->now)) {
+                /* registration is expiring, refresh it */
+                ccn_initiate_prefix_reg(h, e->key, e->keysize, i);
+            }
+            else
+                ccn_update_refresh_us(h, &i->expiry);
         }
         hashtb_end(e);
     }
@@ -1473,4 +1525,73 @@ ccn_get(struct ccn *h,
         ccn_destroy(&h);
     }
     return(res);
+}
+
+
+static enum ccn_upcall_res
+handle_prefix_reg_reply(
+    struct ccn_closure *selfp,
+    enum ccn_upcall_kind kind,
+    struct ccn_upcall_info *info)
+{
+    struct ccn_reg_closure *md = selfp->data;
+    struct ccn *h = info->h;
+    int lifetime = 10;
+    
+    if (kind == CCN_UPCALL_FINAL) {
+        // fprintf(stderr, "GOT TO handle_prefix_reg_reply FINAL\n");
+        if (selfp != &md->action)
+            abort();
+        if (md->interest_filter != NULL)
+            md->interest_filter->ccn_reg_closure = NULL;
+        selfp->data = NULL;
+        free(md);
+        return(CCN_UPCALL_RESULT_OK);
+    }
+    if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
+        return(CCN_UPCALL_RESULT_REEXPRESS);
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED)
+        return(CCN_UPCALL_RESULT_VERIFY);
+    if (kind != CCN_UPCALL_CONTENT) {
+        NOTE_ERR(h, -1000 - kind);
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    /* Examine response, determine lifetime. */
+    // fprintf(stderr, "GOT TO STUB handle_prefix_reg_reply\n");
+    md->interest_filter->expiry = h->now;
+    md->interest_filter->expiry.tv_sec += lifetime;
+    return(CCN_UPCALL_RESULT_OK);
+}
+
+static void
+ccn_initiate_prefix_reg(struct ccn *h,
+                        const void *prefix, size_t prefix_size,
+                        struct interest_filter *i)
+{
+    struct ccn_reg_closure *p = NULL;
+    struct ccn_charbuf *reqname = NULL;
+    struct ccn_charbuf *templ = NULL;
+
+    i->expiry = h->now;
+    i->expiry.tv_sec += 60;
+    /* This test is mainly for the benefit of the ccnd internal client */
+    if (h->sock == -1)
+        return;
+    // fprintf(stderr, "GOT TO STUB ccn_initiate_prefix_reg()\n");
+    if (i->ccn_reg_closure != NULL)
+        return;
+    p = calloc(1, sizeof(*p));
+    if (p == NULL) {
+        NOTE_ERRNO(h);
+        return;
+    }
+    p->action.data = p;
+    p->action.p = &handle_prefix_reg_reply;
+    p->interest_filter = i;
+    i->ccn_reg_closure = p;
+    reqname = ccn_charbuf_create();
+    ccn_name_from_uri(reqname, "/ccnx/ping"); // STUB
+    ccn_express_interest(h, reqname, &p->action, templ);
+    ccn_charbuf_destroy(&reqname);
+    ccn_charbuf_destroy(&templ);
 }
