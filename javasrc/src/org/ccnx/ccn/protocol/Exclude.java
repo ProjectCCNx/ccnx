@@ -35,7 +35,7 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * 
  * Exclude filters contain at least one element. The elements are either a name component,
  * a bloom filter or the 'any' element. This allows the specification of individual component values to be
- * excluded, as well as arbitary ranges of component values and a compact form for long lists of
+ * excluded, as well as arbitrary ranges of component values and a compact form for long lists of
  * component values (bloom filters).
  * 
  * The order of elements within an exclude filter must follow 2 rules:

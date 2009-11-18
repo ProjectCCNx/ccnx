@@ -37,9 +37,9 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.Signature;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.PublisherID.PublisherType;
+import org.ccnx.ccn.test.CCNTestBase;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -48,7 +48,7 @@ import org.junit.Test;
  * Tests InterestTable, the core implementation of interest matching
  * and dispatching.
  */
-public class InterestTableTest {
+public class InterestTableTest extends CCNTestBase {
 
 
 	static public PublisherID ids[] = new PublisherID[3];
@@ -58,9 +58,6 @@ public class InterestTableTest {
 	// code can be run under different conditions
 	static public PublisherPublicKeyDigest activeKeyID = null;
 	static public PublisherID activeID = null;
-	// None of the signatures in this test are real, as there are no keys
-	// corresponding to the publisherID's used.
-	static public Signature fakeSignature = null;
 	
 	// removeByMatch controls whether remove operations are tested
 	// via the removeMatch* (true) or the removeValue* (false) methods 
@@ -90,9 +87,6 @@ public class InterestTableTest {
 				ids[i] = new PublisherID(publisher, PublisherType.KEY);
 				keyids[i] = new PublisherPublicKeyDigest(publisher);
 			}
-			byte [] fakeSigBytes = new byte[128];
-			rnd.nextBytes(fakeSigBytes);
-			fakeSignature = new Signature(fakeSigBytes);
 			
 		} catch (Exception ex) {
 			ex.printStackTrace();

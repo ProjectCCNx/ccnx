@@ -27,12 +27,12 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.BloomFilter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Exclude;
+import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherID;
-import org.ccnx.ccn.protocol.Signature;
+import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.Assert;
 import org.junit.Before;
@@ -43,7 +43,7 @@ import org.junit.Test;
 /**
  * Test the generation and matching functionality of Interests.
   */
-public class InterestTest {
+public class InterestTest extends CCNTestBase {
 	
 	public static String testName = "/test/parc/home/smetters/interestingData.txt/v/5";
 	public static ContentName tcn = null;
@@ -61,7 +61,7 @@ public class InterestTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		
+		CCNTestBase.setUpBeforeClass();
 		byte [] testID = CCNDigestHelper.digest(testName.getBytes());
 		
 		tcn = ContentName.fromURI(testName);
@@ -179,7 +179,7 @@ public class InterestTest {
 	public void testMatchDigest() throws MalformedContentNameStringException {
 		ContentName name = ContentName.fromNative("/paul");
 		byte [] content = "hello".getBytes();
-		ContentObject co = new ContentObject(name,null,content,(Signature)null);
+		ContentObject co = new ContentObject(name,fakeSignedInfo,content,fakeSignature);
 		byte [] digest = co.digest();
 		Interest interest = new Interest(ContentName.fromNative(name, digest));
 		Assert.assertTrue(interest.matches(co));
