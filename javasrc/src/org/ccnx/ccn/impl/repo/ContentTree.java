@@ -392,10 +392,15 @@ public class ContentTree {
 				// matching is that the name DOES NOT include digest component (conforming to the convention 
 				// for ContentObject.name() that the digest is not present) we must REMOVE the content 
 				// digest first or this test will not always be correct
+				//
+				// That is unless we are specifically trying to exclude a digest...
+				// XXX does this really have to be this complicated?
 				ContentName digestFreeName = new ContentName(nodeName.count()-1, nodeName.components());
 				Interest publisherFreeInterest = interest.clone();
 				publisherFreeInterest.publisherID(null);
-				if (publisherFreeInterest.matches(digestFreeName, null)) {
+				boolean matches = (null != interest.exclude()) ? publisherFreeInterest.matches(nodeName, null)
+							: publisherFreeInterest.matches(digestFreeName, null); 
+				if (matches) {
 					List<ContentRef> content = null;
 					synchronized(node) {
 						if (null != node.oneContent) {

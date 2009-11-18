@@ -39,6 +39,8 @@ import org.junit.Test;
  */
 public class RepoInitialReadTest extends RepoTestBase {
 	
+	public static final long TIMEOUT = 5000;
+	
 	@Test
 	public void testReadViaRepo() throws Throwable {
 		System.out.println("Testing reading objects from repo");
@@ -84,7 +86,8 @@ public class RepoInitialReadTest extends RepoTestBase {
 		for(;;) {
 			Interest i = Interest.constructInterest(name, e, Interest.CHILD_SELECTOR_LEFT);
 			Log.info("searching for {0} content {1}, exclude {2}", name, str, e);
-			ContentObject co = getLibrary.get(i, 2000);
+			ContentObject co = getHandle.get(i, TIMEOUT);
+			Assert.assertTrue(null != co);
 			Log.info("got result {0} digest={1}", co, DataUtils.printHexBytes(co.digest()));
 			if (DataUtils.arrayEquals(co.content(), content))
 				return co.fullName();

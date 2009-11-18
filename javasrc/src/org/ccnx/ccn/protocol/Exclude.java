@@ -156,7 +156,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 						// we exactly matched a component in the filter
 						return true;
 					} else if (res > 0) {
-						// we reached a component in the filter that is lexigraphically after than the one
+						// we reached a component in the filter that is lexicographically after than the one
 						// we're looking for so check if there was a filler between the last component
 						// we saw and this one.
 						return lastFiller != null && lastFiller.match(component);
