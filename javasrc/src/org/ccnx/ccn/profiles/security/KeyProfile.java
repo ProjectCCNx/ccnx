@@ -59,7 +59,7 @@ public class KeyProfile implements CCNProfile {
 		System.arraycopy(KEY_ID_PREFIX, 0, component, offset, KEY_ID_PREFIX.length);
 		offset += KEY_ID_PREFIX.length;
 		System.arraycopy(encodedKeyIDBytes, 0, component, offset, encodedKeyIDBytes.length);
-		offset += keyID.length;
+		offset += encodedKeyIDBytes.length;
 		System.arraycopy(KEY_ID_POSTFIX, 0, component, offset, KEY_ID_POSTFIX.length);
 		
 		return component;
