@@ -1322,12 +1322,14 @@ public class AccessControlManager {
 			if (acm != null)
 				return acm.getContentKeys(name, publisher);
 		} catch (ConfigurationException e) {
-			// TODO: should we throw this as a Runtime Exception?
-			throw new IOException("Opening stream for input", e);
+			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidCipherTextException e) {
-			throw new IOException("Opening stream for input", e);
+			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidKeyException e) {
-			throw new IOException("Opening stream for input", e);
+			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		}
 		return null;
 	}
@@ -1342,12 +1344,14 @@ public class AccessControlManager {
 				return KeyDerivationFunction.DeriveKeysForObject(dataKey.getEncoded(), DATA_KEY_LABEL, name, publisher);
 			}
 		} catch (ConfigurationException e) {
-			// TODO: should we throw this as a Runtime Exception?
-			throw new IOException("Opening stream for input", e);
+			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidCipherTextException e) {
-			throw new IOException("Opening stream for input", e);
+			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidKeyException e) {
-			throw new IOException("Opening stream for input", e);
+			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		}
 		return null;
 	}
