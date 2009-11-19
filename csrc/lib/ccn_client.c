@@ -790,15 +790,14 @@ ccn_cache_key(struct ccn *h,
  * verify it.  It might be present in our cache of keys, or in the
  * object itself; in either of these cases, we can satisfy the request
  * right away. Or there may be an indirection (a KeyName), in which case
- * return without the key. The final possibility
- * is that there is no key locator we can make sense of.
+ * return without the key. The final possibility is that there is no key
+ * locator we can make sense of.
  * @returns negative for error, 0 when pubkey is filled in,
  *         or 1 if the key needs to be requested.
  */
 static int
 ccn_locate_key(struct ccn *h,
-               unsigned char *msg,
-               size_t size,
+               const unsigned char *msg,
                struct ccn_parsed_ContentObject *pco,
                struct ccn_pkey **pubkey)
 {
@@ -1075,7 +1074,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                     int type = ccn_get_content_type(msg, info.pco);
                                     if (type == CCN_CONTENT_KEY)
                                         res = ccn_cache_key(h, msg, size, info.pco);
-                                    res = ccn_locate_key(h, msg, size, info.pco, &pubkey);
+                                    res = ccn_locate_key(h, msg, info.pco, &pubkey);
                                     if (res == 0) {
                                         /* we have the pubkey, use it to verify the msg */
                                         res = ccn_verify_signature(msg, size, info.pco, pubkey);
@@ -1674,3 +1673,31 @@ ccn_initiate_prefix_reg(struct ccn *h,
     ccn_charbuf_destroy(&reqname);
     ccn_charbuf_destroy(&templ);
 }
+
+/**
+ * Verify a ContentObject using the public key from either the object
+ * itself or our cache of keys.
+ *
+ * This routine does not attempt to fetch the public key if it is not
+ * at hand.
+ * @returns negative for error, 0 verification success,
+ *         or 1 if the key needs to be requested.
+ */
+int
+ccn_verify_content(struct ccn *h,
+                   const unsigned char *msg,
+                   struct ccn_parsed_ContentObject *pco)
+{
+    struct ccn_pkey *pubkey = NULL;
+    int res;
+    unsigned char *buf = (unsigned char *)msg; /* XXX - discard const */
+    
+    res = ccn_locate_key(h, msg, pco, &pubkey);
+    if (res == 0) {
+        /* we have the pubkey, use it to verify the msg */
+        res = ccn_verify_signature(buf, pco->offset[CCN_PCO_E], pco, pubkey);
+        res = (res == 1) ? 0 : -1;
+    }
+    return(res);
+}
+

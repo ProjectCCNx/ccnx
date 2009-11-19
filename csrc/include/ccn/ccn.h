@@ -353,6 +353,10 @@ int ccn_get(struct ccn *h,
             struct ccn_indexbuf *compsbuf,
             int flags);
 
+/* Handy if the content object didn't arrive in the usual way. */
+int ccn_verify_content(struct ccn *h,
+                       const unsigned char *msg,
+                       struct ccn_parsed_ContentObject *pco);
 
 /***********************************
  * Binary decoding

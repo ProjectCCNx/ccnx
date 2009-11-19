@@ -42,7 +42,9 @@
 /**
  * Local interpretation of selfp->intdata
  */
-#define MORECOMPS_MASK 0x00FF
+#define MORECOMPS_MASK 0x007F
+#define MUST_VERIFY    0x0080
+#define MUST_VERIFY1   (MUST_VERIFY + 1)
 #define OPER_MASK      0xFF00
 #define OP_PING        0x0000
 #define OP_REG_SELF    0x0100
@@ -105,6 +107,22 @@ ccnd_answer_req(struct ccn_closure *selfp,
             goto Bail;
     }
     
+    if ((selfp->intdata & MUST_VERIFY) != 0) {
+        struct ccn_parsed_ContentObject pco = {0};
+        // XXX - probably should check for message origin BEFORE verify
+        res = ccn_parse_ContentObject(final_comp, final_size, &pco, NULL);
+        if (res < 0) {
+            ccnd_debug_ccnb(ccnd, __LINE__, "co_parse_failed", NULL,
+                            info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+            goto Bail;
+        }
+        res = ccn_verify_content(info->h, final_comp, &pco);
+        if (res != 0) {
+            ccnd_debug_ccnb(ccnd, __LINE__, "co_verify_failed", NULL,
+                            info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+            goto Bail;
+        }
+    }
     switch (selfp->intdata & OPER_MASK) {
         case OP_PING:
             reply_body = ccn_charbuf_create();
@@ -366,17 +384,17 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/ping",
                     &ccnd_answer_req, OP_PING);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/reg/self",
-                    &ccnd_answer_req, OP_REG_SELF + 1);
+                    &ccnd_answer_req, OP_REG_SELF + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/newface",
-                    &ccnd_answer_req, OP_NEWFACE + 1);
+                    &ccnd_answer_req, OP_NEWFACE + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/destroyface",
-                    &ccnd_answer_req, OP_DESTROYFACE + 1);
+                    &ccnd_answer_req, OP_DESTROYFACE + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/prefixreg",
-                    &ccnd_answer_req, OP_PREFIXREG + 1);
+                    &ccnd_answer_req, OP_PREFIXREG + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/selfreg",
-                    &ccnd_answer_req, OP_SELFREG + 1);
+                    &ccnd_answer_req, OP_SELFREG + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/unreg",
-                    &ccnd_answer_req, OP_UNREG + 1);
+                    &ccnd_answer_req, OP_UNREG + MUST_VERIFY1);
     ccnd->internal_client_refresh =
     ccn_schedule_event(ccnd->sched, 200000,
                        ccnd_internal_client_refresh,
