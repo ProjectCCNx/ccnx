@@ -1,4 +1,4 @@
-package org.ccnx.ccn.impl.repo;
+package org.ccnx.ccn.profiles.nameenum;
 
 import java.util.ArrayList;
 

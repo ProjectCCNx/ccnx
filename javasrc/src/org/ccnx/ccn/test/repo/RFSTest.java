@@ -22,7 +22,6 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
 import org.ccnx.ccn.impl.repo.LogStructRepoStore;
-import org.ccnx.ccn.impl.repo.NameEnumerationResponse;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -30,6 +29,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;

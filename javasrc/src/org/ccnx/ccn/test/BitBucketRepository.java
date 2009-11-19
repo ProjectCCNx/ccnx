@@ -21,11 +21,11 @@ import java.io.File;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.repo.NameEnumerationResponse;
 import org.ccnx.ccn.impl.repo.Policy;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryInfo;
 import org.ccnx.ccn.impl.repo.RepositoryStoreBase;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
