@@ -68,6 +68,8 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
         struct propagating_entry *p;
         if (head != NULL) {
             for (p = head->next; p != head; p = p->next) {
+                // XXX - This should check p->faceid before counting p
+                // ... but face_from_faceid() is private.
                 sum += 1;
             }
         }
@@ -88,9 +90,10 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
         if (face != NULL)
             sum += face->pending_interests;
     }
-    if (sum != ans->total_interest_counts)
+    if ((h->debug & 32) != 0 && sum != ans->total_interest_counts)
         ccnd_msg(h, "ccnd_collect_stats found inconsistency %ld != %ld\n",
                  (long)sum, (long)ans->total_interest_counts);
+    ans->total_interest_counts = sum;
     return(0);
 }
 
