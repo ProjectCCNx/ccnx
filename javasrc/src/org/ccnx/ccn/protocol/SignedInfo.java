@@ -549,4 +549,14 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			return false;
 		return true;
 	}	
+
+	public String toString() {
+		StringBuffer s = new StringBuffer();
+		if (_type != null) s.append(String.format("si: type=%s", typeToName(_type)));
+		s.append(String.format("si: timestamp=%s", _timestamp));
+		s.append(String.format("si: pub=%s", _publisher));
+		if (_locator != null) s.append(String.format("si: loc=%s", _locator));
+		if (_freshnessSeconds != null) s.append(String.format("si: type=%s", _freshnessSeconds));
+		return s.toString();
+	}
 }

@@ -149,7 +149,7 @@ public class ContentTree {
 	 * @return - true if content is not exact duplicate of existing content.
 	 */
 	public boolean insert(ContentObject content, ContentRef ref, long ts, ContentGetter getter, NameEnumerationResponse ner) {
-		final ContentName name = new ContentName(content.name(), content.contentDigest());
+		final ContentName name = content.fullName();
 		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
 			Log.fine("inserting content: {0}", name);
 		}
@@ -392,10 +392,18 @@ public class ContentTree {
 				// matching is that the name DOES NOT include digest component (conforming to the convention 
 				// for ContentObject.name() that the digest is not present) we must REMOVE the content 
 				// digest first or this test will not always be correct
+				//
+				// That is unless we are specifically trying to exclude a digest...
+				// The test below which uses the name with the digest for the match only if there is an exclude request
+				// and the exclude is at the final (digest) level of the name does that. Since we are prechecking without
+				// the actual ContentObject there may be no cleaner way to do this.
 				ContentName digestFreeName = new ContentName(nodeName.count()-1, nodeName.components());
 				Interest publisherFreeInterest = interest.clone();
 				publisherFreeInterest.publisherID(null);
-				if (publisherFreeInterest.matches(digestFreeName, null)) {
+				boolean initialMatch = (null != interest.exclude() && interest.name().count() == nodeName.count() - 1) 
+							? publisherFreeInterest.matches(nodeName, null)
+							: publisherFreeInterest.matches(digestFreeName, null); 
+				if (initialMatch) {
 					List<ContentRef> content = null;
 					synchronized(node) {
 						if (null != node.oneContent) {

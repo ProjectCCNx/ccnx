@@ -490,8 +490,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return
 	 */
 	public static Interest next(ContentObject co, Integer prefixCount) {
-		ArrayList<byte []>components = byteArrayClone(co.name().components());
-		components.add(co.contentDigest());
+		ArrayList<byte []>components = byteArrayClone(co.fullName().components());
 		ContentName nextName = new ContentName(components.size(), components);
 		return next(nextName, prefixCount == null ? components.size() - 2 : prefixCount);
 	}

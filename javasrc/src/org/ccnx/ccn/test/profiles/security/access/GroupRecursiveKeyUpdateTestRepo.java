@@ -47,9 +47,9 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		friendlyNames = td.friendlyNames().toArray(new String[0]);				
 		
 		// create ACM
-		handle = td.getHandleForUser(friendlyNames[0]);
+		handle = td.getHandleForUser(friendlyNames[1]);
 		acm = new AccessControlManager(directoryBase, groupStore, userNamespace, handle);
-		acm.publishMyIdentity(friendlyNames[0], handle.keyManager().getDefaultPublicKey());
+		acm.publishMyIdentity(friendlyNames[1], handle.keyManager().getDefaultPublicKey());
 	}
 
 	/**
@@ -128,7 +128,6 @@ public class GroupRecursiveKeyUpdateTestRepo {
 	 * 
 	 * @throws Exception
 	 */
-	@Test
 	public void removeMemberFromGroup0() throws Exception {
 		// delete user0 from group0
 		ArrayList<Link> membersToRemove = new ArrayList<Link>();

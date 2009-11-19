@@ -100,7 +100,7 @@ incoming_content(
     comp = ccn_charbuf_create();
     ccn_name_init(comp);
     if (matched_comps + 1 == comps->n) {
-        /* Reconstruct the implicit content digest component */
+        /* Reconstruct the implicit ContentObject digest component */
         ccn_digest_ContentObject(ccnb, info->pco);
         ccn_name_append(comp, info->pco->digest, info->pco->digest_bytes);
     }

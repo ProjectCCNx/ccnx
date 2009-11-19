@@ -904,7 +904,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if (match || count() != count)
 			return match;
 		if (count() == other.name().count() + 1) {
-			if (DataUtils.compare(component(count() - 1), other.contentDigest()) == 0) {
+			if (DataUtils.compare(component(count() - 1), other.digest()) == 0) {
 				return true;
 			}
 		}

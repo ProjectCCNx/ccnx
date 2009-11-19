@@ -33,9 +33,8 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.protocol.Signature;
-import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.test.CCNLibraryTestHarness;
+import org.ccnx.ccn.test.CCNTestBase;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -43,7 +42,7 @@ import org.junit.Test;
 /**
  * Test flow controller functionality.
  */
-public class CCNFlowControlTest {
+public class CCNFlowControlTest extends CCNTestBase {
 	static private CCNLibraryTestHarness _handle ;
 	static private CCNReader _reader;
 	static ContentName name1;
@@ -78,18 +77,17 @@ public class CCNFlowControlTest {
 		fc = new CCNFlowControl(_handle);
 	}
 	
-	
-	ContentObject obj1 = new ContentObject(name1, new SignedInfo(), "test".getBytes(), (Signature)null);
+	ContentObject obj1 = new ContentObject(name1, fakeSignedInfo, "test".getBytes(), fakeSignature);
 	ContentName v1s1 = SegmentationProfile.segmentName(v1, 1);
-	ContentObject objv1s1 = new ContentObject(v1s1, new SignedInfo(), "v1s1".getBytes(), (Signature)null);		
+	ContentObject objv1s1 = new ContentObject(v1s1, fakeSignedInfo, "v1s1".getBytes(), fakeSignature);		
 	ContentName v1s2 = SegmentationProfile.segmentName(v1, 2);
-	ContentObject objv1s2 = new ContentObject(v1s2, new SignedInfo(), "v1s2".getBytes(), (Signature)null);	
+	ContentObject objv1s2 = new ContentObject(v1s2, fakeSignedInfo, "v1s2".getBytes(), fakeSignature);	
 	ContentName v1s3 = SegmentationProfile.segmentName(v1, 3);
-	ContentObject objv1s3 = new ContentObject(v1s3, new SignedInfo(), "v1s3".getBytes(), (Signature)null);	
+	ContentObject objv1s3 = new ContentObject(v1s3, fakeSignedInfo, "v1s3".getBytes(), fakeSignature);	
 	ContentName v1s4 = SegmentationProfile.segmentName(v1, 4);
-	ContentObject objv1s4 = new ContentObject(v1s4, new SignedInfo(), "v1s4".getBytes(), (Signature)null);
+	ContentObject objv1s4 = new ContentObject(v1s4, fakeSignedInfo, "v1s4".getBytes(), fakeSignature);
 	ContentName v1s5 = SegmentationProfile.segmentName(v1, 5);
-	ContentObject objv1s5 = new ContentObject(v1s5, new SignedInfo(), "v1s5".getBytes(), (Signature)null);
+	ContentObject objv1s5 = new ContentObject(v1s5, fakeSignedInfo, "v1s5".getBytes(), fakeSignature);
 	Queue<ContentObject> queue = _handle.getOutputQueue();
 	ArrayList<Interest> interestList = new ArrayList<Interest>();
 	CCNFlowControl fc = null;

@@ -556,9 +556,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
 					Log.warning("Found segment: " + segment.name() + " whose digest fails to verify; segment length: " + segment.contentLength());
 					Log.info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
-							" content digest: " + DataUtils.printBytes(segment.contentDigest()) + " proxy: " + 
-							DataUtils.printBytes(proxy) + " expected proxy: " + DataUtils.printBytes(_verifiedProxy));
-					return false;
+							" proxy: " + DataUtils.printBytes(proxy) +
+							" expected proxy: " + DataUtils.printBytes(_verifiedProxy));
+	 				return false;
 				}
 			} else {
 				// Verifying a new segment. See if the signature verifies, otherwise store the signature

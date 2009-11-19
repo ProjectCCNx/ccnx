@@ -50,7 +50,7 @@ import org.junit.Test;
 public class GroupTestRepo {
 	
 	static boolean USE_REPO = true;
-	static int NUM_USERS = 10;
+	static int NUM_USERS = 3;
 	static char [] USER_PASSWORD = new String("password").toCharArray();
 	
 	static ContentName testStorePrefix = null;
@@ -110,46 +110,7 @@ public class GroupTestRepo {
 			Log.warningStackTrace(e);
 			throw e;
 		}
-	}
-
-	private void testRemoveUsers(ArrayList<Link> removeMembers, Group grp) throws InvalidKeyException, CryptoException, IOException, ConfigurationException{
-		boolean succeed = false;
-		int retries = 0;
-		while (!succeed) {
-			retries ++;
-			System.out.print("................trying to remove user...........");
-			try {
-				grp.removeMembers(removeMembers);
-				succeed = true;
-			} catch (ContentNotReadyException e) {
-				succeed = false;
-			} catch (AccessDeniedException e) {
-				succeed = false;
-			}
-		}
-		System.out.println(".....................removed user, number of retries:..............." + retries);
-	}
-	
-	private void testAddUsers(ArrayList<Link> removeMembers, Group grp) throws InvalidKeyException, CryptoException, IOException, ConfigurationException{
-		boolean succeed = false;
-		int retries = 0;
-		while (!succeed) {
-			retries ++;
-			System.out.print("................trying to add user...........");
-			try {
-				grp.addMembers(removeMembers);
-				succeed = true;
-			} catch (ContentNotReadyException e) {
-				e.printStackTrace();
-				succeed = false;
-			} catch (AccessDeniedException e) {
-				e.printStackTrace();
-				succeed = false;
-			}
-		}
-		System.out.println(".....................added user, number of retries:..............." + retries);
-	}
-	
+	}	
 	
 	@Test
 	public void testGroup() throws Exception {
@@ -171,7 +132,7 @@ public class GroupTestRepo {
 			System.out.print(" "+n);
 		System.out.println();
 
-		assertTrue(returnedBytes.size() >= 3);
+		assertTrue(returnedBytes.size() >= NUM_USERS);
 		Iterator<ContentName> it = returnedBytes.iterator();
 
 		ArrayList<Link> newMembers = new ArrayList<Link>();
@@ -198,26 +159,18 @@ public class GroupTestRepo {
 		System.out.println("adding member to group:"+ fullname);
 		ArrayList<Link> addMembers = new ArrayList<Link>();
 		addMembers.add(new Link(ContentName.fromNative(fullname)));
-
-		testAddUsers(addMembers, newGroup);
-
+		
+		// add members to the group
+		newGroup.addMembers(addMembers);
 
 		ArrayList<Link> removeMembers = new ArrayList<Link>();
 		System.out.println("removing user:.................." + newMembers.get(2).targetName());
 		removeMembers.add(newMembers.get(2));
-		testRemoveUsers(removeMembers, newGroup);
+		newGroup.removeMembers(removeMembers);
 
 		Assert.assertTrue(_gm.haveKnownGroupMemberships());
 		Assert.assertTrue(_gm.amCurrentGroupMember(newGroup));
 		Assert.assertTrue(_gm.amCurrentGroupMember(_randomGroupName));
-
-		removeMembers.clear();
-		//try removing myself
-		//removeMembers.add(new Link(UserConfiguration.defaultUserNamespace()));
-		//System.out.println("removing myself:.................." );
-		//testRemoveUsers(removeMembers, newGroup);
-
-		//Assert.assertFalse(_gm.haveKnownGroupMemberships());
 
 		//isGroup sometimes fails, there's a timing issue. 
 		Assert.assertTrue(_gm.isGroup(_randomGroupName));
@@ -236,7 +189,8 @@ public class GroupTestRepo {
 		Assert.assertTrue(_gm.amCurrentGroupMember(newParentGroup));
 
 		System.out.println("adding users to parent group.........");
-		testAddUsers(addMembers, newParentGroup);
+		Thread.sleep(1000);
+		newParentGroup.addMembers(addMembers);
 
 		PrivateKey privKey = _gm.getGroupPrivateKey(randomParentGroupName, null);
 		System.out.println("retrieved group priv key for parent group:" + privKey.toString());
@@ -270,8 +224,8 @@ public class GroupTestRepo {
 //		Link memberToRemove = ourExistingGroup.membershipList().contents().getLast();
 		removeMembers.add(memberToRemove);
 		System.out.println("removing user:.................." + memberToRemove.targetName());
-		testRemoveUsers(removeMembers, aSeparateGroupCopy);
-//		testRemoveUsers(removeMembers, ourExistingGroup);
+		aSeparateGroupCopy.removeMembers(removeMembers);
+//		ourExistingGroup.removeMembers(removeMembers);
 		
 		Log.info("Post-write Original key name {0}, copy key name {1}", ourExistingGroup.publicKeyName(), aSeparateGroupCopy.publicKeyName());
 		System.out.println("Post-write original key version: " + ourExistingGroup.publicKeyVersion());
@@ -280,18 +234,6 @@ public class GroupTestRepo {
 		Log.info("Post-write and sleep Original key name {0}, copy key name {1}", ourExistingGroup.publicKeyName(), aSeparateGroupCopy.publicKeyName());
 		System.out.println("Post-write and sleep original key version: " + ourExistingGroup.publicKeyVersion());
 		System.out.println("Post-write and sleep copy key version    : " + aSeparateGroupCopy.publicKeyVersion());
-	}
-	
-	
-	/**
-	 * This should go last.
-	 */
-	void testRemoveGroup() throws Exception {
-		
-		//test deletion of group
-		_gm.deleteGroup(_randomGroupName);			
-//		Assert.assertFalse(_gm.isGroup(randomGroupName));
-		
 	}
 	
 }

@@ -47,7 +47,7 @@ fi
 
 if [ $# = 0 ]
 then
-  echo "usage: $0 <ccn URI>"
+  echo "usage: $0 <file path to serve> [<ccn prefix URI (default ccnx:/)>]"
   exit 1
 fi
 

@@ -733,6 +733,37 @@ ccn_get_content_type(const unsigned char *ccnb,
     }
 }
 
+/**
+ * Compute the digest of just the Content portion of content_object.
+ */
+static void
+ccn_digest_Content(const unsigned char *content_object,
+                   struct ccn_parsed_ContentObject *pc,
+                   unsigned char *digest,
+                   size_t digest_bytes)
+{
+    int res;
+    struct ccn_digest *d = NULL;
+    const unsigned char *content = NULL;
+    size_t content_bytes = 0;
+    
+    if (pc->magic < 20080000) abort();
+    if (digest_bytes == sizeof(digest))
+        return;
+    d = ccn_digest_create(CCN_DIGEST_SHA256);
+    ccn_digest_init(d);
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, content_object,
+                              pc->offset[CCN_PCO_B_Content],
+                              pc->offset[CCN_PCO_E_Content],
+                              &content, &content_bytes);
+    if (res < 0) abort();
+    res = ccn_digest_update(d, content, content_bytes);
+    if (res < 0) abort();
+    res = ccn_digest_final(d, digest, digest_bytes);
+    if (res < 0) abort();
+    ccn_digest_destroy(&d);
+}
+
 static int
 ccn_cache_key(struct ccn *h,
               const unsigned char *ccnb, size_t size,
@@ -743,19 +774,17 @@ ccn_cache_key(struct ccn *h,
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int res;
+    unsigned char digest[32];
 
     type = ccn_get_content_type(ccnb, pco);
     if (type != CCN_CONTENT_KEY) {
         return (0);
     }
 
-    ccn_digest_ContentObject(ccnb, pco);
-    if (pco->digest_bytes != sizeof(pco->digest)) {
-        return(NOTE_ERR(h, EINVAL));
-    }
+    ccn_digest_Content(ccnb, pco, digest, sizeof(digest));
 
     hashtb_start(h->keys, e);
-    res = hashtb_seek(e, (void *)pco->digest, pco->digest_bytes, 0);
+    res = hashtb_seek(e, (void *)digest, sizeof(digest), 0);
     if (res < 0) {
         hashtb_end(e);
         return(NOTE_ERRNO(h));

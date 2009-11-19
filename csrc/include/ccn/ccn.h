@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 1002
+#define CCN_API_VERSION 1003
 
 /**
  * Global interest lifetime.
@@ -562,11 +562,12 @@ struct ccn_parsed_ContentObject {
  * ccn_digest_ContentObject.
  */
 int ccn_parse_ContentObject(const unsigned char *msg, size_t size,
-                   struct ccn_parsed_ContentObject *x,
-                   struct ccn_indexbuf *components);
+                            struct ccn_parsed_ContentObject *x,
+                            struct ccn_indexbuf *components);
 
 void ccn_digest_ContentObject(const unsigned char *msg,
                               struct ccn_parsed_ContentObject *pc);
+
 /*
  * ccn_parse_Name: Parses a ccnb-encoded name
  * components may be NULL, otherwise is filled in with Component boundary offsets
