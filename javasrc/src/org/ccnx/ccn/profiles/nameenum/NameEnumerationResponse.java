@@ -26,7 +26,7 @@ public class NameEnumerationResponse {
 	 */
 	public NameEnumerationResponse() {
 		_prefix = null;
-		_names = null;
+		_names = new ArrayList<ContentName>(0);
 		_version = null;
 	}
 	
@@ -45,7 +45,25 @@ public class NameEnumerationResponse {
 	}
 	
 	/**
-	 * Method to set the NameEnumerationReponse prefix.
+	 * Builds a NE response from name components -- NE responses contain ContentNames that
+	 * only have a single component. Make a friendlier constructor that doesn't require
+	 * pre-making names from the components we really want to list.
+	 */
+	public NameEnumerationResponse(ContentName p, byte [][] names, CCNTime ts) {
+		_prefix = p;
+		_version = ts;
+		_names = new ArrayList<ContentName>((null == names) ? 0 : names.length);
+		if (null != names) {
+			for (int i=0; i < names.length; ++i) {
+				_names.add(new ContentName(ContentName.ROOT, names[i]));
+			}
+		}
+	}
+	
+	/**
+	 * Method to set the NameEnumerationReponse prefix. Right now
+	 * forces caller to add the command prefix (e.g. CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION),
+	 * should make this cleverer (even if there are multiple NE protocols).
 	 * 
 	 * @param p ContentName of the prefix for the response
 	 * @return void
@@ -62,6 +80,27 @@ public class NameEnumerationResponse {
 	 */
 	public void setNameList(ArrayList<ContentName> n) {
 		_names = n;
+	}
+	
+	/**
+	 * Add a name to the list
+	 */
+	public void add(ContentName name) {
+		_names.add(name);
+	}
+	
+	/**
+	 * Add a single-component name to the list.
+	 */
+	public void add(byte [] name) {
+		_names.add(new ContentName(ContentName.ROOT, name));
+	}
+	
+	/**
+	 * Add a single-component name to the list.
+	 */
+	public void add(String name) {
+		_names.add(ContentName.fromNative(ContentName.ROOT, name));
 	}
 	
 	/**
