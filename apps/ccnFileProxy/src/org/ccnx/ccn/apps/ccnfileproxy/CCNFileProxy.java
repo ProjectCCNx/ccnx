@@ -26,10 +26,16 @@ import java.util.ArrayList;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileOutputStream;
+import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.Collection.CollectionObject;
+import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
@@ -120,6 +126,14 @@ public class CCNFileProxy implements CCNFilterListener {
 			if (SegmentationProfile.isSegment(interest.name()) && !SegmentationProfile.isFirstSegment(interest.name())) {
 				Log.info("Got an interest for something other than a first segment, ignoring {0}.", interest.name());
 				continue;
+			} else if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
+					try {
+						Log.info("Got a name enumeration request: {0}", interest);
+						nameEnumeratorResponse(interest);
+					} catch (IOException e) {
+						Log.warning("IOException generating name enumeration response to {0}: {1}: {2}", interest.name(), e.getClass().getName(), e.getMessage());
+					}
+					continue;
 			} else if (SegmentationProfile.isHeader(interest.name())) {
 				Log.info("Got an interest for the first segment of the header, ignoring {0}.", interest.name());
 				continue;
@@ -137,21 +151,28 @@ public class CCNFileProxy implements CCNFilterListener {
 		return count;
 	}
 	
+	protected File ccnNameToFilePath(ContentName name) {
+		
+		ContentName fileNamePostfix = name.postfix(_prefix);
+		if (null == fileNamePostfix) {
+			// Only happens if interest.name() is not a prefix of _prefix.
+			Log.info("Unexpected: got an interest not matching our prefix (which is {0})", _prefix);
+			return null;
+		}
+
+		File fileToWrite = new File(_rootDirectory, fileNamePostfix.toString());
+		Log.info("file postfix {0}, resulting path name {1}", fileNamePostfix, fileToWrite.getAbsolutePath());
+		return fileToWrite;
+	}
+	
 	/**
 	 * Actually write the file; should probably run in a separate thread.
 	 * @param fileNamePostfix
 	 * @throws IOException 
 	 */
 	protected boolean writeFile(Interest outstandingInterest) throws IOException {
-		ContentName fileNamePostfix = outstandingInterest.name().postfix(_prefix);
-		if (null == fileNamePostfix) {
-			// Only happens if interest.name() is not a prefix of _prefix.
-			Log.info("Unexpected: got an interest not matching our prefix (which is {0})", _prefix);
-			return false;
-		}
-		Log.info("writing file for interest {0}, postfix {1}", outstandingInterest, fileNamePostfix);
-
-		File fileToWrite = new File(_rootDirectory, fileNamePostfix.toString());
+		
+		File fileToWrite = ccnNameToFilePath(outstandingInterest.name());
 		Log.info("CCNFileProxy: extracted request for file: " + fileToWrite.getAbsolutePath() + " exists? ", fileToWrite.exists());
 		if (!fileToWrite.exists()) {
 			Log.warning("File {0} does not exist. Ignoring request.", fileToWrite.getAbsoluteFile());
@@ -168,7 +189,9 @@ public class CCNFileProxy implements CCNFilterListener {
 		
 		// Set the version of the CCN content to be the last modification time of the file.
 		CCNTime modificationTime = new CCNTime(fileToWrite.lastModified());
-		ContentName versionedName = VersioningProfile.addVersion(new ContentName(_prefix, fileNamePostfix.components()), modificationTime);
+		ContentName versionedName = 
+			VersioningProfile.addVersion(new ContentName(_prefix, 
+						outstandingInterest.name().postfix(_prefix).components()), modificationTime);
 
 		// CCNFileOutputStream will use the version on a name you hand it (or if the name
 		// is unversioned, it will version it).
@@ -188,6 +211,61 @@ public class CCNFileProxy implements CCNFilterListener {
 		ccnout.close(); // will flush
 		
 		return true;
+	}
+	
+	/**
+	 * Handle name enumeration requests
+	 * 
+	 * @param interest
+	 * @throws IOException 
+	 */
+	public void nameEnumeratorResponse(Interest interest) throws IOException {
+		
+		ContentName neRequestPrefix = interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+		
+		File directoryToEnumerate = ccnNameToFilePath(neRequestPrefix);
+		
+		if (!directoryToEnumerate.exists() || !directoryToEnumerate.isDirectory()) {
+			// nothing to enumerate
+			return;
+		}
+		
+		NameEnumerationResponse ner = new NameEnumerationResponse();
+		ner.setPrefix(new ContentName(neRequestPrefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION));
+		
+		// We want to set the version of the NE response to the time of the 
+		// last modified file in the directory. Unfortunately that requires us to
+		// stat() all the files whether we are going to respond or not.
+		String [] children = directoryToEnumerate.list();
+		long lastmodificationtime = 0;
+		
+		if (null != children) {
+			for (int i = 0; i < children.length; ++i) {
+				ner.add(children[i]);
+				File thisChild = new File(directoryToEnumerate, children[i]);
+				if (thisChild.lastModified() > lastmodificationtime) {
+					lastmodificationtime = thisChild.lastModified();
+				}
+			}
+
+			// Set the timestamp for the time of the file with the latest last modification time in the directory
+			// If we re-create this each time will change slightly, (signign tie
+			ner.setTimestamp(new CCNTime(lastmodificationtime));
+		}
+		
+	    ContentName potentialCollectionName = VersioningProfile.addVersion(ner.getPrefix(), ner.getTimestamp());
+	    potentialCollectionName = SegmentationProfile.segmentName(potentialCollectionName, SegmentationProfile.baseSegment());
+		//check if we should respond...
+		if (interest.matches(potentialCollectionName, null) && ner.hasNames()) {
+
+			Collection cd = ner.getNamesInCollectionData();
+			CollectionObject co = new CollectionObject(ner.getPrefix(), cd, _handle);
+			co.save(ner.getTimestamp(), interest);
+			Log.info("sending back name enumeration response {0}, timestamp (version) {1}.", ner.getPrefix(), ner.getTimestamp());
+		} else {
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+				Log.info("we are not sending back a response to the name enumeration interest (interest = {0}); our response would have been {1}", interest, potentialCollectionName);
+		}
 	}
 
     /**
