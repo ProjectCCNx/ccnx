@@ -19,26 +19,20 @@ package org.ccnx.ccn.test.profiles.security.access;
 
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
-import java.security.InvalidKeyException;
 import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.SortedSet;
 
-import org.bouncycastle.crypto.CryptoException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
-import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.Group;
 import org.ccnx.ccn.profiles.security.access.GroupManager;
 import org.ccnx.ccn.protocol.ContentName;
