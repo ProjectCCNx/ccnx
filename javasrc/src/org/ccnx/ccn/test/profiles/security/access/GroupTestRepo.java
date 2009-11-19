@@ -50,7 +50,7 @@ import org.junit.Test;
 public class GroupTestRepo {
 	
 	static boolean USE_REPO = true;
-	static int NUM_USERS = 10;
+	static int NUM_USERS = 3;
 	static char [] USER_PASSWORD = new String("password").toCharArray();
 	
 	static ContentName testStorePrefix = null;
@@ -171,7 +171,7 @@ public class GroupTestRepo {
 			System.out.print(" "+n);
 		System.out.println();
 
-		assertTrue(returnedBytes.size() >= 3);
+		assertTrue(returnedBytes.size() >= NUM_USERS);
 		Iterator<ContentName> it = returnedBytes.iterator();
 
 		ArrayList<Link> newMembers = new ArrayList<Link>();
