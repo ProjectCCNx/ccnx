@@ -12,6 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 BEFORE : test_single_ccnd_teardown
+rm -f ccndid.out
 ccnd &
 sleep .1 2>/dev/null
 ccndsmoketest || { echo retrying; sleep 1; ccndsmoketest; }

@@ -166,11 +166,11 @@ send_ccnb_file(int sock, FILE *msgs, const char *filename, int is_dgram)
             perror(filename);
             exit(-1);
         }
-        if (rawlen == 0)
+        if (rawlen == 0 && !is_dgram)
             break;
         if (is_dgram && rawlen == sizeof(rawbuf))
             truncated = read(fd, onemore, 1);
-        if (truncated)
+        if (truncated == 1)
             fprintf(msgs, "TRUNCATED ");
         fprintf(msgs, "send %s (%lu bytes)\n", filename, (unsigned long)rawlen);
         sres = send(sock, rawbuf, rawlen, 0);

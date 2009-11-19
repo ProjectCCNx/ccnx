@@ -82,13 +82,21 @@ public class UserConfiguration {
 		}
 	}
 	
+	public static void setDirectory(String path) {
+		CCN_DIR = path;
+	}
+	
+	public static void setUserName(String name) {
+		USER_NAME = name;
+	}
+	
 	public static String ccnDirectory() { return CCN_DIR; }
 	
 	public static String userConfigFile() { 
 		return CCN_DIR + FILE_SEP + USER_CONFIG_FILE; }
 	
 	public static String keystoreFileName() { 
-		return CCN_DIR + FILE_SEP + KEYSTORE_FILE_NAME; }
+		return KEYSTORE_FILE_NAME; }
 	
 	public static String keystorePassword() { 
 		return KEYSTORE_PASSWORD; }

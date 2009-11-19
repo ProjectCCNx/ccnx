@@ -12,7 +12,7 @@ Here we specify how content signatures are generated in CCNx.
 
 == Signed Content
 
-As described in link:./ContentObject.html, a ContentObject in CCNx consists
+A link:ContentObject.html[ContentObject] in CCNx consists
 of:
 
 .......................................................
@@ -64,7 +64,7 @@ specification of signature algorithm in the signature, and increases
 the chance that we will also be able to elide the digest algorithm
 identifier itself because the digest algorithm chosen will be one
 selected as the most common default (for now, `SHA-256`, see
-link:./CryptographicAlgorithms.html).
+link:CryptographicAlgorithms.html[CryptographicAlgorithms]).
 
 We place the digest algorithm identifier, along with the content of the signature
 itself, at the start of the ContentObject, so that devices that need

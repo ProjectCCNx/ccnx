@@ -19,6 +19,7 @@ package org.ccnx.ccn.profiles;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.ccnx.ccn.CCNHandle;
@@ -26,6 +27,9 @@ import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Exclude;
+import org.ccnx.ccn.protocol.ExcludeAny;
+import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -158,7 +162,7 @@ public class SegmentationProfile implements CCNProfile {
 	}
 
 	/**
-	 * Check to see if we have (a block of) the header.
+	 * Check to see if we have (a block of) the header. Headers are also versioned.
 	 * @param baseName The name of the object whose header we are looking for (including version, but
 	 * 			not including segmentation information).
 	 * @param headerName The name of the object we think might be a header block (can include
@@ -169,22 +173,36 @@ public class SegmentationProfile implements CCNProfile {
 		if (!baseName.isPrefixOf(headerName)) {
 			return false;
 		}
-		if (isSegment(headerName)) {
-			headerName = segmentRoot(headerName);
+		return isHeader(headerName);
+	}
+	
+	/**
+	 * Slightly more heuristic isHeader; looks to see if this is a segment of something that
+	 * ends in the header name (and version), without knowing the prefix..
+	 */
+	public static boolean isHeader(ContentName potentialHeaderName) {
+		
+		if (isSegment(potentialHeaderName)) {
+			potentialHeaderName = segmentRoot(potentialHeaderName);
 		}
-		// Should end with metadata/header
-		if (baseName.count() != (headerName.count() - 2))
+		
+		// Header itself is likely versioned.
+		if (VersioningProfile.isVersionComponent(potentialHeaderName.lastComponent())) {
+			potentialHeaderName = potentialHeaderName.parent();
+		}
+		
+		if (potentialHeaderName.count() < 2)
 			return false;
 		
-		if (!Arrays.equals(headerName.lastComponent(), HEADER_NAME))
+		if (!Arrays.equals(potentialHeaderName.lastComponent(), HEADER_NAME))
 			return false;
 		
-		if (!Arrays.equals(headerName.component(headerName.count()-2), MetadataProfile.METADATA_MARKER))
+		if (!Arrays.equals(potentialHeaderName.component(potentialHeaderName.count()-2), MetadataProfile.METADATA_MARKER))
 			return false;
 		
 		return true;
 	}
-
+	
 	/**
 	 * Move header from <content>/<version> as its name to
 	 * <content>/<version>/_metadata_marker_/HEADER/<version>
@@ -308,13 +326,14 @@ public class SegmentationProfile implements CCNProfile {
 		return segmentInterest(name, baseSegment(), publisher);
 	}
 	
-	
 	/**
 	 * Creates an Interest to find the right-most child from the given segment number
 	 * or the base segment if one is not supplied.  This attempts to find the last segment for
 	 * the given content name.  Due to caching, this does not guarantee the interest will find the
 	 * last segment, higher layer code must verify that the ContentObject returned for this interest
 	 * is the last one.
+	 * 
+	 * TODO: depends on acceptSegments being fully implemented.  right now mainly depends on the number of component restriction.
 	 * 
 	 * @param name ContentName for the prefix of the Interest
 	 * @param segmentNumber create an interest for the last segment number after this number
@@ -346,10 +365,11 @@ public class SegmentationProfile implements CCNProfile {
 			interestName = segmentName(name, segmentNumber);
 		}
 		
-		Log.info("lastSegmentInterest: creating interest for {0} from ContentName {1} and segmentNumber {2}", interestName, name, segmentNumber);
-		//TODO need to create Interest creation functions with publisher as a param
-		interest = Interest.last(interestName);
-
+		Log.finer("lastSegmentInterest: creating interest for {0} from ContentName {1} and segmentNumber {2}", interestName, name, segmentNumber);
+		//TODO need to make sure we only get segments back and not other things like versions
+		interest = Interest.last(interestName, acceptSegments(getSegmentNumberNameComponent(segmentNumber)), publisher);
+		interest.maxSuffixComponents(2);
+		interest.minSuffixComponents(2);
 		return interest;
 	}
 	
@@ -368,6 +388,124 @@ public class SegmentationProfile implements CCNProfile {
 	
 	public static Interest lastSegmentInterest(ContentName name, PublisherPublicKeyDigest publisher){
 		return lastSegmentInterest(name, baseSegment(), publisher);
+	}
+	
+	/**
+	 * This method returns the last segment for the name provided.  If there are no segments for the supplied name,
+	 * the method will return null.  The function can be called with a starting segment, the method will attempt to
+	 * find the last segment after the provided segment number.  This method assumes either the last component of 
+	 * the supplied name is a segment or the next component of the name will be a segment.  It does not attempt to 
+	 * resolve the remainder of the prefix (for example, it will not attempt to distinguish which version to use). 
+	 * 
+	 * If the method is called with a segment in the name and as an additional parameter, the method will use the higher
+	 * number to locate the last segment.  Again, if no segment is found, the method will return null.
+	 * 
+	 * @param name
+	 * @param publisher
+	 * @param timeout
+	 * @param verifier
+	 * @param handle
+	 * @return
+	 * @throws IOException
+	 */
+	
+	public static ContentObject getLastSegment(ContentName name, PublisherPublicKeyDigest publisher, long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException{
+		ContentName segmentName = null;
+		ContentObject co = null;
+		Interest getLastInterest = null;
+		
+		//want to start with a name with a segment number in it
+		if(isSegment(name)){
+			//the name already has a segment...  could this be the segment we want?
+			segmentName = name;
+			getLastInterest = lastSegmentInterest(segmentName, publisher);
+		} else {
+			//this doesn't have a segment already
+			//the last segment could be the first one...
+			segmentName = segmentName(name, baseSegment());
+			getLastInterest = firstSegmentInterest(segmentName, publisher);
+		}
+	
+
+		while (true) {			
+			co = handle.get(getLastInterest, timeout);
+			if (co == null) {
+				Log.finer("Null returned from getLastSegment for name: {0}",name);
+				return null;
+			} else {
+				Log.finer("returned contentObject: {0}",co.fullName());
+			}
+			
+			//now we should have a content object after the segment in the name we started with, but is it the last one?
+			if (isSegment(co.name())) {
+				//double check that we have a segmented name
+				//we have a later segment, but is it the last one?
+				//check the final segment marker
+				if (isLastSegment(co)) {
+					//this is the last segment...  check if it verifies.
+					
+					//need to verify the content object
+					if (verifier.verify(co)) {
+						return co;
+					} else {
+						//this did not verify...  need to determine how to handle this
+						Log.warning("VERIFICATION FAILURE: " + co.name() + ", need to find better way to decide what to do next.");
+					}
+				} else {
+					//this was not the last segment..  use the co.name() to try again.
+					segmentName = new ContentName(getLastInterest.name().count(), co.name().components());
+					getLastInterest = lastSegmentInterest(segmentName, getSegmentNumber(co.name()), publisher);
+					
+					Log.fine("an object was returned...  but not the last segment, next Interest: {0}",getLastInterest);
+				}
+			} else {
+				Log.warning("SegmentationProfile.getLastSegment: had a content object returned that did not have a segment in the last component Interest = {0} ContentObject = {1}", segmentName, co.name());
+				return null;
+			}
+		}
+	}
+	
+	public static boolean isLastSegment(ContentObject co) {
+		if (isSegment(co.name())) {
+			//we have a segment to check...
+			if(!co.signedInfo().emptyFinalBlockID()) {
+				//the final block id is set
+				if(getSegmentNumber(co.name()) == getSegmentNumber(co.signedInfo().getFinalBlockID()))
+					return true;
+			}
+		}
+		return false;
+	}
+	
+	
+	/**
+	 * Builds an Exclude filter that excludes components that are not segments in the next component.
+	 * @param startingSegmetnComponent The latest segment component we know about. Can be null or
+	 * 			the SegmentationProfile.baseSegment() component to indicate that we want to start
+	 * 			from 0 (we don't have a known segment to start from). This exclude filter will
+	 * 			find segments *after* the segment represented in startingSegmentComponent.
+	 * @return An exclude filter.
+	 * 
+	 * TODO needs to be fully implemented
+	 */
+	public static Exclude acceptSegments(byte [] startingSegmentComponent) {
+		byte [] start = null;
+		// initially exclude name components just before the first segment, whether that is the
+		// 0th segment or the segment passed in
+		if ((null == startingSegmentComponent) || (SegmentationProfile.getSegmentNumber(startingSegmentComponent) == baseSegment())) {
+			start = SegmentationProfile.FIRST_SEGMENT_MARKER; 
+		} else {
+			start = startingSegmentComponent;
+		}
+		
+		ArrayList<Exclude.Element> ees = new ArrayList<Exclude.Element>();
+		ees.add(new ExcludeAny());
+		ees.add(new ExcludeComponent(start));
+		//ees.add(new ExcludeComponent(new byte [] { SEGMENT_MARKER+1} ));
+		//ees.add(new ExcludeAny());
+		
+		
+		return new Exclude(ees);
 	}
 	
 }

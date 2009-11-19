@@ -11,7 +11,7 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-AFTER : test_single_ccnd test_newface
+AFTER : test_single_ccnd test_ccndid test_newface
 BEFORE : test_single_ccnd_teardown
 
 ccndsmoketest || SkipTest no ccnd
@@ -40,7 +40,12 @@ PRBLOB="`ccnget /_ignored_$$ | openssl enc -base64`"
 
 echo PRBLOB is $PRBLOB >&2
 
-# We have the CCNDID of our ccnd in a file, left from test_newface
+# Dinged version, to make sure verification is there.
+# Uncommenting these should make the test fail.
+#PRBLOB="`ccnget /_ignored_$$ | ccn_ccnbtoxml - | sed -e s/_ignored_/-IGNORED-/ | ccn_xmltoccnb -w - | openssl enc -base64`"
+#echo Dinged PRBLOB is $PRBLOB >&2
+
+# We have the CCNDID of our ccnd in a file, left from test_ccndid
 CCNDID=`cat ccndid.out`
 
 # Now construct the interest.
@@ -58,10 +63,16 @@ cat <<EOF >prefixreg-request.xml
 EOF
 ccn_xmltoccnb -w prefixreg-request.xml || Fail botch constructing prefixreg-request.ccnb
 
+echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > prefixreg-pre.html
+
 # Try out the request
 ccndsmoketest -b send prefixreg-request.ccnb recv > prefixreg-response.ccnb
 
-ccn_ccnbtoxml prefixreg-response.ccnb || Fail did not get prefixreg response
+cmp -s /dev/null prefixreg-response.ccnb && Fail did not get prefixreg response
+ccn_ccnbtoxml prefixreg-response.ccnb || Failed to parse prefixreg response
 
-sleep 1
+ccnbx -d prefixreg-response.ccnb Content | ccn_ccnbtoxml -x -
+
+echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > prefixreg-post.html
+
 rm prefixreg-request.xml

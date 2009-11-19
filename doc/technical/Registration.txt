@@ -1,9 +1,6 @@
 CCNx Face Management and Registration Protocol
 ==============================================
-Revision 8/06/2009
 
-== Source references
-later.
 
 == Face Management Protocol
 The Face Management Protocol provides a method for an entity such as ccndc to control
@@ -67,8 +64,12 @@ FreshnessSeconds ::= nonNegativeInteger
 When FaceInstance is used as a request, the Action must be specified.
 It will not be present in a response.
 
-. `newface` - If a face matching the parameters does not already exist, an attempt is made to create it. Then if the face exists (whether new or old) the full description is returned as a FaceInstance.
-. `destroyface` - at least the FaceID must be present. If permitted, the face is destroyed.  (NYI)
+. `newface` - If a face matching the parameters does not already exist, 
+   an attempt is made to create it.
+   Then if the face exists (whether new or old)
+   the full description is returned as a FaceInstance.
+. `destroyface` - at least the FaceID must be present.
+   If permitted, the face is destroyed.
 . `queryface` - specification TBD
 
 === PublisherPublicKeyDigest
@@ -114,7 +115,7 @@ ForwardingEntry ::= Action?
 		   ForwardingFlags?
 		   FreshnessSeconds?
 
-Action		 ::= ("prefixreg")
+Action		 ::= ("prefixreg" | "selfreg" | "unreg")
 Name		 ::= the name prefix to be registered
 PublisherPublicKeyDigest ::= SHA-256 digest of the ccnd's public key (CCNDID)
 FaceID 		 ::= nonNegativeInteger
@@ -127,6 +128,10 @@ When ForwardingEntry is used as a request, the Action must be specified.
 It will not be present in a response.
 
 - `prefixreg` - Register (or re-register) the prefix on the specified face.
+- `selfreg` - Register (or re-register) the prefix on the current face; the
+  FaceID need not be present in the request, but if present it must match
+  the current face.
+- `unreg` - Remove the prefix registration for the specified face.
 
 === PublisherPublicKeyDigest
 Identifies the ccnd that the information is relevant for.
@@ -135,7 +140,7 @@ already addressed the appropriate node).
 PublisherPublicKeyDigest is always present in a response.
 
 === FaceID
-FaceID required in a `prefixreg` request.
+FaceID is required in `prefixreg` and `unreg` requests.
 FaceID is always present in a response.
 
 === Name

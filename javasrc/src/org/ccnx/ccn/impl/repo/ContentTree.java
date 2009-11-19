@@ -25,12 +25,12 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -582,13 +582,12 @@ public class ContentTree {
 			}
 
 			//the parent has children we need to return
-			ContentName c = new ContentName();
 			if (parent.oneChild!=null) {
-				names.add(new ContentName(c, parent.oneChild.component));
+				names.add(new ContentName(ContentName.ROOT, parent.oneChild.component));
 			} else {
 				if (parent.children!=null) {
 					for (TreeNode ch:parent.children.keySet())
-						names.add(new ContentName(c, ch.component));
+						names.add(new ContentName(ContentName.ROOT, ch.component));
 				}
 			}
 			

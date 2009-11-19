@@ -17,10 +17,12 @@
 
 package org.ccnx.ccn.impl.repo;
 
+import org.ccnx.ccn.CCNException;
+
 /**
  * Exceptions specific to Repositories
  */
-public class RepositoryException extends Exception {
+public class RepositoryException extends CCNException {
 	
 	private static final long serialVersionUID = -1467841589101068250L;
 

@@ -18,8 +18,10 @@ DUPDIR = stubs
 TESTS = $(ALLTESTS)
 ALLTESTS = \
   test_alone \
+  test_ccndid \
   test_ccnls_meta \
   test_coders \
+  test_destroyface \
   test_child_selector \
   test_final_teardown \
   test_finished \
@@ -32,6 +34,7 @@ ALLTESTS = \
   test_newface \
   test_prefixreg \
   test_prefix_registration \
+  test_selfreg \
   test_short_stuff \
   test_single_ccnd \
   test_single_ccnd_teardown \
@@ -43,7 +46,9 @@ ALLTESTS = \
 default all: $(SCRIPTSRC) testdriver
 
 clean:
-	rm -rf log logs depend testdriver STATUS SKIPPED FAILING *.out ephemeral*.ccnb keyfetch*.ccnb test_coders_*.ccnb prefix*.ccnb newface*.ccnb
+	rm -rf log logs depend testdriver STATUS SKIPPED FAILING \
+        *.out ephemeral*.ccnb keyfetch*.ccnb test_coders_*.ccnb  \
+        prefix*.ccnb newface*.ccnb *pre.html *post.html selfreg*.ccnb
 
 check test: $(SCRIPTSRC) testdriver stubs
 	mkdir -p log

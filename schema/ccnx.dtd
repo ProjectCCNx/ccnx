@@ -26,6 +26,28 @@
 <!ELEMENT LinkAuthenticator ((%publisherid;)?, NameComponentCount?, Timestamp?, Type?, ContentDigest?)>
 <!ATTLIST LinkAuthenticator %commonattrs;>
 
+<!ELEMENT KeyValueSet	(Entry*)>
+<!ATTLIST KeyValueSet	%commonattrs;>
+
+<!ENTITY % valuechoice "IntegerValue 	       |
+                        PositiveIntegerValue   |
+                        DecimalValue           |
+                        StringValue            |
+                        BinaryValue">
+
+<!ELEMENT Entry	(Key, (%valuechoice;))>
+<!ATTLIST Entry	%commonattrs;>
+
+<!ELEMENT IntegerValue	(#PCDATA)>	<!-- integer -->
+<!ELEMENT PositiveIntegerValue	(#PCDATA)>	<!-- nonNegativeInteger -->
+<!ELEMENT DecimalValue	(#PCDATA)>	<!-- decimal -->
+<!ELEMENT StringValue	(#PCDATA)>	<!-- string -->
+
+<!ELEMENT BinaryValue	(#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST BinaryValue   ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ATTLIST BinaryValue	%commonattrs;>
+
+
 <!ELEMENT Header	(Start, Count, BlockSize, Length, RootDigest, ContentDigest?)>
 <!ATTLIST Header	%commonattrs;>
 

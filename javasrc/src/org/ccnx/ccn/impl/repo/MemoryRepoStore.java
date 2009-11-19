@@ -18,9 +18,12 @@
 package org.ccnx.ccn.impl.repo;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -53,8 +56,20 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
 		return CURRENT_VERSION;
 	}
 	
-	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix,
-				String nameSpace) throws RepositoryException {
+	public void initialize(String repositoryRoot, File policyFile, String localName, String globalPrefix,
+				String nameSpace, CCNHandle handle) throws RepositoryException {
+		if (null == handle) {
+			// use the default user credentials
+			try {
+				handle = CCNHandle.open();
+			} catch (IOException e) {
+				throw new RepositoryException("IOException opening a CCNHandle!", e);
+			} catch (ConfigurationException e) {
+				throw new RepositoryException("ConfigurationException opening a CCNHandle!", e);
+			}
+		}
+		_handle = handle;
+	
 		if (null != _index) {
 			throw new RepositoryException("Attempt to re-initialize " + this.getClass().getName());
 		}

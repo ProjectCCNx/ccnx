@@ -32,12 +32,17 @@ import java.util.Map;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
+import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -55,23 +60,32 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 
 	public final static String CURRENT_VERSION = "1.4";
 		
-	public final static String META_DIR = ".meta";
-	public final static String NORMAL_COMPONENT = "0";
-	public final static String SPLIT_COMPONENT = "1";
-	
-	private static String DEFAULT_LOCAL_NAME = "Repository";
-	private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
-	private static final String REPO_PRIVATE = "private";
-	private static final String VERSION = "version";
-	private static final String REPO_LOCALNAME = "local";
-	private static final String REPO_GLOBALPREFIX = "global";
+	public static class LogStructRepoStoreProfile implements CCNProfile {
+		public final static String META_DIR = ".meta";
+		public final static String NORMAL_COMPONENT = "0";
+		public final static String SPLIT_COMPONENT = "1";
 
-	private static String CONTENT_FILE_PREFIX = "repoFile";
-	private static String DEBUG_TREEDUMP_FILE = "debugNamesTree";
-	
-	private static String DIAG_NAMETREE = "nametree"; // Diagnostic/signal to dump name tree to debug file
-	private static String DIAG_NAMETREEWIDE = "nametreewide"; // Same as DIAG_NAMETREE but with wide names per node
+		private static String DEFAULT_LOCAL_NAME = "Repository";
+		private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
+		private static final String REPO_PRIVATE = "private";
+		private static final String VERSION = "version";
+		private static final String REPO_LOCALNAME = "local";
+		private static final String REPO_GLOBALPREFIX = "global";
+		
+		public static final char [] KEYSTORE_PASSWORD = "Th1s 1s n0t 8 g00d R3p0s1t0ry p8ssw0rd!".toCharArray();
+		public static final String KEYSTORE_FILE = "ccnx_keystore";
+		public static final String REPOSITORY_USER = "Repository";
 
+		private static String CONTENT_FILE_PREFIX = "repoFile";
+		private static String DEBUG_TREEDUMP_FILE = "debugNamesTree";
+
+		private static String DIAG_NAMETREE = "nametree"; // Diagnostic/signal to dump name tree to debug file
+		private static String DIAG_NAMETREEWIDE = "nametreewide"; // Same as DIAG_NAMETREE but with wide names per node
+
+		private static ContentName PRIVATE_DATA_PREFIX = ContentName.fromNative(new String[]{META_DIR, REPO_PRIVATE});
+
+	}
+	
 	protected String _repositoryRoot = null;
 	protected File _repositoryFile;
 
@@ -141,8 +155,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		assert(_repositoryFile.isDirectory());
 		String[] filenames = _repositoryFile.list();
 		for (int i = 0; i < filenames.length; i++) {
-			if (filenames[i].startsWith(CONTENT_FILE_PREFIX)) {
-				String indexPart = filenames[i].substring(CONTENT_FILE_PREFIX.length());
+			if (filenames[i].startsWith(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX)) {
+				String indexPart = filenames[i].substring(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX.length());
 				if (null != indexPart && indexPart.length() > 0) {
 					try {
 						Integer index = Integer.parseInt(indexPart);
@@ -207,24 +221,28 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	/**
 	 * Initialize the repository
 	 * 
-	 * @param handle a CCNHandle used to retrieve keys for storing repository private data as ContentObjects
 	 * @param repositoryRoot the directory containing the files to store a repository. A new directory is created if this doesn't yet exist
 	 * @param policyFile a file containing policy data to define the initial repository policy (see BasicPolicy)
 	 * @param localName the local name for this repository as a slash separated String (defaults if null)
 	 * @param globalPrefix the global prefix for this repository as a slash separated String (defaults if null)
 	 * @param An initial namespace (defaults to namespace stored in repository, or / if none)
 	 * @throws RepositoryException if the policyFile, localName, or globalName are improperly formatted
-	 * @throws ContentDecodingException 
+	 * @param handle optional CCNHandle if caller wants to override the
+	 * 	default connection/identity behavior of the repository -- this
+	 * 	provides a KeyManager and handle for the repository to use to 
+	 * 	obtain its keys and communicate with ccnd. If null, the repository
+	 * 	will configure its own based on policy, or if none, create one
+	 * 	using the executing user's defaults.
 	 */
-	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix,
-				String namespace) throws RepositoryException {
+	public void initialize(String repositoryRoot, File policyFile, String localName, String globalPrefix,
+				String namespace, CCNHandle handle) throws RepositoryException {
 		PolicyXML pxml = null;
 		boolean nameFromArgs = (null != localName);
 		boolean globalFromArgs = (null != globalPrefix);
 		if (null == localName)
-			localName = DEFAULT_LOCAL_NAME;
+			localName = LogStructRepoStoreProfile.DEFAULT_LOCAL_NAME;
 		if (null == globalPrefix) 
-			globalPrefix = DEFAULT_GLOBAL_NAME;
+			globalPrefix = LogStructRepoStoreProfile.DEFAULT_GLOBAL_NAME;
 		pxml = startInitPolicy(policyFile, namespace);
 
 		if (repositoryRoot == null) {
@@ -236,6 +254,27 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
 		
+		// Build our handle
+		if (null == handle) {
+			// Load our keystore. Make one if none exists; use the
+			// default kestore type and key algorithm.
+			try {
+				KeyManager km = 
+					new BasicKeyManager(LogStructRepoStoreProfile.REPOSITORY_USER, 
+							_repositoryRoot, LogStructRepoStoreProfile.KEYSTORE_FILE,
+							null, null, LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
+				km.initialize();
+				handle = CCNHandle.open(km);
+			} catch (ConfigurationException e) {
+				Log.warning("ConfigurationException creating repository key store: " + e.getMessage());
+				throw new RepositoryException("ConfigurationException creating repository key store!", e);
+			} catch (IOException e) {
+				Log.warning("IOException creating repository key store: " + e.getMessage());
+				throw new RepositoryException("IOException creating repository key store!", e);
+			}
+		}
+		_handle = handle;
+
 		// Internal initialization
 		_files = new HashMap<Integer, RepoFile>();
 		int maxFileIndex = createIndex();
@@ -248,7 +287,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			if (maxFileIndex == 0) {
 				maxFileIndex = 1; // the index of a file we will actually write
 				RepoFile rfile = new RepoFile();
-				rfile.file = new File(_repositoryFile, CONTENT_FILE_PREFIX+"1");
+				rfile.file = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX+"1");
 				rfile.openFile = new RandomAccessFile(rfile.file, "rw");
 				rfile.nextWritePos = 0;
 				_files.put(new Integer(maxFileIndex), rfile);
@@ -264,13 +303,15 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		} catch (FileNotFoundException e) {
 			Log.warning("Error opening content output file index " + maxFileIndex);
 		}
-		
+			
 		// Verify stored policy info
-		String version = checkFile(VERSION, CURRENT_VERSION, handle, false);
+		// TODO - we shouldn't do this if the user has specified a policy file which already has
+		// this information
+		String version = checkFile(LogStructRepoStoreProfile.VERSION, CURRENT_VERSION, false);
 		if (version != null && !version.trim().equals(CURRENT_VERSION))
 			throw new RepositoryException("Bad repository version: " + version);
 
-		String checkName = checkFile(REPO_LOCALNAME, localName, handle, nameFromArgs);
+		String checkName = checkFile(LogStructRepoStoreProfile.REPO_LOCALNAME, localName, nameFromArgs);
 		localName = checkName != null ? checkName : localName;
 		try {
 			_policy.setLocalName(localName);		
@@ -278,18 +319,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			throw new RepositoryException(e3.getMessage());
 		}
 		
-		/**
-		 * Try to read policy from storage if we don't have full policy source yet
-		 */
-		if (null == policyFile) {
-			try {
-				readPolicy(localName);
-			} catch (ContentDecodingException e) {
-				throw new RepositoryException(e.getMessage());
-			}
-		}
-		
-		checkName = checkFile(REPO_GLOBALPREFIX, globalPrefix, handle, globalFromArgs);
+		checkName = checkFile(LogStructRepoStoreProfile.REPO_GLOBALPREFIX, globalPrefix, globalFromArgs);
 		globalPrefix = checkName != null ? checkName : globalPrefix;
 		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
 			Log.info("REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
@@ -303,8 +333,17 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			throw new RepositoryException(e2.getMessage());
 		}
 		
-		// If we didn't read in our policy from a previous saved policy file, save the policy now
-		if (null != pxml) {
+		/**
+		 * Try to read policy from storage if we don't have full policy source yet
+		 */
+		if (null == pxml) {
+			try {
+				readPolicy(localName);
+			} catch (ContentDecodingException e) {
+				throw new RepositoryException(e.getMessage());
+			}
+		} else { // If we didn't read in our policy from a previous saved policy file, save the policy now
+			pxml = _policy.getPolicyXML();
 			ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), _policy.getLocalName());
 			try {
 				PolicyObject po = new PolicyObject(policyName, pxml, null, this);
@@ -331,7 +370,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		// Make sure content is within allowable nameSpace
 		boolean nameSpaceOK = false;
 		synchronized (_policy) {
-			for (ContentName name : _policy.getNameSpace()) {
+			for (ContentName name : _policy.getNamespace()) {
 				if (name.isPrefixOf(content.name())) {
 					nameSpaceOK = true;
 					break;
@@ -349,14 +388,14 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			synchronized(_activeWriteFile) {
 				assert(null != _activeWriteFile.openFile);
 				FileRef ref = new FileRef();
-				ref.id = Integer.parseInt(_activeWriteFile.file.getName().substring(CONTENT_FILE_PREFIX.length()));
+				ref.id = Integer.parseInt(_activeWriteFile.file.getName().substring(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX.length()));
 				ref.offset = _activeWriteFile.nextWritePos;
 				_activeWriteFile.openFile.seek(_activeWriteFile.nextWritePos);
 				OutputStream os = new RandomAccessOutputStream(_activeWriteFile.openFile);
 				content.encode(os);
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
 				_index.insert(content, ref, System.currentTimeMillis(), this, ner);
-				if(ner==null || ner.getPrefix()==null){
+				if (ner==null || ner.getPrefix()==null) {
 					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
 						Log.fine("new content did not trigger an interest flag");
 					}
@@ -408,6 +447,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		}
 	}
 	
+	private ContentName getPrivateContentName(String fileName) {
+		return ContentName.fromNative(LogStructRepoStoreProfile.PRIVATE_DATA_PREFIX, fileName);
+	}
+	
 	/**
 	 * Check data "file" - create new one if none exists or "forceWrite" is set.
 	 * Files are always versioned so we can find the latest one.
@@ -415,12 +458,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * TODO - Co Should be signed with the "repository's" signature.
 	 * @throws RepositoryException
 	 */
-	private String checkFile(String fileName, String contents, CCNHandle handle, boolean forceWrite) throws RepositoryException {
-		byte[][] components = new byte[3][];
-		components[0] = META_DIR.getBytes();
-		components[1] = REPO_PRIVATE.getBytes();
-		components[2] = fileName.getBytes();
-		ContentName name = new ContentName(components);
+	private String checkFile(String fileName, String contents, boolean forceWrite) throws RepositoryException {
+		ContentName name = getPrivateContentName(fileName);
 		ContentObject co = getContent(Interest.last(name, 3));
 		
 		if (!forceWrite && co != null) {
@@ -428,9 +467,9 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		}
 		
 		ContentName versionedName = VersioningProfile.addVersion(name);
-		PublisherPublicKeyDigest publisher = handle.keyManager().getDefaultKeyID();
-		PrivateKey signingKey = handle.keyManager().getSigningKey(publisher);
-		KeyLocator locator = handle.keyManager().getKeyLocator(signingKey);
+		PublisherPublicKeyDigest publisher = getHandle().keyManager().getDefaultKeyID();
+		PrivateKey signingKey = getHandle().keyManager().getSigningKey(publisher);
+		KeyLocator locator = getHandle().keyManager().getKeyLocator(signingKey);
 		try {
 			co = new ContentObject(versionedName, new SignedInfo(publisher, locator), contents.getBytes(), signingKey);
 		} catch (Exception e) {
@@ -445,7 +484,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	
 	protected void dumpNames(int nodelen) {
 		// Debug: dump names tree to file
-		File namesFile = new File(_repositoryFile, DEBUG_TREEDUMP_FILE);
+		File namesFile = new File(_repositoryFile, LogStructRepoStoreProfile.DEBUG_TREEDUMP_FILE);
 		try {
 			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
 				Log.info("Dumping names to " + namesFile.getAbsolutePath() + " (len " + nodelen + ")");
@@ -466,10 +505,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * @param name "nametree" or "nametreewide" to decide whether to limit the printout length of components
 	 */
 	public boolean diagnostic(String name) {
-		if (0 == name.compareToIgnoreCase(DIAG_NAMETREE)) {
+		if (0 == name.compareToIgnoreCase(LogStructRepoStoreProfile.DIAG_NAMETREE)) {
 			dumpNames(35);
 			return true;
-		} else if (0 == name.compareToIgnoreCase(DIAG_NAMETREEWIDE)) {
+		} else if (0 == name.compareToIgnoreCase(LogStructRepoStoreProfile.DIAG_NAMETREEWIDE)) {
 			dumpNames(-1);
 			return true;
 		}

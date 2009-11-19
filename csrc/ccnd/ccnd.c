@@ -459,7 +459,6 @@ finalize_content(struct hashtb_enumerator *content_enumerator)
     }
 }
 
-
 static int
 content_skiplist_findbefore(struct ccnd_handle *h,
                             const unsigned char *key,
@@ -1403,6 +1402,41 @@ check_dgram_faces(struct ccnd_handle *h)
 }
 
 /**
+ * Destroys the face identified by faceid.
+ * @returns 0 for success, -1 for failure.
+ */
+static int
+destroy_face(struct ccnd_handle *h, unsigned faceid)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct face *face;
+    int dgram_chk = CCN_FACE_DGRAM | CCN_FACE_MCAST;
+    int dgram_want = CCN_FACE_DGRAM;
+    
+    ccnd_msg(h, "destroy_face %u", faceid);
+    face = face_from_faceid(h, faceid);
+    if (face == NULL)
+        return(-1);
+    ccnd_msg(h, "destroy_face line %d", __LINE__);
+    if ((face->flags & dgram_chk) == dgram_want) {
+        ccnd_msg(h, "destroy_face line %d", __LINE__);
+        hashtb_start(h->dgram_faces, e);
+        hashtb_seek(e, face->addr, face->addrlen, 0);
+        if (e->data == face)
+            face = NULL;
+        hashtb_delete(e);
+        hashtb_end(e);
+        if (face == NULL)
+            return(0);
+    }
+    ccnd_msg(h, "destroy_face line %d", __LINE__);
+    shutdown_client_fd(h, face->recv_fd);
+    face = NULL;
+    return(0);
+}
+
+/**
  * Remove expired faces from npe->forward_to
  */
 static void
@@ -1570,6 +1604,7 @@ clean_deamon(struct ccn_schedule *sched,
     struct content_entry *content = NULL;
     int res = 0;
     int ignore;
+    int i;
     
     /*
      * If we ran into our processing limit (check_limit) last time,
@@ -1583,8 +1618,23 @@ clean_deamon(struct ccn_schedule *sched,
     n = hashtb_n(h->content_tab);
     if (n <= h->capacity)
         return(15000000);
+    /* Toss unsolicited content first */
+    for (i = 0; i < h->unsol->n; i++) {
+        if (i == check_limit) {
+            for (i = check_limit; i < h->unsol->n; i++)
+                h->unsol->buf[i-check_limit] = h->unsol->buf[i];
+            h->unsol->n -= check_limit;
+            return(500);
+        }
+        a = h->unsol->buf[i];
+        content = content_from_accession(h, a);
+        if (content != NULL &&
+            (content->flags & CCN_CONTENT_ENTRY_PRECIOUS) == 0)
+            remove_content(h, content);
+    }
+    h->unsol->n = 0;
     if (h->min_stale <= h->max_stale) {
-        /* clean out stale content first */
+        /* clean out stale content next */
         limit = h->max_stale;
         if (limit > h->accession)
             limit = h->accession;
@@ -1802,6 +1852,7 @@ register_new_face(struct ccnd_handle *h, struct face *face)
     }
 }
 
+// XXX This form is deprecated
 struct ccn_charbuf *
 ccnd_reg_self(struct ccnd_handle *h, const unsigned char *msg, size_t size)
 {
@@ -1974,18 +2025,81 @@ Finish:
 }
 
 /**
- * @brief Process a prefixreg request for the ccnd internal client.
+ * @brief Process a destroyface request for the ccnd internal client.
  * @param h is the ccnd handle
- * @param msg points to a ccnd-encoded ContentObject containing a
- *          ForwardingEntry in its Content.
+ * @param msg points to a ccnd-encoded ContentObject containing a FaceInstance
+            in its Content.
  * @param size is its size in bytes
  * @result on success the returned charbuf holds a new ccnd-encoded
- *         ForwardingEntry;
+ *         FaceInstance including faceid;
  *         returns NULL for any error.
  *
+ * Is is permitted for the face to already exist.
+ * A newly created face will have no registered prefixes, and so will not
+ * receive any traffic.
  */
 struct ccn_charbuf *
-ccnd_req_prefixreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+ccnd_req_destroyface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+{
+    struct ccn_parsed_ContentObject pco = {0};
+    int res;
+    const unsigned char *req;
+    size_t req_size;
+    struct ccn_charbuf *result = NULL;
+    struct ccn_face_instance *face_instance = NULL;
+    //struct face *face = NULL;
+    struct face *reqface = NULL;
+
+    res = ccn_parse_ContentObject(msg, size, &pco, NULL);
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    if (res < 0)
+        goto Finish;        
+    // XXX - should verify signature.
+    res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
+    if (res < 0)
+        goto Finish;
+    face_instance = ccn_face_instance_parse(req, req_size);
+    if (face_instance == NULL || face_instance->action == NULL)
+        goto Finish;
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    if (strcmp(face_instance->action, "destroyface") != 0)
+        goto Finish;
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    if (face_instance->ccnd_id_size == sizeof(h->ccnd_id)) {
+        if (memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0)
+            goto Finish;
+    }
+    else if (face_instance->ccnd_id_size |= 0)
+        goto Finish;
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    if (face_instance->faceid == 0)
+        goto Finish;
+    /* consider the source ... */
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+        goto Finish;
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    res = destroy_face(h, face_instance->faceid);
+    if (res < 0)
+        goto Finish;
+    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    result = ccn_charbuf_create();
+    face_instance->action = NULL;
+    face_instance->ccnd_id = h->ccnd_id;
+    face_instance->ccnd_id_size = sizeof(h->ccnd_id);
+    face_instance->lifetime = 0;
+    res = ccnb_append_face_instance(result, face_instance);
+    if (res < 0)
+        ccn_charbuf_destroy(&result);
+Finish:
+    ccn_face_instance_destroy(&face_instance);
+    return(result);
+}
+
+static struct ccn_charbuf *
+ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
+                   const unsigned char *msg, size_t size, int selfreg)
 {
     struct ccn_parsed_ContentObject pco = {0};
     int res;
@@ -2007,8 +2121,18 @@ ccnd_req_prefixreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     forwarding_entry = ccn_forwarding_entry_parse(req, req_size);
     if (forwarding_entry == NULL || forwarding_entry->action == NULL)
         goto Finish;
-    if (strcmp(forwarding_entry->action, "prefixreg") != 0)
+    if (selfreg) {
+        if (strcmp(forwarding_entry->action, "selfreg") != 0)
+            goto Finish;
+        if (forwarding_entry->faceid == ~0)
+            forwarding_entry->faceid = h->interest_faceid;
+        else if (forwarding_entry->faceid != h->interest_faceid)
+            goto Finish;
+    }
+    else {
+        if (strcmp(forwarding_entry->action, "prefixreg") != 0)
         goto Finish;
+    }
     if (forwarding_entry->name_prefix == NULL)
         goto Finish;
     if (forwarding_entry->ccnd_id_size == sizeof(h->ccnd_id)) {
@@ -2054,6 +2178,62 @@ Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
     return(result);
+}
+
+/**
+ * @brief Process a prefixreg request for the ccnd internal client.
+ * @param h is the ccnd handle
+ * @param msg points to a ccnd-encoded ContentObject containing a
+ *          ForwardingEntry in its Content.
+ * @param size is its size in bytes
+ * @param selfreg is true if this is actually a self-registration
+ * @result on success the returned charbuf holds a new ccnd-encoded
+ *         ForwardingEntry;
+ *         returns NULL for any error.
+ *
+ */
+struct ccn_charbuf *
+ccnd_req_prefixreg(struct ccnd_handle *h,
+                   const unsigned char *msg, size_t size)
+{
+    return(ccnd_req_prefix_or_self_reg(h, msg, size, 0));
+}
+
+/**
+ * @brief Process a selfreg request for the ccnd internal client.
+ * @param h is the ccnd handle
+ * @param msg points to a ccnd-encoded ContentObject containing a
+ *          ForwardingEntry in its Content.
+ * @param size is its size in bytes
+ * @result on success the returned charbuf holds a new ccnd-encoded
+ *         ForwardingEntry;
+ *         returns NULL for any error.
+ *
+ */
+struct ccn_charbuf *
+ccnd_req_selfreg(struct ccnd_handle *h,
+                   const unsigned char *msg, size_t size)
+{
+    return(ccnd_req_prefix_or_self_reg(h, msg, size, 1));
+}
+
+/**
+ * @brief Process an unreg request for the ccnd internal client.
+ * @param h is the ccnd handle
+ * @param msg points to a ccnd-encoded ContentObject containing a
+ *          ForwardingEntry in its Content.
+ * @param size is its size in bytes
+ * @result on success the returned charbuf holds a new ccnd-encoded
+ *         ForwardingEntry;
+ *         returns NULL for any error.
+ *
+ */
+struct ccn_charbuf *
+ccnd_req_unreg(struct ccnd_handle *h,
+                   const unsigned char *msg, size_t size)
+{
+    ccnd_msg(h, "unreg request not yet implemented");
+    return(NULL);
 }
 
 /**
@@ -2936,8 +3116,10 @@ Bail:
         struct content_queue *q;
         n_matches = match_interests(h, content, &obj, NULL, face);
         if (res == HT_NEW_ENTRY && n_matches == 0 &&
-            (face->flags && CCN_FACE_GG) == 0)
+            (face->flags && CCN_FACE_GG) == 0) {
             content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
+            ccn_indexbuf_append_element(h->unsol, content->accession);
+        }
         for (c = 0; c < CCN_CQ_N; c++) {
             q = face->q[c];
             if (q != NULL) {
@@ -3432,6 +3614,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->sparse_straggler_tab = hashtb_create(sizeof(struct sparse_straggler_entry), NULL);
     h->min_stale = ~0;
     h->max_stale = 0;
+    h->unsol = ccn_indexbuf_create();
     h->ticktock.descr[0] = 'C';
     h->ticktock.micros_per_base = 1000000;
     h->ticktock.gettime = &ccnd_gettime;

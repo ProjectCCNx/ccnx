@@ -41,6 +41,7 @@
 #include <ccn/digest.h>
 #include <ccn/hashtb.h>
 #include <ccn/signing.h>
+#include <ccn/uri.h>
 
 struct ccn {
     int sock;
@@ -48,6 +49,7 @@ struct ccn {
     struct ccn_charbuf *interestbuf;
     struct ccn_charbuf *inbuf;
     struct ccn_charbuf *outbuf;
+    struct ccn_charbuf *ccndid;
     struct hashtb *interests_by_prefix;
     struct hashtb *interest_filters;
     struct ccn_skeleton_decoder decoder;
@@ -64,6 +66,7 @@ struct ccn {
 };
 
 struct expressed_interest;
+struct ccn_reg_closure;
 
 struct interests_by_prefix { /* keyed by components of name prefix */
     struct expressed_interest *list;
@@ -83,6 +86,14 @@ struct expressed_interest {
 
 struct interest_filter { /* keyed by components of name */
     struct ccn_closure *action;
+    struct ccn_reg_closure *ccn_reg_closure;
+    struct timeval expiry;       /* Expiration time */
+    int waiting_ccndid;
+};
+
+struct ccn_reg_closure {
+    struct ccn_closure action;
+    struct interest_filter *interest_filter;
 };
 
 #define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, ccn_note_err(h))
@@ -95,6 +106,18 @@ struct interest_filter { /* keyed by components of name */
     do { NOTE_ERR(h, -76); ccn_perror(h, "Please write some more code here"); } while (0)
 
 static void ccn_refresh_interest(struct ccn *, struct expressed_interest *);
+static void ccn_initiate_prefix_reg(struct ccn *,
+                                    const void *, size_t,
+                                    struct interest_filter *);
+static int
+tv_earlier(const struct timeval *a, const struct timeval *b)
+{
+    if (a->tv_sec > b->tv_sec)
+        return(0);
+    if (a->tv_sec < b->tv_sec)
+        return(1);
+    return(a->tv_usec < b->tv_usec);
+}
 
 /**
  * Produce message on standard error output describing the last
@@ -551,6 +574,16 @@ ccn_express_interest(struct ccn *h,
     return(0);
 }
 
+static void
+finalize_interest_filter(struct hashtb_enumerator *e)
+{
+    struct interest_filter *i = e->data;
+    if (i->ccn_reg_closure != NULL) {
+        i->ccn_reg_closure->interest_filter = NULL;
+        i->ccn_reg_closure = NULL;
+    }
+}
+
 int
 ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
                         struct ccn_closure *action)
@@ -560,7 +593,9 @@ ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
     int res;
     struct interest_filter *entry;
     if (h->interest_filters == NULL) {
-        h->interest_filters = hashtb_create(sizeof(struct interest_filter), NULL);
+        struct hashtb_param param = {0};
+        param.finalize = &finalize_interest_filter;
+        h->interest_filters = hashtb_create(sizeof(struct interest_filter), &param);
         if (h->interest_filters == NULL)
             return(NOTE_ERRNO(h));
     }
@@ -784,15 +819,14 @@ ccn_cache_key(struct ccn *h,
  * verify it.  It might be present in our cache of keys, or in the
  * object itself; in either of these cases, we can satisfy the request
  * right away. Or there may be an indirection (a KeyName), in which case
- * return without the key. The final possibility
- * is that there is no key locator we can make sense of.
+ * return without the key. The final possibility is that there is no key
+ * locator we can make sense of.
  * @returns negative for error, 0 when pubkey is filled in,
  *         or 1 if the key needs to be requested.
  */
 static int
 ccn_locate_key(struct ccn *h,
-               unsigned char *msg,
-               size_t size,
+               const unsigned char *msg,
                struct ccn_parsed_ContentObject *pco,
                struct ccn_pkey **pubkey)
 {
@@ -1069,7 +1103,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                     int type = ccn_get_content_type(msg, info.pco);
                                     if (type == CCN_CONTENT_KEY)
                                         res = ccn_cache_key(h, msg, size, info.pco);
-                                    res = ccn_locate_key(h, msg, size, info.pco, &pubkey);
+                                    res = ccn_locate_key(h, msg, info.pco, &pubkey);
                                     if (res == 0) {
                                         /* we have the pubkey, use it to verify the msg */
                                         res = ccn_verify_signature(msg, size, info.pco, pubkey);
@@ -1153,6 +1187,22 @@ ccn_process_input(struct ccn *h)
         d->index -= msgstart;
     }
     return(0);
+}
+
+static void
+ccn_update_refresh_us(struct ccn *h, struct timeval *tv)
+{
+    int delta;
+    if (tv->tv_sec < h->now.tv_sec)
+        return;
+    if (tv->tv_sec > h->now.tv_sec + CCN_INTEREST_LIFETIME_MICROSEC / 100000)
+        return;
+    delta = (h->now.tv_sec  - tv->tv_sec)*1000000 +
+            (h->now.tv_usec - tv->tv_usec);
+    if (delta < 0)
+        delta = 0;
+    if (delta < h->refresh_us)
+        h->refresh_us = delta;
 }
 
 static void
@@ -1242,6 +1292,23 @@ ccn_clean_all_interests(struct ccn *h)
     hashtb_end(e);
 }
 
+static void
+ccn_notify_ccndid_changed(struct ccn *h)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    if (h->interest_filters != NULL) {
+        for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
+            struct interest_filter *i = e->data;
+            if (i->waiting_ccndid) {
+                i->expiry = h->now;
+                i->waiting_ccndid = 0;
+            }
+        }
+        hashtb_end(e);
+    }
+}
+
 /**
  * Process any scheduled operations that are due.
  * This is not used by normal ccn clients, but is made available for use
@@ -1265,9 +1332,12 @@ ccn_process_scheduled_operations(struct ccn *h)
     if (h->interest_filters != NULL) {
         for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
             struct interest_filter *i = e->data;
-            // XXX If the registration is expiring, refresh it
-            // Otherwise update h->refresh_us
-            if (i == NULL) abort(); // Silence unused var warning for now.
+            if (tv_earlier(&i->expiry, &h->now)) {
+                /* registration is expiring, refresh it */
+                ccn_initiate_prefix_reg(h, e->key, e->keysize, i);
+            }
+            else
+                ccn_update_refresh_us(h, &i->expiry);
         }
         hashtb_end(e);
     }
@@ -1503,3 +1573,160 @@ ccn_get(struct ccn *h,
     }
     return(res);
 }
+
+static enum ccn_upcall_res
+handle_ping_response(struct ccn_closure *selfp,
+                     enum ccn_upcall_kind kind,
+                     struct ccn_upcall_info *info)
+{
+    int res;
+    const unsigned char *ccndid = NULL;
+    size_t size = 0;
+    struct ccn *h = info->h;
+    
+    if (kind == CCN_UPCALL_FINAL) {
+        fprintf(stderr, "ping final\n");
+        free(selfp);
+        return(CCN_UPCALL_RESULT_OK);
+    }
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED);
+    return(CCN_UPCALL_RESULT_VERIFY);
+    if (kind != CCN_UPCALL_CONTENT) {
+        NOTE_ERR(h, -1000 - kind);
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
+                              info->content_ccnb,
+                              info->pco->offset[CCN_PCO_B_PublisherPublicKeyDigest],
+                              info->pco->offset[CCN_PCO_E_PublisherPublicKeyDigest],
+                              &ccndid,
+                              &size);
+    if (res < 0) {
+        NOTE_ERR(h, -1);
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    if (h->ccndid == NULL) {
+        h->ccndid = ccn_charbuf_create();
+        if (h->ccndid == NULL)
+            return(NOTE_ERRNO(h));
+    }
+    h->ccndid->length = 0;
+    ccn_charbuf_append(h->ccndid, ccndid, size);
+    ccn_notify_ccndid_changed(h);
+}
+
+static void
+ccn_initiate_ping(struct ccn *h)
+{
+    struct ccn_charbuf *name = NULL;
+    struct ccn_closure *action = NULL;
+    
+    name = ccn_charbuf_create();
+    ccn_name_from_uri(name, "/ccnx/ping");
+    ccn_name_append(name, &h->now, sizeof(h->now));
+    action = calloc(1, sizeof(*action));
+    action->p = &handle_ping_response;
+    ccn_express_interest(h, name, action, NULL);
+    ccn_charbuf_destroy(&name);
+}
+
+static enum ccn_upcall_res
+handle_prefix_reg_reply(
+    struct ccn_closure *selfp,
+    enum ccn_upcall_kind kind,
+    struct ccn_upcall_info *info)
+{
+    struct ccn_reg_closure *md = selfp->data;
+    struct ccn *h = info->h;
+    int lifetime = 10;
+    
+    if (kind == CCN_UPCALL_FINAL) {
+        // fprintf(stderr, "GOT TO handle_prefix_reg_reply FINAL\n");
+        if (selfp != &md->action)
+            abort();
+        if (md->interest_filter != NULL)
+            md->interest_filter->ccn_reg_closure = NULL;
+        selfp->data = NULL;
+        free(md);
+        return(CCN_UPCALL_RESULT_OK);
+    }
+    if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
+        return(CCN_UPCALL_RESULT_REEXPRESS);
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED)
+        return(CCN_UPCALL_RESULT_VERIFY);
+    if (kind != CCN_UPCALL_CONTENT) {
+        NOTE_ERR(h, -1000 - kind);
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    /* Examine response, determine lifetime. */
+    fprintf(stderr, "GOT TO STUB handle_prefix_reg_reply\n");
+    md->interest_filter->expiry = h->now;
+    md->interest_filter->expiry.tv_sec += lifetime;
+    return(CCN_UPCALL_RESULT_OK);
+}
+
+static void
+ccn_initiate_prefix_reg(struct ccn *h,
+                        const void *prefix, size_t prefix_size,
+                        struct interest_filter *i)
+{
+    struct ccn_reg_closure *p = NULL;
+    struct ccn_charbuf *reqname = NULL;
+    struct ccn_charbuf *templ = NULL;
+
+    i->expiry = h->now;
+    i->expiry.tv_sec += 60;
+    /* This test is mainly for the benefit of the ccnd internal client */
+    if (h->sock == -1)
+        return;
+    fprintf(stderr, "GOT TO STUB ccn_initiate_prefix_reg()\n");
+    if (h->ccndid == NULL) {
+        ccn_initiate_ping(h);
+        i->waiting_ccndid = 1;
+        return;
+    }
+    if (i->ccn_reg_closure != NULL)
+        return;
+    p = calloc(1, sizeof(*p));
+    if (p == NULL) {
+        NOTE_ERRNO(h);
+        return;
+    }
+    p->action.data = p;
+    p->action.p = &handle_prefix_reg_reply;
+    p->interest_filter = i;
+    i->ccn_reg_closure = p;
+    reqname = ccn_charbuf_create();
+    ccn_name_from_uri(reqname, "/ccnx/ping"); // STUB
+    ccn_express_interest(h, reqname, &p->action, templ);
+    ccn_charbuf_destroy(&reqname);
+    ccn_charbuf_destroy(&templ);
+}
+
+/**
+ * Verify a ContentObject using the public key from either the object
+ * itself or our cache of keys.
+ *
+ * This routine does not attempt to fetch the public key if it is not
+ * at hand.
+ * @returns negative for error, 0 verification success,
+ *         or 1 if the key needs to be requested.
+ */
+int
+ccn_verify_content(struct ccn *h,
+                   const unsigned char *msg,
+                   struct ccn_parsed_ContentObject *pco)
+{
+    struct ccn_pkey *pubkey = NULL;
+    int res;
+    unsigned char *buf = (unsigned char *)msg; /* XXX - discard const */
+    
+    res = ccn_locate_key(h, msg, pco, &pubkey);
+    if (res == 0) {
+        /* we have the pubkey, use it to verify the msg */
+        res = ccn_verify_signature(buf, pco->offset[CCN_PCO_E], pco, pubkey);
+        res = (res == 1) ? 0 : -1;
+    }
+    return(res);
+}
+

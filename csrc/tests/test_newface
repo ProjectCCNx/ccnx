@@ -37,14 +37,7 @@ NFBLOB="`ccnget /_this_name_ignored_$$ | openssl enc -base64`"
 echo NFBLOB is $NFBLOB >&2
 
 # We need to learn the CCNDID of our ccnd.
-IsolatePubID () {
-	sed -n -e 's@^.*PublisherPublicKeyDigest ccnbencoding="hexBinary">@@' \
-               -e 's@</PublisherPublicKeyDigest.*$@@p'
-}
-
-ccnget ccnx:/ccnx/ping/$$ | ccn_ccnbtoxml -bx - | IsolatePubID > ccndid.out
-grep '^[0-9A-F][0-9A-F]*$' ccndid.out || SkipTest could not determine CCNDID
-CCNDID=`cat ccndid.out`
+. test_ccndid
 
 # Now construct the interest.
 

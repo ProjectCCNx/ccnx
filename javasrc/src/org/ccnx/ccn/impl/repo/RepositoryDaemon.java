@@ -172,8 +172,8 @@ public class RepositoryDaemon extends Daemon {
 			if (_repo == null)	// default lower half
 				_repo = new LogStructRepoStore();
 			
-			_repo.initialize(_handle, repositoryRoot, policyFile, localName, globalPrefix, nameSpace);
-			_server = new RepositoryServer(_handle, _repo);
+			_repo.initialize(repositoryRoot, policyFile, localName, globalPrefix, nameSpace, null);
+			_server = new RepositoryServer(_repo);
 			
 		} catch (InvalidParameterException ipe) {
 			usage();

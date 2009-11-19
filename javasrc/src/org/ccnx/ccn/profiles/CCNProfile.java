@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.profiles;
 
+import org.ccnx.ccn.protocol.ContentName;
+
 /**
  * Marker profile.
  * @author smetters
@@ -25,4 +27,9 @@ package org.ccnx.ccn.profiles;
 public interface CCNProfile {
 
 	public static final String MARKER = "_";
+	
+	// Needs to be something not in base64 charset.
+	public static final String COMPONENT_SEPARATOR_STRING = ":";
+	public static final byte [] COMPONENT_SEPARATOR = ContentName.componentParseNative(COMPONENT_SEPARATOR_STRING);
+
 }

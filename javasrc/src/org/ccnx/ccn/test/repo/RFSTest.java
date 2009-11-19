@@ -18,19 +18,18 @@
 package org.ccnx.ccn.test.repo;
 
 import java.io.File;
-import java.security.InvalidParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
 import org.ccnx.ccn.impl.repo.LogStructRepoStore;
-import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.repo.RepositoryException;
-import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
+import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -81,7 +80,7 @@ public class RFSTest extends RepoTestBase {
 						
 	public void initRepoLog() throws Exception {
 		repolog = new LogStructRepoStore();
-		repolog.initialize(putHandle, _fileTestDir, null, _repoName, _globalPrefix, null);
+		repolog.initialize(_fileTestDir, null, _repoName, _globalPrefix, null, null);
 	}
 	
 	@Test
@@ -249,10 +248,10 @@ public class RFSTest extends RepoTestBase {
 		Interest interest = new Interest(new ContentName(nerpre, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION));
 		Log.info("RFSTEST: Name enumeration prefix:{0}", interest.name());
 		neresponse = repo.getNamesWithPrefix(interest);
-		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
+		Assert.assertTrue(neresponse == null || neresponse.hasNames()==false);
 		//now saving the first piece of content in the repo.  interest flag not set, so it should not get an object back
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner, "FastNameRespTest".getBytes()));
-		Assert.assertTrue(neresponse==null || neresponse.getNames()==null);
+		Assert.assertTrue(neresponse==null || neresponse.hasNames()==false);
 		//now checking with the prefix that the first name is in
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
@@ -264,7 +263,7 @@ public class RFSTest extends RepoTestBase {
 		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()));
 		//the response should be null and the flag set
 		neresponse = repo.getNamesWithPrefix(interest);
-		Assert.assertTrue(neresponse==null || neresponse.getNames()==null);
+		Assert.assertTrue(neresponse==null || neresponse.hasNames()==false);
 		//save content.  if the flag was set, we should get an enumeration response
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner2, "FastNameRespTest".getBytes()));
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
@@ -276,7 +275,7 @@ public class RFSTest extends RepoTestBase {
 		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()));
 		//another interest to set interest flag, response should be null
 		neresponse = repo.getNamesWithPrefix(interest);
-		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
+		Assert.assertTrue(neresponse == null || neresponse.hasNames()==false);
 		//interest flag should now be set, so when i add something - this is a longer name, i should be handed back an object
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner3, "FastNameRespTest".getBytes()));
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
@@ -316,15 +315,15 @@ public class RFSTest extends RepoTestBase {
 	public void testPolicy() throws Exception {
 		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
-			repo.initialize(putHandle, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null);
+			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);
 			Assert.fail("Bad policy file succeeded");
-		} catch (InvalidParameterException ipe) {}
+		} catch (RepositoryException re) {}
 		try {	// Test bad version
-			repo.initialize(putHandle, _fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null);
+			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null, null);
 			Assert.fail("Bad policy file succeeded");
-		} catch (InvalidParameterException ipe) {}
-		repo.initialize(putHandle, _fileTestDir,  
-					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null);
+		} catch (RepositoryException re) {}
+		repo.initialize(_fileTestDir,  
+					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, putHandle);
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
 		repo.saveContent(content);
@@ -336,13 +335,13 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(testContent == null);
 		
 		// Test reading policy file from the repo
-		repolog.initialize(putHandle, _fileTestDir, null, _repoName, _globalPrefix, null);
+		repolog.initialize(_fileTestDir, null, _repoName, _globalPrefix, null, null);
 		repo.saveContent(oonsContent);
 		ContentObject testContentAgain = repo.getContent(new Interest(outOfNameSpaceName));
 		Assert.assertTrue(testContentAgain == null);
 		
 		// Test setting prefix from the prefix parameter
-		repo.initialize(putHandle, _fileTestDir, null, _repoName, _globalPrefix, "/");
+		repo.initialize(_fileTestDir, null, _repoName, _globalPrefix, "/", null);
 		repo.saveContent(oonsContent);
 		checkData(repo, outOfNameSpaceName, "Shouldn't see this");	
 	}

@@ -25,6 +25,7 @@ import org.ccnx.ccn.impl.repo.Policy;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryInfo;
 import org.ccnx.ccn.impl.repo.RepositoryStoreBase;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -64,8 +65,10 @@ public class BitBucketRepository extends RepositoryStoreBase {
 		return null;
 	}
 
-	public void initialize(CCNHandle handle, String repositoryRoot, File policyFile, String localName, String globalPrefix,
-				String nameSpace) throws RepositoryException {
+	public void initialize(String repositoryRoot, 
+							File policyFile, String localName, 
+							String globalPrefix,
+							String nameSpace, CCNHandle handle) throws RepositoryException {
 		// TODO Auto-generated method stub
 	}
 

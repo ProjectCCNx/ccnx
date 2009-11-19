@@ -104,6 +104,7 @@ struct ccnd_handle {
     ccn_accession_t max_stale;      /**< largest accession of stale content */
     unsigned long capacity;         /**< may toss content if there more than
                                      this many content objects in the store */
+    struct ccn_indexbuf *unsol;     /**< unsolicited content */
     unsigned long oldformatcontent;
     unsigned long oldformatcontentgrumble;
     unsigned long oldformatinterests;
@@ -188,7 +189,7 @@ struct face {
 #define CCN_FACE_INET   (1 << 4) /**< IPv4 */
 #define CCN_FACE_MCAST  (1 << 5) /**< a party line (e.g. multicast) */
 #define CCN_FACE_INET6  (1 << 6) /**< IPv6 */
-#define CCN_FACE_DC     (1 << 7) /**< Face sends Inject messages */
+#define CCN_FACE_DC     (1 << 7) /**< Direct control face */
 #define CCN_FACE_NOSEND (1 << 8) /**< Don't send anymore */
 #define CCN_FACE_UNDECIDED (1 << 9) /**< Might not be talking ccn */
 #define CCN_FACE_PERMANENT (1 << 10) /**< No timeout for inactivity */
@@ -301,6 +302,7 @@ void ccnd_internal_client_stop(struct ccnd_handle *);
  * The internal client calls this with the argument portion ARG of
  * a self-registration request (/ccnx/reg/self/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
+ * @deprecated
  */
 struct ccn_charbuf *ccnd_reg_self(struct ccnd_handle *h,
                                   const unsigned char *msg, size_t size);
@@ -315,12 +317,35 @@ struct ccn_charbuf *ccnd_req_newface(struct ccnd_handle *h,
 
 /**
  * The internal client calls this with the argument portion ARG of
+ * a face-destroy request (/ccnx/CCNDID/destroyface/ARG)
+ * The result, if not NULL, will be used as the Content of the reply.
+ */
+struct ccn_charbuf *ccnd_req_destroyface(struct ccnd_handle *h,
+                                         const unsigned char *msg, size_t size);
+
+/**
+ * The internal client calls this with the argument portion ARG of
  * a prefix-registration request (/ccnx/CCNDID/prefixreg/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
  */
 struct ccn_charbuf *ccnd_req_prefixreg(struct ccnd_handle *h,
                                        const unsigned char *msg, size_t size);
 
+/**
+ * The internal client calls this with the argument portion ARG of
+ * a prefix-registration request for self (/ccnx/CCNDID/selfreg/ARG)
+ * The result, if not NULL, will be used as the Content of the reply.
+ */
+struct ccn_charbuf *ccnd_req_selfreg(struct ccnd_handle *h,
+                                     const unsigned char *msg, size_t size);
+
+/**
+ * The internal client calls this with the argument portion ARG of
+ * a prefix-unregistration request (/ccnx/CCNDID/unreg/ARG)
+ * The result, if not NULL, will be used as the Content of the reply.
+ */
+struct ccn_charbuf *ccnd_req_unreg(struct ccnd_handle *h,
+                                   const unsigned char *msg, size_t size);
 
 int ccnd_reg_prefix(struct ccnd_handle *h,
                     const unsigned char *msg,
