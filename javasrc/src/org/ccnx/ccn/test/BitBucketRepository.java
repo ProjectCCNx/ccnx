@@ -21,6 +21,7 @@ import java.io.File;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.repo.NameEnumerationResponse;
 import org.ccnx.ccn.impl.repo.Policy;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryInfo;

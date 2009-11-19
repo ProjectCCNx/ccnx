@@ -20,7 +20,6 @@ package org.ccnx.ccn.impl.repo;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentObject;
 

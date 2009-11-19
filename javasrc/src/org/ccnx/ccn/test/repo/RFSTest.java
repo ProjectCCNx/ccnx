@@ -22,9 +22,9 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
 import org.ccnx.ccn.impl.repo.LogStructRepoStore;
+import org.ccnx.ccn.impl.repo.NameEnumerationResponse;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryStore;
-import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarkers;
