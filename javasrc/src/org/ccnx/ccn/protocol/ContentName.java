@@ -191,6 +191,30 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 	
 	/**
+	 * Subname constructor for extending or contracting names, extracts particular
+	 * subcomponents from an existing set.
+	 * Performs a faster shallow copy of the components, as we don't tend to alter name components
+	 * once created.
+	 * @param start This is index (0-based) of the first component to copy.
+	 * @param count Only this number of name components are copied into the new name. If count-start is
+	 * 	greater than the last component in the components array, only copies count-start.
+	 * @param components These are the name components to be copied. Can be null, empty, or longer or shorter than count.
+	 */
+	public ContentName(int start, int count, ArrayList<byte []>components) {
+		if (0 >= count) {
+			_components = new ArrayList<byte[]>(0);
+		} else {
+			int max = (null == components) ? 0 : 
+				  		((count > (components.size()-start)) ? 
+				  				(components.size()-start) : count);
+			_components = new ArrayList<byte []>(max);
+			for (int i=start; i < max+start; ++i) {
+				_components.add(components.get(i));
+			}
+		}
+	}
+
+	/**
 	 * Copy constructor, also used by subclasses merely wanting a different
 	 * name in encoding/decoding.
 	 * @param otherName
@@ -1035,6 +1059,32 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		} catch (DotDotComponent c) {
 			return this;
 		}
+	}
+	
+	/**
+	 * Return a subname of this name as a new name.
+	 * @param start the starting component index (0-based)
+	 * @param componentCount the number of components to include beginning with start.
+	 * @return the new name.
+	 */
+	public ContentName subname(int start, int componentCount) {
+		return new ContentName(start, componentCount, components());
+	}
+	
+	/**
+	 * Return the remainder of this name after the prefix, if the prefix
+	 * is a prefix of this name. Otherwise return null. If the prefix is
+	 * identical to this name, return the root (empty) name.
+	 */
+	public ContentName postfix(ContentName prefix) {
+		if (!prefix.isPrefixOf(this))
+			return null;
+		
+		if (prefix.count() == count()) {
+			return ROOT;
+		}
+		
+		return subname(prefix.count(), count()-prefix.count());
 	}
 	
 	/**

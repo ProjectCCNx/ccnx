@@ -40,6 +40,11 @@ PRBLOB="`ccnget /_ignored_$$ | openssl enc -base64`"
 
 echo PRBLOB is $PRBLOB >&2
 
+# Dinged version, to make sure verification is there.
+# Uncommenting these should make the test fail.
+#PRBLOB="`ccnget /_ignored_$$ | ccn_ccnbtoxml - | sed -e s/_ignored_/-IGNORED-/ | ccn_xmltoccnb -w - | openssl enc -base64`"
+#echo Dinged PRBLOB is $PRBLOB >&2
+
 # We have the CCNDID of our ccnd in a file, left from test_ccndid
 CCNDID=`cat ccndid.out`
 
@@ -66,7 +71,7 @@ ccndsmoketest -b send prefixreg-request.ccnb recv > prefixreg-response.ccnb
 cmp -s /dev/null prefixreg-response.ccnb && Fail did not get prefixreg response
 ccn_ccnbtoxml prefixreg-response.ccnb || Failed to parse prefixreg response
 
-ccnbx -d destroyface-response.ccnb Content | ccn_ccnbtoxml -x -
+ccnbx -d prefixreg-response.ccnb Content | ccn_ccnbtoxml -x -
 
 echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > prefixreg-post.html
 

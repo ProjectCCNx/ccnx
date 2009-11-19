@@ -19,7 +19,7 @@ package org.ccnx.ccn.config;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.lang.management.ManagementFactory;
+import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.TreeMap;
@@ -150,6 +150,36 @@ public class SystemConfiguration {
 	 */
 	protected static TreeMap<String, Boolean> loggingInfo = new TreeMap<String, Boolean>();
 
+	/**
+	 * Management bean for this runtime, if available.  This is not dependent
+	 * upon availability of any particular class but discovered dynamically 
+	 * from what is available at runtime.
+	 */
+	private static Object runtimeMXBean = null;
+	
+	/**
+	 * Obtain the management bean for this runtime if it is available.
+	 * The class of the management bean is discovered at runtime and there
+	 * should be no static dependency on any particular bean class.
+	 * @return the bean or null if none available
+	 */
+	public static Object getManagementBean() {
+		// Check if we already have a management bean; retrieve only
+		// once per VM
+		if (null != runtimeMXBean) {
+			return runtimeMXBean;
+		}
+		ClassLoader cl = SystemConfiguration.class.getClassLoader();
+		try {
+			Class<?> mgmtclass = cl.loadClass("java.lang.management.ManagementFactory");
+			Method getRuntimeMXBean = mgmtclass.getDeclaredMethod("getRuntimeMXBean", (Class[])null);
+			runtimeMXBean = getRuntimeMXBean.invoke(mgmtclass, (Object[])null);
+		} catch (Exception ex) {
+			Log.log(Level.WARNING, "Management bean unavailable: {0}", ex.getMessage());
+		}
+		return runtimeMXBean;
+	}
+
 	static {
 		// Allow override of default debug information.
 		String debugFlags = System.getProperty(DEBUG_FLAG_PROPERTY);
@@ -161,7 +191,9 @@ public class SystemConfiguration {
 		}
 			
 		DEBUG_DATA_DIRECTORY = System.getProperty(DEBUG_DATA_DIRECTORY_PROPERTY, DEFAULT_DEBUG_DATA_DIRECTORY);
+		
 	}
+
 
 	public static String getLocalHost() {
 //		InetAddress.getLocalHost().toString(),
@@ -339,14 +371,29 @@ public class SystemConfiguration {
 	 * @see <a href="http://blog.igorminar.com/2007/03/how-java-application-can-discover-its.html">Techniques for Discovering PID</a>
 	 */
 	public static String getPID() {
-		// Try the JVM mgmt bean, reported to work on variety
-		// of operating systems on the Sun JVM.
+		// We try the JVM mgmt bean if available, reported to work on variety
+		// of operating systems on the Sun JVM.  The bean is obtained once per VM,
+		// the other work to get the ID is done here.
+		Object bean = getManagementBean();
+		if (null == getManagementBean()) {
+			return null;
+		}
+		
 		try {
 			String pid = null;
-			String vmname = ManagementFactory.getRuntimeMXBean().getName();
+			String vmname = null;
+
+			Method getName = bean.getClass().getDeclaredMethod("getName", (Class[]) null);
+			if (null == getName) {
+				return null;
+			}
+			getName.setAccessible(true);
+			vmname = (String) getName.invoke(bean, (Object[]) null);
+
 			if (null == vmname) {
 				return null;
 			}
+
 			// Hopefully the string is in the form "60447@ice.local", where we can pull
 			// out the integer hoping it is identical to the OS PID
 			Pattern exp = Pattern.compile("^(\\d+)@\\S+$");

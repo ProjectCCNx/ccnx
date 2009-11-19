@@ -162,7 +162,7 @@ public class SegmentationProfile implements CCNProfile {
 	}
 
 	/**
-	 * Check to see if we have (a block of) the header.
+	 * Check to see if we have (a block of) the header. Headers are also versioned.
 	 * @param baseName The name of the object whose header we are looking for (including version, but
 	 * 			not including segmentation information).
 	 * @param headerName The name of the object we think might be a header block (can include
@@ -173,22 +173,36 @@ public class SegmentationProfile implements CCNProfile {
 		if (!baseName.isPrefixOf(headerName)) {
 			return false;
 		}
-		if (isSegment(headerName)) {
-			headerName = segmentRoot(headerName);
+		return isHeader(headerName);
+	}
+	
+	/**
+	 * Slightly more heuristic isHeader; looks to see if this is a segment of something that
+	 * ends in the header name (and version), without knowing the prefix..
+	 */
+	public static boolean isHeader(ContentName potentialHeaderName) {
+		
+		if (isSegment(potentialHeaderName)) {
+			potentialHeaderName = segmentRoot(potentialHeaderName);
 		}
-		// Should end with metadata/header
-		if (baseName.count() != (headerName.count() - 2))
+		
+		// Header itself is likely versioned.
+		if (VersioningProfile.isVersionComponent(potentialHeaderName.lastComponent())) {
+			potentialHeaderName = potentialHeaderName.parent();
+		}
+		
+		if (potentialHeaderName.count() < 2)
 			return false;
 		
-		if (!Arrays.equals(headerName.lastComponent(), HEADER_NAME))
+		if (!Arrays.equals(potentialHeaderName.lastComponent(), HEADER_NAME))
 			return false;
 		
-		if (!Arrays.equals(headerName.component(headerName.count()-2), MetadataProfile.METADATA_MARKER))
+		if (!Arrays.equals(potentialHeaderName.component(potentialHeaderName.count()-2), MetadataProfile.METADATA_MARKER))
 			return false;
 		
 		return true;
 	}
-
+	
 	/**
 	 * Move header from <content>/<version> as its name to
 	 * <content>/<version>/_metadata_marker_/HEADER/<version>

@@ -42,6 +42,7 @@ import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -394,7 +395,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				content.encode(os);
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
 				_index.insert(content, ref, System.currentTimeMillis(), this, ner);
-				if(ner==null || ner.getPrefix()==null){
+				if (ner==null || ner.getPrefix()==null) {
 					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
 						Log.fine("new content did not trigger an interest flag");
 					}

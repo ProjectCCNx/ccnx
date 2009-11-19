@@ -24,12 +24,12 @@ import java.security.KeyPairGenerator;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryStore;
-import org.ccnx.ccn.impl.repo.RepositoryStore.NameEnumerationResponse;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -245,10 +245,10 @@ public class RFSTest extends RepoTestBase {
 		Interest interest = new Interest(new ContentName(nerpre, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION));
 		Log.info("RFSTEST: Name enumeration prefix:{0}", interest.name());
 		neresponse = repo.getNamesWithPrefix(interest);
-		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
+		Assert.assertTrue(neresponse == null || neresponse.hasNames()==false);
 		//now saving the first piece of content in the repo.  interest flag not set, so it should not get an object back
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner, "FastNameRespTest".getBytes()));
-		Assert.assertTrue(neresponse==null || neresponse.getNames()==null);
+		Assert.assertTrue(neresponse==null || neresponse.hasNames()==false);
 		//now checking with the prefix that the first name is in
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
@@ -260,7 +260,7 @@ public class RFSTest extends RepoTestBase {
 		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()));
 		//the response should be null and the flag set
 		neresponse = repo.getNamesWithPrefix(interest);
-		Assert.assertTrue(neresponse==null || neresponse.getNames()==null);
+		Assert.assertTrue(neresponse==null || neresponse.hasNames()==false);
 		//save content.  if the flag was set, we should get an enumeration response
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner2, "FastNameRespTest".getBytes()));
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
@@ -272,7 +272,7 @@ public class RFSTest extends RepoTestBase {
 		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()));
 		//another interest to set interest flag, response should be null
 		neresponse = repo.getNamesWithPrefix(interest);
-		Assert.assertTrue(neresponse == null || neresponse.getNames()==null);
+		Assert.assertTrue(neresponse == null || neresponse.hasNames()==false);
 		//interest flag should now be set, so when i add something - this is a longer name, i should be handed back an object
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner3, "FastNameRespTest".getBytes()));
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
