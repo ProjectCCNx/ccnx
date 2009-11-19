@@ -26,8 +26,6 @@ import java.util.ArrayList;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileOutputStream;
 import org.ccnx.ccn.io.content.Collection;
@@ -38,6 +36,8 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.Exclude;
+import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -233,38 +233,40 @@ public class CCNFileProxy implements CCNFilterListener {
 		NameEnumerationResponse ner = new NameEnumerationResponse();
 		ner.setPrefix(new ContentName(neRequestPrefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION));
 		
-		// We want to set the version of the NE response to the time of the 
-		// last modified file in the directory. Unfortunately that requires us to
-		// stat() all the files whether we are going to respond or not.
-		String [] children = directoryToEnumerate.list();
-		long lastmodificationtime = 0;
-		
-		if (null != children) {
-			for (int i = 0; i < children.length; ++i) {
-				ner.add(children[i]);
-				File thisChild = new File(directoryToEnumerate, children[i]);
-				if (thisChild.lastModified() > lastmodificationtime) {
-					lastmodificationtime = thisChild.lastModified();
-				}
-			}
-
-			// Set the timestamp for the time of the file with the latest last modification time in the directory
-			// If we re-create this each time will change slightly, (signign tie
-			ner.setTimestamp(new CCNTime(lastmodificationtime));
-		}
-		
+		Log.info("Directory to enumerate: {0}, last modified {1}", directoryToEnumerate.getAbsolutePath(), new CCNTime(directoryToEnumerate.lastModified()));
+		// stat() the directory to see when it last changed -- will change whenever
+		// a file is added or removed, which is the only thing that will change the
+		// list we return.
+		ner.setTimestamp(new CCNTime(directoryToEnumerate.lastModified()));
+		// See if the resulting response is later than the previous one we released.
 	    ContentName potentialCollectionName = VersioningProfile.addVersion(ner.getPrefix(), ner.getTimestamp());
 	    potentialCollectionName = SegmentationProfile.segmentName(potentialCollectionName, SegmentationProfile.baseSegment());
 		//check if we should respond...
-		if (interest.matches(potentialCollectionName, null) && ner.hasNames()) {
+		if (interest.matches(potentialCollectionName, null)) {
+		
+			// We want to set the version of the NE response to the time of the 
+			// last modified file in the directory. Unfortunately that requires us to
+			// stat() all the files whether we are going to respond or not.
+			String [] children = directoryToEnumerate.list();
+			
+			if ((null != children) && (children.length > 0)) {
+				for (int i = 0; i < children.length; ++i) {
+					ner.add(children[i]);
+				}
 
-			Collection cd = ner.getNamesInCollectionData();
-			CollectionObject co = new CollectionObject(ner.getPrefix(), cd, _handle);
-			co.save(ner.getTimestamp(), interest);
-			Log.info("sending back name enumeration response {0}, timestamp (version) {1}.", ner.getPrefix(), ner.getTimestamp());
+				Collection cd = ner.getNamesInCollectionData();
+				CollectionObject co = new CollectionObject(ner.getPrefix(), cd, _handle);
+				co.save(ner.getTimestamp(), interest);
+				Log.info("sending back name enumeration response {0}, timestamp (version) {1}.", ner.getPrefix(), ner.getTimestamp());
+			} else {
+				Log.info("no children available: we are not sending back a response to the name enumeration interest (interest = {0}); our response would have been {1}", interest, potentialCollectionName);
+			}
 		} else {
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
-				Log.info("we are not sending back a response to the name enumeration interest (interest = {0}); our response would have been {1}", interest, potentialCollectionName);
+			Log.info("we are not sending back a response to the name enumeration interest (interest = {0}); our response would have been {1}", interest, potentialCollectionName);
+			Exclude.Element el = interest.exclude().value(1);
+			if ((null != el) && (el instanceof ExcludeComponent)) {
+				Log.info("previous version: {0}", VersioningProfile.getVersionComponentAsTimestamp(((ExcludeComponent)el).getBytes()));
+			}
 		}
 	}
 
