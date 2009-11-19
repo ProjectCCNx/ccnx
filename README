@@ -52,7 +52,9 @@ C) Java reference implementation of library including primitive
    library and may be an easier place to start experimenting.
 D) Minimal sample app (ccnChat) to demonstrate basic communication on
    local LAN.
-E) Experimental plugins for vlc (media transport) and wireshark
+E) Minimal sample file proxy (ccnFileProxy) to demonstrate basic 
+   communication on local LAN.
+F) Experimental plugins for vlc (media transport) and wireshark
    (packet dissector)
 
 Documentation is built from source files of various kinds (using a
@@ -94,6 +96,7 @@ javasrc/tools - convenience scripts
 schema - XML schema and DTD files
 apps - experimental/sample apps tree
 apps/ccnChat - simple text chat sample in Java
+apps/ccnFileProxy - simple proxy making local files available via CCNx
 apps/vlc - vlc plugin for media transport experiments
 apps/wireshark - wireshark plugin dissector for decoding CCNx packets
 experiments/multicast - scripts for running multi-machine experiments in content
@@ -154,14 +157,15 @@ You will need:
 
 Eclipse .project and .classpath files are included in the distribution
 so you can create Eclipse projects easily that will resolve
-dependencies correctly.  There are two Eclipse Java projects defined:
-one in javasrc (Eclipse project name CCNx-Java) and one in apps/ccnChat
-(Eclipse project name ccnChat).  To import one of these projects into
-your Eclipse workspace, choose File/Import... from the menu, open the
-General category in the Import dialog and select "Existing Projects
-into Workspace".  Type in (or browse to) the appropriate directory and
-you should see the named Project listed and selected so you can click
-Finish to complete the import.
+dependencies correctly.  There are three Eclipse Java projects
+defined: one in javasrc (Eclipse project name CCNx-Java) and one each
+in apps/ccnChat (Eclipse project name ccnChat) and apps/ccnFileProxy
+(Eclipse project name ccnFileProxy).  To import one of these projects
+into your Eclipse workspace, choose File/Import... from the menu, open
+the General category in the Import dialog and select "Existing
+Projects into Workspace".  Type in (or browse to) the appropriate
+directory and you should see the named Project listed and selected so
+you can click Finish to complete the import.
 
 Please let us know if JDK1.5 support is important to you, as we plan
 to eliminate it in the near future.  The CCNx distribution includes
@@ -321,6 +325,7 @@ inconsistent as of this release.  Here are a few notable utilities:
   ccngetfile - command-line tool to retrieve CCNx content and store it
                in file
   ccnchat - the ccnChat sample application
+  ccnfileproxy - the ccnFileProxy sample application
   
 ==================================================
 5. Runtime files
