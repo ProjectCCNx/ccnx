@@ -44,15 +44,9 @@ cryptographic digests are used. These are:
 * the calculation of PublisherPublicKeyDigests from publisher public keys,
   both specified in ContentObjects and used as selectors in Links and
   Interests
-<<<<<<< HEAD
 * the calculation of content-object digests as the implicit last component
   of content names in Interest matching (see link:./InterestMessage.html and
   link:./DigestComponent.html)
-=======
-* the calculation of content digests as the implicit last component
-  of content names in Interest matching (see link:InterestMessage.html[InterestMessage] and
-  link:DigestComponent.html[DigestComponent])
->>>>>>> master
 * the calculation of ContentObject digests as an Exclude specifier in an
   Interest, to avoid receiving that ContentObject again (this is not
   yet completely implemented)

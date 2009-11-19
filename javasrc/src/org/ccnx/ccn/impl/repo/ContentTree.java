@@ -398,7 +398,8 @@ public class ContentTree {
 				ContentName digestFreeName = new ContentName(nodeName.count()-1, nodeName.components());
 				Interest publisherFreeInterest = interest.clone();
 				publisherFreeInterest.publisherID(null);
-				boolean matches = (null != interest.exclude()) ? publisherFreeInterest.matches(nodeName, null)
+				boolean matches = (null != interest.exclude() && interest.name().count() == nodeName.count() - 1) 
+							? publisherFreeInterest.matches(nodeName, null)
 							: publisherFreeInterest.matches(digestFreeName, null); 
 				if (matches) {
 					List<ContentRef> content = null;
