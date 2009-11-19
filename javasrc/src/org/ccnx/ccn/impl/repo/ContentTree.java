@@ -577,13 +577,12 @@ public class ContentTree {
 			}
 
 			//the parent has children we need to return
-			ContentName c = new ContentName();
 			if (parent.oneChild!=null) {
-				names.add(new ContentName(c, parent.oneChild.component));
+				names.add(new ContentName(ContentName.ROOT, parent.oneChild.component));
 			} else {
 				if (parent.children!=null) {
 					for (TreeNode ch:parent.children.keySet())
-						names.add(new ContentName(c, ch.component));
+						names.add(new ContentName(ContentName.ROOT, ch.component));
 				}
 			}
 			
