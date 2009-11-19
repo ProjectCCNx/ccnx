@@ -122,7 +122,7 @@ public class KeyDirectoryTestRepo {
 	/*
 	 * Unwrap the private key via membership in a group
 	 */
-	@Test
+//	@Test
 	public void testGetUnwrappedKeyGroupMember() throws Exception {
 		ContentName myIdentity = ContentName.fromNative("/test/parc/Users/pgolle");
 		acm.publishMyIdentity(myIdentity, null);		
