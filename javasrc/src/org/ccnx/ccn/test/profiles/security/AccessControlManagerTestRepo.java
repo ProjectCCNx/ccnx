@@ -1,4 +1,4 @@
-package org.ccnx.ccn.test.profiles.security.access;
+package org.ccnx.ccn.test.profiles.security;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -14,7 +14,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.profiles.security.access.ACL;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.ACL.ACLObject;
-import org.ccnx.ccn.test.profiles.security.access.TestUserData;
+import org.ccnx.ccn.test.profiles.security.TestUserData;
 
 /**
  * This test relies on org.ccn.ccn.test.profiles.access.TestUserData to generate users

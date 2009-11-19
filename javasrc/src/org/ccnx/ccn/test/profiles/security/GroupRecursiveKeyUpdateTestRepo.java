@@ -1,4 +1,4 @@
-package org.ccnx.ccn.test.profiles.security.access;
+package org.ccnx.ccn.test.profiles.security;
 
 
 import java.util.ArrayList;
