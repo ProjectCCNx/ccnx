@@ -39,7 +39,7 @@ public class AccessControlTestRepo {
 	 * and write a file out there
 	 */
 	@BeforeClass
-	public void createAC() throws Exception {
+	public static void createAC() throws Exception {
 		// mark the namespace as under access control
 		ACL acl = new ACL();
 		acName = ContentName.fromNative("/parc.com/ac_repo");
