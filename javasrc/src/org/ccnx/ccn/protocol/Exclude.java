@@ -382,6 +382,15 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 			return _values.size();
 		}
 	}
+	
+	/**
+	 * DEBUGGING ONLY -- may need to be removed.
+	 */
+	public Element value(int i) {
+		synchronized(_values) {
+			return _values.get(i);
+		}
+	}
 
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
