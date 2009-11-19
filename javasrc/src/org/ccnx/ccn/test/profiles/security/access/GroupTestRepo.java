@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.profiles.security;
+package org.ccnx.ccn.test.profiles.security.access;
 
 import static org.junit.Assert.assertTrue;
 
@@ -42,6 +42,7 @@ import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.Group;
 import org.ccnx.ccn.profiles.security.access.GroupManager;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.profiles.security.TestUserData;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;

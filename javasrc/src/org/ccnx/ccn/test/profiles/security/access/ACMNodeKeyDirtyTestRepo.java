@@ -1,4 +1,4 @@
-package org.ccnx.ccn.test.profiles.security;
+package org.ccnx.ccn.test.profiles.security.access;
 
 
 import java.util.ArrayList;
@@ -14,6 +14,7 @@ import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.Group;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.profiles.security.TestUserData;
 import org.junit.BeforeClass;
 import org.junit.Test;
 

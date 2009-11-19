@@ -1,4 +1,4 @@
-package org.ccnx.ccn.test.profiles.security;
+package org.ccnx.ccn.test.profiles.security.access;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
