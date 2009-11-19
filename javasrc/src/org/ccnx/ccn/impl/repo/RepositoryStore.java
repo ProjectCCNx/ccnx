@@ -58,18 +58,19 @@ public interface RepositoryStore {
 	 * satisfied (set the interest flag), but a later save occurs directly under the namespace.
 	 *
 	 */
-	public class NameEnumerationResponse{
-		private ContentName prefix;
-		private ArrayList<ContentName> names;
-		private CCNTime version;
+	public class NameEnumerationResponse {
+		
+		private ContentName _prefix;
+		private ArrayList<ContentName> _names;
+		private CCNTime _version;
 		
 		/**
 		 * Empty NameEnumerationResponse constructor that sets the variables to null.
 		 */
-		public NameEnumerationResponse(){
-			prefix = null;
-			names = null;
-			version = null;
+		public NameEnumerationResponse() {
+			_prefix = null;
+			_names = null;
+			_version = null;
 		}
 		
 		/**
@@ -80,10 +81,10 @@ public interface RepositoryStore {
 		 * @param ts CCNTime is the timestamp used to create the version component
 		 *   for the object when it is written out
 		 */
-		public NameEnumerationResponse(ContentName p, ArrayList<ContentName> n, CCNTime ts){
-			prefix = p;
-			names = n;
-			version = ts;
+		public NameEnumerationResponse(ContentName p, ArrayList<ContentName> n, CCNTime ts) {
+			_prefix = p;
+			_names = n;
+			_version = ts;
 		}
 		
 		/**
@@ -92,8 +93,8 @@ public interface RepositoryStore {
 		 * @param p ContentName of the prefix for the response
 		 * @return void
 		 */
-		public void setPrefix(ContentName p){
-			prefix = p;
+		public void setPrefix(ContentName p) {
+			_prefix = p;
 		}
 		
 		/**
@@ -102,8 +103,8 @@ public interface RepositoryStore {
 		 * @param n ArrayList<ContentName> of the children for the response
 		 * @return void
 		 */
-		public void setNameList(ArrayList<ContentName> n){
-			names = n;
+		public void setNameList(ArrayList<ContentName> n) {
+			_names = n;
 		}
 		
 		/**
@@ -111,8 +112,8 @@ public interface RepositoryStore {
 		 * 
 		 * @return ContentName prefix for the response
 		 */
-		public ContentName getPrefix(){
-			return prefix;
+		public ContentName getPrefix() {
+			return _prefix;
 		}
 		
 		/**
@@ -120,8 +121,8 @@ public interface RepositoryStore {
 		 * 
 		 * @return ArrayList<ContentName> Names to return in the response
 		 */
-		public ArrayList<ContentName> getNames(){
-			return names;
+		public ArrayList<ContentName> getNames() {
+			return _names;
 		}
 		
 		
@@ -130,8 +131,8 @@ public interface RepositoryStore {
 		 * @param ts CCNTime for the ContentObject version
 		 * @return void
 		 */
-		public void setTimestamp(CCNTime ts){
-			version = ts;
+		public void setTimestamp(CCNTime ts) {
+			_version = ts;
 		}
 		
 		
@@ -140,8 +141,8 @@ public interface RepositoryStore {
 		 * 
 		 * @return CCNTime for the version component of the object
 		 */
-		public CCNTime getTimestamp(){
-			return version;
+		public CCNTime getTimestamp() {
+			return _version;
 		}
 		
 		/**
@@ -149,10 +150,10 @@ public interface RepositoryStore {
 		 * 
 		 * @return Collection A collection of the names (as Link objects) to return.
 		 */
-		public Collection getNamesInCollectionData(){
-			Link[] temp = new Link[names.size()];
-			for (int x = 0; x < names.size(); x++) {
-				temp[x] = new Link(names.get(x));
+		public Collection getNamesInCollectionData() {
+			Link [] temp = new Link[_names.size()];
+			for (int x = 0; x < _names.size(); x++) {
+				temp[x] = new Link(_names.get(x));
 			}
 			return new Collection(temp);
 		}
@@ -163,8 +164,8 @@ public interface RepositoryStore {
 		 * @return boolean True if there are names to return, false if there are no
 		 *   names or the list of names is null
 		 */
-		public boolean hasNames(){
-			if (names!=null && names.size()>0)
+		public boolean hasNames() {
+			if (_names != null && _names.size() > 0)
 				return true;
 			else
 				return false;
