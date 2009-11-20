@@ -216,10 +216,11 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 		}
 		if (decoder.peekStartElement(IP_PROTO_ELEMENT)) {
 			Integer proto = decoder.readIntegerElement(IP_PROTO_ELEMENT);
+			int pI = proto.intValue();
 			_ipProto = null;
-			if (NetworkProtocol.TCP.value() == proto) {
+			if (NetworkProtocol.TCP.value().intValue() == pI) {
 				_ipProto = NetworkProtocol.TCP;
-			} else if (NetworkProtocol.UDP.value() == proto) {
+			} else if (NetworkProtocol.UDP.value().intValue() == pI) {
 				_ipProto = NetworkProtocol.UDP;
 			} else {
 				throw new ContentDecodingException("FaceInstance.decoder.  Invalid " + IP_PROTO_ELEMENT + " field: " + proto.toString());
