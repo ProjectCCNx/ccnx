@@ -1585,7 +1585,6 @@ handle_ping_response(struct ccn_closure *selfp,
     struct ccn *h = info->h;
     
     if (kind == CCN_UPCALL_FINAL) {
-        fprintf(stderr, "ping final\n");
         free(selfp);
         return(CCN_UPCALL_RESULT_OK);
     }
@@ -1659,7 +1658,7 @@ handle_prefix_reg_reply(
         return(CCN_UPCALL_RESULT_ERR);
     }
     /* Examine response, determine lifetime. */
-    fprintf(stderr, "GOT TO STUB handle_prefix_reg_reply\n");
+    // fprintf(stderr, "GOT TO STUB handle_prefix_reg_reply\n");
     md->interest_filter->expiry = h->now;
     md->interest_filter->expiry.tv_sec += lifetime;
     return(CCN_UPCALL_RESULT_OK);
@@ -1679,7 +1678,7 @@ ccn_initiate_prefix_reg(struct ccn *h,
     /* This test is mainly for the benefit of the ccnd internal client */
     if (h->sock == -1)
         return;
-    fprintf(stderr, "GOT TO STUB ccn_initiate_prefix_reg()\n");
+    // fprintf(stderr, "GOT TO STUB ccn_initiate_prefix_reg()\n");
     if (h->ccndid == NULL) {
         ccn_initiate_ping(h);
         i->waiting_ccndid = 1;

@@ -57,6 +57,10 @@ ExpectLines () {
   return 0
 }
 
+GenSym () {
+  echo $1`openssl rand -base64 12 | tr '/+' '-_'`
+}
+
 RunTest () {
   ( . settings; . functions; . $1 )
 }
