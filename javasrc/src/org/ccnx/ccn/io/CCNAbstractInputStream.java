@@ -285,7 +285,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * and setup particular to the first segment of a stream. Subclasses should not override
 	 * unless they really know what they are doing. Calls #setCurrentSegment(ContentObject)
 	 * for the first segment. If the content is encrypted, and keys are not provided
-	 * for this stream, they are looked up according to the namespace.
+	 * for this stream, they are looked up according to the namespace. Note that this
+	 * assumes that all segments of a given piece of content are either encrypted or not.
 	 * @param newSegment Must not be null
 	 * @throws IOException If newSegment is null or decryption keys set up incorrectly
 	 */
@@ -328,10 +329,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		_publisherKeyLocator = newSegment.signedInfo().getKeyLocator();
 
 		if (_goneSegment != newSegment) { // want pointer ==, not equals() here
-			_segmentReadStream = new ByteArrayInputStream(_currentSegment.content());
-
 			// if we're decrypting, then set it up now
 			if (_keys != null) {
+				// We only do automated lookup of keys on first segment. Otherwise
+				// we assume we must have the keys or don't try to decrypt.
 				try {
 					// Reuse of current segment OK. Don't expect to have two separate readers
 					// independently use this stream without state confusion anyway.
@@ -382,8 +383,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				}
 			} else {
 				if (_currentSegment.signedInfo().getType().equals(ContentType.ENCR)) {
+					// We only do automated lookup of keys on first segment.
 					Log.warning("Asked to read encrypted content, but not given a key to decrypt it. Decryption happening at higher level?");
 				}
+				_segmentReadStream = new ByteArrayInputStream(_currentSegment.content());
 			}
 		}
 	}
