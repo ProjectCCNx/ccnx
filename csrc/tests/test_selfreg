@@ -30,11 +30,12 @@ ccn_xmltoccnb -w - <<EOF >selfreg.ccnb
 </ForwardingEntry>
 EOF
 
-cat selfreg.ccnb | ccnput -x 30 /_ignored_$$
+TNAME=`GenSym SR`
+cat selfreg.ccnb | ccnput -x 30 /$TNAME
 
 # Pull it out to use in the selfreg request.  Base-64 encode it for the benefit of the shell.
 
-SRBLOB="`ccnget /_ignored_$$ | openssl enc -base64`"
+SRBLOB="`ccnget /$TNAME | openssl enc -base64`"
 
 echo SRBLOB is $SRBLOB >&2
 
