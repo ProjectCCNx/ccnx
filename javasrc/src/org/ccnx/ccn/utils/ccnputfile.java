@@ -90,7 +90,8 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 					startArg = i + 1;
 			} else if (args[i].equals("-v")) {
 				verbose = true;
-				++i;
+				if (startArg <= i)
+					startArg = i + 1;
 			} else {
 				usage();
 			}
