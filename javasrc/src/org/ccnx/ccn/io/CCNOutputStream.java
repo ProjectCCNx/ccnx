@@ -343,7 +343,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 			if (_blockOffset >= _buffer.length) {
 				// We're out of buffers. Time to flush to the network.
-				Log.info("write: about to sync one tree's worth of blocks (" + BLOCK_BUF_COUNT +") to the network.");
+				Log.fine("write: about to sync one tree's worth of blocks (" + BLOCK_BUF_COUNT +") to the network.");
 				flush(); // will reset _blockIndex and _blockOffset
 			}
 		}
@@ -362,7 +362,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// small data objects (written as single blocks without headers); instead
 		// write them as single-fragment files. Subclasses will determine whether or not
 		// to write a header.
-		Log.info("closeNetworkData: final flush, wrote " + _totalLength + " bytes.");
+		Log.fine("closeNetworkData: final flush, wrote " + _totalLength + " bytes.");
 		flush(true); // true means write out the partial last block, if there is one
 	}
 
@@ -444,13 +444,11 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// discussion about holding back partial or even a single full block till
 			// forced flush/close in order to set finalBlockID).
 
-			Log.info("flush: asked to put a single block to the network, are we finishing the file? " + flushLastBlock + ".");
-
 			// DKS TODO -- think about types, freshness, fix markers for impending last block/first block
 			if ((_blockOffset - saveBytes) < getBlockSize()) {
-				Log.warning("flush(): writing hanging partial last block of file: " + (_blockOffset-saveBytes) + " bytes, block total is " + getBlockSize() + ", holding back " + saveBytes + " bytes, called by close? " + flushLastBlock);
+				Log.fine("flush(): writing hanging partial last block of file: " + (_blockOffset-saveBytes) + " bytes, block total is " + getBlockSize() + ", holding back " + saveBytes + " bytes, called by close? " + flushLastBlock);
 			} else {
-				Log.warning("flush(): writing single full block of file: " + _baseName + ", holding back " + saveBytes + " bytes.");
+				Log.fine("flush(): writing single full block of file: " + _baseName + ", holding back " + saveBytes + " bytes.");
 			}
 			_baseNameIndex = 
 				_segmenter.putFragment(_baseName, _baseNameIndex, 
