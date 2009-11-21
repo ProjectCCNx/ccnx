@@ -32,6 +32,7 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherID;
@@ -181,10 +182,10 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(ContentObject.buildContentObject(name4, "ddd".getBytes()));
 		ContentName name5= ContentName.fromNative("/repoTest/nextTest/eee");
 		repo.saveContent(ContentObject.buildContentObject(name5, "eee".getBytes()));
-		checkData(repo, Interest.next(new ContentName(name1, content1.digest()), 2), "bbb");
-		checkData(repo, Interest.last(new ContentName(name1, content1.digest()), 2), "eee");
+		checkData(repo, Interest.next(new ContentName(name1, content1.digest()), 2, null), "bbb");
+		checkData(repo, Interest.last(new ContentName(name1, content1.digest()), 2, null), "eee");
 		checkData(repo, Interest.next(new ContentName(name1, content1.digest()), 
-				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2, null), "ddd");
+				new Exclude(new byte [][] {"bbb".getBytes(), "ccc".getBytes()}), 2, null, null, null), "ddd");
 		
 		System.out.println("Repotest - Testing different kinds of interests in a mixture of encoded/standard data");
 		ContentName nonLongName = ContentName.fromNative("/repoTestLong/nextTestLong/aaa");
@@ -198,10 +199,10 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(ContentObject.buildContentObject(longName3, "ddd".getBytes()));
 		ContentName longName4 = ContentName.fromNative("/repoTestLong/nextTestLong/eee/" + tooLongName);
 		repo.saveContent(ContentObject.buildContentObject(longName4, "eee".getBytes()));
-		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.digest()), 2), "bbb");
-		checkData(repo, Interest.last(new ContentName(nonLongName, nonLongContent.digest()), 2), "eee");
+		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.digest()), 2, null), "bbb");
+		checkData(repo, Interest.last(new ContentName(nonLongName, nonLongContent.digest()), 2, null), "eee");
 		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.digest()), 
-				new byte [][] {"bbb".getBytes(), "ccc".getBytes()}, 2, null), "ddd");
+				new Exclude(new byte [][] {"bbb".getBytes(), "ccc".getBytes()}), 2, null, null, null), "ddd");
 		
 		System.out.println("Repotest - testing version and segment files");
 		versionedName = ContentName.fromNative("/repoTest/testVersion");
@@ -260,7 +261,7 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(neresponse.getTimestamp()!=null);
 		//now call get names with prefix again to set interest flag
 		//have to use the version from the last response (or at least a version after the last write
-		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()));
+		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
 		//the response should be null and the flag set
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse==null || neresponse.hasNames()==false);
@@ -272,7 +273,7 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(neresponse.getTimestamp()!=null);
 		
 		//need to reconstruct the interest again
-		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()));
+		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
 		//another interest to set interest flag, response should be null
 		neresponse = repo.getNamesWithPrefix(interest);
 		Assert.assertTrue(neresponse == null || neresponse.hasNames()==false);

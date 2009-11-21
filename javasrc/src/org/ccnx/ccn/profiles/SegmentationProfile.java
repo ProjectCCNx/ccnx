@@ -367,9 +367,7 @@ public class SegmentationProfile implements CCNProfile {
 		
 		Log.finer("lastSegmentInterest: creating interest for {0} from ContentName {1} and segmentNumber {2}", interestName, name, segmentNumber);
 		//TODO need to make sure we only get segments back and not other things like versions
-		interest = Interest.last(interestName, acceptSegments(getSegmentNumberNameComponent(segmentNumber)), publisher);
-		interest.maxSuffixComponents(2);
-		interest.minSuffixComponents(2);
+		interest = Interest.last(interestName, acceptSegments(getSegmentNumberNameComponent(segmentNumber)), null, 2, 2, publisher);
 		return interest;
 	}
 	

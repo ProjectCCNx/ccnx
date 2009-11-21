@@ -35,6 +35,7 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -268,7 +269,7 @@ public class CCNVersionedInputStreamTest {
 	public void testCCNVersionedInputStreamContentObjectCCNLibrary() throws Exception {
 		// we can make a new handle; as long as we don't use the outputHandle it should work
 		ContentObject firstVersionBlock = inputHandle.get(firstVersionName, 1000);
-		ContentObject latestVersionBlock = reader.getLatest(defaultStreamName, defaultStreamName.count(), 1000);
+		ContentObject latestVersionBlock = reader.get(Interest.last(defaultStreamName, defaultStreamName.count(), null), 1000);
 		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionBlock, inputHandle);
 		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(latestVersionBlock, inputHandle);
 		testArgumentRunner(vfirst, vlatest);

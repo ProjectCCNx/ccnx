@@ -459,11 +459,8 @@ public class VersioningProfile implements CCNProfile {
 		}
 		byte [] versionComponent = startingVersion.lastComponent();
 		
-		Interest constructedInterest = Interest.last(startingVersion, acceptVersions(versionComponent), startingVersion.count() - 1);
-		if (null != additionalNameComponents) {
-			constructedInterest.maxSuffixComponents(additionalNameComponents);
-			constructedInterest.minSuffixComponents(additionalNameComponents);
-		}
+		Interest constructedInterest = Interest.last(startingVersion, acceptVersions(versionComponent), startingVersion.count() - 1, additionalNameComponents, 
+					additionalNameComponents, null);
 		if (null != publisher) {
 			constructedInterest.publisherID(new PublisherID(publisher));
 		}

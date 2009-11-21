@@ -84,7 +84,7 @@ public class RepoInitialReadTest extends RepoTestBase {
 		byte[] content = str.getBytes();
 		Exclude e = null;
 		for(;;) {
-			Interest i = Interest.constructInterest(name, e, Interest.CHILD_SELECTOR_LEFT);
+			Interest i = Interest.constructInterest(name, e, Interest.CHILD_SELECTOR_LEFT, null, null, null);
 			Log.info("searching for {0} content {1}, exclude {2}", name, str, e);
 			ContentObject co = getHandle.get(i, TIMEOUT);
 			Assert.assertTrue(null != co);

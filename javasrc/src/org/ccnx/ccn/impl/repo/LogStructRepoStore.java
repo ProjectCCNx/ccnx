@@ -460,7 +460,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 */
 	private String checkFile(String fileName, String contents, boolean forceWrite) throws RepositoryException {
 		ContentName name = getPrivateContentName(fileName);
-		ContentObject co = getContent(Interest.last(name, 3));
+		ContentObject co = getContent(Interest.last(name, 3, null));
 		
 		if (!forceWrite && co != null) {
 			return new String(co.content());

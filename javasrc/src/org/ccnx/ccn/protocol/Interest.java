@@ -254,38 +254,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	/**
-	 * Construct an Interest that will give you the next content after the
-	 * argument name
-	 * @param name
-	 * @return new Interest
-	 */
-	public static Interest next(ContentName name) {
-		return next(name, (byte[][])null, null, null);
-	}
-	
-	/**
-	 * Construct an Interest that will give you the next content after the
-	 * argument name
-	 * @param name
-	 * @param publisher		may be null
-	 * @return new Interest
-	 */
-	public static Interest next(ContentName name, PublisherPublicKeyDigest publisher) {
-		return next(name, (byte[][])null, null, publisher);
-	}
-	
-	/**
-	 * Construct an Interest that will give you the next content after the argument
-	 * name's first prefixCount components
-	 * @param name
-	 * @param prefixCount  may be null
-	 * @return new Interest
-	 */
-	public static Interest next(ContentName name, int prefixCount) {
-		return next(name, (byte[][])null, prefixCount, null);
-	}
-	
-	/**
 	 * Construct an Interest that will give you the next content after the argument
 	 * name's first prefixCount components
 	 * @param name
@@ -293,10 +261,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param publisher 	may be null
 	 * @return new Interest
 	 */
-	public static Interest next(ContentName name, int prefixCount, PublisherPublicKeyDigest publisher) {
-		return next(name, (byte[][])null, prefixCount, publisher);
+	public static Interest next(ContentName name, Integer prefixCount, PublisherPublicKeyDigest publisher) {
+		return next(name, null, prefixCount, null, null, publisher);
 	}
-	
 	
 	/**
 	 * Construct an Interest that will give you the next content after the argument
@@ -307,8 +274,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param publisher		may be null
 	 * @return
 	 */
-	public static Interest next(ContentName name, byte[][] omissions, Integer prefixCount, PublisherPublicKeyDigest publisher) {
-		return nextOrLast(name, Exclude.factory(omissions), new Integer(CHILD_SELECTOR_LEFT), prefixCount, publisher);
+	public static Interest next(ContentName name,Exclude exclude, Integer prefixCount, Integer maxSuffixComponents, Integer minSuffixComponents,
+					PublisherPublicKeyDigest publisher) {
+		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_LEFT), prefixCount, maxSuffixComponents, minSuffixComponents, publisher);
 	}
 	
 	/**
@@ -323,53 +291,26 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param publisher may be null
 	 * @return the Interest
 	 */
-	private static Interest nextOrLast(ContentName name, Exclude exclude, Integer order, Integer prefixCount, PublisherPublicKeyDigest publisher )  {
+	private static Interest nextOrLast(ContentName name, Exclude exclude, Integer order, Integer prefixCount, Integer maxSuffixComponents,
+					Integer minSuffixComponents, PublisherPublicKeyDigest publisher )  {
+		ArrayList<byte []>components = byteArrayClone(name.components());
+		ContentName nameToUse = new ContentName(components.size(), components);
 		if (null != prefixCount) {
 			if (prefixCount > name.count())
 				throw new IllegalArgumentException("Invalid prefixCount > components: " + prefixCount);
 		} else
-			prefixCount = name.count() - 1;
+			prefixCount = nameToUse.count() - 1;
 		
-		if (prefixCount < name.count()) {
-			byte [] component = name.component(prefixCount);
-			name = new ContentName(prefixCount, name.components());
+		if (prefixCount < nameToUse.count()) {
+			byte [] component = nameToUse.component(prefixCount);
+			nameToUse = new ContentName(prefixCount, nameToUse.components());
 		
 			if (exclude == null) {
 				exclude = Exclude.uptoFactory(component);
 			} else
 				exclude.excludeUpto(component);
 		}
-		return constructInterest(name, exclude, order, publisher);
-	}
-	
-	/**
-	 * Construct an Interest that will give you the last content after the argument name
-	 * @param name
-	 * @return
-	 */
-	public static Interest last(ContentName name) {
-		return last(name, (byte[][])null, null);
-	}
-	
-	/**
-	 * Construct an Interest that will give you the last content after the argument name
-	 * @param name
-	 * @param publisher
-	 * @return
-	 */
-	public static Interest last(ContentName name, PublisherPublicKeyDigest publisher) {
-		return last(name, (byte[][])null, null, publisher);
-	}
-	
-	/**
-	 * Construct an Interest that will give you the last content after the argument
-	 * name's first prefixCount components
-	 * @param name
-	 * @param prefixCount  may be null
-	 * @return new Interest
-	 */
-	public static Interest last(ContentName name, Integer prefixCount) {
-		return last(name, (byte[][])null, prefixCount);
+		return constructInterest(nameToUse, exclude, order, maxSuffixComponents, minSuffixComponents, publisher);
 	}
 	
 	/**
@@ -381,67 +322,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return new Interest
 	 */
 	public static Interest last(ContentName name, Integer prefixCount, PublisherPublicKeyDigest publisher) {
-		return last(name, (byte[][])null, prefixCount, publisher);
-	}
-	
-	/**
-	 * Construct an Interest that will give you the last content after the argument
-	 * names's first prefixCount components excluding the components specified in the omissions
-	 * @param name
-	 * @param omissions 	components to exclude - may be null
-	 * @param prefixCount	may be null
-	 * @return
-	 */
-	public static Interest last(ContentName name, byte omissions[][], Integer prefixCount) {
-		return nextOrLast(name, Exclude.factory(omissions), new Integer(CHILD_SELECTOR_RIGHT), prefixCount, null);
-	}
-	
-	/**
-	 * Construct an Interest that will give you the last content after the argument
-	 * names's first prefixCount components excluding the components specified in the omissions
-	 * @param name
-	 * @param omissions 	components to exclude - may be null
-	 * @param prefixCount	may be null
-	 * @param publisher 	may be null
-	 * @return
-	 */
-	public static Interest last(ContentName name, byte omissions[][], Integer prefixCount, PublisherPublicKeyDigest publisher) {
-		return nextOrLast(name, Exclude.factory(omissions), new Integer(CHILD_SELECTOR_RIGHT), prefixCount, publisher);
-	}
-	
-	/**
-	 * Construct an Interest that will give you the last content after the argument
-	 * name excluding the components specified in the Exclude
-	 * @param name
-	 * @param exclude contains components to exclude - may be null
-	 * @return the Interest
-	 */
-	public static Interest last(ContentName name, Exclude exclude) {
-		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), null, null);
-	}
-	
-	/**
-	 * Construct an Interest that will give you the last content after the argument
-	 * name excluding the components specified in the Exclude
-	 * @param name
-	 * @param exclude contains components to exclude - may be null
-	 * @param publisher may be null
-	 * @return the Interest
-	 */
-	public static Interest last(ContentName name, Exclude exclude, PublisherPublicKeyDigest publisher) {
-		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), null, publisher);
-	}
-	
-	/**
-	 * Construct an Interest that will give you the last content after the argument
-	 * name excluding the components specified in the Exclude
-	 * @param name
-	 * @param exclude 	contains components to exclude - may be null
-	 * @param prefixCount	may be null
-	 * @return the Interest
-	 */
-	public static Interest last(ContentName name, Exclude exclude, Integer prefixCount) {
-		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), prefixCount, null);
+		return last(name, null, prefixCount, null, null, publisher);
 	}
 	
 	/**
@@ -453,18 +334,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param publisher 	may be null
 	 * @return the Interest
 	 */
-	public static Interest last(ContentName name, Exclude exclude, Integer prefixCount, PublisherPublicKeyDigest publisher) {
-		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), prefixCount, publisher);
-	}
-	
-	/**
-	 * Construct an Interest to exclude the objects in the filter
-	 * @param name
-	 * @param omissions components to exclude
-	 * @return the Interest
-	 */
-	public static Interest exclude(ContentName name, byte omissions[][]) {
-		return constructInterest(name, null == omissions ? null : new Exclude(omissions), null);
+	public static Interest last(ContentName name, Exclude exclude, Integer prefixCount, Integer maxSuffixComponents, Integer minSuffixComponents, 
+				PublisherPublicKeyDigest publisher) {
+		return nextOrLast(name, exclude, new Integer(CHILD_SELECTOR_RIGHT), prefixCount, maxSuffixComponents, minSuffixComponents, publisher);
 	}
 	
 	/**
@@ -477,62 +349,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @param minSuffixComponents
 	 * @return the Interest
 	 */
-	public static Interest exclude(ContentName name, byte omissions[][], PublisherID publisherID, Integer maxSuffixComponents, Integer minSuffixComponents) {
-		return constructInterest(name, null == omissions ? null : new Exclude(omissions), null, publisherID, maxSuffixComponents, minSuffixComponents);
-	}
-	
-	/**
-	 * Construct an Interest that will give you the next content after the
-	 * argument ContentObject
-	 *
-	 * @param co
-	 * @param prefixCount
-	 * @return
-	 */
-	public static Interest next(ContentObject co, Integer prefixCount) {
-		ArrayList<byte []>components = byteArrayClone(co.fullName().components());
-		ContentName nextName = new ContentName(components.size(), components);
-		return next(nextName, prefixCount == null ? components.size() - 2 : prefixCount);
-	}
-	
-	/**
-	 * Construct an Interest that will give you the next content after the
-	 * argument ContentObject
-	 *
-	 * @param co
-	 * @return the Interest
-	 */
-	public static Interest next(ContentObject co) {
-		return next(co, null);
-	}
-
-	/**
-	 * Construct an Interest with specified values set
-	 * @param name
-	 * @param filter 			may be null
-	 * @param orderPreference 	may be null
-	 * @return the Interest
-	 */
-	public static Interest constructInterest(ContentName name,  Exclude filter,
-			Integer orderPreference) {
-		return constructInterest(name, filter, orderPreference, null, null, null);
-	}
-	
-	/**
-	 * Construct an Interest with specified values set
-	 * @param name
-	 * @param filter 			may be null
-	 * @param orderPreference 	may be null
-	 * @param publisher			may be null
-	 * @return the Interest
-	 */
-	public static Interest constructInterest(ContentName name,  Exclude filter,
-			Integer orderPreference, PublisherPublicKeyDigest publisher) {
-		
-		PublisherID pubID = null;
-		if (publisher!=null)
-			pubID = new PublisherID(publisher);
-		return constructInterest(name, filter, orderPreference, pubID, null, null);
+	public static Interest exclude(ContentName name, Exclude exclude, Integer maxSuffixComponents, Integer minSuffixComponents, PublisherPublicKeyDigest publisherID) {
+		return constructInterest(name, exclude, null, maxSuffixComponents, minSuffixComponents, publisherID);
 	}
 	
 	/**
@@ -546,14 +364,17 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * @return the Interest
 	 */
 	public static Interest constructInterest(ContentName name,  Exclude filter,
-			Integer childSelector, PublisherID publisherID, Integer maxSuffixComponents, Integer minSuffixComponents) {
+			Integer childSelector, Integer maxSuffixComponents, Integer minSuffixComponents, PublisherPublicKeyDigest publisher) {
+		PublisherID pubID = null;
+		if (publisher!=null)
+			pubID = new PublisherID(publisher);
 		Interest interest = new Interest(name);
 		if (null != childSelector)
 			interest.childSelector(childSelector);
 		if (null != filter)
 			interest.exclude(filter);
-		if (null != publisherID)
-			interest.publisherID(publisherID);
+		if (null != pubID)
+			interest.publisherID(pubID);
 		if (null != maxSuffixComponents)
 			interest.maxSuffixComponents(maxSuffixComponents);
 		if (null != minSuffixComponents)

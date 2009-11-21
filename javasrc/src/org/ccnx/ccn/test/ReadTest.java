@@ -93,7 +93,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			Thread.sleep(rand.nextInt(50));
 			int tValue = rand.nextInt(count - 1);
 			ContentName cn = ContentName.fromNative("/getNext/" + new Integer(tValue).toString());
-			ContentObject result = reader.getNext(cn, 1, 3000);
+			ContentObject result = reader.get(Interest.next(cn, 1, null), 3000);
 			checkResult(result, tValue + 1);
 		}
 		System.out.println("getNext test finished");
@@ -123,7 +123,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 					tValue--;
 				ContentName cn = SegmentationProfile.segmentName(
 						ContentName.fromNative("/getLatest/" + new Integer(tValue).toString()), SegmentationProfile.baseSegment());
-				ContentObject result = reader.getLatest(cn, 1, 5000);
+				ContentObject result = reader.get(Interest.last(cn, 1, null), 5000);
 				checkResult(result, highest);
 			}
 		}
@@ -140,7 +140,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		}
 		writer.put("/excludeTest/aaa", "aaa");
 		writer.put("/excludeTest/zzzzzzzz", "zzzzzzzz");
-		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeTest/"), ef, null);
+		Interest interest = Interest.constructInterest(ContentName.fromNative("/excludeTest/"), ef, null, null, null, null);
 		ContentObject content = getHandle.get(interest, 3000);
 		Assert.assertTrue(content == null);
 		
@@ -175,10 +175,10 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			writer.put(name, value);
 		}
 		CCNReader reader = new CCNReader(getHandle);
-		ContentObject content = reader.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
+		ContentObject content = reader.get(Interest.exclude(ContentName.fromNative(prefix + "/"), new Exclude(excludes), null, null, null), 50000);
 		if (null == content || !Arrays.equals(content.content(), new Integer((nFilters - 1)).toString().getBytes())) {
 			// Try one more time in case we got a false positive
-			content = reader.getExcept(ContentName.fromNative(prefix + "/"), excludes, 50000);
+			content = reader.get(Interest.exclude(ContentName.fromNative(prefix + "/"), new Exclude(excludes), null, null, null), 50000);
 		}
 		Assert.assertFalse(content == null);
 		assertEquals(DataUtils.compare(content.content(), new Integer((nFilters - 1)).toString().getBytes()), 0);

@@ -135,7 +135,7 @@ public class CCNFlowControlTest extends CCNTestBase {
 
 		System.out.println("Testing \"next\" interest arrives before a put");
 		normalReset(name1);
-		interestList.add(Interest.next(v1s2));
+		interestList.add(Interest.next(v1s2, null, null));
 		fc.handleInterests(interestList);
 		fc.put(objv1s1);
 		Assert.assertTrue(queue.poll() == null);
@@ -149,7 +149,7 @@ public class CCNFlowControlTest extends CCNTestBase {
 
 		System.out.println("Testing \"last\" interest arrives before a put");
 		normalReset(name1);
-		interestList.add(Interest.last(v1s2));
+		interestList.add(Interest.last(v1s2, null, null));
 		fc.handleInterests(interestList);
 		fc.put(objv1s1);
 		Assert.assertTrue(queue.poll() == null);
@@ -203,7 +203,7 @@ public class CCNFlowControlTest extends CCNTestBase {
 		ContentObject co = testExpected(_handle.get(v1, 0), objv1s1);
 
 		// Next we get the interest for the next segment before the data
-		interestList.add(Interest.next(co,3));
+		interestList.add(Interest.next(co.name(), 3, null));
 		fc.handleInterests(interestList);
 
 		// Data arrives for the waiting interest, should be sent out
@@ -298,12 +298,12 @@ public class CCNFlowControlTest extends CCNTestBase {
 	}
 	
 	private ContentObject testNext(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {
-		co = _reader.getNext(co.name(), 3, 0);
+		co = _reader.get(Interest.next(co.name(), 3, null), 0);
 		return testExpected(co, expected);
 	}
 	
 	private void testLast(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {
-		co = _reader.getLatest(co.name(), 3, 0);
+		co = _reader.get(Interest.last(co.name(), 3, null), 0);
 		testExpected(co, expected);
 	}
 	
