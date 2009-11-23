@@ -642,7 +642,7 @@ public class AccessControlManager {
 		}
 		// If we got here, we got the node key we were updating, so we are allowed
 		// to at least read this stuff (though maybe not write it). Save the acl.
-		currentACL.save(newACL);
+		currentACL.saveToRepository(newACL);
 		return newACL;
 		
 	}
