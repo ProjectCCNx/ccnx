@@ -555,7 +555,7 @@ public class AccessControlManager {
 										  effectiveParentNodeKey.nodeName(), effectiveParentNodeKey.nodeKey(), handle());
 		
 		// Then mark the ACL as gone.
-		thisNodeACL.saveAsGone();
+		thisNodeACL.saveToRepositoryAsGone();
 	}
 	
 	/**
