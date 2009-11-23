@@ -43,6 +43,7 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
@@ -354,7 +355,11 @@ public class AccessControlManager {
 			pko = _groupManager.getLatestPublicKeyForGroup(principal);
 		} else {
 			Log.info("Retrieving latest key for user: " + principal.targetName());
-			pko = new PublicKeyObject(principal.targetName(), principal.targetAuthenticator().publisher(), handle());
+			LinkAuthenticator targetAuth = principal.targetAuthenticator();
+			if (null != targetAuth) {
+				pko = new PublicKeyObject(principal.targetName(), targetAuth.publisher(), handle());
+			}
+			else pko = new PublicKeyObject(principal.targetName(), handle());
 		}
 		return pko;
 	}
