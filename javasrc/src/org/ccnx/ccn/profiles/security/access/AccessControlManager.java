@@ -665,6 +665,26 @@ public class AccessControlManager {
 		}
 		return updateACL(nodeName, ops);
 	}
+
+	/**
+	 * Remove readers from a specified node	
+	 * @param nodeName the name of the node
+	 * @param removedReaders the list of removed readers
+	 * @return the updated ACL
+	 * @throws IOException 
+	 * @throws InvalidCipherTextException 
+	 * @throws ContentDecodingException 
+	 * @throws InvalidKeyException 
+	 */
+	public ACL removeReaders(ContentName nodeName, ArrayList<Link> removedReaders) 
+			throws InvalidKeyException, ContentDecodingException, InvalidCipherTextException, IOException {
+		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
+		for(Link reader : removedReaders){
+			ops.add(ACLOperation.removeReaderOperation(reader));
+		}
+		return updateACL(nodeName, ops);
+	}
+
 	
 	/**
 	 * Add writers to a specified node.
@@ -681,6 +701,25 @@ public class AccessControlManager {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
 		for(Link writer : newWriters){
 			ops.add(ACLOperation.addWriterOperation(writer));
+		}
+		return updateACL(nodeName, ops);
+	}
+	
+	/**
+	 * Remove writers from a specified node.
+	 * @param nodeName the name of the node
+	 * @param removedWriters the list of removed writers
+	 * @return the updated ACL
+	 * @throws IOException 
+	 * @throws InvalidCipherTextException 
+	 * @throws ContentDecodingException 
+	 * @throws InvalidKeyException 
+	 */
+	public ACL removeWriters(ContentName nodeName, ArrayList<Link> removedWriters) 
+			throws InvalidKeyException, ContentDecodingException, InvalidCipherTextException, IOException {
+		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
+		for(Link writer : removedWriters){
+			ops.add(ACLOperation.removeWriterOperation(writer));
 		}
 		return updateACL(nodeName, ops);
 	}
@@ -704,6 +743,24 @@ public class AccessControlManager {
 		return updateACL(nodeName, ops);
 	}
 	
+	/**
+	 * Remove managers from a specified node
+	 * @param nodeName the name of the node
+	 * @param removedManagers the list of removed managers
+	 * @return the updated ACL
+	 * @throws IOException 
+	 * @throws InvalidCipherTextException 
+	 * @throws ContentDecodingException 
+	 * @throws InvalidKeyException 
+	 */
+	public ACL removeManagers(ContentName nodeName, ArrayList<Link> removedManagers) 
+			throws InvalidKeyException, ContentDecodingException, InvalidCipherTextException, IOException {
+		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
+		for(Link manager: removedManagers){
+			ops.add(ACLOperation.removeManagerOperation(manager));
+		}
+		return updateACL(nodeName, ops);
+	}
 	
 	/**
 	 * Get the ancestor node key in force at this node (if we can decrypt it),
