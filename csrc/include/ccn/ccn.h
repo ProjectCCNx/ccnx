@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 1003
+#define CCN_API_VERSION 1004
 
 /**
  * Global interest lifetime.
@@ -235,7 +235,8 @@ int ccn_name_append_numeric(struct ccn_charbuf *c,
  * returns -1 for error, otherwise the number of Components
  * components arg may be NULL to just do a validity check
  */
-int ccn_name_split(struct ccn_charbuf *c, struct ccn_indexbuf* components);
+int ccn_name_split(const struct ccn_charbuf *c,
+                   struct ccn_indexbuf* components);
 
 /*
  * ccn_name_chop: Chop the name down to n components.
@@ -245,7 +246,8 @@ int ccn_name_split(struct ccn_charbuf *c, struct ccn_indexbuf* components);
  * n may be negative to say how many components to remove instead of how
  * many to leave, e.g. -1 will remove just the last component.
  */
-int ccn_name_chop(struct ccn_charbuf *c, struct ccn_indexbuf* components, int n);
+int ccn_name_chop(struct ccn_charbuf *c,
+                  struct ccn_indexbuf* components, int n);
 
 
 /***********************************
@@ -627,10 +629,65 @@ int ccn_content_get_value(const unsigned char *data, size_t data_size,
                           const struct ccn_parsed_ContentObject *content,
                           const unsigned char **value, size_t *size);
 
-/***********************************
- * Binary encoding
- */
+/* content-object signing */
 
+/**
+ * Parameters for creating signed content objects.
+ *
+ * A pointer to one of these may be passed to ccn_sign_content() for
+ * cases where the default signing behavior does not suffice.
+ * For the default (sign with the user's default key pair), pass NULL
+ * for the pointer.
+ *
+ * The recommended way to us this is to create a local variable:
+ *
+ *   struct ccn_signing_params myparams = CCN_SIGNING_PARAMS_INIT;
+ *
+ * and then fill in the desired fields.  This way if additional parameters
+ * are added, it won't be necessary to go back and modify exiting clients.
+ * 
+ * The template_ccnb may contain a ccnb-encoded SignedInfo to supply
+ * selected fields from under the direction of sp_flags.
+ * It is permitted to omit unneeded fields from the template, even if the
+ * schema says they are manditory.
+ *
+ * If the pubid is all zero, the user's default key pair is used for
+ * signing.  Otherwise the corresponding private key must have already
+ * been supplied to the handle using ccn_load_private_key() or equivalent.
+ */
+ 
+struct ccn_signing_params {
+    int api_version;
+    int sp_flags;
+    struct ccn_charbuf *template_ccnb;
+    unsigned char pubid[32];
+    enum ccn_content_type type;
+    int freshness;
+    // XXX where should digest_algorithm fit in?
+};
+
+#define CCN_SIGNING_PARAMS_INIT \
+  { CCN_API_VERSION, 0, NULL, {0}, CCN_CONTENT_DATA, -1 }
+
+#define CCN_SP_TEMPL_TIMESTAMP      0x0001
+#define CCN_SP_TEMPL_FINAL_BLOCK_ID 0x0002
+#define CCN_SP_TEMPL_FRESHNESS      0x0004
+#define CCN_SP_TEMPL_KEY_LOCATOR    0x0008
+#define CCN_SP_FINAL_BLOCK          0x0010
+#define CCN_SP_OMIT_KEY_LOCATOR     0x0020
+
+int ccn_sign_content(struct ccn *h,
+                     struct ccn_charbuf *resultbuf,
+                     const struct ccn_charbuf *name_prefix,
+                     const struct ccn_signing_params *params,
+                     const void *data, size_t size);
+
+int ccn_load_private_key(struct ccn *h,
+                         const char *keystore_path,
+                         const char *keystore_passphrase,
+                         struct ccn_charbuf *pubid_out);
+
+/* low-level content-object signing */
 int ccn_signed_info_create(
     struct ccn_charbuf *c,              /* filled with result */
     const void *publisher_key_id,	/* input, (sha256) hash */
