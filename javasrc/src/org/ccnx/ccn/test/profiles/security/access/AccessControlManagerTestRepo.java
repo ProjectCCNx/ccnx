@@ -1,20 +1,22 @@
 package org.ccnx.ccn.test.profiles.security.access;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
-import junit.framework.Assert;
-
-import java.util.Random;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Random;
+
+import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.ACL;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.ACL.ACLObject;
+import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.profiles.security.TestUserData;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 /**
  * This test relies on org.ccn.ccn.test.profiles.access.TestUserData to generate users
@@ -30,9 +32,8 @@ public class AccessControlManagerTestRepo {
 	static int userCount = 3;
 	static TestUserData td;
 	static String[] friendlyNames;
-	static ContentName user0;
-	static Link lk, lk2;
-	static ACL baseACL;
+	static ContentName user0, user1, user2;
+	static ACL baseACL, childACL;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -51,6 +52,9 @@ public class AccessControlManagerTestRepo {
 		td.saveUserPK2Repo(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);
 		Assert.assertEquals(userCount, friendlyNames.length);
+		user0 = ContentName.fromNative(userNamespace, friendlyNames[0]);
+		user1 = ContentName.fromNative(userNamespace, friendlyNames[1]);
+		user2 = ContentName.fromNative(userNamespace, friendlyNames[2]);
 	}
 	
 	/**
@@ -60,8 +64,7 @@ public class AccessControlManagerTestRepo {
 	@Test
 	public void testSetBaseACL() throws Exception {		
 		ArrayList<Link> ACLcontents = new ArrayList<Link>();
-		user0 = ContentName.fromNative(userNamespace, friendlyNames[0]);
-		lk = new Link(user0, "rw+", null);
+		Link lk = new Link(user0, "rw+", null);
 		ACLcontents.add(lk);
 		baseACL = new ACL(ACLcontents);
 		CCNHandle handle = td.getHandleForUser(friendlyNames[0]);
@@ -78,8 +81,6 @@ public class AccessControlManagerTestRepo {
 		ACLObject aclo = acm.getEffectiveACLObject(baseNode);
 		ACL aclRetrieved = aclo.acl();
 		Assert.assertTrue(aclRetrieved.equals(baseACL));
-		Link linkRetrieved = aclRetrieved.remove(0);
-		Assert.assertTrue(linkRetrieved.equals(lk));		
 	}
 	
 	/**
@@ -90,13 +91,11 @@ public class AccessControlManagerTestRepo {
 	@Test
 	public void testGetACLFromAncestor() throws Exception {
 		ACLObject aclo = acm.getEffectiveACLObject(grandchildNode);
-		ACL aclRetrieved = aclo.acl();
-		Link linkRetrieved = aclRetrieved.remove(0);
-		Assert.assertTrue(linkRetrieved.equals(lk));		
+		Assert.assertTrue(aclo.acl().equals(baseACL));
 	}
 	
 	/**
-	 * Interpose a different ACL at the child node (we make user 0 a manager)
+	 * Interpose a different ACL at the child node (we make user0 a manager and user1 a reader)
 	 * Retrieve the ACL for the grandchild node and check that it now comes 
 	 * from the child node.
 	 * @throws Exception
@@ -105,37 +104,80 @@ public class AccessControlManagerTestRepo {
 	public void testSetACL() throws Exception {
 		// set interposed ACL
 		ArrayList<Link> newACLContents = new ArrayList<Link>();
-		Link lk2 = new Link(user0, "rw+", null);
-		newACLContents.add(lk2);
-		ACL newACL = new ACL(newACLContents);
-		acm.setACL(childNode, newACL);
+		newACLContents.add(new Link(user0, "rw+", null));
+		newACLContents.add(new Link(user1, "r", null));
+		childACL = new ACL(newACLContents);
+		acm.setACL(childNode, childACL);
 		Thread.sleep(1000);
 		
 		// retrieve ACL at child node
 		ACLObject aclo = acm.getEffectiveACLObject(childNode);
-		ACL aclRetrieved = aclo.acl();
-		Link linkRetrieved = aclRetrieved.remove(0);
-		Assert.assertTrue(linkRetrieved.equals(lk2));		
+		Assert.assertTrue(aclo.acl().equals(childACL));
 		
 		// retrieve ACL at grandchild node
 		aclo = acm.getEffectiveACLObject(grandchildNode);
-		aclRetrieved = aclo.acl();
-		linkRetrieved = aclRetrieved.remove(0);
-		Assert.assertTrue(linkRetrieved.equals(lk2));		
+		Assert.assertTrue(aclo.acl().equals(childACL));
 	}
 	
 	/**
-	 * Update the child ACL to add user1 as a reader and user2 as a writer.
+	 * Update the child ACL to add user1 as a writer and user2 as a reader.
 	 * @throws Exception
 	 */
 	@Test
-	public void testUpdateACL() throws Exception {
+	public void testUpdateACLAdd() throws Exception {
 		ArrayList<Link> newReaders = new ArrayList<Link>();
-		newReaders.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[1])));
+		newReaders.add(new Link(user2));
 		acm.addReaders(childNode, newReaders);
 		ArrayList<Link> newWriters = new ArrayList<Link>();
-		newWriters.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[2])));
+		newWriters.add(new Link(user1));
 		acm.addWriters(childNode, newWriters);
+		
+		// get the ACL (at the grandchild node) and check the updates
+		ACL aclRetrieved = acm.getEffectiveACL(grandchildNode);
+		LinkedList<Link> childACLLinks = aclRetrieved.contents();
+		Iterator<Link> iter = childACLLinks.iterator();
+		// user0 is a manager
+		Link l = (Link) iter.next();
+		Assert.assertTrue(l.targetName().equals(user0));
+		Assert.assertTrue(l.targetLabel().equals("rw+"));
+		// user2 is a reader
+		l = (Link) iter.next();
+		Assert.assertTrue(l.targetName().equals(user2));
+		Assert.assertTrue(l.targetLabel().equals("r"));
+		// user1 is a writer
+		l = (Link) iter.next();
+		Assert.assertTrue(l.targetName().equals(user1));
+		Assert.assertTrue(l.targetLabel().equals("rw"));
+		// there is no other link in the ACL
+		Assert.assertFalse(iter.hasNext());
+	}
+	
+	/**
+	 * Remove user1 as a writer and user2 as a reader of the child node
+	 * @throws Exception
+	 */
+	@Test
+	public void testUpdateACLRemove() throws Exception {
+		// remove user1 as a writer
+		ArrayList<Link> removedWriters = new ArrayList<Link>();
+		removedWriters.add(new Link(user1));
+		Thread.sleep(1000);
+		acm.removeWriters(childNode, removedWriters);
+		// remove user2 as a reader
+		ArrayList<Link> removedReaders = new ArrayList<Link>();
+		removedReaders.add(new Link(user2));
+		acm.removeReaders(childNode, removedReaders);
+		
+		// get the ACL (at the child node) and check the updates
+		ACL aclRetrieved = acm.getEffectiveACL(grandchildNode);
+		LinkedList<Link> childACLLinks = aclRetrieved.contents();
+		Iterator<Link> iter = childACLLinks.iterator();
+		// user0 is a manager
+		Link l = (Link) iter.next();
+		Assert.assertTrue(l.targetName().equals(user0));
+		Assert.assertTrue(l.targetLabel().equals("rw+"));
+		// there is no other link in the ACL
+		Assert.assertFalse(iter.hasNext());
 	}
 	
 	/**
@@ -148,9 +190,7 @@ public class AccessControlManagerTestRepo {
 		acm.deleteACL(childNode);
 		// retrieve ACL at grandchild node
 		ACLObject aclo = acm.getEffectiveACLObject(grandchildNode);
-		ACL aclRetrieved = aclo.acl();
-		Link linkRetrieved = aclRetrieved.remove(0);
-		Assert.assertTrue(linkRetrieved.equals(lk));				
+		Assert.assertTrue(aclo.acl().equals(baseACL));
 	}
 	
 }
