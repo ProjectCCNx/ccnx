@@ -1159,6 +1159,7 @@ public class AccessControlManager {
 					}
 					// Add a previous key link to the old version of the key.
 					// TODO do we need to add publisher?
+					nodeKeyDirectory.waitForData();
 					nodeKeyDirectory.addPreviousKeyLink(oldEffectiveNodeKey.storedNodeKeyName(), null);
 					// OK, just add superseded-by block to the old directory.
 					KeyDirectory.addSupersededByBlock(oldEffectiveNodeKey.storedNodeKeyName(), oldEffectiveNodeKey.nodeKey(), 
