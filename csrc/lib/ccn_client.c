@@ -41,6 +41,7 @@
 #include <ccn/digest.h>
 #include <ccn/hashtb.h>
 #include <ccn/signing.h>
+#include <ccn/keystore.h>
 #include <ccn/uri.h>
 
 struct ccn {
@@ -54,7 +55,9 @@ struct ccn {
     struct hashtb *interest_filters;
     struct ccn_skeleton_decoder decoder;
     struct ccn_indexbuf *scratch_indexbuf;
-    struct hashtb *keys;	/* KEYS */
+    struct hashtb *keys;	/* public keys, by pubid */
+    struct hashtb *keystores;   /* unlocked private keys */
+    struct ccn_charbuf *default_pubid;
     struct timeval now;
     int timeout;
     int refresh_us;
@@ -109,6 +112,8 @@ static void ccn_refresh_interest(struct ccn *, struct expressed_interest *);
 static void ccn_initiate_prefix_reg(struct ccn *,
                                     const void *, size_t,
                                     struct interest_filter *);
+static void finalize_keystore(struct hashtb_enumerator *e);
+
 static int
 tv_earlier(const struct timeval *a, const struct timeval *b)
 {
@@ -230,13 +235,17 @@ ccn_create(void)
 {
     struct ccn *h;
     const char *s;
+    struct hashtb_param param = {0};
 
     h = calloc(1, sizeof(*h));
     if (h == NULL)
         return(h);
+    param.finalize_data = h;
     h->sock = -1;
     h->interestbuf = ccn_charbuf_create();
     h->keys = hashtb_create(sizeof(struct ccn_pkey *), NULL);
+    param.finalize = &finalize_keystore;
+    h->keystores = hashtb_create(sizeof(struct ccn_keystore *), &param);
     s = getenv("CCN_DEBUG");
     h->verbose_error = (s != NULL && s[0] != 0);
     s = getenv("CCN_TAP");
@@ -430,6 +439,7 @@ ccn_destroy(struct ccn **hp)
         hashtb_end(e);
         hashtb_destroy(&(h->keys));
     }
+    hashtb_destroy(&(h->keystores));
     ccn_charbuf_destroy(&h->interestbuf);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
     if (h->tap != -1) {
@@ -1729,3 +1739,197 @@ ccn_verify_content(struct ccn *h,
     return(res);
 }
 
+int
+ccn_load_private_key(struct ccn *h,
+                     const char *keystore_path,
+                     const char *keystore_passphrase,
+                     struct ccn_charbuf *pubid_out)
+{
+    struct ccn_keystore *keystore = NULL;
+    int res = 0;
+    struct ccn_charbuf *pubid = pubid_out;
+    struct ccn_charbuf *pubid_store = NULL;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    
+    if (pubid == NULL)
+        pubid = pubid_store = ccn_charbuf_create();
+    if (pubid == NULL) {
+        res = NOTE_ERRNO(h);
+        goto Cleanup;
+    }
+    keystore = ccn_keystore_create();
+    if (keystore == NULL) {
+        res = NOTE_ERRNO(h);
+        goto Cleanup;
+    }
+    res = ccn_keystore_init(keystore,
+                           (char *)keystore_path,
+                           (char *)keystore_passphrase);
+    if (res != 0) {
+        res = NOTE_ERRNO(h);
+        goto Cleanup;
+    }
+    pubid->length = 0;
+    ccn_charbuf_append(pubid,
+                       ccn_keystore_public_key_digest(keystore),
+                       ccn_keystore_public_key_digest_length(keystore));
+    hashtb_start(h->keystores, e);
+    res = hashtb_seek(e, pubid->buf, pubid->length, 0);
+    if (res == HT_NEW_ENTRY) {
+        struct ccn_keystore **p = e->data;
+        *p = keystore;
+        keystore = NULL;
+        res = 0;
+    }
+    else if (res == HT_OLD_ENTRY)
+        res = 0;
+    else
+        res = NOTE_ERRNO(h);
+    hashtb_end(e);
+Cleanup:
+    ccn_charbuf_destroy(&pubid_store);
+    ccn_keystore_destroy(&keystore);
+    return(res);
+}
+
+static void
+finalize_keystore(struct hashtb_enumerator *e)
+{
+    struct ccn *h = hashtb_get_param(e->ht, NULL);
+    struct ccn_keystore **p = e->data;
+    ccn_keystore_destroy(p);
+    XXX;
+}
+
+static int
+chk_signing_params(struct ccn *h,
+                   const struct ccn_signing_params *params,
+                   struct ccn_signing_params *result)
+{
+    struct ccn_charbuf *default_pubid = NULL;
+    struct ccn_charbuf *temp = NULL;
+    const char *home = NULL;
+    int res = 0;
+    int i;
+    
+    if (params != NULL)
+        *result = *params;
+    for (i = 0; i < sizeof(result->pubid) && result->pubid[i] == 0; i++)
+        continue;
+    if (i == sizeof(result->pubid)) {
+        if (h->default_pubid == NULL) {
+            default_pubid = ccn_charbuf_create();
+            temp = ccn_charbuf_create();
+            if (default_pubid == NULL || temp == NULL)
+                return(NOTE_ERRNO(h));
+            home = getenv("HOME");
+            if (home == NULL)
+                home = "";
+            ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", home);
+            res = ccn_load_private_key(h,
+                                       ccn_charbuf_as_string(temp),
+                                       "Th1s1sn0t8g00dp8ssw0rd.",
+                                       default_pubid);
+            if (res == 0 && default_pubid->length == sizeof(result->pubid)) {
+                h->default_pubid = default_pubid;
+                default_pubid = NULL;
+            }
+        }
+        if (h->default_pubid == NULL)
+            res = -1;
+        else
+            memcpy(result->pubid, h->default_pubid->buf, sizeof(result->pubid));
+    }
+    ccn_charbuf_destroy(&default_pubid);
+    ccn_charbuf_destroy(&temp);
+    if ((result->sp_flags & (CCN_SP_TEMPL_TIMESTAMP      |
+                             CCN_SP_TEMPL_FINAL_BLOCK_ID |
+                             CCN_SP_TEMPL_FRESHNESS      |
+                             CCN_SP_TEMPL_KEY_LOCATOR    )) != 0) {
+        XXX; // These are not yet implemented.
+        res = -1;
+    }
+    return(res);
+}
+
+int
+ccn_sign_content(struct ccn *h,
+                 struct ccn_charbuf *resultbuf,
+                 const struct ccn_charbuf *name_prefix,
+                 const struct ccn_signing_params *params,
+                 const void *data, size_t size)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_signing_params p = CCN_SIGNING_PARAMS_INIT;
+    struct ccn_charbuf *signed_info = NULL;
+    struct ccn_charbuf *keylocator = NULL;
+    struct ccn_keystore *keystore = NULL;
+    struct ccn_charbuf *finalblockid = NULL;
+    int res;
+    
+    res = chk_signing_params(h, params, &p);
+    if (res < 0)
+        return(res);
+    hashtb_start(h->keystores, e);
+    if (hashtb_seek(e, p.pubid, sizeof(p.pubid), 0) == HT_OLD_ENTRY) {
+        struct ccn_keystore **pk = e->data;
+        keystore = *pk;
+        signed_info = ccn_charbuf_create();
+        if ((p.sp_flags & CCN_SP_OMIT_KEY_LOCATOR) == 0) {
+            /* Construct a key locator containing the key itself */
+            keylocator = ccn_charbuf_create();
+            ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG);
+            ccn_charbuf_append_tt(keylocator, CCN_DTAG_Key, CCN_DTAG);
+            res = ccn_append_pubkey_blob(keylocator,
+                                         ccn_keystore_public_key(keystore));
+            ccn_charbuf_append_closer(keylocator); /* </Key> */
+            ccn_charbuf_append_closer(keylocator); /* </KeyLocator> */
+        }
+        if (res >= 0 && (p.sp_flags & CCN_SP_FINAL_BLOCK) != 0) {
+            int ncomp;
+            struct ccn_indexbuf *ndx;
+            const unsigned char *comp = NULL;
+            size_t size = 0;
+            
+            ndx = ccn_indexbuf_create();
+            ncomp = ccn_name_split(name_prefix, ndx);
+            if (ncomp < 0)
+                res = NOTE_ERR(h, EINVAL);
+            else {
+                finalblockid = ccn_charbuf_create();
+                ccn_name_comp_get(name_prefix->buf,
+                                  ndx, ncomp - 1, &comp, &size);
+                ccn_charbuf_append_tt(finalblockid, size, CCN_BLOB);
+                ccn_charbuf_append(finalblockid, comp, size);
+            }
+            ccn_indexbuf_destroy(&ndx);
+        }
+        if (res >= 0)
+            res = ccn_signed_info_create(signed_info,
+                                         ccn_keystore_public_key_digest(keystore),
+                                         ccn_keystore_public_key_digest_length(keystore),
+                                         /*timestamp*/NULL, // XXX
+                                         p.type,
+                                         p.freshness,
+                                         finalblockid,
+                                         keylocator);
+        if (res >= 0)
+            res = ccn_encode_ContentObject(resultbuf,
+                                           name_prefix,
+                                           signed_info,
+                                           data,
+                                           size,
+                                           NULL, // XXX
+                                           ccn_keystore_private_key(keystore));
+    }
+    else {
+        res = NOTE_ERR(h, -1);
+        hashtb_delete(e);
+    }
+    hashtb_end(e);
+    ccn_charbuf_destroy(&keylocator);
+    ccn_charbuf_destroy(&finalblockid);
+    return(res);
+}

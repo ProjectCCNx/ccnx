@@ -104,8 +104,6 @@ public class CCNFileProxy implements CCNFilterListener {
 		_handle.registerFilter(_prefix, this);
 	}
 	
-
-	@Override
 	public int handleInterests(ArrayList<Interest> interests) {
 		// Alright, we've gotten an interest. Either it's an interest for a stream we're
 		// already reading, or it's a request for a new stream.

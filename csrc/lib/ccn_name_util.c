@@ -185,7 +185,7 @@ ccn_name_comp_strcmp(const unsigned char *data,
  * @returns -1 for error, otherwise the number of Components.
  */
 int
-ccn_name_split(struct ccn_charbuf *c, struct ccn_indexbuf *components)
+ccn_name_split(const struct ccn_charbuf *c, struct ccn_indexbuf *components)
 {
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
