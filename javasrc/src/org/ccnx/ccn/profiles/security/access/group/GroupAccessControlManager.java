@@ -52,6 +52,7 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager.Root.RootObject;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
@@ -187,7 +188,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 			// path.
  *
  */
-public class GroupAccessControlManager {
+public class GroupAccessControlManager extends AccessControlManager {
 	
 	/**
 	 * Default data key length in bytes. No real reason this can't be bumped up to 32. It

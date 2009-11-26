@@ -24,6 +24,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 
@@ -35,8 +36,7 @@ import org.ccnx.ccn.protocol.ContentName;
  * - node keys, and their encryption under ACL member keys
  * - if used, markers indicating where to find ACLs/node keys
  */
-
-public class GroupAccessControlProfile implements CCNProfile {
+public class GroupAccessControlProfile extends AccessControlProfile implements CCNProfile {
 	
 	// Is it better to use .access or _access_? The former might be used by "real" data more often...
 	public static final String ACCESS_CONTROL_MARKER = CCNProfile.MARKER + "access" + CCNProfile.MARKER;
