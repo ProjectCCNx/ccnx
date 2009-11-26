@@ -35,6 +35,9 @@ import javax.crypto.spec.SecretKeySpec;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
@@ -164,12 +167,46 @@ public class ContentKeys {
 	 */
 	public ContentKeys(String encryptionAlgorithm, SecretKeySpec encryptionKey,
 						IvParameterSpec masterIV) throws NoSuchAlgorithmException, NoSuchPaddingException {
+		this._encryptionAlgorithm = (null != encryptionAlgorithm) ? encryptionAlgorithm : DEFAULT_CIPHER_ALGORITHM;
 		// ensure NoSuchPaddingException cannot be thrown later when a Cipher is made
-		Cipher.getInstance(encryptionAlgorithm, KeyManager.getDefaultProvider());
+		Cipher.getInstance(_encryptionAlgorithm, KeyManager.getDefaultProvider());
 		// TODO check secret key/iv not empty?
-		this._encryptionAlgorithm = encryptionAlgorithm;
 		this._encryptionKey = encryptionKey;
 		this._masterIV = masterIV;
+	}
+	
+	/**
+	 * Create a ContentKeys from a master secret key, using the KeyDerivationFunction
+	 * to derive a subkey and master IV unique to this ContentName/Publisher combination.
+	 * @param encryptionAlgorithm encryption algorithm and cipher mode to use (if null, default to AES/CTR/NoPadding)
+	 * @param masterKeyBytes the master key from which to derive the key and IV
+	 * @param keyBitLength the key length in bits to derive
+	 * @param ivBitLength the IV length in bits to derive
+	 * @param label a label to add diversity to the key derivcation function. If you use keys
+	 * 		for different functions, associate each function with a label. To arrive at the same
+	 * 		key, callers must supply not only the same masterKeyByte, contentName and publisher, but also
+	 * 		the same label.
+	 * @param contentName the name of the content for which we are deriving a key (including versions, but not
+	 * 		segment numbers)
+	 * @param publisher the publisher of the content for which we are deriving a key
+	 * @throws ContentEncodingException 
+	 * @throws InvalidKeyException 
+	 * @throws NoSuchPaddingException 
+	 * @throws NoSuchAlgorithmException 
+	 */
+	public ContentKeys(String encryptionAlgorithm, byte [] masterKeyBytes, 
+					   int keyBitLength, int ivBitLength,
+					   String label,
+					   ContentName contentName, 
+					   PublisherPublicKeyDigest publisher) throws InvalidKeyException, ContentEncodingException, NoSuchAlgorithmException, NoSuchPaddingException {
+		
+		this._encryptionAlgorithm = (null != encryptionAlgorithm) ? encryptionAlgorithm : DEFAULT_CIPHER_ALGORITHM;
+		// ensure NoSuchPaddingException cannot be thrown later when a Cipher is made
+		Cipher.getInstance(_encryptionAlgorithm, KeyManager.getDefaultProvider());
+		byte [][] keyAndIV = KeyDerivationFunction.DeriveKeysForObject(masterKeyBytes, keyBitLength, ivBitLength, label, contentName, publisher);
+		
+		this._encryptionKey = new SecretKeySpec(keyAndIV[0], getBaseAlgorithm());
+		this._masterIV = new IvParameterSpec(keyAndIV[1]);
 	}
 
 	@SuppressWarnings("unused")
