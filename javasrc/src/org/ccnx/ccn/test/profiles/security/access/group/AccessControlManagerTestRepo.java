@@ -1,4 +1,4 @@
-package org.ccnx.ccn.test.profiles.security.access;
+package org.ccnx.ccn.test.profiles.security.access.group;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -10,9 +10,9 @@ import junit.framework.Assert;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.security.access.ACL;
-import org.ccnx.ccn.profiles.security.access.AccessControlManager;
-import org.ccnx.ccn.profiles.security.access.ACL.ACLObject;
+import org.ccnx.ccn.profiles.security.access.group.ACL;
+import org.ccnx.ccn.profiles.security.access.group.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.profiles.security.TestUserData;
 import org.junit.BeforeClass;

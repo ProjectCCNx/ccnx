@@ -15,7 +15,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.profiles.security.access;
+package org.ccnx.ccn.profiles.security.access.group;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -51,9 +51,12 @@ import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
-import org.ccnx.ccn.profiles.security.access.ACL.ACLObject;
-import org.ccnx.ccn.profiles.security.access.ACL.ACLOperation;
-import org.ccnx.ccn.profiles.security.access.AccessControlProfile.PrincipalInfo;
+import org.ccnx.ccn.profiles.namespace.NamespaceManager.Root.RootObject;
+import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
+import org.ccnx.ccn.profiles.security.access.KeyCache;
+import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
+import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
+import org.ccnx.ccn.profiles.security.access.group.AccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -215,6 +218,16 @@ public class AccessControlManager {
 	private KeyCache _keyCache;
 	private CCNHandle _handle;
 	private SecureRandom _random = new SecureRandom();
+	
+	/**
+	 * Eventually split between a superclass AccessControlManager that handles many
+	 * access schemes and a subclass GroupBasedAccessControlManager. For now, put
+	 * a factory method here that makes you an ACM based on information in a stored
+	 * root object. Have to trust that object as a function of who signed it.
+	 */
+	public static AccessControlManager createManager(RootObject policyInformation, CCNHandle handle) {
+		
+	}
 	
 	public AccessControlManager(ContentName namespace) throws ConfigurationException, IOException {
 		this(namespace, null);

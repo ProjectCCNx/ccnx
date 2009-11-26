@@ -15,15 +15,15 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.profiles.security.access;
+package org.ccnx.ccn.test.profiles.security.access.group;
 
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.security.access.ACL;
-import org.ccnx.ccn.profiles.security.access.ACL.ACLOperation;
+import org.ccnx.ccn.profiles.security.access.group.ACL;
+import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
 import org.junit.BeforeClass;

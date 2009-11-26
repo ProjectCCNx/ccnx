@@ -15,7 +15,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.profiles.security.access;
+package org.ccnx.ccn.profiles.security.access.group;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -45,6 +45,7 @@ import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
