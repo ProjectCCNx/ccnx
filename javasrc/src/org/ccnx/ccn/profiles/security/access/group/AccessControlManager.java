@@ -220,13 +220,14 @@ public class AccessControlManager {
 	private SecureRandom _random = new SecureRandom();
 	
 	/**
+	 * Factory method.
 	 * Eventually split between a superclass AccessControlManager that handles many
 	 * access schemes and a subclass GroupBasedAccessControlManager. For now, put
 	 * a factory method here that makes you an ACM based on information in a stored
 	 * root object. Have to trust that object as a function of who signed it.
 	 */
 	public static AccessControlManager createManager(RootObject policyInformation, CCNHandle handle) {
-		
+		return null; // TODO fill in 
 	}
 	
 	public AccessControlManager(ContentName namespace) throws ConfigurationException, IOException {
@@ -1381,7 +1382,8 @@ public class AccessControlManager {
 
 	/**
 	 * Called when a stream is opened for reading, to determine if the name is under a root ACL, and
-	 * if so find or create an AccessControlManager, and get keys for access.
+	 * if so find or create an AccessControlManager, and get keys for access. Only called if
+	 * content is encrypted.
 	 * @param name name of the stream to be opened.
 	 * @param publisher publisher of the stream to be opened.
 	 * @param library CCN Library instance to use for any network operations.
@@ -1410,12 +1412,20 @@ public class AccessControlManager {
 		return null;
 	}
 
+	/**
+	 * Get keys to encrypt content as its' written, if that content is to be protected.
+	 * @param name
+	 * @param publisher
+	 * @param handle
+	 * @return
+	 * @throws IOException
+	 */
 	public static ContentKeys keysForOutput(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
 				throws IOException {
 		AccessControlManager acm;
 		try {
 			acm = NamespaceManager.findACM(name, handle);
-			if (acm != null) {
+			if ((acm != null) && (acm.isProtectedContent(name, publisher, handle))) {
 				Key dataKey = acm.generateAndStoreDataKey(name);
 				return KeyDerivationFunction.DeriveKeysForObject(dataKey.getEncoded(), DATA_KEY_LABEL, name, publisher);
 			}
@@ -1430,6 +1440,25 @@ public class AccessControlManager {
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		}
 		return null;
+	}
+	
+	/**
+	 * Allow AccessControlManagers to specify some content is not to be protected; for example,
+	 * access control lists are not themselves encrypted. 
+	 * TODO: should headers be exempt from encryption?
+	 */
+	public boolean isProtectedContent(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle hande) {
+		
+		if (!inProtectedNamespace(name)) {
+			return false;
+		}
+		
+		if (AccessControlProfile.isAccessName(name)) {
+			// Don't encrypt the access control metadata itself, or we couldn't get the
+			// keys to decrypt the other stuff.
+			return false;
+		}
+		return true;
 	}
 
 }	
