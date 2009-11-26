@@ -25,7 +25,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidParameterSpecException;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -38,6 +40,35 @@ import org.ccnx.ccn.impl.support.Log;
 /**
  * Specifies encryption algorithm, keys and if necessary IV to use for encrypting
  * or decrypting content.
+ * 
+ * The segmenter will be called with parameters identifying:
+ *
+ *   * the encryption algorithm and mode to use, if any
+ *   * the encryption key to use for this particular data item o (the object to be segmented)
+ *   * an 8-byte value used as an IV seed for this item (CBC mode) or a random counter 
+ *   		component (CTR) (derived in KeyDerivation)
+ *   * the desired full segment (packet) length, including supporting data 
+ * 
+ * In CTR mode, the counter for a given block B (number Bnum) in segment Snum will be constructed as follows: 
+ * 
+ * 	CTR = IVseed || Snum || Bnum
+ * 
+ * where the segment and block numbers is represented in unsigned, 1-based big endian format. 
+ * The total width of the counter value is 16 bytes, where the first 8 bytes are the IV seed 
+ * value, the next 6 bytes are the segment number, and the last 2 bytes are the block number. 
+ * A single-segment object following the SegmentationProfile? will still have a segment number 
+ * component in its name, and will follow the specification above for managing its encryption keys.
+ * 
+ * In CBC mode, the input IV will be used as a seed to generate an IV for each segment S as follows:
+ * 
+ *   IV = Eko (IVseed || Snum || B0)
+ * 
+ * Where the segment number is encoded in 1-based, unsigned, big-endian form, and 
+ * represented in the B-L rightmost bytes of the plaintext above, where B is the width of 
+ * the block cipher in use, and L is the length of the numeric representation of the 
+ * segment number. B0 = 1 to maintain consistency with standard CTR mode use. The same IV 
+ * expansion function is used regardless of mode for simplicity.
+ * The encryption is done with the specified key, in CBC mode, using the all-zeros IV
  */
 public class ContentKeys {
 	/*
@@ -45,13 +76,21 @@ public class ContentKeys {
 	 * mode supported by Java *should* work, but these are compactly
 	 * encodable.
 	 */
-	public static final String AES_CTR_MODE = "AES/CTR/NoPadding";
-	public static final String AES_CBC_MODE = "AES/CBC/PKCS5Padding";
+	public static final String CBC_MODE = "CBC";
+	public static final String CTR_MODE = "CTR";
+	public static final String CTR_POSTFIX = "/CTR/NoPadding";
+	public static final String CBC_POSTFIX = "/CBC/PKCS5Padding";
+	public static final String AES_ALGORITHM = "AES";
+	public static final String AES_CTR_MODE = AES_ALGORITHM + CTR_POSTFIX;
+	public static final String AES_CBC_MODE = AES_ALGORITHM + CBC_POSTFIX;
+	
+	public static final String DEFAULT_KEY_ALGORITHM = AES_ALGORITHM;
 	public static final String DEFAULT_CIPHER_ALGORITHM = AES_CTR_MODE;
-	public static final String DEFAULT_KEY_ALGORITHM = "AES";
 	public static final int DEFAULT_KEY_LENGTH = 16;
 	
-	public static final int DEFAULT_AES_KEY_LENGTH = 16; // bytes, 128 bits
+	public static final int DEFAULT_AES_KEY_LENGTH = DEFAULT_KEY_LENGTH; // bytes, 128 bits (do NOT increase for AES,
+																		 // security of AES-192 and AES-256 actually
+																		 // more suspect than AES-128
 	public static final int IV_MASTER_LENGTH = 8; // bytes
 	public static final int SEGMENT_NUMBER_LENGTH = 6; // bytes
 	public static final int BLOCK_COUNTER_LENGTH = 2; // bytes
@@ -85,20 +124,29 @@ public class ContentKeys {
 	
 	/**
 	 * ContentKeys constructor using default cipher and key algorithm.
-	 * @param key key material to be used with the default key algorithm.
-	 * @param iv iv key material to be used with default key algorithm 
+	 * @param encryptionAlgorithm (e.g. AES/CTR/NoPadding) the encryption algorithm to use.
+	 * 		First component of algorithm should be the algorithm associated with the key.
+	 * @param key key material to be used
+	 * @param ivctr iv or counter material to be used with specified algorithm 
 	 */
-	public ContentKeys(byte [] key, byte [] iv) {
-		assert(key.length == DEFAULT_KEY_LENGTH);
-		assert(iv.length == IV_MASTER_LENGTH);
-		this._encryptionAlgorithm = DEFAULT_CIPHER_ALGORITHM;
-		this._encryptionKey = new SecretKeySpec(key, DEFAULT_KEY_ALGORITHM);
-		this._masterIV = new IvParameterSpec(iv);
+	public ContentKeys(String encryptionAlgorithm, byte [] key, byte [] ivctr) {
+		assert(null != key);
+		assert(null != ivctr);
+		this._encryptionAlgorithm = (null != encryptionAlgorithm) ? encryptionAlgorithm : DEFAULT_CIPHER_ALGORITHM;
+		this._encryptionKey = new SecretKeySpec(key, encryptionAlgorithm.substring(0, encryptionAlgorithm.indexOf('/')));
+		this._masterIV = new IvParameterSpec(ivctr);
 		// TODO: this assumes the default algorithms are available. Should probably check during startup
+	}
+	
+	/**
+	 * Create a ContentKeys with the default algorithm.
+	 */
+	public ContentKeys(byte [] key, byte [] ivctr) {
+		this(DEFAULT_CIPHER_ALGORITHM, key, ivctr);
 	}
 
 	/**
-	 * ContentKeys constructor.
+	 * ContentKeys constructor; builds IV or CTR from master seed.
 	 * @param encryptionAlgorithm algorithm to use
 	 * @param encryptionKey encryption key
 	 * @param masterIV iv
@@ -108,7 +156,7 @@ public class ContentKeys {
 	public ContentKeys(String encryptionAlgorithm, SecretKeySpec encryptionKey,
 						IvParameterSpec masterIV) throws NoSuchAlgorithmException, NoSuchPaddingException {
 		// ensure NoSuchPaddingException cannot be thrown later when a Cipher is made
-		Cipher.getInstance(_encryptionAlgorithm, KeyManager.getDefaultProvider());
+		Cipher.getInstance(encryptionAlgorithm, KeyManager.getDefaultProvider());
 		// TODO check secret key/iv not empty?
 		this._encryptionAlgorithm = encryptionAlgorithm;
 		this._encryptionKey = encryptionKey;
@@ -178,7 +226,7 @@ public class ContentKeys {
 		SecureRandom random = getRandom();
 		random.nextBytes(key);
 		random.nextBytes(iv);
-		return new ContentKeys(key, iv);
+		return new ContentKeys(DEFAULT_CIPHER_ALGORITHM, key, iv);
 	}
 	
 	/**
@@ -276,33 +324,89 @@ public class ContentKeys {
 		}
 		
 		Log.finest(encryption?"En":"De"+"cryption Key: "+DataUtils.printHexBytes(_encryptionKey.getEncoded())+" iv="+DataUtils.printHexBytes(iv_ctrSpec.getIV()));
-		cipher.init(encryption?Cipher.ENCRYPT_MODE:Cipher.DECRYPT_MODE, _encryptionKey, algorithmParams);
+		cipher.init(encryption ? Cipher.ENCRYPT_MODE : Cipher.DECRYPT_MODE, _encryptionKey, algorithmParams);
 
 		return cipher;
 	}
+	
+	public static byte [] segmentSeedValue(IvParameterSpec masterIV, long segmentNumber, int seedLen) {
+		
+		byte [] seed = new byte[seedLen];
+		
+		System.arraycopy(masterIV.getIV(), 0, seed, 0, masterIV.getIV().length);
+		byte [] byteSegNum = segmentNumberToByteArray(segmentNumber);
+		System.arraycopy(byteSegNum, 0, seed, masterIV.getIV().length, byteSegNum.length);
+		System.arraycopy(INITIAL_BLOCK_COUNTER_VALUE, 0, seed,
+				seed.length - BLOCK_COUNTER_LENGTH, BLOCK_COUNTER_LENGTH);
+		return seed;
+	}
+	
+	public IvParameterSpec buildIVCtr(IvParameterSpec masterIV, long segmentNumber, int ivCtrLen) throws InvalidKeyException, InvalidAlgorithmParameterException {
+		
+		if (_encryptionAlgorithm.contains(CTR_MODE)) {
+			return buildCtr(masterIV, segmentNumber, ivCtrLen);
+		} else {
+			return buildIV(masterIV, segmentNumber, ivCtrLen);
+		}
+	}
 
 	/**
-	 * Turn a master IV and a segment number into an IV for this segment
+	 * Turn a master IV and a segment number into an initial counter for this segment
+	 * (used in CTR mode).
 	 * @param masterIV the master IV
 	 * @param segmentNumber the segment number
+	 * @param ctrLen the output IV length requested
+	 * @return the initial counter
+	 */
+	public IvParameterSpec buildCtr(IvParameterSpec masterIV, long segmentNumber, int ctrLen) {
+
+		Log.finest("Thread="+Thread.currentThread()+" Building CTR - master="+DataUtils.printHexBytes(masterIV.getIV())+" segment="+segmentNumber+" ctrLen="+ctrLen);
+		
+		byte [] ctr = segmentSeedValue(masterIV, segmentNumber, ctrLen);
+		
+		IvParameterSpec ctrSpec = new IvParameterSpec(ctr);
+		Log.finest("CTR: ivParameterSpec source="+DataUtils.printHexBytes(ctr)+"ivParameterSpec.getIV()="+DataUtils.printHexBytes(masterIV.getIV()));
+		return ctrSpec;
+	}
+	
+	/**
+	 * Turn a master IV and a segment number into an IV for this segment
+	 * (used in CBC mode).
+	 * TODO check use of input and output lengths
+	 * @param masterIV the master IV
+	 * @param segmentNumber the segmeont number
 	 * @param ivLen the output IV length requested
 	 * @return the IV
+	 * @throws InvalidAlgorithmParameterException 
+	 * @throws InvalidKeyException 
+	 * @throws BadPaddingException 
+	 * @throws IllegalBlockSizeException 
 	 */
-	public static IvParameterSpec buildIVCtr(IvParameterSpec masterIV, long segmentNumber, int ivLen) {
+	public IvParameterSpec buildIV(IvParameterSpec masterIV, long segmentNumber, int ivLen) throws InvalidKeyException, InvalidAlgorithmParameterException {
+		Log.finest("Thread="+Thread.currentThread()+" Building CTR - master="+DataUtils.printHexBytes(masterIV.getIV())+" segment="+segmentNumber+" ivLen="+ivLen);
 
-		Log.finest("Thread="+Thread.currentThread()+" Building IV - master="+DataUtils.printHexBytes(masterIV.getIV())+" segment="+segmentNumber+" ivLen="+ivLen);
-		
-		byte [] iv_ctr = new byte[ivLen];
-		
-		System.arraycopy(masterIV.getIV(), 0, iv_ctr, 0, IV_MASTER_LENGTH);
-		byte [] byteSegNum = segmentNumberToByteArray(segmentNumber);
-		System.arraycopy(byteSegNum, 0, iv_ctr, IV_MASTER_LENGTH, byteSegNum.length);
-		System.arraycopy(INITIAL_BLOCK_COUNTER_VALUE, 0, iv_ctr,
-				iv_ctr.length - BLOCK_COUNTER_LENGTH, BLOCK_COUNTER_LENGTH);
-		
-		IvParameterSpec iv_ctrSpec = new IvParameterSpec(iv_ctr);
-		Log.finest("ivParameterSpec source="+DataUtils.printHexBytes(iv_ctr)+"ivParameterSpec.getIV()="+DataUtils.printHexBytes(masterIV.getIV()));
-		return iv_ctrSpec;
+		Cipher cipher = getCipher();
+		IvParameterSpec zeroIv = new IvParameterSpec(new byte[cipher.getBlockSize()]);
+		cipher.init(Cipher.ENCRYPT_MODE, _encryptionKey, zeroIv);
+
+		byte [] iv_input = segmentSeedValue(masterIV, segmentNumber, ivLen);
+
+		byte[] iv_output;
+		try {
+			iv_output = cipher.doFinal(iv_input);
+		} catch (IllegalBlockSizeException e) {
+			String err = "Unexpected IllegalBlockSizeException for an algorithm we have already used! Rethrowing as InvalidAlgorithmParameterException.";
+			Log.severe(err);
+			throw new InvalidAlgorithmParameterException(err, e);
+		} catch (BadPaddingException e) {
+			String err = "Unexpected BadPaddingException for an algorithm we have already used! Rethrowing as InvalidAlgorithmParameterException.";
+			Log.severe(err);
+			throw new InvalidAlgorithmParameterException(err, e);
+		}
+
+		IvParameterSpec iv = new IvParameterSpec(iv_output, 0, ivLen);
+		Log.finest("IV: ivParameterSpec source="+DataUtils.printHexBytes(iv_output)+"ivParameterSpec.getIV()="+DataUtils.printHexBytes(masterIV.getIV()));
+		return iv;
 	}
 	
 	/**
