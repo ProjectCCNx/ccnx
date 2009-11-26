@@ -145,13 +145,13 @@ public class ContentKeys {
 	
 	/**
 	 * Create a ContentKeys with the default algorithm.
-	 * @throws NoSuchPaddingException 
-	 * @throws NoSuchAlgorithmException 
-	 * @throws NoSuchPaddingException 
-	 * @throws NoSuchAlgorithmException 
 	 */
-	public ContentKeys(byte [] key, byte [] ivctr) throws NoSuchAlgorithmException, NoSuchPaddingException {
-		this(DEFAULT_CIPHER_ALGORITHM, key, ivctr);
+	public ContentKeys(byte [] key, byte [] ivctr) {
+		assert(null != key);
+		assert(null != ivctr);
+		this._encryptionAlgorithm = DEFAULT_CIPHER_ALGORITHM;
+		this._encryptionKey = new SecretKeySpec(key, DEFAULT_KEY_ALGORITHM);
+		this._masterIV = new IvParameterSpec(ivctr);
 	}
 
 	/**
@@ -235,17 +235,7 @@ public class ContentKeys {
 		SecureRandom random = getRandom();
 		random.nextBytes(key);
 		random.nextBytes(iv);
-		try {
-			return new ContentKeys(key, iv);
-		} catch (NoSuchAlgorithmException e) {
-			String err = "Unexpected NoSuchAlgorithmException for default algorithm " + DEFAULT_CIPHER_ALGORITHM + "!";
-			Log.severe(err);
-			throw new RuntimeException(err, e);
-		} catch (NoSuchPaddingException e) {
-			String err = "Unexpected NoSuchPaddingException for default algorithm " + DEFAULT_CIPHER_ALGORITHM + "!";
-			Log.severe(err);
-			throw new RuntimeException(err, e);
-		}
+		return new ContentKeys(key, iv);
 	}
 	
 	/**
