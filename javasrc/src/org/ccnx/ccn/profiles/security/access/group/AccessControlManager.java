@@ -1397,8 +1397,10 @@ public class AccessControlManager {
 		AccessControlManager acm;
 		try {
 			acm = NamespaceManager.findACM(name, handle);
-			if (acm != null)
+			if (acm != null) {
+				Log.info("keysForInput: retrieving key for data node {0}", name);
 				return acm.getContentKeys(name, publisher);
+			}
 		} catch (ConfigurationException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
@@ -1426,6 +1428,7 @@ public class AccessControlManager {
 		try {
 			acm = NamespaceManager.findACM(name, handle);
 			if ((acm != null) && (acm.isProtectedContent(name, publisher, handle))) {
+				Log.info("keysForOutput: generating new data key for data node {0}", name);
 				Key dataKey = acm.generateAndStoreDataKey(name);
 				return KeyDerivationFunction.DeriveKeysForObject(dataKey.getEncoded(), DATA_KEY_LABEL, name, publisher);
 			}

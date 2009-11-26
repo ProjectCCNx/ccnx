@@ -7,6 +7,7 @@ import java.util.Random;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
@@ -45,7 +46,9 @@ public class ACMNodeKeyDirtyTestRepo {
 		userNamespace = ContentName.fromNative(directoryBase, "home");
 
 		// create user identities with TestUserData		
+		Log.info("Creating {0} test users, if they do not already exist.", numberOfusers);
 		td = new TestUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
+		Log.info("Created {0} test users, or retrieved them from repository.", numberOfusers);
 		td.saveUserPK2Repo(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);				
 		
