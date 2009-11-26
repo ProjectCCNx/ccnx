@@ -30,7 +30,6 @@
 <!ATTLIST KeyValueSet	%commonattrs;>
 
 <!ENTITY % valuechoice "IntegerValue 	       |
-                        PositiveIntegerValue   |
                         DecimalValue           |
                         StringValue            |
                         BinaryValue">
@@ -39,7 +38,6 @@
 <!ATTLIST Entry	%commonattrs;>
 
 <!ELEMENT IntegerValue	(#PCDATA)>	<!-- integer -->
-<!ELEMENT PositiveIntegerValue	(#PCDATA)>	<!-- nonNegativeInteger -->
 <!ELEMENT DecimalValue	(#PCDATA)>	<!-- decimal -->
 <!ELEMENT StringValue	(#PCDATA)>	<!-- string -->
 

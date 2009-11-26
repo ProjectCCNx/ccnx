@@ -59,7 +59,6 @@
       <xs:element name="Key" type="xs:string"/>
       <xs:choice>
         <xs:element name="IntegerValue" type="xs:integer"/>
-        <xs:element name="PositiveIntegerValue" type="xs:nonNegativeInteger"/>
         <xs:element name="DecimalValue" type="xs:decimal"/>
         <xs:element name="StringValue" type="xs:string"/>
         <xs:element name="BinaryValue" type="Base64BinaryType"/>
