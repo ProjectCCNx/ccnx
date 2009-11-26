@@ -128,7 +128,7 @@ public class KeyCache {
 	 * @param publicKeyIdentifier the digest of the public key
 	 * @param pk the private key
 	 */
-	void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
+	public void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyMap.put(publicKeyIdentifier, pk);
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		if (null != keyName)
@@ -140,7 +140,7 @@ public class KeyCache {
 	 * @param publicKeyIdentifier the digest of the public key.
 	 * @param pk the corresponding private key.
 	 */
-	void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
+	public void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		_myKeyMap.put(publicKeyIdentifier, pk);
 	}
