@@ -205,7 +205,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 		int readLen = 0;
 		byte [] buffer = new byte[BLOCK_SIZE];
 		Log.finer("do_write: " + is.available() + " bytes left.");
-		while((readLen = is.read(buffer, 0, size)) != -1){	
+		while ((readLen = is.read(buffer, 0, size)) != -1){	
 			ostream.write(buffer, 0, readLen);
 			Log.finer("do_write: wrote " + size + " bytes.");
 			Log.finer("do_write: " + is.available() + " bytes left.");
