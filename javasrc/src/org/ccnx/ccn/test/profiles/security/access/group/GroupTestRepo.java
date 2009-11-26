@@ -31,8 +31,8 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
-import org.ccnx.ccn.profiles.security.access.group.AccessControlManager;
-import org.ccnx.ccn.profiles.security.access.group.AccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
 import org.ccnx.ccn.protocol.ContentName;
@@ -64,7 +64,7 @@ public class GroupTestRepo {
 	 */
 	static TestUserData users = null;
 	static CCNHandle userHandle = null;
-	static AccessControlManager _acm = null;
+	static GroupAccessControlManager _acm = null;
 	static GroupManager _gm = null;
 	static Random _random;
 	static String _randomGroupName;
@@ -77,7 +77,7 @@ public class GroupTestRepo {
 			testStorePrefix = UserConfiguration.defaultNamespace();
 			userNamespace = ContentName.fromNative(testStorePrefix, "home");
 			userKeyStore = ContentName.fromNative(testStorePrefix, "_access_");
-			groupStore = AccessControlProfile.groupNamespaceName(testStorePrefix);
+			groupStore = GroupAccessControlProfile.groupNamespaceName(testStorePrefix);
 
 			System.out.println("prefix: " + testStorePrefix);
 			System.out.println("group store: " + groupStore);
@@ -92,7 +92,7 @@ public class GroupTestRepo {
 					USER_PASSWORD, userHandle);
 			users.saveUserPK2Repo(userNamespace);
 			
-			_acm = new AccessControlManager(testStorePrefix, groupStore, userNamespace);
+			_acm = new GroupAccessControlManager(testStorePrefix, groupStore, userNamespace);
 			_acm.publishMyIdentity(myUserName, KeyManager.getDefaultKeyManager().getDefaultPublicKey());
 			_userList = _acm.userList();
 			_gm = _acm.groupManager();
@@ -176,7 +176,7 @@ public class GroupTestRepo {
 		//test groups of group
 		String randomParentGroupName = "parentGroup" + _random.nextInt();
 		newMembers.clear();
-		ContentName childGroupNamespace = AccessControlProfile.groupName(testStorePrefix, _randomGroupName);
+		ContentName childGroupNamespace = GroupAccessControlProfile.groupName(testStorePrefix, _randomGroupName);
 		System.out.println("child group namespace = " + childGroupNamespace);
 		newMembers.add(new Link(childGroupNamespace));
 		Group newParentGroup = _gm.createGroup(randomParentGroupName, newMembers);
@@ -203,7 +203,7 @@ public class GroupTestRepo {
 		// testing pointer equality -- these should be the same object
 		Assert.assertTrue(ourExistingGroup == aPointerCopy);
 		
-		AccessControlManager ourACM = new AccessControlManager(testStorePrefix, groupStore, userNamespace);
+		GroupAccessControlManager ourACM = new GroupAccessControlManager(testStorePrefix, groupStore, userNamespace);
 		ourACM.publishMyIdentity(myUserName, KeyManager.getDefaultKeyManager().getDefaultPublicKey());
 		GroupManager ourGM = ourACM.groupManager();
 		Thread.sleep(1000);

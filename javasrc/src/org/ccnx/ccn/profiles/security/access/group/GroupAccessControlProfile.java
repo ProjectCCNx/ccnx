@@ -36,7 +36,7 @@ import org.ccnx.ccn.protocol.ContentName;
  * - if used, markers indicating where to find ACLs/node keys
  */
 
-public class AccessControlProfile implements CCNProfile {
+public class GroupAccessControlProfile implements CCNProfile {
 	
 	// Is it better to use .access or _access_? The former might be used by "real" data more often...
 	public static final String ACCESS_CONTROL_MARKER = CCNProfile.MARKER + "access" + CCNProfile.MARKER;

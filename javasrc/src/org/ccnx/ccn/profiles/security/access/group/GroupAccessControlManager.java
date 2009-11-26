@@ -56,7 +56,7 @@ import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
-import org.ccnx.ccn.profiles.security.access.group.AccessControlProfile.PrincipalInfo;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -187,7 +187,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 			// path.
  *
  */
-public class AccessControlManager {
+public class GroupAccessControlManager {
 	
 	/**
 	 * Default data key length in bytes. No real reason this can't be bumped up to 32. It
@@ -226,23 +226,23 @@ public class AccessControlManager {
 	 * a factory method here that makes you an ACM based on information in a stored
 	 * root object. Have to trust that object as a function of who signed it.
 	 */
-	public static AccessControlManager createManager(RootObject policyInformation, CCNHandle handle) {
+	public static GroupAccessControlManager createManager(RootObject policyInformation, CCNHandle handle) {
 		return null; // TODO fill in 
 	}
 	
-	public AccessControlManager(ContentName namespace) throws ConfigurationException, IOException {
+	public GroupAccessControlManager(ContentName namespace) throws ConfigurationException, IOException {
 		this(namespace, null);
 	}
 
-	public AccessControlManager(ContentName namespace, CCNHandle handle) throws ConfigurationException, IOException {
-		this(namespace, AccessControlProfile.groupNamespaceName(namespace), AccessControlProfile.userNamespaceName(namespace), handle);
+	public GroupAccessControlManager(ContentName namespace, CCNHandle handle) throws ConfigurationException, IOException {
+		this(namespace, GroupAccessControlProfile.groupNamespaceName(namespace), GroupAccessControlProfile.userNamespaceName(namespace), handle);
 	}
 
-	public AccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws ConfigurationException, IOException {
+	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws ConfigurationException, IOException {
 		this(namespace, groupStorage, userStorage, null);
 	}
 	
-	public AccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage, CCNHandle handle) throws ConfigurationException, IOException {
+	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage, CCNHandle handle) throws ConfigurationException, IOException {
 		_namespace = namespace;
 		_userStorage = userStorage;
 		if (null == handle) {
@@ -291,8 +291,8 @@ public class AccessControlManager {
 	 */
 	public void publishMyIdentity(String userName, PublicKey myPublicKey) 
 			throws InvalidKeyException, ContentEncodingException, IOException, ConfigurationException {
-		Log.finest("publishing my identity" + AccessControlProfile.userNamespaceName(_userStorage, userName));
-		publishMyIdentity(AccessControlProfile.userNamespaceName(_userStorage, userName), myPublicKey);
+		Log.finest("publishing my identity" + GroupAccessControlProfile.userNamespaceName(_userStorage, userName));
+		publishMyIdentity(GroupAccessControlProfile.userNamespaceName(_userStorage, userName), myPublicKey);
 	}
 	
 	/**
@@ -311,7 +311,7 @@ public class AccessControlManager {
 	}
 	
 	public boolean haveIdentity(String userName) {
-		return _myIdentities.contains(AccessControlProfile.userNamespaceName(_userStorage, userName));
+		return _myIdentities.contains(GroupAccessControlProfile.userNamespaceName(_userStorage, userName));
 	}
 	
 	public boolean haveIdentity(ContentName userName) {
@@ -395,7 +395,7 @@ public class AccessControlManager {
 		generateNewNodeKey(_namespace, null, rootACL);
 		
 		// write the root ACL
-		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(_namespace), rootACL, handle());
+		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(_namespace), rootACL, handle());
 		aclo.saveToRepository();
 	}
 	
@@ -455,7 +455,7 @@ public class AccessControlManager {
 				throws ContentDecodingException, IOException {
 		
 		// Get the latest version of the acl. We don't care so much about knowing what version it was.
-		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(aclNodeName), handle());
+		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(aclNodeName), handle());
 		aclo.update();
 		// if there is no update, this will probably throw an exception -- IO or XMLStream
 		if (aclo.isGone()) {
@@ -474,10 +474,10 @@ public class AccessControlManager {
 	 */
 	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) throws ContentDecodingException, IOException {
 		
-		EnumeratedNameList aclNameList = EnumeratedNameList.exists(AccessControlProfile.aclName(aclNodeName), aclNodeName, handle());
+		EnumeratedNameList aclNameList = EnumeratedNameList.exists(GroupAccessControlProfile.aclName(aclNodeName), aclNodeName, handle());
 		
 		if (null != aclNameList) {
-			ContentName aclName = new ContentName(AccessControlProfile.aclName(aclNodeName));
+			ContentName aclName = new ContentName(GroupAccessControlProfile.aclName(aclNodeName));
 			Log.info("Found latest version of acl for " + aclNodeName + " at " + aclName);
 			ACLObject aclo = new ACLObject(aclName, handle());
 			if (aclo.isGone())
@@ -528,7 +528,7 @@ public class AccessControlManager {
 		// generates the new node key, wraps it under the new acl, and wraps the old node key
 		generateNewNodeKey(nodeName, effectiveNodeKey, newACL);
 		// write the acl
-		ACLObject aclo = new ACLObject(AccessControlProfile.aclName(nodeName), newACL, handle());
+		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(nodeName), newACL, handle());
 		aclo.saveToRepository();
 		return aclo.acl();
 	}
@@ -800,8 +800,8 @@ public class AccessControlManager {
 			Log.warning("Unexpected: could not find effective ACL for node: " + nodeName);
 			throw new IOException("Unexpected: could not find effective ACL for node: " + nodeName);
 		}
-		Log.info("Got ACL named: " + effectiveACL.getVersionedName() + " attempting to retrieve node key from " + AccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
-		return getLatestNodeKeyForNode(AccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
+		Log.info("Got ACL named: " + effectiveACL.getVersionedName() + " attempting to retrieve node key from " + GroupAccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
+		return getLatestNodeKeyForNode(GroupAccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
 	}
 	
 	/**
@@ -821,7 +821,7 @@ public class AccessControlManager {
 		// Could do this using getLatestVersion...
 		// First we need to figure out what the latest version is of the node key.
 		ContentName nodeKeyVersionedName = 
-			EnumeratedNameList.getLatestVersionName(AccessControlProfile.nodeKeyName(nodeName), handle());
+			EnumeratedNameList.getLatestVersionName(GroupAccessControlProfile.nodeKeyName(nodeName), handle());
 		// DKS TODO this may not handle ACL deletion correctly -- we need to make sure that this
 		// key wasn't superseded by something that isn't a later version of itself.
 		
@@ -953,7 +953,7 @@ public class AccessControlManager {
 		// This should be the latest node key; i.e. not superseded.
 		if (nodeKeyIsDirty(nodeKey.storedNodeKeyName())) {
 			Log.info("Found node key at " + nodeKey.storedNodeKeyName() + ", updating.");
-			ContentName nodeKeyNodeName = AccessControlProfile.accessRoot(nodeKey.storedNodeKeyName());
+			ContentName nodeKeyNodeName = GroupAccessControlProfile.accessRoot(nodeKey.storedNodeKeyName());
 			ACLObject acl = getACLObjectForNode(nodeKeyNodeName);
 			nodeKey = generateNewNodeKey(nodeKeyNodeName, nodeKey, acl.acl());
 		} else {
@@ -994,9 +994,9 @@ public class AccessControlManager {
 	public boolean nodeKeyIsDirty(ContentName theNodeKeyName) throws ContentDecodingException, IOException {
 
 		// first, is this a node key name?
-		if (!AccessControlProfile.isNodeKeyName(theNodeKeyName)) {
+		if (!GroupAccessControlProfile.isNodeKeyName(theNodeKeyName)) {
 			// assume it's a data node name.
-			theNodeKeyName = AccessControlProfile.nodeKeyName(theNodeKeyName);
+			theNodeKeyName = GroupAccessControlProfile.nodeKeyName(theNodeKeyName);
 		}
 		// get the requested version of this node key; or if unversioned, get the latest.
 		KeyDirectory nodeKeyDirectory = null;
@@ -1051,7 +1051,7 @@ public class AccessControlManager {
 		// TODO -- do we need to check whether there *is* a key?
 		// The trick: we need the header information in the wrapped key; we don't need to unwrap it.
 		// ephemeral key naming
-		WrappedKeyObject wrappedDataKey = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataName), handle());
+		WrappedKeyObject wrappedDataKey = new WrappedKeyObject(GroupAccessControlProfile.dataKeyName(dataName), handle());
 		return nodeKeyIsDirty(wrappedDataKey.wrappedKey().wrappingKeyName());
 	}
 	
@@ -1079,12 +1079,12 @@ public class AccessControlManager {
 			return null;
 		}
 		
-		if (nearestACL.equals(AccessControlProfile.accessRoot(wrappingKeyName))) {
+		if (nearestACL.equals(GroupAccessControlProfile.accessRoot(wrappingKeyName))) {
 			Log.info("Node key: " + wrappingKeyName + " is the nearest ACL to " + dataNodeName);
 			return null;
 		}
 		
-		NodeKey nk = getLatestNodeKeyForNode(AccessControlProfile.accessRoot(nearestACL.getVersionedName()));
+		NodeKey nk = getLatestNodeKeyForNode(GroupAccessControlProfile.accessRoot(nearestACL.getVersionedName()));
 		return nk;
 	}	
 	
@@ -1107,7 +1107,7 @@ public class AccessControlManager {
 			throws InvalidKeyException, ContentEncodingException, ContentNotReadyException, 
 					ContentGoneException, IOException {
 		// Get the name of the key directory; this is unversioned. Make a new version of it.
-		ContentName nodeKeyDirectoryName = VersioningProfile.addVersion(AccessControlProfile.nodeKeyName(nodeName));
+		ContentName nodeKeyDirectoryName = VersioningProfile.addVersion(GroupAccessControlProfile.nodeKeyName(nodeName));
 		Log.info("Generating new node key " + nodeKeyDirectoryName);
 		
 		// Now, generate the node key.
@@ -1249,7 +1249,7 @@ public class AccessControlManager {
 	 */
 	public byte [] getDataKey(ContentName dataNodeName) 
 			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException {
-		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), handle());
+		WrappedKeyObject wdko = new WrappedKeyObject(GroupAccessControlProfile.dataKeyName(dataNodeName), handle());
 		if (null == wdko.wrappedKey()) {
 			Log.warning("Could not retrieve data key for node: " + dataNodeName);
 			return null;
@@ -1292,7 +1292,7 @@ public class AccessControlManager {
 		wrappedDataKey.setWrappingKeyIdentifier(effectiveNodeKey.storedNodeKeyID());
 		wrappedDataKey.setWrappingKeyName(effectiveNodeKey.storedNodeKeyName());
 		
-		storeKeyContent(AccessControlProfile.dataKeyName(dataNodeName), wrappedDataKey);
+		storeKeyContent(GroupAccessControlProfile.dataKeyName(dataNodeName), wrappedDataKey);
 	}
 	
 	/**
@@ -1315,7 +1315,7 @@ public class AccessControlManager {
 		byte [] dataKeyBytes = new byte[DEFAULT_DATA_KEY_LENGTH];
 		_random.nextBytes(dataKeyBytes);
 		Key dataKey = new SecretKeySpec(dataKeyBytes, DEFAULT_DATA_KEY_ALGORITHM);
-		storeDataKey(AccessControlProfile.dataKeyName(dataNodeName), dataKey);
+		storeDataKey(GroupAccessControlProfile.dataKeyName(dataNodeName), dataKey);
 		return dataKey;
 	}
 	
@@ -1328,7 +1328,7 @@ public class AccessControlManager {
 	 */
 	private void storeKeyContent(ContentName dataNodeName,
 								 WrappedKey wrappedKey) throws ContentEncodingException, IOException {
-		WrappedKeyObject wko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), wrappedKey, handle());
+		WrappedKeyObject wko = new WrappedKeyObject(GroupAccessControlProfile.dataKeyName(dataNodeName), wrappedKey, handle());
 		wko.saveToRepository();
 	}
 	
@@ -1394,7 +1394,7 @@ public class AccessControlManager {
 	 */
 	public static ContentKeys keysForInput(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
 						throws IOException {
-		AccessControlManager acm;
+		GroupAccessControlManager acm;
 		try {
 			acm = NamespaceManager.findACM(name, handle);
 			if (acm != null) {
@@ -1424,7 +1424,7 @@ public class AccessControlManager {
 	 */
 	public static ContentKeys keysForOutput(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
 				throws IOException {
-		AccessControlManager acm;
+		GroupAccessControlManager acm;
 		try {
 			acm = NamespaceManager.findACM(name, handle);
 			if ((acm != null) && (acm.isProtectedContent(name, publisher, handle))) {
@@ -1456,7 +1456,7 @@ public class AccessControlManager {
 			return false;
 		}
 		
-		if (AccessControlProfile.isAccessName(name)) {
+		if (GroupAccessControlProfile.isAccessName(name)) {
 			// Don't encrypt the access control metadata itself, or we couldn't get the
 			// keys to decrypt the other stuff.
 			return false;

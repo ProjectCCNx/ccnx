@@ -38,8 +38,8 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.security.access.group.AccessControlManager;
-import org.ccnx.ccn.profiles.security.access.group.AccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.KeyDirectory;
 import org.ccnx.ccn.protocol.ContentName;
@@ -64,7 +64,7 @@ public class KeyDirectoryTestRepo {
 	static Key AESSecretKey;
 	static KeyPair wrappingKeyPair;
 	static byte[] wrappingPKID;
-	static AccessControlManager acm;
+	static GroupAccessControlManager acm;
 	static KeyDirectory kd;
 	
 	static int testCount = 0;
@@ -79,9 +79,9 @@ public class KeyDirectoryTestRepo {
 		handle = CCNHandle.open();
 		
 		ContentName cnDirectoryBase = ContentName.fromNative(directoryBase);
-		ContentName groupStore = AccessControlProfile.groupNamespaceName(cnDirectoryBase);
+		ContentName groupStore = GroupAccessControlProfile.groupNamespaceName(cnDirectoryBase);
 		ContentName userStore = ContentName.fromNative(cnDirectoryBase, "Users");		
-		acm = new AccessControlManager(cnDirectoryBase, groupStore, userStore);
+		acm = new GroupAccessControlManager(cnDirectoryBase, groupStore, userStore);
 		versionedDirectoryName = VersioningProfile.addVersion(keyDirectoryName);
 	}
 	

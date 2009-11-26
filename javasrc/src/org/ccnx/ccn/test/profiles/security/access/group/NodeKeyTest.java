@@ -21,7 +21,7 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.security.access.group.AccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.Assert;
@@ -44,7 +44,7 @@ public class NodeKeyTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		testPrefix = ContentName.fromNative("/parc/test/content/");
-		nodeKeyPrefix = AccessControlProfile.nodeKeyName(testPrefix);
+		nodeKeyPrefix = GroupAccessControlProfile.nodeKeyName(testPrefix);
 		nodeKeyPrefix = VersioningProfile.addVersion(nodeKeyPrefix);
 
 		SecureRandom sr = new SecureRandom();

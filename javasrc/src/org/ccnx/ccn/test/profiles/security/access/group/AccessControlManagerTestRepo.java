@@ -11,7 +11,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
-import org.ccnx.ccn.profiles.security.access.group.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.profiles.security.TestUserData;
@@ -26,7 +26,7 @@ import org.junit.Test;
 
 public class AccessControlManagerTestRepo {
 
-	static AccessControlManager acm;
+	static GroupAccessControlManager acm;
 	static ContentName baseNode, childNode, grandchildNode;
 	static ContentName userKeyStorePrefix, userNamespace;
 	static int userCount = 3;
@@ -68,7 +68,7 @@ public class AccessControlManagerTestRepo {
 		ACLcontents.add(lk);
 		baseACL = new ACL(ACLcontents);
 		CCNHandle handle = td.getHandleForUser(friendlyNames[0]);
-		acm = new AccessControlManager(baseNode, handle);
+		acm = new GroupAccessControlManager(baseNode, handle);
 		acm.initializeNamespace(baseACL);
 	}
 

@@ -39,7 +39,7 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
-import org.ccnx.ccn.profiles.security.access.group.AccessControlProfile.PrincipalInfo;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
@@ -55,14 +55,14 @@ import org.ccnx.ccn.protocol.PublisherID;
 
 public class GroupManager {
 	
-	private AccessControlManager _accessManager;
+	private GroupAccessControlManager _accessManager;
 	private ContentName _groupStorage;
 	private EnumeratedNameList _groupList;
 	private HashMap<String, Group> _groupCache = new HashMap<String, Group>();
 	private HashSet<String> _myGroupMemberships = new HashSet<String>();
 	private CCNHandle _handle;
 
-	public GroupManager(AccessControlManager accessManager,
+	public GroupManager(GroupAccessControlManager accessManager,
 						ContentName groupStorage, CCNHandle handle) throws IOException {
 		_handle = handle;
 		_accessManager = accessManager;
@@ -70,7 +70,7 @@ public class GroupManager {
 		groupList();
 	}
 	
-	public AccessControlManager getAccessManager() { return _accessManager; }
+	public GroupAccessControlManager getAccessManager() { return _accessManager; }
 
 	/**
 	 * Enumerate groups
@@ -140,7 +140,7 @@ public class GroupManager {
 		}
 		if (!isGroup(theGroup))
 			return null;
-		String friendlyName = AccessControlProfile.groupNameToFriendlyName(theGroup.targetName());
+		String friendlyName = GroupAccessControlProfile.groupNameToFriendlyName(theGroup.targetName());
 		return getGroup(friendlyName);
 	}
 	
@@ -177,7 +177,7 @@ public class GroupManager {
 			// Need to make key pair, directory, and store membership list.
 			MembershipList ml = 
 				new MembershipList(
-						AccessControlProfile.groupMembershipListName(_groupStorage, groupFriendlyName), 
+						GroupAccessControlProfile.groupMembershipListName(_groupStorage, groupFriendlyName), 
 						new Collection(newMembers), _handle);
 			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _handle, this);
 			cacheGroup(newGroup);
@@ -248,7 +248,7 @@ public class GroupManager {
 		MembershipList ml = group.membershipList(); // will update
 		for (Link lr : ml.membershipList().contents()) {
 			if (isGroup(lr)) {
-				String groupFriendlyName = AccessControlProfile.groupNameToFriendlyName(lr.targetName());
+				String groupFriendlyName = GroupAccessControlProfile.groupNameToFriendlyName(lr.targetName());
 				if (amCurrentGroupMember(groupFriendlyName)) {
 					_myGroupMemberships.add(groupFriendlyName);
 					return true;
@@ -295,11 +295,11 @@ public class GroupManager {
 			// Assume one is there...
 			ContentName versionedPublicKeyName = 
 				VersioningProfile.addVersion(
-						AccessControlProfile.groupPublicKeyName(_groupStorage, groupFriendlyName),
+						GroupAccessControlProfile.groupPublicKeyName(_groupStorage, groupFriendlyName),
 						privateKeyVersion);
 			privateKeyDirectory =
 				new KeyDirectory(_accessManager, 
-					AccessControlProfile.groupPrivateKeyDirectory(versionedPublicKeyName), _handle);
+					GroupAccessControlProfile.groupPrivateKeyDirectory(versionedPublicKeyName), _handle);
 			privateKeyDirectory.waitForData();
 			
 			PublicKeyObject thisPublicKey = new PublicKeyObject(versionedPublicKeyName, _handle);
@@ -335,7 +335,7 @@ public class GroupManager {
 	 * @return the algorithm of the group key
 	 */
 	public String getGroupKeyAlgorithm() {
-		return AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM;
+		return GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM;
 	}
 
 	/**

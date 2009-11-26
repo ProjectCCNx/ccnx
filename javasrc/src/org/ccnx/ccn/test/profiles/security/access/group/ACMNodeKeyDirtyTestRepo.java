@@ -11,8 +11,8 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
-import org.ccnx.ccn.profiles.security.access.group.AccessControlManager;
-import org.ccnx.ccn.profiles.security.access.group.AccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.profiles.security.TestUserData;
@@ -27,7 +27,7 @@ import org.junit.Test;
 
 public class ACMNodeKeyDirtyTestRepo {
 
-	static AccessControlManager acm;
+	static GroupAccessControlManager acm;
 	static ContentName directoryBase, userKeyStorePrefix, userNamespace, groupStore;
 	static final int numberOfusers = 3;
 	static TestUserData td;
@@ -41,7 +41,7 @@ public class ACMNodeKeyDirtyTestRepo {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		directoryBase = ContentName.fromNative("/test/ACMNodeKeyDirtyTestRepo");
-		groupStore = AccessControlProfile.groupNamespaceName(directoryBase);
+		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
 		userKeyStorePrefix = ContentName.fromNative(directoryBase, "_access_");
 		userNamespace = ContentName.fromNative(directoryBase, "home");
 
@@ -54,7 +54,7 @@ public class ACMNodeKeyDirtyTestRepo {
 		
 		// create ACM
 		handle = td.getHandleForUser(friendlyNames[0]);
-		acm = new AccessControlManager(directoryBase, groupStore, userNamespace, handle);
+		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
 		acm.publishMyIdentity(friendlyNames[0], handle.keyManager().getDefaultPublicKey());
 	}
 	
