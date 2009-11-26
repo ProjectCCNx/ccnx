@@ -128,10 +128,15 @@ public class ContentKeys {
 	 * 		First component of algorithm should be the algorithm associated with the key.
 	 * @param key key material to be used
 	 * @param ivctr iv or counter material to be used with specified algorithm 
+	 * @throws NoSuchPaddingException 
+	 * @throws NoSuchAlgorithmException 
 	 */
-	public ContentKeys(String encryptionAlgorithm, byte [] key, byte [] ivctr) {
+	public ContentKeys(String encryptionAlgorithm, byte [] key, byte [] ivctr) throws NoSuchAlgorithmException, NoSuchPaddingException {
 		assert(null != key);
 		assert(null != ivctr);
+		if (null != encryptionAlgorithm) {
+			Cipher.getInstance(encryptionAlgorithm, KeyManager.getDefaultProvider());
+		}
 		this._encryptionAlgorithm = (null != encryptionAlgorithm) ? encryptionAlgorithm : DEFAULT_CIPHER_ALGORITHM;
 		this._encryptionKey = new SecretKeySpec(key, encryptionAlgorithm.substring(0, encryptionAlgorithm.indexOf('/')));
 		this._masterIV = new IvParameterSpec(ivctr);
@@ -140,8 +145,12 @@ public class ContentKeys {
 	
 	/**
 	 * Create a ContentKeys with the default algorithm.
+	 * @throws NoSuchPaddingException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws NoSuchPaddingException 
+	 * @throws NoSuchAlgorithmException 
 	 */
-	public ContentKeys(byte [] key, byte [] ivctr) {
+	public ContentKeys(byte [] key, byte [] ivctr) throws NoSuchAlgorithmException, NoSuchPaddingException {
 		this(DEFAULT_CIPHER_ALGORITHM, key, ivctr);
 	}
 
@@ -226,7 +235,17 @@ public class ContentKeys {
 		SecureRandom random = getRandom();
 		random.nextBytes(key);
 		random.nextBytes(iv);
-		return new ContentKeys(DEFAULT_CIPHER_ALGORITHM, key, iv);
+		try {
+			return new ContentKeys(key, iv);
+		} catch (NoSuchAlgorithmException e) {
+			String err = "Unexpected NoSuchAlgorithmException for default algorithm " + DEFAULT_CIPHER_ALGORITHM + "!";
+			Log.severe(err);
+			throw new RuntimeException(err, e);
+		} catch (NoSuchPaddingException e) {
+			String err = "Unexpected NoSuchPaddingException for default algorithm " + DEFAULT_CIPHER_ALGORITHM + "!";
+			Log.severe(err);
+			throw new RuntimeException(err, e);
+		}
 	}
 	
 	/**
