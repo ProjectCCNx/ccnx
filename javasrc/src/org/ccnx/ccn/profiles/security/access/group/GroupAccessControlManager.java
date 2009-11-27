@@ -20,9 +20,7 @@ package org.ccnx.ccn.profiles.security.access.group;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
-import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -34,8 +32,6 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.impl.security.crypto.ContentKeys;
-import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -50,8 +46,6 @@ import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
-import org.ccnx.ccn.profiles.namespace.NamespaceManager;
-import org.ccnx.ccn.profiles.namespace.NamespaceManager.Root.RootObject;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.KeyCache;
@@ -60,7 +54,6 @@ import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
@@ -191,45 +184,17 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 public class GroupAccessControlManager extends AccessControlManager {
 	
 	/**
-	 * Default data key length in bytes. No real reason this can't be bumped up to 32. It
-	 * acts as the seed for a KDF, not an encryption key.
-	 */
-	public static final int DEFAULT_DATA_KEY_LENGTH = 16; 
-	/**
-	 * The keys we're wrapping are really seeds for a KDF, not keys in their own right.
-	 * Eventually we'll use CMAC, so call them AES...
-	 */
-	public static final String DEFAULT_DATA_KEY_ALGORITHM = "AES";
-	
-	/**
 	 * This algorithm must be capable of key wrap (RSA, ElGamal, etc).
 	 */
 	public static final String DEFAULT_GROUP_KEY_ALGORITHM = "RSA";
 	public static final int DEFAULT_GROUP_KEY_LENGTH = 1024;
 
-	public static final String DATA_KEY_LABEL = "Data Key";
 	public static final String NODE_KEY_LABEL = "Node Key";
 	
-	private ContentName _namespace;
 	private ContentName _userStorage;
 	private EnumeratedNameList _userList;
 	private GroupManager _groupManager = null;
 	private HashSet<ContentName> _myIdentities = new HashSet<ContentName>();
-	
-	private KeyCache _keyCache;
-	private CCNHandle _handle;
-	private SecureRandom _random = new SecureRandom();
-	
-	/**
-	 * Factory method.
-	 * Eventually split between a superclass AccessControlManager that handles many
-	 * access schemes and a subclass GroupBasedAccessControlManager. For now, put
-	 * a factory method here that makes you an ACM based on information in a stored
-	 * root object. Have to trust that object as a function of who signed it.
-	 */
-	public static GroupAccessControlManager createManager(RootObject policyInformation, CCNHandle handle) {
-		return null; // TODO fill in 
-	}
 	
 	public GroupAccessControlManager(ContentName namespace) throws ConfigurationException, IOException {
 		this(namespace, null);
@@ -320,21 +285,16 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 	
 	/**
-	 * Labels for deriving various types of keys.
-	 * @return
+	 * Expose this to members of this package.
 	 */
-	public String dataKeyLabel() {
-		return DATA_KEY_LABEL;
+	protected Key getKey(byte [] desiredKeyIdentifier) {
+		return super.getKey(desiredKeyIdentifier);
 	}
 	
 	public String nodeKeyLabel() {
 		return NODE_KEY_LABEL;
 	}
 	
-	CCNHandle handle() { return _handle; }
-	
-	KeyCache keyCache() { return _keyCache; }
-
 	/**
 	 * Enumerate users
 	 * @return user enumeration
@@ -347,10 +307,6 @@ public class GroupAccessControlManager extends AccessControlManager {
 		return _userList;
 	}
 	
-	public boolean inProtectedNamespace(ContentName content) {
-		return _namespace.isPrefixOf(content);
-	}
-
 	/**
 	 * Get the latest key for a specified principal
 	 * TODO shortcut slightly -- the principal we have cached might not meet the
@@ -1057,6 +1013,61 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 	
 	/**
+	 * Take a randomly generated data key and store it. This requires finding
+	 * the current effective node key, and wrapping this data key in it. If the
+	 * current node key is dirty, this causes a new one to be generated.
+	 * @param dataNodeName
+	 * @param newRandomDataKey
+	 * @throws AccessDeniedException 
+	 * @throws InvalidKeyException 
+	 * @throws ContentEncodingException
+	 * @throws IOException
+	 * @throws InvalidCipherTextException 
+	 */
+	public void storeDataKey(ContentName dataNodeName, Key newRandomDataKey)
+	throws AccessDeniedException, InvalidKeyException,
+	ContentEncodingException, IOException, InvalidCipherTextException {
+		NodeKey effectiveNodeKey = getFreshEffectiveNodeKey(dataNodeName);
+		if (null == effectiveNodeKey) {
+			throw new AccessDeniedException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
+		}
+		Log.info("Wrapping data key for node: " + dataNodeName + " with effective node key for node: " + 
+				effectiveNodeKey.nodeName() + " derived from stored node key for node: " + 
+				effectiveNodeKey.storedNodeKeyName());
+		// TODO another case where we're wrapping in an effective node key but labeling it with
+		// the stored node key information. This will work except if we interpose an ACL in the meantime -- 
+		// we may not have the information necessary to figure out how to decrypt.
+		WrappedKey wrappedDataKey = WrappedKey.wrapKey(newRandomDataKey, 
+				null, dataKeyLabel(), 
+				effectiveNodeKey.nodeKey());
+		wrappedDataKey.setWrappingKeyIdentifier(effectiveNodeKey.storedNodeKeyID());
+		wrappedDataKey.setWrappingKeyName(effectiveNodeKey.storedNodeKeyName());
+
+		storeKeyContent(GroupAccessControlProfile.dataKeyName(dataNodeName), wrappedDataKey);
+	}
+	
+	/**
+	 * Retrieve the node key wrapping this data key.
+	 * @throws IOException 
+	 * @throws InvalidCipherTextException 
+	 * @throws ContentDecodingException 
+	 * @throws ContentEncodingException 
+	 * @throws ContentGoneException 
+	 * @throws ContentNotReadyException 
+	 * @throws InvalidKeyException 
+	 */
+	@Override
+	public Key getDataKeyWrappingKey(ContentName dataNodeName, WrappedKeyObject wrappedDataKeyObject) 
+				throws InvalidKeyException, ContentNotReadyException, ContentGoneException, ContentEncodingException, 
+							ContentDecodingException, InvalidCipherTextException, IOException {
+		NodeKey enk = getNodeKeyForObject(dataNodeName, wrappedDataKeyObject);
+		if (null != enk) {
+			return enk.nodeKey();
+		} 
+		return null;
+	}
+	
+	/**
 	 * We've looked for a node key we can decrypt at the expected node key location,
 	 * but no dice. See if a new ACL has been interposed granting us rights at a lower
 	 * portion of the tree.
@@ -1232,237 +1243,6 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		NodeKey enk = nk.computeDescendantNodeKey(nodeName, dataKeyLabel());
 		return enk;
-	}
-	
-	/**
-	 * Used by content reader to retrieve the keys necessary to decrypt this content
-	 * under this access control model.
-	 * Given a data location, pull the data key block and decrypt it using
-	 * whatever node keys are necessary.
-	 * To turn the result of this into a key for decrypting content,
-	 * follow the steps in the comments to #generateAndStoreDataKey(ContentName).
-	 * @param dataNodeName
-	 * @return
-	 * @throws IOException 
-	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
-	 * @throws InvalidKeyException 
-	 */
-	public byte [] getDataKey(ContentName dataNodeName) 
-			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException {
-		WrappedKeyObject wdko = new WrappedKeyObject(GroupAccessControlProfile.dataKeyName(dataNodeName), handle());
-		if (null == wdko.wrappedKey()) {
-			Log.warning("Could not retrieve data key for node: " + dataNodeName);
-			return null;
-		}
-		NodeKey enk = getNodeKeyForObject(dataNodeName, wdko);
-		if (null != enk) {
-			Key dataKey = wdko.wrappedKey().unwrapKey(enk.nodeKey());
-			return dataKey.getEncoded();
-		} 
-		return null;
-	}
-	
-	/**
-	 * Take a randomly generated data key and store it. This requires finding
-	 * the current effective node key, and wrapping this data key in it. If the
-	 * current node key is dirty, this causes a new one to be generated.
-	 * @param dataNodeName
-	 * @param newRandomDataKey
-	 * @throws AccessDeniedException 
-	 * @throws InvalidKeyException 
-	 * @throws ContentEncodingException
-	 * @throws IOException
-	 * @throws InvalidCipherTextException 
-	 */
-	public void storeDataKey(ContentName dataNodeName, Key newRandomDataKey) 
-			throws AccessDeniedException, InvalidKeyException, ContentEncodingException, IOException, InvalidCipherTextException {
-		NodeKey effectiveNodeKey = getFreshEffectiveNodeKey(dataNodeName);
-		if (null == effectiveNodeKey) {
-			throw new AccessDeniedException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
-		}
-		Log.info("Wrapping data key for node: " + dataNodeName + " with effective node key for node: " + 
-							  effectiveNodeKey.nodeName() + " derived from stored node key for node: " + 
-							  effectiveNodeKey.storedNodeKeyName());
-		// TODO another case where we're wrapping in an effective node key but labeling it with
-		// the stored node key information. This will work except if we interpose an ACL in the meantime -- 
-		// we may not have the information necessary to figure out how to decrypt.
-		WrappedKey wrappedDataKey = WrappedKey.wrapKey(newRandomDataKey, 
-													   null, dataKeyLabel(), 
-													   effectiveNodeKey.nodeKey());
-		wrappedDataKey.setWrappingKeyIdentifier(effectiveNodeKey.storedNodeKeyID());
-		wrappedDataKey.setWrappingKeyName(effectiveNodeKey.storedNodeKeyName());
-		
-		storeKeyContent(GroupAccessControlProfile.dataKeyName(dataNodeName), wrappedDataKey);
-	}
-	
-	/**
-	 * Generate a random data key, store it, and return it to use to derive keys to encrypt
-	 * content. All that's left is to call
-	 * byte [] randomDataKey = generateAndStoreDataKey(dataNodeName);
-	 * byte [][] keyandiv = 
-	 * 		KeyDerivationFunction.DeriveKeyForObject(randomDataKey, keyLabel, 
-	 * 												 dataNodeName, dataPublisherPublicKeyDigest)
-	 * and then give keyandiv to the segmenter to encrypt the data.
-	 * @throws IOException 
-	 * @throws ContentEncodingException 
-	 * @throws AccessDeniedException 
-	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException 
-	 **/
-	public Key generateAndStoreDataKey(ContentName dataNodeName) 
-			throws InvalidKeyException, AccessDeniedException, ContentEncodingException, IOException, InvalidCipherTextException {
-		// Generate new random data key of appropriate length
-		byte [] dataKeyBytes = new byte[DEFAULT_DATA_KEY_LENGTH];
-		_random.nextBytes(dataKeyBytes);
-		Key dataKey = new SecretKeySpec(dataKeyBytes, DEFAULT_DATA_KEY_ALGORITHM);
-		storeDataKey(GroupAccessControlProfile.dataKeyName(dataNodeName), dataKey);
-		return dataKey;
-	}
-	
-	/**
-	 * Actual output functions. 
-	 * @param dataNodeName -- the content node for whom this is the data key.
-	 * @param wrappedDataKey
-	 * @throws IOException 
-	 * @throws ContentEncodingException 
-	 */
-	private void storeKeyContent(ContentName dataNodeName,
-								 WrappedKey wrappedKey) throws ContentEncodingException, IOException {
-		WrappedKeyObject wko = new WrappedKeyObject(GroupAccessControlProfile.dataKeyName(dataNodeName), wrappedKey, handle());
-		wko.saveToRepository();
-	}
-	
-	/**
-	 * add a private key to _keyCache
-	 * @param keyName
-	 * @param publicKeyIdentifier
-	 * @param pk
-	 */
-	void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
-		_keyCache.addPrivateKey(keyName, publicKeyIdentifier, pk);
-	}
-
-	/**
-	 * add my private key to _keyCache
-	 * @param publicKeyIdentifier
-	 * @param pk
-	 */
-	void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
-		_keyCache.addMyPrivateKey(publicKeyIdentifier, pk);
-	}
-	
-	/**
-	 * add a key to _keyCache
-	 * @param name
-	 * @param key
-	 */
-	public void addKey(ContentName name, Key key) {
-		_keyCache.addKey(name, key);
-	}
-
-	
- 	/**
-	 * Given the name of a content stream, this function verifies that access is allowed and returns the
-	 * keys required to decrypt the stream.
-	 * @param dataNodeName The name of the stream, including version component, but excluding
-	 * segment component.
-	 * @return Returns the keys ready to be used for en/decryption, or null if the content is not encrypted.
-	 * @throws IOException 
-	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException 
-	 * @throws AccessDeniedException 
-	 */
-	public ContentKeys getContentKeys(ContentName dataNodeName, PublisherPublicKeyDigest publisher) 
-        throws InvalidKeyException, InvalidCipherTextException, AccessDeniedException, IOException {
-		byte [] dataKey = getDataKey(dataNodeName);
-		if (null == dataKey)
-			return null;
-		return KeyDerivationFunction.DeriveKeysForObject(dataKey, DATA_KEY_LABEL, dataNodeName, publisher);
-	}
-
-	/**
-	 * Called when a stream is opened for reading, to determine if the name is under a root ACL, and
-	 * if so find or create an AccessControlManager, and get keys for access. Only called if
-	 * content is encrypted.
-	 * @param name name of the stream to be opened.
-	 * @param publisher publisher of the stream to be opened.
-	 * @param library CCN Library instance to use for any network operations.
-	 * @return If the stream is under access control then keys to decrypt the data are returned if it's
-	 * encrypted. If the stream is not under access control (no Root ACL block can be found) then null is
-	 * returned.
-	 * @throws IOException if a problem happens getting keys.
-	 */
-	public static ContentKeys keysForInput(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
-						throws IOException {
-		GroupAccessControlManager acm;
-		try {
-			acm = NamespaceManager.findACM(name, handle);
-			if (acm != null) {
-				Log.info("keysForInput: retrieving key for data node {0}", name);
-				return acm.getContentKeys(name, publisher);
-			}
-		} catch (ConfigurationException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
-		} catch (InvalidCipherTextException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
-		} catch (InvalidKeyException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
-		}
-		return null;
-	}
-
-	/**
-	 * Get keys to encrypt content as its' written, if that content is to be protected.
-	 * @param name
-	 * @param publisher
-	 * @param handle
-	 * @return
-	 * @throws IOException
-	 */
-	public static ContentKeys keysForOutput(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
-				throws IOException {
-		GroupAccessControlManager acm;
-		try {
-			acm = NamespaceManager.findACM(name, handle);
-			if ((acm != null) && (acm.isProtectedContent(name, publisher, handle))) {
-				Log.info("keysForOutput: generating new data key for data node {0}", name);
-				Key dataKey = acm.generateAndStoreDataKey(name);
-				return KeyDerivationFunction.DeriveKeysForObject(dataKey.getEncoded(), DATA_KEY_LABEL, name, publisher);
-			}
-		} catch (ConfigurationException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
-		} catch (InvalidCipherTextException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
-		} catch (InvalidKeyException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
-		}
-		return null;
-	}
-	
-	/**
-	 * Allow AccessControlManagers to specify some content is not to be protected; for example,
-	 * access control lists are not themselves encrypted. 
-	 * TODO: should headers be exempt from encryption?
-	 */
-	public boolean isProtectedContent(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle hande) {
-		
-		if (!inProtectedNamespace(name)) {
-			return false;
-		}
-		
-		if (GroupAccessControlProfile.isAccessName(name)) {
-			// Don't encrypt the access control metadata itself, or we couldn't get the
-			// keys to decrypt the other stuff.
-			return false;
-		}
-		return true;
 	}
 
 }	

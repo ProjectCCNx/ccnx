@@ -29,8 +29,8 @@ import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
-import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
@@ -40,7 +40,7 @@ import org.ccnx.ccn.protocol.ContentName;
  **/
 public class NamespaceManager {
 
-	protected static Set<GroupAccessControlManager> _acmList = new HashSet<GroupAccessControlManager>(); 
+	protected static Set<AccessControlManager> _acmList = new HashSet<AccessControlManager>(); 
 
 	/**
 	 * Used to mark the top level in a namespace under access control
@@ -142,9 +142,9 @@ public class NamespaceManager {
 	 * @throws IOException
 	 * @throws ConfigurationException 
 	 */
-	public static GroupAccessControlManager findACM(ContentName name, CCNHandle handle)  throws IOException, ConfigurationException {
+	public static AccessControlManager findACM(ContentName name, CCNHandle handle)  throws IOException, ConfigurationException {
 		// See if we already have an AccessControlManager covering this namespace
-		for (GroupAccessControlManager acm : _acmList) {
+		for (AccessControlManager acm : _acmList) {
 			if (acm.inProtectedNamespace(name))
 				return acm;
 		}
@@ -155,7 +155,7 @@ public class NamespaceManager {
 			return null;
 		}
 
-		GroupAccessControlManager acm = GroupAccessControlManager.createManager(ro, handle);
+		AccessControlManager acm = AccessControlManager.createManager(ro, handle);
 		_acmList.add(acm);
 		return acm;
 	}

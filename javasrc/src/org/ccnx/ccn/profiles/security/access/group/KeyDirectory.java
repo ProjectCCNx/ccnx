@@ -557,11 +557,11 @@ public class KeyDirectory extends EnumeratedNameList {
 		try {
 			_keyIDLock.readLock().lock();
 			for (byte [] keyid : _keyIDs) {
-				if (_manager.keyCache().containsKey(keyid)) {
+				if (_manager.hasKey(keyid)) {
 					// We have it, pull the block, unwrap the node key.
 					wko = getWrappedKeyForKeyID(keyid);
 					if (null != wko.wrappedKey()) {
-						unwrappedKey = wko.wrappedKey().unwrapKey(_manager.keyCache().getPrivateKey(keyid));
+						unwrappedKey = wko.wrappedKey().unwrapKey(_manager.getKey(keyid));
 					}
 				}
 			}
@@ -593,7 +593,7 @@ public class KeyDirectory extends EnumeratedNameList {
 						supersedingKeyDirectory.stopEnumerating();
 					}
 					if (null != unwrappedSupersedingKey) {
-						_manager.keyCache().addKey(supersedingKeyDirectory.getName(), unwrappedSupersedingKey);
+						_manager.addKey(supersedingKeyDirectory.getName(), unwrappedSupersedingKey);
 						unwrappedKey = supersededKeyBlock.wrappedKey().unwrapKey(unwrappedSupersedingKey);
 					} else {
 						Log.info("Unable to retrieve superseding key " + supersededKeyBlock.wrappedKey().wrappingKeyName());
@@ -666,7 +666,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		
 		if (null != unwrappedKey) {
-			_manager.keyCache().addKey(getName(), unwrappedKey);
+			_manager.addKey(getName(), unwrappedKey);
 
 			if (null != expectedKeyID) {
 				retrievedKeyID = NodeKey.generateKeyID(unwrappedKey);
