@@ -25,7 +25,7 @@ import org.junit.Test;
  *
  */
 
-public class ACMNodeKeyDirtyTestRepo {
+public class GACMNodeKeyDirtyTestRepo {
 
 	static GroupAccessControlManager acm;
 	static ContentName directoryBase, userKeyStorePrefix, userNamespace, groupStore;

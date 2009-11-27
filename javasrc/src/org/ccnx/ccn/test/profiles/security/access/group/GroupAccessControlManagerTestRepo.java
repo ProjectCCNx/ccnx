@@ -24,7 +24,7 @@ import org.junit.Test;
  *
  */
 
-public class AccessControlManagerTestRepo {
+public class GroupAccessControlManagerTestRepo {
 
 	static GroupAccessControlManager acm;
 	static ContentName baseNode, childNode, grandchildNode;

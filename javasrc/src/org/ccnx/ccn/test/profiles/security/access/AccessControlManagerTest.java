@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.profiles.security.access.group;
+package org.ccnx.ccn.test.profiles.security.access;
 
 
 import org.ccnx.ccn.CCNHandle;

@@ -29,7 +29,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class AccessControlTestRepo {
+public class GroupAccessControlTestRepo {
 	static ContentName acName;
 	static ContentName fileName;
 	static byte content[] = "the network is built around me".getBytes();
