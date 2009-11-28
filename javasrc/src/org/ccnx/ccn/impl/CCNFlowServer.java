@@ -17,25 +17,25 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * server is deleted by canceling all its registered prefixes. It does not
  * signal an error if the blocks are never read.
  */
-public class CCNTransientFlowServer extends CCNFlowControl {
+public class CCNFlowServer extends CCNFlowControl {
 
 	boolean _persistent = true;
 	
-	public CCNTransientFlowServer(ContentName name, Integer capacity, boolean persistent, CCNHandle handle) throws IOException {
+	public CCNFlowServer(ContentName name, Integer capacity, boolean persistent, CCNHandle handle) throws IOException {
 		super(name, handle);
 		_persistent = persistent;
 		if (null != capacity)
 			setCapacity(capacity);
 	}
 
-	public CCNTransientFlowServer(String name, Integer capacity, CCNHandle handle)
+	public CCNFlowServer(String name, Integer capacity, CCNHandle handle)
 			throws MalformedContentNameStringException, IOException {
 		super(name, handle);
 		if (null != capacity)
 			setCapacity(capacity);
 	}
 
-	public CCNTransientFlowServer(Integer capacity, boolean persistent, CCNHandle handle) throws IOException {
+	public CCNFlowServer(Integer capacity, boolean persistent, CCNHandle handle) throws IOException {
 		super(handle);
 		_persistent = persistent;
 		if (null != capacity)

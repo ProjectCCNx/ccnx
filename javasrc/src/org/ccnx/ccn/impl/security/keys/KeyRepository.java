@@ -35,7 +35,7 @@ import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.impl.CCNTransientFlowServer;
+import org.ccnx.ccn.impl.CCNFlowServer;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
@@ -72,7 +72,7 @@ public class KeyRepository {
 	protected static final boolean _DEBUG = true;
 	
 	protected CCNHandle _handle = null;
-	protected CCNTransientFlowServer _keyServer = null;
+	protected CCNFlowServer _keyServer = null;
 	
 	protected HashMap<ContentName, PublisherPublicKeyDigest> _keyMap = new HashMap<ContentName, PublisherPublicKeyDigest>();
 	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest, ContentName>();
@@ -91,7 +91,7 @@ public class KeyRepository {
 		_handle = CCNHandle.open(keyManager); // maintain our own connection to the agent, so
 			// everyone can ask us for keys even if we have no repository
 		// make a buffered server to return key data
-		_keyServer = new CCNTransientFlowServer(null, _handle);
+		_keyServer = new CCNFlowServer(null, true, _handle);
 	}
 	
 	public CCNHandle handle() { return _handle; }
