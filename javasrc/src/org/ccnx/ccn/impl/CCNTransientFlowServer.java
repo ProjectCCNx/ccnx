@@ -21,8 +21,9 @@ public class CCNTransientFlowServer extends CCNFlowControl {
 
 	boolean _persistent = true;
 	
-	public CCNTransientFlowServer(ContentName name, Integer capacity, CCNHandle handle) throws IOException {
+	public CCNTransientFlowServer(ContentName name, Integer capacity, boolean persistent, CCNHandle handle) throws IOException {
 		super(name, handle);
+		_persistent = persistent;
 		if (null != capacity)
 			setCapacity(capacity);
 	}
@@ -34,8 +35,9 @@ public class CCNTransientFlowServer extends CCNFlowControl {
 			setCapacity(capacity);
 	}
 
-	public CCNTransientFlowServer(Integer capacity, CCNHandle handle) throws IOException {
+	public CCNTransientFlowServer(Integer capacity, boolean persistent, CCNHandle handle) throws IOException {
 		super(handle);
+		_persistent = persistent;
 		if (null != capacity)
 			setCapacity(capacity);
 	}
