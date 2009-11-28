@@ -49,7 +49,7 @@ public class GroupAccessControlManagerTestRepo {
 		userKeyStorePrefix = ContentName.fromNative(testPrefix, "_access_");
 		userNamespace = ContentName.fromNative(testPrefix, "home");
 		td = new TestUserData(userKeyStorePrefix, userCount, true, "password".toCharArray(), CCNHandle.open());
-		td.saveUserPK2Repo(userNamespace);
+		td.publishUserKeysToRepository(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);
 		Assert.assertEquals(userCount, friendlyNames.length);
 		user0 = ContentName.fromNative(userNamespace, friendlyNames[0]);

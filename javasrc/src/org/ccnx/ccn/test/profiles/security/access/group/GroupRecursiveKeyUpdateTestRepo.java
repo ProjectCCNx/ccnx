@@ -44,7 +44,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 
 		// create user identities with TestUserData		
 		td = new TestUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
-		td.saveUserPK2Repo(userNamespace);
+		td.publishUserKeysToRepository(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);				
 		
 		// create ACM

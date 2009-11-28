@@ -49,7 +49,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		Log.info("Creating {0} test users, if they do not already exist.", numberOfusers);
 		td = new TestUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
 		Log.info("Created {0} test users, or retrieved them from repository.", numberOfusers);
-		td.saveUserPK2Repo(userNamespace);
+		td.publishUserKeysToRepository(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);				
 		
 		// create ACM

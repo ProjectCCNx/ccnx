@@ -51,7 +51,7 @@ public class GroupTestRepo {
 	static ContentName testStorePrefix = null;
 	static ContentName userNamespace = null;
 	static ContentName groupStore = null;
-	static ContentName userKeyStore = null;
+	static ContentName userKeyStorePrefix = null;
 	
 	static EnumeratedNameList _userList = null;
 	static CCNHandle _handle = null;
@@ -75,8 +75,8 @@ public class GroupTestRepo {
 			myUserName = UserConfiguration.userName();
 			System.out.println("Username = " + myUserName);
 			testStorePrefix = UserConfiguration.defaultNamespace();
-			userNamespace = ContentName.fromNative(testStorePrefix, "home");
-			userKeyStore = ContentName.fromNative(testStorePrefix, "_access_");
+			userNamespace = ContentName.fromNative(testStorePrefix, "Users");
+			userKeyStorePrefix = ContentName.fromNative(testStorePrefix, "home");
 			groupStore = GroupAccessControlProfile.groupNamespaceName(testStorePrefix);
 
 			System.out.println("prefix: " + testStorePrefix);
@@ -87,10 +87,10 @@ public class GroupTestRepo {
 			userHandle = _handle;
 	
 			
-			users = new TestUserData(userKeyStore, NUM_USERS,
+			users = new TestUserData(userKeyStorePrefix, NUM_USERS,
 					USE_REPO,
 					USER_PASSWORD, userHandle);
-			users.saveUserPK2Repo(userNamespace);
+			users.publishUserKeysToRepository(userNamespace);
 			
 			_acm = new GroupAccessControlManager(testStorePrefix, groupStore, userNamespace);
 			_acm.publishMyIdentity(myUserName, KeyManager.getDefaultKeyManager().getDefaultPublicKey());
