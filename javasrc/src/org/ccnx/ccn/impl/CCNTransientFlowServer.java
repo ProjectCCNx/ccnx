@@ -41,14 +41,17 @@ public class CCNTransientFlowServer extends CCNFlowControl {
 	}
 	
 	/**
-	 * Remove content objects after they have been read once.
+	 * If this is a non-persistent flow server, remove
+	 * content objects after they have been read once; otherwise do nothing.
 	 * 
 	 * @param co ContentObject to remove from flow controller.
 	 * @throws IOException may be thrown by overriding subclasses
 	 */
 	@Override
 	public void afterPutAction(ContentObject co) throws IOException {
-		remove(co);
+		if (!_persistent) {
+			remove(co);
+		}
 	}
 
 	/**
