@@ -25,10 +25,13 @@ import java.security.PublicKey;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
@@ -39,14 +42,12 @@ import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
-import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
@@ -73,9 +74,10 @@ public class KeyRepository {
 	protected CCNHandle _handle = null;
 	protected CCNPersistentFlowServer _keyServer = null;
 	
-	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest,ContentName>();
-	protected HashMap<PublisherPublicKeyDigest, PublicKey> _rawKeyMap = new HashMap<PublisherPublicKeyDigest,PublicKey>();
-	protected HashMap<PublisherPublicKeyDigest, Certificate> _rawCertificateMap = new HashMap<PublisherPublicKeyDigest,Certificate>();
+	protected HashMap<ContentName, PublisherPublicKeyDigest> _keyMap = new HashMap<ContentName, PublisherPublicKeyDigest>();
+	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest, ContentName>();
+	protected HashMap<PublisherPublicKeyDigest, PublicKey> _rawKeyMap = new HashMap<PublisherPublicKeyDigest, PublicKey>();
+	protected HashMap<PublisherPublicKeyDigest, Certificate> _rawCertificateMap = new HashMap<PublisherPublicKeyDigest, Certificate>();
 	
 	/** 
 	 * Constructor. Must be called carefully; either with a fully constructed and
@@ -145,6 +147,7 @@ public class KeyRepository {
 			// nobody's written it where we can find it fast enough.
 			keyObject.setData(key);
 			// TODO -- set our locator and desired signing key
+			keyObject.setOurPublisherInformation(signingKeyID, locatorLocator);
 			if (!keyObject.save()) {
 				Log.info("Not saving key when we thought we needed to: desired key value {0}, have key value {1}, " +
 							new PublisherPublicKeyDigest(key), new PublisherPublicKeyDigest(keyObject.publicKey()));
@@ -332,7 +335,7 @@ public class KeyRepository {
 					try {
 						Log.info("Retrieved public key using name: " + locator.name().name());
 						PublicKey theKey = CryptoUtil.getPublicKey(keyObject.content());
-						remember(theKey, keyObject);
+						remember(keyObject.name(), theKey);
 						return theKey;
 					} catch (CertificateEncodingException e) {
 						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
@@ -359,5 +362,69 @@ public class KeyRepository {
 			return _keyMap.get(name);
 		}		
 		return null;
+	}
+	
+	/**
+	 * Retrieve key object from cache given content name and publisher id
+	 * check if the retrieved content has the expected publisher id 
+	 * @param name contentname of the key
+	 * @param publisherID publisher id
+	 */
+	public ContentObject retrieve(ContentName name, PublisherID publisherID) {
+		ContentObject result = _keyMap.get(name);
+		if (null != result) {
+			if (null != publisherID) {
+				if (TrustManager.getTrustManager().matchesRole(
+						publisherID,
+						result.signedInfo().getPublisherKeyID())) {
+					return result;
+				}
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * Retrieve content object given an interest 
+	 * @param interest interest
+	 */
+	public ContentObject retrieve(Interest interest) {
+		ContentObject result = retrieve(interest.name(), interest.publisherID());
+		if (null != result)
+			return result;
+		
+		// OK, the straight match didn't cut it; maybe we're just close.
+		Iterator<ContentObject> it = _keyMap.values().iterator();
+		while (it.hasNext()) {
+			ContentObject co = it.next();
+			if (interest.matches(co)) {
+				// doesn't handle preventing returning same thing over and over
+				return co;	
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Answers interests for published public keys.
+	 * @param interests interests expressed by other parties.
+	 */
+	
+	public int handleInterests(ArrayList<Interest> interests) {
+		Iterator<Interest> it = interests.iterator();
+		
+		while (it.hasNext()) {
+			ContentObject keyObject = retrieve(it.next());
+			if (null != keyObject) {
+				try {
+					ContentObject co = new ContentObject(keyObject.name(), keyObject.signedInfo(), keyObject.content(), keyObject.signature()); 
+					_handle.put(co);
+				} catch (Exception e) {
+					Log.info("KeyRepository::handleInterests, exception in put: " + e.getClass().getName() + " message: " + e.getMessage());
+					Log.infoStackTrace(e);
+				}
+			}
+		}
+		return 0;
 	}
 }

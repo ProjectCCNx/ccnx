@@ -267,7 +267,7 @@ public class BasicKeyManager extends KeyManager {
 		}    
 		return true;
 	}
-	
+		
 	/**
 	 * Creates a key store file
 	 * @throws ConfigurationException
@@ -606,9 +606,9 @@ public class BasicKeyManager extends KeyManager {
 		}
 		keyRepository().publishKey(keyName, key, getDefaultKeyID());
 	}
-	
-	
-	protected void publishDefaultKey() throws IOException {
+		
+	protected void publishDefaultKey() throws ConfigurationException, IOException {
+
 	    if (null == getPublicKey(_defaultKeyID, _keyLocator, SystemConfiguration.SHORT_TIMEOUT)) {
 	    	boolean resetFlag = false;
 	    	if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
@@ -654,4 +654,3 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 }
-
