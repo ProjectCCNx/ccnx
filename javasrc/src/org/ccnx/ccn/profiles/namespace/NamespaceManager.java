@@ -30,6 +30,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
@@ -76,7 +77,7 @@ public class NamespaceManager {
 			for (;name.count() > 0; nextName = name.parent()) {
 				name = nextName;
 				// see if a root marker is present
-				EnumeratedNameList nameList = EnumeratedNameList.exists(GroupAccessControlProfile.rootName(name), name, handle);
+				EnumeratedNameList nameList = EnumeratedNameList.exists(AccessControlProfile.rootName(name), name, handle);
 
 				if (null != nameList) {
 					// looks like it is - so fetch the root object
@@ -104,7 +105,7 @@ public class NamespaceManager {
 		 */
 		public static void create(ContentName name, ACL acl, CCNHandle handle) throws IOException, ConfigurationException {
 			Root r = new Root();
-			RootObject ro = new RootObject(GroupAccessControlProfile.accessRoot(name), r, handle);
+			RootObject ro = new RootObject(AccessControlProfile.accessRoot(name), r, handle);
 			ro.saveToRepository();
 			ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
 			aclo.saveToRepository();
