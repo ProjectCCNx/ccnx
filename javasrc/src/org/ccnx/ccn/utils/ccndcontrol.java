@@ -63,6 +63,7 @@ public class ccndcontrol {
 	}
 	
 	private static Vector<RegEntry> regList = new Vector<RegEntry>(5);
+	private static boolean verbose = false;
 	
 	private static void parseString(String in) {
 		String [] tokens = in.split("\\s");
@@ -270,11 +271,13 @@ public class ccndcontrol {
 		String configFile = null;	
 		int startArg = 0;
 		Level logLevel = Level.SEVERE;
+		verbose = false;
 		
 		for (int i = 0; i < args.length - 1; i++) {
 			if (args[i].equals(("-v"))) {
 				if (startArg <= i)
 					startArg = i + 1;
+				verbose = true;
 				logLevel = Level.INFO;
 			} else if (args[i].equals(("-vv"))) {
 				if (startArg <= i)
@@ -319,32 +322,41 @@ public class ccndcontrol {
 				fHandle = new FaceManager(ccnHandle);
 				if (entry.command == Command.Add) {
 					faceID = fHandle.createFace(entry.protocol, entry.host, entry.port);
-					Log.info("Created face " + faceID.toString());
+					if (verbose) {
+						System.out.println("Created face " + faceID.toString());
+					}
 					PrefixRegistrationManager pre = new PrefixRegistrationManager(ccnHandle);
 					pre.registerPrefix(entry.uri, faceID, entry.flags);
-					Log.info("Added registration for " + entry.uri);
-				
+					if (verbose) {
+						System.out.println("Added registration for " + entry.uri);
+					}
+
 				} else if (entry.command == Command.Delete) {
 					fHandle.deleteFace(entry.faceID);
+					if (verbose) {
+						System.out.println("Deleted face " + entry.faceID.toString() + " in local ccnd");
+					}
 				} else {
-						/* This really can't happen unless the check above was wrong. */
-						Log.severe("Internal error.  command (" + entry.command + ") not add or del");
-						Log.abort();					
+					/* This really can't happen unless the check above was wrong. */
+					System.err.println("Internal error.  command (" + entry.command + ") not add or del");
+					System.exit(1);			
 				}
 
 			} catch (ConfigurationException e) {
-				System.err.println("Configuration Error");
-				e.printStackTrace();
+				String m = e.getMessage();
+				System.err.println(m);
+				System.exit(1);			
 			} catch (IOException e) {
-				System.err.println(e.toString());
-				e.printStackTrace();
+				String m = e.getMessage();
+				System.err.println(m);
+				System.exit(1);			
 			}catch (CCNDaemonException e) {
-				System.err.println(e.toString());
-				e.printStackTrace();
+				String m = e.getMessage();
+				System.err.println(m);
+				System.exit(1);			
 			}
 		}
 
-		
 		System.exit(0);
 	}
 	
