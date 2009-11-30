@@ -129,6 +129,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 	 * 
 	 * @throws Exception
 	 */
+	@Test
 	public void removeMemberFromGroup0() throws Exception {
 		// delete user0 from group0
 		ArrayList<Link> membersToRemove = new ArrayList<Link>();
