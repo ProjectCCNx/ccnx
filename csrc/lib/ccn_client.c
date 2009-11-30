@@ -40,6 +40,7 @@
 #include <ccn/coding.h>
 #include <ccn/digest.h>
 #include <ccn/hashtb.h>
+#include <ccn/reg_mgmt.h>
 #include <ccn/signing.h>
 #include <ccn/keystore.h>
 #include <ccn/uri.h>
@@ -1598,8 +1599,8 @@ handle_ping_response(struct ccn_closure *selfp,
         free(selfp);
         return(CCN_UPCALL_RESULT_OK);
     }
-    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED);
-    return(CCN_UPCALL_RESULT_VERIFY);
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED)
+        return(CCN_UPCALL_RESULT_VERIFY);
     if (kind != CCN_UPCALL_CONTENT) {
         NOTE_ERR(h, -1000 - kind);
         return(CCN_UPCALL_RESULT_ERR);
@@ -1622,6 +1623,7 @@ handle_ping_response(struct ccn_closure *selfp,
     h->ccndid->length = 0;
     ccn_charbuf_append(h->ccndid, ccndid, size);
     ccn_notify_ccndid_changed(h);
+    return(CCN_UPCALL_RESULT_OK);
 }
 
 static void
@@ -1648,7 +1650,11 @@ handle_prefix_reg_reply(
     struct ccn_reg_closure *md = selfp->data;
     struct ccn *h = info->h;
     int lifetime = 10;
-    
+    struct ccn_forwarding_entry *fe = NULL;
+    int res;
+    const unsigned char *fe_ccnb = NULL;
+    size_t fe_ccnb_size = 0;
+
     if (kind == CCN_UPCALL_FINAL) {
         // fprintf(stderr, "GOT TO handle_prefix_reg_reply FINAL\n");
         if (selfp != &md->action)
@@ -1667,10 +1673,25 @@ handle_prefix_reg_reply(
         NOTE_ERR(h, -1000 - kind);
         return(CCN_UPCALL_RESULT_ERR);
     }
-    /* Examine response, determine lifetime. */
-    // fprintf(stderr, "GOT TO STUB handle_prefix_reg_reply\n");
+    res = ccn_content_get_value(info->content_ccnb,
+                                info->pco->offset[CCN_PCO_E],
+                                info->pco,
+                                &fe_ccnb, &fe_ccnb_size);
+    if (res == 0)
+        fe = ccn_forwarding_entry_parse(fe_ccnb, fe_ccnb_size);
+    if (fe == NULL) {
+        XXX;
+        lifetime = 30;
+    }
+    else
+        lifetime = fe->lifetime;
+    if (lifetime < 0)
+        lifetime = 0;
+    else if (lifetime > 3600)
+        lifetime = 3600;
     md->interest_filter->expiry = h->now;
     md->interest_filter->expiry.tv_sec += lifetime;
+    ccn_forwarding_entry_destroy(&fe);
     return(CCN_UPCALL_RESULT_OK);
 }
 
@@ -1682,6 +1703,11 @@ ccn_initiate_prefix_reg(struct ccn *h,
     struct ccn_reg_closure *p = NULL;
     struct ccn_charbuf *reqname = NULL;
     struct ccn_charbuf *templ = NULL;
+    struct ccn_forwarding_entry fe_store = { 0 };
+    struct ccn_forwarding_entry *fe = &fe_store;
+    struct ccn_charbuf *reg_request = NULL;
+    struct ccn_charbuf *signed_reg_request = NULL;
+    struct ccn_charbuf *empty = NULL;
 
     i->expiry = h->now;
     i->expiry.tv_sec += 60;
@@ -1706,10 +1732,36 @@ ccn_initiate_prefix_reg(struct ccn *h,
     p->interest_filter = i;
     i->ccn_reg_closure = p;
     reqname = ccn_charbuf_create();
-    ccn_name_from_uri(reqname, "/ccnx/ping"); // STUB
+    ccn_name_from_uri(reqname, "ccnx:/ccnx");
+    ccn_name_append(reqname, h->ccndid->buf, h->ccndid->length);
+    ccn_name_append_str(reqname, "selfreg");
+    fe->action = "selfreg";
+    fe->ccnd_id = h->ccndid->buf;
+    fe->ccnd_id_size = h->ccndid->length;
+    fe->faceid = ~0; // XXX - someday explicit faceid may be required
+    fe->name_prefix = ccn_charbuf_create();
+    fe->flags = CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT;
+    // XXX - need API to set other flags
+    fe->lifetime = -1; /* Let ccnd decide */
+    ccn_name_init(fe->name_prefix);
+    ccn_name_append_components(fe->name_prefix, prefix, 0, prefix_size);
+    reg_request = ccn_charbuf_create();
+    ccnb_append_forwarding_entry(reg_request, fe);
+    empty = ccn_charbuf_create();
+    ccn_name_init(empty);
+    signed_reg_request = ccn_charbuf_create();
+    ccn_sign_content(h, signed_reg_request, empty, NULL,
+                     reg_request->buf, reg_request->length);
+    ccn_name_append(reqname,
+                    signed_reg_request->buf, signed_reg_request->length);
+    // XXX - should set up templ for scope 1
     ccn_express_interest(h, reqname, &p->action, templ);
+    ccn_charbuf_destroy(&fe->name_prefix);
     ccn_charbuf_destroy(&reqname);
     ccn_charbuf_destroy(&templ);
+    ccn_charbuf_destroy(&reg_request);
+    ccn_charbuf_destroy(&signed_reg_request);
+    ccn_charbuf_destroy(&empty);
 }
 
 /**
@@ -1796,10 +1848,8 @@ Cleanup:
 static void
 finalize_keystore(struct hashtb_enumerator *e)
 {
-    struct ccn *h = hashtb_get_param(e->ht, NULL);
     struct ccn_keystore **p = e->data;
     ccn_keystore_destroy(p);
-    XXX;
 }
 
 static int
