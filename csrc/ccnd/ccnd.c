@@ -2140,7 +2140,7 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
                    h->ccnd_id, sizeof(h->ccnd_id)) != 0)
             goto Finish;
     }
-    else if (forwarding_entry->ccnd_id_size |= 0)
+    else if (forwarding_entry->ccnd_id_size != 0)
         goto Finish;
     face = face_from_faceid(h, forwarding_entry->faceid);
     if (face == NULL)
