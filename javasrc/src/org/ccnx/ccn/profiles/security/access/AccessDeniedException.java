@@ -31,21 +31,21 @@ public class AccessDeniedException extends IOException {
 
 	private static final long serialVersionUID = -7802610745471335632L;
 
-	AccessDeniedException() {
+	public AccessDeniedException() {
 		super();
 	}
 	
-	AccessDeniedException(String message) {
+	public AccessDeniedException(String message) {
 		super(message);
 	}
 	
-	AccessDeniedException(String message, Throwable cause) {
+	public AccessDeniedException(String message, Throwable cause) {
 		// TODO -- move to better constructor in 1.6
 		// super(message, cause);
 		super(message + ": Nested exception: " + cause.getClass().getName() + ": " + cause.getMessage());
 	}
 	
-	AccessDeniedException(Throwable cause) 	{
+	public AccessDeniedException(Throwable cause) 	{
 		// TODO -- move to better constructor in 1.6
 		// super(cause);
 		super("Nested exception: " + cause.getClass().getName() + ": " + cause.getMessage());

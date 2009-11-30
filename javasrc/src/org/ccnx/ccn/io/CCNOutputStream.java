@@ -362,7 +362,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// small data objects (written as single blocks without headers); instead
 		// write them as single-fragment files. Subclasses will determine whether or not
 		// to write a header.
-		Log.fine("closeNetworkData: final flush, wrote " + _totalLength + " bytes.");
+		Log.fine("closeNetworkData: final flush, wrote " + _totalLength + " bytes, base index " + _baseNameIndex);
 		flush(true); // true means write out the partial last block, if there is one
 	}
 
@@ -393,9 +393,13 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 		/**
 		 * Partial last block handling. If we are in the middle of writing a file, we only
-		 * flush complete blocks; up to _blockOffset % getBlockSize().
+		 * flush complete blocks; up to _blockOffset % getBlockSize(). The only time
+		 * we emit a 0-length block is if we've been told to flush the last block (i.e.
+		 * we're closing the file) without having written anything at all. So for
+		 * 0-length files we emit a single block with 0-length content (which has
+		 * a Content element, but no contained BLOB).
 		 */
-		if (0 == _blockOffset) {
+		if ((0 == _blockOffset) && ((!flushLastBlock) || (_totalLength > 0))) {
 			// nothing to write
 			return;
 		} else if ((_blockOffset <= getBlockSize()) && (!flushLastBlock)) {
@@ -434,7 +438,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		
 		// Three cases -- 
 		// 1) we have nothing to flush (0 bytes or < a single block) (handled above)
-		// 2) we're flushing a single block and can put it out with a straight signature
+		// 2) we're flushing a single block and can put it out with a straight signature (includes
+	    //    0-length file case mentioned above)
 		// 3) we're flushing more than one block, and need to use a bulk signer.
 		// The reading/verification code will
 		// cope just fine with a single file written in a mix of bulk and straight signature
@@ -478,6 +483,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		}
 		// zeroise unused bytes
 		Arrays.fill(_buffer, _blockOffset, _buffer.length, (byte)0);
+		Log.info("HEADER: CCNOutputStream: flushToNetwork: new _baseNameIndex {0}", _baseNameIndex);
 	}
 	
 	/**

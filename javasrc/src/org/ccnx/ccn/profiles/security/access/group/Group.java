@@ -15,7 +15,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.profiles.security.access;
+package org.ccnx.ccn.profiles.security.access.group;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -45,6 +45,7 @@ import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
@@ -93,7 +94,7 @@ public class Group {
 		_handle = handle;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
-		_groupPublicKey = new PublicKeyObject(AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _handle);
+		_groupPublicKey = new PublicKeyObject(GroupAccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _handle);
 		_groupPublicKey.updateInBackground(true);
 		_groupManager = manager;
 	}
@@ -107,7 +108,7 @@ public class Group {
 	 * @throws ContentDecodingException 
 	 */
 	public Group(ContentName groupName, CCNHandle handle, GroupManager manager) throws ContentDecodingException, IOException {
-		this(groupName.parent(), AccessControlProfile.groupNameToFriendlyName(groupName), handle,manager);
+		this(groupName.parent(), GroupAccessControlProfile.groupNameToFriendlyName(groupName), handle,manager);
 	}
 		
 	/**
@@ -184,16 +185,16 @@ public class Group {
 	 * @return the key directory of the group
 	 * @throws IOException
 	 */
-	public KeyDirectory privateKeyDirectory(AccessControlManager manager) throws IOException {
+	public KeyDirectory privateKeyDirectory(GroupAccessControlManager manager) throws IOException {
 		if (_privKeyDirectory != null) {
 			// check that our version of KeyDirectory is not stale
-			if (_privKeyDirectory.getName().equals(AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()))) {
+			if (_privKeyDirectory.getName().equals(GroupAccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()))) {
 				return _privKeyDirectory;				
 			}
 		}
 		if (_groupPublicKey.available()) {
 			_privKeyDirectory = new KeyDirectory(manager, 
-					AccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()), _handle);
+					GroupAccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()), _handle);
 			return _privKeyDirectory;
 		}
 		Log.info("Public key not ready for group: " + friendlyName());
@@ -215,7 +216,7 @@ public class Group {
 	 * @param manager the access control manager.
 	 * @throws IOException
 	 */
-	public void restartPrivateKeyDirectoryEnumeration(AccessControlManager manager) throws IOException {
+	public void restartPrivateKeyDirectoryEnumeration(GroupAccessControlManager manager) throws IOException {
 		stopPrivateKeyDirectoryEnumeration();
 		_privKeyDirectory = null;
 		privateKeyDirectory(manager);
@@ -245,7 +246,7 @@ public class Group {
 			// Read constructor. Synchronously updates. 
 			// Throws an exception if no membership list is found or upon error.
 			// Reading membership list from network. Needs error handling.
-			_groupMembers = new MembershipList(AccessControlProfile.groupMembershipListName(_groupNamespace, _groupFriendlyName), _handle);
+			_groupMembers = new MembershipList(GroupAccessControlProfile.groupMembershipListName(_groupNamespace, _groupFriendlyName), _handle);
 			// Keep dynamically updating.
 			_groupMembers.updateInBackground(true);
 		}
@@ -463,18 +464,18 @@ public class Group {
 		try {
 			kpg = KeyPairGenerator.getInstance(_groupManager.getGroupKeyAlgorithm());
 		} catch (NoSuchAlgorithmException e) {
-			if (_groupManager.getGroupKeyAlgorithm().equals(AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM)) {
-				Log.severe("Cannot find default group public key algorithm: " + AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
-				throw new RuntimeException("Cannot find default group public key algorithm: " + AccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
+			if (_groupManager.getGroupKeyAlgorithm().equals(GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM)) {
+				Log.severe("Cannot find default group public key algorithm: " + GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
+				throw new RuntimeException("Cannot find default group public key algorithm: " + GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
 			}
 			throw new ConfigurationException("Specified group public key algorithm " + _groupManager.getGroupKeyAlgorithm() + " not found. " + e.getMessage());
 		}
-		kpg.initialize(AccessControlManager.DEFAULT_GROUP_KEY_LENGTH);
+		kpg.initialize(GroupAccessControlManager.DEFAULT_GROUP_KEY_LENGTH);
 		KeyPair pair = kpg.generateKeyPair();
 		
 		_groupPublicKey = 
 			new PublicKeyObject(
-					AccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), 
+					GroupAccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), 
 					pair.getPublic(),
 					_handle);
 		_groupPublicKey.saveToRepository();
@@ -529,11 +530,11 @@ public class Group {
 				
 				ContentName pkName = lr.targetName();
 				if (_groupManager.isGroup(lr)){
-					pkName = AccessControlProfile.groupPublicKeyName(pkName);
+					pkName = GroupAccessControlProfile.groupPublicKeyName(pkName);
 					// write a back pointer from child group to parent group
 					// PG TODO check for existence of back pointer to avoid writing multiple copies of the same pointer
 					Link backPointer = new Link(groupName(), friendlyName(), null);
-					ContentName bpNamespace = AccessControlProfile.groupPointerToParentGroupName(lr.targetName());
+					ContentName bpNamespace = GroupAccessControlProfile.groupPointerToParentGroupName(lr.targetName());
 					LinkObject bplo = new LinkObject(ContentName.fromNative(bpNamespace, friendlyName()), backPointer, _handle);
 					bplo.saveToRepository();
 				}
@@ -566,14 +567,14 @@ public class Group {
 		sb.append(": public key: ");
 		if (!_groupPublicKey.available()) {
 			sb.append("not ready, write to " + 
-					AccessControlProfile.groupPublicKeyName(_groupNamespace, friendlyName()));
+					GroupAccessControlProfile.groupPublicKeyName(_groupNamespace, friendlyName()));
 		} else {
 			sb.append(publicKeyName());
 		}
 		sb.append(" membership list: ");
 		if ((null == _groupMembers) || (!_groupMembers.available())) {
 			sb.append("not ready, will write to " + 
-					AccessControlProfile.groupMembershipListName(_groupNamespace, friendlyName()));
+					GroupAccessControlProfile.groupMembershipListName(_groupNamespace, friendlyName()));
 		} else {
 			try {
 				sb.append(membershipListName());
@@ -681,7 +682,7 @@ public class Group {
 	public ArrayList<Link> recursiveAncestorList(ArrayList<Link> ancestorList) throws IOException {
 		if (ancestorList == null) ancestorList = new ArrayList<Link>();
 		
-		ContentName cn = AccessControlProfile.groupPointerToParentGroupName(groupName());
+		ContentName cn = GroupAccessControlProfile.groupPointerToParentGroupName(groupName());
 		EnumeratedNameList parentList = new EnumeratedNameList(cn, _handle);
 		parentList.waitForData(PARENT_GROUP_ENUMERATION_TIMEOUT);
 		if (parentList.hasChildren()) {

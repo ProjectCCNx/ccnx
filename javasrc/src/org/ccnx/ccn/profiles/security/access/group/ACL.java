@@ -15,7 +15,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.profiles.security.access;
+package org.ccnx.ccn.profiles.security.access.group;
 
 import java.io.IOException;
 import java.util.ArrayList;

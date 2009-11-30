@@ -127,15 +127,16 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 
 
 		ContentName headerName = SegmentationProfile.headerName(name);
-		Header headerData = new Header(contentLength, contentDigest, contentTreeAuthenticator, blockSize);
+		
+		// Really want to query the segmenter about the last block we wrote.
+		Header headerData = new Header(SegmentationProfile.baseSegment(), this._baseNameIndex, blockSize, contentLength, contentDigest, contentTreeAuthenticator);
+		Log.finest("HEADER: Writing header, starting segment " + headerData.start() + " count " + headerData.count() + " length " + headerData.length());
 		// DKS TODO -- deal with header encryption, making sure it has same publisher as
 		// rest of file via the segmenter
 		// The segmenter contains the flow controller. Should do the right thing whether this
 		// is a raw stream or a repo stream. It should also already have the keys. Could just share
 		// the segmenter. For now, use our own.
-		Log.info("Writing header.");
 		HeaderObject header = new HeaderObject(headerName, headerData, this._publisher, this._locator, this.getSegmenter().getFlowControl());
 		header.save();
-		Log.info("Wrote header: " + header.getVersionedName());
 	}
 }

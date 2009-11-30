@@ -64,10 +64,12 @@ public class KeyCache {
 	
 	/**
 	 * Retrieve a key specified by its digest
+	 * To restrict access to keys, store key cache in a private variable, and don't
+	 * allow references to it from untrusted code. 
 	 * @param desiredKeyIdentifier the digest
 	 * @return the key
 	 */
-	Key getKey(byte [] desiredKeyIdentifier) {
+	public Key getKey(byte [] desiredKeyIdentifier) {
 		Key theKey = _keyMap.get(desiredKeyIdentifier);
 		if (null == theKey) {
 			theKey = _privateKeyMap.get(desiredKeyIdentifier);
@@ -111,10 +113,12 @@ public class KeyCache {
 
 	/**
 	 * Returns the private key corresponding to a public key specified by its digest.
+	 * To restrict access to keys, store key cache in a private variable, and don't
+	 * allow references to it from untrusted code. 
 	 * @param desiredPublicKeyIdentifier the digest of the public key.
 	 * @return the corresponding private key.
 	 */
-	PrivateKey getPrivateKey(byte [] desiredPublicKeyIdentifier) {
+	public PrivateKey getPrivateKey(byte [] desiredPublicKeyIdentifier) {
 		PrivateKey key = _myKeyMap.get(desiredPublicKeyIdentifier);
 		if (null == key) {
 			key = _privateKeyMap.get(desiredPublicKeyIdentifier);
@@ -128,7 +132,7 @@ public class KeyCache {
 	 * @param publicKeyIdentifier the digest of the public key
 	 * @param pk the private key
 	 */
-	void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
+	public void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyMap.put(publicKeyIdentifier, pk);
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		if (null != keyName)
@@ -140,7 +144,7 @@ public class KeyCache {
 	 * @param publicKeyIdentifier the digest of the public key.
 	 * @param pk the corresponding private key.
 	 */
-	void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
+	public void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		_myKeyMap.put(publicKeyIdentifier, pk);
 	}

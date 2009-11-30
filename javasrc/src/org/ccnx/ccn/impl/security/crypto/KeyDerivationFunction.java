@@ -74,6 +74,7 @@ public class KeyDerivationFunction {
 	 */
 	protected static final String MAC_ALGORITHM = "HmacSHA256";
 	protected static final String EMPTY = "";
+	public static final int BITS_PER_BYTE = 8;
 
 	/**
 	 * Default parameterization of the KDF for standard algorithm type. This is the
@@ -92,7 +93,7 @@ public class KeyDerivationFunction {
 			String label,
 			ContentName contentName, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, ContentEncodingException {
-		byte [][] keyiv = DeriveKeysForObject(masterKeyBytes, ContentKeys.DEFAULT_AES_KEY_LENGTH*8, ContentKeys.IV_MASTER_LENGTH*8,
+		byte [][] keyiv = DeriveKeysForObject(masterKeyBytes, ContentKeys.DEFAULT_AES_KEY_LENGTH*BITS_PER_BYTE, ContentKeys.IV_MASTER_LENGTH*BITS_PER_BYTE,
 				label, contentName, publisher);
 		return new ContentKeys(keyiv[0], keyiv[1]);
 	}
@@ -112,7 +113,7 @@ public class KeyDerivationFunction {
 			byte [] parentNodeKeyBytes,
 			String label,
 			ContentName nodeName) throws InvalidKeyException, ContentEncodingException {
-		return DeriveKeyForNode(parentNodeKeyBytes, ContentKeys.DEFAULT_AES_KEY_LENGTH*8, label, nodeName);
+		return DeriveKeyForNode(parentNodeKeyBytes, ContentKeys.DEFAULT_AES_KEY_LENGTH*BITS_PER_BYTE, label, nodeName);
 	}
 	
 	/**
@@ -154,7 +155,7 @@ public class KeyDerivationFunction {
 
 	/**
 	 * Derive a key and IV for a particular object. Requested bit lengths must
-	 * be divisible by 8.
+	 * be divisible by BITS_PER_BYTE.
 	 * @param masterKeyBytes master key to derive a new key from
 	 * @param keyBitLength bit length of key to derive
 	 * @param ivBitLength bit length of iv to derive
@@ -172,22 +173,22 @@ public class KeyDerivationFunction {
 			String label,
 			ContentName contentName, 
 			PublisherPublicKeyDigest publisher) throws InvalidKeyException, ContentEncodingException {
-		byte [] key = new byte[keyBitLength/8];
-		byte [] iv = new byte[ivBitLength/8];
+		byte [] key = new byte[keyBitLength/BITS_PER_BYTE];
+		byte [] iv = new byte[ivBitLength/BITS_PER_BYTE];
 
 		byte [] keyandiv = DeriveKeyForObject(masterKeyBytes, 
 				keyBitLength + ivBitLength,
 				label, contentName, publisher);
 
-		System.arraycopy(keyandiv, 0, key, 0, keyBitLength/8);
-		System.arraycopy(keyandiv, keyBitLength/8, iv, 0, ivBitLength/8);
+		System.arraycopy(keyandiv, 0, key, 0, keyBitLength/BITS_PER_BYTE);
+		System.arraycopy(keyandiv, keyBitLength/BITS_PER_BYTE, iv, 0, ivBitLength/BITS_PER_BYTE);
 		return new byte [][]{key, iv};
 	}
 
 
 	/**
 	 * Derive a key for a particular object. Requested bit lengths must
-	 * be divisible by 8.
+	 * be divisible by BITS_PER_BYTE.
 	 * @param masterKeyBytes master key to derive a new key from
 	 * @param outputLengthInBits bit length of key to derive
 	 * @param label a text label to allow derivation of multiple key types from a single
@@ -212,7 +213,7 @@ public class KeyDerivationFunction {
 	
 	/**
 	 * Derive a key for a particular object. Requested bit lengths must
-	 * be divisible by 8.
+	 * be divisible by BITS_PER_BYTE.
 	 * @param masterKeyBytes master key to derive a new key from
 	 * @param outputLengthInBits bit length of key to derive
 	 * @param label a text label to allow derivation of multiple key types from a single
@@ -271,12 +272,12 @@ public class KeyDerivationFunction {
 		
 		// Precompute data used from block to block.
 		byte [] Lbytes = new byte[] { (byte)(outputLengthInBits>>24), (byte)(outputLengthInBits>>16), 
-				(byte)(outputLengthInBits>>8), (byte)outputLengthInBits };
+				(byte)(outputLengthInBits>>BITS_PER_BYTE), (byte)outputLengthInBits };
 		byte [][] contextBytes = new byte[((null == contextObjects) ? 0 : contextObjects.length)][];
 		for (int j = 0; j < contextBytes.length; ++j) {
 			contextBytes[j] = contextObjects[j].encode();
 		}
-		int outputLengthInBytes = (int)Math.ceil(outputLengthInBits/(1.0 * 8));
+		int outputLengthInBytes = (int)Math.ceil(outputLengthInBits/(1.0 * BITS_PER_BYTE));
 		byte [] outputBytes = new byte[outputLengthInBytes];
 
 		// Number of rounds

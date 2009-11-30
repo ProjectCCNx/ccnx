@@ -1,4 +1,4 @@
-package org.ccnx.ccn.test.profiles.security.access;
+package org.ccnx.ccn.test.profiles.security.access.group;
 
 
 import java.util.ArrayList;
@@ -9,9 +9,9 @@ import junit.framework.Assert;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.security.access.AccessControlManager;
-import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.Group;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.profiles.security.TestUserData;
@@ -20,7 +20,7 @@ import org.junit.Test;
 
 public class GroupRecursiveKeyUpdateTestRepo {
 
-	static AccessControlManager acm;
+	static GroupAccessControlManager acm;
 	static ContentName directoryBase, userKeyStorePrefix, userNamespace, groupStore;
 
 	static final int numberOfusers = 2;
@@ -38,7 +38,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 	public static void setUpBeforeClass() throws Exception {
 		Log.setLevel(java.util.logging.Level.SEVERE);
 		directoryBase = ContentName.fromNative("/test/GroupRecursiveKeyUpdateTestRepo");
-		groupStore = AccessControlProfile.groupNamespaceName(directoryBase);
+		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
 		userKeyStorePrefix = ContentName.fromNative(directoryBase, "_access_");
 		userNamespace = ContentName.fromNative(directoryBase, "home");
 
@@ -49,7 +49,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		
 		// create ACM
 		handle = td.getHandleForUser(friendlyNames[1]);
-		acm = new AccessControlManager(directoryBase, groupStore, userNamespace, handle);
+		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
 		acm.publishMyIdentity(friendlyNames[1], handle.keyManager().getDefaultPublicKey());
 	}
 

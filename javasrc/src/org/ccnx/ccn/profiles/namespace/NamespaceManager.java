@@ -29,10 +29,10 @@ import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
-import org.ccnx.ccn.profiles.security.access.ACL;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
-import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.ACL.ACLObject;
+import org.ccnx.ccn.profiles.security.access.group.ACL;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
@@ -50,6 +50,7 @@ public class NamespaceManager {
 	public static class Root extends GenericXMLEncodable {
 
 		public static class RootObject extends CCNEncodableObject<Root> {
+			
 			public RootObject(ContentName name, CCNHandle handle) throws IOException {
 				super(Root.class, false, name, handle);
 			}
@@ -75,11 +76,11 @@ public class NamespaceManager {
 			for (;name.count() > 0; nextName = name.parent()) {
 				name = nextName;
 				// see if a root marker is present
-				EnumeratedNameList nameList = EnumeratedNameList.exists(AccessControlProfile.rootName(name), name, handle);
+				EnumeratedNameList nameList = EnumeratedNameList.exists(GroupAccessControlProfile.rootName(name), name, handle);
 
 				if (null != nameList) {
 					// looks like it is - so fetch the root object
-					ContentName rootName = new ContentName(AccessControlProfile.aclName(name),
+					ContentName rootName = new ContentName(GroupAccessControlProfile.aclName(name),
 							nameList.getLatestVersionChildName().lastComponent());
 					Log.info("Found latest version of ac ROOT for " + name + " at " + rootName);
 					RootObject ro = new RootObject(rootName, handle);
@@ -103,9 +104,9 @@ public class NamespaceManager {
 		 */
 		public static void create(ContentName name, ACL acl, CCNHandle handle) throws IOException, ConfigurationException {
 			Root r = new Root();
-			RootObject ro = new RootObject(AccessControlProfile.accessRoot(name), r, handle);
+			RootObject ro = new RootObject(GroupAccessControlProfile.accessRoot(name), r, handle);
 			ro.saveToRepository();
-			ACLObject aclo = new ACLObject(AccessControlProfile.aclName(name), acl, handle);
+			ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
 			aclo.saveToRepository();
 		}
 
@@ -154,7 +155,7 @@ public class NamespaceManager {
 			return null;
 		}
 
-		AccessControlManager acm = new AccessControlManager(ro.namespace(), handle);
+		AccessControlManager acm = AccessControlManager.createManager(ro, handle);
 		_acmList.add(acm);
 		return acm;
 	}

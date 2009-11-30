@@ -15,7 +15,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.profiles.security.access;
+package org.ccnx.ccn.profiles.security.access.group;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -48,7 +48,8 @@ import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.KeyProfile;
-import org.ccnx.ccn.profiles.security.access.AccessControlProfile.PrincipalInfo;
+import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 
@@ -83,7 +84,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 		
-	AccessControlManager _manager; // to get at key cache
+	GroupAccessControlManager _manager; // to get at key cache
 	
 	/**
 	 * Maps the friendly names of principals (typically groups) to their information.
@@ -112,7 +113,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @param handle
 	 * @throws IOException
 	 */
-	public KeyDirectory(AccessControlManager manager, ContentName directoryName, CCNHandle handle) 
+	public KeyDirectory(GroupAccessControlManager manager, ContentName directoryName, CCNHandle handle) 
 					throws IOException {
 		super(directoryName, handle);
 		if (null == manager) {
@@ -173,7 +174,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					Log.info("Unexpected " + e.getClass().getName() + " parsing key id " + DataUtils.printHexBytes(wkChildName) + ": " + e.getMessage());
 					// ignore and go on
 				}
-			} else if (AccessControlProfile.isPrincipalNameComponent(wkChildName)) {
+			} else if (GroupAccessControlProfile.isPrincipalNameComponent(wkChildName)) {
 				addPrincipal(wkChildName);
 			} else {
 				try{
@@ -267,7 +268,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @param wkChildName the principal name
 	 */
 	protected void addPrincipal(byte [] wkChildName) {
-		PrincipalInfo pi = AccessControlProfile.parsePrincipalInfoFromNameComponent(wkChildName);
+		PrincipalInfo pi = GroupAccessControlProfile.parsePrincipalInfoFromNameComponent(wkChildName);
 		try{
 				_principalsLock.writeLock().lock();
 				_principals.put(pi.friendlyName(), pi);
@@ -354,7 +355,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 */
 	public ContentName getWrappedKeyNameForPrincipal(PrincipalInfo pi) {
 		ContentName principalLinkName = new ContentName(_namePrefix, 
-				AccessControlProfile.principalInfoToNameComponent(pi));
+				GroupAccessControlProfile.principalInfoToNameComponent(pi));
 		return principalLinkName;
 	}
 	
@@ -365,7 +366,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws VersionMissingException
 	 */
 	public ContentName getWrappedKeyNameForPrincipal(ContentName principalPublicKeyName) throws VersionMissingException {
-		PrincipalInfo info = AccessControlProfile.parsePrincipalInfoFromPublicKeyName(_manager.groupManager().isGroup(principalPublicKeyName),
+		PrincipalInfo info = GroupAccessControlProfile.parsePrincipalInfoFromPublicKeyName(_manager.groupManager().isGroup(principalPublicKeyName),
 																					  principalPublicKeyName);
 		return getWrappedKeyNameForPrincipal(info);
 	}
@@ -381,7 +382,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		boolean b = false;
 		try{
 			_otherNamesLock.readLock().lock();
-			b = _otherNames.contains(AccessControlProfile.SUPERSEDED_MARKER.getBytes());
+			b = _otherNames.contains(GroupAccessControlProfile.SUPERSEDED_MARKER.getBytes());
 		}finally{
 			_otherNamesLock.readLock().unlock();
 		}
@@ -389,7 +390,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public ContentName getSupersededBlockName() {
-		return ContentName.fromNative(_namePrefix, AccessControlProfile.SUPERSEDED_MARKER);
+		return ContentName.fromNative(_namePrefix, GroupAccessControlProfile.SUPERSEDED_MARKER);
 	}
 	
 	/**
@@ -446,7 +447,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		boolean b;
 		try{
 			_otherNamesLock.readLock().lock();
-			b = _otherNames.contains(AccessControlProfile.PREVIOUS_KEY_NAME.getBytes());
+			b = _otherNames.contains(GroupAccessControlProfile.PREVIOUS_KEY_NAME.getBytes());
 		}finally{
 			_otherNamesLock.readLock().unlock();
 		}
@@ -458,7 +459,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public static ContentName getPreviousKeyBlockName(ContentName keyDirectoryName) {
-		return ContentName.fromNative(keyDirectoryName, AccessControlProfile.PREVIOUS_KEY_NAME);		
+		return ContentName.fromNative(keyDirectoryName, GroupAccessControlProfile.PREVIOUS_KEY_NAME);		
 	}
 	
 	/**
@@ -502,7 +503,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		boolean b;
 		try{
 			_otherNamesLock.readLock().lock();
-			b = _otherNames.contains(AccessControlProfile.GROUP_PRIVATE_KEY_NAME.getBytes());
+			b = _otherNames.contains(GroupAccessControlProfile.GROUP_PRIVATE_KEY_NAME.getBytes());
 		}finally{
 			_otherNamesLock.readLock().unlock();
 		}
@@ -510,7 +511,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	public ContentName getPrivateKeyBlockName() {
-		return ContentName.fromNative(_namePrefix, AccessControlProfile.GROUP_PRIVATE_KEY_NAME);
+		return ContentName.fromNative(_namePrefix, GroupAccessControlProfile.GROUP_PRIVATE_KEY_NAME);
 	}
 	
 	/**
@@ -553,14 +554,14 @@ public class KeyDirectory extends EnumeratedNameList {
 		if (!hasChildren()) {
 			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
 		}
-		try{
+		try {
 			_keyIDLock.readLock().lock();
 			for (byte [] keyid : _keyIDs) {
-				if (_manager.keyCache().containsKey(keyid)) {
+				if (_manager.hasKey(keyid)) {
 					// We have it, pull the block, unwrap the node key.
 					wko = getWrappedKeyForKeyID(keyid);
 					if (null != wko.wrappedKey()) {
-						unwrappedKey = wko.wrappedKey().unwrapKey(_manager.keyCache().getPrivateKey(keyid));
+						unwrappedKey = wko.wrappedKey().unwrapKey(_manager.getKey(keyid));
 					}
 				}
 			}
@@ -592,7 +593,7 @@ public class KeyDirectory extends EnumeratedNameList {
 						supersedingKeyDirectory.stopEnumerating();
 					}
 					if (null != unwrappedSupersedingKey) {
-						_manager.keyCache().addKey(supersedingKeyDirectory.getName(), unwrappedSupersedingKey);
+						_manager.addKey(supersedingKeyDirectory.getName(), unwrappedSupersedingKey);
 						unwrappedKey = supersededKeyBlock.wrappedKey().unwrapKey(unwrappedSupersedingKey);
 					} else {
 						Log.info("Unable to retrieve superseding key " + supersededKeyBlock.wrappedKey().wrappingKeyName());
@@ -665,7 +666,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		
 		if (null != unwrappedKey) {
-			_manager.keyCache().addKey(getName(), unwrappedKey);
+			_manager.addKey(getName(), unwrappedKey);
 
 			if (null != expectedKeyID) {
 				retrievedKeyID = NodeKey.generateKeyID(unwrappedKey);

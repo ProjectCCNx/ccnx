@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.profiles.security.access;
+package org.ccnx.ccn.test.profiles.security.access.group;
 
 
 import java.lang.reflect.Method;
@@ -38,10 +38,10 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.security.access.AccessControlManager;
-import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.Group;
-import org.ccnx.ccn.profiles.security.access.KeyDirectory;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.group.Group;
+import org.ccnx.ccn.profiles.security.access.group.KeyDirectory;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -64,7 +64,7 @@ public class KeyDirectoryTestRepo {
 	static Key AESSecretKey;
 	static KeyPair wrappingKeyPair;
 	static byte[] wrappingPKID;
-	static AccessControlManager acm;
+	static GroupAccessControlManager acm;
 	static KeyDirectory kd;
 	
 	static int testCount = 0;
@@ -79,9 +79,9 @@ public class KeyDirectoryTestRepo {
 		handle = CCNHandle.open();
 		
 		ContentName cnDirectoryBase = ContentName.fromNative(directoryBase);
-		ContentName groupStore = AccessControlProfile.groupNamespaceName(cnDirectoryBase);
+		ContentName groupStore = GroupAccessControlProfile.groupNamespaceName(cnDirectoryBase);
 		ContentName userStore = ContentName.fromNative(cnDirectoryBase, "Users");		
-		acm = new AccessControlManager(cnDirectoryBase, groupStore, userStore);
+		acm = new GroupAccessControlManager(cnDirectoryBase, groupStore, userStore);
 		versionedDirectoryName = VersioningProfile.addVersion(keyDirectoryName);
 	}
 	

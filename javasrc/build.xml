@@ -685,7 +685,7 @@
 	</target>
 	
 	<target name="test-security-without-repo" depends="jar, ccnd">
-		<!-- Access Control tests that don't need a repo running -->
+		<!-- Security tests that don't need a repo running -->
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
@@ -707,7 +707,7 @@
 	</target>
 
 	<target name="test-security-with-repo" depends="jar, ccnd, repo">
-		<!-- Access Control tests that need a repo running -->
+		<!-- Security tests that need a repo running -->
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
@@ -745,7 +745,7 @@
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/profiles/security/access/*Test.class"/>
+					<include name="org/ccnx/ccn/test/profiles/security/access/**/*Test.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -766,7 +766,7 @@
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/profiles/security/access/*TestRepo.class"/>
+					<include name="org/ccnx/ccn/test/profiles/security/access/**/*TestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>

@@ -15,7 +15,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-package org.ccnx.ccn.test.profiles.security.access;
+package org.ccnx.ccn.test.profiles.security.access.group;
 
 import junit.framework.Assert;
 
@@ -24,12 +24,12 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
-import org.ccnx.ccn.profiles.security.access.ACL;
+import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class AccessControlTestRepo {
+public class GroupAccessControlTestRepo {
 	static ContentName acName;
 	static ContentName fileName;
 	static byte content[] = "the network is built around me".getBytes();

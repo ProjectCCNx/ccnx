@@ -1,4 +1,4 @@
-package org.ccnx.ccn.test.profiles.security.access;
+package org.ccnx.ccn.test.profiles.security.access.group;
 
 
 import java.util.ArrayList;
@@ -7,12 +7,13 @@ import java.util.Random;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.security.access.ACL;
-import org.ccnx.ccn.profiles.security.access.AccessControlManager;
-import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.Group;
+import org.ccnx.ccn.profiles.security.access.group.ACL;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.profiles.security.TestUserData;
 import org.junit.BeforeClass;
@@ -24,9 +25,9 @@ import org.junit.Test;
  *
  */
 
-public class ACMNodeKeyDirtyTestRepo {
+public class GACMNodeKeyDirtyTestRepo {
 
-	static AccessControlManager acm;
+	static GroupAccessControlManager acm;
 	static ContentName directoryBase, userKeyStorePrefix, userNamespace, groupStore;
 	static final int numberOfusers = 3;
 	static TestUserData td;
@@ -40,18 +41,20 @@ public class ACMNodeKeyDirtyTestRepo {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		directoryBase = ContentName.fromNative("/test/ACMNodeKeyDirtyTestRepo");
-		groupStore = AccessControlProfile.groupNamespaceName(directoryBase);
+		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
 		userKeyStorePrefix = ContentName.fromNative(directoryBase, "_access_");
 		userNamespace = ContentName.fromNative(directoryBase, "home");
 
 		// create user identities with TestUserData		
+		Log.info("Creating {0} test users, if they do not already exist.", numberOfusers);
 		td = new TestUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
+		Log.info("Created {0} test users, or retrieved them from repository.", numberOfusers);
 		td.saveUserPK2Repo(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);				
 		
 		// create ACM
 		handle = td.getHandleForUser(friendlyNames[0]);
-		acm = new AccessControlManager(directoryBase, groupStore, userNamespace, handle);
+		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
 		acm.publishMyIdentity(friendlyNames[0], handle.keyManager().getDefaultPublicKey());
 	}
 	

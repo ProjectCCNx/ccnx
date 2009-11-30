@@ -15,7 +15,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.profiles.security.access;
+package org.ccnx.ccn.profiles.security.access.group;
 
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -96,8 +96,8 @@ public class NodeKey {
 		_storedNodeKeyName = nodeKeyName;
 		_storedNodeKeyID = generateKeyID(unwrappedNodeKey.getEncoded());
 		_nodeKey = unwrappedNodeKey;
-		_nodeName = AccessControlProfile.accessRoot(nodeKeyName);
-		if ((null == _nodeName) || (!AccessControlProfile.isNodeKeyName(nodeKeyName))) {
+		_nodeName = GroupAccessControlProfile.accessRoot(nodeKeyName);
+		if ((null == _nodeName) || (!GroupAccessControlProfile.isNodeKeyName(nodeKeyName))) {
 			throw new IllegalArgumentException("NodeKey: key name " + nodeKeyName + " is not a valid node key name.");			
 		}		
 	}
