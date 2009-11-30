@@ -30,17 +30,21 @@ export CCN_LOCAL_PORT CCND_CAP CCND_DEBUG
 # If a ccnd is already running, try to shut it down cleanly.
 ccndsmoketest -t 55 kill recv 2>/dev/null
 
+StuffCachedInfo () {
+    # Stuff cached info about public keys, etc. into ccnd
+    ccndsmoketest -b `find "$HOME/.ccnx/keyCache" -type f -name \*.ccnb` >/dev/null
+}
+
 # Fork ccnd, with a log file if requested.
 if [ "$CCND_LOG" = "" ]
 then
 	ccnd &
+        StuffCachedInfo
 else
 	: >"$CCND_LOG" || exit 1
 	ccnd 2>"$CCND_LOG" &
+        StuffCachedInfo 2> /dev/null
 fi
-
-# Stuff cached info about public keys, etc. into ccnd
-ccndsmoketest `find "$HOME/.ccnx/keyCache" -type f -name \*.ccnb`
 
 # Run ccndc if a static config file is present.
 test -f $HOME/.ccnx/ccnd.conf && ccndc -f $HOME/.ccnx/ccnd.conf
