@@ -162,7 +162,8 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
             templ = resolve_templ(templ, name->buf + nix->buf[n], nix->buf[n+1] - nix->buf[n]);
             if (templ == NULL) break;
             cobj->length = 0;
-            res = ccn_get(h, prefix, templ, timeout_ms, cobj, pco, ndx, 0);
+            res = ccn_get(h, prefix, templ, timeout_ms, cobj, pco, ndx,
+                          CCN_GET_NOKEYWAIT);
         }
         else break;
     }

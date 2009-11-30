@@ -1468,6 +1468,7 @@ struct simple_get_data {
     struct ccn_charbuf *resultbuf;
     struct ccn_parsed_ContentObject *pcobuf;
     struct ccn_indexbuf *compsbuf;
+    int flags;
     int res;
 };
 
@@ -1488,9 +1489,11 @@ handle_simple_incoming_content(
     }
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(selfp->intdata ? CCN_UPCALL_RESULT_REEXPRESS : CCN_UPCALL_RESULT_OK);
-    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED)
-        XXX; // - Probably should always work hard to verify, or add a parameter to specify.
-    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED) {
+        if ((md->flags & CCN_GET_NOKEYWAIT) == 0)
+            return(CCN_UPCALL_RESULT_VERIFY);
+    }
+    else if (kind != CCN_UPCALL_CONTENT)
         return(CCN_UPCALL_RESULT_ERR);
     if (md->resultbuf != NULL) {
         md->resultbuf->length = 0;
@@ -1505,7 +1508,7 @@ handle_simple_incoming_content(
                             info->content_comps->buf, info->content_comps->n);
     }
     md->res = 0;
-    ccn_set_run_timeout(info->h, 0);
+    ccn_set_run_timeout(h, 0);
     return(CCN_UPCALL_RESULT_OK);
 }
 
@@ -1524,7 +1527,8 @@ handle_simple_incoming_content(
  * @param pcobuf may be supplied to save the client the work of re-parsing the
  *        ContentObject; may be NULL if this information is not actually needed.
  * @param compsbuf works similarly.
- * @param flags are not currently used, should be 0.
+ * @param flags - CCN_GET_NOKEYWAIT means that it is permitted to return
+ *        unverified data.
  * @returns 0 for success, -1 for an error.
  */
 int
@@ -1542,6 +1546,8 @@ ccn_get(struct ccn *h,
     int res;
     struct simple_get_data *md;
     
+    if ((flags & ~((int)CCN_GET_NOKEYWAIT)) != 0)
+        return(-1);
     if (h == NULL || h->running) {
         h = ccn_create();
         if (h == NULL)
@@ -1560,6 +1566,7 @@ ccn_get(struct ccn *h,
     md->resultbuf = resultbuf;
     md->pcobuf = pcobuf;
     md->compsbuf = compsbuf;
+    md->flags = flags;
     md->res = -1;
     md->closure.p = &handle_simple_incoming_content;
     md->closure.data = md;
@@ -1633,7 +1640,7 @@ ccn_initiate_ping(struct ccn *h)
     struct ccn_closure *action = NULL;
     
     name = ccn_charbuf_create();
-    ccn_name_from_uri(name, "/ccnx/ping");
+    ccn_name_from_uri(name, "ccnx:/ccnx/ping");
     ccn_name_append(name, &h->now, sizeof(h->now));
     action = calloc(1, sizeof(*action));
     action->p = &handle_ping_response;

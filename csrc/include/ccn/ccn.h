@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 1004
+#define CCN_API_VERSION 2000
 
 /**
  * Global interest lifetime.
@@ -354,6 +354,8 @@ int ccn_get(struct ccn *h,
             struct ccn_parsed_ContentObject *pcobuf,
             struct ccn_indexbuf *compsbuf,
             int flags);
+
+#define CCN_GET_NOKEYWAIT 1
 
 /* Handy if the content object didn't arrive in the usual way. */
 int ccn_verify_content(struct ccn *h,
