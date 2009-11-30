@@ -180,16 +180,7 @@ public class KeyDirectoryTestRepo {
 	public void addWrappingKeyToACM() throws Exception {
 		PrivateKey privKey = wrappingKeyPair.getPrivate();
 		byte[] publicKeyIdentifier = CCNDigestHelper.digest(wrappingKeyPair.getPublic().getEncoded());
-		String methodName = "addMyPrivateKey";
-		Class<?>[] parameterTypes = new Class[2];
-		parameterTypes[0] = publicKeyIdentifier.getClass();
-		parameterTypes[1] = PrivateKey.class;
-		Method m = acm.getClass().getDeclaredMethod(methodName, parameterTypes);
-		m.setAccessible(true);
-		Object[] args = new Object[2];
-		args[0] = publicKeyIdentifier;
-		args[1] = privKey;
-		m.invoke(acm, args);
+		acm.addMyPrivateKey(publicKeyIdentifier, privKey);
 	}
 	
 	
