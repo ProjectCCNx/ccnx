@@ -21,17 +21,13 @@ import java.io.OutputStream;
 import java.util.Iterator;
 import java.util.TreeMap;
 
-import javax.xml.stream.XMLOutputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
-
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.xmlpull.v1.XmlPullParserFactory;
+import org.xmlpull.v1.XmlSerializer;
 
 /**
- * An implementation of XMLEncoder for the Text codec. Uses javax.xml.stream interfaces.
- * These are standard in Java 1.6, but require installing an add on package from JSR 173
- * for Java 1.5. See README for details.
+ * An implementation of XMLEncoder for the Text codec. 
  * 
  * @see TextXMLCodec
  * @see XMLEncoder
@@ -39,7 +35,7 @@ import org.ccnx.ccn.protocol.CCNTime;
 public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 
 	protected OutputStream _ostream = null;
-	protected XMLStreamWriter _writer = null;
+	protected XmlSerializer _serializer = null;
 	protected boolean _isFirstElement = true;
 	
 	public TextXMLEncoder() {}
@@ -51,24 +47,28 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		_ostream = ostream;
 		
 		try {
-			XMLOutputFactory factory = XMLOutputFactory.newInstance();
-			_writer = factory.createXMLStreamWriter(ostream);
-			_writer.setPrefix(TextXMLCodec.CCN_PREFIX, TextXMLCodec.CCN_NAMESPACE);
-			_writer.setDefaultNamespace(TextXMLCodec.CCN_NAMESPACE);
+			//XmlPullParserFactory factory = XmlPullParserFactory.newInstance("org.kxml2.io.XmlSerializer", null);
+			XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
+    		factory.setNamespaceAware(true);
+    		_serializer = factory.newSerializer();
+    		_serializer.setOutput(ostream, "UTF-8");
+    		_serializer.setPrefix(TextXMLCodec.CCN_PREFIX, TextXMLCodec.CCN_NAMESPACE);
 			// DKS -- need to set encoding when creating factory, and set it here.
-			_writer.writeStartDocument();
-			// Can't write default namespace till we write an element...
-			_isFirstElement = true;
-		} catch (XMLStreamException e) {
+    		//Write <?xml declaration with encoding (if encoding not null) and standalone flag (if standalone not null)
+    		_serializer.startDocument(null, Boolean.valueOf(true));
+    		//set indentation option
+    		_serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
+		} catch (Exception e) {
 			throw new ContentEncodingException(e.getMessage(), e);
 		}
 	}
 	
 	public void endEncoding() throws ContentEncodingException {
 		try {
-			_writer.writeEndDocument();
-			_writer.flush();   		
-		} catch (XMLStreamException e) {
+			_serializer.endDocument();
+			_serializer.flush();
+			_ostream.close();
+		} catch (Exception e) {
 			throw new ContentEncodingException(e.getMessage(), e);
 		}
 	}
@@ -82,8 +82,8 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 			TreeMap<String, String> attributes) throws ContentEncodingException {
 		writeStartElement(tag, attributes);
 		try {
-			_writer.writeCharacters(utf8Content);
-		} catch (XMLStreamException e) {
+			_serializer.text(utf8Content);
+		} catch (Exception e) {
 			throw new ContentEncodingException(e.getMessage(), e);
 		}
 		writeEndElement();
@@ -109,8 +109,8 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		}
 		writeStartElement(tag, attributes);
 		try {
-			_writer.writeCharacters(TextXMLCodec.encodeBinaryElement(binaryContent));
-		} catch (XMLStreamException e) {
+			_serializer.text(TextXMLCodec.encodeBinaryElement(binaryContent));
+		} catch (Exception e) {
 			throw new ContentEncodingException(e.getMessage(), e);
 		}
 		writeEndElement();
@@ -126,8 +126,8 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		}
 		writeStartElement(tag, attributes);
 		try {
-			_writer.writeCharacters(TextXMLCodec.encodeBinaryElement(binaryContent, offset, length));
-		} catch (XMLStreamException e) {
+			_serializer.text(TextXMLCodec.encodeBinaryElement(binaryContent, offset, length));
+		} catch (Exception e) {
 			throw new ContentEncodingException(e.getMessage(), e);
 		}
 		writeEndElement();
@@ -149,9 +149,9 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	public void writeStartElement(String tag, TreeMap<String, String> attributes, BinaryXMLDictionary dictionary)
 			throws ContentEncodingException {
 		try {
-			_writer.writeStartElement(TextXMLCodec.CCN_NAMESPACE, tag);
+			_serializer.startTag(TextXMLCodec.CCN_NAMESPACE, tag);
 			if (_isFirstElement) {
-				_writer.writeDefaultNamespace(TextXMLCodec.CCN_NAMESPACE);
+				//_serializer.writeDefaultNamespace(TextXMLCodec.CCN_NAMESPACE);
 				_isFirstElement = false;
 			}
 
@@ -161,18 +161,18 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 				while (atIt.hasNext()) {
 					String name = atIt.next();
 					// Might not play well if this is the first element (namespace writing issues...)
-					_writer.writeAttribute(TextXMLCodec.CCN_NAMESPACE, name, attributes.get(name));
+					_serializer.attribute(TextXMLCodec.CCN_NAMESPACE, name, attributes.get(name));
 				}
 			}
-		} catch (XMLStreamException e) {
+		} catch (Exception e) {
 			throw new ContentEncodingException(e.getMessage(), e);
 		}
 	}
 
 	public void writeEndElement() throws ContentEncodingException {
 		try {
-			_writer.writeEndElement();
-		} catch (XMLStreamException e) {
+			_serializer.endTag(TextXMLCodec.CCN_NAMESPACE, _serializer.getName());
+		} catch (Exception e) {
 			throw new ContentEncodingException(e.getMessage(), e);
 		}		
 	}

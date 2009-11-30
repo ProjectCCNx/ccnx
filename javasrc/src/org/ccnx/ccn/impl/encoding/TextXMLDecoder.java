@@ -20,23 +20,16 @@ package org.ccnx.ccn.impl.encoding;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
-import java.util.Iterator;
 import java.util.TreeMap;
-
-import javax.xml.stream.XMLEventReader;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.events.Attribute;
-import javax.xml.stream.events.Characters;
-import javax.xml.stream.events.XMLEvent;
 
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlPullParserFactory;
 
 /**
- * An implementation of XMLDecoder for the Text codec. Uses javax.xml.stream interfaces.
- * These are standard in Java 1.6, but require installing an add on package from JSR 173
- * for Java 1.5. See README for details.
+ * An implementation of XMLDecoder for the Text codec.
  * 
  * @see TextXMLCodec
  * @see XMLDecoder
@@ -44,7 +37,7 @@ import org.ccnx.ccn.protocol.CCNTime;
 public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 
 	protected InputStream _istream = null;
-	protected XMLEventReader _reader = null;
+	protected XmlPullParser _reader = null;
 
 	public TextXMLDecoder() {
 	}
@@ -52,11 +45,12 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	public void beginDecoding(InputStream istream) throws ContentDecodingException {
 		if (null == istream)
 			throw new IllegalArgumentException("TextXMLDecoder: input stream cannot be null!");
-		_istream = istream;		
-		XMLInputFactory factory = XMLInputFactory.newInstance();
+		_istream = istream;
 		try {
-			_reader = factory.createXMLEventReader(_istream);
-		} catch (XMLStreamException e) {
+			XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
+			_reader = factory.newPullParser();
+			_reader.setInput(istream, null);
+		} catch (XmlPullParserException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		}
 		
@@ -68,26 +62,28 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	}
 
 	public void readStartDocument() throws ContentDecodingException {
-		XMLEvent event;
+		int event;
 		try {
-			event = _reader.nextEvent();
-		} catch (XMLStreamException e) {
+			event = _reader.getEventType();
+		} catch (XmlPullParserException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		}
-		if (!event.isStartDocument()) {
-			throw new ContentDecodingException("Expected start document, got: " + event.toString());
+		if (event != XmlPullParser.START_DOCUMENT) {
+			throw new ContentDecodingException("Expected start document, got: " + XmlPullParser.TYPES[event]);
 		}
 	}
 
 	public void readEndDocument() throws ContentDecodingException {
-		XMLEvent event;
+		int event;
 		try {
-			event = _reader.nextEvent();
-		} catch (XMLStreamException e) {
+			event = _reader.next();
+		} catch (XmlPullParserException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		} catch (IOException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		}
-		if (!event.isEndDocument()) {
-			throw new ContentDecodingException("Expected end document, got: " + event.toString());
+		if (event != XmlPullParser.END_DOCUMENT) {
+			throw new ContentDecodingException("Expected end document, got: " + XmlPullParser.TYPES[event]);
 		}
 	}
 
@@ -98,49 +94,42 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	public void readStartElement(String startTag,
 								TreeMap<String, String> attributes) throws ContentDecodingException {
 
-		XMLEvent event;
+		int event;
 		try {
 			do {
-				event = _reader.nextEvent();
-			} while (!event.isStartElement());		// Assume if its not a startElement it's a comment
-		} catch (XMLStreamException e) {
+				event = _reader.next();
+			} while (event != XmlPullParser.START_TAG);		// Assume if its not a startElement it's a comment
+		} catch (XmlPullParserException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		} catch (IOException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		}
 		// Use getLocalPart to strip namespaces.
 		// Assumes we are working with a global default namespace of CCN.
-		if (!startTag.equals(event.asStartElement().getName().getLocalPart())) {
+		if (!startTag.equals(_reader.getName())) {
 			// Coming back with namespace decoration doesn't match
-			throw new ContentDecodingException("Expected start element: " + startTag + " got: " + event.toString());
+			throw new ContentDecodingException("Expected start element: " + startTag + " got: " + _reader.getName());
 		}	
 		if (null != attributes) {
 			// we might be expecting attributes
-			Iterator<?> it = event.asStartElement().getAttributes();
-			while (it.hasNext()) {
-				Attribute a = (Attribute)it.next();
+			for (int i=0; i < _reader.getAttributeCount(); ++i) {
 				// may need fancier namespace handling.
-				attributes.put(a.getName().getLocalPart(), a.getValue());
+				attributes.put(_reader.getAttributeName(i), _reader.getAttributeValue(i));
 			}
 		}
 	}
 
 	public String peekStartElement() throws ContentDecodingException {
-		XMLEvent event;
+		int event;
 		try {
-			while (true) {
-				event = _reader.peek();
-				if (event.isCharacters())
-					event = _reader.nextEvent();
-				else
-					break;
-			}
-			
-		} catch (XMLStreamException e) {
+			event = _reader.getEventType();		
+		} catch (XmlPullParserException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		}
-		if ((null == event) || !event.isStartElement()) {
+		if (event != XmlPullParser.START_TAG) {
 			return null;
 		}
-		return event.asStartElement().getName().getLocalPart();
+		return _reader.getName();
 	}
 
 	public boolean peekStartElement(String startTag) throws ContentDecodingException {
@@ -158,39 +147,39 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	 */
 	public String readElementText() throws ContentDecodingException {
 		StringBuffer buf = new StringBuffer();
-		XMLEvent event;
+		int event;
 		try {
-			event = _reader.nextEvent();
-		} catch (XMLStreamException e) {
+			event = _reader.next();
+		
+			// Handles empty text element.
+			while (event == XmlPullParser.TEXT) {
+				buf.append(_reader.getText());
+				event = _reader.next();
+			} 
+		} catch (XmlPullParserException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		} catch (IOException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		}
-		
-		// Handles empty text element.
-		while (event.isCharacters()) {
-			buf.append(((Characters)event).getData());
-			try {
-				event = _reader.nextEvent();
-			} catch (XMLStreamException e) {
-				throw new ContentDecodingException(e.getMessage(), e);
-			}
-		}
-		if (event.isStartElement()) {
-			throw new ContentDecodingException("readElementText expects start element to have been previously consumed, got: " + event.toString());
-		} else if (!event.isEndElement()) {
-			throw new ContentDecodingException("Expected end of text element, got: " + event.toString());
+		if (event == XmlPullParser.START_TAG) {
+			throw new ContentDecodingException("readElementText expects start element to have been previously consumed, got: " + XmlPullParser.TYPES[event]);
+		} else if (event != XmlPullParser.END_TAG) {
+			throw new ContentDecodingException("Expected end of text element, got: " + XmlPullParser.TYPES[event]);
 		}
 		return buf.toString();
 	}
 
 	public void readEndElement() throws ContentDecodingException {
-		XMLEvent event;
+		int event;
 		try {
-			event = _reader.nextEvent();
-		} catch (XMLStreamException e) {
+			event = _reader.next();
+		} catch (XmlPullParserException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		} catch (IOException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		}
-		if (!event.isEndElement()) {
-			throw new ContentDecodingException("Expected end element, got: " + event.toString());
+		if (event != XmlPullParser.END_TAG) {
+			throw new ContentDecodingException("Expected end element, got: " + XmlPullParser.TYPES[event]);
 		}
 	}
 
