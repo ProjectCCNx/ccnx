@@ -279,7 +279,7 @@ public abstract class NetworkObject<E> {
 	 * @return true if the object has been modified.
 	 * @throws IOException if there is a problem encoding the object.
 	 */
-	protected synchronized boolean isDirty() throws IOException {
+	protected synchronized boolean isDirty() throws ContentEncodingException, IOException {
 
 		if (_isDirty) {
 			return _isDirty;
