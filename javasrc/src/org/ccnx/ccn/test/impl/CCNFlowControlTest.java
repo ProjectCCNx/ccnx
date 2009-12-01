@@ -27,6 +27,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -60,9 +61,10 @@ public class CCNFlowControlTest extends CCNTestBase {
 			// DKS remove unnecessary sleep, force separate versions.
 			CCNTime now = new CCNTime();
 			Timestamp afterNow = new Timestamp(now.getTime());
-			afterNow.setNanos(afterNow.getNanos() + 54321);
+			afterNow.setNanos(afterNow.getNanos() + 540321);
 			v1 = VersioningProfile.addVersion(name1, now);
 			v2 = VersioningProfile.addVersion(name1, new CCNTime(afterNow));	
+			Log.info("Version 1 {0} ({1}), version 2 {2} ({3})", v1, now, v2, afterNow);
 			Assert.assertFalse(v1.equals(v2));
 		} catch (ConfigurationException e) {
 			e.printStackTrace();
@@ -229,7 +231,8 @@ public class CCNFlowControlTest extends CCNTestBase {
 		testLast(objv1s1, objv1s4);
 		testLast(objv1s1, objv1s3);
 		testLast(objv1s1, objv1s2);
-		_handle.get(new Interest(v1s1), 0);
+		ContentObject lastOne = _handle.get(new Interest(v1s1), 0);
+		Log.info("Retrieved final object {0}, blocks still in fc: {1}", lastOne.name(), fc.getCapacity()-fc.availableCapacity());
 		
 		System.out.println("Testing \"waitForPutDrain\"");
 		try {
@@ -251,6 +254,7 @@ public class CCNFlowControlTest extends CCNTestBase {
 		
 		// Test that put over highwater fails with nothing draining
 		// the buffer
+		System.out.println("Testing \"testHighwaterWait\"");
 		normalReset(name1);
 		fc.setCapacity(4);
 		fc.put(objv1s1);
