@@ -1,3 +1,83 @@
+Changes between 0.2.0 and 0.1.2:
+--------------------------------
+  NOTE: 0.2.0 introduces some changes to the core CCNx protocol, most notably
+   a change in the definition of ephemeral digests.
+
+  * The implicit digest component used as the last component in the
+    name of a ContentObject, used in Links and Exclude filters, 
+    now use the digest of the entire encoded ContentObject, rather than 
+    merely the digest of the CO's content field. This allows exclusion of inadvertent or
+    malicious traffic with the same name and content but different signing information
+    from the intended traffic. Described in doc/technical/DigestComponent.txt
+  * Removed dependency on javax.xml.streams. Replaced with stream-based XML Pull
+    parser as implemented in the kXML library (http://kxml.sourceforge.net/). 
+    This removes the JDK 1.5-specific requirement for JSR 173 jars; JDK 1.5 users
+    can delete jsr173.jar and jsr173_ri.jar from their lib directories.
+  * Repositories now have their own key pairs, rather than using the user's default
+    key. This will enable policy-related communication with the repo and more
+    sophisticated, multi-repository name enumeration protocols.
+  * Implementation of the registration protocol, which allows clients to register
+    with ccnd the prefixes for Interests they wish to recieve, is well under way
+    (see issues #100071, #100072, #100073). Until this code is stable, we will
+    retain the default Interest flooding behavior. 
+  * Initial version of Java-based registration control client, ccndcontrol, analogous
+    to ccndc.
+  * Added new ccnFileProxy application, and start script bin/ccnfileproxy; this
+    proxies a specified portion of local file space to CCNx. Note that the proxy currently
+    does not respect access controls, and will make all files it can read available.
+  * Logging cleanups and improvements throughout.
+  * Bump CCN_API_VERSION to 2000.
+  * Make a more palatable C API for signing content objects; see ccn_sign_content(...).
+  * Fix -v handling for ccnputfile.
+  * Remove troublesome uses of $$ in csrc/tests/test_* (Bug #100076)
+  * Fix ccn_initkeystore.sh to not rely on $USER. Use the id command instead.
+  * Start to make configuration settings more robust to platform variations; improved
+    options for controlling KEYSTORE_DIRECTORY, CCN_DIR and username.
+  * Fix ccnd to verify the signatures in face management and registration requests.
+  * Added a C library mechanism for obtaining ccndid, needed by self-registration.
+  * Allow ccndsmoketest to send zero-length datagrams if so instructed.
+  * Remove unused ccn_signed_info_create_default() from API.
+  * Add vlc parameters to control:
+  		ccn-fifo-maxblocks -- the maximum number of blocks held in the FIFO
+		ccn-fifo-blocksize -- the size of blocks queued in the FIFO
+  * Improved vlc plugin to use data prefetching, and attempt reconnection when
+  	  disconnected from ccnd.
+  * Make the XML jar file a property so it can be overriden on the command 
+  	line if using different library.
+  * Cleanup, bug fixes and additional tests for access control code.
+  * Many small bugfixes to address issues with tests.
+  * Issues Resolved:
+    * Feature #100010 Change implicit digest component
+    * Bug #100012 java ContentObject code calculates digest on content only
+    * Bug #100020 repo policy files should be able to span multiple ContentObjects
+    * Bug #100022 hashtb.c needs the delayed finalization case to be implemented
+    	  Was included in 0.1.2.
+    * Bug #100031 ccnd should check for AF_UNIX
+    * Bug #100034 CCNWriter doesn't take preexisting Interests
+    * Bug #100048 perror calls in ccnd should use ccnd_msg instead
+    * Bug #100050 Refactor ccnd for improved flexibility in file locations and logging
+    		Added CCN_LOCAL_SOCKNAME and CCND_KEYSTORE_DIRECTORY variables.
+    * Feature #100050 Refactor ccnd for improved flexibility in file locations and logging
+    * Feature #100053 remove dependency on javax.xml streams
+    * Feature #100054 repository needs its own keys
+    * Feature #100066 unsolicited content should not cause ccnd to toss good content
+    * Feature #100067 Refactor ccnd keystore directory
+    * Feature #100068 Implement destroyface in ccnd
+    * Feature #100069 make ccndstart.sh less chatty
+    * Feature #100071 Self-registration protocol in ccnd
+    * Bug #100076 Use of $$ in csrc/tests/test-* considered harmful
+    * Bug #100077 Please write some more code here (reduced debugging output)
+    * Bug #100079 ccnputfile does not write any segments for zero-length files
+
+    Known issues:
+    * intermittent Java test failures, usually around failure to retrieve
+      segments; there is work in process that we expect will
+      fix most of these
+    * intermittent JVM crashes on Java 1.5 on OSX Leopard
+    * the default ant/jUnit on Solaris 11 doesn't work; you need to
+      copy over a different ant-junit.jar from 
+
+
 Changes between 0.1.1 and 0.1.2:
 --------------------------------
   NOTE: ccnChat will not inter-operate with older versions due to fix for #100030.
