@@ -44,7 +44,7 @@ public class UserConfiguration {
 
 	protected static final String DEFAULT_CCN_NAMESPACE_STRING = "/ccnx.org";
 	protected static final String DEFAULT_USER_NAMESPACE_AREA = DEFAULT_CCN_NAMESPACE_STRING + "/home";
-	protected static final String DEFAULT_USER_KEY_NAME = "Key";
+	protected static final String DEFAULT_USER_KEY_NAME = "Keys";
 	protected static ContentName DEFAULT_CCN_NAMESPACE;
 	protected static ContentName DEFAULT_USER_NAMESPACE;
 	
