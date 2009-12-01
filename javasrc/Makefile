@@ -14,7 +14,7 @@
 
 ANT = ant
 JAR = ccn.jar
-LIBS = $(JAR) lib/bcprov-jdk16-143.jar
+LIBS = $(JAR) lib/bcprov-jdk16-143.jar lib/kxml2-2.3.0.jar
 WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
                echo Skipping java build in $$(pwd -L) -    \
                     $(ANT) is not installed; "
