@@ -45,7 +45,6 @@ import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.KeyName;
 import org.ccnx.ccn.protocol.PublisherID;
@@ -242,7 +241,6 @@ public class BasicKeyManager extends KeyManager {
 	 * @throws ConfigurationException 
 	 */
 	protected boolean loadValuesFromKeystore(KeyStore keyStore) throws ConfigurationException {
-		
 		KeyStore.PrivateKeyEntry entry = null;
 		try {
 			entry = (KeyStore.PrivateKeyEntry)_keyStore.getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
