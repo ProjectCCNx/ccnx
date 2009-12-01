@@ -60,7 +60,8 @@ public class CCNFlowServer extends CCNFlowControl {
 	 * Do not force client to wait for content to drain -- if
 	 * no one wants it, that's just fine.
 	 */
-	public void afterClose() {
+	@Override
+	public void afterClose() throws IOException {
 		// do nothing
 	}
 }
