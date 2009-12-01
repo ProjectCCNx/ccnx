@@ -28,12 +28,16 @@ import java.util.logging.Level;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.content.PublicKeyObject;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.test.Flosser;
 import org.junit.AfterClass;
@@ -122,6 +126,32 @@ public class PublicKeyObjectTestRepo {
 		testRepoKeyReadWrite(storedKeyNames[1][1], dsaPair.getPublic(), null);
 		testRepoKeyReadWrite(storedKeyNames[1][2], dhPair.getPublic(), null);
 	}
+	
+	@Test
+	public void testUnversionedPublicKeyObject() throws Exception {
+		// we might want to use a PKO to read an object written without a version.
+		ContentName unversionedName = ContentName.fromNative(testHelper.getTestNamespace("testUnversionedPublicKeyObject"), "unversionedKey");
+		if (null == flosser) {
+			flosser = new Flosser();
+		}
+		flosser.handleNamespace(unversionedName);
+		
+		CCNOutputStream writeStream = new CCNOutputStream(unversionedName, handle);
+		writeStream.write(pair1.getPublic().getEncoded());
+		writeStream.close();
+		Log.info("Saved unversioned key to name {0}, now trying to read.", unversionedName);
+		
+		CCNHandle otherHandle = CCNHandle.open();
+		ContentObject firstSegment = SegmentationProfile.getSegment(unversionedName, null, null, 
+									SystemConfiguration.getDefaultTimeout(), null, otherHandle);
+		if (null == firstSegment) {
+			Log.warning("Cannot retrieve segment of stream {0}", unversionedName);
+			Assert.fail("Cannot retrieve first segment: " + unversionedName);
+		}
+		
+		PublicKeyObject testObject = new PublicKeyObject(firstSegment, CCNHandle.open());
+		Log.info("testObject available? " + testObject.available());
+	}
 
 	public void testRawKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, VersionMissingException {
 		
@@ -133,6 +163,7 @@ public class PublicKeyObjectTestRepo {
 		flosser.handleNamespace(keyName);
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, SaveType.RAW, handle);
 		pko.save();
+
 		Log.info("Saved " + pko.getVersionedName() + ", now trying to read.");
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getVersionedName()));
 		// should update in another thread
