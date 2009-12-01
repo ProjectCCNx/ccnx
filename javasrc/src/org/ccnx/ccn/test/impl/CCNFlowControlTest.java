@@ -19,6 +19,7 @@ package org.ccnx.ccn.test.impl;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Queue;
 
@@ -29,6 +30,7 @@ import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -55,21 +57,20 @@ public class CCNFlowControlTest extends CCNTestBase {
 			_reader = new CCNReader(_handle);
 			
 			name1 = ContentName.fromNative("/foo/bar");
-			v1 = VersioningProfile.addVersion(name1);
-			// JDT TODO -- sleep is needed because no easy way yet to generate 
-			// separate version numbers if generating names fast.
-			Thread.sleep(2);
-			v2 = VersioningProfile.addVersion(name1);	
-
+			// DKS remove unnecessary sleep, force separate versions.
+			CCNTime now = new CCNTime();
+			Timestamp afterNow = new Timestamp(now.getTime());
+			afterNow.setNanos(afterNow.getNanos() + 54321);
+			v1 = VersioningProfile.addVersion(name1, now);
+			v2 = VersioningProfile.addVersion(name1, new CCNTime(afterNow));	
+			Assert.assertFalse(v1.equals(v2));
 		} catch (ConfigurationException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (MalformedContentNameStringException e) {
 			e.printStackTrace();
-		} catch (InterruptedException e) {
-			// no-op
-		}
+		} 
 	}
 	
 	@Before
