@@ -80,6 +80,7 @@ Changes between 0.2.0 and 0.1.2:
       copy over the ant-junit.jar from /usr/grails/1.0.3/ant/lib/ant-junit.jar
       to /usr/share/lib/ant/ant-junit.jar
 
+
 Changes between 0.1.1 and 0.1.2:
 --------------------------------
   NOTE: ccnChat will not inter-operate with older versions due to fix for #100030.
