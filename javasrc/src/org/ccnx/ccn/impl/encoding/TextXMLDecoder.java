@@ -62,24 +62,24 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	}
 
 	public void readStartDocument() throws ContentDecodingException {
-		int event;
 		try {
-			event = _reader.getEventType();
+			int event = _reader.getEventType();
+			_reader.next();
+			if (event != XmlPullParser.START_DOCUMENT) {
+				throw new ContentDecodingException("Expected start document, got: " + XmlPullParser.TYPES[event]);
+			}
 		} catch (XmlPullParserException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
-		}
-		if (event != XmlPullParser.START_DOCUMENT) {
-			throw new ContentDecodingException("Expected start document, got: " + XmlPullParser.TYPES[event]);
+		} catch (IOException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
 		}
 	}
 
 	public void readEndDocument() throws ContentDecodingException {
 		int event;
 		try {
-			event = _reader.next();
+			event = _reader.getEventType();
 		} catch (XmlPullParserException e) {
-			throw new ContentDecodingException(e.getMessage(), e);
-		} catch (IOException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		}
 		if (event != XmlPullParser.END_DOCUMENT) {
@@ -94,15 +94,9 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	public void readStartElement(String startTag,
 								TreeMap<String, String> attributes) throws ContentDecodingException {
 
-		int event;
-		try {
-			do {
-				event = _reader.next();
-			} while (event != XmlPullParser.START_TAG);		// Assume if its not a startElement it's a comment
-		} catch (XmlPullParserException e) {
-			throw new ContentDecodingException(e.getMessage(), e);
-		} catch (IOException e) {
-			throw new ContentDecodingException(e.getMessage(), e);
+		int event = readToNextTag(XmlPullParser.START_TAG);
+		if (event != XmlPullParser.START_TAG) {
+			throw new ContentDecodingException("Expected start element, got: " + XmlPullParser.TYPES[event]);
 		}
 		// Use getLocalPart to strip namespaces.
 		// Assumes we are working with a global default namespace of CCN.
@@ -117,15 +111,17 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 				attributes.put(_reader.getAttributeName(i), _reader.getAttributeValue(i));
 			}
 		}
+		try {
+			_reader.next();
+		} catch (XmlPullParserException e) {
+			throw new ContentDecodingException(e.getMessage());
+		} catch (IOException e) {
+			throw new ContentDecodingException(e.getMessage());
+		}
 	}
 
 	public String peekStartElement() throws ContentDecodingException {
-		int event;
-		try {
-			event = _reader.getEventType();		
-		} catch (XmlPullParserException e) {
-			throw new ContentDecodingException(e.getMessage(), e);
-		}
+		int event = readToNextTag(XmlPullParser.START_TAG);
 		if (event != XmlPullParser.START_TAG) {
 			return null;
 		}
@@ -147,39 +143,37 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	 */
 	public String readElementText() throws ContentDecodingException {
 		StringBuffer buf = new StringBuffer();
-		int event;
 		try {
-			event = _reader.next();
-		
+			int event = _reader.getEventType();;
 			// Handles empty text element.
 			while (event == XmlPullParser.TEXT) {
 				buf.append(_reader.getText());
 				event = _reader.next();
-			} 
+			}
+			if (event == XmlPullParser.START_TAG) {
+				throw new ContentDecodingException("readElementText expects start element to have been previously consumed, got: " + XmlPullParser.TYPES[event]);
+			} else if (event != XmlPullParser.END_TAG) {
+				throw new ContentDecodingException("Expected end of text element, got: " + XmlPullParser.TYPES[event]);
+			}
+			return buf.toString();
 		} catch (XmlPullParserException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		} catch (IOException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		}
-		if (event == XmlPullParser.START_TAG) {
-			throw new ContentDecodingException("readElementText expects start element to have been previously consumed, got: " + XmlPullParser.TYPES[event]);
-		} else if (event != XmlPullParser.END_TAG) {
-			throw new ContentDecodingException("Expected end of text element, got: " + XmlPullParser.TYPES[event]);
-		}
-		return buf.toString();
 	}
 
 	public void readEndElement() throws ContentDecodingException {
-		int event;
-		try {
-			event = _reader.next();
-		} catch (XmlPullParserException e) {
-			throw new ContentDecodingException(e.getMessage(), e);
-		} catch (IOException e) {
-			throw new ContentDecodingException(e.getMessage(), e);
-		}
+		int event = readToNextTag(XmlPullParser.END_TAG);
 		if (event != XmlPullParser.END_TAG) {
 			throw new ContentDecodingException("Expected end element, got: " + XmlPullParser.TYPES[event]);
+		}
+		try {
+			_reader.next();
+		} catch (XmlPullParserException e) {
+			throw new ContentDecodingException(e.getMessage());
+		} catch (IOException e) {
+			throw new ContentDecodingException(e.getMessage());
 		}
 	}
 
@@ -230,4 +224,21 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	}
 
 	public void pushXMLDictionary(BinaryXMLDictionary dictionary) {}
+	
+	private int readToNextTag(int type) throws ContentDecodingException {
+		int event;
+		try {
+			do {
+				event = _reader.getEventType();
+				if (event == type)
+					return event;
+				event = _reader.next();
+			} while (event == XmlPullParser.TEXT || event == XmlPullParser.COMMENT);		// Assume if its not a startElement it's a comment
+		} catch (XmlPullParserException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		} catch (IOException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		}
+		return event;
+	}
 }
