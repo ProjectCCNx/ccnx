@@ -34,7 +34,7 @@ ccn-schemabad12.xml:27: element Type: Schemas validity error : Element 'Type': [
 ccn-schemabad12.xml:27: element Type: Schemas validity error : Element 'Type': 'FUZZ' is not a valid value of the atomic type 'ContentTypeType'.
 ccn-schemabad12.xml fails to validate
 ./shouldfail xmllint --noout --schema ccnx.xsd ccn-schemabad17.xml
-ccn-schemabad17.xml:7: element Entry: Schemas validity error : Element 'Entry': Missing child element(s). Expected is one of ( IntegerValue, PositiveIntegerValue, DecimalValue, StringValue, BinaryValue ).
+ccn-schemabad17.xml:7: element Entry: Schemas validity error : Element 'Entry': Missing child element(s). Expected is one of ( IntegerValue, DecimalValue, StringValue, BinaryValue ).
 ccn-schemabad17.xml:15: element BinaryValue: Schemas validity error : Element 'BinaryValue': This element is not expected. Expected is ( Key ).
 ccn-schemabad17.xml fails to validate
 ./shouldfail xmllint --noout --schema security.xsd security-bad01.xml

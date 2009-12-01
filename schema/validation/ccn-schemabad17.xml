@@ -2,14 +2,14 @@
 <KeyValueSet>
   <Entry>
   <Key>Start</Key>
-  <PositiveIntegerValue>21</PositiveIntegerValue>
+  <IntegerValue>21</IntegerValue>
   </Entry>
   <Entry>
   <Key>BlockSize</Key>
   </Entry>
   <Entry>
   <Key>Length</Key>
-  <PositiveIntegerValue>8345</PositiveIntegerValue>
+  <IntegerValue>8345</IntegerValue>
   </Entry>
   <Entry>
   <BinaryValue ccnbencoding="base64Binary">AQIDBAUGBwgJAAkIBwYFBAMCAQ==</BinaryValue>
