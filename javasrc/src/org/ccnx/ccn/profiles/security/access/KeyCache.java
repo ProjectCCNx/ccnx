@@ -26,6 +26,7 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
@@ -158,6 +159,11 @@ public class KeyCache {
 		byte [] id = getKeyIdentifier(key);
 		_keyMap.put(id, key);
 		_keyNameMap.put(id, name);
+	}
+	
+	public PublisherPublicKeyDigest getPublicKeyIdentifier(PrivateKey pk) {
+		// TODO make map store PPKD's directly
+		return new PublisherPublicKeyDigest(_privateKeyIdentifierMap.get(getKeyIdentifier(pk)));
 	}
 	
 	/**
