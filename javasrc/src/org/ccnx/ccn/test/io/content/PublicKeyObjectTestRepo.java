@@ -139,12 +139,7 @@ public class PublicKeyObjectTestRepo {
 		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new handle
 		Assert.assertTrue(pkoread.available());
 		Assert.assertEquals(pkoread.getVersionedName(), pko.getVersionedName());
-		if (!pkoread.publicKey().equals(pko.publicKey())) {
-			Log.info("Mismatched public keys, chance provider doesn't implement equals()." );
-			Assert.assertArrayEquals(pkoread.publicKey().getEncoded(), pko.publicKey().getEncoded());
-		} else {
-			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
-		}
+		Assert.assertTrue(pkoread.equalsKey(pko));
 		if (null != optional2ndKey) {
 			pkoread.setupSave(SaveType.RAW);
 			Log.info("Reading and writing second raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
@@ -152,18 +147,8 @@ public class PublicKeyObjectTestRepo {
 			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
 			pko.update();
 			Assert.assertEquals(pkoread.getVersionedName(), pko.getVersionedName());
-			if (!pkoread.publicKey().equals(pko.publicKey())) {
-				Log.info("Mismatched public keys, chance provider doesn't implement equals()." );
-				Assert.assertArrayEquals(pkoread.publicKey().getEncoded(), pko.publicKey().getEncoded());
-			} else {
-				Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
-			}
-			if (!optional2ndKey.equals(pko.publicKey())) {
-				Log.info("Mismatched public keys, chance provider doesn't implement equals()." );
-				Assert.assertArrayEquals(optional2ndKey.getEncoded(), pko.publicKey().getEncoded());
-			} else {
-				Assert.assertEquals(optional2ndKey, pko.publicKey());
-			}
+			Assert.assertTrue(pkoread.equalsKey(pko));
+			Assert.assertTrue(pko.equalsKey(optional2ndKey));
 		}
 		Log.info("Finished reading and writing raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 
@@ -181,12 +166,8 @@ public class PublicKeyObjectTestRepo {
 		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new handle
 		Assert.assertTrue(pkoread.available());
 		Assert.assertEquals(pkoread.getVersionedName(), pko.getVersionedName());
-		if (!pkoread.publicKey().equals(pko.publicKey())) {
-			Log.info("Mismatched public keys, chance provider doesn't implement equals()." );
-			Assert.assertArrayEquals(pkoread.publicKey().getEncoded(), pko.publicKey().getEncoded());
-		} else {
-			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
-		}
+		Assert.assertTrue(pkoread.equalsKey(pko));
+
 		if (null != optional2ndKey) {
 			pkoread.setupSave(SaveType.REPOSITORY);
 			Log.info("Reading and writing second key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
@@ -194,18 +175,8 @@ public class PublicKeyObjectTestRepo {
 			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
 			pko.update();
 			Assert.assertEquals(pkoread.getVersionedName(), pko.getVersionedName());
-			if (!pkoread.publicKey().equals(pko.publicKey())) {
-				Log.info("Mismatched public keys, chance provider doesn't implement equals()." );
-				Assert.assertArrayEquals(pkoread.publicKey().getEncoded(), pko.publicKey().getEncoded());
-			} else {
-				Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
-			}
-			if (!optional2ndKey.equals(pko.publicKey())) {
-				Log.info("Mismatched public keys, chance provider doesn't implement equals()." );
-				Assert.assertArrayEquals(optional2ndKey.getEncoded(), pko.publicKey().getEncoded());
-			} else {
-				Assert.assertEquals(optional2ndKey, pko.publicKey());
-			}
+			Assert.assertTrue(pkoread.equalsKey(pko));
+			Assert.assertTrue(pko.equalsKey(optional2ndKey));
 		}
 		Log.info("Finished reading and writing key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 	}
