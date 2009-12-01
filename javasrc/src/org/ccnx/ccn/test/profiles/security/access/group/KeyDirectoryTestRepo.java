@@ -18,7 +18,6 @@
 package org.ccnx.ccn.test.profiles.security.access.group;
 
 
-import java.lang.reflect.Method;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -38,9 +37,9 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.KeyDirectory;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.AfterClass;
