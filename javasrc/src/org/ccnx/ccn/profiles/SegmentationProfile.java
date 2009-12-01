@@ -270,6 +270,9 @@ public class SegmentationProfile implements CCNProfile {
 			Log.info("getsegment: retrieved segment {0}.", segment.name());
 		}
 		
+		if (null == verifier) {
+			verifier = ContentObject.SimpleVerifier.getDefaultVerifier();
+		}
 		// So for the segment, we assume we have a potential document.
 		if (!verifier.verify(segment)) {
 			// TODO eventually try to go and look for another option
