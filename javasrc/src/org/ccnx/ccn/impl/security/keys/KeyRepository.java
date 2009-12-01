@@ -23,11 +23,7 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateEncodingException;
-import java.security.spec.InvalidKeySpecException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
@@ -38,10 +34,12 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNFlowServer;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
-import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentGoneException;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -69,12 +67,13 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 public class KeyRepository {
 	
-	protected static final boolean _DEBUG = true;
+	// Stop logging to key cache by default.
+	protected static final boolean _DEBUG = false;
 	
 	protected CCNHandle _handle = null;
 	protected CCNFlowServer _keyServer = null;
 	
-	protected HashMap<ContentName, PublisherPublicKeyDigest> _keyMap = new HashMap<ContentName, PublisherPublicKeyDigest>();
+	protected HashMap<ContentName, PublicKeyObject> _keyMap = new HashMap<ContentName, PublicKeyObject>();
 	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest, ContentName>();
 	protected HashMap<PublisherPublicKeyDigest, PublicKey> _rawKeyMap = new HashMap<PublisherPublicKeyDigest, PublicKey>();
 	protected HashMap<PublisherPublicKeyDigest, Certificate> _rawCertificateMap = new HashMap<PublisherPublicKeyDigest, Certificate>();
@@ -103,19 +102,21 @@ public class KeyRepository {
 	 * @param keyName the key's content name
 	 * @param key the public key
 	 * @param keyID the publisher id
-	 * @param signingKeyID the key id of the key pair to sign with
+	 * @param signingKeyID the key id of the key pair to sign with; uses the default
+	 * 	key locator
 	 * @return void
 	 * @throws IOException
 	 */
 	public void publishKey(ContentName keyName, PublicKey key, PublisherPublicKeyDigest signingKeyID) 
 						throws IOException {
-		publishKey(keyName, key, signingKeyID);
+		publishKey(keyName, key, signingKeyID, null);
 	}
 
 	/**
 	 * Publish a signed record for this key if one doesn't exist.
 	 * (if it does exist, pulls it at least to our ccnd, and optionally
-	 * makes it available).
+	 * makes it available). (TODO: decide what to do if it's published by someone
+	 * else... need another option for that.)
 	 * @param keyName the key's content name
 	 * @param key the public key
 	 * @param keyID the publisher id
@@ -127,12 +128,23 @@ public class KeyRepository {
 	public void publishKey(ContentName keyName, PublicKey key, PublisherPublicKeyDigest signingKeyID, KeyLocator keyLocator) 
 						throws IOException {
 
-		// First attempt to read... look for something with same publisher.
-		// Eventually may want to find something already published and link to it, but be simple here.
-		PublicKeyObject keyObject = new PublicKeyObject(keyName, signingKeyID, _keyServer);
-		keyObject.waitForData(SystemConfiguration.SHORT_TIMEOUT); // gets the latest version
+		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(key);
 		
-		if (!keyObject.available() || (!keyObject.publicKey().equals(key))) {
+		// See if we can pull something acceptable for this key at this name.
+		// Use same code path for default key retrieval as getPublicKey, so that we can manage
+		// version handling in a single place.
+		PublicKey theKey = getPublicKey(keyDigest, new KeyLocator(keyName), SystemConfiguration.SHORT_TIMEOUT);
+		PublicKeyObject keyObject = null;
+		if (null != theKey) {
+			keyObject = retrieve(keyDigest);
+		} 
+		if (null == keyObject) {
+			keyObject = new PublicKeyObject(keyName, null, signingKeyID, keyLocator, _keyServer);
+		}
+		
+		if (!keyObject.available() || (!keyObject.equalsKey(key))) {
+			// Eventually may want to find something already published and link to it, but be simple here.
+
 			// Need a key locator to stick in data entry for
 			// locator. Could use key itself, but then would have
 			// key both in the content for this item and in the
@@ -141,19 +153,20 @@ public class KeyRepository {
 			// CCN equivalent of a "self-signed cert". Means that
 			// we will refer to only the base key name and the publisher ID.
 			
-			KeyLocator locatorLocator = 
-				new KeyLocator(keyName, new PublisherID(signingKeyID));
+			if (null == keyLocator) {
+				keyLocator = 
+			}
 			
+			keyObject.setOurPublisherInformation(signingKeyID, keyLocator);
 			// nobody's written it where we can find it fast enough.
 			keyObject.setData(key);
-			// TODO -- set our locator and desired signing key
-			keyObject.setOurPublisherInformation(signingKeyID, locatorLocator);
+
 			if (!keyObject.save()) {
 				Log.info("Not saving key when we thought we needed to: desired key value {0}, have key value {1}, " +
 							new PublisherPublicKeyDigest(key), new PublisherPublicKeyDigest(keyObject.publicKey()));
 			}
 		}
-		remember(keyName, key);
+		remember(keyObject);
 	}
 	
 	/**
@@ -208,17 +221,17 @@ public class KeyRepository {
 	 * Remember a public key and the corresponding key object.
 	 * @param theKey public key to remember
 	 * @param keyObject key Object to remember
+	 * @throws ContentGoneException 
+	 * @throws ContentNotReadyException 
 	 */
-	public void remember(ContentName keyName, PublicKey theKey) {
-		PublisherPublicKeyDigest id = new PublisherPublicKeyDigest(theKey);
-		_idMap.put(id, keyName);
-		_rawKeyMap.put(id, theKey);
+	public void remember(PublicKeyObject theKey) throws ContentNotReadyException, ContentGoneException {
+		_keyMap.put(theKey.getVersionedName(), theKey);
+		PublisherPublicKeyDigest id = theKey.publicKeyDigest();
+		_idMap.put(id, theKey.getVersionedName());
+		_rawKeyMap.put(id, theKey.publicKey());
 		if (_DEBUG) {
-			recordKeyToFile(id, keyObject);
+			recordKeyToFile(theKey);
 		}
-		
-		// DKS TODO -- do we want to put in a prefix filter...?
-		_handle.registerFilter(keyName, this);
 	}
 	
 	/**
@@ -241,9 +254,11 @@ public class KeyRepository {
 
 	
 	/**
-	 * Write key to file for debugging purposes.
+	 * Write encoded key to file for debugging purposes.
+	 * @throws ContentGoneException 
+	 * @throws ContentNotReadyException 
 	 */
-	protected void recordKeyToFile(PublisherPublicKeyDigest id, ContentObject keyObject) {
+	protected void recordKeyToFile(PublicKeyObject keyObject) throws ContentNotReadyException, ContentGoneException {
 		File keyDir = new File(UserConfiguration.keyRepositoryDirectory());
 		if (!keyDir.exists()) {
 			if (!keyDir.mkdirs()) {
@@ -252,9 +267,9 @@ public class KeyRepository {
 			}
 		}
 		
-		// Alas, until 1.6, we can't set permissions on the file or directory...
-		// TODO DKS when switch to 1.6, add permission settings.
-		File keyFile  = new File(keyDir, id.toString() + ".ccnb");
+		PublisherPublicKeyDigest id = keyObject.publicKeyDigest();
+		
+		File keyFile  = new File(keyDir, KeyProfile.keyIDToNameComponentAsString(keyObject.publicKeyDigest()));
 		if (keyFile.exists()) {
 			Log.info("Already stored key " + id.toString() + " to file.");
 			// return; // temporarily store it anyway, to overwrite old-format data.
@@ -262,7 +277,7 @@ public class KeyRepository {
 		
 		try {
 			FileOutputStream fos = new FileOutputStream(keyFile);
-			keyObject.encode(fos);
+			fos.write(keyObject.publicKey().getEncoded());
 			fos.close();
 		} catch (Exception e) {
 			Log.info("recordKeyToFile: cannot record key: " + id.toString() + " to file " + keyFile.getAbsolutePath() + " error: " + e.getClass().getName() + ": " + e.getMessage());
@@ -288,7 +303,9 @@ public class KeyRepository {
 
 	/**
 	 * Retrieve the public key from CCN given a key digest and a key locator
-	 * the function blocks and waits for the public key until a certain timeout
+	 * the function blocks and waits for the public key until a certain timeout.
+	 * As a side effect, caches network storage information for this key, which can
+	 * be obtained using retrieve();.
 	 * @param desiredKeyID the digest of the desired public key.
 	 * @param locator locator for the key
 	 * @param timeout timeout value
@@ -316,13 +333,18 @@ public class KeyRepository {
 				return key;
 			}
 		} else {
-			// DKS TODO -- better key retrieval
 			// take code from #BasicKeyManager.getKey, to validate more complex publisher constraints
 			Interest keyInterest = new Interest(locator.name().name());
 			if (null != locator.name().publisher()) {
 				keyInterest.publisherID(locator.name().publisher());
 			}			
 			//  it would be really good to know how many additional name components to expect...
+			// we really want to assume that keys have versions, and that perhaps we should be
+			// reading directly into a public key object, with versioned names. However,
+			// we may be dealing with something that didn't version its names, and we may
+			// need to make a PKO cough it down anyway.
+			// TODO need to loop and look for something that is a segment of a versioned or
+			// unversioned name. Exclude otherwise.
 			try {
 				Log.info("Trying network retrieval of key: " + keyInterest.name());
 				keyObject = _handle.get(keyInterest, timeout);
@@ -332,18 +354,10 @@ public class KeyRepository {
 			}
 			if (null != keyObject) {
 				if (keyObject.signedInfo().getType().equals(ContentType.KEY)) {
-					try {
-						Log.info("Retrieved public key using name: " + locator.name().name());
-						PublicKey theKey = CryptoUtil.getPublicKey(keyObject.content());
-						remember(keyObject.name(), theKey);
-						return theKey;
-					} catch (CertificateEncodingException e) {
-						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-					} catch (InvalidKeySpecException e) {
-						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-					}
+					Log.info("Retrieved public key using name: " + locator.name().name());
+					PublicKeyObject theKeyObject = new PublicKeyObject(keyObject, _keyServer);
+					remember(theKeyObject);
+					return theKeyObject.publicKey();
 				} else {
 					Log.warning("Retrieved an object when looking for key " + locator.name().name() + " at " + keyObject.name() + ", but type is " + keyObject.signedInfo().getTypeName());
 				}
@@ -353,11 +367,11 @@ public class KeyRepository {
 	}
 	
 	/**
-	 * retrieve key object from cache given key name 
+	 * Retrieve key object from cache given key name 
 	 * @param keyName key digest
 	 */
-	public ContentObject retrieve(PublisherPublicKeyDigest keyName) {
-		ContentName name = _idMap.get(keyName);
+	public PublicKeyObject retrieve(PublisherPublicKeyDigest keyID) {
+		ContentName name = _idMap.get(keyID);
 		if (null != name) {
 			return _keyMap.get(name);
 		}		
@@ -369,62 +383,19 @@ public class KeyRepository {
 	 * check if the retrieved content has the expected publisher id 
 	 * @param name contentname of the key
 	 * @param publisherID publisher id
+	 * @throws IOException 
 	 */
-	public ContentObject retrieve(ContentName name, PublisherID publisherID) {
-		ContentObject result = _keyMap.get(name);
+	public PublicKeyObject retrieve(ContentName name, PublisherID publisherID) throws IOException {
+		PublicKeyObject result = _keyMap.get(name);
 		if (null != result) {
 			if (null != publisherID) {
 				if (TrustManager.getTrustManager().matchesRole(
 						publisherID,
-						result.signedInfo().getPublisherKeyID())) {
+						result.getContentPublisher())) {
 					return result;
 				}
 			}
 		}
 		return null;
-	}
-	
-	/**
-	 * Retrieve content object given an interest 
-	 * @param interest interest
-	 */
-	public ContentObject retrieve(Interest interest) {
-		ContentObject result = retrieve(interest.name(), interest.publisherID());
-		if (null != result)
-			return result;
-		
-		// OK, the straight match didn't cut it; maybe we're just close.
-		Iterator<ContentObject> it = _keyMap.values().iterator();
-		while (it.hasNext()) {
-			ContentObject co = it.next();
-			if (interest.matches(co)) {
-				// doesn't handle preventing returning same thing over and over
-				return co;	
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Answers interests for published public keys.
-	 * @param interests interests expressed by other parties.
-	 */
-	
-	public int handleInterests(ArrayList<Interest> interests) {
-		Iterator<Interest> it = interests.iterator();
-		
-		while (it.hasNext()) {
-			ContentObject keyObject = retrieve(it.next());
-			if (null != keyObject) {
-				try {
-					ContentObject co = new ContentObject(keyObject.name(), keyObject.signedInfo(), keyObject.content(), keyObject.signature()); 
-					_handle.put(co);
-				} catch (Exception e) {
-					Log.info("KeyRepository::handleInterests, exception in put: " + e.getClass().getName() + " message: " + e.getMessage());
-					Log.infoStackTrace(e);
-				}
-			}
-		}
-		return 0;
 	}
 }

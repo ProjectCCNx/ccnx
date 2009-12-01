@@ -43,6 +43,7 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -413,14 +414,18 @@ public class BasicKeyManager extends KeyManager {
 	 * @return key locator
 	 */
 	@Override
-	public KeyLocator getKeyLocator(PublisherPublicKeyDigest key) {
-		if ((null == key) || (key.equals(_defaultKeyID)))
+	public KeyLocator getKeyLocator(PublisherPublicKeyDigest keyID) {
+		if ((null == keyID) || (keyID.equals(_defaultKeyID)))
 			return _keyLocator;
-		ContentObject keyObject = _keyRepository.retrieve(key);
-		if (null != keyObject) {
-			return new KeyLocator(new KeyName(keyObject.fullName(), new PublisherID(keyObject.signedInfo().getPublisherKeyID())));
+		PublicKeyObject keyObject = _keyRepository.retrieve(keyID);
+		try {
+			if ((null != keyObject) && (keyObject.isSaved())) {
+				return new KeyLocator(new KeyName(keyObject.getVersionedName(), new PublisherID(keyObject.getContentPublisher())));
+			}
+		} catch (IOException e) {
+			
 		}
-		Log.info("Cannot find key locator for key: " + key);
+		Log.info("Cannot find key locator for key: " + keyID);
 		return null;
 	}
 	

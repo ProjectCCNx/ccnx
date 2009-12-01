@@ -94,7 +94,7 @@ public class KeyManagerTest {
 			// we retrieve we don't pull from our own cache.
 			KeyRepository kr = new KeyRepository(km);
 			for (int i=0; i < KEY_COUNT; ++i) {
-				kr.publishKey(keyLocs[i].name().name(), pairs[i].getPublic(), pairs[i].getPrivate());
+				kr.publishKey(keyLocs[i].name().name(), pairs[i].getPublic(), km.getDefaultKeyID());
 			}
 
 			Random rand = new Random();
