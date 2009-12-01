@@ -641,6 +641,13 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
+	 * Set the capacity to the maximum possible value, Integer.MAX_VALUE.
+	 */
+	public void setMaximumCapacity() {
+		_capacity = Integer.MAX_VALUE;
+	}
+	
+	/**
 	 * Change the maximum number of unmatched interests to buffer.
 	 * @param value	number of interests
 	 */
