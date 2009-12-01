@@ -32,16 +32,12 @@ Boston, MA 02110-1301, USA. -->
 	</condition>
 	
 	<property name="xml-jar" location="${lib}/kxml2-2.3.0.jar"/>
-	<property name="xml_ri-jar" location="${lib}/jsr173_1.0_ri.jar"/>
 
 	<!-- CLASSPATH NOTE: This should be a minimal set of what is 
         required, so we have an authoritative list of dependencies 
 		ccn-classpath contains jar files required to compile -->
 	<path id="ccn-classpath">
 		<pathelement location="${bcprov-jar}"/>
-		<!-- NOTE: jsr173 files are not distributed but may be supplied
-		     in order to use JDK1.5.  We plan to drop support for
-			 for 1.5 soon.  JSR173 is supported natively in JDK1.6 -->
 		<pathelement location="${xml-jar}"/>
 		<pathelement location="${junit-jar}"/>
 	</path>
@@ -49,10 +45,6 @@ Boston, MA 02110-1301, USA. -->
     <!-- ccn-classpath-run contains ADDITIONAL needed at runtime -->
 	<path id="ccn-classpath-run">
 		<path refid="ccn-classpath"/>
-		<!-- NOTE: jsr173 files are not distributed but may be supplied
-		     in order to use JDK1.5.  We plan to drop support for
-			 for 1.5 soon.  JSR173 is supported natively in JDK1.6 -->
-		<pathelement location="${xml_ri-jar}"/>
     </path>
 
 </project>

@@ -171,15 +171,13 @@ Please let us know if JDK1.5 support is important to you, as we plan
 to eliminate it in the near future.  The CCNx distribution includes
 JAR files for required libraries for JDK1.6.
 
-ONLY IF you are going to run on JDK1.5 you must obtain a few additional
-library files independently:
+ONLY IF you are going to run on JDK1.5 you must obtain the following additional
+library file independently:
 
    Bouncy Castle Provider for JDK1.5: bcprov-jdk15-143.jar
    (http://www.bouncycastle.org/download/bcprov-jdk15-143.jar)
-   XML Streaming API: jsr173_api.jar AND jsr173_1.0_ri.jar
-   (http://jcp.org/aboutJava/communityprocess/final/jsr173/index.html)
 
-Copy the extra JAR files into lib/ AND javasrc/lib, again ONLY IF you 
+Copy the extra JAR file into lib/ AND javasrc/lib, again ONLY IF you 
 are running on JDK1.5.
 
 SPECIAL PLATFORM NOTES
