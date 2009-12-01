@@ -178,8 +178,12 @@ public class KeyRepository {
 
 			if (!keyObject.save()) {
 				Log.info("Not saving key when we thought we needed to: desired key value {0}, have key value {1}, " +
-							new PublisherPublicKeyDigest(key), new PublisherPublicKeyDigest(keyObject.publicKey()));
+							keyDigest, new PublisherPublicKeyDigest(keyObject.publicKey()));
+			} else {
+				Log.info("Published key {0} to name {1}", keyDigest, keyObject.getVersionedName());
 			}
+		} else {
+			Log.info("Retrieved existing key object {0}, whose key locator is {1}.", keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
 		}
 		remember(keyObject);
 	}
@@ -370,6 +374,9 @@ public class KeyRepository {
 				} catch (IOException e) {
 					Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 					Log.warningStackTrace(e);
+				}
+				if (null == keyObject) {
+					break;
 				}
 			}
 			if (null != keyObject) {
