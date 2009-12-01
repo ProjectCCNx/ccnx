@@ -3554,6 +3554,19 @@ ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
     result->micros = now.tv_usec;
 }
 
+void
+ccnd_setsockopt_v6only(struct ccnd_handle *h, int fd)
+{
+    int yes = 1;
+    int res = 0;
+#ifdef IPV6_V6ONLY
+    res = setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &yes, sizeof(yes));
+#endif
+    if (res == -1)
+        ccnd_msg(h, "warning - could not set IPV6_V6ONLY on fd %d: %s",
+                 fd, strerror(errno));
+}
+
 /**
  * Start a new ccnd instance
  * @param progname - name of program binary, used for locating helpers
@@ -3719,6 +3732,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
                     const char *af = "";
                     int yes = 1;
 		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+                    if (a->ai_family == AF_INET6)
+                        ccnd_setsockopt_v6only(h, fd);
 		    res = bind(fd, a->ai_addr, a->ai_addrlen);
                     if (res != 0) {
                         close(fd);
