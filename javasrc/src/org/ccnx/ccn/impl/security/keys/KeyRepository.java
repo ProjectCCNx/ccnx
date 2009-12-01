@@ -349,33 +349,34 @@ public class KeyRepository {
 			}
 		} else {
 			// take code from #BasicKeyManager.getKey, to validate more complex publisher constraints
-			Interest keyInterest = new Interest(locator.name().name());
-			if (null != locator.name().publisher()) {
-				keyInterest.publisherID(locator.name().publisher());
-			}			
-			//  it would be really good to know how many additional name components to expect...
-			// we really want to assume that keys have versions, and that perhaps we should be
-			// reading directly into a public key object, with versioned names. However,
-			// we may be dealing with something that didn't version its names, and we may
-			// need to make a PKO cough it down anyway.
-			// TODO need to loop and look for something that is a segment of a versioned or
-			// unversioned name. Exclude otherwise.
-			try {
-				Log.info("Trying network retrieval of key: " + keyInterest.name());
-				keyObject = _handle.get(keyInterest, timeout);
-			} catch (IOException e) {
-				Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
-				Log.warningStackTrace(e);
+			Interest keyInterest = new Interest(locator.name().name(), locator.name().publisher());
+
+			// we could have from 1 (content digest only) to 3 (version, segment, content digest) 
+			// additional name components.
+			keyInterest.minSuffixComponents(1);
+			keyInterest.maxSuffixComponents(3);
+			
+			// TODO if it is versioned, do we want to get the latest version?
+			while ((null == keyObject) || (!keyObject.signedInfo().getType().equals(ContentType.KEY))) {
+				// OK, we need to try again to get the object.
+				if (null != keyObject) {
+					Log.warning("Retrieved an object when looking for key " + locator.name().name() + " at " + keyObject.name() + ", but type is " + keyObject.signedInfo().getTypeName());
+					// exclude whatever we got last time.
+					Log.info("Have prefix {0}, want to exclude {1}", locator.name().name(), keyObject.name());
+				}
+				try {
+					Log.info("Trying network retrieval of key: " + keyInterest.name());
+					keyObject = _handle.get(keyInterest, timeout);
+				} catch (IOException e) {
+					Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
+					Log.warningStackTrace(e);
+				}
 			}
 			if (null != keyObject) {
-				if (keyObject.signedInfo().getType().equals(ContentType.KEY)) {
-					Log.info("Retrieved public key using name: {0}, resulting object name {1}.", locator.name().name(), keyObject.name());
-					PublicKeyObject theKeyObject = new PublicKeyObject(keyObject, _keyServer);
-					remember(theKeyObject);
-					return theKeyObject.publicKey();
-				} else {
-					Log.warning("Retrieved an object when looking for key " + locator.name().name() + " at " + keyObject.name() + ", but type is " + keyObject.signedInfo().getTypeName());
-				}
+				Log.info("Retrieved public key using name: {0}, resulting object name {1}.", locator.name().name(), keyObject.name());
+				PublicKeyObject theKeyObject = new PublicKeyObject(keyObject, _keyServer);
+				remember(theKeyObject);
+				return theKeyObject.publicKey();
 			}
 		}
 		return null;
