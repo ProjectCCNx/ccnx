@@ -437,14 +437,20 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	/**
 	 * Checks whether we might have a next segment.
 	 * @return Returns false if this content is marked as GONE (see ContentType), or if we have
-	 * 		retrieved the segment marked as the last one.
+	 * 		retrieved the segment marked as the last one, or, in a very rare case, if we're
+	 * 		reading content that does not have segment markers.
 	 */
-	protected boolean hasNextSegment() {
+	protected boolean hasNextSegment() throws IOException {
 
 		// We're looking at content marked GONE
 		if (null != _goneSegment) {
 			Log.info("getNextSegment: We have a gone segment, no next segment. Gone segment: " + _goneSegment.name());
 			return false;
+		}
+		
+		if (null == _currentSegment) {
+			Log.severe("hasNextSegment() called when we have no current segment!");
+			throw new IOException("hasNextSegment() called when we have no current segment!");
 		}
 
 		// Check to see if finalBlockID is the current segment. If so, there should
@@ -458,6 +464,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						DataUtils.printHexBytes(_currentSegment.name().lastComponent()) + " which is marked as the final segment.");
 				return false;
 			}
+		}
+		
+		if (!SegmentationProfile.isSegment(_currentSegment.name())) {
+			Log.info("Unsegmented content: {0}. No next segment.", _currentSegment.name());
+			return false;
 		}
 		return true;
 	}
