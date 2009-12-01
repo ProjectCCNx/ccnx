@@ -117,11 +117,16 @@ public class KeyRepository {
 	 * (if it does exist, pulls it at least to our ccnd, and optionally
 	 * makes it available). (TODO: decide what to do if it's published by someone
 	 * else... need another option for that.)
-	 * @param keyName the key's content name
+	 * @param keyName the key's content name. Will add a version when saving if it doesn't
+	 * 	have one already. If it does have a version, will use that one (see below for effect
+	 * 	of version on the key locator).
 	 * @param key the public key
 	 * @param keyID the publisher id
 	 * @param signingKeyID the key id of the key pair to sign with
-	 * @param keyLocator the key locator to use if we save this key (if it is not already published)
+	 * @param keyLocator the key locator to use if we save this key (if it is not already published).
+	 * 	If not specified, we look for the default locator for the signing key. If there is none,
+	 * 	and we are signing with the same key we are publishing, we build a
+	 * 	self-referential key locator, using the name passed in (version or not).
 	 * @return void
 	 * @throws IOException
 	 */
@@ -154,7 +159,17 @@ public class KeyRepository {
 			// we will refer to only the base key name and the publisher ID.
 			
 			if (null == keyLocator) {
-				keyLocator = 
+				keyLocator = _handle.keyManager().getKeyLocator(signingKeyID);
+				if (null == keyLocator) {
+					if (signingKeyID.equals(keyDigest)) {
+						// Make a self-referential key locator. For now do not include the
+						// version.
+						keyLocator = buildKeyLocator(keyName, signingKeyID);
+					} else {
+						Log.info("Cannot find a key locator to use with key {0}, using key itself.", signingKeyID);
+						keyLocator = new KeyLocator(_handle.keyManager().getPublicKey(signingKeyID));
+					}
+				}
 			}
 			
 			keyObject.setOurPublisherInformation(signingKeyID, keyLocator);
@@ -184,7 +199,7 @@ public class KeyRepository {
 									   PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException {
 
 		
-		PublicKey key = getPublicKey(keyToPublish);
+		PublicKey key = getPublicKeyFromCache(keyToPublish);
 		if (null == key) {
 			throw new InvalidKeyException("Cannot retrieive key " + keyToPublish);
 		}
@@ -290,7 +305,7 @@ public class KeyRepository {
 	 * Retrieve the public key from cache given a key digest 
 	 * @param desiredKeyID the digest of the desired public key.
 	 */
-	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) throws IOException {
+	public PublicKey getPublicKeyFromCache(PublisherPublicKeyDigest desiredKeyID) throws IOException {
 		PublicKey theKey = _rawKeyMap.get(desiredKeyID);
 		if (null == theKey) {
 			Certificate theCertificate = _rawCertificateMap.get(desiredKeyID);
@@ -314,7 +329,7 @@ public class KeyRepository {
 	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
 	
 		// Look for it in our cache first.
-		PublicKey publicKey = getPublicKey(desiredKeyID);
+		PublicKey publicKey = getPublicKeyFromCache(desiredKeyID);
 		if (null != publicKey) {
 			return publicKey;
 		}
@@ -354,7 +369,7 @@ public class KeyRepository {
 			}
 			if (null != keyObject) {
 				if (keyObject.signedInfo().getType().equals(ContentType.KEY)) {
-					Log.info("Retrieved public key using name: " + locator.name().name());
+					Log.info("Retrieved public key using name: {0}, resulting object name {1}.", locator.name().name(), keyObject.name());
 					PublicKeyObject theKeyObject = new PublicKeyObject(keyObject, _keyServer);
 					remember(theKeyObject);
 					return theKeyObject.publicKey();
@@ -397,5 +412,15 @@ public class KeyRepository {
 			}
 		}
 		return null;
+	}
+	
+	/**
+	 * Build self-referential key locator.
+	 * @param keyName
+	 * @param publicKey
+	 * @return
+	 */
+	public KeyLocator buildKeyLocator(ContentName keyName, PublisherPublicKeyDigest signingKeyID) {
+		return new KeyLocator(keyName, new PublisherID(signingKeyID));
 	}
 }

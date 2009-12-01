@@ -549,7 +549,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) throws IOException {
-		return keyRepository().getPublicKey(desiredKeyID);
+		return keyRepository().getPublicKeyFromCache(desiredKeyID);
 	}
 
 	/**
@@ -612,18 +612,16 @@ public class BasicKeyManager extends KeyManager {
 		
 	protected void publishDefaultKey() throws ConfigurationException, IOException {
 
-	    if (null == getPublicKey(_defaultKeyID, _keyLocator, SystemConfiguration.SHORT_TIMEOUT)) {
-	    	boolean resetFlag = false;
-	    	if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-	    		resetFlag = true;
-	    		SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, false);
-	    	}
-	    	keyRepository().publishKey(_keyLocator.name().name(), _certificate.getPublicKey(), 
-	    							   _defaultKeyID);
-	    	if (resetFlag) {
-	    		SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
-	    	}
-	    }
+		boolean resetFlag = false;
+		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+			resetFlag = true;
+			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, false);
+		}
+		keyRepository().publishKey(_keyLocator.name().name(), _certificate.getPublicKey(), 
+				_defaultKeyID);
+		if (resetFlag) {
+			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
+		}
 	}
 
 	/**
