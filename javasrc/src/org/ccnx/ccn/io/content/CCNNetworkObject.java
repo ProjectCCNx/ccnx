@@ -989,7 +989,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public synchronized ContentName getVersionedName()  {
 		try {
 			if (isSaved()) {
-				if (null == _currentVersionName) // cache; only read lock necessary
+				if ((null == _currentVersionName) && (null != _currentVersionComponent)) // cache; only read lock necessary
 					_currentVersionName =  new ContentName(_baseName, _currentVersionComponent);
 				return _currentVersionName;
 			}
