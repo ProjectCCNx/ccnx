@@ -68,6 +68,7 @@ Changes between 0.2.0 and 0.1.2:
     * Bug #100076 Use of $$ in csrc/tests/test-* considered harmful
     * Bug #100077 Please write some more code here (reduced debugging output)
     * Bug #100079 ccnputfile does not write any segments for zero-length files
+    * Bug #100083 ccnd not listening to both ipv4 and ipv6 tcp addresses on Linux
 
     Known issues:
     * intermittent Java test failures, usually around failure to retrieve
