@@ -30,6 +30,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class KeyProfile implements CCNProfile {
 	
+	public static final byte [] KEY_NAME_COMPONENT = ContentName.componentParseNative("KEYS");
 	public static final byte [] KEY_ID_PREFIX = ContentName.componentParseNative("keyid" + CCNProfile.COMPONENT_SEPARATOR_STRING);
 	public static byte [] KEY_ID_POSTFIX = {}; // probably empty
 	
