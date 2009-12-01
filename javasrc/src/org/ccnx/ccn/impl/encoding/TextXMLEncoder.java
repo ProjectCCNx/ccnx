@@ -149,7 +149,7 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	public void writeStartElement(String tag, TreeMap<String, String> attributes, BinaryXMLDictionary dictionary)
 			throws ContentEncodingException {
 		try {
-			_serializer.startTag(TextXMLCodec.CCN_NAMESPACE, tag);
+			_serializer.startTag(null, tag);
 			if (_isFirstElement) {
 				//_serializer.writeDefaultNamespace(TextXMLCodec.CCN_NAMESPACE);
 				_isFirstElement = false;
@@ -161,7 +161,7 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 				while (atIt.hasNext()) {
 					String name = atIt.next();
 					// Might not play well if this is the first element (namespace writing issues...)
-					_serializer.attribute(TextXMLCodec.CCN_NAMESPACE, name, attributes.get(name));
+					_serializer.attribute(null, name, attributes.get(name));
 				}
 			}
 		} catch (Exception e) {
@@ -171,7 +171,7 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 
 	public void writeEndElement() throws ContentEncodingException {
 		try {
-			_serializer.endTag(TextXMLCodec.CCN_NAMESPACE, _serializer.getName());
+			_serializer.endTag(null, _serializer.getName());
 		} catch (Exception e) {
 			throw new ContentEncodingException(e.getMessage(), e);
 		}		

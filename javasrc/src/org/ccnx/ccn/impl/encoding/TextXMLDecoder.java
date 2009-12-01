@@ -48,6 +48,7 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 		_istream = istream;
 		try {
 			XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
+            factory.setNamespaceAware(true);
 			_reader = factory.newPullParser();
 			_reader.setInput(istream, null);
 		} catch (XmlPullParserException e) {
@@ -155,6 +156,7 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 			} else if (event != XmlPullParser.END_TAG) {
 				throw new ContentDecodingException("Expected end of text element, got: " + XmlPullParser.TYPES[event]);
 			}
+			event = _reader.next();
 			return buf.toString();
 		} catch (XmlPullParserException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
