@@ -154,7 +154,6 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 				Log.fine("Found policy element {0} with value {1}", foundElement._stringValue, value);
 			}
 		} while (null != foundElement);
-		decoder.readEndElement();
 	}
 
 	@Override

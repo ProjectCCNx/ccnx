@@ -31,7 +31,7 @@ Boston, MA 02110-1301, USA. -->
 		<equals arg1="1.6" arg2="${ant.java.version}"/>
 	</condition>
 	
-	<property name="xml-jar" location="${lib}/jsr173_api.jar"/>
+	<property name="xml-jar" location="${lib}/kxml2-2.3.0.jar"/>
 	<property name="xml_ri-jar" location="${lib}/jsr173_1.0_ri.jar"/>
 
 	<!-- CLASSPATH NOTE: This should be a minimal set of what is 
