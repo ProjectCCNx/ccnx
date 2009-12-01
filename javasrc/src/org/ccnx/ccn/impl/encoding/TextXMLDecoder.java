@@ -156,7 +156,7 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 			} else if (event != XmlPullParser.END_TAG) {
 				throw new ContentDecodingException("Expected end of text element, got: " + XmlPullParser.TYPES[event]);
 			}
-			event = _reader.next();
+			readEndElement();
 			return buf.toString();
 		} catch (XmlPullParserException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
@@ -230,15 +230,14 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	private int readToNextTag(int type) throws ContentDecodingException {
 		int event;
 		try {
-			do {
-				event = _reader.getEventType();
-				if (event == type)
-					return event;
+			event = _reader.getEventType();
+			if (event == type)
+				return event;
+			if (event == XmlPullParser.TEXT || event == XmlPullParser.COMMENT)
 				event = _reader.next();
-			} while (event == XmlPullParser.TEXT || event == XmlPullParser.COMMENT);		// Assume if its not a startElement it's a comment
-		} catch (XmlPullParserException e) {
-			throw new ContentDecodingException(e.getMessage(), e);
 		} catch (IOException e) {
+			throw new ContentDecodingException(e.getMessage(), e);
+		} catch (XmlPullParserException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		}
 		return event;
