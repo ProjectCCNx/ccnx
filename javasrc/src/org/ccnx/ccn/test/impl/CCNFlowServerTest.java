@@ -138,11 +138,11 @@ public class CCNFlowServerTest {
 	}
 	
 	@Test
-	public void testNextBeforePut() throws Throwable {	
+	public void testNextBeforePut() throws Exception {	
 
 		System.out.println("Testing \"next\" interest arrives before a put");
 		normalReset(name1);
-		interestList.add(Interest.next(segments[1]));
+		interestList.add(Interest.next(segment_names[1], null, null));
 		fc.handleInterests(interestList);
 		fc.put(segments[0]);
 		Assert.assertTrue(queue.poll() == null);
@@ -152,11 +152,11 @@ public class CCNFlowServerTest {
 	}
 	
 	@Test
-	public void testLastBeforePut() throws Throwable {	
+	public void testLastBeforePut() throws Exception {	
 
 		System.out.println("Testing \"last\" interest arrives before a put");
 		normalReset(name1);
-		interestList.add(Interest.last(segment_names[1]));
+		interestList.add(Interest.last(segment_names[1], null, null));
 		fc.handleInterests(interestList);
 		fc.put(segments[0]);
 		Assert.assertTrue(queue.poll() == null);
@@ -247,7 +247,7 @@ public class CCNFlowServerTest {
 	}
 	
 	@Test
-	public void testHighwaterWait() throws Throwable {
+	public void testHighwaterWait() throws Exception {
 		
 		// Test that put over highwater fails with nothing draining
 		// the buffer
@@ -302,12 +302,12 @@ public class CCNFlowServerTest {
 	}
 	
 	private ContentObject testNext(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {
-		co = _reader.getNext(co.name(), 3, 0);
+		co = _reader.get(Interest.next(co.name(), 3, null), 0);
 		return testExpected(co, expected);
 	}
 	
 	private void testLast(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {
-		co = _reader.getLatest(co.name(), 3, 0);
+		co = _reader.get(Interest.last(co.name(), 3, null), 0);
 		testExpected(co, expected);
 	}
 	
