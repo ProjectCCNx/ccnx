@@ -79,6 +79,16 @@ public class SegmentationProfile implements CCNProfile {
 	public static final int DEFAULT_BLOCKSIZE = 4096;
 	public static final int DEFAULT_INCREMENT = 1;
 	public static final int DEFAULT_SCALE = 1;
+	
+	/**
+	 * The library will attempt to get the last segment, without knowing exactly what
+	 * segment number this will be.  Additionally, it is possible for a streaming producer to
+	 * continuously push a new segment and never have an end.  The MAX_LAST_SEGMENT_LOOP_ATTEMPT
+	 * variable avoids blocking forever in this case.  The getLastSegment function will
+	 * attempt x times (default is 10), before handing back the current content object, which is a
+	 * best effort attempt at the last segment.
+	 */
+	public static final int MAX_LAST_SEGMENT_LOOP_ATTEMPTS = 10;
 
 	/**
 	 * Control whether fragments start at 0 or 1.
@@ -390,13 +400,18 @@ public class SegmentationProfile implements CCNProfile {
 	
 	/**
 	 * This method returns the last segment for the name provided.  If there are no segments for the supplied name,
-	 * the method will return null.  The function can be called with a starting segment, the method will attempt to
+	 * the method will return null.  It is possible for producers to continuously make new segments.  In this case,
+	 * the function returns last content object it finds (and verifies) after some number of attempts (the default
+	 * value is 10 for now).  The function can be called with a starting segment, the method will attempt to
 	 * find the last segment after the provided segment number.  This method assumes either the last component of 
 	 * the supplied name is a segment or the next component of the name will be a segment.  It does not attempt to 
 	 * resolve the remainder of the prefix (for example, it will not attempt to distinguish which version to use). 
 	 * 
 	 * If the method is called with a segment in the name and as an additional parameter, the method will use the higher
 	 * number to locate the last segment.  Again, if no segment is found, the method will return null.
+	 * 
+	 * Calling functions should explicitly check if the returned segment is the best-effort at the last segment, or
+	 * the marked last segment (if it matters to the caller).
 	 * 
 	 * @param name
 	 * @param publisher
@@ -412,6 +427,8 @@ public class SegmentationProfile implements CCNProfile {
 		ContentObject co = null;
 		Interest getLastInterest = null;
 		
+		int attempts = MAX_LAST_SEGMENT_LOOP_ATTEMPTS;
+		
 		//want to start with a name with a segment number in it
 		if(isSegment(name)){
 			//the name already has a segment...  could this be the segment we want?
@@ -425,7 +442,8 @@ public class SegmentationProfile implements CCNProfile {
 		}
 	
 
-		while (true) {			
+		while (true) {
+			attempts--;
 			co = handle.get(getLastInterest, timeout);
 			if (co == null) {
 				Log.finer("Null returned from getLastSegment for name: {0}",name);
@@ -438,11 +456,9 @@ public class SegmentationProfile implements CCNProfile {
 			if (isSegment(co.name())) {
 				//double check that we have a segmented name
 				//we have a later segment, but is it the last one?
-				//check the final segment marker
-				if (isLastSegment(co)) {
-					//this is the last segment...  check if it verifies.
-					
-					//need to verify the content object
+				//check the final segment marker or if we are on our last attempt
+				if (isLastSegment(co) || attempts == 0) {
+					//this is the last segment (or last attempt)...  check if it verifies.
 					if (verifier.verify(co)) {
 						return co;
 					} else {
@@ -451,6 +467,7 @@ public class SegmentationProfile implements CCNProfile {
 					}
 				} else {
 					//this was not the last segment..  use the co.name() to try again.
+					
 					segmentName = new ContentName(getLastInterest.name().count(), co.name().components());
 					getLastInterest = lastSegmentInterest(segmentName, getSegmentNumber(co.name()), publisher);
 					
