@@ -32,6 +32,12 @@ then
     fi
 fi
 
+DEBUG_OPTION=
+if [ "$1" = "-debug" ]; then
+   DEBUG_OPTION="-Xrunjdwp:transport=dt_socket,address=$2,server=y,suspend=n"
+   shift 2
+fi
+
 CP1=$SCRIPT_DIR/../ccnChat.jar
 CP2=$CCN_HOME/lib/*.jar
 
@@ -51,6 +57,6 @@ then
   exit 1
 fi
 
-$JAVA -cp $CLASSPATH $PORTARG org.ccnx.ccn.apps.ccnchat.CCNChat $*
+$JAVA -cp $CLASSPATH $PORTARG $DEBUG_OPTION org.ccnx.ccn.apps.ccnchat.CCNChat $*
 
 

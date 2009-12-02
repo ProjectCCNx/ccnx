@@ -48,6 +48,12 @@ if [ ! "$CCN_LOCAL_PORT" = "" ]; then
   PORTARG="-Dccn.agent.port=$CCN_LOCAL_PORT"
 fi
 
+DEBUG_OPTION=
+if [ "$1" = "-debug" ]; then
+   DEBUG_OPTION="-Xrunjdwp:transport=dt_socket,address=$2,server=y,suspend=n"
+   shift 2
+fi
+
 if [ $CMD_NAME != "ccn_run" ]; then
     UTIL=$CMD_NAME
 elif [ $# = 0 ]
@@ -61,6 +67,6 @@ else
   shift
 fi
 
-$JAVA -cp $CLASSPATH $PORTARG org.ccnx.ccn.utils.$UTIL $*
+$JAVA -cp $CLASSPATH $PORTARG $DEBUG_OPTION org.ccnx.ccn.utils.$UTIL $*
 
 
