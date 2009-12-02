@@ -495,7 +495,7 @@ public class SegmentationProfile implements CCNProfile {
 	
 	/**
 	 * Builds an Exclude filter that excludes components that are not segments in the next component.
-	 * @param startingSegmetnComponent The latest segment component we know about. Can be null or
+	 * @param startingSegmentComponent The latest segment component we know about. Can be null or
 	 * 			the SegmentationProfile.baseSegment() component to indicate that we want to start
 	 * 			from 0 (we don't have a known segment to start from). This exclude filter will
 	 * 			find segments *after* the segment represented in startingSegmentComponent.
