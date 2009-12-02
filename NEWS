@@ -76,7 +76,8 @@ Changes between 0.2.0 and 0.1.2:
       fix most of these
     * intermittent JVM crashes on Java 1.5 on OSX Leopard
     * the default ant/jUnit on Solaris 11 doesn't work; you need to
-      copy over a different ant-junit.jar from 
+      copy over the ant-junit.jar from /usr/grails/1.0.3/ant/lib/ant-junit.jar
+      to /usr/share/lib/ant/ant-junit.jar
 
 
 Changes between 0.1.1 and 0.1.2:
