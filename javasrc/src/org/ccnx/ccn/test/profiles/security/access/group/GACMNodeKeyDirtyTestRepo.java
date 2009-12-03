@@ -58,6 +58,17 @@ public class GACMNodeKeyDirtyTestRepo {
 		acm.publishMyIdentity(friendlyNames[0], handle.keyManager().getDefaultPublicKey());
 	}
 	
+	/**
+	 * We create the following group structure:
+	 * 
+	 *         group1
+	 *           |
+	 *         group0            group2
+	 *          /  \                |
+	 *       user0 user1          user2
+	 * 
+	 * @throws Exception
+	 */
 	@Test
 	public void createUserGroups() throws Exception {
 		Random rand = new Random();
@@ -91,7 +102,7 @@ public class GACMNodeKeyDirtyTestRepo {
 	public void createNodeACLs() throws Exception {
 		Random rand = new Random();
 		
-		// create nodes [1-3] and corresponding ACLs that make group[i] a reader of node[i].
+		// create nodes [0-2] and corresponding ACLs that make group[i] a reader of node[i].
 		for (int i=0; i<numberOfGroups; i++) {
 			String nodeName = "node" + i + "-" + rand.nextInt(10000);
 			node[i] = ContentName.fromNative(directoryBase, nodeName);
@@ -161,7 +172,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		Assert.assertEquals(2, group[0].membershipList().membershipList().size());
 	}
 	
-	@Test
+//	@Test
 	public void writeEvenMoreNodeContent() throws Exception {
 		// write some content in nodes
 		for (int i=0; i<numberOfGroups; i++) {
@@ -173,6 +184,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		}
 		
 		// The node keys are dirty for nodes 0 and 1, but not 2.
+		Thread.sleep(1000);
 		Assert.assertTrue(acm.nodeKeyIsDirty(node[0]));
 		Assert.assertTrue(acm.nodeKeyIsDirty(node[1]));
 		Assert.assertFalse(acm.nodeKeyIsDirty(node[2]));
