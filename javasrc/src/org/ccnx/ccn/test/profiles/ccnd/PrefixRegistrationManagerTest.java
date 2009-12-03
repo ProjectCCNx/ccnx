@@ -25,12 +25,10 @@ import java.io.ByteArrayOutputStream;
 
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
-import org.ccnx.ccn.profiles.ccnd.FaceManager;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager;
-import org.ccnx.ccn.profiles.ccnd.FaceManager.ActionType;
-import org.ccnx.ccn.profiles.ccnd.FaceManager.FaceInstance;
-import org.ccnx.ccn.profiles.ccnd.FaceManager.NetworkProtocol;
+import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ActionType;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ForwardingEntry;
+import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.After;
@@ -46,6 +44,8 @@ public class PrefixRegistrationManagerTest {
 	
 	PublisherPublicKeyDigest keyDigest;
 	PrefixRegistrationManager prm;
+	ContentName contentNameToUse;
+	public final static String prefixToUse = "ccnx:/prefix/to/test/with/";
 
 
 	/**
@@ -69,6 +69,7 @@ public class PrefixRegistrationManagerTest {
 	public void setUp() throws Exception {
 		keyDigest = null; /* new PublisherPublicKeyDigest(); */
 		prm = new PrefixRegistrationManager();
+		contentNameToUse = ContentName.fromURI(prefixToUse);
 	}
 
 	/**
@@ -83,13 +84,13 @@ public class PrefixRegistrationManagerTest {
 	 */
 	@Test
 	public void testEncodeOutputStream() {
-		ForwardingEntry forwarding = prm. new ForwardingEntry();
-		System.out.println("Encoding: " + forwarding);
-		assertNotNull(forwarding);
+		ForwardingEntry entryToEncode = prm. new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
+		System.out.println("Encoding: " + entryToEncode);
+		assertNotNull(entryToEncode);
 		
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
-			forwarding.encode(baos);
+			entryToEncode.encode(baos);
 		} catch (ContentEncodingException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
@@ -100,7 +101,7 @@ public class PrefixRegistrationManagerTest {
 
 	@Test
 	public void testDecodeInputStream() {
-		ForwardingEntry entryToEncode = prm. new ForwardingEntry();
+		ForwardingEntry entryToEncode = prm. new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
 		assertNotNull(entryToEncode);
 		
@@ -129,7 +130,7 @@ public class PrefixRegistrationManagerTest {
 	
 	@Test
 	public void testEncodingDecoding() {
-		ForwardingEntry entryToEncode = prm. new ForwardingEntry();
+		ForwardingEntry entryToEncode = prm. new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
 
 		ForwardingEntry  textEntryToDecodeInto = prm. new ForwardingEntry();

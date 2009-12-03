@@ -68,7 +68,6 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 
 		protected static final String 	FORWARDING_ENTRY_OBJECT_ELEMENT = "ForwardingEntry";
 		protected static final String		ACTION_ELEMENT = "Action";
-		protected static final String		NAME_ELEMENT = "Name";
 		protected static final String		FACE_ID_ELEMENT = "FaceID";
 		protected static final String		FORWARDING_FLAGS_ELEMENT = "ForwardingFlags";
 		protected static final String		FRESHNESS_ELEMENT = "FreshnessSeconds";
@@ -186,7 +185,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			if (decoder.peekStartElement(ACTION_ELEMENT)) {
 				_action = decoder.readUTF8Element(ACTION_ELEMENT); 
 			}
-			if (decoder.peekStartElement(NAME_ELEMENT)) {
+			if (decoder.peekStartElement(ContentName.CONTENT_NAME_ELEMENT)) {
 				_prefixName = new ContentName();
 				_prefixName.decode(decoder) ;
 			}
@@ -198,7 +197,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 				_faceID = decoder.readIntegerElement(FACE_ID_ELEMENT); 
 			}
 			if (decoder.peekStartElement(FORWARDING_FLAGS_ELEMENT)) {
-				_faceID = decoder.readIntegerElement(FORWARDING_FLAGS_ELEMENT); 
+				_flags = decoder.readIntegerElement(FORWARDING_FLAGS_ELEMENT); 
 			}
 			if (decoder.peekStartElement(FRESHNESS_ELEMENT)) {
 				_lifetime = decoder.readIntegerElement(FRESHNESS_ELEMENT); 
