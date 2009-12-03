@@ -48,7 +48,9 @@ public class CCNDaemonHandle {
 	protected CCNHandle _handle;
 	protected PublisherPublicKeyDigest _ccndId = null;
 	
-
+	public CCNDaemonHandle() {
+	}
+	
 	public CCNDaemonHandle(CCNHandle handle)  throws CCNDaemonException {
 		_handle = handle;
 	}
