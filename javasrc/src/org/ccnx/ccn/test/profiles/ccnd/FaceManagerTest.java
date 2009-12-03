@@ -65,7 +65,7 @@ public class FaceManagerTest {
 	 */
 	@Before
 	public void setUp() throws Exception {
-		keyDigest = new PublisherPublicKeyDigest();
+		keyDigest = null; /* new PublisherPublicKeyDigest(); */
 		fm = new FaceManager();
 	}
 
@@ -100,14 +100,14 @@ public class FaceManagerTest {
 
 	@Test
 	public void testDecodeInputStream() {
-		FaceInstance face = fm. new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
+		FaceInstance faceToEncode = fm. new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
 				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
-		System.out.println("Encoding: " + face);
-		assertNotNull(face);
+		System.out.println("Encoding: " + faceToEncode);
+		assertNotNull(faceToEncode);
 		
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
-			face.encode(baos);
+			faceToEncode.encode(baos);
 		} catch (ContentEncodingException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
@@ -117,29 +117,28 @@ public class FaceManagerTest {
 		
 		System.out.println("Decoding: ");
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-		FaceInstance face2 = fm. new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
-				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
+		FaceInstance faceToDecodeTo = fm. new FaceInstance();  /* We need an empty one to decode into */
 		try {
-			face2.decode(bais);
+			faceToDecodeTo.decode(bais);
 		} catch (ContentDecodingException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			e.printStackTrace();
 		}
-		System.out.println("Decoded: " + face2);
-		assertEquals(face, face2);
+		System.out.println("Decoded: " + faceToDecodeTo);
+		assertEquals(faceToEncode, faceToDecodeTo);
 	}
 	
 	@Test
 	public void testEncodingDecoding() {
-		FaceInstance face = fm. new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
+		FaceInstance faceToEncode = fm. new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
 				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
-		System.out.println("Encoding: " + face);
-		assertNotNull(face);
+		System.out.println("Encoding: " + faceToEncode);
 
-		FaceInstance  tn = new FaceManager(). new FaceInstance();
-		FaceInstance  bn = new FaceManager(). new FaceInstance();
-		
-		XMLEncodableTester.encodeDecodeTest("FaceIntance", face, tn, bn);
+		FaceInstance  textFaceToDecodeInto = fm. new FaceInstance();
+		assertNotNull(textFaceToDecodeInto);
+		FaceInstance  binaryFaceToDecodeInto = fm. new FaceInstance();
+		assertNotNull(binaryFaceToDecodeInto);
+		XMLEncodableTester.encodeDecodeTest("FaceIntance", faceToEncode, textFaceToDecodeInto, binaryFaceToDecodeInto);
 	}
 
 }

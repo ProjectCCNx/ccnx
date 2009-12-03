@@ -133,6 +133,9 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 			throw new IllegalArgumentException("Unexpected error decoding FaceInstance from bytes.  reason: " + reason);
 		}
 	}
+	
+	public FaceInstance() {
+	}
 
 	public Integer faceID() { return _faceID; }
 	public void setFaceID(Integer faceID) { _faceID = faceID; }
@@ -356,8 +359,11 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 
 	public FaceManager(CCNHandle handle, PublisherPublicKeyDigest ccndID) throws CCNDaemonException {
 		super(handle, ccndID);
-		
 	}
+	
+	public FaceManager() {
+	}
+	
 	public Integer createFace(NetworkProtocol ipProto, String host, Integer port) 
 							throws CCNDaemonException {
 		return this.createFace(ipProto, host, port, null, null, null);

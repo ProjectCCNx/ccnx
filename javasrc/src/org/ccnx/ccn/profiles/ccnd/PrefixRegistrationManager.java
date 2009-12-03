@@ -113,6 +113,9 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 				throw new IllegalArgumentException("Unexpected error decoding ForwardingEntry from bytes.  reason: " + reason);
 			}
 		}
+		
+		public ForwardingEntry() {
+		}
 
 		public Integer faceID() { return _faceID; }
 		public void setFaceID(Integer faceID) { _faceID = faceID; }
@@ -294,6 +297,9 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 
 	public PrefixRegistrationManager(CCNHandle handle, PublisherPublicKeyDigest ccndID) throws CCNDaemonException {
 		super(handle, ccndID);
+	}
+	
+	public PrefixRegistrationManager() {
 	}
 
 	public void registerPrefix(String uri, Integer faceID, Integer flags) throws CCNDaemonException {
