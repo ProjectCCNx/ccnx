@@ -185,7 +185,7 @@ public class GroupAccessControlManagerTestRepo {
 	 * Retrieve the ACL for the grandchild node and check that it comes from the base node.
 	 * @throws Exception
 	 */
-//	@Test
+	@Test
 	public void deleteACL() throws Exception {
 		acm.deleteACL(childNode);
 		// retrieve ACL at grandchild node
