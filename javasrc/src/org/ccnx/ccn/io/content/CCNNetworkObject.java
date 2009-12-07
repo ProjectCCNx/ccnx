@@ -69,6 +69,18 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * below, an object that is "dirty" is one whose data has been modified locally, but not yet
  * saved to the network. 
  * 
+ * While CCNNetworkObject could be used directly, it almost never is; it is usually
+ * more effective to define a subclass specialized to save/retrieve a specific object
+ * type.
+ * 
+ * Updates, 12/09: Move to creating a flow controller in the write constructor if
+ * one isn't passed in. Read constructors still lazily create flow controllers on 
+ * first write (tradeoff); preemptive construction (and registering for interests)
+ * can be achieved by calling the setupSave() method which creates a flow controller
+ * if one hasn't been created already. Move to a strong default of saving
+ * to a repository, unless overridden by the subclass itself. Change of repository/raw
+ * nature can be made with the setRawSave() and setRepositorySave() methods.
+ * 
  * TODO: Note that the CCNNetworkObject class hierarchy currently has a plethora of constructors.
  * It is also missing some important functionality -- encryption, the ability to specify
  * freshness, and so on. Expect new constructors to deal with the latter deficiencies, and
@@ -76,7 +88,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  */
 public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNInterestListener {
 
-	protected static boolean DEFAULT_RAW = true;
+	protected static boolean DEFAULT_RAW = false;
 	protected static final byte [] GONE_OUTPUT = "GONE".getBytes();
 	
 	/**
@@ -120,9 +132,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	/**
 	 * Basic write constructor. This will set the object's internal data but it will not save it
-	 * until save() or saveToRepository() is called. If save() is called, will save directly
-	 * to the network. If saveToRepository() is called on the first save, it will override backing 
-	 * store behavior and store the object to a repository.
+	 * until save() is called. Unless overridden by the subclass, will default to save to
+	 * a repository. Can be changed to save directly to the network using setRawSave().
+	 * If a subclass sets the default behavior to raw saves, this can be overridden on a
+	 * specific instance using setRepositorySave().
 	 * @param type Wrapped class type.
 	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name under which to save object.
@@ -137,9 +150,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		
 	/**
 	 * Basic write constructor. This will set the object's internal data but it will not save it
-	 * until save() or saveToRepository() is called. If save() is called, will save directly
-	 * to the network. If saveToRepository() is called on the first save, it will override backing 
-	 * store behavior and store the object to a repository.
+	 * until save() is called. Unless overridden by the subclass, will default to save to
+	 * a repository. Can be changed to save directly to the network using setRawSave().
+	 * If a subclass sets the default behavior to raw saves, this can be overridden on a
+	 * specific instance using setRepositorySave().
 	 * @param type Wrapped class type.
 	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name under which to save object.
@@ -157,9 +171,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		
 	/**
 	 * Basic write constructor. This will set the object's internal data but it will not save it
-	 * until save() or saveToRepository() is called. If save() is called, will save directly
-	 * to the network. If saveToRepository() is called on the first save, it will override backing 
-	 * store behavior and store the object to a repository.
+	 * until save() is called. Unless overridden by the subclass, will default to save to
+	 * a repository. Can be changed to save directly to the network using setRawSave().
+	 * If a subclass sets the default behavior to raw saves, this can be overridden on a
+	 * specific instance using setRepositorySave().
 	 * @param type Wrapped class type.
 	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name under which to save object.
@@ -174,8 +189,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 							ContentName name, E data, boolean raw, 
 							PublisherPublicKeyDigest publisher, KeyLocator locator,
 							CCNHandle handle) throws IOException {
-		// Don't start pulling a namespace till we actually write something. We may never write
-		// anything on this object. In fact, don't make a flow controller at all till we need one.
 		super(type, contentIsMutable, data);
 		if (null == handle) {
 			try {
@@ -189,6 +202,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_publisher = publisher;
 		_keyLocator = locator;
 		_raw = raw;
+		// Make our flow controller and register interests for our base name, if we have one.
+		// Otherwise, create flow controller when we need one.
+		if (null != name) {
+			createFlowController();
+		}
 	}
 
 	/**
@@ -202,7 +220,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param locator The key locator to use to let others know where to get our key.
 	 * @param flowControl Flow controller to use. A single flow controller object
 	 *   is used for all this instance's writes, we use underlying streams to call
-	 *   CCNFlowControl#startWrite(ContentName, Shape) on each save.
+	 *   CCNFlowControl#startWrite(ContentName, Shape) on each save. Calls to
+	 *   setRawSave() and setRepositorySave() will replace this flow controller
+	 *   with a raw or repository flow controller, and should not be used with
+	 *   this type of object (which obviously cares about what flow controller to use).
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
 	protected CCNNetworkObject(Class<E> type, boolean contentIsMutable,
@@ -210,8 +231,29 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 								PublisherPublicKeyDigest publisher, 
 								KeyLocator locator,
 								CCNFlowControl flowControl) throws IOException {
-		this(type, contentIsMutable, name, data, publisher, locator, flowControl.getHandle());
+		super(type, contentIsMutable, data);
+		CCNHandle handle = (null == flowControl) ? null : flowControl.getHandle();
+		if (null == handle) {
+			try {
+				handle = CCNHandle.open();
+			} catch (ConfigurationException e) {
+				throw new IllegalArgumentException("handle null, and cannot create one: " + e.getMessage(), e);
+			}
+		}
+		_handle = handle;
+		_baseName = name;
+		_publisher = publisher;
+		_keyLocator = locator;
 		_flowControl = flowControl;
+		// Register interests for our base name, if we have one.
+		// Otherwise, create flow controller when we need one.
+		if (null != name) {
+			if (null != flowControl) {
+				flowControl.addNameSpace(name);
+			} else {
+				createFlowController();
+			}
+		}
 	}
 
 	/**
@@ -376,9 +418,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	/**
 	 * Maximize laziness of flow controller creation, to make it easiest for client code to
-	 * decide how to store this object.
+	 * decide how to store this object. 
 	 * When we create the flow controller, we add the base name namespace, so it will respond
-	 * to requests for latest version.
+	 * to requests for latest version. Create them immediately in write constructors,
+	 * when we have a strong expectation that we will save data, if we have a namespace
+	 * to start listening on. Otherwise wait till we are going to write.
 	 * @return
 	 * @throws IOException 
 	 */
@@ -392,6 +436,50 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// see any shorter interests -- i.e. for get latest version.
 			_flowControl.addNameSpace(_baseName);
 		}
+	}
+	
+	/**
+	 * Change the nature of this object to raw, if it isn't raw already.
+	 * @throws IOException 
+	 */
+	public synchronized void setRawSave() throws IOException {
+		if (null != _flowControl) {
+			if (_flowControl.writesRaw()) {
+				return; // already raw
+			}
+			_flowControl.shutdown();
+		}
+		_raw = true;
+		createFlowController();
+	}
+
+	/**
+	 * Change the nature of this object to raw, if it isn't raw already.
+	 * @throws IOException 
+	 */
+	public synchronized void setRepositorySave() throws IOException {
+		if (null != _flowControl) {
+			if (!_flowControl.writesRaw()) {
+				return; // already raw
+			}
+			_flowControl.shutdown();
+		}
+		_raw = false;
+		createFlowController();
+	}
+	
+	/**
+	 * Start listening to interests on our base name, if we aren't already.
+	 * @throws IOException 
+	 */
+	public synchronized void setupSave() throws IOException {
+		if (null != _flowControl) {
+			if (null != _baseName) {
+				_flowControl.addNameSpace(_baseName);
+			}
+			return;
+		}
+		createFlowController();
 	}
 
 	/**
