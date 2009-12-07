@@ -435,6 +435,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// Have to register the version root. If we just register this specific version, we won't
 			// see any shorter interests -- i.e. for get latest version.
 			_flowControl.addNameSpace(_baseName);
+			Log.info("created " + (_raw ? "raw" : "repo") + " flow controller, for prefix {0}, is raw? " + _flowControl.writesRaw(), _baseName);
 		}
 	}
 	
