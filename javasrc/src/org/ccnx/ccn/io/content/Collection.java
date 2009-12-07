@@ -140,6 +140,18 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		}
 	}
 	
+	/**
+	 * Make a Collection containing Links which only specify names.
+	 * @param nameContents The list of names to link to.
+	 */
+	public Collection(ArrayList<ContentName> nameContents) {
+		if (null != nameContents) {
+			for (ContentName name : nameContents) {
+				_contents.add(new Link(name));
+			}
+		}
+	}
+	
 	public LinkedList<Link> contents() { 
 		return _contents; 
 	}
