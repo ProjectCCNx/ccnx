@@ -250,6 +250,13 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
+	 * Stop attending to all namespaces.
+	 */
+	public void removeAllNamespaces() {
+		removeNameSpace(null, true);
+	}
+	
+	/**
 	 * Test if this flow controller is currently serving a particular namespace.
 	 * 
 	 * @param childName ContentName of test space
@@ -562,12 +569,14 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Shutdown but wait for data to be sent to ccnd first
+	 * Shutdown operation of this flow controller -- wait for all current
+	 * data to clear, and unregister all outstanding interests. Do *not*
+	 * shut down the handle; we might not own it.
 	 * @throws IOException if buffer doesn't drain within timeout
 	 */
 	public void shutdown() throws IOException {
 		waitForPutDrain();
-		_handle.getNetworkManager().shutdown();
+		removeAllNamespaces();
 	}
 	
 	/**
@@ -687,4 +696,9 @@ public class CCNFlowControl implements CCNFilterListener {
 		removeNameSpace(null, true);
 		_flowControlEnabled = false;
 	}
+	
+	/**
+	 * Help users determine whether this is a raw or repository flow controller
+	 */
+	public boolean writesRaw() { return true; }
 }

@@ -308,4 +308,9 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			_handle.cancelInterest(writeInterest, this);
 		}
 	}
+	
+	/**
+	 * Mark as a repository FC.
+	 */
+	public boolean writesRaw() { return false; }
 }
