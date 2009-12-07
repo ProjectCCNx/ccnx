@@ -830,11 +830,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
+	 * Deprecated; use either object defaults or setRepositorySave() to indicate writes
+	 * should go to a repository, then call save() to write.
 	 * If raw=true or DEFAULT_RAW=true specified, this must be the first call to save made
 	 * for this object to force repository storage (overriding default).
 	 * @throws ContentEncodingException if there is an error encoding the content
 	 * @throws IOException if there is an error reading the content from the network
 	 */
+	@Deprecated
 	public synchronized boolean saveToRepository(CCNTime version) throws ContentEncodingException, IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
@@ -846,14 +849,35 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return save(version);
 	}
 
+	/**
+	 * Deprecated; use either object defaults or setRepositorySave() to indicate writes
+	 * should go to a repository, then call save() to write.
+	 * @throws ContentEncodingException if there is an error encoding the content
+	 * @throws IOException if there is an error reading the content from the network
+	 */
+	@Deprecated
 	public boolean saveToRepository() throws ContentEncodingException, IOException {		
 		return saveToRepository((CCNTime)null);
 	}
 	
+	/**
+	 * Deprecated; use either object defaults or setRepositorySave() to indicate writes
+	 * should go to a repository, then call save() to write.
+	 * @throws ContentEncodingException if there is an error encoding the content
+	 * @throws IOException if there is an error reading the content from the network
+	 */
+	@Deprecated
 	public boolean saveToRepository(E data) throws ContentEncodingException, IOException {
 		return saveToRepository(null, data);
 	}
 	
+	/**
+	 * Deprecated; use either object defaults or setRepositorySave() to indicate writes
+	 * should go to a repository, then call save() to write.
+	 * @throws ContentEncodingException if there is an error encoding the content
+	 * @throws IOException if there is an error reading the content from the network
+	 */
+	@Deprecated
 	public synchronized boolean saveToRepository(CCNTime version, E data) throws ContentEncodingException, IOException {
 		setData(data);
 		return saveToRepository(version);
@@ -890,11 +914,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
+	 * Deprecated; use either object defaults or setRepositorySave() to indicate writes
+	 * should go to a repository, then call save() to write.
 	 * If raw=true or DEFAULT_RAW=true specified, this must be the first call to save made
 	 * for this object.
 	 * @throws ContentEncodingException if there is an error encoding the content
 	 * @throws IOException if there is an error reading the content from the network
 	 */
+	@Deprecated
 	public synchronized boolean saveToRepositoryAsGone() throws ContentEncodingException, IOException {
 		if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
 			throw new IOException("Cannot call saveToRepository on raw object!");
