@@ -140,6 +140,7 @@ public class CCNChat extends JFrame implements ActionListener {
 		
 		String introduction = UserConfiguration.userName() + " has entered " + _namespace;
 		_writeString = new CCNStringObject(_namespace, introduction, CCNHandle.open());
+		_writeString.setRawSave(); // don't write to a repository
 		_writeString.save();
 		
 		// Need to do synchronization for updates that come in while we're processing last one.
