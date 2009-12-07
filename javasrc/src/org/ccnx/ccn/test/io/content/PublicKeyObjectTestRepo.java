@@ -131,6 +131,7 @@ public class PublicKeyObjectTestRepo {
 		} 
 		flosser.handleNamespace(keyName);
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, handle);
+		pko.setRawSave();
 		pko.save();
 		Log.info("Saved " + pko.getVersionedName() + ", now trying to read.");
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getVersionedName()));
@@ -145,6 +146,7 @@ public class PublicKeyObjectTestRepo {
 			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
 		}
 		if (null != optional2ndKey) {
+			pkoread.setRawSave();
 			Log.info("Reading and writing second raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 			pkoread.save(optional2ndKey);
 			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
@@ -171,7 +173,7 @@ public class PublicKeyObjectTestRepo {
 
 		Log.info("Reading and writing key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, handle);
-		pko.saveToRepository();
+		pko.save();
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getVersionedName()));
 		Log.info("Saved " + pko.getVersionedName() + " to repo, now trying to read.");
 		// should update in another thread
@@ -187,7 +189,7 @@ public class PublicKeyObjectTestRepo {
 		}
 		if (null != optional2ndKey) {
 			Log.info("Reading and writing second key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
-			pkoread.saveToRepository(optional2ndKey);
+			pkoread.save(optional2ndKey);
 			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
 			pko.update();
 			Assert.assertEquals(pkoread.getVersionedName(), pko.getVersionedName());

@@ -66,7 +66,7 @@ public class LinkObjectTestRepo {
 		
 		// Write something that isn't a collection
 		CCNSerializableStringObject so = new CCNSerializableStringObject(nonLinkName, "This is not a link, number " + new Random().nextInt(10000), putLibrary);
-		so.saveToRepository();
+		so.save();
 		
 		try {
 			LinkObject notAnObject = new LinkObject(nonLinkName, getLibrary);
@@ -85,7 +85,7 @@ public class LinkObjectTestRepo {
 
 		Link lr = new Link(so.getVersionedName());
 		LinkObject aLink = new LinkObject(linkName, lr, putLibrary);
-		aLink.saveToRepository();
+		aLink.save();
 		
 		ContentObject linkData = getLibrary.get(aLink.getVersionedName(), 5000);
 		if (null == linkData) {

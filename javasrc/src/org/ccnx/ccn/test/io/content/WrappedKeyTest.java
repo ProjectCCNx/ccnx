@@ -245,6 +245,7 @@ public class WrappedKeyTest {
 			flosser = new Flosser();
 			flosser.handleNamespace(storedKeyName);
 			WrappedKeyObject wko = new WrappedKeyObject(storedKeyName, wks, handle);
+			wko.setRawSave();
 			wko.save();
 			Assert.assertTrue(VersioningProfile.hasTerminalVersion(wko.getVersionedName()));
 			// should update in another thread

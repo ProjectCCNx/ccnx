@@ -65,13 +65,13 @@ public class CollectionObjectTestRepo {
 		
 		// Write something that isn't a collection
 		CCNSerializableStringObject so = new CCNSerializableStringObject(nonCollectionName, "This is not a collection.", putLibrary);
-		so.saveToRepository();
+		so.save();
 		
 		Link[] references = new Link[2];
 		references[0] = new Link(ContentName.fromNative(collectionName, "r1"));
 		references[1] = new Link(ContentName.fromNative(collectionName, "r2"));
 		CollectionObject collection = new CollectionObject(collectionName, references, putLibrary);
-		collection.saveToRepository();
+		collection.save();
 		
 		try {
 			CollectionObject notAnObject = new CollectionObject(nonCollectionName, getLibrary);
