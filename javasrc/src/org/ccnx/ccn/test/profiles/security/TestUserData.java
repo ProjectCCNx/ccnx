@@ -158,7 +158,7 @@ public class TestUserData {
 			KeyManager userKM = _userData.get(keyStoreName);
 			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
 			PublicKeyObject pko = new PublicKeyObject(keyName, userKM.getDefaultPublicKey(), getHandleForUser(friendlyName));
-			pko.saveToRepository(); 
+			pko.save(); 
 		} 
 	}
 	

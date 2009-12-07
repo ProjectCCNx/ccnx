@@ -106,9 +106,9 @@ public class NamespaceManager {
 		public static void create(ContentName name, ACL acl, CCNHandle handle) throws IOException, ConfigurationException {
 			Root r = new Root();
 			RootObject ro = new RootObject(AccessControlProfile.accessRoot(name), r, handle);
-			ro.saveToRepository();
+			ro.save();
 			ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
-			aclo.saveToRepository();
+			aclo.save();
 		}
 
 		@Override

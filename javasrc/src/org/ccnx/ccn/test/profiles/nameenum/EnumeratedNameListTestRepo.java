@@ -269,22 +269,11 @@ public class EnumeratedNameListTestRepo {
 	
 	/*
 	 * Adds data to the repo for testing
-	 * DKS -- previous version that used repo streams somehow wasn't getting data in.
 	 * */
 	private ContentName addContentToRepo(ContentName name, CCNHandle handle) throws ConfigurationException, IOException {
 		//method to load something to repo for testing
-		// DKS -- don't know why this wasn't working
-		/*
-		RepositoryOutputStream ros = putHandle.repoOpen(name, null, putHandle.getDefaultPublisher());
-		ros.setTimeout(5000);
-		byte [] data = "Testing 1 2 3".getBytes();
-		ros.write(data, 0, data.length);
-		ros.close();
-		return name;
-		*/
-		
 		CCNSerializableStringObject cso = new CCNSerializableStringObject(name, ContentName.componentPrintNative(name.lastComponent()), handle);
-		cso.saveToRepository();
+		cso.save();
 		System.out.println("Saved new object: " + cso.getVersionedName());
 		return cso.getVersionedName();
 		
