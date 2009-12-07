@@ -33,10 +33,10 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
-import org.ccnx.ccn.io.content.Collection;
-import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
@@ -320,7 +320,7 @@ public class RepositoryServer {
 	 */
 	public void sendEnumerationResponse(NameEnumerationResponse ner){
 		if(ner!=null && ner.getPrefix()!=null && ner.hasNames()){
-			CollectionObject co = null;
+			NameEnumerationResponseMessageObject neResponseObject = null;
 			try{
 				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
 					Log.finer("returning names for prefix: {0}", ner.getPrefix());
@@ -333,18 +333,18 @@ public class RepositoryServer {
 				if (ner.getTimestamp()==null)
 					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
 						Log.info("node.timestamp was null!!!");
-				Collection cd = ner.getNamesInCollectionData();
-				co = new CollectionObject(ner.getPrefix(), cd, _handle);
+				NameEnumerationResponseMessage nem = ner.getNamesForResponse();
+				neResponseObject = new NameEnumerationResponseMessageObject(ner.getPrefix(), nem, _handle);
 				// TODO this is only temporary until flow control issues can
 				// be worked out here
-				co.disableFlowControl();
-				co.save(ner.getTimestamp());
+				neResponseObject.disableFlowControl();
+				neResponseObject.save(ner.getTimestamp());
 				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
-					Log.finer("saved collection object: {0}", co.getVersionedName());
+					Log.finer("saved collection object: {0}", neResponseObject.getVersionedName());
 				return;
 
 			} catch(IOException e){
-				Log.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+co.getVersionedName()+")", e);
+				Log.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+neResponseObject.getVersionedName()+")", e);
 			}
 		}
 	}
