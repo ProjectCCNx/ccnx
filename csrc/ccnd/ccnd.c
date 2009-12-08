@@ -910,6 +910,11 @@ shutdown_client_fd(struct ccnd_handle *h, int fd)
     if (hashtb_seek(e, &fd, sizeof(fd), 0) == HT_OLD_ENTRY) {
         face = e->data;
         if (face->recv_fd != fd) abort();
+        if (face->faceid == CCN_NOFACEID) {
+            ccnd_msg(h, "error indication on fd %d ignored", fd);
+            hashtb_end(e);
+            return;
+        }
         close(fd);
         if (face->send_fd != fd)
             close(face->send_fd);
@@ -3709,6 +3714,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
                         close(fd);
                     else {
                         face = e->data;
+                        face->faceid = CCN_NOFACEID;
                         face->recv_fd = face->send_fd = fd;
                         face->flags |= CCN_FACE_DGRAM;
                         if (a->ai_family == AF_INET) {
