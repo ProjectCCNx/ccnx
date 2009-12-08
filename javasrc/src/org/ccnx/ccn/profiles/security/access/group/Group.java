@@ -168,7 +168,7 @@ public class Group {
 					ConfigurationException, IOException {
 		modify(null, removedUsers);
 	}
-
+	
 	/**
 	 * Checks whether the group public key has been created.
 	 * @return
@@ -250,6 +250,7 @@ public class Group {
 			_groupMembers = new MembershipList(GroupAccessControlProfile.groupMembershipListName(_groupNamespace, _groupFriendlyName), _handle);
 			// Keep dynamically updating.
 			_groupMembers.updateInBackground(true);
+			_groupMembers.setupSave(SaveType.REPOSITORY);
 		}
 		return _groupMembers; 
 	}
