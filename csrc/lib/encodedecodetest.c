@@ -539,5 +539,49 @@ main (int argc, char *argv[]) {
         }
         ccn_bloom_destroy(&b1);
     } while (0);
+    printf("ccn_sign_content() tests\n");
+    do {
+        struct ccn *h = ccn_create();
+        struct ccn_charbuf *co = ccn_charbuf_create();
+        struct ccn_signing_params sparm = CCN_SIGNING_PARAMS_INIT;
+        struct ccn_parsed_ContentObject pco = {0};
+        struct ccn_charbuf *name = ccn_charbuf_create();
+        
+        printf("Unit test case %d\n", i++);
+        ccn_name_from_uri(name, "ccnx:/test/data/%00%42");
+        res = ccn_sign_content(h, co, name, NULL, "DATA", 4);
+        if (res != 0) {
+            printf("Failed: res == %d\n", (int)res);
+            result = 1;
+        }
+        sparm.template_ccnb = ccn_charbuf_create();
+        res = ccn_parse_ContentObject(co->buf, co->length, &pco, NULL);
+        if (res != 0) {
+            printf("Failed: ccn_parse_ContentObject res == %d\n", (int)res);
+            result = 1;
+            break;
+        }
+        ccn_charbuf_append(sparm.template_ccnb,
+            co->buf + pco.offset[CCN_PCO_B_SignedInfo],
+            pco.offset[CCN_PCO_E_SignedInfo] - pco.offset[CCN_PCO_B_SignedInfo]);
+        sparm.sp_flags = CCN_SP_TEMPL_TIMESTAMP;
+        printf("Unit test case %d\n", i++);
+        res = ccn_sign_content(h, co, name, &sparm, "DATA", 4);
+        if (res != 0) {
+            printf("Failed: res == %d\n", (int)res);
+            result = 1;
+        }
+        printf("Unit test case %d\n", i++);
+        sparm.sp_flags = -1;
+        res = ccn_sign_content(h, co, name, &sparm, "DATA", 4);
+        if (res != -1) {
+            printf("Failed: res == %d\n", (int)res);
+            result = 1;
+        }
+        ccn_charbuf_destroy(&name);
+        ccn_charbuf_destroy(&sparm.template_ccnb);
+        ccn_charbuf_destroy(&co);
+        ccn_destroy(&h);
+    } while (0);
     exit(result);
 }
