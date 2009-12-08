@@ -23,6 +23,7 @@ import java.io.InvalidObjectException;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
@@ -143,7 +144,7 @@ public class CCNNetworkObjectTestRepo {
 		
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testVersioning"), stringObjName);
 		
-		CCNStringObject so = new CCNStringObject(testName, "First value", lput);
+		CCNStringObject so = new CCNStringObject(testName, "First value", SaveType.REPOSITORY, lput);
 		setupNamespace(testName);
 		CCNStringObject ro = null;
 		CCNStringObject ro2 = null;
@@ -188,7 +189,7 @@ public class CCNNetworkObjectTestRepo {
 		
 		CCNTime desiredVersion = CCNTime.now();
 		
-		CCNStringObject so = new CCNStringObject(testName, "First value", lput);
+		CCNStringObject so = new CCNStringObject(testName, "First value", SaveType.REPOSITORY, lput);
 		setupNamespace(testName);
 		saveAndLog("SpecifiedVersion", so, desiredVersion, "Time: " + desiredVersion);
 		Assert.assertEquals("Didn't write correct version", desiredVersion, so.getVersion());
@@ -213,7 +214,7 @@ public class CCNNetworkObjectTestRepo {
 		boolean caught = false;
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testEmptySave"), collectionObjName);
 		CollectionObject emptycoll = 
-			new CollectionObject(testName, (Collection)null, handle);
+			new CollectionObject(testName, (Collection)null, SaveType.REPOSITORY, handle);
 		setupNamespace(testName);
 		try {
 			emptycoll.setData(small1); // set temporarily to non-null
@@ -229,7 +230,8 @@ public class CCNNetworkObjectTestRepo {
 	public void testStreamUpdate() throws Exception {
 		
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testStreamUpdate"), collectionObjName);
-		CollectionObject testCollectionObject = new CollectionObject(testName, small1, CCNHandle.open());
+		CollectionObject testCollectionObject = 
+			new CollectionObject(testName, small1, SaveType.REPOSITORY, CCNHandle.open());
 		setupNamespace(testName);
 		
 		saveAndLog("testStreamUpdate", testCollectionObject, null, small1);
@@ -280,12 +282,12 @@ public class CCNNetworkObjectTestRepo {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name1");
 		ContentName testName2 = ContentName.fromNative(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name2");
 		
-		CollectionObject c0 = new CollectionObject(testName, empty, handle);
+		CollectionObject c0 = new CollectionObject(testName, empty, SaveType.REPOSITORY, handle);
 		setupNamespace(testName);
 		CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 		
-		CollectionObject c1 = new CollectionObject(testName2, small1, CCNHandle.open());
-		CollectionObject c2 = new CollectionObject(testName2, small1, null);
+		CollectionObject c1 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, CCNHandle.open());
+		CollectionObject c2 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, null);
 		setupNamespace(testName2);
 		CCNTime t1 = saveAndLog("Small", c1, null, small1);
 		Assert.assertTrue("First version should come before second", t0.before(t1));
@@ -302,12 +304,12 @@ public class CCNNetworkObjectTestRepo {
 		
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateInBackground"), stringObjName, "name1");
 		// Make writer first, so it picks up readers first interests even before it writes.
-		CCNStringObject c2 = new CCNStringObject(testName, (String)null, CCNHandle.open());
+		CCNStringObject c2 = new CCNStringObject(testName, (String)null, SaveType.REPOSITORY, CCNHandle.open());
 		
-		CCNStringObject c0 = new CCNStringObject(testName, (String)null, CCNHandle.open());
+		CCNStringObject c0 = new CCNStringObject(testName, (String)null, SaveType.REPOSITORY, CCNHandle.open());
 		c0.updateInBackground();
 
-		CCNStringObject c1 = new CCNStringObject(testName, (String)null, CCNHandle.open());
+		CCNStringObject c1 = new CCNStringObject(testName, (String)null, SaveType.REPOSITORY, CCNHandle.open());
 		c1.updateInBackground(true);
 
 		Assert.assertFalse(c0.available());
@@ -338,13 +340,13 @@ public class CCNNetworkObjectTestRepo {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name1");
 		ContentName testName2 = ContentName.fromNative(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name2");
 
-		CollectionObject c0 = new CollectionObject(testName, empty, handle);
+		CollectionObject c0 = new CollectionObject(testName, empty, SaveType.REPOSITORY, handle);
 		setupNamespace(testName);
 		CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 		
-		CollectionObject c1 = new CollectionObject(testName2, small1, CCNHandle.open());
+		CollectionObject c1 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, CCNHandle.open());
 		// Cheat a little, make this one before the setupNamespace...
-		CollectionObject c2 = new CollectionObject(testName2, small1, null);
+		CollectionObject c2 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, null);
 		setupNamespace(testName2);
 		CCNTime t1 = saveAndLog("Small", c1, null, small1);
 		Assert.assertTrue("First version should come before second", t0.before(t1));
@@ -369,7 +371,7 @@ public class CCNNetworkObjectTestRepo {
 	@Test
 	public void testSaveAsGone() throws Exception {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testSaveAsGone"), collectionObjName);
-		CollectionObject c0 = new CollectionObject(testName, empty, handle);
+		CollectionObject c0 = new CollectionObject(testName, empty, SaveType.REPOSITORY, handle);
 		setupNamespace(testName);
 		CCNTime t0 = saveAsGoneAndLog("Gone", c0);
 		Assert.assertTrue("Should be gone", c0.isGone());
@@ -405,7 +407,7 @@ public class CCNNetworkObjectTestRepo {
 		CCNStringObject so = new CCNStringObject(testName, handle);
 		// so should catch exception thrown by underlying stream when it times out.
 		Assert.assertFalse(so.available());
-		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", CCNHandle.open());
+		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", SaveType.REPOSITORY, CCNHandle.open());
 		setupNamespace(testName);
 		saveAndLog("Delayed write", sowrite, null, "Now we write something.");
 		so.waitForData();

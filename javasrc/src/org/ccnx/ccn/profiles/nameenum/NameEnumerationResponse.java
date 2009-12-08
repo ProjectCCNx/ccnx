@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -39,13 +40,8 @@ public class NameEnumerationResponse {
 		
 		public static class NameEnumerationResponseMessageObject extends CCNEncodableObject<NameEnumerationResponseMessage> {
 			
-			/**
-			 * Set up to write raw by default. Name variable for clarity.
-			 */
-			protected static boolean RAW_MESSAGES = true;
-			
 			public NameEnumerationResponseMessageObject(ContentName name, NameEnumerationResponseMessage data, CCNHandle handle) throws IOException {
-				super(NameEnumerationResponseMessage.class, true, name, data, RAW_MESSAGES, null, null, handle);
+				super(NameEnumerationResponseMessage.class, true, name, data, SaveType.RAW, null, null, handle);
 			}
 			
 			public NameEnumerationResponseMessageObject(ContentName name, java.util.Collection<Link> contents, CCNHandle handle) throws IOException {
@@ -58,7 +54,7 @@ public class NameEnumerationResponse {
 
 			public NameEnumerationResponseMessageObject(ContentName name, NameEnumerationResponseMessage data, PublisherPublicKeyDigest publisher, 
 									KeyLocator keyLocator, CCNHandle handle) throws IOException {
-				super(NameEnumerationResponseMessage.class, true, name, data, RAW_MESSAGES, publisher, keyLocator, handle);
+				super(NameEnumerationResponseMessage.class, true, name, data, SaveType.RAW, publisher, keyLocator, handle);
 			}
 
 			public NameEnumerationResponseMessageObject(ContentName name, java.util.Collection<Link> contents, 
@@ -71,19 +67,22 @@ public class NameEnumerationResponse {
 				this(name, new NameEnumerationResponseMessage(contents), publisher, keyLocator, handle);			
 			}
 
+			public NameEnumerationResponseMessageObject(ContentName name, CCNHandle handle) 
+			throws ContentDecodingException, IOException {
+				super(NameEnumerationResponseMessage.class, true, name, (PublisherPublicKeyDigest)null, handle);
+				setSaveType(SaveType.RAW);
+			}
+
 			public NameEnumerationResponseMessageObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
 					throws ContentDecodingException, IOException {
-				super(NameEnumerationResponseMessage.class, true, name, publisher, RAW_MESSAGES, handle);
+				super(NameEnumerationResponseMessage.class, true, name, publisher, handle);
+				setSaveType(SaveType.RAW);
 			}
 			
 			public NameEnumerationResponseMessageObject(ContentObject firstBlock, CCNHandle handle) 
 					throws ContentDecodingException, IOException {
-				super(NameEnumerationResponseMessage.class, true, firstBlock, RAW_MESSAGES, handle);
-			}
-			
-			public NameEnumerationResponseMessageObject(ContentName name, CCNHandle handle) 
-					throws ContentDecodingException, IOException {
-				super(NameEnumerationResponseMessage.class, true, name, (PublisherPublicKeyDigest)null, RAW_MESSAGES, handle);
+				super(NameEnumerationResponseMessage.class, true, firstBlock, handle);
+				setSaveType(SaveType.RAW);
 			}
 			
 			public NameEnumerationResponseMessage responseMessage() throws ContentNotReadyException, ContentGoneException {

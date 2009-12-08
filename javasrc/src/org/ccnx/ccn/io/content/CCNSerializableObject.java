@@ -25,6 +25,7 @@ import java.io.Serializable;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.GenericObjectInputStream;
 import org.ccnx.ccn.protocol.ContentName;
@@ -45,18 +46,14 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObject<E> {
 	
 	public CCNSerializableObject(Class<E> type, boolean contentIsMutable, 
-								 ContentName name, E data, CCNHandle handle) throws IOException {
-		super(type, contentIsMutable, name, data, handle);
-	}
-
-	public CCNSerializableObject(Class<E> type, boolean contentIsMutable, 
-								ContentName name, E data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
-		super(type, contentIsMutable, name, data, publisher, keyLocator, handle);
+								 ContentName name, E data, SaveType saveType,
+								 CCNHandle handle) throws IOException {
+		super(type, contentIsMutable, name, data, saveType, handle);
 	}
 
 	public CCNSerializableObject(Class<E> type, boolean contentIsMutable, ContentName name, E data,
-			boolean raw, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
-		super(type, contentIsMutable, name, data, raw, publisher, keyLocator, handle);
+			SaveType saveType, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+		super(type, contentIsMutable, name, data, saveType, publisher, keyLocator, handle);
 	}
 
 	protected CCNSerializableObject(Class<E> type, boolean contentIsMutable, 
@@ -78,12 +75,6 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 		super(type, contentIsMutable, name, publisher, handle);
 	}
 	
-	public CCNSerializableObject(Class<E> type, boolean contentIsMutable, ContentName name,
-								 PublisherPublicKeyDigest publisher, boolean raw, CCNHandle handle)
-				throws ContentDecodingException, IOException {
-		super(type, contentIsMutable, name, publisher, raw, handle);
-	}
-
 	protected CCNSerializableObject(Class<E> type, boolean contentIsMutable, 
 									ContentName name,
 									PublisherPublicKeyDigest publisher, 
@@ -96,13 +87,6 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 								ContentObject firstBlock, CCNHandle handle) 
 				throws ContentDecodingException, IOException {
 		super(type, contentIsMutable, firstBlock, handle);
-	}
-
-	public CCNSerializableObject(Class<E> type, boolean contentIsMutable, 
-								 ContentObject firstBlock,
-								 boolean raw, CCNHandle handle) 
-				throws ContentDecodingException, IOException {
-		super(type, contentIsMutable, firstBlock, raw, handle);
 	}
 
 	protected CCNSerializableObject(Class<E> type, boolean contentIsMutable, 

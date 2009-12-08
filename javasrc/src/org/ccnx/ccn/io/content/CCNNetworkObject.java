@@ -27,6 +27,7 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
@@ -88,7 +89,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  */
 public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNInterestListener {
 
-	protected static boolean DEFAULT_RAW = false;
 	protected static final byte [] GONE_OUTPUT = "GONE".getBytes();
 	
 	/**
@@ -120,7 +120,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected boolean _disableFlowControlRequest = false;
 	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use handle defaults
 	protected KeyLocator _keyLocator; // locator to find publisher key
-	protected boolean _raw = DEFAULT_RAW; // what kind of flow controller to make if we don't have one
+	protected SaveType _saveType = null; // what kind of flow controller to make if we don't have one
 	protected ContentKeys _keys;
 	
 	/**
@@ -144,31 +144,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
 	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-							ContentName name, E data, CCNHandle handle) throws IOException {
-		this(type, contentIsMutable, name, data, DEFAULT_RAW, null, null, handle);
+							ContentName name, E data, SaveType saveType, CCNHandle handle) throws IOException {
+		this(type, contentIsMutable, name, data, saveType, null, null, handle);
 	}
-		
-	/**
-	 * Basic write constructor. This will set the object's internal data but it will not save it
-	 * until save() is called. Unless overridden by the subclass, will default to save to
-	 * a repository. Can be changed to save directly to the network using setRawSave().
-	 * If a subclass sets the default behavior to raw saves, this can be overridden on a
-	 * specific instance using setRepositorySave().
-	 * @param type Wrapped class type.
-	 * @param contentIsMutable is the wrapped class type mutable or not
-	 * @param name Name under which to save object.
-	 * @param data Data to save.
-	 * @param publisher The key to use to sign this data, or our default if null.
-	 * @param locator The key locator to use.
-	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
-	 * @throws IOException If there is an error setting up network backing store.
-	 */
-	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-							ContentName name, E data, PublisherPublicKeyDigest publisher, 
-							KeyLocator locator, CCNHandle handle) throws IOException {
-		this(type, contentIsMutable, name, data, DEFAULT_RAW, publisher, locator, handle);
-	}
-		
+				
 	/**
 	 * Basic write constructor. This will set the object's internal data but it will not save it
 	 * until save() is called. Unless overridden by the subclass, will default to save to
@@ -186,7 +165,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
 	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-							ContentName name, E data, boolean raw, 
+							ContentName name, E data, SaveType saveType, 
 							PublisherPublicKeyDigest publisher, KeyLocator locator,
 							CCNHandle handle) throws IOException {
 		super(type, contentIsMutable, data);
@@ -201,7 +180,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_baseName = name;
 		_publisher = publisher;
 		_keyLocator = locator;
-		_raw = raw;
+		_saveType = saveType;
 		// Make our flow controller and register interests for our base name, if we have one.
 		// Otherwise, create flow controller when we need one.
 		if (null != name) {
@@ -232,27 +211,18 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 								KeyLocator locator,
 								CCNFlowControl flowControl) throws IOException {
 		super(type, contentIsMutable, data);
-		CCNHandle handle = (null == flowControl) ? null : flowControl.getHandle();
-		if (null == handle) {
-			try {
-				handle = CCNHandle.open();
-			} catch (ConfigurationException e) {
-				throw new IllegalArgumentException("handle null, and cannot create one: " + e.getMessage(), e);
-			}
-		}
-		_handle = handle;
 		_baseName = name;
 		_publisher = publisher;
 		_keyLocator = locator;
+		if (null == flowControl) {
+			throw new IOException("FlowControl cannot be null!");
+		}
 		_flowControl = flowControl;
+		_handle = _flowControl.getHandle();
+		_saveType = _flowControl.saveType();
 		// Register interests for our base name, if we have one.
-		// Otherwise, create flow controller when we need one.
 		if (null != name) {
-			if (null != flowControl) {
-				flowControl.addNameSpace(name);
-			} else {
-				createFlowController();
-			}
+			flowControl.addNameSpace(name);
 		}
 	}
 
@@ -272,28 +242,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
 							ContentName name, CCNHandle handle) 
 				throws ContentDecodingException, IOException {
-		this(type, contentIsMutable, name, (PublisherPublicKeyDigest)null, handle);
-	}
-
-	/**
-	 * Read constructor. Will try to pull latest version of this object, or a specific
-	 * named version if specified in the name. If read times out, will leave object in
-	 * its uninitialized state, and continue attempting to update it (one time) in the
-	 * background.
-	 * @param type Wrapped class type.
-	 * @param contentIsMutable is the wrapped class type mutable or not
-	 * @param name Name from which to read the object. If versioned, will read that specific
-	 * 	version. If unversioned, will attempt to read the latest version available.
-	 * @param publisher Particular publisher we require to have signed the content, or null for any publisher.
-	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
-	 * @throws ContentDecodingException if there is a problem decoding the object.
-	 * @throws IOException if there is an error setting up network backing store.
-	 */
-	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-						    ContentName name, PublisherPublicKeyDigest publisher,
-						    CCNHandle handle) 
-			throws ContentDecodingException, IOException {
-		this(type, contentIsMutable, name, publisher, DEFAULT_RAW, handle);
+		this(type, contentIsMutable, name, 
+			(PublisherPublicKeyDigest)null, handle);
 	}
 
 	/**
@@ -313,12 +263,17 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	protected CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-							  ContentName name, PublisherPublicKeyDigest publisher,
+							  ContentName name, 
+							  PublisherPublicKeyDigest publisher,
 							  CCNFlowControl flowControl) 
 				throws ContentDecodingException, IOException {
 		super(type, contentIsMutable);
+		if (null == flowControl) {
+			throw new IOException("FlowControl cannot be null!");
+		}
 		_flowControl = flowControl;
-		_handle = flowControl.getHandle();
+		_handle = _flowControl.getHandle();
+		_saveType = _flowControl.saveType();
 		update(name, publisher);
 	}
 
@@ -332,14 +287,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param name Name from which to read the object. If versioned, will read that specific
 	 * 	version. If unversioned, will attempt to read the latest version available.
 	 * @param publisher Particular publisher we require to have signed the content, or null for any publisher.
-	 * @param raw If true, defaults to raw network writes, if false, repository writes.
 	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
 	 * @throws ContentDecodingException if there is a problem decoding the object.
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
 							ContentName name, PublisherPublicKeyDigest publisher,
-							boolean raw, CCNHandle handle) 
+							CCNHandle handle) 
 			throws ContentDecodingException, IOException {
 		super(type, contentIsMutable);
 		if (null == handle) {
@@ -353,21 +307,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_baseName = name;
 		update(name, publisher);
 	}
-
-	/**
-	 * Read constructor if you already have a segment of the object. Used by streams.
-	 * @param type Wrapped class type.
-	 * @param contentIsMutable is the wrapped class type mutable or not
-	 * @param firstSegment First segment of the object, retrieved by other means.
-	 * @param handle CCNHandle to use for network operations. If null, a new one is created using CCNHandle#open().
-	 * @throws ContentDecodingException if there is a problem decoding the object.
-	 * @throws IOException if there is an error setting up network backing store.
-	 */
-	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-						    ContentObject firstSegment, CCNHandle handle) 
-				throws ContentDecodingException, IOException {
-		this(type, contentIsMutable, firstSegment, DEFAULT_RAW, handle);
-	}
 	
 	/**
 	 * Read constructor if you already have a segment of the object. Used by streams.
@@ -380,7 +319,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-							ContentObject firstSegment, boolean raw, CCNHandle handle) 
+							ContentObject firstSegment, CCNHandle handle) 
 			throws ContentDecodingException, IOException {
 		super(type, contentIsMutable);
 		if (null == handle) {
@@ -406,13 +345,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	protected CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-							   ContentObject firstSegment, CCNFlowControl flowControl) 
+							   ContentObject firstSegment, 
+							   CCNFlowControl flowControl) 
 					throws ContentDecodingException, IOException {
 		super(type, contentIsMutable);
 		if (null == flowControl)
 			throw new IllegalArgumentException("flowControl cannot be null!");
 		_flowControl = flowControl;
-		_handle = flowControl.getHandle();
+		_handle = _flowControl.getHandle();
+		_saveType = _flowControl.saveType();
 		update(firstSegment);
 	}
 	
@@ -428,51 +369,38 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	protected synchronized void createFlowController() throws IOException {
 		if (null == _flowControl) {
-			_flowControl = (_raw ? new CCNFlowControl(_handle) : 
-								   new RepositoryFlowControl(_handle));
+			if (null == _saveType) {
+				throw new IOException("No saveType set!");
+			}
+			switch (_saveType) {
+			case RAW:
+				_flowControl = new CCNFlowControl(_handle);
+				break;
+			case REPOSITORY: 
+				_flowControl = new RepositoryFlowControl(_handle);
+				break;
+			default:
+				throw new IOException("Unknown save type: " + _saveType);
+			}
+
 			if (_disableFlowControlRequest)
 				_flowControl.disable();
 			// Have to register the version root. If we just register this specific version, we won't
 			// see any shorter interests -- i.e. for get latest version.
 			_flowControl.addNameSpace(_baseName);
-			Log.info("created " + (_raw ? "raw" : "repo") + " flow controller, for prefix {0}, is raw? " + _flowControl.writesRaw(), _baseName);
+			Log.info("Created " + _saveType + " flow controller, for prefix {0}, save type " + _flowControl.saveType(), _baseName);
 		}
 	}
-	
-	/**
-	 * Change the nature of this object to raw, if it isn't raw already.
-	 * @throws IOException 
-	 */
-	public synchronized void setRawSave() throws IOException {
-		if (null != _flowControl) {
-			if (_flowControl.writesRaw()) {
-				return; // already raw
-			}
-			_flowControl.shutdown();
-		}
-		_raw = true;
-		createFlowController();
-	}
-
-	/**
-	 * Change the nature of this object to raw, if it isn't raw already.
-	 * @throws IOException 
-	 */
-	public synchronized void setRepositorySave() throws IOException {
-		if (null != _flowControl) {
-			if (!_flowControl.writesRaw()) {
-				return; // already raw
-			}
-			_flowControl.shutdown();
-		}
-		_raw = false;
-		createFlowController();
-	}
-	
+		
 	/**
 	 * Start listening to interests on our base name, if we aren't already.
 	 * @throws IOException 
 	 */
+	public synchronized void setupSave(SaveType saveType) throws IOException {
+		setSaveType(saveType);
+		setupSave();
+	}
+	
 	public synchronized void setupSave() throws IOException {
 		if (null != _flowControl) {
 			if (null != _baseName) {
@@ -482,7 +410,23 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		createFlowController();
 	}
-
+	
+	public SaveType saveType() { return _saveType; }
+	
+	/**
+	 * Used by subclasses to specify a mandatory save type in
+	 * read constructors. Only works on objects whose flow
+	 * controller has not yet been set, to not override
+	 * manually-set FC's.
+	 */
+	protected void setSaveType(SaveType saveType) throws IOException {
+		if (null == _flowControl) {
+			_saveType = saveType;
+		} else if (saveType != _saveType){
+			throw new IOException("Cannot change save type, flow controller already set!");
+		}
+	}
+	
 	/**
 	 * Attempts to find a version after the latest one we have, or times out. If
 	 * it times out, it simply leaves the object unchanged.
@@ -845,7 +789,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
 			throw new IOException("Cannot call saveToRepository on raw object!");
 		}
-		_raw = false; // control what flow controller will be made
+		_saveType = SaveType.REPOSITORY; // control what flow controller will be made
 		return save(version);
 	}
 
@@ -926,7 +870,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
 			throw new IOException("Cannot call saveToRepository on raw object!");
 		}
-		_raw = false; // control what flow controller will be made
+		_saveType = SaveType.REPOSITORY; // control what flow controller will be made
 		return saveAsGone();
 	}
 

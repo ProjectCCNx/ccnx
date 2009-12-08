@@ -26,6 +26,7 @@ import java.util.SortedSet;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.keys.NetworkKeyManager;
 import org.ccnx.ccn.impl.security.keys.RepositoryKeyManager;
 import org.ccnx.ccn.impl.support.Log;
@@ -157,7 +158,10 @@ public class TestUserData {
 			ContentName keyStoreName = _userFriendlyNames.get(friendlyName);
 			KeyManager userKM = _userData.get(keyStoreName);
 			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
-			PublicKeyObject pko = new PublicKeyObject(keyName, userKM.getDefaultPublicKey(), getHandleForUser(friendlyName));
+			PublicKeyObject pko = 
+				new PublicKeyObject(keyName, userKM.getDefaultPublicKey(), 
+									SaveType.REPOSITORY,
+									getHandleForUser(friendlyName));
 			pko.save(); 
 		} 
 	}

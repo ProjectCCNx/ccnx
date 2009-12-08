@@ -24,6 +24,7 @@ import java.util.Random;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
@@ -65,7 +66,8 @@ public class LinkObjectTestRepo {
 		ContentName linkName = ContentName.fromNative(testHelper.getTestNamespace("testLinks"), "myLink");
 		
 		// Write something that isn't a collection
-		CCNSerializableStringObject so = new CCNSerializableStringObject(nonLinkName, "This is not a link, number " + new Random().nextInt(10000), putLibrary);
+		CCNSerializableStringObject so = 
+			new CCNSerializableStringObject(nonLinkName, "This is not a link, number " + new Random().nextInt(10000), SaveType.REPOSITORY, putLibrary);
 		so.save();
 		
 		try {
@@ -84,7 +86,7 @@ public class LinkObjectTestRepo {
 		}
 
 		Link lr = new Link(so.getVersionedName());
-		LinkObject aLink = new LinkObject(linkName, lr, putLibrary);
+		LinkObject aLink = new LinkObject(linkName, lr, SaveType.REPOSITORY, putLibrary);
 		aLink.save();
 		
 		ContentObject linkData = getLibrary.get(aLink.getVersionedName(), 5000);

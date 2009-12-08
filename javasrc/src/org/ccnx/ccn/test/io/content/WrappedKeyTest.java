@@ -27,6 +27,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.jce.CCNCryptoProvider;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.WrappedKey;
@@ -244,8 +245,8 @@ public class WrappedKeyTest {
 			CCNHandle handle = CCNHandle.open();
 			flosser = new Flosser();
 			flosser.handleNamespace(storedKeyName);
-			WrappedKeyObject wko = new WrappedKeyObject(storedKeyName, wks, handle);
-			wko.setRawSave();
+			WrappedKeyObject wko = 
+				new WrappedKeyObject(storedKeyName, wks, SaveType.RAW, handle);
 			wko.save();
 			Assert.assertTrue(VersioningProfile.hasTerminalVersion(wko.getVersionedName()));
 			// should update in another thread

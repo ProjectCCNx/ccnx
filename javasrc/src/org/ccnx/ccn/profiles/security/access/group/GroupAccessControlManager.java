@@ -32,6 +32,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -241,8 +242,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 		if (null == myPublicKey) {
 			myPublicKey = km.getDefaultPublicKey();
 		}
-		PublicKeyObject pko = new PublicKeyObject(identity, myPublicKey, handle());
-		pko.saveToRepository();
+		PublicKeyObject pko = new PublicKeyObject(identity, myPublicKey, SaveType.REPOSITORY, handle());
+		pko.save();
 		_myIdentities.add(identity);
 	}
 	
@@ -271,9 +272,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 */
 	public void publishUserIdentity(String userName, PublicKey userPublicKey) 
 			throws ConfigurationException, IOException, MalformedContentNameStringException {
-		PublicKeyObject pko = new PublicKeyObject(ContentName.fromNative(userName), userPublicKey, handle());
+		PublicKeyObject pko = new PublicKeyObject(ContentName.fromNative(userName), userPublicKey, SaveType.REPOSITORY, handle());
 		System.out.println("saving user pubkey to repo:" + userName);
-		pko.saveToRepository();
+		pko.save();
 	}
 	
 	public boolean haveIdentity(String userName) {
@@ -353,7 +354,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		
 		// write the root ACL
 		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(_namespace), rootACL, handle());
-		aclo.saveToRepository();
+		aclo.save();
 	}
 	
 	/**
@@ -486,7 +487,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		generateNewNodeKey(nodeName, effectiveNodeKey, newACL);
 		// write the acl
 		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(nodeName), newACL, handle());
-		aclo.saveToRepository();
+		aclo.save();
 		return aclo.acl();
 	}
 	
@@ -531,7 +532,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 										  effectiveParentNodeKey.nodeName(), effectiveParentNodeKey.nodeKey(), handle());
 		
 		// Then mark the ACL as gone.
-		thisNodeACL.saveToRepositoryAsGone();
+		thisNodeACL.saveAsGone();
 	}
 	
 	/**
@@ -613,7 +614,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		// If we got here, we got the node key we were updating, so we are allowed
 		// to at least read this stuff (though maybe not write it). Save the acl.
-		currentACL.saveToRepository(newACL);
+		currentACL.save(newACL);
 		return newACL;
 		
 	}

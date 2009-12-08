@@ -28,6 +28,7 @@ import java.util.logging.Level;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
@@ -130,8 +131,7 @@ public class PublicKeyObjectTestRepo {
 			flosser = new Flosser();
 		} 
 		flosser.handleNamespace(keyName);
-		PublicKeyObject pko = new PublicKeyObject(keyName, key, handle);
-		pko.setRawSave();
+		PublicKeyObject pko = new PublicKeyObject(keyName, key, SaveType.RAW, handle);
 		pko.save();
 		Log.info("Saved " + pko.getVersionedName() + ", now trying to read.");
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getVersionedName()));
@@ -146,7 +146,7 @@ public class PublicKeyObjectTestRepo {
 			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
 		}
 		if (null != optional2ndKey) {
-			pkoread.setRawSave();
+			pkoread.setupSave(SaveType.RAW);
 			Log.info("Reading and writing second raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 			pkoread.save(optional2ndKey);
 			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
@@ -172,7 +172,7 @@ public class PublicKeyObjectTestRepo {
 	public void testRepoKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, VersionMissingException {
 
 		Log.info("Reading and writing key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
-		PublicKeyObject pko = new PublicKeyObject(keyName, key, handle);
+		PublicKeyObject pko = new PublicKeyObject(keyName, key, SaveType.REPOSITORY, handle);
 		pko.save();
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getVersionedName()));
 		Log.info("Saved " + pko.getVersionedName() + " to repo, now trying to read.");

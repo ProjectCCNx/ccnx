@@ -67,8 +67,24 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  */
 public class CCNFlowControl implements CCNFilterListener {
 	
-	public enum Shape {STREAM};
+	public enum Shape {
+		STREAM("STREAM");
+		
+		Shape(String str) { this._str = str; }
+		public String value() { return _str; }
+		
+		private final String _str;
+	}
 	
+	public enum SaveType {
+		RAW ("RAW"), REPOSITORY ("REPOSITORY");
+
+		SaveType(String str) { this._str = str; }
+		public String value() { return _str; }
+		
+		private final String _str;
+	}
+
 	protected CCNHandle _handle = null;
 		
 	// Designed to allow a CCNOutputStream to flush its current output once without
@@ -698,7 +714,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Help users determine whether this is a raw or repository flow controller
+	 * Help users determine what type of flow controller this is.
 	 */
-	public boolean writesRaw() { return true; }
+	public SaveType saveType() { return SaveType.RAW; }
 }

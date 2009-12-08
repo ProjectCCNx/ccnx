@@ -11,6 +11,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -187,8 +188,8 @@ public abstract class AccessControlManager {
 	 * @throws ContentEncodingException 
 	 */
 	protected void storeKeyContent(ContentName dataNodeName, WrappedKey wrappedKey) throws ContentEncodingException, IOException {
-		WrappedKeyObject wko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), wrappedKey, handle());
-		wko.saveToRepository();
+		WrappedKeyObject wko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), wrappedKey, SaveType.REPOSITORY, handle());
+		wko.save();
 	}
 
 	/**

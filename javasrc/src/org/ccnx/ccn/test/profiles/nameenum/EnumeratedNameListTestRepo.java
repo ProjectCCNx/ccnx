@@ -27,10 +27,11 @@ import junit.framework.Assert;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.io.content.CCNSerializableStringObject;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -272,7 +273,8 @@ public class EnumeratedNameListTestRepo {
 	 * */
 	private ContentName addContentToRepo(ContentName name, CCNHandle handle) throws ConfigurationException, IOException {
 		//method to load something to repo for testing
-		CCNSerializableStringObject cso = new CCNSerializableStringObject(name, ContentName.componentPrintNative(name.lastComponent()), handle);
+		CCNStringObject cso = 
+			new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), SaveType.REPOSITORY, handle);
 		cso.save();
 		System.out.println("Saved new object: " + cso.getVersionedName());
 		return cso.getVersionedName();
