@@ -36,6 +36,7 @@ import javax.swing.JTextField;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -135,12 +136,11 @@ public class CCNChat extends JFrame implements ActionListener {
 	}
 	
 	public void listen() throws ConfigurationException, IOException {
-		_readString = new CCNStringObject(_namespace, (String)null, CCNHandle.open());
+		_readString = new CCNStringObject(_namespace, (String)null, SaveType.RAW, CCNHandle.open());
 		_readString.updateInBackground(true);
 		
 		String introduction = UserConfiguration.userName() + " has entered " + _namespace;
-		_writeString = new CCNStringObject(_namespace, introduction, CCNHandle.open());
-		_writeString.setRawSave(); // don't write to a repository
+		_writeString = new CCNStringObject(_namespace, introduction, SaveType.RAW, CCNHandle.open());
 		_writeString.save();
 		
 		// Need to do synchronization for updates that come in while we're processing last one.
