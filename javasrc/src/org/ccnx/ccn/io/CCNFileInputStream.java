@@ -282,7 +282,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 		if (headerRequested())
 			return; // done already
 		// Ask for the header, but update it in the background, as it may not be there yet.
-		_header = new HeaderObject(SegmentationProfile.headerName(baseName), null, publisher, null, _handle);
+		_header = new HeaderObject(SegmentationProfile.headerName(baseName), null, null, publisher, null, _handle);
 		Log.info("Retrieving header : " + _header.getBaseName() + " in background.");
 		_header.updateInBackground();
 	}

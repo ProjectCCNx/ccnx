@@ -31,6 +31,7 @@ import java.util.SortedSet;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -133,7 +134,7 @@ public class Group {
 		_groupManager = manager;
 		
 		_groupMembers = members;
-		_groupMembers.saveToRepository();
+		_groupMembers.save();
 
 		createGroupPublicKey(members);
 	}
@@ -391,8 +392,8 @@ public class Group {
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
-		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _handle);
-		precededByBlock.saveToRepository();
+		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, SaveType.REPOSITORY, _handle);
+		precededByBlock.save();
 	}
 	
 	/**
@@ -432,8 +433,8 @@ public class Group {
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
-		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _handle);
-		precededByBlock.saveToRepository();
+		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, SaveType.REPOSITORY, _handle);
+		precededByBlock.save();
 		
 		// generate new public keys for ancestor groups
 		ArrayList<Link> ancestors = recursiveAncestorList(null);
@@ -476,9 +477,9 @@ public class Group {
 		_groupPublicKey = 
 			new PublicKeyObject(
 					GroupAccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), 
-					pair.getPublic(),
+					pair.getPublic(), SaveType.REPOSITORY,
 					_handle);
-		_groupPublicKey.saveToRepository();
+		_groupPublicKey.save();
 		_groupPublicKey.updateInBackground(true);
 		
 		stopPrivateKeyDirectoryEnumeration();
@@ -535,8 +536,8 @@ public class Group {
 					// PG TODO check for existence of back pointer to avoid writing multiple copies of the same pointer
 					Link backPointer = new Link(groupName(), friendlyName(), null);
 					ContentName bpNamespace = GroupAccessControlProfile.groupPointerToParentGroupName(lr.targetName());
-					LinkObject bplo = new LinkObject(ContentName.fromNative(bpNamespace, friendlyName()), backPointer, _handle);
-					bplo.saveToRepository();
+					LinkObject bplo = new LinkObject(ContentName.fromNative(bpNamespace, friendlyName()), backPointer, SaveType.REPOSITORY, _handle);
+					bplo.save();
 				}
 
 				latestPublicKey = new PublicKeyObject(pkName, _handle);
@@ -661,7 +662,7 @@ public class Group {
 		}
 		// Don't actually save the new membership list till we're sure we can update the
 		// key.
-		_groupMembers.saveToRepository();
+		_groupMembers.save();
 	}
 
 	public void delete() throws IOException {

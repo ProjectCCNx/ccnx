@@ -28,12 +28,12 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileOutputStream;
-import org.ccnx.ccn.io.content.Collection;
-import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Exclude;
@@ -252,9 +252,9 @@ public class CCNFileProxy implements CCNFilterListener {
 					ner.add(children[i]);
 				}
 
-				Collection cd = ner.getNamesInCollectionData();
-				CollectionObject co = new CollectionObject(ner.getPrefix(), cd, _handle);
-				co.save(ner.getTimestamp(), interest);
+				NameEnumerationResponseMessage nem = ner.getNamesForResponse();
+				NameEnumerationResponseMessageObject neResponse = new NameEnumerationResponseMessageObject(ner.getPrefix(), nem, _handle);
+				neResponse.save(ner.getTimestamp(), interest);
 				Log.info("sending back name enumeration response {0}, timestamp (version) {1}.", ner.getPrefix(), ner.getTimestamp());
 			} else {
 				Log.info("no children available: we are not sending back a response to the name enumeration interest (interest = {0}); our response would have been {1}", interest, potentialCollectionName);

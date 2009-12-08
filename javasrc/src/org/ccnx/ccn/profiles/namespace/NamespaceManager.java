@@ -23,6 +23,7 @@ import java.util.Set;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
@@ -55,9 +56,11 @@ public class NamespaceManager {
 			public RootObject(ContentName name, CCNHandle handle) throws IOException {
 				super(Root.class, false, name, handle);
 			}
-			public RootObject(ContentName name, Root r, CCNHandle handle) throws IOException {
-				super(Root.class, false, name, r, handle);
+			
+			public RootObject(ContentName name, Root r, SaveType saveType, CCNHandle handle) throws IOException {
+				super(Root.class, false, name, r, saveType, handle);
 			}
+			
 			public ContentName namespace() {
 				return _baseName.copy(_baseName.count()-2);
 			}
@@ -103,12 +106,12 @@ public class NamespaceManager {
 		 * @throws IOException 
 		 * @throws ConfigurationException 
 		 */
-		public static void create(ContentName name, ACL acl, CCNHandle handle) throws IOException, ConfigurationException {
+		public static void create(ContentName name, ACL acl, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException {
 			Root r = new Root();
-			RootObject ro = new RootObject(AccessControlProfile.accessRoot(name), r, handle);
-			ro.saveToRepository();
+			RootObject ro = new RootObject(AccessControlProfile.accessRoot(name), r, saveType, handle);
+			ro.save();
 			ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
-			aclo.saveToRepository();
+			aclo.save();
 		}
 
 		@Override

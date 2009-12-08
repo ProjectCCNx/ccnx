@@ -26,6 +26,7 @@ import java.security.spec.InvalidKeySpecException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -57,8 +58,8 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * @param handle
 	 * @throws IOException
 	 */
-	public PublicKeyObject(ContentName name, PublicKey data, CCNHandle handle) throws IOException {
-		super(PublicKey.class, false, name, data, handle);
+	public PublicKeyObject(ContentName name, PublicKey data, SaveType saveType, CCNHandle handle) throws IOException {
+		super(PublicKey.class, false, name, data, saveType, handle);
 	}
 	
 	/**
@@ -70,9 +71,10 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * @param handle
 	 * @throws IOException
 	 */
-	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, 
+	public PublicKeyObject(ContentName name, PublicKey data, SaveType saveType,
+							PublisherPublicKeyDigest publisher, 
 							KeyLocator locator, CCNHandle handle) throws IOException {
-		super(PublicKey.class, false, name, data, publisher, locator, handle);
+		super(PublicKey.class, false, name, data, saveType, publisher, locator, handle);
 	}
 
 	/**

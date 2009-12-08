@@ -1,11 +1,22 @@
 package org.ccnx.ccn.profiles.nameenum;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.Collection;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentGoneException;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
  * NameEnumerationResponse objects are used to respond to incoming NameEnumeration interests.
@@ -20,6 +31,101 @@ public class NameEnumerationResponse {
 	private ContentName _prefix;
 	private ArrayList<ContentName> _names;
 	private CCNTime _version;
+	
+	/**
+	 * Inner class to slightly modify the collection type used to respond to NE
+	 * requests. Eventually will move to its own message type.
+	 */
+	public static class NameEnumerationResponseMessage extends Collection {
+		
+		public static class NameEnumerationResponseMessageObject extends CCNEncodableObject<NameEnumerationResponseMessage> {
+			
+			public NameEnumerationResponseMessageObject(ContentName name, NameEnumerationResponseMessage data, CCNHandle handle) throws IOException {
+				super(NameEnumerationResponseMessage.class, true, name, data, SaveType.RAW, null, null, handle);
+			}
+			
+			public NameEnumerationResponseMessageObject(ContentName name, java.util.Collection<Link> contents, CCNHandle handle) throws IOException {
+				this(name, new NameEnumerationResponseMessage(contents), handle);
+			}
+			
+			public NameEnumerationResponseMessageObject(ContentName name, Link [] contents, CCNHandle handle) throws IOException {
+				this(name, new NameEnumerationResponseMessage(contents), handle);			
+			}
+
+			public NameEnumerationResponseMessageObject(ContentName name, NameEnumerationResponseMessage data, PublisherPublicKeyDigest publisher, 
+									KeyLocator keyLocator, CCNHandle handle) throws IOException {
+				super(NameEnumerationResponseMessage.class, true, name, data, SaveType.RAW, publisher, keyLocator, handle);
+			}
+
+			public NameEnumerationResponseMessageObject(ContentName name, java.util.Collection<Link> contents, 
+									PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+				this(name, new NameEnumerationResponseMessage(contents), publisher, keyLocator, handle);
+			}
+			
+			public NameEnumerationResponseMessageObject(ContentName name, Link [] contents, PublisherPublicKeyDigest publisher, 
+									KeyLocator keyLocator, CCNHandle handle) throws IOException {
+				this(name, new NameEnumerationResponseMessage(contents), publisher, keyLocator, handle);			
+			}
+
+			public NameEnumerationResponseMessageObject(ContentName name, CCNHandle handle) 
+			throws ContentDecodingException, IOException {
+				super(NameEnumerationResponseMessage.class, true, name, (PublisherPublicKeyDigest)null, handle);
+				setSaveType(SaveType.RAW);
+			}
+
+			public NameEnumerationResponseMessageObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
+					throws ContentDecodingException, IOException {
+				super(NameEnumerationResponseMessage.class, true, name, publisher, handle);
+				setSaveType(SaveType.RAW);
+			}
+			
+			public NameEnumerationResponseMessageObject(ContentObject firstBlock, CCNHandle handle) 
+					throws ContentDecodingException, IOException {
+				super(NameEnumerationResponseMessage.class, true, firstBlock, handle);
+				setSaveType(SaveType.RAW);
+			}
+			
+			public NameEnumerationResponseMessage responseMessage() throws ContentNotReadyException, ContentGoneException {
+				return data();
+			}
+			
+			public LinkedList<Link> contents() throws ContentNotReadyException, ContentGoneException { 
+				if (null == data())
+					return null;
+				return data().contents(); 
+			}
+		}
+		
+		/*
+		 * Not used yet.
+		 */
+		public static final String NE_RESPONSE_MESSAGE = "NameEnumerationResponse";
+
+		public NameEnumerationResponseMessage() {
+			super();
+		}
+
+		public NameEnumerationResponseMessage(
+				ArrayList<ContentName> nameContents) {
+			super(nameContents);
+		}
+
+		public NameEnumerationResponseMessage(
+				java.util.Collection<Link> contents) {
+			super(contents);
+		}
+
+		public NameEnumerationResponseMessage(Link[] contents) {
+			super(contents);
+		}
+		
+		/* 
+		 * When we are ready to label this message separately, un-comment this.
+		@Override
+		public String getElementLabel() { return COLLECTION_ELEMENT; }
+		 */
+		
+	}
 	
 	/**
 	 * Empty NameEnumerationResponse constructor that sets the variables to null.
@@ -146,12 +252,8 @@ public class NameEnumerationResponse {
 	 * 
 	 * @return Collection A collection of the names (as Link objects) to return.
 	 */
-	public Collection getNamesInCollectionData() {
-		Link [] temp = new Link[_names.size()];
-		for (int x = 0; x < _names.size(); x++) {
-			temp[x] = new Link(_names.get(x));
-		}
-		return new Collection(temp);
+	public NameEnumerationResponseMessage getNamesForResponse() {
+		return new NameEnumerationResponseMessage(_names);
 	}
 	
 	/**

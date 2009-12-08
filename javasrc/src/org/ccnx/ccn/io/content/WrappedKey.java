@@ -33,6 +33,7 @@ import javax.crypto.NoSuchPaddingException;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -42,6 +43,7 @@ import org.ccnx.ccn.impl.security.crypto.jce.AESWrapWithPad;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
@@ -106,8 +108,14 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	 */
 	public static class WrappedKeyObject extends CCNEncodableObject<WrappedKey> {
 
-		public WrappedKeyObject(ContentName name, WrappedKey data, CCNHandle handle) throws IOException {
-			super(WrappedKey.class, true, name, data, handle);
+		public WrappedKeyObject(ContentName name, WrappedKey data, SaveType saveType, CCNHandle handle) throws IOException {
+			super(WrappedKey.class, true, name, data, saveType, handle);
+		}
+
+		public WrappedKeyObject(ContentName name, WrappedKey data, SaveType saveType,
+				PublisherPublicKeyDigest publisher, 
+				KeyLocator locator, CCNHandle handle) throws IOException {
+			super(WrappedKey.class, true, name, data, saveType, publisher, locator, handle);
 		}
 
 		public WrappedKeyObject(ContentName name, CCNHandle handle) 

@@ -25,12 +25,13 @@ import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -59,7 +60,7 @@ import org.ccnx.ccn.protocol.Interest;
  * @see CCNFilterListener
  * @see CCNInterestListener
  * @see BasicNameEnumeratorListener
- * @see CollectionObject
+ * @see NameEnumerationResponse
  *
  */
 
@@ -276,7 +277,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 				ner.removeInterest(interest);
             }
 
-			CollectionObject collection;
+			NameEnumerationResponseMessageObject neResponse;
 			ArrayList<ContentName> names = new ArrayList<ContentName>();
 			LinkedList<Link> links;
 			Interest newInterest = interest;
@@ -296,8 +297,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					}
 				
 					try {
-						collection = new CollectionObject(c, _handle);
-						links = collection.contents();
+						neResponse = new NameEnumerationResponseMessageObject(c, _handle);
+						links = neResponse.contents();
 						for (Link l: links) {
 							names.add(l.targetName());
 						}
@@ -330,22 +331,22 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	
 	public int handleInterests(ArrayList<Interest> interests) {
 		
-		ContentName collectionName = null;
+		ContentName responseName = null;
 		Link match;
-		Collection cd;
+		NameEnumerationResponseMessage nem;
 				
 		ContentName name = null;
 		NEResponse r = null;
 		for (Interest i: interests) {
 			name = i.name().clone();
 
-			cd = new Collection();
+			nem = new NameEnumerationResponseMessage();
 			//Verify NameEnumeration Marker is in the name
 			if (!name.contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
 				//Skip...  we don't handle these
 			} else {
 				name = name.cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
-				collectionName = new ContentName(name, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+				responseName = new ContentName(name, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 				
 				boolean skip = false;
 				synchronized (_handledResponses) {
@@ -374,18 +375,18 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 								na[0] = tn;
 								tempName = new ContentName(na);
 								match = new Link(tempName);
-								if (!cd.contents().contains(match)) {
-									cd.add(match);
+								if (!nem.contents().contains(match)) {
+									nem.add(match);
 								}
 							}
 						}
 					}
 			
-					if (cd.size()>0) {
+					if (nem.size() > 0) {
 						try {
-							CollectionObject collobj = new CollectionObject(collectionName, cd, _handle);
-							collobj.save();
-							Log.fine("Saved collection object in name enumeration: " + collobj.getVersionedName());
+							NameEnumerationResponseMessageObject nemobj = new NameEnumerationResponseMessageObject(responseName, nem, _handle);
+							nemobj.save();
+							Log.fine("Saved collection object in name enumeration: " + nemobj.getVersionedName());
 							
 							r.clean();
 						} catch(IOException e) {

@@ -23,6 +23,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -60,31 +62,40 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	 */
 	public static class CollectionObject extends CCNEncodableObject<Collection> {
 		
-		public CollectionObject(ContentName name, Collection data, CCNHandle handle) throws IOException {
-			super(Collection.class, true, name, data, handle);
+		public CollectionObject(ContentName name, Collection data, 
+								SaveType saveType, CCNHandle handle) throws IOException {
+			super(Collection.class, true, name, data,saveType, handle);
 		}
 		
-		public CollectionObject(ContentName name, java.util.Collection<Link> contents, CCNHandle handle) throws IOException {
-			this(name, new Collection(contents), handle);
+		public CollectionObject(ContentName name, 
+								java.util.Collection<Link> contents, 
+								SaveType saveType, CCNHandle handle) throws IOException {
+			this(name, new Collection(contents), saveType, handle);
 		}
 		
-		public CollectionObject(ContentName name, Link [] contents, CCNHandle handle) throws IOException {
-			this(name, new Collection(contents), handle);			
+		public CollectionObject(ContentName name, Link [] contents, 
+								SaveType saveType, CCNHandle handle) throws IOException {
+			this(name, new Collection(contents),saveType,  handle);			
 		}
 
-		public CollectionObject(ContentName name, Collection data, PublisherPublicKeyDigest publisher, 
+		public CollectionObject(ContentName name, Collection data, SaveType saveType,
+								PublisherPublicKeyDigest publisher, 
 								KeyLocator keyLocator, CCNHandle handle) throws IOException {
-			super(Collection.class, true, name, data, publisher, keyLocator, handle);
+			super(Collection.class, true, name, data, saveType, publisher, keyLocator, handle);
 		}
 
-		public CollectionObject(ContentName name, java.util.Collection<Link> contents, 
+		public CollectionObject(ContentName name, 
+								java.util.Collection<Link> contents, 
+								SaveType saveType,
 								PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
-			this(name, new Collection(contents), publisher, keyLocator, handle);
+			this(name, new Collection(contents), saveType, publisher, keyLocator, handle);
 		}
 		
-		public CollectionObject(ContentName name, Link [] contents, PublisherPublicKeyDigest publisher, 
+		public CollectionObject(ContentName name, Link [] contents, 
+								SaveType saveType,
+								PublisherPublicKeyDigest publisher, 
 								KeyLocator keyLocator, CCNHandle handle) throws IOException {
-			this(name, new Collection(contents), publisher, keyLocator, handle);			
+			this(name, new Collection(contents), saveType, publisher, keyLocator, handle);			
 		}
 
 		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
@@ -101,7 +112,25 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 				throws ContentDecodingException, IOException {
 			super(Collection.class, true, name, (PublisherPublicKeyDigest)null, handle);
 		}
-		
+
+		public CollectionObject(ContentName name, Collection data, 
+				PublisherPublicKeyDigest publisher, 
+				KeyLocator keyLocator, CCNFlowControl flowControl) throws IOException {
+			super(Collection.class, true, name, data, publisher, keyLocator, flowControl);
+		}
+
+		public CollectionObject(ContentName name,
+				PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
+		throws ContentDecodingException, IOException {
+			super(Collection.class, true, name, publisher, flowControl);
+		}
+
+		public CollectionObject(ContentObject firstBlock,
+				CCNFlowControl flowControl) 
+		throws ContentDecodingException, IOException {
+			super(Collection.class, true, firstBlock, flowControl);
+		}
+
 		public Collection collection() throws ContentNotReadyException, ContentGoneException {
 			return data();
 		}
@@ -136,6 +165,18 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		if (contents != null) {
 			for (int i=0; i < contents.length; ++i) {
 				_contents.add(contents[i]);
+			}
+		}
+	}
+	
+	/**
+	 * Make a Collection containing Links which only specify names.
+	 * @param nameContents The list of names to link to.
+	 */
+	public Collection(ArrayList<ContentName> nameContents) {
+		if (null != nameContents) {
+			for (ContentName name : nameContents) {
+				_contents.add(new Link(name));
 			}
 		}
 	}

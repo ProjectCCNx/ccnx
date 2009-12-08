@@ -29,6 +29,7 @@ import java.util.HashSet;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
@@ -178,7 +179,7 @@ public class GroupManager {
 			MembershipList ml = 
 				new MembershipList(
 						GroupAccessControlProfile.groupMembershipListName(_groupStorage, groupFriendlyName), 
-						new Collection(newMembers), _handle);
+						new Collection(newMembers), SaveType.REPOSITORY, _handle);
 			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _handle, this);
 			cacheGroup(newGroup);
 			if (amCurrentGroupMember(newGroup)) {

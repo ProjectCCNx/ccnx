@@ -23,6 +23,7 @@ import java.util.HashMap;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -55,16 +56,18 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	 */
 	public static class HeaderObject extends CCNEncodableObject<Header> {
 		
-		public HeaderObject(ContentName name, Header data, CCNHandle handle) throws IOException {
-			super(Header.class, true, name, data, handle);
+		public HeaderObject(ContentName name, Header data, SaveType saveType, CCNHandle handle) throws IOException {
+			super(Header.class, true, name, data, saveType, handle);
 		}
 		
-		public HeaderObject(ContentName name, Header data, PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
-			super(Header.class, true, name, data, publisher, keyLocator, handle);
+		public HeaderObject(ContentName name, Header data, SaveType saveType,
+							PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
+			super(Header.class, true, name, data, saveType, publisher, keyLocator, handle);
 		}
 
 		public HeaderObject(ContentName name,
-				Header data, PublisherPublicKeyDigest publisher,
+				Header data, 
+				PublisherPublicKeyDigest publisher,
 				KeyLocator keyLocator, CCNFlowControl flowControl) 
 				throws ContentDecodingException, IOException {
 			super(Header.class, true, name, data, publisher, keyLocator, flowControl);

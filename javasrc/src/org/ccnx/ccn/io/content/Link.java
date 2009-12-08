@@ -20,6 +20,7 @@ package org.ccnx.ccn.io.content;
 import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -63,13 +64,15 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	 */
 	public static class LinkObject extends CCNEncodableObject<Link> {
 		
-		public LinkObject(ContentName name, Link data, CCNHandle handle) throws IOException {
-			super(Link.class, true, name, data, handle);
+		public LinkObject(ContentName name, Link data, SaveType saveType, CCNHandle handle) throws IOException {
+			super(Link.class, true, name, data, saveType, handle);
 		}
 		
-		public LinkObject(ContentName name, Link data, PublisherPublicKeyDigest publisher, 
+		public LinkObject(ContentName name, Link data, SaveType saveType,
+						  PublisherPublicKeyDigest publisher, 
 						  KeyLocator keyLocator, CCNHandle handle) throws IOException {
-			super(Link.class, true, name, data, publisher, keyLocator, handle);
+			super(Link.class, true, name, data, saveType,
+					publisher, keyLocator, handle);
 		}
 
 		public LinkObject(ContentName name, CCNHandle handle) 
