@@ -370,7 +370,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected synchronized void createFlowController() throws IOException {
 		if (null == _flowControl) {
 			if (null == _saveType) {
-				throw new IOException("No saveType set!");
+				Log.finer("Not creating flow controller yet, no saveType set.");
+				return;
 			}
 			switch (_saveType) {
 			case RAW:
@@ -694,6 +695,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 		// Create the flow controller, if we haven't already.
 		createFlowController();
+		
+		// This is the point at which we care if we don't have a flow controller
+		if (null == _flowControl) {
+			throw new IOException("Cannot create flow controller! Specified save type is " + _saveType + "!");
+		}
 
 		// Handle versioning ourselves to make name handling easier. VOS should respect it.
 		ContentName name = _baseName;
@@ -786,10 +792,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
-		if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
-			throw new IOException("Cannot call saveToRepository on raw object!");
-		}
-		_saveType = SaveType.REPOSITORY; // control what flow controller will be made
+		setSaveType(SaveType.REPOSITORY);
 		return save(version);
 	}
 
@@ -867,10 +870,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	@Deprecated
 	public synchronized boolean saveToRepositoryAsGone() throws ContentEncodingException, IOException {
-		if ((null != _flowControl) && !(_flowControl instanceof RepositoryFlowControl)) {
-			throw new IOException("Cannot call saveToRepository on raw object!");
-		}
-		_saveType = SaveType.REPOSITORY; // control what flow controller will be made
+		setSaveType(SaveType.REPOSITORY);
 		return saveAsGone();
 	}
 
