@@ -188,6 +188,7 @@ public class PublicKeyObjectTestRepo {
 			Assert.assertEquals(pkoread.publicKey(), pko.publicKey());
 		}
 		if (null != optional2ndKey) {
+			pkoread.setupSave(SaveType.REPOSITORY);
 			Log.info("Reading and writing second key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 			pkoread.save(optional2ndKey);
 			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
