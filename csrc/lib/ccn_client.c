@@ -113,6 +113,7 @@ static void ccn_refresh_interest(struct ccn *, struct expressed_interest *);
 static void ccn_initiate_prefix_reg(struct ccn *,
                                     const void *, size_t,
                                     struct interest_filter *);
+static void finalize_pkey(struct hashtb_enumerator *e);
 static void finalize_keystore(struct hashtb_enumerator *e);
 
 static int
@@ -244,7 +245,8 @@ ccn_create(void)
     param.finalize_data = h;
     h->sock = -1;
     h->interestbuf = ccn_charbuf_create();
-    h->keys = hashtb_create(sizeof(struct ccn_pkey *), NULL);
+    param.finalize = &finalize_pkey;
+    h->keys = hashtb_create(sizeof(struct ccn_pkey *), &param);
     param.finalize = &finalize_keystore;
     h->keystores = hashtb_create(sizeof(struct ccn_keystore *), &param);
     s = getenv("CCN_DEBUG");
@@ -254,7 +256,8 @@ ccn_create(void)
 	char tap_name[255];
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, (int)getpid(), (int)tv.tv_sec, (int)tv.tv_usec) >= 255) {
+	if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, (int)getpid(),
+                     (int)tv.tv_sec, (int)tv.tv_usec) >= 255) {
 	    fprintf(stderr, "CCN_TAP path is too long: %s\n", s);
 	} else {
 	    h->tap = open(tap_name, O_WRONLY|O_APPEND|O_CREAT, S_IRWXU);
@@ -428,18 +431,7 @@ ccn_destroy(struct ccn **hp)
         hashtb_end(e);
         hashtb_destroy(&(h->interest_filters));
     }
-
-    /* XXX: remove this and rewrite as a finalizer on the hash table */
-    if (h->keys != NULL) {	/* KEYS */
-        for (hashtb_start(h->keys, e); e->data != NULL; hashtb_next(e)) {
-            struct ccn_pkey **entry = e->data;
-            if (*entry != NULL)
-                ccn_pubkey_free(*entry);
-            *entry = NULL;
-        }
-        hashtb_end(e);
-        hashtb_destroy(&(h->keys));
-    }
+    hashtb_destroy(&(h->keys));
     hashtb_destroy(&(h->keystores));
     ccn_charbuf_destroy(&h->interestbuf);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
@@ -822,7 +814,14 @@ ccn_cache_key(struct ccn *h,
     }
     hashtb_end(e);
     return (0);
+}
 
+static void
+finalize_pkey(struct hashtb_enumerator *e)
+{
+    struct ccn_pkey **entry = e->data;
+    if (*entry != NULL)
+        ccn_pubkey_free(*entry);
 }
 
 /**
