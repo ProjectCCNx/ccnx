@@ -656,7 +656,7 @@ link_propagating_interest_to_nameprefix(struct ccnd_handle *h,
         head = calloc(1, sizeof(*head));
         head->next = head;
         head->prev = head;
-        head->faceid = ~0;
+        head->faceid = CCN_NOFACEID;
         npe->propagating_head = head;
     }
     pe->next = head;
@@ -1226,7 +1226,7 @@ note_content_from(struct ccnd_handle *h,
 {
     if (npe->src == from_faceid)
         adjust_ipe_predicted_response(h, npe, 0);
-    else if (npe->src == ~0)
+    else if (npe->src == CCN_NOFACEID)
         npe->src = from_faceid;
     else {
         npe->osrc = npe->src;
@@ -1242,9 +1242,9 @@ reorder_outbound_using_history(struct ccnd_handle *h,
                                struct nameprefix_entry *npe,
                                struct ccn_indexbuf *outbound)
 {
-    if (npe->osrc != ~0)
+    if (npe->osrc != CCN_NOFACEID)
         ccn_indexbuf_move_to_end(outbound, npe->osrc);
-    if (npe->src != ~0)
+    if (npe->src != CCN_NOFACEID)
         ccn_indexbuf_move_to_end(outbound, npe->src);
 }
 
@@ -1504,7 +1504,7 @@ check_nameprefix_entries(struct ccnd_handle *h)
     for (npe = e->data; npe != NULL; npe = e->data) {
         if (npe->forward_to != NULL)
             check_forward_to(h, npe);
-        if (  npe->src == ~0 &&
+        if (  npe->src == CCN_NOFACEID &&
               npe->forward_to == NULL &&
               npe->children == 0 &&
               npe->forwarding == NULL) {
@@ -1516,7 +1516,7 @@ check_nameprefix_entries(struct ccnd_handle *h)
             }
         }
         npe->osrc = npe->src;
-        npe->src = ~0;
+        npe->src = CCN_NOFACEID;
         hashtb_next(e);
     }
     hashtb_end(e);
@@ -2124,7 +2124,7 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     if (selfreg) {
         if (strcmp(forwarding_entry->action, "selfreg") != 0)
             goto Finish;
-        if (forwarding_entry->faceid == ~0)
+        if (forwarding_entry->faceid == CCN_NOFACEID)
             forwarding_entry->faceid = h->interest_faceid;
         else if (forwarding_entry->faceid != h->interest_faceid)
             goto Finish;
@@ -2703,7 +2703,7 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
                 npe->usec = parent->usec;
             }
             else {
-                npe->src = npe->osrc = ~0;
+                npe->src = npe->osrc = CCN_NOFACEID;
                 npe->usec = (nrand48(h->seed) % 4096U) + 8192;
             }
         }

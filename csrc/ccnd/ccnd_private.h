@@ -194,6 +194,8 @@ struct face {
 #define CCN_FACE_UNDECIDED (1 << 9) /**< Might not be talking ccn */
 #define CCN_FACE_PERMANENT (1 << 10) /**< No timeout for inactivity */
 
+#define CCN_NOFACEID    (~0U)    /** denotes no face */
+
 /**
  *  The content hash table is keyed by the initial portion of the ContentObject
  *  that contains all the parts of the complete name.  The extdata of the hash
