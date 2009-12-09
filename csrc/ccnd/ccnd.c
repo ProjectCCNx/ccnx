@@ -1793,13 +1793,19 @@ ccnd_reg_prefix(struct ccnd_handle *h,
     struct ccn_forwarding *f = NULL;
     struct nameprefix_entry *npe = NULL;
     int res;
+    struct face *face = NULL;
 
     if ((flags & (CCN_FORW_CHILD_INHERIT |
                   CCN_FORW_ACTIVE        |
-                  CCN_FORW_ADVERTISE      )) != flags)
+                  CCN_FORW_ADVERTISE     |
+                  CCN_FORW_LAST          )) != flags)
         return(-1);
-    if (face_from_faceid(h, faceid) == NULL)
+    face = face_from_faceid(h, faceid);
+    if (face == NULL)
         return(-1);
+    /* This is a bit hacky, but it gives us a way to set CCN_FACE_DC */
+    if ((flags & CCN_FORW_LAST) != 0)
+        face->flags |= CCN_FACE_DC;
     hashtb_start(h->nameprefix_tab, e);
     res = nameprefix_seek(h, e, msg, comps, ncomps);
     if (res >= 0) {
@@ -2327,6 +2333,8 @@ get_outbound_faces(struct ccnd_handle *h,
             if (h->debug & 32)
                 ccnd_msg(h, "at %d adding %u", __LINE__, face->faceid);
             ccn_indexbuf_append_element(x, face->faceid);
+            if ((face->flags & CCN_FACE_DC) != 0)
+                ccn_indexbuf_move_to_front(x, face->faceid);
         }
     }
     return(x);
