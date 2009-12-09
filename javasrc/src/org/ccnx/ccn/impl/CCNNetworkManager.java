@@ -80,20 +80,22 @@ public class CCNNetworkManager implements Runnable {
 	/*
 	 * Static singleton.
 	 */
-	
 	protected Thread _thread = null; // the main processing thread
 	protected ThreadPoolExecutor _threadpool = null; // pool service for callback threads
 	protected DatagramChannel _channel = null; // for use by run thread only!
 	protected Selector _selector = null;
 	protected Throwable _error = null; // Marks error state of socket
 	protected boolean _run = true;
-	protected KeyManager _keyManager;
+
 	protected ContentObject _keepalive; 
 	protected FileOutputStream _tapStreamOut = null;
 	protected FileOutputStream _tapStreamIn = null;
 	protected long _lastHeartbeat = 0;
 	protected int _port = DEFAULT_AGENT_PORT;
 	protected String _host = DEFAULT_AGENT_HOST;
+	
+	// For handling protocol to speak to ccnd, must have keys
+	protected KeyManager _keyManager;
 
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
@@ -478,7 +480,7 @@ public class CCNNetworkManager implements Runnable {
 	 * The constructor. Attempts to connect to a ccnd at the currently specified port number
 	 * @throws IOException if the port is invalid
 	 */
-	public CCNNetworkManager() throws IOException {
+	public CCNNetworkManager(KeyManager keyManager) throws IOException {
 		// Determine port at which to contact agent
 		String portval = System.getProperty(PROP_AGENT_PORT);
 		if (null != portval) {
@@ -678,9 +680,14 @@ public class CCNNetworkManager implements Runnable {
 	 * @param caller 	must not be null
 	 * @param filter	ContentName containing prefix of interests to match
 	 * @param callbackListener a CCNFilterListener
+	 * @throws IOException 
 	 */
-	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
+	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) throws IOException {
 		Log.fine("setInterestFilter: {0}", filter);
+		if ((null == _keyManager) || (!_keyManager.initialized() || (null == _keyManager.getDefaultKeyID()))) {
+			Log.warning("Cannot set interest filter -- key manager not ready!");
+			throw new IOException("Cannot set interest filter -- key manager not ready!");
+		}
 		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
 		// serving any useful purpose.
 		setupTimers();

@@ -66,9 +66,10 @@ public interface CCNBase {
 	 * matching interests seen
 	 * @param filter
 	 * @param callbackListener
+	 * @throws IOException 
 	 */
 	public void registerFilter(ContentName filter,
-							   CCNFilterListener callbackListener);
+							   CCNFilterListener callbackListener) throws IOException;
 	
 	/**
 	 * Unregister a standing interest filter

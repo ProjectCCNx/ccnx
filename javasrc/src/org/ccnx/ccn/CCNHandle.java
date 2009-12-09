@@ -84,8 +84,9 @@ public class CCNHandle implements CCNBase {
 	 * run as if you were a different "user", with a different collection of keys.
 	 * @param keyManager the KeyManager to use
 	 * @return the CCNHandle
+	 * @throws IOException 
 	 */
-	public static CCNHandle open(KeyManager keyManager) { 
+	public static CCNHandle open(KeyManager keyManager) throws IOException { 
 		synchronized (CCNHandle.class) {
 			return new CCNHandle(keyManager);
 		}
@@ -129,16 +130,17 @@ public class CCNHandle implements CCNBase {
 	/**
 	 * Create a CCNHandle using the specified KeyManager
 	 * @param keyManager the KeyManager to use. cannot be null.
+	 * @throws IOException 
 	 */
-	protected CCNHandle(KeyManager keyManager) {
+	protected CCNHandle(KeyManager keyManager) throws IOException {
 		_userKeyManager = keyManager;
 		// force initialization of network manager
 		try {
-			_networkManager = new CCNNetworkManager();
+			_networkManager = new CCNNetworkManager(keyManager);
 		} catch (IOException ex){
 			Log.warning("IOException instantiating network manager: " + ex.getMessage());
-			ex.printStackTrace();
-			_networkManager = null;
+			Log.warningStackTrace(ex);
+			throw ex;
 		}
 	}
 
@@ -170,7 +172,7 @@ public class CCNHandle implements CCNBase {
 			synchronized(this) {
 				if (null == _networkManager) {
 					try {
-						_networkManager = new CCNNetworkManager();
+						_networkManager = new CCNNetworkManager(KeyManager.getKeyManager());
 					} catch (IOException ex){
 						Log.warning("IOException instantiating network manager: " + ex.getMessage());
 						ex.printStackTrace();
@@ -282,7 +284,7 @@ public class CCNHandle implements CCNBase {
 	 * @param callbackListener
 	 */
 	public void registerFilter(ContentName filter,
-			CCNFilterListener callbackListener) {
+			CCNFilterListener callbackListener) throws IOException {
 		getNetworkManager().setInterestFilter(this, filter, callbackListener);
 	}
 	
