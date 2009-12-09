@@ -44,6 +44,7 @@ import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.security.KeyProfile;
+import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.KeyName;
@@ -71,17 +72,27 @@ public class BasicKeyManager extends KeyManager {
 	protected String _keyStoreDirectory;
 	protected String _keyStoreFileName;
 	protected String _keyStoreType;
-	
 	protected KeyStore _keyStore;
+	
 	protected PublisherPublicKeyDigest _defaultKeyID;
 	protected X509Certificate _certificate;
 	protected PrivateKey _privateKey;
 	protected KeyLocator _keyLocator;
-	protected boolean _initialized = false;
 	
-	protected KeyRepository _keyRepository = null;
+	protected boolean _initialized = false;
+	protected boolean _defaultKeysPublished = false;
 	
 	private char [] _password = null;
+	
+	/**
+	 * Cache of public keys, handles key publishing, etc.
+	 */
+	protected KeyRepository _keyRepository = null;
+	
+	/**
+	 * Cache of private keys, loaded from keystores.
+	 */
+	protected KeyCache _privateKeyCache = null;
 	
 	/**
 	 * Subclass constructor that sets store-independent parameters.
@@ -131,23 +142,42 @@ public class BasicKeyManager extends KeyManager {
 	 * but this wouldn't work past one level, and this allows subclasses to override initialize behavior.
 	 * @throws ConfigurationException 
 	 */
-	public synchronized void initialize() throws ConfigurationException {
+	@Override
+	public synchronized void initialize() throws ConfigurationException, IOException {
 		if (_initialized)
 			return;
-		loadKeyStore();
-		try {
-			// we've put together enough of this KeyManager to let the
-			// KeyRepository use it to make a CCNHandle, even though we're
-			// not done...
-			_keyRepository = new KeyRepository(this);
-			publishDefaultKey();
-		} catch (IOException e) {
-			throw new ConfigurationException("IOException publishing default key: " + e.getMessage(), e);
+		_keyRepository = new KeyRepository(this);
+		_privateKeyCache = new KeyCache();
+		_keyStore = loadKeyStore();// uses _keyRepository and _privateKeyCache
+		if (!loadValuesFromKeystore(_keyStore)) {
+			Log.warning("Cannot process keystore!");
 		}
-		_initialized = true;
+		_initialized = true;		
+		// Can we publish keys now?
+		publishKeys(null);
 	}
 	
-	protected boolean initialized() { return _initialized; }
+	@Override
+	public synchronized void publishKeys(ContentName defaultPrefix) throws ConfigurationException, IOException {
+		if (!initialized()) {
+			throw new IOException("Cannot publish keys, have not yet initialized KeyManager!");
+		}
+		// we've put together enough of this KeyManager to let the
+		// KeyRepository use it to make a CCNHandle, even though we're
+		// not done...
+		if (_defaultKeysPublished) {
+			return;
+		}
+		publishDefaultKey();
+		_defaultKeysPublished = true;
+	}
+	
+	@Override
+	public boolean initialized() { return _initialized; }
+	
+	/**
+	 * Publish our default key at a particular name.
+	 */
 	
 	protected void setPassword(char [] password) {
 		_password = password;
@@ -160,29 +190,27 @@ public class BasicKeyManager extends KeyManager {
 	 * 	uses default in user's home directory.
 	 * @throws ConfigurationException
 	 */
-	protected void loadKeyStore() throws ConfigurationException {
+	protected KeyStore loadKeyStore() throws ConfigurationException, IOException {
 		
 		File keyStoreFile = new File(_keyStoreDirectory, _keyStoreFileName);
+		KeyStore keyStore = null;
 		if (!keyStoreFile.exists()) {
 			Log.info("Creating new CCN key store..." + keyStoreFile.getAbsolutePath());
-			_keyStore = createKeyStore();
+			keyStore = createKeyStore();
 			Log.info("...created key store.");
 		}
-		if (null == _keyStore) {
+		if (null == keyStore) {
 			FileInputStream in = null;
 			Log.info("Loading CCN key store from " + keyStoreFile.getAbsolutePath() + "...");
 			try {
 				in = new FileInputStream(keyStoreFile);
-				readKeyStore(in);
+				keyStore = readKeyStore(in);
 			} catch (FileNotFoundException e) {
 				Log.warning("Cannot open existing key store file: " + _keyStoreFileName);
-				throw new ConfigurationException("Cannot open existing key store file: " + _keyStoreFileName);
+				throw e;
 			} 
 		}
-		// Overriding classes must call this.
-		if (!loadValuesFromKeystore(_keyStore)) {
-			Log.warning("Cannot process keystore!");
-		}
+		return keyStore;
 	}
 	
 	/**
@@ -191,48 +219,48 @@ public class BasicKeyManager extends KeyManager {
 	 * @param in input stream
 	 * @throws ConfigurationException
 	 */
-	protected void readKeyStore(InputStream in) throws ConfigurationException {
-		if (null == _keyStore) {
+	protected KeyStore readKeyStore(InputStream in) throws ConfigurationException {
+		KeyStore keyStore = null;
+		try {
+			Log.info("Loading CCN key store...");
+			keyStore = KeyStore.getInstance(_keyStoreType);
+			keyStore.load(in, _password);
+		} catch (NoSuchAlgorithmException e) {
+			Log.warning("Cannot load keystore: " + e);
+			throw new ConfigurationException("Cannot load default keystore: " + e);
+		} catch (CertificateException e) {
+			Log.warning("Cannot load keystore with no certificates.");
+			throw new ConfigurationException("Cannot load keystore with no certificates.");
+		} catch (IOException e) {
+			Log.warning("Cannot open existing key store: " + e);
 			try {
-				Log.info("Loading CCN key store...");
-				_keyStore = KeyStore.getInstance(_keyStoreType);
-				_keyStore.load(in, _password);
-			} catch (NoSuchAlgorithmException e) {
-				Log.warning("Cannot load keystore: " + e);
-				throw new ConfigurationException("Cannot load default keystore: " + e);
-			} catch (CertificateException e) {
-				Log.warning("Cannot load keystore with no certificates.");
-				throw new ConfigurationException("Cannot load keystore with no certificates.");
-			} catch (IOException e) {
-				Log.warning("Cannot open existing key store: " + e);
-				try {
-					in.reset();
-					java.io.FileOutputStream bais = new java.io.FileOutputStream("KeyDump.p12");
-					byte [] tmp = new byte[2048];
-					int read = in.read(tmp);
-					while (read > 0) {
-						bais.write(tmp, 0, read);
-					}
-					bais.flush();
-					bais.close();
-				} catch (IOException e1) {
-					Log.info("Another exception: " + e1);
+				in.reset();
+				java.io.FileOutputStream bais = new java.io.FileOutputStream("KeyDump.p12");
+				byte [] tmp = new byte[2048];
+				int read = in.read(tmp);
+				while (read > 0) {
+					bais.write(tmp, 0, read);
 				}
-				throw new ConfigurationException(e);
-			} catch (KeyStoreException e) {
-				Log.warning("Cannot create instance of preferred key store type: " + _keyStoreType + " " + e.getMessage());
-				Log.warningStackTrace(e);
-				throw new ConfigurationException("Cannot create instance of default key store type: " + _keyStoreType + " " + e.getMessage());
-			} finally {
-				if (null != in)
-					try {
-						in.close();
-					} catch (IOException e) {
-						Log.warning("IOException closing key store file after load.");
-						Log.warningStackTrace(e);
-					}
+				bais.flush();
+				bais.close();
+			} catch (IOException e1) {
+				Log.info("Another exception: " + e1);
 			}
+			throw new ConfigurationException(e);
+		} catch (KeyStoreException e) {
+			Log.warning("Cannot create instance of preferred key store type: " + _keyStoreType + " " + e.getMessage());
+			Log.warningStackTrace(e);
+			throw new ConfigurationException("Cannot create instance of default key store type: " + _keyStoreType + " " + e.getMessage());
+		} finally {
+			if (null != in)
+				try {
+					in.close();
+				} catch (IOException e) {
+					Log.warning("IOException closing key store file after load.");
+					Log.warningStackTrace(e);
+				}
 		}
+		return keyStore;
 	}
 	
 	/**
@@ -251,6 +279,8 @@ public class BasicKeyManager extends KeyManager {
 		    _certificate = (X509Certificate)entry.getCertificate();
 		    _defaultKeyID = new PublisherPublicKeyDigest(_certificate.getPublicKey());
 			Log.info("Default key ID for user " + _userName + ": " + _defaultKeyID);
+			
+			_privateKeyCache.loadKeyStore(keyStore, _password, _keyRepository);
 
 		    // Check to make sure we've published information about
 		    // this key. (e.g. in testing, we may frequently
