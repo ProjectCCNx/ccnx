@@ -70,6 +70,7 @@ public class KeyRepository {
 	// Stop logging to key cache by default.
 	protected static final boolean _DEBUG = false;
 	
+	protected KeyManager _keyManager = null;
 	protected CCNHandle _handle = null;
 	protected CCNFlowServer _keyServer = null;
 	
@@ -79,21 +80,38 @@ public class KeyRepository {
 	protected HashMap<PublisherPublicKeyDigest, Certificate> _rawCertificateMap = new HashMap<PublisherPublicKeyDigest, Certificate>();
 	
 	/** 
-	 * Constructor. Must be called carefully; either with a fully constructed and
-	 * initialized KeyManager, or as is used by the implementation, a sufficiently
-	 * initialized KeyManager to allow us to make a CCNHandle that we can use to
-	 * publish keys.
-	 * 
-	 * @throws IOException
+	 * Constructor. Doesn't actually use the KeyManager right away;
+	 * doesn't attempt network operations until initializeKeyServer
+	 * is called (usually by publishKey).
 	 */
-	public KeyRepository(KeyManager keyManager) throws IOException {
-		_handle = CCNHandle.open(keyManager); // maintain our own connection to the agent, so
-			// everyone can ask us for keys even if we have no repository
+	public KeyRepository(KeyManager keyManager) {
+		_keyManager = keyManager;
+	}
+	
+	/**
+	 * Constructor; uses existing handle.
+	 * @param handle
+	 */
+	public KeyRepository(CCNHandle handle) {
+		_handle = handle;
+		_keyManager = handle.keyManager();
+	}
+	
+	public CCNHandle handle() { return _handle; }
+	
+	public synchronized void initializeKeyServer() throws IOException {
+		if (keyServerIsInitialized()) {
+			return;
+		}
+		_handle = CCNHandle.open(_keyManager); // maintain our own connection to the agent, so
+		// everyone can ask us for keys even if we have no repository
 		// make a buffered server to return key data
 		_keyServer = new CCNFlowServer(null, true, _handle);
 	}
 	
-	public CCNHandle handle() { return _handle; }
+	public synchronized boolean keyServerIsInitialized() {
+		return (null != _keyServer);
+	}
 		
 	/**
 	 * Published a signed record for this key if one doesn't exist.
@@ -132,7 +150,10 @@ public class KeyRepository {
 	 */
 	public void publishKey(ContentName keyName, PublicKey key, PublisherPublicKeyDigest signingKeyID, KeyLocator keyLocator) 
 						throws IOException {
-
+		
+		// Set up key server if it hasn't been set up already
+		initializeKeyServer();
+		
 		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(key);
 		
 		// See if we can pull something acceptable for this key at this name.
