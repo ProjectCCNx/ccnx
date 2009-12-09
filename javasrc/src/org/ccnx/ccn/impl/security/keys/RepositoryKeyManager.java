@@ -62,7 +62,8 @@ public class RepositoryKeyManager extends NetworkKeyManager {
 	 * @throws ContentEncodingException
 	 * @throws IOException
 	 */
-	protected OutputStream createKeyStoreWriteStream() throws ContentEncodingException, IOException {
+	@Override
+	protected OutputStream createKeyStoreWriteStream() throws IOException {
 		return new RepositoryVersionedOutputStream(_keystoreName, _handle);
 	}
 }

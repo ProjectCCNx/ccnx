@@ -144,17 +144,20 @@ public abstract class KeyManager {
 	/**
 	 * Allows subclasses to specialize key manager initialization.
 	 * @throws ConfigurationException
+	 * @throws IOException 
 	 */
-	public abstract void initialize() throws ConfigurationException;
+	public abstract void initialize() throws ConfigurationException, IOException;
+	
+	public abstract boolean initialized();
 	
 	/**
-	 * Get the key repository
-	 * @return the key repository
+	 * Allow subclasses to specialize key publication, if any.
+	 * @param defaultPrefix our default namespace, if we know
+	 * 	one for this environment. If null, take user defaults.
+	 * @throws ConfigurationException 
 	 */
-	public static KeyRepository getKeyRepository() {
-		return getKeyManager().keyRepository();
-	}
-
+	public abstract void publishKeys(ContentName defaultPrefix) throws IOException, ConfigurationException;
+	
 	/**
 	 * Get our default key ID.
 	 * @return the digest of our default key
@@ -187,19 +190,26 @@ public abstract class KeyManager {
 	public abstract KeyLocator getKeyLocator(PublisherPublicKeyDigest publisherKeyID);
 
 	/**
+	 * Get a KEY type key locator for a particular public key.
+	 * @param publisherKeyID the key whose locator we want to retrieve
+	 * @return the key locator
+	 * @throws IOException 
+	 */
+	public KeyLocator getKeyTypeKeyLocator(PublisherPublicKeyDigest publisherKeyID) throws IOException {
+		PublicKey theKey = getPublicKey(publisherKeyID);
+		if (null == theKey) {
+			return null;
+		}
+		return new KeyLocator(theKey);
+	}
+	
+	/**
 	 * Generate the default name under which to write this key.
 	 * @param keyID the binary digest of the name component of the key
 	 * @return the name of the key to publish under
 	 */
 	public abstract ContentName getDefaultKeyName(byte [] keyID);
 	
-	/**
-	 * Get the public key associated with a given Java keystore alias
-	 * @param alias the alias for the key
-	 * @return the key, or null if no such alias
-	 */
-	public abstract PublicKey getPublicKey(String alias);
-
 	/**
 	 * Get the public key associated with a given publisher
 	 * @param publisher the digest of the desired key
@@ -231,13 +241,6 @@ public abstract class KeyManager {
 		return new KeyLocator(new ContentName(UserConfiguration.defaultUserNamespace(), KeyProfile.KEY_NAME_COMPONENT),
 				new PublisherID(signingKeyID));
 	}
-
-	/**
-	 * Get the private key associated with a given Java keystore alias
-	 * @param alias the alias for the key
-	 * @return the key, or null if no such alias
-	 */
-	public abstract PrivateKey getSigningKey(String alias);
 
 	/**
 	 * Get the private key associated with a given publisher 

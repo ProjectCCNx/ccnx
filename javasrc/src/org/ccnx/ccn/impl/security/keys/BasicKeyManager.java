@@ -32,7 +32,6 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
@@ -269,15 +268,25 @@ public class BasicKeyManager extends KeyManager {
 	}
 		
 	/**
+	 * Creates a CCN versioned output stream as the key storage 
+	 * @throws ConfigurationException
+	 */
+	synchronized protected KeyStore createKeyStore() throws ConfigurationException, IOException {
+		
+		OutputStream out = createKeyStoreWriteStream();
+	    return createKeyStore(out);	    
+	}
+
+	/**
 	 * Creates a key store file
 	 * @throws ConfigurationException
 	 */
-	synchronized protected KeyStore createKeyStore() throws ConfigurationException {
+	protected OutputStream createKeyStoreWriteStream() throws ConfigurationException, IOException {
 		
 		File keyStoreDir = new File(_keyStoreDirectory);
 		if (!keyStoreDir.exists()) {
 			if (!keyStoreDir.mkdirs()) {
-				generateConfigurationException("Cannot create keystore directory: " + keyStoreDir.getAbsolutePath(), null);
+				throw new ConfigurationException("Cannot create keystore directory: " + keyStoreDir.getAbsolutePath(), null);
 			}
 		}
 		
@@ -293,7 +302,7 @@ public class BasicKeyManager extends KeyManager {
 		} catch (FileNotFoundException e) {
 			generateConfigurationException("Cannot create keystore file: " + keyStoreFile.getAbsolutePath(), e);
 		} 
-	    return createKeyStore(out);	    
+	    return out;   
 	}
 	
 	/**
@@ -452,41 +461,7 @@ public class BasicKeyManager extends KeyManager {
 		return new ContentName(keyDir, KeyProfile.keyIDToNameComponent(keyID));
 	}
 	
-	/** 
-	 * Get public key given a string alias
-	 * @param alias alias for certificate
-	 * @return public key
-	 */
-	@Override
-	public PublicKey getPublicKey(String alias) {
-		Certificate cert = null;;
-		try {
-			cert = _keyStore.getCertificate(alias);
-		} catch (KeyStoreException e) {
-			Log.info("No certificate for alias " + alias + " in BasicKeymManager keystore.");
-			return null;
-		}
-		return cert.getPublicKey();
-	}
 	
-	/**
-	 * Get signing key given string alias
-	 * @param alias certificate alias
-	 * @return private signing key
-	 */
-	@Override
-	public PrivateKey getSigningKey(String alias) {
-		PrivateKey key = null;
-		try {
-			key = (PrivateKey)_keyStore.getKey(alias, _password);
-		} catch (Exception e) {
-			Log.info("No key for alias " + alias + " in BasicKeymManager keystore. " + 
-						e.getClass().getName() + ": " + e.getMessage());
-			return null;
-		}
-		return key;
-	}
-
 	/**
 	 * Get signing keys
 	 * @return private signing keys
@@ -497,20 +472,6 @@ public class BasicKeyManager extends KeyManager {
 		return new PrivateKey[]{getDefaultSigningKey()};
 	}
 	
-	/**
-	 * Get public key for publisher
-	 * @param publisher publisher public key digest
-	 * @return public key
-	 * @throws IOException
-	@Override
-	public PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws IOException {
-		Log.finer("getPublicKey: retrieving key: " + publisher);
-		
-		if (_defaultKeyID.equals(publisher))
-			return _certificate.getPublicKey();
-		return keyRepository().getPublicKey(publisher);
-	}
-
 	/**
 	 * Get private signing key for a publisher. 
 	 * If I am the publisher, return signing key;
