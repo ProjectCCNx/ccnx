@@ -18,13 +18,21 @@
 package org.ccnx.ccn.profiles.security.access;
 
 import java.security.Key;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.util.TreeMap;
+import java.security.UnrecoverableEntryException;
+import java.security.cert.X509Certificate;
 import java.util.Comparator;
+import java.util.Enumeration;
+import java.util.TreeMap;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.security.keys.KeyRepository;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -49,7 +57,6 @@ public class KeyCache {
 	private TreeMap<byte [], ContentName> _keyNameMap = new TreeMap<byte [], ContentName>(byteArrayComparator);
 	
 	public KeyCache() {
-		this(KeyManager.getKeyManager());
 	}
 	
 	/**
@@ -63,6 +70,41 @@ public class KeyCache {
 		}
 	}
 	
+	/**
+	 * Load the private keys from a KeyStore.
+	 * @param keystore
+	 * @throws KeyStoreException 
+	 */
+	public void loadKeyStore(KeyStore keyStore, char [] password, KeyRepository publicKeyCache) throws KeyStoreException {
+		Enumeration<String> aliases = keyStore.aliases();
+		String alias;
+		KeyStore.PrivateKeyEntry entry = null;
+		KeyStore.PasswordProtection passwordProtection = new KeyStore.PasswordProtection(password);
+		while (aliases.hasMoreElements()) {
+			alias = aliases.nextElement();
+			try {
+				entry = (KeyStore.PrivateKeyEntry)keyStore.getEntry(alias, passwordProtection);
+			} catch (NoSuchAlgorithmException e) {
+				throw new KeyStoreException("Unexpected NoSuchAlgorithm retrieving key for alias : " + alias, e);
+			} catch (UnrecoverableEntryException e) {
+				throw new KeyStoreException("Unexpected UnrecoverableEntryException retrieving key for alias : " + alias, e);
+			}
+			if (null == entry) {
+				Log.warning("Cannot get private key entry for alias: " + alias);
+			} else {
+				PrivateKey pk = entry.getPrivateKey();
+				X509Certificate certificate = (X509Certificate)entry.getCertificate();
+				PublisherPublicKeyDigest ppkd = new PublisherPublicKeyDigest(certificate.getPublicKey());
+				if (null != pk) {
+					if (null != ppkd) {
+						addMyPrivateKey(ppkd.digest(), pk);
+						publicKeyCache.remember(certificate);
+					}
+				}
+			}
+		}
+	}
+
 	/**
 	 * Retrieve a key specified by its digest
 	 * To restrict access to keys, store key cache in a private variable, and don't
@@ -158,7 +200,9 @@ public class KeyCache {
 	public void addKey(ContentName name, Key key) {
 		byte [] id = getKeyIdentifier(key);
 		_keyMap.put(id, key);
-		_keyNameMap.put(id, name);
+		if (null != name) {
+			_keyNameMap.put(id, name);
+		}
 	}
 	
 	public PublisherPublicKeyDigest getPublicKeyIdentifier(PrivateKey pk) {
