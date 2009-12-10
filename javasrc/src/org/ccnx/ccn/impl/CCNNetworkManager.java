@@ -712,6 +712,13 @@ public class CCNNetworkManager implements Runnable {
 	}
 	
 	/**
+	 * 
+	 */
+	public void setKeyManager(KeyManager manager) {
+		_keyManager = manager;
+	}
+	
+	/**
 	 * Write content to ccnd
 	 * 
 	 * @param co the content
