@@ -85,13 +85,20 @@ static unsigned char ccndid_storage[32] = {0};
 static const unsigned char *ccndid = ccndid_storage;
 static size_t ccndid_size;
 
+/*
+ * Global data
+ */
+int verbose = 0;
+
+
 static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-d] (-f configfile | (add|del) uri proto host [port [flags [mcastttl [mcastif]]]])\n"
+            "%s [-d] [-v] (-f configfile | (add|del) uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])\n"
             "   -d enter dynamic mode and create FIB entries based on DNS SRV records\n"
             "   -f configfile add or delete FIB entries based on contents of configfile\n"
+            "   -v increase logging level\n"
             "	add|del add or delete FIB entry based on parameters\n",
             progname);
     exit(1);
@@ -133,16 +140,20 @@ on_error_exit(int res, int lineno)
 }
 
 #define ON_ERROR_CLEANUP(resval) \
-	{ 			\
-            if ((resval) < 0) \
-                                   goto Cleanup; \
-        }
+    { 			\
+        if ((resval) < 0) { \
+            if (verbose > 0) ccndc_warn (__LINE__, "OnError cleanup\n"); \
+            goto Cleanup; \
+        } \
+    }
 
 #define ON_NULL_CLEANUP(resval) \
-	{ 			\
-            if ((resval) == NULL) \
-                                   goto Cleanup; \
-        }
+    { 			\
+        if ((resval) == NULL) { \
+            if (verbose > 0) ccndc_warn(__LINE__, "OnNull cleanup\n"); \
+        goto Cleanup; \
+        } \
+    }
 
 static void
 initialize_global_data(void) {
@@ -843,13 +854,16 @@ main(int argc, char **argv)
     initialize_global_data();
 
     progname = argv[0];
-    while ((ch = getopt(argc, argv, "hf:d")) != -1) {
+    while ((ch = getopt(argc, argv, "hf:dv")) != -1) {
         switch (ch) {
         case 'f':
             configfile = optarg;
             break;
         case 'd':
             dynamic = 1;
+            break;
+        case 'v':
+            verbose++;
             break;
         case 'h':
         default:
