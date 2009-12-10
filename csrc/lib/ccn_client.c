@@ -92,8 +92,9 @@ struct interest_filter { /* keyed by components of name */
     struct ccn_closure *action;
     struct ccn_reg_closure *ccn_reg_closure;
     struct timeval expiry;       /* Expiration time */
-    int waiting_ccndid;
+    int flags;
 };
+#define CCN_FORW_WAITING_CCNDID (1<<30)
 
 struct ccn_reg_closure {
     struct ccn_closure action;
@@ -113,6 +114,7 @@ static void ccn_refresh_interest(struct ccn *, struct expressed_interest *);
 static void ccn_initiate_prefix_reg(struct ccn *,
                                     const void *, size_t,
                                     struct interest_filter *);
+static void finalize_pkey(struct hashtb_enumerator *e);
 static void finalize_keystore(struct hashtb_enumerator *e);
 
 static int
@@ -244,7 +246,8 @@ ccn_create(void)
     param.finalize_data = h;
     h->sock = -1;
     h->interestbuf = ccn_charbuf_create();
-    h->keys = hashtb_create(sizeof(struct ccn_pkey *), NULL);
+    param.finalize = &finalize_pkey;
+    h->keys = hashtb_create(sizeof(struct ccn_pkey *), &param);
     param.finalize = &finalize_keystore;
     h->keystores = hashtb_create(sizeof(struct ccn_keystore *), &param);
     s = getenv("CCN_DEBUG");
@@ -254,7 +257,8 @@ ccn_create(void)
 	char tap_name[255];
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, (int)getpid(), (int)tv.tv_sec, (int)tv.tv_usec) >= 255) {
+	if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, (int)getpid(),
+                     (int)tv.tv_sec, (int)tv.tv_usec) >= 255) {
 	    fprintf(stderr, "CCN_TAP path is too long: %s\n", s);
 	} else {
 	    h->tap = open(tap_name, O_WRONLY|O_APPEND|O_CREAT, S_IRWXU);
@@ -428,18 +432,7 @@ ccn_destroy(struct ccn **hp)
         hashtb_end(e);
         hashtb_destroy(&(h->interest_filters));
     }
-
-    /* XXX: remove this and rewrite as a finalizer on the hash table */
-    if (h->keys != NULL) {	/* KEYS */
-        for (hashtb_start(h->keys, e); e->data != NULL; hashtb_next(e)) {
-            struct ccn_pkey **entry = e->data;
-            if (*entry != NULL)
-                ccn_pubkey_free(*entry);
-            *entry = NULL;
-        }
-        hashtb_end(e);
-        hashtb_destroy(&(h->keys));
-    }
+    hashtb_destroy(&(h->keys));
     hashtb_destroy(&(h->keystores));
     ccn_charbuf_destroy(&h->interestbuf);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
@@ -596,8 +589,8 @@ finalize_interest_filter(struct hashtb_enumerator *e)
 }
 
 int
-ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
-                        struct ccn_closure *action)
+ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
+                        struct ccn_closure *action, int forw_flags)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -617,12 +610,21 @@ ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
     res = hashtb_seek(e, namebuf->buf + 1, namebuf->length - 2, 0);
     if (res >= 0) {
         entry = e->data;
+        entry->flags = forw_flags;
         ccn_replace_handler(h, &(entry->action), action);
         if (action == NULL)
             hashtb_delete(e);
     }
     hashtb_end(e);
     return(res);
+}
+
+int
+ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
+                        struct ccn_closure *action)
+{
+    int forw_flags = CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT;
+    return(ccn_set_interest_filter_with_flags(h, namebuf, action, forw_flags));
 }
 
 static int
@@ -822,7 +824,14 @@ ccn_cache_key(struct ccn *h,
     }
     hashtb_end(e);
     return (0);
+}
 
+static void
+finalize_pkey(struct hashtb_enumerator *e)
+{
+    struct ccn_pkey **entry = e->data;
+    if (*entry != NULL)
+        ccn_pubkey_free(*entry);
 }
 
 /**
@@ -1311,9 +1320,9 @@ ccn_notify_ccndid_changed(struct ccn *h)
     if (h->interest_filters != NULL) {
         for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
             struct interest_filter *i = e->data;
-            if (i->waiting_ccndid) {
+            if ((i->flags & CCN_FORW_WAITING_CCNDID) != 0) {
                 i->expiry = h->now;
-                i->waiting_ccndid = 0;
+                i->flags &= ~CCN_FORW_WAITING_CCNDID;
             }
         }
         hashtb_end(e);
@@ -1724,7 +1733,7 @@ ccn_initiate_prefix_reg(struct ccn *h,
     // fprintf(stderr, "GOT TO STUB ccn_initiate_prefix_reg()\n");
     if (h->ccndid == NULL) {
         ccn_initiate_ping(h);
-        i->waiting_ccndid = 1;
+        i->flags |= CCN_FORW_WAITING_CCNDID;
         return;
     }
     if (i->ccn_reg_closure != NULL)
@@ -1747,8 +1756,7 @@ ccn_initiate_prefix_reg(struct ccn *h,
     fe->ccnd_id_size = h->ccndid->length;
     fe->faceid = ~0; // XXX - someday explicit faceid may be required
     fe->name_prefix = ccn_charbuf_create();
-    fe->flags = CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT;
-    // XXX - need API to set other flags
+    fe->flags = i->flags & 0xFF;
     fe->lifetime = -1; /* Let ccnd decide */
     ccn_name_init(fe->name_prefix);
     ccn_name_append_components(fe->name_prefix, prefix, 0, prefix_size);

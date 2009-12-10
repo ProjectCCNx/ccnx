@@ -152,7 +152,14 @@ This integer holds the inclusive OR of the following bit fields:
 CCN_FORW_ACTIVE         1
 CCN_FORW_CHILD_INHERIT  2
 CCN_FORW_ADVERTISE      4
+CCN_FORW_LAST           8
 .........................
+The `CCN_FORW_ACTIVE` bit indicates that the entry is active;
+interests will not be sent for inactive entries.  `CCN_FORW_CHILD_INHERIT`
+says that this entry may be used even if there is a longer match available.
+`CCN_FORW_ADVERTISE` says that the prefix may be advertised to other nodes.
+`CCN_FORW_LAST` indicates that this entry should be used last, if nothing else
+worked.
 
 === FreshnessSeconds
 FreshnessSeconds is optional in a request, but is treated as a hint by ccnd.

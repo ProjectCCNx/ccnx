@@ -52,6 +52,18 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
 		acm.publishMyIdentity(friendlyNames[1], handle.keyManager().getDefaultPublicKey());
 	}
+	
+	/**
+	 * Ensures that the tests run in the correct order.
+	 * @throws Exception
+	 */
+	@Test
+	public void testInOrder() throws Exception {
+		createGroups();
+		testRecursiveGroupAncestors();
+		removeMemberFromGroup0();
+	}
+	
 
 	/**
 	 * We create the following group structure:
@@ -66,7 +78,6 @@ public class GroupRecursiveKeyUpdateTestRepo {
 	 * 
 	 * @throws Exception
 	 */
-	@Test
 	public void createGroups() throws Exception {
 		Random rand = new Random();
 
@@ -109,7 +120,6 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		Assert.assertEquals(1, group[4].membershipList().membershipList().size());
 	}
 
-	@Test
 	public void testRecursiveGroupAncestors() throws Exception {
 		ArrayList<Link> ancestors = group[0].recursiveAncestorList(null);
 		// Group0 should have 3 ancestors, not 4 (check that Group3 is not double-counted)
@@ -129,7 +139,6 @@ public class GroupRecursiveKeyUpdateTestRepo {
 	 * 
 	 * @throws Exception
 	 */
-	@Test
 	public void removeMemberFromGroup0() throws Exception {
 		// delete user0 from group0
 		ArrayList<Link> membersToRemove = new ArrayList<Link>();

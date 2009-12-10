@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 2001
+#define CCN_API_VERSION 2002
 
 /**
  * Global interest lifetime.
@@ -300,6 +300,14 @@ int ccn_express_interest(struct ccn *h,
  */
 int ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
                             struct ccn_closure *action);
+
+/*
+ * Variation allows non-default forwarding flags.
+ */
+int ccn_set_interest_filter_with_flags(struct ccn *h,
+                                       struct ccn_charbuf *namebuf,
+                                       struct ccn_closure *action,
+                                       int forw_flags);
 
 /*
  * ccn_put: send ccn binary

@@ -41,6 +41,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherID;
@@ -57,24 +58,24 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  */
 
 public class KeyRepository implements CCNFilterListener, CCNInterestListener {
-	
+
 	protected static final boolean _DEBUG = true;
-	
+
 	protected CCNNetworkManager _networkManager = null;
 	protected HashMap<ContentName,ContentObject> _keyMap = new HashMap<ContentName,ContentObject>();
 	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest,ContentName>();
 	protected HashMap<PublisherPublicKeyDigest, PublicKey> _rawKeyMap = new HashMap<PublisherPublicKeyDigest,PublicKey>();
 	protected HashMap<PublisherPublicKeyDigest, Certificate> _rawCertificateMap = new HashMap<PublisherPublicKeyDigest,Certificate>();
-	
+
 	/** Constructor
 	 * 
 	 * @throws IOException
 	 */
 	public KeyRepository() throws IOException {
 		_networkManager = new CCNNetworkManager(); // maintain our own connection to the agent, so
-			// everyone can ask us for keys
+		// everyone can ask us for keys
 	}
-	
+
 	/**
 	 * Track an existing key object and make it available.
 	 * @param keyObject
@@ -86,7 +87,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		PublicKey key = CryptoUtil.getPublicKey(keyObject.content());
 		remember(key, keyObject);
 	}
-	
+
 	/**
 	 * Published a signed record for this key.
 	 * @param keyName the key's content name
@@ -125,7 +126,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		}
 		remember(key, keyObject);
 	}
-	
+
 	/**
 	 * Remember a public key and the corresponding key object.
 	 * @param theKey public key to remember
@@ -139,11 +140,11 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		if (_DEBUG) {
 			recordKeyToFile(id, keyObject);
 		}
-		
+
 		// DKS TODO -- do we want to put in a prefix filter...?
 		_networkManager.setInterestFilter(this, keyObject.name(), this);
 	}
-	
+
 	/**
 	 * Remember a public key 
 	 * @param theKey public key to remember
@@ -151,7 +152,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	public void remember(PublicKey theKey) {
 		_rawKeyMap.put(new PublisherPublicKeyDigest(theKey), theKey);
 	}
-	
+
 	/**
 	 * Remember a certificate.
 	 * @param theCertificate the certificate to remember
@@ -160,7 +161,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		_rawCertificateMap.put(new PublisherPublicKeyDigest(theCertificate.getPublicKey()), theCertificate);
 	}
 
-	
+
 	/**
 	 * Write key to file for debugging purposes.
 	 */
@@ -172,7 +173,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 				return;
 			}
 		}
-		
+
 		// Alas, until 1.6, we can't set permissions on the file or directory...
 		// TODO DKS when switch to 1.6, add permission settings.
 		File keyFile  = new File(keyDir, id.toString() + ".ccnb");
@@ -180,7 +181,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			Log.info("Already stored key " + id.toString() + " to file.");
 			// return; // temporarily store it anyway, to overwrite old-format data.
 		}
-		
+
 		try {
 			FileOutputStream fos = new FileOutputStream(keyFile);
 			keyObject.encode(fos);
@@ -191,7 +192,7 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 		}
 		Log.info("Logged key " + id.toString() + " to file: " + keyFile.getAbsolutePath());
 	}
-	
+
 	/**
 	 * Retrieve the public key from cache given a key digest 
 	 * @param desiredKeyID the digest of the desired public key.
@@ -232,14 +233,16 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	 * @throws IOException 
 	 */
 	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
-	
+
+		// How many pieces of bad content do we wade through?
+		final int ITERATION_LIMIT = 5;
+		
 		// Look for it in our cache first.
 		PublicKey publicKey = getPublicKey(desiredKeyID);
 		if (null != publicKey) {
 			return publicKey;
 		}
-		
-		ContentObject keyObject = null;
+
 		if (locator.type() != KeyLocator.KeyLocatorType.NAME) {
 			Log.info("This is silly: asking the repository to retrieve for me a key I already have...");
 			if (locator.type() == KeyLocator.KeyLocatorType.KEY) {
@@ -258,120 +261,152 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 			Interest keyInterest = new Interest(locator.name().name());
 			if (null != locator.name().publisher()) {
 				keyInterest.publisherID(locator.name().publisher());
-			}			
-			//  it would be really good to know how many additional name components to expect...
-			try {
-				Log.info("Trying network retrieval of key: " + keyInterest.name());
-				keyObject = _networkManager.get(keyInterest, timeout);
-			} catch (IOException e) {
-				Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
-				Log.warningStackTrace(e);
-			} catch (InterruptedException e) {
-				Log.warning("Interrupted attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
-			}
-			if (null != keyObject) {
-				if (keyObject.signedInfo().getType().equals(ContentType.KEY)) {
+			}	
+
+			ContentObject retrievedContent = null;
+			int iterationCount = 0;
+			
+			while ((null == publicKey) && (iterationCount < ITERATION_LIMIT)) {
+				//  it would be really good to know how many additional name components to expect...
+				try {
+					Log.info("Trying network retrieval of key: " + keyInterest.name());
+					// use more aggressive high-level get
+					retrievedContent = _networkManager.get(keyInterest, timeout);
+				} catch (IOException e) {
+					Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
+					Log.warningStackTrace(e);
+				} catch (InterruptedException e) {
+					Log.warning("Interrupted attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
+				}
+				if (null == retrievedContent) {
+					Log.fine("No data returned when we attempted to retrieve key using interest {0}, timeout " + timeout, keyInterest);
+					break;
+				}
+				if (retrievedContent.signedInfo().getType().equals(ContentType.KEY)) {
+					PublicKey theKey = null;
 					try {
-						Log.info("Retrieved public key using name: " + locator.name().name());
-						PublicKey theKey = CryptoUtil.getPublicKey(keyObject.content());
-						remember(theKey, keyObject);
-						return theKey;
+						theKey = CryptoUtil.getPublicKey(retrievedContent.content());
 					} catch (CertificateEncodingException e) {
+						// TODO go around again to avoid garbage data
 						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 					} catch (InvalidKeySpecException e) {
+						// TODO go around again to avoid garbage data
 						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
 					}
+					if (null != theKey) {
+						if ((null != desiredKeyID) && (!new PublisherPublicKeyDigest(theKey).equals(desiredKeyID))) {
+							Log.fine("Got key at expected name {0}, but it wasn't the right key, wanted {0}, got {1}", 
+									desiredKeyID, new PublisherPublicKeyDigest(theKey));
+						} else {
+							// either we don't have a preferred key ID, or we matched
+							Log.info("Retrieved public key using name: " + locator.name().name());
+							// TODO make a key object instead of just retrieving
+							// content, use it to decode
+							remember(theKey, retrievedContent);
+							return theKey;
+						}
+					} else {
+						Log.severe("Decoded key at name {0} without error, but result was null!", retrievedContent.name());
+						throw new IOException("Decoded key at name " + retrievedContent.name() + " without error, but result was null!");
+					}
 				} else {
-					Log.warning("Retrieved an object when looking for key " + locator.name().name() + " at " + keyObject.name() + ", but type is " + keyObject.signedInfo().getTypeName());
+					Log.warning("Retrieved an object when looking for key " + locator.name().name() + " at " + retrievedContent.name() + ", but type is " + retrievedContent.signedInfo().getTypeName());
 				}
+				// TODO -- not sure this is exactly right, but a start...
+				Exclude currentExclude = keyInterest.exclude();
+				currentExclude.add(new byte [][]{retrievedContent.digest()});
+				keyInterest.exclude(currentExclude);
+				iterationCount++;
 			}
 		}
-		return null;
-	}
-	
-	/**
-	 * retrieve key object from cache given key name 
-	 * @param keyName key digest
-	 */
-	public ContentObject retrieve(PublisherPublicKeyDigest keyName) {
-		ContentName name = _idMap.get(keyName);
-		if (null != name) {
-			return _keyMap.get(name);
-		}		
-		return null;
-	}
-	
-	/**
-	 * Retrieve key object from cache given content name and publisher id
-	 * check if the retrieved content has the expected publisher id 
-	 * @param name contentname of the key
-	 * @param publisherID publisher id
-	 */
-	public ContentObject retrieve(ContentName name, PublisherID publisherID) {
-		ContentObject result = _keyMap.get(name);
-		if (null != result) {
-			if (null != publisherID) {
-				if (TrustManager.getTrustManager().matchesRole(
-						publisherID,
-						result.signedInfo().getPublisherKeyID())) {
-					return result;
-				}
-			}
-		}
-		return null;
-	}
-	
-	/**
-	 * Retrieve content object given an interest 
-	 * @param interest interest
-	 */
-	public ContentObject retrieve(Interest interest) {
-		ContentObject result = retrieve(interest.name(), interest.publisherID());
-		if (null != result)
-			return result;
-		
-		// OK, the straight match didn't cut it; maybe we're just close.
-		Iterator<ContentObject> it = _keyMap.values().iterator();
-		while (it.hasNext()) {
-			ContentObject co = it.next();
-			if (interest.matches(co)) {
-				// doesn't handle preventing returning same thing over and over
-				return co;	
-			}
-		}
+		Log.info("Could not retrieve key {0} with locator {1}!", desiredKeyID, locator);
 		return null;
 	}
 
-	/**
-	 * Answers interests for published public keys.
-	 * @param interests interests expressed by other parties.
-	 */
-	
-	public int handleInterests(ArrayList<Interest> interests) {
-		Iterator<Interest> it = interests.iterator();
-		
-		while (it.hasNext()) {
-			ContentObject keyObject = retrieve(it.next());
-			if (null != keyObject) {
-				try {
-					ContentObject co = new ContentObject(keyObject.name(), keyObject.signedInfo(), keyObject.content(), keyObject.signature()); 
-					_networkManager.put(co);
-				} catch (Exception e) {
-					Log.info("KeyRepository::handleInterests, exception in put: " + e.getClass().getName() + " message: " + e.getMessage());
-					Log.infoStackTrace(e);
-				}
+
+/**
+ * retrieve key object from cache given key name 
+ * @param keyName key digest
+ */
+public ContentObject retrieve(PublisherPublicKeyDigest keyName) {
+	ContentName name = _idMap.get(keyName);
+	if (null != name) {
+		return _keyMap.get(name);
+	}		
+	return null;
+}
+
+/**
+ * Retrieve key object from cache given content name and publisher id
+ * check if the retrieved content has the expected publisher id 
+ * @param name contentname of the key
+ * @param publisherID publisher id
+ */
+public ContentObject retrieve(ContentName name, PublisherID publisherID) {
+	ContentObject result = _keyMap.get(name);
+	if (null != result) {
+		if (null != publisherID) {
+			if (TrustManager.getTrustManager().matchesRole(
+					publisherID,
+					result.signedInfo().getPublisherKeyID())) {
+				return result;
 			}
 		}
-		return 0;
 	}
+	return null;
+}
 
-	/** Handle content returned by CCN.
-	 * nothing to be done here.
-	 */
-	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
-		// TODO Auto-generated method stub
-		return null;
+/**
+ * Retrieve content object given an interest 
+ * @param interest interest
+ */
+public ContentObject retrieve(Interest interest) {
+	ContentObject result = retrieve(interest.name(), interest.publisherID());
+	if (null != result)
+		return result;
+
+	// OK, the straight match didn't cut it; maybe we're just close.
+	Iterator<ContentObject> it = _keyMap.values().iterator();
+	while (it.hasNext()) {
+		ContentObject co = it.next();
+		if (interest.matches(co)) {
+			// doesn't handle preventing returning same thing over and over
+			return co;	
+		}
 	}
+	return null;
+}
+
+/**
+ * Answers interests for published public keys.
+ * @param interests interests expressed by other parties.
+ */
+
+public int handleInterests(ArrayList<Interest> interests) {
+	Iterator<Interest> it = interests.iterator();
+
+	while (it.hasNext()) {
+		ContentObject keyObject = retrieve(it.next());
+		if (null != keyObject) {
+			try {
+				ContentObject co = new ContentObject(keyObject.name(), keyObject.signedInfo(), keyObject.content(), keyObject.signature()); 
+				_networkManager.put(co);
+			} catch (Exception e) {
+				Log.info("KeyRepository::handleInterests, exception in put: " + e.getClass().getName() + " message: " + e.getMessage());
+				Log.infoStackTrace(e);
+			}
+		}
+	}
+	return 0;
+}
+
+/** Handle content returned by CCN.
+ * nothing to be done here.
+ */
+public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
+	// TODO Auto-generated method stub
+	return null;
+}
 }

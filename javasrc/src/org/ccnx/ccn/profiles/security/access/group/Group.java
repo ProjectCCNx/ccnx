@@ -168,7 +168,7 @@ public class Group {
 					ConfigurationException, IOException {
 		modify(null, removedUsers);
 	}
-
+	
 	/**
 	 * Checks whether the group public key has been created.
 	 * @return
@@ -250,6 +250,7 @@ public class Group {
 			_groupMembers = new MembershipList(GroupAccessControlProfile.groupMembershipListName(_groupNamespace, _groupFriendlyName), _handle);
 			// Keep dynamically updating.
 			_groupMembers.updateInBackground(true);
+			_groupMembers.setupSave(SaveType.REPOSITORY);
 		}
 		return _groupMembers; 
 	}
@@ -627,6 +628,9 @@ public class Group {
 
 		// Do we need to wait for data to come in? We use this to create new groups as well...
 		// so in that case, don't expect any.
+		
+		// Get the existing membership list, if we don't have it already
+		if (null == _groupMembers) membershipList();
 		
 		// Add before remove so that remove overrides adds.
 		if ((null != membersToAdd) && (!membersToAdd.isEmpty())) {
