@@ -54,16 +54,23 @@ See link:Timestamp.html[CCNx Timestamp Specification]
 === Type
 
 The primitive type of the ContentObject *Content*.
+This is encoded as a 3-byte BLOB;
+when viewed using a `base64Binary` encoding,
+the encoded value has some mnemonic value.
+The hex and decimal equivalents (in network byte order) are also given here for reference.
+Note that the default of DATA is not encoded in the ContentObject - the entire
+Type element is omitted.
 
-[width="90%"]
-|=======
-| DATA | default when Type element is absent
-| ENCR | content is encrypted
-| GONE | whiteout marker
-| KEY  | public key
-| LINK | link
-| NACK | no content at this time
-|=======
+[width="90%",cols="^4m,^6m,^6m,30d",options="header"]
+|==================================================================
+| Base64 |   Hex    | Decimal |  Description 
+|  DATA  | 0x0C04C0 |  787648 | default when Type element is absent
+|  ENCR  | 0x10D091 | 1101969 | content is encrypted
+|  GONE  | 0x18E344 | 1631044 | whiteout marker
+|  KEY/  | 0x28463F | 2639423 | public key
+|  LINK  | 0x2C834A | 2917194 | link
+|  NACK  | 0x34008A | 3408010 | no content at this time
+|==================================================================
 
 === FreshnessSeconds 
 

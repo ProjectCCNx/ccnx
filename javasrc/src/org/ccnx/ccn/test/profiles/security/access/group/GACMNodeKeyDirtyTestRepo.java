@@ -59,6 +59,21 @@ public class GACMNodeKeyDirtyTestRepo {
 	}
 	
 	/**
+	 * Ensures that the tests run in the correct order.
+	 * @throws Exception
+	 */
+	@Test
+	public void testInOrder() throws Exception {
+		createUserGroups();
+		createNodeACLs();
+		writeNodeContent();
+		addMemberToGroup0();
+		writeMoreNodeContent();
+		removeMemberFromGroup0();
+		writeEvenMoreNodeContent();
+	}
+	
+	/**
 	 * We create the following group structure:
 	 * 
 	 *         group1
@@ -69,7 +84,6 @@ public class GACMNodeKeyDirtyTestRepo {
 	 * 
 	 * @throws Exception
 	 */
-	@Test
 	public void createUserGroups() throws Exception {
 		Random rand = new Random();
 
@@ -98,7 +112,6 @@ public class GACMNodeKeyDirtyTestRepo {
 		Assert.assertEquals(1, group[2].membershipList().membershipList().size());
 	}
 	
-	@Test
 	public void createNodeACLs() throws Exception {
 		Random rand = new Random();
 		
@@ -116,7 +129,6 @@ public class GACMNodeKeyDirtyTestRepo {
 		}		
 	}
 	
-	@Test
 	public void writeNodeContent() throws Exception {
 		// write some content in nodes
 		for (int i=0; i<numberOfGroups; i++) {
@@ -133,7 +145,6 @@ public class GACMNodeKeyDirtyTestRepo {
 		}
 	}
 	
-	@Test
 	public void addMemberToGroup0() throws Exception {
 		// add user2 to group0
 		ArrayList<Link> membersToAdd = new ArrayList<Link>();
@@ -144,7 +155,6 @@ public class GACMNodeKeyDirtyTestRepo {
 		Assert.assertEquals(3, group[0].membershipList().membershipList().size());
 	}
 
-	@Test
 	public void writeMoreNodeContent() throws Exception {
 		// write some content in nodes
 		for (int i=0; i<numberOfGroups; i++) {
@@ -161,7 +171,6 @@ public class GACMNodeKeyDirtyTestRepo {
 		}
 	}
 	
-	@Test
 	public void removeMemberFromGroup0() throws Exception {
 		// delete user1 from group0
 		ArrayList<Link> membersToRemove = new ArrayList<Link>();
@@ -172,7 +181,6 @@ public class GACMNodeKeyDirtyTestRepo {
 		Assert.assertEquals(2, group[0].membershipList().membershipList().size());
 	}
 	
-	@Test
 	public void writeEvenMoreNodeContent() throws Exception {
 		// write some content in nodes
 		for (int i=0; i<numberOfGroups; i++) {
