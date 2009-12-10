@@ -656,6 +656,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			// Simple routers will install key manager that
 			// will just pull from CCN.
 			try {
+				// KeyManager ensures that this key matches the publisher ID;
+				// if it verifies the signature, we're happy with this object.
 				publicKey = 
 					KeyManager.getKeyManager().getPublicKey(
 							signedInfo.getPublisherKeyID(),
