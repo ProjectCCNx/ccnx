@@ -32,7 +32,8 @@
 <!ENTITY % valuechoice "IntegerValue 	       |
                         DecimalValue           |
                         StringValue            |
-                        BinaryValue">
+                        BinaryValue	       |
+			NameValue">
 
 <!ELEMENT Entry	(Key, (%valuechoice;))>
 <!ATTLIST Entry	%commonattrs;>
@@ -42,6 +43,7 @@
 <!ELEMENT StringValue	(#PCDATA)>	<!-- string -->
 
 <!ELEMENT BinaryValue	(#PCDATA)>	<!-- base64Binary -->
+<!ELEMENT NameValue	(Name)>		<!-- ccnx Name -->
 <!ATTLIST BinaryValue   ccnbencoding CDATA #FIXED 'base64Binary'>
 <!ATTLIST BinaryValue	%commonattrs;>
 
