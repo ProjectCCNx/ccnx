@@ -70,4 +70,12 @@
 92,Namespace
 93,GlobalPrefixName
 94,PolicyVersion
+95,KeyValueSet
+96,KeyValuePair
+97,IntegerValue
+98,DecimalValue
+99,StringValue
+100,BinaryValue
+101,NameValue
+102,Entry
 17702112,CCNProtocolDataUnit
