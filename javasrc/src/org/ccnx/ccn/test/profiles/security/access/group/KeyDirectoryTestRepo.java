@@ -163,6 +163,7 @@ public class KeyDirectoryTestRepo {
 		// retrieve the secret key
 		byte[] expectedKeyID = CCNDigestHelper.digest(AESSecretKey.getEncoded());
 		kd2.waitForData();
+		Thread.sleep(10000);
 		Key unwrappedSecretKey = kd2.getUnwrappedKey(expectedKeyID);
 		Assert.assertEquals(AESSecretKey, unwrappedSecretKey);
 		kd2.stopEnumerating();
