@@ -72,7 +72,8 @@ public class KeyRepository implements CCNFilterListener, CCNInterestListener {
 	 * @throws IOException
 	 */
 	public KeyRepository() throws IOException {
-		_networkManager = new CCNNetworkManager(); // maintain our own connection to the agent, so
+		// TODO: Actually supply the appropriate KeyManager rather than null
+		_networkManager = new CCNNetworkManager(null); // maintain our own connection to the agent, so
 		// everyone can ask us for keys
 	}
 

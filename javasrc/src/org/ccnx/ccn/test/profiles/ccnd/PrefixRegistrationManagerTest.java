@@ -86,7 +86,7 @@ public class PrefixRegistrationManagerTest {
 	public void testEncodeOutputStream() {
 		ForwardingEntry entryToEncode = prm. new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
-		assertNotNull(entryToEncode);
+		assertNotNull("EncodeOutputStream", entryToEncode);
 		
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
@@ -103,7 +103,7 @@ public class PrefixRegistrationManagerTest {
 	public void testDecodeInputStream() {
 		ForwardingEntry entryToEncode = prm. new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
-		assertNotNull(entryToEncode);
+		assertNotNull("DecodeOutputStream", entryToEncode);
 		
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
@@ -125,7 +125,7 @@ public class PrefixRegistrationManagerTest {
 			e.printStackTrace();
 		}
 		System.out.println("Decoded: " + entryToDecodeTo);
-		assertEquals(entryToEncode, entryToDecodeTo);
+		assertEquals("DecodeOutputStream", entryToEncode, entryToDecodeTo);
 	}
 	
 	@Test
@@ -134,10 +134,10 @@ public class PrefixRegistrationManagerTest {
 		System.out.println("Encoding: " + entryToEncode);
 
 		ForwardingEntry  textEntryToDecodeInto = prm. new ForwardingEntry();
-		assertNotNull(textEntryToDecodeInto);
+		assertNotNull("EncodeDecodeOutput", textEntryToDecodeInto);
 		ForwardingEntry  binaryEntryToDecodeInto = prm. new ForwardingEntry();
-		assertNotNull(binaryEntryToDecodeInto);
-		XMLEncodableTester.encodeDecodeTest("FaceIntance", entryToEncode, textEntryToDecodeInto, binaryEntryToDecodeInto);
+		assertNotNull("EncodeDecodeOutput", binaryEntryToDecodeInto);
+		XMLEncodableTester.encodeDecodeTest("EncodeDecodeOutput", entryToEncode, textEntryToDecodeInto, binaryEntryToDecodeInto);
 	}
 
 }

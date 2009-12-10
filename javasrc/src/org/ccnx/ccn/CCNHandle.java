@@ -134,7 +134,7 @@ public class CCNHandle implements CCNBase {
 		_userKeyManager = keyManager;
 		// force initialization of network manager
 		try {
-			_networkManager = new CCNNetworkManager();
+			_networkManager = new CCNNetworkManager(_userKeyManager);
 		} catch (IOException ex){
 			Log.warning("IOException instantiating network manager: " + ex.getMessage());
 			ex.printStackTrace();
@@ -170,7 +170,7 @@ public class CCNHandle implements CCNBase {
 			synchronized(this) {
 				if (null == _networkManager) {
 					try {
-						_networkManager = new CCNNetworkManager();
+						_networkManager = new CCNNetworkManager(_userKeyManager);
 					} catch (IOException ex){
 						Log.warning("IOException instantiating network manager: " + ex.getMessage());
 						ex.printStackTrace();
