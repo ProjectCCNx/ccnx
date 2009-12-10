@@ -58,10 +58,24 @@ public class GroupAccessControlManagerTestRepo {
 	}
 	
 	/**
-	 * Set the ACL for the base node (we make user 0 a manager of the base node).
+	 * Ensures that the tests run in the correct order.
 	 * @throws Exception
 	 */
 	@Test
+	public void testInOrder() throws Exception {
+		testSetBaseACL();
+		testGetBaseACL();
+		testGetACLFromAncestor();
+		testSetACL();
+		testUpdateACLAdd();
+		testUpdateACLRemove();
+		deleteACL();
+	}
+	
+	/**
+	 * Set the ACL for the base node (we make user 0 a manager of the base node).
+	 * @throws Exception
+	 */
 	public void testSetBaseACL() throws Exception {		
 		ArrayList<Link> ACLcontents = new ArrayList<Link>();
 		Link lk = new Link(user0, "rw+", null);
@@ -76,7 +90,6 @@ public class GroupAccessControlManagerTestRepo {
 	 * Retrieve the ACL for the base node.
 	 * @throws Exception
 	 */
-	@Test
 	public void testGetBaseACL() throws Exception {
 		ACLObject aclo = acm.getEffectiveACLObject(baseNode);
 		ACL aclRetrieved = aclo.acl();
@@ -88,7 +101,6 @@ public class GroupAccessControlManagerTestRepo {
 	 * This ACL comes from the base node.
 	 * @throws Exception
 	 */
-	@Test
 	public void testGetACLFromAncestor() throws Exception {
 		ACLObject aclo = acm.getEffectiveACLObject(grandchildNode);
 		Assert.assertTrue(aclo.acl().equals(baseACL));
@@ -100,7 +112,6 @@ public class GroupAccessControlManagerTestRepo {
 	 * from the child node.
 	 * @throws Exception
 	 */
-	@Test
 	public void testSetACL() throws Exception {
 		// set interposed ACL
 		ArrayList<Link> newACLContents = new ArrayList<Link>();
@@ -123,7 +134,6 @@ public class GroupAccessControlManagerTestRepo {
 	 * Update the child ACL to add user1 as a writer and user2 as a reader.
 	 * @throws Exception
 	 */
-	@Test
 	public void testUpdateACLAdd() throws Exception {
 		ArrayList<Link> newReaders = new ArrayList<Link>();
 		newReaders.add(new Link(user2));
@@ -156,7 +166,6 @@ public class GroupAccessControlManagerTestRepo {
 	 * Remove user1 as a writer and user2 as a reader of the child node
 	 * @throws Exception
 	 */
-	@Test
 	public void testUpdateACLRemove() throws Exception {
 		// remove user1 as a writer
 		ArrayList<Link> removedWriters = new ArrayList<Link>();
@@ -185,7 +194,6 @@ public class GroupAccessControlManagerTestRepo {
 	 * Retrieve the ACL for the grandchild node and check that it comes from the base node.
 	 * @throws Exception
 	 */
-	@Test
 	public void deleteACL() throws Exception {
 		acm.deleteACL(childNode);
 		// retrieve ACL at grandchild node
