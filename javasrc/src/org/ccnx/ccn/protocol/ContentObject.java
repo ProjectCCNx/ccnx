@@ -77,36 +77,45 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		public static SimpleVerifier _defaultVerifier = new SimpleVerifier(null);
 
 		PublisherPublicKeyDigest _publisher; 
+		KeyManager _keyManager;
 		
 		public static ContentVerifier getDefaultVerifier() { return _defaultVerifier; }
 		
 		public SimpleVerifier(PublisherPublicKeyDigest publisher) {
 			_publisher = publisher;
+			_keyManager = KeyManager.getKeyManager();
+		}
+		
+		public SimpleVerifier(PublisherPublicKeyDigest publisher, KeyManager keyManager) {
+			_publisher = publisher;
+			_keyManager = (null != keyManager) ? keyManager : KeyManager.getKeyManager();
 		}
 		
 		/* (non-Javadoc)
 		 * @see com.parc.ccn.data.security.ContentVerifier#verifyBlock(com.parc.ccn.data.ContentObject)
 		 */
-		public boolean verify(ContentObject block) {
-			if (null == block)
+		public boolean verify(ContentObject object) {
+			if (null == object)
 				return false;
 			if (null != _publisher) {
-				if (!_publisher.equals(block.signedInfo().getPublisherKeyID()))
+				if (!_publisher.equals(object.signedInfo().getPublisherKeyID()))
 					return false;
 			}
 			try {
-				return block.verify(null);
-			} catch (InvalidKeyException e) {
+				PublicKey publicKey = 
+					_keyManager.getPublicKey(
+							object.signedInfo().getPublisherKeyID(),
+							object.signedInfo().getKeyLocator());
+				if (null == publicKey) {
+					Log.fine("SimpleVerifier.verify: cannot retrieve public key for locator {0} from specified key manager. Will try again with default manager. {0}", object.signedInfo().getKeyLocator());
+				}
+				return object.verify(publicKey);
+				
+			} catch (Exception e) {
+				Log.fine(e.getClass().getName() + " exception attempting to retrieve public key with key locator {0}: " + e.getMessage(), object.signedInfo().getKeyLocator());
+				Log.logStackTrace(Level.FINE, e);
 				return false;
-			} catch (SignatureException e) {
-				return false;
-			} catch (NoSuchAlgorithmException e) {
-				return false;
-			} catch (ContentEncodingException e) {
-				return false;
-			} catch (InterruptedException e) {
-				return false;
-			}
+			} 
 		}		
 	}
 
@@ -647,6 +656,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			// Simple routers will install key manager that
 			// will just pull from CCN.
 			try {
+				// KeyManager ensures that this key matches the publisher ID;
+				// if it verifies the signature, we're happy with this object.
 				publicKey = 
 					KeyManager.getKeyManager().getPublicKey(
 							signedInfo.getPublisherKeyID(),
