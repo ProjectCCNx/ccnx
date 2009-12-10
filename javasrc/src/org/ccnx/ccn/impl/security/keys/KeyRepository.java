@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateEncodingException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 
 import org.ccnx.ccn.CCNHandle;
@@ -34,6 +36,7 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNFlowServer;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
+import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
@@ -42,6 +45,7 @@ import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherID;
@@ -87,7 +91,7 @@ public class KeyRepository {
 	public KeyRepository(KeyManager keyManager) {
 		_keyManager = keyManager;
 	}
-	
+
 	/**
 	 * Constructor; uses existing handle.
 	 * @param handle
@@ -208,7 +212,7 @@ public class KeyRepository {
 		}
 		remember(keyObject);
 	}
-	
+
 	/**
 	 * TODO DKS make sure this works if last component of key name is potentially
 	 * a version (using objects to write public keys)
@@ -273,7 +277,7 @@ public class KeyRepository {
 			recordKeyToFile(theKey);
 		}
 	}
-	
+
 	/**
 	 * Remember a public key 
 	 * @param theKey public key to remember
@@ -281,7 +285,7 @@ public class KeyRepository {
 	public void remember(PublicKey theKey) {
 		_rawKeyMap.put(new PublisherPublicKeyDigest(theKey), theKey);
 	}
-	
+
 	/**
 	 * Remember a certificate.
 	 * @param theCertificate the certificate to remember
@@ -292,7 +296,7 @@ public class KeyRepository {
 		_rawKeyMap.put(keyDigest, theCertificate.getPublicKey());
 	}
 
-	
+
 	/**
 	 * Write encoded key to file for debugging purposes.
 	 * @throws ContentGoneException 
@@ -306,15 +310,15 @@ public class KeyRepository {
 				return;
 			}
 		}
-		
 		PublisherPublicKeyDigest id = keyObject.publicKeyDigest();
 		
 		File keyFile  = new File(keyDir, KeyProfile.keyIDToNameComponentAsString(keyObject.publicKeyDigest()));
+
 		if (keyFile.exists()) {
 			Log.info("Already stored key " + id.toString() + " to file.");
 			// return; // temporarily store it anyway, to overwrite old-format data.
 		}
-		
+
 		try {
 			FileOutputStream fos = new FileOutputStream(keyFile);
 			fos.write(keyObject.publicKey().getEncoded());
@@ -325,7 +329,7 @@ public class KeyRepository {
 		}
 		Log.info("Logged key " + id.toString() + " to file: " + keyFile.getAbsolutePath());
 	}
-	
+
 	/**
 	 * Retrieve the public key from cache given a key digest 
 	 * @param desiredKeyID the digest of the desired public key.
@@ -352,14 +356,16 @@ public class KeyRepository {
 	 * @throws IOException 
 	 */
 	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
-	
+
+		// How many pieces of bad content do we wade through?
+		final int ITERATION_LIMIT = 5;
+		
 		// Look for it in our cache first.
 		PublicKey publicKey = getPublicKeyFromCache(desiredKeyID);
 		if (null != publicKey) {
 			return publicKey;
 		}
-		
-		ContentObject keyObject = null;
+
 		if (locator.type() != KeyLocator.KeyLocatorType.NAME) {
 			Log.info("This is silly: asking the repository to retrieve for me a key I already have...");
 			if (locator.type() == KeyLocator.KeyLocatorType.KEY) {
@@ -374,39 +380,72 @@ public class KeyRepository {
 			}
 		} else {
 			// take code from #BasicKeyManager.getKey, to validate more complex publisher constraints
-			Interest keyInterest = new Interest(locator.name().name(), locator.name().publisher());
 
+			Interest keyInterest = new Interest(locator.name().name(), locator.name().publisher());
 			// we could have from 1 (content digest only) to 3 (version, segment, content digest) 
 			// additional name components.
 			keyInterest.minSuffixComponents(1);
 			keyInterest.maxSuffixComponents(3);
+
+			ContentObject retrievedContent = null;
+			int iterationCount = 0;
 			
-			// TODO if it is versioned, do we want to get the latest version?
-			while ((null == keyObject) || (!keyObject.signedInfo().getType().equals(ContentType.KEY))) {
-				// OK, we need to try again to get the object.
-				if (null != keyObject) {
-					Log.warning("Retrieved an object when looking for key " + locator.name().name() + " at " + keyObject.name() + ", but type is " + keyObject.signedInfo().getTypeName());
-					// exclude whatever we got last time.
-					Log.info("Have prefix {0}, want to exclude {1}", locator.name().name(), keyObject.name());
-				}
+			while ((null == publicKey) && (iterationCount < ITERATION_LIMIT)) {
+				//  it would be really good to know how many additional name components to expect...
 				try {
 					Log.info("Trying network retrieval of key: " + keyInterest.name());
-					keyObject = _handle.get(keyInterest, timeout);
+					// use more aggressive high-level get
+					retrievedContent = _handle.get(keyInterest, timeout);
 				} catch (IOException e) {
 					Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 					Log.warningStackTrace(e);
+				} catch (InterruptedException e) {
+					Log.warning("Interrupted attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 				}
-				if (null == keyObject) {
+				if (null == retrievedContent) {
+					Log.fine("No data returned when we attempted to retrieve key using interest {0}, timeout " + timeout, keyInterest);
 					break;
 				}
-			}
-			if (null != keyObject) {
-				Log.info("Retrieved public key using name: {0}, resulting object name {1}.", locator.name().name(), keyObject.name());
-				PublicKeyObject theKeyObject = new PublicKeyObject(keyObject, _keyServer);
-				remember(theKeyObject);
-				return theKeyObject.publicKey();
+				if (retrievedContent.signedInfo().getType().equals(ContentType.KEY)) {
+					PublicKey theKey = null;
+					try {
+						theKey = CryptoUtil.getPublicKey(retrievedContent.content());
+					} catch (CertificateEncodingException e) {
+						// TODO go around again to avoid garbage data
+						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+					} catch (InvalidKeySpecException e) {
+						// TODO go around again to avoid garbage data
+						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
+					}
+					if (null != theKey) {
+						if ((null != desiredKeyID) && (!new PublisherPublicKeyDigest(theKey).equals(desiredKeyID))) {
+							Log.fine("Got key at expected name {0}, but it wasn't the right key, wanted {0}, got {1}", 
+									desiredKeyID, new PublisherPublicKeyDigest(theKey));
+						} else {
+							// either we don't have a preferred key ID, or we matched
+							Log.info("Retrieved public key using name: " + locator.name().name());
+							// TODO make a key object instead of just retrieving
+							// content, use it to decode
+							remember(theKey, retrievedContent);
+							return theKey;
+						}
+					} else {
+						Log.severe("Decoded key at name {0} without error, but result was null!", retrievedContent.name());
+						throw new IOException("Decoded key at name " + retrievedContent.name() + " without error, but result was null!");
+					}
+				} else {
+					Log.warning("Retrieved an object when looking for key " + locator.name().name() + " at " + retrievedContent.name() + ", but type is " + retrievedContent.signedInfo().getTypeName());
+				}
+				// TODO -- not sure this is exactly right, but a start...
+				Exclude currentExclude = keyInterest.exclude();
+				currentExclude.add(new byte [][]{retrievedContent.digest()});
+				keyInterest.exclude(currentExclude);
+				iterationCount++;
 			}
 		}
+		Log.info("Could not retrieve key {0} with locator {1}!", desiredKeyID, locator);
 		return null;
 	}
 	
