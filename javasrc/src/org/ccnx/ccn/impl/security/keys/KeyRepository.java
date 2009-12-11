@@ -164,16 +164,33 @@ public class KeyRepository {
 		// See if we can pull something acceptable for this key at this name.
 		// Use same code path for default key retrieval as getPublicKey, so that we can manage
 		// version handling in a single place.
-		PublicKey theKey = getPublicKey(keyToPublish, new KeyLocator(keyName), SystemConfiguration.SHORT_TIMEOUT);
+		KeyLocator targetKeyLocator = new KeyLocator(keyName);
+		
+		PublicKey theKey = getPublicKey(keyToPublish, targetKeyLocator, SystemConfiguration.SHORT_TIMEOUT);
 		PublicKeyObject keyObject = null;
 		if (null != theKey) {
 			keyObject = retrieve(keyToPublish);
 		} 
 		if (null == keyObject) {
-			keyObject = new PublicKeyObject(keyName, signingKeyID, _keyServer);
+			// This might have been one of our keys, so we got it straight from
+			// cache; try to ensure it's not on the network. Might eventually
+			// want to check publisher as well
+			PublicKey theNetworkKey = getPublicKeyFromNetwork(keyToPublish, targetKeyLocator, SystemConfiguration.SHORT_TIMEOUT);
+			if (null != theNetworkKey) {
+				keyObject = retrieve(keyToPublish);
+				if (null == theKey) {
+					theKey = theNetworkKey;
+				}
+			}
+		}
+		// Now, finally; it's not published, so make an object to write it
+		// with. We've already tried to pull it, so don't try here. Will
+		// set publisher info below.
+		if (null == keyObject) {
+			keyObject = new PublicKeyObject(keyName, theKey, null, null, _keyServer);
 		}
 
-		if (!keyObject.available() || (!keyObject.publicKeyDigest().equals(keyToPublish))) {
+		if (!keyObject.isSaved() || (!keyObject.publicKeyDigest().equals(keyToPublish))) {
 			// Eventually may want to find something already published and link to it, but be simple here.
 
 			// Need a key locator to stick in data entry for
@@ -418,9 +435,6 @@ public class KeyRepository {
 	 */
 	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
 
-		// How many pieces of bad content do we wade through?
-		final int ITERATION_LIMIT = 5;
-
 		// Look for it in our cache first.
 		PublicKey publicKey = getPublicKeyFromCache(desiredKeyID);
 		if (null != publicKey) {
@@ -440,63 +454,78 @@ public class KeyRepository {
 				return key;
 			}
 		} else {
-			// take code from #BasicKeyManager.getKey, to validate more complex publisher constraints
-
-			Interest keyInterest = new Interest(locator.name().name(), locator.name().publisher());
-			// we could have from 1 (content digest only) to 3 (version, segment, content digest) 
-			// additional name components.
-			keyInterest.minSuffixComponents(1);
-			keyInterest.maxSuffixComponents(3);
-
-			ContentObject retrievedContent = null;
-			int iterationCount = 0;
-
-			while ((null == publicKey) && (iterationCount < ITERATION_LIMIT)) {
-				//  it would be really good to know how many additional name components to expect...
-				try {
-					Log.info("Trying network retrieval of key: " + keyInterest.name());
-					// use more aggressive high-level get
-					retrievedContent = _handle.get(keyInterest, timeout);
-				} catch (IOException e) {
-					Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
-					Log.warningStackTrace(e);
-				}
-				if (null == retrievedContent) {
-					Log.fine("No data returned when we attempted to retrieve key using interest {0}, timeout " + timeout, keyInterest);
-					break;
-				}
-				if (retrievedContent.signedInfo().getType().equals(ContentType.KEY)) {
-					PublicKeyObject theKey = new PublicKeyObject(retrievedContent, handle());
-					if ((null != theKey) && (theKey.available())) {
-						if ((null != desiredKeyID) && (!theKey.publicKeyDigest().equals(desiredKeyID))) {
-							Log.fine("Got key at expected name {0}, but it wasn't the right key, wanted {0}, got {1}", 
-									desiredKeyID, theKey.publicKeyDigest());
-						} else {
-							// either we don't have a preferred key ID, or we matched
-							Log.info("Retrieved public key using name: " + locator.name().name());
-							// TODO make a key object instead of just retrieving
-							// content, use it to decode
-							remember(theKey);
-							return theKey.publicKey();
-						}
-					} else {
-						Log.severe("Decoded key at name {0} without error, but result was null!", retrievedContent.name());
-						throw new IOException("Decoded key at name " + retrievedContent.name() + " without error, but result was null!");
-					}
-				} else {
-					Log.warning("Retrieved an object when looking for key " + locator.name().name() + " at " + retrievedContent.name() + ", but type is " + retrievedContent.signedInfo().getTypeName());
-				}
-				// TODO -- not sure this is exactly right, but a start...
-				Exclude currentExclude = keyInterest.exclude();
-				currentExclude.add(new byte [][]{retrievedContent.digest()});
-				keyInterest.exclude(currentExclude);
-				iterationCount++;
+			publicKey = getPublicKeyFromNetwork(desiredKeyID, locator, timeout);
+			if (null == publicKey) {
+				Log.info("Could not retrieve key {0} with locator {1}!", desiredKeyID, locator);
+			} else {
+				Log.info("Retrieved key {0} from network with locator {1}!", desiredKeyID, locator);
 			}
+			return publicKey;
 		}
-		Log.info("Could not retrieve key {0} with locator {1}!", desiredKeyID, locator);
 		return null;
 	}
+	
+	public PublicKey getPublicKeyFromNetwork(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
+		// take code from #BasicKeyManager.getKey, to validate more complex publisher constraints
 
+		// How many pieces of bad content do we wade through?
+		final int ITERATION_LIMIT = 5;
+
+		PublicKey publicKey = null;
+		
+		Interest keyInterest = new Interest(locator.name().name(), locator.name().publisher());
+		// we could have from 1 (content digest only) to 3 (version, segment, content digest) 
+		// additional name components.
+		keyInterest.minSuffixComponents(1);
+		keyInterest.maxSuffixComponents(3);
+
+		ContentObject retrievedContent = null;
+		int iterationCount = 0;
+
+		while ((null == publicKey) && (iterationCount < ITERATION_LIMIT)) {
+			//  it would be really good to know how many additional name components to expect...
+			try {
+				Log.info("Trying network retrieval of key: " + keyInterest.name());
+				// use more aggressive high-level get
+				retrievedContent = _handle.get(keyInterest, timeout);
+			} catch (IOException e) {
+				Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
+				Log.warningStackTrace(e);
+			}
+			if (null == retrievedContent) {
+				Log.fine("No data returned when we attempted to retrieve key using interest {0}, timeout " + timeout, keyInterest);
+				break;
+			}
+			if (retrievedContent.signedInfo().getType().equals(ContentType.KEY)) {
+				PublicKeyObject theKey = new PublicKeyObject(retrievedContent, handle());
+				if ((null != theKey) && (theKey.available())) {
+					if ((null != desiredKeyID) && (!theKey.publicKeyDigest().equals(desiredKeyID))) {
+						Log.fine("Got key at expected name {0}, but it wasn't the right key, wanted {0}, got {1}", 
+								desiredKeyID, theKey.publicKeyDigest());
+					} else {
+						// either we don't have a preferred key ID, or we matched
+						Log.info("Retrieved public key using name: " + locator.name().name());
+						// TODO make a key object instead of just retrieving
+						// content, use it to decode
+						remember(theKey);
+						return theKey.publicKey();
+					}
+				} else {
+					Log.severe("Decoded key at name {0} without error, but result was null!", retrievedContent.name());
+					throw new IOException("Decoded key at name " + retrievedContent.name() + " without error, but result was null!");
+				}
+			} else {
+				Log.warning("Retrieved an object when looking for key " + locator.name().name() + " at " + retrievedContent.name() + ", but type is " + retrievedContent.signedInfo().getTypeName());
+			}
+			// TODO -- not sure this is exactly right, but a start...
+			Exclude currentExclude = keyInterest.exclude();
+			currentExclude.add(new byte [][]{retrievedContent.digest()});
+			keyInterest.exclude(currentExclude);
+			iterationCount++;
+		}
+		return null;
+	}
+	
 	/**
 	 * Retrieve the public key from cache given a key digest 
 	 * @param desiredKeyID the digest of the desired public key.
