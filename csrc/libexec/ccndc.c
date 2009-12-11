@@ -393,9 +393,6 @@ register_prefix(struct ccn *h, struct ccn_keystore *keystore, struct ccn_charbuf
     struct ccn_parsed_ContentObject pcobuf = {0};
     struct ccn_forwarding_entry forwarding_entry_storage = {0};
     struct ccn_forwarding_entry *forwarding_entry = &forwarding_entry_storage;
-    const unsigned char *ptr = NULL;
-    size_t length = 0;
-    long expire = -1;
     int res;
 
     /* Register the prefix */
