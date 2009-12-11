@@ -24,6 +24,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.X509Certificate;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.TreeMap;
@@ -31,6 +32,7 @@ import java.util.TreeMap;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.keys.KeyRepository;
+import org.ccnx.ccn.impl.security.keys.BasicKeyManager.KeyStoreInfo;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
@@ -75,15 +77,15 @@ public class KeyCache {
 	 * @param keystore
 	 * @throws KeyStoreException 
 	 */
-	public void loadKeyStore(KeyStore keyStore, char [] password, KeyRepository publicKeyCache) throws KeyStoreException {
-		Enumeration<String> aliases = keyStore.aliases();
+	public void loadKeyStore(KeyStoreInfo keyStoreInfo, char [] password, KeyRepository publicKeyCache) throws KeyStoreException {
+		Enumeration<String> aliases = keyStoreInfo.getKeyStore().aliases();
 		String alias;
 		KeyStore.PrivateKeyEntry entry = null;
 		KeyStore.PasswordProtection passwordProtection = new KeyStore.PasswordProtection(password);
 		while (aliases.hasMoreElements()) {
 			alias = aliases.nextElement();
 			try {
-				entry = (KeyStore.PrivateKeyEntry)keyStore.getEntry(alias, passwordProtection);
+				entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(alias, passwordProtection);
 			} catch (NoSuchAlgorithmException e) {
 				throw new KeyStoreException("Unexpected NoSuchAlgorithm retrieving key for alias : " + alias, e);
 			} catch (UnrecoverableEntryException e) {
@@ -98,7 +100,7 @@ public class KeyCache {
 				if (null != pk) {
 					if (null != ppkd) {
 						addMyPrivateKey(ppkd.digest(), pk);
-						publicKeyCache.remember(certificate);
+						publicKeyCache.remember(certificate, keyStoreInfo.getVersion());
 					}
 				}
 			}
@@ -167,6 +169,13 @@ public class KeyCache {
 			key = _privateKeyMap.get(desiredPublicKeyIdentifier);
 		}
 		return key;
+	}
+	
+	public PrivateKey [] getPrivateKeys() {
+		Collection<PrivateKey> myKeys = _myKeyMap.values();
+		myKeys.addAll(_privateKeyMap.values());
+		PrivateKey [] pkarray = new PrivateKey[myKeys.size()];
+		return myKeys.toArray(pkarray);
 	}
 	
 	/**

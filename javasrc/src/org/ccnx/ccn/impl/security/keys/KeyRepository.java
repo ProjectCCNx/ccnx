@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateEncodingException;
-import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 
 import org.ccnx.ccn.CCNHandle;
@@ -36,13 +34,13 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNFlowServer;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
-import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.KeyProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
@@ -82,7 +80,8 @@ public class KeyRepository {
 	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest, ContentName>();
 	protected HashMap<PublisherPublicKeyDigest, PublicKey> _rawKeyMap = new HashMap<PublisherPublicKeyDigest, PublicKey>();
 	protected HashMap<PublisherPublicKeyDigest, Certificate> _rawCertificateMap = new HashMap<PublisherPublicKeyDigest, Certificate>();
-	
+	protected HashMap<PublisherPublicKeyDigest, CCNTime> _rawVersionMap = new HashMap<PublisherPublicKeyDigest, CCNTime>();
+
 	/** 
 	 * Constructor. Doesn't actually use the KeyManager right away;
 	 * doesn't attempt network operations until initializeKeyServer
@@ -107,7 +106,9 @@ public class KeyRepository {
 		if (keyServerIsInitialized()) {
 			return;
 		}
-		_handle = CCNHandle.open(_keyManager); // maintain our own connection to the agent, so
+		if (null == _handle) {
+			_handle = CCNHandle.open(_keyManager); // maintain our own connection to the agent, so
+		}
 		// everyone can ask us for keys even if we have no repository
 		// make a buffered server to return key data
 		_keyServer = new CCNFlowServer(null, true, _handle);
@@ -129,9 +130,9 @@ public class KeyRepository {
 	 * @return void
 	 * @throws IOException
 	 */
-	public void publishKey(ContentName keyName, PublicKey key, PublisherPublicKeyDigest signingKeyID) 
+	public void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish, PublisherPublicKeyDigest signingKeyID) 
 						throws IOException {
-		publishKey(keyName, key, signingKeyID, null);
+		publishKey(keyName, keyToPublish, signingKeyID, null);
 	}
 
 	/**
@@ -152,27 +153,25 @@ public class KeyRepository {
 	 * @return void
 	 * @throws IOException
 	 */
-	public void publishKey(ContentName keyName, PublicKey key, PublisherPublicKeyDigest signingKeyID, KeyLocator keyLocator) 
-						throws IOException {
+	public void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish, PublisherPublicKeyDigest signingKeyID, KeyLocator keyLocator) 
+						   throws IOException {
 		
 		// Set up key server if it hasn't been set up already
 		initializeKeyServer();
 		
-		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(key);
-		
 		// See if we can pull something acceptable for this key at this name.
 		// Use same code path for default key retrieval as getPublicKey, so that we can manage
 		// version handling in a single place.
-		PublicKey theKey = getPublicKey(keyDigest, new KeyLocator(keyName), SystemConfiguration.SHORT_TIMEOUT);
+		PublicKey theKey = getPublicKey(keyToPublish, new KeyLocator(keyName), SystemConfiguration.SHORT_TIMEOUT);
 		PublicKeyObject keyObject = null;
 		if (null != theKey) {
-			keyObject = retrieve(keyDigest);
+			keyObject = retrieve(keyToPublish);
 		} 
 		if (null == keyObject) {
-			keyObject = new PublicKeyObject(keyName, null, signingKeyID, keyLocator, _keyServer);
+			keyObject = new PublicKeyObject(keyName, signingKeyID, _keyServer);
 		}
 		
-		if (!keyObject.available() || (!keyObject.equalsKey(key))) {
+		if (!keyObject.available() || (!keyObject.publicKeyDigest().equals(keyToPublish))) {
 			// Eventually may want to find something already published and link to it, but be simple here.
 
 			// Need a key locator to stick in data entry for
@@ -182,11 +181,14 @@ public class KeyRepository {
 			// that allows for self-referential key names -- the
 			// CCN equivalent of a "self-signed cert". Means that
 			// we will refer to only the base key name and the publisher ID.
+			if (null == signingKeyID) {
+				signingKeyID = _handle.keyManager().getDefaultKeyID();
+			}
 			
 			if (null == keyLocator) {
 				keyLocator = _handle.keyManager().getKeyLocator(signingKeyID);
 				if (null == keyLocator) {
-					if (signingKeyID.equals(keyDigest)) {
+					if (signingKeyID.equals(keyToPublish)) {
 						// Make a self-referential key locator. For now do not include the
 						// version.
 						keyLocator = buildKeyLocator(keyName, signingKeyID);
@@ -199,13 +201,14 @@ public class KeyRepository {
 			
 			keyObject.setOurPublisherInformation(signingKeyID, keyLocator);
 			// nobody's written it where we can find it fast enough.
-			keyObject.setData(key);
+			// theKey will be retrieved from cache if not stored on network
+			keyObject.setData(theKey);
 
 			if (!keyObject.save()) {
 				Log.info("Not saving key when we thought we needed to: desired key value {0}, have key value {1}, " +
-							keyDigest, new PublisherPublicKeyDigest(keyObject.publicKey()));
+							keyToPublish, new PublisherPublicKeyDigest(keyObject.publicKey()));
 			} else {
-				Log.info("Published key {0} to name {1}", keyDigest, keyObject.getVersionedName());
+				Log.info("Published key {0} to name {1}", keyToPublish, keyObject.getVersionedName());
 			}
 		} else {
 			Log.info("Retrieved existing key object {0}, whose key locator is {1}.", keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
@@ -282,18 +285,25 @@ public class KeyRepository {
 	 * Remember a public key 
 	 * @param theKey public key to remember
 	 */
-	public void remember(PublicKey theKey) {
-		_rawKeyMap.put(new PublisherPublicKeyDigest(theKey), theKey);
+	public void remember(PublicKey theKey, CCNTime version) {
+		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(theKey);
+		_rawKeyMap.put(keyDigest, theKey);
+		if (null != version) {
+			_rawVersionMap.put(keyDigest, version);
+		}
 	}
 
 	/**
 	 * Remember a certificate.
 	 * @param theCertificate the certificate to remember
 	 */
-	public void remember(Certificate theCertificate) {
+	public void remember(Certificate theCertificate, CCNTime version) {
 		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(theCertificate.getPublicKey());
 		_rawCertificateMap.put(keyDigest, theCertificate);
 		_rawKeyMap.put(keyDigest, theCertificate.getPublicKey());
+		if (null != version) {
+			_rawVersionMap.put(keyDigest, version);
+		}
 	}
 
 
@@ -331,21 +341,6 @@ public class KeyRepository {
 	}
 
 	/**
-	 * Retrieve the public key from cache given a key digest 
-	 * @param desiredKeyID the digest of the desired public key.
-	 */
-	public PublicKey getPublicKeyFromCache(PublisherPublicKeyDigest desiredKeyID) throws IOException {
-		PublicKey theKey = _rawKeyMap.get(desiredKeyID);
-		if (null == theKey) {
-			Certificate theCertificate = _rawCertificateMap.get(desiredKeyID);
-			if (null != theCertificate) {
-				theKey = theCertificate.getPublicKey();
-			}
-		}
-		return theKey;
-	}
-
-	/**
 	 * Retrieve the public key from CCN given a key digest and a key locator
 	 * the function blocks and waits for the public key until a certain timeout.
 	 * As a side effect, caches network storage information for this key, which can
@@ -370,12 +365,12 @@ public class KeyRepository {
 			Log.info("This is silly: asking the repository to retrieve for me a key I already have...");
 			if (locator.type() == KeyLocator.KeyLocatorType.KEY) {
 				PublicKey key = locator.key();
-				remember(key);
+				remember(key, null);
 				return key;
 			} else if (locator.type() == KeyLocator.KeyLocatorType.CERTIFICATE) {
 				Certificate certificate = locator.certificate();
 				PublicKey key = certificate.getPublicKey();
-				remember(certificate);
+				remember(certificate, null);
 				return key;
 			}
 		} else {
@@ -399,37 +394,24 @@ public class KeyRepository {
 				} catch (IOException e) {
 					Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 					Log.warningStackTrace(e);
-				} catch (InterruptedException e) {
-					Log.warning("Interrupted attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 				}
 				if (null == retrievedContent) {
 					Log.fine("No data returned when we attempted to retrieve key using interest {0}, timeout " + timeout, keyInterest);
 					break;
 				}
 				if (retrievedContent.signedInfo().getType().equals(ContentType.KEY)) {
-					PublicKey theKey = null;
-					try {
-						theKey = CryptoUtil.getPublicKey(retrievedContent.content());
-					} catch (CertificateEncodingException e) {
-						// TODO go around again to avoid garbage data
-						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-					} catch (InvalidKeySpecException e) {
-						// TODO go around again to avoid garbage data
-						Log.warning("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-						throw new IOException("Unexpected exception " + e.getClass().getName() + ": " + e.getMessage() + ", should not have to decode public key, should have it in cache.");
-					}
-					if (null != theKey) {
-						if ((null != desiredKeyID) && (!new PublisherPublicKeyDigest(theKey).equals(desiredKeyID))) {
+					PublicKeyObject theKey = new PublicKeyObject(retrievedContent, handle());
+					if ((null != theKey) && (theKey.available())) {
+						if ((null != desiredKeyID) && (!theKey.publicKeyDigest().equals(desiredKeyID))) {
 							Log.fine("Got key at expected name {0}, but it wasn't the right key, wanted {0}, got {1}", 
-									desiredKeyID, new PublisherPublicKeyDigest(theKey));
+									desiredKeyID, theKey.publicKeyDigest());
 						} else {
 							// either we don't have a preferred key ID, or we matched
 							Log.info("Retrieved public key using name: " + locator.name().name());
 							// TODO make a key object instead of just retrieving
 							// content, use it to decode
-							remember(theKey, retrievedContent);
-							return theKey;
+							remember(theKey);
+							return theKey.publicKey();
 						}
 					} else {
 						Log.severe("Decoded key at name {0} without error, but result was null!", retrievedContent.name());
@@ -449,6 +431,25 @@ public class KeyRepository {
 		return null;
 	}
 	
+	/**
+	 * Retrieve the public key from cache given a key digest 
+	 * @param desiredKeyID the digest of the desired public key.
+	 */
+	public PublicKey getPublicKeyFromCache(PublisherPublicKeyDigest desiredKeyID) {
+		PublicKey theKey = _rawKeyMap.get(desiredKeyID);
+		if (null == theKey) {
+			Certificate theCertificate = _rawCertificateMap.get(desiredKeyID);
+			if (null != theCertificate) {
+				theKey = theCertificate.getPublicKey();
+			}
+		}
+		return theKey;
+	}
+	
+	public CCNTime getPublicKeyVersionFromCache(PublisherPublicKeyDigest desiredKeyID) {
+		return _rawVersionMap.get(desiredKeyID);
+	}
+
 	/**
 	 * Retrieve key object from cache given key name 
 	 * @param keyName key digest
@@ -490,5 +491,9 @@ public class KeyRepository {
 	 */
 	public KeyLocator buildKeyLocator(ContentName keyName, PublisherPublicKeyDigest signingKeyID) {
 		return new KeyLocator(keyName, new PublisherID(signingKeyID));
+	}
+	
+	public KeyLocator buildRawKeyLocator(PublicKey key) {
+		return new KeyLocator(key);
 	}
 }
