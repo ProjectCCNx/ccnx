@@ -130,6 +130,14 @@ enum ccn_dtag {
     CCN_DTAG_Namespace = 92,
     CCN_DTAG_GlobalPrefixName = 93,
     CCN_DTAG_PolicyVersion = 94,
+    CCN_DTAG_KeyValueSet = 95,
+    CCN_DTAG_KeyValuePair = 96,
+    CCN_DTAG_IntegerValue = 97,
+    CCN_DTAG_DecimalValue = 98,
+    CCN_DTAG_StringValue = 99,
+    CCN_DTAG_BinaryValue = 100,
+    CCN_DTAG_NameValue = 101,
+    CCN_DTAG_Entry = 102,
     CCN_DTAG_CCNProtocolDataUnit = 17702112
 };
 
