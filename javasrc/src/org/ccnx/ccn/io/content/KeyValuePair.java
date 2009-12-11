@@ -27,8 +27,6 @@ import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.protocol.ContentName;
 
-import com.sun.jdi.InvalidTypeException;
-
 public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, Comparable<KeyValuePair>, Map.Entry<String, Object> {
 	protected static final String ENTRY = "Entry";
 	protected static final String KEY_ELEMENT = "Key";
