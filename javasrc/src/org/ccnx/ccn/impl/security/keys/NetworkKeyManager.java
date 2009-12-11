@@ -29,6 +29,7 @@ import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -105,6 +106,15 @@ public class NetworkKeyManager extends BasicKeyManager {
 			} 
 		}
 		return keyStoreInfo;
+	}
+	
+	protected CCNTime getKeyStoreVersion(OutputStream out) throws IOException {
+		// in our case, our output stream should be a file output stream...
+		if (!(out instanceof CCNVersionedOutputStream)) {
+			throw new IOException("Unexpected output stream type in getKeyStoreVersion: " + out.getClass().getName());
+		}
+		
+		return ((CCNVersionedOutputStream)out).getVersion();
 	}
 	
 	/**
