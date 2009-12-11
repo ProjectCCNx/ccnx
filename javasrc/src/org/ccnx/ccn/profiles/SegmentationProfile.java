@@ -336,6 +336,16 @@ public class SegmentationProfile implements CCNProfile {
 		return segmentInterest(name, baseSegment(), publisher);
 	}
 	
+	public static Interest nextSegmentInterest(ContentName name, PublisherPublicKeyDigest publisher) {
+		Interest interest = null;
+		ContentName interestName = null;
+		Log.finer("nextSegmentInterest: creating interest for {0} from ContentName {1}", interestName, name);
+		//TODO need to make sure we only get segments back and not other things like versions
+		interest = Interest.next(interestName, null, null, 2, 2, publisher);
+		return interest;
+	}
+	
+	
 	/**
 	 * Creates an Interest to find the right-most child from the given segment number
 	 * or the base segment if one is not supplied.  This attempts to find the last segment for
@@ -521,6 +531,58 @@ public class SegmentationProfile implements CCNProfile {
 		
 		
 		return new Exclude(ees);
+	}
+	
+	/**
+	 * Function to get the next segment after segment in the supplied name (or the first segment if no segment is given).
+	 * 
+	 */
+	public static ContentObject getNextSegment(ContentName name, PublisherPublicKeyDigest publisher, long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
+		ContentName segmentName = null;
+		ContentObject co = null;
+		Interest getNextInterest = null;
+		long segmentNumber = -1;
+		
+		//want to start with a name with a segment number in it
+		if(isSegment(name)){
+			//the name already has a segment...  could this be the segment we want?
+			segmentName = name;
+			segmentNumber = getSegmentNumber(name);
+			getNextInterest = segmentInterest(segmentName, segmentNumber+1, publisher);
+			//getNextInterest = nextSegmentInterest(segmentName, publisher);
+		} else {
+			//this doesn't have a segment already
+			//the last segment could be the first one...
+			segmentName = segmentName(name, baseSegment());
+			getNextInterest = firstSegmentInterest(segmentName, publisher);
+		}
+		
+		co = handle.get(getNextInterest, timeout);
+		if (co == null) {
+			Log.finer("Null returned from getNextSegment for name: {0}",name);
+			return null;
+		} else {
+			Log.finer("returned contentObject: {0}",co.fullName());
+		}
+		
+		//now we should have a content object after the segment in the name we started with, but is it the last one?
+		if (isSegment(co.name())) {
+			//double check that we have a segmented name
+			//we have a later segment, but is it the next one?
+			//check the final segment marker or if we are on our last attempt
+			if (segmentNumber+1 == getSegmentNumber(co.name())) {
+				//this is the next segment (or last attempt)...  check if it verifies.
+				if (verifier.verify(co)) {
+					return co;
+				} else {
+					//this did not verify...  need to determine how to handle this
+					Log.warning("VERIFICATION FAILURE: " + co.name() + ", need to find better way to decide what to do next.");
+				}
+			}
+		}
+		
+		//we didn't get back the segment number we were expecting...  needs to be more robust
+		return null;
 	}
 	
 }

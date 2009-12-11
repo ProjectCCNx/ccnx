@@ -245,6 +245,7 @@ public class CCNVersionedInputStreamTest {
 		b = (byte)vlatest.read();
 		System.out.println("Post-read: Opened stream on latest version, expected: " + latestVersionName + " got: " + 
 				vlatest.getBaseName());
+		System.out.println("versions as TS: "+VersioningProfile.getLastVersionAsTimestamp(latestVersionName)+" "+vlatest.getVersion());
 		Assert.assertEquals(vlatest.getBaseName(), latestVersionName);
 		Assert.assertEquals(VersioningProfile.cutTerminalVersion(vlatest.getBaseName()).first(), defaultStreamName);
 		Assert.assertEquals(VersioningProfile.getLastVersionAsLong(latestVersionName), 
