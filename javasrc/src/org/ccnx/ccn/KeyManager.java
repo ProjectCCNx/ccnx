@@ -27,14 +27,11 @@ import java.security.Security;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.KeyRepository;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
-import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
@@ -224,24 +221,7 @@ public abstract class KeyManager {
 	 * @return the digest of the corresponding public key
 	 */
 	public abstract PublisherPublicKeyDigest getPublisherKeyID(PrivateKey signingKey);
-
-	/**
-	 * Get the default key locator associated with one of our signing keys
-	 * @param signingKey key whose locator data we want
-	 * @return the default key locator for that key
-	 */
-	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
 	
-	/**
-	 * Default algorithm for constructing key locators.
-	 * @param signingKeyID
-	 * @return
-	 */
-	public static KeyLocator getDefaultKeyLocator(PublisherPublicKeyDigest signingKeyID) {
-		return new KeyLocator(new ContentName(UserConfiguration.defaultUserNamespace(), KeyProfile.KEY_NAME_COMPONENT),
-				new PublisherID(signingKeyID));
-	}
-
 	/**
 	 * Get the private key associated with a given publisher 
 	 * @param publisherKeyID the public key digest of the desired key
