@@ -63,7 +63,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	ContentName c2;
 	
 	@Test
-	public void testNameEnumerator(){
+	public void testNameEnumerator() throws Exception {
 		
 		System.out.println("Starting CCNNameEnumerator Test");
 		
@@ -99,7 +99,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	}
 	
 	
-	public void testRegisterName(){
+	public void testRegisterName() throws IOException{
 		
 		try{
 			namespace = ContentName.fromNative(namespaceString);

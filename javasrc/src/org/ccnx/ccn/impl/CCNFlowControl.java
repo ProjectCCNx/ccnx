@@ -183,8 +183,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * Add a new namespace to the controller. The controller will register a filter with ccnd to receive
 	 * interests in this namespace.
 	 * @param name
+	 * @throws IOException 
 	 */
-	public void addNameSpace(ContentName name) {
+	public void addNameSpace(ContentName name) throws IOException {
 		if (!_flowControlEnabled)
 			return;
 		Iterator<ContentName> it = _filteredNames.iterator();
@@ -215,8 +216,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	/**
 	 * Filter handler method, add a namespace and respond to an existing Interest.
+	 * @throws IOException 
 	 */
-	public void addNameSpace(ContentName name, Interest outstandingInterest) {
+	public void addNameSpace(ContentName name, Interest outstandingInterest) throws IOException {
 		addNameSpace(name);
 		handleInterest(outstandingInterest);
 	}

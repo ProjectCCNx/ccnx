@@ -180,7 +180,7 @@ public class TestUserData {
 		return _userData.get(userName);
 	}
 	
-	public CCNHandle getHandleForUser(String friendlyName) {
+	public CCNHandle getHandleForUser(String friendlyName) throws IOException {
 		KeyManager km = getUser(friendlyName);
 		if (null == km)
 			return null;

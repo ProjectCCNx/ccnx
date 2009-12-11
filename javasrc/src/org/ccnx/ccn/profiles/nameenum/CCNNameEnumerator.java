@@ -429,11 +429,12 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	 * Method to register a namespace for filtering incoming Interests
 	 * 
 	 * @param name ContentName to register for filtering incoming Interests
+	 * @throws IOException 
 	 * 
 	 * @see CCNFilterListener
 	 */
 	
-	public void registerNameSpace(ContentName name) {
+	public void registerNameSpace(ContentName name) throws IOException {
 		synchronized(_handledResponses) {
 			if (!_registeredNames.contains(name)) {
 				_registeredNames.add(name);
