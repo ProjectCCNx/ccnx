@@ -305,7 +305,7 @@ public class BasicKeyManager extends KeyManager {
 			throw new IOException("Unexpected output stream type in getKeyStoreVersion: " + out.getClass().getName());
 		}
 		File keyStoreFile = new File(_keyStoreDirectory, _keyStoreFileName);
-		if (keyStoreFile.exists()) {
+		if (!keyStoreFile.exists()) {
 			throw new IOException("KeyStore doesn't exist in getKeyStoreVersion: " + keyStoreFile.getAbsolutePath());
 		}
 		return new CCNTime(keyStoreFile.lastModified());
@@ -510,6 +510,8 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public PrivateKey getSigningKey(PublisherPublicKeyDigest publisher) {
 		Log.finer("getSigningKey: retrieving key: " + publisher);
+		if (null == publisher)
+			return null;
 		return _privateKeyCache.getPrivateKey(publisher.digest());
 	}
 
@@ -599,7 +601,7 @@ public class BasicKeyManager extends KeyManager {
 		if (null == keyPrefix) {
 			keyPrefix = getDefaultKeyNamePrefix();
 		}
-		ContentName keyName = new ContentName(keyPrefix, KeyProfile.keyIDToNameComponent(keyID));
+		ContentName keyName = KeyProfile.keyName(keyPrefix, keyID);
 		if (null != keyVersion) {
 			return VersioningProfile.addVersion(keyName, keyVersion);
 		}
