@@ -774,7 +774,7 @@
 	</target>
 	
 	<!-- Tests to validate the interactions with ccnd.  Not yet added to list of tests yet -->
-	<target name="test-ccnd-controls" depends="jar">
+	<target name="test-ccnd-controls" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
 			<classpath>

@@ -31,6 +31,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -46,7 +47,14 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 	public static final Integer CCN_FORW_ACTIVE = 1;
 	public static final Integer CCN_FORW_CHILD_INHERIT = 2;
 	public static final Integer CCN_FORW_ADVERTISE = 4;
+	public static final Integer CCN_FORW_LAST = 8;
 
+	/*
+	 * 	#define CCN_FORW_ACTIVE         1
+	 *	#define CCN_FORW_CHILD_INHERIT  2
+	 *	#define CCN_FORW_ADVERTISE      4
+	 *	#define CCN_FORW_LAST           8
+	 */
 		
 	public class ForwardingEntry extends GenericXMLEncodable implements XMLEncodable {
 		/* extends CCNEncodableObject<PolicyXML>  */
@@ -149,24 +157,39 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			return out;
 		}	
 
-		public byte[] getBinaryEncoding() {
-			// Do setup. Binary codec doesn't write a preamble or anything.
-			// If allow to pick, text encoder would sometimes write random stuff...
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			XMLEncoder encoder = XMLCodecFactory.getEncoder(BinaryXMLCodec.CODEC_NAME);
-			try {
-				encoder.beginEncoding(baos);
-				encode(encoder);
-				encoder.endEncoding();	
-			} catch (ContentEncodingException e) {
-				String reason = e.getMessage();
-				Log.fine("Unexpected error encoding allocated ForwardingEntry.  reason: " + reason + "\n");
-				Log.warningStackTrace(e);
-				throw new IllegalArgumentException("Unexpected error encoding allocated ForwardingEntry.  reason: " + reason);
-			}
-			return baos.toByteArray();
-		}
-
+//		public byte[] getBinaryEncoding() {
+//			// Do setup. Binary codec doesn't write a preamble or anything.
+//			// If allow to pick, text encoder would sometimes write random stuff...
+//			
+//			byte[] contentOutBits;
+//			try {
+//				contentOutBits = this.encode(BinaryXMLCodec.CODEC_NAME);
+//			} catch (ContentEncodingException e) {
+//				String reason = e.getMessage();
+//				Log.fine("Unexpected error encoding allocated ForwardingEntry.  reason: " + reason + "\n");
+//				Log.warningStackTrace(e);
+//				throw new IllegalArgumentException("Unexpected error encoding allocated ForwardingEntry.  reason: " + reason);
+//			}
+//	
+//			/*
+//			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+//			XMLEncoder encoder = XMLCodecFactory.getEncoder(BinaryXMLCodec.CODEC_NAME);
+//			try {
+//				encoder.beginEncoding(baos);
+//				encode(encoder);
+//				encoder.endEncoding();	
+//			} catch (ContentEncodingException e) {
+//				String reason = e.getMessage();
+//				Log.fine("Unexpected error encoding allocated ForwardingEntry.  reason: " + reason + "\n");
+//				Log.warningStackTrace(e);
+//				throw new IllegalArgumentException("Unexpected error encoding allocated ForwardingEntry.  reason: " + reason);
+//			}
+//			return baos.toByteArray();
+//			*/
+//			return contentOutBits;
+//		}
+//			
+	
 		public boolean validateAction(String action) {
 			if (action != null){
 				if (action.equals(ActionType.Register.value())) {
@@ -291,13 +314,9 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 	/*************************************************************************************/
 
 	public PrefixRegistrationManager(CCNHandle handle) throws CCNDaemonException {
-		super(handle, null);
+		super(handle);
 	}
 
-	public PrefixRegistrationManager(CCNHandle handle, PublisherPublicKeyDigest ccndID) throws CCNDaemonException {
-		super(handle, ccndID);
-	}
-	
 	public PrefixRegistrationManager() {
 	}
 
@@ -308,7 +327,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 	public void registerPrefix(String uri, PublisherPublicKeyDigest publisher, Integer faceID, Integer flags, 
 							Integer lifetime) throws CCNDaemonException {
 		if (null == publisher)
-			publisher = _ccndId;
+			publisher = _manager.getCCNDId();
 		
 		ContentName prefixToRegister;
 		try {
@@ -322,7 +341,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		}
 		
 		ForwardingEntry forward = new ForwardingEntry(ActionType.Register, prefixToRegister, publisher, faceID, flags, lifetime);
-		byte[] entryBits = forward.getBinaryEncoding();
+		// byte[] entryBits = super.getBinaryEncoding(forward);
 
 		/*
 		 * First create a name that looks like 'ccnx:/ccnx/CCNDId/action/ContentObjectWithForwardInIt'
@@ -331,7 +350,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		ContentName interestName = null;
 		try {
 			interestName = ContentName.fromURI(startURI);
-			interestName = ContentName.fromNative(interestName, _ccndId.digest());
+			interestName = ContentName.fromNative(interestName, _manager.getCCNDId().digest());
 			interestName = ContentName.fromNative(interestName, ActionType.Register.value());
 		} catch (MalformedContentNameStringException e) {
 			String reason = e.getMessage();
@@ -340,15 +359,11 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			String msg = ("Unexpected MalformedContentNameStringException in call creating ContentName for Interest, reason: " + reason);
 			throw new CCNDaemonException(msg);
 		}
-		super.sendIt(interestName, entryBits);
+		super.sendIt(interestName, forward);
 	}
 
 	
 	public Integer selfRegisterPrefix(String uri) throws CCNDaemonException {
-		return this.selfRegisterPrefix(uri, _ccndId, null, null, Integer.MAX_VALUE);
-	}
-	public Integer selfRegisterPrefix(String uri, PublisherPublicKeyDigest ccndId, Integer faceID, Integer flags, 
-				Integer lifetime) throws CCNDaemonException {
 		ContentName prefixToRegister;
 		try {
 			prefixToRegister = ContentName.fromURI(uri);
@@ -359,8 +374,13 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			Log.fine(msg);
 			throw new CCNDaemonException(msg);
 		}
-		
+		return this.selfRegisterPrefix(prefixToRegister, null, null, Integer.MAX_VALUE);
+	}
+	
+	
+	public Integer selfRegisterPrefix(ContentName prefixToRegister, Integer faceID, Integer flags, Integer lifetime) throws CCNDaemonException {
 		final String startURI = "ccnx:/ccnx/";
+		PublisherPublicKeyDigest ccndId = _manager.getCCNDId();
 		ContentName interestName;
 		try {
 			interestName = ContentName.fromURI(startURI);
@@ -374,14 +394,36 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			throw new CCNDaemonException(msg);
 		}
 		ForwardingEntry forward = new ForwardingEntry(ActionType.SelfRegister, prefixToRegister, ccndId, faceID, flags, lifetime);
-		byte[] entryBits = forward.getBinaryEncoding();
+		// byte[] entryBits = super.getBinaryEncoding(forward);
 
-		byte[] payloadBack = super.sendIt(interestName, entryBits);
+		byte[] payloadBack = super.sendIt(interestName, forward);
 		ForwardingEntry entryBack = new ForwardingEntry(payloadBack);
-
+		Log.finest("registerPrefix: returned {0}", entryBack);
 		return entryBack.faceID(); 
 	}
 	
-	
+	public void unRegisterPrefix(ContentName prefixToRegister, Integer faceID) throws CCNDaemonException {
+		final String startURI = "ccnx:/ccnx/";
+		PublisherPublicKeyDigest ccndId = _manager.getCCNDId();
+		ContentName interestName;
+		try {
+			interestName = ContentName.fromURI(startURI);
+			interestName = ContentName.fromNative(interestName, ccndId.digest());
+			interestName = ContentName.fromNative(interestName, ActionType.UnRegister.value());
+		} catch (MalformedContentNameStringException e) {
+			String reason = e.getMessage();
+			String msg = ("Unexpected MalformedContentNameStringException in call creating ContentName " + startURI + ", reason: " + reason);
+			Log.fine(msg);
+			Log.warningStackTrace(e);
+			throw new CCNDaemonException(msg);
+		}
+		ForwardingEntry forward = new ForwardingEntry(ActionType.UnRegister, prefixToRegister, ccndId, faceID, null, null);
+		// byte[] entryBits = super.getBinaryEncoding(forward);
+
+		byte[] payloadBack = super.sendIt(interestName, forward);
+		ForwardingEntry entryBack = new ForwardingEntry(payloadBack);
+		Log.finest("unRegisterPrefix: returned {0}", entryBack);
+
+	}
 	
 }

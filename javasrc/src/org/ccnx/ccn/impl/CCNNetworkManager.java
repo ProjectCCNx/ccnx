@@ -37,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
@@ -45,6 +46,8 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.WirePacket;
 
 
@@ -77,6 +80,18 @@ public class CCNNetworkManager implements Runnable {
 	public static final String KEEPALIVE_NAME = "/HereIAm";
 	public static final int THREAD_LIFE = 8;	// in seconds
 	
+	public static final String ping = "ccnx:/ccnx/ping/";
+
+	
+	/*
+	 *  This ccndId is set on the first connection with 'ccnd' and is the
+	 *  'device name' that all of our control communications will use to
+	 *  ensure that we are talking to our local 'ccnd'.
+	 */
+	protected static Integer _idSyncer = new Integer(0);
+	protected static PublisherPublicKeyDigest _ccndId = null;
+	protected CCNDIdGetter _getter = null;
+	
 	/*
 	 * Static singleton.
 	 */
@@ -96,6 +111,7 @@ public class CCNNetworkManager implements Runnable {
 	
 	// For handling protocol to speak to ccnd, must have keys
 	protected KeyManager _keyManager;
+	protected int _localPort = -1;
 
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
@@ -476,11 +492,88 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 	
+	private class CCNDIdGetter implements Runnable {
+		CCNNetworkManager _mgr;
+		KeyManager _keyManager;
+		
+		public CCNDIdGetter(CCNNetworkManager mgr, KeyManager keyManager) { 
+			_mgr = mgr;
+			_keyManager = keyManager;
+			}
+		
+		public void run() {
+			boolean isNull = false;
+			synchronized (_idSyncer) {
+				isNull = (null == _ccndId);
+			}
+			if (isNull) {
+				try {
+					Interest interested = new Interest(ping);
+					interested.nonce(Interest.generateNonce());
+					interested.scope(1);
+					ContentObject contented = _mgr.get(interested, 500);
+					if (null == contented) {
+						String msg = ("CCNDIdGetter: Fetch of content from ping uri failed due to timeout.");
+						Log.severe(msg);
+						return;
+					}
+					PublisherPublicKeyDigest sentID = contented.signedInfo().getPublisherKeyID();
+					
+					// TODO: This needs to be fixed once the KeyRepository is fixed to provide a KeyManager
+					if (null != _keyManager) {
+//						PublicKey publicKey = _keyManager.getPublicKey(sentID);
+//						if (!contented.verify(publicKey)) {
+//							String msg = ("CCNDIdGetter: Fetch of content reply from ping failed to verify.");
+//							Log.severe(msg);
+//							return;
+//						}
+						
+						ContentVerifier verifyer = new ContentObject.SimpleVerifier(sentID, _keyManager);
+						if (!verifyer.verify(contented)) {
+							String msg = ("CCNDIdGetter: Fetch of content reply from ping failed to verify.");
+							Log.severe(msg);
+							return;
+						}
+					}
+
+					synchronized(_idSyncer) {
+						_ccndId = sentID;
+						Log.info("CCNDIdGetter: ccndId {0}", ContentName.componentPrintURI(sentID.digest()));
+					}
+				} catch (InterruptedException e) {
+					Log.warningStackTrace(e);
+				} catch (MalformedContentNameStringException e) {
+					String reason = e.getMessage();
+					Log.warningStackTrace(e);
+					String msg = ("CCNDIdGetter: Unexpected MalformedContentNameStringException in call creating: " + ping + " reason: " + reason);
+					Log.severe(msg);
+				} catch (IOException e) {
+					String reason = e.getMessage();
+					Log.warningStackTrace(e);
+					String msg = ("CCNDIdGetter: Unexpected IOException in call getting ping Interest reason: " + reason);
+					Log.severe(msg);
+//				} catch (InvalidKeyException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				} catch (SignatureException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				} catch (NoSuchAlgorithmException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+				}
+			} /* null == _ccndId */
+		} /* run() */
+
+	}
+		
 	/**
 	 * The constructor. Attempts to connect to a ccnd at the currently specified port number
 	 * @throws IOException if the port is invalid
 	 */
 	public CCNNetworkManager(KeyManager keyManager) throws IOException {
+
+		_keyManager = keyManager;
 		// Determine port at which to contact agent
 		String portval = System.getProperty(PROP_AGENT_PORT);
 		if (null != portval) {
@@ -517,6 +610,8 @@ public class CCNNetworkManager implements Runnable {
 		_channel.configureBlocking(false);
 		_selector = Selector.open();
 		_channel.register(_selector, SelectionKey.OP_READ);
+		_localPort = _channel.socket().getLocalPort();
+		Log.info("Connection to CCN agent using local port number: " + _localPort);
 		
 		// Create callback threadpool and main processing thread
 		_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
@@ -566,6 +661,60 @@ public class CCNNetworkManager implements Runnable {
 			_tapStreamIn = new FileOutputStream(new File(pathname + "_in"));
 			Log.info("Tap writing to {0}", pathname);
 		}
+	}
+	
+	/**
+	 * Get the CCN Name of the 'ccnd' we're connected to.
+	 * 
+	 * @return the CCN Name of the 'ccnd' this CCNNetworkManager is connected to.
+	 */
+	public PublisherPublicKeyDigest getCCNDId() {
+		/*
+		 *  Now arrange to have the ccndId read.  We can't do that here because we need
+		 *  to return back to the create before we know we get the answer back.  We can
+		 *  cause the prefix registration to wait.
+		 */
+		synchronized (_idSyncer) {
+			if (null == _ccndId && null == _getter) {
+				_getter = new CCNDIdGetter(this, _keyManager);
+				_threadpool.execute(_getter);
+			} else {
+				return _ccndId;
+			}
+		}
+		
+		/*
+		 * If we get here, we don't yet have the ccndId we need to return, so...
+		 */
+		int loopCnt = 0;
+		do {
+			try {
+				Thread.sleep(5);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			synchronized (_idSyncer) {
+				if (null != _ccndId) {
+					return (_ccndId);
+				}
+			}
+		} while (loopCnt < 500);
+		return null;
+	}
+	
+	/**
+	 * 
+	 */
+	public KeyManager getKeyManager() {
+		return _keyManager;
+	}
+	
+	/**
+	 * 
+	 */
+	public void setKeyManager(KeyManager manager) {
+		_keyManager = manager;
 	}
 	
 	/**
