@@ -58,12 +58,17 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 		_publisher = publisher;
 	}
 	
+	public KeyName(ContentName name, PublisherPublicKeyDigest publisher) {
+		_name = name;
+		_publisher = new PublisherID(publisher);
+	}
+	
 	/**
 	 * Build a KeyName
 	 * @param name the name at which we can find the key
 	 */
 	public KeyName(ContentName name) {
-		this(name, null);
+		this(name, (PublisherID)null);
 	}
 
 	/**

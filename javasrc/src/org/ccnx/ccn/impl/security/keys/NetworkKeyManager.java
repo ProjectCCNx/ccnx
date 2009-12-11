@@ -24,7 +24,6 @@ import java.security.KeyStore;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
@@ -67,21 +66,6 @@ public class NetworkKeyManager extends BasicKeyManager {
 		_publisher = publisher;
 		_handle = handle;
 		// loading done by initialize()
-	}
-
-	/**
-	 * Get the content name for a given key id.
-	 * The default key name is the publisher ID itself,
-	 * under the keystore namespace.
-	 * @param keyID[]
-	 * @return
-	 */
-	@Override
-	public ContentName getDefaultKeyName(byte [] keyID) {
-		ContentName keyDir =
-			ContentName.fromNative(_keystoreName, 
-				   			UserConfiguration.defaultKeyName());
-		return new ContentName(keyDir, keyID);
 	}
 	
 	/**

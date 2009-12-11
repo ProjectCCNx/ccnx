@@ -43,6 +43,7 @@ import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -165,22 +166,7 @@ public class BasicKeyManager extends KeyManager {
 		}
 		_initialized = true;		
 		// Can we publish keys now?
-		publishKeys(null);
-	}
-	
-	@Override
-	public synchronized void publishKeys(ContentName defaultPrefix) throws ConfigurationException, IOException {
-		if (!initialized()) {
-			throw new IOException("Cannot publish keys, have not yet initialized KeyManager!");
-		}
-		// we've put together enough of this KeyManager to let the
-		// KeyRepository use it to make a CCNHandle, even though we're
-		// not done...
-		if (_defaultKeysPublished) {
-			return;
-		}
-		publishDefaultKey();
-		_defaultKeysPublished = true;
+		publishDefaultKey(null);
 	}
 	
 	@Override
@@ -464,6 +450,12 @@ public class BasicKeyManager extends KeyManager {
 		return getKeyLocator(getDefaultKeyID());
 	}
 	
+	@Override
+	public KeyLocator getKeyLocator(PrivateKey signingKey) {
+		PublisherPublicKeyDigest keyID = _privateKeyCache.getPublicKeyIdentifier(signingKey);
+		return getKeyLocator(keyID);
+	}
+	
 	/**
 	 * Get default key locator given a public key digest
 	 * @param key public key digest
@@ -471,18 +463,23 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public KeyLocator getKeyLocator(PublisherPublicKeyDigest keyID) {
-		if ((null == keyID) || (keyID.equals(getDefaultKeyID())))
-			return _keyLocator;
-		PublicKeyObject keyObject = _keyRepository.retrieve(keyID);
-		try {
-			if ((null != keyObject) && (keyObject.isSaved())) {
-				return new KeyLocator(new KeyName(keyObject.getVersionedName(), new PublisherID(keyObject.getContentPublisher())));
-			}
-		} catch (IOException e) {
-			
+		if (null == keyID) {
+			keyID = getDefaultKeyID();
 		}
-		Log.info("Cannot find key locator for key: " + keyID);
-		return null;
+		PublicKeyObject keyObject = _keyRepository.retrieve(keyID);
+
+		if (null != keyObject) {
+			try {
+				if (keyObject.isSaved()) {
+					return new KeyLocator(new KeyName(keyObject.getVersionedName(), new PublisherID(keyObject.getContentPublisher())));
+				}
+			} catch (IOException ex) {
+				Log.warning("IOException checking saved status or retrieving version of key object {0}: {1}!", keyObject.getVersionedName(), ex.getMessage());
+				Log.warningStackTrace(ex);
+				Log.warning("Falling through and retrieving KEY type key locator for key {1}", keyID);
+			}
+		}
+		return getKeyTypeKeyLocator(keyID);
 	}
 	
 	/**
@@ -493,22 +490,6 @@ public class BasicKeyManager extends KeyManager {
 	public PrivateKey getDefaultSigningKey() {
 		return _privateKeyCache.getPrivateKey(getDefaultKeyID().digest());
 	}
-	
-	/**
-	 * Return the key's content name for a given key id. 
-	 * The default key name is the publisher ID itself,
-	 * under the user's key collection. 
-	 * @param keyID[] publisher ID
-	 * @return content name
-	 */
-	@Override
-	public ContentName getDefaultKeyName(byte [] keyID) {
-		ContentName keyDir =
-			ContentName.fromNative(UserConfiguration.defaultUserNamespace(), 
-				   			UserConfiguration.defaultKeyName());
-		return new ContentName(keyDir, KeyProfile.keyIDToNameComponent(keyID));
-	}
-	
 	
 	/**
 	 * Get signing keys
@@ -555,7 +536,7 @@ public class BasicKeyManager extends KeyManager {
 	 * @throws IOException 
 	 */
 	@Override
-	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) throws IOException {
+	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) {
 		return keyRepository().getPublicKeyFromCache(desiredKeyID);
 	}
 
@@ -578,8 +559,59 @@ public class BasicKeyManager extends KeyManager {
 		return _keyRepository;
 	}
 
+	@Override
+	public synchronized void publishDefaultKey(ContentName defaultPrefix) throws ConfigurationException, IOException {
+		if (!initialized()) {
+			throw new IOException("Cannot publish keys, have not yet initialized KeyManager!");
+		}
+		// we've put together enough of this KeyManager to let the
+		// KeyRepository use it to make a CCNHandle, even though we're
+		// not done...
+		if (_defaultKeysPublished) {
+			return;
+		}
+		ContentName keyName = getDefaultKeyName(defaultPrefix, getDefaultKeyID().digest(), getKeyVersion(getDefaultKeyID()));
+		try {
+			publishKey(keyName, getDefaultKeyID(), null, null);
+		} catch (InvalidKeyException e) {
+			generateConfigurationException("InvalidKeyException attempting to publish default key!", e);
+		}
+		_defaultKeysPublished = true;
+	}
+	
+	@Override
+	public ContentName getDefaultKeyNamePrefix() {
+		ContentName keyDir =
+			ContentName.fromNative(UserConfiguration.defaultUserNamespace(), 
+				   			UserConfiguration.defaultKeyName());
+		return keyDir;
+	}
+	
 	/**
-	 * Publish my public key to repository
+	 * Return the key's content name for a given key id. 
+	 * The default key name is the publisher ID itself,
+	 * under the user's key collection. 
+	 * @param keyID[] publisher ID
+	 * @return content name
+	 */
+	@Override
+	public ContentName getDefaultKeyName(ContentName keyPrefix, byte [] keyID, CCNTime keyVersion) {
+		if (null == keyPrefix) {
+			keyPrefix = getDefaultKeyNamePrefix();
+		}
+		ContentName keyName = new ContentName(keyPrefix, KeyProfile.keyIDToNameComponent(keyID));
+		if (null != keyVersion) {
+			return VersioningProfile.addVersion(keyName, keyVersion);
+		}
+		return keyName;
+	}
+	
+	public CCNTime getKeyVersion(PublisherPublicKeyDigest keyID) {
+		return _keyRepository.getPublicKeyVersionFromCache(keyID);
+	}
+	
+	/**
+	 * Publish my public key to a local key server run in this JVM.
 	 * @param keyName content name of the public key
 	 * @param keyToPublish public key digest
 	 * @param handle handle for ccn
@@ -589,24 +621,51 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public void publishKey(ContentName keyName, 
-						   PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException {
+						   PublisherPublicKeyDigest keyToPublish,
+						   PublisherPublicKeyDigest signingKeyID,
+						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException, ConfigurationException {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
 		} 
 		if (null == keyName) {
-			keyName = getKeyLocator(keyToPublish).name().name();
+			CCNTime version = getKeyVersion(keyToPublish);
+			keyName = getDefaultKeyName(null, keyToPublish.digest(), version);
 		}
 		boolean resetFlag = false;
 		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 			resetFlag = true;
 			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, false);
 		}
-		_keyRepository.publishKey(keyName, keyToPublish, null);
+		_keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
 		if (resetFlag) {
 			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
 		}
 	}
-	
+
+	@Override
+	public void publishKey(ContentName keyName, 
+						   PublicKey keyToPublish,
+						   PublisherPublicKeyDigest signingKeyID,
+						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException, ConfigurationException {
+		if (null == keyToPublish) {
+			keyToPublish = getDefaultPublicKey();
+		} 
+		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(keyToPublish);
+		if (null == keyName) {
+			CCNTime version = getKeyVersion(keyDigest);
+			keyName = getDefaultKeyName(null, keyDigest.digest(), version);
+		}
+		boolean resetFlag = false;
+		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+			resetFlag = true;
+			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, false);
+		}
+		_keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
+		if (resetFlag) {
+			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
+		}
+	}
+
 	/**
 	 * Publish my public key to repository
 	 * @param keyName content name of the public key

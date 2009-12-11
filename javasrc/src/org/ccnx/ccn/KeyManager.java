@@ -30,6 +30,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.KeyRepository;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -153,8 +154,17 @@ public abstract class KeyManager {
 	 * 	one for this environment. If null, take user defaults.
 	 * @throws ConfigurationException 
 	 */
-	public abstract void publishKeys(ContentName defaultPrefix) throws IOException, ConfigurationException;
+	public abstract void publishDefaultKey(ContentName defaultPrefix) throws IOException, ConfigurationException;
 	
+	/**
+	 * Allow subclasses to override default publishing location.
+	 */
+	public abstract ContentName getDefaultKeyNamePrefix();
+	
+	/**
+	 * Generate default key name for key locators.
+	 */
+	public abstract ContentName getDefaultKeyName(ContentName keyPrefix, byte [] keyID, CCNTime keyVersion);
 	/**
 	 * Get our default key ID.
 	 * @return the digest of our default key
@@ -187,12 +197,17 @@ public abstract class KeyManager {
 	public abstract KeyLocator getKeyLocator(PublisherPublicKeyDigest publisherKeyID);
 
 	/**
+	 * Helper method, get the default key locator for one of our signing keys.
+	 */
+	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
+	
+	/**
 	 * Get a KEY type key locator for a particular public key.
 	 * @param publisherKeyID the key whose locator we want to retrieve
 	 * @return the key locator
 	 * @throws IOException 
 	 */
-	public KeyLocator getKeyTypeKeyLocator(PublisherPublicKeyDigest publisherKeyID) throws IOException {
+	public KeyLocator getKeyTypeKeyLocator(PublisherPublicKeyDigest publisherKeyID) {
 		PublicKey theKey = getPublicKey(publisherKeyID);
 		if (null == theKey) {
 			return null;
@@ -200,12 +215,6 @@ public abstract class KeyManager {
 		return new KeyLocator(theKey);
 	}
 	
-	/**
-	 * Generate the default name under which to write this key.
-	 * @param keyID the binary digest of the name component of the key
-	 * @return the name of the key to publish under
-	 */
-	public abstract ContentName getDefaultKeyName(byte [] keyID);
 	
 	/**
 	 * Get the public key associated with a given publisher
@@ -213,7 +222,7 @@ public abstract class KeyManager {
 	 * @return the key, or null if no such key known to our cache
 	 * @throws IOException
 	 */
-	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws IOException;
+	public abstract PublicKey getPublicKey(PublisherPublicKeyDigest publisher);
 
 	/**
 	 * Get the publisher key digest associated with one of our signing keys
@@ -260,6 +269,31 @@ public abstract class KeyManager {
 	}
 	
 	/**
+	 * Publish a key at a certain name, signed by a specified identity (our
+	 * default, if null). Usually used to
+	 * publish our own keys, but can specify other keys we have in our cache.
+	 * 
+	 * This publishes our key to our own internal key server, from where it can be retrieved
+	 * as long as this KeyManager is running. It does not put it on the wire until someone
+	 * requests it. 
+	 * Implementation Note: This code is used in CCNHandle initialization, and as such it
+	 * cannot use a CCNHandle or any of the standard network operations without introducing
+	 * a circular dependency. The code is very low-level and should only be modified with
+	 * great caution.
+	 * 
+	 * @param keyName the name under which the key should be published. For the moment, keys are
+	 * 		  unversioned.
+	 * @param keyToPublish can be null, in which case we publish our own default public key
+	 * @throws InvalidKeyException 
+	 * @throws IOException
+	 * @throws ConfigurationException 
+	 */
+	public abstract void publishKey(ContentName keyName, 
+			   PublisherPublicKeyDigest keyToPublish,
+			   PublisherPublicKeyDigest signingKeyID,
+			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException, ConfigurationException;
+
+	/**
 	 * Publish a key at a certain name, signed by our default identity. Usually used to
 	 * publish our own keys, but can specify other keys we have in our cache.
 	 * 
@@ -278,8 +312,11 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 * @throws ConfigurationException 
 	 */
-	public abstract void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException;
-	
+	public abstract void publishKey(ContentName keyName, 
+			   PublicKey keyToPublish,
+			   PublisherPublicKeyDigest signingKeyID,
+			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException, ConfigurationException;
+
 	/**
 	 * Publish a key at a certain name, ensuring that it is stored in a repository. Will throw an
 	 * exception if no repository available. Usually used to publish our own keys, but can specify
