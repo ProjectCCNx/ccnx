@@ -513,6 +513,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				super.update(inputStream);
 			} catch (NoMatchingContentFoundException nme) {
 				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available. Updating once in background.", inputStream.getBaseName());
+				nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
+				_baseName = nameAndVersion.first();
 				updateInBackground();
 				return false;
 			}
