@@ -120,7 +120,7 @@ public class CCNNetworkObjectTest {
 	public static void setUpBeforeClass() throws Exception {
 		Log.info("Setting up CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
 		oldLevel = Log.getLevel();
-		Log.setLevel(Level.FINEST);
+		Log.setLevel(Level.INFO);
 		
 		handle = CCNHandle.open();
 		

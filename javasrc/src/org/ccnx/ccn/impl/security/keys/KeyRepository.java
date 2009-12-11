@@ -165,6 +165,7 @@ public class KeyRepository {
 		// Use same code path for default key retrieval as getPublicKey, so that we can manage
 		// version handling in a single place.
 		KeyLocator targetKeyLocator = new KeyLocator(keyName);
+		Log.info("publishKey: retrieving using {0}", targetKeyLocator);
 		
 		PublicKey theKey = getPublicKey(keyToPublish, targetKeyLocator, SystemConfiguration.SHORT_TIMEOUT);
 		PublicKeyObject keyObject = null;
