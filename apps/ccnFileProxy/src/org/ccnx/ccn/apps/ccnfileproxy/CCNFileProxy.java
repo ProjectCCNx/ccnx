@@ -34,6 +34,7 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
+import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Exclude;
@@ -82,6 +83,8 @@ public class CCNFileProxy implements CCNFilterListener {
 	protected File _rootDirectory;
 	protected CCNHandle _handle;
 	
+	private ContentName _responseName = null;
+	
 	public static void usage() {
 		System.err.println("usage: CCNFileProxy <file path to serve> [<ccn prefix URI> default: ccn:/]");
 	}
@@ -95,6 +98,10 @@ public class CCNFileProxy implements CCNFilterListener {
 			throw new IOException("Cannot serve files from directory " + filePrefix + ": directory does not exist!");
 		}
 		_handle = CCNHandle.open();
+		
+		//set response name for NE requests
+		_responseName = KeyProfile.keyName(null, _handle.keyManager().getDefaultKeyID());
+		
 	}
 	
 	public void start() {
@@ -237,7 +244,15 @@ public class CCNFileProxy implements CCNFilterListener {
 		// list we return.
 		ner.setTimestamp(new CCNTime(directoryToEnumerate.lastModified()));
 		// See if the resulting response is later than the previous one we released.
-	    ContentName potentialCollectionName = VersioningProfile.addVersion(ner.getPrefix(), ner.getTimestamp());
+		
+		//now add the response id
+	    ContentName prefixWithId = new ContentName(ner.getPrefix(), _responseName.components());
+	    //now finish up with version and segment
+	    ContentName potentialCollectionName = VersioningProfile.addVersion(prefixWithId, ner.getTimestamp());
+	    
+	    //switch to add response id to name enumeration objects
+		//ContentName potentialCollectionName = VersioningProfile.addVersion(ner.getPrefix(), ner.getTimestamp());
+	    
 	    potentialCollectionName = SegmentationProfile.segmentName(potentialCollectionName, SegmentationProfile.baseSegment());
 		//check if we should respond...
 		if (interest.matches(potentialCollectionName, null)) {
@@ -253,7 +268,7 @@ public class CCNFileProxy implements CCNFilterListener {
 				}
 
 				NameEnumerationResponseMessage nem = ner.getNamesForResponse();
-				NameEnumerationResponseMessageObject neResponse = new NameEnumerationResponseMessageObject(ner.getPrefix(), nem, _handle);
+				NameEnumerationResponseMessageObject neResponse = new NameEnumerationResponseMessageObject(prefixWithId, nem, _handle);
 				neResponse.save(ner.getTimestamp(), interest);
 				Log.info("sending back name enumeration response {0}, timestamp (version) {1}.", ner.getPrefix(), ner.getTimestamp());
 			} else {
@@ -261,9 +276,11 @@ public class CCNFileProxy implements CCNFilterListener {
 			}
 		} else {
 			Log.info("we are not sending back a response to the name enumeration interest (interest = {0}); our response would have been {1}", interest, potentialCollectionName);
-			Exclude.Element el = interest.exclude().value(1);
-			if ((null != el) && (el instanceof ExcludeComponent)) {
-				Log.info("previous version: {0}", VersioningProfile.getVersionComponentAsTimestamp(((ExcludeComponent)el).getBytes()));
+			if (interest.exclude().size() > 1) {
+				Exclude.Element el = interest.exclude().value(1);
+				if ((null != el) && (el instanceof ExcludeComponent)) {
+					Log.info("previous version: {0}", VersioningProfile.getVersionComponentAsTimestamp(((ExcludeComponent)el).getBytes()));
+				}
 			}
 		}
 	}
