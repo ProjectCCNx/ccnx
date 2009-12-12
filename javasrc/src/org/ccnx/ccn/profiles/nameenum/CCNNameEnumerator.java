@@ -32,9 +32,12 @@ import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
+import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 
 
@@ -103,6 +106,16 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		
 		ArrayList<Interest> getInterests() {
 			return ongoingInterests;
+		}
+
+		public boolean containsInterest(Interest interest) {
+			
+			for (Interest i : ongoingInterests) {
+				if(i.equals(interest))
+					return true;
+			}
+			
+			return false;
 		}
 		
 	}
@@ -193,9 +206,10 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			Log.info("Registered Prefix: " + prefix.toString());
 
 			ContentName prefixMarked = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
-
-			Interest pi = VersioningProfile.firstBlockLatestVersionInterest(prefixMarked, null);
-
+			
+			//we have minSuffixComponents to account for sig, version, seg and digest
+			Interest pi = Interest.constructInterest(prefixMarked, null, null, null, 4, null);
+			
 			r.addInterest(pi);
 
 			_handle.expressInterest(pi, this);
@@ -286,16 +300,67 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			if (results != null) {
 				for (ContentObject c: results) {
 					Log.fine("we have a match for: "+interest.name()+" ["+ interest.toString()+"]");
+					
+					System.out.println("we got a response to interest: "+interest);
+					System.out.println("CO: "+c.name());
+					
+					ArrayList<Interest> newInterests = new ArrayList<Interest>(); 
+					
+					//we want to get new versions of this object
 					newInterest = VersioningProfile.firstBlockLatestVersionInterest(c.name(), null);
+					newInterests.add(newInterest);
+					
+					//does this content object have a response id in it?
+					ContentName responseName = getIdFromName(c.name());
+					
+					if (responseName==null) {
+						//no response name...  try to get a later version - done at end of this if/else
+					} else {
+						//we have a response name.  get a later version from this responder - done after this if/else
+						
+						//TODO  This version of handling content objects with responder IDs only
+						//supports single component response IDs
+						//if response IDs are hierarchical, we need to avoid exploding the number of Interests we express
+								
+						//if the interest had a responseId in it, we don't need to make a new base interest with an exclude, we would have done this already.
+						System.out.println("get id from interest: "+getIdFromName(interest.name()));
+						System.out.println("interest name: "+ getIdFromName(interest.name()).count());
+						if(getIdFromName(interest.name()) != null && getIdFromName(interest.name()).count() > 0) {
+							//the interest has a response ID in it already...  skip making new base interest
+						} else {
+							//also need to add this responder to the exclude list to find more responders
+							ContentName prefixWithMarker = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+							Exclude excludes = interest.exclude();
+							if(excludes==null)
+								excludes = new Exclude();
+							excludes.add(new byte[][]{responseName.component(0)});
+							newInterest = Interest.constructInterest(prefixWithMarker, excludes, null, null, 3, null); 
+											
+							//check to make sure the interest isn't already expressed
+							if(!ner.containsInterest(newInterest))
+								newInterests.add(newInterest);
+						}
+						
+					}
+					
 					try {
-						_handle.expressInterest(newInterest, this);
-						ner.addInterest(newInterest);
+						for(Interest i: newInterests) {
+							_handle.expressInterest(i, this);
+							ner.addInterest(i);
+							System.out.println("expressed: "+i);
+						}
 					} catch (IOException e1) {
 						// error registering new interest
 						Log.warning("error registering new interest in handleContent");
 						Log.warningStackTrace(e1);
 					}
-				
+					
+					for(Interest i: ner.getInterests())
+						System.out.println("current interests: "+i);
+					
+					newInterests.clear();
+					
+					
 					try {
 						neResponse = new NameEnumerationResponseMessageObject(c, _handle);
 						links = neResponse.contents();
@@ -384,7 +449,9 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			
 					if (nem.size() > 0) {
 						try {
-							NameEnumerationResponseMessageObject nemobj = new NameEnumerationResponseMessageObject(responseName, nem, _handle);
+							//TODO add an id to responses - need to test!
+							ContentName responseNameWithId = KeyProfile.keyName(responseName, _handle.keyManager().getDefaultKeyID());
+							NameEnumerationResponseMessageObject nemobj = new NameEnumerationResponseMessageObject(responseNameWithId, nem, _handle);
 							nemobj.save();
 							Log.fine("Saved collection object in name enumeration: " + nemobj.getVersionedName());
 							
@@ -546,6 +613,26 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					Log.info("could not cancel prefix: "+prefixToCancel.toString());
 			}
 		}
+	}
+	
+	
+	private ContentName getIdFromName(ContentName name) {
+		//get the response id, could be more than one component and have a version in it
+		ContentName responseName = null;
+
+		try {
+			int index = name.containsWhere(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+			ContentName prefix = name.subname(index+1, name.count());
+			if(VersioningProfile.hasTerminalVersion(prefix))
+				responseName = VersioningProfile.cutLastVersion(prefix);
+			else
+				responseName = prefix;
+			Log.finest("NameEnumeration response ID: {0}", responseName);
+		} catch(Exception e) {
+			return null;
+		}
+			
+		return responseName;
 	}
 	
 }

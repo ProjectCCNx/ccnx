@@ -48,7 +48,7 @@ public class BitBucketRepository extends RepositoryStoreBase {
 		return null;
 	}
 
-	public NameEnumerationResponse getNamesWithPrefix(Interest i) {
+	public NameEnumerationResponse getNamesWithPrefix(Interest i, ContentName responseName) {
 		// TODO Auto-generated method stub
 		return null;
 	}

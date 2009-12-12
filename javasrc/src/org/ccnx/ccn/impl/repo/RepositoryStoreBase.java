@@ -55,7 +55,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 
 	public abstract ContentObject getContent(Interest interest) throws RepositoryException;
 
-	public abstract NameEnumerationResponse getNamesWithPrefix(Interest i);
+	public abstract NameEnumerationResponse getNamesWithPrefix(Interest i, ContentName responseName);
 	
 	/**
 	 * @return returns null prior to calls to initialize()

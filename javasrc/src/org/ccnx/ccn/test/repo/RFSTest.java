@@ -247,14 +247,15 @@ public class RFSTest extends RepoTestBase {
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
 		Interest interest = new Interest(new ContentName(nerpre, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION));
+		ContentName responseName = new ContentName();
 		Log.info("RFSTEST: Name enumeration prefix:{0}", interest.name());
-		neresponse = repo.getNamesWithPrefix(interest);
+		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse == null || neresponse.hasNames()==false);
 		//now saving the first piece of content in the repo.  interest flag not set, so it should not get an object back
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner, "FastNameRespTest".getBytes()));
 		Assert.assertTrue(neresponse==null || neresponse.hasNames()==false);
 		//now checking with the prefix that the first name is in
-		neresponse = repo.getNamesWithPrefix(interest);
+		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
 
 		Assert.assertTrue(neresponse.getPrefix().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION));
@@ -263,7 +264,7 @@ public class RFSTest extends RepoTestBase {
 		//have to use the version from the last response (or at least a version after the last write
 		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
 		//the response should be null and the flag set
-		neresponse = repo.getNamesWithPrefix(interest);
+		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse==null || neresponse.hasNames()==false);
 		//save content.  if the flag was set, we should get an enumeration response
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner2, "FastNameRespTest".getBytes()));
@@ -275,7 +276,7 @@ public class RFSTest extends RepoTestBase {
 		//need to reconstruct the interest again
 		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
 		//another interest to set interest flag, response should be null
-		neresponse = repo.getNamesWithPrefix(interest);
+		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse == null || neresponse.hasNames()==false);
 		//interest flag should now be set, so when i add something - this is a longer name, i should be handed back an object
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner3, "FastNameRespTest".getBytes()));

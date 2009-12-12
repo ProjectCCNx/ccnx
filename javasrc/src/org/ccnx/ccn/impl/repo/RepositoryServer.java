@@ -37,6 +37,7 @@ import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
+import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
@@ -72,6 +73,8 @@ public class RepositoryServer {
 	private int _windowSize = WINDOW_SIZE;
 	private int _ephemeralFreshness = FRESHNESS;
 	protected ThreadPoolExecutor _threadpool = null; // pool service
+	
+	private ContentName _responseName = null;
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	public static final int THREAD_LIFE = 8;	// in seconds
@@ -133,6 +136,8 @@ public class RepositoryServer {
 			_repo = repo;
 			_handle = repo.getHandle();
 			_writer = new CCNWriter(_handle);
+			
+			_responseName = KeyProfile.keyName(null, _handle.keyManager().getDefaultKeyID());
 
 			 // At some point we may want to refactor the code to
 			 // write repository info back in a stream.  But for now
@@ -306,6 +311,10 @@ public class RepositoryServer {
 		return _ephemeralFreshness;
 	}
 	
+	public ContentName getResponseName() {
+		return _responseName;
+	}
+	
 	
 	/**
 	 * Method to write out name enumeration responses.  This is called directly
@@ -334,7 +343,7 @@ public class RepositoryServer {
 					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
 						Log.info("node.timestamp was null!!!");
 				NameEnumerationResponseMessage nem = ner.getNamesForResponse();
-				neResponseObject = new NameEnumerationResponseMessageObject(ner.getPrefix(), nem, _handle);
+				neResponseObject = new NameEnumerationResponseMessageObject(new ContentName(ner.getPrefix(), _responseName.components()), nem, _handle);
 				// TODO this is only temporary until flow control issues can
 				// be worked out here
 				neResponseObject.disableFlowControl();

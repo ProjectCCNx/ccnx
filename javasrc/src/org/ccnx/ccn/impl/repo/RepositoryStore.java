@@ -128,9 +128,10 @@ public interface RepositoryStore {
 	 * is nothing after the prefix or if there is nothing new after the prefix if
 	 * there is a version on the incoming interest
 	 * @param i NameEnumeration Interest defining which names to get
+	 * @param responseName 
 	 * @return NameEnumerationResponse
 	 */
-    public NameEnumerationResponse getNamesWithPrefix(Interest i);
+    public NameEnumerationResponse getNamesWithPrefix(Interest i, ContentName responseName);
     
     /**
      * Hook to shutdown the store (close files for example)

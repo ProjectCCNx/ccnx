@@ -558,7 +558,7 @@ public class ContentTree {
 	 * @param interest the interest to base the enumeration on using the rules of name enumeration
 	 * @return the name enumeration response containing the list of matching names
 	 */
-	public final NameEnumerationResponse getNamesWithPrefix(Interest interest) {
+	public final NameEnumerationResponse getNamesWithPrefix(Interest interest, ContentName responseName) {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		//first chop off NE marker
 		ContentName prefix = interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
@@ -569,7 +569,12 @@ public class ContentTree {
 		
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
-		    ContentName potentialCollectionName = VersioningProfile.addVersion(new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), new CCNTime(parent.timestamp));
+			//first add the NE marker
+		    ContentName potentialCollectionName = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+		    //now add the response id
+		    potentialCollectionName = new ContentName(potentialCollectionName, responseName.components());
+		    //now finish up with version and segment
+		    potentialCollectionName = VersioningProfile.addVersion(potentialCollectionName, new CCNTime(parent.timestamp));
 		    potentialCollectionName = SegmentationProfile.segmentName(potentialCollectionName, SegmentationProfile.baseSegment());
 			//check if we should respond...
 			if (interest.matches(potentialCollectionName, null)) {

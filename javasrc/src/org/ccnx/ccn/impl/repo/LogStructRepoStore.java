@@ -122,8 +122,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * @param i the interest
 	 * @returns the data as a NameEnumerationResponse
 	 */
-	public NameEnumerationResponse getNamesWithPrefix(Interest i) {
-		return _index.getNamesWithPrefix(i);
+	public NameEnumerationResponse getNamesWithPrefix(Interest i, ContentName responseName) {
+		return _index.getNamesWithPrefix(i, responseName);
 	}
 
 	/**

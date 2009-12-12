@@ -175,6 +175,9 @@ public class RepositoryDaemon extends Daemon {
 			_repo.initialize(repositoryRoot, policyFile, localName, globalPrefix, nameSpace, null);
 			_server = new RepositoryServer(_repo);
 			
+			Log.info("started repo with response name: "+_server.getResponseName());
+
+			
 		} catch (InvalidParameterException ipe) {
 			usage();
 		} catch (Exception e) {

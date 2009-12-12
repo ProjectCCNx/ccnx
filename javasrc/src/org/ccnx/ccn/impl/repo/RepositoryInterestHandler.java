@@ -144,7 +144,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 * @param interest
 	 */
 	public void nameEnumeratorResponse(Interest interest) {
-		NameEnumerationResponse ner = _server.getRepository().getNamesWithPrefix(interest);
+		NameEnumerationResponse ner = _server.getRepository().getNamesWithPrefix(interest, _server.getResponseName());
 
 		if (ner!=null && ner.hasNames()) {
 			_server.sendEnumerationResponse(ner);
