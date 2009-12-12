@@ -36,6 +36,8 @@ import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
+import org.ccnx.ccn.protocol.ExcludeAny;
+import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -313,8 +315,9 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					//does this content object have a response id in it?
 					ContentName responseName = getIdFromName(c.name());
 					
-					if (responseName==null) {
-						//no response name...  try to get a later version - done at end of this if/else
+					if (responseName==null ) {
+						//no response name...  this is an error!
+						Log.warning("CCNNameEnumerator received a response without a responseID: {0} matching interest {1}", c.name(), interest.name());
 					} else {
 						//we have a response name.  get a later version from this responder - done after this if/else
 						
@@ -334,7 +337,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 							if(excludes==null)
 								excludes = new Exclude();
 							excludes.add(new byte[][]{responseName.component(0)});
-							newInterest = Interest.constructInterest(prefixWithMarker, excludes, null, null, 3, null); 
+							newInterest = Interest.constructInterest(prefixWithMarker, excludes, null, null, 4, null); 
 											
 							//check to make sure the interest isn't already expressed
 							if(!ner.containsInterest(newInterest))
