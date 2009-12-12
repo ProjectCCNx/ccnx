@@ -29,6 +29,7 @@ import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.CommandMarkers;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
@@ -399,6 +400,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	
 	public int handleInterests(ArrayList<Interest> interests) {
 		
+		
+		
 		ContentName responseName = null;
 		Link match;
 		NameEnumerationResponseMessage nem;
@@ -406,6 +409,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		ContentName name = null;
 		NEResponse r = null;
 		for (Interest i: interests) {
+			System.out.println("got an interest! "+i);
+			
 			name = i.name().clone();
 
 			nem = new NameEnumerationResponseMessage();
@@ -452,10 +457,10 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			
 					if (nem.size() > 0) {
 						try {
-							//TODO add an id to responses - need to test!
 							ContentName responseNameWithId = KeyProfile.keyName(responseName, _handle.keyManager().getDefaultKeyID());
 							NameEnumerationResponseMessageObject nemobj = new NameEnumerationResponseMessageObject(responseNameWithId, nem, _handle);
-							nemobj.save();
+							nemobj.save(i);
+							
 							Log.fine("Saved collection object in name enumeration: " + nemobj.getVersionedName());
 							
 							r.clean();
