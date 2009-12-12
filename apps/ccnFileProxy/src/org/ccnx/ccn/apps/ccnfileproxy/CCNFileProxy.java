@@ -104,7 +104,7 @@ public class CCNFileProxy implements CCNFilterListener {
 		
 	}
 	
-	public void start() {
+	public void start() throws IOException{
 		Log.info("Starting file proxy for " + _filePrefix + " on CCNx namespace " + _prefix + "...");
 		System.out.println("Starting file proxy for " + _filePrefix + " on CCNx namespace " + _prefix + "...");
 		// All we have to do is say that we're listening on our main prefix.
