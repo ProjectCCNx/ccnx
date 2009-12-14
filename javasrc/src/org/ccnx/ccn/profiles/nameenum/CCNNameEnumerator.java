@@ -397,8 +397,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		ContentName name = null;
 		NEResponse r = null;
 		for (Interest i: interests) {
+			Log.finer("got an interest: {0}",i.name());
 			name = i.name().clone();
-
 			nem = new NameEnumerationResponseMessage();
 			//Verify NameEnumeration Marker is in the name
 			if (!name.contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
@@ -406,8 +406,9 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			} else {
 				name = name.cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 				responseName = new ContentName(name, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
-				
+
 				boolean skip = false;
+				
 				synchronized (_handledResponses) {
 					//have we handled this response already?
 					r = getHandledResponse(name);
@@ -426,8 +427,9 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					}
 					
 					if (!skip) {
+						
 						for (ContentName n: _registeredNames) {
-							if (name.isPrefixOf(n)) {
+							if (name.isPrefixOf(n) && name.count() < n.count()) {
 								ContentName tempName = n.clone();
 								byte[] tn = n.component(name.count());
 								byte[][] na = new byte[1][tn.length];
@@ -456,6 +458,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 							return 0;
 						}
 					}
+				
 					Log.finer("this interest did not have any matching names...  not returning anything.");
 					if (r != null)
 						r.clean();
