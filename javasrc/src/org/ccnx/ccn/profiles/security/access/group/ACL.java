@@ -50,6 +50,8 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class ACL extends Collection {
 	
+	public static final String ACL_ELEMENT = "ACL";
+	
 	/** Readers can read content */
 	public static final String LABEL_READER = "r";
 	/** Writers can read and write (or edit) content */
@@ -522,6 +524,14 @@ public class ACL extends Collection {
 		_readers.clear();
 		_writers.clear();
 		_managers.clear();
+	}
+	
+	/**
+	 * TODO: Need to add to schema.
+	 */
+	@Override
+	public String getElementLabel() { 
+		return ACL_ELEMENT;
 	}
 
 }
