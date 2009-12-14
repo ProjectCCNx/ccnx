@@ -73,7 +73,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * expansion function is used regardless of mode for simplicity.
  * The encryption is done with the specified key, in CBC mode, using the all-zeros IV
  */
-public class ContentKeys {
+public class ContentKeys implements Cloneable {
 	/*
 	 * The core encryption algorithms supported. Any native encryption
 	 * mode supported by Java *should* work, but these are compactly
@@ -207,6 +207,16 @@ public class ContentKeys {
 		
 		this._encryptionKey = new SecretKeySpec(keyAndIV[0], getBaseAlgorithm());
 		this._masterIV = new IvParameterSpec(keyAndIV[1]);
+	}
+	
+	public ContentKeys(ContentKeys other) {
+		_encryptionAlgorithm = other._encryptionAlgorithm;
+		_encryptionKey = other._encryptionKey;
+		_masterIV = other._masterIV;
+	}
+	
+	public ContentKeys clone() {
+		return new ContentKeys(this);
 	}
 
 	@SuppressWarnings("unused")
