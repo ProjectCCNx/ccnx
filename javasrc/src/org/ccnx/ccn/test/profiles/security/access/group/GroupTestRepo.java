@@ -76,7 +76,7 @@ public class GroupTestRepo {
 			System.out.println("Username = " + myUserName);
 			testStorePrefix = UserConfiguration.defaultNamespace();
 			userNamespace = ContentName.fromNative(testStorePrefix, "Users");
-			userKeyStorePrefix = ContentName.fromNative(testStorePrefix, "home");
+			userKeyStorePrefix = ContentName.fromNative(testStorePrefix, "ccnx_keystore");
 			groupStore = GroupAccessControlProfile.groupNamespaceName(testStorePrefix);
 
 			System.out.println("prefix: " + testStorePrefix);
@@ -131,16 +131,15 @@ public class GroupTestRepo {
 		Iterator<ContentName> it = returnedBytes.iterator();
 
 		ArrayList<Link> newMembers = new ArrayList<Link>();
-		System.out.println("member to add:" + UserConfiguration.defaultUserNamespace());
-		newMembers.add(new Link(UserConfiguration.defaultUserNamespace()));
+		ContentName userID = ContentName.fromNative(userNamespace, myUserName);
+		System.out.println("member to add:" + userID);
+		newMembers.add(new Link(userID));
 
 		for(int i = 0; i <2; i++){
 			ContentName name = it.next();
 			String fullname = _userList.getName().toString() + name.toString();
-			if (!fullname.equals(UserConfiguration.defaultUserNamespace())){
-				System.out.println("member to add:" + fullname);
-				newMembers.add(new Link(ContentName.fromNative(fullname)));
-			}
+			System.out.println("member to add:" + fullname);
+			newMembers.add(new Link(ContentName.fromNative(fullname)));
 		}
 		System.out.println("creating a group...");
 		Group newGroup = _gm.createGroup(_randomGroupName, newMembers);
