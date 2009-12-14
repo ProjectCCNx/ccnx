@@ -524,14 +524,35 @@ public class BasicKeyManager extends KeyManager {
 	 * @return public key
 	 */
 	@Override
-	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherID, KeyLocator keyLocator, long timeout) throws IOException {		
-		Log.finer("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
+	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator keyLocator, long timeout) throws IOException {		
+		Log.finer("getPublicKey: retrieving key: " + desiredKeyID + " located at: " + keyLocator);
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
 		// or not we should trust it for some reason, we have to get fancy.
-		return keyRepository().getPublicKey(publisherID, keyLocator, timeout);
+		return keyRepository().getPublicKey(desiredKeyID, keyLocator, timeout);
 	}
+	
+	/**
+	 * Get a public key object for this key locator and publisher, if there is one.
+	 * This is less general than the method above, which retrieves keys we have cached
+	 * but which have never been published -- our keys, keys listed explicitly in locators,
+	 * etc.
+	 * @param desiredKeyID
+	 * @param locator
+	 * @param timeout
+	 * @return
+	 * @throws IOException
+	 */
+	@Override 
+	public PublicKeyObject getPublicKeyObject(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
+		Log.finer("getPublicKey: retrieving key: " + desiredKeyID + " located at: " + locator);
+		// this will try local caches, the locator itself, and if it 
+		// has to, will go to the network. The result will be stored in the cache.
+		// All this tells us is that the key matches the publisher. For whether
+		// or not we should trust it for some reason, we have to get fancy.
+		return keyRepository().getPublicKeyObject(desiredKeyID, locator, timeout);
+	}	
 	
 	/**
 	 * Attempt to retrieve public key from cache.

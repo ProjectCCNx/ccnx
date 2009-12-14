@@ -30,6 +30,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.KeyRepository;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -246,7 +247,6 @@ public abstract class KeyManager {
 	
 	/**
 	 * Get the public key for a given publisher, going to the network to retrieve it if necessary.
-	 * TODO should ensure it is stored in cache
 	 * @param publisherKeyID the digest of the keys we want
 	 * @param keyLocator the key locator to tell us where to retrieve the key from
 	 * @param timeout how long to try to retrieve the key 
@@ -258,7 +258,6 @@ public abstract class KeyManager {
 	/**
 	 * Get the public key for a given publisher, going to the network to retrieve it if necessary.
 	 * Uses the default timeout.
-	 * TODO should ensure it is stored in cache
 	 * @param publisherKeyID the digest of the keys we want
 	 * @param keyLocator the key locator to tell us where to retrieve the key from
 	 * @return the key
@@ -268,6 +267,19 @@ public abstract class KeyManager {
 		return getPublicKey(publisherKeyID, keyLocator, SystemConfiguration.getDefaultTimeout());
 	}
 	
+	/**
+	 * Get the public key for a given publisher as it was explicitly published, 
+	 * going to the network to retrieve it if necessary. If the key was not
+	 * published as a KEY content item (was in our keystore, or was in a KEY
+	 * type of key locator), this wil not retrieve anything.
+	 * @param publisherKeyID the digest of the keys we want
+	 * @param keyLocator the key locator to tell us where to retrieve the key from
+	 * @param timeout how long to try to retrieve the key 
+	 * @return the key
+	 * @throws IOException if we run into an error attempting to read the key
+	 */
+	public abstract PublicKeyObject getPublicKeyObject(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException;
+
 	/**
 	 * Publish a key at a certain name, signed by a specified identity (our
 	 * default, if null). Usually used to
