@@ -455,19 +455,24 @@ public class KeyRepository {
 				return key;
 			}
 		} else {
-			publicKey = getPublicKeyFromNetwork(desiredKeyID, locator, timeout);
-			if (null == publicKey) {
+			PublicKeyObject publicKeyObject = getPublicKeyObjectFromNetwork(desiredKeyID, locator, timeout);
+			if (null == publicKeyObject) {
 				Log.info("Could not retrieve key {0} with locator {1}!", desiredKeyID, locator);
 			} else {
 				Log.info("Retrieved key {0} from network with locator {1}!", desiredKeyID, locator);
 			}
-			return publicKey;
+			return publicKeyObject.publicKey();
 		}
 		return null;
 	}
 	
-	public PublicKey getPublicKeyFromNetwork(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
+	public PublicKeyObject getPublicKeyObjectFromNetwork(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
 		// take code from #BasicKeyManager.getKey, to validate more complex publisher constraints
+		PublicKeyObject theKey = retrieve(locator.name().name(), locator.name().publisher());
+		if ((null != theKey) && (theKey.available())) {
+			Log.info("retrieved key {0} from cache.", locator.name().name());
+			return theKey;
+		}
 
 		// How many pieces of bad content do we wade through?
 		final int ITERATION_LIMIT = 5;
@@ -498,7 +503,7 @@ public class KeyRepository {
 				break;
 			}
 			if (retrievedContent.signedInfo().getType().equals(ContentType.KEY)) {
-				PublicKeyObject theKey = new PublicKeyObject(retrievedContent, handle());
+				theKey = new PublicKeyObject(retrievedContent, handle());
 				if ((null != theKey) && (theKey.available())) {
 					if ((null != desiredKeyID) && (!theKey.publicKeyDigest().equals(desiredKeyID))) {
 						Log.fine("Got key at expected name {0}, but it wasn't the right key, wanted {0}, got {1}", 
@@ -509,7 +514,7 @@ public class KeyRepository {
 						// TODO make a key object instead of just retrieving
 						// content, use it to decode
 						remember(theKey);
-						return theKey.publicKey();
+						return theKey;
 					}
 				} else {
 					Log.severe("Decoded key at name {0} without error, but result was null!", retrievedContent.name());
