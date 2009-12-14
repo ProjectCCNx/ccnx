@@ -163,6 +163,13 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		super(PublicKey.class, false, firstSegment, flowControl);
 	}
 
+	/**
+	 * Copy constructor.
+	 */
+	public PublicKeyObject(CCNNetworkObject<? extends PublicKey> other) {
+		super(PublicKey.class, other);
+	}
+
 				
 	@Override
 	public ContentType contentType() { return ContentType.KEY; }

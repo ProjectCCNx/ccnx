@@ -90,6 +90,10 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 			super(Link.class, true, firstBlock, handle);
 		}
 		
+		public LinkObject(CCNEncodableObject<? extends Link> other) {
+			super(Link.class, other);
+		}
+		
 		/**
 		 * Subclasses that need to write an object of a particular type can override.
 		 * @return Content type to use.

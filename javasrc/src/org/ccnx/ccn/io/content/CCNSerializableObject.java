@@ -96,6 +96,10 @@ public class CCNSerializableObject<E extends Serializable> extends CCNNetworkObj
 		super(type, contentIsMutable, firstBlock, flowControl);
 	}
 
+	protected CCNSerializableObject(Class<E> type, CCNSerializableObject<? extends E> other) {
+		super(type, other);
+	}
+
 	@Override
 	protected E readObjectImpl(InputStream input) throws ContentDecodingException, IOException {
 		GenericObjectInputStream<E> ois = new GenericObjectInputStream<E>(input);

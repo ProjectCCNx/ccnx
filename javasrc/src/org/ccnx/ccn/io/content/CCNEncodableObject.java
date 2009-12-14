@@ -93,6 +93,10 @@ public class CCNEncodableObject<E extends XMLEncodable> extends CCNNetworkObject
 		super(type, contentIsMutable, firstBlock, flowControl);
 	}
 
+	protected CCNEncodableObject(Class<E> type, CCNEncodableObject<? extends E> other) {
+		super(type, other);
+	}
+	
 	@Override
 	protected E readObjectImpl(InputStream input) throws ContentDecodingException, IOException {
 		E newData = factory();

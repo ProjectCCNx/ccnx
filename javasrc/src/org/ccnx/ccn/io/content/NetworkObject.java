@@ -112,6 +112,15 @@ public abstract class NetworkObject<E> {
 		this(type, contentIsMutable);
 		setData(data); // marks data as available if non-null
 	}
+	
+	protected NetworkObject(Class<E> type, NetworkObject<? extends E> other) {
+		this(type, other._contentIsMutable);
+		_data = other._data;
+		_isDirty = other._isDirty;
+		_isPotentiallyDirty = other._isPotentiallyDirty;
+		_lastSaved = other._lastSaved;
+		_available = other._available;
+	}
 
 	/**
 	 * Create an instance of the parameterized type, used for decoding.

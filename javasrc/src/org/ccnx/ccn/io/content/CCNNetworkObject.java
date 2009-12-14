@@ -358,6 +358,30 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	/**
+	 * Copy constructor. Handle it piece by piece, though it means
+	 * updating this whenever the structure changes (rare).
+	 */
+	protected CCNNetworkObject(Class<E> type, CCNNetworkObject<? extends E> other) {
+		super(type, other);
+		_baseName = other._baseName;
+		_currentVersionComponent = other._currentVersionComponent;
+		_currentVersionName = other._currentVersionName;
+		_isGone = other._isGone;
+		_currentPublisher = other._currentPublisher;
+		_currentPublisherKeyLocator = other._currentPublisherKeyLocator;
+		_handle = other._handle;
+		_flowControl = other._flowControl;
+		_disableFlowControlRequest = other._disableFlowControlRequest;
+		_publisher = other._publisher;
+		_keyLocator = other._keyLocator;
+		_saveType = other._saveType;
+		_keys = other._keys.clone();
+		// Do not copy update behavior. Even if other one is updating, we won't
+		// pick that up. Have to kick off manually.
+		
+	}
+	
+	/**
 	 * Maximize laziness of flow controller creation, to make it easiest for client code to
 	 * decide how to store this object. 
 	 * When we create the flow controller, we add the base name namespace, so it will respond
