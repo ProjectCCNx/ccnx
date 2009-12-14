@@ -176,12 +176,9 @@ public class KeyRepository {
 			// This might have been one of our keys, so we got it straight from
 			// cache; try to ensure it's not on the network. Might eventually
 			// want to check publisher as well
-			PublicKey theNetworkKey = getPublicKeyFromNetwork(keyToPublish, targetKeyLocator, SystemConfiguration.SHORT_TIMEOUT);
-			if (null != theNetworkKey) {
-				keyObject = retrieve(keyToPublish);
-				if (null == theKey) {
-					theKey = theNetworkKey;
-				}
+			keyObject = getPublicKeyObject(keyToPublish, targetKeyLocator, SystemConfiguration.SHORT_TIMEOUT);
+			if ((null == theKey) && (null != keyObject) && (keyObject.available())) {
+				theKey = keyObject.publicKey();
 			}
 		}
 		// Now, finally; it's not published, so make an object to write it
@@ -455,7 +452,7 @@ public class KeyRepository {
 				return key;
 			}
 		} else {
-			PublicKeyObject publicKeyObject = getPublicKeyObjectFromNetwork(desiredKeyID, locator, timeout);
+			PublicKeyObject publicKeyObject = getPublicKeyObject(desiredKeyID, locator, timeout);
 			if (null == publicKeyObject) {
 				Log.info("Could not retrieve key {0} with locator {1}!", desiredKeyID, locator);
 			} else {
@@ -466,7 +463,7 @@ public class KeyRepository {
 		return null;
 	}
 	
-	public PublicKeyObject getPublicKeyObjectFromNetwork(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
+	public PublicKeyObject getPublicKeyObject(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
 		// take code from #BasicKeyManager.getKey, to validate more complex publisher constraints
 		PublicKeyObject theKey = retrieve(locator.name().name(), locator.name().publisher());
 		if ((null != theKey) && (theKey.available())) {
