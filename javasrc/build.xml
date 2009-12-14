@@ -618,6 +618,7 @@
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RepoNameEnumeratorTest.class"/>
+					<include name="org/ccnx/ccn/test/repo/MultiResponderNameEnumerationTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
