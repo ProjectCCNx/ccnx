@@ -204,8 +204,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * Wait for new children to arrive.
 	 * 
 	 * @param timeout Maximum time to wait for new data.
+	 * @return a boolean value that indicates whether new data was found.
 	 */
-	public void waitForNewChildren(long timeout) {
+	public boolean waitForNewChildren(long timeout) {
+		boolean foundNewData = false;
 		synchronized(_childLock) {
 			CCNTime lastUpdate = _lastUpdate;
 			long timeRemaining = timeout;
@@ -223,7 +225,9 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 						((null == _children) ? 0 : _children.size()), _namePrefix + " new " + 
 						((null == _newChildren) ? 0 : _newChildren.size()) + ".", _lastUpdate, lastUpdate);
 			}
+			if ((null != _lastUpdate) && ((null == lastUpdate) || (_lastUpdate.after(lastUpdate)))) foundNewData = true;
 		}
+		return foundNewData;
 	}	
 	
 	/**
