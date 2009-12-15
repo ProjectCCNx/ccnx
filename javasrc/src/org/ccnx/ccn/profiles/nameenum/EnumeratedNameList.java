@@ -116,7 +116,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		SortedSet<ContentName> childArray = null;
 		synchronized(_childLock) { // reentrant?
 			while ((null == _children) || _children.size() == 0) {
-				waitForNewData(timeout);
+				waitForNewChildren(timeout);
 				if (timeout != SystemConfiguration.NO_TIMEOUT)
 					break;
 			}
@@ -205,7 +205,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * 
 	 * @param timeout Maximum time to wait for new data.
 	 */
-	public void waitForNewData(long timeout) {
+	public void waitForNewChildren(long timeout) {
 		synchronized(_childLock) {
 			CCNTime lastUpdate = _lastUpdate;
 			long timeRemaining = timeout;
@@ -232,8 +232,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * 
 	 * @return void
 	 */
-	public void waitForNewData() {
-		waitForNewData(SystemConfiguration.NO_TIMEOUT);
+	public void waitForNewChildren() {
+		waitForNewChildren(SystemConfiguration.NO_TIMEOUT);
 	}
 
 	/**
@@ -245,9 +245,9 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @param timeout Maximum amount of time to wait, if 0, waits forever.
 	 * @return void
 	 */
-	public void waitForData(long timeout) {
+	public void waitForChildren(long timeout) {
 		while ((null == _children) || _children.size() == 0) {
-			waitForNewData(timeout);
+			waitForNewChildren(timeout);
 			if (timeout != SystemConfiguration.NO_TIMEOUT)
 				break;
 		}
@@ -258,8 +258,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * 
 	 * @return void
 	 */
-	public void waitForData() {
-		waitForData(SystemConfiguration.NO_TIMEOUT);
+	public void waitForChildren() {
+		waitForChildren(SystemConfiguration.NO_TIMEOUT);
 	}
 
 	/**
@@ -386,7 +386,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 */
 	public static ContentName getLatestVersionName(ContentName name, CCNHandle handle) throws IOException {
 		EnumeratedNameList enl = new EnumeratedNameList(name, handle);
-		enl.waitForData();
+		enl.waitForChildren();
 		ContentName childLatestVersion = enl.getLatestVersionChildName();
 		enl.stopEnumerating();
 		if (null != childLatestVersion) {
@@ -434,7 +434,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		EnumeratedNameList parentEnumerator = null;
 		while (childIndex < childName.count()) {
 			parentEnumerator = new EnumeratedNameList(parentName, handle);
-			parentEnumerator.waitForData(CHILD_WAIT_INTERVAL); // we're only getting the first round here... 
+			parentEnumerator.waitForChildren(CHILD_WAIT_INTERVAL); // we're only getting the first round here... 
 			// could wrap this bit in a loop if want to try harder
 			byte[] childNameComponent = childName.component(childIndex);
 			if (parentEnumerator.hasChild(childNameComponent)) {

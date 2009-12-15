@@ -374,7 +374,7 @@ public class Group {
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, 
 					InvalidCipherTextException {
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		oldPrivateKeyDirectory.waitForData();
+		oldPrivateKeyDirectory.waitForChildren();
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have access rights to private key for group " + friendlyName());
@@ -415,7 +415,7 @@ public class Group {
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, 
 					InvalidCipherTextException {
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		oldPrivateKeyDirectory.waitForData();
+		oldPrivateKeyDirectory.waitForChildren();
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have access rights to private key for group " + friendlyName());
@@ -618,7 +618,7 @@ public class Group {
 		// Assume no concurrent writer.  
 		
 		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		privateKeyDirectory.waitForData();
+		privateKeyDirectory.waitForChildren();
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
@@ -689,7 +689,7 @@ public class Group {
 		
 		ContentName cn = GroupAccessControlProfile.groupPointerToParentGroupName(groupName());
 		EnumeratedNameList parentList = new EnumeratedNameList(cn, _handle);
-		parentList.waitForData(PARENT_GROUP_ENUMERATION_TIMEOUT);
+		parentList.waitForChildren(PARENT_GROUP_ENUMERATION_TIMEOUT);
 		if (parentList.hasChildren()) {
 			SortedSet<ContentName> parents = parentList.getChildren();
 			for (ContentName parentLinkName : parents) {

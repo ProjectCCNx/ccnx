@@ -301,7 +301,7 @@ public class GroupManager {
 			privateKeyDirectory =
 				new KeyDirectory(_accessManager, 
 					GroupAccessControlProfile.groupPrivateKeyDirectory(versionedPublicKeyName), _handle);
-			privateKeyDirectory.waitForData();
+			privateKeyDirectory.waitForChildren();
 			
 			PublicKeyObject thisPublicKey = new PublicKeyObject(versionedPublicKeyName, _handle);
 			thisPublicKey.waitForData();

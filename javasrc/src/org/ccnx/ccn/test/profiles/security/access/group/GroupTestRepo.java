@@ -115,7 +115,7 @@ public class GroupTestRepo {
 		Log.info("***************** Prefix is "+ prefixTest.toString());
 		Assert.assertEquals(prefixTest, userNamespace);
 
-		_userList.waitForData();
+		_userList.waitForChildren();
 		Assert.assertTrue(_userList.hasNewData());
 		SortedSet<ContentName> returnedBytes = _userList.getNewData();
 		Assert.assertNotNull(returnedBytes);
