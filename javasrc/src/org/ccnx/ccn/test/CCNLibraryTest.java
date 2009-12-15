@@ -228,7 +228,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 						SignatureException, NoSuchAlgorithmException, InterruptedException {
 				System.out.println("Got content: " + o.name());
 				System.out.println("Original value: " + i + " returned value: " + Byte.toString(o.content()[0]));
-				Assert.assertTrue(o.verify(null));
+				Assert.assertTrue(o.verify(putHandle.keyManager()));
 				Assert.assertTrue(DataUtils.arrayEquals(o.content(), data[i]));
 			}
 			/**
@@ -334,7 +334,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 		ContentVerifier putVerifier = new ContentObject.SimpleVerifier(putHandle.getDefaultPublisher());
 		ContentObject latestVersion =
 			VersioningProfile.getLatestVersion(docName, null, SystemConfiguration.NO_TIMEOUT, putVerifier, getHandle);
-		Assert.assertTrue(latestVersion.verify(null));
+		Assert.assertTrue(latestVersion.verify(getHandle.keyManager()));
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
 		System.out.println("Latest version name: " + latestVersion.name());
 
@@ -346,7 +346,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		ContentObject newLatestVersion = 
 			VersioningProfile.getLatestVersion(docName, null, SystemConfiguration.NO_TIMEOUT, putVerifier, getHandle);
-		Assert.assertTrue(newLatestVersion.verify(null));
+		Assert.assertTrue(newLatestVersion.verify(getHandle.keyManager()));
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
 		System.out.println("Latest version name: " + newLatestVersion.name());
 

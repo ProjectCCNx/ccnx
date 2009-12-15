@@ -43,7 +43,7 @@ public class BaseSecurityTest extends BasePutGetTest {
 		boolean verifySig = false;
 		for (int i=0; i < getResults.size(); ++i) {
 			try {
-				verifySig = getResults.get(i).verify(null);
+				verifySig = getResults.get(i).verify(getHandle.keyManager());
 				if (!verifySig) {
 					SystemConfiguration.logObject("checkGetResults: verification failed", getResults.get(i));
 				} else {
@@ -65,7 +65,7 @@ public class BaseSecurityTest extends BasePutGetTest {
 			ContentName baseName = SegmentationProfile.segmentRoot(putResult.name());
 			int val = Integer.parseInt(new String(baseName.component(baseName.count()-1)));
 			ContentObject co = new ContentObject(putResult.name(), putResult.signedInfo(), Integer.toString(val).getBytes(), putResult.signature());
-			boolean b = co.verify(null);
+			boolean b = co.verify(putHandle.keyManager());
 			if (!b) {
 				SystemConfiguration.logObject("checkPutResults: verification failed", co);
 			} else {

@@ -227,7 +227,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 			Log.info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp());
 			try {
-				if (!this.verify(null)) {
+				if (!this.verify((PublicKey)null)) {
 					Log.warning("ContentObject: " + fullName() + " (length: " + length + ") fails to verify!");
 				} else {
 					Log.info("ContentObject: " + fullName() + " (length: " + length + ") verified OK.");
@@ -510,9 +510,15 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 */
 	public boolean verify(PublicKey publicKey) 
 		throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
-				ContentEncodingException, InterruptedException {
+				ContentEncodingException {
 		return verify(this, publicKey);
 	}
+	
+	public boolean verify(KeyManager keyManager) throws SignatureException, 
+					NoSuchAlgorithmException, ContentEncodingException, InvalidKeyException {
+		return verify(this, keyManager);
+	}
+
 
 	/**
 	 * Want to verify a content object. First compute the 
@@ -536,11 +542,10 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * @throws SignatureException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
-	 * @throws InterruptedException 
 	 */
 	public static boolean verify(ContentObject object,
 			PublicKey publicKey) throws SignatureException, InvalidKeyException, 
-					NoSuchAlgorithmException, ContentEncodingException, InterruptedException {
+					NoSuchAlgorithmException, ContentEncodingException {
 
 		// Start with the cheap part. Derive the content proxy that was signed. This is
 		// either the root of the MerkleHash tree, the content itself, or the digest of
@@ -582,6 +587,22 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 
 		return verify(object.name(), object.signedInfo(), object.content(), object.signature(), publicKey);
 	}
+	
+	public static boolean verify(ContentObject object,
+			KeyManager keyManager) throws SignatureException, InvalidKeyException, 
+					NoSuchAlgorithmException, ContentEncodingException {
+		try {
+			if (null == keyManager)
+				keyManager = KeyManager.getKeyManager();
+			return verify(object, 
+					 keyManager.getPublicKey(
+							object.signedInfo().getPublisherKeyID(),
+							object.signedInfo().getKeyLocator()));
+		} catch (IOException e) {
+			throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
+					object.signedInfo().getKeyLocator() + " exception: " + e.getMessage(), e);				
+		}
+	}
 
 	/**
 	 * Verify the public key signature on a content object.
@@ -596,7 +617,6 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws ContentEncodingException
 	 * @throws InvalidKeyException 
-	 * @throws InterruptedException 
 	 */
 	public static boolean verify(
 			ContentName name,
@@ -604,7 +624,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			byte [] content,
 			Signature signature,
 			PublicKey publicKey) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, 
-								ContentEncodingException, InterruptedException {
+								ContentEncodingException {
 
 		if (null == publicKey) {
 			// Get a copy of the public key.
@@ -648,9 +668,30 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		return result;
 
 	}
+	
+	public static boolean verify(
+			ContentName name,
+			SignedInfo signedInfo,
+			byte [] content,
+			Signature signature,
+			KeyManager keyManager) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, 
+								ContentEncodingException {
+		try {
+			if (null == keyManager)
+				keyManager = KeyManager.getKeyManager();
+			return verify(name, signedInfo, content, signature, 
+					 keyManager.getPublicKey(
+							signedInfo.getPublisherKeyID(),
+							signedInfo.getKeyLocator()));
+		} catch (IOException e) {
+			throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
+					signedInfo.getKeyLocator() + " exception: " + e.getMessage(), e);				
+		}
+	}
 
 	public static boolean verify(byte[] proxy, byte [] signature, SignedInfo signedInfo,
-			String digestAlgorithm, PublicKey publicKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException {
+			String digestAlgorithm, PublicKey publicKey) throws InvalidKeyException, SignatureException, 
+									NoSuchAlgorithmException {
 		if (null == publicKey) {
 			// Get a copy of the public key.
 			// Simple routers will install key manager that
@@ -682,6 +723,21 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		return result;
 	}
 
+	public static boolean verify(byte[] proxy, byte [] signature, SignedInfo signedInfo,
+			String digestAlgorithm, KeyManager keyManager) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+		try {
+			if (null == keyManager)
+				keyManager = KeyManager.getKeyManager();
+			return verify(proxy, signature, signedInfo, digestAlgorithm, 
+					 keyManager.getPublicKey(
+							signedInfo.getPublisherKeyID(),
+							signedInfo.getKeyLocator()));
+		} catch (IOException e) {
+			throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
+					signedInfo.getKeyLocator() + " exception: " + e.getMessage(), e);				
+		}
+	}
+	
 	public byte [] computeProxy() throws CertificateEncodingException, ContentEncodingException {
 		// Given a witness and an object, compute the proxy.
 		if (null == content())
