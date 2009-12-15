@@ -221,4 +221,6 @@ ccn_indexbuf_move_to_front(struct ccn_indexbuf *x, ELEMENT val)
             return;
         }
     }
+
 }
+
