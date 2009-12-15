@@ -19,6 +19,7 @@ package org.ccnx.ccn.test.profiles.ccnd;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -27,7 +28,6 @@ import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
-import org.ccnx.ccn.profiles.ccnd.CCNDaemonHandle;
 import org.ccnx.ccn.profiles.ccnd.FaceManager;
 import org.ccnx.ccn.profiles.ccnd.FaceManager.ActionType;
 import org.ccnx.ccn.profiles.ccnd.FaceManager.FaceInstance;
@@ -148,14 +148,25 @@ public class FaceManagerTest extends LibraryTestBase {
 	@Test
 	public void testCreation() {
 		Integer faceID = new Integer(-142);
+		FaceManager mgr = null;
 		try {
-			FaceManager mgr = new FaceManager(putHandle);
-			faceID = mgr.createFace(FaceManager.NetworkProtocol.UDP, "elmer", new Integer(CCNNetworkManager.DEFAULT_AGENT_PORT));
-
+			mgr = new FaceManager(putHandle);
+			faceID = mgr.createFace(FaceManager.NetworkProtocol.UDP, "10.1.1.1", new Integer(CCNNetworkManager.DEFAULT_AGENT_PORT));
+			System.out.println("Created face: " + faceID);
 		} catch (CCNDaemonException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
-			System.out.println("Created face: " + faceID);
+			System.out.println("Failed to create face.");
 			e.printStackTrace();
+			fail("Failed to create face.");
+		}
+		assertNotNull(mgr);
+		try {
+			mgr.deleteFace(faceID);
+		}catch (CCNDaemonException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			System.out.println("Failed to delete face.");
+			e.printStackTrace();
+			fail("Failed to delete face.");
 		}
 	}
 
