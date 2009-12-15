@@ -19,16 +19,21 @@ package org.ccnx.ccn.test.profiles.ccnd;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
+import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
+import org.ccnx.ccn.profiles.ccnd.FaceManager;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ActionType;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ForwardingEntry;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.After;
@@ -138,6 +143,38 @@ public class PrefixRegistrationManagerTest {
 		ForwardingEntry  binaryEntryToDecodeInto = prm. new ForwardingEntry();
 		assertNotNull("EncodeDecodeOutput", binaryEntryToDecodeInto);
 		XMLEncodableTester.encodeDecodeTest("EncodeDecodeOutput", entryToEncode, textEntryToDecodeInto, binaryEntryToDecodeInto);
+	}
+
+	
+	@Test
+	public void testCreation() {
+		Integer faceID = null;
+		assertNotNull(prm);
+		ContentName testCN = null;
+		try {
+			testCN = ContentName.fromURI(prefixToUse);
+		} catch (MalformedContentNameStringException e1) {
+			e1.printStackTrace();
+			fail("ContentName.fromURI(prefixToUse) Failed.");
+		}
+		try {
+			faceID = prm.selfRegisterPrefix(prefixToUse);
+			System.out.println("Created prefix: ");
+		} catch (CCNDaemonException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			System.out.println("Failed to self register prefix.");
+			e.printStackTrace();
+			fail("Failed to self register prefix.");
+		}
+		assertNotNull(prm);
+		try {
+			prm.unRegisterPrefix(testCN, faceID);
+		}catch (CCNDaemonException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			System.out.println("Failed to delete prefix.");
+			e.printStackTrace();
+			fail("Failed to delete prefix.");
+		}
 	}
 
 }

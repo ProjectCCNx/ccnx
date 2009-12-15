@@ -556,7 +556,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			// or this could be part of a Merkle Hash Tree. If the latter, we could
 			// already have its signing information.
 			if (null == segment.signature().witness()) {
-				return segment.verify(null);
+				return segment.verify(_handle.keyManager());
 			}
 
 			// Compare to see whether this segment matches the root signature we previously verified, if
@@ -577,7 +577,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			} else {
 				// Verifying a new segment. See if the signature verifies, otherwise store the signature
 				// and proxy.
-				if (!ContentObject.verify(proxy, segment.signature().signature(), segment.signedInfo(), segment.signature().digestAlgorithm(), null)) {
+				if (!ContentObject.verify(proxy, segment.signature().signature(), segment.signedInfo(), segment.signature().digestAlgorithm(), _handle.keyManager())) {
 					Log.warning("Found segment: " + segment.name().toString() + " whose signature fails to verify; segment length: " + segment.contentLength() + ".");
 					return false;
 				} else {

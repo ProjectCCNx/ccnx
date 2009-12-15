@@ -240,6 +240,7 @@ public class BasicKeyManager extends KeyManager {
 				int read = in.read(tmp);
 				while (read > 0) {
 					bais.write(tmp, 0, read);
+					read = in.read(tmp);
 				}
 				bais.flush();
 				bais.close();

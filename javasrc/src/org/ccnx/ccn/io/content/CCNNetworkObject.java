@@ -37,6 +37,7 @@ import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
 import org.ccnx.ccn.io.NoMatchingContentFoundException;
+import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -112,6 +113,29 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * the option for valid null content, or content that has not yet been updated.
 	 */
 	protected boolean _isGone = false;
+	
+	/**
+	 * If the name we started with was actually a link, detect that, store the link,
+	 * and dereference it to get the content. Call updateLink() to update the link
+	 * itself, and if updated, to update the dereferenced value.
+	 * 
+	 * If the initial link is a link, recursion should push that into the link of
+	 * this LinkObject, and read its data. If that is a link, it should push again --
+	 * this should chain through links till we reach an object of the desired type,
+	 * or blow up. (It won't handle encrypted links, though; we may need to distinguish
+	 * between ENCR and ENCRL. Having encrypted links would be handy, to send people
+	 * off in random directions. But it matters a lot to be able to tell if the decryption
+	 * is a LINK or not.)
+	 * 
+	 * Writing linked objects is better done by separately writing the object and
+	 * the link, as it gives you more control over what is happening. If you attempt
+	 * to save this object, it may break the link (as the link may link to the particular
+	 * version retrieved). You can use this inner link object to manually update the link
+	 * to the target; but there are no good defaults about how to update the data. So
+	 * you need to specify the new link value yourself. For now we don't prevent users
+	 * from getting their data and their links de-syncrhonized.
+	 */
+	protected LinkObject _dereferencedLink;
 	
 	protected PublisherPublicKeyDigest _currentPublisher;
 	protected KeyLocator _currentPublisherKeyLocator;
@@ -1006,6 +1030,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			return _currentVersionComponent;
 		return null;
 	}
+	
+	/**
+	 * If we traversed a link to get this object, make it available.
+	 */
+	public synchronized LinkObject getDereferencedLink() { return _dereferencedLink; }
 	
 	/**
 	 * If the object has been saved or read from the network, returns the (cached) versioned
