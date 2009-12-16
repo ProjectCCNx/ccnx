@@ -24,17 +24,16 @@ import static org.junit.Assert.fail;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
-import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
-import org.ccnx.ccn.profiles.ccnd.FaceManager;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ActionType;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ForwardingEntry;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.test.LibraryTestBase;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -45,7 +44,7 @@ import org.junit.Test;
 /**
  * Test basic version manipulation.
  */
-public class PrefixRegistrationManagerTest {
+public class PrefixRegistrationManagerTest extends LibraryTestBase {
 	
 	PublisherPublicKeyDigest keyDigest;
 	PrefixRegistrationManager prm;
@@ -89,6 +88,8 @@ public class PrefixRegistrationManagerTest {
 	 */
 	@Test
 	public void testEncodeOutputStream() {
+		System.out.println();
+		System.out.println("PrefixRegistrationManagerTest.testEncodeOutputStream:");
 		ForwardingEntry entryToEncode = prm. new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
 		assertNotNull("EncodeOutputStream", entryToEncode);
@@ -101,11 +102,14 @@ public class PrefixRegistrationManagerTest {
 			e.printStackTrace();
 		}
 		System.out.println("Encoded: " );
-		System.out.println(baos.toString());
+		System.out.println(ContentName.componentPrintURI(baos.toString().getBytes()));
+		System.out.println();
 	}
 
 	@Test
 	public void testDecodeInputStream() {
+		System.out.println();
+		System.out.println("PrefixRegistrationManagerTest.testDecodeInputStream:");
 		ForwardingEntry entryToEncode = prm. new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
 		assertNotNull("DecodeOutputStream", entryToEncode);
@@ -118,7 +122,7 @@ public class PrefixRegistrationManagerTest {
 			e.printStackTrace();
 		}
 		System.out.println("Encoded: " );
-		System.out.println(baos.toString());
+		System.out.println(ContentName.componentPrintURI(baos.toString().getBytes()));
 		
 		System.out.println("Decoding: ");
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
@@ -131,10 +135,13 @@ public class PrefixRegistrationManagerTest {
 		}
 		System.out.println("Decoded: " + entryToDecodeTo);
 		assertEquals("DecodeOutputStream", entryToEncode, entryToDecodeTo);
+		System.out.println();
 	}
 	
 	@Test
 	public void testEncodingDecoding() {
+		System.out.println();
+		System.out.println("PrefixRegistrationManagerTest.testEncodingDecoding:");
 		ForwardingEntry entryToEncode = prm. new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
 
@@ -143,14 +150,17 @@ public class PrefixRegistrationManagerTest {
 		ForwardingEntry  binaryEntryToDecodeInto = prm. new ForwardingEntry();
 		assertNotNull("EncodeDecodeOutput", binaryEntryToDecodeInto);
 		XMLEncodableTester.encodeDecodeTest("EncodeDecodeOutput", entryToEncode, textEntryToDecodeInto, binaryEntryToDecodeInto);
+		System.out.println();
 	}
 
 	
 	@Test
 	public void testCreation() {
+		System.out.println();
+		System.out.println("PrefixRegistrationManagerTest.testCreation:");
 		Integer faceID = null;
-		assertNotNull(prm);
 		ContentName testCN = null;
+		PrefixRegistrationManager manager = null;
 		try {
 			testCN = ContentName.fromURI(prefixToUse);
 		} catch (MalformedContentNameStringException e1) {
@@ -158,8 +168,9 @@ public class PrefixRegistrationManagerTest {
 			fail("ContentName.fromURI(prefixToUse) Failed.");
 		}
 		try {
-			faceID = prm.selfRegisterPrefix(prefixToUse);
-			System.out.println("Created prefix: ");
+			manager = new PrefixRegistrationManager(putHandle);
+			faceID = manager.selfRegisterPrefix(testCN);
+			System.out.println("Created prefix: " + testCN + " on face " + faceID);
 		} catch (CCNDaemonException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			System.out.println("Failed to self register prefix.");
@@ -168,13 +179,14 @@ public class PrefixRegistrationManagerTest {
 		}
 		assertNotNull(prm);
 		try {
-			prm.unRegisterPrefix(testCN, faceID);
+			manager.unRegisterPrefix(testCN, faceID);
 		}catch (CCNDaemonException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			System.out.println("Failed to delete prefix.");
 			e.printStackTrace();
 			fail("Failed to delete prefix.");
 		}
+		System.out.println();
 	}
 
 }
