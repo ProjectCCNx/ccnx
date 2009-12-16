@@ -269,10 +269,17 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	/**
 	 * Wait for new children to arrive until there is a period of length timeout during which 
 	 * no new child arrives. 
-	 * @param timeout The maximum amount of time to wait between subsequent children arrivals.
+	 * @param timeout The maximum amount of time to wait between consecutive children arrivals.
 	 */
 	public void waitForUpdates(long timeout) {
-		while (waitForNewChildren(timeout)) {}
+		Log.info("Waiting for updates on prefix {0} with max timeout of {1} ms between consecutive children arrivals.", 
+				_namePrefix, timeout);
+		long startTime = System.currentTimeMillis();
+		while (waitForNewChildren(timeout)) {
+			Log.info("Child or children found on prefix {0}", _namePrefix);
+		}
+		Log.info("Quit waiting for updates on prefix {0} after waiting in total {1} ms.", 
+				_namePrefix, (System.currentTimeMillis() - startTime));
 	}
 
 	/**
