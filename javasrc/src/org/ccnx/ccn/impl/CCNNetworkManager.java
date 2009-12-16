@@ -43,6 +43,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.profiles.ccnd.CCNDaemonProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -80,8 +81,6 @@ public class CCNNetworkManager implements Runnable {
 	public static final String KEEPALIVE_NAME = "/HereIAm";
 	public static final int THREAD_LIFE = 8;	// in seconds
 	
-	public static final String ping = "ccnx:/ccnx/ping/";
-
 	
 	/*
 	 *  This ccndId is set on the first connection with 'ccnd' and is the
@@ -90,6 +89,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	protected static Integer _idSyncer = new Integer(0);
 	protected static PublisherPublicKeyDigest _ccndId = null;
+	protected Integer _faceID = null;
 	protected CCNDIdGetter _getter = null;
 	
 	/*
@@ -102,7 +102,7 @@ public class CCNNetworkManager implements Runnable {
 	protected Throwable _error = null; // Marks error state of socket
 	protected boolean _run = true;
 
-	protected ContentObject _keepalive; 
+	// protected ContentObject _keepalive; 
 	protected FileOutputStream _tapStreamOut = null;
 	protected FileOutputStream _tapStreamIn = null;
 	protected long _lastHeartbeat = 0;
@@ -112,7 +112,7 @@ public class CCNNetworkManager implements Runnable {
 	// For handling protocol to speak to ccnd, must have keys
 	protected KeyManager _keyManager;
 	protected int _localPort = -1;
-
+	
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
@@ -169,7 +169,7 @@ public class CCNNetworkManager implements Runnable {
 			
 			_periodicTimer.schedule(new PeriodicWriter(), checkDelay);
 		}
-	}
+	} /* private class PeriodicWriter extends TimerTask */
 	
 	/**
 	 * Send the heartbeat. Also attempt to detect ccnd going down.
@@ -298,7 +298,7 @@ public class CCNNetworkManager implements Runnable {
 				return super.hashCode();
 			}
 		}
-	}
+	} /* protected abstract class ListenerRegistration implements Runnable */
 	
 	/**
 	 * Record of Interest
@@ -441,7 +441,7 @@ public class CCNNetworkManager implements Runnable {
 			}
 			super.run();
 		}
-	}
+	} /* protected class InterestRegistration extends ListenerRegistration */
 	
 	/**
 	 * Record of a filter describing portion of namespace for which this 
@@ -449,11 +449,12 @@ public class CCNNetworkManager implements Runnable {
 	 * to registered interest handlers
 	 */
 	protected class Filter extends ListenerRegistration {
-		public ContentName name;
-		protected boolean deliveryPending = false;
+		public ContentName prefix;  /* Also used to remember registration with ccnd */
 		protected ArrayList<Interest> interests= new ArrayList<Interest>(1);
+		protected Integer faceId = null;
+		
 		public Filter(CCNNetworkManager mgr, ContentName n, CCNFilterListener l, Object o) {
-			name = n; listener = l; owner = o;
+			prefix = n; listener = l; owner = o;
 			manager = mgr;
 		}
 		public synchronized void add(Interest i) {
@@ -477,10 +478,10 @@ public class CCNNetworkManager implements Runnable {
 				
 				if (null != results) {								
 					// Call into client code without holding any library locks
-					Log.finer("Filter callback ({0} interests) for: {1}", results.size(), name);
+					Log.finer("Filter callback ({0} interests) for: {1}", results.size(), prefix);
 					listener.handleInterests(results);
 				} else {
-					Log.finer("Filter callback skipped (no interests) for: {0}", name);
+					Log.finer("Filter callback skipped (no interests) for: {0}", prefix);
 				}
 			} catch (RuntimeException ex) {
 				Log.warning("failed to deliver interest: {0}", ex);
@@ -488,84 +489,38 @@ public class CCNNetworkManager implements Runnable {
 		}
 		@Override
 		public String toString() {
-			return name.toString();
+			return prefix.toString();
 		}
-	}
+	} /* protected class Filter extends ListenerRegistration */
 	
 	private class CCNDIdGetter implements Runnable {
-		CCNNetworkManager _mgr;
+		CCNNetworkManager _networkManager;
 		KeyManager _keyManager;
 		
-		public CCNDIdGetter(CCNNetworkManager mgr, KeyManager keyManager) { 
-			_mgr = mgr;
+		public CCNDIdGetter(CCNNetworkManager networkManager, KeyManager keyManager) { 
+			_networkManager = networkManager;
 			_keyManager = keyManager;
 			}
 		
 		public void run() {
 			boolean isNull = false;
+			PublisherPublicKeyDigest sentID = null;
 			synchronized (_idSyncer) {
 				isNull = (null == _ccndId);
 			}
 			if (isNull) {
-				try {
-					Interest interested = new Interest(ping);
-					interested.nonce(Interest.generateNonce());
-					interested.scope(1);
-					ContentObject contented = _mgr.get(interested, 500);
-					if (null == contented) {
-						String msg = ("CCNDIdGetter: Fetch of content from ping uri failed due to timeout.");
-						Log.severe(msg);
-						return;
-					}
-					PublisherPublicKeyDigest sentID = contented.signedInfo().getPublisherKeyID();
-					
-					// TODO: This needs to be fixed once the KeyRepository is fixed to provide a KeyManager
-					if (null != _keyManager) {
-//						PublicKey publicKey = _keyManager.getPublicKey(sentID);
-//						if (!contented.verify(publicKey)) {
-//							String msg = ("CCNDIdGetter: Fetch of content reply from ping failed to verify.");
-//							Log.severe(msg);
-//							return;
-//						}
-						
-						ContentVerifier verifyer = new ContentObject.SimpleVerifier(sentID, _keyManager);
-						if (!verifyer.verify(contented)) {
-							String msg = ("CCNDIdGetter: Fetch of content reply from ping failed to verify.");
-							Log.severe(msg);
-							return;
-						}
-					}
-
-					synchronized(_idSyncer) {
-						_ccndId = sentID;
-						Log.info("CCNDIdGetter: ccndId {0}", ContentName.componentPrintURI(sentID.digest()));
-					}
-				} catch (InterruptedException e) {
-					Log.warningStackTrace(e);
-				} catch (MalformedContentNameStringException e) {
-					String reason = e.getMessage();
-					Log.warningStackTrace(e);
-					String msg = ("CCNDIdGetter: Unexpected MalformedContentNameStringException in call creating: " + ping + " reason: " + reason);
-					Log.severe(msg);
-				} catch (IOException e) {
-					String reason = e.getMessage();
-					Log.warningStackTrace(e);
-					String msg = ("CCNDIdGetter: Unexpected IOException in call getting ping Interest reason: " + reason);
-					Log.severe(msg);
-//				} catch (InvalidKeyException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				} catch (SignatureException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				} catch (NoSuchAlgorithmException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
+				sentID = fetchCCNDId(_networkManager, _keyManager);
+				if (null == sentID) {
+					Log.severe("CCNDIdGetter: call to fetchCCNDId returned null.");
+				}
+				synchronized(_idSyncer) {
+					_ccndId = sentID;
+					Log.info("CCNDIdGetter: ccndId {0}", ContentName.componentPrintURI(sentID.digest()));
 				}
 			} /* null == _ccndId */
 		} /* run() */
 
-	}
+	} /* private class CCNDIdGetter implements Runnable */
 		
 	/**
 	 * The constructor. Attempts to connect to a ccnd at the currently specified port number
@@ -674,33 +629,28 @@ public class CCNNetworkManager implements Runnable {
 		 *  to return back to the create before we know we get the answer back.  We can
 		 *  cause the prefix registration to wait.
 		 */
+		PublisherPublicKeyDigest sentID = null;
+		boolean doFetch = false;
+		
 		synchronized (_idSyncer) {
-			if (null == _ccndId && null == _getter) {
-				_getter = new CCNDIdGetter(this, _keyManager);
-				_threadpool.execute(_getter);
+			if (null == _ccndId) {
+				doFetch = true;
 			} else {
 				return _ccndId;
 			}
 		}
 		
-		/*
-		 * If we get here, we don't yet have the ccndId we need to return, so...
-		 */
-		int loopCnt = 0;
-		do {
-			try {
-				Thread.sleep(5);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+		if (doFetch) {
+			sentID = fetchCCNDId(this, _keyManager);
+			if (null == sentID) {
+				Log.severe("getCCNDId: call to fetchCCNDId returned null.");
+				return null;
 			}
-			synchronized (_idSyncer) {
-				if (null != _ccndId) {
-					return (_ccndId);
-				}
-			}
-		} while (loopCnt < 500);
-		return null;
+		}
+		synchronized (_idSyncer) {
+			_ccndId = sentID;
+			return _ccndId;
+		}
 	}
 	
 	/**
@@ -939,7 +889,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	public void run() {
 		if (! _run) {
-			Log.warning("CCNSimpleNetworkManager run() called after shutdown");
+			Log.warning("CCNNetworkManager run() called after shutdown");
 			return;
 		}
 		// Allocate datagram buffer: want to wrap array to ensure backed by
@@ -947,7 +897,7 @@ public class CCNNetworkManager implements Runnable {
 		byte[] buffer = new byte[MAX_PAYLOAD];
 		ByteBuffer datagram = ByteBuffer.wrap(buffer);
 		WirePacket packet = new WirePacket();
-		Log.info("CCNSimpleNetworkManager processing thread started");
+		Log.info("CCNNetworkManager processing thread started");
 		while (_run) {
 			try {
 				
@@ -984,10 +934,18 @@ public class CCNNetworkManager implements Runnable {
 							break;
 						}
 						if (!_channel.isConnected()) {
+							/*
+							 * This is the case where we noticed that the connect to ccnd went away.  We
+							 * try to reconnect, and if successful, we need to re-register our collection
+							 * of prefix registrations.
+							 */
 							_channel.connect(new InetSocketAddress(_host, _port));
 							if (_channel.isConnected()) {
 								_selector = Selector.open();
 								_channel.register(_selector, SelectionKey.OP_READ);
+								_localPort = _channel.socket().getLocalPort();
+								_faceID = null;
+								Log.info("Reconnecting to CCN agent at " + _host + ":" + _port + "on local port" + _localPort);
 							}
 						}
 					}
@@ -1065,4 +1023,50 @@ public class CCNNetworkManager implements Runnable {
 			}
 		}
 	}
+	
+	
+	protected PublisherPublicKeyDigest fetchCCNDId(CCNNetworkManager mgr, KeyManager keyManager) {
+			try {
+				Interest interested = new Interest(CCNDaemonProfile.ping);
+				interested.nonce(Interest.generateNonce());
+				interested.scope(1);
+				ContentObject contented = mgr.get(interested, 500);
+				if (null == contented) {
+					String msg = ("fetchCCNDId: Fetch of content from ping uri failed due to timeout.");
+					Log.severe(msg);
+					return null;
+				}
+				PublisherPublicKeyDigest sentID = contented.signedInfo().getPublisherKeyID();
+				
+				// TODO: This needs to be fixed once the KeyRepository is fixed to provide a KeyManager
+				if (null != keyManager) {
+					ContentVerifier verifyer = new ContentObject.SimpleVerifier(sentID, keyManager);
+					if (!verifyer.verify(contented)) {
+						String msg = ("fetchCCNDId: Fetch of content reply from ping failed to verify.");
+						Log.severe(msg);
+						return null;
+					}
+				}
+				return sentID;
+			} catch (InterruptedException e) {
+				Log.warningStackTrace(e);
+				return null;
+			} catch (MalformedContentNameStringException e) {
+				String reason = e.getMessage();
+				Log.warningStackTrace(e);
+				String msg = ("fetchCCNDId: Unexpected MalformedContentNameStringException in call creating: " + CCNDaemonProfile.ping + " reason: " + reason);
+				Log.severe(msg);
+				return null;
+			} catch (IOException e) {
+				String reason = e.getMessage();
+				Log.warningStackTrace(e);
+				String msg = ("fetchCCNDId: Unexpected IOException in call getting ping Interest reason: " + reason);
+				Log.severe(msg);
+				return null;
+			}
+	} /* PublisherPublicKeyDigest fetchCCNDId() */
+
+	
 }
+
+
