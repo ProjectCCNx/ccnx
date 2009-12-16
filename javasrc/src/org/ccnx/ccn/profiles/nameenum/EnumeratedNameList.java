@@ -265,6 +265,15 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	public void waitForChildren() {
 		waitForChildren(SystemConfiguration.NO_TIMEOUT);
 	}
+	
+	/**
+	 * Wait for new children to arrive until there is a period of length timeout during which 
+	 * no new child arrives. 
+	 * @param timeout The maximum amount of time to wait between subsequent children arrivals.
+	 */
+	public void waitForUpdates(long timeout) {
+		while (waitForNewChildren(timeout)) {}
+	}
 
 	/**
 	 * Handle responses from CCNNameEnumerator that give us a list of single-component child
