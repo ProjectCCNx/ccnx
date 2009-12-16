@@ -619,7 +619,7 @@ public class Group {
 		// Assume no concurrent writer.  
 		
 		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		privateKeyDirectory.waitForChildren();
+		privateKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
