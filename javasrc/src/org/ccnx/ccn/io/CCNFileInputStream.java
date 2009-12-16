@@ -301,7 +301,8 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 			throw new IOException("Cannot retrieve first block of " + _baseName + "!");
 		}
 		// Have to wait to request the header till we know what version we're looking for.
-		if (!headerRequested()) {
+		// Don't want to request the header if this stream is LINK or GONE.
+		if (!headerRequested() && (!result.isGone()) && (!result.isLink())) {
 			requestHeader(_baseName, result.signedInfo().getPublisherKeyID());
 		}
 		return result;
