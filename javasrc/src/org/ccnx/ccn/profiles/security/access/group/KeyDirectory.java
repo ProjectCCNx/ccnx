@@ -32,6 +32,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -587,7 +588,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					KeyDirectory supersedingKeyDirectory = null;
 					try {
 						supersedingKeyDirectory = new KeyDirectory(_manager, supersededKeyBlock.wrappedKey().wrappingKeyName(), _manager.handle());
-						supersedingKeyDirectory.waitForChildren();
+						supersedingKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
 						// This wraps the key we actually want.
 						unwrappedSupersedingKey = supersedingKeyDirectory.getUnwrappedKey(supersededKeyBlock.wrappedKey().wrappingKeyIdentifier());
 					} finally {
