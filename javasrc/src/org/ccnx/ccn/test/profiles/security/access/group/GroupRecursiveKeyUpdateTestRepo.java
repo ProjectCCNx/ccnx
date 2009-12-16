@@ -36,7 +36,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setLevel(java.util.logging.Level.SEVERE);
+		Log.setLevel(java.util.logging.Level.INFO);
 		directoryBase = ContentName.fromNative("/test/GroupRecursiveKeyUpdateTestRepo");
 		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
 		userKeyStorePrefix = ContentName.fromNative(directoryBase, "_access_");

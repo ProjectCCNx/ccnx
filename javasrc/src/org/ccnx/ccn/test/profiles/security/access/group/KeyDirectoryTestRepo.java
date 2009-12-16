@@ -131,7 +131,7 @@ public class KeyDirectoryTestRepo {
 		AESSecretKey = kg.generateKey();
 		// add private key block
 		kd.addPrivateKeyBlock(wrappedPrivateKey, AESSecretKey);
-		kd.waitForData(); // this was the first add; need to wait till we have any data, hopefully NE responder will fast path
+		kd.waitForChildren(); // this was the first add; need to wait till we have any data, hopefully NE responder will fast path
 		Assert.assertTrue(kd.hasPrivateKeyBlock());
 	}
 	
@@ -149,7 +149,7 @@ public class KeyDirectoryTestRepo {
 		Group myGroup = acm.groupManager().createGroup(randomGroupName, newMembers);
 		Assert.assertTrue(acm.groupManager().haveKnownGroupMemberships());
 		KeyDirectory pkd = myGroup.privateKeyDirectory(acm);
-		pkd.waitForData();
+		pkd.waitForChildren();
 		Assert.assertTrue(pkd.hasPrivateKeyBlock());
 		
 		// add to the KeyDirectory the secret key wrapped in the public key
@@ -162,7 +162,7 @@ public class KeyDirectoryTestRepo {
 		
 		// retrieve the secret key
 		byte[] expectedKeyID = CCNDigestHelper.digest(AESSecretKey.getEncoded());
-		kd2.waitForData();
+		kd2.waitForChildren();
 		Thread.sleep(10000);
 		Key unwrappedSecretKey = kd2.getUnwrappedKey(expectedKeyID);
 		Assert.assertEquals(AESSecretKey, unwrappedSecretKey);
@@ -211,7 +211,7 @@ public class KeyDirectoryTestRepo {
 		// Use unversioned constructor so KeyDirectory returns the latest version
 		KeyDirectory uvkd = new KeyDirectory(acm, keyDirectoryName, handle);
 		while (!uvkd.hasChildren() || uvkd.getCopyOfWrappingKeyIDs().size() == 0) {
-			uvkd.waitForNewData();
+			uvkd.waitForNewChildren();
 		}
 		// check the ID of the wrapping key
 		TreeSet<byte[]> wkid = uvkd.getCopyOfWrappingKeyIDs();
@@ -286,7 +286,7 @@ public class KeyDirectoryTestRepo {
 		ContentName supersedingKeyName = keyDirectoryName;
 		skd.addSupersededByBlock(supersededAESSecretKey, supersedingKeyName, AESSecretKey);
 		while (!skd.hasChildren() || !skd.hasSupersededBlock()) 
-			skd.waitForNewData();
+			skd.waitForNewChildren();
 		Assert.assertTrue(skd.hasSupersededBlock());
 		Assert.assertNotNull(skd.getSupersededBlockName());
 
@@ -308,7 +308,7 @@ public class KeyDirectoryTestRepo {
 
 		ContentName supersedingKeyName = ContentName.fromNative(keyDirectoryBase + "previous");
 		kd.addPreviousKeyBlock(AESSecretKey, supersedingKeyName, newAESSecretKey);
-		kd.waitForNewData();
+		kd.waitForNewChildren();
 		Assert.assertTrue(kd.hasPreviousKeyBlock());
 	}
 	

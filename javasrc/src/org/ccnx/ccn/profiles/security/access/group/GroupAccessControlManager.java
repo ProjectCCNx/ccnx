@@ -842,7 +842,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		try {
 
 			keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
-			keyDirectory.waitForData();
+			keyDirectory.waitForChildren();
 			// this will handle the caching.
 			Key unwrappedKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
 			if (null != unwrappedKey) {
@@ -960,7 +960,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		KeyDirectory nodeKeyDirectory = null;
 		try {
 			nodeKeyDirectory = new KeyDirectory(this, theNodeKeyName, handle());
-			nodeKeyDirectory.waitForData();
+			nodeKeyDirectory.waitForChildren();
 
 			if (null == nodeKeyDirectory) {
 				throw new IOException("Cannot get node key directory for : " + theNodeKeyName);
@@ -1186,7 +1186,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 					}
 					// Add a previous key link to the old version of the key.
 					// TODO do we need to add publisher?
-					nodeKeyDirectory.waitForData();
+					nodeKeyDirectory.waitForChildren();
 					nodeKeyDirectory.addPreviousKeyLink(oldEffectiveNodeKey.storedNodeKeyName(), null);
 					// OK, just add superseded-by block to the old directory.
 					KeyDirectory.addSupersededByBlock(oldEffectiveNodeKey.storedNodeKeyName(), oldEffectiveNodeKey.nodeKey(), 

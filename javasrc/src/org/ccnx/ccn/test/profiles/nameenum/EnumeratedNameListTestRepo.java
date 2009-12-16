@@ -127,7 +127,7 @@ public class EnumeratedNameListTestRepo {
 
 			// adding content to repo
 			ContentName latestName = addContentToRepo(name1, handle);
-			testList.waitForData();
+			testList.waitForChildren();
 			Log.info("Added data to repo: " + latestName);
 
 			//testing that the enumerator has new data
@@ -238,7 +238,7 @@ public class EnumeratedNameListTestRepo {
 			}
 			
 			EnumeratedNameList versionList = new EnumeratedNameList(name1, handle);
-			versionList.waitForData();
+			versionList.waitForChildren();
 			Assert.assertTrue(versionList.hasNewData());
 			// Even though the addition of versions above is blocking and the new EnumeratedNameList
 			// is not created to start enumerating names until after the versions have been written,

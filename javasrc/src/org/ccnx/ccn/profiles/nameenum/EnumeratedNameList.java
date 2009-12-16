@@ -116,7 +116,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		SortedSet<ContentName> childArray = null;
 		synchronized(_childLock) { // reentrant?
 			while ((null == _children) || _children.size() == 0) {
-				waitForNewData(timeout);
+				waitForNewChildren(timeout);
 				if (timeout != SystemConfiguration.NO_TIMEOUT)
 					break;
 			}
@@ -204,8 +204,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * Wait for new children to arrive.
 	 * 
 	 * @param timeout Maximum time to wait for new data.
+	 * @return a boolean value that indicates whether new data was found.
 	 */
-	public void waitForNewData(long timeout) {
+	public boolean waitForNewChildren(long timeout) {
+		boolean foundNewData = false;
 		synchronized(_childLock) {
 			CCNTime lastUpdate = _lastUpdate;
 			long timeRemaining = timeout;
@@ -223,7 +225,9 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 						((null == _children) ? 0 : _children.size()), _namePrefix + " new " + 
 						((null == _newChildren) ? 0 : _newChildren.size()) + ".", _lastUpdate, lastUpdate);
 			}
+			if ((null != _lastUpdate) && ((null == lastUpdate) || (_lastUpdate.after(lastUpdate)))) foundNewData = true;
 		}
+		return foundNewData;
 	}	
 	
 	/**
@@ -232,8 +236,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * 
 	 * @return void
 	 */
-	public void waitForNewData() {
-		waitForNewData(SystemConfiguration.NO_TIMEOUT);
+	public void waitForNewChildren() {
+		waitForNewChildren(SystemConfiguration.NO_TIMEOUT);
 	}
 
 	/**
@@ -245,9 +249,9 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @param timeout Maximum amount of time to wait, if 0, waits forever.
 	 * @return void
 	 */
-	public void waitForData(long timeout) {
+	public void waitForChildren(long timeout) {
 		while ((null == _children) || _children.size() == 0) {
-			waitForNewData(timeout);
+			waitForNewChildren(timeout);
 			if (timeout != SystemConfiguration.NO_TIMEOUT)
 				break;
 		}
@@ -258,8 +262,24 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * 
 	 * @return void
 	 */
-	public void waitForData() {
-		waitForData(SystemConfiguration.NO_TIMEOUT);
+	public void waitForChildren() {
+		waitForChildren(SystemConfiguration.NO_TIMEOUT);
+	}
+	
+	/**
+	 * Wait for new children to arrive until there is a period of length timeout during which 
+	 * no new child arrives. 
+	 * @param timeout The maximum amount of time to wait between consecutive children arrivals.
+	 */
+	public void waitForUpdates(long timeout) {
+		Log.info("Waiting for updates on prefix {0} with max timeout of {1} ms between consecutive children arrivals.", 
+				_namePrefix, timeout);
+		long startTime = System.currentTimeMillis();
+		while (waitForNewChildren(timeout)) {
+			Log.info("Child or children found on prefix {0}", _namePrefix);
+		}
+		Log.info("Quit waiting for updates on prefix {0} after waiting in total {1} ms.", 
+				_namePrefix, (System.currentTimeMillis() - startTime));
 	}
 
 	/**
@@ -386,7 +406,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 */
 	public static ContentName getLatestVersionName(ContentName name, CCNHandle handle) throws IOException {
 		EnumeratedNameList enl = new EnumeratedNameList(name, handle);
-		enl.waitForData();
+		enl.waitForChildren();
 		ContentName childLatestVersion = enl.getLatestVersionChildName();
 		enl.stopEnumerating();
 		if (null != childLatestVersion) {
@@ -434,7 +454,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		EnumeratedNameList parentEnumerator = null;
 		while (childIndex < childName.count()) {
 			parentEnumerator = new EnumeratedNameList(parentName, handle);
-			parentEnumerator.waitForData(CHILD_WAIT_INTERVAL); // we're only getting the first round here... 
+			parentEnumerator.waitForChildren(CHILD_WAIT_INTERVAL); // we're only getting the first round here... 
 			// could wrap this bit in a loop if want to try harder
 			byte[] childNameComponent = childName.component(childIndex);
 			if (parentEnumerator.hasChild(childNameComponent)) {

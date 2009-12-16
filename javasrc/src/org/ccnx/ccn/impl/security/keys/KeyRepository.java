@@ -328,7 +328,7 @@ public class KeyRepository {
 		// We then use a further trick, just calling startWrite on the key, to get the repo
 		// to read it -- not from here, but from the key server embedded in the KeyManager.
 		EnumeratedNameList enl = new EnumeratedNameList(keyName.parent(), handle());
-		enl.waitForData(500); // have to time out, may be nothing there.
+		enl.waitForChildren(500); // have to time out, may be nothing there.
 		enl.stopEnumerating();
 		if (enl.hasChildren()) {
 			Log.info("Looking for children of {0} matching {1}.", keyName.parent(), keyName);

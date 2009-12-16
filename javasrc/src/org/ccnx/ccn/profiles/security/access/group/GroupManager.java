@@ -29,6 +29,7 @@ import java.util.HashSet;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -301,7 +302,7 @@ public class GroupManager {
 			privateKeyDirectory =
 				new KeyDirectory(_accessManager, 
 					GroupAccessControlProfile.groupPrivateKeyDirectory(versionedPublicKeyName), _handle);
-			privateKeyDirectory.waitForData();
+			privateKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
 			
 			PublicKeyObject thisPublicKey = new PublicKeyObject(versionedPublicKeyName, _handle);
 			thisPublicKey.waitForData();

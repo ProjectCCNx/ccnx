@@ -192,7 +192,9 @@ public class BasicKeyManager extends KeyManager {
 		File keyStoreFile = new File(_keyStoreDirectory, _keyStoreFileName);
 		
 		KeyStoreInfo keyStoreInfo = null;
-		if (!keyStoreFile.exists()) {
+		if (!keyStoreFile.exists() || (0 == keyStoreFile.length())) {
+			// If the BC configuration is screwed up, sometimes a 0-length keystore
+			// gets created. If so, blow it away and make a new one.
 			Log.info("Creating new CCN key store..." + keyStoreFile.getAbsolutePath());
 			keyStoreInfo = createKeyStore();
 			Log.info("...created key store.");

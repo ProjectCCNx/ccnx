@@ -120,7 +120,7 @@ public class TestUserData {
 	public TestUserData(ContentName userKeystoreDataPrefix, char [] password, CCNHandle handle) throws IOException, ConfigurationException, InvalidKeyException {
 		
 		EnumeratedNameList userDirectory = new EnumeratedNameList(userKeystoreDataPrefix, handle);
-		userDirectory.waitForData(); // will block
+		userDirectory.waitForChildren(); // will block
 		
 		SortedSet<ContentName> availableChildren = userDirectory.getChildren();
 		if ((null == availableChildren) || (availableChildren.size() == 0)) {
