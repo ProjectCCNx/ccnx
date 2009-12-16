@@ -74,7 +74,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		private static final String REPO_GLOBALPREFIX = "global";
 		
 		public static final char [] KEYSTORE_PASSWORD = "Th1s 1s n0t 8 g00d R3p0s1t0ry p8ssw0rd!".toCharArray();
-		public static final String KEYSTORE_FILE = "ccnx_keystore";
+		public static final String KEYSTORE_FILE = "ccnx_repository_keystore";
 		public static final String REPOSITORY_USER = "Repository";
 
 		private static String CONTENT_FILE_PREFIX = "repoFile";
