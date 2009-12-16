@@ -31,6 +31,7 @@ import java.util.SortedSet;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
@@ -374,7 +375,7 @@ public class Group {
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, 
 					InvalidCipherTextException {
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		oldPrivateKeyDirectory.waitForChildren();
+		oldPrivateKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have access rights to private key for group " + friendlyName());
