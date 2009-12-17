@@ -477,6 +477,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	/**
+	 * Override point where subclasses can modify each input stream before
+	 * it is read.
+	 */
+	protected void setInputStreamProperties(CCNInputStream inputStream) {
+		// default -- do nothing
+	}
+	
+	/**
 	 * Attempts to find a version after the latest one we have, or times out. If
 	 * it times out, it simply leaves the object unchanged.
 	 * @return returns true if it found an update, false if not
@@ -543,6 +551,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	public synchronized boolean update(CCNInputStream inputStream) throws ContentDecodingException, IOException {
+		
+		// Allow subclasses to modify input stream processing prior to first read.
+		setInputStreamProperties(inputStream);
+		
 		Tuple<ContentName, byte []> nameAndVersion = null;
 		if (inputStream.isGone()) {
 			Log.fine("Reading from GONE stream: {0}", inputStream.getBaseName());

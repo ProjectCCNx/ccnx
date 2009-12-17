@@ -25,6 +25,8 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.io.CCNInputStream;
+import org.ccnx.ccn.io.CCNAbstractInputStream.FlagTypes;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -125,6 +127,15 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 			if (null == data())
 				return null;
 			return link().dereference(timeout, _handle);
+		}
+		
+		/**
+		 * Modify the properties of the input streams we read to read links themselves,
+		 * rather than dereferencing them and causing an infinite loop.
+		 */
+		@Override
+		protected void setInputStreamProperties(CCNInputStream inputStream) {
+			inputStream.addFlag(FlagTypes.DONT_DEREFERENCE);
 		}
 	}
 

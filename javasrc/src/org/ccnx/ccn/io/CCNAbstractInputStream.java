@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -34,6 +35,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
@@ -53,7 +55,22 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  */
 public abstract class CCNAbstractInputStream extends InputStream implements ContentVerifier {
 
+	/**
+	 * Flags:
+	 * DONT_DEREFERENCE to prevent dereferencing in case we are attempting to read a link.
+	 */
+	
 	protected CCNHandle _handle;
+	
+	/**
+	 * The Link we dereferenced to get here, if any. This may contain
+	 * a link dereferenced to get to it, and so on.
+	 */
+	protected LinkObject _dereferencedLink = null;
+	
+	public enum FlagTypes { DONT_DEREFERENCE };
+	
+	protected EnumSet<FlagTypes> _flags = null;
 
 	/**
 	 * The segment we are currently reading from.
@@ -226,6 +243,48 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	public void setTimeout(int timeout) {
 		_timeout = timeout;
 	}
+	
+	/**
+	 * Add flags to this stream. Adds to existing flags.
+	 */
+	public void addFlags(EnumSet<FlagTypes> additionalFlags) {
+		_flags.addAll(additionalFlags);
+	}
+
+	/**
+	 * Add a flag to this stream. Adds to existing flags.
+	 */
+	public void addFlag(FlagTypes additionalFlag) {
+		_flags.add(additionalFlag);
+	}
+
+	/**
+	 * Set flags on this stream. Replaces existing flags.
+	 */
+	public void setFlags(EnumSet<FlagTypes> flags) {
+		_flags = flags;
+	}
+	
+	/**
+	 * Clear the flags on this stream.
+	 */
+	public void clearFlags() {
+		_flags.clear();
+	}
+	
+	/**
+	 * Remove a flag from this stream.
+	 */
+	public void removeFlag(FlagTypes flag) {
+		_flags.remove(flag);
+	}
+	
+	/**
+	 * Check whether this stream has a particular flag set.
+	 */
+	public boolean hasFlag(FlagTypes flag) {
+		return _flags.contains(flag);
+	}
 
 	/**
 	 * @return The name used to retrieve segments of this stream (not including the segment number).
@@ -294,6 +353,17 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		if (null == newSegment) {
 			throw new NoMatchingContentFoundException("Cannot find first segment of " + getBaseName());
 		}
+		
+		if (newSegment.isType(ContentType.LINK) && (!hasFlag(FlagTypes.DONT_DEREFERENCE))) {
+			// Automated dereferencing. Want to make a link object to read in this link, then
+			// dereference it to get the segment we really want. We then fix up the _baseName,
+			// and continue like nothing ever happened. 
+			_dereferencedLink = new LinkObject(newSegment, _handle);
+			newSegment = _dereferencedLink.dereference(_timeout);
+			// TODO -- check for link, null, handle recursion
+			foobar
+		}
+		
 		if (newSegment.isType(ContentType.GONE)) {
 			_goneSegment = newSegment;
 			Log.info("getFirstSegment: got gone segment: " + _goneSegment.name());
@@ -301,7 +371,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			// The block is encrypted and we don't have keys
 			// Get the content name without the segment parent
 			ContentName contentName = SegmentationProfile.segmentRoot(newSegment.name());
-			// Attempt to retrieve the keys
+			// Attempt to retrieve the keys for this namespace
 			_keys = GroupAccessControlManager.keysForInput(contentName, newSegment.signedInfo().getPublisherKeyID(), _handle);
 		}
 		setCurrentSegment(newSegment);
