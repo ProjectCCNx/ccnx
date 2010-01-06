@@ -36,6 +36,8 @@ import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
+import org.ccnx.ccn.io.ErrorStateException;
+import org.ccnx.ccn.io.LinkCycleException;
 import org.ccnx.ccn.io.NoMatchingContentFoundException;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
@@ -556,6 +558,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		setInputStreamProperties(inputStream);
 		
 		Tuple<ContentName, byte []> nameAndVersion = null;
+		// TODO -- refactor!!! move try to surround both update case and isGone case; as isGone 
+		// can throw not ready as well, or LCE.
 		if (inputStream.isGone()) {
 			Log.fine("Reading from GONE stream: {0}", inputStream.getBaseName());
 			_data = null;
@@ -576,7 +580,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
 				_baseName = nameAndVersion.first();
 				updateInBackground();
+				// not an error state, merely a not ready state.
 				return false;
+			} catch (LinkCycleException lce) {
+				Log.info("Link cycle exception: {0}", lce.getMessage());
+				setError(lce);
+				throw lce;
 			}
 
 			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
@@ -587,7 +596,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_baseName = nameAndVersion.first();
 		_currentVersionComponent = nameAndVersion.second();
 		_currentVersionName = null; // cached if used
-		
+		_dereferencedLink = inputStream.getDereferencedLink(); // gets stack of links used, if any
+		clearError();
+
 		// Signal readers.
 		newVersionAvailable();
 		return true;
@@ -1016,7 +1027,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	@Override
-	protected synchronized E data() throws ContentNotReadyException, ContentGoneException { 
+	protected synchronized E data() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
 		if (isGone()) {
 			throw new ContentGoneException("Content is gone!");
 		}
@@ -1050,6 +1061,28 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * If we traversed a link to get this object, make it available.
 	 */
 	public synchronized LinkObject getDereferencedLink() { return _dereferencedLink; }
+	
+	/**
+	 * Use only if you know what you are doing.
+	 */
+	public synchronized void setDereferencedLink(LinkObject dereferencedLink) { _dereferencedLink = dereferencedLink; }
+	
+	/**
+	 * Add a LinkObject to the stack we had to dereference to get here.
+	 */
+	public synchronized void pushDereferencedLink(LinkObject dereferencedLink) {
+		if (null == dereferencedLink) {
+			return;
+		}
+		if (null != _dereferencedLink) {
+			if (null != dereferencedLink.getDereferencedLink()) {
+				Log.warning("Merging two link stacks -- {0} already has a dereferenced link from {1}. Behavior unpredictable.",
+							dereferencedLink.getVersionedName(), dereferencedLink.getDereferencedLink().getVersionedName());
+			}
+			dereferencedLink.pushDereferencedLink(_dereferencedLink);
+		}
+		setDereferencedLink(dereferencedLink);
+	}
 	
 	/**
 	 * If the object has been saved or read from the network, returns the (cached) versioned

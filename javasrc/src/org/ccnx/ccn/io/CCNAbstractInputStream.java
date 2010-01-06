@@ -68,7 +68,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 */
 	protected LinkObject _dereferencedLink = null;
 	
-	public enum FlagTypes { DONT_DEREFERENCE };
+	public enum FlagTypes { DONT_DEREFERENCE, LINK_CYCLE };
 	
 	protected EnumSet<FlagTypes> _flags = null;
 
@@ -354,14 +354,34 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			throw new NoMatchingContentFoundException("Cannot find first segment of " + getBaseName());
 		}
 		
-		if (newSegment.isType(ContentType.LINK) && (!hasFlag(FlagTypes.DONT_DEREFERENCE))) {
+		LinkObject theLink = null;
+		
+		while (newSegment.isType(ContentType.LINK) && (!hasFlag(FlagTypes.DONT_DEREFERENCE))) {
 			// Automated dereferencing. Want to make a link object to read in this link, then
 			// dereference it to get the segment we really want. We then fix up the _baseName,
 			// and continue like nothing ever happened. 
-			_dereferencedLink = new LinkObject(newSegment, _handle);
+			theLink = new LinkObject(newSegment, _handle);
+			pushDereferencedLink(theLink); // set _dereferencedLink to point to the new link, pushing
+					// old ones down the stack if necessary
+			
+			// dereference will check for link cycles
 			newSegment = _dereferencedLink.dereference(_timeout);
-			// TODO -- check for link, null, handle recursion
-			foobar
+			if (newSegment == null) {
+				// TODO -- catch error states. Do we throw exception or return null?
+				// Set error states -- when do we find link cycle and set the error on the link?
+				// Clear error state when update is successful.
+				// Two cases -- link loop or data not found.
+				if (_dereferencedLink.hasFlag(FlagTypes.LINK_CYCLE)) {
+					// Leave the link set on the input stream, so that caller can explore errors.
+					Log.warning("Hit link cycle on link {0} pointing to {1}, cannot dereference. See this.dereferencedLink() for more information!",
+							_dereferencedLink.getVersionedName(), _dereferencedLink.link().targetName());
+					throw new LinkCycleException("Hit link cycle on link " + _dereferencedLink.getVersionedName() +
+							" pointing to " + _dereferencedLink.link().targetName() + ", cannot dereference. See this.dereferencedLink() for more information!");
+				} else {
+					throw new NoMatchingContentFoundException("Cannot find first segment of " + getBaseName() + ", which is a link pointing to " + _dereferencedLink.link().targetName());					
+				}
+			}
+			// go around again, 
 		}
 		
 		if (newSegment.isType(ContentType.GONE)) {
@@ -608,6 +628,33 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		}
 		return false;
 	}
+	
+	/**
+	 * If we traversed a link to get this object, make it available.
+	 */
+	public synchronized LinkObject getDereferencedLink() { return _dereferencedLink; }
+	
+	/**
+	 * Use only if you know what you are doing.
+	 */
+	protected synchronized void setDereferencedLink(LinkObject dereferencedLink) { _dereferencedLink = dereferencedLink; }
+	
+	/**
+	 * Add a LinkObject to the stack we had to dereference to get here.
+	 */
+	protected synchronized void pushDereferencedLink(LinkObject dereferencedLink) {
+		if (null == dereferencedLink) {
+			return;
+		}
+		if (null != _dereferencedLink) {
+			if (null != dereferencedLink.getDereferencedLink()) {
+				Log.warning("Merging two link stacks -- {0} already has a dereferenced link from {1}. Behavior unpredictable.",
+							dereferencedLink.getVersionedName(), dereferencedLink.getDereferencedLink().getVersionedName());
+			}
+			dereferencedLink.pushDereferencedLink(_dereferencedLink);
+		}
+		setDereferencedLink(dereferencedLink);
+	}
 
 	/**
 	 * Verifies the signature on a segment using cached bulk signature data (from Merkle Hash Trees)
@@ -718,7 +765,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		if (null == _currentSegment) {
 			ContentObject firstSegment = getFirstSegment();
 			if (null != firstSegment) {
-				setFirstSegment(firstSegment); // sets _goneSegment
+				setFirstSegment(firstSegment); // sets _goneSegment, does link dereferencing
 			} else {
 				// don't know anything
 				return false;
