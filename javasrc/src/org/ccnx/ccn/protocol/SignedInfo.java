@@ -58,7 +58,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	 */
 	public enum ContentType {DATA, ENCR, GONE, KEY, LINK, NACK};
     public static final byte [] DATA_VAL = new byte[]{(byte)0x0c, (byte)0x04, (byte)0xc0};
-    public static final byte [] ENCR_VAL = new byte[]{(byte)0xd0, (byte)0x10, (byte)0x91};
+    public static final byte [] ENCR_VAL = new byte[]{(byte)0x10, (byte)0xd0, (byte)0x91};
     public static final byte [] GONE_VAL = new byte[]{(byte)0x18, (byte)0xe3, (byte)0x44};
     public static final byte [] KEY_VAL = new byte[]{(byte)0x28, (byte)0x46, (byte)0x3f};
     public static final byte [] LINK_VAL = new byte[]{(byte)0x2c, (byte)0x83, (byte)0x4a};
