@@ -752,6 +752,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 
 		// Handle versioning ourselves to make name handling easier. VOS should respect it.
+		// We might have been handed a _baseName that was versioned. For most general behavior,
+		// have to treat it as a normal name and that we are supposed to put our own version
+		// underneath it. To save as a specific version, need to use save(version).
 		ContentName name = _baseName;
 		if (null != version) {
 			name = VersioningProfile.addVersion(_baseName, version);

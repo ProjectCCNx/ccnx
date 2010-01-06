@@ -653,6 +653,7 @@ public class BasicKeyManager extends KeyManager {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
 		} 
+		Log.info("publishKey: publishing key {0} under specified key name{1}", keyToPublish, keyName);
 		if (null == keyName) {
 			CCNTime version = getKeyVersion(keyToPublish);
 			keyName = getDefaultKeyName(null, keyToPublish.digest(), version);
