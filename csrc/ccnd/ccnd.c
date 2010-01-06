@@ -2243,9 +2243,111 @@ struct ccn_charbuf *
 ccnd_req_unreg(struct ccnd_handle *h,
                    const unsigned char *msg, size_t size)
 {
+    struct ccn_charbuf *result = NULL;
+#if 0
+    struct ccn_parsed_ContentObject pco = {0};
+    int n_name_comp = 0;
+    int res;
+    const unsigned char *req;
+    size_t req_size;
+    struct ccn_forwarding_entry *forwarding_entry = NULL;
+    struct face *face = NULL;
+    struct face *reqface = NULL;
+    struct ccn_indexbuf *comps = NULL;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_forwarding *f = NULL;
+    struct nameprefix_entry *npe = NULL;
+
+    res = ccn_parse_ContentObject(msg, size, &pco, NULL);
+    if (res < 0)
+        goto Finish;        
+    // XXX - should verify signature.
+    res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
+    if (res < 0)
+        goto Finish;
+    forwarding_entry = ccn_forwarding_entry_parse(req, req_size);
+    if (forwarding_entry == NULL || forwarding_entry->action == NULL)
+        goto Finish;
+    if (strcmp(forwarding_entry->action, "unreg") != 0)
+        goto Finish;
+    if (forwarding_entry->faceid == CCN_NOFACEID)
+        goto Finish;
+    if (forwarding_entry->name_prefix == NULL)
+        goto Finish;
+    if (forwarding_entry->ccnd_id_size == sizeof(h->ccnd_id)) {
+        if (memcmp(forwarding_entry->ccnd_id,
+                   h->ccnd_id, sizeof(h->ccnd_id)) != 0)
+            goto Finish;
+    }
+    else if (forwarding_entry->ccnd_id_size != 0)
+        goto Finish;
+    face = face_from_faceid(h, forwarding_entry->faceid);
+    if (face == NULL)
+        goto Finish;
+    /* consider the source ... */
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+        goto Finish;
+    
+    comps = ccn_indexbuf_create();
+    n_name_comp = ccn_name_split(forwarding_entry->name_prefix, comps);
+    if (n_name_comp < 0)
+        goto Finish;
+    
+    hashtb_start(h->nameprefix_tab, e);
+    
+    if (n_name_comp + 1 > comps->n)
+        goto Finish;
+    size_t start = comps->buf[0];
+    size_t stop = comps->buf[n_name_comp];
+    npe = hashtb_lookup(h->nameprefix_tab, msg + start, stop - start);
+    if (npe == NULL)
+    	goto Finish;
+    
+    int found = 0;
+    for (f = npe->forwarding; f != NULL; f = f->next) {
+	if (f->faceid == forwarding_entry->faceid) {
+	    
+	    /*
+	     * In this case the prefix matches the request, and the face id matches
+	     * as well.
+	     */
+	    found = 1;
+	    f->faceid = CCN_NOFACEID;
+	    f->flags = 0;
+	    f->expires = -1;
+	    break;
+	    
+	} else {
+	    
+	    /*
+	     *
+	     */
+	}
+    }
+    
+    if (!found) 
+    	goto Finish;
+
+    hashtb_end(e);
+
+    
+    result = ccn_charbuf_create();
+    forwarding_entry->action = NULL;
+    forwarding_entry->ccnd_id = h->ccnd_id;
+    forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
+    res = ccnb_append_forwarding_entry(result, forwarding_entry);
+    if (res < 0)
+        ccn_charbuf_destroy(&result);
+Finish:
+    ccn_forwarding_entry_destroy(&forwarding_entry);
+    ccn_indexbuf_destroy(&comps);
+#endif
     ccnd_msg(h, "unreg request not yet implemented");
-    return(NULL);
-}
+    return(result);
+}/* ccnd_req_unreg */
+
 
 /**
  * Add all the active, inheritable faceids of npe and its ancestors to x
