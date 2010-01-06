@@ -263,8 +263,9 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * @return the Header for this stream.
 	 * @throws ContentNotReadyException if we have not retrieved the header yet, or it hasn't been requested.
 	 * @throws ContentGoneException if the header has been deleted.
+	 * @throws ErrorStateException 
 	 */
-	public Header header() throws ContentNotReadyException, ContentGoneException {
+	public Header header() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 		if (!headerRequested())
 			throw new ContentNotReadyException("Not enough information available to request header!");
 		return _header.header();

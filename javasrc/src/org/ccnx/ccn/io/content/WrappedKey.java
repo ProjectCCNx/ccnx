@@ -41,6 +41,7 @@ import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.jce.AESWrapWithPad;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -134,7 +135,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			super(WrappedKey.class, true, firstBlock, handle);
 		}
 		
-		public WrappedKey wrappedKey() throws ContentNotReadyException, ContentGoneException { return data(); }
+		public WrappedKey wrappedKey() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 	}
 
 	private static final Map<String,String> _WrapAlgorithmMap = new HashMap<String,String>();

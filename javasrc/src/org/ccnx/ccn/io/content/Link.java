@@ -26,6 +26,7 @@ import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.io.CCNInputStream;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.CCNAbstractInputStream.FlagTypes;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -103,21 +104,21 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		@Override
 		public ContentType contentType() { return ContentType.LINK; }
 
-		public ContentName getTargetName() throws ContentGoneException, ContentNotReadyException { 
+		public ContentName getTargetName() throws ContentGoneException, ContentNotReadyException, ErrorStateException { 
 			Link lr = link();
 			if (null == lr)
 				return null;
 			return lr.targetName(); 
 		}
 
-		public LinkAuthenticator getTargetAuthenticator() throws ContentNotReadyException, ContentGoneException { 
+		public LinkAuthenticator getTargetAuthenticator() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
 			Link lr = link();
 			if (null == lr)
 				return null;
 			return lr.targetAuthenticator(); 
 		}
 
-		public Link link() throws ContentNotReadyException, ContentGoneException { 
+		public Link link() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
 			if (null == data())
 				return null;
 			return data(); 

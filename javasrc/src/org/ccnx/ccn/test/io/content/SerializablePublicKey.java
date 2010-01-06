@@ -20,6 +20,7 @@ package org.ccnx.ccn.test.io.content;
 import java.io.Serializable;
 import java.security.PublicKey;
 
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.SerializableObject;
@@ -40,6 +41,6 @@ public class SerializablePublicKey extends SerializableObject<PublicKey> impleme
 		super(PublicKey.class, false, publicKey);
 	}
 	
-	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException { return data(); }
+	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 
 }

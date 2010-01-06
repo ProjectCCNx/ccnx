@@ -34,6 +34,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -307,8 +308,9 @@ public class Group {
 	 * @return the group public key
 	 * @throws ContentNotReadyException
 	 * @throws ContentGoneException
+	 * @throws ErrorStateException 
 	 */
-	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException { 
+	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
 		return _groupPublicKey.publicKey(); 
 	}
 	

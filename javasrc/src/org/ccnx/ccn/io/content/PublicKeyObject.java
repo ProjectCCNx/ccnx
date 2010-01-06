@@ -32,6 +32,7 @@ import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -174,9 +175,9 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	@Override
 	public ContentType contentType() { return ContentType.KEY; }
 
-	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException { return data(); }
+	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 	
-	public PublisherPublicKeyDigest publicKeyDigest() throws ContentNotReadyException, ContentGoneException {
+	public PublisherPublicKeyDigest publicKeyDigest() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 		PublicKey key = publicKey();
 		return new PublisherPublicKeyDigest(key);
 	}
@@ -209,8 +210,9 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * Many cryptographic providers don't implement equals() correctly.
 	 * @throws ContentGoneException 
 	 * @throws ContentNotReadyException 
+	 * @throws ErrorStateException 
 	 */
-	public boolean equalsKey(PublicKey otherKey) throws ContentNotReadyException, ContentGoneException {
+	public boolean equalsKey(PublicKey otherKey) throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 		if (!available())
 			throw new ContentNotReadyException("No data available to compare!");
 		if (publicKey().equals(otherKey))
@@ -219,7 +221,7 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		return Arrays.equals(publicKey().getEncoded(), otherKey.getEncoded());
 	}
 	
-	public boolean equalsKey(PublicKeyObject otherKeyObject) throws ContentNotReadyException, ContentGoneException {
+	public boolean equalsKey(PublicKeyObject otherKeyObject) throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 		return this.equalsKey(otherKeyObject.publicKey());
 	}
 }

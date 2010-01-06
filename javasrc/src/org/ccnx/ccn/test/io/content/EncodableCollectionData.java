@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.test.io.content;
 
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
@@ -37,5 +38,5 @@ public class EncodableCollectionData extends EncodableObject<Collection> {
 		super(Collection.class, true, collectionData);
 	}
 	
-	public Collection collection() throws ContentNotReadyException, ContentGoneException { return data(); }
+	public Collection collection() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 }

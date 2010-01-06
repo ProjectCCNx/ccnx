@@ -29,6 +29,7 @@ import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -88,67 +89,67 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 			super(Header.class, true, firstBlock, handle);
 		}
 		
-		public long start() throws ContentGoneException, ContentNotReadyException { 
+		public long start() throws ContentGoneException, ContentNotReadyException, ErrorStateException { 
 			Header h = header();
 			return h.start(); 
 		}
 
-		public long count() throws ContentGoneException, ContentNotReadyException { 
+		public long count() throws ContentGoneException, ContentNotReadyException, ErrorStateException { 
 			Header h = header();
 			return h.count(); 
 		}
 		
-		public int blockSize() throws ContentGoneException, ContentNotReadyException { 
+		public int blockSize() throws ContentGoneException, ContentNotReadyException, ErrorStateException { 
 			Header h = header();
 			return h.blockSize(); 
 		}
 		
-		public long length() throws ContentGoneException, ContentNotReadyException { 
+		public long length() throws ContentGoneException, ContentNotReadyException, ErrorStateException { 
 			Header h = header();
 			return h.length(); 
 		}
 		
-		public byte [] rootDigest() throws ContentGoneException, ContentNotReadyException { 
+		public byte [] rootDigest() throws ContentGoneException, ContentNotReadyException, ErrorStateException { 
 			Header h = header();
 			return h.rootDigest(); 
 		}
 		
-		public byte [] contentDigest() throws ContentGoneException, ContentNotReadyException {
+		public byte [] contentDigest() throws ContentGoneException, ContentNotReadyException, ErrorStateException {
 			Header h = header();
 			return h.contentDigest(); 
 		}
 		
-		public SegmentationType type() throws ContentGoneException, ContentNotReadyException {
+		public SegmentationType type() throws ContentGoneException, ContentNotReadyException, ErrorStateException {
 			Header h = header();
 			return h.type(); 
 		}
 
-		public String typeName() throws ContentNotReadyException, ContentGoneException {
+		public String typeName() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 			Header h = header();
 			return h.typeName(); 
 		}
 		
-		public int[] positionToSegmentLocation(long position) throws ContentNotReadyException, ContentGoneException {
+		public int[] positionToSegmentLocation(long position) throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 			Header h = header();
 			return h.positionToSegmentLocation(position);
 		}
 
-		public long segmentLocationToPosition(long block, int offset) throws ContentNotReadyException, ContentGoneException {
+		public long segmentLocationToPosition(long block, int offset) throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 			Header h = header();
 			return h.segmentLocationToPosition(block, offset);
 		}
 
-		public int segmentCount() throws ContentNotReadyException, ContentGoneException {
+		public int segmentCount() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 			Header h = header();
 			return h.segmentCount();
 		}
 		
-		public int segmentRemainder() throws ContentNotReadyException, ContentGoneException {
+		public int segmentRemainder() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 			Header h = header();
 			return h.segmentRemainder();
 		}
 
-		public Header header() throws ContentNotReadyException, ContentGoneException { 
+		public Header header() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
 			if (null == data())
 				return null;
 			return data(); 

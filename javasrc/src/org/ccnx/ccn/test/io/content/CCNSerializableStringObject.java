@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.CCNSerializableObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
@@ -116,5 +117,5 @@ public class CCNSerializableStringObject extends CCNSerializableObject<String> {
 		super(String.class, false, firstSegment, flowControl);
 	}
 
-	public String string() throws ContentNotReadyException, ContentGoneException { return data(); }
+	public String string() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 }

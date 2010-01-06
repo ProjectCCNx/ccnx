@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
@@ -125,7 +126,8 @@ public class MembershipList extends Collection.CollectionObject {
 	 * @return
 	 * @throws ContentNotReadyException
 	 * @throws ContentGoneException
+	 * @throws ErrorStateException 
 	 */
-	public Collection membershipList() throws ContentNotReadyException, ContentGoneException { return data(); }
+	public Collection membershipList() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 
 }

@@ -30,6 +30,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -228,7 +229,7 @@ public class ACL extends Collection {
 			super(ACL.class, true, name, data, publisher, keyLocator, flowControl);
 		}
 
-		public ACL acl() throws ContentNotReadyException, ContentGoneException { return data(); }
+		public ACL acl() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 	}
 
 	public ACL() {
