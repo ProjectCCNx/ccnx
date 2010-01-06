@@ -165,7 +165,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 			testCN = ContentName.fromURI(prefixToUse);
 		} catch (MalformedContentNameStringException e1) {
 			e1.printStackTrace();
-			fail("ContentName.fromURI(prefixToUse) Failed.");
+			fail("ContentName.fromURI(prefixToUse) Failed.  Reason: " + e1.getMessage());
 		}
 		try {
 			manager = new PrefixRegistrationManager(putHandle);
@@ -175,7 +175,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			System.out.println("Failed to self register prefix.");
 			e.printStackTrace();
-			fail("Failed to self register prefix.");
+			fail("Failed to self register prefix.  Reason: " + e.getMessage());
 		}
 		assertNotNull(prm);
 		try {
@@ -184,7 +184,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			System.out.println("Failed to delete prefix.");
 			e.printStackTrace();
-			fail("Failed to delete prefix.");
+			fail("Failed to delete prefix.  Reason: " + e.getMessage());
 		}
 		System.out.println();
 	}
