@@ -77,12 +77,15 @@ public class LinkObjectTestRepo {
 		} catch (ContentDecodingException ex) {
 			// this is what we actually expect
 			System.out.println("Got expected exception reading link from non-link.");
+			Log.info("Got expected exception reading link from non-link.");
 		} catch (IOException ioe) {
 			System.out.println("Got another type of IOException reading link from non-link: " + ioe);
 			Log.info("Unexpected: got IOException that wasn't a ContentDecodingException reading link from non-link: {0}", ioe);
+			throw ioe;
 		} catch (Exception e) {
 			System.out.println("Got unexpected exception type reading link from non-link: " + e);
-			Assert.fail("Got unexpected exception type reading link from non-link: " + e);
+			Log.info("Got unexpected exception type reading link from non-link: " + e);
+			throw e;
 		}
 
 		Link lr = new Link(so.getVersionedName());
