@@ -244,6 +244,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		} catch (NumberFormatException nfe) {
 			throw new IOException("Stream starter segment name does not contain a valid segment number, so the stream does not know what content to start with.");
 		}
+		setFirstSegment(startingSegment);
 	}
 
 	/**
@@ -381,6 +382,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			
 			// dereference will check for link cycles
 			newSegment = _dereferencedLink.dereference(_timeout);
+			Log.info("CCNAbstractInputStream: dereferencing link {0} to {1}, resulting data {2}", theLink.getVersionedName(),
+						theLink.link(), ((null == newSegment) ? "null" : newSegment.name()));
 			if (newSegment == null) {
 				// TODO -- catch error states. Do we throw exception or return null?
 				// Set error states -- when do we find link cycle and set the error on the link?
@@ -399,6 +402,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					throw new NoMatchingContentFoundException("Cannot find first segment of " + getBaseName() + ", which is a link pointing to " + _dereferencedLink.link().targetName());					
 				}
 			}
+			_baseName = SegmentationProfile.segmentRoot(newSegment.name());
 			// go around again, 
 		}
 		
