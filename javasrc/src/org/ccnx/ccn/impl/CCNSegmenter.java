@@ -383,7 +383,7 @@ public class CCNSegmenter {
 		// DKS TODO -- take encryption overhead into account
 		// DKS TODO -- hook up last segment
 		if (outputLength(length) >= getBlockSize()) {
-			return fragmentedPut(name, content, offset, length, null,
+			return fragmentedPut(name, content, offset, length, (lastSegments ? CCNSegmenter.LAST_SEGMENT : null),
 					type, freshnessSeconds, locator, publisher);
 		} else {
 			try {
@@ -505,7 +505,8 @@ public class CCNSegmenter {
 			locator = getFlowControl().getHandle().keyManager().getKeyLocator(signingKey);
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
-		// DKS -- replace with stream-level call to start writing
+		// DKS -- someone should have done this for us already, can we remove it?
+		Log.info("Adding namespace in segmenter, probably redundantly. Namespace: {0}", rootName);
 		getFlowControl().addNameSpace(rootName);
 
 		if (null == type) {
