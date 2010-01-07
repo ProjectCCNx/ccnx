@@ -18,6 +18,7 @@
 package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
+import java.util.EnumSet;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
@@ -25,7 +26,6 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
-import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.CCNAbstractInputStream.FlagTypes;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -132,11 +132,12 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		
 		/**
 		 * Modify the properties of the input streams we read to read links themselves,
-		 * rather than dereferencing them and causing an infinite loop.
+		 * rather than dereferencing them and causing an infinite loop; must modify
+		 * in constructor to handle passed in content objects..
 		 */
 		@Override
-		protected void setInputStreamProperties(CCNInputStream inputStream) {
-			inputStream.addFlag(FlagTypes.DONT_DEREFERENCE);
+		protected EnumSet<FlagTypes> getInputStreamFlags() {
+			return EnumSet.of(FlagTypes.DONT_DEREFERENCE);
 		}
 	}
 

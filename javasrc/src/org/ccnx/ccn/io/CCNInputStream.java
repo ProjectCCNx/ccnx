@@ -18,6 +18,7 @@
 package org.ccnx.ccn.io;
 
 import java.io.IOException;
+import java.util.EnumSet;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
@@ -140,7 +141,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	public CCNInputStream(ContentName baseName, Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
 			CCNHandle handle) throws IOException {
 
-		super(baseName, startingSegmentNumber, publisher, null, handle);
+		super(baseName, startingSegmentNumber, publisher, null, null, handle);
 	}
 	
 	/**
@@ -164,7 +165,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	public CCNInputStream(ContentName baseName, Long startingSegmentNumber, PublisherPublicKeyDigest publisher, 
 			ContentKeys keys, CCNHandle handle) throws IOException {
 
-		super(baseName, startingSegmentNumber, publisher, keys, handle);
+		super(baseName, startingSegmentNumber, publisher, keys, null, handle);
 	}
 
 	/**
@@ -175,12 +176,14 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	 * @param startingSegment The first segment to read from. If this is not the
 	 * 		first segment of the stream, reading will begin from this point.
 	 * 		We assume that the signature on this segment was verified by our caller.
+	 * @param flags any stream flags that must be set to handle even this first block (otherwise
+	 * 	they can be set with setFlags prior to read). Can be null.
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
 	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException If startingSegment's name does not contain a valid segment number
 	 */
-	public CCNInputStream(ContentObject startingSegment, CCNHandle handle) throws IOException {
-		super(startingSegment, null, handle);
+	public CCNInputStream(ContentObject startingSegment, EnumSet<FlagTypes> flags, CCNHandle handle) throws IOException {
+		super(startingSegment, null, flags, handle);
 	}
 	
 	/**
@@ -191,12 +194,14 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	 * 		We assume that the signature on this segment was verified by our caller.
 	 * @param keys The keys to use to decrypt this content. Null if content unencrypted, or another
 	 * 				process will be used to retrieve the keys.
+	 * @param flags any stream flags that must be set to handle even this first block (otherwise
+	 * 	they can be set with setFlags prior to read). Can be null.
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
 	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException If startingSegment's name does not contain a valid segment number
 	 */
-	public CCNInputStream(ContentObject startingSegment, ContentKeys keys, CCNHandle handle) throws IOException {
-		super(startingSegment, keys, handle);
+	public CCNInputStream(ContentObject startingSegment, ContentKeys keys, EnumSet<FlagTypes> flags, CCNHandle handle) throws IOException {
+		super(startingSegment, keys, flags, handle);
 	}
 	
 	/**

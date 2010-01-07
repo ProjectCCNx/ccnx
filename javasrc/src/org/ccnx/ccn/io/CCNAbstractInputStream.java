@@ -70,7 +70,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	
 	public enum FlagTypes { DONT_DEREFERENCE };
 	
-	protected EnumSet<FlagTypes> _flags = null;
+	protected EnumSet<FlagTypes> _flags = EnumSet.noneOf(FlagTypes.class);
 
 	/**
 	 * The segment we are currently reading from.
@@ -163,6 +163,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			ContentName baseName, Long startingSegmentNumber,
 			PublisherPublicKeyDigest publisher, 
 			ContentKeys keys,
+			EnumSet<FlagTypes> flags,
 			CCNHandle handle) throws IOException {
 		super();
 
@@ -178,6 +179,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		if (null != keys) {
 			keys.requireDefaultAlgorithm();
 			_keys = keys;
+		}
+		
+		if (null != flags) {
+			_flags = flags;
 		}
 
 		// So, we assume the name we get in is up to but not including the sequence
@@ -208,12 +213,15 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * 		We assume that the signature on this segment was verified by our caller.
 	 * @param keys The keys to use to decrypt this content. Null if content unencrypted, or another
 	 * 				process will be used to retrieve the keys.
+	 * @param any flags necessary for processing this stream; have to hand in in constructor in case
+	 * 		first segment provided, so can apply to that segment
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
 	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException
 	 */
 	public CCNAbstractInputStream(ContentObject startingSegment,
 			ContentKeys keys,
+			EnumSet<FlagTypes> flags,
 			CCNHandle handle) throws IOException  {
 		super();
 		_handle = handle; 
@@ -226,7 +234,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			_keys = keys;
 		}
 
-		setFirstSegment(startingSegment);
+		if (null != flags) {
+			_flags = flags;
+		}
+
 		_baseName = SegmentationProfile.segmentRoot(startingSegment.name());
 		try {
 			_startingSegmentNumber = SegmentationProfile.getSegmentNumber(startingSegment.name());
@@ -262,7 +273,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * Set flags on this stream. Replaces existing flags.
 	 */
 	public void setFlags(EnumSet<FlagTypes> flags) {
-		_flags = flags;
+		if (null == flags) {
+			_flags.clear();
+		} else {
+			_flags = flags;
+		}
 	}
 	
 	/**

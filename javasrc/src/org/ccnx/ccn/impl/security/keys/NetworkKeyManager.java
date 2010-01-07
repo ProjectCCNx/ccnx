@@ -97,7 +97,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 			CCNVersionedInputStream in = null;
 			Log.info("Loading CCN key store from " + _keystoreName + "...");
 			try {
-				in = new CCNVersionedInputStream(keystoreObject, _handle);
+				in = new CCNVersionedInputStream(keystoreObject, null, _handle);
 				KeyStore keyStore = readKeyStore(in);
 				keyStoreInfo = new KeyStoreInfo(keyStore, in.getVersion());
 			} catch (IOException e) {

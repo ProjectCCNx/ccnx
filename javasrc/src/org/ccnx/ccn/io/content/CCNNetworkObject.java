@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
@@ -39,6 +40,7 @@ import org.ccnx.ccn.io.CCNVersionedOutputStream;
 import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.LinkCycleException;
 import org.ccnx.ccn.io.NoMatchingContentFoundException;
+import org.ccnx.ccn.io.CCNAbstractInputStream.FlagTypes;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -480,10 +482,21 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	/**
 	 * Override point where subclasses can modify each input stream before
-	 * it is read.
+	 * it is read. Subclasses should at least set the flags using getInputStreamFlags,
+	 * or call super.setInputStreamProperties.
 	 */
 	protected void setInputStreamProperties(CCNInputStream inputStream) {
-		// default -- do nothing
+		// default -- just set any flags
+		inputStream.setFlags(getInputStreamFlags());
+	}
+	
+	/**
+	 * Override point where subclasses can specify set of flags on input stream
+	 * at point it is read or where necessary created.
+	 * @return
+	 */
+	protected EnumSet<FlagTypes> getInputStreamFlags() {
+		return null;
 	}
 	
 	/**
@@ -538,7 +551,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	public boolean update(ContentObject object) throws ContentDecodingException, IOException {
-		CCNInputStream is = new CCNInputStream(object, _handle);
+		CCNInputStream is = new CCNInputStream(object, getInputStreamFlags(), _handle);
+		setInputStreamProperties(is);
 		is.seek(0); // in case it wasn't the first segment
 		return update(is);
 	}
