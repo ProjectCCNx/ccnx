@@ -68,7 +68,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 */
 	protected LinkObject _dereferencedLink = null;
 	
-	public enum FlagTypes { DONT_DEREFERENCE, LINK_CYCLE };
+	public enum FlagTypes { DONT_DEREFERENCE };
 	
 	protected EnumSet<FlagTypes> _flags = null;
 
@@ -371,12 +371,15 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				// Set error states -- when do we find link cycle and set the error on the link?
 				// Clear error state when update is successful.
 				// Two cases -- link loop or data not found.
-				if (_dereferencedLink.hasFlag(FlagTypes.LINK_CYCLE)) {
-					// Leave the link set on the input stream, so that caller can explore errors.
-					Log.warning("Hit link cycle on link {0} pointing to {1}, cannot dereference. See this.dereferencedLink() for more information!",
-							_dereferencedLink.getVersionedName(), _dereferencedLink.link().targetName());
-					throw new LinkCycleException("Hit link cycle on link " + _dereferencedLink.getVersionedName() +
-							" pointing to " + _dereferencedLink.link().targetName() + ", cannot dereference. See this.dereferencedLink() for more information!");
+				if (_dereferencedLink.hasError()) {
+					if (_dereferencedLink.getError() instanceof LinkCycleException) {
+						// Leave the link set on the input stream, so that caller can explore errors.
+						Log.warning("Hit link cycle on link {0} pointing to {1}, cannot dereference. See this.dereferencedLink() for more information!",
+								_dereferencedLink.getVersionedName(), _dereferencedLink.link().targetName());
+					}
+					// Might also cover NoMatchingContentFoundException here...for now, just return null
+					// so can call it more than once.
+					throw _dereferencedLink.getError();
 				} else {
 					throw new NoMatchingContentFoundException("Cannot find first segment of " + getBaseName() + ", which is a link pointing to " + _dereferencedLink.link().targetName());					
 				}
@@ -757,19 +760,20 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * Checks to see whether this content has been marked as GONE (deleted). Will retrieve the first
 	 * segment if we do not already have it in order to make this determination.
 	 * @return true if stream is GONE.
-	 * @throws IOException if there is difficulty retrieving the first segment.
+	 * @throws NoMatchingContentFound exception if no first segment found
+	 * @throws IOException if there is other difficulty retrieving the first segment.
 	 */
-	public boolean isGone() throws IOException {
+	public boolean isGone() throws NoMatchingContentFoundException, IOException {
 
 		// TODO: once first segment is always read in constructor this code will change
 		if (null == _currentSegment) {
 			ContentObject firstSegment = getFirstSegment();
-			if (null != firstSegment) {
-				setFirstSegment(firstSegment); // sets _goneSegment, does link dereferencing
-			} else {
-				// don't know anything
-				return false;
-			}
+			setFirstSegment(firstSegment); // sets _goneSegment, does link dereferencing,
+					// throws NoMatchingContentFoundException if firstSegment is null.
+			// this way all retry behavior is localized in the various versions of getFirstSegment.
+			// Previously what would happen is getFirstSegment would be called by isGone, return null,
+			// and we'd have a second chance to catch it on the call to update if things were slow. But
+			// that means we would get a more general update on a gone object.  
 		}
 		// We might have set first segment in constructor, in which case we will also have set _goneSegment
 		if (null != _goneSegment) {
