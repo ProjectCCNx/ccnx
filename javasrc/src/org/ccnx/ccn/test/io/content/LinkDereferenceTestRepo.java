@@ -6,8 +6,11 @@ import java.util.Random;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.CCNWriter;
+import org.ccnx.ccn.io.CCNReader;
+import org.ccnx.ccn.io.CCNRepositoryWriter;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
@@ -30,10 +33,13 @@ public class LinkDereferenceTestRepo {
 	// Make some data, and some links. Test manual and automated dereferencing.
 	static CCNStringObject data[] = new CCNStringObject[3];
 	static ContentName bigData;
+	static final int bigDataLength = SegmentationProfile.DEFAULT_BLOCKSIZE * 4 + 137;
 	static CCNHandle writeHandle;
 	static CCNHandle readHandle;
 	static String STRING_VALUE_NAME = "Value";
 	static String BIG_VALUE_NAME = "BigValue";
+	static byte [] bigValueDigest;
+	static byte [] bigDataContent;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -46,18 +52,21 @@ public class LinkDereferenceTestRepo {
 			// save multiple versions of the same object.
 			data[i] = new CCNStringObject(stringName, 
 											"Value " + i, SaveType.REPOSITORY, writeHandle);
+			System.out.println("Saving as version " + version);
 			data[i].save(version);
-			version.addNanos(10000); // avoid version collisions
+			version.addNanos(1000000); // avoid version collisions
 		}
 		
-		CCNWriter writer = new CCNWriter(writeHandle);
 		bigData = testHelper.getClassChildName(BIG_VALUE_NAME);
 		
-		byte [] bigDataContent = new byte [SegmentationProfile.DEFAULT_BLOCKSIZE * 4];
+		bigDataContent = new byte [bigDataLength];
 		Random rand = new Random();
 		rand.nextBytes(bigDataContent);
-		// generate some segmented data; doesn't version the name
-		writer.put(bigData, bigDataContent);
+		bigValueDigest = CCNDigestHelper.digest(bigDataContent);
+		
+		// generate some segmented data
+		CCNRepositoryWriter writer = new CCNRepositoryWriter(writeHandle);
+		writer.newVersion(bigData, bigDataContent);
 	}
 	
 	@Test
@@ -66,14 +75,14 @@ public class LinkDereferenceTestRepo {
 		Link versionedLink = new Link(data[1].getVersionedName());
 		
 		// Should get back a segment, ideally first, of that specific version.
-		ContentObject versionedTarget = versionedLink.dereference(SystemConfiguration.MEDIUM_TIMEOUT, readHandle);
+		ContentObject versionedTarget = versionedLink.dereference(SystemConfiguration.getDefaultTimeout(), readHandle);
 		Log.info("Dereferenced link {0}, retrieved content {1}", versionedLink, ((null == versionedTarget) ? "null" : versionedTarget.name()));
 		Assert.assertNotNull(versionedTarget);
 		Assert.assertTrue(versionedLink.targetName().isPrefixOf(versionedTarget.name()));
 		Assert.assertTrue(SegmentationProfile.isFirstSegment(versionedTarget.name()));
 		
 		Link unversionedLink = new Link(data[1].getBaseName(), "unversioned", null);
-		ContentObject unversionedTarget = unversionedLink.dereference(SystemConfiguration.MEDIUM_TIMEOUT, readHandle);
+		ContentObject unversionedTarget = unversionedLink.dereference(SystemConfiguration.getDefaultTimeout(), readHandle);
 		Log.info("Dereferenced link {0}, retrieved content {1}", unversionedLink, ((null == unversionedTarget) ? "null" : unversionedTarget.name()));
 		Assert.assertNotNull(unversionedTarget);
 		Assert.assertTrue(unversionedLink.targetName().isPrefixOf(unversionedTarget.name()));
@@ -81,8 +90,8 @@ public class LinkDereferenceTestRepo {
 		Assert.assertTrue(SegmentationProfile.isFirstSegment(unversionedTarget.name()));
 		
 		Link bigDataLink = new Link(bigData, "big", new LinkAuthenticator(new PublisherID(writeHandle.keyManager().getDefaultKeyID())));
-		ContentObject bigDataTarget = bigDataLink.dereference(SystemConfiguration.MEDIUM_TIMEOUT, readHandle);
-		Log.info("Dereferenced link {0}, retrieved content {1}", unversionedLink, ((null == unversionedTarget) ? "null" : unversionedTarget.name()));
+		ContentObject bigDataTarget = bigDataLink.dereference(SystemConfiguration.getDefaultTimeout(), readHandle);
+		Log.info("BigData: Dereferenced link " + bigDataLink + ", retrieved content " + ((null == bigDataTarget) ? "null" : bigDataTarget.name()));
 		Assert.assertNotNull(bigDataTarget);
 		Assert.assertTrue(bigDataLink.targetName().isPrefixOf(bigDataTarget.name()));
 		Assert.assertTrue(SegmentationProfile.isFirstSegment(bigDataTarget.name()));
@@ -105,12 +114,90 @@ public class LinkDereferenceTestRepo {
 		ContentObject nothing = linkToWrongPublisher.dereference(SystemConfiguration.SHORT_TIMEOUT, readHandle);
 		Assert.assertNull(nothing);
 	}
+	
+	@Test
+	public void testLinkToUnversioned() throws Exception {
+		// test dereferencing link to unversioned data.
+		CCNRepositoryWriter writer = new CCNRepositoryWriter(writeHandle);
+		ContentName unversionedDataName = testHelper.getTestChildName("testLinkToUnversioned", "UnversionedBigData");
+		// generate some segmented data; doesn't version the name
+		writer.newVersion(unversionedDataName, bigDataContent);
+
+		Link uvBigDataLink = new Link(unversionedDataName, "big", new LinkAuthenticator(new PublisherID(writeHandle.keyManager().getDefaultKeyID())));
+		ContentObject bigDataTarget = uvBigDataLink.dereference(SystemConfiguration.SHORT_TIMEOUT, readHandle);
+		Log.info("BigData: Dereferenced link " + uvBigDataLink + ", retrieved content " + ((null == bigDataTarget) ? "null" : bigDataTarget.name()));
+		Assert.assertNotNull(bigDataTarget);
+		Assert.assertTrue(uvBigDataLink.targetName().isPrefixOf(bigDataTarget.name()));
+		Assert.assertTrue(SegmentationProfile.isFirstSegment(bigDataTarget.name()));
+	}
 
 	@Test
-	public void testAutomatedDereference() throws Exception {
+	public void testAutomatedDereferenceForStreams() throws Exception {
+		Link bigDataLink = new Link(bigData, "big", new LinkAuthenticator(new PublisherID(writeHandle.keyManager().getDefaultKeyID())));
+		LinkObject bigDataLinkObject = new LinkObject(testHelper.getTestChildName("testAutomatedDereferenceForStreams", "bigDataLink"), bigDataLink, SaveType.REPOSITORY, writeHandle);
+		bigDataLinkObject.save();
+		
+		Link twoHopLink = new Link(bigDataLinkObject.getBaseName());
+		LinkObject twoHopLinkObject = new LinkObject(testHelper.getTestChildName("testAutomatedDereferenceForStreams", "twoHopLink"), twoHopLink, SaveType.REPOSITORY, writeHandle);
+		twoHopLinkObject.save();
+		
+		CCNReader reader = new CCNReader(readHandle);
+		byte [] bigDataReadback = reader.getVersionedData(bigDataLinkObject.getVersionedName(), null, SystemConfiguration.getDefaultTimeout());
+		byte [] bdrdigest = CCNDigestHelper.digest(bigDataReadback);
+		Log.info("Read back big data via link, got " + bigDataReadback.length + 
+				" bytes of an expected " + bigDataLength + ", digest match? " + (0 == DataUtils.compare(bdrdigest, bigValueDigest)));
+		Assert.assertEquals(bigDataLength, bigDataReadback.length);
+		Assert.assertArrayEquals(bdrdigest, bigValueDigest);
+		
+		byte [] bigDataReadback2 = reader.getVersionedData(twoHopLinkObject.getBaseName(), null, SystemConfiguration.getDefaultTimeout());
+		byte [] bdr2digest = CCNDigestHelper.digest(bigDataReadback);
+		Log.info("Read back big data via two links, got " + bigDataReadback2.length + 
+				" bytes of an expected " + bigDataLength + ", digest match? " + (0 == DataUtils.compare(bdr2digest, bigValueDigest)));
+		Assert.assertEquals(bigDataLength, bigDataReadback2.length);
+		Assert.assertArrayEquals(bdr2digest, bigValueDigest);	 
+	}
+
+	@Test
+	public void testAutomatedDereferenceForObjects() throws Exception {
 		Link versionedLink = new Link(data[1].getVersionedName());
-		LinkObject versionedLinkObject = new LinkObject(ContentName.fromNative(testHelper.getTestNamespace("testDereference"), "versionedLink"), versionedLink, SaveType.REPOSITORY, writeHandle);
+		LinkObject versionedLinkObject = new LinkObject(testHelper.getTestChildName("testAutomatedDereferenceForObjects", "versionedLink"), versionedLink, SaveType.REPOSITORY, writeHandle);
 		versionedLinkObject.save();
+		
+		Link unversionedLink = new Link(data[1].getBaseName());
+		LinkObject unversionedLinkObject = new LinkObject(testHelper.getTestChildName("testAutomatedDereferenceForObjects", "unversionedLink"), unversionedLink, SaveType.REPOSITORY, writeHandle);
+		unversionedLinkObject.save();
+		
+		Link twoHopLink = new Link(unversionedLinkObject.getBaseName());
+		LinkObject twoHopLinkObject = new LinkObject(testHelper.getTestChildName("testAutomatedDereferenceForObjects", "twoHopLink"), twoHopLink, SaveType.REPOSITORY, writeHandle);
+		twoHopLinkObject.save();
+				
+		// read via the name iself
+		CCNStringObject readObjectControl = new CCNStringObject(data[data.length-1].getBaseName(), null);
+		Assert.assertEquals(readObjectControl.getVersionedName(), data[data.length-1].getVersionedName());
+		Assert.assertEquals(readObjectControl.string(), data[data.length-1].string());
+		
+		// read via the versioned link.
+		CCNStringObject versionedReadObject = new CCNStringObject(versionedLinkObject.getBaseName(), readHandle);
+		Assert.assertEquals(versionedReadObject.getVersionedName(), data[1].getVersionedName());
+		Assert.assertEquals(versionedReadObject.string(), data[1].string());
+		Assert.assertNotNull(versionedReadObject.getDereferencedLink());
+		Assert.assertEquals(versionedReadObject.getDereferencedLink(), versionedLinkObject);
+		
+		// read latest version via the unversioned link
+		CCNStringObject unversionedReadObject = new CCNStringObject(unversionedLinkObject.getBaseName(), readHandle);
+		Assert.assertEquals(unversionedReadObject.getVersionedName(), data[data.length-1].getVersionedName());
+		Assert.assertEquals(unversionedReadObject.string(), data[data.length-1].string());
+		Assert.assertNotNull(unversionedReadObject.getDereferencedLink());
+		Assert.assertEquals(unversionedReadObject.getDereferencedLink(), unversionedLinkObject);
+		
+		// read via the two-hop link
+		CCNStringObject twoHopReadObject = new CCNStringObject(twoHopLinkObject.getBaseName(), readHandle);
+		Assert.assertEquals(twoHopReadObject.getVersionedName(), data[data.length-1].getVersionedName());
+		Assert.assertEquals(twoHopReadObject.string(), data[data.length-1].string());
+		Assert.assertNotNull(twoHopReadObject.getDereferencedLink());
+		Assert.assertEquals(twoHopReadObject.getDereferencedLink(), unversionedLinkObject);
+		Assert.assertNotNull(twoHopReadObject.getDereferencedLink().getDereferencedLink());
+		Assert.assertEquals(twoHopReadObject.getDereferencedLink().getDereferencedLink(), twoHopLinkObject);
 		
 	}
 
