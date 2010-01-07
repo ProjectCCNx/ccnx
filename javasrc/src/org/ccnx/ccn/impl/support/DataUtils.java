@@ -169,6 +169,9 @@ public class DataUtils {
 	 * @return the data as a BigInteger String
 	 */
 	public static String printBytes(byte [] bytes) {
+		if (bytes == null) {
+			return "";
+		}
 		BigInteger bi = new BigInteger(1, bytes);
 		return bi.toString(SystemConfiguration.DEBUG_RADIX);
 	}
