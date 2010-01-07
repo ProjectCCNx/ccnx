@@ -85,7 +85,7 @@ public abstract class NetworkObject<E> {
 	/**
 	 * Track error state in a subclass-compatible way by storing the last exception we threw.
 	 */
-	protected Throwable _errorState = null;
+	protected IOException _errorState = null;
 
 	/**
 	 * Subclasses need to specify the type as an argument as well as a template
@@ -182,7 +182,7 @@ public abstract class NetworkObject<E> {
 		return (null != _errorState);
 	}
 	
-	public synchronized Throwable getError() {
+	public synchronized IOException getError() {
 		return _errorState;
 	}
 	
@@ -190,7 +190,7 @@ public abstract class NetworkObject<E> {
 		_errorState = null;
 	}
 	
-	protected synchronized void setError(Throwable t) {
+	protected synchronized void setError(IOException t) {
 		_errorState = t;
 	}
 	

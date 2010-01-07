@@ -558,41 +558,44 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		setInputStreamProperties(inputStream);
 		
 		Tuple<ContentName, byte []> nameAndVersion = null;
-		// TODO -- refactor!!! move try to surround both update case and isGone case; as isGone 
+		// Move try to surround both update case and isGone case; as isGone 
 		// can throw not ready as well, or LCE.
-		if (inputStream.isGone()) {
-			Log.fine("Reading from GONE stream: {0}", inputStream.getBaseName());
-			_data = null;
+		// TODO -- isGone doesn't handle link dereferencing, only update. Move initialization
+		// and link dereferencing behavior to handle links to GONE objects.
+		try {
+			if (inputStream.isGone()) {
+				Log.fine("Reading from GONE stream: {0}", inputStream.getBaseName());
+				_data = null;
 
-			// This will have a final version and a segment
-			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.deletionInformation().name());
-			_currentPublisher = inputStream.deletionInformation().signedInfo().getPublisherKeyID();
-			_currentPublisherKeyLocator = inputStream.deletionInformation().signedInfo().getKeyLocator();
-			_available = true;
-			_isGone = true;
-			_isDirty = false;
-			_lastSaved = digestContent();	
-		} else {
-			try {
+				// This will have a final version and a segment
+				nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.deletionInformation().name());
+				_currentPublisher = inputStream.deletionInformation().signedInfo().getPublisherKeyID();
+				_currentPublisherKeyLocator = inputStream.deletionInformation().signedInfo().getKeyLocator();
+				_available = true;
+				_isGone = true;
+				_isDirty = false;
+				_lastSaved = digestContent();	
+			} else {
 				super.update(inputStream);
-			} catch (NoMatchingContentFoundException nme) {
-				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available. Updating once in background.", inputStream.getBaseName());
-				nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
-				_baseName = nameAndVersion.first();
-				updateInBackground();
-				// not an error state, merely a not ready state.
-				return false;
-			} catch (LinkCycleException lce) {
-				Log.info("Link cycle exception: {0}", lce.getMessage());
-				setError(lce);
-				throw lce;
-			}
 
+				nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
+				_currentPublisher = inputStream.publisher();
+				_currentPublisherKeyLocator = inputStream.publisherKeyLocator();
+				_isGone = false;
+			}
+		} catch (NoMatchingContentFoundException nme) {
+			Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available. Updating once in background.", inputStream.getBaseName());
 			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
-			_currentPublisher = inputStream.publisher();
-			_currentPublisherKeyLocator = inputStream.publisherKeyLocator();
-			_isGone = false;
+			_baseName = nameAndVersion.first();
+			updateInBackground();
+			// not an error state, merely a not ready state.
+			return false;
+		} catch (LinkCycleException lce) {
+			Log.info("Link cycle exception: {0}", lce.getMessage());
+			setError(lce);
+			throw lce;
 		}
+
 		_baseName = nameAndVersion.first();
 		_currentVersionComponent = nameAndVersion.second();
 		_currentVersionName = null; // cached if used
