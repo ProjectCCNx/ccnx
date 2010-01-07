@@ -166,6 +166,11 @@ public class CCNTime extends Timestamp {
 	   	super.setNanos((int)(((((nanos * 4096L + 500000000L) / 1000000000L)) * 1000000000L) / 4096L));
 	}
 	
+	/**
+	 * Note: you have to use a relatively high value of nanos before you get across a quantization
+	 * unit and have an impact. Our units are 2^-12 seconds, or ~250 msec. So 250000 nanos.
+	 * @param nanos
+	 */
 	public void addNanos(int nanos) {
 		setNanos(nanos + getNanos());
 	}
