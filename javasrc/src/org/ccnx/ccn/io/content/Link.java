@@ -302,4 +302,11 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		return new Link(this);
 	}
 
+	@Override
+	public String toString() {
+		return "Link [targetName=" + targetName() + 
+				", targetLabel=" + targetLabel() + 
+				", targetAuthenticator=" + targetAuthenticator() + "]";
+	}
+
 }
