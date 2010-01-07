@@ -26,6 +26,7 @@ import java.security.SignatureException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNSegmenter;
+import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -58,7 +59,7 @@ public class CCNWriter {
 	 * @throws IOException If network initialization fails.
 	 */
 	public CCNWriter(String namespace, CCNHandle handle) throws MalformedContentNameStringException, IOException {
-		this(new CCNFlowControl(ContentName.fromNative(namespace), handle));
+		this(ContentName.fromNative(namespace), handle);
 	}
 
 	/**
@@ -70,7 +71,7 @@ public class CCNWriter {
 	 * @throws IOException If network initialization fails.
 	 */
 	public CCNWriter(ContentName namespace, CCNHandle handle) throws IOException {
-		this(new CCNFlowControl(namespace, handle));
+		_segmenter = new CCNSegmenter(getFlowController(namespace, handle));
 	}
 	
 	/**
@@ -79,7 +80,21 @@ public class CCNWriter {
 	 * @throws IOException If network initialization fails.
 	 */
 	public CCNWriter(CCNHandle handle) throws IOException {
-		this(new CCNFlowControl(handle));
+		this((ContentName)null, handle);
+	}
+	
+	/**
+	 * Create our flow controller. Allow subclass override.
+	 * @param namespace
+	 * @param handle
+	 * @return
+	 * @throws IOException 
+	 */
+	protected CCNFlowControl getFlowController(ContentName namespace, CCNHandle handle) throws IOException {
+		if (null != namespace) {
+			return new CCNFlowControl(namespace, handle);
+		}
+		return new CCNFlowControl(handle);
 	}
 
 	/**
@@ -127,7 +142,7 @@ public class CCNWriter {
 	 * @throws IOException if there is a problem writing data.
 	 */	
 	public ContentName put(ContentName name, byte[] content, Interest outstandingInterest) throws SignatureException, IOException {
-		return put(name, content, null, null, null, outstandingInterest);
+		return put(name, content, null, null, null, null, outstandingInterest);
 	}
 
 	/**
@@ -184,7 +199,7 @@ public class CCNWriter {
 			SignedInfo.ContentType type,
 			PublisherPublicKeyDigest publisher,
 			Integer freshnessSeconds) throws SignatureException, IOException {
-		return put(name, content, type, publisher, freshnessSeconds, null);
+		return put(name, content, type, publisher, null, freshnessSeconds, null);
 	}
 	
 	/**
@@ -203,12 +218,17 @@ public class CCNWriter {
 	public ContentName put(ContentName name, byte[] content, 
 			SignedInfo.ContentType type,
 			PublisherPublicKeyDigest publisher,
+			KeyLocator locator, 
 			Integer freshnessSeconds,
 			Interest outstandingInterest) throws SignatureException, IOException {
 		try {
 			addOutstandingInterest(outstandingInterest);
+			_segmenter.getFlowControl().addNameSpace(name);
+			_segmenter.getFlowControl().startWrite(name, Shape.STREAM); // Streams take care of this for the non-gone case.
 			_segmenter.put(name, content, 0, ((null == content) ? 0 : content.length),
-								  true, type, freshnessSeconds, null, publisher);
+								  true, type, freshnessSeconds, locator, publisher);
+			_segmenter.getFlowControl().beforeClose();
+			_segmenter.getFlowControl().afterClose();
 			return name;
 		} catch (InvalidKeyException e) {
 			Log.info("InvalidKeyException using key for publisher " + publisher + ".");
@@ -281,10 +301,7 @@ public class CCNWriter {
 		ContentName versionedName = VersioningProfile.addVersion(name);
 
 		// put result; segmenter will fill in defaults
-		_segmenter.put(versionedName, content, 0, ((null == content) ? 0 : content.length),
-							  true,
-				 			  type, null, locator, publisher);
-		return versionedName;
+		return put(versionedName, content, type, publisher, locator, null, null);
 	}
 	
 	/**
