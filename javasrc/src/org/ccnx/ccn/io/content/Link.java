@@ -208,8 +208,13 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		}
 		// Don't know if we are referencing a particular object, so don't look for segments.
 		PublisherPublicKeyDigest desiredPublisher = (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null;
-		return VersioningProfile.getLatestVersion(targetName(), 
+		ContentObject result = VersioningProfile.getLatestVersion(targetName(), 
 				desiredPublisher, timeout, new ContentObject.SimpleVerifier(desiredPublisher), handle);
+		if (null != result) {
+			return result;
+		}
+		// Alright, last shot -- resolve link to unversioned data.
+		return handle.get(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
 	}
 	
 	@Override
