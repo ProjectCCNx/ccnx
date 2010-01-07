@@ -166,6 +166,10 @@ public class CCNTime extends Timestamp {
 	   	super.setNanos((int)(((((nanos * 4096L + 500000000L) / 1000000000L)) * 1000000000L) / 4096L));
 	}
 	
+	public void addNanos(int nanos) {
+		setNanos(nanos + getNanos());
+	}
+	
 	/**
 	 * We handle all comparison functions by quantizing the thing
 	 * we are being compared to, then comparing. The only thing
