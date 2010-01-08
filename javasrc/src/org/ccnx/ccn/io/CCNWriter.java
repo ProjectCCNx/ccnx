@@ -122,6 +122,17 @@ public class CCNWriter {
 	 * @param content content to publish; will be fragmented if necessary.
 	 * @throws SignatureException if there is a problem signing.
 	 * @throws IOException if there is a problem writing data.
+	 */
+	public ContentName put(ContentName name, String content) throws SignatureException, MalformedContentNameStringException, IOException {
+		return put(name, content.getBytes(), null, null, null);
+	}
+
+	/**
+	 * Publish a piece of named content signed by our default identity.
+	 * @param name name for content.
+	 * @param content content to publish; will be fragmented if necessary.
+	 * @throws SignatureException if there is a problem signing.
+	 * @throws IOException if there is a problem writing data.
 	 */	
 	public ContentName put(ContentName name, byte[] content) throws SignatureException, IOException {
 		return put(name, content, null, null, null);
@@ -166,8 +177,8 @@ public class CCNWriter {
 	 * @throws SignatureException if there is a problem signing.
 	 * @throws IOException if there is a problem writing data.
 	 */	
-	public ContentName put(String name, String content, Integer freshnessSeconds) throws SignatureException, MalformedContentNameStringException, IOException {
-		return put(ContentName.fromURI(name), content.getBytes(), null, null, freshnessSeconds);
+	public ContentName put(ContentName name, String content, Integer freshnessSeconds) throws SignatureException, MalformedContentNameStringException, IOException {
+		return put(name, content.getBytes(), null, null, freshnessSeconds);
 	}
 	
 	/**
