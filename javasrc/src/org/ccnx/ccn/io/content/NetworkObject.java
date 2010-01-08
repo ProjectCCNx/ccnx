@@ -27,6 +27,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.NullOutputStream;
 
 
@@ -80,6 +81,11 @@ public abstract class NetworkObject<E> {
 	protected byte [] _lastSaved; // save digest of serialized item, so can tell if updated outside
 								  // of setData
 	protected boolean _available = false; // false until first time data is set or updated
+	
+	/**
+	 * Track error state in a subclass-compatible way by storing the last exception we threw.
+	 */
+	protected IOException _errorState = null;
 
 	/**
 	 * Subclasses need to specify the type as an argument as well as a template
@@ -172,6 +178,22 @@ public abstract class NetworkObject<E> {
 		return _available; 
 	}
 	
+	public synchronized boolean hasError() {
+		return (null != _errorState);
+	}
+	
+	public synchronized IOException getError() {
+		return _errorState;
+	}
+	
+	public synchronized void clearError() {
+		_errorState = null;
+	}
+	
+	protected synchronized void setError(IOException t) {
+		_errorState = t;
+	}
+	
 	/**
 	 * Set a new data value for this object.  Mark it as dirty (needing
 	 * to be saved).
@@ -215,9 +237,13 @@ public abstract class NetworkObject<E> {
 	 *   determined by the subclass, which can override available() (by
 	 *   default, data cannot be null).
 	 * @throws ContentNotReadyException if the object has not finished retrieving data/having data set
+	 * @throws ErrorStateException 
 	 */
-	protected synchronized E data() throws ContentNotReadyException, ContentGoneException { 
-
+	protected synchronized E data() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
+		if (hasError()) {
+			throw new ErrorStateException("Cannot retrieve data -- object in error state!", _errorState);
+		}
+		
 		if (!available()) {
 			throw new ContentNotReadyException("No data yet saved or retrieved!");
 		}

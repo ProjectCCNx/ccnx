@@ -27,6 +27,7 @@ import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -58,7 +59,7 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 			super(PolicyXML.class, true, name, handle);
 		}
 		
-		public PolicyXML policyXML() throws ContentNotReadyException, ContentGoneException {
+		public PolicyXML policyXML() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 			return data();
 		}
 		

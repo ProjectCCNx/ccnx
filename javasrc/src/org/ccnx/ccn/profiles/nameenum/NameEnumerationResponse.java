@@ -6,6 +6,7 @@ import java.util.LinkedList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -85,11 +86,11 @@ public class NameEnumerationResponse {
 				setSaveType(SaveType.RAW);
 			}
 			
-			public NameEnumerationResponseMessage responseMessage() throws ContentNotReadyException, ContentGoneException {
+			public NameEnumerationResponseMessage responseMessage() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 				return data();
 			}
 			
-			public LinkedList<Link> contents() throws ContentNotReadyException, ContentGoneException { 
+			public LinkedList<Link> contents() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
 				if (null == data())
 					return null;
 				return data().contents(); 

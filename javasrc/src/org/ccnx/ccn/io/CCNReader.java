@@ -22,6 +22,7 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -66,6 +67,34 @@ public class CCNReader {
 		return _handle.get(interest, timeout);
 	}
 	
+	/**
+	 * Helper method to retrieve a set of segmented content blocks and rebuild them
+	 * into a single buffer. Equivalent to CCNWriter's put. Does not do anything about
+	 * versioning.
+	 */
+	public byte [] getData(ContentName name, PublisherPublicKeyDigest publisher, int timeout) throws IOException {
+		
+		CCNInputStream inputStream = new CCNInputStream(name, publisher, _handle);
+		inputStream.setTimeout(timeout);
+		
+		byte [] data = DataUtils.getBytesFromStream(inputStream);
+		return data;
+	}
+	
+	/**
+	 * Helper method to retrieve a set of segmented content blocks and rebuild them
+	 * into a single buffer. Equivalent to CCNWriter's put. Does not do anything about
+	 * versioning.
+	 */
+	public byte [] getVersionedData(ContentName name, PublisherPublicKeyDigest publisher, int timeout) throws IOException {
+		
+		CCNInputStream inputStream = new CCNVersionedInputStream(name, publisher, _handle);
+		inputStream.setTimeout(timeout);
+		
+		byte [] data = DataUtils.getBytesFromStream(inputStream);
+		return data;
+	}
+
 	/**
 	 * Return data the specified number of levels below us in the
 	 * hierarchy, with order preference of leftmost.

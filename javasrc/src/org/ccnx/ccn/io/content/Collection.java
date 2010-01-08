@@ -29,6 +29,7 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -131,11 +132,11 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 			super(Collection.class, true, firstBlock, flowControl);
 		}
 
-		public Collection collection() throws ContentNotReadyException, ContentGoneException {
+		public Collection collection() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 			return data();
 		}
 		
-		public LinkedList<Link> contents() throws ContentNotReadyException, ContentGoneException { 
+		public LinkedList<Link> contents() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
 			if (null == data())
 				return null;
 			return data().contents(); 

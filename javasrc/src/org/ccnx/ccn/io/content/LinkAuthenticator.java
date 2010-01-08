@@ -310,4 +310,12 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		}
 		return 0;
 	}
+
+	@Override
+	public String toString() {
+		return "LinkAuthenticator [contentDigest="
+				+ DataUtils.printBytes(_contentDigest) + ", nameComponentCount="
+				+ _nameComponentCount + ", publisher=" + _publisher
+				+ ", timestamp=" + _timestamp + ", type=" + _type + "]";
+	}
 }

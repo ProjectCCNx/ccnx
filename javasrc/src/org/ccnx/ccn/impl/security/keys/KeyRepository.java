@@ -36,6 +36,7 @@ import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.PublicKeyObject;
@@ -377,8 +378,10 @@ public class KeyRepository {
 	 * @param keyObject key Object to remember
 	 * @throws ContentGoneException 
 	 * @throws ContentNotReadyException 
+	 * @throws ErrorStateException 
 	 */
-	public void remember(PublicKeyObject theKey) throws ContentNotReadyException, ContentGoneException, IOException {
+	public void remember(PublicKeyObject theKey) throws ContentNotReadyException, ContentGoneException, ErrorStateException, IOException {
+
 		_keyMap.put(theKey.getVersionedName(), theKey);
 		PublisherPublicKeyDigest id = theKey.publicKeyDigest();
 		_idMap.put(id, theKey.getVersionedName());
@@ -419,8 +422,9 @@ public class KeyRepository {
 	 * Write encoded key to file for debugging purposes.
 	 * @throws ContentGoneException 
 	 * @throws ContentNotReadyException 
+	 * @throws ErrorStateException 
 	 */
-	protected void recordKeyToFile(PublicKeyObject keyObject) throws ContentNotReadyException, ContentGoneException {
+	protected void recordKeyToFile(PublicKeyObject keyObject) throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 		File keyDir = new File(UserConfiguration.keyRepositoryDirectory());
 		if (!keyDir.exists()) {
 			if (!keyDir.mkdirs()) {

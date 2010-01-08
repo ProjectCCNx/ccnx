@@ -18,6 +18,7 @@
 package org.ccnx.ccn.io;
 
 import java.io.IOException;
+import java.util.EnumSet;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
@@ -205,13 +206,15 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * @param startingSegment The first segment to read from. If this is not the
 	 * 		first segment of the stream, reading will begin from this point.
 	 * 		We assume that the signature on this segment was verified by our caller.
+	 * @param flags any stream flags that must be set to handle even this first block (otherwise
+	 * 	they can be set with setFlags prior to read). Can be null.
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
 	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException
 	 */
-	public CCNFileInputStream(ContentObject startingSegment, CCNHandle handle)
+	public CCNFileInputStream(ContentObject startingSegment, EnumSet<FlagTypes> flags, CCNHandle handle)
 			throws IOException {
-		super(startingSegment, handle);
+		super(startingSegment, flags, handle);
 	}
 
 	/**
@@ -222,13 +225,15 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * 		We assume that the signature on this segment was verified by our caller.
 	 * @param keys The keys to use to decrypt this content. Null if content unencrypted, or another
 	 * 				process will be used to retrieve the keys.
+	 * @param flags any stream flags that must be set to handle even this first block (otherwise
+	 * 	they can be set with setFlags prior to read). Can be null.
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
 	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException
 	 */
 	public CCNFileInputStream(ContentObject startingSegment, 
-				ContentKeys keys, CCNHandle handle) throws IOException {
-		super(startingSegment, keys, handle);
+				ContentKeys keys, EnumSet<FlagTypes> flags, CCNHandle handle) throws IOException {
+		super(startingSegment, keys, flags, handle);
 	}
 	
 	/**
@@ -263,8 +268,9 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * @return the Header for this stream.
 	 * @throws ContentNotReadyException if we have not retrieved the header yet, or it hasn't been requested.
 	 * @throws ContentGoneException if the header has been deleted.
+	 * @throws ErrorStateException 
 	 */
-	public Header header() throws ContentNotReadyException, ContentGoneException {
+	public Header header() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 		if (!headerRequested())
 			throw new ContentNotReadyException("Not enough information available to request header!");
 		return _header.header();

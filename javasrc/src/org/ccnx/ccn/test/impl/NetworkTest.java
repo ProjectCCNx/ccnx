@@ -30,6 +30,7 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -54,6 +55,10 @@ public class NetworkTest {
 	private Semaphore sema = new Semaphore(0);
 	private boolean gotData = false;
 	Interest testInterest = null;
+	
+	// Fix test so it doesn't use static names.
+	static CCNTestHelper testHelper = new CCNTestHelper(NetworkTest.class);
+	static ContentName testPrefix = testHelper.getClassChildName("networkTest");
 	
 	static {
 		try {
@@ -80,12 +85,14 @@ public class NetworkTest {
 		/*
 		 * Test re-expression of interest
 		 */
-		CCNWriter writer = new CCNWriter("/networkTest", putLibrary);
-		testInterest = new Interest("/networkTest/aaa");
+		CCNWriter writer = new CCNWriter(testPrefix, putLibrary);
+		ContentName testName = ContentName.fromNative(testPrefix, "aaa");
+		
+		testInterest = new Interest(testName);
 		TestListener tl = new TestListener();
 		getLibrary.expressInterest(testInterest, tl);
 		Thread.sleep(80);  
-		writer.put("/networkTest/aaa", "aaa");
+		writer.put(testName, "aaa");
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 	}
@@ -97,11 +104,12 @@ public class NetworkTest {
 		 * Test re-expression of interest
 		 */
 		CCNWriter writer = new CCNWriter(putLibrary);
-		testInterest = new Interest("/networkTest/ddd");
+		ContentName testName = ContentName.fromNative(testPrefix, "ddd");
+		testInterest = new Interest(testName);
 		TestListener tl = new TestListener();
 		getLibrary.expressInterest(testInterest, tl);
 		Thread.sleep(80);  
-		writer.put("/networkTest/ddd", "ddd");
+		writer.put(testName, "ddd");
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 	}
@@ -112,10 +120,16 @@ public class NetworkTest {
 		/*
 		 * Test re-expression of interest
 		 */
-		CCNWriter writer = new CCNWriter("/networkTest", putLibrary);
-		testInterest = new Interest("/networkTest/bbb");
+		CCNWriter writer = new CCNWriter(testPrefix, putLibrary);
+		// Shouldn't have to do this -- need to refactor test. Had to add it after
+		// fixing CCNWriter to do proper flow control.
+		writer.disableFlowControl();
+		
+		ContentName testName = ContentName.fromNative(testPrefix, "bbb");
+
+		testInterest = new Interest(testName);
 		TestListener tl = new TestListener();
-		writer.put("/networkTest/bbb", "bbb");
+		writer.put(testName, "bbb");
 		Thread.sleep(80);  
 		getLibrary.expressInterest(testInterest, tl);
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
@@ -124,13 +138,16 @@ public class NetworkTest {
 	
 	@Test
 	public void testFreshnessSeconds() throws Exception {
-		CCNWriter writer = new CCNWriter("/networkTest", putLibrary);
-		writer.put("/networkTest/freshnessTest", "freshnessTest", 3);
+		CCNWriter writer = new CCNWriter(testPrefix, putLibrary);
+		writer.disableFlowControl();
+		
+		ContentName testName = ContentName.fromNative(testPrefix, "freshnessTest");
+		writer.put(testName, "freshnessTest", 3);
 		Thread.sleep(80);
-		ContentObject co = getLibrary.get(ContentName.fromNative("/networkTest/freshnessTest"), 1000);
+		ContentObject co = getLibrary.get(testName, 1000);
 		Assert.assertFalse(co == null);
 		Thread.sleep(WAIT_MILLIS);
-		co = getLibrary.get(ContentName.fromNative("/networkTest/freshnessTest"), 1000);
+		co = getLibrary.get(testName, 1000);
 		Assert.assertTrue(co == null);
 	}
 
@@ -140,13 +157,14 @@ public class NetworkTest {
 		/*
 		 * Test re-expression of interest
 		 */
-		CCNWriter writer = new CCNWriter("/networkTest", putLibrary);
-		testInterest = new Interest("/networkTest/ccc");
+		CCNWriter writer = new CCNWriter(testPrefix, putLibrary);
+		ContentName testName = ContentName.fromNative(testPrefix, "ccc");
+		testInterest = new Interest(testName);
 		TestListener tl = new TestListener();
 		getLibrary.expressInterest(testInterest, tl);
 		// Sleep long enough that the interest must be re-expressed
 		Thread.sleep(WAIT_MILLIS);  
-		writer.put("/networkTest/ccc", "ccc");
+		writer.put(testName, "ccc");
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 	}

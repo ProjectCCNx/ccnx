@@ -25,6 +25,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -176,5 +177,5 @@ public class CCNStringObject extends CCNNetworkObject<String> {
 		output.write(stringData);
 	}
 
-	public String string() throws ContentNotReadyException, ContentGoneException { return data(); }
+	public String string() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 }

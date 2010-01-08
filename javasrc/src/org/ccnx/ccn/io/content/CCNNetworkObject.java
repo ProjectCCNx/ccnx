@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
@@ -36,7 +37,10 @@ import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
+import org.ccnx.ccn.io.ErrorStateException;
+import org.ccnx.ccn.io.LinkCycleException;
 import org.ccnx.ccn.io.NoMatchingContentFoundException;
+import org.ccnx.ccn.io.CCNAbstractInputStream.FlagTypes;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -477,6 +481,25 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	/**
+	 * Override point where subclasses can modify each input stream before
+	 * it is read. Subclasses should at least set the flags using getInputStreamFlags,
+	 * or call super.setInputStreamProperties.
+	 */
+	protected void setInputStreamProperties(CCNInputStream inputStream) {
+		// default -- just set any flags
+		inputStream.setFlags(getInputStreamFlags());
+	}
+	
+	/**
+	 * Override point where subclasses can specify set of flags on input stream
+	 * at point it is read or where necessary created.
+	 * @return
+	 */
+	protected EnumSet<FlagTypes> getInputStreamFlags() {
+		return null;
+	}
+	
+	/**
 	 * Attempts to find a version after the latest one we have, or times out. If
 	 * it times out, it simply leaves the object unchanged.
 	 * @return returns true if it found an update, false if not
@@ -528,7 +551,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	public boolean update(ContentObject object) throws ContentDecodingException, IOException {
-		CCNInputStream is = new CCNInputStream(object, _handle);
+		CCNInputStream is = new CCNInputStream(object, getInputStreamFlags(), _handle);
+		setInputStreamProperties(is);
 		is.seek(0); // in case it wasn't the first segment
 		return update(is);
 	}
@@ -543,39 +567,55 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	public synchronized boolean update(CCNInputStream inputStream) throws ContentDecodingException, IOException {
+		
+		// Allow subclasses to modify input stream processing prior to first read.
+		setInputStreamProperties(inputStream);
+		
 		Tuple<ContentName, byte []> nameAndVersion = null;
-		if (inputStream.isGone()) {
-			Log.fine("Reading from GONE stream: {0}", inputStream.getBaseName());
-			_data = null;
+		// Move try to surround both update case and isGone case; as isGone 
+		// can throw not ready as well, or LCE.
+		// TODO -- isGone doesn't handle link dereferencing, only update. Move initialization
+		// and link dereferencing behavior to handle links to GONE objects.
+		try {
+			if (inputStream.isGone()) {
+				Log.fine("Reading from GONE stream: {0}", inputStream.getBaseName());
+				_data = null;
 
-			// This will have a final version and a segment
-			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.deletionInformation().name());
-			_currentPublisher = inputStream.deletionInformation().signedInfo().getPublisherKeyID();
-			_currentPublisherKeyLocator = inputStream.deletionInformation().signedInfo().getKeyLocator();
-			_available = true;
-			_isGone = true;
-			_isDirty = false;
-			_lastSaved = digestContent();	
-		} else {
-			try {
+				// This will have a final version and a segment
+				nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.deletionInformation().name());
+				_currentPublisher = inputStream.deletionInformation().signedInfo().getPublisherKeyID();
+				_currentPublisherKeyLocator = inputStream.deletionInformation().signedInfo().getKeyLocator();
+				_available = true;
+				_isGone = true;
+				_isDirty = false;
+				_lastSaved = digestContent();	
+			} else {
 				super.update(inputStream);
-			} catch (NoMatchingContentFoundException nme) {
-				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available. Updating once in background.", inputStream.getBaseName());
-				nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
-				_baseName = nameAndVersion.first();
-				updateInBackground();
-				return false;
-			}
 
+				nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
+				_currentPublisher = inputStream.publisher();
+				_currentPublisherKeyLocator = inputStream.publisherKeyLocator();
+				_isGone = false;
+			}
+		} catch (NoMatchingContentFoundException nme) {
+			Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available. Updating once in background.", inputStream.getBaseName());
 			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
-			_currentPublisher = inputStream.publisher();
-			_currentPublisherKeyLocator = inputStream.publisherKeyLocator();
-			_isGone = false;
+			_baseName = nameAndVersion.first();
+			updateInBackground();
+			// not an error state, merely a not ready state.
+			return false;
+		} catch (LinkCycleException lce) {
+			Log.info("Link cycle exception: {0}", lce.getMessage());
+			setError(lce);
+			throw lce;
 		}
+
 		_baseName = nameAndVersion.first();
 		_currentVersionComponent = nameAndVersion.second();
 		_currentVersionName = null; // cached if used
-		
+		_dereferencedLink = inputStream.getDereferencedLink(); // gets stack of links used, if any
+		clearError();
+
 		// Signal readers.
 		newVersionAvailable();
 		return true;
@@ -1004,7 +1044,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	@Override
-	protected synchronized E data() throws ContentNotReadyException, ContentGoneException { 
+	protected synchronized E data() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
 		if (isGone()) {
 			throw new ContentGoneException("Content is gone!");
 		}
@@ -1038,6 +1078,28 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * If we traversed a link to get this object, make it available.
 	 */
 	public synchronized LinkObject getDereferencedLink() { return _dereferencedLink; }
+	
+	/**
+	 * Use only if you know what you are doing.
+	 */
+	public synchronized void setDereferencedLink(LinkObject dereferencedLink) { _dereferencedLink = dereferencedLink; }
+	
+	/**
+	 * Add a LinkObject to the stack we had to dereference to get here.
+	 */
+	public synchronized void pushDereferencedLink(LinkObject dereferencedLink) {
+		if (null == dereferencedLink) {
+			return;
+		}
+		if (null != _dereferencedLink) {
+			if (null != dereferencedLink.getDereferencedLink()) {
+				Log.warning("Merging two link stacks -- {0} already has a dereferenced link from {1}. Behavior unpredictable.",
+							dereferencedLink.getVersionedName(), dereferencedLink.getDereferencedLink().getVersionedName());
+			}
+			dereferencedLink.pushDereferencedLink(_dereferencedLink);
+		}
+		setDereferencedLink(dereferencedLink);
+	}
 	
 	/**
 	 * If the object has been saved or read from the network, returns the (cached) versioned
