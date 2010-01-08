@@ -383,7 +383,11 @@ do_face_action(struct ccn *h, struct ccn_keystore *keystore,
  *  @result returns (positive) faceid on success, -1 on error
  */
 static int
-register_prefix(struct ccn *h, struct ccn_keystore *keystore, struct ccn_charbuf *name_prefix, struct ccn_face_instance *face_instance, int flags)
+register_prefix(struct ccn *h,
+                struct ccn_keystore *keystore,
+                struct ccn_charbuf *name_prefix,
+                struct ccn_face_instance *face_instance,
+                int flags)
 {
     struct ccn_charbuf *temp = NULL;
     struct ccn_charbuf *resultbuf = NULL;
@@ -812,12 +816,16 @@ incoming_interest(
                                  NULL, NULL, NULL);
     if (res < 0)
         return (CCN_UPCALL_RESULT_ERR);
-
+    
     for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
         struct ccn_face_instance *nfi;
         pfl->fi->ccnd_id = ccndid;
         pfl->fi->ccnd_id_size = ccndid_size;
         nfi = do_face_action(info->h, keystore, pfl->fi);
+        if (nfi == NULL) {
+            ccndc_warn(__LINE__, "Unable to create/delete face\n");
+            continue;
+        }
         if (pfl->fi->lifetime > 0) {
             res = register_prefix(info->h, keystore, pfl->prefix, nfi, pfl->flags);
         } else {
@@ -918,12 +926,17 @@ main(int argc, char **argv)
         pfl->fi->ccnd_id = ccndid;
         pfl->fi->ccnd_id_size = ccndid_size;
         nfi = do_face_action(h, keystore, pfl->fi);
+        if (nfi == NULL) {
+            ccndc_warn(__LINE__, "Unable to create/delete face\n");
+            continue;
+        }
         if (pfl->fi->lifetime > 0) {
             res = register_prefix(h, keystore, pfl->prefix, nfi, pfl->flags);
         } else {
             res = 0;
         }
         ccn_face_instance_destroy(&nfi);
+
         if (res < 0) {
             ccndc_warn(__LINE__, "Unable to register prefix %s\n", pfl->prefix);
         }
