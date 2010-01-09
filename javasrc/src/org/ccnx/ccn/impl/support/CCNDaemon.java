@@ -117,6 +117,10 @@ public class CCNDaemon extends Daemon {
 		public boolean signal(String name) {
 			return false;
 		}
+		
+		public Object status(String type) {
+			return "running";
+		}
 	}
 	
 	public CCNDaemon() {
