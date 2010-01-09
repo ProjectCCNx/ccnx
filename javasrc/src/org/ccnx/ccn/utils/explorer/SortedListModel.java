@@ -95,6 +95,20 @@ class SortedListModel extends AbstractListModel {
 			return removed;
 	  }
 	  
+	  public boolean removeElementArrayList(ArrayList<String> elements)
+	  {
+		  boolean removed = false;
+			for(String item : elements)
+			{
+				removed = model.remove(item);
+				
+			}
+			if (removed) {
+			      fireContentsChanged(this, 0, getSize());
+			    }
+			return removed;
+	  }
+	  
 	  public boolean removeElement(Object element) {
 	    boolean removed = model.remove(element);
 	    if (removed) {
