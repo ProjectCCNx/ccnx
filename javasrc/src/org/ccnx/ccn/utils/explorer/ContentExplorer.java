@@ -1122,7 +1122,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			EventQueue.invokeLater(new Runnable() {
 				public void run() {
 					try {
-						GroupManager dialog = new GroupManager(selectedPrefix);
+						GroupManagerGUI dialog = new GroupManagerGUI(selectedPrefix);
 						dialog.setVisible(true);
 					} catch (Exception e) {
 						Log.warningStackTrace(e);

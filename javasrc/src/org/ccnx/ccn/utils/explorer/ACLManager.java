@@ -54,7 +54,7 @@ public class ACLManager extends JDialog implements ActionListener{
 	private ArrayList<JList> listsArray=null;	
 	//private ArrayList<String> readOnlyPrincipals;
 	//private ArrayList<String> readWritePrincipals;
-private ValuesChanged changedEntries;
+private boolean changedEntries;
 
 private SortedListModel readOnlyPrincipals = null;
 private SortedListModel readWritePrincipals = null;
@@ -134,7 +134,7 @@ private SortedListModel userPoolDefault = null;
 		super();
 		//window listener
 		this.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
-		changedEntries = new ValuesChanged(false);
+		changedEntries = false;
 		this.addWindowListener(new ChangedEntriesConfirm(this,changedEntries));
 		
 		listsArray = new ArrayList<JList>();
@@ -296,12 +296,12 @@ private SortedListModel userPoolDefault = null;
 		if(buttonApply == e.getSource()) {
 			
 			applyChanges();
-			changedEntries.changed = false;
+			changedEntries = false;
 			
 		}else if(buttonDefault == e.getSource()){
 			
 			restoreDefaults();
-			changedEntries.changed = false;
+			changedEntries = false;
 			
 		}else if(buttonCancel == e.getSource()){
 			
@@ -310,26 +310,26 @@ private SortedListModel userPoolDefault = null;
 			
 		}else if(buttonAssignReadOnly == e.getSource()){
 			moveListItems(userList.getSelectedIndices(),userList,readOnlyList);
-			changedEntries.changed = true;
+			changedEntries = true;
 			
 		}else if(buttonRemoveReadOnly == e.getSource()){			
 			moveListItems(readOnlyList.getSelectedIndices(),readOnlyList,userList);			
-			changedEntries.changed = true;
+			changedEntries = true;
 		}else if(buttonAssingReadWrite == e.getSource()){
 			moveListItems(userList.getSelectedIndices(),userList,readWriteList);
-			changedEntries.changed = true;
+			changedEntries = true;
 		}else if(buttonRemoveReadWrite == e.getSource()){
 			moveListItems(readWriteList.getSelectedIndices(),readWriteList,userList);
-			changedEntries.changed = true;
+			changedEntries = true;
 		}else if(buttonModify2View == e.getSource()){
 			
 			moveListItems(readWriteList.getSelectedIndices(),readWriteList,readOnlyList);
-			changedEntries.changed = true;
+			changedEntries = true;
 			
 		}else if(buttonView2Modify == e.getSource()){
 			
 			moveListItems(readOnlyList.getSelectedIndices(),readOnlyList,readWriteList);
-			changedEntries.changed = true;
+			changedEntries = true;
 		}
 		
 	}
@@ -356,7 +356,7 @@ private SortedListModel userPoolDefault = null;
 	
 	private void cancelChanges()
 	{
-		if(changedEntries.changed)
+		if(changedEntries)
 		{
 			int answer = JOptionPane.showConfirmDialog(this, "You have pending changes. Are you sure you would like to exit", "Pending Changes",JOptionPane.YES_NO_OPTION);
 			switch(answer){

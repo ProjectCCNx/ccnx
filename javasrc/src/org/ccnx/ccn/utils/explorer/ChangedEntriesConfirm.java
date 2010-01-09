@@ -26,12 +26,12 @@ import javax.swing.JOptionPane;
 public class ChangedEntriesConfirm implements WindowListener {
 
 	private JDialog form;
-	private ValuesChanged changed;
-	public ChangedEntriesConfirm(JDialog groupManager, ValuesChanged changedEntries) {
+	private boolean changed;
+	public ChangedEntriesConfirm(JDialog groupManager, boolean changedEntries) {
 		// TODO Auto-generated constructor stub
 		this.form = groupManager;
 		this.changed = changedEntries;
-		System.out.println("changed is "+ this.changed.changed);
+		System.out.println("changed is "+ this.changed);
 	}
 
 	public void windowActivated(WindowEvent e) {
@@ -48,8 +48,8 @@ public class ChangedEntriesConfirm implements WindowListener {
 	public void windowClosing(WindowEvent e) {
 		System.out.println("Window closing event occur");
 		// TODO Auto-generated method stub
-		System.out.println("changed is "+ this.changed.changed);
-		if(changed.changed)
+		System.out.println("changed is "+ this.changed);
+		if(changed)
 		{
 			int answer = JOptionPane.showConfirmDialog(this.form, "You have pending changes. Are you sure you would like to exit", "Pending Changes",JOptionPane.YES_NO_OPTION);
 			switch(answer){
