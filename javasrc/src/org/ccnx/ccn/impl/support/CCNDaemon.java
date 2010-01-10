@@ -32,7 +32,7 @@ import org.ccnx.ccn.impl.CCNNetworkManager;
  * TODO This is not actually yet used in any tests and therefore is itself not well tested
  */
 public class CCNDaemon extends Daemon {
-	
+	public static final String PROP_CCND_COMMAND = "ccnd.command";
 	public static final String PROP_CCND_DEBUG = "ccnd.debug";
 	
 	private static final String DEFAULT_CCND_COMMAND_STRING = "../ccnd/agent/ccnd";
@@ -77,6 +77,10 @@ public class CCNDaemon extends Daemon {
 		 * Start ccnd but set up a shutdown hook to allow it to stop
 		 */
 		public void initialize() {
+			String commandVal = System.getProperty(PROP_CCND_COMMAND);
+			if (commandVal != null) {
+				_command = commandVal;
+			}
 			Runtime.getRuntime().addShutdownHook(new CCNDShutdownHook());
 			ProcessBuilder pb = new ProcessBuilder(_command);		
 			Map<String, String> env = pb.environment();
