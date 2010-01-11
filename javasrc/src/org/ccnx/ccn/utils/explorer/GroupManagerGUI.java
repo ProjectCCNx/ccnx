@@ -404,7 +404,6 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		principalsModel.removeElementArrayList(members);
 	}
 
-	@Override
 	public void valueChanged(ListSelectionEvent e) {
 		JList list = (JList) e.getSource();		
 		if(list.getSelectedValue() != null){
