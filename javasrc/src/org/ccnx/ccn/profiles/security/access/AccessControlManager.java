@@ -295,6 +295,7 @@ public abstract class AccessControlManager {
 		try {
 			acm = NamespaceManager.findACM(name, handle);
 			if ((acm != null) && (acm.isProtectedContent(name, publisher, handle))) {
+				// First we need to figure out whether this content is public...
 				Log.info("keysForOutput: generating new data key for data node {0}", name);
 				Key dataKey = acm.generateAndStoreDataKey(name);
 				return KeyDerivationFunction.DeriveKeysForObject(dataKey.getEncoded(), DATA_KEY_LABEL, name, publisher);
