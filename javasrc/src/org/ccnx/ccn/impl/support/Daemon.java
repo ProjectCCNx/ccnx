@@ -81,6 +81,7 @@ public class Daemon {
 		public String startLoop() throws RemoteException; // returns pid
 		public void shutDown() throws RemoteException;
 		public boolean signal(String name) throws RemoteException;
+		public Object status(String name) throws RemoteException;
 	}
 	
 	public class StopTimer extends TimerTask {
@@ -179,6 +180,9 @@ public class Daemon {
 			Log.info("Should not be here, in WorkerThread.signal().");
 			return false;			
 		}
+		public Object status(String name) {
+			return null;		// We don't require implementers to implement this
+		}
 
 	}
 
@@ -220,6 +224,15 @@ public class Daemon {
 			Log.info("Signal " + name);
 			try {
 				return _daemonThread.signal(name);
+			} catch (Exception e) {
+				throw new RemoteException(e.getMessage(), e);
+			}
+		}
+
+		public Object status(String name) throws RemoteException {
+			Log.info("Status " + name);
+			try {
+				return _daemonThread.status(name);
 			} catch (Exception e) {
 				throw new RemoteException(e.getMessage(), e);
 			}
@@ -656,6 +669,22 @@ public class Daemon {
 				}
 			}
 		}
+	}
+	
+	public static Object getStatus(String daemonName, String pid, String type) throws FileNotFoundException, IOException, ClassNotFoundException {
+		if (!getRMIFile(daemonName, pid).exists()) {
+			System.out.println("Daemon " + daemonName + " does not appear to be running.");
+			Log.info("Daemon " + daemonName + " does not appear to be running.");
+			return null;
+		}
+
+		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, pid)));
+
+		DaemonListener l = (DaemonListener)in.readObject();		
+
+		in.close();
+		
+		return l.status(type);
 	}
 
 	/**
