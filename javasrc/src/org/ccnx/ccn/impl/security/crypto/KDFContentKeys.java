@@ -73,7 +73,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * expansion function is used regardless of mode for simplicity.
  * The encryption is done with the specified key, in CBC mode, using the all-zeros IV
  */
-public class ContentKeys implements Cloneable {
+public class KDFContentKeys implements Cloneable {
 	/*
 	 * The core encryption algorithms supported. Any native encryption
 	 * mode supported by Java *should* work, but these are compactly
@@ -134,7 +134,7 @@ public class ContentKeys implements Cloneable {
 	 * @throws NoSuchPaddingException 
 	 * @throws NoSuchAlgorithmException 
 	 */
-	public ContentKeys(String encryptionAlgorithm, byte [] key, byte [] ivctr) throws NoSuchAlgorithmException, NoSuchPaddingException {
+	public KDFContentKeys(String encryptionAlgorithm, byte [] key, byte [] ivctr) throws NoSuchAlgorithmException, NoSuchPaddingException {
 		assert(null != key);
 		assert(null != ivctr);
 		if (null != encryptionAlgorithm) {
@@ -149,7 +149,7 @@ public class ContentKeys implements Cloneable {
 	/**
 	 * Create a ContentKeys with the default algorithm.
 	 */
-	public ContentKeys(byte [] key, byte [] ivctr) {
+	public KDFContentKeys(byte [] key, byte [] ivctr) {
 		assert(null != key);
 		assert(null != ivctr);
 		this._encryptionAlgorithm = DEFAULT_CIPHER_ALGORITHM;
@@ -165,7 +165,7 @@ public class ContentKeys implements Cloneable {
 	 * @throws NoSuchAlgorithmException if encryptionAlgorithm unknown
 	 * @throws NoSuchPaddingException if encryptionAlgorithm specifies an unknown padding type
 	 */
-	public ContentKeys(String encryptionAlgorithm, SecretKeySpec encryptionKey,
+	public KDFContentKeys(String encryptionAlgorithm, SecretKeySpec encryptionKey,
 						IvParameterSpec masterIV) throws NoSuchAlgorithmException, NoSuchPaddingException {
 		this._encryptionAlgorithm = (null != encryptionAlgorithm) ? encryptionAlgorithm : DEFAULT_CIPHER_ALGORITHM;
 		// ensure NoSuchPaddingException cannot be thrown later when a Cipher is made
@@ -194,7 +194,7 @@ public class ContentKeys implements Cloneable {
 	 * @throws NoSuchPaddingException 
 	 * @throws NoSuchAlgorithmException 
 	 */
-	public ContentKeys(String encryptionAlgorithm, byte [] masterKeyBytes, 
+	public KDFContentKeys(String encryptionAlgorithm, byte [] masterKeyBytes, 
 					   int keyBitLength, int ivBitLength,
 					   String label,
 					   ContentName contentName, 
@@ -209,18 +209,18 @@ public class ContentKeys implements Cloneable {
 		this._masterIV = new IvParameterSpec(keyAndIV[1]);
 	}
 	
-	public ContentKeys(ContentKeys other) {
+	public KDFContentKeys(KDFContentKeys other) {
 		_encryptionAlgorithm = other._encryptionAlgorithm;
 		_encryptionKey = other._encryptionKey;
 		_masterIV = other._masterIV;
 	}
 	
-	public ContentKeys clone() {
-		return new ContentKeys(this);
+	public KDFContentKeys clone() {
+		return new KDFContentKeys(this);
 	}
 
 	@SuppressWarnings("unused")
-	private ContentKeys() {
+	private KDFContentKeys() {
 	}
 	
 	/**
@@ -230,9 +230,9 @@ public class ContentKeys implements Cloneable {
 	 */
 	public void requireDefaultAlgorithm() {
 		// For now we only support the default algorithm.
-		if (!_encryptionAlgorithm.equals(ContentKeys.DEFAULT_CIPHER_ALGORITHM)) {
+		if (!_encryptionAlgorithm.equals(KDFContentKeys.DEFAULT_CIPHER_ALGORITHM)) {
 			String err = "Right now the only encryption algorithm we support is: " + 
-			ContentKeys.DEFAULT_CIPHER_ALGORITHM + ", " + _encryptionAlgorithm + 
+			KDFContentKeys.DEFAULT_CIPHER_ALGORITHM + ", " + _encryptionAlgorithm + 
 			" will come later.";
 			Log.severe(err);
 			throw new UnsupportedOperationException(err);
@@ -275,14 +275,14 @@ public class ContentKeys implements Cloneable {
 	 * Create a set of random encryption/decryption keys using the default algorithm.
 	 * @return a randomly-generated set of keys and IV that can be used for encryption
 	 */
-	public synchronized static ContentKeys generateRandomKeys() {
+	public synchronized static KDFContentKeys generateRandomKeys() {
 		byte [] key = new byte[DEFAULT_KEY_LENGTH];
 		byte [] iv = new byte[IV_MASTER_LENGTH];
 		// do we want additional whitening?
 		SecureRandom random = getRandom();
 		random.nextBytes(key);
 		random.nextBytes(iv);
-		return new ContentKeys(key, iv);
+		return new KDFContentKeys(key, iv);
 	}
 	
 	/**
