@@ -30,7 +30,6 @@ import javax.swing.JTable;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
@@ -47,8 +46,8 @@ public class ACLManager extends JDialog implements ActionListener {
 	ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
 	ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
 	
-	private ArrayList<String> userFriendlyNameList = new ArrayList<String>();
-	private ArrayList<String> groupFriendlyNameList = new ArrayList<String>();
+	private ContentName[] userList;
+	private ContentName[] groupList;
 	private ACL currentACL;
 	private ACLTable userACLTable;
 	private ACLTable groupACLTable;
@@ -83,8 +82,10 @@ public class ACLManager extends JDialog implements ActionListener {
 			e.printStackTrace();
 		}
 		pEnum = new PrincipalEnumerator(gm);
-		userFriendlyNameList = pEnum.enumerateUserFriendlyName();
-		groupFriendlyNameList = pEnum.enumerateGroupFriendlyName();
+		ArrayList<ContentName> temp = pEnum.enumerateUsers();
+		userList = temp.toArray(new ContentName[temp.size()]);
+		ArrayList<ContentName> temp2 = pEnum.enumerateGroups();
+		groupList = temp2.toArray(new ContentName[temp2.size()]);
 		retrieveExistingACL();
 		
 		final JLabel userAndGroupLabel = new JLabel();
@@ -93,7 +94,7 @@ public class ACLManager extends JDialog implements ActionListener {
 		getContentPane().add(userAndGroupLabel);
 				
 		// user table
-		userACLTable = new ACLTable("Users", userFriendlyNameList, currentACL);
+		userACLTable = new ACLTable("Users", userList, currentACL);
 		JTable usersTable = new JTable(userACLTable);
 		usersTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		usersTable.getColumnModel().getColumn(0).setPreferredWidth(200);
@@ -107,7 +108,7 @@ public class ACLManager extends JDialog implements ActionListener {
 		getContentPane().add(usersScrollPane);
 		
 		// group table
-		groupACLTable = new ACLTable("Groups", groupFriendlyNameList, currentACL);
+		groupACLTable = new ACLTable("Groups", groupList, currentACL);
 		JTable groupsTable = new JTable(groupACLTable);
 		groupsTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		groupsTable.getColumnModel().getColumn(0).setPreferredWidth(200);
