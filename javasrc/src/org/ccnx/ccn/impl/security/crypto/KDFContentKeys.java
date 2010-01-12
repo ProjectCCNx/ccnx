@@ -17,7 +17,6 @@
 
 package org.ccnx.ccn.impl.security.crypto;
 
-import java.math.BigInteger;
 import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -33,6 +32,7 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.impl.security.crypto.util.CryptoConstants;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -74,21 +74,12 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * The encryption is done with the specified key, in CBC mode, using the all-zeros IV
  */
 public class KDFContentKeys extends ContentKeys implements Cloneable {
-	/*
-	 * The core encryption algorithms supported. Any native encryption
-	 * mode supported by Java *should* work, but these are compactly
-	 * encodable.
-	 */
-	public static final String CBC_MODE = "CBC";
-	public static final String CTR_MODE = "CTR";
-	public static final String CTR_POSTFIX = "/CTR/NoPadding";
-	public static final String CBC_POSTFIX = "/CBC/PKCS5Padding";
-	public static final String AES_ALGORITHM = "AES";
-	public static final String AES_CTR_MODE = AES_ALGORITHM + CTR_POSTFIX;
-	public static final String AES_CBC_MODE = AES_ALGORITHM + CBC_POSTFIX;
 	
-	public static final String DEFAULT_KEY_ALGORITHM = AES_ALGORITHM;
-	public static final String DEFAULT_CIPHER_ALGORITHM = AES_CTR_MODE;
+	/**
+	 * TODO these should probably move somewhere.
+	 */
+	public static final String DEFAULT_KEY_ALGORITHM = CryptoConstants.AES_ALGORITHM;
+	public static final String DEFAULT_CIPHER_ALGORITHM = CryptoConstants.AES_CTR_MODE;
 	public static final int DEFAULT_KEY_LENGTH = 16;
 	
 	public static final int DEFAULT_AES_KEY_LENGTH = DEFAULT_KEY_LENGTH; // bytes, 128 bits (do NOT increase for AES,
@@ -230,8 +221,39 @@ public class KDFContentKeys extends ContentKeys implements Cloneable {
 	}
 	
 	/**
-	 * Generate a segment encryption or decryption cipher using these ContentKeys
-	 * to encrypt or decrypt a particular segment.
+	 * Generate a segment encryption or decryption cipher using this stored
+	 * key material to encrypt or decrypt a particular segment.
+	 * 
+	 * This will use the CCN defaults for IV handling, to ensure that segments
+	 * of a given larger piece of content do not have overlapping key streams.
+	 * Higher-level functionality embodied in the library (or application-specific
+	 * code) should be used to make sure that the key, _masterIV pair used for a 
+	 * given multi-block piece of content is unique for that content.
+	 * 
+	 * CCN encryption algorithms assume deterministic IV generation (e.g. from 
+	 * cryptographic MAC or ciphers themselves), and therefore do not transport
+	 * the IV explicitly. Applications that wish to do so need to arrange
+	 * IV transport.
+	 * 
+	 * We assume this stream starts on the first block of a multi-block segement,
+	 * so for CTR mode, the initial block counter is 1 (block ==  encryption
+	 * block). (Conventions for counter start them at 1, not 0.) The cipher
+	 * will automatically increment the counter; if it overflows the two bytes
+	 * we've given to it it will start to increment into the segment number.
+	 * This runs the risk of potentially using up some of the IV space of
+	 * other segments. 
+	 * 
+	 * CTR_init = IV_master || segment_number || block_counter
+	 * CBC_iv = E_Ko(IV_master || segment_number || 0x0001)
+	 * 		(just to make it easier, use the same feed value)
+	 * 
+	 * CTR value is 16 bytes.
+	 * 		8 bytes are the IV.
+	 * 		6 bytes are the segment number.
+	 * 		last 2 bytes are the block number (for 16 byte blocks); if you 
+	 * 	    have more space, use it for the block counter.
+	 * IV value is the block width of the cipher.
+	 * 
 	 * @param segmentNumber segment to encrypt/decrypt
 	 * @param encryption true for encryption, false for decryption
 	 * @return the Cipher
@@ -239,7 +261,7 @@ public class KDFContentKeys extends ContentKeys implements Cloneable {
 	 * @throws InvalidAlgorithmParameterException
 	 * @see getSegmentEncryptionCipher(long)
 	 */
-	protected Cipher getSegmentCipher(long segmentNumber, boolean encryption)
+	protected Cipher getSegmentCipher(ContentName contentName, long segmentNumber, boolean encryption)
 		throws InvalidKeyException, InvalidAlgorithmParameterException {
 
 		Cipher cipher = getCipher();
@@ -278,7 +300,7 @@ public class KDFContentKeys extends ContentKeys implements Cloneable {
 		byte [] seed = new byte[seedLen];
 		
 		System.arraycopy(masterIV.getIV(), 0, seed, 0, masterIV.getIV().length);
-		byte [] byteSegNum = segmentNumberToByteArray(segmentNumber);
+		byte [] byteSegNum = ContentKeys.segmentNumberToByteArray(segmentNumber);
 		System.arraycopy(byteSegNum, 0, seed, masterIV.getIV().length, byteSegNum.length);
 		System.arraycopy(INITIAL_BLOCK_COUNTER_VALUE, 0, seed,
 				seed.length - BLOCK_COUNTER_LENGTH, BLOCK_COUNTER_LENGTH);
@@ -287,7 +309,7 @@ public class KDFContentKeys extends ContentKeys implements Cloneable {
 	
 	public IvParameterSpec buildIVCtr(IvParameterSpec masterIV, long segmentNumber, int ivCtrLen) throws InvalidKeyException, InvalidAlgorithmParameterException {
 		
-		if (_encryptionAlgorithm.contains(CTR_MODE)) {
+		if (_encryptionAlgorithm.contains(CryptoConstants.CTR_MODE)) {
 			return buildCtr(masterIV, segmentNumber, ivCtrLen);
 		} else {
 			return buildIV(masterIV, segmentNumber, ivCtrLen);
@@ -351,19 +373,6 @@ public class KDFContentKeys extends ContentKeys implements Cloneable {
 		IvParameterSpec iv = new IvParameterSpec(iv_output, 0, ivLen);
 		Log.finest("IV: ivParameterSpec source="+DataUtils.printHexBytes(iv_output)+"ivParameterSpec.getIV()="+DataUtils.printHexBytes(masterIV.getIV()));
 		return iv;
-	}
-	
-	/**
-	 * Converts a segment number to a byte array representation (big-endian).
-	 * @param segmentNumber the segment number to convert
-	 * @return the byte array representation of segmentNumber
-	 */
-	public static byte [] segmentNumberToByteArray(long segmentNumber) {
-		byte [] ba = new byte[SEGMENT_NUMBER_LENGTH];
-		// Is this the fastest way to do this?
-		byte [] bv = BigInteger.valueOf(segmentNumber).toByteArray();
-		System.arraycopy(bv, 0, ba, SEGMENT_NUMBER_LENGTH-bv.length, bv.length);
-		return ba;
 	}
 
 }
