@@ -20,10 +20,7 @@ package org.ccnx.ccn.utils.explorer;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.SortedSet;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -38,28 +35,28 @@ import javax.swing.event.ListSelectionListener;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
-import org.ccnx.ccn.profiles.security.access.group.MembershipList;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class GroupManagerGUI extends JDialog implements ActionListener, ListSelectionListener {
 
 	private static final long serialVersionUID = 1L;
 	
+	private GroupManager gm;
+	private PrincipalEnumerator pEnum;
 	ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
 	ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
-	private GroupManager gm;
 	
 	private ArrayList<String> userFriendlyNameList = new ArrayList<String>();
 	private ArrayList<String> groupFriendlyNameList = new ArrayList<String>();
+	private ArrayList<String> groupMembersFriendlyNameList = new ArrayList<String>();
+	
 	private SortedListModel groupsListModel = null;
-	private SortedListModel groupsMembersModel = null;
-	private SortedListModel principalsModel = null;
+	private SortedListModel groupMembershipListModel = null;
+	private SortedListModel principalsListModel = null;
 
 	// group updates
 	private String selectedGroupFriendlyName;
@@ -72,14 +69,14 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 	private JLabel groupMembersLabel;
 	private JList groupsList;
 	private JList principalsList;
-	private JList groupMembersList;
+	private JList groupMembershipList;
 	private JTextField newGroupName;
 	private JButton createGroupButton;
-	private JButton addButton;
-	private JButton removeButton;
+	private JButton addMemberButton;
+	private JButton removeMemberButton;
 	private JButton applyChangesButton;
 	private JButton cancelChangesButton;
-	private JScrollPane scrollPaneGroupMembers;
+	private JScrollPane scrollPaneGroupMembership;
 	private JScrollPane scrollPaneUsers;
 
 	// GUI positions
@@ -88,12 +85,7 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 	private int SCROLL_PANEL_HEIGHT = 180;
 	private int VERTICAL_OFFSET = 150;
 	
-	
-	/**
-	 * Create the dialog
-	 * @param frame 
-	 * @param path 
-	 */
+
 	public GroupManagerGUI(String path) {
 
 		super();
@@ -102,7 +94,16 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		setBounds(100, 100, 550, 500);
 
 		// enumerate existing users and groups
-		populateData();
+		try{
+			GroupAccessControlManager acm = new GroupAccessControlManager(null, groupStorage, userStorage, CCNHandle.open());
+			gm = acm.groupManager();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		pEnum = new PrincipalEnumerator(gm);
+		userFriendlyNameList = pEnum.enumerateUserFriendlyName();
+		groupFriendlyNameList = pEnum.enumerateGroupFriendlyName();
+		groupMembershipListModel = new SortedListModel();	
 		
 		// group list (single group selection)
 		final JLabel groupsLabel = new JLabel();
@@ -150,26 +151,26 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		ArrayList<String> principalFriendlyName = new ArrayList<String>();
 		principalFriendlyName.addAll(userFriendlyNameList);
 		principalFriendlyName.addAll(groupFriendlyNameList);
-		principalsModel = new SortedListModel();
-		principalsModel.addAll(principalFriendlyName.toArray());
-		principalsList = new JList(principalsModel);
+		principalsListModel = new SortedListModel();
+		principalsListModel.addAll(principalFriendlyName.toArray());
+		principalsList = new JList(principalsListModel);
 		principalsList.setName("users");
 		scrollPaneUsers.setViewportView(principalsList);
 		principalsList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		principalsList.setBorder(new BevelBorder(BevelBorder.LOWERED));
 
 		// add and remove buttons
-		addButton = new JButton();
-		addButton.addActionListener(this);
-		addButton.setText("add ->");
-		addButton.setBounds(225, VERTICAL_OFFSET + 80, 102, 25);
-		getContentPane().add(addButton);
+		addMemberButton = new JButton();
+		addMemberButton.addActionListener(this);
+		addMemberButton.setText("add ->");
+		addMemberButton.setBounds(225, VERTICAL_OFFSET + 80, 102, 25);
+		getContentPane().add(addMemberButton);
 
-		removeButton = new JButton();
-		removeButton.addActionListener(this);
-		removeButton.setText("<- remove");
-		removeButton.setBounds(225, VERTICAL_OFFSET + 150, 102, 25);
-		getContentPane().add(removeButton);
+		removeMemberButton = new JButton();
+		removeMemberButton.addActionListener(this);
+		removeMemberButton.setText("<- remove");
+		removeMemberButton.setBounds(225, VERTICAL_OFFSET + 150, 102, 25);
+		getContentPane().add(removeMemberButton);
 		
 		
 		// group membership list
@@ -179,15 +180,15 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		groupMembershipLabel.setBounds(342, VERTICAL_OFFSET, 153, 15);
 		getContentPane().add(groupMembershipLabel);
 		
-		scrollPaneGroupMembers = new JScrollPane();
-		scrollPaneGroupMembers.setBounds(348, VERTICAL_OFFSET + 40, SCROLL_PANEL_WIDTH, SCROLL_PANEL_HEIGHT);
-		getContentPane().add(scrollPaneGroupMembers);
+		scrollPaneGroupMembership = new JScrollPane();
+		scrollPaneGroupMembership.setBounds(348, VERTICAL_OFFSET + 40, SCROLL_PANEL_WIDTH, SCROLL_PANEL_HEIGHT);
+		getContentPane().add(scrollPaneGroupMembership);
 		
-		groupMembersList = new JList(groupsMembersModel);
-		groupMembersList.setName("groupMembers");
-		scrollPaneGroupMembers.setViewportView(groupMembersList);
-		groupMembersList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-		groupMembersList.setBorder(new BevelBorder(BevelBorder.LOWERED));
+		groupMembershipList = new JList(groupMembershipListModel);
+		groupMembershipList.setName("groupMembers");
+		scrollPaneGroupMembership.setViewportView(groupMembershipList);
+		groupMembershipList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+		groupMembershipList.setBorder(new BevelBorder(BevelBorder.LOWERED));
 		
 		// apply and cancel buttons
 		applyChangesButton = new JButton();
@@ -204,96 +205,91 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		cancelChangesButton.setBounds(363, VERTICAL_OFFSET + 250, 112, 25);
 		getContentPane().add(cancelChangesButton);
 		
-		basicView();
+		selectGroupView();
 	}
 	
-	public void basicView() {
+	/**
+	 * Display the basic view in which the user can select a group to edit.
+	 */
+	public void selectGroupView() {
 		createGroupButton.setVisible(true);
 		newGroupLabel.setVisible(false);
 		newGroupName.setVisible(false);
 		groupMembersLabel.setVisible(false);
 		groupMembershipLabel.setVisible(false);
 		scrollPaneUsers.setVisible(false);
-		scrollPaneGroupMembers.setVisible(false);
-		addButton.setVisible(false);
-		removeButton.setVisible(false);
+		scrollPaneGroupMembership.setVisible(false);
+		addMemberButton.setVisible(false);
+		removeMemberButton.setVisible(false);
 		applyChangesButton.setVisible(false);
 		cancelChangesButton.setVisible(false);		
 	}
 	
-	public void editView() {
+	/**
+	 * Display the view which allows a user to edit the membership of a group.
+	 */
+	public void editGroupMembershipView() {
 		createGroupButton.setVisible(true);
 		newGroupLabel.setVisible(false);
 		newGroupName.setVisible(false);
 		groupMembersLabel.setVisible(true);
 		groupMembershipLabel.setVisible(true);
 		scrollPaneUsers.setVisible(true);
-		scrollPaneGroupMembers.setVisible(true);
-		addButton.setVisible(true);
-		removeButton.setVisible(true);
+		scrollPaneGroupMembership.setVisible(true);
+		addMemberButton.setVisible(true);
+		removeMemberButton.setVisible(true);
 		applyChangesButton.setText("Apply Changes");
 		applyChangesButton.setVisible(true);
 		cancelChangesButton.setText("Cancel Changes");
 		cancelChangesButton.setVisible(true);
 	}
 	
-	public void createView() {
+	/**
+	 * Display the view which allows the user to create a new group.
+	 */
+	public void createNewGroupView() {
 		createGroupButton.setVisible(false);
 		newGroupLabel.setVisible(true);
 		newGroupName.setVisible(true);
 		groupMembersLabel.setVisible(true);
 		groupMembershipLabel.setVisible(true);
 		scrollPaneUsers.setVisible(true);
-		scrollPaneGroupMembers.setVisible(true);
-		addButton.setVisible(true);
-		removeButton.setVisible(true);
+		scrollPaneGroupMembership.setVisible(true);
+		addMemberButton.setVisible(true);
+		removeMemberButton.setVisible(true);
 		applyChangesButton.setText("Create Group");
 		applyChangesButton.setVisible(true);
 		cancelChangesButton.setText("Cancel");
 		cancelChangesButton.setVisible(true);		
 	}
 	
-	
-	private void populateData() {		
-		try{
-			// enumerate users
-			userFriendlyNameList = listPrincipals(userStorage);
-
-			// enumerate groups
-			GroupAccessControlManager acm = new GroupAccessControlManager(null, groupStorage, userStorage, CCNHandle.open());
-			gm = acm.groupManager();
-			groupFriendlyNameList = listPrincipals(groupStorage);
-		} 
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-		groupsMembersModel = new SortedListModel();		
-	}
-
-	
 	public void actionPerformed(ActionEvent e) {
-
 		if (applyChangesButton == e.getSource()) applyChanges();
 		else if (cancelChangesButton == e.getSource()) cancelChanges();
-		else if (addButton == e.getSource()) addPrincipals();
-		else if (removeButton == e.getSource()) removePrincipals();
+		else if (addMemberButton == e.getSource()) addPrincipals();
+		else if (removeMemberButton == e.getSource()) removePrincipals();
 		else if (createGroupButton == e.getSource()) createNewGroup();
 	}
 	
 
+	/**
+	 * Apply all batched operations (addition or removal of principals)
+	 */
 	private void applyChanges() {
 		try{
 			if (selectedGroupFriendlyName != null) {
+				// we are applying changes to an existing group
 				Group g = gm.getGroup(selectedGroupFriendlyName);
 				g.modify(membersToAdd, membersToRemove);
 			}
 			else {
+				// we are creating a new group
 				selectedGroupFriendlyName = newGroupName.getText();
 				gm.createGroup(selectedGroupFriendlyName, membersToAdd);
-				populateData();
+				groupFriendlyNameList = pEnum.enumerateGroupFriendlyName();
 				groupsListModel.clear();
 				groupsListModel.addAll(groupFriendlyNameList.toArray());
-				basicView();
+				selectGroupView();
 			}
 		}
 		catch (Exception e) {
@@ -302,13 +298,24 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 	}
 
 	
+	/**
+	 * Cancel all batched operations (addition or removal of principals)
+	 */
 	private void cancelChanges() {
 		membersToAdd = new ArrayList<Link>();
 		membersToRemove = new ArrayList<Link>();
-		populateParticipantLists();
-		if (selectedGroupFriendlyName == null) basicView();
+		populateGroupMembershipList();
+		populatePrincipalsList();
+		if (selectedGroupFriendlyName == null) selectGroupView();
 	}
 
+	
+	/**
+	 * Add selected principals (users of groups) to the group 
+	 * identified by selectedGroupFriendlyName.
+	 * Note that addition (and removal) operations are batched and only applied when the 
+	 * method applyChanges() is called.
+	 */	
 	private void addPrincipals() {
 		ArrayList<Object> principalsToAdd = new ArrayList<Object>();
 		
@@ -319,7 +326,7 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		}
 		
 		for (Object obj: principalsToAdd) {
-			((SortedListModel) groupMembersList.getModel()).add(obj);
+			((SortedListModel) groupMembershipList.getModel()).add(obj);
 			((SortedListModel) principalsList.getModel()).removeElement(obj);
 			String principalFriendlyName = (String) obj;
 			ContentName cn = ContentName.fromNative(userStorage, principalFriendlyName);
@@ -328,90 +335,88 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		}
 		principalsList.clearSelection();
 	}
+
 	
+	/**
+	 * Remove selected principals (users of groups) from the group 
+	 * identified by selectedGroupFriendlyName.
+	 * Note that removal (and addition) operations are batched and only applied when the 
+	 * method applyChanges() is called.
+	 */
 	private void removePrincipals() {
 		ArrayList<Object> principalsToRemove = new ArrayList<Object>();
 		
-		int[] selectedPrincipals = groupMembersList.getSelectedIndices();		
+		int[] selectedPrincipals = groupMembershipList.getSelectedIndices();		
 		for (int index: selectedPrincipals) {
-			Object obj = groupMembersList.getModel().getElementAt(index);
+			Object obj = groupMembershipList.getModel().getElementAt(index);
 			principalsToRemove.add(obj);
 		}
 		
 		for (Object obj: principalsToRemove) {
 			((SortedListModel) principalsList.getModel()).add(obj);
-			((SortedListModel) groupMembersList.getModel()).removeElement(obj);
+			((SortedListModel) groupMembershipList.getModel()).removeElement(obj);
 			String principalFriendlyName = (String) obj;
 			ContentName cn = ContentName.fromNative(userStorage, principalFriendlyName);
 			Link lk = new Link(cn);
 			membersToRemove.add(lk);
 		}
-		groupMembersList.clearSelection();
+		groupMembershipList.clearSelection();
 	}
 	
+	
+	/**
+	 * Create a new group
+	 */
 	private void createNewGroup() {
 		groupsList.clearSelection();
 		newGroupName.setText("");
 		selectedGroupFriendlyName = null;
-		populateParticipantLists();
+		populateGroupMembershipList();
+		populatePrincipalsList();
 		membersToAdd = new ArrayList<Link>();
 		membersToRemove = new ArrayList<Link>();
-		createView();
+		createNewGroupView();
 	}
 
-	private ArrayList<String> listPrincipals(ContentName path) throws Exception {
-		ArrayList<String> principalList = new ArrayList<String>();
-		
-		EnumeratedNameList userDirectory = new EnumeratedNameList(path, CCNHandle.open());
-		userDirectory.waitForChildren(); // will block
-		Thread.sleep(1000);
-		
-		SortedSet<ContentName> availableChildren = userDirectory.getChildren();
-		if ((null == availableChildren) || (availableChildren.size() == 0)) {
-			Log.warning("No available user keystore data in directory " + path + ", giving up.");
-			throw new IOException("No available user keystore data in directory " + path + ", giving up.");
-		}
-		for (ContentName child : availableChildren) {
-			String friendlyName = ContentName.componentPrintNative(child.lastComponent());
-			System.out.println(friendlyName);
-			principalList.add(friendlyName);
-		}
-		return principalList;
-	}
 	
-	public void populateParticipantLists() {
-		ArrayList<String> members = new ArrayList<String>();
-		if (selectedGroupFriendlyName != null) {
-			try{
-				Group g = gm.getGroup(selectedGroupFriendlyName);
-				MembershipList ml = g.membershipList();
-				LinkedList<Link> lll = ml.contents();
-				for (Link l: lll) {
-					members.add(ContentName.componentPrintNative(l.targetName().lastComponent()));
-				}
-			}
-			catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-		groupsMembersModel.clear();
-		groupsMembersModel.addAll(members.toArray());
-		principalsModel.clear();
+	/**
+	 * Display the members of selectedGroupFriendlyName.
+	 * If selectedGroupFriendlyName is null, the membership list is empty (e.g. we are creating a new group)
+	 */
+	public void populateGroupMembershipList() {
+		groupMembershipListModel.clear();
+		groupMembersFriendlyNameList = pEnum.enumerateGroupMembers(selectedGroupFriendlyName);
+		groupMembershipListModel.addAll(groupMembersFriendlyNameList.toArray());
+	}
+
+	
+	/**
+	 * Display the list of principals (users and groups) which are not already included
+	 * in the membership list of selectedGroupFriendlyName.
+	 */
+	public void populatePrincipalsList() {
+		principalsListModel.clear();
 		ArrayList<String> principalFriendlyName = new ArrayList<String>();
 		principalFriendlyName.addAll(userFriendlyNameList);
 		principalFriendlyName.addAll(groupFriendlyNameList);
-		principalsModel.addAll(principalFriendlyName.toArray());
-		principalsModel.removeElementArrayList(members);
+		principalsListModel.addAll(principalFriendlyName.toArray());
+		principalsListModel.removeElementArrayList(groupMembersFriendlyNameList);
 	}
 
+	
+	/**
+	 * Display the membership list and the list of principals that can be added
+	 * to the selected group.
+	 */
 	public void valueChanged(ListSelectionEvent e) {
 		JList list = (JList) e.getSource();		
 		if(list.getSelectedValue() != null){
 			selectedGroupFriendlyName = list.getSelectedValue().toString();
 			membersToAdd = new ArrayList<Link>();
 			membersToRemove = new ArrayList<Link>();
-			populateParticipantLists();
-			editView();
+			populateGroupMembershipList();
+			populatePrincipalsList();
+			editGroupMembershipView();
 		}
 	}
 	
