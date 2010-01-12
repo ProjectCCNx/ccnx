@@ -4,6 +4,10 @@ import java.util.ArrayList;
 
 import javax.swing.table.AbstractTableModel;
 
+import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.profiles.security.access.group.ACL;
+import org.ccnx.ccn.protocol.ContentName;
+
 public class ACLTable extends AbstractTableModel {
 
 	private static final long serialVersionUID = 1L;
@@ -11,17 +15,47 @@ public class ACLTable extends AbstractTableModel {
 	private String[] columnNames = {"Principals", "Read", "Write", "Manage"};
 	private int ACL_LENGTH = 3;
 	private ArrayList<String> principals;
-	private Object[][] acl;
+	private Object[][] aclTable;
+	private ACL initialACL;
+	private ArrayList<ACL.ACLOperation> ACLUpdates = new ArrayList<ACL.ACLOperation>();
 	
-	public ACLTable(String type, ArrayList<String> principals) {
+	public ACLTable(String type, ArrayList<String> principals, ACL initialACL) {
 		columnNames[0] = type;
 		this.principals = principals;
-		acl = new Object[principals.size()][3];
+		this.initialACL = initialACL;
+		
+		initializeACLTable();		
+	}
+	
+	private void initializeACLTable() {
+		aclTable = new Object[principals.size()][3];
 		for (int c=0; c<3; c++) {
 			for (int r=0; r<principals.size(); r++) {
-				acl[r][c] = new Boolean(false);
+				aclTable[r][c] = new Boolean(false);
 			}
 		}
+	
+		for (int i=0; i<initialACL.size(); i++) {
+			Link lk = (Link) initialACL.get(i);
+			String principalName = ContentName.componentPrintNative(lk.targetName().lastComponent());
+			String permission = lk.targetLabel();
+			int pos = principals.indexOf(principalName);
+			if (pos > -1) {
+				if (permission.equals(ACL.LABEL_READER)) aclTable[pos][0] = new Boolean(true);
+				if (permission.equals(ACL.LABEL_WRITER)) {
+					aclTable[pos][0] = new Boolean (true);
+					aclTable[pos][1] = new Boolean(true);
+				}
+				if (permission.equals(ACL.LABEL_MANAGER)) {
+					aclTable[pos][0] = new Boolean (true);
+					aclTable[pos][1] = new Boolean(true);
+					aclTable[pos][2] = new Boolean(true);
+				}
+			}
+			else {
+				System.out.println("WARNING: principal name " + principalName + " in ACL not a known principal in this table");
+			}
+		}		
 	}
 	
 	public int getColumnCount() {
@@ -42,7 +76,7 @@ public class ACLTable extends AbstractTableModel {
 	
 	public Object getValueAt(int row, int col) {
 		if (col == 0) return principals.get(row);
-		else if (col < 4) return acl[row][col-1];
+		else if (col < 4) return aclTable[row][col-1];
 		else return null;
 	}
 	
@@ -50,13 +84,13 @@ public class ACLTable extends AbstractTableModel {
 		Boolean v = (Boolean) value;
 		if (v.equals(Boolean.TRUE)) {
 			for (int c=0; c<col; c++) {
-				acl[row][c] = v;
+				aclTable[row][c] = v;
 				fireTableCellUpdated(row, c+1);
 			}
 		}
 		else {
 			for (int c=col-1; c < ACL_LENGTH; c++) {
-				acl[row][c] = v;
+				aclTable[row][c] = v;
 				fireTableCellUpdated(row, c+1);
 			}
 		}
@@ -66,4 +100,11 @@ public class ACLTable extends AbstractTableModel {
 		if (col == 0 ) return false;
 		else return true;
 	}
+	
+	public void cancelChanges() {
+		ACLUpdates = new ArrayList<ACL.ACLOperation>();
+		initializeACLTable();
+		fireTableDataChanged();
+	}
+	
 }

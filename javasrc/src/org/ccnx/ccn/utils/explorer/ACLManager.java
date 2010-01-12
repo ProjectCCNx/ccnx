@@ -34,7 +34,6 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
-import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class ACLManager extends JDialog implements ActionListener {
@@ -50,6 +49,9 @@ public class ACLManager extends JDialog implements ActionListener {
 	
 	private ArrayList<String> userFriendlyNameList = new ArrayList<String>();
 	private ArrayList<String> groupFriendlyNameList = new ArrayList<String>();
+	private ACL currentACL;
+	private ACLTable userACLTable;
+	private ACLTable groupACLTable;
 	
 	// GUI elements
 	private JButton applyChangesButton;
@@ -83,6 +85,7 @@ public class ACLManager extends JDialog implements ActionListener {
 		pEnum = new PrincipalEnumerator(gm);
 		userFriendlyNameList = pEnum.enumerateUserFriendlyName();
 		groupFriendlyNameList = pEnum.enumerateGroupFriendlyName();
+		retrieveExistingACL();
 		
 		final JLabel userAndGroupLabel = new JLabel();
 		userAndGroupLabel.setBounds(10, 30, 300, 15);
@@ -90,7 +93,8 @@ public class ACLManager extends JDialog implements ActionListener {
 		getContentPane().add(userAndGroupLabel);
 				
 		// user table
-		JTable usersTable = new JTable(new ACLTable("Users", userFriendlyNameList));
+		userACLTable = new ACLTable("Users", userFriendlyNameList, currentACL);
+		JTable usersTable = new JTable(userACLTable);
 		usersTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		usersTable.getColumnModel().getColumn(0).setPreferredWidth(200);
 		usersTable.getColumnModel().getColumn(1).setPreferredWidth(50);
@@ -103,7 +107,8 @@ public class ACLManager extends JDialog implements ActionListener {
 		getContentPane().add(usersScrollPane);
 		
 		// group table
-		JTable groupsTable = new JTable(new ACLTable("Groups", groupFriendlyNameList));
+		groupACLTable = new ACLTable("Groups", groupFriendlyNameList, currentACL);
+		JTable groupsTable = new JTable(groupACLTable);
 		groupsTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		groupsTable.getColumnModel().getColumn(0).setPreferredWidth(200);
 		groupsTable.getColumnModel().getColumn(1).setPreferredWidth(50);
@@ -132,6 +137,16 @@ public class ACLManager extends JDialog implements ActionListener {
 		
 	}
 
+	
+	private void retrieveExistingACL() {
+		try{
+			currentACL = acm.getEffectiveACLObject(node).acl();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}		
+	}
+	
 
 	public void actionPerformed(ActionEvent ae) {
 		if (applyChangesButton == ae.getSource()) applyChanges();
@@ -142,18 +157,8 @@ public class ACLManager extends JDialog implements ActionListener {
 	}
 	
 	private void cancelChanges() {
-		try{
-			ACLObject aclo = acm.getEffectiveACLObject(node);
-			System.out.println(aclo);
-//			for (int i=0; i<acl.size(); i++) {
-//				Link l = (Link) acl.get(i);
-//				System.out.println(l.targetName());
-//				System.out.println(l.targetLabel());
-//			}
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
+		userACLTable.cancelChanges();
+		groupACLTable.cancelChanges();
 	}
 	
 }
