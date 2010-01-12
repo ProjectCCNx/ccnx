@@ -16,6 +16,7 @@
  */
 package org.ccnx.ccn.impl.security.crypto;
 
+import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -27,16 +28,18 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.protocol.ContentName;
 
-public abstract class ContentKeys {
+public abstract class ContentKeys implements Cloneable {
 
 	/** 
 	 * A simple source of key derivation material. 
 	 */
 	private static SecureRandom _random;
 
-	public String _encryptionAlgorithm;
-	public SecretKeySpec _encryptionKey;
+	protected String _encryptionAlgorithm;
+	protected SecretKeySpec _encryptionKey;
+	protected ContentName _cachedContentName;
 	
 	protected ContentKeys(String encryptionAlgorithm, SecretKeySpec encryptionKey) {
 		_encryptionAlgorithm = encryptionAlgorithm;
@@ -108,44 +111,10 @@ public abstract class ContentKeys {
 	/**
 	 * Make an encrypting or decrypting Cipher to be used in making a CipherStream to
 	 * wrap CCN data.
-	 * 
-	 * This will use the CCN defaults for IV handling, to ensure that segments
-	 * of a given larger piece of content do not have overlapping key streams.
-	 * Higher-level functionality embodied in the library (or application-specific
-	 * code) should be used to make sure that the key, _masterIV pair used for a 
-	 * given multi-block piece of content is unique for that content.
-	 * 
-	 * CCN encryption algorithms assume deterministic IV generation (e.g. from 
-	 * cryptographic MAC or ciphers themselves), and therefore do not transport
-	 * the IV explicitly. Applications that wish to do so need to arrange
-	 * IV transport.
-	 * 
-	 * We assume this stream starts on the first block of a multi-block segement,
-	 * so for CTR mode, the initial block counter is 1 (block ==  encryption
-	 * block). (Conventions for counter start them at 1, not 0.) The cipher
-	 * will automatically increment the counter; if it overflows the two bytes
-	 * we've given to it it will start to increment into the segment number.
-	 * This runs the risk of potentially using up some of the IV space of
-	 * other segments. 
-	 * 
-	 * CTR_init = IV_master || segment_number || block_counter
-	 * CBC_iv = E_Ko(IV_master || segment_number || 0x0001)
-	 * 		(just to make it easier, use the same feed value)
-	 * 
-	 * CTR value is 16 bytes.
-	 * 		8 bytes are the IV.
-	 * 		6 bytes are the segment number.
-	 * 		last 2 bytes are the block number (for 16 byte blocks); if you 
-	 * 	    have more space, use it for the block counter.
-	 * IV value is the block width of the cipher.
-	 * 
-	 * @param segmentNumber the segment number to create an encryption cipher for
-	 * @throws InvalidAlgorithmParameterException 
-	 * @throws InvalidKeyException 
 	 */
-	public Cipher getSegmentEncryptionCipher(long segmentNumber)
+	public Cipher getSegmentEncryptionCipher(ContentName contentName, long segmentNumber)
 	throws InvalidKeyException, InvalidAlgorithmParameterException {
-		return getSegmentCipher(segmentNumber, true);
+		return getSegmentCipher(contentName, segmentNumber, true);
 	}
 
 	/**
@@ -156,9 +125,9 @@ public abstract class ContentKeys {
 	 * @throws InvalidAlgorithmParameterException
 	 * @see getSegmentEncryptionCipher(long)
 	 */
-	public Cipher getSegmentDecryptionCipher(long segmentNumber)
+	public Cipher getSegmentDecryptionCipher(ContentName contentName, long segmentNumber)
 	throws InvalidKeyException, InvalidAlgorithmParameterException {
-		return getSegmentCipher(segmentNumber, false);
+		return getSegmentCipher(contentName, segmentNumber, false);
 	}
 
 	/**
@@ -171,6 +140,38 @@ public abstract class ContentKeys {
 	 * @throws InvalidAlgorithmParameterException
 	 * @see getSegmentEncryptionCipher(long)
 	 */
-	protected abstract Cipher getSegmentCipher(long segmentNumber, boolean encryption)
+	protected abstract Cipher getSegmentCipher(ContentName contentName, long segmentNumber, boolean encryption)
 			throws InvalidKeyException, InvalidAlgorithmParameterException;
+	
+	/**
+	 * Helper methods to let subclasses cache information that is unlikely to have changed.
+	 */
+	protected boolean hasCachedContentNameChanged(ContentName newContentName) {
+		if (null == newContentName) {
+			Log.info("Unexpected: content name is null!");
+			return (getCachedContentName() == null);
+		}
+		return newContentName.equals(getCachedContentName());
+	}
+	
+	protected void setCachedContentName(ContentName newContentName) {
+		_cachedContentName = newContentName;
+	}
+	
+	protected ContentName getCachedContentName() {
+		return _cachedContentName;
+	}
+
+	/**
+	 * Converts a segment number to a byte array representation (big-endian).
+	 * @param segmentNumber the segment number to convert
+	 * @return the byte array representation of segmentNumber
+	 */
+	public static byte [] segmentNumberToByteArray(long segmentNumber) {
+		byte [] ba = new byte[KDFContentKeys.SEGMENT_NUMBER_LENGTH];
+		// Is this the fastest way to do this?
+		byte [] bv = BigInteger.valueOf(segmentNumber).toByteArray();
+		System.arraycopy(bv, 0, ba, KDFContentKeys.SEGMENT_NUMBER_LENGTH-bv.length, bv.length);
+		return ba;
+	}
 }
