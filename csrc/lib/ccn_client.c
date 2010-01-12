@@ -1217,8 +1217,8 @@ ccn_update_refresh_us(struct ccn *h, struct timeval *tv)
         return;
     if (tv->tv_sec > h->now.tv_sec + CCN_INTEREST_LIFETIME_MICROSEC / 100000)
         return;
-    delta = (h->now.tv_sec  - tv->tv_sec)*1000000 +
-            (h->now.tv_usec - tv->tv_usec);
+    delta = (tv->tv_sec  - h->now.tv_sec)*1000000 +
+            (tv->tv_usec - h->now.tv_usec);
     if (delta < 0)
         delta = 0;
     if (delta < h->refresh_us)
