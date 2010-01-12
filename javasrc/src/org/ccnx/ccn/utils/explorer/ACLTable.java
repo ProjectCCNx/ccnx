@@ -6,6 +6,7 @@ import javax.swing.table.AbstractTableModel;
 
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
+import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class ACLTable extends AbstractTableModel {
@@ -27,8 +28,8 @@ public class ACLTable extends AbstractTableModel {
 	}
 	
 	private void initializeACLTable() {
-		aclTable = new Object[principals.length][3];
-		for (int c=0; c<3; c++) {
+		aclTable = new Object[principals.length][ACL_LENGTH];
+		for (int c=0; c<ACL_LENGTH; c++) {
 			for (int r=0; r<principals.length; r++) {
 				aclTable[r][c] = new Boolean(false);
 			}
@@ -93,7 +94,7 @@ public class ACLTable extends AbstractTableModel {
 		fireTableDataChanged();
 	}
 	
-	public void setRole(ContentName principal, String role) {
+	public int getIndexOfPrincipal(ContentName principal) {
 		int pos = -1;
 		for (int i=0; i<principals.length; i++) {
 			if (principal.compareTo(principals[i]) == 0) {
@@ -101,6 +102,11 @@ public class ACLTable extends AbstractTableModel {
 				break;
 			}
 		}
+		return pos;
+	}
+	
+	public void setRole(ContentName principal, String role) {
+		int pos = getIndexOfPrincipal(principal);
 		if (pos > -1) {
 			if (role.equals(ACL.LABEL_READER)) {
 				aclTable[pos][0] = new Boolean(true);
@@ -124,20 +130,69 @@ public class ACLTable extends AbstractTableModel {
 		}
 	}
 	
-	public ArrayList<ACL.ACLOperation> computeACLUpdates() {
-		ArrayList<ACL.ACLOperation> ACLUpdates = new ArrayList<ACL.ACLOperation>();
+	public String getRole(ContentName principal) {
+		String role = null;
+		int pos = getIndexOfPrincipal(principal);
+		if (pos > -1) {
+			if ((Boolean) aclTable[pos][2]) role = ACL.LABEL_MANAGER;
+			else if ((Boolean) aclTable[pos][1]) role = ACL.LABEL_WRITER;
+			else if ((Boolean) aclTable[pos][0]) role = ACL.LABEL_READER;			
+		}
+		return role;
+	}
+	
+	public ArrayList<ACLOperation> computeACLUpdates() {
+		ArrayList<ACLOperation> ACLUpdates = new ArrayList<ACLOperation>();
+		
 		for (int i=0; i<principals.length; i++) {
 			ContentName principal = principals[i];
+			Link plk = new Link(principal);
 			
-			// retrieve initial role
+			// get initial role
 			String initialRole = null;
 			for (int j=0; j<initialACL.size(); j++) {
 				Link lk = (Link) initialACL.get(j);
-				String principalName = ContentName.componentPrintNative(lk.targetName().lastComponent());
-				if (principalName.equals(principal)) initialRole = lk.targetLabel();
+				if (principal.compareTo(lk.targetName()) == 0) {
+					initialRole = lk.targetLabel();
+				}
 			}
 			
+			// get final role
+			String finalRole = getRole(principal);
+			
+			// compare initial and final role
+			if (initialRole == null) {
+				if (finalRole == null) continue;
+				if (finalRole.equals(ACL.LABEL_READER)) ACLUpdates.add(ACLOperation.addReaderOperation(plk));
+				else if (finalRole.equals(ACL.LABEL_WRITER)) ACLUpdates.add(ACLOperation.addWriterOperation(plk));
+				else if (finalRole.equals(ACL.LABEL_MANAGER)) ACLUpdates.add(ACLOperation.addManagerOperation(plk));
+			}
+			else if (initialRole.equals(ACL.LABEL_READER)) {
+				if (finalRole == null) ACLUpdates.add(ACLOperation.removeReaderOperation(plk));
+				else if (finalRole.equals(ACL.LABEL_WRITER)) ACLUpdates.add(ACLOperation.addWriterOperation(plk));
+				else if (finalRole.equals(ACL.LABEL_MANAGER)) ACLUpdates.add(ACLOperation.addManagerOperation(plk));
+			}
+			else if (initialRole.equals(ACL.LABEL_WRITER)) {
+				if (finalRole == null) ACLUpdates.add(ACLOperation.removeWriterOperation(plk));
+				else if (finalRole.equals(ACL.LABEL_READER)) {
+					ACLUpdates.add(ACLOperation.removeWriterOperation(plk));
+					ACLUpdates.add(ACLOperation.addReaderOperation(plk));
+				}
+				else if (finalRole.equals(ACL.LABEL_MANAGER)) ACLUpdates.add(ACLOperation.addManagerOperation(plk));
+			}
+			else if (initialRole.equals(ACL.LABEL_MANAGER)) {
+				if (finalRole == null) ACLUpdates.add(ACLOperation.removeManagerOperation(plk));
+				else if (finalRole.equals(ACL.LABEL_READER)) {
+					ACLUpdates.add(ACLOperation.removeManagerOperation(plk));
+					ACLUpdates.add(ACLOperation.addReaderOperation(plk));
+				}
+				else if (finalRole.equals(ACL.LABEL_WRITER)) {
+					ACLUpdates.add(ACLOperation.removeManagerOperation(plk));
+					ACLUpdates.add(ACLOperation.addWriterOperation(plk));
+				}
+			}			
 		}
+		
 		return ACLUpdates;
 	}
 	

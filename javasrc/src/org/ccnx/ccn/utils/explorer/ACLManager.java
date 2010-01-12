@@ -33,6 +33,7 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
+import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class ACLManager extends JDialog implements ActionListener {
@@ -64,15 +65,6 @@ public class ACLManager extends JDialog implements ActionListener {
 		setTitle("Manage Access Controls for "+path);
 		getContentPane().setLayout(null);
 		
-		// compute CCN node
-		try{
-			node = ContentName.fromNative(path);
-			System.out.println("***node: " + node.toString());
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-		
 		// enumerate existing users and groups
 		try{
 			ContentName baseNode = ContentName.fromNative("/");
@@ -86,8 +78,11 @@ public class ACLManager extends JDialog implements ActionListener {
 		userList = temp.toArray(new ContentName[temp.size()]);
 		ArrayList<ContentName> temp2 = pEnum.enumerateGroups();
 		groupList = temp2.toArray(new ContentName[temp2.size()]);
-		retrieveExistingACL();
 		
+		getNodeName(path);
+		getExistingACL();
+		
+		// title label
 		final JLabel userAndGroupLabel = new JLabel();
 		userAndGroupLabel.setBounds(10, 30, 300, 15);
 		userAndGroupLabel.setText("User and Group Permissions for " + path);
@@ -138,8 +133,16 @@ public class ACLManager extends JDialog implements ActionListener {
 		
 	}
 
+	private void getNodeName(String path) {
+		try{
+			node = ContentName.fromNative(path);
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 	
-	private void retrieveExistingACL() {
+	private void getExistingACL() {
 		try{
 			currentACL = acm.getEffectiveACLObject(node).acl();
 		}
@@ -155,6 +158,18 @@ public class ACLManager extends JDialog implements ActionListener {
 	}
 	
 	private void applyChanges() {
+		ArrayList<ACLOperation> userUpdates = userACLTable.computeACLUpdates();
+		ArrayList<ACLOperation> groupUpdates = groupACLTable.computeACLUpdates();
+		System.out.println("User updates:");
+		for (ACLOperation aclo: userUpdates) System.out.println(aclo.targetName() + " ---> " + aclo.targetLabel());
+		System.out.println("Group updates:");
+		for (ACLOperation aclo: groupUpdates) System.out.println(aclo.targetName() + " ---> " + aclo.targetLabel());
+		try {
+			acm.updateACL(node, userUpdates);
+			acm.updateACL(node, groupUpdates);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 	private void cancelChanges() {
