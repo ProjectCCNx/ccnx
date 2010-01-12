@@ -247,14 +247,17 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * name enumeration requests. Once we have an initial set of children, this method
 	 * returns immediately.
 	 * @param timeout Maximum amount of time to wait, if 0, waits forever.
-	 * @return void
+	 * @return a boolean value that indicates whether new data was found.
 	 */
-	public void waitForChildren(long timeout) {
+	public boolean waitForChildren(long timeout) {
+		boolean foundNewData = false;
+		if ((null != _children) && (_children.size() > 0)) foundNewData = true;
 		while ((null == _children) || _children.size() == 0) {
-			waitForNewChildren(timeout);
+			foundNewData = waitForNewChildren(timeout);
 			if (timeout != SystemConfiguration.NO_TIMEOUT)
 				break;
 		}
+		return foundNewData;
 	}
 	
 	/**
@@ -453,10 +456,11 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		int childIndex = parentName.count();
 		EnumeratedNameList parentEnumerator = null;
 		while (childIndex < childName.count()) {
-			parentEnumerator = new EnumeratedNameList(parentName, handle);
-			parentEnumerator.waitForChildren(CHILD_WAIT_INTERVAL); // we're only getting the first round here... 
-			// could wrap this bit in a loop if want to try harder
 			byte[] childNameComponent = childName.component(childIndex);
+			parentEnumerator = new EnumeratedNameList(parentName, handle);
+			while (parentEnumerator.waitForChildren(CHILD_WAIT_INTERVAL)) {
+				if (parentEnumerator.hasChild(childNameComponent)) break;
+			}
 			if (parentEnumerator.hasChild(childNameComponent)) {
 				childIndex++;
 				if (childIndex == childName.count()) {
