@@ -126,9 +126,10 @@ public class CCNChat extends JFrame implements ActionListener {
 	public void actionPerformed(ActionEvent e) {
 		try {
 			String newText = _typedText.getText();
-			if (null != newText) {
+			if ((null != newText) && (newText.length() > 0)) {
 				_writeString.save(newText);
 			}
+
 		} catch (Exception e1) {
 			System.err.println("Exception saving our input: " + e1.getClass().getName() + ": " + e1.getMessage());
 			e1.printStackTrace();
