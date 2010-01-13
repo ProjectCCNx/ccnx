@@ -320,7 +320,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @throws NoSuchAlgorithmException if encryption requests invalid algorithm
 	 */
 	protected void writeToNetwork(byte[] buf, long offset, long len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
-		if ((len <= 0) || (null == buf) || (buf.length == 0) || (offset >= buf.length))
+		if ((len < 0) || (null == buf) || ((offset + len) > buf.length))
 			throw new IllegalArgumentException("Invalid argument!");
 
 		long bytesToWrite = len;
