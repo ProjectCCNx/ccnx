@@ -38,7 +38,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -414,7 +414,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			// Get the content name without the segment parent
 			ContentName contentName = SegmentationProfile.segmentRoot(newSegment.name());
 			// Attempt to retrieve the keys for this namespace
-			_keys = GroupAccessControlManager.keysForInput(contentName, _handle);
+			_keys = AccessControlManager.keysForInput(contentName, _handle);
 		}
 		setCurrentSegment(newSegment);
 	}
