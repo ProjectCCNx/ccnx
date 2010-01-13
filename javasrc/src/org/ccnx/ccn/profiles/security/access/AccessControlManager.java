@@ -24,6 +24,7 @@ import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager.Root.RootObject;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
@@ -267,6 +268,9 @@ public abstract class AccessControlManager {
 	 */
 	public ContentKeys getContentKeys(ContentName dataNodeName)
 	throws InvalidKeyException, InvalidCipherTextException, AccessDeniedException, IOException {
+		if (SegmentationProfile.isSegment(dataNodeName)) {
+			dataNodeName = SegmentationProfile.segmentRoot(dataNodeName);
+		}
 		Key dataKey = getDataKey(dataNodeName);
 		if (null == dataKey)
 			return null;
@@ -336,7 +340,7 @@ public abstract class AccessControlManager {
 			acm = NamespaceManager.findACM(name, handle);
 			if ((acm != null) && (acm.isProtectedContent(name, handle))) {
 				// First we need to figure out whether this content is public or unprotected...
-				Log.info("keysForOutput: generating new data key for data node {0}", name);
+				Log.info("keysForOutput: found ACM, protected content, generating new data key for data node {0}", name);
 				NodeKey dataKeyWrappingKey = acm.getDataKeyWrappingKey(name);
 				if (null == dataKeyWrappingKey) {
 					// if content is public -- either null or a special value would work
