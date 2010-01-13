@@ -17,23 +17,100 @@
 
 package org.ccnx.ccn.io.content;
 
+import java.io.IOException;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.io.ErrorStateException;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
-public class KeyValueSet extends GenericXMLEncodable implements XMLEncodable, Map<String, Object>{
+public class KeyValueSet extends GenericXMLEncodable implements XMLEncodable, Map<String, Object> {
+	
 	protected static final String KEY_VALUE_SET_ELEMENT = "KeyValueSet";
 	 
 	protected TreeMap<String, KeyValuePair> _set = new TreeMap<String, KeyValuePair>();
+	
+	/**
+	 * A CCNNetworkObject wrapper around KeyValueSet, used for easily saving and retrieving
+	 * versioned KeyValueSets to CCN. A typical pattern for using network objects to save
+	 * objects that happen to be encodable or serializable is to incorporate such a static
+	 * member wrapper class subclassing CCNEncodableObject, CCNSerializableObject, or
+	 * CCNNetworkObject itself inside the main class definition.
+	 */
+	public static class KeyValueSetObject extends CCNEncodableObject<KeyValueSet> {
+
+		public KeyValueSetObject(ContentName name, KeyValueSet data, SaveType saveType, CCNHandle handle) throws IOException {
+			super(KeyValueSet.class, true, name, data, saveType, handle);
+		}
+
+		public KeyValueSetObject(ContentName name, KeyValueSet data, SaveType saveType,
+				PublisherPublicKeyDigest publisher, 
+				KeyLocator locator, CCNHandle handle) throws IOException {
+			super(KeyValueSet.class, true, name, data, saveType, publisher, locator, handle);
+		}
+
+		public KeyValueSetObject(ContentName name, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+			super(KeyValueSet.class, true, name, (PublisherPublicKeyDigest)null, handle);
+		}
+
+		public KeyValueSetObject(ContentName name, PublisherPublicKeyDigest publisher,
+								CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+			super(KeyValueSet.class, true, name, publisher, handle);
+		}
+		
+		public KeyValueSetObject(ContentObject firstBlock, CCNHandle handle) 
+				throws ContentDecodingException, IOException {
+			super(KeyValueSet.class, true, firstBlock, handle);
+		}
+		
+		public KeyValueSet contents() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
+	}
+	
+	public KeyValueSet() {}
+	
+	/**
+	 * Create a KeyValueSet and initialize its contents to match that of a Java Properties
+	 * collection.
+	 * @param propertySet
+	 */
+	public KeyValueSet(Properties propertySet) {
+		if (null == propertySet)
+			return;
+		for (Object property : propertySet.keySet()) {
+			if (!(property instanceof String)) {
+				throw new IllegalArgumentException("Not a valid Properties -- key not a String!");
+			}
+			put((String) property, propertySet.getProperty((String)property));
+		}
+	}
+	
+	/**
+	 * Create a KeyValueSet and initialize its contents to that of a
+	 * collection.
+	 * @param propertySet
+	 */
+	public KeyValueSet(Map<String, Object> values) {
+		if (null == values)
+			return;
+		putAll(values);
+	}
 	
 	/**
 	 * Add a new key value pair to the set
