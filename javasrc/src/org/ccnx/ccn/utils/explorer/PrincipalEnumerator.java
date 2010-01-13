@@ -25,23 +25,23 @@ public class PrincipalEnumerator {
 		this.gm = gm;
 	}
 	
-	public ArrayList<String> enumerateUserFriendlyName() {
+	public ArrayList<ContentName> enumerateUsers() {
 		return listPrincipals(userStorage);
 	}
 	
-	public ArrayList<String> enumerateGroupFriendlyName() {
+	public ArrayList<ContentName> enumerateGroups() {
 		return listPrincipals(groupStorage);
 	}
 	
-	public ArrayList<String> enumerateGroupMembers(String groupFriendlyName) {
-		ArrayList<String> members = new ArrayList<String>();
+	public ArrayList<ContentName> enumerateGroupMembers(String groupFriendlyName) {
+		ArrayList<ContentName> members = new ArrayList<ContentName>();
 		if (groupFriendlyName != null) {
 			try{
 				Group g = gm.getGroup(groupFriendlyName);
 				MembershipList ml = g.membershipList();
 				LinkedList<Link> lll = ml.contents();
 				for (Link l: lll) {
-					members.add(ContentName.componentPrintNative(l.targetName().lastComponent()));
+					members.add(l.targetName());
 				}
 			}
 			catch (Exception e) {
@@ -51,8 +51,8 @@ public class PrincipalEnumerator {
 		return members;
 	}
 	
-	private ArrayList<String> listPrincipals(ContentName path) {
-		ArrayList<String> principalList = new ArrayList<String>();
+	private ArrayList<ContentName> listPrincipals(ContentName path) {
+		ArrayList<ContentName> principalList = new ArrayList<ContentName>();
 		
 		try {
 			EnumeratedNameList userDirectory = new EnumeratedNameList(path, CCNHandle.open());
@@ -65,9 +65,8 @@ public class PrincipalEnumerator {
 				throw new IOException("No available user keystore data in directory " + path + ", giving up.");
 			}
 			for (ContentName child : availableChildren) {
-				String friendlyName = ContentName.componentPrintNative(child.lastComponent());
-				System.out.println(friendlyName);
-				principalList.add(friendlyName);
+				ContentName fullName = new ContentName(path, child.components());
+				principalList.add(fullName);
 			}
 		}
 		catch (Exception e) {

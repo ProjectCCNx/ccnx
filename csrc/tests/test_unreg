@@ -1,4 +1,4 @@
-# tests/test_prefixreg
+# tests/test_unreg
 # 
 # Part of the CCNx distribution.
 #
@@ -11,8 +11,8 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-AFTER : test_single_ccnd test_ccndid test_newface
-BEFORE : test_single_ccnd_teardown
+AFTER : test_single_ccnd test_ccndid test_newface test_prefixreg
+BEFORE : test_single_ccnd_teardown test_destroyface
 
 ccndsmoketest || SkipTest no ccnd
 test -f newface-response.ccnb || SkipTest missing newface-response.ccnb, need to run test_newface first
@@ -20,60 +20,55 @@ test -f newface-response.ccnb || SkipTest missing newface-response.ccnb, need to
 FACEID=`ccnbx -d newface-response.ccnb Content | ccnbx -d - FaceID` || Fail
 echo FACEID=$FACEID
 
-# Create the body of a prefixreg request.
-ccn_xmltoccnb -w - <<EOF >prefixreg.ccnb
+# Create the body of a unreg request.
+ccn_xmltoccnb -w - <<EOF >unreg.ccnb
 <ForwardingEntry>
-  <Action>prefixreg</Action>
+  <Action>unreg</Action>
   <Name>
      <Component ccnbencoding="text">Junk</Component>
   </Name>
   <FaceID>$FACEID</FaceID>  
-  <FreshnessSeconds>2147483647</FreshnessSeconds>
 </ForwardingEntry>
 EOF
 
 TNAME=`GenSym _ignored_`
-cat prefixreg.ccnb | ccnput -x 30 /$TNAME
+cat unreg.ccnb | ccnput -x 30 /$TNAME
 
-# Pull it out to use in the prefixreg request.  Base-64 encode it for the benefit of the shell.
+# Pull it out to use in the unreg request.  Base-64 encode it for the benefit of the shell.
 
 PRBLOB="`ccnget /$TNAME | openssl enc -base64`"
 
 echo PRBLOB is $PRBLOB >&2
-
-# Dinged version, to make sure verification is there.
-# Uncommenting these should make the test fail.
-#PRBLOB="`ccnget /$TNAME | ccn_ccnbtoxml - | sed -e s/_ignored_/-IGNORED-/ | ccn_xmltoccnb -w - | openssl enc -base64`"
-#echo Dinged PRBLOB is $PRBLOB >&2
 
 # We have the CCNDID of our ccnd in a file, left from test_ccndid
 CCNDID=`cat ccndid.out`
 
 # Now construct the interest.
 
-cat <<EOF >prefixreg-request.xml
+cat <<EOF >unreg-request.xml
 <Interest>
   <Name>
     <Component ccnbencoding="text">ccnx</Component>
     <Component ccnbencoding="hexBinary">$CCNDID</Component>
-    <Component ccnbencoding="text">prefixreg</Component>
+    <Component ccnbencoding="text">unreg</Component>
     <Component ccnbencoding="base64Binary">$PRBLOB</Component>
   </Name>
   <Scope>1</Scope>
 </Interest>
 EOF
-ccn_xmltoccnb -w prefixreg-request.xml || Fail botch constructing prefixreg-request.ccnb
+ccn_xmltoccnb -w unreg-request.xml || Fail botch constructing unreg-request.ccnb
 
-echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > prefixreg-pre.html
+echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > unreg-pre.html
 
 # Try out the request
-ccndsmoketest -b send prefixreg-request.ccnb recv > prefixreg-response.ccnb
+ccndsmoketest -b send unreg-request.ccnb recv > unreg-response.ccnb
 
-cmp -s /dev/null prefixreg-response.ccnb && Fail did not get prefixreg response
-ccn_ccnbtoxml prefixreg-response.ccnb || Failed to parse prefixreg response
+cmp -s /dev/null unreg-response.ccnb && Fail did not get unreg response
+ccn_ccnbtoxml unreg-response.ccnb || Failed to parse unreg response
 
-ccnbx -d prefixreg-response.ccnb Content | ccn_ccnbtoxml -x -
+ccnbx -d unreg-response.ccnb Content | ccn_ccnbtoxml -x -
 
-echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > prefixreg-post.html
+echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > unreg-post.html
 
-rm prefixreg-request.xml
+grep 'ccnx:/Junk ' unreg-post.html && Fail prefix is still registered
+rm unreg-request.xml
