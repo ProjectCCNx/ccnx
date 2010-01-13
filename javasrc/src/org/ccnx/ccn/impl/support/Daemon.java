@@ -67,6 +67,7 @@ public class Daemon {
 	protected String _daemonName = null;
 	protected static DaemonListenerClass _daemonListener = null;
 	protected boolean _interactive = false;
+	protected String _pid;
 	
 	public static final String PROP_DAEMON_MEMORY = "ccn.daemon.memory";
 	public static final String PROP_DAEMON_DEBUG_PORT = "ccn.daemon.debug";
@@ -242,6 +243,14 @@ public class Daemon {
 	public Daemon() {_daemonName = "namelessDaemon";}
 	
 	public String daemonName() { return _daemonName; }
+	
+	public void setPid(String pid) {
+		_pid = pid;
+	}
+	
+	public String getPid(String pid) {
+		return _pid;
+	}
 	
 	/**
 	 * Overridden by subclasses.
@@ -563,6 +572,7 @@ public class Daemon {
 			switch (mode) {
 			  case MODE_INTERACTIVE:
 				String pid = SystemConfiguration.getPID();
+				daemon.setPid(pid);
 				daemon.initialize(args, daemon);
 				Log.info("Running " + daemon.daemonName() + " in the foreground." + (null == pid ? "" : " PID " + pid));
 				WorkerThread wt = daemon.createWorkerThread();
@@ -671,14 +681,14 @@ public class Daemon {
 		}
 	}
 	
-	public static Object getStatus(String daemonName, String pid, String type) throws FileNotFoundException, IOException, ClassNotFoundException {
-		if (!getRMIFile(daemonName, pid).exists()) {
+	public Object getStatus(String daemonName, String type) throws FileNotFoundException, IOException, ClassNotFoundException {
+		if (!getRMIFile(daemonName, _pid).exists()) {
 			System.out.println("Daemon " + daemonName + " does not appear to be running.");
 			Log.info("Daemon " + daemonName + " does not appear to be running.");
 			return null;
 		}
 
-		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, pid)));
+		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, _pid)));
 
 		DaemonListener l = (DaemonListener)in.readObject();		
 
