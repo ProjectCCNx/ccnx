@@ -130,14 +130,6 @@ public class CCNSegmenter {
 	protected CCNAggregatedSigner _bulkSigner;
 
 	/**
-	 * Encryption/decryption keys. DKS TODO -- can't be per-segmenter
-	 * keys, if segmenter might be used to write blocks for a variety
-	 * of content. Need per-prefix keys.
-	 * AccessControlManager.keysForOutput(name, publisher, handle)
-	 */
-	protected ContentKeys _keys;
-
-	/**
 	 * Create a segmenter with default (Merkle hash tree) bulk signing
 	 * behavior, making a new handle for it to use.
 	 * @throws ConfigurationException if there is a problem creating the handle
@@ -149,34 +141,12 @@ public class CCNSegmenter {
 
 	/**
 	 * Create a segmenter with default (Merkle hash tree) bulk signing
-	 * behavior, making a new handle for it to use.
-	 * @param keys encryption keys to use to encrypt content
-	 * @throws ConfigurationException if there is a problem creating the handle
-	 * @throws IOException if there is a problem creating the handle
-	 */
-	public CCNSegmenter(ContentKeys keys) throws ConfigurationException, IOException {
-		this(CCNHandle.open(), keys);
-	}
-
-	/**
-	 * Create a segmenter with default (Merkle hash tree) bulk signing
 	 * behavior.
 	 * @param handle the handle to use, will open a new one if null
 	 * @throws IOException if there is a problem creating the handle
 	 */
 	public CCNSegmenter(CCNHandle handle) throws IOException {
 		this(new CCNFlowControl(handle));
-	}
-
-	/**
-	 * Create a segmenter with default (Merkle hash tree) bulk signing
-	 * behavior.
-	 * @param handle the handle to use, will open a new one if null
-	 * @param keys encryption keys to use to encrypt content
-	 * @throws IOException if there is a problem creating the handle
-	 */
-	public CCNSegmenter(CCNHandle handle, ContentKeys keys) throws IOException {
-		this(new CCNFlowControl(handle), null, keys);
 	}
 
 	/**
@@ -207,23 +177,6 @@ public class CCNSegmenter {
 		}
 
 		initializeBlockSize();
-	}
-
-	/**
-	 * Create a segmenter, specifying the signing behavior to use.
-	 * @param flowControl the specified flow controller to use
-	 * @param signer the bulk signer to use. If null, will use default Merkle hash tree behavior.
-	 * @param keys encryption keys to use. If null, will attempt to look them up using 
-	 *   namespace information.
-	 */
-	public CCNSegmenter(CCNFlowControl flowControl, CCNAggregatedSigner signer,
-			ContentKeys keys) {
-		this(flowControl, signer);
-
-		if (null != keys ) {
-			keys.requireDefaultAlgorithm();
-			_keys = keys;
-		}
 	}
 
 	protected void initializeBlockSize() {
@@ -348,6 +301,8 @@ public class CCNSegmenter {
 	 * If the data is small enough this doesn't fragment. Otherwise, does.
 	 * If multi-fragment, uses the naming profile and specified
 	 * bulk signer (default: Merkle Hash Tree) to generate names and signatures.
+	 * @param keys the keys to use for encrypting this segment, or null if unencrypted. The
+	 *   specific Key/IV used for this segment will be obtained by calling keys.getSegmentEncryptionCipher().
 	 * @return ContentObject of the data that was put (in the case
 	 * of fragmented data, the first fragment is returned). This way the
 	 * caller can then easily link to the data if
@@ -360,7 +315,8 @@ public class CCNSegmenter {
 			SignedInfo.ContentType type,
 			Integer freshnessSeconds, 
 			KeyLocator locator, 
-			PublisherPublicKeyDigest publisher) 
+			PublisherPublicKeyDigest publisher,
+			ContentKeys keys) 
 	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 
 		if (null == publisher) {
@@ -383,9 +339,9 @@ public class CCNSegmenter {
 
 		// DKS TODO -- take encryption overhead into account
 		// DKS TODO -- hook up last segment
-		if (outputLength(length) >= getBlockSize()) {
+		if (outputLength(length, keys) >= getBlockSize()) {
 			return fragmentedPut(name, content, offset, length, (lastSegments ? CCNSegmenter.LAST_SEGMENT : null),
-					type, freshnessSeconds, locator, publisher);
+					type, freshnessSeconds, locator, publisher, keys);
 		} else {
 			try {
 				// We should only get here on a single-fragment object, where the lastBlocks
@@ -394,7 +350,7 @@ public class CCNSegmenter {
 						content, offset, length, type,
 						null, freshnessSeconds, 
 						Long.valueOf(SegmentationProfile.baseSegment()), 
-						locator, publisher);
+						locator, publisher, keys);
 			} catch (IOException e) {
 				Log.warning("This should not happen: put failed with an IOException.");
 				Log.warningStackTrace(e);
@@ -422,6 +378,8 @@ public class CCNSegmenter {
 	 * 			to leave unset
 	 * @param locator the key locator to use
 	 * @param publisher the publisher to use
+	 * @param keys the keys to use for encrypting this segment, or null if unencrypted. The
+	 *   specific Key/IV used for this segment will be obtained by calling keys.getSegmentEncryptionCipher().
 	 * @return returns the segment identifier for the next segment to be written, if any.
 	 * 		If the caller doesn't want to override this, they can hand this number back
 	 * 	    to a subsequent call to fragmentedPut.
@@ -438,13 +396,15 @@ public class CCNSegmenter {
 			SignedInfo.ContentType type,
 			Integer freshnessSeconds, 
 			KeyLocator locator, 
-			PublisherPublicKeyDigest publisher) 
+			PublisherPublicKeyDigest publisher,
+			ContentKeys keys) 
 	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
 	IOException, InvalidAlgorithmParameterException {
 
 		return fragmentedPut(name, SegmentationProfile.baseSegment(),
 				content, offset, length, getBlockSize(), type,
-				null, freshnessSeconds, finalSegmentIndex, locator, publisher);
+				null, freshnessSeconds, finalSegmentIndex, locator, publisher,
+				keys);
 	}
 
 	/** 
@@ -465,6 +425,8 @@ public class CCNSegmenter {
 	 * 				its number turns out to be
 	 * @param locator the key locator to use
 	 * @param publisher the publisher to use
+	 * @param keys the keys to use for encrypting this segment, or null if unencrypted. The
+	 *   specific Key/IV used for this segment will be obtained by calling keys.getSegmentEncryptionCipher().
 	 * @return returns the segment identifier for the next segment to be written, if any.
 	 * 		If the caller doesn't want to override this, they can hand this number back
 	 * 	    to a subsequent call to fragmentedPut.
@@ -483,7 +445,8 @@ public class CCNSegmenter {
 			CCNTime timestamp,
 			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
-			PublisherPublicKeyDigest publisher) throws InvalidKeyException, 
+			PublisherPublicKeyDigest publisher,
+			ContentKeys keys) throws InvalidKeyException, 
 			SignatureException, IOException, 
 			InvalidAlgorithmParameterException, NoSuchAlgorithmException {
 
@@ -531,7 +494,7 @@ public class CCNSegmenter {
 		ContentObject [] contentObjects = 
 			buildBlocks(rootName, baseSegmentNumber, 
 					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
-					content, offset, length, blockWidth);
+					content, offset, length, blockWidth, keys);
 
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
@@ -567,6 +530,8 @@ public class CCNSegmenter {
 	 * 				its number turns out to be
 	 * @param locator the key locator to use
 	 * @param publisher the publisher to use
+	 * @param keys the keys to use for encrypting this segment, or null if unencrypted. The
+	 *   specific Key/IV used for this segment will be obtained by calling keys.getSegmentEncryptionCipher().
 	 * @return returns the segment identifier for the next segment to be written, if any.
 	 * 		If the caller doesn't want to override this, they can hand this number back
 	 * 	    to a subsequent call to fragmentedPut.
@@ -586,7 +551,8 @@ public class CCNSegmenter {
 			CCNTime timestamp,
 			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
-			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
+			PublisherPublicKeyDigest publisher, 
+			ContentKeys keys) throws InvalidKeyException, SignatureException, 
 			NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 
 		if (blockCount == 0)
@@ -627,7 +593,7 @@ public class CCNSegmenter {
 		ContentObject [] contentObjects = 
 			buildBlocks(rootName, baseSegmentNumber, 
 					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
-					contentBlocks, false, blockCount, firstBlockIndex, lastBlockLength);
+					contentBlocks, false, blockCount, firstBlockIndex, lastBlockLength, keys);
 
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
@@ -659,6 +625,8 @@ public class CCNSegmenter {
 	 * 				its number turns out to be
 	 * @param locator the key locator to use
 	 * @param publisher the publisher to use
+	 * @param keys the keys to use for encrypting this segment, or null if unencrypted. The
+	 *   specific Key/IV used for this segment will be obtained by calling keys.getSegmentEncryptionCipher().
 	 * @return returns the segment identifier for the next segment to be written, if any.
 	 * 		If the caller doesn't want to override this, they can hand this number back
 	 * 	    to a subsequent call to fragmentedPut.
@@ -675,7 +643,8 @@ public class CCNSegmenter {
 			CCNTime timestamp, 
 			Integer freshnessSeconds, Long finalSegmentIndex,
 			KeyLocator locator, 
-			PublisherPublicKeyDigest publisher) throws InvalidKeyException, SignatureException, 
+			PublisherPublicKeyDigest publisher,
+			ContentKeys keys) throws InvalidKeyException, SignatureException, 
 			NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 
 		if (null == publisher) {
@@ -698,10 +667,10 @@ public class CCNSegmenter {
 					SegmentationProfile.getSegmentNumberNameComponent(segmentNumber) : 
 						SegmentationProfile.getSegmentNumberNameComponent(finalSegmentIndex)));
 
-		if (null != _keys) {
+		if (null != keys) {
 			try {
 				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-				Cipher thisCipher = _keys.getSegmentEncryptionCipher(rootName, publisher, segmentNumber);
+				Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, publisher, segmentNumber);
 				content = thisCipher.doFinal(content, offset, length);
 				offset = 0;
 				length = content.length;
@@ -744,6 +713,8 @@ public class CCNSegmenter {
 	 * @param offset
 	 * @param length
 	 * @param blockWidth
+	 * @param keys the keys to use for encrypting this segment, or null if unencrypted. The
+	 *   specific Key/IV used for this segment will be obtained by calling keys.getSegmentEncryptionCipher().
 	 * @return
 	 * @throws InvalidKeyException
 	 * @throws InvalidAlgorithmParameterException
@@ -751,7 +722,8 @@ public class CCNSegmenter {
 	 */
 	protected ContentObject[] buildBlocks(ContentName rootName,
 			long baseSegmentNumber, SignedInfo signedInfo, 
-			byte[] content, int offset, int length, int blockWidth) 
+			byte[] content, int offset, int length, int blockWidth,
+			ContentKeys keys) 
 	throws InvalidKeyException, InvalidAlgorithmParameterException, IOException {
 
 		int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
@@ -761,12 +733,12 @@ public class CCNSegmenter {
 
 		for (int i=0; i < blockCount; ++i) {
 			InputStream dataStream = new ByteArrayInputStream(content, offset, length);
-			if (null != _keys) {
+			if (null != keys) {
 				// DKS TODO -- move to streaming version to cut down copies. Here using input
 				// streams, eventually push down with this at the end of an output stream.
 
 				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-				Cipher thisCipher = _keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
+				Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
 				Log.finest("Created new encryption cipher "+thisCipher);
 				// Override content type to mark encryption.
 				// Note: we don't require that writers use our facilities for encryption, so
@@ -801,6 +773,8 @@ public class CCNSegmenter {
 	 * @param blockCount
 	 * @param firstBlockIndex
 	 * @param lastBlockLength
+	 * @param keys the keys to use for encrypting this segment, or null if unencrypted. The
+	 *   specific Key/IV used for this segment will be obtained by calling keys.getSegmentEncryptionCipher().
 	 * @return
 	 * @throws InvalidKeyException
 	 * @throws InvalidAlgorithmParameterException
@@ -809,7 +783,8 @@ public class CCNSegmenter {
 	protected ContentObject [] buildBlocks(ContentName rootName,
 			long baseSegmentNumber, SignedInfo signedInfo,
 			byte contentBlocks[][], boolean isDigest, int blockCount,
-			int firstBlockIndex, int lastBlockLength) 
+			int firstBlockIndex, int lastBlockLength,
+			ContentKeys keys) 
 	throws InvalidKeyException, InvalidAlgorithmParameterException, ContentEncodingException {
 
 		ContentObject [] blocks = new ContentObject[blockCount];
@@ -826,10 +801,10 @@ public class CCNSegmenter {
 		int i;
 		for (i=firstBlockIndex; i < (firstBlockIndex + blockCount - 1); ++i) {
 			blockContent = contentBlocks[i];
-			if (null != _keys) {
+			if (null != keys) {
 				try {
 					// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-					Cipher thisCipher = _keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
+					Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
 					blockContent = thisCipher.doFinal(contentBlocks[i]);
 
 					// Override content type to mark encryption.
@@ -856,9 +831,9 @@ public class CCNSegmenter {
 			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, blocks[i].contentLength());
 		}
 		blockContent = contentBlocks[i];
-		if (null != _keys) {
+		if (null != keys) {
 			try {
-				Cipher thisCipher = _keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
+				Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
 				blockContent = thisCipher.doFinal(contentBlocks[i], 0, lastBlockLength);
 				lastBlockLength = blockContent.length;
 
@@ -931,11 +906,11 @@ public class CCNSegmenter {
 	 * @param inputLength
 	 * @return the output length
 	 */
-	public long outputLength(int inputLength) {
-		if (null == _keys) {
+	public long outputLength(int inputLength, ContentKeys keys) {
+		if (null == keys) {
 			return inputLength;
 		} else {
-			return _keys.getCipher().getOutputSize(inputLength);
+			return keys.getCipher().getOutputSize(inputLength);
 		}
 	}
 }

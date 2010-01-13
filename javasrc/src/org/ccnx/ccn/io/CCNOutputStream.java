@@ -183,7 +183,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 							  ContentType type, 
 							  ContentKeys keys,
 							  CCNFlowControl flowControl) throws IOException {
-		this(name, locator, publisher, type, new CCNSegmenter(flowControl, null, keys));
+		this(name, locator, publisher, type, keys, new CCNSegmenter(flowControl, null));
 	}
 
 	/**
@@ -193,17 +193,19 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
 	 * @param type type to mark content (see ContentType), if null, DATA is used; if
 	 * 			content encrypted, ENCR is used.
-	 * @param segmenter segmenter used to segment and sign content, should be already initialized
-	 * 		with ContentKeys if needed.
+	 * @param keys the ContentKeys to use to encrypt, or null if unencrypted or access
+	 * 	controlled (keys automatically retrieved)
+	 * @param segmenter segmenter used to segment and sign content
 	 * @throws IOException if flow controller setup fails
 	 */
 	protected CCNOutputStream(ContentName name, 
 							  KeyLocator locator, 
 							  PublisherPublicKeyDigest publisher, 
 							  ContentType type,
+							  ContentKeys keys,
 							  CCNSegmenter segmenter) throws IOException {
 
-		super(locator, publisher, segmenter);
+		super(locator, publisher, keys, segmenter);
 
 		ContentName nameToOpen = name;
 		if (SegmentationProfile.isSegment(nameToOpen)) {
@@ -224,6 +226,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	@Override
 	protected void startWrite() throws IOException {
+		super.startWrite();
 		_segmenter.getFlowControl().startWrite(_baseName, Shape.STREAM);
 	}
 	
@@ -459,7 +462,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				_segmenter.putFragment(_baseName, _baseNameIndex, 
 					_buffer, 0, (_blockOffset-saveBytes), 
 					_type, _timestamp, null, (flushLastBlock ? _baseNameIndex : null), 
-					_locator, _publisher);
+					_locator, _publisher, _keys);
 		} else {
 			Log.info("flush: putting merkle tree to the network, baseName " + _baseName +
 					" basenameindex " + ContentName.componentPrintURI(SegmentationProfile.getSegmentNumberNameComponent(_baseNameIndex)) + "; " 
@@ -472,7 +475,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				_segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffer, 0, _blockOffset-saveBytes, getBlockSize(),
 									     _type, _timestamp, null, 
 									     (flushLastBlock ? CCNSegmenter.LAST_SEGMENT : null), 
-									     _locator, _publisher);
+									     _locator, _publisher, _keys);
 		}
 
 		if (preservePartial) {
