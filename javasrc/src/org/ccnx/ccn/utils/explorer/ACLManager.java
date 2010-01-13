@@ -85,7 +85,7 @@ public class ACLManager extends JDialog implements ActionListener {
 		// title label
 		final JLabel userAndGroupLabel = new JLabel();
 		userAndGroupLabel.setBounds(10, 30, 300, 15);
-		userAndGroupLabel.setText("User and Group Permissions for " + path);
+		userAndGroupLabel.setText("Permissions for " + path);
 		getContentPane().add(userAndGroupLabel);
 				
 		// user table

@@ -85,9 +85,10 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 
 	// GUI positions
 	private int LEFT_MARGIN = 30;
-	private int SCROLL_PANEL_WIDTH = 185;
-	private int SCROLL_PANEL_HEIGHT = 210;
-	private int VERTICAL_OFFSET = 170;
+	private int GROUP_SELECTOR_HEIGHT = 100;
+	private int VERTICAL_OFFSET = GROUP_SELECTOR_HEIGHT + 110;
+	private int SCROLL_PANEL_WIDTH = 200;
+	private int SCROLL_PANEL_HEIGHT = 250;
 	
 
 	public GroupManagerGUI(String path) {
@@ -95,7 +96,7 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		super();
 		setTitle("Group Manager");
 		getContentPane().setLayout(null);
-		setBounds(100, 100, 550, 600);
+		setBounds(100, 100, (SCROLL_PANEL_WIDTH * 2) + 180, VERTICAL_OFFSET + SCROLL_PANEL_HEIGHT + 180);
 
 		// enumerate existing users and groups
 		try{
@@ -116,7 +117,7 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		getContentPane().add(groupsLabel);				
 
 		final JScrollPane scrollPaneGroups = new JScrollPane();
-		scrollPaneGroups.setBounds(LEFT_MARGIN, 37, 388, 58);
+		scrollPaneGroups.setBounds(LEFT_MARGIN, 37, 388, GROUP_SELECTOR_HEIGHT);
 		getContentPane().add(scrollPaneGroups);
 		groupsListModel = new SortedListModel();
 		groupsListModel.addAll(groupsContentNameList.toArray());
@@ -129,23 +130,23 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		// create new group
 		newGroupLabel = new JLabel();
 		newGroupLabel.setText("New group name: ");
-		newGroupLabel.setBounds(LEFT_MARGIN, 120, 150, 20);
+		newGroupLabel.setBounds(LEFT_MARGIN, GROUP_SELECTOR_HEIGHT + 60, 150, 20);
 		getContentPane().add(newGroupLabel);				
 		
 		newGroupName = new JTextField();
-		newGroupName.setBounds(LEFT_MARGIN + 150, 120, 150, 20);
+		newGroupName.setBounds(LEFT_MARGIN + 150, GROUP_SELECTOR_HEIGHT + 60, 150, 20);
 		getContentPane().add(newGroupName);
 		
 		createGroupButton = new JButton();
 		createGroupButton.setText("Create New Group");
 		createGroupButton.addActionListener(this);
-		createGroupButton.setBounds(LEFT_MARGIN, 120, 200, 20);
+		createGroupButton.setBounds(LEFT_MARGIN, GROUP_SELECTOR_HEIGHT + 60, 200, 20);
 		getContentPane().add(createGroupButton);
 		
 		// Membership panel
 		membershipPanel = new JPanel();
 		membershipPanel.setLayout(null);
-		membershipPanel.setBounds(LEFT_MARGIN, VERTICAL_OFFSET, 480, 350);
+		membershipPanel.setBounds(LEFT_MARGIN, VERTICAL_OFFSET, (SCROLL_PANEL_WIDTH * 2) + 110, SCROLL_PANEL_HEIGHT + 140);
 		getContentPane().add(membershipPanel);
 		
 		// principal list
@@ -174,13 +175,13 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		addMemberButton = new JButton();
 		addMemberButton.addActionListener(this);
 		addMemberButton.setText("->");
-		addMemberButton.setBounds(205, 80, 52, 25);
+		addMemberButton.setBounds(SCROLL_PANEL_WIDTH + 20, 80, 52, 25);
 		membershipPanel.add(addMemberButton);
 
 		removeMemberButton = new JButton();
 		removeMemberButton.addActionListener(this);
 		removeMemberButton.setText("<-");
-		removeMemberButton.setBounds(205, 150, 52, 25);
+		removeMemberButton.setBounds(SCROLL_PANEL_WIDTH + 20, 150, 52, 25);
 		membershipPanel.add(removeMemberButton);
 		
 		
@@ -188,11 +189,11 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		groupMembershipLabel = new JLabel();
 		groupMembershipLabel.setAutoscrolls(true);
 		groupMembershipLabel.setText("Group Members");
-		groupMembershipLabel.setBounds(312, 30, 153, 15);
+		groupMembershipLabel.setBounds(SCROLL_PANEL_WIDTH + 130, 30, 153, 15);
 		membershipPanel.add(groupMembershipLabel);
 		
 		scrollPaneGroupMembership = new JScrollPane();
-		scrollPaneGroupMembership.setBounds(275, 60, SCROLL_PANEL_WIDTH, SCROLL_PANEL_HEIGHT);
+		scrollPaneGroupMembership.setBounds(SCROLL_PANEL_WIDTH + 90, 60, SCROLL_PANEL_WIDTH, SCROLL_PANEL_HEIGHT);
 		membershipPanel.add(scrollPaneGroupMembership);
 		
 		groupMembershipList = new JList(groupMembershipListModel);
@@ -205,7 +206,7 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		applyChangesButton = new JButton();
 		applyChangesButton.addActionListener(this);
 		applyChangesButton.setMargin(new Insets(2, 2, 2, 2));
-		applyChangesButton.setBounds(LEFT_MARGIN, 300, 112, 25);
+		applyChangesButton.setBounds(LEFT_MARGIN, SCROLL_PANEL_HEIGHT + 90, 112, 25);
 		applyChangesButton.setText("Apply Changes");
 		membershipPanel.add(applyChangesButton);
 
@@ -213,7 +214,7 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		cancelChangesButton.addActionListener(this);
 		cancelChangesButton.setMargin(new Insets(2, 2, 2, 2));
 		cancelChangesButton.setText("Cancel Changes");
-		cancelChangesButton.setBounds(320, 300, 112, 25);
+		cancelChangesButton.setBounds(320, SCROLL_PANEL_HEIGHT + 90, 112, 25);
 		membershipPanel.add(cancelChangesButton);
 		
 		selectGroupView();
