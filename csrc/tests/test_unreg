@@ -70,5 +70,5 @@ ccnbx -d unreg-response.ccnb Content | ccn_ccnbtoxml -x -
 
 echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > unreg-post.html
 
-grep /Junk unreg-post.html && Fail prefix is still registered
+grep 'ccnx:/Junk ' unreg-post.html && Fail prefix is still registered
 rm unreg-request.xml
