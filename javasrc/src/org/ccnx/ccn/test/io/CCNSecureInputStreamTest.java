@@ -32,10 +32,12 @@ import java.util.logging.Level;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
+import org.ccnx.ccn.impl.security.crypto.StaticContentKeys;
 import org.ccnx.ccn.impl.security.crypto.UnbufferedCipherInputStream;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
@@ -44,6 +46,7 @@ import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -67,16 +70,23 @@ public class CCNSecureInputStreamTest {
 		ContentKeys keys;
 		int encrLength = 25*1024+301;
 		byte [] encrData;
+		
 		public StreamFactory(String file_name) throws NoSuchAlgorithmException, IOException, InterruptedException {
 			name = ContentName.fromNative(testHelper.getClassNamespace(), file_name);
 			flosser.handleNamespace(name);
-			keys = ContentKeys.generateRandomKeys();
+			try {
+				keys = StaticContentKeys.generateRandomKeys();
+			} catch (NoSuchPaddingException e) {
+				Log.severe("NoSuchPaddingExcption creating algorithm we have used before! {0}", e.getMessage());
+				return;
+			}
 			writeFile(encrLength);
 			flosser.stopMonitoringNamespace(name);
 		}
+		
 		public abstract CCNInputStream makeInputStream() throws IOException;
 		public abstract OutputStream makeOutputStream() throws IOException;
-
+		
 		public void writeFile(int fileLength) throws IOException, NoSuchAlgorithmException, InterruptedException {
 			Random randBytes = new Random(0); // always same sequence, to aid debugging
 			OutputStream os = makeOutputStream();
@@ -111,10 +121,16 @@ public class CCNSecureInputStreamTest {
 
 			// check things fail if we use different keys
 			ContentKeys keys2 = keys;
-			CCNInputStream v2;
+			CCNInputStream v2 = null;
 			try {
-				keys = ContentKeys.generateRandomKeys();
+				keys = StaticContentKeys.generateRandomKeys();
 				v2 = makeInputStream();
+			} catch (NoSuchAlgorithmException e) {
+				Log.severe("Unexpected NoSuchAlgorithmException using default algorithm! " + keys.getBaseAlgorithm());
+				Assert.fail("Unexpected NoSuchAlgorithmException using default algorithm! " + keys.getBaseAlgorithm());
+			} catch (NoSuchPaddingException e) {
+				Log.severe("Unexpected NoSuchPaddingException using default algorithm! " + keys.getBaseAlgorithm());
+				Assert.fail("Unexpected NoSuchPaddingException using default algorithm! " + keys.getBaseAlgorithm());
 			} finally {
 				keys = keys2;
 			}
@@ -286,12 +302,13 @@ public class CCNSecureInputStreamTest {
 	
 	/**
 	 * Test cipher encryption & decryption work
+	 * @throws ContentEncodingException 
 	 */
 	@Test
-	public void cipherEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException {
-		Cipher c = basic.keys.getSegmentEncryptionCipher(0);
+	public void cipherEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, ContentEncodingException {
+		Cipher c = basic.keys.getSegmentEncryptionCipher(basic.name, outputLibrary.getDefaultPublisher(), 0);
 		byte [] d = c.doFinal(basic.encrData);
-		c = basic.keys.getSegmentDecryptionCipher(0);
+		c = basic.keys.getSegmentDecryptionCipher(basic.name, outputLibrary.getDefaultPublisher(), 0);
 		d = c.doFinal(d);
 		// check we get identical data back out
 		Assert.assertArrayEquals(basic.encrData, d);
@@ -303,14 +320,14 @@ public class CCNSecureInputStreamTest {
 	 */
 	@Test
 	public void cipherStreamEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, IOException {
-		Cipher c = basic.keys.getSegmentEncryptionCipher(0);
+		Cipher c = basic.keys.getSegmentEncryptionCipher(basic.name, outputLibrary.getDefaultPublisher(),0);
 		InputStream is = new ByteArrayInputStream(basic.encrData, 0, basic.encrData.length);
 		is = new UnbufferedCipherInputStream(is, c);
 		byte [] cipherText = new byte[4096];
 		for(int total = 0, res = 0; res >= 0 && total < 4096; total+=res)
 			res = is.read(cipherText,total,4096-total);
 
-		c = basic.keys.getSegmentDecryptionCipher(0);
+		c = basic.keys.getSegmentDecryptionCipher(basic.name, outputLibrary.getDefaultPublisher(), 0);
 		is = new ByteArrayInputStream(cipherText);
 		is = new UnbufferedCipherInputStream(is, c);
 		byte [] output = new byte[4096];
@@ -329,11 +346,11 @@ public class CCNSecureInputStreamTest {
 	@Test
 	public void contentEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, IOException {
 		// create an encrypted content block
-		Cipher c = basic.keys.getSegmentEncryptionCipher(0);
+		PublisherPublicKeyDigest publisher = outputLibrary.getDefaultPublisher();
+		Cipher c = basic.keys.getSegmentEncryptionCipher(basic.name, publisher, 0);
 		InputStream is = new ByteArrayInputStream(basic.encrData, 0, basic.encrData.length);
 		is = new UnbufferedCipherInputStream(is, c);
 		ContentName rootName = SegmentationProfile.segmentRoot(basic.name);
-		PublisherPublicKeyDigest publisher = outputLibrary.getDefaultPublisher();
 		PrivateKey signingKey = outputLibrary.keyManager().getSigningKey(publisher);
 		byte [] finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(1);
 		ContentObject co = new ContentObject(SegmentationProfile.segmentName(rootName, 0),
@@ -341,7 +358,7 @@ public class CCNSecureInputStreamTest {
 				is, 4096);
 
 		// attempt to decrypt the data
-		c = basic.keys.getSegmentDecryptionCipher(0);
+		c = basic.keys.getSegmentDecryptionCipher(basic.name, publisher, 0);
 		is = new UnbufferedCipherInputStream(new ByteArrayInputStream(co.content()), c);
 		byte [] output = new byte[co.contentLength()];
 		for(int total = 0, res = 0; res >= 0 && total < output.length; total+=res)
