@@ -38,6 +38,7 @@ import org.ccnx.ccn.impl.security.crypto.CCNMerkleTreeSigner;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.security.crypto.UnbufferedCipherInputStream;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.SegmentationProfile.SegmentNumberType;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -700,7 +701,7 @@ public class CCNSegmenter {
 		if (null != _keys) {
 			try {
 				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-				Cipher thisCipher = _keys.getSegmentEncryptionCipher(segmentNumber);
+				Cipher thisCipher = _keys.getSegmentEncryptionCipher(rootName, publisher, segmentNumber);
 				content = thisCipher.doFinal(content, offset, length);
 				offset = 0;
 				length = content.length;
@@ -765,7 +766,7 @@ public class CCNSegmenter {
 				// streams, eventually push down with this at the end of an output stream.
 
 				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-				Cipher thisCipher = _keys.getSegmentEncryptionCipher(nextSegmentIndex);
+				Cipher thisCipher = _keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
 				Log.finest("Created new encryption cipher "+thisCipher);
 				// Override content type to mark encryption.
 				// Note: we don't require that writers use our facilities for encryption, so
@@ -803,12 +804,13 @@ public class CCNSegmenter {
 	 * @return
 	 * @throws InvalidKeyException
 	 * @throws InvalidAlgorithmParameterException
+	 * @throws ContentEncodingException 
 	 */
 	protected ContentObject [] buildBlocks(ContentName rootName,
 			long baseSegmentNumber, SignedInfo signedInfo,
 			byte contentBlocks[][], boolean isDigest, int blockCount,
 			int firstBlockIndex, int lastBlockLength) 
-	throws InvalidKeyException, InvalidAlgorithmParameterException {
+	throws InvalidKeyException, InvalidAlgorithmParameterException, ContentEncodingException {
 
 		ContentObject [] blocks = new ContentObject[blockCount];
 		if (blockCount == 0)
@@ -827,7 +829,7 @@ public class CCNSegmenter {
 			if (null != _keys) {
 				try {
 					// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-					Cipher thisCipher = _keys.getSegmentEncryptionCipher(nextSegmentIndex);
+					Cipher thisCipher = _keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
 					blockContent = thisCipher.doFinal(contentBlocks[i]);
 
 					// Override content type to mark encryption.
@@ -856,7 +858,7 @@ public class CCNSegmenter {
 		blockContent = contentBlocks[i];
 		if (null != _keys) {
 			try {
-				Cipher thisCipher = _keys.getSegmentEncryptionCipher(nextSegmentIndex);
+				Cipher thisCipher = _keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
 				blockContent = thisCipher.doFinal(contentBlocks[i], 0, lastBlockLength);
 				lastBlockLength = blockContent.length;
 
