@@ -248,7 +248,7 @@ public class Daemon {
 		_pid = pid;
 	}
 	
-	public String getPid(String pid) {
+	public String getPid() {
 		return _pid;
 	}
 	
