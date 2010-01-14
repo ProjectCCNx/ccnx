@@ -79,6 +79,13 @@ public abstract class KeyManager {
 		}
 	}
 	
+	public static void closeDefaultKeyManager() {
+		if (null != _defaultKeyManager) {
+			_defaultKeyManager.keyRepository().handle().close();
+			_defaultKeyManager = null;
+		}
+	}
+	
 	/**
 	 * Load the BouncyCastle and other necessary providers, should be called once for initialization. 
 	 * Currently this is done by CCNHandle.
