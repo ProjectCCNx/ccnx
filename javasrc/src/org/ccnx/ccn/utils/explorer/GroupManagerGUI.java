@@ -28,6 +28,7 @@ import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
@@ -290,12 +291,14 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 			}
 			else {
 				// we are creating a new group
-				selectedGroupFriendlyName = newGroupName.getText();
-				gm.createGroup(selectedGroupFriendlyName, membersToAdd);
-				groupsContentNameList = pEnum.enumerateGroups();
-				groupEditorModel.clear();
-				groupEditorModel.addAll(groupsContentNameList.toArray());
-				selectGroupView();
+				String newName = newGroupName.getText();
+				if (validateNewGroupName(newName)) {
+					gm.createGroup(newName, membersToAdd);
+					groupsContentNameList = pEnum.enumerateGroups();
+					groupEditorModel.clear();
+					groupEditorModel.addAll(groupsContentNameList.toArray());
+					selectGroupView();
+				}
 			}
 		}
 		catch (Exception e) {
@@ -446,6 +449,19 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 			populatePrincipalsList();
 			editGroupMembershipView();
 		}
+	}
+	
+	/**
+	 * Checks the correctness of the name selected for a new group
+	 * @param name the name to validate
+	 * @return true if the name is valid, false otherwise.
+	 */
+	private boolean validateNewGroupName(String name) {
+		if (name.equals("")) {
+			JOptionPane.showMessageDialog(this, "The new group needs a name.");
+			return false;
+		}
+		return true;
 	}
 
 }
