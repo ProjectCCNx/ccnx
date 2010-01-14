@@ -23,6 +23,7 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -70,6 +71,8 @@ public class VersioningProfile implements CCNProfile {
 	public static final byte FF = (byte) 0xFF;
 	public static final byte OO = (byte) 0x00;
 
+	public static final int GET_LATEST_VERSION_ATTEMPTS = 10;
+	
 	/**
 	 * Add a version field to a ContentName.
 	 * @return ContentName with a version appended. Does not affect previous versions.
@@ -491,6 +494,8 @@ public class VersioningProfile implements CCNProfile {
  												 ContentVerifier verifier,
 												 CCNHandle handle) throws IOException {
 		
+		return getLatestVersion(startingVersion, publisher, timeout, verifier, handle, null, false);
+		/*
 		ContentName latestVersionFound = startingVersion;
 		
 		while (true) {
@@ -517,7 +522,223 @@ public class VersioningProfile implements CCNProfile {
 			}
 			latestVersionFound = new ContentName(getLatestInterest.name().count(), co.name().components());
 		}
+		*/
 	}
+	
+	private static ContentObject getLatestVersion(ContentName startingVersion, 
+												  PublisherPublicKeyDigest publisher,
+												  long timeout,
+												  ContentVerifier verifier,
+												  CCNHandle handle,
+												  Long startingSegmentNumber,
+												  boolean getFirstSegment) throws IOException {
+		
+		Log.info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
+		
+		System.out.println("called with timeout: "+timeout);
+		
+		int attempts = 0;
+		//long attemptTimeout = SystemConfiguration.SHORT_TIMEOUT;
+		long attemptTimeout = SystemConfiguration.MEDIUM_TIMEOUT;
+		if (timeout == SystemConfiguration.NO_TIMEOUT) {
+			//the timeout sent in is equivalent to null...  try till we don't hear something back
+			//we will reset the remaining time after each return...
+		} else if (timeout > 0 && timeout < attemptTimeout) {
+			attemptTimeout = timeout;
+		}
+			
+		long nullTimeout = attemptTimeout;
+		
+		if( timeout > attemptTimeout)
+			nullTimeout = timeout;
+		
+		long startTime;
+		long respondTime;
+		long remainingTime = attemptTimeout;
+		long remainingNullTime = nullTimeout; 
+		
+		ContentName prefix = startingVersion;
+		if (hasTerminalVersion(prefix)) {
+			prefix = startingVersion.parent();
+		}
+		int versionedLength = prefix.count() + 1;
+		
+		ContentObject result = null;
+		ContentObject lastResult = null;
+		
+		Exclude excludes = null;
+		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
+		
+		while (attempts < GET_LATEST_VERSION_ATTEMPTS && remainingTime > 0) {
+			System.out.println("attempts: "+attempts+" attemptTimeout: "+attemptTimeout+" remainingTime: "+remainingTime+" (timeout: "+timeout+")");
+			lastResult = result;
+			attempts++;
+			Interest getLatestInterest = null;
+			if (getFirstSegment) {
+				getLatestInterest = firstBlockLatestVersionInterest(startingVersion, publisher);
+			} else {
+				getLatestInterest = latestVersionInterest(startingVersion, null, publisher);
+			}
+			
+			if (excludeList.size() > 0) {
+				//we have explicit excludes, add them to this interest
+				byte [][] e = new byte[excludeList.size()][];
+				excludeList.toArray(e);
+				getLatestInterest.exclude().add(e);
+			}
+			
+			
+			System.out.println("INTEREST: "+getLatestInterest);
+			System.out.println("trying handle.get with timeout: "+attemptTimeout);
+			startTime = System.currentTimeMillis();
+			System.out.println("sending Interest from gLV at "+System.currentTimeMillis());
+			result = handle.get(getLatestInterest, attemptTimeout);
+			respondTime = System.currentTimeMillis() - startTime;
+			System.out.println("returned from handle.get in "+respondTime+" ms");
+			remainingTime = remainingTime - respondTime;
+			remainingNullTime = remainingNullTime - respondTime;
+			System.out.println("remaining time is now "+remainingTime+"ms");
+			if (null != result){
+				System.out.println("we got something back...");
+				Log.info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
+			
+				//did it verify?
+				//if it doesn't verify, we need to try harder to get a different content object (exclude this digest)
+				//make this a loop?
+				if (!verifier.verify(result)) {
+					//excludes = addVersionToExcludes(excludes, result.name());
+					System.out.println("result did not verify, trying to find a verifiable answer");
+					excludeList = addVersionToExcludes(excludeList, result.name());
+					
+					Interest retry = new Interest(SegmentationProfile.segmentRoot(result.name()), publisher);
+					retry.maxSuffixComponents(1);
+					boolean verifyDone = false;
+					while(!verifyDone) {
+						if(retry.exclude() == null)
+							retry.exclude(new Exclude());
+						retry.exclude().add(new byte[][] {result.digest()});
+						System.out.println("result did not verify!  doing retry!! "+retry.toString());
+						System.out.println("sending retry interest at "+System.currentTimeMillis());
+						result = handle.get(retry, attemptTimeout);
+						
+						if (result!=null) {
+							System.out.println("we got something back: "+result.name());
+							if(verifier.verify(result)) {
+								System.out.println("the returned answer verifies");
+								verifyDone = true;
+							} else {
+								System.out.println("this answer did not verify either...  try again");
+								
+							}
+						} else {
+							//result is null, we didn't find a verifiable answer
+							System.out.println("did not get a verifiable answer back");
+							verifyDone = true;
+						}
+					}	
+					//TODO  if this is the latest version and we exclude it, we might not have anything to send back...  we should reset the starting version
+				} 
+				if (result!=null) {
+					//else {
+					//it verified!  are we done?
+					
+					//first check if we need to get the first segment...
+					if (getFirstSegment) {
+						//yes, we need to have the first segment....
+						// Now we know the version. Did we luck out and get first block?
+						if (VersioningProfile.isVersionedFirstSegment(prefix, result, startingSegmentNumber)) {
+							Log.info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
+						} else {
+							//not the first segment...
+							
+							// This isn't the first block. Might be simply a later (cached) segment, or might be something
+							// crazy like a repo_start_write. So what we want is to get the version of this new block -- if getLatestVersion
+							// is doing its job, we now know the version we want (if we already knew that, we called super.getFirstBlock
+							// above. If we get here, _baseName isn't versioned yet. So instead of taking segmentRoot of what we got,
+							// which works fine only if we have the wrong segment rather than some other beast entirely (like metadata).
+							// So chop off the new name just after the (first) version, and use that. If getLatestVersion is working
+							// right, that should be the right thing.
+							startingVersion = result.name().cut(versionedLength);
+							Log.info("CHILD SELECTOR FAILURE: getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
+							// this will verify
+							
+							//don't count this against the gLV timeout.
+							
+							result = SegmentationProfile.getSegment(startingVersion, startingSegmentNumber, null, timeout, verifier, handle); // now that we have the latest version, go back for the first block.
+							//if this isn't the first segment...  then we should exclude it.  otherwise, we can use it!
+							if(result == null) {
+								//we couldn't get a new segment...
+								System.out.println("could not get the first segment of the version we just found...  should exclude the version");
+								//excludes = addVersionToExcludes(excludes, startingVersion);
+								excludeList = addVersionToExcludes(excludeList, startingVersion);
+							}
+						}
+						
+						
+					} else {
+						//no need to get the first segment!
+						//this is already verified!
+					}
+					
+					//if result is not null, we really have something to try since it also verified
+					if (result != null) {
+					
+						//this could be our answer...  set to lastResult and see if we have time to do better
+						lastResult = result;
+					
+						if (timeout == SystemConfiguration.NO_TIMEOUT) {
+							//we want to keep trying for something new
+							remainingTime = attemptTimeout;
+							attempts = 0;
+						}
+						
+						if (timeout == 0) {
+							//caller just wants the first answer...
+							attempts = GET_LATEST_VERSION_ATTEMPTS;
+							remainingTime = 0;
+						}
+						
+						if (remainingTime > 0) {
+							//we still have time to try for a better answer
+							System.out.println("we still have time to try for a better answer");
+							attemptTimeout = remainingTime;
+						} else {
+							System.out.println("time is up, return what we have");
+							attempts = GET_LATEST_VERSION_ATTEMPTS;
+						}
+					
+						
+					} else {
+						//result is null
+						//will be handled below
+					}
+				}//the result verified
+			} //we got something back
+			
+			if (result == null) {
+				System.out.println("we didn't get anything");
+				Log.info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
+				//we didn't get a new version...  we can return the last one we received if it isn't null.
+				if (lastResult!=null) {
+					System.out.println("returning the last result that wasn't null... ");
+					System.out.println("returning: "+lastResult.name());
+					return lastResult;
+				}
+				else {
+					System.out.println("we didn't get anything, and we haven't had anything at all... try with remaining long timeout");
+					attemptTimeout = remainingNullTime;
+					remainingTime = remainingNullTime;
+				}
+			}
+			System.out.println("(after) attempts: "+attempts+" attemptTimeout: "+attemptTimeout+" remainingTime: "+remainingTime+" (timeout: "+timeout+")");
+			if (result!=null)
+				startingVersion = SegmentationProfile.segmentRoot(result.name());
+		}
+		if(result!=null)
+			System.out.println("returning: "+result.name());
+		return result;
+	}
+	
 	
 	/**
 	 * - find the first segment of the latest version of a name
@@ -543,7 +764,31 @@ public class VersioningProfile implements CCNProfile {
 															 ContentVerifier verifier,
 															 CCNHandle handle) throws IOException {
 		
+		return getLatestVersion(startingVersion, publisher, timeout, verifier, handle, startingSegmentNumber, true);
+		
+		/*
 		Log.info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
+		
+		System.out.println("called with timeout: "+timeout);
+		
+		int attempts = 0;
+		long attemptTimeout = SystemConfiguration.SHORT_TIMEOUT;
+		if (timeout == SystemConfiguration.NO_TIMEOUT) {
+			//the timeout sent in is equivalent to null...  try till we don't hear something back
+			//we will reset the remaining time after each return...
+		} else if (timeout > 0 && timeout < attemptTimeout) {
+			attemptTimeout = timeout;
+		}
+			
+		long nullTimeout = attemptTimeout;
+		
+		if( timeout > attemptTimeout)
+			nullTimeout = timeout;
+		
+		long startTime;
+		long respondTime;
+		long remainingTime = attemptTimeout;
+		long remainingNullTime = nullTimeout; 
 		
 		ContentName prefix = startingVersion;
 		if (hasTerminalVersion(prefix)) {
@@ -551,37 +796,98 @@ public class VersioningProfile implements CCNProfile {
 		}
 		int versionedLength = prefix.count() + 1;
 		
-		Interest getLatestInterest = firstBlockLatestVersionInterest(startingVersion, publisher);
-		ContentObject result = handle.get(getLatestInterest, timeout);
-		if (null != result){
-			Log.info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
+		ContentObject result = null;
+		ContentObject lastResult = null;
+		
+		Exclude excludes = new Exclude(); 
+		
+		while (attempts < GET_LATEST_VERSION_ATTEMPTS && remainingTime > 0) {
+			System.out.println("attempts: "+attempts+" attemptTimeout: "+attemptTimeout+" remainingTime: "+remainingTime+" (timeout: "+timeout+")");
+			lastResult = result;
+			attempts++;
+			Interest getLatestInterest = firstBlockLatestVersionInterest(startingVersion, publisher);
+			System.out.println("trying handle.get with timeout: "+attemptTimeout);
+			startTime = System.currentTimeMillis();
+			result = handle.get(getLatestInterest, attemptTimeout);
+			respondTime = System.currentTimeMillis() - startTime;
+			System.out.println("returned from handle.get in "+respondTime+" ms");
+			remainingTime = remainingTime - respondTime;
+			remainingNullTime = remainingNullTime - respondTime;
+			System.out.println("remaining time is now "+remainingTime+"ms");
+			if (null != result){
+				System.out.println("we got something back...");
+				Log.info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
 			
-			// Now we know the version. Did we luck out and get first block?
-			if (VersioningProfile.isVersionedFirstSegment(prefix, result, startingSegmentNumber)) {
-				Log.info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
-				// Now need to verify the block we got
-				if (!verifier.verify(result)) {
-					// TODO rework to allow retries
-					Log.info("Block failed to verify! Need to robustify method!");
-					return null;
+				// Now we know the version. Did we luck out and get first block?
+				if (VersioningProfile.isVersionedFirstSegment(prefix, result, startingSegmentNumber)) {
+					Log.info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
+					// Now need to verify the block we got
+					if (!verifier.verify(result)) {
+						try {
+							excludes.add(new byte[][] {VersioningProfile.addVersion(new ContentName(),VersioningProfile.getLastVersionAsLong(result.name())).component(0)});
+							System.out.println("was able to exclude: "+excludes.toString());
+						} catch (VersionMissingException e) {
+							Log.warning("failed to exclude content object version that did not verify: {0}",result.name());
+						}
+							
+						// TODO rework to allow retries
+						Log.info("Block failed to verify! Need to robustify method!");
+					} else {
+						//this result verified!
+					
+						//this could be our answer...  set to lastResult and see if we have time to do better
+						lastResult = result;
+					
+						if (remainingTime > 0) {
+							//we still have time to try for a better answer
+							System.out.println("we still have time to try for a better answer");
+						} else {
+							System.out.println("time is up, return what we have");
+							attempts = GET_LATEST_VERSION_ATTEMPTS;
+						}
+					
+						if (timeout == SystemConfiguration.NO_TIMEOUT) {
+							//we want to keep trying for something new
+							remainingTime = attemptTimeout;
+							attempts = 0;
+						}
+					}
+					//return result;
+				} else {
+					// This isn't the first block. Might be simply a later (cached) segment, or might be something
+					// crazy like a repo_start_write. So what we want is to get the version of this new block -- if getLatestVersion
+					// is doing its job, we now know the version we want (if we already knew that, we called super.getFirstBlock
+					// above. If we get here, _baseName isn't versioned yet. So instead of taking segmentRoot of what we got,
+					// which works fine only if we have the wrong segment rather than some other beast entirely (like metadata).
+					// So chop off the new name just after the (first) version, and use that. If getLatestVersion is working
+					// right, that should be the right thing.
+					startingVersion = result.name().cut(versionedLength);
+					Log.info("CHILD SELECTOR FAILURE: getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
+					// this will verify
+					
+					//don't count this against the gLV timeout.
+					
+					result = SegmentationProfile.getSegment(startingVersion, startingSegmentNumber, null, timeout, verifier, handle); // now that we have the latest version, go back for the first block.
+					//return result;
 				}
-				return result;
+			} else {
+				System.out.println("we didn't get anything");
+				Log.info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
+				//we didn't get a new version...  we can return the last one we received if it isn't null.
+				if (lastResult!=null)
+					return lastResult;
+				else {
+					System.out.println("we didn't get anything, and we haven't had anything at all... try with remaining long timeout");
+					attemptTimeout = remainingNullTime;
+					remainingTime = remainingNullTime;
+				}
 			}
-			// This isn't the first block. Might be simply a later (cached) segment, or might be something
-			// crazy like a repo_start_write. So what we want is to get the version of this new block -- if getLatestVersion
-			// is doing its job, we now know the version we want (if we already knew that, we called super.getFirstBlock
-			// above. If we get here, _baseName isn't versioned yet. So instead of taking segmentRoot of what we got,
-			// which works fine only if we have the wrong segment rather than some other beast entirely (like metadata).
-			// So chop off the new name just after the (first) version, and use that. If getLatestVersion is working
-			// right, that should be the right thing.
-			startingVersion = result.name().cut(versionedLength);
-			Log.info("CHILD SELECTOR FAILURE: getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
-			// this will verify
-			return SegmentationProfile.getSegment(startingVersion, startingSegmentNumber, null, timeout, verifier, handle); // now that we have the latest version, go back for the first block.
-		} else {
-			Log.info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
+			System.out.println("(after) attempts: "+attempts+" attemptTimeout: "+attemptTimeout+" remainingTime: "+remainingTime+" (timeout: "+timeout+")");
+			if (result!=null)
+				startingVersion = SegmentationProfile.segmentRoot(result.name());
 		}
 		return result;
+		*/
 	}
 
 	/**
@@ -619,4 +925,16 @@ public class VersioningProfile implements CCNProfile {
 		return false;
 	}
 
+	private static ArrayList<byte[]> addVersionToExcludes(ArrayList<byte[]> excludeList, ContentName name) {
+		try {
+			excludeList.add(VersioningProfile.addVersion(new ContentName(),VersioningProfile.getLastVersionAsLong(name)).component(0));
+
+			//excludes.add(new byte[][] {VersioningProfile.addVersion(new ContentName(),VersioningProfile.getLastVersionAsLong(name)).component(0)});
+			System.out.println("was able to exclude: "+excludeList.toString());
+		} catch (VersionMissingException e) {
+			Log.warning("failed to exclude content object version that did not verify: {0}",name);
+		}
+		return excludeList;
+	}
+	
 }
