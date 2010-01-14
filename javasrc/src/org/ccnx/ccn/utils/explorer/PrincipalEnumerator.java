@@ -17,6 +17,8 @@ import org.ccnx.ccn.protocol.ContentName;
 
 public class PrincipalEnumerator {
 
+	private static long TIMEOUT = 1000;
+	
 	GroupManager gm;
 	ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
 	ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
@@ -56,17 +58,18 @@ public class PrincipalEnumerator {
 		
 		try {
 			EnumeratedNameList userDirectory = new EnumeratedNameList(path, CCNHandle.open());
-			userDirectory.waitForChildren(); // will block
-			Thread.sleep(1000);
+			userDirectory.waitForChildren(TIMEOUT);
+			Thread.sleep(TIMEOUT);
 			
 			SortedSet<ContentName> availableChildren = userDirectory.getChildren();
 			if ((null == availableChildren) || (availableChildren.size() == 0)) {
-				Log.warning("No available user keystore data in directory " + path + ", giving up.");
-				throw new IOException("No available user keystore data in directory " + path + ", giving up.");
+				System.out.println("No available keystore data in directory " + path + ", giving up.");
 			}
-			for (ContentName child : availableChildren) {
-				ContentName fullName = new ContentName(path, child.components());
-				principalList.add(fullName);
+			else {
+				for (ContentName child : availableChildren) {
+					ContentName fullName = new ContentName(path, child.components());
+					principalList.add(fullName);
+				}
 			}
 		}
 		catch (Exception e) {
