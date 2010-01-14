@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -81,6 +81,23 @@ public class CCNNetworkManager implements Runnable {
 	public static final String KEEPALIVE_NAME = "/HereIAm";
 	public static final int THREAD_LIFE = 8;	// in seconds
 	
+	/**
+	 *  Definitions for which network protocol to use.  This allows overriding
+	 *  the current default.
+	 */
+	public enum NetworkProtocol {
+		UDP (17), TCP (6);
+		NetworkProtocol(Integer i) { this._i = i; }
+		private final Integer _i;
+		public Integer value() { return _i; }
+	}
+		
+	public static final String PROP_AGENT_PROTOCOL_KEY = "ccn.agent.protocol";
+	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.UDP;
+	public static final String PROP_AGENT_PREFIX_REG = "ccn.agent.prefix_reg";
+	public static final String ENV_AGENT_PREFIX_REG = "CCND_TRYFIB";
+	public static final boolean DEFAULT_PREFIX_REG = false; // Until ccnd gets updated
+
 	
 	/*
 	 *  This ccndId is set on the first connection with 'ccnd' and is the
@@ -108,6 +125,8 @@ public class CCNNetworkManager implements Runnable {
 	protected long _lastHeartbeat = 0;
 	protected int _port = DEFAULT_AGENT_PORT;
 	protected String _host = DEFAULT_AGENT_HOST;
+	protected NetworkProtocol _protocol = DEFAULT_PROTOCOL;
+
 	
 	// For handling protocol to speak to ccnd, must have keys
 	protected KeyManager _keyManager;
@@ -116,7 +135,8 @@ public class CCNNetworkManager implements Runnable {
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
-	
+	protected boolean _usePrefixReg = DEFAULT_PREFIX_REG;
+
 	private Timer _periodicTimer = null;
 	private boolean _timersSetup = false;
 	
@@ -544,6 +564,43 @@ public class CCNNetworkManager implements Runnable {
 			_host = hostval;
 			Log.warning("Non-standard CCN agent host " + _host + " per property " + PROP_AGENT_HOST);
 		}
+		
+		String proto = System.getProperty(PROP_AGENT_PROTOCOL_KEY);
+		if (null != proto) {
+			boolean found = false;
+			for (NetworkProtocol p : NetworkProtocol.values()) {
+				String pAsString = p.toString();
+				if (proto.equalsIgnoreCase(pAsString)) {
+					Log.warning("CCN agent protocol changed to " + pAsString + "per property");
+					_protocol = p;
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				throw new IOException("Invalid protocol '" + proto + "' specified in " + PROP_AGENT_PROTOCOL_KEY);
+			}
+		} else {
+			_protocol = DEFAULT_PROTOCOL;
+		}
+
+		String prefix = System.getProperty(PROP_AGENT_PREFIX_REG);
+		if (null == prefix) {
+			prefix = System.getenv(ENV_AGENT_PREFIX_REG);
+		}
+		if (null != prefix) {
+			/* if the property is anything other than 'false' assume using prefix registration */
+			if (prefix.equalsIgnoreCase("false")) {
+				_usePrefixReg = false;
+			} else {
+				_usePrefixReg = true;
+			}
+			Log.warning("CCN agent use of prefix registration changed to " + _usePrefixReg + "per property");
+		} else {
+			_usePrefixReg = DEFAULT_PREFIX_REG;
+		}
+		
+
 		Log.info("Contacting CCN agent at " + _host + ":" + _port);
 		
 		String tapname = System.getProperty(PROP_TAP);
