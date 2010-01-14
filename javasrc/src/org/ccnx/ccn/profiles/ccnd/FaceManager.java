@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -20,6 +20,7 @@ package org.ccnx.ccn.profiles.ccnd;
 import java.io.ByteArrayInputStream;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLCodecFactory;
@@ -46,14 +47,6 @@ public class FaceManager extends CCNDaemonHandle /* extends GenericXMLEncodable 
 		public String value() { return st; }
 	}
 	
-	public enum NetworkProtocol {
-		UDP (17), TCP (6);
-		NetworkProtocol(Integer i) { this.i = i; }
-		private final Integer i;
-		public Integer value() { return i; }
-	}
-		
-
 public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 	/* extends CCNEncodableObject<PolicyXML>  */
 	

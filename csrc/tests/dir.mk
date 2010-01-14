@@ -41,7 +41,8 @@ ALLTESTS = \
   test_spur_traffic \
   test_stale \
   test_twohop_ccnd \
-  test_twohop_ccnd_teardown
+  test_twohop_ccnd_teardown \
+  test_unreg
 
 default all: $(SCRIPTSRC) testdriver
 

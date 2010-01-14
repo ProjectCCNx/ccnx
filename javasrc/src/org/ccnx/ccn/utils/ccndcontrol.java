@@ -30,6 +30,7 @@ import java.util.logging.Level;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNNetworkManager;
+import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
 import org.ccnx.ccn.profiles.ccnd.FaceManager;
@@ -49,7 +50,7 @@ public class ccndcontrol {
 	public static class RegEntry {
 		public Command command;
 		public String uri;
-		public FaceManager.NetworkProtocol protocol;
+		public NetworkProtocol protocol;
 		public String host;
 		public String hostName;
 		public Integer port;
@@ -104,7 +105,7 @@ public class ccndcontrol {
 				System.exit(1);
 			}
 			entry.protocol = null;
-			for (FaceManager.NetworkProtocol p : FaceManager.NetworkProtocol.values()) {
+			for (NetworkProtocol p : NetworkProtocol.values()) {
 				String pAsString = p.toString();
 				if (tmp.equalsIgnoreCase(pAsString)) {
 					entry.protocol = p;

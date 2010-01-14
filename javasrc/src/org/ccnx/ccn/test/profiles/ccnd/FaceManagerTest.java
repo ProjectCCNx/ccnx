@@ -1,7 +1,7 @@
 /**
  * A CCNx library test.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -25,13 +25,13 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
 import org.ccnx.ccn.impl.CCNNetworkManager;
+import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
 import org.ccnx.ccn.profiles.ccnd.FaceManager;
 import org.ccnx.ccn.profiles.ccnd.FaceManager.ActionType;
 import org.ccnx.ccn.profiles.ccnd.FaceManager.FaceInstance;
-import org.ccnx.ccn.profiles.ccnd.FaceManager.NetworkProtocol;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.test.LibraryTestBase;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
@@ -151,7 +151,7 @@ public class FaceManagerTest extends LibraryTestBase {
 		FaceManager mgr = null;
 		try {
 			mgr = new FaceManager(putHandle);
-			faceID = mgr.createFace(FaceManager.NetworkProtocol.UDP, "10.1.1.1", new Integer(CCNNetworkManager.DEFAULT_AGENT_PORT));
+			faceID = mgr.createFace(NetworkProtocol.UDP, "10.1.1.1", new Integer(CCNNetworkManager.DEFAULT_AGENT_PORT));
 			System.out.println("Created face: " + faceID);
 		} catch (CCNDaemonException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
