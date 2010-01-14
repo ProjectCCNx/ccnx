@@ -40,6 +40,7 @@ import javax.swing.event.ListSelectionListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
@@ -283,26 +284,32 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 	 * Apply all batched operations (addition or removal of principals)
 	 */
 	private void applyChanges() {
-		try{
-			if (selectedGroupFriendlyName != null) {
-				// we are applying changes to an existing group
+		if (selectedGroupFriendlyName != null) {
+			// we are applying changes to an existing group
+			try {
 				Group g = gm.getGroup(selectedGroupFriendlyName);
 				g.modify(membersToAdd, membersToRemove);
+			} catch (AccessDeniedException ade) {
+				JOptionPane.showMessageDialog(this, "You do not have the access right to edit this group.");
 			}
-			else {
-				// we are creating a new group
-				String newName = newGroupName.getText();
-				if (validateNewGroupName(newName)) {
-					gm.createGroup(newName, membersToAdd);
-					groupsContentNameList = pEnum.enumerateGroups();
-					groupEditorModel.clear();
-					groupEditorModel.addAll(groupsContentNameList.toArray());
-					selectGroupView();
-				}
+			catch (Exception e) {
+				e.printStackTrace();
 			}
 		}
-		catch (Exception e) {
-			e.printStackTrace();
+		else {
+			// we are creating a new group
+			String newName = newGroupName.getText();
+			if (validateNewGroupName(newName)) {
+				try {
+					gm.createGroup(newName, membersToAdd);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				groupsContentNameList = pEnum.enumerateGroups();
+				groupEditorModel.clear();
+				groupEditorModel.addAll(groupsContentNameList.toArray());
+				selectGroupView();
+			}
 		}
 	}
 
