@@ -79,6 +79,10 @@ public abstract class KeyManager {
 		}
 	}
 	
+	/**
+	 * Clean up state left around by the default key manager and remove it.
+	 * For now that just means shutting down the network manager started by it
+	 */
 	public static void closeDefaultKeyManager() {
 		if (null != _defaultKeyManager) {
 			_defaultKeyManager.keyRepository().handle().close();
