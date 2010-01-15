@@ -65,6 +65,10 @@ import org.ccnx.ccn.impl.support.Log;
  * segment number. B0 = 1 to maintain consistency with standard CTR mode use. The same IV 
  * expansion function is used regardless of mode for simplicity.
  * The encryption is done with the specified key, in CBC mode, using the all-zeros IV
+ * 
+ * IMPORTANT NOTE: Do not use static keying to encrypt network objects in CTR mode, unless
+ * you are careful to only save them once per key. Use CBC mode (under development) or
+ * a dynamic keying method, such as KDFContentKeys.
  */
 public class EncryptedIVStaticContentKeys extends StaticContentKeys implements Cloneable {
 	

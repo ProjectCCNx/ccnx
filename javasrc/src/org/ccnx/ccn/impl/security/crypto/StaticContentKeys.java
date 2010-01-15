@@ -84,6 +84,9 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  *  Many of the expansion function calculations are broken out into separate methods to
  *  allow for easier subclassing.
  *
+ * IMPORTANT NOTE: Do not use static keying to encrypt network objects in CTR mode, unless
+ * you are careful to only save them once per key. Use CBC mode (under development) or
+ * a dynamic keying method, such as KDFContentKeys.
  */
 public class StaticContentKeys extends ContentKeys implements Cloneable {
 	
