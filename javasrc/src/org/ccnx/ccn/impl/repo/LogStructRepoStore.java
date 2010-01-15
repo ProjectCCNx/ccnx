@@ -264,9 +264,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				_km = 
 					new BasicKeyManager(LogStructRepoStoreProfile.REPOSITORY_USER, 
 							_repositoryRoot, LogStructRepoStoreProfile.KEYSTORE_FILE,
-							null, null, LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
+							null, LogStructRepoStoreProfile.REPOSITORY_USER, LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
 				_km.initialize();
 				handle = CCNHandle.open(_km);
+
 			} catch (ConfigurationException e) {
 				Log.warning("ConfigurationException creating repository key store: " + e.getMessage());
 				throw new RepositoryException("ConfigurationException creating repository key store!", e);
