@@ -39,12 +39,11 @@ public class ACLTable extends AbstractTableModel {
 	public ACLTable(String type, ContentName[] principals, ACL initialACL) {
 		columnNames[0] = type;
 		this.principals = principals;
-		this.initialACL = initialACL;
-		
-		initializeACLTable();		
+		initializeACLTable(initialACL);		
 	}
 	
-	private void initializeACLTable() {
+	public void initializeACLTable(ACL initialACL) {
+		this.initialACL = initialACL;
 		aclTable = new Object[principals.length][ACL_LENGTH];
 		for (int c=0; c<ACL_LENGTH; c++) {
 			for (int r=0; r<principals.length; r++) {
@@ -107,7 +106,7 @@ public class ACLTable extends AbstractTableModel {
 	}
 	
 	public void cancelChanges() {
-		initializeACLTable();
+		initializeACLTable(initialACL);
 		fireTableDataChanged();
 	}
 	
@@ -140,10 +139,6 @@ public class ACLTable extends AbstractTableModel {
 				aclTable[pos][1] = new Boolean(true);
 				aclTable[pos][2] = new Boolean(true);
 			}
-		}
-		else {
-			String friendlyName = ContentName.componentPrintNative(principal.lastComponent());
-			System.out.println("WARNING: principal name " + friendlyName + " in ACL not a known principal in this table");
 		}
 	}
 	

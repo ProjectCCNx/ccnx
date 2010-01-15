@@ -30,6 +30,7 @@ import javax.swing.JTable;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
@@ -147,8 +148,23 @@ public class ACLManager extends JDialog implements ActionListener {
 			currentACL = acm.getEffectiveACLObject(node).acl();
 		}
 		catch (Exception e) {
+			System.out.println("Creating missing root ACL");
+			createRootACL();
 			e.printStackTrace();
 		}		
+	}
+	
+	private void createRootACL() {
+		ContentName cn = ContentName.fromNative(userStorage, UserConfiguration.userName());
+		Link lk = new Link(cn, ACL.LABEL_MANAGER, null);
+		ArrayList<Link> rootACLcontents = new ArrayList<Link>();
+		rootACLcontents.add(lk);
+		ACL rootACL = new ACL(rootACLcontents);
+		try{
+			acm.initializeNamespace(rootACL);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 
@@ -170,6 +186,10 @@ public class ACLManager extends JDialog implements ActionListener {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		// refresh user and group tables with new ACL
+		getExistingACL();
+		userACLTable.initializeACLTable(currentACL); 
+		groupACLTable.initializeACLTable(currentACL); 
 	}
 	
 	private void cancelChanges() {
