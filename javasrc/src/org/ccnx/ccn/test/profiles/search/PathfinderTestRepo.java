@@ -17,15 +17,18 @@
 
 package org.ccnx.ccn.test.profiles.search;
 
+import java.util.logging.Level;
+
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.search.Pathfinder;
+import org.ccnx.ccn.profiles.search.Pathfinder.SearchResults;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -44,6 +47,7 @@ public class PathfinderTestRepo {
 	 */
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		Log.setDefaultLevel(Level.FINEST);
 		writeHandle = CCNHandle.open();
 		readHandle = CCNHandle.open();
 		TARGET_POSTFIX_NAME  = ContentName.fromNative(TARGET_POSTFIX);
@@ -59,9 +63,10 @@ public class PathfinderTestRepo {
 				new ContentName(startingPoint.parent().parent().parent(), TARGET_POSTFIX_NAME.components()), "The target!", SaveType.REPOSITORY, writeHandle);
 		targetObject.save();
 		
-		Pathfinder finder = new Pathfinder(startingPoint,TARGET_POSTFIX_NAME, true, false, SystemConfiguration.SHORT_TIMEOUT, readHandle);
-		ContentObject co = finder.waitForResults();
-		Assert.assertNotNull(co);
+		Pathfinder finder = new Pathfinder(startingPoint,TARGET_POSTFIX_NAME, true, false, 
+									SystemConfiguration.SHORT_TIMEOUT, null, readHandle);
+		SearchResults results = finder.waitForResults();
+		Assert.assertNotNull(results.first());
 	}
 	
 

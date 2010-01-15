@@ -19,12 +19,16 @@ package org.ccnx.ccn.profiles.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Set;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -52,6 +56,13 @@ import org.ccnx.ccn.protocol.Interest;
  **/
 public class Pathfinder implements CCNInterestListener {
 	
+	public static class SearchResults extends Tuple<ContentObject, Set<ContentName>> {
+		
+		public SearchResults(ContentObject result, Set<ContentName> excluded) {
+			super(result, excluded);
+		}
+	}
+	
 	protected ContentName _startingPoint;
 	protected ContentName _postfix;
 	protected boolean _closestOnPath;
@@ -60,20 +71,25 @@ public class Pathfinder implements CCNInterestListener {
 	protected CCNHandle _handle;
 	protected long _startingTime;
 	protected boolean _timedOut = false;
+	protected Set<ContentName> _searchedPathCache;
 	
 	protected ContentObject _searchResult;
+	
 	
 	// In order from startingPoint to root.
 	protected LinkedList<Interest> _outstandingInterests = new LinkedList<Interest>();
 	
 	public Pathfinder(ContentName startingPoint, ContentName desiredPostfix, 
 					  boolean closestOnPath, boolean goneOK,
-					  int timeout, CCNHandle handle) throws IOException {
+					  int timeout, 
+					  Set<ContentName> searchedPathCache,
+					  CCNHandle handle) throws IOException {
 		_startingPoint = startingPoint;
 		_postfix = desiredPostfix;
 		_closestOnPath = closestOnPath;
 		_goneOK = goneOK;
 		_timeout = timeout;
+		_searchedPathCache = searchedPathCache;
 		_handle = handle;
 		startSearch();
 	}
@@ -85,10 +101,15 @@ public class Pathfinder implements CCNInterestListener {
 		Interest theInterest = null;
 		while (searchPoint != null) {
 			
-			theInterest = constructInterest(searchPoint);
-			
-			_handle.expressInterest(theInterest, this);
-			_outstandingInterests.add(theInterest);
+			if ((null != _searchedPathCache) && (_searchedPathCache.contains(searchPoint))) {
+				Log.info("Skipping search of point {0}, cached negative result.", searchPoint);
+			} else {
+				Log.info("Pathfinder searching node {0}", searchPoint);
+				theInterest = constructInterest(searchPoint);
+
+				_handle.expressInterest(theInterest, this);
+				_outstandingInterests.add(theInterest);
+			}
 			
 			if (searchPoint.equals(ContentName.ROOT)) {
 				searchPoint = null;
@@ -107,20 +128,54 @@ public class Pathfinder implements CCNInterestListener {
 		return new Interest(targetName);
 	}
 
-	public synchronized void stopSearch() {
+	/**
+	 * We want to hand back a list of paths we have checked and ruled out to our
+	 * caller, who can opt to keep them and not ask about them again (or to cache
+	 * them for some time before asking). These would basically be all the prefixes
+	 * we timed out on, not the prefixes we removed because we found something at a
+	 * closer point and were looking for the closest entry, or at a farther point and
+	 * were looking for the farthest entry.
+	 */
+	public synchronized Set<ContentName> stopSearch() {
+		HashSet<ContentName> outstandingPrefixes = new HashSet<ContentName>();
+		int cutCount = AccessControlProfile.rootPostfix().count();
+		ContentName prefixName;
+		
 		for (Interest interest : _outstandingInterests) {
 			if (null != interest) {
 				_handle.cancelInterest(interest, this);
+				prefixName = interest.name().cut(interest.name().count() - cutCount);
+				if (prefixName.isPrefixOf(_startingPoint)) {
+					outstandingPrefixes.add(prefixName);
+					Log.info("Pathfinder: caching negative result for {0}", prefixName);
+				} else {
+					// we found a gone object, and were trying to find a non-gone child of it
+					// TODO fix this when we change the GONE handling
+					// TODO should this be prefixName or prefixName.parent()
+					ContentName thisName = prefixName;
+					while (!thisName.isPrefixOf(_startingPoint)) {
+						if (thisName.equals(ContentName.ROOT)) {
+							thisName = null;
+							break;
+						}
+						thisName = thisName.parent();
+					}
+					if (null != thisName) {
+						outstandingPrefixes.add(thisName);
+						Log.info("Pathfinder: caching negative result for {0}", thisName);
+					}
+				}
 			}
 		}
 		_outstandingInterests.clear();
+		return outstandingPrefixes;
 	}
 	
 	public boolean goneOK() { return _goneOK; }
 	
-	public boolean returnClosestMatchOnPath() { return _closestOnPath; }
+	public boolean seekingClosestMatchOnPath() { return _closestOnPath; }
 	
-	public synchronized ContentObject waitForResults() {
+	public synchronized SearchResults waitForResults() {
 		// Wait, if woken up see if we're done, we've timed out, or we woke up early.
 		long timeRemaining = _timeout - (System.currentTimeMillis() - _startingTime);
 		while (timeRemaining > 0) {
@@ -136,14 +191,14 @@ public class Pathfinder implements CCNInterestListener {
 		}
 		if (done()) {
 			Log.info("Pathfinder: found answer, {0}", (null == _searchResult) ? "null"  : _searchResult.name());
-			return _searchResult;
+			return new SearchResults(_searchResult, null);
 		} else {
-			stopSearch();
+			Set<ContentName> excluded = stopSearch();
 			// Do we return null, as we ran out of time, or the best option
 			// we found? 
 			_timedOut = true;
 			Log.info("Pathfinder: timed out, best answer so far: {0}", (null == _searchResult) ? "null"  : _searchResult.name());
-			return _searchResult;
+			return new SearchResults(_searchResult, excluded);
 		}
 	}
 	
@@ -173,12 +228,17 @@ public class Pathfinder implements CCNInterestListener {
 				if (result.isGone() && !goneOK()) {
 					Log.info("Pathfinder found a GONE object when it wasn't looking for one. Replacing interest with one looking for latest version after (0}", result.name());
 
+					// TODO this isn't entirely correct -- will look for later versions of the GONE object, but
+					// won't look for other objects that aren't in this one's version chain that aren't GONE;
+					// need to maybe exclude the gone one and ask for that as well, but the interest-splitting
+					// code won't handle more than one outstanding interest per prefix correctly.
 					if (!VersioningProfile.hasTerminalVersion(result.name())) {
 						Log.info("GONE object not versioned. Ignoring it and hoping something better comes along.");
 						returnInterest = interest;
 					} else {
 						returnInterest = VersioningProfile.latestVersionInterest(result.name(), null, null);
 					}
+					
 				} else {
 					// we got some content that counts, gone or not. Cancel and remove all the
 					// interests in the wrong direction from this one.
@@ -213,6 +273,7 @@ public class Pathfinder implements CCNInterestListener {
 						for (int i=0; i < index; ++i) {
 							thisInterest = _outstandingInterests.removeFirst();
 							_handle.cancelInterest(thisInterest, this);
+							_outstandingInterests.remove(i);
 						}
 					}
 					_searchResult = result; // what if there is more than one
@@ -227,7 +288,9 @@ public class Pathfinder implements CCNInterestListener {
 			}
 			
 			if (done()) {
-				// We're done
+				// We're done -- this means that the answer was either at this point on the path,
+				// or at the root, depending on whether we're searching for closest or farthest.
+				// Anything else we need to time out.
 				this.notifyAll();
 			}
 
