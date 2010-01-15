@@ -25,12 +25,14 @@ import java.util.ArrayList;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
@@ -181,9 +183,17 @@ public class ACLManager extends JDialog implements ActionListener {
 		System.out.println("Group updates:");
 		for (ACLOperation aclo: groupUpdates) System.out.println(aclo.targetName() + " ---> " + aclo.targetLabel());
 		try {
+			// TODO: we set the ACL, then update it, to handle correctly the case
+			// where the node had no ACL to start with.
+			// It would be more efficient to set and update the ACL in a single step.
+			acm.setACL(node, currentACL);
 			acm.updateACL(node, userUpdates);
 			acm.updateACL(node, groupUpdates);
-		} catch (Exception e) {
+		} catch (AccessDeniedException ade) {
+			JOptionPane.showMessageDialog(this, "You do not have the access right to edit the ACL at this node.");
+			ade.printStackTrace();
+		}
+		catch (Exception e) {
 			e.printStackTrace();
 		}
 		// refresh user and group tables with new ACL
