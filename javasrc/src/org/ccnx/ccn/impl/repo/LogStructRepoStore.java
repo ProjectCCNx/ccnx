@@ -76,6 +76,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		public static final char [] KEYSTORE_PASSWORD = "Th1s 1s n0t 8 g00d R3p0s1t0ry p8ssw0rd!".toCharArray();
 		public static final String KEYSTORE_FILE = "ccnx_repository_keystore";
 		public static final String REPOSITORY_USER = "Repository";
+		// OS dependencies -- some OSes seem to ignore case in keystore aliases
+		public static final String REPOSITORY_KEYSTORE_ALIAS = REPOSITORY_USER.toLowerCase();
 
 		private static String CONTENT_FILE_PREFIX = "repoFile";
 		private static String DEBUG_TREEDUMP_FILE = "debugNamesTree";
@@ -264,7 +266,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				_km = 
 					new BasicKeyManager(LogStructRepoStoreProfile.REPOSITORY_USER, 
 							_repositoryRoot, LogStructRepoStoreProfile.KEYSTORE_FILE,
-							null, LogStructRepoStoreProfile.REPOSITORY_USER, LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
+							null, LogStructRepoStoreProfile.REPOSITORY_KEYSTORE_ALIAS, 
+							LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
 				_km.initialize();
 				handle = CCNHandle.open(_km);
 
@@ -524,7 +527,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	public void shutDown() {
 		super.shutDown();
 		if (null != _km)
-			_km.keyRepository().handle().close();
+			_km.close();
 		if (null != _activeWriteFile.openFile) {
 			try {
 				_activeWriteFile.openFile.close();
