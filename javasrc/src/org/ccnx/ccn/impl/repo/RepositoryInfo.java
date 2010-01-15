@@ -17,19 +17,31 @@
 
 package org.ccnx.ccn.impl.repo;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.ErrorStateException;
+import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.io.content.ContentGoneException;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
+import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
  * Object to return information associated with a Repository to a repository client
@@ -100,6 +112,107 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	
 	protected static final HashMap<RepoInfoType, String> _InfoTypeNames = new HashMap<RepoInfoType, String>();
 	
+	/**
+	 * A CCNNetworkObject wrapper around RepositoryInfo, used for easily saving and retrieving
+	 * versioned RepositoryInfos to CCN. A typical pattern for using network objects to save
+	 * objects that happen to be encodable or serializable is to incorporate such a static
+	 * member wrapper class subclassing CCNEncodableObject, CCNSerializableObject, or
+	 * CCNNetworkObject itself inside the main class definition.
+	 */
+	public static class RepositoryInfoObject extends CCNEncodableObject<RepositoryInfo> {
+
+		/**
+		 * Read constructor. We have separated constructors into "write" and "read"; 
+		 * basically if you are only going to read with an object, use a read constructor
+		 * unless you do not want update() to be called to read data in the constructor
+		 * (for example, because you know no data has been written yet to this name).
+		 * In this case, use a write constructor, set the data argument to null, and 
+		 * later call update or one of the forms of updateInBackground to read data
+		 * into the object.
+		 * 
+		 * If the first thing you are going to do with an object is write data, use a
+		 * write constructor, with a SaveType chosen to reflect where you are going to
+		 * write data to (e.g. directly to the network or to a repository). The SaveType
+		 * just controls the choice of flow controller used by the object, so constructors
+		 * that explicitly specify a flow controller do not need a SaveType.
+		 * 
+		 * If you want to use an object to both read and write data, and you create it
+		 * with a read constructor, you must call setupSave on the object prior to writing
+		 * to set its SaveType, unless you specified a flow controller in the constructor.
+		 */
+		public RepositoryInfoObject(ContentName name, CCNHandle handle) 
+		throws ContentDecodingException, IOException {
+			super(RepositoryInfo.class, true, name, (PublisherPublicKeyDigest)null, handle);
+		}
+
+		/**
+		 * Read constructor.
+		 */
+		public RepositoryInfoObject(ContentName name,
+				PublisherPublicKeyDigest publisher, CCNHandle handle)
+				throws ContentDecodingException, IOException {
+			super(RepositoryInfo.class, true, name, publisher, handle);
+		}
+
+		/**
+		 * Read constructor.
+		 */
+		public RepositoryInfoObject(ContentName name,
+				PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
+				throws ContentDecodingException, IOException {
+			super(RepositoryInfo.class, true, name, publisher, flowControl);
+		}
+
+		/**
+		 * Read constructor.
+		 */
+		public RepositoryInfoObject(ContentObject firstBlock,
+				CCNHandle handle) throws ContentDecodingException, IOException {
+			super(RepositoryInfo.class, true, firstBlock, handle);
+		}
+
+		/**
+		 * Read constructor.
+		 */
+		public RepositoryInfoObject(ContentObject firstBlock,
+				CCNFlowControl flowControl) throws ContentDecodingException,
+				IOException {
+			super(RepositoryInfo.class, true, firstBlock, flowControl);
+		}
+
+		/**
+		 * Write constructor.
+		 */
+		public RepositoryInfoObject(ContentName name,
+				RepositoryInfo data, SaveType saveType, CCNHandle handle)
+				throws IOException {
+			super(RepositoryInfo.class, true, name, data, saveType, handle);
+		}
+	
+		/**
+		 * Write constructor.
+		 */
+		public RepositoryInfoObject(ContentName name,
+				RepositoryInfo data, SaveType saveType,
+				PublisherPublicKeyDigest publisher, KeyLocator keyLocator,
+				CCNHandle handle) throws IOException {
+			super(RepositoryInfo.class, true, name, data, saveType, publisher, keyLocator,
+					handle);
+		}
+
+		/**
+		 * Write constructor.
+		 */
+		public RepositoryInfoObject(ContentName name,
+				RepositoryInfo data, PublisherPublicKeyDigest publisher,
+				KeyLocator keyLocator, CCNFlowControl flowControl)
+				throws IOException {
+			super(RepositoryInfo.class, true, name, data, publisher, keyLocator, flowControl);
+		}
+		
+		public RepositoryInfo repositoryInfo() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
+	}
+
 	/**
 	 * The main constructor used to create the information returned by a repository during initialization
 	 * 
