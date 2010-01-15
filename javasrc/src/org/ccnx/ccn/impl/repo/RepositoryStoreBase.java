@@ -197,6 +197,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	}
 
 	public void shutDown() {
-		_handle.close();
+		if( null != _handle )
+			_handle.close();
 	}
 }
