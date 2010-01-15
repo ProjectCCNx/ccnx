@@ -475,6 +475,11 @@ public class KeyRepository {
 		if (null != publicKey) {
 			return publicKey;
 		}
+		
+		if (null == locator) {
+			Log.warning("Cannot retrieve key -- no key locator for key {0}", desiredKeyID);
+			throw new IOException("Cannot retrieve key -- no key locator for key " + desiredKeyID + ".");
+		}
 
 		if (locator.type() != KeyLocator.KeyLocatorType.NAME) {
 			Log.info("Repository looking up a key that is contained in the locator...");
@@ -491,9 +496,9 @@ public class KeyRepository {
 		} else {
 			PublicKeyObject publicKeyObject = getPublicKeyObject(desiredKeyID, locator, timeout);
 			if (null == publicKeyObject) {
-				Log.info("Could not retrieve key {0} with locator {1}!", desiredKeyID, locator);
+				Log.info("Could not retrieve key " + desiredKeyID + " from network with locator " + locator + "!");
 			} else {
-				Log.info("Retrieved key {0} from network with locator {1}!", desiredKeyID, locator);
+				Log.info("Retrieved key " + desiredKeyID + " from network with locator " + locator + "!");
 			}
 			return publicKeyObject.publicKey();
 		}
