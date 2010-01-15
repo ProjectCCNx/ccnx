@@ -108,4 +108,9 @@ public class BitBucketRepository extends RepositoryStoreBase {
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	public Object getStatus(String type) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

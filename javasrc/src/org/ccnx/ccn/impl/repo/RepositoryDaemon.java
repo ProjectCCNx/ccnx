@@ -71,6 +71,10 @@ public class RepositoryDaemon extends Daemon {
 		public boolean signal(String name) {
 			return _repo.diagnostic(name);
 		}
+		
+		public Object status(String type) {
+			return "running";
+		}
 	}
 	
 	public RepositoryDaemon() {

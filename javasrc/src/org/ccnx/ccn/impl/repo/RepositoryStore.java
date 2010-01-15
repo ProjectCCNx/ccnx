@@ -47,6 +47,7 @@ public interface RepositoryStore {
 	public static final String REPO_DATA = "data";
 	public static final String REPO_LOGGING = "repo";
 	
+	public static final String REPO_SIMPLE_STATUS_REQUEST = "simpleStatus";
 	
 	/**
 	 * Initialize the repository
@@ -156,4 +157,9 @@ public interface RepositoryStore {
      * @return true if diagnostic operation is supported and was performed, false otherwise
      */
     public boolean diagnostic(String name);
+    
+    /**
+     * Get implementation defined status
+     */
+    public Object getStatus(String type);
 }

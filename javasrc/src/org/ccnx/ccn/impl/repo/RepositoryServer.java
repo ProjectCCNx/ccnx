@@ -357,4 +357,8 @@ public class RepositoryServer {
 			}
 		}
 	}
+	
+	public Object getStatus(String type) {
+		return _repo.getStatus(type);
+	}
 }
