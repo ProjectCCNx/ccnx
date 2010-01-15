@@ -278,7 +278,7 @@
 	<!-- test is for running all current automated tests to validate code 
 	     IMPORTANT: test-repo must be run before any test that will start a repo because it
 	     requires that a repo *not* be running when it starts -->
-	<target name="test" depends="test-puttap, test-repo, test-protocol, test-impl, test-io, test-endtoend, test-ccnd-controls">
+	<target name="test" depends="test-puttap, test-repo, test-protocol, test-impl, test-io, test-endtoend">
 	</target>
 
 	<target name="test-protocol" depends="test-protocol-without-repo, test-protocol-with-repo">
