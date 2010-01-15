@@ -75,6 +75,8 @@ public abstract class AccessControlManager {
 	public boolean inProtectedNamespace(ContentName content) {
 		return _namespace.isPrefixOf(content);
 	}
+	
+	public ContentName getNamespaceRoot() { return _namespace; }
 
 	/**
 	 * Used by content reader to retrieve the keys necessary to decrypt this content.
@@ -338,6 +340,8 @@ public abstract class AccessControlManager {
 		AccessControlManager acm;
 		try {
 			acm = NamespaceManager.findACM(name, handle);
+			acm = null;
+			
 			if ((acm != null) && (acm.isProtectedContent(name, handle))) {
 				// First we need to figure out whether this content is public or unprotected...
 				Log.info("keysForOutput: found ACM, protected content, generating new data key for data node {0}", name);
