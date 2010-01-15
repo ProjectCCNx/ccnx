@@ -105,18 +105,24 @@ public class KeyRepository {
 		_keyManager = handle.keyManager();
 	}
 
-	public CCNHandle handle() { return _handle; }
+	public CCNHandle handle() throws IOException { 
+		if (null == _handle) {
+			synchronized(this) {
+				if (null == _handle) {
+					_handle = CCNHandle.open(_keyManager); // maintain our own connection to the agent, so
+				}
+			}
+		}
+		return _handle; 
+	}
 
 	public synchronized void initializeKeyServer() throws IOException {
 		if (keyServerIsInitialized()) {
 			return;
 		}
-		if (null == _handle) {
-			_handle = CCNHandle.open(_keyManager); // maintain our own connection to the agent, so
-		}
 		// everyone can ask us for keys even if we have no repository
 		// make a buffered server to return key data
-		_keyServer = new CCNFlowServer(null, true, _handle);
+		_keyServer = new CCNFlowServer(null, true, handle());
 	}
 
 	public synchronized boolean keyServerIsInitialized() {
@@ -226,11 +232,11 @@ public class KeyRepository {
 			// CCN equivalent of a "self-signed cert". Means that
 			// we will refer to only the base key name and the publisher ID.
 			if (null == signingKeyID) {
-				signingKeyID = _handle.keyManager().getDefaultKeyID();
+				signingKeyID = handle().keyManager().getDefaultKeyID();
 			}
 
 			if (null == keyLocator) {
-				KeyLocator constructedLocator = _handle.keyManager().getKeyLocator(signingKeyID);
+				KeyLocator constructedLocator = handle().keyManager().getKeyLocator(signingKeyID);
 				if ((constructedLocator.type() == KeyLocatorType.KEY) && 
 					(signingKeyID.equals(keyToPublish))) {
 						// Make a self-referential key locator. For now do not include the
@@ -270,7 +276,7 @@ public class KeyRepository {
 		// Use same code path for default key retrieval as getPublicKey, so that we can manage
 		// version handling in a single place.
 		if (null == theKey) {
-			theKey = _handle.keyManager().getDefaultPublicKey();
+			theKey = handle().keyManager().getDefaultPublicKey();
 		}
 		PublisherPublicKeyDigest keyToPublish = new PublisherPublicKeyDigest(theKey);
 		
@@ -293,11 +299,11 @@ public class KeyRepository {
 			// CCN equivalent of a "self-signed cert". Means that
 			// we will refer to only the base key name and the publisher ID.
 			if (null == signingKeyID) {
-				signingKeyID = _handle.keyManager().getDefaultKeyID();
+				signingKeyID = handle().keyManager().getDefaultKeyID();
 			}
 
 			if (null == keyLocator) {
-				KeyLocator constructedLocator = _handle.keyManager().getKeyLocator(signingKeyID);
+				KeyLocator constructedLocator = handle().keyManager().getKeyLocator(signingKeyID);
 				if ((constructedLocator.type() == KeyLocatorType.KEY) && 
 					(signingKeyID.equals(keyToPublish))) {
 						// Make a self-referential key locator. For now do not include the
@@ -521,7 +527,7 @@ public class KeyRepository {
 			try {
 				Log.info("Trying network retrieval of key: " + keyInterest.name());
 				// use more aggressive high-level get
-				retrievedContent = _handle.get(keyInterest, timeout);
+				retrievedContent = handle().get(keyInterest, timeout);
 			} catch (IOException e) {
 				Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 				Log.warningStackTrace(e);
