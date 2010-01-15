@@ -116,6 +116,7 @@ static void ccn_initiate_prefix_reg(struct ccn *,
                                     struct interest_filter *);
 static void finalize_pkey(struct hashtb_enumerator *e);
 static void finalize_keystore(struct hashtb_enumerator *e);
+static int ccn_pushout(struct ccn *h);
 
 static int
 tv_earlier(const struct timeval *a, const struct timeval *b)
@@ -321,6 +322,12 @@ int
 ccn_disconnect(struct ccn *h)
 {
     int res;
+    res = ccn_pushout(h);
+    if (res == 1) {
+        res = fcntl(h->sock, F_SETFL, 0); /* clear O_NONBLOCK */
+        if (res == 0)
+            ccn_pushout(h);
+    }
     ccn_charbuf_destroy(&h->inbuf);
     ccn_charbuf_destroy(&h->outbuf);
     res = close(h->sock);
