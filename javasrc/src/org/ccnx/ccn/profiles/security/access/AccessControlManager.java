@@ -13,6 +13,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.security.crypto.KDFContentKeys;
@@ -337,11 +338,13 @@ public abstract class AccessControlManager {
 	 */
 	public static ContentKeys keysForOutput(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle)
 	throws IOException {
+		if (SystemConfiguration.disableAccessControl()) {
+			return null;
+		}
 		AccessControlManager acm;
 		try {
 			acm = NamespaceManager.findACM(name, handle);
 			Log.info("keysForOutput: found an acm? " + acm);
-			acm = null;
 			
 			if ((acm != null) && (acm.isProtectedContent(name, handle))) {
 				// First we need to figure out whether this content is public or unprotected...
