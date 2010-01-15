@@ -176,7 +176,7 @@ public class BasicKeyManager extends KeyManager {
 	 * Close any connections we have to the network. Ideally prepare to
 	 * reopen them when they are next needed.
 	 */
-	@Override
+	
 	public void close() {
 		keyRepository().close();
 	}

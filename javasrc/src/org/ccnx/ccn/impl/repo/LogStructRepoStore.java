@@ -344,7 +344,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		 */
 		if (null == pxml) {
 			try {
-				readPolicy(localName);
+				readPolicy(localName, _km);
 			} catch (ContentDecodingException e) {
 				throw new RepositoryException(e.getMessage());
 			}
