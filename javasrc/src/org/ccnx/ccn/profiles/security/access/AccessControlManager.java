@@ -340,6 +340,7 @@ public abstract class AccessControlManager {
 		AccessControlManager acm;
 		try {
 			acm = NamespaceManager.findACM(name, handle);
+			Log.info("keysForOutput: found an acm? " + acm);
 			acm = null;
 			
 			if ((acm != null) && (acm.isProtectedContent(name, handle))) {
