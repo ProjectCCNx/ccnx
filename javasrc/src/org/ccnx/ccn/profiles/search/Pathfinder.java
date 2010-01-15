@@ -68,7 +68,7 @@ public class Pathfinder implements CCNInterestListener {
 	
 	public Pathfinder(ContentName startingPoint, ContentName desiredPostfix, 
 					  boolean closestOnPath, boolean goneOK,
-					  long timeout, CCNHandle handle) throws IOException {
+					  int timeout, CCNHandle handle) throws IOException {
 		_startingPoint = startingPoint;
 		_postfix = desiredPostfix;
 		_closestOnPath = closestOnPath;
@@ -109,7 +109,9 @@ public class Pathfinder implements CCNInterestListener {
 
 	public synchronized void stopSearch() {
 		for (Interest interest : _outstandingInterests) {
-			_handle.cancelInterest(interest, this);
+			if (null != interest) {
+				_handle.cancelInterest(interest, this);
+			}
 		}
 		_outstandingInterests.clear();
 	}
@@ -123,6 +125,7 @@ public class Pathfinder implements CCNInterestListener {
 		long timeRemaining = _timeout - (System.currentTimeMillis() - _startingTime);
 		while (timeRemaining > 0) {
 			try {
+				Log.info("Pathfinder: waiting {0} more milliseconds.", timeRemaining);
 				this.wait(timeRemaining);
 			} catch (InterruptedException e) {
 			}
@@ -132,12 +135,14 @@ public class Pathfinder implements CCNInterestListener {
 			}
 		}
 		if (done()) {
+			Log.info("Pathfinder: found answer, {0}", (null == _searchResult) ? "null"  : _searchResult.name());
 			return _searchResult;
 		} else {
 			stopSearch();
 			// Do we return null, as we ran out of time, or the best option
 			// we found? 
 			_timedOut = true;
+			Log.info("Pathfinder: timed out, best answer so far: {0}", (null == _searchResult) ? "null"  : _searchResult.name());
 			return _searchResult;
 		}
 	}
@@ -187,6 +192,9 @@ public class Pathfinder implements CCNInterestListener {
 						// we actually never change our index, we just wait for the end of the array
 						// to come down and meet us.
 						
+						Log.info("Pathfinder: finding {0} closest to {1}, found {2}, removing more distant interests.",
+								_postfix, _startingPoint, result.name());
+						
 						for (int i=index + 1; i < _outstandingInterests.size(); ) {
 							thisInterest = _outstandingInterests.get(i);
 							_handle.cancelInterest(thisInterest, this);
@@ -198,6 +206,10 @@ public class Pathfinder implements CCNInterestListener {
 					} else {
 						// Remove any interests closer to us than the match on the path. Want the farthest
 						// away match.
+						
+						Log.info("Pathfinder: finding {0} farthest from {1}, found {2}, removing closer interests.",
+								_postfix, _startingPoint, result.name());
+						
 						for (int i=0; i < index; ++i) {
 							thisInterest = _outstandingInterests.removeFirst();
 							_handle.cancelInterest(thisInterest, this);
