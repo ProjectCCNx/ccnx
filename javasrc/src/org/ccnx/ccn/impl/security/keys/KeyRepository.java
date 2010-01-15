@@ -611,4 +611,15 @@ public class KeyRepository {
 		}
 		return null;
 	}
+	
+	/**
+	 * Close our handle, set it to null. Currently will recreate it automatically
+	 * when we next need it. This might be a little too automatic...
+	 */
+	public synchronized void close() {
+		if (null != _handle) {
+			_handle.close();
+			_handle = null;
+		}
+	}
 }

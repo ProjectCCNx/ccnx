@@ -173,6 +173,15 @@ public class BasicKeyManager extends KeyManager {
 	public boolean initialized() { return _initialized; }
 	
 	/**
+	 * Close any connections we have to the network. Ideally prepare to
+	 * reopen them when they are next needed.
+	 */
+	@Override
+	public void close() {
+		keyRepository().close();
+	}
+	
+	/**
 	 * Publish our default key at a particular name.
 	 */
 	

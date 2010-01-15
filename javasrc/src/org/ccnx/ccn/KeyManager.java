@@ -85,7 +85,7 @@ public abstract class KeyManager {
 	 */
 	public static void closeDefaultKeyManager() {
 		if (null != _defaultKeyManager) {
-			_defaultKeyManager.keyRepository().handle().close();
+			_defaultKeyManager.close();
 			_defaultKeyManager = null;
 		}
 	}
@@ -150,6 +150,12 @@ public abstract class KeyManager {
 		}
 		return _defaultKeyManager;
 	}
+	
+	/**
+	 * Close any connections we have to the network. Ideally prepare to
+	 * reopen them when they are next needed.
+	 */
+	public abstract void close();
 	
 	/**
 	 * Allows subclasses to specialize key manager initialization.
