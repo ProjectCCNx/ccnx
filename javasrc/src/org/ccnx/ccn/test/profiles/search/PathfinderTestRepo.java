@@ -59,7 +59,7 @@ public class PathfinderTestRepo {
 				new ContentName(startingPoint.parent().parent().parent(), TARGET_POSTFIX_NAME.components()), "The target!", SaveType.REPOSITORY, writeHandle);
 		targetObject.save();
 		
-		Pathfinder finder = new Pathfinder(startingPoint,TARGET_POSTFIX_NAME, true, false, SystemConfiguration.getDefaultTimeout(), readHandle);
+		Pathfinder finder = new Pathfinder(startingPoint,TARGET_POSTFIX_NAME, true, false, SystemConfiguration.SHORT_TIMEOUT, readHandle);
 		ContentObject co = finder.waitForResults();
 		Assert.assertNotNull(co);
 	}
