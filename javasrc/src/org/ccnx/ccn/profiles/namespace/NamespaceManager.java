@@ -149,10 +149,14 @@ public class NamespaceManager {
 	public static AccessControlManager findACM(ContentName name, CCNHandle handle)  throws IOException, ConfigurationException {
 		// See if we already have an AccessControlManager covering this namespace
 		for (AccessControlManager acm : _acmList) {
-			if (acm.inProtectedNamespace(name))
+			if (acm.inProtectedNamespace(name)) {
+				Log.info("Found cached access control manager rooted at {0} protecting {1}", acm.getNamespaceRoot(), name);
 				return acm;
+			}
 		}
 		// No ACM exists for this name - now look to see if we can find an ACL down the path to create one...
+		Log.info("No cached access control manager found, searching for root object.");
+		
 		Root.RootObject ro = Root.find(name, handle);
 		if (ro == null) {
 			// No AC root was found, so return without ACM.
