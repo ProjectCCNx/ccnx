@@ -122,5 +122,9 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
     public void shutDown() {
     	// no-op
     }
+
+	public Object getStatus(String type) {
+		return null;
+	}
     
 }

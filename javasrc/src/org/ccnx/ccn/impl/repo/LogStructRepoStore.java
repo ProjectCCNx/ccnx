@@ -89,6 +89,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	
 	protected String _repositoryRoot = null;
 	protected File _repositoryFile;
+	protected KeyManager _km = null;
 
 	Map<Integer,RepoFile> _files;
 	RepoFile _activeWriteFile;
@@ -260,12 +261,12 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			// Load our keystore. Make one if none exists; use the
 			// default kestore type and key algorithm.
 			try {
-				KeyManager km = 
+				_km = 
 					new BasicKeyManager(LogStructRepoStoreProfile.REPOSITORY_USER, 
 							_repositoryRoot, LogStructRepoStoreProfile.KEYSTORE_FILE,
 							null, null, LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
-				km.initialize();
-				handle = CCNHandle.open(km);
+				_km.initialize();
+				handle = CCNHandle.open(_km);
 			} catch (ConfigurationException e) {
 				Log.warning("ConfigurationException creating repository key store: " + e.getMessage());
 				throw new RepositoryException("ConfigurationException creating repository key store!", e);
@@ -520,10 +521,19 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * Cleanup on shutdown
 	 */
 	public void shutDown() {
+		super.shutDown();
+		if (null != _km)
+			_km.keyRepository().handle().close();
 		if (null != _activeWriteFile.openFile) {
 			try {
 				_activeWriteFile.openFile.close();
+				_activeWriteFile.openFile = null;
 			} catch (IOException e) {}
 		}
+	}
+
+	public Object getStatus(String type) {
+		return type.equals(RepositoryStore.REPO_SIMPLE_STATUS_REQUEST) 
+				? ((null == _activeWriteFile.openFile) ? null : "running") : null;
 	}
 }
