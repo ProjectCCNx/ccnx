@@ -22,7 +22,11 @@ import java.io.OutputStream;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNSegmenter;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys;
+import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
@@ -44,6 +48,7 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	 * The name for the content fragments, up to just before the sequence number.
 	 */
 	protected ContentName _baseName = null;
+	protected ContentKeys _keys;
 	protected KeyLocator _locator;
 	protected PublisherPublicKeyDigest _publisher;
 
@@ -62,6 +67,7 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	 */
 	public CCNAbstractOutputStream(KeyLocator locator, 
 								   PublisherPublicKeyDigest publisher,
+								   ContentKeys keys,
 								   CCNSegmenter segmenter) {
 		super();
 		_segmenter = segmenter;
@@ -73,6 +79,9 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 		// If these are null, the handle defaults will be used.
 		_locator = locator;
 		_publisher = publisher;		
+		
+		// Initialize keys here now. 
+		_keys = keys;
 	}
 	
 	/**
@@ -82,10 +91,16 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	
 	/**
 	 * Override in subclasses that need to do something special with start writes 
-	 * (see CCNFlowControl#startWrite(ContentName, Shape)).
+	 * (see CCNFlowControl#startWrite(ContentName, Shape)). They should call this
+	 * superclass method, though, to initialize keys (may need to move this later).
 	 * @throws IOException
 	 */
-	protected void startWrite() throws IOException {}
+	protected void startWrite() throws IOException {
+		if (null == _keys) {
+			Log.info("CCNAbstractOutputStream: startWrite -- searching for keys.");
+			_keys = AccessControlManager.keysForOutput(_baseName, _publisher, _handle);
+		}
+	}
 
 	/**
 	 * Method for streams used by CCNFilterListeners to output a block

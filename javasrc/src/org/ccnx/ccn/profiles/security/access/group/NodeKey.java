@@ -56,6 +56,11 @@ public class NodeKey {
 	public static final String DEFAULT_KEY_LABEL = "NodeKey";
 	
 	/**
+	 * KeyID for empty keys (signaling no encryption).
+	 */
+	public static final byte [] NULL_NODE_KEY_ID = "NULL_KEY".getBytes();
+	
+	/**
 	 * The node this key is associated with, with _access_ information stripped.
 	 */
 	private ContentName _nodeName;
@@ -86,7 +91,7 @@ public class NodeKey {
 	 * @param unwrappedNodeKey the unwrapped node key
 	 */
 	public NodeKey(ContentName nodeKeyName, Key unwrappedNodeKey) {
-		if ((null == nodeKeyName) || (null == unwrappedNodeKey)) {
+		if (null == nodeKeyName) {
 			throw new IllegalArgumentException("NodeKey: key name and key cannot be null!");
 		}
 		// DKS TODO make sure the version is of the NK, not the blocks underneath it.
@@ -94,7 +99,7 @@ public class NodeKey {
 			throw new IllegalArgumentException("Expect stored node key name to be versioned: " + nodeKeyName);
 		}
 		_storedNodeKeyName = nodeKeyName;
-		_storedNodeKeyID = generateKeyID(unwrappedNodeKey.getEncoded());
+		_storedNodeKeyID = (null == unwrappedNodeKey) ? nullNodeKeyID() : generateKeyID(unwrappedNodeKey.getEncoded());
 		_nodeKey = unwrappedNodeKey;
 		_nodeName = GroupAccessControlProfile.accessRoot(nodeKeyName);
 		if ((null == _nodeName) || (!GroupAccessControlProfile.isNodeKeyName(nodeKeyName))) {
@@ -183,6 +188,18 @@ public class NodeKey {
 	}
 	
 	/**
+	 * Emtpy key, signaling no encryption.
+	 * @return
+	 */
+	public boolean isNullNodeKey() { 
+		return (null == nodeKey());
+	}
+	
+	public static byte [] nullNodeKeyID() { 
+		return NULL_NODE_KEY_ID;
+	}
+	
+	/**
 	 * Get the version of the stored node key name
 	 * @return the version
 	 */
@@ -221,10 +238,5 @@ public class NodeKey {
 		if (null == key)
 			return null;
 		return CCNDigestHelper.digest(key.getEncoded());
-	}
-
-	public NodeKey getPreviousKey() {
-		// TODO Auto-generated method stub
-		return null;
 	}
 }

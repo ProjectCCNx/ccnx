@@ -27,6 +27,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNSegmenter;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -113,7 +114,7 @@ public class CCNWriter {
 	 * @throws IOException if there is a problem writing data.
 	 */
 	public ContentName put(String name, String content) throws SignatureException, MalformedContentNameStringException, IOException {
-		return put(ContentName.fromURI(name), content.getBytes(), null, null, null);
+		return put(ContentName.fromURI(name), content.getBytes(), null, null, null, null);
 	}
 	
 	/**
@@ -124,7 +125,7 @@ public class CCNWriter {
 	 * @throws IOException if there is a problem writing data.
 	 */
 	public ContentName put(ContentName name, String content) throws SignatureException, MalformedContentNameStringException, IOException {
-		return put(name, content.getBytes(), null, null, null);
+		return put(name, content.getBytes(), null, null, null, null);
 	}
 
 	/**
@@ -135,7 +136,19 @@ public class CCNWriter {
 	 * @throws IOException if there is a problem writing data.
 	 */	
 	public ContentName put(ContentName name, byte[] content) throws SignatureException, IOException {
-		return put(name, content, null, null, null);
+		return put(name, content, null, null, null, null);
+	}
+
+	/**
+	 * Publish a piece of named content signed by our default identity.
+	 * @param name name for content.
+	 * @param content content to publish; will be fragmented if necessary.
+	 * @param keys the keys with which to encrypt the content (if non-null)
+	 * @throws SignatureException if there is a problem signing.
+	 * @throws IOException if there is a problem writing data.
+	 */	
+	public ContentName put(ContentName name, byte[] content, ContentKeys keys) throws SignatureException, IOException {
+		return put(name, content, null, null, null, keys);
 	}
 
 	/**
@@ -153,7 +166,7 @@ public class CCNWriter {
 	 * @throws IOException if there is a problem writing data.
 	 */	
 	public ContentName put(ContentName name, byte[] content, Interest outstandingInterest) throws SignatureException, IOException {
-		return put(name, content, null, null, null, null, outstandingInterest);
+		return put(name, content, null, null, null, null, null, outstandingInterest);
 	}
 
 	/**
@@ -166,7 +179,7 @@ public class CCNWriter {
 	 */
 	public ContentName put(ContentName name, byte[] content, 
 							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
-		return put(name, content, null, publisher, null);
+		return put(name, content, null, publisher, null, null);
 	}
 	
 	/**
@@ -178,7 +191,7 @@ public class CCNWriter {
 	 * @throws IOException if there is a problem writing data.
 	 */	
 	public ContentName put(ContentName name, String content, Integer freshnessSeconds) throws SignatureException, MalformedContentNameStringException, IOException {
-		return put(name, content.getBytes(), null, null, freshnessSeconds);
+		return put(name, content.getBytes(), null, null, freshnessSeconds, null);
 	}
 	
 	/**
@@ -192,8 +205,9 @@ public class CCNWriter {
 	 */
 	public ContentName put(ContentName name, byte[] content, 
 							SignedInfo.ContentType type,
-							PublisherPublicKeyDigest publisher) throws SignatureException, IOException {
-		return put(name, content, null, publisher, null);
+							PublisherPublicKeyDigest publisher,
+							ContentKeys keys) throws SignatureException, IOException {
+		return put(name, content, null, publisher, null, keys);
 	}
 	
 	/**
@@ -209,8 +223,9 @@ public class CCNWriter {
 	public ContentName put(ContentName name, byte[] content, 
 			SignedInfo.ContentType type,
 			PublisherPublicKeyDigest publisher,
-			Integer freshnessSeconds) throws SignatureException, IOException {
-		return put(name, content, type, publisher, null, freshnessSeconds, null);
+			Integer freshnessSeconds,
+			ContentKeys keys) throws SignatureException, IOException {
+		return put(name, content, type, publisher, null, freshnessSeconds, keys, null);
 	}
 	
 	/**
@@ -231,13 +246,14 @@ public class CCNWriter {
 			PublisherPublicKeyDigest publisher,
 			KeyLocator locator, 
 			Integer freshnessSeconds,
+			ContentKeys keys,
 			Interest outstandingInterest) throws SignatureException, IOException {
 		try {
 			addOutstandingInterest(outstandingInterest);
 			_segmenter.getFlowControl().addNameSpace(name);
 			_segmenter.getFlowControl().startWrite(name, Shape.STREAM); // Streams take care of this for the non-gone case.
 			_segmenter.put(name, content, 0, ((null == content) ? 0 : content.length),
-								  true, type, freshnessSeconds, locator, publisher);
+								  true, type, freshnessSeconds, locator, publisher, keys);
 			_segmenter.getFlowControl().beforeClose();
 			_segmenter.getFlowControl().afterClose();
 			return name;
@@ -267,7 +283,7 @@ public class CCNWriter {
 	 */
 	public ContentName newVersion(ContentName name,
 								    byte[] content) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
-		return newVersion(name, content, null);
+		return newVersion(name, content, null, null);
 	}
 
 	/**
@@ -284,8 +300,9 @@ public class CCNWriter {
 	public ContentName newVersion(
 			ContentName name, 
 			byte[] content,
-			PublisherPublicKeyDigest publisher) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
-		return newVersion(name, content, null, null, publisher);
+			PublisherPublicKeyDigest publisher,
+			ContentKeys keys) throws SignatureException, IOException, InvalidKeyException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
+		return newVersion(name, content, null, null, publisher, keys);
 	}
 	
 	/**
@@ -304,7 +321,8 @@ public class CCNWriter {
 	public ContentName newVersion(
 			ContentName name, byte [] content,
 			ContentType type,
-			KeyLocator locator, PublisherPublicKeyDigest publisher) throws SignatureException, 
+			KeyLocator locator, PublisherPublicKeyDigest publisher,
+			ContentKeys keys) throws SignatureException, 
 			InvalidKeyException, NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 		
 		// Construct new name
@@ -312,7 +330,7 @@ public class CCNWriter {
 		ContentName versionedName = VersioningProfile.addVersion(name);
 
 		// put result; segmenter will fill in defaults
-		return put(versionedName, content, type, publisher, locator, null, null);
+		return put(versionedName, content, type, publisher, locator, null, keys, null);
 	}
 	
 	/**

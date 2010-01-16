@@ -526,7 +526,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		super.shutDown();
 		if (null != _km)
 			_km.close();
-		if (null != _activeWriteFile.openFile) {
+		if (null != _activeWriteFile && null != _activeWriteFile.openFile) {
 			try {
 				_activeWriteFile.openFile.close();
 				_activeWriteFile.openFile = null;
