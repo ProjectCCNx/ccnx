@@ -206,7 +206,6 @@ public class Pathfinder implements CCNInterestListener {
 		return _timedOut;
 	}
 	
-	@Override
 	public Interest handleContent(ArrayList<ContentObject> results,
 								  Interest interest) {
 		// When we get data back, we can cancel all the outstanding interests in the
