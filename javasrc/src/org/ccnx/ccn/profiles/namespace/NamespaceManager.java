@@ -23,19 +23,25 @@ import java.util.Set;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
-import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.namespace.NamespaceManager.Root.RootObject;
+import org.ccnx.ccn.profiles.search.Pathfinder;
+import org.ccnx.ccn.profiles.search.Pathfinder.SearchResults;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 
 /**
  *
@@ -43,6 +49,7 @@ import org.ccnx.ccn.protocol.ContentName;
 public class NamespaceManager {
 
 	protected static Set<AccessControlManager> _acmList = new HashSet<AccessControlManager>(); 
+	protected static Set<ContentName> _searchedPathCache = new HashSet<ContentName>();
 
 	/**
 	 * Used to mark the top level in a namespace under access control
@@ -52,49 +59,24 @@ public class NamespaceManager {
 	public static class Root extends GenericXMLEncodable {
 
 		public static class RootObject extends CCNEncodableObject<Root> {
-			
+
+			// Not mutable yet, but will be soon.
 			public RootObject(ContentName name, CCNHandle handle) throws IOException {
-				super(Root.class, false, name, handle);
+				super(Root.class, true, name, handle);
 			}
-			
+
 			public RootObject(ContentName name, Root r, SaveType saveType, CCNHandle handle) throws IOException {
-				super(Root.class, false, name, r, saveType, handle);
+				super(Root.class, true, name, r, saveType, handle);
 			}
-			
+
+			public RootObject(ContentObject firstBlock, CCNHandle handle)
+					throws ContentDecodingException, IOException {
+				super(Root.class, true, firstBlock, handle);
+			}
+
 			public ContentName namespace() {
 				return _baseName.copy(_baseName.count()-2);
 			}
-		}
-
-		/**
-		 * Search up a path (towards the root) for an Access Control root marker
-		 * @param name The path to search - search starts at this name.
-		 * @param library TODO
-		 * @return null if none found, or a RootObject if found.
-		 * @throws IOException
-		 * @throws ConfigurationException
-		 */
-		public static RootObject find(ContentName name, CCNHandle handle) throws IOException {
-			// scan up the path
-			ContentName nextName = name;
-			for (;name.count() > 0; nextName = name.parent()) {
-				name = nextName;
-				// see if a root marker is present
-				EnumeratedNameList nameList = EnumeratedNameList.exists(AccessControlProfile.rootName(name), name, handle);
-
-				if (null != nameList) {
-					// looks like it is - so fetch the root object
-					ContentName rootName = new ContentName(GroupAccessControlProfile.aclName(name),
-							nameList.getLatestVersionChildName().lastComponent());
-					Log.info("Found latest version of ac ROOT for " + name + " at " + rootName);
-					RootObject ro = new RootObject(rootName, handle);
-					if (ro.isGone())
-						continue;
-					return ro;
-				}
-			}
-			Log.info("No ac ROOT found");
-			return null;
 		}
 
 		/**
@@ -133,7 +115,7 @@ public class NamespaceManager {
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Find an ACM object that covers operations on a specific name. 
 	 * If none exists in memory then this searches up the name tree 
@@ -149,18 +131,78 @@ public class NamespaceManager {
 	public static AccessControlManager findACM(ContentName name, CCNHandle handle)  throws IOException, ConfigurationException {
 		// See if we already have an AccessControlManager covering this namespace
 		for (AccessControlManager acm : _acmList) {
-			if (acm.inProtectedNamespace(name))
+			if (acm.inProtectedNamespace(name)) {
+				Log.info("Found cached access control manager rooted at {0} protecting {1}", acm.getNamespaceRoot(), name);
 				return acm;
+			}
 		}
 		// No ACM exists for this name - now look to see if we can find an ACL down the path to create one...
-		Root.RootObject ro = Root.find(name, handle);
-		if (ro == null) {
-			// No AC root was found, so return without ACM.
+		ContentName searchName = VersioningProfile.cutTerminalVersion(name).first();
+		Log.info("No cached access control manager found, searching for root object for {0}. Removed terminal version, checking path {1}", name, searchName);
+		
+		// Have a cache of searched paths, so we don't re-search.
+		if (cacheContainsPath(searchName)) {
+			Log.info("Cache indicates that we have already checked the path {0} for namespace roots, with none found. Returning null.", searchName);
 			return null;
 		}
 
-		AccessControlManager acm = AccessControlManager.createManager(ro, handle);
-		_acmList.add(acm);
-		return acm;
+		// Search up a path (towards the root) for an Access Control root marker
+		Pathfinder pathfinder = new Pathfinder(searchName, AccessControlProfile.rootPostfix(), true, false, 
+											  SystemConfiguration.SHORT_TIMEOUT, 
+											  _searchedPathCache,
+											  handle);
+		SearchResults results = pathfinder.waitForResults();
+		if (null != results.second()) {
+			_searchedPathCache.addAll(results.second());
+		}
+		
+		if (null != results.first()) {
+			// does this seek?
+			Log.info("Got a segment of an object, is it the first segment of the right object: {0}", results.first().name());
+			RootObject ro = new RootObject(results.first(), handle);
+			AccessControlManager acm = AccessControlManager.createManager(ro, handle);
+			registerACM(acm);
+			return acm;
+		}
+
+		Log.info("No ac ROOT found on path {0}", searchName);
+		return null;
+	}
+
+	/**
+	 * A way to add an access control manager to the search set without namespace support.
+	 * @param acm
+	 */
+	public static void registerACM(AccessControlManager acm) {
+		if (null != acm) {
+			synchronized(_acmList) {
+				_acmList.add(acm);
+			}
+		}
+	}
+	
+	public synchronized static void clearSearchedPathCache() { _searchedPathCache.clear(); }
+	
+	public synchronized static void addToSearchedPathCache(Set<ContentName> newPaths) {
+		_searchedPathCache.addAll(newPaths);
+	}
+	
+	public synchronized static void removeFromSearchedPathCache(ContentName path) {
+		_searchedPathCache.remove(path);
+	}
+	
+	public static boolean cacheContainsPath(ContentName path) {
+		
+		// Need cache to contain everything on the path to be useful. 
+		while (_searchedPathCache.contains(path)) {
+			if (path.equals(ContentName.ROOT)) {
+				break;
+			}
+			path = path.parent();
+		}
+		if (path.equals(ContentName.ROOT) && _searchedPathCache.contains(path)) {
+			return true;
+		}
+		return false;
 	}
 }

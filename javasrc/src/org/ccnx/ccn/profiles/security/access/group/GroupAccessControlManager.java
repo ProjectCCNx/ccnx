@@ -42,7 +42,6 @@ import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.io.content.PublicKeyObject;
-import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -1012,12 +1011,16 @@ public class GroupAccessControlManager extends AccessControlManager {
 		WrappedKeyObject wrappedDataKey = new WrappedKeyObject(GroupAccessControlProfile.dataKeyName(dataName), handle());
 		return nodeKeyIsDirty(wrappedDataKey.wrappedKey().wrappingKeyName());
 	}
-	
+		
 	/**
-	 * Take a randomly generated data key and store it. This requires finding
+	 * Find the key to use to wrap a data key at this node for encryption. This requires
 	 * the current effective node key, and wrapping this data key in it. If the
 	 * current node key is dirty, this causes a new one to be generated.
-	 * @param dataNodeName
+	 * If data at the current node is public, this returns null. Does not check
+	 * to see whether content is excluded from encryption (e.g. by being access
+	 * control data).
+	 * @param dataNodeName the node for which to find a data key wrapping key
+	 * @return if null, the data is to be unencrypted.
 	 * @param newRandomDataKey
 	 * @throws AccessDeniedException 
 	 * @throws InvalidKeyException 
@@ -1025,30 +1028,18 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws IOException
 	 * @throws InvalidCipherTextException 
 	 */
-	public void storeDataKey(ContentName dataNodeName, Key newRandomDataKey)
-	throws AccessDeniedException, InvalidKeyException,
-	ContentEncodingException, IOException, InvalidCipherTextException {
+	public NodeKey getDataKeyWrappingKey(ContentName dataNodeName)
+	 	throws AccessDeniedException, InvalidKeyException,
+	 		ContentEncodingException, IOException, InvalidCipherTextException {
 		NodeKey effectiveNodeKey = getFreshEffectiveNodeKey(dataNodeName);
 		if (null == effectiveNodeKey) {
 			throw new AccessDeniedException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
 		}
-		Log.info("Wrapping data key for node: " + dataNodeName + " with effective node key for node: " + 
-				effectiveNodeKey.nodeName() + " derived from stored node key for node: " + 
-				effectiveNodeKey.storedNodeKeyName());
-		// TODO another case where we're wrapping in an effective node key but labeling it with
-		// the stored node key information. This will work except if we interpose an ACL in the meantime -- 
-		// we may not have the information necessary to figure out how to decrypt.
-		WrappedKey wrappedDataKey = WrappedKey.wrapKey(newRandomDataKey, 
-				null, dataKeyLabel(), 
-				effectiveNodeKey.nodeKey());
-		wrappedDataKey.setWrappingKeyIdentifier(effectiveNodeKey.storedNodeKeyID());
-		wrappedDataKey.setWrappingKeyName(effectiveNodeKey.storedNodeKeyName());
-
-		storeKeyContent(GroupAccessControlProfile.dataKeyName(dataNodeName), wrappedDataKey);
+		return effectiveNodeKey;
 	}
 	
 	/**
-	 * Retrieve the node key wrapping this data key.
+	 * Retrieve the node key wrapping this data key for decryption.
 	 * @throws IOException 
 	 * @throws InvalidCipherTextException 
 	 * @throws ContentDecodingException 

@@ -118,7 +118,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			RepositoryDataListener listener;
 			
 			_server.getWriter().put(interest.name(), _server.getRepository().getRepoInfo(null), null, null,
-					_server.getFreshness());
+					_server.getFreshness(), null);
 			
 			// Check for special case file written to repo
 			ContentName globalPrefix = _server.getRepository().getGlobalPrefix();

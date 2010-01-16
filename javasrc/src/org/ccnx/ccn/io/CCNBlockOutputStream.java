@@ -77,8 +77,9 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 			KeyLocator locator, PublisherPublicKeyDigest publisher,
 			ContentKeys keys, CCNFlowControl flowControl)
 			throws IOException {
-		super(locator, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner(), keys));
+		super(locator, publisher, keys, new CCNSegmenter(flowControl, new CCNBlockSigner()));
 		init(baseName, type);
+		startWrite(); // set up flow controller to write
 	}
 
 	private void init(ContentName baseName, SignedInfo.ContentType type) {
@@ -116,7 +117,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	@Override
 	public void write(byte[] b, int off, int len) throws IOException {
 		try {
-			getSegmenter().put(_baseName, b, off, len, false, ContentType.DATA, null, null, null);
+			getSegmenter().put(_baseName, b, off, len, false, ContentType.DATA, null, null, null, _keys);
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {
