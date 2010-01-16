@@ -26,7 +26,9 @@ import java.util.logging.Level;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
+import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
@@ -44,6 +46,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	protected Policy _policy = null;
 	protected RepositoryInfo _info = null;
 	protected CCNHandle _handle = null;
+	protected KeyManager _km = null;
 	
 	/**
 	 * Handle diagnostic requests
@@ -62,6 +65,8 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * @return returns null prior to calls to initialize()
 	 */
 	public CCNHandle getHandle() { return _handle; }
+	
+	public KeyManager getKeyManager() { return _km; }
 
 	/**
 	 * Gets the currently valid namespace for this repository
@@ -90,12 +95,13 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * Gets current repository information to be used as content in a ContentObject
 	 * @param names intended for nonimplemented repository ACK protocol - currently unused
 	 */
-	public byte[] getRepoInfo(ArrayList<ContentName> names) {
+	public RepositoryInfoObject getRepoInfo(ContentName name, ArrayList<ContentName> names) {
 		try {
 			RepositoryInfo rri = _info;
 			if (names != null)
 				rri = new RepositoryInfo(getVersion(), _info.getGlobalPrefix(), _info.getLocalName(), names);	
-			return rri.encode();
+			RepositoryInfoObject rio = new RepositoryInfoObject(name, rri, SaveType.RAW, _handle);
+			return rio;
 		} catch (Exception e) {
 			Log.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();

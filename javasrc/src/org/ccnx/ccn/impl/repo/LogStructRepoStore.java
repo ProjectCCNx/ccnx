@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
@@ -91,7 +90,6 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	
 	protected String _repositoryRoot = null;
 	protected File _repositoryFile;
-	protected KeyManager _km = null;
 
 	Map<Integer,RepoFile> _files;
 	RepoFile _activeWriteFile;
