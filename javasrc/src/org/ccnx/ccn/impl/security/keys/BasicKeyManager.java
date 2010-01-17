@@ -283,6 +283,7 @@ public class BasicKeyManager extends KeyManager {
 	protected boolean loadValuesFromKeystore(KeyStoreInfo keyStoreInfo) throws ConfigurationException {
 		KeyStore.PrivateKeyEntry entry = null;
 		try {
+			// Default alias should be a PrivateKeyEntry
 			entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
 			if (null == entry) {
 				Log.warning("Cannot get default key entry: " + _defaultAlias);
