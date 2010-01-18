@@ -132,7 +132,6 @@ public class BasicKeyManager extends KeyManager {
 		_keyStoreFileName = (null != keyStoreFileName) ? 
 				keyStoreFileName : UserConfiguration.keystoreFileName();
 	    _keyStoreDirectory = (null != keyStoreDirectory) ? keyStoreDirectory : UserConfiguration.ccnDirectory();
-		_userName = UserConfiguration.userName();
 		// must call initialize
 	}
 	
@@ -287,7 +286,7 @@ public class BasicKeyManager extends KeyManager {
 			entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
 			if (null == entry) {
 				Log.warning("Cannot get default key entry: " + _defaultAlias);
-				return false;
+				generateConfigurationException("Cannot retrieve default user keystore entry.", null);
 			}
 		    X509Certificate certificate = (X509Certificate)entry.getCertificate();
 		    _defaultKeyID = new PublisherPublicKeyDigest(certificate.getPublicKey());
@@ -297,7 +296,6 @@ public class BasicKeyManager extends KeyManager {
 
 		} catch (Exception e) {
 			generateConfigurationException("Cannot retrieve default user keystore entry.", e);
-			return false;
 		}    
 		return true;
 	}
