@@ -96,13 +96,21 @@ public class KeyCache {
 					Log.warning("Cannot get private key entry for alias: " + alias);
 				} else {
 					PrivateKey pk = entry.getPrivateKey();
-					X509Certificate certificate = (X509Certificate)entry.getCertificate();
-					PublisherPublicKeyDigest ppkd = new PublisherPublicKeyDigest(certificate.getPublicKey());
 					if (null != pk) {
-						if (null != ppkd) {
-							addMyPrivateKey(ppkd.digest(), pk);
-							publicKeyCache.remember(certificate, keyStoreInfo.getVersion());
+						if (keyStoreInfo.getKeyStore().isCertificateEntry(alias)) {
+							X509Certificate certificate = (X509Certificate)entry.getCertificate();
+							PublisherPublicKeyDigest ppkd = new PublisherPublicKeyDigest(certificate.getPublicKey());
+							if (null != ppkd) {
+								addMyPrivateKey(ppkd.digest(), pk);
+								publicKeyCache.remember(certificate, keyStoreInfo.getVersion());
+							} else {
+								Log.warning("Certificate has null public key for alias " + alias + "!");
+							}
+						} else {
+							Log.warning("Private key for alias: " + alias + " has no certificate entry. No way to get public key. Not caching.");
 						}
+					} else {
+						Log.warning("Cannot retrieve private key for key entry alias " + alias);
 					}
 				}
 			}
