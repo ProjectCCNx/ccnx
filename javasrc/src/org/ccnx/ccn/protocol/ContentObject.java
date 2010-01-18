@@ -102,14 +102,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 					return false;
 			}
 			try {
-				PublicKey publicKey = 
-					_keyManager.getPublicKey(
-							object.signedInfo().getPublisherKeyID(),
-							object.signedInfo().getKeyLocator());
-				if (null == publicKey) {
-					Log.fine("SimpleVerifier.verify: cannot retrieve public key for locator {0} from specified key manager. Will try again with default manager. {0}", object.signedInfo().getKeyLocator());
-				}
-				return object.verify(publicKey);
+				return object.verify(_keyManager);
 				
 			} catch (Exception e) {
 				Log.fine(e.getClass().getName() + " exception attempting to retrieve public key with key locator {0}: " + e.getMessage(), object.signedInfo().getKeyLocator());
@@ -222,21 +215,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			SignedInfo signedInfo,
 			byte [] content, int offset, int length,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException {
+		
 		this(name, signedInfo, content, offset, length, (Signature)null);
 		_signature = sign(_name, _signedInfo, _content, 0, _content.length, signingKey);
-		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-			Log.info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp());
-			try {
-				if (!this.verify((PublicKey)null)) {
-					Log.warning("ContentObject: " + fullName() + " (length: " + length + ") fails to verify!");
-				} else {
-					Log.info("ContentObject: " + fullName() + " (length: " + length + ") verified OK.");
-				}
-			} catch (Exception e) {
-				Log.warning("Exception attempting to verify signature: " + e.getClass().getName() + ": " + e.getMessage());
-				Log.warningStackTrace(e);
-			}
-		}
 	}
 
 	public ContentObject(ContentName name, 
