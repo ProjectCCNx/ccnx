@@ -70,6 +70,8 @@ public abstract class KeyManager {
 	 * 		requires intervention to resolve, or we have a significant problem starting up the key manager.
 	 */
 	public static KeyManager getDefaultKeyManager() {
+		// could print a stack trace
+		Log.info("NOTICE: retrieving default key manager.");
 		if (null != _defaultKeyManager) 
 			return _defaultKeyManager;
 		try {
@@ -94,6 +96,33 @@ public abstract class KeyManager {
 			_defaultKeyManager.close();
 			_defaultKeyManager = null;
 		}
+	}
+	
+	/**
+	 * Create the default key manager.
+	 * @return the key manager
+	 * @throws ConfigurationException if there is a problem with the user or system configuration
+	 * 	that requires intervention to fix
+	 * @throws IOException if there is an operational problem loading data or initializing the key store
+	 */
+	protected static synchronized KeyManager createDefaultKeyManager() throws ConfigurationException, IOException {
+		if (null == _defaultKeyManager) {
+			_defaultKeyManager = new BasicKeyManager();
+			_defaultKeyManager.initialize();
+		}
+		return _defaultKeyManager;
+	}
+	
+	/**
+	 * Set the default key manager to one of our choice. If you do this, be careful on 
+	 * calling close().
+	 */
+	public static synchronized void setDefaultKeyManager(KeyManager keyManager) {
+		if (null == keyManager) {
+			Log.warning("Setting default key manager to NULL. Default user key manager will be loaded on next request for default key manager.");
+		}
+		closeDefaultKeyManager();
+		_defaultKeyManager = keyManager;
 	}
 	
 	/**
@@ -126,21 +155,6 @@ public abstract class KeyManager {
 			Log.severe("ERROR: NULL default provider! Cannot load BouncyCastle!");
 		}
 		return BC_PROVIDER;
-	}
-	
-	/**
-	 * Create the default key manager.
-	 * @return the key manager
-	 * @throws ConfigurationException if there is a problem with the user or system configuration
-	 * 	that requires intervention to fix
-	 * @throws IOException if there is an operational problem loading data or initializing the key store
-	 */
-	protected static synchronized KeyManager createDefaultKeyManager() throws ConfigurationException, IOException {
-		if (null == _defaultKeyManager) {
-			_defaultKeyManager = new BasicKeyManager();
-			_defaultKeyManager.initialize();
-		}
-		return _defaultKeyManager;
 	}
 	
 	/**
