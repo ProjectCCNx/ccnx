@@ -83,12 +83,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		
 		public SimpleVerifier(PublisherPublicKeyDigest publisher) {
 			_publisher = publisher;
-			_keyManager = KeyManager.getKeyManager();
+			_keyManager = KeyManager.getDefaultKeyManager();
 		}
 		
 		public SimpleVerifier(PublisherPublicKeyDigest publisher, KeyManager keyManager) {
 			_publisher = publisher;
-			_keyManager = (null != keyManager) ? keyManager : KeyManager.getKeyManager();
+			_keyManager = (null != keyManager) ? keyManager : KeyManager.getDefaultKeyManager();
 		}
 		
 		/* (non-Javadoc)

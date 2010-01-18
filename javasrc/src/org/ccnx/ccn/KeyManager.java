@@ -69,13 +69,19 @@ public abstract class KeyManager {
 	 * @throws ConfigurationException if there is a problem with the user or system configuration that
 	 * 		requires intervention to resolve, or we have a significant problem starting up the key manager.
 	 */
-	public static KeyManager getDefaultKeyManager() throws ConfigurationException {
+	public static KeyManager getDefaultKeyManager() {
 		if (null != _defaultKeyManager) 
 			return _defaultKeyManager;
 		try {
 			return createDefaultKeyManager();
 		} catch (IOException io) {
-			throw new ConfigurationException(io);
+			Log.warning("IOException attempting to get KeyManager: " + io.getClass().getName() + ":" + io.getMessage());
+			Log.warningStackTrace(io);
+			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",io);
+		} catch (ConfigurationException e) {
+			Log.warning("Configuration exception attempting to get KeyManager: " + e.getMessage());
+			Log.warningStackTrace(e);
+			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",e);
 		}
 	}
 	
@@ -120,20 +126,6 @@ public abstract class KeyManager {
 			Log.severe("ERROR: NULL default provider! Cannot load BouncyCastle!");
 		}
 		return BC_PROVIDER;
-	}
-	
-	/**
-	 * Get our current KeyManager.
-	 * @return the key manager
-	 */
-	public static KeyManager getKeyManager() {
-		try {
-			return getDefaultKeyManager();
-		} catch (ConfigurationException e) {
-			Log.warning("Configuration exception attempting to get KeyManager: " + e.getMessage());
-			Log.warningStackTrace(e);
-			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",e);
-		}
 	}
 	
 	/**
