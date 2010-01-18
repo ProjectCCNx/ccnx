@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
@@ -268,6 +269,11 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 							LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
 				_km.initialize();
 				handle = CCNHandle.open(_km);
+				
+				// Let's use our key manager as the default. That will make us less
+				// prone to accidentally loading the user's key manager. If we close it more than
+				// once, that's ok.
+				KeyManager.setDefaultKeyManager(_km);
 
 			} catch (ConfigurationException e) {
 				Log.warning("ConfigurationException creating repository key store: " + e.getMessage());
