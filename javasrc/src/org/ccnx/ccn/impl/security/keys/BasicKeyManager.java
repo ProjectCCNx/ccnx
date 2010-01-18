@@ -287,6 +287,7 @@ public class BasicKeyManager extends KeyManager {
 			entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
 			if (null == entry) {
 				Log.warning("Cannot get default key entry: " + _defaultAlias);
+				return false;
 			}
 		    X509Certificate certificate = (X509Certificate)entry.getCertificate();
 		    _defaultKeyID = new PublisherPublicKeyDigest(certificate.getPublicKey());
@@ -296,6 +297,7 @@ public class BasicKeyManager extends KeyManager {
 
 		} catch (Exception e) {
 			generateConfigurationException("Cannot retrieve default user keystore entry.", e);
+			return false;
 		}    
 		return true;
 	}

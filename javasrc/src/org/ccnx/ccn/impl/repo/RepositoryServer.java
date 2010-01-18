@@ -120,6 +120,7 @@ public class RepositoryServer {
 						e.printStackTrace();
 					}
 					_pendingNameSpaceChange = false;
+					_currentListeners.notify();
 				}
 			}
 		}	
@@ -181,8 +182,23 @@ public class RepositoryServer {
 	public void shutDown() {
 		_repo.shutDown();
 		
-		if( _periodicTimer != null )
-			_periodicTimer.cancel();
+		if( _periodicTimer != null ) {
+			synchronized (_currentListeners) {
+				if (_currentListeners.size() != 0) {
+					_pendingNameSpaceChange = true; // Don't allow any more requests to come in
+					boolean interrupted;
+					do {
+						try {
+							interrupted = false;
+							_currentListeners.wait();
+						} catch (InterruptedException e) {
+							interrupted = true;
+						}
+					} while (interrupted);
+				}
+				_periodicTimer.cancel();
+			}
+		}
 		
 		_threadpool.shutdownNow();
 		

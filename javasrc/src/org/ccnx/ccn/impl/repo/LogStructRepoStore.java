@@ -350,7 +350,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			pxml = _policy.getPolicyXML();
 			ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), _policy.getLocalName());
 			try {
-				PolicyObject po = new PolicyObject(policyName, pxml, SaveType.REPOSITORY, null, this);
+				PolicyObject po = new PolicyObject(policyName, pxml, SaveType.REPOSITORY, _handle, this);
 				po.save();
 			} catch (IOException e) {
 				throw new RepositoryException(e.getMessage());
