@@ -21,7 +21,6 @@ import java.io.File;
 import java.security.InvalidParameterException;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Daemon;
 import org.ccnx.ccn.impl.support.Log;
@@ -33,7 +32,6 @@ import org.ccnx.ccn.test.BitBucketRepository;
 public class RepositoryDaemon extends Daemon {
 	RepositoryServer _server;
 	RepositoryStore _repo;
-	CCNHandle _handle;
 	
 	protected class RepositoryWorkerThread extends Daemon.WorkerThread {
 
@@ -107,8 +105,6 @@ public class RepositoryDaemon extends Daemon {
 		Log.setLevel(Level.INFO);
 		boolean useLogging = false;
 		try {
-			_handle = CCNHandle.open();
-
 			SystemConfiguration.setLogging(RepositoryStore.REPO_LOGGING, false);
 			String repositoryRoot = null;
 			File policyFile = null;
