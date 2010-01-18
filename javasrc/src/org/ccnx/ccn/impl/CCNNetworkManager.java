@@ -628,7 +628,7 @@ public class CCNNetworkManager implements Runnable {
 		// Create callback threadpool and main processing thread
 		_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
 		_threadpool.setKeepAliveTime(THREAD_LIFE, TimeUnit.SECONDS);
-		_thread = new Thread(this);
+		_thread = new Thread(this, "CCNNetworkManager");
 		_thread.start();
 	}
 	
