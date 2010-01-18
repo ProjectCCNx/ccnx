@@ -73,7 +73,7 @@ public abstract class KeyManager {
 		if (null != _defaultKeyManager) 
 			return _defaultKeyManager;
 		try {
-			return createKeyManager();
+			return createDefaultKeyManager();
 		} catch (IOException io) {
 			throw new ConfigurationException(io);
 		}
@@ -143,7 +143,7 @@ public abstract class KeyManager {
 	 * 	that requires intervention to fix
 	 * @throws IOException if there is an operational problem loading data or initializing the key store
 	 */
-	protected static synchronized KeyManager createKeyManager() throws ConfigurationException, IOException {
+	protected static synchronized KeyManager createDefaultKeyManager() throws ConfigurationException, IOException {
 		if (null == _defaultKeyManager) {
 			_defaultKeyManager = new BasicKeyManager();
 			_defaultKeyManager.initialize();
