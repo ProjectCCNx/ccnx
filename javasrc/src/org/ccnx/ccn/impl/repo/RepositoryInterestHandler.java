@@ -119,7 +119,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			RepositoryDataListener listener;
 			
 			RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null);
-			rio.save();
+			// Hand the object the outstanding interest, so it can put its first block immediately.
+			rio.save(interest);
 			
 			// Check for special case file written to repo
 			ContentName globalPrefix = _server.getRepository().getGlobalPrefix();
