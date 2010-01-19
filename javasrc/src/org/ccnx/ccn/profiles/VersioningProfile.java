@@ -236,6 +236,8 @@ public class VersioningProfile implements CCNProfile {
 	}
 
 	public static CCNTime getVersionComponentAsTimestamp(byte [] versionComponent) {
+		if (null == versionComponent)
+			return null;
 		return versionLongToTimestamp(getVersionComponentAsLong(versionComponent));
 	}
 
