@@ -40,12 +40,6 @@ import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
  */
 public class CCNHandle implements CCNBase {
 	
-	static {
-		// This needs to be done once. Do it here to be sure it happens before 
-		// any work that needs it.
-		KeyManager.initializeProvider();
-	}
-	
 	protected static CCNHandle _handle = null;
 
 	protected KeyManager _keyManager = null;

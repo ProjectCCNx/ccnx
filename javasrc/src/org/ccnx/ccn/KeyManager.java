@@ -44,6 +44,12 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public abstract class KeyManager {
 	
+	static {
+		// This needs to be done once. Do it here to be sure it happens before 
+		// any work that needs it.
+		KeyManager.initializeProvider();
+	}
+	
 	/**
 	 * Currently default to SHA-256. Only thing that associates a specific digest algorithm
 	 * with a version of the CCN protocol is the calculation of the vestigial content digest component
