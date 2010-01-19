@@ -3773,7 +3773,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
             h->data_pause_microsec = 1000000;
     }
     fib = getenv("CCND_TRYFIB"); // XXX - Temporary, for transition period
-    if (fib != NULL && fib[0] != 0 && strchr("0FNfn", fib[0]) != NULL)
+    if (fib != NULL && fib[0] != 0 && strchr("0FNfn", fib[0]) == NULL)
         h->flood = 0;
     else
         h->flood = 1;
