@@ -151,13 +151,6 @@ public class SystemConfiguration {
 	protected static TreeMap<String, Boolean> loggingInfo = new TreeMap<String, Boolean>();
 
 	/**
-	 * Management bean for this runtime, if available.  This is not dependent
-	 * upon availability of any particular class but discovered dynamically 
-	 * from what is available at runtime.
-	 */
-	private static Object runtimeMXBean = null;
-	
-	/**
 	 * Obtain the management bean for this runtime if it is available.
 	 * The class of the management bean is discovered at runtime and there
 	 * should be no static dependency on any particular bean class.
@@ -237,6 +230,13 @@ public class SystemConfiguration {
 		return result.booleanValue();
 	}
 	
+	/**
+	 * Management bean for this runtime, if available.  This is not dependent
+	 * upon availability of any particular class but discovered dynamically 
+	 * from what is available at runtime.
+	 */
+	private static Object runtimeMXBean = null;
+
 	public static void setDebugFlag(DEBUGGING_FLAGS debugFlag, boolean value) {
 		DEBUG_FLAG_VALUES.put(debugFlag, Boolean.valueOf(value));
 	}
@@ -356,6 +356,37 @@ public class SystemConfiguration {
 		Boolean value = loggingInfo.get(name);
 		return value == null ? true : value;
 	}
+	
+	protected static String _loggingConfiguration;
+	/**
+	 * Property to turn off access control flags. Set it to any value and it will turn off
+	 * access control; used for testing.
+	 */
+	public static final String LOGGING_CONFIGURATION_PROPERTY = "com.parc.ccn.LoggingConfiguration";
+	
+	/**
+	 * Strings of interest to be set in the logging configuration
+	 */
+	public static final String DETAILED_LOGGER = "DetailedLogger";
+	
+	/**
+	 * Configure logging itself. This is a set of concatenated strings set as a 
+	 * command line property; it can be used to set transparent properties read 
+	 * at various points in the code.
+	 */
+	public static String getLoggingConfiguration() {
+		if (null == _loggingConfiguration) {
+			_loggingConfiguration = System.getProperty(LOGGING_CONFIGURATION_PROPERTY, "");
+			
+		}
+		return _loggingConfiguration;
+	}
+	
+	public static boolean hasLoggingConfigurationProperty(String property) {
+		if (null == property)
+			return false;
+		return getLoggingConfiguration().contains(property);
+	}
 
 	/**
 	 * Gets a process identifier (PID) for the running Java Virtual Machine (JVM) process, if possible. 
@@ -409,6 +440,28 @@ public class SystemConfiguration {
 		} catch (Exception e) {
 			return null;
 		}
+	}
+	
+	protected static Boolean _accessControlDisabled;
+	/**
+	 * Property to turn off access control flags. Set it to any value and it will turn off
+	 * access control; used for testing.
+	 */
+	public static final String ACCESS_CONTROL_DISABLED_PROPERTY = "com.parc.ccn.DisableAccessControl";
+	
+	/**
+	 * Allow control of access control at the command line.
+	 */
+	public static boolean disableAccessControl() {
+		if (null == _accessControlDisabled) {
+			_accessControlDisabled = (null != System.getProperty(ACCESS_CONTROL_DISABLED_PROPERTY));
+			
+		}
+		return _accessControlDisabled;
+	}
+	
+	public static void setAccessControlDisabled(boolean accessControlDisabled) {
+		_accessControlDisabled = accessControlDisabled;
 	}
 
 }

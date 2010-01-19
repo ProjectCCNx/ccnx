@@ -25,11 +25,12 @@ import javax.crypto.ShortBufferException;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys.ContentInfo;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys.KeyAndIV;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
@@ -73,9 +74,7 @@ public class KeyDerivationFunction {
 	 * but is not universally available yet.
 	 */
 	protected static final String MAC_ALGORITHM = "HmacSHA256";
-	protected static final String EMPTY = "";
-	public static final int BITS_PER_BYTE = 8;
-
+	
 	/**
 	 * Default parameterization of the KDF for standard algorithm type. This is the
 	 * routine that will be typically used by code that does not want to override
@@ -88,16 +87,48 @@ public class KeyDerivationFunction {
 	 * @throws InvalidKeyException 
 	 * @throws ContentEncodingException
 	 */
-	public static final ContentKeys DeriveKeysForObject(
+	public static final KeyAndIV DeriveKeysForObject(
+			String keyAlgorithm,
 			byte [] masterKeyBytes, 
-			String label,
-			ContentName contentName, 
-			PublisherPublicKeyDigest publisher) throws InvalidKeyException, ContentEncodingException {
-		byte [][] keyiv = DeriveKeysForObject(masterKeyBytes, ContentKeys.DEFAULT_AES_KEY_LENGTH*BITS_PER_BYTE, ContentKeys.IV_MASTER_LENGTH*BITS_PER_BYTE,
-				label, contentName, publisher);
-		return new ContentKeys(keyiv[0], keyiv[1]);
+			ContentInfo contentInfo) throws InvalidKeyException, ContentEncodingException {
+		KeyAndIV keyAndIV = DeriveKeysForObject(keyAlgorithm, masterKeyBytes, 
+											  ContentKeys.DEFAULT_KEY_LENGTH*DataUtils.BITS_PER_BYTE, 
+											  StaticContentKeys.IV_MASTER_LENGTH*DataUtils.BITS_PER_BYTE,
+											  contentInfo);
+		return keyAndIV;
 	}
 	
+	/**
+	 * Derive a key and IV for a particular object. Requested bit lengths must
+	 * be divisible by BITS_PER_BYTE.
+	 * @param masterKeyBytes master key to derive a new key from
+	 * @param keyBitLength bit length of key to derive
+	 * @param ivBitLength bit length of iv to derive
+	 * @param label a text label to allow derivation of multiple key types from a single
+	 * 	source key/path pair
+	 * @param contentName name to derive a key for
+	 * @param publisher publisher whose version of contentName we want to derive for
+	 * @return returns an {key, iv/counter seed} pair suitable for use in segment encryption
+	 * @throws InvalidKeyException 
+	 * @throws ContentEncodingException
+	 */
+	public static final KeyAndIV DeriveKeysForObject(
+			String keyAlgorithm,
+			byte [] masterKeyBytes, 
+			int keyBitLength, int ivBitLength,
+			ContentInfo contentInfo) throws InvalidKeyException, ContentEncodingException {
+		byte [] key = new byte[keyBitLength/DataUtils.BITS_PER_BYTE];
+		byte [] iv = new byte[ivBitLength/DataUtils.BITS_PER_BYTE];
+
+		byte [] keyandiv = DeriveKeyForObjectOrNode(masterKeyBytes, 
+				keyBitLength + ivBitLength,
+				contentInfo);
+
+		System.arraycopy(keyandiv, 0, key, 0, keyBitLength/DataUtils.BITS_PER_BYTE);
+		System.arraycopy(keyandiv, keyBitLength/DataUtils.BITS_PER_BYTE, iv, 0, ivBitLength/DataUtils.BITS_PER_BYTE);
+		return new KeyAndIV(keyAlgorithm, key, iv);
+	}
+
 	/**
 	 * Used to derive keys for nodes in a name hierarchy. The key must be independent of
 	 * publisher, as it is used to derive keys for intermediate nodes. As this is used as
@@ -113,7 +144,8 @@ public class KeyDerivationFunction {
 			byte [] parentNodeKeyBytes,
 			String label,
 			ContentName nodeName) throws InvalidKeyException, ContentEncodingException {
-		return DeriveKeyForNode(parentNodeKeyBytes, ContentKeys.DEFAULT_AES_KEY_LENGTH*BITS_PER_BYTE, label, nodeName);
+		return DeriveKeyForNode(parentNodeKeyBytes, ContentKeys.DEFAULT_KEY_LENGTH*DataUtils.BITS_PER_BYTE, 
+						label, nodeName);
 	}
 	
 	/**
@@ -152,65 +184,13 @@ public class KeyDerivationFunction {
 		}
 		return descendantNodeKey;
 	}
-
-	/**
-	 * Derive a key and IV for a particular object. Requested bit lengths must
-	 * be divisible by BITS_PER_BYTE.
-	 * @param masterKeyBytes master key to derive a new key from
-	 * @param keyBitLength bit length of key to derive
-	 * @param ivBitLength bit length of iv to derive
-	 * @param label a text label to allow derivation of multiple key types from a single
-	 * 	source key/path pair
-	 * @param contentName name to derive a key for
-	 * @param publisher publisher whose version of contentName we want to derive for
-	 * @return returns an {key, iv/counter seed} pair suitable for use in segment encryption
-	 * @throws InvalidKeyException 
-	 * @throws ContentEncodingException
-	 */
-	public static final byte [][] DeriveKeysForObject(
-			byte [] masterKeyBytes, 
-			int keyBitLength, int ivBitLength,
-			String label,
-			ContentName contentName, 
-			PublisherPublicKeyDigest publisher) throws InvalidKeyException, ContentEncodingException {
-		byte [] key = new byte[keyBitLength/BITS_PER_BYTE];
-		byte [] iv = new byte[ivBitLength/BITS_PER_BYTE];
-
-		byte [] keyandiv = DeriveKeyForObject(masterKeyBytes, 
-				keyBitLength + ivBitLength,
-				label, contentName, publisher);
-
-		System.arraycopy(keyandiv, 0, key, 0, keyBitLength/BITS_PER_BYTE);
-		System.arraycopy(keyandiv, keyBitLength/BITS_PER_BYTE, iv, 0, ivBitLength/BITS_PER_BYTE);
-		return new byte [][]{key, iv};
-	}
-
-
-	/**
-	 * Derive a key for a particular object. Requested bit lengths must
-	 * be divisible by BITS_PER_BYTE.
-	 * @param masterKeyBytes master key to derive a new key from
-	 * @param outputLengthInBits bit length of key to derive
-	 * @param label a text label to allow derivation of multiple key types from a single
-	 * 	source key/path pair
-	 * @param contentName name to derive a key for
-	 * @param publisher publisher whose version of contentName we want to derive for
-	 * @return returns a key for this object
-	 * @throws InvalidKeyException 
-	 * @throws ContentEncodingException
-	 */
-	public static final byte [] DeriveKeyForObject(
-			byte [] masterKeyBytes, int outputLengthInBits, 
-			String label, 
-			ContentName contentName, 
-			PublisherPublicKeyDigest publisher) throws InvalidKeyException, ContentEncodingException {
-		if ((null == contentName) || (null == publisher)) {
-			throw new IllegalArgumentException("Content name and publisher cannot be null!");
-		}
-		return DeriveKey(masterKeyBytes, outputLengthInBits, label, 
-				new XMLEncodable[]{contentName, publisher});
-	}
 	
+	public static final byte [] DeriveKeyForNode(byte [] parentNodeKeyBytes, int keyLengthInBits, 
+						String label, ContentName nodeName) throws InvalidKeyException, ContentEncodingException {
+		return DeriveKeyForObjectOrNode(parentNodeKeyBytes, ContentKeys.DEFAULT_KEY_LENGTH*DataUtils.BITS_PER_BYTE, 
+				new ContentInfo(nodeName, null, label));
+	}
+
 	/**
 	 * Derive a key for a particular object. Requested bit lengths must
 	 * be divisible by BITS_PER_BYTE.
@@ -218,18 +198,23 @@ public class KeyDerivationFunction {
 	 * @param outputLengthInBits bit length of key to derive
 	 * @param label a text label to allow derivation of multiple key types from a single
 	 * 	source key/path pair
-	 * @param nodeName name to derive a key for
+	 * @param contentName name to derive a key for
+	 * @param publisher publisher whose version of contentName we want to derive for
 	 * @return returns a key for this object
 	 * @throws InvalidKeyException 
 	 * @throws ContentEncodingException
 	 */
-	public static final byte [] DeriveKeyForNode(
-			byte [] masterKeyBytes, int outputLengthInBits,
-			String label, ContentName nodeName) throws InvalidKeyException, ContentEncodingException {
-		if (null == nodeName) {
-			throw new IllegalArgumentException("Content name cannot be null!");			
+	public static final byte [] DeriveKeyForObjectOrNode(
+			byte [] masterKeyBytes, int outputLengthInBits, 
+			ContentInfo contentInfo) throws InvalidKeyException, ContentEncodingException {
+		
+		if (null == contentInfo.getContentName()) {
+			throw new IllegalArgumentException("Content name cannot be null!");
 		}
-		return DeriveKey(masterKeyBytes, outputLengthInBits, label, new XMLEncodable[]{nodeName});
+		return DeriveKey(masterKeyBytes, outputLengthInBits, contentInfo.getLabel(), 
+				((null != contentInfo.getPublisher()) ? 
+						new XMLEncodable[]{contentInfo.getContentName(), contentInfo.getPublisher()} : 
+						new XMLEncodable[]{contentInfo.getContentName()}));
 	}
 
 	/**
@@ -272,12 +257,12 @@ public class KeyDerivationFunction {
 		
 		// Precompute data used from block to block.
 		byte [] Lbytes = new byte[] { (byte)(outputLengthInBits>>24), (byte)(outputLengthInBits>>16), 
-				(byte)(outputLengthInBits>>BITS_PER_BYTE), (byte)outputLengthInBits };
+				(byte)(outputLengthInBits>>DataUtils.BITS_PER_BYTE), (byte)outputLengthInBits };
 		byte [][] contextBytes = new byte[((null == contextObjects) ? 0 : contextObjects.length)][];
 		for (int j = 0; j < contextBytes.length; ++j) {
 			contextBytes[j] = contextObjects[j].encode();
 		}
-		int outputLengthInBytes = (int)Math.ceil(outputLengthInBits/(1.0 * BITS_PER_BYTE));
+		int outputLengthInBytes = (int)Math.ceil(outputLengthInBits/(1.0 * DataUtils.BITS_PER_BYTE));
 		byte [] outputBytes = new byte[outputLengthInBytes];
 
 		// Number of rounds
@@ -294,7 +279,7 @@ public class KeyDerivationFunction {
 				hmac.update(new byte[] { (byte)(i>>24), (byte)(i>>16), (byte)(i>>8), (byte)i});
 				// UTF-8 representation of label, including null terminator, or "" if empty
 				if (null == label) {
-					label = EMPTY;
+					label = DataUtils.EMPTY;
 				}
 
 				hmac.update(DataUtils.getBytesFromUTF8String(label));

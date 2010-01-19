@@ -816,6 +816,27 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if (null == _components) return 0;
 		return _components.size(); 
 	}
+	
+	/**
+	 * Append a segmented name to this name.
+	 */
+	public ContentName append(ContentName other) {
+		return new ContentName(this, other.components());
+	}
+	
+	/**
+	 * Append a name to this one, where the child name might have more than one
+	 * path component -- e.g. foo/bar/bash. Will add leading / to postfix for
+	 * parsing, if one not present.
+	 * @throws MalformedContentNameStringException 
+	 */
+	public ContentName append(String postfix) throws MalformedContentNameStringException {
+		if (!postfix.startsWith("/")) {
+			postfix = "/" + postfix;
+		}
+		ContentName postfixName = ContentName.fromNative(postfix);
+		return this.append(postfixName);
+	}
 
 	/**
 	 * Get the i'th component, indexed from 0.

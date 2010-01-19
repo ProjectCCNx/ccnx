@@ -23,6 +23,7 @@ import java.util.logging.Level;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
@@ -117,8 +118,9 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null, null, null, null);
 			RepositoryDataListener listener;
 			
-			_server.getWriter().put(interest.name(), _server.getRepository().getRepoInfo(null), null, null,
-					_server.getFreshness());
+			RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null);
+			// Hand the object the outstanding interest, so it can put its first block immediately.
+			rio.save(interest);
 			
 			// Check for special case file written to repo
 			ContentName globalPrefix = _server.getRepository().getGlobalPrefix();

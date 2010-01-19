@@ -3,17 +3,20 @@ package org.ccnx.ccn.profiles.security.access;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
 
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
-import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
+import org.ccnx.ccn.impl.security.crypto.KDFContentKeys;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -22,8 +25,10 @@ import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager.Root.RootObject;
+import org.ccnx.ccn.profiles.security.access.group.NodeKey;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -71,6 +76,8 @@ public abstract class AccessControlManager {
 	public boolean inProtectedNamespace(ContentName content) {
 		return _namespace.isPrefixOf(content);
 	}
+	
+	public ContentName getNamespaceRoot() { return _namespace; }
 
 	/**
 	 * Used by content reader to retrieve the keys necessary to decrypt this content.
@@ -140,43 +147,66 @@ public abstract class AccessControlManager {
 	}
 	
 	/**
-	 * Take a randomly generated data key and store it. This requires finding
+	 * Find the key to use to wrap a data key at this node. This requires
 	 * the current effective node key, and wrapping this data key in it. If the
 	 * current node key is dirty, this causes a new one to be generated.
-	 * @param dataNodeName
+	 * If data at the current node is public, this returns null. Does not check
+	 * to see whether content is excluded from encryption (e.g. by being access
+	 * control data).
+	 * @param dataNodeName the node for which to find a data key wrapping key
+	 * @return if null, the data is to be unencrypted.  (Alteratively, could
+	 *   return a NodeKey that indicates public.)
 	 * @param newRandomDataKey
-	 * @throws AccessDeniedException 
+	 * @throws AccessDeniedException if we don't have rights to retrieve key.
 	 * @throws InvalidKeyException 
 	 * @throws ContentEncodingException
 	 * @throws IOException
 	 * @throws InvalidCipherTextException 
 	 */
-	public abstract void storeDataKey(ContentName dataNodeName, Key newRandomDataKey)
+	public abstract NodeKey getDataKeyWrappingKey(ContentName dataNodeName)
 	 	throws AccessDeniedException, InvalidKeyException,
 	 		ContentEncodingException, IOException, InvalidCipherTextException;
 
 	/**
-	 * Generate a random data key, store it, and return it to use to derive keys to encrypt
-	 * content. All that's left is to call
-	 * byte [] randomDataKey = generateAndStoreDataKey(dataNodeName);
-	 * byte [][] keyandiv = 
-	 * 		KeyDerivationFunction.DeriveKeyForObject(randomDataKey, keyLabel, 
-	 * 												 dataNodeName, dataPublisherPublicKeyDigest)
-	 * and then give keyandiv to the segmenter to encrypt the data.
+	 * Wrap a data key in a given node key and store it.
+	 * @param dataNodeName
+	 * @param dataKey
+	 * @param wrappingKey
+	 * @throws InvalidKeyException
+	 * @throws ContentEncodingException
+	 * @throws IOException
+	 */
+	public void storeDataKey(ContentName dataNodeName, Key dataKey, NodeKey wrappingKey) throws InvalidKeyException, ContentEncodingException, IOException {
+		Log.info("Wrapping data key for node: " + dataNodeName + " with ewrappingKey for node: " + 
+				wrappingKey.nodeName() + " derived from stored node key for node: " + 
+				wrappingKey.storedNodeKeyName());
+		// TODO another case where we're wrapping in an effective node key but labeling it with
+		// the stored node key information. This will work except if we interpose an ACL in the meantime -- 
+		// we may not have the information necessary to figure out how to decrypt.
+		WrappedKey wrappedDataKey = WrappedKey.wrapKey(dataKey, 
+				null, dataKeyLabel(), 
+				wrappingKey.nodeKey());
+		wrappedDataKey.setWrappingKeyIdentifier(wrappingKey.storedNodeKeyID());
+		wrappedDataKey.setWrappingKeyName(wrappingKey.storedNodeKeyName());
+
+		storeKeyContent(AccessControlProfile.dataKeyName(dataNodeName), wrappedDataKey);		
+	}
+
+	/**
+	 * Generate a random data key.
 	 * @throws IOException 
 	 * @throws ContentEncodingException 
 	 * @throws AccessDeniedException 
 	 * @throws InvalidKeyException 
 	 * @throws InvalidCipherTextException 
 	 **/
-	public Key generateAndStoreDataKey(ContentName dataNodeName)
+	public Key generateDataKey(ContentName dataNodeName)
 	throws InvalidKeyException, AccessDeniedException,
 	ContentEncodingException, IOException, InvalidCipherTextException {
 		// Generate new random data key of appropriate length
 		byte [] dataKeyBytes = new byte[DEFAULT_DATA_KEY_LENGTH];
 		_random.nextBytes(dataKeyBytes);
 		Key dataKey = new SecretKeySpec(dataKeyBytes, DEFAULT_DATA_KEY_ALGORITHM);
-		storeDataKey(AccessControlProfile.dataKeyName(dataNodeName), dataKey);
 		return dataKey;
 	}
 
@@ -239,12 +269,30 @@ public abstract class AccessControlManager {
 	 * @throws InvalidCipherTextException 
 	 * @throws AccessDeniedException 
 	 */
-	public ContentKeys getContentKeys(ContentName dataNodeName, PublisherPublicKeyDigest publisher)
+	public ContentKeys getContentKeys(ContentName dataNodeName)
 	throws InvalidKeyException, InvalidCipherTextException, AccessDeniedException, IOException {
+		if (SegmentationProfile.isSegment(dataNodeName)) {
+			dataNodeName = SegmentationProfile.segmentRoot(dataNodeName);
+		}
 		Key dataKey = getDataKey(dataNodeName);
 		if (null == dataKey)
 			return null;
-		return KeyDerivationFunction.DeriveKeysForObject(dataKey.getEncoded(), DATA_KEY_LABEL, dataNodeName, publisher);
+		return getDefaultAlgorithmContentKeys(dataKey);
+	}
+	
+	public static ContentKeys getDefaultAlgorithmContentKeys(Key dataKey) throws InvalidKeyException {
+		try {
+			// TODO - figure out where algorithm spec lives
+			return new KDFContentKeys(ContentKeys.DEFAULT_CIPHER_ALGORITHM, dataKey.getEncoded(), DATA_KEY_LABEL);
+		} catch (NoSuchAlgorithmException e) {
+			String err = "Unexpected NoSuchAlgorithmException for default algorithm we have already used!";
+			Log.severe(err);
+			throw new InvalidKeyException(err, e);
+		} catch (NoSuchPaddingException e) {
+			String err = "Unexpected NoSuchPaddingException for default algorithm we have already used!";
+			Log.severe(err);
+			throw new InvalidKeyException(err, e);
+		}		
 	}
 
 	/**
@@ -252,21 +300,20 @@ public abstract class AccessControlManager {
 	 * if so find or create an AccessControlManager, and get keys for access. Only called if
 	 * content is encrypted.
 	 * @param name name of the stream to be opened.
-	 * @param publisher publisher of the stream to be opened.
 	 * @param library CCN Library instance to use for any network operations.
 	 * @return If the stream is under access control then keys to decrypt the data are returned if it's
 	 * encrypted. If the stream is not under access control (no Root ACL block can be found) then null is
 	 * returned.
 	 * @throws IOException if a problem happens getting keys.
 	 */
-	public static ContentKeys keysForInput(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle)
+	public static ContentKeys keysForInput(ContentName name, CCNHandle handle)
 	throws IOException {
 		AccessControlManager acm;
 		try {
 			acm = NamespaceManager.findACM(name, handle);
 			if (acm != null) {
 				Log.info("keysForInput: retrieving key for data node {0}", name);
-				return acm.getContentKeys(name, publisher);
+				return acm.getContentKeys(name);
 			}
 		} catch (ConfigurationException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
@@ -291,13 +338,28 @@ public abstract class AccessControlManager {
 	 */
 	public static ContentKeys keysForOutput(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle)
 	throws IOException {
+		
+		if (SystemConfiguration.disableAccessControl()) {
+			Log.finest("Access control disabled, not searching for keys for {0}.", name);
+			return null;
+		}
+		
 		AccessControlManager acm;
 		try {
 			acm = NamespaceManager.findACM(name, handle);
-			if ((acm != null) && (acm.isProtectedContent(name, publisher, handle))) {
-				Log.info("keysForOutput: generating new data key for data node {0}", name);
-				Key dataKey = acm.generateAndStoreDataKey(name);
-				return KeyDerivationFunction.DeriveKeysForObject(dataKey.getEncoded(), DATA_KEY_LABEL, name, publisher);
+			Log.info("keysForOutput: found an acm? " + acm);
+			
+			if ((acm != null) && (acm.isProtectedContent(name, handle))) {
+				// First we need to figure out whether this content is public or unprotected...
+				Log.info("keysForOutput: found ACM, protected content, generating new data key for data node {0}", name);
+				NodeKey dataKeyWrappingKey = acm.getDataKeyWrappingKey(name);
+				if (null == dataKeyWrappingKey) {
+					// if content is public -- either null or a special value would work
+					return null; // no keys
+				}
+				Key dataKey = acm.generateDataKey(name);
+				acm.storeDataKey(name, dataKey, dataKeyWrappingKey);
+				return getDefaultAlgorithmContentKeys(dataKey);
 			}
 		} catch (ConfigurationException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
@@ -317,7 +379,7 @@ public abstract class AccessControlManager {
 	 * access control lists are not themselves encrypted. 
 	 * TODO: should headers be exempt from encryption?
 	 */
-	public boolean isProtectedContent(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle hande) {
+	public boolean isProtectedContent(ContentName name, CCNHandle hande) {
 
 		if (!inProtectedNamespace(name)) {
 			return false;

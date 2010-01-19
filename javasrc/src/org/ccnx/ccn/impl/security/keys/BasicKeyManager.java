@@ -132,7 +132,6 @@ public class BasicKeyManager extends KeyManager {
 		_keyStoreFileName = (null != keyStoreFileName) ? 
 				keyStoreFileName : UserConfiguration.keystoreFileName();
 	    _keyStoreDirectory = (null != keyStoreDirectory) ? keyStoreDirectory : UserConfiguration.ccnDirectory();
-		_userName = UserConfiguration.userName();
 		// must call initialize
 	}
 	
@@ -171,6 +170,15 @@ public class BasicKeyManager extends KeyManager {
 	
 	@Override
 	public boolean initialized() { return _initialized; }
+	
+	/**
+	 * Close any connections we have to the network. Ideally prepare to
+	 * reopen them when they are next needed.
+	 */
+	
+	public void close() {
+		keyRepository().close();
+	}
 	
 	/**
 	 * Publish our default key at a particular name.
@@ -274,11 +282,17 @@ public class BasicKeyManager extends KeyManager {
 	protected boolean loadValuesFromKeystore(KeyStoreInfo keyStoreInfo) throws ConfigurationException {
 		KeyStore.PrivateKeyEntry entry = null;
 		try {
+			// Default alias should be a PrivateKeyEntry
 			entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
 			if (null == entry) {
 				Log.warning("Cannot get default key entry: " + _defaultAlias);
+				generateConfigurationException("Cannot retrieve default user keystore entry.", null);
 			}
 		    X509Certificate certificate = (X509Certificate)entry.getCertificate();
+		    if (null == certificate) {
+				Log.warning("Cannot get certificate for default key entry: " + _defaultAlias);
+				generateConfigurationException("Cannot retrieve certificate for default user keystore entry.", null);		    	
+		    }
 		    _defaultKeyID = new PublisherPublicKeyDigest(certificate.getPublicKey());
 			Log.info("Default key ID for user " + _userName + ": " + _defaultKeyID);
 			

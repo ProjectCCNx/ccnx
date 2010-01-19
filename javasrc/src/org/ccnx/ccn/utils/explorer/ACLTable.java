@@ -1,3 +1,20 @@
+/**
+ * A CCNx command line utility.
+ *
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation. 
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+
 package org.ccnx.ccn.utils.explorer;
 
 import java.util.ArrayList;
@@ -22,12 +39,11 @@ public class ACLTable extends AbstractTableModel {
 	public ACLTable(String type, ContentName[] principals, ACL initialACL) {
 		columnNames[0] = type;
 		this.principals = principals;
-		this.initialACL = initialACL;
-		
-		initializeACLTable();		
+		initializeACLTable(initialACL);		
 	}
 	
-	private void initializeACLTable() {
+	public void initializeACLTable(ACL initialACL) {
+		this.initialACL = initialACL;
 		aclTable = new Object[principals.length][ACL_LENGTH];
 		for (int c=0; c<ACL_LENGTH; c++) {
 			for (int r=0; r<principals.length; r++) {
@@ -90,7 +106,7 @@ public class ACLTable extends AbstractTableModel {
 	}
 	
 	public void cancelChanges() {
-		initializeACLTable();
+		initializeACLTable(initialACL);
 		fireTableDataChanged();
 	}
 	
@@ -123,10 +139,6 @@ public class ACLTable extends AbstractTableModel {
 				aclTable[pos][1] = new Boolean(true);
 				aclTable[pos][2] = new Boolean(true);
 			}
-		}
-		else {
-			String friendlyName = ContentName.componentPrintNative(principal.lastComponent());
-			System.out.println("WARNING: principal name " + friendlyName + " in ACL not a known principal in this table");
 		}
 	}
 	

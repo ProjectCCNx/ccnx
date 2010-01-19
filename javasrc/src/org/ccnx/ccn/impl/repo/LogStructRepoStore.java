@@ -76,6 +76,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		public static final char [] KEYSTORE_PASSWORD = "Th1s 1s n0t 8 g00d R3p0s1t0ry p8ssw0rd!".toCharArray();
 		public static final String KEYSTORE_FILE = "ccnx_repository_keystore";
 		public static final String REPOSITORY_USER = "Repository";
+		// OS dependencies -- some OSes seem to ignore case in keystore aliases
+		public static final String REPOSITORY_KEYSTORE_ALIAS = REPOSITORY_USER.toLowerCase();
 
 		private static String CONTENT_FILE_PREFIX = "repoFile";
 		private static String DEBUG_TREEDUMP_FILE = "debugNamesTree";
@@ -255,17 +257,31 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
 		
+		// DKS -- we probably don't want to encrypt startWrites and other messages, 
+		// as the repository doesn't likely have write privileges (or read privileges)
+		// for data. Without a fully public-key system, have to go for unencrypted writes.
+		// Have to determine the best way to handle this, for now disable access control
+		// for the repository write side.
+		SystemConfiguration.setAccessControlDisabled(true);
+		
 		// Build our handle
 		if (null == handle) {
 			// Load our keystore. Make one if none exists; use the
 			// default kestore type and key algorithm.
 			try {
-				KeyManager km = 
+				_km = 
 					new BasicKeyManager(LogStructRepoStoreProfile.REPOSITORY_USER, 
 							_repositoryRoot, LogStructRepoStoreProfile.KEYSTORE_FILE,
-							null, null, LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
-				km.initialize();
-				handle = CCNHandle.open(km);
+							null, LogStructRepoStoreProfile.REPOSITORY_KEYSTORE_ALIAS, 
+							LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
+				_km.initialize();
+				handle = CCNHandle.open(_km);
+				
+				// Let's use our key manager as the default. That will make us less
+				// prone to accidentally loading the user's key manager. If we close it more than
+				// once, that's ok.
+				KeyManager.setDefaultKeyManager(_km);
+
 			} catch (ConfigurationException e) {
 				Log.warning("ConfigurationException creating repository key store: " + e.getMessage());
 				throw new RepositoryException("ConfigurationException creating repository key store!", e);
@@ -339,7 +355,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		 */
 		if (null == pxml) {
 			try {
-				readPolicy(localName);
+				readPolicy(localName, _km);
 			} catch (ContentDecodingException e) {
 				throw new RepositoryException(e.getMessage());
 			}
@@ -347,7 +363,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			pxml = _policy.getPolicyXML();
 			ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), _policy.getLocalName());
 			try {
-				PolicyObject po = new PolicyObject(policyName, pxml, SaveType.REPOSITORY, null, this);
+				PolicyObject po = new PolicyObject(policyName, pxml, SaveType.REPOSITORY, _handle, this);
 				po.save();
 			} catch (IOException e) {
 				throw new RepositoryException(e.getMessage());
@@ -520,10 +536,19 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * Cleanup on shutdown
 	 */
 	public void shutDown() {
-		if (null != _activeWriteFile.openFile) {
+		super.shutDown();
+		if (null != _km)
+			_km.close();
+		if (null != _activeWriteFile && null != _activeWriteFile.openFile) {
 			try {
 				_activeWriteFile.openFile.close();
+				_activeWriteFile.openFile = null;
 			} catch (IOException e) {}
 		}
+	}
+
+	public Object getStatus(String type) {
+		return type.equals(RepositoryStore.REPO_SIMPLE_STATUS_REQUEST) 
+				? ((null == _activeWriteFile.openFile) ? null : "running") : null;
 	}
 }

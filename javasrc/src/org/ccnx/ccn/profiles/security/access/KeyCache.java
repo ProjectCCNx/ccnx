@@ -84,23 +84,33 @@ public class KeyCache {
 		KeyStore.PasswordProtection passwordProtection = new KeyStore.PasswordProtection(password);
 		while (aliases.hasMoreElements()) {
 			alias = aliases.nextElement();
-			try {
-				entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(alias, passwordProtection);
-			} catch (NoSuchAlgorithmException e) {
-				throw new KeyStoreException("Unexpected NoSuchAlgorithm retrieving key for alias : " + alias, e);
-			} catch (UnrecoverableEntryException e) {
-				throw new KeyStoreException("Unexpected UnrecoverableEntryException retrieving key for alias : " + alias, e);
-			}
-			if (null == entry) {
-				Log.warning("Cannot get private key entry for alias: " + alias);
-			} else {
-				PrivateKey pk = entry.getPrivateKey();
-				X509Certificate certificate = (X509Certificate)entry.getCertificate();
-				PublisherPublicKeyDigest ppkd = new PublisherPublicKeyDigest(certificate.getPublicKey());
-				if (null != pk) {
-					if (null != ppkd) {
-						addMyPrivateKey(ppkd.digest(), pk);
-						publicKeyCache.remember(certificate, keyStoreInfo.getVersion());
+			if (keyStoreInfo.getKeyStore().isKeyEntry(alias)) {
+				try {
+					entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(alias, passwordProtection);
+				} catch (NoSuchAlgorithmException e) {
+					throw new KeyStoreException("Unexpected NoSuchAlgorithm retrieving key for alias : " + alias, e);
+				} catch (UnrecoverableEntryException e) {
+					throw new KeyStoreException("Unexpected UnrecoverableEntryException retrieving key for alias : " + alias, e);
+				}
+				if (null == entry) {
+					Log.warning("Cannot get private key entry for alias: " + alias);
+				} else {
+					PrivateKey pk = entry.getPrivateKey();
+					if (null != pk) {
+						X509Certificate certificate = (X509Certificate)entry.getCertificate();
+						if (null != certificate) {
+							PublisherPublicKeyDigest ppkd = new PublisherPublicKeyDigest(certificate.getPublicKey());
+							if (null != ppkd) {
+								addMyPrivateKey(ppkd.digest(), pk);
+								publicKeyCache.remember(certificate, keyStoreInfo.getVersion());
+							} else {
+								Log.warning("Certificate has null public key for alias " + alias + "!");
+							}
+						} else {
+							Log.warning("Private key for alias: " + alias + " has no certificate entry. No way to get public key. Not caching.");
+						}
+					} else {
+						Log.warning("Cannot retrieve private key for key entry alias " + alias);
 					}
 				}
 			}

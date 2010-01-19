@@ -3,7 +3,7 @@
  * 
  * Main program of ccnd - the CCNx Daemon
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -305,11 +305,11 @@ finalize_face(struct hashtb_enumerator *e)
             recycle ? "recycling" : "releasing",
             face->faceid, face->faceid & MAXFACES);
         /* If face->addr is not NULL, it is our key so don't free it. */
-        ccn_charbuf_destroy(&face->inbuf);
-        ccn_charbuf_destroy(&face->outbuf);
     }
-    else
+    else if (face->faceid != CCN_NOFACEID)
         ccnd_msg(h, "orphaned face %u", face->faceid);
+    ccn_charbuf_destroy(&face->inbuf);
+    ccn_charbuf_destroy(&face->outbuf);
 }
 
 static struct content_entry *
@@ -1410,7 +1410,7 @@ check_dgram_faces(struct ccnd_handle *h)
  * Destroys the face identified by faceid.
  * @returns 0 for success, -1 for failure.
  */
-static int
+int
 destroy_face(struct ccnd_handle *h, unsigned faceid)
 {
     struct hashtb_enumerator ee;
@@ -3872,4 +3872,64 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     free(sockname);
     sockname = NULL;
     return(h);
+}
+
+static void
+close_fd(int *pfd)
+{
+    if (*pfd != -1) {
+        close(*pfd);
+        *pfd = -1;
+    }
+}
+
+/**
+ * Destroy the ccnd instance, releasing all associated resources.
+ */
+void
+ccnd_destroy(struct ccnd_handle **pccnd)
+{
+    struct ccnd_handle *h = *pccnd;
+    if (h == NULL)
+        return;
+    ccnd_internal_client_stop(h);
+    ccn_schedule_destroy(&h->sched);
+    hashtb_destroy(&h->dgram_faces);
+    hashtb_destroy(&h->faces_by_fd);
+    hashtb_destroy(&h->content_tab);
+    hashtb_destroy(&h->propagating_tab);
+    hashtb_destroy(&h->nameprefix_tab);
+    hashtb_destroy(&h->sparse_straggler_tab);
+    if (h->fds != NULL) {
+        free(h->fds);
+        h->fds = NULL;
+        h->nfds = 0;
+    }
+    close_fd(&h->tcp4_fd);
+    close_fd(&h->tcp6_fd);
+    close_fd(&h->udp4_fd);
+    close_fd(&h->udp6_fd);
+    close_fd(&h->local_listener_fd);
+    if (h->faces_by_faceid != NULL) {
+        free(h->faces_by_faceid);
+        h->faces_by_faceid = NULL;
+        h->face_limit = h->face_gen = 0;
+    }
+    if (h->content_by_accession != NULL) {
+        free(h->content_by_accession);
+        h->content_by_accession = NULL;
+        h->content_by_accession_window = 0;
+    }
+    ccn_charbuf_destroy(&h->scratch_charbuf);
+    ccn_indexbuf_destroy(&h->skiplinks);
+    ccn_indexbuf_destroy(&h->scratch_indexbuf);
+    ccn_indexbuf_destroy(&h->unsol);
+    if (h->face0 != NULL) {
+        ccn_charbuf_destroy(&h->face0->inbuf);
+        ccn_charbuf_destroy(&h->face0->outbuf);
+        free(h->face0);
+        h->face0 = NULL;
+    }
+    free(h);
+    *pccnd = NULL;
 }

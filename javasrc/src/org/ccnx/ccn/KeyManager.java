@@ -44,6 +44,12 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public abstract class KeyManager {
 	
+	static {
+		// This needs to be done once. Do it here to be sure it happens before 
+		// any work that needs it.
+		KeyManager.initializeProvider();
+	}
+	
 	/**
 	 * Currently default to SHA-256. Only thing that associates a specific digest algorithm
 	 * with a version of the CCN protocol is the calculation of the vestigial content digest component
@@ -69,14 +75,60 @@ public abstract class KeyManager {
 	 * @throws ConfigurationException if there is a problem with the user or system configuration that
 	 * 		requires intervention to resolve, or we have a significant problem starting up the key manager.
 	 */
-	public static KeyManager getDefaultKeyManager() throws ConfigurationException {
+	public static synchronized KeyManager getDefaultKeyManager() {
+		// could print a stack trace
+		Log.info("NOTICE: retrieving default key manager.");
 		if (null != _defaultKeyManager) 
 			return _defaultKeyManager;
 		try {
-			return createKeyManager();
+			return createDefaultKeyManager();
 		} catch (IOException io) {
-			throw new ConfigurationException(io);
+			Log.warning("IOException attempting to get KeyManager: " + io.getClass().getName() + ":" + io.getMessage());
+			Log.warningStackTrace(io);
+			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",io);
+		} catch (ConfigurationException e) {
+			Log.warning("Configuration exception attempting to get KeyManager: " + e.getMessage());
+			Log.warningStackTrace(e);
+			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",e);
 		}
+	}
+	
+	/**
+	 * Clean up state left around by the default key manager and remove it.
+	 * For now that just means shutting down the network manager started by it
+	 */
+	public static synchronized void closeDefaultKeyManager() {
+		if (null != _defaultKeyManager) {
+			_defaultKeyManager.close();
+			_defaultKeyManager = null;
+		}
+	}
+	
+	/**
+	 * Create the default key manager.
+	 * @return the key manager
+	 * @throws ConfigurationException if there is a problem with the user or system configuration
+	 * 	that requires intervention to fix
+	 * @throws IOException if there is an operational problem loading data or initializing the key store
+	 */
+	protected static synchronized KeyManager createDefaultKeyManager() throws ConfigurationException, IOException {
+		if (null == _defaultKeyManager) {
+			_defaultKeyManager = new BasicKeyManager();
+			_defaultKeyManager.initialize();
+		}
+		return _defaultKeyManager;
+	}
+	
+	/**
+	 * Set the default key manager to one of our choice. If you do this, be careful on 
+	 * calling close().
+	 */
+	public static synchronized void setDefaultKeyManager(KeyManager keyManager) {
+		if (null == keyManager) {
+			Log.warning("Setting default key manager to NULL. Default user key manager will be loaded on next request for default key manager.");
+		}
+		closeDefaultKeyManager();
+		_defaultKeyManager = keyManager;
 	}
 	
 	/**
@@ -112,33 +164,10 @@ public abstract class KeyManager {
 	}
 	
 	/**
-	 * Get our current KeyManager.
-	 * @return the key manager
+	 * Close any connections we have to the network. Ideally prepare to
+	 * reopen them when they are next needed.
 	 */
-	public static KeyManager getKeyManager() {
-		try {
-			return getDefaultKeyManager();
-		} catch (ConfigurationException e) {
-			Log.warning("Configuration exception attempting to get KeyManager: " + e.getMessage());
-			Log.warningStackTrace(e);
-			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",e);
-		}
-	}
-	
-	/**
-	 * Create the default key manager.
-	 * @return the key manager
-	 * @throws ConfigurationException if there is a problem with the user or system configuration
-	 * 	that requires intervention to fix
-	 * @throws IOException if there is an operational problem loading data or initializing the key store
-	 */
-	protected static synchronized KeyManager createKeyManager() throws ConfigurationException, IOException {
-		if (null == _defaultKeyManager) {
-			_defaultKeyManager = new BasicKeyManager();
-			_defaultKeyManager.initialize();
-		}
-		return _defaultKeyManager;
-	}
+	public abstract void close();
 	
 	/**
 	 * Allows subclasses to specialize key manager initialization.
