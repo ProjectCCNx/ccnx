@@ -512,16 +512,16 @@ public class CCNNetworkManager implements Runnable {
 			return prefix.toString();
 		}
 	} /* protected class Filter extends ListenerRegistration */
-	
+
 	private class CCNDIdGetter implements Runnable {
 		CCNNetworkManager _networkManager;
 		KeyManager _keyManager;
-		
+
 		public CCNDIdGetter(CCNNetworkManager networkManager, KeyManager keyManager) { 
 			_networkManager = networkManager;
 			_keyManager = keyManager;
-			}
-		
+		}
+
 		public void run() {
 			boolean isNull = false;
 			PublisherPublicKeyDigest sentID = null;
@@ -541,14 +541,19 @@ public class CCNNetworkManager implements Runnable {
 		} /* run() */
 
 	} /* private class CCNDIdGetter implements Runnable */
-		
+
 	/**
 	 * The constructor. Attempts to connect to a ccnd at the currently specified port number
 	 * @throws IOException if the port is invalid
 	 */
 	public CCNNetworkManager(KeyManager keyManager) throws IOException {
-
+		if (null == keyManager) {
+			// Unless someone gives us one later, we won't be able to register filters. Log this.
+			Log.info("CCNNetworkManager: being created with null KeyManager. Must set KeyManager later to be able to register filters.");
+		}
+		
 		_keyManager = keyManager;
+		
 		// Determine port at which to contact agent
 		String portval = System.getProperty(PROP_AGENT_PORT);
 		if (null != portval) {
@@ -1103,6 +1108,9 @@ public class CCNNetworkManager implements Runnable {
 						Log.severe(msg);
 						return null;
 					}
+				} else {
+					Log.severe("fetchCCNDId: do not have a KeyManager. Cannot verify ccndID.");
+					return null;
 				}
 				return sentID;
 			} catch (InterruptedException e) {
