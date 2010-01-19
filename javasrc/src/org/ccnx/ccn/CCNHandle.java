@@ -48,7 +48,7 @@ public class CCNHandle implements CCNBase {
 	
 	protected static CCNHandle _handle = null;
 
-	protected KeyManager _userKeyManager = null;
+	protected KeyManager _keyManager = null;
 	
 	/**
 	 * A CCNNetworkManager embodies a connection to ccnd.
@@ -133,10 +133,10 @@ public class CCNHandle implements CCNBase {
 	 * @throws IOException 
 	 */
 	protected CCNHandle(KeyManager keyManager) throws IOException {
-		_userKeyManager = keyManager;
+		_keyManager = keyManager;
 		// force initialization of network manager
 		try {
-			_networkManager = new CCNNetworkManager(_userKeyManager);
+			_networkManager = new CCNNetworkManager(_keyManager);
 		} catch (IOException ex){
 			Log.warning("IOException instantiating network manager: " + ex.getMessage());
 			Log.warningStackTrace(ex);
@@ -172,7 +172,7 @@ public class CCNHandle implements CCNBase {
 			synchronized(this) {
 				if (null == _networkManager) {
 					try {
-						_networkManager = new CCNNetworkManager(_userKeyManager);
+						_networkManager = new CCNNetworkManager(_keyManager);
 					} catch (IOException ex){
 						Log.warning("IOException instantiating network manager: " + ex.getMessage());
 						ex.printStackTrace();
@@ -193,14 +193,14 @@ public class CCNHandle implements CCNBase {
 			Log.warning("StandardCCNLibrary::setKeyManager: Key manager cannot be null!");
 			throw new IllegalArgumentException("Key manager cannot be null!");
 		}
-		_userKeyManager = keyManager;
+		_keyManager = keyManager;
 	}
 	
 	/**
 	 * Return the KeyManager we are using.
 	 * @return our current KeyManager
 	 */
-	public KeyManager keyManager() { return _userKeyManager; }
+	public KeyManager keyManager() { return _keyManager; }
 
 	/**
 	 * Get the publisher ID of the default public key we use to sign content
