@@ -97,8 +97,8 @@ public class KeyCache {
 				} else {
 					PrivateKey pk = entry.getPrivateKey();
 					if (null != pk) {
-						if (keyStoreInfo.getKeyStore().isCertificateEntry(alias)) {
-							X509Certificate certificate = (X509Certificate)entry.getCertificate();
+						X509Certificate certificate = (X509Certificate)entry.getCertificate();
+						if (null != certificate) {
 							PublisherPublicKeyDigest ppkd = new PublisherPublicKeyDigest(certificate.getPublicKey());
 							if (null != ppkd) {
 								addMyPrivateKey(ppkd.digest(), pk);
