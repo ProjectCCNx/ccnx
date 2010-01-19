@@ -338,9 +338,12 @@ public abstract class AccessControlManager {
 	 */
 	public static ContentKeys keysForOutput(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle)
 	throws IOException {
+		
 		if (SystemConfiguration.disableAccessControl()) {
+			Log.finest("Access control disabled, not searching for keys for {0}.", name);
 			return null;
 		}
+		
 		AccessControlManager acm;
 		try {
 			acm = NamespaceManager.findACM(name, handle);
