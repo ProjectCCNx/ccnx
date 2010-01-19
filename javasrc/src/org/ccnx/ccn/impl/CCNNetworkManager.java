@@ -43,7 +43,10 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonProfile;
+import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager;
+import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ForwardingEntry;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -96,7 +99,6 @@ public class CCNNetworkManager implements Runnable {
 	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.UDP;
 	public static final String PROP_AGENT_PREFIX_REG = "ccn.agent.prefix_reg";
 	public static final String ENV_AGENT_PREFIX_REG = "CCND_TRYFIB";
-	public static final boolean DEFAULT_PREFIX_REG = false; // Until ccnd gets updated
 
 	
 	/*
@@ -135,8 +137,9 @@ public class CCNNetworkManager implements Runnable {
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
+	public static final boolean DEFAULT_PREFIX_REG = false; // Until ccnd gets updated
 	protected boolean _usePrefixReg = DEFAULT_PREFIX_REG;
-
+	protected PrefixRegistrationManager _prefixMgr = null;
 	private Timer _periodicTimer = null;
 	private boolean _timersSetup = false;
 	
@@ -470,13 +473,24 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	protected class Filter extends ListenerRegistration {
 		public ContentName prefix;  /* Also used to remember registration with ccnd */
-		protected ArrayList<Interest> interests= new ArrayList<Interest>(1);
-		protected Integer faceId = null;
+		protected ArrayList<Interest> interests = new ArrayList<Interest>(1);
+		// protected Integer faceId = null;
+		ForwardingEntry entry = null;
+		long lifetime = 0; // in 
 		
-		public Filter(CCNNetworkManager mgr, ContentName n, CCNFilterListener l, Object o) {
+		public Filter(CCNNetworkManager mgr, ContentName n, CCNFilterListener l, Object o, ForwardingEntry e) {
 			prefix = n; listener = l; owner = o;
 			manager = mgr;
+			entry = e;
+			if (null != entry) {
+				lifetime = entry.getLifetime();
+			}
 		}
+		
+		public ForwardingEntry getEntry() {
+			return entry;
+		}
+		
 		public synchronized void add(Interest i) {
 			interests.add(i);
 		}
@@ -529,7 +543,12 @@ public class CCNNetworkManager implements Runnable {
 				isNull = (null == _ccndId);
 			}
 			if (isNull) {
-				sentID = fetchCCNDId(_networkManager, _keyManager);
+				try {
+					sentID = fetchCCNDId(_networkManager, _keyManager);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 				if (null == sentID) {
 					Log.severe("CCNDIdGetter: call to fetchCCNDId returned null.");
 				}
@@ -595,7 +614,7 @@ public class CCNNetworkManager implements Runnable {
 			} else {
 				_usePrefixReg = true;
 			}
-			Log.warning("CCN agent use of prefix registration changed to " + _usePrefixReg + "per property");
+			Log.warning("CCN agent use of prefix registration changed to " + _usePrefixReg + " per property");
 		} else {
 			_usePrefixReg = DEFAULT_PREFIX_REG;
 		}
@@ -679,8 +698,9 @@ public class CCNNetworkManager implements Runnable {
 	 * Get the CCN Name of the 'ccnd' we're connected to.
 	 * 
 	 * @return the CCN Name of the 'ccnd' this CCNNetworkManager is connected to.
+	 * @throws IOException 
 	 */
-	public PublisherPublicKeyDigest getCCNDId() {
+	public PublisherPublicKeyDigest getCCNDId() throws IOException {
 		/*
 		 *  Now arrange to have the ccndId read.  We can't do that here because we need
 		 *  to return back to the create before we know we get the answer back.  We can
@@ -847,12 +867,21 @@ public class CCNNetworkManager implements Runnable {
 		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
 		// serving any useful purpose.
 		setupTimers();
-		synchronized (_myFilters) {
-			_myFilters.add(filter, new Filter(this, filter, callbackListener, caller));
+		ForwardingEntry entry = null;
+		if (_usePrefixReg) {
+			try {
+				_prefixMgr = new PrefixRegistrationManager(this);
+				entry = _prefixMgr.selfRegisterPrefix(filter);
+			} catch (CCNDaemonException e) {
+				throw new IOException(e.getMessage());
+			}
 		}
-		// tell ccnd to send me interests that start to filter
+		Filter newOne = new Filter(this, filter, callbackListener, caller, entry);
+		synchronized (_myFilters) {
+			_myFilters.add(filter, newOne);
+		}
 	}
-	
+
 	/**
 	 * Unregister a standing interest filter
 	 *
@@ -864,10 +893,21 @@ public class CCNNetworkManager implements Runnable {
 		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
 		// serving any useful purpose.
 		Log.fine("cancelInterestFilter: {0}", filter);
+		Filter newOne = new Filter(this, filter, callbackListener, caller, null);
 		synchronized (_myFilters) {
-			Entry<Filter> found = _myFilters.remove(filter, new Filter(this, filter, callbackListener, caller));
+			Entry<Filter> found = _myFilters.remove(filter, newOne);
 			if (null != found) {
-				found.value().invalidate();
+				Filter thisOne = found.value();
+				thisOne.invalidate();
+				ForwardingEntry entry = thisOne.getEntry();
+				if (_usePrefixReg) {
+					try {
+						_prefixMgr = new PrefixRegistrationManager(this);
+						_prefixMgr.unRegisterPrefix(filter, entry.getFaceID());
+					} catch (CCNDaemonException e) {
+						Log.warning("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage());
+					}
+				}
 			}
 		}
 	}
@@ -954,7 +994,7 @@ public class CCNNetworkManager implements Runnable {
 		byte[] buffer = new byte[MAX_PAYLOAD];
 		ByteBuffer datagram = ByteBuffer.wrap(buffer);
 		WirePacket packet = new WirePacket();
-		Log.info("CCNNetworkManager processing thread started");
+		Log.info("CCNNetworkManager processing thread started for port: " + _localPort);
 		while (_run) {
 			try {
 				
@@ -968,10 +1008,10 @@ public class CCNNetworkManager implements Runnable {
 						synchronized (_channel) {
 							_channel.read(datagram); // queue readers and writers
 						}
-						Log.finest("Read datagram (" + datagram.position() + " bytes)");
+						Log.finest("Read datagram (" + datagram.position() + " bytes) for port: " + _localPort);
 						_selector.selectedKeys().clear();
 						if (null != _error) {
-							Log.info("Receive error cleared");
+							Log.info("Receive error cleared for port: " + _localPort);
 							_error = null;
 						}
 						datagram.flip(); // make ready to decode
@@ -1010,7 +1050,7 @@ public class CCNNetworkManager implements Runnable {
 					// We see IOException on receive every time if agent is gone
 					// so track it to log only start and end of outages
 					if (null == _error) {
-						Log.info("Unable to receive from agent: is it still running?");
+						Log.info("Unable to receive from agent: is it still running? Port: " + _localPort);
 					}
 					_error = io;
 					packet.clear();
@@ -1024,7 +1064,7 @@ public class CCNNetworkManager implements Runnable {
 				// parties (registered interests and getters).
 				//--------------------------------- Process data from net (if any) 
 				for (ContentObject co : packet.data()) {
-					Log.fine("Data from net: {0}", co.name());
+					Log.fine("Data from net for port: " + _localPort + " {0}", co.name());
 					//	SystemConfiguration.logObject("Data from net:", co);
 					
 					deliverData(co);
@@ -1034,20 +1074,20 @@ public class CCNNetworkManager implements Runnable {
 
 				//--------------------------------- Process interests from net (if any)
 				for (Interest interest : packet.interests()) {
-					Log.fine("Interest from net: {0}", interest);
+					Log.fine("Interest from net for port: " + _localPort + " {0}", interest);
 					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
 					deliverInterest(oInterest);
 					// External interests never go back to network
 				} // for interests
 				
 			} catch (Exception ex) {
-				Log.severe("Processing thread failure (UNKNOWN): " + ex.getMessage());
-                                Log.warningStackTrace(ex);
+				Log.severe("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
+                Log.warningStackTrace(ex);
 			}
 		}
 		
 		_threadpool.shutdown();
-		Log.info("Shutdown complete");
+		Log.info("Shutdown complete for port: " + _localPort);
 	}
 
 	/**
@@ -1082,7 +1122,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 	
 	
-	protected PublisherPublicKeyDigest fetchCCNDId(CCNNetworkManager mgr, KeyManager keyManager) {
+	protected PublisherPublicKeyDigest fetchCCNDId(CCNNetworkManager mgr, KeyManager keyManager) throws IOException {
 			try {
 				Interest interested = new Interest(CCNDaemonProfile.ping);
 				interested.nonce(Interest.generateNonce());
@@ -1091,7 +1131,7 @@ public class CCNNetworkManager implements Runnable {
 				if (null == contented) {
 					String msg = ("fetchCCNDId: Fetch of content from ping uri failed due to timeout.");
 					Log.severe(msg);
-					return null;
+					throw new IOException(msg);
 				}
 				PublisherPublicKeyDigest sentID = contented.signedInfo().getPublisherKeyID();
 				
@@ -1101,25 +1141,25 @@ public class CCNNetworkManager implements Runnable {
 					if (!verifyer.verify(contented)) {
 						String msg = ("fetchCCNDId: Fetch of content reply from ping failed to verify.");
 						Log.severe(msg);
-						return null;
+						throw new IOException(msg);
 					}
 				}
 				return sentID;
 			} catch (InterruptedException e) {
 				Log.warningStackTrace(e);
-				return null;
+				throw new IOException(e.getMessage());
 			} catch (MalformedContentNameStringException e) {
 				String reason = e.getMessage();
 				Log.warningStackTrace(e);
 				String msg = ("fetchCCNDId: Unexpected MalformedContentNameStringException in call creating: " + CCNDaemonProfile.ping + " reason: " + reason);
 				Log.severe(msg);
-				return null;
+				throw new IOException(msg);
 			} catch (IOException e) {
 				String reason = e.getMessage();
 				Log.warningStackTrace(e);
 				String msg = ("fetchCCNDId: Unexpected IOException in call getting ping Interest reason: " + reason);
 				Log.severe(msg);
-				return null;
+				throw new IOException(msg);
 			}
 	} /* PublisherPublicKeyDigest fetchCCNDId() */
 
