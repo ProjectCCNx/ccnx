@@ -133,6 +133,9 @@ public class CCNHandle implements CCNBase {
 	 * @throws IOException 
 	 */
 	protected CCNHandle(KeyManager keyManager) throws IOException {
+		if (null == keyManager) {
+			throw new IOException("Cannot instantiate handle -- KeyManager is null. Use CCNHandle() constructor to get default KeyManager, or specify one here.");
+		}
 		_keyManager = keyManager;
 		// force initialization of network manager
 		try {
@@ -161,10 +164,8 @@ public class CCNHandle implements CCNBase {
 	protected CCNHandle(boolean useNetwork) {}
 	
 	/**
-	 * Retrieve a static singleton CCNNetworkManager. Care must be used to
-	 * determine when to use a shared network manager, and when to make a new
-	 * one. Clients should not call this method directly, and instead should
-	 * create/retrieve a CCNHandle.
+	 * Retrieve this handle's network manager. Should only be called by low-level
+	 * methods seeking direct access to the network.
 	 * @return the CCN network manager
 	 */
 	public CCNNetworkManager getNetworkManager() { 
