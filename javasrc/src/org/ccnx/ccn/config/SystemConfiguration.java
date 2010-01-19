@@ -356,6 +356,37 @@ public class SystemConfiguration {
 		Boolean value = loggingInfo.get(name);
 		return value == null ? true : value;
 	}
+	
+	protected static String _loggingConfiguration;
+	/**
+	 * Property to turn off access control flags. Set it to any value and it will turn off
+	 * access control; used for testing.
+	 */
+	public static final String LOGGING_CONFIGURATION_PROPERTY = "com.parc.ccn.LoggingConfiguration";
+	
+	/**
+	 * Strings of interest to be set in the logging configuration
+	 */
+	public static final String DETAILED_LOGGER = "DetailedLogger";
+	
+	/**
+	 * Configure logging itself. This is a set of concatenated strings set as a 
+	 * command line property; it can be used to set transparent properties read 
+	 * at various points in the code.
+	 */
+	public static String getLoggingConfiguration() {
+		if (null == _loggingConfiguration) {
+			_loggingConfiguration = System.getProperty(LOGGING_CONFIGURATION_PROPERTY, "");
+			
+		}
+		return _loggingConfiguration;
+	}
+	
+	public static boolean hasLoggingConfigurationProperty(String property) {
+		if (null == property)
+			return false;
+		return getLoggingConfiguration().contains(property);
+	}
 
 	/**
 	 * Gets a process identifier (PID) for the running Java Virtual Machine (JVM) process, if possible. 
