@@ -257,6 +257,13 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
 		
+		// DKS -- we probably don't want to encrypt startWrites and other messages, 
+		// as the repository doesn't likely have write privileges (or read privileges)
+		// for data. Without a fully public-key system, have to go for unencrypted writes.
+		// Have to determine the best way to handle this, for now disable access control
+		// for the repository write side.
+		SystemConfiguration.setAccessControlDisabled(true);
+		
 		// Build our handle
 		if (null == handle) {
 			// Load our keystore. Make one if none exists; use the

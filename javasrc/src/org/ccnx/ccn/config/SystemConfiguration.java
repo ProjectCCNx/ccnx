@@ -428,5 +428,9 @@ public class SystemConfiguration {
 		}
 		return _accessControlDisabled;
 	}
+	
+	public static void setAccessControlDisabled(boolean accessControlDisabled) {
+		_accessControlDisabled = accessControlDisabled;
+	}
 
 }
