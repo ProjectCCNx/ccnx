@@ -216,9 +216,12 @@ public class KeyRepository {
 			Tuple<ContentName, byte []> nameAndVersion = VersioningProfile.cutTerminalVersion(keyName);
 			
 			keyObject = new PublicKeyObject(nameAndVersion.first(), theKey, null, null, _keyServer);
-			keyVersion = VersioningProfile.getVersionComponentAsTimestamp(nameAndVersion.second());
+			if (null != nameAndVersion.second()) {
+				keyVersion = VersioningProfile.getVersionComponentAsTimestamp(nameAndVersion.second());
+			}
 			Log.info("publishKey: key not previously published, making new key object {0} with version {1} displayed as {2}", 
-							keyObject.getVersionedName(), keyVersion, ContentName.componentPrintURI(nameAndVersion.second()));
+							keyObject.getVersionedName(), keyVersion, 
+							((null != nameAndVersion.second()) ? ContentName.componentPrintURI(nameAndVersion.second()) : "<no version>"));
 		}
 
 		if (!keyObject.isSaved() || (!keyObject.publicKeyDigest().equals(keyToPublish))) {
@@ -499,8 +502,8 @@ public class KeyRepository {
 				Log.info("Could not retrieve key " + desiredKeyID + " from network with locator " + locator + "!");
 			} else {
 				Log.info("Retrieved key " + desiredKeyID + " from network with locator " + locator + "!");
+				return publicKeyObject.publicKey();
 			}
-			return publicKeyObject.publicKey();
 		}
 		return null;
 	}
