@@ -3,7 +3,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -44,7 +44,7 @@ openssl req    -config openssl.cnf      \
                -out certout.pem         \
                -subj /CN="$CCN_USER"    \
                -nodes                                   || Fail openssl req
-openssl pkcs12 -export -name "CCNxUser" \
+openssl pkcs12 -export -name "ccnxuser" \
                -out .ccnx_keystore      \
                -in certout.pem          \
                -inkey private_key.pem   \
