@@ -69,7 +69,7 @@ public abstract class KeyManager {
 	 * @throws ConfigurationException if there is a problem with the user or system configuration that
 	 * 		requires intervention to resolve, or we have a significant problem starting up the key manager.
 	 */
-	public static KeyManager getDefaultKeyManager() {
+	public static synchronized KeyManager getDefaultKeyManager() {
 		// could print a stack trace
 		Log.info("NOTICE: retrieving default key manager.");
 		if (null != _defaultKeyManager) 
@@ -91,7 +91,7 @@ public abstract class KeyManager {
 	 * Clean up state left around by the default key manager and remove it.
 	 * For now that just means shutting down the network manager started by it
 	 */
-	public static void closeDefaultKeyManager() {
+	public static synchronized void closeDefaultKeyManager() {
 		if (null != _defaultKeyManager) {
 			_defaultKeyManager.close();
 			_defaultKeyManager = null;
