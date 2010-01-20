@@ -414,7 +414,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			// Get the content name without the segment parent
 			ContentName contentName = SegmentationProfile.segmentRoot(newSegment.name());
 			// Attempt to retrieve the keys for this namespace
-			_keys = AccessControlManager.keysForInput(contentName, _handle);
+			_keys = AccessControlManager.keysForInput(contentName, newSegment.signedInfo().getPublisherKeyID(), _handle);
 		}
 		setCurrentSegment(newSegment);
 	}
