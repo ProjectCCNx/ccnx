@@ -58,6 +58,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		handle = td.getHandleForUser(friendlyNames[0]);
 		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
 		acm.publishMyIdentity(friendlyNames[0], handle.keyManager().getDefaultPublicKey());
+		handle.keyManager().publishKeyToRepository();
 		NamespaceManager.registerACM(acm);
 		
 		// create the root ACL
@@ -129,7 +130,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		
 		// create nodes [0-2] and corresponding ACLs that make group[i] a manager of node[i].
 		for (int i=0; i<numberOfGroups; i++) {
-			String nodeName = "node" + i + "-" + rand.nextInt(10000);
+			String nodeName = "node" + i + "-" + rand.nextInt(10000) + ".txt";
 			node[i] = ContentName.fromNative(directoryBase, nodeName);
 			ContentName groupCN = ContentName.fromNative(groupStore, groupName[i]);
 			Link lk = new Link(groupCN, ACL.LABEL_MANAGER, null);
