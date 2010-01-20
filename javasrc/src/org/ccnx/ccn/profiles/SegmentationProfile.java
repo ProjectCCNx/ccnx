@@ -100,6 +100,8 @@ public class SegmentationProfile implements CCNProfile {
 	}
 
 	public static boolean isSegment(ContentName name) {
+		if (null == name)
+			return false;
 		return (!isUnsegmented(name));
 	}
 

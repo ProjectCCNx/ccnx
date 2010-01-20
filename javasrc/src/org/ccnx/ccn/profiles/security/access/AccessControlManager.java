@@ -32,6 +32,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 public abstract class AccessControlManager {
 
@@ -155,6 +156,7 @@ public abstract class AccessControlManager {
 	 * to see whether content is excluded from encryption (e.g. by being access
 	 * control data).
 	 * @param dataNodeName the node for which to find a data key wrapping key
+	 * @param publisher in case output key retrieval needs to be specialized by publisher
 	 * @return if null, the data is to be unencrypted.  (Alteratively, could
 	 *   return a NodeKey that indicates public.)
 	 * @param newRandomDataKey
@@ -164,7 +166,7 @@ public abstract class AccessControlManager {
 	 * @throws IOException
 	 * @throws InvalidCipherTextException 
 	 */
-	public abstract NodeKey getDataKeyWrappingKey(ContentName dataNodeName)
+	public abstract NodeKey getDataKeyWrappingKey(ContentName dataNodeName, PublisherPublicKeyDigest publisher)
 	 	throws AccessDeniedException, InvalidKeyException,
 	 		ContentEncodingException, IOException, InvalidCipherTextException;
 
@@ -264,13 +266,14 @@ public abstract class AccessControlManager {
 	 * keys required to decrypt the stream.
 	 * @param dataNodeName The name of the stream, including version component, but excluding
 	 * segment component.
+	 * @param publisher the publisher to get keys for, if it matters
 	 * @return Returns the keys ready to be used for en/decryption, or null if the content is not encrypted.
 	 * @throws IOException 
 	 * @throws InvalidKeyException 
 	 * @throws InvalidCipherTextException 
 	 * @throws AccessDeniedException 
 	 */
-	public ContentKeys getContentKeys(ContentName dataNodeName)
+	public ContentKeys getContentKeys(ContentName dataNodeName, PublisherPublicKeyDigest publisher)
 	throws InvalidKeyException, InvalidCipherTextException, AccessDeniedException, IOException {
 		if (SegmentationProfile.isSegment(dataNodeName)) {
 			dataNodeName = SegmentationProfile.segmentRoot(dataNodeName);
@@ -300,21 +303,22 @@ public abstract class AccessControlManager {
 	 * Called when a stream is opened for reading, to determine if the name is under a root ACL, and
 	 * if so find or create an AccessControlManager, and get keys for access. Only called if
 	 * content is encrypted.
-	 * @param name name of the stream to be opened.
+	 * @param name name of the stream to be opened, without the segment number
+	 * @param publisher the publisher of the stream to open, in case that matters for key retrieva
 	 * @param library CCN Library instance to use for any network operations.
 	 * @return If the stream is under access control then keys to decrypt the data are returned if it's
 	 * encrypted. If the stream is not under access control (no Root ACL block can be found) then null is
 	 * returned.
 	 * @throws IOException if a problem happens getting keys.
 	 */
-	public static ContentKeys keysForInput(ContentName name, CCNHandle handle)
+	public static ContentKeys keysForInput(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle)
 	throws IOException {
 		AccessControlManager acm;
 		try {
 			acm = NamespaceManager.findACM(name, handle);
 			if (acm != null) {
 				Log.info("keysForInput: retrieving key for data node {0}", name);
-				return acm.getContentKeys(name);
+				return acm.getContentKeys(name, publisher);
 			}
 		} catch (ConfigurationException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
@@ -333,11 +337,13 @@ public abstract class AccessControlManager {
 	 * Get keys to encrypt content as its' written, if that content is to be protected.
 	 * @param name
 	 * @param publisher
+	 * @param type the type of content to be written. Mostly used to determine whether
+	 *   content is protected, but could also be used to specialize keys.
 	 * @param handle
 	 * @return
 	 * @throws IOException
 	 */
-	public static ContentKeys keysForOutput(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle)
+	public static ContentKeys keysForOutput(ContentName name, PublisherPublicKeyDigest publisher, ContentType contentType, CCNHandle handle)
 	throws IOException {
 		
 		if (SystemConfiguration.disableAccessControl()) {
@@ -350,10 +356,10 @@ public abstract class AccessControlManager {
 			acm = NamespaceManager.findACM(name, handle);
 			Log.info("keysForOutput: found an acm: " + acm);
 			
-			if ((acm != null) && (acm.isProtectedContent(name, handle))) {
+			if ((acm != null) && (acm.isProtectedContent(name, publisher, contentType, handle))) {
 				// First we need to figure out whether this content is public or unprotected...
 				Log.info("keysForOutput: found ACM, protected content, generating new data key for data node {0}", name);
-				NodeKey dataKeyWrappingKey = acm.getDataKeyWrappingKey(name);
+				NodeKey dataKeyWrappingKey = acm.getDataKeyWrappingKey(name, publisher);
 				if (null == dataKeyWrappingKey) {
 					// if content is public -- either null or a special value would work
 					return null; // no keys
@@ -380,7 +386,7 @@ public abstract class AccessControlManager {
 	 * access control lists are not themselves encrypted. 
 	 * TODO: should headers be exempt from encryption?
 	 */
-	public boolean isProtectedContent(ContentName name, CCNHandle hande) {
+	public boolean isProtectedContent(ContentName name, PublisherPublicKeyDigest publisher, ContentType contentType, CCNHandle hande) {
 
 		if (!inProtectedNamespace(name)) {
 			return false;

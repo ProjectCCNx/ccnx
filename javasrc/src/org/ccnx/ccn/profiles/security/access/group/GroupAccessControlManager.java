@@ -55,6 +55,7 @@ import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
@@ -1021,6 +1022,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * to see whether content is excluded from encryption (e.g. by being access
 	 * control data).
 	 * @param dataNodeName the node for which to find a data key wrapping key
+	 * @param publisher in case output key retrieval needs to be specialized by publisher
 	 * @return if null, the data is to be unencrypted.
 	 * @param newRandomDataKey
 	 * @throws AccessDeniedException 
@@ -1029,7 +1031,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws IOException
 	 * @throws InvalidCipherTextException 
 	 */
-	public NodeKey getDataKeyWrappingKey(ContentName dataNodeName)
+	@Override
+	public NodeKey getDataKeyWrappingKey(ContentName dataNodeName, PublisherPublicKeyDigest publisher)
 	 	throws AccessDeniedException, InvalidKeyException,
 	 		ContentEncodingException, IOException, InvalidCipherTextException {
 		NodeKey effectiveNodeKey = getFreshEffectiveNodeKey(dataNodeName);
