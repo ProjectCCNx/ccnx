@@ -1,7 +1,7 @@
 /**
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -55,6 +55,9 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
 		_interestSent.maxSuffixComponents(1);
 		doTest();
+		getHandle.unregisterFilter(ContentName.fromNative(_prefix), this);
+		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
+		doTestFail();
 	}
 
 	public int handleInterests(ArrayList<Interest> interests) {
@@ -65,6 +68,12 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		return 0;
 	}
 	
+	public Interest handleContent(ArrayList<ContentObject> results,
+			Interest interest) {
+		// TODO Auto-generated method stub
+		return null;
+	}	
+	
 	private void doTest() throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
@@ -74,10 +83,13 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		Assert.assertTrue((System.currentTimeMillis() - startTime) < TIMEOUT);
 	}
 
-	public Interest handleContent(ArrayList<ContentObject> results,
-			Interest interest) {
-		// TODO Auto-generated method stub
-		return null;
+	private void doTestFail() throws IOException, InterruptedException {
+		long startTime = System.currentTimeMillis();
+		putHandle.expressInterest(_interestSent, this);
+		synchronized (this) {
+			wait(TIMEOUT);
+		}
+		Assert.assertFalse((System.currentTimeMillis() - startTime) < TIMEOUT);
 	}
 
 }
