@@ -111,11 +111,19 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			return;
 		}
 		
+		// Create the name for the initial interest to retrieve content from the client that it desires to 
+		// write.  Strip from the write request name (in the incoming Interest) the start write command component
+		// and the nonce component to get the prefix for the content to be written.
 		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
 		try {
 			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
 				Log.info("Processing write request for {0}", listeningName);
-			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null, null, null, null);
+			// Create the initial read interest.  Set maxSuffixComponents = 2 to get only content with one 
+			// component past the prefix, plus the implicit digest.  This is designed to retrieve segments
+			// of a stream and avoid other content more levels below in the name space.  We do not ask for 
+			// a specific segment initially so as to support arbitrary starting segment numbers.
+			// TODO use better exclude filters to ensure we're only getting segments.
+			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null, 2, null, null);
 			RepositoryDataListener listener;
 			
 			RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null);
