@@ -56,6 +56,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.Pri
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
@@ -1246,12 +1247,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * GroupAccessControlManager specifies additional content that is not to be protected,
 	 * such as group metadata.
 	 */
-	public boolean isProtectedContent(ContentName name, CCNHandle hande) {
+	public boolean isProtectedContent(ContentName name, PublisherPublicKeyDigest publisher, ContentType contentType, CCNHandle handle) {
 		if (GroupAccessControlProfile.isGroupName(name)) {
 			// Don't encrypt the group metadata
 			return false;
 		}
-		return super.isProtectedContent(name, hande);
+		return super.isProtectedContent(name, publisher, contentType, handle);
 	}
 
 }	
