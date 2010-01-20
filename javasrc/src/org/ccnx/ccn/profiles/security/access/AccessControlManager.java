@@ -28,6 +28,7 @@ import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager.Root.RootObject;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -347,7 +348,7 @@ public abstract class AccessControlManager {
 		AccessControlManager acm;
 		try {
 			acm = NamespaceManager.findACM(name, handle);
-			Log.info("keysForOutput: found an acm? " + acm);
+			Log.info("keysForOutput: found an acm: " + acm);
 			
 			if ((acm != null) && (acm.isProtectedContent(name, handle))) {
 				// First we need to figure out whether this content is public or unprotected...
