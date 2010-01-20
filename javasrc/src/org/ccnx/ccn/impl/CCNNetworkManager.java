@@ -150,14 +150,14 @@ public class CCNNetworkManager implements Runnable {
 		// TODO Interest refresh time is supposed to "decay" over time but there are currently
 		// unresolved problems with this.
 		public void run() {
-			
+
 			long ourTime = new Date().getTime();
 			if ((ourTime - _lastHeartbeat) > HEARTBEAT_PERIOD) {
 				_lastHeartbeat = ourTime;
 				heartbeat();
 			}
 
-			long minRefreshTime = PERIOD + ourTime;
+			long minInterestRefreshTime = PERIOD + ourTime;
 			// Library.finest("Refreshing interests (size " + _myInterests.size() + ")");
 
 			// Re-express interests that need to be re-expressed
@@ -169,29 +169,79 @@ public class CCNNetworkManager implements Runnable {
 							Log.finer("Refresh interest: {0}", reg.interest);
 							// Temporarily back out refresh period decay
 							//reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
-									//: reg.nextRefreshPeriod * 2;
+							//: reg.nextRefreshPeriod * 2;
 							reg.nextRefresh += reg.nextRefreshPeriod;
 							try {
 								write(reg.interest);
 							} catch (NotYetConnectedException nyce) {}
 						}
-						if (minRefreshTime > reg.nextRefresh)
-							minRefreshTime = reg.nextRefresh;
+						if (minInterestRefreshTime > reg.nextRefresh)
+							minInterestRefreshTime = reg.nextRefresh;
 					}
 				}
 			} catch (ContentEncodingException xmlex) {
-				Log.severe("Processing thread failure (Malformed datagram): {0}", xmlex.getMessage()); 
+				Log.severe("PeriodicWriter interest refresh thread failure (Malformed datagram): {0}", xmlex.getMessage()); 
 				Log.warningStackTrace(xmlex);
 			}
+
+
+			long minFilterRefreshTime = PERIOD + ourTime;
+			// Re-express prefix registrations that need to be re-expressed
+			// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
+			// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
+			// prefix we use Integer.MAX_VALUE as the requested lifetime.
+			if (_usePrefixReg) {
+				synchronized (_myFilters) {
+					Log.fine("Refresh registration.  size: " + _myFilters.size() + " sizeNames: " + _myFilters.sizeNames());
+					for (Entry<Filter> entry : _myFilters.values()) {
+						Filter filter = entry.value();
+						if (null != filter.forwarding && filter.lifetime != -1 && filter.nextRefresh != -1) {
+							if (ourTime > filter.nextRefresh) {
+								Log.finer("Refresh registration: {0}", filter.prefix);
+								filter.nextRefresh = -1;
+								try {
+									ForwardingEntry forwarding = _prefixMgr.selfRegisterPrefix(filter.prefix);
+									if (null != forwarding) {
+										filter.lifetime = forwarding.getLifetime();
+										filter.nextRefresh = new Date().getTime() + (filter.lifetime / 2);
+									}
+									filter.forwarding = forwarding;
+
+								} catch (CCNDaemonException e) {
+									Log.warning(e.getMessage());
+									filter.forwarding = null;
+									filter.lifetime = -1;
+									filter.nextRefresh = -1;
+								}
+							}	
+							if (minFilterRefreshTime > filter.nextRefresh)
+								minFilterRefreshTime = filter.nextRefresh;
+						}
+					} /* for (Entry<Filter> entry : _myFilters.values()) */
+				} /* synchronized (_myFilters) */
+			} /* _usePrefixReg */
+
+			long currentTime = System.currentTimeMillis();
+			long checkInterestDelay = minInterestRefreshTime - currentTime;
+			if (checkInterestDelay < 0)
+				checkInterestDelay = 0;
+			if (checkInterestDelay > PERIOD)
+				checkInterestDelay = PERIOD;
+
+			long checkPrefixDelay = minFilterRefreshTime - currentTime;
+			if (checkPrefixDelay < 0)
+				checkPrefixDelay = 0;
+			if (checkPrefixDelay > PERIOD)
+				checkPrefixDelay = PERIOD;
 			
-			long checkDelay = minRefreshTime - System.currentTimeMillis();
-			if (checkDelay < 0)
-				checkDelay = 0;
-			if (checkDelay > PERIOD)
-				checkDelay = PERIOD;
-			
-			_periodicTimer.schedule(new PeriodicWriter(), checkDelay);
-		}
+			long useMe;
+			if (checkInterestDelay < checkPrefixDelay) {
+				useMe = checkInterestDelay;
+			} else {
+				useMe = checkPrefixDelay;
+			}
+			_periodicTimer.schedule(new PeriodicWriter(), useMe);
+		} /* run */
 	} /* private class PeriodicWriter extends TimerTask */
 	
 	/**
@@ -475,20 +525,25 @@ public class CCNNetworkManager implements Runnable {
 		public ContentName prefix;  /* Also used to remember registration with ccnd */
 		protected ArrayList<Interest> interests = new ArrayList<Interest>(1);
 		// protected Integer faceId = null;
-		ForwardingEntry entry = null;
-		long lifetime = 0; // in 
+		ForwardingEntry forwarding = null;
+		// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
+		// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
+		// prefix we use Integer.MAX_VALUE as the requested lifetime.
+		long lifetime = -1; // in seconds
+		long nextRefresh = -1;
 		
 		public Filter(CCNNetworkManager mgr, ContentName n, CCNFilterListener l, Object o, ForwardingEntry e) {
 			prefix = n; listener = l; owner = o;
 			manager = mgr;
-			entry = e;
-			if (null != entry) {
-				lifetime = entry.getLifetime();
+			forwarding = e;
+			if (null != forwarding) {
+				lifetime = forwarding.getLifetime();
+				nextRefresh = new Date().getTime() + (lifetime / 2);
 			}
 		}
 		
 		public ForwardingEntry getEntry() {
-			return entry;
+			return forwarding;
 		}
 		
 		public synchronized void add(Interest i) {
@@ -875,11 +930,20 @@ public class CCNNetworkManager implements Runnable {
 		ForwardingEntry entry = null;
 		if (_usePrefixReg) {
 			try {
-				_prefixMgr = new PrefixRegistrationManager(this);
+				if (null == _prefixMgr) {
+					_prefixMgr = new PrefixRegistrationManager(this);
+				}
 				entry = _prefixMgr.selfRegisterPrefix(filter);
 			} catch (CCNDaemonException e) {
+				Log.warning("setInterestFilter: unexpected CCNDaemonException: " + e.getMessage());
 				throw new IOException(e.getMessage());
 			}
+		}
+		if (null != entry) {
+			// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
+			// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
+			// prefix we use Integer.MAX_VALUE as the requested lifetime.
+			Log.fine("setInterestFilter: entry.lifetime: " + entry.getLifetime() + " entry.faceID: " + entry.getFaceID());
 		}
 		Filter newOne = new Filter(this, filter, callbackListener, caller, entry);
 		synchronized (_myFilters) {
@@ -906,8 +970,13 @@ public class CCNNetworkManager implements Runnable {
 				thisOne.invalidate();
 				ForwardingEntry entry = thisOne.getEntry();
 				if (_usePrefixReg) {
+					if (!entry.getPrefixName().equals(filter)) {
+						Log.severe("cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
+					}
 					try {
-						_prefixMgr = new PrefixRegistrationManager(this);
+						if (null == _prefixMgr) {
+							_prefixMgr = new PrefixRegistrationManager(this);
+						}
 						_prefixMgr.unRegisterPrefix(filter, entry.getFaceID());
 					} catch (CCNDaemonException e) {
 						Log.warning("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage());
