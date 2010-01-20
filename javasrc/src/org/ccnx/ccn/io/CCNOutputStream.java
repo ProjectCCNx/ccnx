@@ -79,51 +79,46 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 */
 	protected CCNTime _timestamp; 
 	
-	/**
-	 * type of content null == DATA (or ENCR if encrypted)
-	 */
-	protected ContentType _type; 
-
 	protected CCNDigestHelper _dh;
 
 	/**
 	 * Constructor for a simple CCN output stream.
-	 * @param name name prefix under which to write content segments
+	 * @param baseName name prefix under which to write content segments
 	 * @param handle if null, new handle created with CCNHandle#open()
 	 * @throws IOException if stream setup fails
 	 */
-	public CCNOutputStream(ContentName name, CCNHandle handle) throws IOException {
-		this(name, (PublisherPublicKeyDigest)null, handle);
+	public CCNOutputStream(ContentName baseName, CCNHandle handle) throws IOException {
+		this(baseName, (PublisherPublicKeyDigest)null, handle);
 	}
 
 	/**
 	 * Constructor for a simple CCN output stream.
-	 * @param name name prefix under which to write content segments
+	 * @param baseName name prefix under which to write content segments
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
 	 * @param handle if null, new handle created with CCNHandle#open()
 	 * @throws IOException if stream setup fails
 	 */
-	public CCNOutputStream(ContentName name,
+	public CCNOutputStream(ContentName baseName,
 						   PublisherPublicKeyDigest publisher,
 						   CCNHandle handle) throws IOException {
-		this(name, null, publisher, null, null, handle);
+		this(baseName, null, publisher, null, null, handle);
 	}
 
 	/**
 	 * Constructor for a simple CCN output stream.
-	 * @param name name prefix under which to write content segments
+	 * @param baseName name prefix under which to write content segments
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
 	 * 		or keys retrieved according to local policy
 	 * @param handle if null, new handle created with CCNHandle#open()
 	 * @throws IOException if stream setup fails
 	 */
-	public CCNOutputStream(ContentName name, ContentKeys keys, CCNHandle handle) throws IOException {
-		this(name, null, null, null, keys, handle);
+	public CCNOutputStream(ContentName baseName, ContentKeys keys, CCNHandle handle) throws IOException {
+		this(baseName, null, null, null, keys, handle);
 	}
 
 	/**
 	 * Constructor for a simple CCN output stream.
-	 * @param name name prefix under which to write content segments
+	 * @param baseName name prefix under which to write content segments
 	 * @param locator key locator to use, if null, default for key is used.
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
 	 * @param keys keys with which to encrypt content, if null content either unencrypted
@@ -131,17 +126,17 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param handle if null, new handle created with CCNHandle#open()
 	 * @throws IOException if stream setup fails
 	 */
-	public CCNOutputStream(ContentName name, 
+	public CCNOutputStream(ContentName baseName, 
 			  			   KeyLocator locator, 
 			  			   PublisherPublicKeyDigest publisher,
 			  			   ContentKeys keys,
 			  			   CCNHandle handle) throws IOException {
-		this(name, locator, publisher, null, keys, handle);
+		this(baseName, locator, publisher, null, keys, handle);
 	}
 
 	/**
 	 * Constructor for a simple CCN output stream.
-	 * @param name name prefix under which to write content segments
+	 * @param baseName name prefix under which to write content segments
 	 * @param locator key locator to use, if null, default for key is used.
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
 	 * @param type type to mark content (see ContentType), if null, DATA is used; if
@@ -151,13 +146,13 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param handle if null, new handle created with CCNHandle#open()
 	 * @throws IOException if stream setup fails
 	 */
-	public CCNOutputStream(ContentName name, 
+	public CCNOutputStream(ContentName baseName, 
 						   KeyLocator locator, 
 						   PublisherPublicKeyDigest publisher,
 						   ContentType type, 
 						   ContentKeys keys,
 						   CCNHandle handle) throws IOException {
-		this(name, locator, publisher, type, keys, new CCNFlowControl(name, handle));
+		this(baseName, locator, publisher, type, keys, new CCNFlowControl(baseName, handle));
 	}
 
 	/**
@@ -167,7 +162,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 
 	/**
 	 * Low-level constructor used by clients that need to specify flow control behavior.
-	 * @param name name prefix under which to write content segments
+	 * @param baseName name prefix under which to write content segments
 	 * @param locator key locator to use, if null, default for key is used.
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
 	 * @param type type to mark content (see ContentType), if null, DATA is used; if
@@ -177,18 +172,18 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param flowControl flow controller used to buffer output content
 	 * @throws IOException if flow controller setup fails
 	 */
-	public CCNOutputStream(ContentName name, 
+	public CCNOutputStream(ContentName baseName, 
 							  KeyLocator locator, 
 							  PublisherPublicKeyDigest publisher,
 							  ContentType type, 
 							  ContentKeys keys,
 							  CCNFlowControl flowControl) throws IOException {
-		this(name, locator, publisher, type, keys, new CCNSegmenter(flowControl, null));
+		this(baseName, locator, publisher, type, keys, new CCNSegmenter(flowControl, null));
 	}
 
 	/**
 	 * Low-level constructor used by subclasses that need to specify segmenter behavior.
-	 * @param name name prefix under which to write content segments
+	 * @param baseName name prefix under which to write content segments
 	 * @param locator key locator to use, if null, default for key is used.
 	 * @param publisher key to use to sign the segments, if null, default for user is used.
 	 * @param type type to mark content (see ContentType), if null, DATA is used; if
@@ -198,27 +193,18 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @param segmenter segmenter used to segment and sign content
 	 * @throws IOException if flow controller setup fails
 	 */
-	protected CCNOutputStream(ContentName name, 
+	protected CCNOutputStream(ContentName baseName, 
 							  KeyLocator locator, 
 							  PublisherPublicKeyDigest publisher, 
 							  ContentType type,
 							  ContentKeys keys,
 							  CCNSegmenter segmenter) throws IOException {
 
-		super(locator, publisher, keys, segmenter);
+		super((SegmentationProfile.isSegment(baseName) ? SegmentationProfile.segmentRoot(baseName) : baseName),
+			  locator, publisher, type, keys, segmenter);
 
-		ContentName nameToOpen = name;
-		if (SegmentationProfile.isSegment(nameToOpen)) {
-			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
-			// DKS -- should we offset output index to next one? might have closed
-			// previous stream, so likely not
-		}
-
-		// Should have name of root of version we want to open. 
-		_baseName = nameToOpen;
 		_buffer = new byte[BLOCK_BUF_COUNT * segmenter.getBlockSize()];
 		_baseNameIndex = SegmentationProfile.baseSegment();
-		_type = type; // null = DATA or ENCR
 
 		_dh = new CCNDigestHelper();
 		startWrite(); // set up flow controller to write

@@ -32,6 +32,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
@@ -48,6 +49,11 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	 * The name for the content fragments, up to just before the sequence number.
 	 */
 	protected ContentName _baseName = null;
+	/**
+	 * type of content null == DATA (or ENCR if encrypted)
+	 */
+	protected ContentType _type; 
+
 	protected ContentKeys _keys;
 	protected KeyLocator _locator;
 	protected PublisherPublicKeyDigest _publisher;
@@ -58,6 +64,8 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	 * largely by its buffering, segmentation configuration (embodied
 	 * in a CCNSegmenter) and flow control (embodied in a CCNFlowControl,
 	 * contained within the segmenter), as well as the way it constructs is names.
+	 * @param baseName specifies the base name to write. Can be null, and set later.
+	 * @param type specifies the type of data to write. 
 	 * @param locator the key locator to be used in written segments. If null, default
 	 * 		is used.
 	 * @param publisher the key with which to sign the output. If null, default for user
@@ -65,11 +73,15 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	 * @param segmenter The segmenter used to construct and sign output segments, specified
 	 *    by subclasses to provide various kinds of behavior.
 	 */
-	public CCNAbstractOutputStream(KeyLocator locator, 
+	public CCNAbstractOutputStream(ContentName baseName,
+								   KeyLocator locator, 
 								   PublisherPublicKeyDigest publisher,
+								   ContentType type,
 								   ContentKeys keys,
 								   CCNSegmenter segmenter) {
 		super();
+		_baseName = baseName;
+		_type = type;
 		_segmenter = segmenter;
 		_handle = _segmenter.getLibrary();
 		if (null == _handle) {
@@ -147,6 +159,8 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 			return null;
 		return VersioningProfile.getTerminalVersionAsTimestampIfVersioned(_baseName);
 	}
+	
+	public ContentType getType() { return _type; }
 
 	/**
 	 * @return The CCNSegmenter responsible for segmenting and signing stream content. 
