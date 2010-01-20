@@ -47,6 +47,7 @@ import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
@@ -1235,6 +1236,19 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		NodeKey enk = nk.computeDescendantNodeKey(nodeName, dataKeyLabel());
 		return enk;
+	}
+	
+	/**
+	 * Overrides the method of the same name in AccessControlManager. 
+	 * GroupAccessControlManager specifies additional content that is not to be protected,
+	 * such as group metadata.
+	 */
+	public boolean isProtectedContent(ContentName name, CCNHandle hande) {
+		if (GroupAccessControlProfile.isGroupName(name)) {
+			// Don't encrypt the group metadata
+			return false;
+		}
+		return super.isProtectedContent(name, hande);
 	}
 
 }	
