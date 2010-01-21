@@ -1,14 +1,12 @@
 package org.ccnx.ccn.test.protocol;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
-import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
@@ -17,7 +15,6 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
-import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.impl.support.Log;
 
 import org.junit.After;
@@ -41,37 +38,32 @@ public class LatestVersionTest {
 	static CCNHandle responderHandle;
 	ContentName baseName;
 	
-	//CCNHandle putHandle;
-	
 	public static ContentObject lastVersionPublished = null;
 	public static long attempts = 0;
 	public static ContentName pingResponder = null;
 	
 	public static ArrayList<ContentObject> responseObjects = null;
 	
-	private Thread t;
-	
 	public static ContentObject failVerify = null;
 	public static ContentObject failVerify1 = null;
 	public static ContentObject failVerify2 = null;
+	public static ContentObject failVerify4 = null;
 	
 	/**
 	 * @throws java.lang.Exception
 	 */
 	@Before
 	public void setUp() throws Exception {
-		Log.setLevel(Level.FINEST);
+		//Log.setLevel(Level.FINEST);
 		
 		getHandle = CCNHandle.open();
-		//putHandle = CCNHandle.open();
 		baseName = ContentName.fromURI("/ccnx.org/test/latestVersionTest/"+(new CCNTime()).toShortString());
-		t = setUpResponder();
+		setUpResponder();
 	}
 	
 	@After
 	public void close() {
 		getHandle.close();
-		//putHandle.close();
 		responderHandle.close();
 	}
 	
@@ -88,8 +80,6 @@ public class LatestVersionTest {
 		ContentName skipSegment0 = null;
 		ContentName skipSegment2 = null;
 
-		ContentObject baseObject = null;
-		
 		ContentObject obj1 = null;
 		ContentObject obj2 = null;
 		ContentObject obj3 = null;
@@ -112,10 +102,7 @@ public class LatestVersionTest {
 		CCNTime skipTime2;
 		
 		long timeout = 5000;
-		
-		
-		baseObject = ContentObject.buildContentObject(baseName, "base object".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
-		
+				
 		t1 = new CCNTime();
 		one = SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, t1), 0);
 		obj1 = ContentObject.buildContentObject(one, "here is version 1".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
@@ -146,8 +133,6 @@ public class LatestVersionTest {
 		System.out.println("made versions: "+one +" "+two+" "+three+" "+four);
 		
 		try {
-			//putHandle.put(obj1);
-			//putHandle.put(obj2);
 			responderHandle.put(obj1);
 			responderHandle.put(obj2);
 			
@@ -159,6 +144,8 @@ public class LatestVersionTest {
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, timeout, getHandle.defaultVerifier(), getHandle);
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(two));
 			System.out.println("passed test for getFirstBlockOfLatestVersion with 2 versions available");
+			
+			Assert.assertTrue(responseObjects.size() == 0);
 			
 		} catch (IOException e) {
 			Assert.fail("Failed to get latest version: "+e.getMessage());
@@ -176,23 +163,16 @@ public class LatestVersionTest {
 			object = VersioningProfile.getLatestVersion(baseName, null, timeout, getHandle.defaultVerifier(), getHandle);
 			System.out.println("got: "+object.name());
 			System.out.println("expecting to get: "+three);
-			/*
-			try {
-				System.out.println("go to sleep");
-				Thread.sleep(5000);
-				System.out.println("wakeup");
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			*/
+			
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(three));
 			System.out.println("passed test for getLatestVersion with 3 versions available");
 			
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, timeout, getHandle.defaultVerifier(), getHandle);
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(three));
 			System.out.println("passed test for getFirstBlockOfLatestVersion with 3 versions available");
-						
+					
+			Assert.assertTrue(responseObjects.size() == 0);
+
 		} catch (VersionMissingException e) {
 			Assert.fail("Failed to get version from object: "+e.getMessage());
 		
@@ -207,6 +187,9 @@ public class LatestVersionTest {
 			object = VersioningProfile.getLatestVersion(two, null, timeout, getHandle.defaultVerifier(), getHandle); 
 			
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(three));
+
+			Assert.assertTrue(responseObjects.size() == 0);
+
 		} catch (IOException e) {
 			Assert.fail("Failed to get latest version: "+e.getMessage());
 		} catch (VersionMissingException e) {
@@ -235,6 +218,8 @@ public class LatestVersionTest {
 			Assert.assertTrue(checkTime > 200 && checkTime < 300);
 			System.out.println("passed test for waiting 200ms");
 			
+			Assert.assertTrue(responseObjects.size() == 0);
+			
 		} catch (IOException e) {
 			Assert.fail("failed to test with different timeouts: "+e.getMessage());
 		}
@@ -244,7 +229,6 @@ public class LatestVersionTest {
 		
 		//add a fourth responder and make sure we don't get it back.
 		try {
-			//Thread thread4 = setUpResponder(obj4);
 			lastVersionPublished = obj4;
 			
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, 0, getHandle.defaultVerifier(), getHandle);
@@ -254,8 +238,6 @@ public class LatestVersionTest {
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, 0, getHandle.defaultVerifier(), getHandle);
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(three));
 			System.out.println("passed test for timeout 0 test");
-			
-			//stopResponder(obj4, thread4);
 			
 		} catch (IOException e) {
 			Assert.fail("failed to test with timeout of 0: "+e.getMessage());
@@ -270,6 +252,9 @@ public class LatestVersionTest {
 			object = VersioningProfile.getLatestVersion(two, null, timeout, getHandle.defaultVerifier(), getHandle); 
 			
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(four));
+			
+			Assert.assertTrue(responseObjects.size() == 0);
+
 		} catch (IOException e) {
 			Assert.fail("Failed to get latest version: "+e.getMessage());
 		} catch (VersionMissingException e) {
@@ -284,7 +269,6 @@ public class LatestVersionTest {
 		try {
 			System.out.println("=========testing skip segment!");
 			
-			//putHandle.put(objSkip);
 			responderHandle.put(objSkip);
 			
 			object = VersioningProfile.getLatestVersion(baseName, null, timeout, getHandle.defaultVerifier(), getHandle); 
@@ -301,6 +285,8 @@ public class LatestVersionTest {
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(skipSegment0));
 			System.out.println("passed test for getFirstBlockOfLatestVersion with skipped segment available");
 			
+			Assert.assertTrue(responseObjects.size() == 0);
+
 		} catch (IOException e) {
 			Assert.fail("Failed to get latest version: "+e.getMessage());
 		} catch (VersionMissingException e) {
@@ -337,16 +323,16 @@ public class LatestVersionTest {
 			//Assert.assertTrue(attempts == VersioningProfile.GET_LATEST_VERSION_ATTEMPTS + 5);
 			System.out.println("passed test for no timeout");
 			
+			Assert.assertTrue(responseObjects.size() == 0);
+
 		} catch (IOException e) {
 			Assert.fail("failed to test with no timeout: "+e.getMessage());
 		}
 		
-		//TODO add test for something that fails to verify
 		ContentVerifier ver = new TestVerifier(); 
 		
 		//have the verifier fail the newest object make sure we get back the most recent verified version
-		//responseObjects.add(obj3);
-		//System.out.println("added: "+obj3.name());
+
 		failVerify = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 0), "here is failVerify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(failVerify);
 		
@@ -365,6 +351,7 @@ public class LatestVersionTest {
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(lastVersionPublished.name()));
 			System.out.println("passed test for getFirstBlockOfLatestVersion failed verification");
 
+			Assert.assertTrue(responseObjects.size() == 0);
 		
 		} catch (VersionMissingException e) {
 			Assert.fail("Failed to get version from object: "+e.getMessage());
@@ -379,8 +366,7 @@ public class LatestVersionTest {
 		//then call again and make sure we have a newer version that passes
 
 		//have the verifier fail the newest object make sure we get back the most recent verified version
-		//responseObjects.add(obj3);
-		//System.out.println("added: "+obj3.name());
+
 		ContentObject verify = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 0), "here is verify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(verify);
 		
@@ -397,6 +383,8 @@ public class LatestVersionTest {
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(verify.name()));
 			System.out.println("passed test for getFirstBlockOfLatestVersion failed verification with newer version available");
 		
+			Assert.assertTrue(responseObjects.size() == 0);
+
 		} catch (VersionMissingException e) {
 			Assert.fail("Failed to get version from object: "+e.getMessage());
 		
@@ -407,21 +395,21 @@ public class LatestVersionTest {
 		
 		
 		
-		//TODO  add another test that also has a content object that fails to verify (maybe do 2)
+		//test that also has a content object that fails to verify (maybe do 2)
 		//and then also add one that does verify - same version.  make sure we get the verifiable one back
 		
-		ContentObject failVerify1 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 0), "here is failVerify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
+		failVerify1 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 0), "here is failVerify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(failVerify1);
 
 		long versionToAdd = System.currentTimeMillis();
 		try {
 			versionToAdd = VersioningProfile.getLastVersionAsLong(failVerify1.name());
+			
 		} catch (VersionMissingException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+			Assert.fail(e1.getMessage());
 		}
 		
-		ContentObject failVerify2 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is a second failVerify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
+		failVerify2 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is a second failVerify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(failVerify2);
 		
 		ContentObject failVerify3 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is a third, but it should pass".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
@@ -445,6 +433,7 @@ public class LatestVersionTest {
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.fullName()) == VersioningProfile.getLastVersionAsLong(failVerify3.fullName()));
 			System.out.println("passed test for getFirstBlockOfLatestVersion failed verification with multiple failures and a success");
 
+			Assert.assertTrue(responseObjects.size() == 0);
 		
 		} catch (VersionMissingException e) {
 			Assert.fail("Failed to get version from object: "+e.getMessage());
@@ -453,7 +442,43 @@ public class LatestVersionTest {
 			Assert.fail("Failed to get latest version: "+e.getMessage());
 		}
 		
+		//test that checks a combo of a version without a first segment with a failed verification
+		//after it.  should return the non 0 segment for the first part, and the last published first segment
+		//for the second part of the test
+	
+		responseObjects.clear();
 		
+		ContentObject objSkip3 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 5), "here is skip 3".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(5));
+		responseObjects.add(objSkip3);
+		
+		failVerify4 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 0), "here is a fourth verify, it should fail".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
+		responseObjects.add(failVerify4);
+	
+		System.out.println("objSkip3: "+ objSkip3.fullName());
+		System.out.println("failVerify4*: "+failVerify4.fullName());
+		
+		try {
+			
+			object = VersioningProfile.getLatestVersion(baseName, null, timeout, ver, getHandle);
+			System.out.println("got: "+object.fullName());
+			System.out.println("expecting to get: "+objSkip3.fullName());
+			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.fullName()) == VersioningProfile.getLastVersionAsLong(objSkip3.fullName()));
+			System.out.println("passed test for missing first segment + failed verification");
+			
+			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, timeout, ver, getHandle);
+			System.out.println("got: "+object.fullName());
+			System.out.println("expecting to get: "+failVerify3.fullName());
+			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.fullName()) == VersioningProfile.getLastVersionAsLong(failVerify3.fullName()));
+			System.out.println("passed test for missing first segment + failed verification");
+		
+			Assert.assertTrue(responseObjects.size() == 0);
+
+		} catch (VersionMissingException e) {
+			Assert.fail("Failed to get version from object: "+e.getMessage());
+		
+		} catch (IOException e) {
+			Assert.fail("Failed to get latest version: "+e.getMessage());
+		}
 		
 	}
 	
@@ -465,13 +490,11 @@ public class LatestVersionTest {
 	 * @param obj ContentObject to respond to Interests with.
 	 * @throws IOException 
 	 */
-	private Thread setUpResponder() throws IOException {
+	private void setUpResponder() throws IOException {
 		attempts = 0;
 		
 		Thread t = new Thread(new Responder());
 		t.run();
-		
-		return t;
 	}
 
 	private void checkResponder() {
@@ -515,6 +538,10 @@ public class LatestVersionTest {
 		public int handleInterests(ArrayList<Interest> interests) {
 			System.out.println(System.currentTimeMillis()+ " handling interest "+ interests.get(0).name());
 			
+			System.out.println("current objects: ");
+			for(ContentObject o: responseObjects)
+				System.out.println(o.fullName());
+			
 			for (Interest i : interests) {
 				if(responseObjects.size() == 0) {
 					System.out.println("responseObjects size == 0");
@@ -542,17 +569,31 @@ public class LatestVersionTest {
 	class TestVerifier implements ContentVerifier{
 
 		public boolean verify(ContentObject content) {
+			System.out.println("VERIFIER: "+content.fullName());
+			
 			ContentName contentName = content.fullName();
-			//if(content.name().equals(LatestVersionTest.failVerify.name()))
 			if ( failVerify != null ) {
 				if (contentName.equals(failVerify.fullName()))
 					return false;
-			}
+			} else
+				System.out.println("failVerify was null");
 			
 			if ( failVerify2 != null ) {
+				System.out.println("failVerify1*: "+failVerify1.fullName());
+				System.out.println("failVerify2*: "+failVerify2.fullName());
+				System.out.println("contentName: "+content.fullName());
 				if (contentName.equals(failVerify1.fullName()) || contentName.equals(failVerify2.fullName()))
 					return false;
-			}
+			}  else
+					System.out.println("failVerify2 was null");
+			
+			if ( failVerify4 != null ) {
+				if (contentName.equals(failVerify4.fullName()))
+					return false;
+			} else
+				System.out.println("failVerify4 was null");
+			
+			System.out.println("resorting to default verifier");
 			
 			return LatestVersionTest.getHandle.defaultVerifier().verify(content);
 		}
