@@ -41,6 +41,7 @@ import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
+import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.io.content.PublicKeyObject;
@@ -48,6 +49,8 @@ import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.namespace.ParameterizedName;
+import org.ccnx.ccn.profiles.namespace.Root;
 import org.ccnx.ccn.profiles.namespace.Root.RootObject;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
@@ -191,7 +194,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 	/**
 	 * Marker in a Root object that this is the profile we want.
 	 */
-	public static final String PROFILE_NAME = "/ccnx.org/ccn/profiles/security/access/group/GroupAccessControlProfile";
+	public static final String PROFILE_NAME_STRING = "/ccnx.org/ccn/profiles/security/access/group/GroupAccessControlProfile";
+
 	/**
 	 * This algorithm must be capable of key wrap (RSA, ElGamal, etc).
 	 */
@@ -200,8 +204,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 	public static final String NODE_KEY_LABEL = "Node Key";
 	
-	private ContentName[] _userStorage;
-	private GroupManager[] _groupManager = null;
+	private ArrayList<ParameterizedName> _userStorage = new ArrayList<ParameterizedName>();
+	private ArrayList<GroupManager> _groupManager = new ArrayList<GroupManager>();
 	private HashMap<byte[], GroupManager> hashToGroupManagerMap = new HashMap<byte[], GroupManager>();
 	private HashMap<ContentName, GroupManager> prefixToGroupManagerMap = new HashMap<ContentName, GroupManager>();
 	private HashSet<ContentName> _myIdentities = new HashSet<ContentName>();
@@ -211,40 +215,53 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 
 	@Override
-	public boolean initialize(RootObject policyInformation, CCNHandle handle) {
+	public boolean initialize(RootObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException {
 		// set up information based on contents of policy
 		// also need a static method/command line program to create a Root with the right types of information
 		// for this access control manager type
-		return true;
-	}
-	
-	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws ConfigurationException, IOException {
-		this(namespace, groupStorage, userStorage, null);
-	}
-	
-	private void initialize(ContentName namespace, ContentName[] groupStorage, ContentName[] userStorage, CCNHandle handle) throws ConfigurationException, IOException {
-		_namespace = namespace;
+		_namespace = policyInformation.getBaseName();
 		if (null == handle) {
 			_handle = CCNHandle.open();
 		} else {
 			_handle = handle;
 		}
 		_keyCache = new KeyCache(_handle.keyManager());
-
-		_userStorage = userStorage;
 		
-		_groupManager = new GroupManager[groupStorage.length];
-		for (int i=0; i<groupStorage.length; i++) {
-			GroupManager gm = new GroupManager(this, groupStorage[i], _handle);
-			_groupManager[i] = gm;
-			byte[] distinguishingHash = GroupAccessControlProfile.PrincipalInfo.contentPrefixToDistinguishingHash(groupStorage[i]);
-			hashToGroupManagerMap.put(distinguishingHash, gm);
-			prefixToGroupManagerMap.put(groupStorage[i], gm);			
+		ArrayList<ParameterizedName> parameterizedNames = policyInformation.root().parameterizedNames();
+		for (ParameterizedName pName: parameterizedNames) {
+			String label = pName.label();
+			if (label.equals("Group")) {
+				GroupManager gm = new GroupManager(this, pName, _handle);
+				_groupManager.add(gm);
+				byte[] distinguishingHash = GroupAccessControlProfile.PrincipalInfo.contentPrefixToDistinguishingHash(pName.prefix());
+				hashToGroupManagerMap.put(distinguishingHash, gm);
+				prefixToGroupManagerMap.put(pName.prefix(), gm);
+			}
+			else if (label.equals("User")) _userStorage.add(pName);
 		}
-		// TODO here, check for a namespace marker, and if one not there, write it (async)
+		return true;
+	}
+	
+	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws ConfigurationException, IOException, MalformedContentNameStringException {
+		this(namespace, groupStorage, userStorage, null);
+	}
+	
+	private void initialize(ContentName namespace, ContentName[] groupStorage, ContentName[] userStorage, CCNHandle handle) throws ConfigurationException, IOException, MalformedContentNameStringException {
+		ArrayList<ParameterizedName> parameterizedNames = new ArrayList<ParameterizedName>();
+		for (ContentName uStorage: userStorage) {
+			ParameterizedName pName = new ParameterizedName("User", uStorage, null);
+			parameterizedNames.add(pName);
+		}
+		for (ContentName gStorage: groupStorage) {
+			ParameterizedName pName = new ParameterizedName("Group", gStorage, null);
+			parameterizedNames.add(pName);
+		}
+		Root r = new Root(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), parameterizedNames, null);
+		RootObject policyInformation = new RootObject(namespace, r, SaveType.REPOSITORY, handle);
+		initialize(policyInformation, handle);				
 	}
 
-	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage, CCNHandle handle) throws ConfigurationException, IOException {		
+	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage, CCNHandle handle) throws ConfigurationException, IOException, MalformedContentNameStringException {		
 		ContentName[] userStorageArray = new ContentName[1];
 		userStorageArray[0] = userStorage;
 		ContentName[] groupStorageArray = new ContentName[1];
@@ -252,13 +269,13 @@ public class GroupAccessControlManager extends AccessControlManager {
 		initialize(namespace, groupStorageArray, userStorageArray, handle);
 	}
 	
-	public GroupAccessControlManager(ContentName namespace, ContentName[] groupStorage, ContentName[] userStorage, CCNHandle handle) throws ConfigurationException, IOException {
+	public GroupAccessControlManager(ContentName namespace, ContentName[] groupStorage, ContentName[] userStorage, CCNHandle handle) throws ConfigurationException, IOException, MalformedContentNameStringException {
 		initialize(namespace, groupStorage, userStorage, handle);
 	}
 	
 	public GroupManager groupManager() throws Exception {
-		if (_groupManager.length > 1) throw new Exception("A group manager can only be retrieved by name when there are more than one.");
-		return _groupManager[0]; 	
+		if (_groupManager.size() > 1) throw new Exception("A group manager can only be retrieved by name when there are more than one.");
+		return _groupManager.get(0); 	
 	}
 	
 	public GroupManager groupManager(byte[] distinguishingHash) {
@@ -295,7 +312,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		
 		for (GroupManager gm: _groupManager) {
 			if (gm.isGroup(principalPublicKeyName)) {
-				ContentName prefix = gm.getGroupStorage();
+				ContentName prefix = gm.getGroupStorage().prefix();
 				String friendlyName = principalPublicKeyName.postfix(prefix).stringComponent(0);
 				return new Tuple<ContentName, String>(prefix, friendlyName);
 			}
@@ -303,10 +320,10 @@ public class GroupAccessControlManager extends AccessControlManager {
 		
 		// NOTE: as there are multiple user prefixes, each with a distinguishing hash and an optional
 		// suffix, you have to have a list of those and iterate over them as well.
-		for (ContentName userStorage: _userStorage) {
-			if (userStorage.isPrefixOf(principalPublicKeyName)) {
-				String friendlyName = principalPublicKeyName.postfix(userStorage).stringComponent(0);
-				return new Tuple<ContentName, String>(userStorage, friendlyName);
+		for (ParameterizedName userStorage: _userStorage) {
+			if (userStorage.prefix().isPrefixOf(principalPublicKeyName)) {
+				String friendlyName = principalPublicKeyName.postfix(userStorage.prefix()).stringComponent(0);
+				return new Tuple<ContentName, String>(userStorage.prefix(), friendlyName);
 			}
 		}
 		

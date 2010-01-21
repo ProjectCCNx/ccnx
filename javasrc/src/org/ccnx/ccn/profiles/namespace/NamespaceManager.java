@@ -60,7 +60,7 @@ public class NamespaceManager {
 		}
 	}
 	
-	public static AccessControlManager createAccessControlManager(RootObject policyInformation, CCNHandle handle) throws ContentNotReadyException, ContentGoneException, ErrorStateException, InstantiationException, IllegalAccessException {
+	public static AccessControlManager createAccessControlManager(RootObject policyInformation, CCNHandle handle) throws ContentNotReadyException, ContentGoneException, ErrorStateException, InstantiationException, IllegalAccessException, ConfigurationException, IOException {
 		Class<? extends AccessControlManager> acmClazz = null;
 		synchronized(NamespaceManager.class) {
 			acmClazz = _accessControlManagerTypes.get(policyInformation.root().profileName());

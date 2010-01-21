@@ -57,7 +57,7 @@ public abstract class AccessControlManager {
 	 */
 	public AccessControlManager() {}
 	
-	public abstract boolean initialize(RootObject policyInformation, CCNHandle handle);
+	public abstract boolean initialize(RootObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException;
 
 	/**
 	 * Labels for deriving various types of keys.
