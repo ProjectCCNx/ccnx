@@ -286,14 +286,14 @@ public abstract class KeyManager {
 
 	/**
 	 * Get the public key for a given publisher, going to the network to retrieve it if necessary.
-	 * Uses the default timeout.
+	 * Uses the SystemConfiguration.EXTRA_LONG_TIMEOUT to be aggressive and reexpress.
 	 * @param publisherKeyID the digest of the keys we want
 	 * @param keyLocator the key locator to tell us where to retrieve the key from
 	 * @return the key
 	 * @throws IOException if we run into an error attempting to read the key
 	 */
 	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) throws IOException {
-		return getPublicKey(publisherKeyID, keyLocator, SystemConfiguration.getDefaultTimeout());
+		return getPublicKey(publisherKeyID, keyLocator, SystemConfiguration.EXTRA_LONG_TIMEOUT);
 	}
 	
 	/**

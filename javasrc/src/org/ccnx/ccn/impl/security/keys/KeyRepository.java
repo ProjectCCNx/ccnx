@@ -518,6 +518,8 @@ public class KeyRepository {
 
 		// How many pieces of bad content do we wade through?
 		final int ITERATION_LIMIT = 5;
+		// how many times do we time out get?
+		final int TIMEOUT_ITERATION_LIMIT = ITERATION_LIMIT;
 
 		PublicKey publicKey = null;
 		
@@ -529,19 +531,33 @@ public class KeyRepository {
 
 		ContentObject retrievedContent = null;
 		int iterationCount = 0;
+		int timeoutCount = 0; // be super-agressive about pulling keys for now.
+		IOException lastException = null;
 
 		while ((null == publicKey) && (iterationCount < ITERATION_LIMIT)) {
 			//  it would be really good to know how many additional name components to expect...
-			try {
-				Log.info("Trying network retrieval of key: " + keyInterest.name());
-				// use more aggressive high-level get
-				retrievedContent = handle().get(keyInterest, timeout);
-			} catch (IOException e) {
-				Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
-				Log.warningStackTrace(e);
+			while ((null == retrievedContent) && (timeoutCount < TIMEOUT_ITERATION_LIMIT)) {
+				try {
+					Log.info("Trying network retrieval of key: " + keyInterest.name());
+					// use more aggressive high-level get
+					retrievedContent = handle().get(keyInterest, timeout);
+				} catch (IOException e) {
+					Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
+					Log.warningStackTrace(e);
+					lastException = e;
+					// go around again
+				}
+				if (null != retrievedContent) {
+					Log.info("Retrieved key {0} using locator {1}.", desiredKeyID, locator);
+					break;
+				}
+				timeoutCount++;
 			}
 			if (null == retrievedContent) {
-				Log.fine("No data returned when we attempted to retrieve key using interest {0}, timeout " + timeout, keyInterest);
+				Log.warning("No data returned when we attempted to retrieve key using interest {0}, timeout " + timeout + " exception : " + ((null == lastException) ? "none" : lastException.getMessage()), keyInterest);
+				if (null != lastException) {
+					throw lastException;
+				}
 				break;
 			}
 			if (retrievedContent.signedInfo().getType().equals(ContentType.KEY)) {
