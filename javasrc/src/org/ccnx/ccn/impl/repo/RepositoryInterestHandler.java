@@ -57,6 +57,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 */
 	public int handleInterests(ArrayList<Interest> interests) {
 		for (Interest interest : interests) {
+			if (interest.answerOriginKind() == 0)	// TODO - should this be true for 1 too?
+				continue;	// Request to not answer from out content
 			try {
 				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
 					Log.finer("Saw interest: {0}", interest.name());

@@ -73,7 +73,7 @@ public class Daemon {
 	public static final String PROP_DAEMON_DEBUG_PORT = "ccn.daemon.debug";
 	public static final String PROP_DAEMON_OUTPUT = "ccn.daemon.output";
 	public static final String PROP_DAEMON_PROFILE = "ccn.daemon.profile";
-	public static final String PROP_DAEMON_DEBUG_SUSPEND = "ccn.daemon.suspend";
+	public static final String PROP_DAEMON_DEBUG_SUSPEND = "ccn.daemon.debug.suspend";
 	
 	/**
 	 * Interface describing the RMI server object sitting inside
