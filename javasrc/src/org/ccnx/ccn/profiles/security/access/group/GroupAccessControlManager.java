@@ -35,6 +35,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
@@ -242,6 +243,42 @@ public class GroupAccessControlManager extends AccessControlManager {
 	
 	// TODO pgolle: fill this in
 	public GroupManager groupManager(byte[] distinguishingHash) {
+		// just keep a Map from hash to group manager, and a simplar Map from content name prefix to 
+		// (that same set of) group managers
+		return null;
+	}
+	
+	// TODO fill this in
+	public boolean isGroupName(ContentName principalPublicKeyName) {
+		// iterate through available group managers and see if the prefix of this name
+		// matches any of their prefixes
+		return false;
+	}
+	
+	// TODO
+	public Tuple<ContentName, String> parsePrincipalInfoFromPublicKeyName(ContentName principalPublicKeyName) {
+		// for each group manager/user namespace, there is a prefix, then a "friendly" name component,
+		// then optionally a postfix that gets tacked on to go from the prefix to the public key
+		// e.g. Alice's key in the user namespace might be:
+		// /parc.com/Users/Alice/Keys/EncryptionKey
+		// where the distinguising prefix would be computed from /parc.com/Users, Alice is the friendly
+		// name, and the rest is stored in the group manager for /parc.com/Users, generated out of the 
+		// relevant entry in the Roots spec, and just used in a function to go from (distinguishing hash, friendly name)
+		// to key name
+		
+		// loop through the group managers, see if the prefix matches, if so, pull that prefix, and take
+		// the component after that prefix as the friendly name
+		
+		// NOTE: as there are multiple user prefixes, each with a distinguishing hash and an optional
+		// suffix, you have to have a list of those and iterate over them as well.
+		return null;
+	}
+	
+	// TODO
+	public ContentName getPrincipalPublicKeyName(byte [] distinguishingHash, String friendlyName) {
+		// look up the distinguishing hash in the user and group maps
+		// pull the name prefix and postfix from the tables
+		// make the key name as <prefix>/friendlyName/<postfix>
 		return null;
 	}
 	
@@ -1247,10 +1284,13 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * such as group metadata.
 	 */
 	public boolean isProtectedContent(ContentName name, PublisherPublicKeyDigest publisher, ContentType contentType, CCNHandle handle) {
-		if (GroupAccessControlProfile.isGroupName(name)) {
+		if (isGroupName(name)) {
 			// Don't encrypt the group metadata
 			return false;
 		}
+		// if users have separate encryption keys that are themselves encrypted,
+		// this will doubly-encrypt them; need to skip those (skip anything prefixed
+		// with a user key name)
 		return super.isProtectedContent(name, publisher, contentType, handle);
 	}
 
