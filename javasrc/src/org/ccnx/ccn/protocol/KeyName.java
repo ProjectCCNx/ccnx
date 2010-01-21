@@ -161,4 +161,9 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable {
 			return false;
 		return true;
 	}
+	
+	@Override 
+	public String toString() {
+		return ((null != name()) ? name() : "") + ((null != publisher()) ? " " + publisher() : "");
+	}
 }
