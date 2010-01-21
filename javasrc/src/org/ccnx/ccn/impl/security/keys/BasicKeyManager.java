@@ -396,7 +396,10 @@ public class BasicKeyManager extends KeyManager {
 		X509Certificate ssCert = null;
 		try {
 			 ssCert = 
-				 MinimalCertificateGenerator.GenerateUserCertificate(userKeyPair, subjectDN, MinimalCertificateGenerator.MSEC_IN_YEAR);
+				 MinimalCertificateGenerator.GenerateUserCertificate(userKeyPair, subjectDN, 
+						 											 MinimalCertificateGenerator.MSEC_IN_YEAR);
+			 Log.finest("createKeyStore: certificate generated.");
+			 
 		} catch (Exception e) {
 			generateConfigurationException("InvalidKeyException generating user internal certificate.", e);
 		} 
@@ -405,6 +408,7 @@ public class BasicKeyManager extends KeyManager {
 	        new KeyStore.PrivateKeyEntry(userKeyPair.getPrivate(), new X509Certificate[]{ssCert});
 
 	    try {
+	    	Log.finest("createKeyStore: setting private key entry.");
 		    ks.setEntry(_defaultAlias, entry, 
 			        new KeyStore.PasswordProtection(_password));
 		    
