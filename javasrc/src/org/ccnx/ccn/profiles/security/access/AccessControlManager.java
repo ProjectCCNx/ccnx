@@ -28,7 +28,6 @@ import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager.Root.RootObject;
-import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -51,7 +50,6 @@ public abstract class AccessControlManager {
 	protected KeyCache _keyCache;
 	protected CCNHandle _handle;
 	protected SecureRandom _random = new SecureRandom();
-
 	/**
 	 * Factory method.
 	 * Eventually split between a superclass AccessControlManager that handles many

@@ -12,6 +12,15 @@ public class AccessControlProfile {
 	public static final byte [] ROOT_NAME_BYTES = ContentName.componentParseNative(ROOT_NAME);
 	public static final String DATA_KEY_NAME = "DK";
 	public static final byte [] DATA_KEY_NAME_BYTES = ContentName.componentParseNative(DATA_KEY_NAME);
+
+	/**
+	 * Used by KeyDirectory
+	 */
+	public static final String SUPERSEDED_MARKER = "SupersededBy";
+	public static final String PREVIOUS_KEY_NAME = "PreviousKey";
+	public static final String GROUP_PUBLIC_KEY_NAME = "Key";
+	public static final String GROUP_PRIVATE_KEY_NAME = "PrivateKey";
+
 	protected static final ContentName ROOT_POSTFIX_NAME = new ContentName(new byte [][] {ACCESS_CONTROL_MARKER_BYTES, ROOT_NAME_BYTES});
 
 	/**

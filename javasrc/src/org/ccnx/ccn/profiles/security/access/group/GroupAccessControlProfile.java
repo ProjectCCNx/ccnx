@@ -44,21 +44,16 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	public static final String USER_PREFIX = "Users";
 	public static final byte [] USER_PREFIX_BYTES = ContentName.componentParseNative(USER_PREFIX);
 	
-	public static final String GROUP_PUBLIC_KEY_NAME = "Key";
-	public static final String GROUP_PRIVATE_KEY_NAME = "PrivateKey";
 	public static final String GROUP_MEMBERSHIP_LIST_NAME = "MembershipList";
 	public static final String GROUP_POINTER_TO_PARENT_GROUP_NAME = "PointerToParentGroup";
-	public static final String PREVIOUS_KEY_NAME = "PreviousKey";
 	public static final String ACL_NAME = "ACL";
 	public static final byte [] ACL_NAME_BYTES = ContentName.componentParseNative(ACL_NAME);
 	public static final String NODE_KEY_NAME = "NK";
 	public static final byte [] NODE_KEY_NAME_BYTES = ContentName.componentParseNative(NODE_KEY_NAME);	
 	// These two must be the same length
-	public static final byte [] PRINCIPAL_PREFIX = ContentName.componentParseNative("p" + CCNProfile.COMPONENT_SEPARATOR_STRING);
+	public static final byte [] USER_PRINCIPAL_PREFIX = ContentName.componentParseNative("p" + CCNProfile.COMPONENT_SEPARATOR_STRING);
 	public static final byte [] GROUP_PRINCIPAL_PREFIX = ContentName.componentParseNative("g" + CCNProfile.COMPONENT_SEPARATOR_STRING);
 
-	public static final String SUPERSEDED_MARKER = "SupersededBy";
-	
 	/**
 	 * This class records information about a CCN principal.
 	 * This information includes: 
@@ -188,7 +183,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the name of the group public key
 	 */
 	public static ContentName groupPublicKeyName(ContentName groupNamespaceName, String groupFriendlyName) {
-		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName, groupFriendlyName),  GROUP_PUBLIC_KEY_NAME);
+		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName, groupFriendlyName),  AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
 	}
 	
 	/**
@@ -197,7 +192,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the name of the group public key
 	 */
 	public static ContentName groupPublicKeyName(ContentName groupFullName) {
-		return ContentName.fromNative(groupFullName,  GROUP_PUBLIC_KEY_NAME);
+		return ContentName.fromNative(groupFullName,  AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
 	}
 	
 	/**
@@ -239,7 +234,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return
 	 */
 	public static boolean isPrincipalNameComponent(byte [] nameComponent) {
-		return (DataUtils.isBinaryPrefix(PRINCIPAL_PREFIX, nameComponent) ||
+		return (DataUtils.isBinaryPrefix(USER_PRINCIPAL_PREFIX, nameComponent) ||
 				DataUtils.isBinaryPrefix(GROUP_PRINCIPAL_PREFIX, nameComponent));
 	}
 
@@ -250,26 +245,26 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 */
 	public static PrincipalInfo parsePrincipalInfoFromNameComponent(
 			byte[] childName) {
-		if (!isPrincipalNameComponent(childName) || (childName.length <= PRINCIPAL_PREFIX.length))
+		if (!isPrincipalNameComponent(childName) || (childName.length <= USER_PRINCIPAL_PREFIX.length))
 			return null;
 		
 		// First time we see COMPONENT_SEPARATOR is the separation point.
 		// Could jump back based on fixed width of timestamp.
 		int sepIndex = -1;
-		for (sepIndex = PRINCIPAL_PREFIX.length; sepIndex < childName.length; sepIndex++) {
+		for (sepIndex = USER_PRINCIPAL_PREFIX.length; sepIndex < childName.length; sepIndex++) {
 			if (childName[sepIndex] == CCNProfile.COMPONENT_SEPARATOR[0])
 				break;
 		}
 		if (sepIndex == childName.length) {
 			Log.warning("Unexpected principal name format - no separator: " + 
-					ContentName.componentPrintURI(childName, PRINCIPAL_PREFIX.length, childName.length-PRINCIPAL_PREFIX.length));
+					ContentName.componentPrintURI(childName, USER_PRINCIPAL_PREFIX.length, childName.length-USER_PRINCIPAL_PREFIX.length));
 			return null;
 		}
-		byte [] type = new byte[PRINCIPAL_PREFIX.length];
-		byte [] principal = new byte[sepIndex - PRINCIPAL_PREFIX.length];
+		byte [] type = new byte[USER_PRINCIPAL_PREFIX.length];
+		byte [] principal = new byte[sepIndex - USER_PRINCIPAL_PREFIX.length];
 		byte [] timestamp = new byte[childName.length - sepIndex -1];
-		System.arraycopy(childName, 0, type, 0, PRINCIPAL_PREFIX.length);
-		System.arraycopy(childName, PRINCIPAL_PREFIX.length, principal, 0, principal.length);
+		System.arraycopy(childName, 0, type, 0, USER_PRINCIPAL_PREFIX.length);
+		System.arraycopy(childName, USER_PRINCIPAL_PREFIX.length, principal, 0, principal.length);
 		System.arraycopy(childName, sepIndex+1, timestamp, 0, timestamp.length);
 		
 		String strPrincipal = ContentName.componentPrintNative(principal);
@@ -297,7 +292,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	public static byte[] principalInfoToNameComponent(PrincipalInfo pi) {
 		byte [] bytePrincipal = ContentName.componentParseNative(pi.friendlyName());
 		byte [] byteTime = pi.versionTimestamp().toBinaryTime();
-		byte [] prefix = (pi.isGroup() ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
+		byte [] prefix = (pi.isGroup() ? GROUP_PRINCIPAL_PREFIX : USER_PRINCIPAL_PREFIX);
 		byte [] component = new byte[prefix.length + bytePrincipal.length + CCNProfile.COMPONENT_SEPARATOR.length + byteTime.length];
 		// java 1.6 has much better functions for array copying
 		System.arraycopy(prefix, 0, component, 0, prefix.length);
@@ -341,7 +336,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 */
 	public static PrincipalInfo parsePrincipalInfoFromPublicKeyName(ContentName publicKeyName) throws VersionMissingException {
 		boolean isGroup = isGroupName(publicKeyName);
-		byte [] type = (isGroup ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
+		byte [] type = (isGroup ? GROUP_PRINCIPAL_PREFIX : USER_PRINCIPAL_PREFIX);
 		CCNTime version = VersioningProfile.getLastVersionAsTimestamp(publicKeyName);
 		
 		String principal;
