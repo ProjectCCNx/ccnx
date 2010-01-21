@@ -100,6 +100,15 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	}
 	
 	/**
+	 * Returns whether the specified name contains the group prefix
+	 * @param name the name
+	 * @return
+	 */
+	public static boolean isGroupName(ContentName name) {
+		return name.contains(GROUP_PREFIX_BYTES);
+	}
+	
+	/**
 	 * Get the name of the node key for a given content node, if there is one.
 	 * This is nodeName/_access_/NK, with a version then added for a specific node key.
 	 * @param nodeName the name of the content node

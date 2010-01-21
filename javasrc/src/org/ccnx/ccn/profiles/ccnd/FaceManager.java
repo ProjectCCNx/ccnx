@@ -18,6 +18,7 @@
 package org.ccnx.ccn.profiles.ccnd;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
@@ -328,6 +329,16 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 	
 	public FaceManager() { }
 	
+	private PublisherPublicKeyDigest getId() throws CCNDaemonException {
+		PublisherPublicKeyDigest id = null;
+		try {
+			id = _manager.getCCNDId();
+		} catch (IOException e) {
+			throw new CCNDaemonException(e.getMessage());
+		}
+		return id;
+	}
+	
 	public Integer createFace(NetworkProtocol ipProto, String host, Integer port) 
 							throws CCNDaemonException {
 		return createFace(ipProto, host, port, null, null, null);
@@ -341,19 +352,19 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 	public Integer createFace(NetworkProtocol ipProto, String host, Integer port,
 			String multicastInterface, Integer multicastTTL, Integer lifetime) 
 							throws CCNDaemonException {
-		FaceInstance face = new FaceInstance(ActionType.NewFace, _manager.getCCNDId(), ipProto, host, port, 
+		FaceInstance face = new FaceInstance(ActionType.NewFace, getId(), ipProto, host, port, 
 											multicastInterface, multicastTTL, lifetime);
 		FaceInstance returned = sendIt(face);
 		return returned.faceID();
 	}
 		
 	public void deleteFace(Integer faceID) throws CCNDaemonException {
-		FaceInstance face = new FaceInstance(ActionType.DestroyFace, _manager.getCCNDId(), faceID);
+		FaceInstance face = new FaceInstance(ActionType.DestroyFace, getId(), faceID);
 		sendIt(face);
 	}
 	
 	public FaceInstance queryFace(Integer faceID) throws CCNDaemonException {
-		FaceInstance face = new FaceInstance(ActionType.QueryFace, _manager.getCCNDId(), faceID);
+		FaceInstance face = new FaceInstance(ActionType.QueryFace, getId(), faceID);
 		FaceInstance returned = sendIt(face);
 		return returned;
 	}
@@ -363,7 +374,7 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 		ContentName interestName = null;
 		try {
 			interestName = ContentName.fromURI(startURI);
-			interestName = ContentName.fromNative(interestName, _manager.getCCNDId().digest());
+			interestName = ContentName.fromNative(interestName, getId().digest());
 			interestName = ContentName.fromNative(interestName, face.action());
 		} catch (MalformedContentNameStringException e) {
 			Log.fine("Call to create ContentName failed: " + e.getMessage() + "\n");

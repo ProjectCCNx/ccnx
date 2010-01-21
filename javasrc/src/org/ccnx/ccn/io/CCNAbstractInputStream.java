@@ -39,6 +39,7 @@ import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -414,7 +415,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			// Get the content name without the segment parent
 			ContentName contentName = SegmentationProfile.segmentRoot(newSegment.name());
 			// Attempt to retrieve the keys for this namespace
-			_keys = AccessControlManager.keysForInput(contentName, _handle);
+			_keys = AccessControlManager.keysForInput(contentName, newSegment.signedInfo().getPublisherKeyID(), _handle);
+			if (_keys == null) throw new AccessDeniedException("Cannot find keys to decrypt content.");
 		}
 		setCurrentSegment(newSegment);
 	}

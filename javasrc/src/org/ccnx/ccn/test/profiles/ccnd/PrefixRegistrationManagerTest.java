@@ -169,8 +169,9 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		}
 		try {
 			manager = new PrefixRegistrationManager(putHandle);
-			faceID = manager.selfRegisterPrefix(testCN);
-			System.out.println("Created prefix: " + testCN + " on face " + faceID);
+			ForwardingEntry entry = manager.selfRegisterPrefix(testCN);
+			faceID = entry.getFaceID();
+			System.out.println("Created prefix: " + testCN + " on face " + faceID + " with lifetime " + entry.getLifetime());
 		} catch (CCNDaemonException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			System.out.println("Failed to self register prefix.");

@@ -47,6 +47,7 @@ import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
@@ -54,6 +55,8 @@ import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
@@ -1020,6 +1023,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * to see whether content is excluded from encryption (e.g. by being access
 	 * control data).
 	 * @param dataNodeName the node for which to find a data key wrapping key
+	 * @param publisher in case output key retrieval needs to be specialized by publisher
 	 * @return if null, the data is to be unencrypted.
 	 * @param newRandomDataKey
 	 * @throws AccessDeniedException 
@@ -1028,7 +1032,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws IOException
 	 * @throws InvalidCipherTextException 
 	 */
-	public NodeKey getDataKeyWrappingKey(ContentName dataNodeName)
+	@Override
+	public NodeKey getDataKeyWrappingKey(ContentName dataNodeName, PublisherPublicKeyDigest publisher)
 	 	throws AccessDeniedException, InvalidKeyException,
 	 		ContentEncodingException, IOException, InvalidCipherTextException {
 		NodeKey effectiveNodeKey = getFreshEffectiveNodeKey(dataNodeName);
@@ -1235,6 +1240,19 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		NodeKey enk = nk.computeDescendantNodeKey(nodeName, dataKeyLabel());
 		return enk;
+	}
+	
+	/**
+	 * Overrides the method of the same name in AccessControlManager. 
+	 * GroupAccessControlManager specifies additional content that is not to be protected,
+	 * such as group metadata.
+	 */
+	public boolean isProtectedContent(ContentName name, PublisherPublicKeyDigest publisher, ContentType contentType, CCNHandle handle) {
+		if (GroupAccessControlProfile.isGroupName(name)) {
+			// Don't encrypt the group metadata
+			return false;
+		}
+		return super.isProtectedContent(name, publisher, contentType, handle);
 	}
 
 }	

@@ -349,6 +349,7 @@ public class BasicKeyManager extends KeyManager {
 
 	    FileOutputStream out = null;
 		try {
+			Log.finest("Creating FileOutputStream to write keystore to file " + keyStoreFile.getAbsolutePath());
 			out = new FileOutputStream(keyStoreFile);
 		} catch (FileNotFoundException e) {
 			generateConfigurationException("Cannot create keystore file: " + keyStoreFile.getAbsolutePath(), e);
@@ -364,8 +365,11 @@ public class BasicKeyManager extends KeyManager {
 
 		KeyStore ks = null;
 	    try {
+	    	Log.finest("createKeyStore: getting instance of keystore type " + _keyStoreType);
 			ks = KeyStore.getInstance(_keyStoreType);
+			Log.finest("createKeyStore: loading key store.");
 			ks.load(null, _password);
+			Log.finest("createKeyStore: key store loaded.");
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot load empty default keystore.", e);
 		} catch (CertificateException e) {
@@ -382,15 +386,21 @@ public class BasicKeyManager extends KeyManager {
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot generate key using default algorithm: " + UserConfiguration.defaultKeyAlgorithm(), e);
 		}
-		kpg.initialize(UserConfiguration.defaultKeyLength()); 
+		kpg.initialize(UserConfiguration.defaultKeyLength());
+		
+		Log.finest("createKeyStore: generating " + UserConfiguration.defaultKeyLength() + "-bit " + UserConfiguration.defaultKeyAlgorithm() + " key.");
 		KeyPair userKeyPair = kpg.generateKeyPair();
+		Log.finest("createKeyStore: key generated, generating certificate for user " + _userName);
 		
 		// Generate a self-signed certificate.
 		String subjectDN = "CN=" + _userName;
 		X509Certificate ssCert = null;
 		try {
 			 ssCert = 
-				 MinimalCertificateGenerator.GenerateUserCertificate(userKeyPair, subjectDN, MinimalCertificateGenerator.MSEC_IN_YEAR);
+				 MinimalCertificateGenerator.GenerateUserCertificate(userKeyPair, subjectDN, 
+						 											 MinimalCertificateGenerator.MSEC_IN_YEAR);
+			 Log.finest("createKeyStore: certificate generated.");
+			 
 		} catch (Exception e) {
 			generateConfigurationException("InvalidKeyException generating user internal certificate.", e);
 		} 
@@ -399,9 +409,14 @@ public class BasicKeyManager extends KeyManager {
 	        new KeyStore.PrivateKeyEntry(userKeyPair.getPrivate(), new X509Certificate[]{ssCert});
 
 	    try {
+	    	Log.finest("createKeyStore: setting private key entry.");
 		    ks.setEntry(_defaultAlias, entry, 
 			        new KeyStore.PasswordProtection(_password));
+		    
+		    Log.finest("createKeyStore: storing key store.");
 	        ks.store(out, _password);
+		    Log.finest("createKeyStore: wrote key store.");
+
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot save default keystore.", e);
 		} catch (CertificateException e) {

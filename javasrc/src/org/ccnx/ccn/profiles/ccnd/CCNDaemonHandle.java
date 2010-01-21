@@ -94,11 +94,11 @@ public class CCNDaemonHandle {
 		try {
 			contentIn = _manager.get(interested, 1000);
 		} catch (IOException e) {
-			String msg = ("Unexpected IOException in call getting FaceInstance return value, reason: " + e.getMessage());
+			String msg = ("Unexpected IOException in call getting CCNDaemonHandle.sendIt return value, reason: " + e.getMessage());
 			Log.info(msg);
 			throw new CCNDaemonException(msg);
 		} catch (InterruptedException e) {
-			String msg = ("Unexpected InterruptedException in call getting FaceInstance return value, reason: " + e.getMessage());
+			String msg = ("Unexpected InterruptedException in call getting CCNDaemonHandle.sendIt return value, reason: " + e.getMessage());
 			Log.info(msg);
 			throw new CCNDaemonException(msg);
 		}
@@ -111,7 +111,7 @@ public class CCNDaemonHandle {
 		PublisherPublicKeyDigest sentID = contentIn.signedInfo().getPublisherKeyID();
 		ContentVerifier verifyer = new ContentObject.SimpleVerifier(sentID, _manager.getKeyManager());
 		if (!verifyer.verify(contentIn)) {
-			String msg = ("CCNDIdGetter: Fetch of content reply from ping failed to verify.");
+			String msg = ("CCNDIdGetter: Fetch of content reply failed to verify.");
 			Log.severe(msg);
 			throw new CCNDaemonException(msg);
 		}
