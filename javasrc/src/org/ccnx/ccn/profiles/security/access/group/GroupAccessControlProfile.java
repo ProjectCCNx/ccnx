@@ -278,7 +278,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		
 		byte[] distinguishingHash = null;
 		
-		return new PrincipalInfo(type, strPrincipal, null, version);	
+		return new PrincipalInfo(type, strPrincipal, distinguishingHash, version);	
 	}
 
 	/**
@@ -350,6 +350,6 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		
 		byte[] distinguishingHash = null;
 		
-		return new PrincipalInfo(type, principal, null, version);
+		return new PrincipalInfo(type, principal, distinguishingHash, version);
 	}
 }
