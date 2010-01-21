@@ -34,7 +34,8 @@ public class UserConfiguration {
 	protected static final String USER_CONFIG_FILE = "ccnx_config.xml";
 
 	/**
-	 * Directory (subdirectory of User.home) where all user metadata is kept.
+	 * Default value of ccn directory name. 
+	 * @return
 	 */
 	protected static final String CCN_DIR_NAME = ".ccnx";
 	
@@ -62,7 +63,28 @@ public class UserConfiguration {
 	protected static final String DEFAULT_KEY_ALIAS = "ccnxuser";
 	protected static final String DEFAULT_KEYSTORE_TYPE = "PKCS12"; // "JCEKS"; // want JCEKS, but don't want to force keystore regeneration yet
 	
+	/**
+	 * Directory (subdirectory of User.home) where all user metadata is kept.
+	 */
+	/**
+	 * Command-line property to set default user data directory
+	 * @return
+	 */
+	protected static final String CCN_DIR_NAME_PROPERTY = 
+		"com.parc.ccn.CCNxDir";
+	
+	/**
+	 * Environament variable to set default user data directory; 
+	 * overridden by command-line property.
+	 * @return
+	 */
+	protected static final String CCN_DIR_ENVIRONMENT_VARIABLE = "CCNX_DIR";
+
+	/**
+	 * Value of CCN directory.
+	 */
 	protected static String CCN_DIR;
+	
 	protected static String USER_DIR;
 	protected static String USER_NAME;
 	protected static String FILE_SEP;
@@ -79,7 +101,6 @@ public class UserConfiguration {
 								ContentName.SEPARATOR +
 								USER_NAME);
 			
-			CCN_DIR = USER_DIR + FILE_SEP + CCN_DIR_NAME;
 		} catch (MalformedContentNameStringException e) {
 			Log.warning("This should not happen. MalformedContentNameStringException in system-generated name: " + e.getMessage());
 			Log.warningStackTrace(e);
@@ -94,7 +115,25 @@ public class UserConfiguration {
 		USER_NAME = name;
 	}
 	
-	public static String ccnDirectory() { return CCN_DIR; }
+	public static String ccnDirectory() { 
+		if (null == CCN_DIR) {
+			synchronized(CCN_DIR) {
+				if (null == CCN_DIR) {
+					// First try the command line property.
+					CCN_DIR = System.getProperty(CCN_DIR_NAME_PROPERTY);
+				}
+				if (null == CCN_DIR) {
+					// Try for an environment variable.
+					CCN_DIR = System.getenv(CCN_DIR_ENVIRONMENT_VARIABLE);
+				}
+				if (null == CCN_DIR) {
+					// Go for default.
+					CCN_DIR = USER_DIR + FILE_SEP + CCN_DIR_NAME;
+				}
+			}
+		}
+		return CCN_DIR; 
+	}
 	
 	public static String userConfigFile() { 
 		return CCN_DIR + FILE_SEP + USER_CONFIG_FILE; }
