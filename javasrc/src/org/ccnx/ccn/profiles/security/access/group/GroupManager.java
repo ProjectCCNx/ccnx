@@ -339,6 +339,14 @@ public class GroupManager {
 	public String getGroupKeyAlgorithm() {
 		return GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM;
 	}
+	
+	/**
+	 * Get the location used by this group manager to store groups
+	 * @return the ContentName of the group storage location
+	 */
+	public ContentName getGroupStorage() {
+		return _groupStorage;
+	}
 
 	/**
 	 * Get the versioned private key for a group.

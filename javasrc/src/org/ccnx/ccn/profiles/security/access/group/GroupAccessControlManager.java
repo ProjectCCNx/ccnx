@@ -280,7 +280,6 @@ public class GroupAccessControlManager extends AccessControlManager {
 		return false;
 	}
 	
-	// TODO
 	public Tuple<ContentName, String> parsePrefixAndFriendlyNameFromPublicKeyName(ContentName principalPublicKeyName) {
 		// for each group manager/user namespace, there is a prefix, then a "friendly" name component,
 		// then optionally a postfix that gets tacked on to go from the prefix to the public key
@@ -294,8 +293,23 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// loop through the group managers, see if the prefix matches, if so, pull that prefix, and take
 		// the component after that prefix as the friendly name
 		
+		for (GroupManager gm: _groupManager) {
+			if (gm.isGroup(principalPublicKeyName)) {
+				ContentName prefix = gm.getGroupStorage();
+				String friendlyName = principalPublicKeyName.postfix(prefix).stringComponent(0);
+				return new Tuple<ContentName, String>(prefix, friendlyName);
+			}
+		}
+		
 		// NOTE: as there are multiple user prefixes, each with a distinguishing hash and an optional
 		// suffix, you have to have a list of those and iterate over them as well.
+		for (ContentName userStorage: _userStorage) {
+			if (userStorage.isPrefixOf(principalPublicKeyName)) {
+				String friendlyName = principalPublicKeyName.postfix(userStorage).stringComponent(0);
+				return new Tuple<ContentName, String>(userStorage, friendlyName);
+			}
+		}
+		
 		return null;
 	}
 	
