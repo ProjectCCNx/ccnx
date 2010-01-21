@@ -364,8 +364,11 @@ public class BasicKeyManager extends KeyManager {
 
 		KeyStore ks = null;
 	    try {
+	    	Log.finest("createKeyStore: getting instance of keystore type " + _keyStoreType);
 			ks = KeyStore.getInstance(_keyStoreType);
+			Log.finest("createKeyStore: loading key store.");
 			ks.load(null, _password);
+			Log.finest("createKeyStore: key store loaded.");
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot load empty default keystore.", e);
 		} catch (CertificateException e) {
@@ -382,8 +385,11 @@ public class BasicKeyManager extends KeyManager {
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot generate key using default algorithm: " + UserConfiguration.defaultKeyAlgorithm(), e);
 		}
-		kpg.initialize(UserConfiguration.defaultKeyLength()); 
+		kpg.initialize(UserConfiguration.defaultKeyLength());
+		
+		Log.finest("createKeyStore: generating " + UserConfiguration.defaultKeyLength() + "-bit " + UserConfiguration.defaultKeyAlgorithm() + " key.");
 		KeyPair userKeyPair = kpg.generateKeyPair();
+		Log.finest("createKeyStore: key generated, generating certificate for user " + _userName);
 		
 		// Generate a self-signed certificate.
 		String subjectDN = "CN=" + _userName;
@@ -401,7 +407,10 @@ public class BasicKeyManager extends KeyManager {
 	    try {
 		    ks.setEntry(_defaultAlias, entry, 
 			        new KeyStore.PasswordProtection(_password));
+		    
+		    Log.finest("createKeyStore: storing key store.");
 	        ks.store(out, _password);
+	        
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot save default keystore.", e);
 		} catch (CertificateException e) {
