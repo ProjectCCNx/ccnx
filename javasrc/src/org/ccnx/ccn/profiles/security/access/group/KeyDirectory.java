@@ -368,8 +368,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws VersionMissingException
 	 */
 	public ContentName getWrappedKeyNameForPrincipal(ContentName principalPublicKeyName) throws VersionMissingException {
-		PrincipalInfo info = GroupAccessControlProfile.parsePrincipalInfoFromPublicKeyName(_manager.groupManager().isGroup(principalPublicKeyName),
-																					  principalPublicKeyName);
+		PrincipalInfo info = GroupAccessControlProfile.parsePrincipalInfoFromPublicKeyName(principalPublicKeyName);
 		return getWrappedKeyNameForPrincipal(info);
 	}
 
@@ -611,11 +610,13 @@ public class KeyDirectory extends EnumeratedNameList {
 				// Groups may come in three types: ones I know I am a member of, but don't have this
 				// particular key version for, ones I don't know anything about, and ones I believe
 				// I'm not a member of but someone might have added me.
-				if (_manager.groupManager().haveKnownGroupMemberships()) {
+				if (_manager.haveKnownGroupMemberships()) {
 					try{
 						_principalsLock.readLock().lock();
 						for (String principal : _principals.keySet()) {
-							if ((!_manager.groupManager().isGroup(principal)) || (!_manager.groupManager().amKnownGroupMember(principal))) {
+							PrincipalInfo pInfo = _principals.get(principal);
+							GroupManager pgm = _manager.groupManager(pInfo.distinguishingHash());
+							if ((! pgm.isGroup(principal)) || (! pgm.amKnownGroupMember(principal))) {
 								// On this pass, only do groups that I think I'm a member of. Do them
 								// first as it is likely faster.
 								continue;
@@ -623,7 +624,7 @@ public class KeyDirectory extends EnumeratedNameList {
 							// I know I am a member of this group, or at least I was last time I checked.
 							// Attempt to get this version of the group private key as I don't have it in my cache.
 							try {
-								Key principalKey = _manager.groupManager().getVersionedPrivateKeyForGroup(this, principal);
+								Key principalKey = pgm.getVersionedPrivateKeyForGroup(this, principal);
 								unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
 								if (null == unwrappedKey)
 									continue;
@@ -642,13 +643,15 @@ public class KeyDirectory extends EnumeratedNameList {
 					try{
 							_principalsLock.readLock().lock();
 							for (String principal : _principals.keySet()) {
-								if ((!_manager.groupManager().isGroup(principal)) || (_manager.groupManager().amKnownGroupMember(principal))) {
+								PrincipalInfo pInfo = _principals.get(principal);
+								GroupManager pgm = _manager.groupManager(pInfo.distinguishingHash());
+								if ((! pgm.isGroup(principal)) || (pgm.amKnownGroupMember(principal))) {
 									// On this pass, only do groups that I don't think I'm a member of.
 									continue;
 								}
-								if (_manager.groupManager().amCurrentGroupMember(principal)) {
+								if (pgm.amCurrentGroupMember(principal)) {
 									try {
-										Key principalKey = _manager.groupManager().getVersionedPrivateKeyForGroup(this, principal);
+										Key principalKey = pgm.getVersionedPrivateKeyForGroup(this, principal);
 										unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
 										if (null == unwrappedKey) {
 											Log.warning("Unexpected: we are a member of group " + principal + " but get a null key.");

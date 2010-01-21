@@ -7,15 +7,14 @@ import java.util.Random;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
+import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.profiles.security.TestUserData;
 import org.junit.BeforeClass;
@@ -57,7 +56,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		// create and register ACM
 		handle = td.getHandleForUser(friendlyNames[0]);
 		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
-		acm.publishMyIdentity(friendlyNames[0], handle.keyManager().getDefaultPublicKey());
+		acm.publishMyIdentity(ContentName.fromNative(userKeyStorePrefix, friendlyNames[0]), handle.keyManager().getDefaultPublicKey());
 		handle.keyManager().publishKeyToRepository();
 		NamespaceManager.registerACM(acm);
 		

@@ -79,7 +79,7 @@ public class KeyDirectoryTestRepo {
 		
 		ContentName cnDirectoryBase = ContentName.fromNative(directoryBase);
 		ContentName groupStore = GroupAccessControlProfile.groupNamespaceName(cnDirectoryBase);
-		ContentName userStore = ContentName.fromNative(cnDirectoryBase, "Users");		
+		ContentName userStore = ContentName.fromNative(cnDirectoryBase, "Users");
 		acm = new GroupAccessControlManager(cnDirectoryBase, groupStore, userStore);
 		versionedDirectoryName = VersioningProfile.addVersion(keyDirectoryName);
 	}

@@ -47,7 +47,6 @@ import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
-import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
@@ -194,24 +193,32 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 	public static final String NODE_KEY_LABEL = "Node Key";
 	
-	private ContentName _userStorage;
-	private EnumeratedNameList _userList;
-	private GroupManager _groupManager = null;
+	private ContentName[] _userStorage;
+	private GroupManager[] _groupManager = null;
 	private HashSet<ContentName> _myIdentities = new HashSet<ContentName>();
-	
-	public GroupAccessControlManager(ContentName namespace) throws ConfigurationException, IOException {
-		this(namespace, null);
-	}
 
-	public GroupAccessControlManager(ContentName namespace, CCNHandle handle) throws ConfigurationException, IOException {
-		this(namespace, GroupAccessControlProfile.groupNamespaceName(namespace), GroupAccessControlProfile.userNamespaceName(namespace), handle);
-	}
 
 	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws ConfigurationException, IOException {
 		this(namespace, groupStorage, userStorage, null);
 	}
-	
+
 	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage, CCNHandle handle) throws ConfigurationException, IOException {
+		_namespace = namespace;
+		_userStorage = new ContentName[1];
+		_userStorage[0] = userStorage;
+		if (null == handle) {
+			_handle = CCNHandle.open();
+		} else {
+			_handle = handle;
+		}
+		_keyCache = new KeyCache(_handle.keyManager());
+		
+		_groupManager = new GroupManager[1];
+		_groupManager[0] = new GroupManager(this, groupStorage, _handle);
+		// TODO here, check for a namespace marker, and if one not there, write it (async)
+	}
+	
+	public GroupAccessControlManager(ContentName namespace, ContentName[] groupStorage, ContentName[] userStorage, CCNHandle handle) throws ConfigurationException, IOException {
 		_namespace = namespace;
 		_userStorage = userStorage;
 		if (null == handle) {
@@ -221,13 +228,22 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		_keyCache = new KeyCache(_handle.keyManager());
 		
-		// start enumerating users in the background
-		userList();
-		_groupManager = new GroupManager(this, groupStorage, _handle);
+		_groupManager = new GroupManager[groupStorage.length];
+		for (int i=0; i<groupStorage.length; i++) {
+			_groupManager[i] = new GroupManager(this, groupStorage[i], _handle);
+		}
 		// TODO here, check for a namespace marker, and if one not there, write it (async)
 	}
 	
-	public GroupManager groupManager() { return _groupManager; }
+	public GroupManager groupManager() throws Exception {
+		if (_groupManager.length > 1) throw new Exception("A group manager can only be retrieved by name when there are more than one.");
+		return _groupManager[0]; 	
+	}
+	
+	// TODO pgolle: fill this in
+	public GroupManager groupManager(byte[] distinguishingHash) {
+		return null;
+	}
 	
 	/**
 	 * Publish my identity (i.e. my public key) under a specified CCN name
@@ -249,20 +265,6 @@ public class GroupAccessControlManager extends AccessControlManager {
 		_myIdentities.add(identity);
 	}
 	
-	/**
-	 * Publish my identity (i.e. my public key) under a specified user name
-	 * @param userName the user name
-	 * @param myPublicKey my public key
-	 * @throws InvalidKeyException
-	 * @throws ContentEncodingException
-	 * @throws IOException
-	 * @throws ConfigurationException
-	 */
-	public void publishMyIdentity(String userName, PublicKey myPublicKey) 
-			throws InvalidKeyException, ContentEncodingException, IOException, ConfigurationException {
-		Log.finest("publishing my identity" + GroupAccessControlProfile.userNamespaceName(_userStorage, userName));
-		publishMyIdentity(GroupAccessControlProfile.userNamespaceName(_userStorage, userName), myPublicKey);
-	}
 	
 	/**
 	 * Publish the specified identity (i.e. the public key) of a specified user
@@ -278,11 +280,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		System.out.println("saving user pubkey to repo:" + userName);
 		pko.save();
 	}
-	
-	public boolean haveIdentity(String userName) {
-		return _myIdentities.contains(GroupAccessControlProfile.userNamespaceName(_userStorage, userName));
-	}
-	
+		
 	public boolean haveIdentity(ContentName userName) {
 		return _myIdentities.contains(userName);
 	}
@@ -296,18 +294,6 @@ public class GroupAccessControlManager extends AccessControlManager {
 	
 	public String nodeKeyLabel() {
 		return NODE_KEY_LABEL;
-	}
-	
-	/**
-	 * Enumerate users
-	 * @return user enumeration
-	 * @throws IOException
-	 */
-	public EnumeratedNameList userList() throws IOException {
-		if (null == _userList) {
-			_userList = new EnumeratedNameList(_userStorage, handle());
-		}
-		return _userList;
 	}
 	
 	/**
@@ -325,9 +311,15 @@ public class GroupAccessControlManager extends AccessControlManager {
 			return null;
 		}
 		PublicKeyObject pko = null;
-		if (_groupManager.isGroup(principal)) {
-			pko = _groupManager.getLatestPublicKeyForGroup(principal);
-		} else {
+		boolean isGroup = false;
+		for (GroupManager gm: _groupManager) {
+			if (gm.isGroup(principal)) {
+				pko = gm.getLatestPublicKeyForGroup(principal);
+				isGroup = true;
+				break;
+			}
+		}
+		if (!isGroup) {
 			Log.info("Retrieving latest key for user: " + principal.targetName());
 			LinkAuthenticator targetAuth = principal.targetAuthenticator();
 			if (null != targetAuth) {
@@ -972,7 +964,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 			}
 			for (PrincipalInfo principal : nodeKeyDirectory.getCopyOfPrincipals().values()) {
 				if (principal.isGroup()) {
-					Group theGroup = groupManager().getGroup(principal.friendlyName());
+					Group theGroup = groupManager(principal.distinguishingHash()).getGroup(principal.friendlyName());
 					if (theGroup.publicKeyVersion().after(principal.versionTimestamp())) {
 						return true;
 					}
@@ -1142,9 +1134,16 @@ public class GroupAccessControlManager extends AccessControlManager {
 			// TODO -- pulling public keys here; could be slow; might want to manage concurrency over acl.
 			for (Link aclEntry : effectiveACL.contents()) {
 				PublicKeyObject entryPublicKey = null;
-				if (groupManager().isGroup(aclEntry)) {
-					entryPublicKey = groupManager().getLatestPublicKeyForGroup(aclEntry);
-				} else {
+				
+				boolean isInGroupManager = false;
+				for (GroupManager gm: _groupManager) {
+					if (gm.isGroup(aclEntry)) {
+						entryPublicKey = gm.getLatestPublicKeyForGroup(aclEntry);
+						isInGroupManager = true;
+						break;
+					}
+				}
+				if (! isInGroupManager) {
 					// Calls update. Will get latest version if name unversioned.
 					if (aclEntry.targetAuthenticator() != null)
 						entryPublicKey = new PublicKeyObject(aclEntry.targetName(), aclEntry.targetAuthenticator().publisher(), handle());
@@ -1255,4 +1254,11 @@ public class GroupAccessControlManager extends AccessControlManager {
 		return super.isProtectedContent(name, publisher, contentType, handle);
 	}
 
+	public boolean haveKnownGroupMemberships() {
+		for (GroupManager gm: _groupManager) {
+			if (gm.haveKnownGroupMemberships()) return true;
+		}
+		return false;
+	}
+	
 }	

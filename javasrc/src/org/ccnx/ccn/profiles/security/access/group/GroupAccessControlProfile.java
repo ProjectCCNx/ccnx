@@ -70,16 +70,19 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	public static class PrincipalInfo {
 		private byte [] _typeMarker;
 		private String _friendlyName;
+		private byte[] _distinguishingHash;
 		private CCNTime _versionTimestamp;
 		
-		public PrincipalInfo(byte [] type, String friendlyName, CCNTime versionTimestamp) {
+		public PrincipalInfo(byte [] type, String friendlyName, byte[] distinguishingHash, CCNTime versionTimestamp) {
 			_typeMarker = type;
 			_friendlyName = friendlyName;
+			_distinguishingHash = distinguishingHash;
 			_versionTimestamp = versionTimestamp;
 		}
 		
 		public boolean isGroup() { return Arrays.areEqual(GROUP_PRINCIPAL_PREFIX, _typeMarker); }
 		public String friendlyName() { return _friendlyName; }
+		public byte[] distinguishingHash() { return _distinguishingHash; }
 		public CCNTime versionTimestamp() { return _versionTimestamp; }
 	}
 	
@@ -272,7 +275,10 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		String strPrincipal = ContentName.componentPrintNative(principal);
 		// Represent as version or just the timestamp part?
 		CCNTime version = new CCNTime(timestamp);
-		return new PrincipalInfo(type, strPrincipal, version);	
+		
+		byte[] distinguishingHash = null;
+		
+		return new PrincipalInfo(type, strPrincipal, null, version);	
 	}
 
 	/**
@@ -333,7 +339,8 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the corresponding principal info
 	 * @throws VersionMissingException
 	 */
-	public static PrincipalInfo parsePrincipalInfoFromPublicKeyName(boolean isGroup, ContentName publicKeyName) throws VersionMissingException {
+	public static PrincipalInfo parsePrincipalInfoFromPublicKeyName(ContentName publicKeyName) throws VersionMissingException {
+		boolean isGroup = isGroupName(publicKeyName);
 		byte [] type = (isGroup ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
 		CCNTime version = VersioningProfile.getLastVersionAsTimestamp(publicKeyName);
 		
@@ -341,6 +348,8 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		if (isGroup) principal = parsePrincipalNameFromGroupPublicKeyName(publicKeyName);
 		else principal = parsePrincipalNameFromPublicKeyName(publicKeyName);
 		
-		return new PrincipalInfo(type, principal, version);
+		byte[] distinguishingHash = null;
+		
+		return new PrincipalInfo(type, principal, null, version);
 	}
 }
