@@ -139,7 +139,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			}
 			
 			listener = new RepositoryDataListener(interest, readInterest, _server);
-			_server.addListener(interest, readInterest, listener);
+			_server.addListener(listener);
 			listener.getInterests().add(readInterest, null);
 			_handle.expressInterest(readInterest, listener);
 		} catch (Exception e) {

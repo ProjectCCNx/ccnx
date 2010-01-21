@@ -40,7 +40,6 @@ import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationRes
 import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Exclude;
-import org.ccnx.ccn.protocol.Interest;
 
 /**
  * High level implementation of repository protocol that
@@ -323,7 +322,7 @@ public class RepositoryServer {
 		return _repoFilters;
 	}
 	
-	public void addListener(Interest interest, Interest readInterest, RepositoryDataListener listener) {
+	public void addListener(RepositoryDataListener listener) {
 		synchronized(_currentListeners) {
 			_currentListeners.add(listener);
 		}
