@@ -275,7 +275,12 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 							null, LogStructRepoStoreProfile.REPOSITORY_KEYSTORE_ALIAS, 
 							LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
 				_km.initialize();
+				
+				Log.finest("Initialized repository key store.");
+				
 				handle = CCNHandle.open(_km);
+				
+				Log.finest("Opened repository handle.");
 				
 				// Let's use our key manager as the default. That will make us less
 				// prone to accidentally loading the user's key manager. If we close it more than

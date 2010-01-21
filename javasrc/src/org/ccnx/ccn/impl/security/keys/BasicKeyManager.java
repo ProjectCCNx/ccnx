@@ -414,7 +414,8 @@ public class BasicKeyManager extends KeyManager {
 		    
 		    Log.finest("createKeyStore: storing key store.");
 	        ks.store(out, _password);
-	        
+		    Log.finest("createKeyStore: wrote key store.");
+
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot save default keystore.", e);
 		} catch (CertificateException e) {
