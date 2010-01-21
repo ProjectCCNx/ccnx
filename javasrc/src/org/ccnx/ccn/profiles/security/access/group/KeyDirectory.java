@@ -177,7 +177,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					Log.info("Unexpected " + e.getClass().getName() + " parsing key id " + DataUtils.printHexBytes(wkChildName) + ": " + e.getMessage());
 					// ignore and go on
 				}
-			} else if (GroupAccessControlProfile.isPrincipalNameComponent(wkChildName)) {
+			} else if (PrincipalInfo.isPrincipalNameComponent(wkChildName)) {
 				addPrincipal(wkChildName);
 			} else {
 				try{
@@ -271,7 +271,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @param wkChildName the principal name
 	 */
 	protected void addPrincipal(byte [] wkChildName) {
-		PrincipalInfo pi = GroupAccessControlProfile.parsePrincipalInfoFromNameComponent(wkChildName);
+		PrincipalInfo pi = new PrincipalInfo(wkChildName);
 		try{
 				_principalsLock.writeLock().lock();
 				_principals.put(pi.friendlyName(), pi);
@@ -357,8 +357,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @return the corresponding wrapped key name. 
 	 */
 	public ContentName getWrappedKeyNameForPrincipal(PrincipalInfo pi) {
-		ContentName principalLinkName = new ContentName(_namePrefix, 
-				GroupAccessControlProfile.principalInfoToNameComponent(pi));
+		ContentName principalLinkName = new ContentName(_namePrefix, pi.toNameComponent());
 		return principalLinkName;
 	}
 	
@@ -367,9 +366,10 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @param principalPublicKeyName the name of the public key of the principal.
 	 * @return the corresponding wrapped key name.
 	 * @throws VersionMissingException
+	 * @throws ContentEncodingException 
 	 */
-	public ContentName getWrappedKeyNameForPrincipal(ContentName principalPublicKeyName) throws VersionMissingException {
-		PrincipalInfo info = GroupAccessControlProfile.parsePrincipalInfoFromPublicKeyName(principalPublicKeyName);
+	public ContentName getWrappedKeyNameForPrincipal(ContentName principalPublicKeyName) throws VersionMissingException, ContentEncodingException {
+		PrincipalInfo info = new PrincipalInfo(_manager, principalPublicKeyName);
 		return getWrappedKeyNameForPrincipal(info);
 	}
 
