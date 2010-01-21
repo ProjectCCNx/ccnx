@@ -256,7 +256,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 	
 	// TODO
-	public Tuple<ContentName, String> parsePrincipalInfoFromPublicKeyName(ContentName principalPublicKeyName) {
+	public Tuple<ContentName, String> parsePrefixAndFriendlyNameFromPublicKeyName(ContentName principalPublicKeyName) {
 		// for each group manager/user namespace, there is a prefix, then a "friendly" name component,
 		// then optionally a postfix that gets tacked on to go from the prefix to the public key
 		// e.g. Alice's key in the user namespace might be:

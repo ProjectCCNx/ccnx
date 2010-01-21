@@ -104,7 +104,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 			// Now need to parse the principal name into a distinguishing hash and friendly name
 			// How to do this depends on which group it is; there might be a postfix for the
 			// name to deal with
-			Tuple<ContentName, String> distinguishingPrefixAndFriendlyName = accessControlManager.parsePrincipalInfoFromPublicKeyName(publicKeyName);
+			Tuple<ContentName, String> distinguishingPrefixAndFriendlyName = accessControlManager.parsePrefixAndFriendlyNameFromPublicKeyName(publicKeyName);
 			_distinguishingHash = contentPrefixToDistinguishingHash(distinguishingPrefixAndFriendlyName.first());
 			_friendlyName = distinguishingPrefixAndFriendlyName.second();
 		}
