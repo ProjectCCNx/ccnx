@@ -471,13 +471,14 @@ public class DataUtils {
 			return new byte [][]{array};
 		} 
 		byte [][] components = new byte[count][];
-		while (index < array.length) {
-			offset = byteindex(array, index, splitValue);
-			components[index] = new byte[offset - lastoffset - 1];
+		while (index < count) {
+			offset = byteindex(array, lastoffset, splitValue);
+			components[index] = new byte[offset - lastoffset];
 			System.arraycopy(array, lastoffset, components[index], 0, components[index].length);
 			lastoffset = offset + 1;
 			index++;
 		}
 		return components;
 	}
+	
 }
