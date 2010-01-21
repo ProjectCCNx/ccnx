@@ -261,22 +261,22 @@ public class GroupAccessControlManager extends AccessControlManager {
 		return _groupManager[0]; 	
 	}
 	
-	public GroupManager groupManager(byte[] distinguishingHash) throws Exception {
+	public GroupManager groupManager(byte[] distinguishingHash) {
 		GroupManager gm = hashToGroupManagerMap.get(distinguishingHash);
-		if (gm == null) throw new Exception("Failed to retrieve a group manager with distinguishing hash " + distinguishingHash);
+		if (gm == null) Log.severe("Failed to retrieve a group manager with distinguishing hash " + distinguishingHash);
 		return gm;
 	}
 	
-	public GroupManager groupManager(ContentName prefixName) throws Exception {
+	public GroupManager groupManager(ContentName prefixName) {
 		GroupManager gm = prefixToGroupManagerMap.get(prefixName);
-		if (gm == null) throw new Exception("Failed to retrieve a group manager with prefix " + prefixName);
+		if (gm == null) Log.severe("GroupAccessControlManager: failed to retrieve a group manager with prefix " + prefixName);
 		return gm;		
 	}
 	
-	// TODO fill this in
 	public boolean isGroupName(ContentName principalPublicKeyName) {
-		// iterate through available group managers and see if the prefix of this name
-		// matches any of their prefixes
+		for (GroupManager gm: _groupManager) {
+			if (gm.isGroup(principalPublicKeyName)) return true;
+		}
 		return false;
 	}
 	
