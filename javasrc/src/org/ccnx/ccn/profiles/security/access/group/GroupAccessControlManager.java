@@ -22,6 +22,7 @@ import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 
@@ -201,6 +202,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 	
 	private ContentName[] _userStorage;
 	private GroupManager[] _groupManager = null;
+	private HashMap<byte[], GroupManager> hashToGroupManagerMap = new HashMap<byte[], GroupManager>();
+	private HashMap<ContentName, GroupManager> prefixToGroupManagerMap = new HashMap<ContentName, GroupManager>();
 	private HashSet<ContentName> _myIdentities = new HashSet<ContentName>();
 	
 	public GroupAccessControlManager() {
@@ -218,40 +221,39 @@ public class GroupAccessControlManager extends AccessControlManager {
 	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws ConfigurationException, IOException {
 		this(namespace, groupStorage, userStorage, null);
 	}
-
-	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage, CCNHandle handle) throws ConfigurationException, IOException {
-		// move to initialize
-		_namespace = namespace;
-		_userStorage = new ContentName[1];
-		_userStorage[0] = userStorage;
-		if (null == handle) {
-			_handle = CCNHandle.open();
-		} else {
-			_handle = handle;
-		}
-		_keyCache = new KeyCache(_handle.keyManager());
-		
-		_groupManager = new GroupManager[1];
-		_groupManager[0] = new GroupManager(this, groupStorage, _handle);
-		// TODO here, check for a namespace marker, and if one not there, write it (async)
-	}
 	
-	public GroupAccessControlManager(ContentName namespace, ContentName[] groupStorage, ContentName[] userStorage, CCNHandle handle) throws ConfigurationException, IOException {
-		// move to initialize
+	private void initialize(ContentName namespace, ContentName[] groupStorage, ContentName[] userStorage, CCNHandle handle) throws ConfigurationException, IOException {
 		_namespace = namespace;
-		_userStorage = userStorage;
 		if (null == handle) {
 			_handle = CCNHandle.open();
 		} else {
 			_handle = handle;
 		}
 		_keyCache = new KeyCache(_handle.keyManager());
+
+		_userStorage = userStorage;
 		
 		_groupManager = new GroupManager[groupStorage.length];
 		for (int i=0; i<groupStorage.length; i++) {
-			_groupManager[i] = new GroupManager(this, groupStorage[i], _handle);
+			GroupManager gm = new GroupManager(this, groupStorage[i], _handle);
+			_groupManager[i] = gm;
+			byte[] distinguishingHash = GroupAccessControlProfile.PrincipalInfo.contentPrefixToDistinguishingHash(groupStorage[i]);
+			hashToGroupManagerMap.put(distinguishingHash, gm);
+			prefixToGroupManagerMap.put(groupStorage[i], gm);			
 		}
 		// TODO here, check for a namespace marker, and if one not there, write it (async)
+	}
+
+	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage, CCNHandle handle) throws ConfigurationException, IOException {		
+		ContentName[] userStorageArray = new ContentName[1];
+		userStorageArray[0] = userStorage;
+		ContentName[] groupStorageArray = new ContentName[1];
+		groupStorageArray[0] = groupStorage;
+		initialize(namespace, groupStorageArray, userStorageArray, handle);
+	}
+	
+	public GroupAccessControlManager(ContentName namespace, ContentName[] groupStorage, ContentName[] userStorage, CCNHandle handle) throws ConfigurationException, IOException {
+		initialize(namespace, groupStorage, userStorage, handle);
 	}
 	
 	public GroupManager groupManager() throws Exception {
@@ -259,11 +261,16 @@ public class GroupAccessControlManager extends AccessControlManager {
 		return _groupManager[0]; 	
 	}
 	
-	// TODO pgolle: fill this in
-	public GroupManager groupManager(byte[] distinguishingHash) {
-		// just keep a Map from hash to group manager, and a simplar Map from content name prefix to 
-		// (that same set of) group managers
-		return null;
+	public GroupManager groupManager(byte[] distinguishingHash) throws Exception {
+		GroupManager gm = hashToGroupManagerMap.get(distinguishingHash);
+		if (gm == null) throw new Exception("Failed to retrieve a group manager with distinguishing hash " + distinguishingHash);
+		return gm;
+	}
+	
+	public GroupManager groupManager(ContentName prefixName) throws Exception {
+		GroupManager gm = prefixToGroupManagerMap.get(prefixName);
+		if (gm == null) throw new Exception("Failed to retrieve a group manager with prefix " + prefixName);
+		return gm;		
 	}
 	
 	// TODO fill this in
