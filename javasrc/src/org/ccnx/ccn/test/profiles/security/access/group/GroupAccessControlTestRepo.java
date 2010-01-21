@@ -20,11 +20,9 @@ package org.ccnx.ccn.test.profiles.security.access.group;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
-import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.BeforeClass;
@@ -44,7 +42,7 @@ public class GroupAccessControlTestRepo {
 		// mark the namespace as under access control
 		ACL acl = new ACL();
 		acName = ContentName.fromNative("/parc.com/ac_repo");
-		NamespaceManager.Root.create(acName, acl, SaveType.REPOSITORY, CCNHandle.getHandle());
+	//	NamespaceManager.Root.create(acName, acl, SaveType.REPOSITORY, CCNHandle.getHandle());
 
 		// create a file in the namespace under access control
 		fileName = ContentName.fromNative(acName, "/test.txt");

@@ -47,6 +47,7 @@ import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.namespace.Root.RootObject;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.KeyCache;
@@ -187,6 +188,10 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 public class GroupAccessControlManager extends AccessControlManager {
 	
 	/**
+	 * Marker in a Root object that this is the profile we want.
+	 */
+	public static final String PROFILE_NAME = "/ccnx.org/ccn/profiles/security/access/group/GroupAccessControlProfile";
+	/**
 	 * This algorithm must be capable of key wrap (RSA, ElGamal, etc).
 	 */
 	public static final String DEFAULT_GROUP_KEY_ALGORITHM = "RSA";
@@ -197,13 +202,25 @@ public class GroupAccessControlManager extends AccessControlManager {
 	private ContentName[] _userStorage;
 	private GroupManager[] _groupManager = null;
 	private HashSet<ContentName> _myIdentities = new HashSet<ContentName>();
+	
+	public GroupAccessControlManager() {
+		// must call initialize
+	}
 
-
+	@Override
+	public boolean initialize(RootObject policyInformation, CCNHandle handle) {
+		// set up information based on contents of policy
+		// also need a static method/command line program to create a Root with the right types of information
+		// for this access control manager type
+		return true;
+	}
+	
 	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws ConfigurationException, IOException {
 		this(namespace, groupStorage, userStorage, null);
 	}
 
 	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage, CCNHandle handle) throws ConfigurationException, IOException {
+		// move to initialize
 		_namespace = namespace;
 		_userStorage = new ContentName[1];
 		_userStorage[0] = userStorage;
@@ -220,6 +237,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 	
 	public GroupAccessControlManager(ContentName namespace, ContentName[] groupStorage, ContentName[] userStorage, CCNHandle handle) throws ConfigurationException, IOException {
+		// move to initialize
 		_namespace = namespace;
 		_userStorage = userStorage;
 		if (null == handle) {

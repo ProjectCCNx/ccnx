@@ -78,4 +78,10 @@
 100,BinaryValue
 101,NameValue
 102,Entry
+103,ParameterizedName
+104,Prefix
+105,Suffix
+106,Root
+107,ProfileName
+108,Parameters
 17702112,CCNProtocolDataUnit

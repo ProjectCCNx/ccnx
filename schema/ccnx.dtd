@@ -32,8 +32,8 @@
 <!ENTITY % valuechoice "IntegerValue 	       |
                         DecimalValue           |
                         StringValue            |
-                        BinaryValue	       |
-			NameValue">
+                        BinaryValue		       |
+			            NameValue">
 
 <!ELEMENT Entry	(Key, (%valuechoice;))>
 <!ATTLIST Entry	%commonattrs;>
