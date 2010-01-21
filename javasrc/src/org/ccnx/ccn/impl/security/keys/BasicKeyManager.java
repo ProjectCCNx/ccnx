@@ -366,8 +366,8 @@ public class BasicKeyManager extends KeyManager {
 		KeyStore ks = null;
 	    try {
 	    	Log.finest("createKeyStore: getting instance of keystore type " + _keyStoreType);
-			ks = KeyStore.getInstance(_keyStoreType, KeyManager.getDefaultProvider());
-			Log.finest("createKeyStore: loading key store. Using default provider.");
+			ks = KeyStore.getInstance(_keyStoreType);
+			Log.finest("createKeyStore: loading key store.");
 			ks.load(null, _password);
 			Log.finest("createKeyStore: key store loaded.");
 		} catch (NoSuchAlgorithmException e) {
