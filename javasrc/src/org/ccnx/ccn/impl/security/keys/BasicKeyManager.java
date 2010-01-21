@@ -349,6 +349,7 @@ public class BasicKeyManager extends KeyManager {
 
 	    FileOutputStream out = null;
 		try {
+			Log.finest("Creating FileOutputStream to write keystore to file " + keyStoreFile.getAbsolutePath());
 			out = new FileOutputStream(keyStoreFile);
 		} catch (FileNotFoundException e) {
 			generateConfigurationException("Cannot create keystore file: " + keyStoreFile.getAbsolutePath(), e);
@@ -365,8 +366,8 @@ public class BasicKeyManager extends KeyManager {
 		KeyStore ks = null;
 	    try {
 	    	Log.finest("createKeyStore: getting instance of keystore type " + _keyStoreType);
-			ks = KeyStore.getInstance(_keyStoreType);
-			Log.finest("createKeyStore: loading key store.");
+			ks = KeyStore.getInstance(_keyStoreType, KeyManager.getDefaultProvider());
+			Log.finest("createKeyStore: loading key store. Using default provider.");
 			ks.load(null, _password);
 			Log.finest("createKeyStore: key store loaded.");
 		} catch (NoSuchAlgorithmException e) {
