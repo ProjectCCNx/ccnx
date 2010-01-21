@@ -53,10 +53,10 @@ public class NamespaceManager {
 	
 	static {
 		try {
-			NamespaceManager.registerAccessControlManagerType(
-					ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME), GroupAccessControlManager.class);
+			NamespaceManager.registerAccessControlManagerType(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), 
+																GroupAccessControlManager.class);
 		} catch (MalformedContentNameStringException e) {
-			throw new ErrorStateException("Cannot parse built-in profile name: " + GroupAccessControlManager.PROFILE_NAME);
+			throw new RuntimeException("Cannot parse built-in profile name: " + GroupAccessControlManager.PROFILE_NAME_STRING);
 		}
 	}
 	
