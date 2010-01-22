@@ -643,6 +643,9 @@ public class KeyRepository {
 	 * @param keyName key digest
 	 */
 	public PublicKeyObject retrieve(PublisherPublicKeyDigest keyID) {
+		if (!_idMap.containsKey(keyID)) {
+			return null;
+		}
 		ContentName name = _idMap.get(keyID).get(0);
 		if (null != name) {
 			return _keyMap.get(name);
