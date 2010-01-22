@@ -56,7 +56,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		// create and register ACM
 		handle = td.getHandleForUser(friendlyNames[0]);
 		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
-		acm.publishMyIdentity(ContentName.fromNative(userKeyStorePrefix, friendlyNames[0]), handle.keyManager().getDefaultPublicKey());
+		acm.publishMyIdentity(ContentName.fromNative(userNamespace, friendlyNames[0]), handle.keyManager().getDefaultPublicKey());
 		handle.keyManager().publishKeyToRepository();
 		NamespaceManager.registerACM(acm);
 		
@@ -136,9 +136,8 @@ public class GACMNodeKeyDirtyTestRepo {
 			ArrayList<Link> ACLcontents = new ArrayList<Link>();
 			ACLcontents.add(lk);
 			ACL aclNode = new ACL(ACLcontents);
-			if (i==0) acm.initializeNamespace(aclNode);
 			acm.setACL(node[i], aclNode);
-		}		
+		}
 	}
 	
 	public void writeNodeContent() throws Exception {
