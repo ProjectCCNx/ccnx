@@ -57,14 +57,16 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 */
 	public int handleInterests(ArrayList<Interest> interests) {
 		for (Interest interest : interests) {
-			if (interest.answerOriginKind() == 0)	// TODO - should this be true for 1 too?
-				continue;	// Request to not answer from out content
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+				Log.finer("Saw interest: {0}", interest.name());
 			try {
-				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
-					Log.finer("Saw interest: {0}", interest.name());
 				if (interest.name().contains(CommandMarkers.COMMAND_MARKER_REPO_START_WRITE)) {
+					if (null != interest.answerOriginKind() && (interest.answerOriginKind() & ~Interest.ANSWER_GENERATED) == 0)
+						continue;	// Request to not answer
 					startReadProcess(interest);
 				} else if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
+					if (null != interest.answerOriginKind() && (interest.answerOriginKind() & ~Interest.ANSWER_GENERATED) == 0)
+						continue;	// Request to not answer
 					nameEnumeratorResponse(interest);
 				} else {
 					ContentObject content = _server.getRepository().getContent(interest);
