@@ -617,7 +617,7 @@ public class KeyDirectory extends EnumeratedNameList {
 						for (String principal : _principals.keySet()) {
 							PrincipalInfo pInfo = _principals.get(principal);
 							GroupManager pgm = _manager.groupManager(pInfo.distinguishingHash());
-							if ((! pgm.isGroup(principal)) || (! pgm.amKnownGroupMember(principal))) {
+							if ((pgm == null) || (! pgm.isGroup(principal)) || (! pgm.amKnownGroupMember(principal))) {
 								// On this pass, only do groups that I think I'm a member of. Do them
 								// first as it is likely faster.
 								continue;
@@ -646,7 +646,7 @@ public class KeyDirectory extends EnumeratedNameList {
 							for (String principal : _principals.keySet()) {
 								PrincipalInfo pInfo = _principals.get(principal);
 								GroupManager pgm = _manager.groupManager(pInfo.distinguishingHash());
-								if ((! pgm.isGroup(principal)) || (pgm.amKnownGroupMember(principal))) {
+								if ((pgm == null) || (! pgm.isGroup(principal)) || (pgm.amKnownGroupMember(principal))) {
 									// On this pass, only do groups that I don't think I'm a member of.
 									continue;
 								}
