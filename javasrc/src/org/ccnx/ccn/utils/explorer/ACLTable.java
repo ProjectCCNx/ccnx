@@ -39,7 +39,8 @@ public class ACLTable extends AbstractTableModel {
 	public ACLTable(String type, ContentName[] principals, ACL initialACL) {
 		columnNames[0] = type;
 		this.principals = principals;
-		initializeACLTable(initialACL);		
+		if (initialACL != null) initializeACLTable(initialACL);
+		else System.out.println("Fatal error: initial ACL cannot be null");
 	}
 	
 	public void initializeACLTable(ACL initialACL) {

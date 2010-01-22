@@ -136,6 +136,11 @@ public class ACLManager extends JDialog implements ActionListener {
 		
 	}
 
+	public boolean hasACL() {
+		if (currentACL != null) return true;
+		return false;
+	}
+	
 	private void getNodeName(String path) {
 		try{
 			node = ContentName.fromNative(path);
@@ -149,9 +154,12 @@ public class ACLManager extends JDialog implements ActionListener {
 		try{
 			currentACL = acm.getEffectiveACLObject(node).acl();
 		}
+		catch (IllegalStateException ise) {
+			System.out.println("Fatal error: the repository has no root ACL.");
+		}
 		catch (Exception e) {
-			System.out.println("Creating missing root ACL");
-			createRootACL();
+//			System.out.println("Creating missing root ACL");
+//			createRootACL();
 			e.printStackTrace();
 		}		
 	}

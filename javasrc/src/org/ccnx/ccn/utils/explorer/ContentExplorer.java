@@ -1111,7 +1111,11 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				public void run() {
 					try {
 						ACLManager dialog = new ACLManager(selectedPrefix);
-						dialog.setVisible(true);
+						if (dialog.hasACL()) dialog.setVisible(true);
+						else {
+							dialog.setVisible(false);
+							dialog.dispose();
+						}
 					} catch (Exception e) {
 						Log.warningStackTrace(e);
 					}
