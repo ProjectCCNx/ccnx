@@ -283,6 +283,20 @@ content_queue_destroy(struct ccnd_handle *h, struct content_queue **pq)
 }
 
 static void
+ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
+{
+    int res;
+    if (*pfd != -1) {
+        res = close(*pfd);
+        if (res == -1)
+            ccnd_msg(h, "close failed for face %u fd=%d: %s", faceid, *pfd, strerror(errno));
+        else
+            ccnd_msg(h, "closing fd %d while finalizing face %u", *pfd, faceid);
+        *pfd = -1;
+    }
+}
+
+static void
 finalize_face(struct hashtb_enumerator *e)
 {
     struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
@@ -292,6 +306,11 @@ finalize_face(struct hashtb_enumerator *e)
     int recycle = 0;
     
     if (i < h->face_limit && h->faces_by_faceid[i] == face) {
+        if (e->ht == h->faces_by_fd) {
+            if (face->send_fd != face->recv_fd)
+                ccnd_close_fd(h, face->faceid, &face->recv_fd);
+            ccnd_close_fd(h, face->faceid, &face->send_fd);
+        }
         h->faces_by_faceid[i] = NULL;
         if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
               face->faceid == ((h->face_rover - 1) | h->face_gen)) {
