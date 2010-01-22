@@ -182,6 +182,18 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		}
 	}
 	
+	/**
+	 * Make a Collection containing Links which only specify names and a single label.
+	 * @param nameContents The list of names to link to.
+	 */
+	public Collection(String label, ArrayList<ContentName> nameContents) {
+		if (null != nameContents) {
+			for (ContentName name : nameContents) {
+				_contents.add(new Link(name, label, null));
+			}
+		}
+	}
+
 	public LinkedList<Link> contents() { 
 		return _contents; 
 	}
@@ -198,6 +210,18 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		_contents.addAll(contents);
 	}
 	
+	public void add(String label, ArrayList<ContentName> nameContents) {
+		if (null != nameContents) {
+			for (ContentName name : nameContents) {
+				_contents.add(new Link(name, label, null));
+			}
+		}
+	}
+	
+	public void add(String label, ContentName target) {
+		_contents.add(new Link(target, label, null));
+	}
+
 	public Link remove(int i) {
 		return _contents.remove(i);
 	}
