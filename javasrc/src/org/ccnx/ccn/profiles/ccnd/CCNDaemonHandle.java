@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
@@ -92,7 +93,7 @@ public class CCNDaemonHandle {
 		ContentObject contentIn;
 
 		try {
-			contentIn = _manager.get(interested, 1000);
+			contentIn = _manager.get(interested, SystemConfiguration.CCND_OP_TIMEOUT);
 		} catch (IOException e) {
 			String msg = ("Unexpected IOException in call getting CCNDaemonHandle.sendIt return value, reason: " + e.getMessage());
 			Log.info(msg);
