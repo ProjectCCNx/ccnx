@@ -117,7 +117,7 @@ public class UserConfiguration {
 	
 	public static String ccnDirectory() { 
 		if (null == CCN_DIR) {
-			synchronized(CCN_DIR) {
+			synchronized(UserConfiguration.class) {
 				if (null == CCN_DIR) {
 					// First try the command line property.
 					CCN_DIR = System.getProperty(CCN_DIR_NAME_PROPERTY);
