@@ -34,20 +34,20 @@ public class UserConfiguration {
 	protected static final String USER_CONFIG_FILE = "ccnx_config.xml";
 
 	
-	protected static final String KEYSTORE_FILE_NAME = ".ccnx_keystore";
+	protected static final String DEFAULT_KEYSTORE_FILE_NAME = ".ccnx_keystore";
 	protected static final String KEY_DIRECTORY = "keyCache";
 	protected static final String ADDRESSBOOK_FILE_NAME = "ccnx_addressbook.xml";
 
-	protected static final String DEFAULT_CCN_NAMESPACE_STRING = "/ccnx.org";
+	protected static final String CCNX_DEFAULT_NAMESPACE = "/ccnx.org";
 	
 	protected static final String DEFAULT_USER_NAMESPACE_MARKER = "Users";
-	protected static final String DEFAULT_USER_KEY_NAMESPACE_MARKER = "Keys";
+	protected static final String DEFAULT_KEY_NAMESPACE_MARKER = "Keys";
 	
 	/**
 	 * Currently very cheezy keystore handling. Will improve when we can actually use
 	 * java 1.6-only features.
 	 */
-	protected static final String KEYSTORE_PASSWORD = "Th1s1sn0t8g00dp8ssw0rd.";
+	protected static final String DEFAULT_KEYSTORE_PASSWORD = "Th1s1sn0t8g00dp8ssw0rd.";
 	protected static final int DEFAULT_KEY_LENGTH = 1024;
 	protected static final String DEFAULT_KEY_ALG = "RSA";
 	/**
@@ -60,57 +60,31 @@ public class UserConfiguration {
 	/**
 	 * Default prefix to use, e.g. for user information if not overridden by local stuff.
 	 */
-	/**
-	 * Command-line property to set default user data directory
-	 * @return
-	 */
-	protected static final String CCNX_NAMESPACE_PROPERTY = 
+	protected static final String CCNX_DEFAULT_NAMESPACE_PROPERTY = 
 		"org.ccnx.config.CCNxNamespace";
-	
-	/**
-	 * Environament variable to set default user data directory; 
-	 * overridden by command-line property.
-	 * @return
-	 */
-	protected static final String CCNX_NAMESPACE_ENVIRONMENT_VARIABLE = "CCNX_NAMESPACE";
+	protected static final String CCNX_DEFAULT_NAMESPACE_ENVIRONMENT_VARIABLE = "CCNX_NAMESPACE";
 
 	/**
+	 * Default value of user configuration directory name -- this is not
+	 * the full path, merely the directory name itself; by default we interpret
+	 * the directory name as <user_home>/.ccnx.
+	 * @return
+	 */
+	protected static final String CCNX_DEFAULT_USER_CONFIG_DIR_NAME = ".ccnx";
+	
+	/**
 	 * Directory (subdirectory of User.home) where all user metadata is kept.
-	 */
-	/**
-	 * Default value of user configuration directory name. 
-	 * @return
-	 */
-	protected static final String CCNX_USER_CONFIG_DIR_NAME = ".ccnx";
-	/**
-	 * Command-line property to set default user data directory
-	 * @return
+	 * Property/environment variable to set the user configuration directory (full path).
 	 */
 	protected static final String CCNX_USER_CONFIG_DIR_PROPERTY = 
 		"org.ccnx.config.CCNxDir";
-	
-	/**
-	 * Environament variable to set default user data directory; 
-	 * overridden by command-line property.
-	 * @return
-	 */
 	protected static final String CCNX_USER_CONFIG_DIR_ENVIRONMENT_VARIABLE = "CCNX_DIR";
 
 	/**
 	 * User friendly name, by default user.name Java property
 	 */
-	/**
-	 * Command-line property to set default user data directory
-	 * @return
-	 */
 	protected static final String CCNX_USER_NAME_PROPERTY = 
 		"org.ccnx.config.UserName";
-	
-	/**
-	 * Environament variable to set default user data directory; 
-	 * overridden by command-line property.
-	 * @return
-	 */
 	protected static final String CCNX_USER_NAME_ENVIRONMENT_VARIABLE = "CCNX_USER_NAME";
 
 	/**
@@ -118,19 +92,25 @@ public class UserConfiguration {
 	 * the user namespace will be set to the value given here -- we don't add the
 	 * user namespace marker or userName(). 
 	 */
-	/**
-	 * Command-line property to set default user data directory
-	 * @return
-	 */
 	protected static final String CCNX_USER_NAMESPACE_PROPERTY = 
 		"org.ccnx.config.UserNamespace";
-	
-	/**
-	 * Environament variable to set default user data directory; 
-	 * overridden by command-line property.
-	 * @return
-	 */
 	protected static final String CCNX_USER_NAMESPACE_ENVIRONMENT_VARIABLE = "CCNX_USER_NAMESPACE";
+
+	/**
+	 * Property and variable to set the keystore file name to something other than the default .ccnx_keystore
+	 * (the directory is handled separately, as the CCNX_USER_CONFIG_DIRECTORY...)
+	 */
+	protected static final String CCNX_KEYSTORE_FILENAME_PROPERTY = 
+		"org.ccnx.config.KeystoreFilename";
+	protected static final String CCNX_KEYSTORE_FILENAME_ENVIRONMENT_VARIABLE = "CCNX_KEYSTORE_FILENAME";
+
+	/**
+	 * Property and variable to set the keystore password to something other than the default;
+	 *  can also be overridden in calls to the key manager constructor.
+	 */
+	protected static final String CCNX_KEYSTORE_PASSWORD_PROPERTY = 
+		"org.ccnx.config.KeystorePassword";
+	protected static final String CCNX_KEYSTORE_PASSWORD_ENVIRONMENT_VARIABLE = "CCNX_KEYSTORE_PASSWORD";
 
 	/**
 	 * Value of CCN directory.
@@ -145,7 +125,7 @@ public class UserConfiguration {
 	/**
 	 * CCNx (control) prefix. 
 	 */
-	protected static ContentName _ccnxNamespace;
+	protected static ContentName _defaultNamespace;
 
 	/**
 	 * User prefix (e.g. for keys). By default, the CCNX prefix together with user information.
@@ -156,6 +136,12 @@ public class UserConfiguration {
 	 * Keystore file name. This is the name of the actual file, without the directory.
 	 */
 	protected static String _keystoreFileName;
+	
+	/**
+	 * Keystore password, if not default. Yes we know this is bad; it's 
+	 * on our list of things to improve.
+	 */
+	protected static String _keystorePassword;
 
 	protected static final String USER_DIR = System.getProperty("user.home");
 	protected static String FILE_SEP = System.getProperty("file.separator");
@@ -180,27 +166,28 @@ public class UserConfiguration {
 		if (null == _userConfigurationDir) {
 			_userConfigurationDir = retrievePropertyOrEvironmentVariable(CCNX_USER_CONFIG_DIR_PROPERTY, 
 																		 CCNX_USER_CONFIG_DIR_ENVIRONMENT_VARIABLE,
-															USER_DIR + FILE_SEP + CCNX_USER_CONFIG_DIR_NAME);
+															USER_DIR + FILE_SEP + CCNX_DEFAULT_USER_CONFIG_DIR_NAME);
 		}
 		return _userConfigurationDir; 
 	}
 	
-	public static void setccnxNamespacePrefix(String ccnxNamespacePrefix) throws MalformedContentNameStringException {
-		_ccnxNamespace = (null == ccnxNamespacePrefix) ? null : ContentName.fromNative(ccnxNamespacePrefix);
+	public static void setDefaultNamespacePrefix(String defaultNamespacePrefix) throws MalformedContentNameStringException {
+		_defaultNamespace = (null == defaultNamespacePrefix) ? null : ContentName.fromNative(defaultNamespacePrefix);
 	}
 	
-	public static ContentName ccnxNamespace() { 
-		if (null == _ccnxNamespace) {
-			String ccnxNamespaceString = 
-				retrievePropertyOrEvironmentVariable(CCNX_NAMESPACE_PROPERTY, CCNX_NAMESPACE_ENVIRONMENT_VARIABLE, DEFAULT_CCN_NAMESPACE_STRING);
+	public static ContentName defaultNamespace() { 
+		if (null == _defaultNamespace) {
+			String defaultNamespaceString = 
+				retrievePropertyOrEvironmentVariable(CCNX_DEFAULT_NAMESPACE_PROPERTY, CCNX_DEFAULT_NAMESPACE_ENVIRONMENT_VARIABLE, 
+													CCNX_DEFAULT_NAMESPACE);
 			try {
-				_ccnxNamespace = ContentName.fromNative(ccnxNamespaceString);
+				_defaultNamespace = ContentName.fromNative(defaultNamespaceString);
 			} catch (MalformedContentNameStringException e) {
-				Log.severe("Attempt to configure invalid default CCNx namespace: {0}!", ccnxNamespaceString);
-				throw new RuntimeException("Attempt to configure invalid default CCNx namespace: " + ccnxNamespaceString + "!");
+				Log.severe("Attempt to configure invalid default CCNx namespace: {0}!", defaultNamespaceString);
+				throw new RuntimeException("Attempt to configure invalid default CCNx namespace: " + defaultNamespaceString + "!");
 			}
 		}
-		return _ccnxNamespace; 
+		return _defaultNamespace; 
 	}
 	
 	public static void setUserNamespace(String userNamespace) throws MalformedContentNameStringException {
@@ -219,22 +206,42 @@ public class UserConfiguration {
 					throw new RuntimeException("Attempt to configure invalid default CCNx namespace: " + userNamespaceString + "!");
 				}
 			} else {
-				_userNamespace = ContentName.fromNative(ccnxNamespace(), DEFAULT_USER_NAMESPACE_MARKER, userName());
+				_userNamespace = ContentName.fromNative(defaultNamespace(), DEFAULT_USER_NAMESPACE_MARKER, userName());
 			}
 		}
 		return _userNamespace; 
 	}
 
-
 	public static String userConfigFile() { 
 		return userConfigurationDirectory() + FILE_SEP + USER_CONFIG_FILE; }
 	
-	public static String defaultKeystoreFileName() { 
-		return KEYSTORE_FILE_NAME; }
 	
-	public static String defaultKeystorePassword() { 
-		return KEYSTORE_PASSWORD; }
+	public static void setKeystoreFileName(String fileName) {
+		_keystoreFileName = fileName;
+	}
 	
+	public static String keystoreFileName() { 
+		if (null == _keystoreFileName) {
+			_keystoreFileName = retrievePropertyOrEvironmentVariable(CCNX_KEYSTORE_FILENAME_PROPERTY, 
+																		 CCNX_KEYSTORE_FILENAME_ENVIRONMENT_VARIABLE,
+															DEFAULT_KEYSTORE_FILE_NAME);
+		}
+		return _keystoreFileName; 
+	}
+	
+	public static void setKeystorePassword(String password) {
+		_keystorePassword = password;
+	}
+	
+	public static String keystorePassword() { 
+		if (null == _keystorePassword) {
+			_keystorePassword = retrievePropertyOrEvironmentVariable(CCNX_KEYSTORE_PASSWORD_PROPERTY, 
+																		 CCNX_KEYSTORE_PASSWORD_ENVIRONMENT_VARIABLE,
+																		 DEFAULT_KEYSTORE_PASSWORD);
+		}
+		return _keystorePassword; 
+	}
+
 	public static String keyRepositoryDirectory() {
 		return userConfigurationDirectory() + FILE_SEP + KEY_DIRECTORY; }
 	
@@ -249,9 +256,7 @@ public class UserConfiguration {
 	
 	public static int defaultKeyLength() { return DEFAULT_KEY_LENGTH; }
 
-	public static String defaultKeyName() { return DEFAULT_USER_KEY_NAME; }
-	public static ContentName defaultNamespace() { return DEFAULT_CCN_NAMESPACE; }
-	public static ContentName defaultUserNamespace() { return DEFAULT_USER_NAMESPACE; }
+	public static String defaultKeyNamespaceMarker() { return DEFAULT_KEY_NAMESPACE_MARKER; }
 	
 	/**
 	 * Retrieve a string that might be stored as an environment variable, or

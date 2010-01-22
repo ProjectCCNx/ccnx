@@ -113,7 +113,7 @@ public class BasicKeyManager extends KeyManager {
 							  String defaultAlias, char [] password) throws ConfigurationException, IOException {
 		
 		_userName = (null != userName) ? userName : UserConfiguration.userName();
-		_password = (null != password) ? password : UserConfiguration.defaultKeystorePassword().toCharArray();
+		_password = (null != password) ? password : UserConfiguration.keystorePassword().toCharArray();
 		_keyStoreType = (null != keyStoreType) ? keyStoreType : UserConfiguration.defaultKeystoreType();
 	    _defaultAlias = (null != defaultAlias) ? defaultAlias : UserConfiguration.defaultKeyAlias();
 	    // must call initialize
@@ -130,7 +130,7 @@ public class BasicKeyManager extends KeyManager {
 						   String defaultAlias, char [] password) throws ConfigurationException, IOException {
 		this(userName, keyStoreType, defaultAlias, password);
 		_keyStoreFileName = (null != keyStoreFileName) ? 
-				keyStoreFileName : UserConfiguration.defaultKeystoreFileName();
+				keyStoreFileName : UserConfiguration.keystoreFileName();
 	    _keyStoreDirectory = (null != keyStoreDirectory) ? keyStoreDirectory : UserConfiguration.userConfigurationDirectory();
 		// must call initialize
 	}
@@ -491,9 +491,10 @@ public class BasicKeyManager extends KeyManager {
 	
 	@Override
 	public ContentName getDefaultKeyNamePrefix() {
+		// TODO -- calculate a user namespace if someone hands in our userName
 		ContentName keyDir =
-			ContentName.fromNative(UserConfiguration.defaultUserNamespace(), 
-				   			_userName, UserConfiguration.defaultKeyName());
+			ContentName.fromNative(UserConfiguration.userNamespace(), 
+				   			       UserConfiguration.defaultKeyNamespaceMarker());
 		return keyDir;
 	}
 	

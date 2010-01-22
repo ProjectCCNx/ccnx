@@ -215,7 +215,7 @@ public class TestUserData {
 				userDirectory.mkdirs();
 			}
 			
-			userKeystoreFile = new File(userDirectory, UserConfiguration.defaultKeystoreFileName());
+			userKeystoreFile = new File(userDirectory, UserConfiguration.keystoreFileName());
 			if (userKeystoreFile.exists()) {
 				Log.info("Loading user: " + friendlyName + " from " + userKeystoreFile.getAbsolutePath());
 			} else {
@@ -223,7 +223,7 @@ public class TestUserData {
 			}
 			
 			userKeyManager = new BasicKeyManager(friendlyName, userDirectory.getAbsolutePath(), 
-												 UserConfiguration.defaultKeystoreFileName(), 
+												 UserConfiguration.keystoreFileName(), 
 												null, null, password);
 			userKeyManager.initialize();
 			_userKeyManagers.put(friendlyName, userKeyManager);
@@ -363,7 +363,7 @@ public class TestUserData {
 		
 		int count = Integer.valueOf(args[arg++]);
 		
-		String password = UserConfiguration.defaultKeystorePassword();
+		String password = UserConfiguration.keystorePassword();
 		if (arg < args.length) {
 			password = args[arg++];
 		}
