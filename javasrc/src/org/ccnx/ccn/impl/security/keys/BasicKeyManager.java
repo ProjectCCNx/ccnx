@@ -113,7 +113,7 @@ public class BasicKeyManager extends KeyManager {
 							  String defaultAlias, char [] password) throws ConfigurationException, IOException {
 		
 		_userName = (null != userName) ? userName : UserConfiguration.userName();
-		_password = (null != password) ? password : UserConfiguration.keystorePassword().toCharArray();
+		_password = (null != password) ? password : UserConfiguration.defaultKeystorePassword().toCharArray();
 		_keyStoreType = (null != keyStoreType) ? keyStoreType : UserConfiguration.defaultKeystoreType();
 	    _defaultAlias = (null != defaultAlias) ? defaultAlias : UserConfiguration.defaultKeyAlias();
 	    // must call initialize
@@ -130,8 +130,8 @@ public class BasicKeyManager extends KeyManager {
 						   String defaultAlias, char [] password) throws ConfigurationException, IOException {
 		this(userName, keyStoreType, defaultAlias, password);
 		_keyStoreFileName = (null != keyStoreFileName) ? 
-				keyStoreFileName : UserConfiguration.keystoreFileName();
-	    _keyStoreDirectory = (null != keyStoreDirectory) ? keyStoreDirectory : UserConfiguration.ccnDirectory();
+				keyStoreFileName : UserConfiguration.defaultKeystoreFileName();
+	    _keyStoreDirectory = (null != keyStoreDirectory) ? keyStoreDirectory : UserConfiguration.userConfigurationDirectory();
 		// must call initialize
 	}
 	

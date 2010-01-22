@@ -215,7 +215,7 @@ public class TestUserData {
 				userDirectory.mkdirs();
 			}
 			
-			userKeystoreFile = new File(userDirectory, UserConfiguration.keystoreFileName());
+			userKeystoreFile = new File(userDirectory, UserConfiguration.defaultKeystoreFileName());
 			if (userKeystoreFile.exists()) {
 				Log.info("Loading user: " + friendlyName + " from " + userKeystoreFile.getAbsolutePath());
 			} else {
@@ -223,12 +223,36 @@ public class TestUserData {
 			}
 			
 			userKeyManager = new BasicKeyManager(friendlyName, userDirectory.getAbsolutePath(), 
-												 UserConfiguration.keystoreFileName(), 
+												 UserConfiguration.defaultKeystoreFileName(), 
 												null, null, password);
 			userKeyManager.initialize();
 			_userKeyManagers.put(friendlyName, userKeyManager);
 			
 		}
+	}
+	
+	/**
+	 * Load a set of user data from an existing generated set of file directories. Don't
+	 * force user to know names or count, enumerate them.
+	 * @throws IOException 
+	 * @throws ConfigurationException 
+	 */
+	public static TestUserData readUserDataDirectory(String userDataDirectory, char [] keystorePassword) throws ConfigurationException, IOException {
+		
+		File userDirectory = new File(userDataDirectory);
+		if (!userDirectory.exists()) {
+			Log.warning("Asked to read data from user directory {0}, but it does not exist!", userDataDirectory);
+			return null;
+		}
+		
+		if (!userDirectory.isDirectory()) {
+			Log.warning("Asked to read data from user directory {0}, but it isn't a directory!", userDataDirectory);
+			return null;
+		}
+		// Right now assume everything below here is a directory.
+		String [] children = userDirectory.list();
+		
+		return new TestUserData(userDirectory, children, children.length, keystorePassword);
 	}
 	
 	public void closeAll() {
@@ -339,7 +363,7 @@ public class TestUserData {
 		
 		int count = Integer.valueOf(args[arg++]);
 		
-		String password = UserConfiguration.keystorePassword();
+		String password = UserConfiguration.defaultKeystorePassword();
 		if (arg < args.length) {
 			password = args[arg++];
 		}
