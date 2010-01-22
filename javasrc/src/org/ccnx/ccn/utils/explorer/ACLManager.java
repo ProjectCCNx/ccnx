@@ -31,6 +31,7 @@ import javax.swing.JTable;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
@@ -155,11 +156,11 @@ public class ACLManager extends JDialog implements ActionListener {
 			currentACL = acm.getEffectiveACLObject(node).acl();
 		}
 		catch (IllegalStateException ise) {
-			System.out.println("Fatal error: the repository has no root ACL.");
+			System.out.println("The repository has no root ACL.");
+			System.out.println("Attempting to create missing root ACL.");
+			createRootACL();
 		}
 		catch (Exception e) {
-//			System.out.println("Creating missing root ACL");
-//			createRootACL();
 			e.printStackTrace();
 		}		
 	}
@@ -172,7 +173,11 @@ public class ACLManager extends JDialog implements ActionListener {
 		ACL rootACL = new ACL(rootACLcontents);
 		try{
 			acm.initializeNamespace(rootACL);
-		} catch (Exception e) {
+		} 
+		catch (ContentNotReadyException cnre) {
+			System.out.println("Fatal error: the system assumes the existence of user: " + cn);
+		}
+		catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
