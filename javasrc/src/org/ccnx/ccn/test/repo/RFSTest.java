@@ -228,6 +228,24 @@ public class RFSTest extends RepoTestBase {
 			repo.saveContent(ContentObject.buildContentObject(segmented, segmentContent.getBytes(), null, null, finalBlockID));
 			checkData(repo, segmented, segmentContent);
 		}
+		
+		System.out.println("Repotest - testing min and max in retrieval");
+		ContentName shortName = ContentName.fromNative("/repoTest/1/2");
+		ContentName longName = ContentName.fromNative("/repoTest/1/2/3/4/5/6");
+		ContentName middleName = ContentName.fromNative("/repoTest/1/2/3/4");
+		repo.saveContent(ContentObject.buildContentObject(shortName, "short".getBytes()));
+		repo.saveContent(ContentObject.buildContentObject(longName, "long".getBytes()));
+		repo.saveContent(ContentObject.buildContentObject(middleName, "middle".getBytes()));
+		Interest minInterest = new Interest(ContentName.fromNative("/repoTest/1"));
+		minInterest.minSuffixComponents(4);
+		checkData(repo, minInterest, "long");
+		Interest maxInterest = new Interest(ContentName.fromNative("/repoTest/1"));
+		maxInterest.maxSuffixComponents(3);
+		checkData(repo, maxInterest, "short");
+		Interest middleInterest = new Interest(ContentName.fromNative("/repoTest/1"));
+		middleInterest.maxSuffixComponents(4);
+		middleInterest.minSuffixComponents(3);
+		checkData(repo, middleInterest, "middle");
 
 		//adding in fast name enumeration response tests
 		System.out.println("Repotest - testing fast name enumeration response");
