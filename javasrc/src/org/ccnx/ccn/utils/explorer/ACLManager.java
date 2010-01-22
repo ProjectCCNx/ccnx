@@ -166,7 +166,7 @@ public class ACLManager extends JDialog implements ActionListener {
 	}
 	
 	private void createRootACL() {
-		ContentName cn = ContentName.fromNative(userStorage, UserConfiguration.userName());
+		ContentName cn = ContentName.fromNative(userStorage, "Alice");
 		Link lk = new Link(cn, ACL.LABEL_MANAGER, null);
 		ArrayList<Link> rootACLcontents = new ArrayList<Link>();
 		rootACLcontents.add(lk);
