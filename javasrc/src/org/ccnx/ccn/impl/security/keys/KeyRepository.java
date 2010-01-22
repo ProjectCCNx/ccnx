@@ -79,7 +79,11 @@ public class KeyRepository {
 
 	protected KeyManager _keyManager = null;
 	protected CCNHandle _handle = null;
+	protected boolean _ourHandle = false;
 	protected CCNFlowServer _keyServer = null;
+	
+	// Reference count in case we are shared. 
+	protected int _refCount = 0;
 
 	protected HashMap<ContentName, PublicKeyObject> _keyMap = new HashMap<ContentName, PublicKeyObject>();
 	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest, ContentName>();
@@ -110,6 +114,7 @@ public class KeyRepository {
 			synchronized(this) {
 				if (null == _handle) {
 					_handle = CCNHandle.open(_keyManager); // maintain our own connection to the agent, so
+					_ourHandle = true; // we made it, we own it
 				}
 			}
 		}
@@ -648,6 +653,9 @@ public class KeyRepository {
 	 */
 	public synchronized void close() {
 		if (null != _handle) {
+			if (!_ourHandle) {
+				Log.info("KeyRepository: asked to close a handle that we didn't create. Should we? Could be used elsewhere.");
+			}
 			_handle.close();
 			_handle = null;
 		}
