@@ -102,6 +102,12 @@ public class SystemConfiguration {
 	public static final int SHORT_TIMEOUT = 300;
 	
 	/**
+	 * Timeout used for communication with local 'ccnd' for control operations.
+	 * An example is Face Creation and Prefix Registration.
+	 */
+	public static final int CCND_OP_TIMEOUT = 1000;
+	
+	/**
 	 * Settable system default timeout.
 	 */
 	protected static int _defaultTimeout = EXTRA_LONG_TIMEOUT;
