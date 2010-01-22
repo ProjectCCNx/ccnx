@@ -275,7 +275,7 @@ public class TestUserData {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: TestUserData [[-f <file directory for keystores>] | [-r] <ccn uri for keystores>] [\"comma-separated user names\"] <user count> [<password>] (-r == use repo, -f == use files)");
+		System.out.println("usage: TestUserData [[-f <file directory for keystores>] | [-r] <ccn uri for keystores>] [\"comma-separated user names\"] <user count> [<password>] [-p <ccn uri for publishing keys>] (-r == use repo, -f == use files)");
 	}
 	
 	/**
@@ -285,6 +285,7 @@ public class TestUserData {
 		boolean useRepo = false;
 		File directory = null;
 		ContentName userNamespace = null;
+		ContentName userKeyNamespace = null;
 		Flosser flosser = null;
 		
 		String [] userNames = null;
@@ -340,11 +341,24 @@ public class TestUserData {
 		if (arg < args.length) {
 			password = args[arg++];
 		}
+		
+		if (args[arg].equals("-p")) {
+			arg++;
+			try{
+				userKeyNamespace = ContentName.fromURI(args[arg]);
+			} catch (Exception e) {
+				System.out.println("Exception parsing user key namespace" + args[arg]);
+				e.printStackTrace();
+				return;
+			}
+			arg++;
+		}
 
 		try {
 			if (null != directory) {
 				td = new TestUserData(directory, userNames, count,
 						password.toCharArray());
+				if (null != userKeyNamespace) td.publishUserKeysToRepository(userKeyNamespace);
 			} else {
 				td = new TestUserData(userNamespace, userNames, count,
 						useRepo,
