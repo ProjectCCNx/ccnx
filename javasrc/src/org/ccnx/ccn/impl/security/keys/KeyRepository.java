@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.ccnx.ccn.CCNHandle;
@@ -86,9 +87,9 @@ public class KeyRepository {
 	protected int _refCount = 0;
 
 	protected HashMap<ContentName, PublicKeyObject> _keyMap = new HashMap<ContentName, PublicKeyObject>();
-	protected HashMap<PublisherPublicKeyDigest, ContentName> _idMap = new HashMap<PublisherPublicKeyDigest, ContentName>();
+	protected HashMap<PublisherPublicKeyDigest, ArrayList<ContentName>> _idMap = new HashMap<PublisherPublicKeyDigest, ArrayList<ContentName>>();
 	protected HashMap<PublisherPublicKeyDigest, PublicKey> _rawKeyMap = new HashMap<PublisherPublicKeyDigest, PublicKey>();
-	protected HashMap<PublisherPublicKeyDigest, Certificate> _rawCertificateMap = new HashMap<PublisherPublicKeyDigest, Certificate>();
+	protected HashMap<PublisherPublicKeyDigest, ArrayList<Certificate>> _rawCertificateMap = new HashMap<PublisherPublicKeyDigest, ArrayList<Certificate>>();
 	protected HashMap<PublisherPublicKeyDigest, CCNTime> _rawVersionMap = new HashMap<PublisherPublicKeyDigest, CCNTime>();
 
 	/** 
@@ -168,7 +169,7 @@ public class KeyRepository {
 	 * @param keyToPublish the public key to publish
 	 * @param keyID the publisher id
 	 * @param signingKeyID the key id of the key pair to sign with
-	 * @param keyLocator the key locator to use if we save this key (if it is not already published).
+	 * @param signingKeyLocator the key locator to use if we save this key (if it is not already published).
 	 * 	If not specified, we look for the default locator for the signing key. If there is none,
 	 * 	and we are signing with the same key we are publishing, we build a
 	 * 	self-referential key locator, using the name passed in (versioned or not).
@@ -176,7 +177,7 @@ public class KeyRepository {
 	 * @throws IOException
 	 */
 	public void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish,
-						   PublisherPublicKeyDigest signingKeyID, KeyLocator keyLocator) 
+						   PublisherPublicKeyDigest signingKeyID, KeyLocator signingKeyLocator) 
 	throws IOException {
 
 		// Set up key server if it hasn't been set up already
@@ -243,7 +244,7 @@ public class KeyRepository {
 				signingKeyID = handle().keyManager().getDefaultKeyID();
 			}
 
-			if (null == keyLocator) {
+			if (null == signingKeyLocator) {
 				KeyLocator constructedLocator = handle().keyManager().getKeyLocator(signingKeyID);
 				if ((constructedLocator.type() == KeyLocatorType.KEY) && 
 					(signingKeyID.equals(keyToPublish))) {
@@ -251,10 +252,10 @@ public class KeyRepository {
 						// version.
 					constructedLocator = new KeyLocator(new KeyName(keyName, signingKeyID));
 				}
-				keyLocator = constructedLocator;
+				signingKeyLocator = constructedLocator;
 			}
 
-			keyObject.setOurPublisherInformation(signingKeyID, keyLocator);
+			keyObject.setOurPublisherInformation(signingKeyID, signingKeyLocator);
 			// nobody's written it where we can find it fast enough.
 			// theKey will be retrieved from cache if not stored on network
 			keyObject.setData(theKey);
@@ -263,7 +264,7 @@ public class KeyRepository {
 				Log.info("Not saving key when we thought we needed to: desired key value {0}, have key value {1}, " +
 						keyToPublish, new PublisherPublicKeyDigest(keyObject.publicKey()));
 			} else {
-				Log.info("Published key {0} to name {1} with key locator {2}.", keyToPublish, keyObject.getVersionedName(), keyLocator);
+				Log.info("Published key {0} to name {1} with key locator {2}.", keyToPublish, keyObject.getVersionedName(), signingKeyLocator);
 			}
 		} else {
 			Log.info("Retrieved existing key object {0}, whose key locator is {1}.", keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
@@ -398,11 +399,23 @@ public class KeyRepository {
 
 		_keyMap.put(theKey.getVersionedName(), theKey);
 		PublisherPublicKeyDigest id = theKey.publicKeyDigest();
-		_idMap.put(id, theKey.getVersionedName());
+		rememberContentName(id, theKey.getVersionedName());
 		_rawKeyMap.put(id, theKey.publicKey());
 		_rawVersionMap.put(id, theKey.getVersion());
 		if (_DEBUG) {
 			recordKeyToFile(theKey);
+		}
+	}
+	
+	protected void rememberContentName(PublisherPublicKeyDigest id, ContentName name) {
+		synchronized(_idMap) {
+
+			ArrayList<ContentName> nameList = _idMap.get(id);
+			if (null == nameList) {
+				nameList = new ArrayList<ContentName>();
+				_idMap.put(id, nameList);
+			}
+			nameList.add(name);
 		}
 	}
 
@@ -424,13 +437,24 @@ public class KeyRepository {
 	 */
 	public void remember(Certificate theCertificate, CCNTime version) {
 		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(theCertificate.getPublicKey());
-		_rawCertificateMap.put(keyDigest, theCertificate);
+		rememberCertificate(keyDigest, theCertificate);
 		_rawKeyMap.put(keyDigest, theCertificate.getPublicKey());
 		if (null != version) {
 			_rawVersionMap.put(keyDigest, version);
 		}
 	}
 
+	protected void rememberCertificate(PublisherPublicKeyDigest id, Certificate certificate) {
+		synchronized(_rawCertificateMap) {
+
+			ArrayList<Certificate> certificateList = _rawCertificateMap.get(id);
+			if (null == certificateList) {
+				certificateList = new ArrayList<Certificate>();
+				_rawCertificateMap.put(id, certificateList);
+			}
+			certificateList.add(certificate);
+		}
+	}
 
 	/**
 	 * Write encoded key to file for debugging purposes.
@@ -523,8 +547,8 @@ public class KeyRepository {
 
 		// How many pieces of bad content do we wade through?
 		final int ITERATION_LIMIT = 5;
-		// how many times do we time out get?
-		final int TIMEOUT_ITERATION_LIMIT = ITERATION_LIMIT;
+		// how many times do we time out get? Try 2 just in case we drop one.
+		final int TIMEOUT_ITERATION_LIMIT = 2;
 
 		PublicKey publicKey = null;
 		
@@ -543,7 +567,7 @@ public class KeyRepository {
 			//  it would be really good to know how many additional name components to expect...
 			while ((null == retrievedContent) && (timeoutCount < TIMEOUT_ITERATION_LIMIT)) {
 				try {
-					Log.info("Trying network retrieval of key: " + keyInterest.name());
+					Log.fine("Trying network retrieval of key: " + keyInterest.name());
 					// use more aggressive high-level get
 					retrievedContent = handle().get(keyInterest, timeout);
 				} catch (IOException e) {
@@ -559,7 +583,7 @@ public class KeyRepository {
 				timeoutCount++;
 			}
 			if (null == retrievedContent) {
-				Log.warning("No data returned when we attempted to retrieve key using interest {0}, timeout " + timeout + " exception : " + ((null == lastException) ? "none" : lastException.getMessage()), keyInterest);
+				Log.info("No data returned when we attempted to retrieve key using interest {0}, timeout " + timeout + " exception : " + ((null == lastException) ? "none" : lastException.getMessage()), keyInterest);
 				if (null != lastException) {
 					throw lastException;
 				}
@@ -602,7 +626,7 @@ public class KeyRepository {
 	public PublicKey getPublicKeyFromCache(PublisherPublicKeyDigest desiredKeyID) {
 		PublicKey theKey = _rawKeyMap.get(desiredKeyID);
 		if (null == theKey) {
-			Certificate theCertificate = _rawCertificateMap.get(desiredKeyID);
+			Certificate theCertificate = _rawCertificateMap.get(desiredKeyID).get(0);
 			if (null != theCertificate) {
 				theKey = theCertificate.getPublicKey();
 			}
@@ -619,7 +643,7 @@ public class KeyRepository {
 	 * @param keyName key digest
 	 */
 	public PublicKeyObject retrieve(PublisherPublicKeyDigest keyID) {
-		ContentName name = _idMap.get(keyID);
+		ContentName name = _idMap.get(keyID).get(0);
 		if (null != name) {
 			return _keyMap.get(name);
 		}		
