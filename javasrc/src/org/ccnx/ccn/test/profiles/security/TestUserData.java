@@ -221,11 +221,21 @@ public class TestUserData {
 				Log.info("Creating user's: " + friendlyName + " keystore in file " + userKeystoreFile.getAbsolutePath());
 			}
 			
-			userKeyManager = new BasicKeyManager(friendlyName, userDirectory.toString(), UserConfiguration.keystoreFileName(), 
+			userKeyManager = new BasicKeyManager(friendlyName, userDirectory.getAbsolutePath(), 
+												 UserConfiguration.keystoreFileName(), 
 												null, null, password);
 			userKeyManager.initialize();
 			_userKeyManagers.put(friendlyName, userKeyManager);
 			
+		}
+	}
+	
+	public void closeAll() {
+		for (String user : _userKeyManagers.keySet()) {
+			KeyManager km = _userKeyManagers.get(user);
+			if (null != km) {
+				km.close();
+			}
 		}
 	}
 	
@@ -265,7 +275,7 @@ public class TestUserData {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: TestUserData [[-f <file directory for keystores>] | [-r] <ccn uri for keystores>] [\"comma-separated user names\"] <user count> <password> (-r == use repo, -f == use files)");
+		System.out.println("usage: TestUserData [[-f <file directory for keystores>] | [-r] <ccn uri for keystores>] [\"comma-separated user names\"] <user count> [<password>] (-r == use repo, -f == use files)");
 	}
 	
 	/**
@@ -279,17 +289,17 @@ public class TestUserData {
 		
 		String [] userNames = null;
 		
-		TestUserData td;
+		TestUserData td = null;
 
 		int arg = 0;
-		if (args.length < 3) {
+		if (args.length < 2) {
 			usage();
 			return;
 		}
 		
 		if (args[arg].equals("-f")) {
 			arg++;
-			if (args.length < 4) {
+			if (args.length < 3) {
 				usage();
 				return;
 			}
@@ -300,7 +310,7 @@ public class TestUserData {
 			if (args[arg].equals("-r")) {
 				arg++;
 				useRepo = true;
-				if (args.length < 4) {
+				if (args.length < 3) {
 					usage();
 					return;
 				}
@@ -319,19 +329,26 @@ public class TestUserData {
 			arg++;
 		}
 		
-		if ((args.length - arg) == 3) {
+		if ((args.length - arg) >= 2) {
 			String userNamesString = args[arg++];
 			userNames = userNamesString.split(",");
+		}
+		
+		int count = Integer.valueOf(args[arg++]);
+		
+		String password = UserConfiguration.keystorePassword();
+		if (arg < args.length) {
+			password = args[arg++];
 		}
 
 		try {
 			if (null != directory) {
-				td = new TestUserData(directory, userNames, Integer.valueOf(args[arg]),
-						args[arg].toCharArray());
+				td = new TestUserData(directory, userNames, count,
+						password.toCharArray());
 			} else {
-				td = new TestUserData(userNamespace, userNames, Integer.valueOf(args[arg]),
+				td = new TestUserData(userNamespace, userNames, count,
 						useRepo,
-						args[arg].toCharArray(), CCNHandle.open());
+						password.toCharArray(), CCNHandle.open());
 			}
 			System.out.println("Generated/retrieved " + td.count() + " user keystores, for users : " + td.friendlyNames());
 		} catch (Exception e) {
@@ -341,6 +358,10 @@ public class TestUserData {
 			if (null != flosser)
 				flosser.stop();
 		}
-
+		if (null != td) {
+			td.closeAll();
+		}
+		System.out.println("Finished.");
+		return;
 	}
 }
