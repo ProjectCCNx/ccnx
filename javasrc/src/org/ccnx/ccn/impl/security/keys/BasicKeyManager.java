@@ -488,6 +488,38 @@ public class BasicKeyManager extends KeyManager {
 		return getKeyLocator(keyID);
 	}
 	
+	
+	@Override
+	public ContentName getDefaultKeyNamePrefix() {
+		ContentName keyDir =
+			ContentName.fromNative(UserConfiguration.defaultUserNamespace(), 
+				   			_userName, UserConfiguration.defaultKeyName());
+		return keyDir;
+	}
+	
+	/**
+	 * Return the key's content name for a given key id. 
+	 * The default key name is the publisher ID itself,
+	 * under the user's key collection. 
+	 * @param keyID[] publisher ID
+	 * @return content name
+	 */
+	@Override
+	public ContentName getDefaultKeyName(ContentName keyPrefix, byte [] keyID, CCNTime keyVersion) {
+		if (null == keyPrefix) {
+			keyPrefix = getDefaultKeyNamePrefix();
+		}
+		ContentName keyName = KeyProfile.keyName(keyPrefix, keyID);
+		if (null != keyVersion) {
+			return VersioningProfile.addVersion(keyName, keyVersion);
+		}
+		return keyName;
+	}
+	
+	public CCNTime getKeyVersion(PublisherPublicKeyDigest keyID) {
+		return _keyRepository.getPublicKeyVersionFromCache(keyID);
+	}
+	
 	/**
 	 * Get default key locator given a public key digest
 	 * @param key public key digest
@@ -615,7 +647,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public synchronized void publishDefaultKey(ContentName defaultPrefix) throws ConfigurationException, IOException {
+	public synchronized void publishDefaultKey(ContentName namePrefix) throws ConfigurationException, IOException {
 		if (!initialized()) {
 			throw new IOException("Cannot publish keys, have not yet initialized KeyManager!");
 		}
@@ -625,7 +657,7 @@ public class BasicKeyManager extends KeyManager {
 		if (_defaultKeysPublished) {
 			return;
 		}
-		ContentName keyName = getDefaultKeyName(defaultPrefix, getDefaultKeyID().digest(), getKeyVersion(getDefaultKeyID()));
+		ContentName keyName = getDefaultKeyName(namePrefix, getDefaultKeyID().digest(), getKeyVersion(getDefaultKeyID()));
 		try {
 			publishKey(keyName, getDefaultKeyID(), null, null);
 		} catch (InvalidKeyException e) {
@@ -633,38 +665,6 @@ public class BasicKeyManager extends KeyManager {
 		}
 		_defaultKeysPublished = true;
 	}
-	
-	@Override
-	public ContentName getDefaultKeyNamePrefix() {
-		ContentName keyDir =
-			ContentName.fromNative(UserConfiguration.defaultUserNamespace(), 
-				   			_userName, UserConfiguration.defaultKeyName());
-		return keyDir;
-	}
-	
-	/**
-	 * Return the key's content name for a given key id. 
-	 * The default key name is the publisher ID itself,
-	 * under the user's key collection. 
-	 * @param keyID[] publisher ID
-	 * @return content name
-	 */
-	@Override
-	public ContentName getDefaultKeyName(ContentName keyPrefix, byte [] keyID, CCNTime keyVersion) {
-		if (null == keyPrefix) {
-			keyPrefix = getDefaultKeyNamePrefix();
-		}
-		ContentName keyName = KeyProfile.keyName(keyPrefix, keyID);
-		if (null != keyVersion) {
-			return VersioningProfile.addVersion(keyName, keyVersion);
-		}
-		return keyName;
-	}
-	
-	public CCNTime getKeyVersion(PublisherPublicKeyDigest keyID) {
-		return _keyRepository.getPublicKeyVersionFromCache(keyID);
-	}
-	
 	/**
 	 * Publish my public key to a local key server run in this JVM.
 	 * @param keyName content name of the public key
