@@ -264,6 +264,18 @@ public class TestUserData {
 		}
 	}
 	
+	public void publishUserKeysToRepository() throws IOException{
+		for (String friendlyName: _userKeyManagers.keySet()) {
+			System.out.println(friendlyName);
+			KeyManager userKM = _userKeyManagers.get(friendlyName);
+			try {
+				userKM.publishKeyToRepository();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		} 
+	}
+	
 	public void publishUserKeysToRepository(ContentName userNamespace) throws IOException{
 		for (String friendlyName: _userKeyManagers.keySet()) {
 			KeyManager userKM = _userKeyManagers.get(friendlyName);
@@ -301,7 +313,7 @@ public class TestUserData {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: TestUserData [[-f <file directory for keystores>] | [-r] <ccn uri for keystores>] [\"comma-separated user names\"] <user count> [<password>] [-p <ccn uri for publishing keys>] (-r == use repo, -f == use files)");
+		System.out.println("usage: TestUserData [[-f <file directory for keystores>] | [-r] <ccn uri for keystores>] [\"comma-separated user names\"] <user count> [<password>] [-p] (-r == use repo, -f == use files)");
 	}
 	
 	/**
@@ -311,7 +323,7 @@ public class TestUserData {
 		boolean useRepo = false;
 		File directory = null;
 		ContentName userNamespace = null;
-		ContentName userKeyNamespace = null;
+		boolean publishKeysToRepo = true;
 		Flosser flosser = null;
 		
 		String [] userNames = null;
@@ -368,23 +380,13 @@ public class TestUserData {
 			password = args[arg++];
 		}
 		
-		if ((arg < args.length) && (args[arg].equals("-p"))) {
-			arg++;
-			try{
-				userKeyNamespace = ContentName.fromURI(args[arg]);
-			} catch (Exception e) {
-				System.out.println("Exception parsing user key namespace" + args[arg]);
-				e.printStackTrace();
-				return;
-			}
-			arg++;
-		}
-
 		try {
 			if (null != directory) {
 				td = new TestUserData(directory, userNames, count,
 						password.toCharArray());
-				if (null != userKeyNamespace) td.publishUserKeysToRepository(userKeyNamespace);
+				if (publishKeysToRepo) {
+					td.publishUserKeysToRepository();
+				}
 			} else {
 				td = new TestUserData(userNamespace, userNames, count,
 						useRepo,
