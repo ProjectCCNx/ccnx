@@ -167,7 +167,7 @@ public class UserConfiguration {
 	
 	public static String userName() { 
 		if (null == _userName) {
-			_userName = retrievePropertyOrEvironmentVariable(CCNX_USER_NAME_PROPERTY, CCNX_USER_NAME_ENVIRONMENT_VARIABLE,
+			_userName = SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_USER_NAME_PROPERTY, CCNX_USER_NAME_ENVIRONMENT_VARIABLE,
 															 System.getProperty("user.name"));
 		}
 		return _userName; 
@@ -179,7 +179,7 @@ public class UserConfiguration {
 	
 	public static String userConfigurationDirectory() { 
 		if (null == _userConfigurationDir) {
-			_userConfigurationDir = retrievePropertyOrEvironmentVariable(CCNX_USER_CONFIG_DIR_PROPERTY, 
+			_userConfigurationDir = SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_USER_CONFIG_DIR_PROPERTY, 
 																		 CCNX_USER_CONFIG_DIR_ENVIRONMENT_VARIABLE,
 															USER_DIR + FILE_SEP + CCNX_DEFAULT_USER_CONFIG_DIR_NAME);
 		}
@@ -193,7 +193,7 @@ public class UserConfiguration {
 	public static ContentName defaultNamespace() { 
 		if (null == _defaultNamespace) {
 			String defaultNamespaceString = 
-				retrievePropertyOrEvironmentVariable(CCNX_DEFAULT_NAMESPACE_PROPERTY, CCNX_DEFAULT_NAMESPACE_ENVIRONMENT_VARIABLE, 
+				SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_DEFAULT_NAMESPACE_PROPERTY, CCNX_DEFAULT_NAMESPACE_ENVIRONMENT_VARIABLE, 
 													CCNX_DEFAULT_NAMESPACE);
 			try {
 				_defaultNamespace = ContentName.fromNative(defaultNamespaceString);
@@ -211,7 +211,7 @@ public class UserConfiguration {
 	
 	public static ContentName userNamespace() { 
 		if (null == _userNamespace) {
-			String userNamespaceString = retrievePropertyOrEvironmentVariable(
+			String userNamespaceString = SystemConfiguration.retrievePropertyOrEvironmentVariable(
 					CCNX_USER_NAMESPACE_PROPERTY, CCNX_USER_NAMESPACE_ENVIRONMENT_VARIABLE, null);
 			if (null != userNamespaceString) {
 				try {
@@ -246,7 +246,7 @@ public class UserConfiguration {
 	
 	public static ContentName userNamespacePrefix() { 
 		if (null == _userNamespacePrefix) {
-			String userNamespacePrefixString = retrievePropertyOrEvironmentVariable(
+			String userNamespacePrefixString = SystemConfiguration.retrievePropertyOrEvironmentVariable(
 					CCNX_USER_NAMESPACE_PREFIX_PROPERTY, CCNX_USER_NAMESPACE_PREFIX_ENVIRONMENT_VARIABLE, null);
 			if (null != userNamespacePrefixString) {
 				try {
@@ -272,7 +272,7 @@ public class UserConfiguration {
 	
 	public static String keystoreFileName() { 
 		if (null == _keystoreFileName) {
-			_keystoreFileName = retrievePropertyOrEvironmentVariable(CCNX_KEYSTORE_FILENAME_PROPERTY, 
+			_keystoreFileName = SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_KEYSTORE_FILENAME_PROPERTY, 
 																		 CCNX_KEYSTORE_FILENAME_ENVIRONMENT_VARIABLE,
 															DEFAULT_KEYSTORE_FILE_NAME);
 		}
@@ -285,7 +285,7 @@ public class UserConfiguration {
 	
 	public static String keystorePassword() { 
 		if (null == _keystorePassword) {
-			_keystorePassword = retrievePropertyOrEvironmentVariable(CCNX_KEYSTORE_PASSWORD_PROPERTY, 
+			_keystorePassword = SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_KEYSTORE_PASSWORD_PROPERTY, 
 																		 CCNX_KEYSTORE_PASSWORD_ENVIRONMENT_VARIABLE,
 																		 DEFAULT_KEYSTORE_PASSWORD);
 		}
@@ -307,27 +307,4 @@ public class UserConfiguration {
 	public static int defaultKeyLength() { return DEFAULT_KEY_LENGTH; }
 
 	public static String defaultKeyNamespaceMarker() { return DEFAULT_KEY_NAMESPACE_MARKER; }
-	
-	/**
-	 * Retrieve a string that might be stored as an environment variable, or
-	 * overridden on the command line. If the command line variable is set, return
-	 * its (String) value; if not, return the environment variable value if available;
-	 * if neither is set return the default value. Caller should synchronize as appropriate.
-	 * @return The value in force for this variable, or null if unset.
-	 */
-	public static String retrievePropertyOrEvironmentVariable(String javaPropertyName, String environmentVariableName, String defaultValue) { 
-		// First try the command line property.
-		String value = null;
-		if (null != javaPropertyName) {
-			value = System.getProperty(javaPropertyName);
-		}
-		if ((null == value) && (null != environmentVariableName)) {
-			// Try for an environment variable.
-			value = System.getenv(environmentVariableName);
-		}
-		if (null == value) {
-			return defaultValue;
-		}
-		return value;
-	}
 }
