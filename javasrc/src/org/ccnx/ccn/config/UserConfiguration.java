@@ -89,6 +89,16 @@ public class UserConfiguration {
 
 	/**
 	 * User namespace, by default ccnxNamespace()/<DEFAULT_USER_NAMESPACE_MARKER>/userName();
+	 * the user namespace prefix will be set to the value given here -- so the user
+	 * namespace will be userNamespacePrefix()/<DEFAULT_USER_NAMESPACE_MARKER>/<user name>
+	 * for either a user name we are given or our default user name.
+	 */
+	protected static final String CCNX_USER_NAMESPACE_PREFIX_PROPERTY = 
+		"org.ccnx.config.UserNamespacePrefix";
+	protected static final String CCNX_USER_NAMESPACE_PREFIX_ENVIRONMENT_VARIABLE = "CCNX_USER_NAMESPACE_PREFIX";
+
+	/**
+	 * User namespace, by default ccnxNamespace()/<DEFAULT_USER_NAMESPACE_MARKER>/userName();
 	 * the user namespace will be set to the value given here -- we don't add the
 	 * user namespace marker or userName(). 
 	 */
@@ -128,10 +138,15 @@ public class UserConfiguration {
 	protected static ContentName _defaultNamespace;
 
 	/**
-	 * User prefix (e.g. for keys). By default, the CCNX prefix together with user information.
+	 * User prefix (e.g. for keys). By default, the user namespace prefix together with user information.
 	 */
 	protected static ContentName _userNamespace;
 	
+	/**
+	 * User namespace prefix (e.g. for keys). By default, the CCNX prefix
+	 */
+	protected static ContentName _userNamespacePrefix;
+
 	/**
 	 * Keystore file name. This is the name of the actual file, without the directory.
 	 */
@@ -202,14 +217,49 @@ public class UserConfiguration {
 				try {
 					_userNamespace = ContentName.fromNative(userNamespaceString);
 				} catch (MalformedContentNameStringException e) {
-					Log.severe("Attempt to configure invalid default CCNx namespace: {0}!", userNamespaceString);
-					throw new RuntimeException("Attempt to configure invalid default CCNx namespace: " + userNamespaceString + "!");
+					Log.severe("Attempt to configure invalid default user namespace: {0}!", userNamespaceString);
+					throw new RuntimeException("Attempt to configure invalid default user namespace: " + userNamespaceString + "!");
 				}
 			} else {
-				_userNamespace = ContentName.fromNative(defaultNamespace(), DEFAULT_USER_NAMESPACE_MARKER, userName());
+				_userNamespace = ContentName.fromNative(userNamespacePrefix(), DEFAULT_USER_NAMESPACE_MARKER, userName());
 			}
 		}
 		return _userNamespace; 
+	}
+	
+	/**
+	 * User the userNamespacePrefix() to generate a namespace for a particular user
+	 * @param userName
+	 * @return
+	 */
+	public static ContentName userNamespace(String userName) {
+		if (null == userName) {
+			userName = userName();
+		}
+		return ContentName.fromNative(userNamespacePrefix(), DEFAULT_USER_NAMESPACE_MARKER, userName);
+	}
+
+	
+	public static void setUserNamespacePrefix(String userNamespacePrefix) throws MalformedContentNameStringException {
+		_userNamespacePrefix = (null == userNamespacePrefix) ? null : ContentName.fromNative(userNamespacePrefix);
+	}
+	
+	public static ContentName userNamespacePrefix() { 
+		if (null == _userNamespacePrefix) {
+			String userNamespacePrefixString = retrievePropertyOrEvironmentVariable(
+					CCNX_USER_NAMESPACE_PREFIX_PROPERTY, CCNX_USER_NAMESPACE_PREFIX_ENVIRONMENT_VARIABLE, null);
+			if (null != userNamespacePrefixString) {
+				try {
+					_userNamespacePrefix = ContentName.fromNative(userNamespacePrefixString);
+				} catch (MalformedContentNameStringException e) {
+					Log.severe("Attempt to configure invalid default user namespace prefix: {0}!", userNamespacePrefixString);
+					throw new RuntimeException("Attempt to configure invalid default user namespace prefix: " + userNamespacePrefixString + "!");
+				}
+			} else {
+				_userNamespacePrefix = defaultNamespace();
+			}
+		}
+		return _userNamespacePrefix; 
 	}
 
 	public static String userConfigFile() { 
