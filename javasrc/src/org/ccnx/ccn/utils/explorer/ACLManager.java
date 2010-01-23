@@ -173,9 +173,11 @@ public class ACLManager extends JDialog implements ActionListener {
 		ACL rootACL = new ACL(rootACLcontents);
 		try{
 			acm.initializeNamespace(rootACL);
+			currentACL = rootACL;
 		} 
 		catch (ContentNotReadyException cnre) {
 			System.out.println("Fatal error: the system assumes the existence of user: " + cn);
+			cnre.printStackTrace();
 		}
 		catch (Exception e) {
 			e.printStackTrace();
