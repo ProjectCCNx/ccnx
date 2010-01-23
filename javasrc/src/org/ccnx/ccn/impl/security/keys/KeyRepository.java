@@ -626,9 +626,11 @@ public class KeyRepository {
 	public PublicKey getPublicKeyFromCache(PublisherPublicKeyDigest desiredKeyID) {
 		PublicKey theKey = _rawKeyMap.get(desiredKeyID);
 		if (null == theKey) {
-			Certificate theCertificate = _rawCertificateMap.get(desiredKeyID).get(0);
-			if (null != theCertificate) {
-				theKey = theCertificate.getPublicKey();
+			if (_rawCertificateMap.containsKey(desiredKeyID)) {
+				Certificate theCertificate = _rawCertificateMap.get(desiredKeyID).get(0);
+				if (null != theCertificate) {
+					theKey = theCertificate.getPublicKey();
+				}
 			}
 		}
 		return theKey;
