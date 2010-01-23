@@ -42,6 +42,7 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.security.KeyProfile;
@@ -70,19 +71,36 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 public class BasicKeyManager extends KeyManager {
 	
 	public static class KeyStoreInfo {
+		// Where did we load this from
+		String _keyStoreURI;
 		KeyStore _keyStore;
 		CCNTime _version;
 		
-		public KeyStoreInfo(KeyStore keyStore, CCNTime version) {
+		public KeyStoreInfo(String keyStoreURI, KeyStore keyStore, CCNTime version) {
+			_keyStoreURI = keyStoreURI;
 			_keyStore = keyStore;
+			_version = version;
+		}
+		
+		/**
+		 * In case we don't know the 
+		 * @param keyStore
+		 */
+		public void setKeyStore(KeyStore keyStore) {
+			_keyStore = keyStore;
+		}
+		
+		public void setVersion(CCNTime version) {
 			_version = version;
 		}
 		
 		public KeyStore getKeyStore() { return _keyStore; }
 		public CCNTime getVersion() { return _version; }
+		public String getURI() { return _keyStoreURI; }
 	}
 	
 	protected String _userName;
+	protected ContentName _userNamespace; // default location for publishing keys
 	protected String _defaultAlias;
 	protected String _keyStoreDirectory;
 	protected String _keyStoreFileName;
@@ -112,10 +130,18 @@ public class BasicKeyManager extends KeyManager {
 	protected BasicKeyManager(String userName, String keyStoreType,
 							  String defaultAlias, char [] password) throws ConfigurationException, IOException {
 		
-		_userName = (null != userName) ? userName : UserConfiguration.userName();
 		_password = (null != password) ? password : UserConfiguration.keystorePassword().toCharArray();
 		_keyStoreType = (null != keyStoreType) ? keyStoreType : UserConfiguration.defaultKeystoreType();
 	    _defaultAlias = (null != defaultAlias) ? defaultAlias : UserConfiguration.defaultKeyAlias();
+	    
+	    String defaultUserName = UserConfiguration.userName();
+	    if ((null == userName) || (userName.equals(defaultUserName))) {
+	    	_userNamespace = UserConfiguration.userNamespace();
+	    	_userName = defaultUserName;
+	    } else {
+	    	_userNamespace = UserConfiguration.userNamespace(userName);
+	    	_userName = userName;
+	    }
 	    // must call initialize
 	}
 		
@@ -205,16 +231,23 @@ public class BasicKeyManager extends KeyManager {
 			// gets created. If so, blow it away and make a new one.
 			Log.info("Creating new CCN key store..." + keyStoreFile.getAbsolutePath());
 			keyStoreInfo = createKeyStore();
-			Log.info("...created key store.");
+			Log.info("...created key store. Version: {0} ({1} ms) Last modified: {2}. Will now load normally.", 
+					keyStoreInfo.getVersion(), keyStoreInfo.getVersion().getTime(), keyStoreFile.lastModified());
+			
+			// For some reason, if we just go from here, sometimes we end up with very slightly
+			// different stat times on the file. This causes havoc with versioning. So,
+			// read the file back in from scratch.
+			keyStoreInfo = null;
 		}
 		if (null == keyStoreInfo) {
 			FileInputStream in = null;
 			KeyStore keyStore = null;
-			Log.info("Loading CCN key store from " + keyStoreFile.getAbsolutePath() + "...");
+			Log.info("Loading CCN key store from " + keyStoreFile.getAbsolutePath() + "...last modified " + keyStoreFile.lastModified() + "(ms).");
 			try {
 				in = new FileInputStream(keyStoreFile);
 				keyStore = readKeyStore(in);
-				keyStoreInfo = new KeyStoreInfo(keyStore, new CCNTime(keyStoreFile.lastModified()));
+				keyStoreInfo = new KeyStoreInfo(keyStoreFile.toURI().toString(), keyStore, new CCNTime(keyStoreFile.lastModified()));
+				Log.info("Loaded CCN key store from " + keyStoreFile.getAbsolutePath() + "...version " + keyStoreInfo.getVersion() + " ms: " + keyStoreInfo.getVersion().getTime());
 			} catch (FileNotFoundException e) {
 				Log.warning("Cannot open existing key store file: " + _keyStoreFileName);
 				throw e;
@@ -282,6 +315,8 @@ public class BasicKeyManager extends KeyManager {
 	protected boolean loadValuesFromKeystore(KeyStoreInfo keyStoreInfo) throws ConfigurationException {
 		KeyStore.PrivateKeyEntry entry = null;
 		try {
+			Log.info("Loading key store {0} version {1} version component {2} millis {3}", keyStoreInfo.getURI(), keyStoreInfo.getVersion().toString(), 
+						VersioningProfile.printAsVersionComponent(keyStoreInfo.getVersion()), keyStoreInfo.getVersion().getTime());
 			// Default alias should be a PrivateKeyEntry
 			entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
 			if (null == entry) {
@@ -310,10 +345,14 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	synchronized protected KeyStoreInfo createKeyStore() throws ConfigurationException, IOException {
 		
-		OutputStream out = createKeyStoreWriteStream();
-	    KeyStore keyStore = createKeyStore(out);
-	    CCNTime version = getKeyStoreVersion(out);
-	    return new KeyStoreInfo(keyStore, version);
+		Tuple<KeyStoreInfo, OutputStream>streamInfo = createKeyStoreWriteStream();
+	    KeyStore keyStore = createKeyStore(streamInfo.second());
+	    KeyStoreInfo storeInfo = streamInfo.first();
+	    storeInfo.setKeyStore(keyStore);
+	    if (null == storeInfo.getVersion()) {
+	    	storeInfo.setVersion(getKeyStoreVersion(streamInfo.second()));
+	    }
+	    return storeInfo;
 	}
 
 	protected CCNTime getKeyStoreVersion(OutputStream out) throws IOException {
@@ -332,7 +371,7 @@ public class BasicKeyManager extends KeyManager {
 	 * Creates a key store file
 	 * @throws ConfigurationException
 	 */
-	protected OutputStream createKeyStoreWriteStream() throws ConfigurationException, IOException {
+	protected Tuple<KeyStoreInfo, OutputStream> createKeyStoreWriteStream() throws ConfigurationException, IOException {
 		
 		File keyStoreDir = new File(_keyStoreDirectory);
 		if (!keyStoreDir.exists()) {
@@ -344,8 +383,9 @@ public class BasicKeyManager extends KeyManager {
 		// Alas, until 1.6, we can't set permissions on the file or directory...
 		// TODO DKS when switch to 1.6, add permission settings.
 		File keyStoreFile  = new File(keyStoreDir, _keyStoreFileName);
-		if (keyStoreFile.exists())
-			return null;
+		if (keyStoreFile.exists()) {
+			Log.warning("Key store file {0} already exists (length {1}), overrwriting.", keyStoreFile.getAbsolutePath(), keyStoreFile.length());
+		}
 
 	    FileOutputStream out = null;
 		try {
@@ -354,7 +394,9 @@ public class BasicKeyManager extends KeyManager {
 		} catch (FileNotFoundException e) {
 			generateConfigurationException("Cannot create keystore file: " + keyStoreFile.getAbsolutePath(), e);
 		} 
-	    return out;   
+		
+		KeyStoreInfo storeInfo = new KeyStoreInfo(keyStoreFile.toURI().toString(), null, new CCNTime(keyStoreFile.lastModified()));
+	    return new Tuple<KeyStoreInfo, OutputStream>(storeInfo, out);   
 	}
 	
 	/**
@@ -472,28 +514,22 @@ public class BasicKeyManager extends KeyManager {
 	public PublicKey getDefaultPublicKey() {
 		return _keyRepository.getPublicKeyFromCache(getDefaultKeyID());
 	}
-	
-	/**
-	 * Get default key locator
-	 * @return default key locator
-	 */
-	@Override
-	public KeyLocator getDefaultKeyLocator() {
-		return getKeyLocator(getDefaultKeyID());
-	}
-	
+		
 	@Override
 	public KeyLocator getKeyLocator(PrivateKey signingKey) {
 		PublisherPublicKeyDigest keyID = _privateKeyCache.getPublicKeyIdentifier(signingKey);
 		return getKeyLocator(keyID);
 	}
 	
+	@Override
+	public KeyLocator getDefaultKeyLocator() {
+		return getKeyLocator(getDefaultKeyID());
+	}
 	
 	@Override
 	public ContentName getDefaultKeyNamePrefix() {
-		// TODO -- calculate a user namespace if someone hands in our userName
 		ContentName keyDir =
-			ContentName.fromNative(UserConfiguration.userNamespace(), 
+			ContentName.fromNative(_userNamespace, 
 				   			       UserConfiguration.defaultKeyNamespaceMarker());
 		return keyDir;
 	}
@@ -523,6 +559,9 @@ public class BasicKeyManager extends KeyManager {
 	
 	/**
 	 * Get default key locator given a public key digest
+	 * @TODO work on this -- have to balance between pulling the command-line specified
+	 * key locator for the default key and using the actual published value; works
+	 * as long as we publish it to the right location from the get go
 	 * @param key public key digest
 	 * @return key locator
 	 */
@@ -543,7 +582,7 @@ public class BasicKeyManager extends KeyManager {
 				Log.warningStackTrace(ex);
 				Log.warning("Falling through and retrieving KEY type key locator for key {1}", keyID);
 			}
-		}
+		} 
 		return getKeyTypeKeyLocator(keyID);
 	}
 	
@@ -648,7 +687,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public synchronized void publishDefaultKey(ContentName namePrefix) throws ConfigurationException, IOException {
+	public synchronized void publishDefaultKey(ContentName keyName) throws ConfigurationException, IOException {
 		if (!initialized()) {
 			throw new IOException("Cannot publish keys, have not yet initialized KeyManager!");
 		}
@@ -658,7 +697,7 @@ public class BasicKeyManager extends KeyManager {
 		if (_defaultKeysPublished) {
 			return;
 		}
-		ContentName keyName = getDefaultKeyName(namePrefix, getDefaultKeyID().digest(), getKeyVersion(getDefaultKeyID()));
+
 		try {
 			publishKey(keyName, getDefaultKeyID(), null, null);
 		} catch (InvalidKeyException e) {
