@@ -775,7 +775,17 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		private void myDoubleClick(int selRow, TreePath selPath) {
 			final Name node = getNameNode((DefaultMutableTreeNode) selPath.getLastPathComponent());
 
+			if (node.name == null && node.equals(getNameNode(usableRoot))) {
+				if (usableRoot.getChildCount() == 0 )
+					JOptionPane.showMessageDialog(ContentExplorer.this,
+							"Namespace is not available at this time",
+							"Cannot Open Namespace",
+							JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+			
 			ContentName cn = ContentName.fromNative(new ContentName(), node.name);
+			
 			String name = cn.toString();
 			
 			if (name.toLowerCase().endsWith(".txt")	|| name.toLowerCase().endsWith(".text")) {
