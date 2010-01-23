@@ -379,6 +379,13 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		return latestName;
 	}
 	
+	public byte [] getLatestVersionChildNameComponent() {
+		ContentName latestVersionName = getLatestVersionChildName();
+		if (null == latestVersionName)
+			return null;
+		return latestVersionName.component(0);
+	}
+	
 	/**
 	 * Returns the latest version available under this prefix as a CCNTime object.
 	 * 
