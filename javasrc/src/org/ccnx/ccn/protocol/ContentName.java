@@ -512,6 +512,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	} 
 	
 	/**
+	 * Print as string with scheme in front. toString already
+	 * prints in URI format with leading /, just add scheme.
+	 */
+	public String toURIString() {
+		return SCHEME + toString();
+	}
+	
+	/**
 	 * Print bytes in the URI Generic Syntax of RFC 3986 
 	 * including byte sequences that are not legal character
 	 * encodings in any character set and byte sequences that have special 
