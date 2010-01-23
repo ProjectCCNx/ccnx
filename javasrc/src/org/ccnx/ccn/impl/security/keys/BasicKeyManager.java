@@ -545,6 +545,7 @@ public class BasicKeyManager extends KeyManager {
 	public ContentName getDefaultKeyName(ContentName keyPrefix, byte [] keyID, CCNTime keyVersion) {
 		if (null == keyPrefix) {
 			keyPrefix = getDefaultKeyNamePrefix();
+			Log.info("Got default key name prefix: {0}", keyPrefix);
 		}
 		ContentName keyName = KeyProfile.keyName(keyPrefix, keyID);
 		if (null != keyVersion) {
@@ -722,7 +723,7 @@ public class BasicKeyManager extends KeyManager {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
 		} 
-		Log.info("publishKey: publishing key {0} under specified key name{1}", keyToPublish, keyName);
+		Log.info("publishKey: publishing key {0} under specified key name {1}", keyToPublish, keyName);
 		if (null == keyName) {
 			CCNTime version = getKeyVersion(keyToPublish);
 			keyName = getDefaultKeyName(null, keyToPublish.digest(), version);

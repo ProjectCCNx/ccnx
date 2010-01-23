@@ -221,7 +221,7 @@ public class UserConfiguration {
 					throw new RuntimeException("Attempt to configure invalid default user namespace: " + userNamespaceString + "!");
 				}
 			} else {
-				_userNamespace = ContentName.fromNative(userNamespacePrefix(), DEFAULT_USER_NAMESPACE_MARKER, userName());
+				_userNamespace = ContentName.fromNative(userNamespacePrefix(), userName());
 			}
 		}
 		return _userNamespace; 
@@ -236,7 +236,7 @@ public class UserConfiguration {
 		if (null == userName) {
 			userName = userName();
 		}
-		return ContentName.fromNative(userNamespacePrefix(), DEFAULT_USER_NAMESPACE_MARKER, userName);
+		return ContentName.fromNative(userNamespacePrefix(), userName);
 	}
 
 	
@@ -256,7 +256,7 @@ public class UserConfiguration {
 					throw new RuntimeException("Attempt to configure invalid default user namespace prefix: " + userNamespacePrefixString + "!");
 				}
 			} else {
-				_userNamespacePrefix = defaultNamespace();
+				_userNamespacePrefix = ContentName.fromNative(defaultNamespace(), DEFAULT_USER_NAMESPACE_MARKER);
 			}
 		}
 		return _userNamespacePrefix; 
