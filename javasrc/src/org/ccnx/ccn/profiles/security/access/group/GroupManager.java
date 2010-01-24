@@ -20,13 +20,13 @@ package org.ccnx.ccn.profiles.security.access.group;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -167,10 +167,10 @@ public class GroupManager {
 	 * @throws ConfigurationException 
 	 * @throws ContentEncodingException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public Group createGroup(String groupFriendlyName, ArrayList<Link> newMembers) 
-			throws InvalidKeyException, ContentEncodingException, ConfigurationException, IOException, InvalidCipherTextException {
+			throws InvalidKeyException, ContentEncodingException, ConfigurationException, IOException, NoSuchAlgorithmException {
 		Group existingGroup = getGroup(groupFriendlyName);
 		if (null != existingGroup) {
 			existingGroup.setMembershipList(this, newMembers);
@@ -276,11 +276,11 @@ public class GroupManager {
 	 * @return the group private key
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public PrivateKey getGroupPrivateKey(String groupFriendlyName, CCNTime privateKeyVersion) 
-			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException {
+			throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 		// Heuristic check
 		if (!amKnownGroupMember(groupFriendlyName)) {
 			Log.info("Unexpected: we don't think we're a group member of group " + groupFriendlyName);
@@ -346,14 +346,14 @@ public class GroupManager {
 	 * @param principal the principal
 	 * @return the versioned private key
 	 * @throws IOException 
-	 * @throws InvalidCipherTextException 
 	 * @throws ContentNotReadyException
 	 * @throws ContentDecodingException
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) 
 			throws InvalidKeyException, ContentNotReadyException, ContentDecodingException, 
-					InvalidCipherTextException, IOException {
+					IOException, NoSuchAlgorithmException {
 		PrincipalInfo pi = null;
 		pi = keyDirectory.getPrincipalInfo(principal);
 		if (null == pi) {

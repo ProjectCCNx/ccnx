@@ -10,7 +10,6 @@ import java.security.SecureRandom;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -93,11 +92,11 @@ public abstract class AccessControlManager {
 	 * @return
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public Key getDataKey(ContentName dataNodeName) throws ContentDecodingException,
-				IOException, InvalidKeyException, InvalidCipherTextException {
+				IOException, InvalidKeyException, NoSuchAlgorithmException {
 		
 		// Let subclasses change data key storage conventions.
 		WrappedKeyObject wdko = retrieveWrappedDataKey(dataNodeName);
@@ -135,7 +134,7 @@ public abstract class AccessControlManager {
 	
 	protected abstract Key getDataKeyWrappingKey(ContentName dataNodeName, WrappedKeyObject wrappedDataKeyObject) throws
 			InvalidKeyException, ContentNotReadyException, ContentGoneException, ContentEncodingException, 
-				ContentDecodingException, InvalidCipherTextException, IOException;		
+				ContentDecodingException, IOException, NoSuchAlgorithmException;		
 	
 	protected WrappedKeyObject retrieveWrappedDataKey(ContentName dataNodeName) 
 				throws ContentDecodingException, ContentGoneException, ContentNotReadyException, IOException {
@@ -164,11 +163,11 @@ public abstract class AccessControlManager {
 	 * @throws InvalidKeyException 
 	 * @throws ContentEncodingException
 	 * @throws IOException
-	 * @throws InvalidCipherTextException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public abstract NodeKey getDataKeyWrappingKey(ContentName dataNodeName, PublisherPublicKeyDigest publisher)
 	 	throws AccessDeniedException, InvalidKeyException,
-	 		ContentEncodingException, IOException, InvalidCipherTextException;
+	 		ContentEncodingException, IOException, NoSuchAlgorithmException;
 
 	/**
 	 * Wrap a data key in a given node key and store it.
@@ -197,15 +196,8 @@ public abstract class AccessControlManager {
 
 	/**
 	 * Generate a random data key.
-	 * @throws IOException 
-	 * @throws ContentEncodingException 
-	 * @throws AccessDeniedException 
-	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException 
 	 **/
-	public Key generateDataKey(ContentName dataNodeName)
-	throws InvalidKeyException, AccessDeniedException,
-	ContentEncodingException, IOException, InvalidCipherTextException {
+	public Key generateDataKey(ContentName dataNodeName) {
 		// Generate new random data key of appropriate length
 		byte [] dataKeyBytes = new byte[DEFAULT_DATA_KEY_LENGTH];
 		_random.nextBytes(dataKeyBytes);
@@ -270,11 +262,11 @@ public abstract class AccessControlManager {
 	 * @return Returns the keys ready to be used for en/decryption, or null if the content is not encrypted.
 	 * @throws IOException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException 
 	 * @throws AccessDeniedException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public ContentKeys getContentKeys(ContentName dataNodeName, PublisherPublicKeyDigest publisher)
-	throws InvalidKeyException, InvalidCipherTextException, AccessDeniedException, IOException {
+	throws InvalidKeyException, AccessDeniedException, IOException, NoSuchAlgorithmException {
 		if (SegmentationProfile.isSegment(dataNodeName)) {
 			dataNodeName = SegmentationProfile.segmentRoot(dataNodeName);
 		}
@@ -324,13 +316,13 @@ public abstract class AccessControlManager {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
 			Log.logException("ConfigurationException in keysForInput", e);
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
-		} catch (InvalidCipherTextException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			Log.logException("InvalidCipherTextException in keysForInput", e);
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidKeyException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
 			Log.logException("InvalidKeyException in keysForInput", e);
+			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
+		} catch (NoSuchAlgorithmException e) {
+			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			Log.logException("NoSuchAlgorithmException in keysForInput", e);
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		}
 		return null;
@@ -376,12 +368,15 @@ public abstract class AccessControlManager {
 			}
 		} catch (ConfigurationException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
-		} catch (InvalidCipherTextException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			Log.logException("ConfigurationException in keysForInput", e);
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidKeyException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			Log.logException("InvalidKeyException in keysForInput", e);
+			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
+		} catch (NoSuchAlgorithmException e) {
+			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			Log.logException("NoSuchAlgorithmException in keysForInput", e);
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		}
 		return null;
