@@ -188,9 +188,10 @@ public class TestUserData {
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
+	 * @throws InvalidKeyException 
 	 */
 	public TestUserData(File userKeystoreDirectory, String [] userNames,
-						int userCount, char [] password) throws ConfigurationException, IOException {
+						int userCount, char [] password) throws ConfigurationException, IOException, InvalidKeyException {
 	
 		String friendlyName = null;
 		KeyManager userKeyManager = null;
@@ -236,8 +237,9 @@ public class TestUserData {
 	 * force user to know names or count, enumerate them.
 	 * @throws IOException 
 	 * @throws ConfigurationException 
+	 * @throws InvalidKeyException 
 	 */
-	public static TestUserData readUserDataDirectory(String userDataDirectory, char [] keystorePassword) throws ConfigurationException, IOException {
+	public static TestUserData readUserDataDirectory(String userDataDirectory, char [] keystorePassword) throws ConfigurationException, IOException, InvalidKeyException {
 		
 		File userDirectory = new File(userDataDirectory);
 		if (!userDirectory.exists()) {
