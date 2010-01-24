@@ -86,7 +86,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 		
-	GroupAccessControlManager _manager; // to get at key cache
+	GroupAccessControlManager _manager; // to get at key cache, GroupManager
 	
 	/**
 	 * Maps the friendly names of principals (typically groups) to their information.
