@@ -275,7 +275,8 @@ public class KeyRepository {
 	/**
 	 * Overly duplicated code. TODO condense with method above.
 	 */
-	public void publishKey(ContentName keyName, PublicKey theKey, PublisherPublicKeyDigest signingKeyID, KeyLocator keyLocator) 
+	public void publishKey(ContentName keyName, PublicKey theKey, PublisherPublicKeyDigest signingKeyID, 
+							KeyLocator keyLocator) 
 	throws IOException {
 
 		// Set up key server if it hasn't been set up already
@@ -346,12 +347,14 @@ public class KeyRepository {
 	 * @param keyName content name of the public key
 	 * @param keyToPublish public key digest
 	 * @param handle handle for ccn
+	 * @throws IOException 
 	 * @throws IOException
+	 * @throws InvalidKeyException 
 	 * @throws InvalidKeyException
 	 * @throws ConfigurationException
 	 */
 	public void publishKeyToRepository(ContentName keyName, 
-			PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException {
+			PublisherPublicKeyDigest keyToPublish) throws IOException, InvalidKeyException {
 
 
 		PublicKey key = getPublicKeyFromCache(keyToPublish);

@@ -177,9 +177,10 @@ public class BasicKeyManager extends KeyManager {
 	 * Could make fake base class constructor, and call loadKeyStore in subclass constructors,
 	 * but this wouldn't work past one level, and this allows subclasses to override initialize behavior.
 	 * @throws ConfigurationException 
+	 * @throws ConfigurationException 
 	 */
 	@Override
-	public synchronized void initialize() throws ConfigurationException, IOException {
+	public synchronized void initialize() throws InvalidKeyException, IOException, ConfigurationException {
 		if (_initialized)
 			return;
 		_keyRepository = new KeyRepository(this);
@@ -670,7 +671,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public synchronized void publishDefaultKey(ContentName keyName) throws ConfigurationException, IOException {
+	public synchronized void publishDefaultKey(ContentName keyName) throws IOException, InvalidKeyException {
 		if (!initialized()) {
 			throw new IOException("Cannot publish keys, have not yet initialized KeyManager!");
 		}
@@ -681,11 +682,7 @@ public class BasicKeyManager extends KeyManager {
 			return;
 		}
 
-		try {
-			publishKey(keyName, getDefaultKeyID(), null, null);
-		} catch (InvalidKeyException e) {
-			generateConfigurationException("InvalidKeyException attempting to publish default key!", e);
-		}
+		publishKey(keyName, getDefaultKeyID(), null, null);
 		_defaultKeysPublished = true;
 	}
 	/**
@@ -701,7 +698,7 @@ public class BasicKeyManager extends KeyManager {
 	public void publishKey(ContentName keyName, 
 						   PublisherPublicKeyDigest keyToPublish,
 						   PublisherPublicKeyDigest signingKeyID,
-						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException, ConfigurationException {
+						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
 		} 
@@ -725,7 +722,7 @@ public class BasicKeyManager extends KeyManager {
 	public void publishKey(ContentName keyName, 
 						   PublicKey keyToPublish,
 						   PublisherPublicKeyDigest signingKeyID,
-						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException, ConfigurationException {
+						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultPublicKey();
 		} 
@@ -756,7 +753,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public void publishKeyToRepository(ContentName keyName, 
-									   PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException {
+									   PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
 		} 
@@ -774,7 +771,7 @@ public class BasicKeyManager extends KeyManager {
 	 * @throws ConfigurationException
 	 */
 	@Override
-	public void publishKeyToRepository() throws InvalidKeyException, IOException, ConfigurationException {
+	public void publishKeyToRepository() throws InvalidKeyException, IOException {
 		publishKeyToRepository(null, null);
 	}
 
