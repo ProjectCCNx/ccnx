@@ -62,7 +62,7 @@ public class DigestHelper {
 	 * @throws NoSuchAlgorithmException
 	 */
 	public DigestHelper(String digestAlgorithm) throws NoSuchAlgorithmException {
-		_md = MessageDigest.getInstance(digestAlgorithm);
+		_md = MessageDigest.getInstance((null == digestAlgorithm) ? getDefaultDigest() : digestAlgorithm);
 	}
 		
 	/**

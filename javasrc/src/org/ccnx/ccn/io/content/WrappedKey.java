@@ -40,6 +40,7 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.jce.AESWrapWithPad;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.protocol.ContentName;
@@ -257,9 +258,12 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			}
 		}
 		// Default wrapping algorithm is being used, don't need to include it.
-	    return new WrappedKey(null, null, 
+	    WrappedKey wk = new WrappedKey(null, null, 
 	    					 ((null == keyAlgorithm) ? keyToBeWrapped.getAlgorithm() : keyAlgorithm), 
 	    					 keyLabel, wrappedNonceKey, wrappedKey);
+		Log.finer("wrapKey: got {0} by wrapping {1} with {2}", wk, 
+					DataUtils.printHexBytes(keyToBeWrapped.getEncoded()), DataUtils.printHexBytes(wrappingKey.getEncoded()));
+		return wk;
 	}
 	
 	/**
@@ -360,6 +364,8 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		Key unwrappedKey = null;
 		Log.info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
 				wrapAlgorithmForKey(unwrapKey.getAlgorithm()));
+		Log.finer("unwrapKey: unwrapping {0} with {1}", this, DataUtils.printHexBytes(unwrapKey.getEncoded()));
+		
 		if (((null != wrapAlgorithm()) && (wrapAlgorithm().equalsIgnoreCase("AESWrapWithPad"))) || 
 							wrapAlgorithmForKey(unwrapKey.getAlgorithm()).equalsIgnoreCase("AESWrapWithPad")) {
 			unwrappedKey = AESUnwrapWithPad(unwrapKey, wrappedKeyAlgorithm, encryptedKey(), 0, encryptedKey().length);
@@ -616,6 +622,14 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		} else if (!_wrappingKeyName.equals(other._wrappingKeyName))
 			return false;
 		return true;
+	}
+	
+	@Override
+	public String toString() {
+		return "WrappedKey: wrapping key ID: " + DataUtils.printHexBytes(_wrappingKeyIdentifier) + 
+				" wrapping key name: " + _wrappingKeyName + " wrap algorithm: " + _wrapAlgorithm + 
+				" key algorithm: " + _keyAlgorithm + " label: " + _label + " has nonce key? " + (null != _encryptedNonceKey);
+					
 	}
 
 	public static int getCipherType(String cipherAlgorithm) {

@@ -185,6 +185,9 @@ public class DataUtils {
 	 * @return the data as a Hexadecimal String
 	 */
 	public static String printHexBytes(byte [] bytes) {
+		if ((null == bytes) || (bytes.length == 0)) {
+			return "<empty>";
+		}
 		BigInteger bi = new BigInteger(1, bytes);
 		return bi.toString(16);
 	}

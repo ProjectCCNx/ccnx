@@ -287,10 +287,19 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		if (selectedGroupFriendlyName != null) {
 			// we are applying changes to an existing group
 			try {
+				System.out.println("Members to add:");
+				for (Link l: membersToAdd) {
+					System.out.println(l.targetName());
+				}
+				System.out.println("Members to remove:");
+				for (Link l: membersToRemove) {
+					System.out.println(l.targetName());
+				}
 				Group g = gm.getGroup(selectedGroupFriendlyName);
 				g.modify(membersToAdd, membersToRemove);
 			} catch (AccessDeniedException ade) {
 				JOptionPane.showMessageDialog(this, "You do not have the access right to edit this group.");
+				ade.printStackTrace();
 			}
 			catch (Exception e) {
 				e.printStackTrace();
@@ -301,6 +310,10 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 			String newName = newGroupName.getText();
 			if (validateNewGroupName(newName)) {
 				try {
+					System.out.println("Members to add:");
+					for (Link l: membersToAdd) {
+						System.out.println(l.targetName());
+					}
 					gm.createGroup(newName, membersToAdd);
 				} catch (Exception e) {
 					e.printStackTrace();

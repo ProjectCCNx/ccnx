@@ -31,6 +31,8 @@ import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.KeyRepository;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
+import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -77,13 +79,17 @@ public abstract class KeyManager {
 	 */
 	public static synchronized KeyManager getDefaultKeyManager() {
 		// could print a stack trace
-		Log.info("NOTICE: retrieving default key manager.");
+		Log.finer("NOTICE: retrieving default key manager.");
 		if (null != _defaultKeyManager) 
 			return _defaultKeyManager;
 		try {
 			return createDefaultKeyManager();
 		} catch (IOException io) {
 			Log.warning("IOException attempting to get KeyManager: " + io.getClass().getName() + ":" + io.getMessage());
+			Log.warningStackTrace(io);
+			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",io);
+		} catch (InvalidKeyException io) {
+			Log.warning("InvalidKeyException attempting to get KeyManager: " + io.getClass().getName() + ":" + io.getMessage());
 			Log.warningStackTrace(io);
 			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",io);
 		} catch (ConfigurationException e) {
@@ -110,8 +116,9 @@ public abstract class KeyManager {
 	 * @throws ConfigurationException if there is a problem with the user or system configuration
 	 * 	that requires intervention to fix
 	 * @throws IOException if there is an operational problem loading data or initializing the key store
+	 * @throws ConfigurationException 
 	 */
-	protected static synchronized KeyManager createDefaultKeyManager() throws ConfigurationException, IOException {
+	protected static synchronized KeyManager createDefaultKeyManager() throws InvalidKeyException, IOException, ConfigurationException {
 		if (null == _defaultKeyManager) {
 			_defaultKeyManager = new BasicKeyManager();
 			_defaultKeyManager.initialize();
@@ -174,32 +181,46 @@ public abstract class KeyManager {
 	 * @throws ConfigurationException
 	 * @throws IOException 
 	 */
-	public abstract void initialize() throws ConfigurationException, IOException;
+	public abstract void initialize() throws InvalidKeyException, IOException, ConfigurationException;
 	
 	public abstract boolean initialized();
-	
+		
 	/**
-	 * Allow subclasses to specialize key publication, if any.
-	 * @param defaultPrefix our default namespace, if we know
-	 * 	one for this environment. If null, take user defaults.
-	 * @throws ConfigurationException 
+	 * Return the key's content name for a given key id. 
+	 * The default key name is the publisher ID itself,
+	 * under the user's key collection. 
+	 * @param keyID[] publisher ID
+	 * @return content name
 	 */
-	public abstract void publishDefaultKey(ContentName defaultPrefix) throws IOException, ConfigurationException;
-	
+	public ContentName getDefaultKeyName(ContentName keyPrefix, PublisherPublicKeyDigest keyID, CCNTime keyVersion) {
+		if (null == keyPrefix) {
+			keyPrefix = getDefaultKeyNamePrefix();
+			Log.info("Got default key name prefix: {0}", keyPrefix);
+		}
+		ContentName keyName = KeyProfile.keyName(keyPrefix, keyID);
+		if (null != keyVersion) {
+			return VersioningProfile.addVersion(keyName, keyVersion);
+		}
+		return keyName;
+	}
+
 	/**
 	 * Allow subclasses to override default publishing location.
 	 */
 	public abstract ContentName getDefaultKeyNamePrefix();
 	
 	/**
-	 * Generate default key name for key locators.
-	 */
-	public abstract ContentName getDefaultKeyName(ContentName keyPrefix, byte [] keyID, CCNTime keyVersion);
-	/**
 	 * Get our default key ID.
 	 * @return the digest of our default key
 	 */
 	public abstract PublisherPublicKeyDigest getDefaultKeyID();
+	
+	/**
+	 * Get any timestamp associate with this key.
+	 * @param keyID
+	 * @return
+	 */
+	public abstract CCNTime getKeyVersion(PublisherPublicKeyDigest keyID);
 
 	/**
 	 * Get our default private key.
@@ -286,14 +307,14 @@ public abstract class KeyManager {
 
 	/**
 	 * Get the public key for a given publisher, going to the network to retrieve it if necessary.
-	 * Uses the default timeout.
+	 * Uses the SystemConfiguration.EXTRA_LONG_TIMEOUT to be aggressive and reexpress.
 	 * @param publisherKeyID the digest of the keys we want
 	 * @param keyLocator the key locator to tell us where to retrieve the key from
 	 * @return the key
 	 * @throws IOException if we run into an error attempting to read the key
 	 */
 	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) throws IOException {
-		return getPublicKey(publisherKeyID, keyLocator, SystemConfiguration.getDefaultTimeout());
+		return getPublicKey(publisherKeyID, keyLocator, SystemConfiguration.EXTRA_LONG_TIMEOUT);
 	}
 	
 	/**
@@ -308,6 +329,14 @@ public abstract class KeyManager {
 	 * @throws IOException if we run into an error attempting to read the key
 	 */
 	public abstract PublicKeyObject getPublicKeyObject(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException;
+
+	/**
+	 * Allow subclasses to specialize key publication, if any.
+	 * @param defaultPrefix our default namespace, if we know
+	 * 	one for this environment. If null, take user defaults.
+	 * @throws ConfigurationException 
+	 */
+	public abstract void publishDefaultKey(ContentName defaultPrefix) throws IOException, InvalidKeyException;
 
 	/**
 	 * Publish a key at a certain name, signed by a specified identity (our
@@ -332,7 +361,7 @@ public abstract class KeyManager {
 	public abstract void publishKey(ContentName keyName, 
 			   PublisherPublicKeyDigest keyToPublish,
 			   PublisherPublicKeyDigest signingKeyID,
-			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException, ConfigurationException;
+			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException;
 
 	/**
 	 * Publish a key at a certain name, signed by our default identity. Usually used to
@@ -356,7 +385,7 @@ public abstract class KeyManager {
 	public abstract void publishKey(ContentName keyName, 
 			   PublicKey keyToPublish,
 			   PublisherPublicKeyDigest signingKeyID,
-			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException, ConfigurationException;
+			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException;
 
 	/**
 	 * Publish a key at a certain name, ensuring that it is stored in a repository. Will throw an
@@ -371,7 +400,8 @@ public abstract class KeyManager {
 	 * @throws ConfigurationException
 	 */
 	public abstract void publishKeyToRepository(ContentName keyName, 
-												PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException;
+												PublisherPublicKeyDigest keyToPublish) 
+		throws InvalidKeyException, IOException;
 
 	/**
 	 * Publish our default key to a repository at its default location.
@@ -380,7 +410,7 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 * @throws ConfigurationException
 	 */
-	public abstract void publishKeyToRepository() throws InvalidKeyException, IOException, ConfigurationException;
+	public abstract void publishKeyToRepository() throws InvalidKeyException, IOException;
 
 	/**
 	 * Access our internal key store/key server.

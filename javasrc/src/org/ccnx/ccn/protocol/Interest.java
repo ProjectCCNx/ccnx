@@ -78,7 +78,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected PublisherID _publisher;
 	protected Exclude _exclude;
 	protected Integer _childSelector;
-	protected Integer _answerOriginKind;
+	protected Integer _answerOriginKind = ANSWER_CONTENT_STORE | ANSWER_GENERATED;
 	protected Integer _scope;
 	protected byte[] _nonce;
 

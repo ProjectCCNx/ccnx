@@ -74,12 +74,21 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	
 	public static class SimpleVerifier implements ContentVerifier {
 		
-		public static SimpleVerifier _defaultVerifier = new SimpleVerifier(null);
+		public static SimpleVerifier _defaultVerifier = null;
 
 		PublisherPublicKeyDigest _publisher; 
 		KeyManager _keyManager;
 		
-		public static ContentVerifier getDefaultVerifier() { return _defaultVerifier; }
+		public static ContentVerifier getDefaultVerifier() { 
+			if (null == _defaultVerifier) {
+				synchronized(SimpleVerifier.class) {
+					if (null == _defaultVerifier) {
+						_defaultVerifier = new SimpleVerifier(null);
+					}
+				}
+			}
+			return _defaultVerifier; 
+		}
 		
 		public SimpleVerifier(PublisherPublicKeyDigest publisher) {
 			_publisher = publisher;

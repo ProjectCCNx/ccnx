@@ -44,11 +44,12 @@ CP2=`echo $CP2 | sed "s/ /:/g"`
 CLASSPATH=$CP1:$CP2
 MEMORY=
 DEBUG_PORT=
+DEBUG_SUSPEND=
 OUTPUT_FILE=
 LOCAL_PORT=
 DEBUG_DAEMON=
 PROFILE_INFO=
-usage="usage: ccn_repo [-memory <memory>] [-debug <portno>] [-output <output_file>] \n\t\t[-debug-daemon <portno>] [-profile <profile_info>] \
+usage="usage: ccn_repo [-memory <memory>] [-debug <portno>] [-output <output_file>] \n\t\t[-debug-daemon <portno>] [-profile <profile_info>] [-suspend] \
 		\n\t\t<repository_directory> [-log <loglevel>] [-prefix <prefix>]\n\t\t[-global <global_prefix>] [-local <localname>]\
 		\n\t| interactive <respository_directory> \n\t| stop <pid> \n\t| stopall \n\t| signal <name> <pid>]"
 
@@ -67,6 +68,9 @@ else
   	  elif [ "$1" = "-debug" ]; then
   	      DEBUG_PORT="-Dccn.daemon.debug=$2"
   	      shift 2
+  	  elif [ "$1" = "-suspend" ]; then
+  	      DEBUG_SUSPEND="-Dccn.daemon.debug.suspend=y"
+  	      shift
   	  elif [ "$1" = "-output" ]; then
   	      OUTPUT_FILE="-Dccn.daemon.output=$2"
   	      shift 2
@@ -99,6 +103,6 @@ else
  	  shift
       $JAVA -cp $CLASSPATH $PROFILE $MEMORY org.ccnx.ccn.impl.repo.RepositoryDaemon -interactive -root $*
   else
-  	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY_INFO $DEBUG_PORT $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -start -root $*
+  	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY_INFO $DEBUG_PORT $DEBUG_SUSPEND $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -start -root $*
   fi
 fi

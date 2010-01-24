@@ -101,6 +101,7 @@ public abstract class AccessControlManager {
 		if (null == wdko) {
 			return null;
 		}
+		Log.finer("getDataKey: data key is wrapped by key {0} stored at {1}, attempting to retrieve.", wdko.wrappedKey().wrappingKeyIdentifier(), wdko.wrappedKey().wrappingKeyName());
 		
 		Key dataKey = null;
 		Key wrappingKey = null;
@@ -318,12 +319,15 @@ public abstract class AccessControlManager {
 			}
 		} catch (ConfigurationException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			Log.logException("ConfigurationException in keysForInput", e);
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidCipherTextException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			Log.logException("InvalidCipherTextException in keysForInput", e);
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidKeyException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			Log.logException("InvalidKeyException in keysForInput", e);
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		}
 		return null;
@@ -362,6 +366,9 @@ public abstract class AccessControlManager {
 				}
 				Key dataKey = acm.generateDataKey(name);
 				acm.storeDataKey(name, dataKey, dataKeyWrappingKey);
+				
+				Log.finer("keysForOutput: content {0} publisher {1} data key {2} wrapping key {3}", name, publisher, 
+						DataUtils.printHexBytes(dataKey.getEncoded()), dataKeyWrappingKey);
 				return getDefaultAlgorithmContentKeys(dataKey);
 			}
 		} catch (ConfigurationException e) {

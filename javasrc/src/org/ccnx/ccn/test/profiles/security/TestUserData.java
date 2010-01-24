@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.test.profiles.security;
 
+import java.io.File;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.util.HashMap;
@@ -26,13 +27,16 @@ import java.util.SortedSet;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.NetworkKeyManager;
 import org.ccnx.ccn.impl.security.keys.RepositoryKeyManager;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.test.Flosser;
 
 
@@ -62,16 +66,18 @@ public class TestUserData {
 												"Weasel", "Ralph", "Junior", "Beki", "Darth", "Cauliflower",
 												"Pico", "Eric", "Eric", "Eric", "Erik", "Richard"};
 	
-	protected HashMap<ContentName, KeyManager> _userData = new HashMap<ContentName,KeyManager>();
-	protected HashMap<String,ContentName> _userFriendlyNames = new HashMap<String, ContentName>();	
+	protected HashMap<String, ContentName> _userContentNames = new HashMap<String,ContentName>();
+	protected HashMap<String,KeyManager> _userKeyManagers = new HashMap<String, KeyManager>();	
 	
 		
 	/**
-	 * Read/write constructor. Makes extra new users if necessary. Expects names to come as above.
+	 * Read/write constructor to write keystores as CCN data. 
+	 * Makes extra new users if necessary. Expects names to come as above.
 	 * Will incur timeouts the first time, as it checks for data first, and will take time
 	 * to generate keys.
 	 * TODO eventually use this "for real" with real passwords.
 	 * @param userKeyStorePrefix
+	 * @param userNames list of user names to use, if null uses built-in list
 	 * @param userCount
 	 * @param storeInRepo
 	 * @param password
@@ -80,16 +86,21 @@ public class TestUserData {
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
-	public TestUserData(ContentName userKeyStorePrefix,
+	public TestUserData(ContentName userKeyStorePrefix, String [] userNames,
 			int userCount, boolean storeInRepo, char [] password, CCNHandle handle) throws ConfigurationException, IOException, InvalidKeyException {
 	
 		ContentName childName = null;
 		String friendlyName = null;
 		KeyManager userKeyManager = null;
-		
+		if (null == userNames) {
+			userNames = USER_NAMES;
+		}
 				
 		for (int i=0; i < userCount; ++i) {
-			friendlyName = USER_NAMES[i % USER_NAMES.length] + Integer.toString(1 + i/USER_NAMES.length);
+			friendlyName = userNames[i % userNames.length];
+			if (i >= userNames.length) {
+				friendlyName += Integer.toString(1 + i/userNames.length);
+			}
 
 			childName = ContentName.fromNative(userKeyStorePrefix, friendlyName);
 			Log.info("Loading user: " + friendlyName + " from " + childName);
@@ -102,13 +113,19 @@ public class TestUserData {
 				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password, handle);
 			}
 			userKeyManager.initialize();
-			_userData.put(childName, userKeyManager);
-			_userFriendlyNames.put(friendlyName, childName);
+			_userContentNames.put(friendlyName, childName);
+			_userKeyManagers.put(friendlyName, userKeyManager);
 			
 		}
 	}
 	
-	
+	/**
+	 * Backwards compatibility constructor
+	 */
+	public TestUserData(ContentName userKeyStorePrefix, 
+			int userCount, boolean storeInRepo, char [] password, CCNHandle handle) throws ConfigurationException, IOException, InvalidKeyException {
+		this(userKeyStorePrefix, null, userCount, storeInRepo, password, handle);
+	}
 	
 	/**
 	 * General read constructor. Expects names to be available in repo, and so enumerable.
@@ -134,15 +151,15 @@ public class TestUserData {
 			for (ContentName child : availableChildren) {
 				friendlyName = ContentName.componentPrintNative(child.lastComponent());
 				if (null != getUser(friendlyName)) {
-					Log.info("Already loaded data for user: " + friendlyName + " from name: " + _userFriendlyNames.get(friendlyName));
+					Log.info("Already loaded data for user: " + friendlyName + " from name: " + _userContentNames.get(friendlyName));
 					continue;
 				}
 				childName = new ContentName(userKeystoreDataPrefix, child.lastComponent());
 				Log.info("Loading user: " + friendlyName + " from " + childName);
 				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password, handle);
 				userKeyManager.initialize();
-				_userData.put(childName, userKeyManager);
-				_userFriendlyNames.put(friendlyName, childName);
+				_userContentNames.put(friendlyName, childName);
+				_userKeyManagers.put(friendlyName, userKeyManager);
 				
 			}
 			availableChildren = null;
@@ -153,31 +170,133 @@ public class TestUserData {
 		}
 	}
 	
+	/**
+	 * Read/write constructor to write keystores as files. 
+	 * Makes extra new users if necessary. Expects names to come as above.
+	 * Will incur timeouts the first time, as it checks for data first, and will take time
+	 * to generate keys.
+	 * TODO eventually use this "for real" with real passwords.
+	 * @param userKeystoreDirectory a directory under which to put each user's information;
+	 * 	segregated into subdirectories by user name, e.g. <userKeystoreDirectory>/<userName>.
+	 * @param userNames list of user names to use, if null uses built-in list
+	 * @param userCount
+	 * @param storeInRepo
+	 * @param password
+	 * @param handle
+	 * @throws IOException 
+	 * @throws ConfigurationException 
+	 * @throws IOException 
+	 * @throws ConfigurationException 
+	 * @throws InvalidKeyException 
+	 * @throws InvalidKeyException 
+	 */
+	public TestUserData(File userKeystoreDirectory, String [] userNames,
+						int userCount, char [] password) throws ConfigurationException, IOException, InvalidKeyException {
+	
+		String friendlyName = null;
+		KeyManager userKeyManager = null;
+		File userDirectory = null;
+		File userKeystoreFile = null;
+		
+		if (!userKeystoreDirectory.exists()) {
+			userKeystoreDirectory.mkdirs();
+		} else if (!userKeystoreDirectory.isDirectory()) {
+			Log.severe("Specified path {0} must be a directory!", userKeystoreDirectory);
+			throw new IllegalArgumentException("Specified path " + userKeystoreDirectory + " must be a directory!");
+		}
+		
+		for (int i=0; i < userCount; ++i) {
+			friendlyName = userNames[i % userNames.length];
+			if (i >= userNames.length) {
+				friendlyName += Integer.toString(1 + i/userNames.length);
+			}
+			
+			userDirectory = new File(userKeystoreDirectory, friendlyName);
+			if (!userDirectory.exists()) {
+				userDirectory.mkdirs();
+			}
+			
+			userKeystoreFile = new File(userDirectory, UserConfiguration.keystoreFileName());
+			if (userKeystoreFile.exists()) {
+				Log.info("Loading user: " + friendlyName + " from " + userKeystoreFile.getAbsolutePath());
+			} else {
+				Log.info("Creating user's: " + friendlyName + " keystore in file " + userKeystoreFile.getAbsolutePath());
+			}
+			
+			userKeyManager = new BasicKeyManager(friendlyName, userDirectory.getAbsolutePath(), 
+												 UserConfiguration.keystoreFileName(), 
+												null, null, password);
+			userKeyManager.initialize();
+			_userKeyManagers.put(friendlyName, userKeyManager);
+			
+		}
+	}
+	
+	/**
+	 * Load a set of user data from an existing generated set of file directories. Don't
+	 * force user to know names or count, enumerate them.
+	 * @throws IOException 
+	 * @throws ConfigurationException 
+	 * @throws InvalidKeyException 
+	 */
+	public static TestUserData readUserDataDirectory(String userDataDirectory, char [] keystorePassword) throws ConfigurationException, IOException, InvalidKeyException {
+		
+		File userDirectory = new File(userDataDirectory);
+		if (!userDirectory.exists()) {
+			Log.warning("Asked to read data from user directory {0}, but it does not exist!", userDataDirectory);
+			return null;
+		}
+		
+		if (!userDirectory.isDirectory()) {
+			Log.warning("Asked to read data from user directory {0}, but it isn't a directory!", userDataDirectory);
+			return null;
+		}
+		// Right now assume everything below here is a directory.
+		String [] children = userDirectory.list();
+		
+		return new TestUserData(userDirectory, children, children.length, keystorePassword);
+	}
+	
+	public void closeAll() {
+		for (String user : _userKeyManagers.keySet()) {
+			KeyManager km = _userKeyManagers.get(user);
+			if (null != km) {
+				km.close();
+			}
+		}
+	}
+	
+	public void publishUserKeysToRepository() throws IOException{
+		for (String friendlyName: _userKeyManagers.keySet()) {
+			System.out.println(friendlyName);
+			KeyManager userKM = _userKeyManagers.get(friendlyName);
+			try {
+				userKM.publishKeyToRepository();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		} 
+	}
+	
 	public void publishUserKeysToRepository(ContentName userNamespace) throws IOException{
-		for (String friendlyName: _userFriendlyNames.keySet()) {
-			ContentName keyStoreName = _userFriendlyNames.get(friendlyName);
-			KeyManager userKM = _userData.get(keyStoreName);
+		for (String friendlyName: _userKeyManagers.keySet()) {
+			KeyManager userKM = _userKeyManagers.get(friendlyName);
 			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
+			KeyLocator ourLocator = new KeyLocator(keyName);
 			PublicKeyObject pko = 
 				new PublicKeyObject(keyName, userKM.getDefaultPublicKey(), 
-									SaveType.REPOSITORY,
+									SaveType.REPOSITORY, userKM.getDefaultKeyID(),ourLocator, 
 									getHandleForUser(friendlyName));
 			pko.save(); 
 		} 
 	}
 	
 	public boolean hasUser(String friendlyName) {
-		return _userFriendlyNames.containsKey(friendlyName);
+		return _userKeyManagers.containsKey(friendlyName);
 	}
 	
 	public KeyManager getUser(String friendlyName) {
-		return getUser(_userFriendlyNames.get(friendlyName));
-	}
-	
-	public KeyManager getUser(ContentName userName) {
-		if (null == userName)
-			return null;
-		return _userData.get(userName);
+		return _userKeyManagers.get(friendlyName);
 	}
 	
 	public CCNHandle getHandleForUser(String friendlyName) throws IOException {
@@ -188,15 +307,15 @@ public class TestUserData {
 	}
 
 	public Set<String> friendlyNames() {
-		return _userFriendlyNames.keySet();
+		return _userKeyManagers.keySet();
 	}
 
 	public int count() {
-		return _userData.size();
+		return _userKeyManagers.size();
 	}
 	
 	public static void usage() {
-		System.out.println("usage: TestUserData [-r] <ccn uri for keystores> <user count> <password> (-r == use repo)");
+		System.out.println("usage: TestUserData [[-f <file directory for keystores>] | [-r] <ccn uri for keystores>] [\"comma-separated user names\"] <user count> [<password>] [-p] (-r == use repo, -f == use files)");
 	}
 	
 	/**
@@ -204,32 +323,78 @@ public class TestUserData {
 	 */
 	public static void main(String [] args) {
 		boolean useRepo = false;
+		File directory = null;
+		ContentName userNamespace = null;
+		boolean publishKeysToRepo = true;
+		Flosser flosser = null;
+		
+		String [] userNames = null;
+		
+		TestUserData td = null;
+
 		int arg = 0;
-		if (args.length < 3) {
+		if (args.length < 2) {
 			usage();
 			return;
 		}
-		if (args[arg].equals("-r")) {
+		
+		if (args[arg].equals("-f")) {
 			arg++;
-			useRepo = true;
-			if (args.length < 4) {
+			if (args.length < 3) {
 				usage();
 				return;
 			}
-		}
-		// Generate and write to repo
-		TestUserData td;
-		Flosser flosser = null;
-		try {
-			ContentName userNamespace = ContentName.fromURI(args[arg]);
-			if (!useRepo) {
-				flosser = new Flosser(userNamespace);
+			
+			directory = new File(args[arg++]);
+			
+		} else {
+			if (args[arg].equals("-r")) {
+				arg++;
+				useRepo = true;
+				if (args.length < 3) {
+					usage();
+					return;
+				}
 			}
-			td = new TestUserData(userNamespace, Integer.valueOf(args[arg+1]),
-									useRepo,
-									args[arg+2].toCharArray(), CCNHandle.open());
+			// Generate and write to repo
+			try {
+				userNamespace = ContentName.fromURI(args[arg]);
+				if (!useRepo) {
+					flosser = new Flosser(userNamespace);
+				}
+			} catch (Exception e) {
+				System.out.println("Exception parsing user namespace " + args[arg]);
+				e.printStackTrace();
+				return;
+			} 
+			arg++;
+		}
+		
+		if ((args.length - arg) >= 2) {
+			String userNamesString = args[arg++];
+			userNames = userNamesString.split(",");
+		}
+		
+		int count = Integer.valueOf(args[arg++]);
+		
+		String password = UserConfiguration.keystorePassword();
+		if (arg < args.length) {
+			password = args[arg++];
+		}
+		
+		try {
+			if (null != directory) {
+				td = new TestUserData(directory, userNames, count,
+						password.toCharArray());
+				if (publishKeysToRepo) {
+					td.publishUserKeysToRepository();
+				}
+			} else {
+				td = new TestUserData(userNamespace, userNames, count,
+						useRepo,
+						password.toCharArray(), CCNHandle.open());
+			}
 			System.out.println("Generated/retrieved " + td.count() + " user keystores, for users : " + td.friendlyNames());
-
 		} catch (Exception e) {
 			System.out.println("Exception generating/reading user data: " + e);
 			e.printStackTrace();
@@ -237,5 +402,10 @@ public class TestUserData {
 			if (null != flosser)
 				flosser.stop();
 		}
+		if (null != td) {
+			td.closeAll();
+		}
+		System.out.println("Finished.");
+		return;
 	}
 }

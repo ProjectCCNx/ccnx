@@ -73,6 +73,7 @@ public class Daemon {
 	public static final String PROP_DAEMON_DEBUG_PORT = "ccn.daemon.debug";
 	public static final String PROP_DAEMON_OUTPUT = "ccn.daemon.output";
 	public static final String PROP_DAEMON_PROFILE = "ccn.daemon.profile";
+	public static final String PROP_DAEMON_DEBUG_SUSPEND = "ccn.daemon.debug.suspend";
 	
 	/**
 	 * Interface describing the RMI server object sitting inside
@@ -354,10 +355,13 @@ public class Daemon {
 		if (memval != null)
 			argList.add("-Xmx" + memval);
 		
+		String suspend = System.getProperty(PROP_DAEMON_DEBUG_SUSPEND);
+		String doSuspend = suspend == null ? "n" : "y";
 		String debugPort = System.getProperty(PROP_DAEMON_DEBUG_PORT);
 		if (debugPort != null) {
-			argList.add("-Xrunjdwp:transport=dt_socket,address=" + debugPort + ",server=y,suspend=n");
-		}
+			argList.add("-Xrunjdwp:transport=dt_socket,address=" + debugPort + ",server=y,suspend=" + doSuspend);
+		} else if (doSuspend.equals("y"))
+			Log.info("Suspend requested without debug attach");
 		
 		String profileInfo = System.getProperty(PROP_DAEMON_PROFILE);
 		if (profileInfo != null) {

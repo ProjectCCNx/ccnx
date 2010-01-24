@@ -102,6 +102,12 @@ public class SystemConfiguration {
 	public static final int SHORT_TIMEOUT = 300;
 	
 	/**
+	 * Timeout used for communication with local 'ccnd' for control operations.
+	 * An example is Face Creation and Prefix Registration.
+	 */
+	public static final int CCND_OP_TIMEOUT = 1000;
+	
+	/**
 	 * Settable system default timeout.
 	 */
 	protected static int _defaultTimeout = EXTRA_LONG_TIMEOUT;
@@ -462,6 +468,29 @@ public class SystemConfiguration {
 	
 	public static void setAccessControlDisabled(boolean accessControlDisabled) {
 		_accessControlDisabled = accessControlDisabled;
+	}
+
+	/**
+	 * Retrieve a string that might be stored as an environment variable, or
+	 * overridden on the command line. If the command line variable is set, return
+	 * its (String) value; if not, return the environment variable value if available;
+	 * if neither is set return the default value. Caller should synchronize as appropriate.
+	 * @return The value in force for this variable, or null if unset.
+	 */
+	public static String retrievePropertyOrEvironmentVariable(String javaPropertyName, String environmentVariableName, String defaultValue) { 
+		// First try the command line property.
+		String value = null;
+		if (null != javaPropertyName) {
+			value = System.getProperty(javaPropertyName);
+		}
+		if ((null == value) && (null != environmentVariableName)) {
+			// Try for an environment variable.
+			value = System.getenv(environmentVariableName);
+		}
+		if (null == value) {
+			return defaultValue;
+		}
+		return value;
 	}
 
 }

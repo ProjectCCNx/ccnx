@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.impl.security.crypto;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateEncodingException;
 
@@ -197,6 +199,32 @@ public class CCNDigestHelper extends DigestHelper {
 				dh.update(contents[i], 0, contents[i].length);
 		}
 		return dh.digest();
+	}
+	
+	
+	public static byte [] digest(String digestAlgorithm, InputStream input) throws NoSuchAlgorithmException, IOException {
+		// Don't need data, so don't bother with digest input stream.
+		CCNDigestHelper dh = new CCNDigestHelper(digestAlgorithm);
+		byte [] buffer = new byte[1024];
+		int read = 0;
+		while (read >= 0) {
+			read = input.read(buffer);
+			if (read > 0) {
+				dh.update(buffer, 0, read);
+			}
+		}
+		return dh.digest();
+	}
+	
+	public static byte [] digest(InputStream input) throws IOException {
+		try {
+			byte [] digest = digest(DEFAULT_DIGEST_ALGORITHM, input);
+			return digest;
+		} catch (java.security.NoSuchAlgorithmException ex) {
+			// possible configuration problem
+			Log.warning("Fatal Error: cannot find default algorithm " + DEFAULT_DIGEST_ALGORITHM);
+			throw new RuntimeException("Error: can't find default algorithm " + DEFAULT_DIGEST_ALGORITHM + "!  " + ex.toString());
+		}
 	}
 
 	/**

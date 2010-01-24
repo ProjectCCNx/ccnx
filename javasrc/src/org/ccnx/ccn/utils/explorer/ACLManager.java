@@ -31,6 +31,7 @@ import javax.swing.JTable;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
@@ -136,6 +137,11 @@ public class ACLManager extends JDialog implements ActionListener {
 		
 	}
 
+	public boolean hasACL() {
+		if (currentACL != null) return true;
+		return false;
+	}
+	
 	private void getNodeName(String path) {
 		try{
 			node = ContentName.fromNative(path);
@@ -149,22 +155,31 @@ public class ACLManager extends JDialog implements ActionListener {
 		try{
 			currentACL = acm.getEffectiveACLObject(node).acl();
 		}
-		catch (Exception e) {
-			System.out.println("Creating missing root ACL");
+		catch (IllegalStateException ise) {
+			System.out.println("The repository has no root ACL.");
+			System.out.println("Attempting to create missing root ACL.");
 			createRootACL();
+		}
+		catch (Exception e) {
 			e.printStackTrace();
 		}		
 	}
 	
 	private void createRootACL() {
-		ContentName cn = ContentName.fromNative(userStorage, UserConfiguration.userName());
+		ContentName cn = ContentName.fromNative(userStorage, "Alice");
 		Link lk = new Link(cn, ACL.LABEL_MANAGER, null);
 		ArrayList<Link> rootACLcontents = new ArrayList<Link>();
 		rootACLcontents.add(lk);
 		ACL rootACL = new ACL(rootACLcontents);
 		try{
 			acm.initializeNamespace(rootACL);
-		} catch (Exception e) {
+			currentACL = rootACL;
+		} 
+		catch (ContentNotReadyException cnre) {
+			System.out.println("Fatal error: the system assumes the existence of user: " + cn);
+			cnre.printStackTrace();
+		}
+		catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
