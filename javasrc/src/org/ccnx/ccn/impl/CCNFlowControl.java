@@ -275,6 +275,13 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
+	 * Helper method to clean up and close.
+	 */
+	public void close() {
+		removeAllNamespaces();
+	}
+	
+	/**
 	 * Test if this flow controller is currently serving a particular namespace.
 	 * 
 	 * @param childName ContentName of test space
