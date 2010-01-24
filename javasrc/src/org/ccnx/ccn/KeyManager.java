@@ -39,6 +39,7 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
 
 
 /**
@@ -72,6 +73,11 @@ public abstract class KeyManager {
 	 * different "users" for testing purposes.
 	 */
 	protected static KeyManager _defaultKeyManager = null;
+	
+	/**
+	 * A default verifier to use, relative to these key caches and all. Move to TrustManager eventually.
+	 */
+	protected ContentVerifier _verifier = null;
 	
 	/**
 	 * Accessor to retrieve default key manager instance, or create it if necessary.
@@ -138,6 +144,7 @@ public abstract class KeyManager {
 			Log.warning("Setting default key manager to NULL. Default user key manager will be loaded on next request for default key manager.");
 		}
 		closeDefaultKeyManager();
+		Log.info("Setting default key manager: new KeyManager {0}", keyManager.getClass().getName());
 		_defaultKeyManager = keyManager;
 	}
 	
@@ -198,6 +205,20 @@ public abstract class KeyManager {
 			Log.warning("checkDefaultProvider: cannot load BouncyCastle provider!");
 		}
 		return test;
+	}
+	
+	/**
+	 * Subclasses can override with fancier verification behavior; again move to TrustManager eventually
+	 */
+	public ContentVerifier getDefaultVerifier() {
+		if (null == _verifier) {
+			synchronized(this) {
+				if (null == _verifier) {
+					_verifier = new SimpleVerifier(null, this);
+				}
+			}
+		}
+		return _verifier;
 	}
 	
 	/**
