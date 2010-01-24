@@ -464,6 +464,25 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		createFlowController();
 	}
 	
+	/**
+	 * Finalizer. Somewhat dangerous, but currently best way to close
+	 * lingering open registrations. Can't close the handle, till we ref count.
+	 */
+	@Override
+	protected void finalize() throws Throwable {
+		close();
+	}
+	
+	/**
+	 * Close flow controller. Have to call setupSave to save with this object again.
+	 * @return
+	 */
+	public synchronized void close() {
+		if (null != _flowControl) {
+			_flowControl.close();
+		}
+	}
+	
 	public SaveType saveType() { return _saveType; }
 	
 	/**
