@@ -20,6 +20,7 @@ package org.ccnx.ccn.profiles.security.access.group;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,7 +31,6 @@ import java.util.TreeMap;
 
 import javax.crypto.spec.SecretKeySpec;
 
-import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -567,10 +567,10 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws IOException 
 	 * @throws ContentGoneException 
 	 * @throws ContentNotReadyException 
-	 * @throws InvalidCipherTextException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public ACL setACL(ContentName nodeName, ACL newACL) 
-			throws AccessDeniedException, InvalidKeyException, ContentNotReadyException, ContentGoneException, IOException, InvalidCipherTextException {
+			throws AccessDeniedException, InvalidKeyException, ContentNotReadyException, ContentGoneException, IOException, NoSuchAlgorithmException {
 		// Throws access denied exception if we can't read the old node key.
 		NodeKey effectiveNodeKey = getEffectiveNodeKey(nodeName);
 		// generates the new node key, wraps it under the new acl, and wraps the old node key
@@ -595,10 +595,10 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public void deleteACL(ContentName nodeName) 
-			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException {
+			throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 		
 		// First, find ACL at this node if one exists.
 		ACLObject thisNodeACL = getACLObjectForNodeIfExists(nodeName);
@@ -636,16 +636,16 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public ACL updateACL(ContentName nodeName, ArrayList<ACL.ACLOperation> ACLUpdates) 
-			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException {
+			throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 		ACLObject currentACL = getACLObjectForNodeIfExists(nodeName);
 		ACL newACL = null;
 		
 		if (null != currentACL) {
 			newACL = currentACL.acl();
-		}else{
+		} else {
 			Log.info("Adding brand new ACL to node: " + nodeName);
 			//TODO: if no operations is specified, then a new empty ACL is created...
 			newACL = new ACL();
@@ -715,12 +715,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @param newReaders the list of new readers
 	 * @return the updated ACL
 	 * @throws IOException 
-	 * @throws InvalidCipherTextException 
 	 * @throws ContentDecodingException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public ACL addReaders(ContentName nodeName, ArrayList<Link> newReaders) 
-			throws InvalidKeyException, ContentDecodingException, InvalidCipherTextException, IOException {
+			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
 		for(Link reader : newReaders){
 			ops.add(ACLOperation.addReaderOperation(reader));
@@ -734,12 +734,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @param removedReaders the list of removed readers
 	 * @return the updated ACL
 	 * @throws IOException 
-	 * @throws InvalidCipherTextException 
 	 * @throws ContentDecodingException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public ACL removeReaders(ContentName nodeName, ArrayList<Link> removedReaders) 
-			throws InvalidKeyException, ContentDecodingException, InvalidCipherTextException, IOException {
+			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
 		for(Link reader : removedReaders){
 			ops.add(ACLOperation.removeReaderOperation(reader));
@@ -754,12 +754,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @param newWriters the list of new writers
 	 * @return the updated ACL
 	 * @throws IOException 
-	 * @throws InvalidCipherTextException 
 	 * @throws ContentDecodingException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public ACL addWriters(ContentName nodeName, ArrayList<Link> newWriters) 
-			throws InvalidKeyException, ContentDecodingException, InvalidCipherTextException, IOException {
+			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
 		for(Link writer : newWriters){
 			ops.add(ACLOperation.addWriterOperation(writer));
@@ -773,12 +773,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @param removedWriters the list of removed writers
 	 * @return the updated ACL
 	 * @throws IOException 
-	 * @throws InvalidCipherTextException 
 	 * @throws ContentDecodingException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public ACL removeWriters(ContentName nodeName, ArrayList<Link> removedWriters) 
-			throws InvalidKeyException, ContentDecodingException, InvalidCipherTextException, IOException {
+			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
 		for(Link writer : removedWriters){
 			ops.add(ACLOperation.removeWriterOperation(writer));
@@ -792,12 +792,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @param newManagers the list of new managers
 	 * @return the updated ACL
 	 * @throws IOException 
-	 * @throws InvalidCipherTextException 
 	 * @throws ContentDecodingException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public ACL addManagers(ContentName nodeName, ArrayList<Link> newManagers) 
-			throws InvalidKeyException, ContentDecodingException, InvalidCipherTextException, IOException {
+			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
 		for(Link manager: newManagers){
 			ops.add(ACLOperation.addManagerOperation(manager));
@@ -811,12 +811,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @param removedManagers the list of removed managers
 	 * @return the updated ACL
 	 * @throws IOException 
-	 * @throws InvalidCipherTextException 
 	 * @throws ContentDecodingException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public ACL removeManagers(ContentName nodeName, ArrayList<Link> removedManagers) 
-			throws InvalidKeyException, ContentDecodingException, InvalidCipherTextException, IOException {
+			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		ArrayList<ACLOperation> ops = new ArrayList<ACLOperation>();
 		for(Link manager: removedManagers){
 			ops.add(ACLOperation.removeManagerOperation(manager));
@@ -837,10 +837,11 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws AccessDeniedException 
 	 * @throws InvalidKeyException 
 	 * @throws IOException if something is wrong (e.g. no node keys at all)
+	 * @throws NoSuchAlgorithmException 
 	 */
 	protected NodeKey findAncestorWithNodeKey(ContentName nodeName) 
-			throws InvalidKeyException, AccessDeniedException, InvalidCipherTextException, 
-					ContentDecodingException, IOException {
+			throws InvalidKeyException, AccessDeniedException, 
+					ContentDecodingException, IOException, NoSuchAlgorithmException {
 		// climb up looking for node keys, then make sure that one isn't GONE
 		// if it isn't, call read-side routine to figure out how to decrypt it
 		ACLObject effectiveACL = findAncestorWithACL(nodeName);
@@ -858,13 +859,13 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @return the corresponding node key
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws AccessDeniedException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public NodeKey getLatestNodeKeyForNode(ContentName nodeName) 
-			throws InvalidKeyException, AccessDeniedException, InvalidCipherTextException, 
-					ContentDecodingException, IOException {
+			throws InvalidKeyException, AccessDeniedException, 
+					ContentDecodingException, IOException, NoSuchAlgorithmException {
 		
 		// Could do this using getLatestVersion...
 		// First we need to figure out what the latest version is of the node key.
@@ -889,13 +890,13 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @return the node key
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws AccessDeniedException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public NodeKey getSpecificNodeKey(ContentName nodeKeyName, byte [] nodeKeyIdentifier) 
-			throws InvalidKeyException, AccessDeniedException, InvalidCipherTextException, 
-					ContentDecodingException, IOException {
+			throws InvalidKeyException, AccessDeniedException, 
+					ContentDecodingException, IOException, NoSuchAlgorithmException {
 		
 		if ((null == nodeKeyName) && (null == nodeKeyIdentifier)) {
 			throw new IllegalArgumentException("Node key name and identifier cannot both be null!");
@@ -920,12 +921,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws IOException 
 	 * @throws AccessDeniedException
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	NodeKey getNodeKeyByVersionedName(ContentName nodeKeyName, byte [] nodeKeyIdentifier) 
-			throws AccessDeniedException, InvalidKeyException, InvalidCipherTextException, 
-					ContentDecodingException, IOException {
+			throws AccessDeniedException, InvalidKeyException, 
+					ContentDecodingException, IOException, NoSuchAlgorithmException {
 
 		NodeKey nk = null;
 		KeyDirectory keyDirectory = null;
@@ -957,15 +958,15 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @param nodeName
 	 * @return
 	 * @throws AccessDeniedException 
-	 * @throws InvalidCipherTextException
 	 * @throws ContentEncodingException 
 	 * @throws ContentDecodingException
 	 * @throws IOException
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public NodeKey getEffectiveNodeKey(ContentName nodeName) 
-			throws AccessDeniedException, InvalidKeyException, InvalidCipherTextException, ContentEncodingException, 
-					ContentDecodingException, IOException {
+			throws AccessDeniedException, InvalidKeyException, ContentEncodingException, 
+					ContentDecodingException, IOException, NoSuchAlgorithmException {
 		// Get the ancestor node key in force at this node.
 		NodeKey nodeKey = findAncestorWithNodeKey(nodeName);
 		if (null == nodeKey) {
@@ -989,11 +990,11 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws ContentEncodingException 
 	 * @throws ContentDecodingException 
 	 * @throws AccessDeniedException, InvalidKeyException 
-	 * @throws InvalidCipherTextException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public NodeKey getFreshEffectiveNodeKey(ContentName nodeName) 
 			throws AccessDeniedException, InvalidKeyException, ContentDecodingException, 
-					ContentEncodingException, ContentNotReadyException, ContentGoneException, IOException, InvalidCipherTextException {
+					ContentEncodingException, ContentNotReadyException, ContentGoneException, IOException, NoSuchAlgorithmException {
 		NodeKey nodeKey = findAncestorWithNodeKey(nodeName);
 		if (null == nodeKey) {
 			throw new AccessDeniedException("Cannot retrieve node key for node: " + nodeName + ".");
@@ -1118,12 +1119,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws InvalidKeyException 
 	 * @throws ContentEncodingException
 	 * @throws IOException
-	 * @throws InvalidCipherTextException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	@Override
 	public NodeKey getDataKeyWrappingKey(ContentName dataNodeName, PublisherPublicKeyDigest publisher)
 	 	throws AccessDeniedException, InvalidKeyException,
-	 		ContentEncodingException, IOException, InvalidCipherTextException {
+	 		ContentEncodingException, IOException, NoSuchAlgorithmException {
 		NodeKey effectiveNodeKey = getFreshEffectiveNodeKey(dataNodeName);
 		if (null == effectiveNodeKey) {
 			throw new AccessDeniedException("Cannot retrieve effective node key for node: " + dataNodeName + ".");
@@ -1134,17 +1135,17 @@ public class GroupAccessControlManager extends AccessControlManager {
 	/**
 	 * Retrieve the node key wrapping this data key for decryption.
 	 * @throws IOException 
-	 * @throws InvalidCipherTextException 
 	 * @throws ContentDecodingException 
 	 * @throws ContentEncodingException 
 	 * @throws ContentGoneException 
 	 * @throws ContentNotReadyException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	@Override
 	public Key getDataKeyWrappingKey(ContentName dataNodeName, WrappedKeyObject wrappedDataKeyObject) 
 				throws InvalidKeyException, ContentNotReadyException, ContentGoneException, ContentEncodingException, 
-							ContentDecodingException, InvalidCipherTextException, IOException {
+							ContentDecodingException, IOException, NoSuchAlgorithmException {
 		NodeKey enk = getNodeKeyForObject(dataNodeName, wrappedDataKeyObject);
 		if (null != enk) {
 			return enk.nodeKey();
@@ -1162,12 +1163,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @return
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	protected NodeKey getNodeKeyUsingInterposedACL(ContentName dataNodeName,
 			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) 
-			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException {
+			throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 		ACLObject nearestACL = findAncestorWithACL(dataNodeName);
 		
 		if (null == nearestACL) {
@@ -1304,11 +1305,11 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws ContentEncodingException
 	 * @throws ContentDecodingException
 	 * @throws IOException
-	 * @throws InvalidCipherTextException
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public NodeKey getNodeKeyForObject(ContentName nodeName, WrappedKeyObject wko) 
 			throws ContentNotReadyException, ContentGoneException, InvalidKeyException, ContentEncodingException,
-					ContentDecodingException, IOException, InvalidCipherTextException {
+					ContentDecodingException, IOException, NoSuchAlgorithmException {
 		
 		// First, we go and look for the node key where the data key suggests
 		// it should be, and attempt to decrypt it from there.
