@@ -369,6 +369,9 @@ public abstract class AccessControlManager {
 				}
 				Key dataKey = acm.generateDataKey(name);
 				acm.storeDataKey(name, dataKey, dataKeyWrappingKey);
+				
+				Log.finer("keysForOutput: content {0} publisher {1} data key {2} wrapping key {3}", name, publisher, 
+						DataUtils.printHexBytes(dataKey.getEncoded()), dataKeyWrappingKey);
 				return getDefaultAlgorithmContentKeys(dataKey);
 			}
 		} catch (ConfigurationException e) {
