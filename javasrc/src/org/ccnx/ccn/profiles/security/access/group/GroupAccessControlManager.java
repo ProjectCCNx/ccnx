@@ -1237,7 +1237,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 				return null;
 			}
 		}
+		Log.finer("getNodeKeyForObject: retrieved stored node key for node {0}: {1}", nodeName, nk);
 		NodeKey enk = nk.computeDescendantNodeKey(nodeName, dataKeyLabel());
+		Log.finer("getNodeKeyForObject: computed effective node key for node {0}: {1}", nodeName, enk);
 		return enk;
 	}
 	
