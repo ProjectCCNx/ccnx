@@ -31,6 +31,8 @@ import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.KeyRepository;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
+import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -187,19 +189,41 @@ public abstract class KeyManager {
 	public abstract void publishDefaultKey(ContentName defaultPrefix) throws IOException, ConfigurationException;
 	
 	/**
+	 * Return the key's content name for a given key id. 
+	 * The default key name is the publisher ID itself,
+	 * under the user's key collection. 
+	 * @param keyID[] publisher ID
+	 * @return content name
+	 */
+	public ContentName getDefaultKeyName(ContentName keyPrefix, PublisherPublicKeyDigest keyID, CCNTime keyVersion) {
+		if (null == keyPrefix) {
+			keyPrefix = getDefaultKeyNamePrefix();
+			Log.info("Got default key name prefix: {0}", keyPrefix);
+		}
+		ContentName keyName = KeyProfile.keyName(keyPrefix, keyID);
+		if (null != keyVersion) {
+			return VersioningProfile.addVersion(keyName, keyVersion);
+		}
+		return keyName;
+	}
+
+	/**
 	 * Allow subclasses to override default publishing location.
 	 */
 	public abstract ContentName getDefaultKeyNamePrefix();
 	
 	/**
-	 * Generate default key name for key locators.
-	 */
-	public abstract ContentName getDefaultKeyName(ContentName keyPrefix, byte [] keyID, CCNTime keyVersion);
-	/**
 	 * Get our default key ID.
 	 * @return the digest of our default key
 	 */
 	public abstract PublisherPublicKeyDigest getDefaultKeyID();
+	
+	/**
+	 * Get any timestamp associate with this key.
+	 * @param keyID
+	 * @return
+	 */
+	public abstract CCNTime getKeyVersion(PublisherPublicKeyDigest keyID);
 
 	/**
 	 * Get our default private key.

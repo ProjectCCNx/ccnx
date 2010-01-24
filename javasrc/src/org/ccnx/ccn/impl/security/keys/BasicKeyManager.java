@@ -45,7 +45,6 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
@@ -536,26 +535,7 @@ public class BasicKeyManager extends KeyManager {
 		return keyDir;
 	}
 	
-	/**
-	 * Return the key's content name for a given key id. 
-	 * The default key name is the publisher ID itself,
-	 * under the user's key collection. 
-	 * @param keyID[] publisher ID
-	 * @return content name
-	 */
 	@Override
-	public ContentName getDefaultKeyName(ContentName keyPrefix, byte [] keyID, CCNTime keyVersion) {
-		if (null == keyPrefix) {
-			keyPrefix = getDefaultKeyNamePrefix();
-			Log.info("Got default key name prefix: {0}", keyPrefix);
-		}
-		ContentName keyName = KeyProfile.keyName(keyPrefix, keyID);
-		if (null != keyVersion) {
-			return VersioningProfile.addVersion(keyName, keyVersion);
-		}
-		return keyName;
-	}
-	
 	public CCNTime getKeyVersion(PublisherPublicKeyDigest keyID) {
 		return _keyRepository.getPublicKeyVersionFromCache(keyID);
 	}
@@ -728,7 +708,7 @@ public class BasicKeyManager extends KeyManager {
 		Log.info("publishKey: publishing key {0} under specified key name {1}", keyToPublish, keyName);
 		if (null == keyName) {
 			CCNTime version = getKeyVersion(keyToPublish);
-			keyName = getDefaultKeyName(null, keyToPublish.digest(), version);
+			keyName = getDefaultKeyName(null, keyToPublish, version);
 		}
 		boolean resetFlag = false;
 		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
@@ -752,7 +732,7 @@ public class BasicKeyManager extends KeyManager {
 		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(keyToPublish);
 		if (null == keyName) {
 			CCNTime version = getKeyVersion(keyDigest);
-			keyName = getDefaultKeyName(null, keyDigest.digest(), version);
+			keyName = getDefaultKeyName(null, keyDigest, version);
 		}
 		boolean resetFlag = false;
 		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
