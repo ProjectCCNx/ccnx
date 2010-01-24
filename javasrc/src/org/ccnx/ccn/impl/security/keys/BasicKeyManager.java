@@ -479,6 +479,8 @@ public class BasicKeyManager extends KeyManager {
 	    }
 		return ks;
 	}
+	
+	public KeyStoreInfo getKeyStoreInfo() { return _keyStoreInfo; }
 
 	/**
 	 * Helper method to turn low-level errors into ConfigurationExceptions
