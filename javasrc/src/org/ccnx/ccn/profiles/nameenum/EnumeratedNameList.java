@@ -175,6 +175,15 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 	
 	/**
+	 * Returns the number of children we have, or 0 if we have none.
+	 */
+	public int childCount() {
+		if (null == _children)
+			return 0;
+		return _children.size();
+	}
+	
+	/**
 	 * Returns true if we know the prefix has a child matching the given name component.
 	 * 
 	 * @param childComponent name component to check for in the stored child names.
