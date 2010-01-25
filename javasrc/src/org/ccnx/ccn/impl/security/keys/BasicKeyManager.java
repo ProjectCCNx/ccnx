@@ -38,9 +38,7 @@ import java.util.HashMap;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
@@ -699,7 +697,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public synchronized void publishDefaultKey(ContentName keyName) throws IOException, InvalidKeyException {
+	public synchronized PublicKeyObject publishDefaultKey(ContentName keyName) throws IOException, InvalidKeyException {
 		if (!initialized()) {
 			throw new IOException("Cannot publish keys, have not yet initialized KeyManager!");
 		}
@@ -707,11 +705,12 @@ public class BasicKeyManager extends KeyManager {
 		// KeyRepository use it to make a CCNHandle, even though we're
 		// not done...
 		if (_defaultKeysPublished) {
-			return;
+			return null;
 		}
 
-		publishKey(keyName, getDefaultKeyID(), null, null);
+		PublicKeyObject keyObject = publishKey(keyName, getDefaultKeyID(), null, null);
 		_defaultKeysPublished = true;
+		return keyObject;
 	}
 	/**
 	 * Publish my public key to a local key server run in this JVM.
@@ -723,7 +722,7 @@ public class BasicKeyManager extends KeyManager {
 	 * @throws ConfigurationException
 	 */
 	@Override
-	public void publishKey(ContentName keyName, 
+	public PublicKeyObject publishKey(ContentName keyName, 
 						   PublisherPublicKeyDigest keyToPublish,
 						   PublisherPublicKeyDigest signingKeyID,
 						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException {
@@ -735,19 +734,11 @@ public class BasicKeyManager extends KeyManager {
 			CCNTime version = getKeyVersion(keyToPublish);
 			keyName = getDefaultKeyName(null, keyToPublish, version);
 		}
-		boolean resetFlag = false;
-		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-			resetFlag = true;
-			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, false);
-		}
-		_keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
-		if (resetFlag) {
-			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
-		}
+		return _keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
 	}
 
 	@Override
-	public void publishKey(ContentName keyName, 
+	public PublicKeyObject publishKey(ContentName keyName, 
 						   PublicKey keyToPublish,
 						   PublisherPublicKeyDigest signingKeyID,
 						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException {
@@ -759,15 +750,7 @@ public class BasicKeyManager extends KeyManager {
 			CCNTime version = getKeyVersion(keyDigest);
 			keyName = getDefaultKeyName(null, keyDigest, version);
 		}
-		boolean resetFlag = false;
-		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-			resetFlag = true;
-			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, false);
-		}
-		_keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
-		if (resetFlag) {
-			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
-		}
+		return _keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
 	}
 
 	/**

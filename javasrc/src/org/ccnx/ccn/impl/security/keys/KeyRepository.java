@@ -136,27 +136,6 @@ public class KeyRepository {
 	}
 
 	/**
-	 * Published a signed record for this key if one doesn't exist.
-	 * (if it does exist, pulls it at least to our ccnd, and optionally
-	 * makes it available).
-	 * @param keyName the key's content name; if it contains a version as its terminal
-	 * 		element the key will be published under that version. (Note that this is not
-	 * 		standard behavior for savable network content, which needs its version explicitly
-	 * 		set.)
-	 * @param keyToPublish the public key to publish
-	 * @param keyID the publisher id
-	 * @param signingKeyID the key id of the key pair to sign with; uses the default
-	 * 	key locator
-	 * @return void
-	 * @throws IOException
-	 */
-	public void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish, 
-						PublisherPublicKeyDigest signingKeyID) 
-	throws IOException {
-		publishKey(keyName, keyToPublish, signingKeyID, null);
-	}
-
-	/**
 	 * Publish a signed record for this key if one doesn't exist.
 	 * (if it does exist, pulls it at least to our ccnd, and optionally
 	 * makes it available). (TODO: decide what to do if it's published by someone
@@ -176,7 +155,7 @@ public class KeyRepository {
 	 * @return void
 	 * @throws IOException
 	 */
-	public void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish,
+	public PublicKeyObject publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish,
 						   PublisherPublicKeyDigest signingKeyID, KeyLocator signingKeyLocator) 
 	throws IOException {
 
@@ -270,12 +249,13 @@ public class KeyRepository {
 			Log.info("Retrieved existing key object {0}, whose key locator is {1}.", keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
 		}
 		remember(keyObject);
+		return keyObject;
 	}
 
 	/**
 	 * Overly duplicated code. TODO condense with method above.
 	 */
-	public void publishKey(ContentName keyName, PublicKey theKey, PublisherPublicKeyDigest signingKeyID, 
+	public PublicKeyObject publishKey(ContentName keyName, PublicKey theKey, PublisherPublicKeyDigest signingKeyID, 
 							KeyLocator keyLocator) 
 	throws IOException {
 
@@ -338,6 +318,7 @@ public class KeyRepository {
 			Log.info("Retrieved existing key object {0}, whose key locator is {1}.", keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
 		}
 		remember(keyObject);
+		return keyObject;
 	}
 
 	/**

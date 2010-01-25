@@ -350,7 +350,7 @@ public abstract class KeyManager {
 	 * 	one for this environment. If null, take user defaults.
 	 * @throws ConfigurationException 
 	 */
-	public abstract void publishDefaultKey(ContentName defaultPrefix) throws IOException, InvalidKeyException;
+	public abstract PublicKeyObject publishDefaultKey(ContentName defaultPrefix) throws IOException, InvalidKeyException;
 
 	/**
 	 * Publish a key at a certain name, signed by a specified identity (our
@@ -372,7 +372,7 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 * @throws ConfigurationException 
 	 */
-	public abstract void publishKey(ContentName keyName, 
+	public abstract PublicKeyObject publishKey(ContentName keyName, 
 			   PublisherPublicKeyDigest keyToPublish,
 			   PublisherPublicKeyDigest signingKeyID,
 			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException;
@@ -396,7 +396,7 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 * @throws ConfigurationException 
 	 */
-	public abstract void publishKey(ContentName keyName, 
+	public abstract PublicKeyObject publishKey(ContentName keyName, 
 			   PublicKey keyToPublish,
 			   PublisherPublicKeyDigest signingKeyID,
 			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException;
