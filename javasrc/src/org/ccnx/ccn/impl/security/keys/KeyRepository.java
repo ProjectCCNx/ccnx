@@ -136,27 +136,6 @@ public class KeyRepository {
 	}
 
 	/**
-	 * Published a signed record for this key if one doesn't exist.
-	 * (if it does exist, pulls it at least to our ccnd, and optionally
-	 * makes it available).
-	 * @param keyName the key's content name; if it contains a version as its terminal
-	 * 		element the key will be published under that version. (Note that this is not
-	 * 		standard behavior for savable network content, which needs its version explicitly
-	 * 		set.)
-	 * @param keyToPublish the public key to publish
-	 * @param keyID the publisher id
-	 * @param signingKeyID the key id of the key pair to sign with; uses the default
-	 * 	key locator
-	 * @return void
-	 * @throws IOException
-	 */
-	public void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish, 
-						PublisherPublicKeyDigest signingKeyID) 
-	throws IOException {
-		publishKey(keyName, keyToPublish, signingKeyID, null);
-	}
-
-	/**
 	 * Publish a signed record for this key if one doesn't exist.
 	 * (if it does exist, pulls it at least to our ccnd, and optionally
 	 * makes it available). (TODO: decide what to do if it's published by someone
@@ -176,7 +155,7 @@ public class KeyRepository {
 	 * @return void
 	 * @throws IOException
 	 */
-	public void publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish,
+	public PublicKeyObject publishKey(ContentName keyName, PublicKey theKey,
 						   PublisherPublicKeyDigest signingKeyID, KeyLocator signingKeyLocator) 
 	throws IOException {
 
@@ -186,12 +165,21 @@ public class KeyRepository {
 		// See if we can pull something acceptable for this key at this name.
 		// Use same code path for default key retrieval as getPublicKey, so that we can manage
 		// version handling in a single place.
+		if (null == theKey) {
+			theKey = handle().keyManager().getDefaultPublicKey();
+		}
+		PublisherPublicKeyDigest keyToPublish = new PublisherPublicKeyDigest(theKey);
+
+		// See if we can pull something acceptable for this key at this name.
+		// Use same code path for default key retrieval as getPublicKey, so that we can manage
+		// version handling in a single place.
 		KeyLocator targetKeyLocator = new KeyLocator(keyName);
 		Log.info("publishKey: publishing key {0}, first retrieving using {1}", keyName, targetKeyLocator);
 		
-		PublicKey theKey = getPublicKey(keyToPublish, targetKeyLocator, SystemConfiguration.SHORT_TIMEOUT);
+		PublicKey retrievedKey = getPublicKey(keyToPublish, targetKeyLocator, SystemConfiguration.SHORT_TIMEOUT);
 		PublicKeyObject keyObject = null;
-		if (null != theKey) {
+
+		if (null != retrievedKey) {
 			keyObject = retrieve(keyToPublish);
 		} 
 		if (null == keyObject) {
@@ -199,9 +187,6 @@ public class KeyRepository {
 			// cache; try to ensure it's not on the network. Might eventually
 			// want to check publisher as well
 			keyObject = getPublicKeyObject(keyToPublish, targetKeyLocator, SystemConfiguration.SHORT_TIMEOUT);
-			if ((null == theKey) && (null != keyObject) && (keyObject.available())) {
-				theKey = keyObject.publicKey();
-			}
 		}
 		// Now, finally; it's not published, so make an object to write it
 		// with. We've already tried to pull it, so don't try here. Will
@@ -245,14 +230,15 @@ public class KeyRepository {
 			}
 
 			if (null == signingKeyLocator) {
-				KeyLocator constructedLocator = handle().keyManager().getKeyLocator(signingKeyID);
-				if ((constructedLocator.type() == KeyLocatorType.KEY) && 
+				// No passed-in locator. See if we have a default set for this key.
+				KeyLocator existingLocator = handle().keyManager().getKeyLocator(signingKeyID);
+				if ((existingLocator.type() == KeyLocatorType.KEY) && 
 					(signingKeyID.equals(keyToPublish))) {
 						// Make a self-referential key locator. For now do not include the
 						// version.
-					constructedLocator = new KeyLocator(new KeyName(keyName, signingKeyID));
+					existingLocator = new KeyLocator(new KeyName(keyName, signingKeyID));
 				}
-				signingKeyLocator = constructedLocator;
+				signingKeyLocator = existingLocator;
 			}
 
 			keyObject.setOurPublisherInformation(signingKeyID, signingKeyLocator);
@@ -267,76 +253,25 @@ public class KeyRepository {
 				Log.info("Published key {0} to name {1} with key locator {2}.", keyToPublish, keyObject.getVersionedName(), signingKeyLocator);
 			}
 		} else {
-			Log.info("Retrieved existing key object {0}, whose key locator is {1}.", keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
+			Log.info("Retrieved existing key object {0}, whose key locator is {1}, not re-publishing.", keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
 		}
 		remember(keyObject);
+		return keyObject;
 	}
 
 	/**
-	 * Overly duplicated code. TODO condense with method above.
+	 * Pull key from cache.
 	 */
-	public void publishKey(ContentName keyName, PublicKey theKey, PublisherPublicKeyDigest signingKeyID, KeyLocator keyLocator) 
-	throws IOException {
-
-		// Set up key server if it hasn't been set up already
-		initializeKeyServer();
-
-		// See if we can pull something acceptable for this key at this name.
-		// Use same code path for default key retrieval as getPublicKey, so that we can manage
-		// version handling in a single place.
-		if (null == theKey) {
-			theKey = handle().keyManager().getDefaultPublicKey();
-		}
-		PublisherPublicKeyDigest keyToPublish = new PublisherPublicKeyDigest(theKey);
-		
-		PublicKeyObject keyObject = null;
-		if (null != theKey) {
-			keyObject = retrieve(keyToPublish);
-		} 
-		if (null == keyObject) {
-			keyObject = new PublicKeyObject(keyName, signingKeyID, _keyServer);
-		}
-
-		if (!keyObject.available() || (!keyObject.publicKeyDigest().equals(keyToPublish))) {
-			// Eventually may want to find something already published and link to it, but be simple here.
-
-			// Need a key locator to stick in data entry for
-			// locator. Could use key itself, but then would have
-			// key both in the content for this item and in the
-			// key locator, which is redundant. Use naming form
-			// that allows for self-referential key names -- the
-			// CCN equivalent of a "self-signed cert". Means that
-			// we will refer to only the base key name and the publisher ID.
-			if (null == signingKeyID) {
-				signingKeyID = handle().keyManager().getDefaultKeyID();
-			}
-
-			if (null == keyLocator) {
-				KeyLocator constructedLocator = handle().keyManager().getKeyLocator(signingKeyID);
-				if ((constructedLocator.type() == KeyLocatorType.KEY) && 
-					(signingKeyID.equals(keyToPublish))) {
-						// Make a self-referential key locator. For now do not include the
-						// version.
-					constructedLocator = new KeyLocator(new KeyName(keyName, signingKeyID));
-				}
-				keyLocator = constructedLocator;
-			}
-
-			keyObject.setOurPublisherInformation(signingKeyID, keyLocator);
-			// nobody's written it where we can find it fast enough.
-			// theKey will be retrieved from cache if not stored on network
-			keyObject.setData(theKey);
-
-			if (!keyObject.save()) {
-				Log.info("Not saving key when we thought we needed to: desired key value {0}, have key value {1}, " +
-						keyToPublish, new PublisherPublicKeyDigest(keyObject.publicKey()));
-			} else {
-				Log.info("Published key {0} to name {1}", keyToPublish, keyObject.getVersionedName());
-			}
-		} else {
-			Log.info("Retrieved existing key object {0}, whose key locator is {1}.", keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
-		}
-		remember(keyObject);
+	public PublicKeyObject publishKey(ContentName keyName, PublisherPublicKeyDigest keyDigest, 
+                                      PublisherPublicKeyDigest signingKeyID, 
+                                      KeyLocator signingKeyLocator) throws IOException {
+        PublicKey theKey = (null != keyDigest) ? getPublicKeyFromCache(keyDigest) : _keyManager.getDefaultPublicKey();
+        
+        if (null == theKey) {
+        	Log.warning("Cannot publish key {0} to name {1}, do not have public key in cache.", keyDigest, keyName);
+        	return null;
+        }
+        return publishKey(keyName, theKey, signingKeyID, signingKeyLocator);
 	}
 
 	/**
@@ -346,12 +281,14 @@ public class KeyRepository {
 	 * @param keyName content name of the public key
 	 * @param keyToPublish public key digest
 	 * @param handle handle for ccn
+	 * @throws IOException 
 	 * @throws IOException
+	 * @throws InvalidKeyException 
 	 * @throws InvalidKeyException
 	 * @throws ConfigurationException
 	 */
 	public void publishKeyToRepository(ContentName keyName, 
-			PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException {
+			PublisherPublicKeyDigest keyToPublish) throws IOException, InvalidKeyException {
 
 
 		PublicKey key = getPublicKeyFromCache(keyToPublish);

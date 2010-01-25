@@ -20,6 +20,7 @@ package org.ccnx.ccn.profiles.security.access.group;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Comparator;
@@ -29,7 +30,6 @@ import java.util.TreeSet;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -86,7 +86,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 		
-	GroupAccessControlManager _manager; // to get at key cache
+	GroupAccessControlManager _manager; // to get at key cache, GroupManager
 	
 	/**
 	 * Maps the friendly names of principals (typically groups) to their information.
@@ -537,13 +537,13 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * we have to. This mechanism should be generic, and should work for node keys
 	 * as well as private key wrapping keys in directories following this structure.
 	 * @return
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
 	 * @throws ContentDecodingException 
 	 * @throws IOException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public Key getUnwrappedKey(byte [] expectedKeyID) 
-			throws InvalidKeyException, InvalidCipherTextException, ContentDecodingException, IOException {
+			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		
 		WrappedKeyObject wko = null;
 		Key unwrappedKey = null;
@@ -690,13 +690,13 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws ContentGoneException 
 	 * @throws ContentNotReadyException 
 	 * @throws ContentDecodingException
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
 	 * @throws IOException
+	 * @throws NoSuchAlgorithmException 
 	 */
 	protected Key unwrapKeyForPrincipal(String principal, Key unwrappingKey) 
-			throws InvalidKeyException, InvalidCipherTextException, ContentNotReadyException, 
-					ContentDecodingException, ContentGoneException, IOException {		
+			throws InvalidKeyException, ContentNotReadyException, 
+					ContentDecodingException, ContentGoneException, IOException, NoSuchAlgorithmException {		
 		Key unwrappedKey = null;
 		if (null == unwrappingKey) {
 			Log.info("Null unwrapping key. Cannot unwrap.");
@@ -728,14 +728,15 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws AccessDeniedException 
 	 * @throws ContentGoneException 
 	 * @throws ContentNotReadyException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
 	 * @throws ContentDecodingException
 	 * @throws IOException
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public PrivateKey getPrivateKey() 
-			throws AccessDeniedException, InvalidKeyException, InvalidCipherTextException, 
-					ContentNotReadyException, ContentGoneException, ContentDecodingException, IOException {
+			throws AccessDeniedException, InvalidKeyException, 
+					ContentNotReadyException, ContentGoneException, ContentDecodingException, 
+					IOException, NoSuchAlgorithmException {
 		if (!hasPrivateKeyBlock()) { // checks hasChildren
 			Log.info("No private key block exists with name " + getPrivateKeyBlockName());
 			return null;

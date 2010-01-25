@@ -188,9 +188,10 @@ public class TestUserData {
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
+	 * @throws InvalidKeyException 
 	 */
 	public TestUserData(File userKeystoreDirectory, String [] userNames,
-						int userCount, char [] password) throws ConfigurationException, IOException {
+						int userCount, char [] password) throws ConfigurationException, IOException, InvalidKeyException {
 	
 		String friendlyName = null;
 		KeyManager userKeyManager = null;
@@ -236,8 +237,9 @@ public class TestUserData {
 	 * force user to know names or count, enumerate them.
 	 * @throws IOException 
 	 * @throws ConfigurationException 
+	 * @throws InvalidKeyException 
 	 */
-	public static TestUserData readUserDataDirectory(String userDataDirectory, char [] keystorePassword) throws ConfigurationException, IOException {
+	public static TestUserData readUserDataDirectory(String userDataDirectory, char [] keystorePassword) throws ConfigurationException, IOException, InvalidKeyException {
 		
 		File userDirectory = new File(userDataDirectory);
 		if (!userDirectory.exists()) {
@@ -280,17 +282,21 @@ public class TestUserData {
 		} 
 	}
 	
-	public void publishUserKeysToRepository(ContentName userNamespace) throws IOException{
+	public PublicKeyObject [] publishUserKeysToRepository(ContentName userNamespace) throws IOException{
+		PublicKeyObject [] results = new PublicKeyObject[_userKeyManagers.size()];
+		int i=0;
 		for (String friendlyName: _userKeyManagers.keySet()) {
 			KeyManager userKM = _userKeyManagers.get(friendlyName);
 			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
 			KeyLocator ourLocator = new KeyLocator(keyName);
 			PublicKeyObject pko = 
 				new PublicKeyObject(keyName, userKM.getDefaultPublicKey(), 
-									SaveType.REPOSITORY, userKM.getDefaultKeyID(),ourLocator, 
+									SaveType.REPOSITORY, userKM.getDefaultKeyID(), ourLocator, 
 									getHandleForUser(friendlyName));
 			pko.save(); 
+			results[i++] = pko;
 		} 
+		return results;
 	}
 	
 	public boolean hasUser(String friendlyName) {

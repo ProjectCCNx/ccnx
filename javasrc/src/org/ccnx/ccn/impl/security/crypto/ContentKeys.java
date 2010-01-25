@@ -31,6 +31,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoConstants;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
@@ -101,6 +102,11 @@ public abstract class ContentKeys implements Cloneable {
 			} else if (!_key.equals(other._key))
 				return false;
 			return true;
+		}
+		
+		@Override
+		public String toString() {
+			return "Key: " + DataUtils.printHexBytes(_key.getEncoded()) + " IV: " + DataUtils.printHexBytes(_iv);
 		}
 	}
 	
@@ -173,6 +179,8 @@ public abstract class ContentKeys implements Cloneable {
 
 	protected ContentKeys(String encryptionAlgorithm, byte [] masterEncryptionKey, byte [] masterIVCtr) throws NoSuchAlgorithmException, NoSuchPaddingException  {
 		this(encryptionAlgorithm);
+		Log.finer("ContentKeys: initializing key for algorithm {0}, master key {1}, iv/ctr {2}", encryptionAlgorithm,
+				DataUtils.printHexBytes(masterEncryptionKey), DataUtils.printHexBytes(masterIVCtr));
 		this._masterKeyAndIVCtr = new KeyAndIV(_encryptionAlgorithm.substring(0, _encryptionAlgorithm.indexOf('/')), masterEncryptionKey, masterIVCtr);
 	}
 	

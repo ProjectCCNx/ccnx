@@ -25,6 +25,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.RandomAccessFile;
+import java.security.InvalidKeyException;
 import java.security.InvalidParameterException;
 import java.security.PrivateKey;
 import java.util.HashMap;
@@ -288,11 +289,14 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				KeyManager.setDefaultKeyManager(_km);
 
 			} catch (ConfigurationException e) {
-				Log.warning("ConfigurationException creating repository key store: " + e.getMessage());
-				throw new RepositoryException("ConfigurationException creating repository key store!", e);
+				Log.warning("ConfigurationException loading repository key store: " + e.getMessage());
+				throw new RepositoryException("ConfigurationException loading repository key store!", e);
 			} catch (IOException e) {
-				Log.warning("IOException creating repository key store: " + e.getMessage());
-				throw new RepositoryException("IOException creating repository key store!", e);
+				Log.warning("IOException loading repository key store: " + e.getMessage());
+				throw new RepositoryException("IOException loading repository key store!", e);
+			} catch (InvalidKeyException e) {
+				Log.warning("InvalidKeyException loading repository key store: " + e.getMessage());
+				throw new RepositoryException("InvalidKeyException loading repository key store!", e);
 			}
 		}
 		_handle = handle;

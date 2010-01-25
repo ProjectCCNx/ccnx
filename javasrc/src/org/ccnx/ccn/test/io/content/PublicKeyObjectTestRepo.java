@@ -80,7 +80,7 @@ public class PublicKeyObjectTestRepo {
 	public static void setUpBeforeClass() throws Exception {
 		handle = CCNHandle.open();
 		oldLevel = Log.getLevel();
-		Log.setLevel(Level.FINEST);
+		//Log.setLevel(Level.FINEST);
 		Security.addProvider(new BouncyCastleProvider());
 		// generate key pair
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
