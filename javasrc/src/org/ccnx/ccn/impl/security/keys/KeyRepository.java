@@ -253,7 +253,7 @@ public class KeyRepository {
 				Log.info("Published key {0} to name {1} with key locator {2}.", keyToPublish, keyObject.getVersionedName(), signingKeyLocator);
 			}
 		} else {
-			Log.info("Retrieved existing key object {0}, whose key locator is {1}.", keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
+			Log.info("Retrieved existing key object {0}, whose key locator is {1}, not re-publishing.", keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
 		}
 		remember(keyObject);
 		return keyObject;
