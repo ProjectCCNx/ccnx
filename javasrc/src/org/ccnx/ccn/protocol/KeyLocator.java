@@ -78,7 +78,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
      * @param name the name
      */
     public KeyLocator(ContentName name) {
-    	this (name, null);
+    	this (name, (PublisherID)null);
     }
     
     /**
@@ -87,6 +87,15 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
      * @param publisher the desired publisher
      */
     public KeyLocator(ContentName name, PublisherID publisher) {
+    	this(new KeyName(name, publisher));
+    }
+       
+    /**
+     * Make a KeyLocator containing a key name and the desired publisher
+     * @param name the key name
+     * @param publisher the desired publisher
+     */
+    public KeyLocator(ContentName name, PublisherPublicKeyDigest publisher) {
     	this(new KeyName(name, publisher));
     }
     

@@ -591,10 +591,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		setInputStreamProperties(inputStream);
 		
 		Tuple<ContentName, byte []> nameAndVersion = null;
-		// Move try to surround both update case and isGone case; as isGone 
-		// can throw not ready as well, or LCE.
-		// TODO -- isGone doesn't handle link dereferencing, only update. Move initialization
-		// and link dereferencing behavior to handle links to GONE objects.
 		try {
 			if (inputStream.isGone()) {
 				Log.fine("Reading from GONE stream: {0}", inputStream.getBaseName());
@@ -838,6 +834,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// segment and no header on small objects
 			cos.close();
 			_currentPublisher = (_publisher == null) ? _flowControl.getHandle().getDefaultPublisher() : _publisher; // TODO DKS -- is this always correct?
+			// must match algorithm stream uses to get key locator if null; could have time of access problem
 			_currentPublisherKeyLocator = (_keyLocator == null) ? 
 					_flowControl.getHandle().keyManager().getKeyLocator(_publisher) : _keyLocator;
 		} else {
@@ -860,10 +857,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_lastSaved = GONE_OUTPUT;
 		}
 		_currentVersionComponent = name.lastComponent();
-		_currentVersionName = null;
+		_currentVersionName = name;
 		setDirty(false);
 		_available = true;
 
+		Log.finest("Saved object {0} publisher {1} key locator {2}", name, _currentPublisher, _currentPublisherKeyLocator);
 		return true;
 	}
 	

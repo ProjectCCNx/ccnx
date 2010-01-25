@@ -34,12 +34,11 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.HashMap;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
@@ -49,8 +48,7 @@ import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
-import org.ccnx.ccn.protocol.KeyName;
-import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
@@ -124,6 +122,17 @@ public class BasicKeyManager extends KeyManager {
 	protected KeyCache _privateKeyCache = null;
 	
 	/**
+	 * Registry of key locators to use. In essence, these are pointers to our
+	 * primary credential for each key. Unless overridden this is what we use
+	 * for each of our signing keys.
+	 * 
+	 * TODO consider adding a second map tracking all the available key locators for
+	 * a given key, to select from them.
+	 */
+	protected HashMap<PublisherPublicKeyDigest, KeyLocator> _currentKeyLocators = new HashMap<PublisherPublicKeyDigest, KeyLocator>();
+	
+	
+	/**
 	 * Subclass constructor that sets store-independent parameters.
 	 */
 	protected BasicKeyManager(String userName, String keyStoreType,
@@ -188,6 +197,9 @@ public class BasicKeyManager extends KeyManager {
 		_keyStoreInfo = loadKeyStore();// uses _keyRepository and _privateKeyCache
 		if (!loadValuesFromKeystore(_keyStoreInfo)) {
 			Log.warning("Cannot process keystore!");
+		}
+		if (!loadValuesFromConfiguration()) {
+			Log.warning("Cannot process configuration data!");
 		}
 		_initialized = true;		
 		// Can we publish keys now?
@@ -338,9 +350,40 @@ public class BasicKeyManager extends KeyManager {
 		}    
 		return true;
 	}
+	
+	/**
+	 * Load values of relevance to a key manager. Most importantly, loads default
+	 * key locator information
+	 * @return true if successful, false on error
+	 * @throws ConfigurationException
+	 */
+	protected boolean loadValuesFromConfiguration() throws ConfigurationException {
+		// Load key locator information. Might be in two places -- system property/environment variable,
+		// or configuration file. Start with just system property, first round just specify
+		// name, not publisher.
+		// Starting step -- read a key name (no publisher) key locator just for our default
+		// key from an environment variable/system property.
+		String defaultKeyLocatorName = UserConfiguration.defaultKeyLocator();
+		// Doesn't even support publisher specifications yet.
+		if (null != defaultKeyLocatorName) {
+			try {
+				ContentName locatorName = ContentName.fromNative(defaultKeyLocatorName);
+				setKeyLocator(getDefaultKeyID(), new KeyLocator(locatorName));
+			} catch (MalformedContentNameStringException e) {
+				generateConfigurationException("Cannot parse key locator name {0}!", e);
+			}
+		}
+
+		// TODO fill in the rest
+		// load values from our configuration file, which should be read in UserConfiguration
+		// also use that to preconfigure things like keystores and such
+		
+		return true;
+	}
 		
 	/**
-	 * Creates a CCN versioned output stream as the key storage 
+	 * Generate our key store if we don't have one. Use createKeyStoreWriteStream to determine where
+	 * to put it.
 	 * @throws ConfigurationException
 	 */
 	synchronized protected KeyStoreInfo createKeyStore() throws ConfigurationException, IOException {
@@ -518,17 +561,6 @@ public class BasicKeyManager extends KeyManager {
 	}
 		
 	@Override
-	public KeyLocator getKeyLocator(PrivateKey signingKey) {
-		PublisherPublicKeyDigest keyID = _privateKeyCache.getPublicKeyIdentifier(signingKey);
-		return getKeyLocator(keyID);
-	}
-	
-	@Override
-	public KeyLocator getDefaultKeyLocator() {
-		return getKeyLocator(getDefaultKeyID());
-	}
-	
-	@Override
 	public ContentName getDefaultKeyNamePrefix() {
 		ContentName keyDir =
 			ContentName.fromNative(_userNamespace, 
@@ -537,16 +569,22 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	@Override
-	public CCNTime getKeyVersion(PublisherPublicKeyDigest keyID) {
-		return _keyRepository.getPublicKeyVersionFromCache(keyID);
+	public ContentName getDefaultKeyName(PublisherPublicKeyDigest keyID) {
+		if (null == keyID)
+			keyID = getDefaultKeyID();
+		return getDefaultKeyName(getDefaultKeyNamePrefix(), keyID, getKeyVersion(keyID));
 	}
-	
+		
 	/**
-	 * Get default key locator given a public key digest
-	 * @TODO work on this -- have to balance between pulling the command-line specified
-	 * key locator for the default key and using the actual published value; works
-	 * as long as we publish it to the right location from the get go
-	 * @param key public key digest
+	 * Get the key locator to use for a given key. If a value has been stored
+	 * by calling setKeyLocator, that value will be used. Such values can
+	 * also be initialized using command-line properties, environment variables,
+	 * or configuration files. Usually it refers to content already published.
+	 * As we don't know where the key might be published, if no value is
+	 * specified, we return a locator of type KEY. We have deprecated the
+	 * previous behavior of trying to look at objects we have published
+	 * containing this key; this does not allow the user enough control over
+	 * what key locator will be used.
 	 * @return key locator
 	 */
 	@Override
@@ -554,21 +592,55 @@ public class BasicKeyManager extends KeyManager {
 		if (null == keyID) {
 			keyID = getDefaultKeyID();
 		}
-		PublicKeyObject keyObject = _keyRepository.retrieve(keyID);
-
-		if (null != keyObject) {
-			try {
-				if (keyObject.isSaved()) {
-					return new KeyLocator(new KeyName(keyObject.getVersionedName(), new PublisherID(keyObject.getContentPublisher())));
-				}
-			} catch (IOException ex) {
-				Log.warning("IOException checking saved status or retrieving version of key object {0}: {1}!", keyObject.getVersionedName(), ex.getMessage());
-				Log.warningStackTrace(ex);
-				Log.warning("Falling through and retrieving KEY type key locator for key {1}", keyID);
-			}
-		} 
-		return getKeyTypeKeyLocator(keyID);
+		KeyLocator keyLocator = getStoredKeyLocator(keyID);
+		if (null == keyLocator) {
+			keyLocator = getKeyTypeKeyLocator(keyID);
+		}
+		Log.info("getKeyLocator: returning locator {0} for key {1}", keyID);
+		return keyLocator;
 	}
+	
+	@Override 
+	public KeyLocator getStoredKeyLocator(PublisherPublicKeyDigest keyID) {
+		return _currentKeyLocators.get(keyID);
+	}
+
+	@Override 
+	public boolean haveStoredKeyLocator(PublisherPublicKeyDigest keyID) {
+		return _currentKeyLocators.containsKey(keyID);
+	}
+
+	/**
+	 * Helper method to get the key locator for one of our signing keys.
+	 */
+	@Override
+	public KeyLocator getKeyLocator(PrivateKey signingKey) {
+		PublisherPublicKeyDigest keyID = _privateKeyCache.getPublicKeyIdentifier(signingKey);
+		return getKeyLocator(keyID);
+	}
+	
+	/**
+	 * Remember the key locator to use for a given key. Use
+	 * this to publish this key in the future if not overridden by method
+	 * calls. If no key locator stored for this key, and no override
+	 * given, compute a KEY type key locator if this key has not been
+	 * published, and the name given to it when published if it has.
+	 * @param publisherKeyID the key whose locator to set
+	 * @param keyLocator the new key locator for this key; overrides any previous value.
+	 * 	If null, erases previous value and defaults will be used.
+	 */
+	public void setKeyLocator(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) {
+		if (null == publisherKeyID)
+			publisherKeyID = getDefaultKeyID();;
+		_currentKeyLocators.put(publisherKeyID, keyLocator);
+	}
+
+	
+	@Override
+	public CCNTime getKeyVersion(PublisherPublicKeyDigest keyID) {
+		return _keyRepository.getPublicKeyVersionFromCache(keyID);
+	}
+	
 	
 	/**
 	 * Get private key
@@ -671,7 +743,7 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public synchronized void publishDefaultKey(ContentName keyName) throws IOException, InvalidKeyException {
+	public synchronized PublicKeyObject publishDefaultKey(ContentName keyName) throws IOException, InvalidKeyException {
 		if (!initialized()) {
 			throw new IOException("Cannot publish keys, have not yet initialized KeyManager!");
 		}
@@ -679,11 +751,12 @@ public class BasicKeyManager extends KeyManager {
 		// KeyRepository use it to make a CCNHandle, even though we're
 		// not done...
 		if (_defaultKeysPublished) {
-			return;
+			return null;
 		}
 
-		publishKey(keyName, getDefaultKeyID(), null, null);
+		PublicKeyObject keyObject = publishKey(keyName, getDefaultKeyID(), null, null);
 		_defaultKeysPublished = true;
+		return keyObject;
 	}
 	/**
 	 * Publish my public key to a local key server run in this JVM.
@@ -695,31 +768,23 @@ public class BasicKeyManager extends KeyManager {
 	 * @throws ConfigurationException
 	 */
 	@Override
-	public void publishKey(ContentName keyName, 
+	public PublicKeyObject publishKey(ContentName keyName, 
 						   PublisherPublicKeyDigest keyToPublish,
 						   PublisherPublicKeyDigest signingKeyID,
 						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
 		} 
-		Log.info("publishKey: publishing key {0} under specified key name {1}", keyToPublish, keyName);
-		if (null == keyName) {
-			CCNTime version = getKeyVersion(keyToPublish);
-			keyName = getDefaultKeyName(null, keyToPublish, version);
+		PublicKey theKey = getPublicKey(keyToPublish);
+		if (null == theKey) {
+			Log.warning("Cannot publish key {0} to name {1}, do not have public key in cache.", keyToPublish, keyName);
+			return null;
 		}
-		boolean resetFlag = false;
-		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-			resetFlag = true;
-			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, false);
-		}
-		_keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
-		if (resetFlag) {
-			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
-		}
+		return publishKey(keyName, theKey, signingKeyID, signingKeyLocator);
 	}
 
 	@Override
-	public void publishKey(ContentName keyName, 
+	public PublicKeyObject publishKey(ContentName keyName, 
 						   PublicKey keyToPublish,
 						   PublisherPublicKeyDigest signingKeyID,
 						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException {
@@ -727,19 +792,21 @@ public class BasicKeyManager extends KeyManager {
 			keyToPublish = getDefaultPublicKey();
 		} 
 		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(keyToPublish);
+		
 		if (null == keyName) {
-			CCNTime version = getKeyVersion(keyDigest);
-			keyName = getDefaultKeyName(null, keyDigest, version);
+			keyName = getDefaultKeyName(keyDigest);
 		}
-		boolean resetFlag = false;
-		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-			resetFlag = true;
-			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, false);
+		Log.info("publishKey: publishing key {0} under specified key name {1}", keyDigest, keyName);
+		PublicKeyObject keyObject =  _keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
+		
+		if (!haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
+			// So once we publish self-signed key object, we store a pointer to that
+			// to use. Don't override any manually specified values.
+			KeyLocator newKeyLocator = new KeyLocator(keyObject.getVersionedName(), keyObject.getContentPublisher());
+			setKeyLocator(keyDigest, newKeyLocator);
+			Log.info("publishKey: storing key locator {1} for key {1}", keyDigest, newKeyLocator);
 		}
-		_keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
-		if (resetFlag) {
-			SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
-		}
+		return keyObject;
 	}
 
 	/**

@@ -186,7 +186,26 @@ public abstract class KeyManager {
 	public abstract boolean initialized();
 		
 	/**
-	 * Return the key's content name for a given key id. 
+	 * Get our default key ID.
+	 * @return the digest of our default key
+	 */
+	public abstract PublisherPublicKeyDigest getDefaultKeyID();
+	
+	/**
+	 * Get our default private key.
+	 * @return our default private key
+	 */
+	public abstract PrivateKey getDefaultSigningKey();
+
+	/**
+	 * Get our default public key.
+	 * @return our default public key
+	 */
+	public abstract PublicKey getDefaultPublicKey();
+
+	/**
+	 * Return the key's content name for a given key id, given
+	 * a specified prefix and version. 
 	 * The default key name is the publisher ID itself,
 	 * under the user's key collection. 
 	 * @param keyID[] publisher ID
@@ -205,52 +224,54 @@ public abstract class KeyManager {
 	}
 
 	/**
+	 * Get the key-manager determined default key name for a key. Might include
+	 * a version, might allow caller to save with generated version.
+	 */
+	public abstract ContentName getDefaultKeyName(PublisherPublicKeyDigest keyID);
+
+	
+	/**
 	 * Allow subclasses to override default publishing location.
 	 */
 	public abstract ContentName getDefaultKeyNamePrefix();
 	
 	/**
-	 * Get our default key ID.
-	 * @return the digest of our default key
-	 */
-	public abstract PublisherPublicKeyDigest getDefaultKeyID();
-	
-	/**
-	 * Get any timestamp associate with this key.
-	 * @param keyID
-	 * @return
-	 */
-	public abstract CCNTime getKeyVersion(PublisherPublicKeyDigest keyID);
-
-	/**
-	 * Get our default private key.
-	 * @return our default private key
-	 */
-	public abstract PrivateKey getDefaultSigningKey();
-
-	/**
-	 * Get our default public key.
-	 * @return our default public key
-	 */
-	public abstract PublicKey getDefaultPublicKey();
-
-	/**
-	 * Get our default key locator.
-	 * @return our default key locator
-	 */
-	public abstract KeyLocator getDefaultKeyLocator();
-
-	/**
-	 * Get the default key locator for a particular public key
-	 * @param publisherKeyID the key whose locator we want to retrieve
-	 * @return the default key locator for that key
+	 * Gets the preferred key locator for this signing key.
+	 * @param publisherKeyID the key whose locator we want to retrieve, 
+	 * 		if null retrieves the key locator for our default key
+	 * @return the current preferred key locator for that key
 	 */
 	public abstract KeyLocator getKeyLocator(PublisherPublicKeyDigest publisherKeyID);
 
 	/**
-	 * Helper method, get the default key locator for one of our signing keys.
+	 * Get our current preferred key locator for this signing key. Uses
+	 * getKeyLocator(PublisherPublicKeyDigest).
 	 */
 	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
+	
+	/**
+	 * Get the key locator for our default key. Same as getKeyLocator(null)
+	 */
+	public KeyLocator getDefaultKeyLocator() {
+		return getKeyLocator(getDefaultKeyID());
+	}
+
+	public abstract boolean haveStoredKeyLocator(PublisherPublicKeyDigest keyID);
+
+	public abstract KeyLocator getStoredKeyLocator(PublisherPublicKeyDigest keyID);
+
+	/**
+	 * Remember the key locator to use for a given key. Use
+	 * this to publish this key in the future if not overridden by method
+	 * calls. If no key locator stored for this key, and no override
+	 * given, compute a KEY type key locator if this key has not been
+	 * published, and the name given to it when published if it has.
+	 * @param publisherKeyID the key whose locator to set; if null sets it for our
+	 * 		default key
+	 * @param keyLocator the new key locator for this key; overrides any previous value.
+	 * 	If null, erases previous value and defaults will be used.
+	 */
+	public abstract void setKeyLocator(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator);
 	
 	/**
 	 * Get a KEY type key locator for a particular public key.
@@ -296,6 +317,13 @@ public abstract class KeyManager {
 	public abstract PrivateKey[] getSigningKeys();
 	
 	/**
+	 * Get any timestamp associate with this key.
+	 * @param keyID
+	 * @return
+	 */
+	public abstract CCNTime getKeyVersion(PublisherPublicKeyDigest keyID);
+
+	/**
 	 * Get the public key for a given publisher, going to the network to retrieve it if necessary.
 	 * @param publisherKeyID the digest of the keys we want
 	 * @param keyLocator the key locator to tell us where to retrieve the key from
@@ -336,7 +364,7 @@ public abstract class KeyManager {
 	 * 	one for this environment. If null, take user defaults.
 	 * @throws ConfigurationException 
 	 */
-	public abstract void publishDefaultKey(ContentName defaultPrefix) throws IOException, InvalidKeyException;
+	public abstract PublicKeyObject publishDefaultKey(ContentName defaultPrefix) throws IOException, InvalidKeyException;
 
 	/**
 	 * Publish a key at a certain name, signed by a specified identity (our
@@ -358,7 +386,7 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 * @throws ConfigurationException 
 	 */
-	public abstract void publishKey(ContentName keyName, 
+	public abstract PublicKeyObject publishKey(ContentName keyName, 
 			   PublisherPublicKeyDigest keyToPublish,
 			   PublisherPublicKeyDigest signingKeyID,
 			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException;
@@ -382,7 +410,7 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 * @throws ConfigurationException 
 	 */
-	public abstract void publishKey(ContentName keyName, 
+	public abstract PublicKeyObject publishKey(ContentName keyName, 
 			   PublicKey keyToPublish,
 			   PublisherPublicKeyDigest signingKeyID,
 			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException;
