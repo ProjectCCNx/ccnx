@@ -230,14 +230,15 @@ public class KeyRepository {
 			}
 
 			if (null == signingKeyLocator) {
-				KeyLocator constructedLocator = handle().keyManager().getKeyLocator(signingKeyID);
-				if ((constructedLocator.type() == KeyLocatorType.KEY) && 
+				// No passed-in locator. See if we have a default set for this key.
+				KeyLocator existingLocator = handle().keyManager().getKeyLocator(signingKeyID);
+				if ((existingLocator.type() == KeyLocatorType.KEY) && 
 					(signingKeyID.equals(keyToPublish))) {
 						// Make a self-referential key locator. For now do not include the
 						// version.
-					constructedLocator = new KeyLocator(new KeyName(keyName, signingKeyID));
+					existingLocator = new KeyLocator(new KeyName(keyName, signingKeyID));
 				}
-				signingKeyLocator = constructedLocator;
+				signingKeyLocator = existingLocator;
 			}
 
 			keyObject.setOurPublisherInformation(signingKeyID, signingKeyLocator);
