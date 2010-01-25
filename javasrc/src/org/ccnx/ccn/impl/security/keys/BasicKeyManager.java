@@ -535,6 +535,13 @@ public class BasicKeyManager extends KeyManager {
 		return keyDir;
 	}
 	
+	@Override
+	public ContentName getDefaultKeyName(PublisherPublicKeyDigest keyID) {
+		if (null == keyID)
+			keyID = getDefaultKeyID();
+		return getDefaultKeyName(getDefaultKeyNamePrefix(), keyID, getKeyVersion(keyID));
+	}
+		
 	/**
 	 * Get the key locator to use for a given key. Use
 	 * this to publish this key in the future if not overridden by method
@@ -729,11 +736,10 @@ public class BasicKeyManager extends KeyManager {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
 		} 
-		Log.info("publishKey: publishing key {0} under specified key name {1}", keyToPublish, keyName);
 		if (null == keyName) {
-			CCNTime version = getKeyVersion(keyToPublish);
-			keyName = getDefaultKeyName(null, keyToPublish, version);
+			keyName = getDefaultKeyName(keyToPublish);
 		}
+		Log.info("publishKey: publishing key {0} under specified key name {1}", keyToPublish, keyName);
 		return _keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
 	}
 
@@ -747,9 +753,9 @@ public class BasicKeyManager extends KeyManager {
 		} 
 		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(keyToPublish);
 		if (null == keyName) {
-			CCNTime version = getKeyVersion(keyDigest);
-			keyName = getDefaultKeyName(null, keyDigest, version);
+			keyName = getDefaultKeyName(keyDigest);
 		}
+		Log.info("publishKey: publishing key {0} under specified key name {1}", keyToPublish, keyName);
 		return _keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
 	}
 

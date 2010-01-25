@@ -204,7 +204,8 @@ public abstract class KeyManager {
 	public abstract PublicKey getDefaultPublicKey();
 
 	/**
-	 * Return the key's content name for a given key id. 
+	 * Return the key's content name for a given key id, given
+	 * a specified prefix and version. 
 	 * The default key name is the publisher ID itself,
 	 * under the user's key collection. 
 	 * @param keyID[] publisher ID
@@ -222,6 +223,13 @@ public abstract class KeyManager {
 		return keyName;
 	}
 
+	/**
+	 * Get the key-manager determined default key name for a key. Might include
+	 * a version, might allow caller to save with generated version.
+	 */
+	public abstract ContentName getDefaultKeyName(PublisherPublicKeyDigest keyID);
+
+	
 	/**
 	 * Allow subclasses to override default publishing location.
 	 */
@@ -253,7 +261,8 @@ public abstract class KeyManager {
 	 * calls. If no key locator stored for this key, and no override
 	 * given, compute a KEY type key locator if this key has not been
 	 * published, and the name given to it when published if it has.
-	 * @param publisherKeyID the key whose locator to set
+	 * @param publisherKeyID the key whose locator to set; if null sets it for our
+	 * 		default key
 	 * @param keyLocator the new key locator for this key; overrides any previous value.
 	 * 	If null, erases previous value and defaults will be used.
 	 */
