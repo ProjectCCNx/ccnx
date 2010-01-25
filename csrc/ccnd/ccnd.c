@@ -3094,7 +3094,7 @@ set_content_timer(struct ccnd_handle *h, struct content_entry *content,
     size_t stop  = pco->offset[CCN_PCO_E_FreshnessSeconds];
     if (h->force_zero_freshness) {
         /* Keep around for long enough to make it through the queues */
-        microseconds = 4 * h->data_pause_microsec + 1000;
+        microseconds = 8 * h->data_pause_microsec + 10000;
         goto Finish;
     }
     if (start == stop)
@@ -3783,12 +3783,10 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->capacity = ~0;
     if (entrylimit != NULL && entrylimit[0] != 0) {
         h->capacity = atol(entrylimit);
-        if (h->capacity < 0)
-            h->capacity = 10;
-        else if (h->capacity == 0) {
-            h->capacity = 1;
+        if (h->capacity == 0)
             h->force_zero_freshness = 1;
-        }
+        if (h->capacity <= 0)
+            h->capacity = 10;
     }
     h->mtu = 0;
     mtu = getenv("CCND_MTU");
