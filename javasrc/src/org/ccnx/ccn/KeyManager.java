@@ -236,15 +236,16 @@ public abstract class KeyManager {
 	public abstract ContentName getDefaultKeyNamePrefix();
 	
 	/**
-	 * Get the default key locator for a particular public key
+	 * Gets the preferred key locator for this signing key.
 	 * @param publisherKeyID the key whose locator we want to retrieve, 
 	 * 		if null retrieves the key locator for our default key
-	 * @return the default key locator for that key
+	 * @return the current preferred key locator for that key
 	 */
 	public abstract KeyLocator getKeyLocator(PublisherPublicKeyDigest publisherKeyID);
 
 	/**
-	 * Helper method, get the default key locator for one of our signing keys.
+	 * Get our current preferred key locator for this signing key. Uses
+	 * getKeyLocator(PublisherPublicKeyDigest).
 	 */
 	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
 	
@@ -254,6 +255,10 @@ public abstract class KeyManager {
 	public KeyLocator getDefaultKeyLocator() {
 		return getKeyLocator(getDefaultKeyID());
 	}
+
+	public abstract boolean haveStoredKeyLocator(PublisherPublicKeyDigest keyID);
+
+	public abstract KeyLocator getStoredKeyLocator(PublisherPublicKeyDigest keyID);
 
 	/**
 	 * Remember the key locator to use for a given key. Use

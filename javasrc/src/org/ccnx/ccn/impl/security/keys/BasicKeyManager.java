@@ -48,8 +48,6 @@ import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
-import org.ccnx.ccn.protocol.KeyName;
-import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
@@ -543,11 +541,15 @@ public class BasicKeyManager extends KeyManager {
 	}
 		
 	/**
-	 * Get the key locator to use for a given key. Use
-	 * this to publish this key in the future if not overridden by method
-	 * calls. If no key locator stored for this key, and no override
-	 * given, compute a default key locator based on user information and
-	 * parameters in UserConfiguration.
+	 * Get the key locator to use for a given key. If a value has been stored
+	 * by calling setKeyLocator, that value will be used. Such values can
+	 * also be initialized using command-line properties, environment variables,
+	 * or configuration files. Usually it refers to content already published.
+	 * As we don't know where the key might be published, if no value is
+	 * specified, we return a locator of type KEY. We have deprecated the
+	 * previous behavior of trying to look at objects we have published
+	 * containing this key; this does not allow the user enough control over
+	 * what key locator will be used.
 	 * @return key locator
 	 */
 	@Override
@@ -555,20 +557,22 @@ public class BasicKeyManager extends KeyManager {
 		if (null == keyID) {
 			keyID = getDefaultKeyID();
 		}
-		PublicKeyObject keyObject = _keyRepository.retrieve(keyID);
+		KeyLocator keyLocator = getStoredKeyLocator(keyID);
+		if (null == keyLocator) {
+			keyLocator = getKeyTypeKeyLocator(keyID);
+		}
+		Log.info("getKeyLocator: returning locator {0} for key {1}", keyID);
+		return keyLocator;
+	}
+	
+	@Override 
+	public KeyLocator getStoredKeyLocator(PublisherPublicKeyDigest keyID) {
+		return _currentKeyLocators.get(keyID);
+	}
 
-		if (null != keyObject) {
-			try {
-				if (keyObject.isSaved()) {
-					return new KeyLocator(new KeyName(keyObject.getVersionedName(), new PublisherID(keyObject.getContentPublisher())));
-				}
-			} catch (IOException ex) {
-				Log.warning("IOException checking saved status or retrieving version of key object {0}: {1}!", keyObject.getVersionedName(), ex.getMessage());
-				Log.warningStackTrace(ex);
-				Log.warning("Falling through and retrieving KEY type key locator for key {1}", keyID);
-			}
-		} 
-		return getKeyTypeKeyLocator(keyID);
+	@Override 
+	public boolean haveStoredKeyLocator(PublisherPublicKeyDigest keyID) {
+		return _currentKeyLocators.containsKey(keyID);
 	}
 
 	/**
@@ -736,11 +740,12 @@ public class BasicKeyManager extends KeyManager {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
 		} 
-		if (null == keyName) {
-			keyName = getDefaultKeyName(keyToPublish);
+		PublicKey theKey = getPublicKey(keyToPublish);
+		if (null == theKey) {
+			Log.warning("Cannot publish key {0} to name {1}, do not have public key in cache.", keyToPublish, keyName);
+			return null;
 		}
-		Log.info("publishKey: publishing key {0} under specified key name {1}", keyToPublish, keyName);
-		return _keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
+		return publishKey(keyName, theKey, signingKeyID, signingKeyLocator);
 	}
 
 	@Override
@@ -752,11 +757,21 @@ public class BasicKeyManager extends KeyManager {
 			keyToPublish = getDefaultPublicKey();
 		} 
 		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(keyToPublish);
+		
 		if (null == keyName) {
 			keyName = getDefaultKeyName(keyDigest);
 		}
-		Log.info("publishKey: publishing key {0} under specified key name {1}", keyToPublish, keyName);
-		return _keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
+		Log.info("publishKey: publishing key {0} under specified key name {1}", keyDigest, keyName);
+		PublicKeyObject keyObject =  _keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
+		
+		if (!haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
+			// So once we publish self-signed key object, we store a pointer to that
+			// to use. Don't override any manually specified values.
+			KeyLocator newKeyLocator = new KeyLocator(keyObject.getVersionedName(), keyObject.getContentPublisher());
+			setKeyLocator(keyDigest, newKeyLocator);
+			Log.info("publishKey: storing key locator {1} for key {1}", keyDigest, newKeyLocator);
+		}
+		return keyObject;
 	}
 
 	/**
