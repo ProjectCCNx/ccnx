@@ -86,7 +86,7 @@ public class BasicKeyManager extends KeyManager {
 	protected PublisherPublicKeyDigest _defaultKeyID;
 	
 	protected boolean _initialized = false;
-	protected boolean _defaultKeysPublished = false;
+	protected PublicKeyObject _publishedDefaultKeys = null;
 	
 	private char [] _password = null;
 	
@@ -831,20 +831,20 @@ public class BasicKeyManager extends KeyManager {
 
 	@Override
 	public synchronized PublicKeyObject publishDefaultKey(ContentName keyName) throws IOException, InvalidKeyException {
+
 		if (!initialized()) {
 			throw new IOException("Cannot publish keys, have not yet initialized KeyManager!");
 		}
 		// we've put together enough of this KeyManager to let the
 		// KeyRepository use it to make a CCNHandle, even though we're
 		// not done...
-		if (_defaultKeysPublished) {
-			return null;
+		if (null != _publishedDefaultKeys) {
+			return _publishedDefaultKeys;
 		}
-
-		PublicKeyObject keyObject = publishKey(keyName, getDefaultKeyID(), null, null);
-		_defaultKeysPublished = true;
-		return keyObject;
+		_publishedDefaultKeys = publishKey(keyName, getDefaultKeyID(), null, null);
+		return _publishedDefaultKeys;
 	}
+	
 	/**
 	 * Publish my public key to a local key server run in this JVM.
 	 * @param keyName content name of the public key
@@ -852,7 +852,6 @@ public class BasicKeyManager extends KeyManager {
 	 * @param handle handle for ccn
 	 * @throws IOException
 	 * @throws InvalidKeyException
-	 * @throws ConfigurationException
 	 */
 	@Override
 	public PublicKeyObject publishKey(ContentName keyName, 
@@ -883,8 +882,10 @@ public class BasicKeyManager extends KeyManager {
 		if (null == keyName) {
 			keyName = getDefaultKeyName(keyDigest);
 		}
+
 		if (Log.isLoggable(Level.INFO))
 			Log.info("publishKey: publishing key {0} under specified key name {1}", keyDigest, keyName);
+
 		PublicKeyObject keyObject =  getPublicKeyCache().publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
 		
 		if (!haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
@@ -905,18 +906,18 @@ public class BasicKeyManager extends KeyManager {
 	 * @param handle handle for ccn
 	 * @throws IOException
 	 * @throws InvalidKeyException
-	 * @throws ConfigurationException
 	 */
 	@Override
-	public void publishKeyToRepository(ContentName keyName, 
-									   PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException {
+	public PublicKeyObject publishKeyToRepository(ContentName keyName, 
+									   PublisherPublicKeyDigest keyToPublish) 
+			throws InvalidKeyException, IOException {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
 		} 
 		if (null == keyName) {
 			keyName = getKeyLocator(keyToPublish).name().name();
 		}
-		getPublicKeyCache().publishKeyToRepository(keyName, keyToPublish);
+		return getPublicKeyCache().publishKeyToRepository(keyName, keyToPublish, null, null);
 	}
 	
 	/**
@@ -924,11 +925,10 @@ public class BasicKeyManager extends KeyManager {
 	 * @param handle handle for ccn
 	 * @throws IOException
 	 * @throws InvalidKeyException
-	 * @throws ConfigurationException
 	 */
 	@Override
-	public void publishKeyToRepository() throws InvalidKeyException, IOException {
-		publishKeyToRepository(null, null);
+	public PublicKeyObject publishKeyToRepository() throws InvalidKeyException, IOException {
+		return publishKeyToRepository(null, null);
 	}
 
 	@Override

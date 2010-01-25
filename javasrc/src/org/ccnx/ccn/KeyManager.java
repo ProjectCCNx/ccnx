@@ -444,7 +444,6 @@ public abstract class KeyManager {
 	 * @param keyToPublish can be null, in which case we publish our own default public key
 	 * @throws InvalidKeyException 
 	 * @throws IOException
-	 * @throws ConfigurationException 
 	 */
 	public abstract PublicKeyObject publishKey(ContentName keyName, 
 			   PublisherPublicKeyDigest keyToPublish,
@@ -485,20 +484,18 @@ public abstract class KeyManager {
 	 * @param handle the handle to use for network requests
 	 * @throws InvalidKeyException
 	 * @throws IOException
-	 * @throws ConfigurationException
 	 */
-	public abstract void publishKeyToRepository(ContentName keyName, 
+	public abstract PublicKeyObject publishKeyToRepository(ContentName keyName, 
 												PublisherPublicKeyDigest keyToPublish) 
-		throws InvalidKeyException, IOException;
+			throws InvalidKeyException, IOException;
 
 	/**
 	 * Publish our default key to a repository at its default location.
 	 * @param handle the handle used for network requests
 	 * @throws InvalidKeyException
 	 * @throws IOException
-	 * @throws ConfigurationException
 	 */
-	public abstract void publishKeyToRepository() throws InvalidKeyException, IOException;
+	public abstract PublicKeyObject publishKeyToRepository() throws InvalidKeyException, IOException;
 
 	/**
 	 * Access our internal key store/key server.

@@ -32,17 +32,20 @@ import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowServer;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
+import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.PublicKeyObject;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
@@ -139,7 +142,14 @@ public class PublicKeyCache {
 	 * Publish a signed record for this key if one doesn't exist.
 	 * (if it does exist, pulls it at least to our ccnd, and optionally
 	 * makes it available). (TODO: decide what to do if it's published by someone
-	 * else... need another option for that.)
+	 * else... need another option for that.) By default (if both saveType and flowController)
+	 * are null, will publish to the internal key server. If a flow controller is specified
+	 * (e.g. the internal key server), will publish using it, and will ignore any saveType set.
+	 * Otherwise will use default network object publishing behavior based on the saveType.
+	 * Dovetail it this way in order to have only one place where defaulting of signing
+	 * information is done, to avoid ending up having different behaviors depending on the
+	 * path by which you publish a key.
+	 * 
 	 * @param keyName the key's content name. Will add a version when saving if it doesn't
 	 * 	have one already. If it does have a version, will use that one (see below for effect
 	 * 	of version on the key locator). (Note that this is not
@@ -152,175 +162,192 @@ public class PublicKeyCache {
 	 * 	If not specified, we look for the default locator for the signing key. If there is none,
 	 * 	and we are signing with the same key we are publishing, we build a
 	 * 	self-referential key locator, using the name passed in (versioned or not).
-	 * @return void
+	 * @param saveType -- if we don't want to hand in a special-purpose flow controller, set saveType to RAW
+	 *   or REPO to get standard publishing behavior.
+	 * @param flowController flow controller to use. If non-null, saveType is ignored.
+	 * @return the published information about this key, whether we published it or someone else had
 	 * @throws IOException
 	 */
-	public PublicKeyObject publishKey(ContentName keyName, PublicKey theKey,
-						   PublisherPublicKeyDigest signingKeyID, KeyLocator signingKeyLocator) 
+	protected PublicKeyObject publishKey(ContentName keyName, PublicKey keyToPublish,
+						   				PublisherPublicKeyDigest signingKeyID, KeyLocator signingKeyLocator,
+						   				SaveType saveType, CCNFlowControl flowController) 
+
 	throws IOException {
 
+		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(keyToPublish);
+		
 		// Set up key server if it hasn't been set up already
 		initializeKeyServer();
 
-		// See if we can pull something acceptable for this key at this name.
-		// Use same code path for default key retrieval as getPublicKey, so that we can manage
-		// version handling in a single place.
-		if (null == theKey) {
-			theKey = handle().keyManager().getDefaultPublicKey();
+		// See if this key is on the network
+		ContentObject keySegment = CCNReader.isContentAvailable(keyName, ContentType.KEY, 
+				keyDigest.digest(), null, SystemConfiguration.getDefaultTimeout(), _handle);
+		if (null != keySegment) {
+			Log.info("Key {0} is already available as {1}, not re-publishing.", keyName, keySegment.name());
+			// A little dangerous, handing up our handle.
+			return new PublicKeyObject(keySegment, _handle);
 		}
-		PublisherPublicKeyDigest keyToPublish = new PublisherPublicKeyDigest(theKey);
-
-		// See if we can pull something acceptable for this key at this name.
-		// Use same code path for default key retrieval as getPublicKey, so that we can manage
-		// version handling in a single place.
-		KeyLocator targetKeyLocator = new KeyLocator(keyName);
-		Log.info("publishKey: publishing key {0}, first retrieving using {1}", keyName, targetKeyLocator);
 		
-		PublicKey retrievedKey = getPublicKey(keyToPublish, targetKeyLocator, SystemConfiguration.SHORT_TIMEOUT);
-		PublicKeyObject keyObject = null;
-
-		if (null != retrievedKey) {
-			keyObject = retrieve(keyToPublish);
-		} 
-		if (null == keyObject) {
-			// This might have been one of our keys, so we got it straight from
-			// cache; try to ensure it's not on the network. Might eventually
-			// want to check publisher as well
-			keyObject = getPublicKeyObject(keyToPublish, targetKeyLocator, SystemConfiguration.SHORT_TIMEOUT);
-		}
 		// Now, finally; it's not published, so make an object to write it
 		// with. We've already tried to pull it, so don't try here. Will
 		// set publisher info below.
-		CCNTime keyVersion = null; // do we force a version?
 		
-		if (null == keyObject) {
-			// Here is where we get tricky. We might really want the key to be of a particular
-			// version. In general, as we use the network objects to write versioned versioned stuff,
-			// we might not be able to take the last component of a name, if versioned, as the version
-			// to use to save -- might really want <name>/<version1>/<version2>. So unless we want to 
-			// make that impossible to achieve, we need to not have the network objects take the 
-			// name <name>/<version1> and save to <version1> (though they read from <version1> just
-			// fine given the same). You always want to save to a new version, unless someone tells you
-			// something different from the outside. 
-			// Come up with a contorted option. If you want to publish <version>/<version> stuff, you
-			// need to pass in the second version...
-			Tuple<ContentName, byte []> nameAndVersion = VersioningProfile.cutTerminalVersion(keyName);
-			
-			keyObject = new PublicKeyObject(nameAndVersion.first(), theKey, null, null, _keyServer);
-			if (null != nameAndVersion.second()) {
-				keyVersion = VersioningProfile.getVersionComponentAsTimestamp(nameAndVersion.second());
-			}
-			Log.info("publishKey: key not previously published, making new key object {0} with version {1} displayed as {2}", 
-							keyObject.getVersionedName(), keyVersion, 
-							((null != nameAndVersion.second()) ? ContentName.componentPrintURI(nameAndVersion.second()) : "<no version>"));
+		// Need a key locator to stick in data entry for
+		// locator. Could use key itself, but then would have
+		// key both in the content for this item and in the
+		// key locator, which is redundant. Use naming form
+		// that allows for self-referential key names -- the
+		// CCN equivalent of a "self-signed cert". Means that
+		// we will refer to only the base key name and the publisher ID.
+		if (null == signingKeyID) {
+			signingKeyID = handle().keyManager().getDefaultKeyID();
 		}
 
-		if (!keyObject.isSaved() || (!keyObject.publicKeyDigest().equals(keyToPublish))) {
-			// Eventually may want to find something already published and link to it, but be simple here.
-
-			// Need a key locator to stick in data entry for
-			// locator. Could use key itself, but then would have
-			// key both in the content for this item and in the
-			// key locator, which is redundant. Use naming form
-			// that allows for self-referential key names -- the
-			// CCN equivalent of a "self-signed cert". Means that
-			// we will refer to only the base key name and the publisher ID.
-			if (null == signingKeyID) {
-				signingKeyID = handle().keyManager().getDefaultKeyID();
+		if (null == signingKeyLocator) {
+			KeyLocator existingLocator = handle().keyManager().getKeyLocator(signingKeyID);
+			if ((existingLocator.type() == KeyLocatorType.KEY) && 
+					(signingKeyID.equals(keyDigest))) {
+				// Make a self-referential key locator. For now do not include the
+				// version.
+				existingLocator = new KeyLocator(new KeyName(keyName, signingKeyID));
+				Log.finer("Overriding constructed key locator of type KEY, making self-referential locator {0}", existingLocator);
 			}
+			signingKeyLocator = existingLocator;
+		}	
+		
+		// Here is where we get tricky. We might really want the key to be of a particular
+		// version. In general, as we use the network objects to write versioned versioned stuff,
+		// we might not be able to take the last component of a name, if versioned, as the version
+		// to use to save -- might really want <name>/<version1>/<version2>. So unless we want to 
+		// make that impossible to achieve, we need to not have the network objects take the 
+		// name <name>/<version1> and save to <version1> (though they read from <version1> just
+		// fine given the same). You always want to save to a new version, unless someone tells you
+		// something different from the outside. 
+		// Come up with a contorted option. If you want to publish <version>/<version> stuff, you
+		// need to pass in the second version...
+		
+		CCNTime keyVersion = null; // do we force a version?
+		Tuple<ContentName, byte []> nameAndVersion = VersioningProfile.cutTerminalVersion(keyName);
 
-			if (null == signingKeyLocator) {
-				// No passed-in locator. See if we have a default set for this key.
-				KeyLocator existingLocator = handle().keyManager().getKeyLocator(signingKeyID);
-				if ((existingLocator.type() == KeyLocatorType.KEY) && 
-					(signingKeyID.equals(keyToPublish))) {
-						// Make a self-referential key locator. For now do not include the
-						// version.
-					existingLocator = new KeyLocator(new KeyName(keyName, signingKeyID));
-				}
-				signingKeyLocator = existingLocator;
-			}
-
-			keyObject.setOurPublisherInformation(signingKeyID, signingKeyLocator);
-			// nobody's written it where we can find it fast enough.
-			// theKey will be retrieved from cache if not stored on network
-			keyObject.setData(theKey);
-
-			if (!keyObject.save(keyVersion)) {
-				Log.info("Not saving key when we thought we needed to: desired key value {0}, have key value {1}, " +
-						keyToPublish, new PublisherPublicKeyDigest(keyObject.publicKey()));
-			} else {
-				Log.info("Published key {0} to name {1} with key locator {2}.", keyToPublish, keyObject.getVersionedName(), signingKeyLocator);
-			}
+		PublicKeyObject keyObject = null;
+		if ((null != flowController) || (null == saveType)) {
+			// Either a flow controller given or neither flow controller nor saveType specified.
+			// If a flow controller was specified, use that, otherwise use the internal _keyServer
+			keyObject = new PublicKeyObject(nameAndVersion.first(), keyToPublish, 
+											signingKeyID, signingKeyLocator, 
+											((null != flowController) ? flowController : _keyServer));
 		} else {
-			Log.info("Retrieved existing key object {0}, whose key locator is {1}, not re-publishing.", keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
+			// No flow controller given, use specified saveType.
+			keyObject = new PublicKeyObject(nameAndVersion.first(), keyToPublish, saveType,
+											signingKeyID, signingKeyLocator, _handle);
+		}
+		
+		if (null != nameAndVersion.second()) {
+			keyVersion = VersioningProfile.getVersionComponentAsTimestamp(nameAndVersion.second());
+		}
+		Log.info("publishKey: key not previously published, making new key object {0} with version {1} displayed as {2}", 
+				keyObject.getVersionedName(), keyVersion, 
+				((null != nameAndVersion.second()) ? ContentName.componentPrintURI(nameAndVersion.second()) : "<no version>"));
+
+		// Eventually may want to find something already published and link to it, but be simple here.
+
+		if (!keyObject.save(keyVersion)) {
+			Log.info("Not saving key when we thought we needed to: desired key value {0}, have key value {1}, " +
+					keyToPublish, new PublisherPublicKeyDigest(keyObject.publicKey()));
+		} else {
+			Log.info("Published key {0} to name {1} with key locator {2}.", keyToPublish, keyObject.getVersionedName(), signingKeyLocator);
 		}
 		remember(keyObject);
 		return keyObject;
 	}
 
 	/**
-	 * Pull key from cache.
+	 * Publish a signed record for this key if one doesn't exist.
+	 * (if it does exist, pulls it at least to our ccnd, and optionally
+	 * makes it available).
+	 * 
+	 * @param keyName the key's content name. Will add a version when saving if it doesn't
+	 * 	have one already. If it does have a version, will use that one (see below for effect
+	 * 	of version on the key locator). (Note that this is not
+	 * 		standard behavior for saveable network content, which needs its version explicitly
+	 * 		set.)
+	 * @param keyToPublish the public key to publish
+	 * @param keyID the publisher id
+	 * @param signingKeyID the key id of the key pair to sign with
+	 * @param signingKeyLocator the key locator to use if we save this key (if it is not already published).
+	 * 	If not specified, we look for the default locator for the signing key. If there is none,
+	 * 	and we are signing with the same key we are publishing, we build a
+	 * 	self-referential key locator, using the name passed in (versioned or not).
+	 * @return the published information about this key, whether we published it or someone else had
+	 * @throws IOException
 	 */
-	public PublicKeyObject publishKey(ContentName keyName, PublisherPublicKeyDigest keyDigest, 
-                                      PublisherPublicKeyDigest signingKeyID, 
-                                      KeyLocator signingKeyLocator) throws IOException {
-        PublicKey theKey = (null != keyDigest) ? getPublicKeyFromCache(keyDigest) : _keyManager.getDefaultPublicKey();
-        
-        if (null == theKey) {
-        	Log.warning("Cannot publish key {0} to name {1}, do not have public key in cache.", keyDigest, keyName);
-        	return null;
-        }
-        return publishKey(keyName, theKey, signingKeyID, signingKeyLocator);
+	public PublicKeyObject publishKey(ContentName keyName, PublicKey keyToPublish,
+			   PublisherPublicKeyDigest signingKeyID, KeyLocator signingKeyLocator) throws IOException {
+		return publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator, null, _keyServer);
+	}
+	
+	/**
+	 * @return the published information about the key, whether we published it or it was already published
+	 * @throws IOException if there is an error in publishing, or if we do not have a copy of the key to publish
+	 */
+	public PublicKeyObject publishKey(ContentName keyName, PublisherPublicKeyDigest keyToPublish, 
+							  PublisherPublicKeyDigest signingKey, KeyLocator signingKeyLocator) 
+	throws IOException {
+
+		PublicKey theKey = getPublicKeyFromCache(keyToPublish);
+		if (null == theKey) {
+			throw new IOException("PublicKey corresponding to " + keyToPublish + " unknown, cannot publish!");
+		}
+		
+		return publishKey(keyName, theKey, signingKey, signingKeyLocator);
 	}
 
 	/**
-	 * TODO DKS make sure this works if last component of key name is potentially
-	 * a version (using objects to write public keys)
 	 * Publish my public key to repository
-	 * @param keyName content name of the public key
+	 * @param keyName content name of the public key to publish under (adds a version)
 	 * @param keyToPublish public key digest
-	 * @param handle handle for ccn
+	 * @return the published information about this key, whether we published it or someone else had
 	 * @throws IOException 
 	 * @throws IOException
 	 * @throws InvalidKeyException 
 	 * @throws InvalidKeyException
 	 * @throws ConfigurationException
 	 */
-	public void publishKeyToRepository(ContentName keyName, 
-			PublisherPublicKeyDigest keyToPublish) throws IOException, InvalidKeyException {
+	public PublicKeyObject publishKeyToRepository(ContentName keyName, 
+									      		  PublisherPublicKeyDigest keyToPublish,
+									      		  PublisherPublicKeyDigest signingKeyID, KeyLocator signingKeyLocator) throws IOException {
 
+		// To avoid repeating work, we first see if this content is available on the network, then
+		// if it's in a repository. That's because if it's not in a repository, we need to know if
+		// it's on the network, and this way we save doing that work twice (as the repo-checking code
+		// also needs to know if it's on the network).
+		ContentObject availableContent = CCNReader.isContentAvailable(keyName, ContentType.KEY, keyToPublish.digest(), 
+															null, SystemConfiguration.SHORT_TIMEOUT, _handle);
 
-		PublicKey key = getPublicKeyFromCache(keyToPublish);
-		if (null == key) {
-			throw new InvalidKeyException("Cannot retrieve key " + keyToPublish);
-		}
+		if (null != availableContent) {
+			// See if some repository has this key already
+			if (null != CCNReader.isContentInRepository(availableContent, SystemConfiguration.SHORT_TIMEOUT, _handle)) {
+				Log.info("publishKeyToRepository: key {0} is already in a repository; not re-publishing.", keyName);
+			} else {
 
-		// HACK - want to use repo confirmation protocol to make sure data makes it to a repo
-		// even if it doesn't come from us. Problem is, we may have already written it, and don't
-		// want to write a brand new version of identical data. If we try to publish it under
-		// the same (unversioned) name, the repository may get some of the data from the ccnd
-		// cache, which will cause us to think it hasn't been written. So for the moment, we use the
-		// name enumeration protocol to determine whether this key has been written to a repository
-		// already.
-		// This works because the last explicit name component of the key is its publisherID. 
-		// We then use a further trick, just calling startWrite on the key, to get the repo
-		// to read it -- not from here, but from the key server embedded in the KeyManager.
-		EnumeratedNameList enl = new EnumeratedNameList(keyName.parent(), handle());
-		enl.waitForChildren(500); // have to time out, may be nothing there.
-		enl.stopEnumerating();
-		if (enl.hasChildren()) {
-			Log.info("Looking for children of {0} matching {1}.", keyName.parent(), keyName);
-			for (ContentName name: enl.getChildren()) {
-				Log.info("Child: {0}", name);
+				// Otherwise, we just need to trick the repo into pulling it.
+				ContentName streamName = SegmentationProfile.segmentRoot(availableContent.name());
+				RepositoryFlowControl rfc = new RepositoryFlowControl(streamName, handle());
+				// This will throw an IOException if there is no repository there to read it.
+				rfc.startWrite(streamName, Shape.STREAM);
+				// OK, once we've emitted the interest, we don't actually need that flow controller anymore.
+				Log.info("Key {0} published to repository.", keyName);
+				rfc.close();
 			}
-		}
-		if (!enl.hasChildren() || !enl.hasChild(keyName.lastComponent())) {
-			RepositoryFlowControl rfc = new RepositoryFlowControl(keyName, handle());
-			rfc.startWrite(keyName, Shape.STREAM);
-			Log.info("Key {0} published to repository.", keyName);
-		} else {
-			Log.info("Key {0} already published to repository, not re-publishing.", keyName);
+			return new PublicKeyObject(availableContent, _handle);
+			
+		} else {		
+			// We need to write this content ourselves, nobody else has it.
+			PublicKey theKey = getPublicKeyFromCache(keyToPublish);
+			if (null == theKey) {
+				throw new IOException("PublicKey corresponding to " + keyToPublish + " unknown, cannot publish to the repository!");
+			}
+			return publishKey(keyName, theKey, signingKeyID, signingKeyLocator, SaveType.REPOSITORY, null);
 		}
 	}
 
