@@ -278,17 +278,21 @@ public class TestUserData {
 		} 
 	}
 	
-	public void publishUserKeysToRepository(ContentName userNamespace) throws IOException{
+	public PublicKeyObject [] publishUserKeysToRepository(ContentName userNamespace) throws IOException{
+		PublicKeyObject [] results = new PublicKeyObject[_userKeyManagers.size()];
+		int i=0;
 		for (String friendlyName: _userKeyManagers.keySet()) {
 			KeyManager userKM = _userKeyManagers.get(friendlyName);
 			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
 			KeyLocator ourLocator = new KeyLocator(keyName);
 			PublicKeyObject pko = 
 				new PublicKeyObject(keyName, userKM.getDefaultPublicKey(), 
-									SaveType.REPOSITORY, userKM.getDefaultKeyID(),ourLocator, 
+									SaveType.REPOSITORY, userKM.getDefaultKeyID(), ourLocator, 
 									getHandleForUser(friendlyName));
 			pko.save(); 
+			results[i++] = pko;
 		} 
+		return results;
 	}
 	
 	public boolean hasUser(String friendlyName) {
