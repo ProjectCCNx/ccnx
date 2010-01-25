@@ -270,6 +270,10 @@ public class TestUserData {
 			KeyManager userKM = _userKeyManagers.get(friendlyName);
 			try {
 				userKM.publishKeyToRepository();
+				ContentName keyName = userKM.getDefaultKeyNamePrefix();
+				keyName = keyName.cut(keyName.count()-1);
+				PublicKeyObject pko = new PublicKeyObject(keyName, userKM.getDefaultPublicKey(), SaveType.REPOSITORY, getHandleForUser(friendlyName));
+				pko.save();
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
