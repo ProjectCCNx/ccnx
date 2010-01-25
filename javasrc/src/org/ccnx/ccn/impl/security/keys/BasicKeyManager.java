@@ -48,6 +48,7 @@ import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
@@ -196,6 +197,9 @@ public class BasicKeyManager extends KeyManager {
 		_keyStoreInfo = loadKeyStore();// uses _keyRepository and _privateKeyCache
 		if (!loadValuesFromKeystore(_keyStoreInfo)) {
 			Log.warning("Cannot process keystore!");
+		}
+		if (!loadValuesFromConfiguration()) {
+			Log.warning("Cannot process configuration data!");
 		}
 		_initialized = true;		
 		// Can we publish keys now?
@@ -346,9 +350,40 @@ public class BasicKeyManager extends KeyManager {
 		}    
 		return true;
 	}
+	
+	/**
+	 * Load values of relevance to a key manager. Most importantly, loads default
+	 * key locator information
+	 * @return true if successful, false on error
+	 * @throws ConfigurationException
+	 */
+	protected boolean loadValuesFromConfiguration() throws ConfigurationException {
+		// Load key locator information. Might be in two places -- system property/environment variable,
+		// or configuration file. Start with just system property, first round just specify
+		// name, not publisher.
+		// Starting step -- read a key name (no publisher) key locator just for our default
+		// key from an environment variable/system property.
+		String defaultKeyLocatorName = UserConfiguration.defaultKeyLocator();
+		// Doesn't even support publisher specifications yet.
+		if (null != defaultKeyLocatorName) {
+			try {
+				ContentName locatorName = ContentName.fromNative(defaultKeyLocatorName);
+				setKeyLocator(getDefaultKeyID(), new KeyLocator(locatorName));
+			} catch (MalformedContentNameStringException e) {
+				generateConfigurationException("Cannot parse key locator name {0}!", e);
+			}
+		}
+
+		// TODO fill in the rest
+		// load values from our configuration file, which should be read in UserConfiguration
+		// also use that to preconfigure things like keystores and such
+		
+		return true;
+	}
 		
 	/**
-	 * Creates a CCN versioned output stream as the key storage 
+	 * Generate our key store if we don't have one. Use createKeyStoreWriteStream to determine where
+	 * to put it.
 	 * @throws ConfigurationException
 	 */
 	synchronized protected KeyStoreInfo createKeyStore() throws ConfigurationException, IOException {
@@ -596,7 +631,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	public void setKeyLocator(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) {
 		if (null == publisherKeyID)
-			return;
+			publisherKeyID = getDefaultKeyID();;
 		_currentKeyLocators.put(publisherKeyID, keyLocator);
 	}
 
