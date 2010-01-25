@@ -186,6 +186,24 @@ public abstract class KeyManager {
 	public abstract boolean initialized();
 		
 	/**
+	 * Get our default key ID.
+	 * @return the digest of our default key
+	 */
+	public abstract PublisherPublicKeyDigest getDefaultKeyID();
+	
+	/**
+	 * Get our default private key.
+	 * @return our default private key
+	 */
+	public abstract PrivateKey getDefaultSigningKey();
+
+	/**
+	 * Get our default public key.
+	 * @return our default public key
+	 */
+	public abstract PublicKey getDefaultPublicKey();
+
+	/**
 	 * Return the key's content name for a given key id. 
 	 * The default key name is the publisher ID itself,
 	 * under the user's key collection. 
@@ -210,39 +228,9 @@ public abstract class KeyManager {
 	public abstract ContentName getDefaultKeyNamePrefix();
 	
 	/**
-	 * Get our default key ID.
-	 * @return the digest of our default key
-	 */
-	public abstract PublisherPublicKeyDigest getDefaultKeyID();
-	
-	/**
-	 * Get any timestamp associate with this key.
-	 * @param keyID
-	 * @return
-	 */
-	public abstract CCNTime getKeyVersion(PublisherPublicKeyDigest keyID);
-
-	/**
-	 * Get our default private key.
-	 * @return our default private key
-	 */
-	public abstract PrivateKey getDefaultSigningKey();
-
-	/**
-	 * Get our default public key.
-	 * @return our default public key
-	 */
-	public abstract PublicKey getDefaultPublicKey();
-
-	/**
-	 * Get our default key locator.
-	 * @return our default key locator
-	 */
-	public abstract KeyLocator getDefaultKeyLocator();
-
-	/**
 	 * Get the default key locator for a particular public key
-	 * @param publisherKeyID the key whose locator we want to retrieve
+	 * @param publisherKeyID the key whose locator we want to retrieve, 
+	 * 		if null retrieves the key locator for our default key
 	 * @return the default key locator for that key
 	 */
 	public abstract KeyLocator getKeyLocator(PublisherPublicKeyDigest publisherKeyID);
@@ -251,6 +239,25 @@ public abstract class KeyManager {
 	 * Helper method, get the default key locator for one of our signing keys.
 	 */
 	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
+	
+	/**
+	 * Get the key locator for our default key. Same as getKeyLocator(null)
+	 */
+	public KeyLocator getDefaultKeyLocator() {
+		return getKeyLocator(getDefaultKeyID());
+	}
+
+	/**
+	 * Remember the key locator to use for a given key. Use
+	 * this to publish this key in the future if not overridden by method
+	 * calls. If no key locator stored for this key, and no override
+	 * given, compute a KEY type key locator if this key has not been
+	 * published, and the name given to it when published if it has.
+	 * @param publisherKeyID the key whose locator to set
+	 * @param keyLocator the new key locator for this key; overrides any previous value.
+	 * 	If null, erases previous value and defaults will be used.
+	 */
+	public abstract void setKeyLocator(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator);
 	
 	/**
 	 * Get a KEY type key locator for a particular public key.
@@ -295,6 +302,13 @@ public abstract class KeyManager {
 	 */
 	public abstract PrivateKey[] getSigningKeys();
 	
+	/**
+	 * Get any timestamp associate with this key.
+	 * @param keyID
+	 * @return
+	 */
+	public abstract CCNTime getKeyVersion(PublisherPublicKeyDigest keyID);
+
 	/**
 	 * Get the public key for a given publisher, going to the network to retrieve it if necessary.
 	 * @param publisherKeyID the digest of the keys we want

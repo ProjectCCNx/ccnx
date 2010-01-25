@@ -34,6 +34,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.HashMap;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -122,6 +123,17 @@ public class BasicKeyManager extends KeyManager {
 	 * Cache of private keys, loaded from keystores.
 	 */
 	protected KeyCache _privateKeyCache = null;
+	
+	/**
+	 * Registry of key locators to use. In essence, these are pointers to our
+	 * primary credential for each key. Unless overridden this is what we use
+	 * for each of our signing keys.
+	 * 
+	 * TODO consider adding a second map tracking all the available key locators for
+	 * a given key, to select from them.
+	 */
+	protected HashMap<PublisherPublicKeyDigest, KeyLocator> _currentKeyLocators = new HashMap<PublisherPublicKeyDigest, KeyLocator>();
+	
 	
 	/**
 	 * Subclass constructor that sets store-independent parameters.
@@ -518,17 +530,6 @@ public class BasicKeyManager extends KeyManager {
 	}
 		
 	@Override
-	public KeyLocator getKeyLocator(PrivateKey signingKey) {
-		PublisherPublicKeyDigest keyID = _privateKeyCache.getPublicKeyIdentifier(signingKey);
-		return getKeyLocator(keyID);
-	}
-	
-	@Override
-	public KeyLocator getDefaultKeyLocator() {
-		return getKeyLocator(getDefaultKeyID());
-	}
-	
-	@Override
 	public ContentName getDefaultKeyNamePrefix() {
 		ContentName keyDir =
 			ContentName.fromNative(_userNamespace, 
@@ -536,17 +537,12 @@ public class BasicKeyManager extends KeyManager {
 		return keyDir;
 	}
 	
-	@Override
-	public CCNTime getKeyVersion(PublisherPublicKeyDigest keyID) {
-		return _keyRepository.getPublicKeyVersionFromCache(keyID);
-	}
-	
 	/**
-	 * Get default key locator given a public key digest
-	 * @TODO work on this -- have to balance between pulling the command-line specified
-	 * key locator for the default key and using the actual published value; works
-	 * as long as we publish it to the right location from the get go
-	 * @param key public key digest
+	 * Get the key locator to use for a given key. Use
+	 * this to publish this key in the future if not overridden by method
+	 * calls. If no key locator stored for this key, and no override
+	 * given, compute a default key locator based on user information and
+	 * parameters in UserConfiguration.
 	 * @return key locator
 	 */
 	@Override
@@ -569,6 +565,38 @@ public class BasicKeyManager extends KeyManager {
 		} 
 		return getKeyTypeKeyLocator(keyID);
 	}
+
+	/**
+	 * Helper method to get the key locator for one of our signing keys.
+	 */
+	@Override
+	public KeyLocator getKeyLocator(PrivateKey signingKey) {
+		PublisherPublicKeyDigest keyID = _privateKeyCache.getPublicKeyIdentifier(signingKey);
+		return getKeyLocator(keyID);
+	}
+	
+	/**
+	 * Remember the key locator to use for a given key. Use
+	 * this to publish this key in the future if not overridden by method
+	 * calls. If no key locator stored for this key, and no override
+	 * given, compute a KEY type key locator if this key has not been
+	 * published, and the name given to it when published if it has.
+	 * @param publisherKeyID the key whose locator to set
+	 * @param keyLocator the new key locator for this key; overrides any previous value.
+	 * 	If null, erases previous value and defaults will be used.
+	 */
+	public void setKeyLocator(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) {
+		if (null == publisherKeyID)
+			return;
+		_currentKeyLocators.put(publisherKeyID, keyLocator);
+	}
+
+	
+	@Override
+	public CCNTime getKeyVersion(PublisherPublicKeyDigest keyID) {
+		return _keyRepository.getPublicKeyVersionFromCache(keyID);
+	}
+	
 	
 	/**
 	 * Get private key
