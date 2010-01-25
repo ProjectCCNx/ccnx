@@ -123,6 +123,15 @@ public class UserConfiguration {
 	protected static final String CCNX_KEYSTORE_PASSWORD_ENVIRONMENT_VARIABLE = "CCNX_KEYSTORE_PASSWORD";
 
 	/**
+	 * Property and variable to set the key locator to use for the default key. Need something
+	 * more complicated, probably read from a configuration file. But this will get us started.
+	 * Parse this as "key locator for the default key", not "the default value for the key locator".
+	 */
+	protected static final String CCNX_DEFAULT_KEY_LOCATOR_PROPERTY = 
+		"org.ccnx.config.DefaultKeyLocator";
+	protected static final String CCNX_DEFAULT_KEY_LOCATOR_ENVIRONMENT_VARIABLE = "CCNX_DEFAULT_KEY_LOCATOR";
+
+	/**
 	 * Value of CCN directory.
 	 */
 	protected static String _userConfigurationDir;
@@ -290,6 +299,17 @@ public class UserConfiguration {
 																		 DEFAULT_KEYSTORE_PASSWORD);
 		}
 		return _keystorePassword; 
+	}
+
+	/**
+	 * Don't provide a mechanism to set this here; this is actually configured on the KeyManagers.
+	 * Just provide a means for them to pull in property/environment/configuration file parameters.
+	 * @return
+	 */
+	public static String defaultKeyLocator() { 
+		return SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_DEFAULT_KEY_LOCATOR_PROPERTY, 
+																		 CCNX_DEFAULT_KEY_LOCATOR_ENVIRONMENT_VARIABLE,
+																		 null);
 	}
 
 	public static String keyRepositoryDirectory() {
