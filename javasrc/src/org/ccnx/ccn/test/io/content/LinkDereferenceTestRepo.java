@@ -32,12 +32,14 @@ public class LinkDereferenceTestRepo {
 	
 	// Make some data, and some links. Test manual and automated dereferencing.
 	static CCNStringObject data[] = new CCNStringObject[3];
+	static CCNStringObject gone;
 	static ContentName bigData;
 	static final int bigDataLength = SegmentationProfile.DEFAULT_BLOCKSIZE * 4 + 137;
 	static CCNHandle writeHandle;
 	static CCNHandle readHandle;
 	static String STRING_VALUE_NAME = "Value";
 	static String BIG_VALUE_NAME = "BigValue";
+	static String GONE_VALUE_NAME = "Gone";
 	static byte [] bigValueDigest;
 	static byte [] bigDataContent;
 
@@ -56,6 +58,9 @@ public class LinkDereferenceTestRepo {
 			data[i].save(version);
 			version.addNanos(1000000); // avoid version collisions
 		}
+		
+		gone = new CCNStringObject(testHelper.getClassChildName(GONE_VALUE_NAME), GONE_VALUE_NAME, SaveType.REPOSITORY, writeHandle);
+		gone.saveAsGone();
 		
 		bigData = testHelper.getClassChildName(BIG_VALUE_NAME);
 		
@@ -194,6 +199,54 @@ public class LinkDereferenceTestRepo {
 		CCNStringObject twoHopReadObject = new CCNStringObject(twoHopLinkObject.getBaseName(), readHandle);
 		Assert.assertEquals(twoHopReadObject.getVersionedName(), data[data.length-1].getVersionedName());
 		Assert.assertEquals(twoHopReadObject.string(), data[data.length-1].string());
+		Assert.assertNotNull(twoHopReadObject.getDereferencedLink());
+		Assert.assertEquals(twoHopReadObject.getDereferencedLink(), unversionedLinkObject);
+		Assert.assertNotNull(twoHopReadObject.getDereferencedLink().getDereferencedLink());
+		Assert.assertEquals(twoHopReadObject.getDereferencedLink().getDereferencedLink(), twoHopLinkObject);
+		
+	}
+	
+
+	@Test
+	public void testAutomatedDereferenceForGone() throws Exception {
+		Link versionedLink = new Link(gone.getVersionedName());
+		LinkObject versionedLinkObject = 
+			new LinkObject(testHelper.getTestChildName("testAutomatedDereferenceForGone", "versionedLink"), 
+						   versionedLink, SaveType.REPOSITORY, writeHandle);
+		versionedLinkObject.save();
+		
+		Link unversionedLink = new Link(gone.getBaseName());
+		LinkObject unversionedLinkObject = 
+			new LinkObject(testHelper.getTestChildName("testAutomatedDereferenceForGone", "unversionedLink"), unversionedLink, SaveType.REPOSITORY, writeHandle);
+		unversionedLinkObject.save();
+		
+		Link twoHopLink = new Link(unversionedLinkObject.getBaseName());
+		LinkObject twoHopLinkObject = new LinkObject(testHelper.getTestChildName("testAutomatedDereferenceForGone", "twoHopLink"), twoHopLink, SaveType.REPOSITORY, writeHandle);
+		twoHopLinkObject.save();
+				
+		// read via the name iself
+		CCNStringObject readObjectControl = new CCNStringObject(gone.getBaseName(), null);
+		Assert.assertEquals(readObjectControl.getVersionedName(), gone.getVersionedName());
+		Assert.assertTrue(readObjectControl.isGone());
+		
+		// read via the versioned link.
+		CCNStringObject versionedReadObject = new CCNStringObject(versionedLinkObject.getBaseName(), readHandle);
+		Assert.assertEquals(versionedReadObject.getVersionedName(), gone.getVersionedName());
+		Assert.assertTrue(versionedReadObject.isGone());
+		Assert.assertNotNull(versionedReadObject.getDereferencedLink());
+		Assert.assertEquals(versionedReadObject.getDereferencedLink(), versionedLinkObject);
+		
+		// read latest version via the unversioned link
+		CCNStringObject unversionedReadObject = new CCNStringObject(unversionedLinkObject.getBaseName(), readHandle);
+		Assert.assertEquals(unversionedReadObject.getVersionedName(), gone.getVersionedName());
+		Assert.assertTrue(unversionedReadObject.isGone());
+		Assert.assertNotNull(unversionedReadObject.getDereferencedLink());
+		Assert.assertEquals(unversionedReadObject.getDereferencedLink(), unversionedLinkObject);
+		
+		// read via the two-hop link
+		CCNStringObject twoHopReadObject = new CCNStringObject(twoHopLinkObject.getBaseName(), readHandle);
+		Assert.assertEquals(twoHopReadObject.getVersionedName(), gone.getVersionedName());
+		Assert.assertTrue(twoHopReadObject.isGone());
 		Assert.assertNotNull(twoHopReadObject.getDereferencedLink());
 		Assert.assertEquals(twoHopReadObject.getDereferencedLink(), unversionedLinkObject);
 		Assert.assertNotNull(twoHopReadObject.getDereferencedLink().getDereferencedLink());

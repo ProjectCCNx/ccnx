@@ -591,10 +591,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		setInputStreamProperties(inputStream);
 		
 		Tuple<ContentName, byte []> nameAndVersion = null;
-		// Move try to surround both update case and isGone case; as isGone 
-		// can throw not ready as well, or LCE.
-		// TODO -- isGone doesn't handle link dereferencing, only update. Move initialization
-		// and link dereferencing behavior to handle links to GONE objects.
 		try {
 			if (inputStream.isGone()) {
 				Log.fine("Reading from GONE stream: {0}", inputStream.getBaseName());
