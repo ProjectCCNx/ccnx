@@ -1600,6 +1600,8 @@ remove_content(struct ccnd_handle *h, struct content_entry *content)
                       content->key_size, content->size - content->key_size);
     if (res != HT_OLD_ENTRY)
         abort();
+    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
+        h->n_stale--;
     if (h->debug & 4)
         ccnd_debug_ccnb(h, __LINE__, "remove", NULL,
                         content->key, content->size);
@@ -3037,6 +3039,7 @@ mark_stale(struct ccnd_handle *h, struct content_entry *content)
             ccnd_debug_ccnb(h, __LINE__, "stale", NULL,
                             content->key, content->size);
     content->flags |= CCN_CONTENT_ENTRY_STALE;
+    h->n_stale++;
     if (accession < h->min_stale)
         h->min_stale = accession;
     if (accession > h->max_stale)
@@ -3085,9 +3088,15 @@ static void
 set_content_timer(struct ccnd_handle *h, struct content_entry *content,
                   struct ccn_parsed_ContentObject *pco)
 {
-    int seconds;
+    int seconds = 0;
+    int microseconds = 0;
     size_t start = pco->offset[CCN_PCO_B_FreshnessSeconds];
     size_t stop  = pco->offset[CCN_PCO_E_FreshnessSeconds];
+    if (h->force_zero_freshness) {
+        /* Keep around for long enough to make it through the queues */
+        microseconds = 4 * h->data_pause_microsec + 1000;
+        goto Finish;
+    }
     if (start == stop)
         return;
     seconds = ccn_fetch_tagged_nonNegativeInteger(
@@ -3101,7 +3110,9 @@ set_content_timer(struct ccnd_handle *h, struct content_entry *content,
             content->key, pco->offset[CCN_PCO_E]);
         return;
     }
-    ccn_schedule_event(h->sched, seconds * 1000000,
+    microseconds = seconds * 1000000;
+Finish:
+    ccn_schedule_event(h->sched, microseconds,
                        &expire_content, NULL, content->accession);
 }
 
@@ -3186,6 +3197,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         else if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
             /* When old content arrives after it has gone stale, freshen it */
             content->flags &= ~CCN_CONTENT_ENTRY_STALE;
+            h->n_stale--;
             set_content_timer(h, content, &obj);
         }
         else {
@@ -3771,8 +3783,12 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->capacity = ~0;
     if (entrylimit != NULL && entrylimit[0] != 0) {
         h->capacity = atol(entrylimit);
-        if (h->capacity <= 0)
+        if (h->capacity < 0)
             h->capacity = 10;
+        else if (h->capacity == 0) {
+            h->capacity = 1;
+            h->force_zero_freshness = 1;
+        }
     }
     h->mtu = 0;
     mtu = getenv("CCND_MTU");
