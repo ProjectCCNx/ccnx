@@ -196,8 +196,8 @@ public abstract class AccessControlManager {
 		WrappedKey wrappedDataKey = WrappedKey.wrapKey(dataKey, 
 				null, dataKeyLabel(), 
 				wrappingKey.nodeKey());
-		wrappedDataKey.setWrappingKeyIdentifier(wrappingKey.storedNodeKeyID());
-		wrappedDataKey.setWrappingKeyName(wrappingKey.storedNodeKeyName());
+		wrappedDataKey.setWrappingKeyIdentifier(WrappedKey.wrappingKeyIdentifier(wrappingKey.nodeKey()));
+		wrappedDataKey.setWrappingKeyName(wrappingKey.nodeName());
 
 		storeKeyContent(AccessControlProfile.dataKeyName(dataNodeName), wrappedDataKey);		
 	}
