@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -238,7 +239,8 @@ public class CCNVersionedInputStream extends CCNInputStream {
 			VersioningProfile.getFirstBlockOfLatestVersion(_baseName, _startingSegmentNumber, _publisher, _timeout, this, _handle);
 		if (null != result){
 			Log.info("getFirstSegment: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
-			_baseName = result.name().cut(_baseName.count() + 1);
+			//_baseName = result.name().cut(_baseName.count() + 1);
+			_baseName = SegmentationProfile.segmentRoot(result.name());
 		} else {
 			Log.info("getFirstSegment: no segment available for latest version of " + _baseName);
 		}
