@@ -73,7 +73,6 @@ public class ACLManager extends JDialog implements ActionListener {
 		// enumerate existing users and groups
 		try{
 			acm = gacm;
-			NamespaceManager.registerACM(acm);
 			gm = acm.groupManager();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -157,35 +156,13 @@ public class ACLManager extends JDialog implements ActionListener {
 			currentACL = acm.getEffectiveACLObject(node).acl();
 		}
 		catch (IllegalStateException ise) {
-			System.out.println("The repository has no root ACL.");
-			System.out.println("Attempting to create missing root ACL.");
-			createRootACL();
+			System.out.println("Fatal error: the repository has no root ACL.");
+			ise.printStackTrace();
 		}
 		catch (Exception e) {
 			e.printStackTrace();
 		}		
-	}
-	
-	private void createRootACL() {
-		ContentName cn = ContentName.fromNative(userStorage, "Alice");
-		Link lk = new Link(cn, ACL.LABEL_MANAGER, null);
-		ArrayList<Link> rootACLcontents = new ArrayList<Link>();
-		rootACLcontents.add(lk);
-		ACL rootACL = new ACL(rootACLcontents);
-		try{
-			acm.initializeNamespace(rootACL);
-			currentACL = rootACL;
-			NamespaceManager.registerACM(acm);
-		} 
-		catch (ContentNotReadyException cnre) {
-			System.out.println("Fatal error: the system assumes the existence of user: " + cn);
-			cnre.printStackTrace();
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-	
+	}	
 
 	public void actionPerformed(ActionEvent ae) {
 		if (applyChangesButton == ae.getSource()) applyChanges();
