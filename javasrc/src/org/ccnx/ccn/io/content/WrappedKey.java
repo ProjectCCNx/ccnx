@@ -198,6 +198,11 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		
 		byte [] wrappedNonceKey = null;
 		byte [] wrappedKey = null;
+		
+		Log.finer("wrapKey: wrapping key with id {0} under key with id {1} using label {2}",
+				DataUtils.printHexBytes(wrappingKeyIdentifier(keyToBeWrapped)),
+				DataUtils.printHexBytes(wrappingKeyIdentifier(wrappingKey)),
+				keyLabel);
 
 		if (wrappingAlgorithm.equalsIgnoreCase("AESWrapWithPad")) {
 			try {
@@ -342,6 +347,11 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		if (null == keyAlgorithm()) {
 			throw new NoSuchAlgorithmException("Null algorithm specified for key to be unwrapped!");
 		}
+		byte [] wki = wrappingKeyIdentifier(unwrapKey);
+		Log.finer("WrappedKey: unwrapping key wrapped with wrapping key ID {1}, incoming wrapping key digest {2} match? {3}",
+					DataUtils.printHexBytes(wrappingKeyIdentifier()), 
+					DataUtils.printHexBytes(wki),
+					Arrays.equals(wki, wrappingKeyIdentifier()));
 		return unwrapKey(unwrapKey, keyAlgorithm());
 	}
 
@@ -360,7 +370,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		Key unwrappedKey = null;
 		Log.info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
 				wrapAlgorithmForKey(unwrapKey.getAlgorithm()));
-		Log.finer("unwrapKey: unwrapping {0} with {1}", this, DataUtils.printHexBytes(unwrapKey.getEncoded()));
+		Log.finer("unwrapKey: unwrapping {0} with {1}", this, DataUtils.printHexBytes(wrappingKeyIdentifier(unwrapKey)));
 		
 		if (((null != wrapAlgorithm()) && (wrapAlgorithm().equalsIgnoreCase("AESWrapWithPad"))) || 
 							wrapAlgorithmForKey(unwrapKey.getAlgorithm()).equalsIgnoreCase("AESWrapWithPad")) {
