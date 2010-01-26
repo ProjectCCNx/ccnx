@@ -3,6 +3,7 @@ package org.ccnx.ccn.utils.explorer;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.logging.Level;
 
 import javax.swing.JButton;
@@ -12,7 +13,9 @@ import javax.swing.JLabel;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
+import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
 
@@ -116,7 +119,7 @@ public class UserSelector extends JDialog implements ActionListener {
 	}
 	
 	private void setUser(String userName) {		
-		// Note: the user must be set before any handle or group manager is created.
+		// Note: the user configuration directory must be set before any handle or group manager is created.
 		File userDirectory = new File(userConfigDirBase, userName);
 		String userConfigDir = userDirectory.getAbsolutePath();
 		System.out.println("User configuration directory: " + userConfigDir);
@@ -125,6 +128,31 @@ public class UserSelector extends JDialog implements ActionListener {
 		try{
 			UserConfiguration.setUserNamespacePrefix("/ccnx.org/Users");
 		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		// create root ACL if it does not already exist
+		try{
+			ContentName baseNode = ContentName.fromNative("/");
+			CCNHandle handle = CCNHandle.open();
+			gacm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, handle);
+			gacm.getEffectiveACLObject(baseNode).acl();
+		}
+		catch (IllegalStateException ise) {
+			System.out.println("The repository has no root ACL.");
+			System.out.println("Attempting to create missing root ACL with user " + userName + " as root manager.");
+			ContentName cn = ContentName.fromNative(userStorage, userName);
+			Link lk = new Link(cn, ACL.LABEL_MANAGER, null);
+			ArrayList<Link> rootACLcontents = new ArrayList<Link>();
+			rootACLcontents.add(lk);
+			ACL rootACL = new ACL(rootACLcontents);
+			try{
+				gacm.initializeNamespace(rootACL);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		catch (Exception e) {
 			e.printStackTrace();
 		}
 		
