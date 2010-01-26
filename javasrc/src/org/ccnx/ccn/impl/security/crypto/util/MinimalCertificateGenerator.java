@@ -36,7 +36,6 @@ import java.util.Vector;
 import javax.security.auth.x500.X500Principal;
 
 import org.bouncycastle.asn1.ASN1EncodableVector;
-import org.bouncycastle.asn1.DEREncodable;
 import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.DERSequence;
@@ -356,7 +355,7 @@ public class MinimalCertificateGenerator {
 	 public void addExtension(
 		        String oid,
 		        boolean critical,
-		        DEREncodable value) {
+		        byte [] value) {
 		 if (null == oid)
 			 throw new IllegalArgumentException("OID cannot be null!");
 		 
