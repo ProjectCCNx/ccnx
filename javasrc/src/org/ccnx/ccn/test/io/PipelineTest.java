@@ -7,12 +7,15 @@ import junit.framework.Assert;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.io.CCNAbstractInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
+import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -26,6 +29,7 @@ public class PipelineTest {
 	public static CCNHandle writeHandle;
 	
 	private static CCNInputStream istream;
+	private static CCNVersionedInputStream vistream;
 	
 	private static long segments = 20;
 	
@@ -41,6 +45,7 @@ public class PipelineTest {
 		
 		ContentName namespace = testHelper.getTestNamespace("pipelineTest");
 		testName = ContentName.fromNative(namespace, "PipelineSegments");
+		testName = VersioningProfile.addVersion(testName);
 		try {
 			putSegments();
 		} catch (Exception e) {
@@ -50,6 +55,11 @@ public class PipelineTest {
 		
 	}
 	
+	@After
+	public void cleanup() {
+		readHandle.close();
+		writeHandle.close();
+	}
 	
 	//put segments
 	private static void putSegments() throws Exception{
@@ -202,6 +212,30 @@ public class PipelineTest {
 		Assert.assertTrue(received == bytesWritten + resetBytes);
 	}
 	
-	
+	//test interface with versioning
+	@Test
+	public void testVersionedNameWithPipeline() {
+		long received = 0;
+		byte[] bytes = new byte[1024];
+		
+		try {
+			vistream = new CCNVersionedInputStream(VersioningProfile.cutLastVersion(testName), readHandle);
+		} catch (IOException e1) {
+			System.err.println("failed to open stream for pipeline test: "+e1.getMessage());
+			Assert.fail();
+		}
+		
+		while (!vistream.eof()) {
+			try {
+				received += vistream.read(bytes);
+			} catch (IOException e) {
+				System.err.println("failed to read segments: "+e.getMessage());
+				Assert.fail();
+			}
+		}
+		System.out.println("read "+received+" from stream");
+		Assert.assertTrue(received == bytesWritten);
+		
+	}
 	
 }

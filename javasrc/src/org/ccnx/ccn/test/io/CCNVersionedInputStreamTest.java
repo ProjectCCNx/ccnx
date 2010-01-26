@@ -63,6 +63,7 @@ public class CCNVersionedInputStreamTest {
 	static byte [] latestVersionDigest;
 	static CCNHandle outputHandle;
 	static CCNHandle inputHandle;
+	static CCNHandle inputHandle2;
 	static CCNReader reader;
 	static final int MAX_FILE_SIZE = 1024*1024; // 1 MB
 	static final int BUF_SIZE = 4096;
@@ -77,6 +78,7 @@ public class CCNVersionedInputStreamTest {
 		Random randBytes = new Random(); // doesn't need to be secure
 		outputHandle = CCNHandle.open();
 		inputHandle = CCNHandle.open();
+		inputHandle2 = CCNHandle.open();
 		reader = new CCNReader(inputHandle);
 		
 		// Write a set of output
@@ -196,6 +198,10 @@ public class CCNVersionedInputStreamTest {
 	@Test
 	public void testCCNVersionedInputStreamContentNameLongPublisherKeyIDCCNLibrary() throws Exception {
 		// we can make a new handle; as long as we don't use the outputHandle it should work
+		System.out.println("first: "+firstVersionName);
+		System.out.println("middle: "+middleVersionName);
+		System.out.println("latest: "+latestVersionName);
+		
 		CCNVersionedInputStream vfirst = 
 			new CCNVersionedInputStream(firstVersionName, 
 					((3 > firstVersionMaxSegment) ? firstVersionMaxSegment : 3L), outputHandle.getDefaultPublisher(), inputHandle);
@@ -206,18 +212,28 @@ public class CCNVersionedInputStreamTest {
 
 	@Test
 	public void testCCNVersionedInputStreamContentNamePublisherKeyIDCCNLibrary() throws Exception {
+		System.out.println("1============================");
+		System.out.println("firstVersionName: "+firstVersionName);
+		System.out.println("middle: "+middleVersionName);
+		System.out.println("latest: "+latestVersionName);
+		System.out.println("defaultStreamName: "+defaultStreamName);
 		// we can make a new handle; as long as we don't use the outputHandle it should work
 		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, outputHandle.getDefaultPublisher(), inputHandle);
-		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, outputHandle.getDefaultPublisher(), inputHandle);
+		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, outputHandle.getDefaultPublisher(), inputHandle2);
 		testArgumentRunner(vfirst, vlatest);
+		System.out.println("1x============================");
 	}
 
 	@Test
 	public void testCCNVersionedInputStreamContentName() throws Exception {
+		System.out.println("2============================");
+
 		// we can make a new handle; as long as we don't use the outputHandle it should work
 		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName);
 		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName);
 		testArgumentRunner(vfirst, vlatest);
+		System.out.println("2x============================");
+
 	}
 
 	@Test
