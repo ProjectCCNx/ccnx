@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.EnumSet;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -38,9 +39,11 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -58,7 +61,22 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  */
 public abstract class CCNAbstractInputStream extends InputStream implements ContentVerifier, CCNInterestListener {
 
+	/**
+	 * Flags:
+	 * DONT_DEREFERENCE to prevent dereferencing in case we are attempting to read a link.
+	 */
+	
 	protected CCNHandle _handle;
+	
+	/**
+	 * The Link we dereferenced to get here, if any. This may contain
+	 * a link dereferenced to get to it, and so on.
+	 */
+	protected LinkObject _dereferencedLink = null;
+	
+	public enum FlagTypes { DONT_DEREFERENCE };
+	
+	protected EnumSet<FlagTypes> _flags = EnumSet.noneOf(FlagTypes.class);
 
 	/**
 	 * The segment we are currently reading from.
@@ -174,6 +192,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			ContentName baseName, Long startingSegmentNumber,
 			PublisherPublicKeyDigest publisher, 
 			ContentKeys keys,
+			EnumSet<FlagTypes> flags,
 			CCNHandle handle) throws IOException {
 		super();
 
@@ -189,6 +208,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		if (null != keys) {
 			keys.requireDefaultAlgorithm();
 			_keys = keys;
+		}
+		
+		if (null != flags) {
+			_flags = flags;
 		}
 
 		// So, we assume the name we get in is up to but not including the sequence
@@ -221,12 +244,15 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * 		We assume that the signature on this segment was verified by our caller.
 	 * @param keys The keys to use to decrypt this content. Null if content unencrypted, or another
 	 * 				process will be used to retrieve the keys.
+	 * @param any flags necessary for processing this stream; have to hand in in constructor in case
+	 * 		first segment provided, so can apply to that segment
 	 * @param handle The CCN handle to use for data retrieval. If null, the default handle
 	 * 		given by CCNHandle#getHandle() will be used.
 	 * @throws IOException
 	 */
 	public CCNAbstractInputStream(ContentObject startingSegment,
 			ContentKeys keys,
+			EnumSet<FlagTypes> flags,
 			CCNHandle handle) throws IOException  {
 		super();
 		_handle = handle; 
@@ -239,13 +265,18 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			_keys = keys;
 		}
 
-		setFirstSegment(startingSegment);
+		if (null != flags) {
+			_flags = flags;
+		}
+
 		_baseName = SegmentationProfile.segmentRoot(startingSegment.name());
 		try {
 			_startingSegmentNumber = SegmentationProfile.getSegmentNumber(startingSegment.name());
 		} catch (NumberFormatException nfe) {
 			throw new IOException("Stream starter segment name does not contain a valid segment number, so the stream does not know what content to start with.");
 		}
+		
+		setFirstSegment(startingSegment);
 		
 		startPipeline();
 	}
@@ -661,6 +692,52 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	public void setTimeout(int timeout) {
 		_timeout = timeout;
 	}
+	
+	/**
+	 * Add flags to this stream. Adds to existing flags.
+	 */
+	public void addFlags(EnumSet<FlagTypes> additionalFlags) {
+		_flags.addAll(additionalFlags);
+	}
+
+	/**
+	 * Add a flag to this stream. Adds to existing flags.
+	 */
+	public void addFlag(FlagTypes additionalFlag) {
+		_flags.add(additionalFlag);
+	}
+
+	/**
+	 * Set flags on this stream. Replaces existing flags.
+	 */
+	public void setFlags(EnumSet<FlagTypes> flags) {
+		if (null == flags) {
+			_flags.clear();
+		} else {
+			_flags = flags;
+		}
+	}
+	
+	/**
+	 * Clear the flags on this stream.
+	 */
+	public void clearFlags() {
+		_flags.clear();
+	}
+	
+	/**
+	 * Remove a flag from this stream.
+	 */
+	public void removeFlag(FlagTypes flag) {
+		_flags.remove(flag);
+	}
+	
+	/**
+	 * Check whether this stream has a particular flag set.
+	 */
+	public boolean hasFlag(FlagTypes flag) {
+		return _flags.contains(flag);
+	}
 
 	/**
 	 * @return The name used to retrieve segments of this stream (not including the segment number).
@@ -729,6 +806,43 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		if (null == newSegment) {
 			throw new NoMatchingContentFoundException("Cannot find first segment of " + getBaseName());
 		}
+		
+		LinkObject theLink = null;
+		
+		while (newSegment.isType(ContentType.LINK) && (!hasFlag(FlagTypes.DONT_DEREFERENCE))) {
+			// Automated dereferencing. Want to make a link object to read in this link, then
+			// dereference it to get the segment we really want. We then fix up the _baseName,
+			// and continue like nothing ever happened. 
+			theLink = new LinkObject(newSegment, _handle);
+			pushDereferencedLink(theLink); // set _dereferencedLink to point to the new link, pushing
+					// old ones down the stack if necessary
+			
+			// dereference will check for link cycles
+			newSegment = _dereferencedLink.dereference(_timeout);
+			Log.info("CCNAbstractInputStream: dereferencing link {0} to {1}, resulting data {2}", theLink.getVersionedName(),
+						theLink.link(), ((null == newSegment) ? "null" : newSegment.name()));
+			if (newSegment == null) {
+				// TODO -- catch error states. Do we throw exception or return null?
+				// Set error states -- when do we find link cycle and set the error on the link?
+				// Clear error state when update is successful.
+				// Two cases -- link loop or data not found.
+				if (_dereferencedLink.hasError()) {
+					if (_dereferencedLink.getError() instanceof LinkCycleException) {
+						// Leave the link set on the input stream, so that caller can explore errors.
+						Log.warning("Hit link cycle on link {0} pointing to {1}, cannot dereference. See this.dereferencedLink() for more information!",
+								_dereferencedLink.getVersionedName(), _dereferencedLink.link().targetName());
+					}
+					// Might also cover NoMatchingContentFoundException here...for now, just return null
+					// so can call it more than once.
+					throw _dereferencedLink.getError();
+				} else {
+					throw new NoMatchingContentFoundException("Cannot find first segment of " + getBaseName() + ", which is a link pointing to " + _dereferencedLink.link().targetName());					
+				}
+			}
+			_baseName = SegmentationProfile.segmentRoot(newSegment.name());
+			// go around again, 
+		}
+		
 		if (newSegment.isType(ContentType.GONE)) {
 			_goneSegment = newSegment;
 			Log.info("getFirstSegment: got gone segment: " + _goneSegment.name());
@@ -736,8 +850,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			// The block is encrypted and we don't have keys
 			// Get the content name without the segment parent
 			ContentName contentName = SegmentationProfile.segmentRoot(newSegment.name());
-			// Attempt to retrieve the keys
-			_keys = GroupAccessControlManager.keysForInput(contentName, newSegment.signedInfo().getPublisherKeyID(), _handle);
+			// Attempt to retrieve the keys for this namespace
+			_keys = AccessControlManager.keysForInput(contentName, newSegment.signedInfo().getPublisherKeyID(), _handle);
+			if (_keys == null) throw new AccessDeniedException("Cannot find keys to decrypt content.");
 		}
 		setCurrentSegment(newSegment);
 	}
@@ -771,7 +886,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				try {
 					// Reuse of current segment OK. Don't expect to have two separate readers
 					// independently use this stream without state confusion anyway.
-					_cipher = _keys.getSegmentDecryptionCipher(
+					
+					// Assume getBaseName() returns name without segment information.
+					// Log verification only on highest log level (won't execute on lower logging level).
+					Log.finest("Assert check: does getBaseName() match segmentless part of _currentSegment.name()? {0}",
+							   (SegmentationProfile.segmentRoot(_currentSegment.name()).equals(getBaseName())));
+					
+					_cipher = _keys.getSegmentDecryptionCipher(getBaseName(), _publisher,
 							SegmentationProfile.getSegmentNumber(_currentSegment.name()));
 				} catch (InvalidKeyException e) {
 					Log.warning("InvalidKeyException: " + e.getMessage());
@@ -809,7 +930,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				}
 				if ((null == tailData) || (0 == tailData.length)) {
 					_segmentReadStream = new ByteArrayInputStream(bodyData);
-				} else {
+				} 
+				else if ((null == bodyData) || (0 == bodyData.length)) {
+					_segmentReadStream = new ByteArrayInputStream(tailData);						
+				}
+				else {
 					byte [] allData = new byte[bodyData.length + tailData.length];
 					// Still avoid 1.6 array ops
 					System.arraycopy(bodyData, 0, allData, 0, bodyData.length);
@@ -956,14 +1081,20 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	/**
 	 * Checks whether we might have a next segment.
 	 * @return Returns false if this content is marked as GONE (see ContentType), or if we have
-	 * 		retrieved the segment marked as the last one.
+	 * 		retrieved the segment marked as the last one, or, in a very rare case, if we're
+	 * 		reading content that does not have segment markers.
 	 */
-	protected boolean hasNextSegment() {
+	protected boolean hasNextSegment() throws IOException {
 
 		// We're looking at content marked GONE
 		if (null != _goneSegment) {
 			Log.info("getNextSegment: We have a gone segment, no next segment. Gone segment: " + _goneSegment.name());
 			return false;
+		}
+		
+		if (null == _currentSegment) {
+			Log.severe("hasNextSegment() called when we have no current segment!");
+			throw new IOException("hasNextSegment() called when we have no current segment!");
 		}
 
 		// Check to see if finalBlockID is the current segment. If so, there should
@@ -977,6 +1108,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						DataUtils.printHexBytes(_currentSegment.name().lastComponent()) + " which is marked as the final segment.");
 				return false;
 			}
+		}
+		
+		if (!SegmentationProfile.isSegment(_currentSegment.name())) {
+			Log.info("Unsegmented content: {0}. No next segment.", _currentSegment.name());
+			return false;
 		}
 		return true;
 	}
@@ -1047,6 +1183,33 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		}
 		return false;
 	}
+	
+	/**
+	 * If we traversed a link to get this object, make it available.
+	 */
+	public synchronized LinkObject getDereferencedLink() { return _dereferencedLink; }
+	
+	/**
+	 * Use only if you know what you are doing.
+	 */
+	protected synchronized void setDereferencedLink(LinkObject dereferencedLink) { _dereferencedLink = dereferencedLink; }
+	
+	/**
+	 * Add a LinkObject to the stack we had to dereference to get here.
+	 */
+	protected synchronized void pushDereferencedLink(LinkObject dereferencedLink) {
+		if (null == dereferencedLink) {
+			return;
+		}
+		if (null != _dereferencedLink) {
+			if (null != dereferencedLink.getDereferencedLink()) {
+				Log.warning("Merging two link stacks -- {0} already has a dereferenced link from {1}. Behavior unpredictable.",
+							dereferencedLink.getVersionedName(), dereferencedLink.getDereferencedLink().getVersionedName());
+			}
+			dereferencedLink.pushDereferencedLink(_dereferencedLink);
+		}
+		setDereferencedLink(dereferencedLink);
+	}
 
 	/**
 	 * Verifies the signature on a segment using cached bulk signature data (from Merkle Hash Trees)
@@ -1065,7 +1228,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			// or this could be part of a Merkle Hash Tree. If the latter, we could
 			// already have its signing information.
 			if (null == segment.signature().witness()) {
-				return segment.verify(null);
+				return segment.verify(_handle.keyManager());
 			}
 
 			// Compare to see whether this segment matches the root signature we previously verified, if
@@ -1086,7 +1249,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			} else {
 				// Verifying a new segment. See if the signature verifies, otherwise store the signature
 				// and proxy.
-				if (!ContentObject.verify(proxy, segment.signature().signature(), segment.signedInfo(), segment.signature().digestAlgorithm(), null)) {
+				if (!ContentObject.verify(proxy, segment.signature().signature(), segment.signedInfo(), segment.signature().digestAlgorithm(), _handle.keyManager())) {
 					Log.warning("Found segment: " + segment.name().toString() + " whose signature fails to verify; segment length: " + segment.contentLength() + ".");
 					return false;
 				} else {
@@ -1149,19 +1312,20 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * Checks to see whether this content has been marked as GONE (deleted). Will retrieve the first
 	 * segment if we do not already have it in order to make this determination.
 	 * @return true if stream is GONE.
-	 * @throws IOException if there is difficulty retrieving the first segment.
+	 * @throws NoMatchingContentFound exception if no first segment found
+	 * @throws IOException if there is other difficulty retrieving the first segment.
 	 */
-	public boolean isGone() throws IOException {
+	public boolean isGone() throws NoMatchingContentFoundException, IOException {
 
 		// TODO: once first segment is always read in constructor this code will change
 		if (null == _currentSegment) {
 			ContentObject firstSegment = getFirstSegment();
-			if (null != firstSegment) {
-				setFirstSegment(firstSegment); // sets _goneSegment
-			} else {
-				// don't know anything
-				return false;
-			}
+			setFirstSegment(firstSegment); // sets _goneSegment, does link dereferencing,
+					// throws NoMatchingContentFoundException if firstSegment is null.
+			// this way all retry behavior is localized in the various versions of getFirstSegment.
+			// Previously what would happen is getFirstSegment would be called by isGone, return null,
+			// and we'd have a second chance to catch it on the call to update if things were slow. But
+			// that means we would get a more general update on a gone object.  
 		}
 		// We might have set first segment in constructor, in which case we will also have set _goneSegment
 		if (null != _goneSegment) {

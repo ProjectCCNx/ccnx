@@ -67,11 +67,13 @@ public class Daemon {
 	protected String _daemonName = null;
 	protected static DaemonListenerClass _daemonListener = null;
 	protected boolean _interactive = false;
+	protected String _pid;
 	
 	public static final String PROP_DAEMON_MEMORY = "ccn.daemon.memory";
 	public static final String PROP_DAEMON_DEBUG_PORT = "ccn.daemon.debug";
 	public static final String PROP_DAEMON_OUTPUT = "ccn.daemon.output";
 	public static final String PROP_DAEMON_PROFILE = "ccn.daemon.profile";
+	public static final String PROP_DAEMON_DEBUG_SUSPEND = "ccn.daemon.debug.suspend";
 	
 	/**
 	 * Interface describing the RMI server object sitting inside
@@ -81,6 +83,7 @@ public class Daemon {
 		public String startLoop() throws RemoteException; // returns pid
 		public void shutDown() throws RemoteException;
 		public boolean signal(String name) throws RemoteException;
+		public Object status(String name) throws RemoteException;
 	}
 	
 	public class StopTimer extends TimerTask {
@@ -179,6 +182,9 @@ public class Daemon {
 			Log.info("Should not be here, in WorkerThread.signal().");
 			return false;			
 		}
+		public Object status(String name) {
+			return null;		// We don't require implementers to implement this
+		}
 
 	}
 
@@ -224,11 +230,28 @@ public class Daemon {
 				throw new RemoteException(e.getMessage(), e);
 			}
 		}
+
+		public Object status(String name) throws RemoteException {
+			Log.info("Status " + name);
+			try {
+				return _daemonThread.status(name);
+			} catch (Exception e) {
+				throw new RemoteException(e.getMessage(), e);
+			}
+		}
 	}
 	
 	public Daemon() {_daemonName = "namelessDaemon";}
 	
 	public String daemonName() { return _daemonName; }
+	
+	public void setPid(String pid) {
+		_pid = pid;
+	}
+	
+	public String getPid() {
+		return _pid;
+	}
 	
 	/**
 	 * Overridden by subclasses.
@@ -332,10 +355,13 @@ public class Daemon {
 		if (memval != null)
 			argList.add("-Xmx" + memval);
 		
+		String suspend = System.getProperty(PROP_DAEMON_DEBUG_SUSPEND);
+		String doSuspend = suspend == null ? "n" : "y";
 		String debugPort = System.getProperty(PROP_DAEMON_DEBUG_PORT);
 		if (debugPort != null) {
-			argList.add("-Xrunjdwp:transport=dt_socket,address=" + debugPort + ",server=y,suspend=n");
-		}
+			argList.add("-Xrunjdwp:transport=dt_socket,address=" + debugPort + ",server=y,suspend=" + doSuspend);
+		} else if (doSuspend.equals("y"))
+			Log.info("Suspend requested without debug attach");
 		
 		String profileInfo = System.getProperty(PROP_DAEMON_PROFILE);
 		if (profileInfo != null) {
@@ -550,6 +576,7 @@ public class Daemon {
 			switch (mode) {
 			  case MODE_INTERACTIVE:
 				String pid = SystemConfiguration.getPID();
+				daemon.setPid(pid);
 				daemon.initialize(args, daemon);
 				Log.info("Running " + daemon.daemonName() + " in the foreground." + (null == pid ? "" : " PID " + pid));
 				WorkerThread wt = daemon.createWorkerThread();
@@ -656,6 +683,22 @@ public class Daemon {
 				}
 			}
 		}
+	}
+	
+	public Object getStatus(String daemonName, String type) throws FileNotFoundException, IOException, ClassNotFoundException {
+		if (!getRMIFile(daemonName, _pid).exists()) {
+			System.out.println("Daemon " + daemonName + " does not appear to be running.");
+			Log.info("Daemon " + daemonName + " does not appear to be running.");
+			return null;
+		}
+
+		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, _pid)));
+
+		DaemonListener l = (DaemonListener)in.readObject();		
+
+		in.close();
+		
+		return l.status(type);
 	}
 
 	/**

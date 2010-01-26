@@ -24,6 +24,7 @@ import java.util.Random;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
@@ -65,8 +66,9 @@ public class LinkObjectTestRepo {
 		ContentName linkName = ContentName.fromNative(testHelper.getTestNamespace("testLinks"), "myLink");
 		
 		// Write something that isn't a collection
-		CCNSerializableStringObject so = new CCNSerializableStringObject(nonLinkName, "This is not a link, number " + new Random().nextInt(10000), putLibrary);
-		so.saveToRepository();
+		CCNSerializableStringObject so = 
+			new CCNSerializableStringObject(nonLinkName, "This is not a link, number " + new Random().nextInt(10000), SaveType.REPOSITORY, putLibrary);
+		so.save();
 		
 		try {
 			LinkObject notAnObject = new LinkObject(nonLinkName, getLibrary);
@@ -75,17 +77,20 @@ public class LinkObjectTestRepo {
 		} catch (ContentDecodingException ex) {
 			// this is what we actually expect
 			System.out.println("Got expected exception reading link from non-link.");
+			Log.info("Got expected exception reading link from non-link.");
 		} catch (IOException ioe) {
 			System.out.println("Got another type of IOException reading link from non-link: " + ioe);
 			Log.info("Unexpected: got IOException that wasn't a ContentDecodingException reading link from non-link: {0}", ioe);
+			throw ioe;
 		} catch (Exception e) {
 			System.out.println("Got unexpected exception type reading link from non-link: " + e);
-			Assert.fail("Got unexpected exception type reading link from non-link: " + e);
+			Log.info("Got unexpected exception type reading link from non-link: " + e);
+			throw e;
 		}
 
 		Link lr = new Link(so.getVersionedName());
-		LinkObject aLink = new LinkObject(linkName, lr, putLibrary);
-		aLink.saveToRepository();
+		LinkObject aLink = new LinkObject(linkName, lr, SaveType.REPOSITORY, putLibrary);
+		aLink.save();
 		
 		ContentObject linkData = getLibrary.get(aLink.getVersionedName(), 5000);
 		if (null == linkData) {

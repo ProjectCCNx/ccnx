@@ -167,6 +167,15 @@ public class CCNTime extends Timestamp {
 	}
 	
 	/**
+	 * Note: you have to use a relatively high value of nanos before you get across a quantization
+	 * unit and have an impact. Our units are 2^-12 seconds, or ~250 msec. So 250000 nanos.
+	 * @param nanos
+	 */
+	public void addNanos(int nanos) {
+		setNanos(nanos + getNanos());
+	}
+	
+	/**
 	 * We handle all comparison functions by quantizing the thing
 	 * we are being compared to, then comparing. The only thing
 	 * this won't catch is if a normal Timestamp or Date's comparison

@@ -37,6 +37,7 @@ struct ccn_forwarding_entry {
 #define CCN_FORW_ACTIVE         1
 #define CCN_FORW_CHILD_INHERIT  2
 #define CCN_FORW_ADVERTISE      4
+#define CCN_FORW_LAST           8
 
 struct ccn_forwarding_entry *
 ccn_forwarding_entry_parse(const unsigned char *p, size_t size);

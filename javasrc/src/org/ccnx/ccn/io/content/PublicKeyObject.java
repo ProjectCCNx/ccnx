@@ -23,13 +23,16 @@ import java.io.OutputStream;
 import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.Arrays;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -57,8 +60,8 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * @param handle
 	 * @throws IOException
 	 */
-	public PublicKeyObject(ContentName name, PublicKey data, CCNHandle handle) throws IOException {
-		super(PublicKey.class, false, name, data, handle);
+	public PublicKeyObject(ContentName name, PublicKey data, SaveType saveType, CCNHandle handle) throws IOException {
+		super(PublicKey.class, false, name, data, saveType, handle);
 	}
 	
 	/**
@@ -70,9 +73,10 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	 * @param handle
 	 * @throws IOException
 	 */
-	public PublicKeyObject(ContentName name, PublicKey data, PublisherPublicKeyDigest publisher, 
+	public PublicKeyObject(ContentName name, PublicKey data, SaveType saveType,
+							PublisherPublicKeyDigest publisher, 
 							KeyLocator locator, CCNHandle handle) throws IOException {
-		super(PublicKey.class, false, name, data, publisher, locator, handle);
+		super(PublicKey.class, false, name, data, saveType, publisher, locator, handle);
 	}
 
 	/**
@@ -160,11 +164,23 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		super(PublicKey.class, false, firstSegment, flowControl);
 	}
 
+	/**
+	 * Copy constructor.
+	 */
+	public PublicKeyObject(CCNNetworkObject<? extends PublicKey> other) {
+		super(PublicKey.class, other);
+	}
+
 				
 	@Override
 	public ContentType contentType() { return ContentType.KEY; }
 
-	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException { return data(); }
+	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
+	
+	public PublisherPublicKeyDigest publicKeyDigest() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
+		PublicKey key = publicKey();
+		return new PublisherPublicKeyDigest(key);
+	}
 
 	@Override
 	protected PublicKey readObjectImpl(InputStream input) throws ContentDecodingException, IOException {
@@ -188,5 +204,24 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 			throw new ContentNotReadyException("No content available to save for object " + getBaseName());
 		byte [] encoded = data().getEncoded();
 		output.write(encoded);
+	}
+	
+	/**
+	 * Many cryptographic providers don't implement equals() correctly.
+	 * @throws ContentGoneException 
+	 * @throws ContentNotReadyException 
+	 * @throws ErrorStateException 
+	 */
+	public boolean equalsKey(PublicKey otherKey) throws ContentNotReadyException, ContentGoneException, ErrorStateException {
+		if (!available())
+			throw new ContentNotReadyException("No data available to compare!");
+		if (publicKey().equals(otherKey))
+			return true;
+		// might be that the provider doesn't implement equals()
+		return Arrays.equals(publicKey().getEncoded(), otherKey.getEncoded());
+	}
+	
+	public boolean equalsKey(PublicKeyObject otherKeyObject) throws ContentNotReadyException, ContentGoneException, ErrorStateException {
+		return this.equalsKey(otherKeyObject.publicKey());
 	}
 }

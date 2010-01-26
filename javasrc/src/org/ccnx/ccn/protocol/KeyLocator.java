@@ -33,6 +33,7 @@ import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -77,7 +78,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
      * @param name the name
      */
     public KeyLocator(ContentName name) {
-    	this (name, null);
+    	this (name, (PublisherID)null);
     }
     
     /**
@@ -86,6 +87,15 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
      * @param publisher the desired publisher
      */
     public KeyLocator(ContentName name, PublisherID publisher) {
+    	this(new KeyName(name, publisher));
+    }
+       
+    /**
+     * Make a KeyLocator containing a key name and the desired publisher
+     * @param name the key name
+     * @param publisher the desired publisher
+     */
+    public KeyLocator(ContentName name, PublisherPublicKeyDigest publisher) {
     	this(new KeyName(name, publisher));
     }
     
@@ -298,6 +308,23 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
 	@Override
 	public boolean validate() {
 		return ((null != name() || (null != key()) || (null != certificate())));
+	}
+	
+	@Override
+	public String toString() {
+		String output = typeToName(type()) + ": "; 
+		if (type() == KeyLocatorType.KEY) {
+			return output + new PublisherPublicKeyDigest(key()).toString();
+		} else if (type() == KeyLocatorType.CERTIFICATE) {
+			try {
+				return output + DataUtils.printHexBytes(CryptoUtil.generateCertID(certificate()));
+			} catch (CertificateEncodingException e) {
+				return output + "Unable to encode certificate: " + e.getMessage();
+			}
+		} else if (type() == KeyLocatorType.NAME) {
+			return output + name();
+		}
+		return output + " UNKNOWN";
 	}
 
 }

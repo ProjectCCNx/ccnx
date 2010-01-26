@@ -54,6 +54,12 @@
   </xs:sequence>
 </xs:complexType>
 
+<xs:complexType name="NameValueType">
+  <xs:sequence>
+    <xs:element name="Name" type="NameType"/>
+  </xs:sequence>
+</xs:complexType>
+
 <xs:complexType name="KeyValuePairType">
   <xs:sequence>
       <xs:element name="Key" type="xs:string"/>
@@ -62,6 +68,7 @@
         <xs:element name="DecimalValue" type="xs:decimal"/>
         <xs:element name="StringValue" type="xs:string"/>
         <xs:element name="BinaryValue" type="Base64BinaryType"/>
+        <xs:element name="NameValue" type="NameValueType"/>
       </xs:choice>
   </xs:sequence>
 </xs:complexType>

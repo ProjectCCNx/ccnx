@@ -18,6 +18,7 @@
 package org.ccnx.ccn.io;
 
 import java.io.IOException;
+import java.util.EnumSet;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -59,22 +60,22 @@ public class CCNBlockInputStream extends CCNAbstractInputStream {
 
 	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber,
 							   PublisherPublicKeyDigest publisher, CCNHandle handle) throws IOException {
-		super(baseName, startingSegmentNumber, publisher, null, handle);
+		super(baseName, startingSegmentNumber, publisher, null, null, handle);
 		setTimeout(SystemConfiguration.NO_TIMEOUT);
 	}
 
 	public CCNBlockInputStream(ContentName baseName, Long startingSegmentNumber, 
 			   PublisherPublicKeyDigest publisher, ContentKeys keys, CCNHandle handle) throws IOException {
-		super(baseName, startingSegmentNumber, publisher, keys, handle);
+		super(baseName, startingSegmentNumber, publisher, keys, null, handle);
 		setTimeout(SystemConfiguration.NO_TIMEOUT);
 	}
 
-	public CCNBlockInputStream(ContentObject firstSegment, CCNHandle handle) throws IOException {
-		super(firstSegment, null, handle);
+	public CCNBlockInputStream(ContentObject firstSegment, EnumSet<FlagTypes> flags, CCNHandle handle) throws IOException {
+		super(firstSegment, null, flags, handle);
 	}
 
-	public CCNBlockInputStream(ContentObject firstSegment, ContentKeys keys, CCNHandle handle) throws IOException {
-		super(firstSegment, keys, handle);
+	public CCNBlockInputStream(ContentObject firstSegment, ContentKeys keys, EnumSet<FlagTypes> flags, CCNHandle handle) throws IOException {
+		super(firstSegment, keys, flags, handle);
 	}
 
 	/**

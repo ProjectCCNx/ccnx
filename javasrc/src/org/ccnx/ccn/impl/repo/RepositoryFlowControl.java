@@ -24,8 +24,8 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -308,4 +308,9 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			_handle.cancelInterest(writeInterest, this);
 		}
 	}
+	
+	/**
+	 * Help users determine what type of flow controller this is.
+	 */
+	public SaveType saveType() { return SaveType.REPOSITORY; }
 }

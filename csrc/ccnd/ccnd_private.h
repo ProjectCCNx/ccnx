@@ -7,7 +7,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -104,6 +104,7 @@ struct ccnd_handle {
     ccn_accession_t max_stale;      /**< largest accession of stale content */
     unsigned long capacity;         /**< may toss content if there more than
                                      this many content objects in the store */
+    unsigned long n_stale;          /**< Number of stale content objects */
     struct ccn_indexbuf *unsol;     /**< unsolicited content */
     unsigned long oldformatcontent;
     unsigned long oldformatcontentgrumble;
@@ -125,6 +126,7 @@ struct ccnd_handle {
     int logpid;                     /**< see ccn_msg() */
     int mtu;                        /**< Target size for stuffing interests */
     int flood;                      // XXX - Temporary, for transition period
+    int force_zero_freshness;       /**< Simulate freshness=0 on all content */
     unsigned interest_faceid;       /**< for self_reg internal client */
     const char *progname;           /**< our name, for locating helpers */
     struct ccn *internal_client;    /**< internal client */
@@ -193,6 +195,8 @@ struct face {
 #define CCN_FACE_NOSEND (1 << 8) /**< Don't send anymore */
 #define CCN_FACE_UNDECIDED (1 << 9) /**< Might not be talking ccn */
 #define CCN_FACE_PERMANENT (1 << 10) /**< No timeout for inactivity */
+
+#define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 /**
  *  The content hash table is keyed by the initial portion of the ContentObject
@@ -374,6 +378,7 @@ void shutdown_client_fd(struct ccnd_handle *h, int fd);
 
 struct ccnd_handle *ccnd_create(const char *, ccnd_logger, void *);
 void ccnd_run(struct ccnd_handle *h);
+void ccnd_destroy(struct ccnd_handle **);
 extern const char *ccnd_usage_message;
 
 #endif

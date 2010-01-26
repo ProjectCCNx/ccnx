@@ -21,7 +21,6 @@ import java.io.File;
 import java.security.InvalidParameterException;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Daemon;
 import org.ccnx.ccn.impl.support.Log;
@@ -33,7 +32,6 @@ import org.ccnx.ccn.test.BitBucketRepository;
 public class RepositoryDaemon extends Daemon {
 	RepositoryServer _server;
 	RepositoryStore _repo;
-	CCNHandle _handle;
 	
 	protected class RepositoryWorkerThread extends Daemon.WorkerThread {
 
@@ -71,6 +69,10 @@ public class RepositoryDaemon extends Daemon {
 		public boolean signal(String name) {
 			return _repo.diagnostic(name);
 		}
+		
+		public Object status(String type) {
+			return "running";
+		}
 	}
 	
 	public RepositoryDaemon() {
@@ -103,8 +105,6 @@ public class RepositoryDaemon extends Daemon {
 		Log.setLevel(Level.INFO);
 		boolean useLogging = false;
 		try {
-			_handle = CCNHandle.open();
-
 			SystemConfiguration.setLogging(RepositoryStore.REPO_LOGGING, false);
 			String repositoryRoot = null;
 			File policyFile = null;
@@ -174,6 +174,9 @@ public class RepositoryDaemon extends Daemon {
 			
 			_repo.initialize(repositoryRoot, policyFile, localName, globalPrefix, nameSpace, null);
 			_server = new RepositoryServer(_repo);
+			
+			Log.info("started repo with response name: "+_server.getResponseName());
+
 			
 		} catch (InvalidParameterException ipe) {
 			usage();

@@ -20,12 +20,17 @@ package org.ccnx.ccn.profiles.security.access.group;
 import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
+import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
@@ -34,11 +39,53 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class MembershipList extends Collection.CollectionObject {
 
-	public MembershipList(ContentName name, Collection data, CCNHandle handle) 
+	/**
+	 * Write constructors. Prepare to save object.
+	 * @param name
+	 * @param data
+	 * @param saveType
+	 * @param handle
+	 * @throws IOException
+	 */
+	public MembershipList(ContentName name, Collection data, SaveType saveType, CCNHandle handle) 
 			throws IOException {
-		super(name, data, handle);
+		super(name, data, saveType, handle);
 	}
 	
+	public MembershipList(ContentName name, Collection data, SaveType saveType,
+			PublisherPublicKeyDigest publisher, KeyLocator keyLocator,
+			CCNHandle handle) throws IOException {
+		super(name, data, saveType, publisher, keyLocator, handle);
+	}
+
+	public MembershipList(ContentName name, java.util.Collection<Link> data,
+			SaveType saveType, CCNHandle handle) throws IOException {
+		super(name, data, saveType, handle);
+	}
+
+	public MembershipList(ContentName name, java.util.Collection<Link> data,
+			SaveType saveType, PublisherPublicKeyDigest publisher,
+			KeyLocator keyLocator, CCNHandle handle) throws IOException {
+		super(name, data, saveType, publisher, keyLocator, handle);
+	}
+
+	public MembershipList(ContentName name, Link[] contents, SaveType saveType,
+			CCNHandle handle) throws IOException {
+		super(name, contents, saveType, handle);
+	}
+
+	public MembershipList(ContentName name, Link[] contents, SaveType saveType,
+			PublisherPublicKeyDigest publisher, KeyLocator keyLocator,
+			CCNHandle handle) throws IOException {
+		super(name, contents, saveType, publisher, keyLocator, handle);
+	}
+
+	public MembershipList(ContentName name, Collection data, 
+			PublisherPublicKeyDigest publisher, 
+			KeyLocator keyLocator, CCNFlowControl flowControl) throws IOException {
+		super(name, data, publisher, keyLocator, flowControl);
+	}
+
 	/**
 	 * Read constructor -- opens existing object.
 	 * @param name
@@ -62,12 +109,25 @@ public class MembershipList extends Collection.CollectionObject {
 		super(firstBlock, handle);
 	}
 	
+	public MembershipList(ContentName name,
+			PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
+	throws ContentDecodingException, IOException {
+		super(name, publisher, flowControl);
+	}
+
+	public MembershipList(ContentObject firstBlock,
+			CCNFlowControl flowControl) 
+	throws ContentDecodingException, IOException {
+		super(firstBlock, flowControl);
+	}
+
 	/**
 	 * Returns the membership list as a collection.
 	 * @return
 	 * @throws ContentNotReadyException
 	 * @throws ContentGoneException
+	 * @throws ErrorStateException 
 	 */
-	public Collection membershipList() throws ContentNotReadyException, ContentGoneException { return data(); }
+	public Collection membershipList() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 
 }

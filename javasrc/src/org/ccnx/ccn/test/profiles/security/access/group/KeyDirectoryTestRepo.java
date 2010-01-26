@@ -84,6 +84,25 @@ public class KeyDirectoryTestRepo {
 		versionedDirectoryName = VersioningProfile.addVersion(keyDirectoryName);
 	}
 	
+	/**
+	 * Ensures that the tests run in the correct order.
+	 * @throws Exception
+	 */
+	@Test
+	public void testInOrder() throws Exception {
+		testKeyDirectoryCreation();
+		testAddPrivateKey();
+		testGetUnwrappedKeyGroupMember();
+		testAddWrappedKey();
+		addWrappingKeyToACM();
+		testGetWrappedKeyForKeyID();
+		testGetWrappedKeyForPrincipal();
+		testGetUnwrappedKey();
+		testGetPrivateKey();
+		testGetUnwrappedKeySuperseded();
+		testAddPreviousKeyBlock();
+	}
+	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		kd.stopEnumerating();
@@ -93,7 +112,6 @@ public class KeyDirectoryTestRepo {
 	/*	
 	 * Create a new versioned KeyDirectory
 	 */
-	@Test
 	public void testKeyDirectoryCreation() throws Exception {
 
 		kd = new KeyDirectory(acm, versionedDirectoryName, handle);
@@ -101,7 +119,6 @@ public class KeyDirectoryTestRepo {
 		Assert.assertNotNull(kd);		
 	}
 	
-	@Test
 	public void testAddPrivateKey() throws Exception {
 		// generate a private key to wrap
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -114,14 +131,13 @@ public class KeyDirectoryTestRepo {
 		AESSecretKey = kg.generateKey();
 		// add private key block
 		kd.addPrivateKeyBlock(wrappedPrivateKey, AESSecretKey);
-		kd.waitForData(); // this was the first add; need to wait till we have any data, hopefully NE responder will fast path
+		kd.waitForChildren(); // this was the first add; need to wait till we have any data, hopefully NE responder will fast path
 		Assert.assertTrue(kd.hasPrivateKeyBlock());
 	}
 	
 	/*
 	 * Unwrap the private key via membership in a group
 	 */
-	@Test
 	public void testGetUnwrappedKeyGroupMember() throws Exception {
 		ContentName myIdentity = ContentName.fromNative("/test/parc/Users/pgolle");
 		acm.publishMyIdentity(myIdentity, null);		
@@ -133,7 +149,7 @@ public class KeyDirectoryTestRepo {
 		Group myGroup = acm.groupManager().createGroup(randomGroupName, newMembers);
 		Assert.assertTrue(acm.groupManager().haveKnownGroupMemberships());
 		KeyDirectory pkd = myGroup.privateKeyDirectory(acm);
-		pkd.waitForData();
+		pkd.waitForChildren();
 		Assert.assertTrue(pkd.hasPrivateKeyBlock());
 		
 		// add to the KeyDirectory the secret key wrapped in the public key
@@ -146,7 +162,8 @@ public class KeyDirectoryTestRepo {
 		
 		// retrieve the secret key
 		byte[] expectedKeyID = CCNDigestHelper.digest(AESSecretKey.getEncoded());
-		kd2.waitForData();
+		kd2.waitForChildren();
+		Thread.sleep(10000);
 		Key unwrappedSecretKey = kd2.getUnwrappedKey(expectedKeyID);
 		Assert.assertEquals(AESSecretKey, unwrappedSecretKey);
 		kd2.stopEnumerating();
@@ -157,7 +174,6 @@ public class KeyDirectoryTestRepo {
 	 * Wraps the AES key in an RSA wrapping key
 	 * and adds the wrapped key to the KeyDirectory
 	 */
-	@Test
 	public void testAddWrappedKey() throws Exception {
 		// generate a public key to wrap
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -175,7 +191,6 @@ public class KeyDirectoryTestRepo {
 	/*
 	 * Adds the wrapping key to the AccessControlManager.
 	 */
-	@Test
 	public void addWrappingKeyToACM() throws Exception {
 		PrivateKey privKey = wrappingKeyPair.getPrivate();
 		byte[] publicKeyIdentifier = CCNDigestHelper.digest(wrappingKeyPair.getPublic().getEncoded());
@@ -191,13 +206,12 @@ public class KeyDirectoryTestRepo {
 	 * unwrap it, and check that the secret key retrieved is as expected.
 	 * 
 	 */
-	@Test
 	public void testGetWrappedKeyForKeyID() throws Exception {
 		CCNHandle handle = CCNHandle.open();
 		// Use unversioned constructor so KeyDirectory returns the latest version
 		KeyDirectory uvkd = new KeyDirectory(acm, keyDirectoryName, handle);
 		while (!uvkd.hasChildren() || uvkd.getCopyOfWrappingKeyIDs().size() == 0) {
-			uvkd.waitForNewData();
+			uvkd.waitForNewChildren();
 		}
 		// check the ID of the wrapping key
 		TreeSet<byte[]> wkid = uvkd.getCopyOfWrappingKeyIDs();
@@ -223,7 +237,6 @@ public class KeyDirectoryTestRepo {
 	 * As above, the key is unwrapped and we check that the result is as expected.
 	 * 
 	 */
-	@Test
 	public void testGetWrappedKeyForPrincipal() throws Exception {		
 		// unwrap the key and check that the unwrapped secret key is correct
 		WrappedKeyObject wko = kd.getWrappedKeyForPrincipal(principalName);
@@ -238,7 +251,6 @@ public class KeyDirectoryTestRepo {
 	 * 	and check that the result is as expected.
 	 * 
 	 */
-	@Test
 	public void testGetUnwrappedKey() throws Exception {
 		byte[] expectedKeyID = CCNDigestHelper.digest(AESSecretKey.getEncoded());
 		Key unwrappedSecretKey = kd.getUnwrappedKey(expectedKeyID);
@@ -248,7 +260,6 @@ public class KeyDirectoryTestRepo {
 	/*
 	 * Retrieve the private key from KD and check the result
 	 */
-	@Test
 	public void testGetPrivateKey() throws Exception {
 		Assert.assertTrue(kd.hasPrivateKeyBlock());
 		PrivateKey privKey = kd.getPrivateKey();
@@ -259,7 +270,6 @@ public class KeyDirectoryTestRepo {
 	 * Create an "old" key directory, which is superseded by the kd created above
 	 * Check that the unwrappedKey for the old superseded KD can be obtained.
 	 */
-	@Test
 	public void testGetUnwrappedKeySuperseded() throws Exception {
 		// create a superseded key directory
 		ContentName supersededKeyDirectoryName = ContentName.fromNative(keyDirectoryBase + rand.nextInt(10000) + "/superseded");
@@ -276,7 +286,7 @@ public class KeyDirectoryTestRepo {
 		ContentName supersedingKeyName = keyDirectoryName;
 		skd.addSupersededByBlock(supersededAESSecretKey, supersedingKeyName, AESSecretKey);
 		while (!skd.hasChildren() || !skd.hasSupersededBlock()) 
-			skd.waitForNewData();
+			skd.waitForNewChildren();
 		Assert.assertTrue(skd.hasSupersededBlock());
 		Assert.assertNotNull(skd.getSupersededBlockName());
 
@@ -290,7 +300,6 @@ public class KeyDirectoryTestRepo {
 	/*
 	 * Add a previous key block
 	 */
-	@Test
 	public void testAddPreviousKeyBlock() throws Exception {
 		Assert.assertTrue(! kd.hasPreviousKeyBlock());
 		// generate a new AES wrapping key
@@ -299,7 +308,7 @@ public class KeyDirectoryTestRepo {
 
 		ContentName supersedingKeyName = ContentName.fromNative(keyDirectoryBase + "previous");
 		kd.addPreviousKeyBlock(AESSecretKey, supersedingKeyName, newAESSecretKey);
-		kd.waitForNewData();
+		kd.waitForNewChildren();
 		Assert.assertTrue(kd.hasPreviousKeyBlock());
 	}
 	

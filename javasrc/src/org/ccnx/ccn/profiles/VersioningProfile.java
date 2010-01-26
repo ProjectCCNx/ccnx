@@ -99,10 +99,7 @@ public class VersioningProfile implements CCNProfile {
 	public static ContentName addVersion(ContentName name, CCNTime version) {
 		if (null == version)
 			throw new IllegalArgumentException("Version cannot be null!"); 
-		byte [] varr = version.toBinaryTime();
-		byte [] vcomp = new byte[varr.length + 1];
-		vcomp[0] = VERSION_MARKER;
-		System.arraycopy(varr, 0, vcomp, 1, varr.length);
+		byte [] vcomp = timeToVersionComponent(version);
 		return new ContentName(name, vcomp);
 	}
 	
@@ -112,6 +109,19 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static ContentName addVersion(ContentName name) {
 		return addVersion(name, CCNTime.now());
+	}
+	
+	public static byte [] timeToVersionComponent(CCNTime version) {
+		byte [] varr = version.toBinaryTime();
+		byte [] vcomp = new byte[varr.length + 1];
+		vcomp[0] = VERSION_MARKER;
+		System.arraycopy(varr, 0, vcomp, 1, varr.length);
+		return vcomp;
+	}
+	
+	public static String printAsVersionComponent(CCNTime version) {
+		byte [] vcomp = timeToVersionComponent(version);
+		return ContentName.componentPrintURI(vcomp);
 	}
 	
 	/**
@@ -236,6 +246,8 @@ public class VersioningProfile implements CCNProfile {
 	}
 
 	public static CCNTime getVersionComponentAsTimestamp(byte [] versionComponent) {
+		if (null == versionComponent)
+			return null;
 		return versionLongToTimestamp(getVersionComponentAsLong(versionComponent));
 	}
 

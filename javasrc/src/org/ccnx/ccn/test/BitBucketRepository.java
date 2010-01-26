@@ -48,7 +48,7 @@ public class BitBucketRepository extends RepositoryStoreBase {
 		return null;
 	}
 
-	public NameEnumerationResponse getNamesWithPrefix(Interest i) {
+	public NameEnumerationResponse getNamesWithPrefix(Interest i, ContentName responseName) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -61,7 +61,6 @@ public class BitBucketRepository extends RepositoryStoreBase {
 	}
 
 	public static String getUsage() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
@@ -69,11 +68,11 @@ public class BitBucketRepository extends RepositoryStoreBase {
 							File policyFile, String localName, 
 							String globalPrefix,
 							String nameSpace, CCNHandle handle) throws RepositoryException {
-		// TODO Auto-generated method stub
+		
+		// Doesn't create a _handle -- no handle for this repository. 
 	}
 
 	public NameEnumerationResponse saveContent(ContentObject content) throws RepositoryException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
@@ -93,19 +92,19 @@ public class BitBucketRepository extends RepositoryStoreBase {
 		return false;
 	}
 
-	public void shutDown() {
-		// TODO Auto-generated method stub
-		
+	public void shutDown() {		
 	}
 
 	public Policy getPolicy() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public String getVersion() {
-		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Object getStatus(String type) {
 		return null;
 	}
 }

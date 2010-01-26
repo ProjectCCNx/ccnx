@@ -23,6 +23,7 @@ import java.util.logging.Level;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
@@ -56,12 +57,16 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 */
 	public int handleInterests(ArrayList<Interest> interests) {
 		for (Interest interest : interests) {
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+				Log.finer("Saw interest: {0}", interest.name());
 			try {
-				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
-					Log.finer("Saw interest: {0}", interest.name());
 				if (interest.name().contains(CommandMarkers.COMMAND_MARKER_REPO_START_WRITE)) {
+					if (null != interest.answerOriginKind() && (interest.answerOriginKind() & Interest.ANSWER_GENERATED) == 0)
+						continue;	// Request to not answer
 					startReadProcess(interest);
 				} else if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
+					if (null != interest.answerOriginKind() && (interest.answerOriginKind() & Interest.ANSWER_GENERATED) == 0)
+						continue;	// Request to not answer
 					nameEnumeratorResponse(interest);
 				} else {
 					ContentObject content = _server.getRepository().getContent(interest);
@@ -110,15 +115,24 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			return;
 		}
 		
+		// Create the name for the initial interest to retrieve content from the client that it desires to 
+		// write.  Strip from the write request name (in the incoming Interest) the start write command component
+		// and the nonce component to get the prefix for the content to be written.
 		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
 		try {
 			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
 				Log.info("Processing write request for {0}", listeningName);
-			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null, null, null, null);
+			// Create the initial read interest.  Set maxSuffixComponents = 2 to get only content with one 
+			// component past the prefix, plus the implicit digest.  This is designed to retrieve segments
+			// of a stream and avoid other content more levels below in the name space.  We do not ask for 
+			// a specific segment initially so as to support arbitrary starting segment numbers.
+			// TODO use better exclude filters to ensure we're only getting segments.
+			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null, 2, null, null);
 			RepositoryDataListener listener;
 			
-			_server.getWriter().put(interest.name(), _server.getRepository().getRepoInfo(null), null, null,
-					_server.getFreshness());
+			RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null);
+			// Hand the object the outstanding interest, so it can put its first block immediately.
+			rio.save(interest);
 			
 			// Check for special case file written to repo
 			ContentName globalPrefix = _server.getRepository().getGlobalPrefix();
@@ -129,7 +143,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			}
 			
 			listener = new RepositoryDataListener(interest, readInterest, _server);
-			_server.addListener(interest, readInterest, listener);
+			_server.addListener(listener);
 			listener.getInterests().add(readInterest, null);
 			_handle.expressInterest(readInterest, listener);
 		} catch (Exception e) {
@@ -144,7 +158,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 * @param interest
 	 */
 	public void nameEnumeratorResponse(Interest interest) {
-		NameEnumerationResponse ner = _server.getRepository().getNamesWithPrefix(interest);
+		NameEnumerationResponse ner = _server.getRepository().getNamesWithPrefix(interest, _server.getResponseName());
 
 		if (ner!=null && ner.hasNames()) {
 			_server.sendEnumerationResponse(ner);

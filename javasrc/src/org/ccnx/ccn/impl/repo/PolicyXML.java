@@ -21,11 +21,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -43,13 +45,13 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 		
 		protected RepositoryStore _repo = null;	// Non null if we are saving from within a repository
 		
-		public PolicyObject(ContentName name, PolicyXML data, CCNHandle handle, RepositoryStore repo) throws IOException {
-			super(PolicyXML.class, true, name, data, handle);
+		public PolicyObject(ContentName name, PolicyXML data, SaveType saveType, CCNHandle handle, RepositoryStore repo) throws IOException {
+			super(PolicyXML.class, true, name, data, saveType, handle);
 			_repo = repo;
 		}
 		
-		public PolicyObject(ContentName name, PolicyXML data, CCNHandle handle) throws IOException {
-			this(name, data, handle, null);
+		public PolicyObject(ContentName name, PolicyXML data, SaveType saveType, CCNHandle handle) throws IOException {
+			this(name, data, saveType, handle, null);
 		}
 		
 		public PolicyObject(ContentName name, CCNHandle handle) 
@@ -57,7 +59,7 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 			super(PolicyXML.class, true, name, handle);
 		}
 		
-		public PolicyXML policyXML() throws ContentNotReadyException, ContentGoneException {
+		public PolicyXML policyXML() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 			return data();
 		}
 		

@@ -106,8 +106,8 @@ int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
     EVP_MD_CTX *digest_contextp = &digest_context;
     size_t data_size;
     unsigned char *input_hash[2];
-    //int hash_count = merkle_path_info->hashes->num;
-    int hash_index = merkle_path_info->hashes->num - 1;
+    //int hash_count = sk_ASN1_OCTET_STRING_num(merkle_path_info->hashes);
+    int hash_index = sk_ASN1_OCTET_STRING_num(merkle_path_info->hashes) - 1;
     //ASN1_OCTET_STRING *sibling_hash;
     int res;
     
@@ -132,8 +132,8 @@ int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
      */
     while (node != 1) {
         input_hash[node & 1] = result;
-        input_hash[(node & 1) ^ 1] = ((ASN1_OCTET_STRING *)merkle_path_info->hashes->data[hash_index])->data;
-        if (((ASN1_OCTET_STRING *)merkle_path_info->hashes->data[hash_index])->length != result_size)
+        input_hash[(node & 1) ^ 1] = sk_ASN1_OCTET_STRING_value(merkle_path_info->hashes, hash_index)->data;
+        if (sk_ASN1_OCTET_STRING_value(merkle_path_info->hashes, hash_index)->length != result_size)
             return (-1);
         hash_index -= 1;
 #ifdef DEBUG
@@ -247,12 +247,12 @@ int ccn_verify_signature(const unsigned char *msg,
         merkle_path_info = d2i_MP_info(NULL, (const unsigned char **)&(digest_info->digest->data), digest_info->digest->length);
 #ifdef DEBUG
         int node = ASN1_INTEGER_get(merkle_path_info->node);
-        int hash_count = merkle_path_info->hashes->num;
+        int hash_count = sk_ASN1_OCTET_STRING_num(merkle_path_info->hashes);
         ASN1_OCTET_STRING *hash;
         fprintf(stderr, "A witness is present with an MHT OID\n");
         fprintf(stderr, "This is node %d, with %d hashes\n", node, hash_count);
         for (h = 0; h < hash_count; h++) {
-            hash = (ASN1_OCTET_STRING *)merkle_path_info->hashes->data[h];
+            hash = sk_ASN1_OCTET_STRING_value(merkle_path_info->hashes, h);
             fprintf(stderr, "     hashes[%d] len = %d data = ", h, hash->length);
             for (x = 0; x < hash->length; x++) {
                 fprintf(stderr, "%02x", hash->data[x]);

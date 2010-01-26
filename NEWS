@@ -68,14 +68,17 @@ Changes between 0.2.0 and 0.1.2:
     * Bug #100076 Use of $$ in csrc/tests/test-* considered harmful
     * Bug #100077 Please write some more code here (reduced debugging output)
     * Bug #100079 ccnputfile does not write any segments for zero-length files
+    * Bug #100083 ccnd not listening to both ipv4 and ipv6 tcp addresses on Linux
 
     Known issues:
     * intermittent Java test failures, usually around failure to retrieve
       segments; there is work in process that we expect will
       fix most of these
+    * intermittent failures of the C test test_destroyface
     * intermittent JVM crashes on Java 1.5 on OSX Leopard
     * the default ant/jUnit on Solaris 11 doesn't work; you need to
-      copy over a different ant-junit.jar from 
+      copy over the ant-junit.jar from /usr/grails/1.0.3/ant/lib/ant-junit.jar
+      to /usr/share/lib/ant/ant-junit.jar
 
 
 Changes between 0.1.1 and 0.1.2:

@@ -63,7 +63,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	ContentName c2;
 	
 	@Test
-	public void testNameEnumerator(){
+	public void testNameEnumerator() throws Exception {
 		
 		System.out.println("Starting CCNNameEnumerator Test");
 		
@@ -99,7 +99,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	}
 	
 	
-	public void testRegisterName(){
+	public void testRegisterName() throws IOException{
 		
 		try{
 			namespace = ContentName.fromNative(namespaceString);
@@ -162,22 +162,21 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 		int attempts = 0;
 		try{
-			while(names==null && attempts < 500){
+			while (names==null && attempts < 500){
 				Thread.sleep(rand.nextInt(50));
 				attempts++;
 			}
 			
 			//we either broke out of loop or the names are here
-			System.out.println("done waiting for results to arrive");
-		}
-		catch(InterruptedException e){
+			System.out.println("done waiting for results to arrive: attempts " + attempts);
+		} catch(InterruptedException e){
 			System.err.println("error waiting for names to be registered by name enumeration responder");
 			Assert.fail();
 		}
 		
 		Assert.assertNotNull(names);
 		
-		for(ContentName cn: names){
+		for (ContentName cn: names){
 			System.out.println("got name: "+cn.toString());
 			Assert.assertTrue(cn.toString().equals("/name1") || cn.toString().equals("/name2"));
 		}
@@ -221,7 +220,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			}
 			
 			//we either broke out of loop or the names are here
-			System.out.println("done waiting for results to arrive");
+			System.out.println("done waiting for results to arrive: attempts " + attempts);
 		}
 		catch(InterruptedException e){
 			System.err.println("error waiting for names to be registered by name enumeration responder");
@@ -342,7 +341,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		names = n;
 		System.out.println("here are the returned names: ");
 
-		for(ContentName cn: names)
+		for (ContentName cn: names)
 			System.out.println(cn.toString()+" ("+p.toString()+cn.toString()+")");
 		
 		return 0;

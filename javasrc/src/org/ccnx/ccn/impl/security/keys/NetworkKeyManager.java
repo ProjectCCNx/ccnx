@@ -24,12 +24,13 @@ import java.security.KeyStore;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -68,31 +69,18 @@ public class NetworkKeyManager extends BasicKeyManager {
 		_handle = handle;
 		// loading done by initialize()
 	}
-
-	/**
-	 * Get the content name for a given key id.
-	 * The default key name is the publisher ID itself,
-	 * under the keystore namespace.
-	 * @param keyID[]
-	 * @return
-	 */
-	@Override
-	public ContentName getDefaultKeyName(byte [] keyID) {
-		ContentName keyDir =
-			ContentName.fromNative(_keystoreName, 
-				   			UserConfiguration.defaultKeyName());
-		return new ContentName(keyDir, keyID);
-	}
 	
 	/**
 	 * Reads the user's keys from CCN
 	 * @throws ConfigurationException
 	 */
-	protected void loadKeyStore() throws ConfigurationException {
+	@Override
+	protected KeyStoreInfo loadKeyStore() throws ConfigurationException, IOException {
 		// Is there an existing version of this key store? don't assume repo, so don't enumerate.
 		// timeouts should be ok.
 		// DKS TODO -- once streams pull first block on creation, don't need this much work.
 		ContentObject keystoreObject = null;
+		KeyStoreInfo keyStoreInfo = null;
 		try {
 			keystoreObject = 
 				VersioningProfile.getFirstBlockOfLatestVersion(_keystoreName, null, _publisher, 
@@ -100,46 +88,34 @@ public class NetworkKeyManager extends BasicKeyManager {
 																new ContentObject.SimpleVerifier(_publisher),  _handle);
 			if (null == keystoreObject) {
 				Log.info("Creating new CCN key store..." + _keystoreName);
-				_keyStore = createKeyStore();	
+				keyStoreInfo = createKeyStore();	
 			}
 		} catch (IOException e) {
 			Log.warning("Cannot get first block of existing key store: " + _keystoreName);
-			throw new ConfigurationException("Cannot get first block of existing key store: " + _keystoreName + ": " + e.getMessage(), e);
+			throw e;
 		} 
-		if ((null == _keyStore) && (null != keystoreObject)){
+		if ((null == keyStoreInfo) && (null != keystoreObject)){
 			CCNVersionedInputStream in = null;
 			Log.info("Loading CCN key store from " + _keystoreName + "...");
 			try {
-				in = new CCNVersionedInputStream(keystoreObject, _handle);
-				readKeyStore(in);
+				in = new CCNVersionedInputStream(keystoreObject, null, _handle);
+				KeyStore keyStore = readKeyStore(in);
+				keyStoreInfo = new KeyStoreInfo(_keystoreName.toURIString(), keyStore, in.getVersion());
 			} catch (IOException e) {
 				Log.warning("Cannot open existing key store: " + _keystoreName);
-				throw new ConfigurationException("Cannot open existing key store: " + _keystoreName + ": " + e.getMessage(), e);
+				throw e;
 			} 
 		}
-		
-		if (!loadValuesFromKeystore(_keyStore)) {
-			Log.warning("Cannot process keystore!");
-		}
+		return keyStoreInfo;
 	}
-
-	/**
-	 * Creates a CCN versioned output stream as the key storage 
-	 * @throws ConfigurationException
-	 */
-	synchronized protected KeyStore createKeyStore() throws ConfigurationException {
+	
+	protected CCNTime getKeyStoreVersion(OutputStream out) throws IOException {
+		// in our case, our output stream should be a file output stream...
+		if (!(out instanceof CCNVersionedOutputStream)) {
+			throw new IOException("Unexpected output stream type in getKeyStoreVersion: " + out.getClass().getName());
+		}
 		
-		OutputStream out = null;
-		try {
-			out = createKeyStoreWriteStream();
-		} catch (ContentEncodingException e) {
-			Log.warning("Cannot create key store: " + _keystoreName);
-			throw new ConfigurationException("Cannot create key store: " + _keystoreName + ": " + e.getMessage(), e);
-		} catch (IOException e) {
-			Log.warning("Cannot create key store: " + _keystoreName);
-			throw new ConfigurationException("Cannot create key store: " + _keystoreName + ": " + e.getMessage(), e);
-		} 
-	    return createKeyStore(out);	    
+		return ((CCNVersionedOutputStream)out).getVersion();
 	}
 	
 	/**
@@ -149,7 +125,10 @@ public class NetworkKeyManager extends BasicKeyManager {
 	 * @throws ContentEncodingException
 	 * @throws IOException
 	 */
-	protected OutputStream createKeyStoreWriteStream() throws ContentEncodingException, IOException {
-		return new CCNVersionedOutputStream(_keystoreName, _handle);
+	@Override
+	protected Tuple<KeyStoreInfo, OutputStream> createKeyStoreWriteStream() throws IOException {
+		// Pull the version after we write
+		return new Tuple<KeyStoreInfo, OutputStream>(new KeyStoreInfo(_keystoreName.toURIString(), null, null),
+											  new CCNVersionedOutputStream(_keystoreName, _handle));
 	}
 }

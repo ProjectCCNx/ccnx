@@ -36,6 +36,7 @@ import javax.swing.JTextField;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -124,7 +125,11 @@ public class CCNChat extends JFrame implements ActionListener {
 	 */
 	public void actionPerformed(ActionEvent e) {
 		try {
-			_writeString.save(_typedText.getText());
+			String newText = _typedText.getText();
+			if ((null != newText) && (newText.length() > 0)) {
+				_writeString.save(newText);
+			}
+
 		} catch (Exception e1) {
 			System.err.println("Exception saving our input: " + e1.getClass().getName() + ": " + e1.getMessage());
 			e1.printStackTrace();
@@ -135,11 +140,11 @@ public class CCNChat extends JFrame implements ActionListener {
 	}
 	
 	public void listen() throws ConfigurationException, IOException {
-		_readString = new CCNStringObject(_namespace, (String)null, CCNHandle.open());
+		_readString = new CCNStringObject(_namespace, (String)null, SaveType.RAW, CCNHandle.open());
 		_readString.updateInBackground(true);
 		
 		String introduction = UserConfiguration.userName() + " has entered " + _namespace;
-		_writeString = new CCNStringObject(_namespace, introduction, CCNHandle.open());
+		_writeString = new CCNStringObject(_namespace, introduction, SaveType.RAW, CCNHandle.open());
 		_writeString.save();
 		
 		// Need to do synchronization for updates that come in while we're processing last one.

@@ -128,6 +128,15 @@ public class Log {
 		Handler[] handlers = Logger.getLogger( "" ).getHandlers();
 		for ( int index = 0; index < handlers.length; index++ ) {
 			handlers[index].setLevel( Level.ALL );
+			
+			// TODO Enabling the following by default seems to cause ccn_repo to 
+			// hang when run from the command line, at least on Leopard.
+			// Not sure why, so make it a special option.
+			if (SystemConfiguration.hasLoggingConfigurationProperty(SystemConfiguration.DETAILED_LOGGER)) {
+				if (handlers[index] instanceof ConsoleHandler) {
+					handlers[index].setFormatter(new DetailedFormatter());
+				}
+			}
 		}
 		
 		// Allow override of default log level.

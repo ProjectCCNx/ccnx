@@ -92,8 +92,9 @@ struct interest_filter { /* keyed by components of name */
     struct ccn_closure *action;
     struct ccn_reg_closure *ccn_reg_closure;
     struct timeval expiry;       /* Expiration time */
-    int waiting_ccndid;
+    int flags;
 };
+#define CCN_FORW_WAITING_CCNDID (1<<30)
 
 struct ccn_reg_closure {
     struct ccn_closure action;
@@ -113,7 +114,9 @@ static void ccn_refresh_interest(struct ccn *, struct expressed_interest *);
 static void ccn_initiate_prefix_reg(struct ccn *,
                                     const void *, size_t,
                                     struct interest_filter *);
+static void finalize_pkey(struct hashtb_enumerator *e);
 static void finalize_keystore(struct hashtb_enumerator *e);
+static int ccn_pushout(struct ccn *h);
 
 static int
 tv_earlier(const struct timeval *a, const struct timeval *b)
@@ -244,7 +247,8 @@ ccn_create(void)
     param.finalize_data = h;
     h->sock = -1;
     h->interestbuf = ccn_charbuf_create();
-    h->keys = hashtb_create(sizeof(struct ccn_pkey *), NULL);
+    param.finalize = &finalize_pkey;
+    h->keys = hashtb_create(sizeof(struct ccn_pkey *), &param);
     param.finalize = &finalize_keystore;
     h->keystores = hashtb_create(sizeof(struct ccn_keystore *), &param);
     s = getenv("CCN_DEBUG");
@@ -254,7 +258,8 @@ ccn_create(void)
 	char tap_name[255];
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, (int)getpid(), (int)tv.tv_sec, (int)tv.tv_usec) >= 255) {
+	if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, (int)getpid(),
+                     (int)tv.tv_sec, (int)tv.tv_usec) >= 255) {
 	    fprintf(stderr, "CCN_TAP path is too long: %s\n", s);
 	} else {
 	    h->tap = open(tap_name, O_WRONLY|O_APPEND|O_CREAT, S_IRWXU);
@@ -317,6 +322,12 @@ int
 ccn_disconnect(struct ccn *h)
 {
     int res;
+    res = ccn_pushout(h);
+    if (res == 1) {
+        res = fcntl(h->sock, F_SETFL, 0); /* clear O_NONBLOCK */
+        if (res == 0)
+            ccn_pushout(h);
+    }
     ccn_charbuf_destroy(&h->inbuf);
     ccn_charbuf_destroy(&h->outbuf);
     res = close(h->sock);
@@ -428,18 +439,7 @@ ccn_destroy(struct ccn **hp)
         hashtb_end(e);
         hashtb_destroy(&(h->interest_filters));
     }
-
-    /* XXX: remove this and rewrite as a finalizer on the hash table */
-    if (h->keys != NULL) {	/* KEYS */
-        for (hashtb_start(h->keys, e); e->data != NULL; hashtb_next(e)) {
-            struct ccn_pkey **entry = e->data;
-            if (*entry != NULL)
-                ccn_pubkey_free(*entry);
-            *entry = NULL;
-        }
-        hashtb_end(e);
-        hashtb_destroy(&(h->keys));
-    }
+    hashtb_destroy(&(h->keys));
     hashtb_destroy(&(h->keystores));
     ccn_charbuf_destroy(&h->interestbuf);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
@@ -596,8 +596,8 @@ finalize_interest_filter(struct hashtb_enumerator *e)
 }
 
 int
-ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
-                        struct ccn_closure *action)
+ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
+                        struct ccn_closure *action, int forw_flags)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -617,12 +617,21 @@ ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
     res = hashtb_seek(e, namebuf->buf + 1, namebuf->length - 2, 0);
     if (res >= 0) {
         entry = e->data;
+        entry->flags = forw_flags;
         ccn_replace_handler(h, &(entry->action), action);
         if (action == NULL)
             hashtb_delete(e);
     }
     hashtb_end(e);
     return(res);
+}
+
+int
+ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
+                        struct ccn_closure *action)
+{
+    int forw_flags = CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT;
+    return(ccn_set_interest_filter_with_flags(h, namebuf, action, forw_flags));
 }
 
 static int
@@ -822,7 +831,14 @@ ccn_cache_key(struct ccn *h,
     }
     hashtb_end(e);
     return (0);
+}
 
+static void
+finalize_pkey(struct hashtb_enumerator *e)
+{
+    struct ccn_pkey **entry = e->data;
+    if (*entry != NULL)
+        ccn_pubkey_free(*entry);
 }
 
 /**
@@ -1208,8 +1224,8 @@ ccn_update_refresh_us(struct ccn *h, struct timeval *tv)
         return;
     if (tv->tv_sec > h->now.tv_sec + CCN_INTEREST_LIFETIME_MICROSEC / 100000)
         return;
-    delta = (h->now.tv_sec  - tv->tv_sec)*1000000 +
-            (h->now.tv_usec - tv->tv_usec);
+    delta = (tv->tv_sec  - h->now.tv_sec)*1000000 +
+            (tv->tv_usec - h->now.tv_usec);
     if (delta < 0)
         delta = 0;
     if (delta < h->refresh_us)
@@ -1311,9 +1327,9 @@ ccn_notify_ccndid_changed(struct ccn *h)
     if (h->interest_filters != NULL) {
         for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
             struct interest_filter *i = e->data;
-            if (i->waiting_ccndid) {
+            if ((i->flags & CCN_FORW_WAITING_CCNDID) != 0) {
                 i->expiry = h->now;
-                i->waiting_ccndid = 0;
+                i->flags &= ~CCN_FORW_WAITING_CCNDID;
             }
         }
         hashtb_end(e);
@@ -1724,7 +1740,7 @@ ccn_initiate_prefix_reg(struct ccn *h,
     // fprintf(stderr, "GOT TO STUB ccn_initiate_prefix_reg()\n");
     if (h->ccndid == NULL) {
         ccn_initiate_ping(h);
-        i->waiting_ccndid = 1;
+        i->flags |= CCN_FORW_WAITING_CCNDID;
         return;
     }
     if (i->ccn_reg_closure != NULL)
@@ -1747,8 +1763,7 @@ ccn_initiate_prefix_reg(struct ccn *h,
     fe->ccnd_id_size = h->ccndid->length;
     fe->faceid = ~0; // XXX - someday explicit faceid may be required
     fe->name_prefix = ccn_charbuf_create();
-    fe->flags = CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT;
-    // XXX - need API to set other flags
+    fe->flags = i->flags & 0xFF;
     fe->lifetime = -1; /* Let ccnd decide */
     ccn_name_init(fe->name_prefix);
     ccn_name_append_components(fe->name_prefix, prefix, 0, prefix_size);
@@ -1862,16 +1877,35 @@ finalize_keystore(struct hashtb_enumerator *e)
 static int
 chk_signing_params(struct ccn *h,
                    const struct ccn_signing_params *params,
-                   struct ccn_signing_params *result)
+                   struct ccn_signing_params *result,
+                   struct ccn_charbuf **ptimestamp,
+                   struct ccn_charbuf **pfinalblockid,
+                   struct ccn_charbuf **pkeylocator)
 {
     struct ccn_charbuf *default_pubid = NULL;
     struct ccn_charbuf *temp = NULL;
     const char *home = NULL;
     int res = 0;
     int i;
+    int conflicting;
+    int needed;
     
     if (params != NULL)
         *result = *params;
+    if ((result->sp_flags & ~(CCN_SP_TEMPL_TIMESTAMP      |
+                              CCN_SP_TEMPL_FINAL_BLOCK_ID |
+                              CCN_SP_TEMPL_FRESHNESS      |
+                              CCN_SP_TEMPL_KEY_LOCATOR    |
+                              CCN_SP_FINAL_BLOCK          |
+                              CCN_SP_OMIT_KEY_LOCATOR
+                              )) != 0)
+        return(NOTE_ERR(h, EINVAL));
+    conflicting = CCN_SP_TEMPL_FINAL_BLOCK_ID | CCN_SP_FINAL_BLOCK;
+    if ((result->sp_flags & conflicting) == conflicting)
+        return(NOTE_ERR(h, EINVAL));
+    conflicting = CCN_SP_TEMPL_KEY_LOCATOR | CCN_SP_OMIT_KEY_LOCATOR;
+        if ((result->sp_flags & conflicting) == conflicting)
+        return(NOTE_ERR(h, EINVAL));
     for (i = 0; i < sizeof(result->pubid) && result->pubid[i] == 0; i++)
         continue;
     if (i == sizeof(result->pubid)) {
@@ -1894,22 +1928,100 @@ chk_signing_params(struct ccn *h,
             }
         }
         if (h->default_pubid == NULL)
-            res = -1;
+            res = NOTE_ERRNO(h);
         else
             memcpy(result->pubid, h->default_pubid->buf, sizeof(result->pubid));
     }
     ccn_charbuf_destroy(&default_pubid);
     ccn_charbuf_destroy(&temp);
-    if ((result->sp_flags & (CCN_SP_TEMPL_TIMESTAMP      |
-                             CCN_SP_TEMPL_FINAL_BLOCK_ID |
-                             CCN_SP_TEMPL_FRESHNESS      |
-                             CCN_SP_TEMPL_KEY_LOCATOR    )) != 0) {
-        XXX; // These are not yet implemented.
-        res = -1;
+    needed = result->sp_flags & (CCN_SP_TEMPL_TIMESTAMP      |
+                                 CCN_SP_TEMPL_FINAL_BLOCK_ID |
+                                 CCN_SP_TEMPL_FRESHNESS      |
+                                 CCN_SP_TEMPL_KEY_LOCATOR    );
+    if (result->template_ccnb != NULL) {
+        struct ccn_buf_decoder decoder;
+        struct ccn_buf_decoder *d;
+        size_t start;
+        size_t stop;
+        size_t size;
+        const unsigned char *ptr = NULL;
+        d = ccn_buf_decoder_start(&decoder,
+                                  result->template_ccnb->buf,
+                                  result->template_ccnb->length);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_SignedInfo)) {
+            ccn_buf_advance(d);
+            if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherPublicKeyDigest))
+                ccn_parse_required_tagged_BLOB(d,
+                    CCN_DTAG_PublisherPublicKeyDigest, 16, 64);
+            start = d->decoder.token_index;
+            ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Timestamp, 1, -1);
+            stop = d->decoder.token_index;
+            if ((needed & CCN_SP_TEMPL_TIMESTAMP) != 0) {
+                *ptimestamp = ccn_charbuf_create();
+                i = ccn_ref_tagged_BLOB(CCN_DTAG_Timestamp,
+                                        d->buf,
+                                        start, stop,
+                                        &ptr, &size);
+                if (i == 0) {
+                    *ptimestamp = ccn_charbuf_create();
+                    ccn_charbuf_append(*ptimestamp, ptr, size);
+                    needed &= ~CCN_SP_TEMPL_TIMESTAMP;
+                }
+            }
+            ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Type, 1, -1);
+            i = ccn_parse_optional_tagged_nonNegativeInteger(d,
+                    CCN_DTAG_FreshnessSeconds);
+            if ((needed & CCN_SP_TEMPL_FRESHNESS) != 0 && i >= 0) {
+                result->freshness = i;
+                needed &= ~CCN_SP_TEMPL_FRESHNESS;
+            }
+            if (ccn_buf_match_dtag(d, CCN_DTAG_FinalBlockID)) {
+                ccn_buf_advance(d);
+                start = d->decoder.token_index;
+                if (ccn_buf_match_some_blob(d))
+                    ccn_buf_advance(d);
+                stop = d->decoder.token_index;
+                ccn_buf_check_close(d);
+                if ((needed & CCN_SP_TEMPL_FINAL_BLOCK_ID) != 0 && 
+                    d->decoder.state >= 0 && stop > start) {
+                    *pfinalblockid = ccn_charbuf_create();
+                    ccn_charbuf_append(*pfinalblockid,
+                                       d->buf + start, stop - start);
+                    needed &= ~CCN_SP_TEMPL_FINAL_BLOCK_ID;
+                }
+            }
+            start = d->decoder.token_index;
+            if (ccn_buf_match_dtag(d, CCN_DTAG_KeyLocator))
+                ccn_buf_advance_past_element(d);
+            stop = d->decoder.token_index;
+            if ((needed & CCN_SP_TEMPL_KEY_LOCATOR) != 0 && 
+                d->decoder.state >= 0 && stop > start) {
+                *pkeylocator = ccn_charbuf_create();
+                ccn_charbuf_append(*pkeylocator,
+                                   d->buf + start, stop - start);
+                needed &= ~CCN_SP_TEMPL_KEY_LOCATOR;
+            }
+            ccn_buf_check_close(d);
+        }
+        if (d->decoder.state < 0)
+            res = NOTE_ERR(h, EINVAL);
     }
+    if (needed != 0)
+        res = NOTE_ERR(h, EINVAL);
     return(res);
 }
 
+/**
+ * Create a signed ContentObject.
+ *
+ * @param h is the ccn handle
+ * @param resultbuf - result buffer to which the ContentObject will be appended
+ * @param name_prefix contains the ccnb-encoded name
+ * @param params describe the ancillary information needed
+ * @param data points to the raw content
+ * @param size is the size of the raw content, in bytes
+ * @returns 0 for success, -1 for error
+ */
 int
 ccn_sign_content(struct ccn *h,
                  struct ccn_charbuf *resultbuf,
@@ -1921,12 +2033,14 @@ ccn_sign_content(struct ccn *h,
     struct hashtb_enumerator *e = &ee;
     struct ccn_signing_params p = CCN_SIGNING_PARAMS_INIT;
     struct ccn_charbuf *signed_info = NULL;
-    struct ccn_charbuf *keylocator = NULL;
     struct ccn_keystore *keystore = NULL;
+    struct ccn_charbuf *timestamp = NULL;
     struct ccn_charbuf *finalblockid = NULL;
+    struct ccn_charbuf *keylocator = NULL;
     int res;
     
-    res = chk_signing_params(h, params, &p);
+    res = chk_signing_params(h, params, &p,
+                             &timestamp, &finalblockid, &keylocator);
     if (res < 0)
         return(res);
     hashtb_start(h->keystores, e);
@@ -1934,7 +2048,7 @@ ccn_sign_content(struct ccn *h,
         struct ccn_keystore **pk = e->data;
         keystore = *pk;
         signed_info = ccn_charbuf_create();
-        if ((p.sp_flags & CCN_SP_OMIT_KEY_LOCATOR) == 0) {
+        if (keylocator == NULL && (p.sp_flags & CCN_SP_OMIT_KEY_LOCATOR) == 0) {
             /* Construct a key locator containing the key itself */
             keylocator = ccn_charbuf_create();
             ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG);
@@ -1967,7 +2081,7 @@ ccn_sign_content(struct ccn *h,
             res = ccn_signed_info_create(signed_info,
                                          ccn_keystore_public_key_digest(keystore),
                                          ccn_keystore_public_key_digest_length(keystore),
-                                         /*timestamp*/NULL, // XXX
+                                         timestamp,
                                          p.type,
                                          p.freshness,
                                          finalblockid,
@@ -1986,6 +2100,7 @@ ccn_sign_content(struct ccn *h,
         hashtb_delete(e);
     }
     hashtb_end(e);
+    ccn_charbuf_destroy(&timestamp);
     ccn_charbuf_destroy(&keylocator);
     ccn_charbuf_destroy(&finalblockid);
     return(res);

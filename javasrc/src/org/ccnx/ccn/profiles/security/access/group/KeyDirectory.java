@@ -20,6 +20,7 @@ package org.ccnx.ccn.profiles.security.access.group;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Comparator;
@@ -29,9 +30,10 @@ import java.util.TreeSet;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -84,7 +86,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 		
-	GroupAccessControlManager _manager; // to get at key cache
+	GroupAccessControlManager _manager; // to get at key cache, GroupManager
 	
 	/**
 	 * Maps the friendly names of principals (typically groups) to their information.
@@ -535,13 +537,13 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * we have to. This mechanism should be generic, and should work for node keys
 	 * as well as private key wrapping keys in directories following this structure.
 	 * @return
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
 	 * @throws ContentDecodingException 
 	 * @throws IOException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public Key getUnwrappedKey(byte [] expectedKeyID) 
-			throws InvalidKeyException, InvalidCipherTextException, ContentDecodingException, IOException {
+			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		
 		WrappedKeyObject wko = null;
 		Key unwrappedKey = null;
@@ -586,7 +588,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					KeyDirectory supersedingKeyDirectory = null;
 					try {
 						supersedingKeyDirectory = new KeyDirectory(_manager, supersededKeyBlock.wrappedKey().wrappingKeyName(), _manager.handle());
-						supersedingKeyDirectory.waitForData();
+						supersedingKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
 						// This wraps the key we actually want.
 						unwrappedSupersedingKey = supersedingKeyDirectory.getUnwrappedKey(supersededKeyBlock.wrappedKey().wrappingKeyIdentifier());
 					} finally {
@@ -688,13 +690,13 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws ContentGoneException 
 	 * @throws ContentNotReadyException 
 	 * @throws ContentDecodingException
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
 	 * @throws IOException
+	 * @throws NoSuchAlgorithmException 
 	 */
 	protected Key unwrapKeyForPrincipal(String principal, Key unwrappingKey) 
-			throws InvalidKeyException, InvalidCipherTextException, ContentNotReadyException, 
-					ContentDecodingException, ContentGoneException, IOException {		
+			throws InvalidKeyException, ContentNotReadyException, 
+					ContentDecodingException, ContentGoneException, IOException, NoSuchAlgorithmException {		
 		Key unwrappedKey = null;
 		if (null == unwrappingKey) {
 			Log.info("Null unwrapping key. Cannot unwrap.");
@@ -726,14 +728,15 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws AccessDeniedException 
 	 * @throws ContentGoneException 
 	 * @throws ContentNotReadyException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
 	 * @throws ContentDecodingException
 	 * @throws IOException
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public PrivateKey getPrivateKey() 
-			throws AccessDeniedException, InvalidKeyException, InvalidCipherTextException, 
-					ContentNotReadyException, ContentGoneException, ContentDecodingException, IOException {
+			throws AccessDeniedException, InvalidKeyException, 
+					ContentNotReadyException, ContentGoneException, ContentDecodingException, 
+					IOException, NoSuchAlgorithmException {
 		if (!hasPrivateKeyBlock()) { // checks hasChildren
 			Log.info("No private key block exists with name " + getPrivateKeyBlockName());
 			return null;
@@ -781,10 +784,10 @@ public class KeyDirectory extends EnumeratedNameList {
 		wrappedKey.setWrappingKeyName(publicKeyName);
 		WrappedKeyObject wko = 
 			new WrappedKeyObject(getWrappedKeyNameForKeyID(WrappedKey.wrappingKeyIdentifier(publicKey)),
-								 wrappedKey, _manager.handle());
-		wko.saveToRepository();
-		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new Link(wko.getVersionedName()), _manager.handle());
-		lo.saveToRepository();
+								 wrappedKey,SaveType.REPOSITORY, _manager.handle());
+		wko.save();
+		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new Link(wko.getVersionedName()), SaveType.REPOSITORY, _manager.handle());
+		lo.save();
 	}
 	
 	/**
@@ -800,8 +803,8 @@ public class KeyDirectory extends EnumeratedNameList {
 		
 		WrappedKey wrappedKey = WrappedKey.wrapKey(privateKey, null, null, privateKeyWrappingKey);	
 		wrappedKey.setWrappingKeyIdentifier(privateKeyWrappingKey);
-		WrappedKeyObject wko = new WrappedKeyObject(getPrivateKeyBlockName(), wrappedKey, _manager.handle());
-		wko.saveToRepository();
+		WrappedKeyObject wko = new WrappedKeyObject(getPrivateKeyBlockName(), wrappedKey, SaveType.REPOSITORY, _manager.handle());
+		wko.save();
 	}
 
 	/**
@@ -835,8 +838,8 @@ public class KeyDirectory extends EnumeratedNameList {
 		WrappedKey wrappedKey = WrappedKey.wrapKey(oldKeyToBeSuperseded, null, null, supersedingKey);
 		wrappedKey.setWrappingKeyIdentifier(supersedingKey);
 		wrappedKey.setWrappingKeyName(supersedingKeyName);
-		WrappedKeyObject wko = new WrappedKeyObject(oldKeySupersededBlockName, wrappedKey, handle);
-		wko.saveToRepository();
+		WrappedKeyObject wko = new WrappedKeyObject(oldKeySupersededBlockName, wrappedKey, SaveType.REPOSITORY, handle);
+		wko.save();
 	}
 
 	/**
@@ -853,8 +856,8 @@ public class KeyDirectory extends EnumeratedNameList {
 			Log.warning("Unexpected, already have previous key block : " + getPreviousKeyBlockName());
 		}
 		LinkAuthenticator la = (null != previousKeyPublisher) ? new LinkAuthenticator(previousKeyPublisher) : null;
-		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new Link(previousKey,la), _manager.handle());
-		pklo.saveToRepository();
+		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new Link(previousKey,la), SaveType.REPOSITORY, _manager.handle());
+		pklo.save();
 	}
 	
 	/**
@@ -874,7 +877,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		WrappedKey wrappedKey = WrappedKey.wrapKey(oldPrivateKeyWrappingKey, null, null, newPrivateKeyWrappingKey);
 		wrappedKey.setWrappingKeyIdentifier(newPrivateKeyWrappingKey);
 		wrappedKey.setWrappingKeyName(supersedingKeyName);
-		WrappedKeyObject wko = new WrappedKeyObject(getPreviousKeyBlockName(), wrappedKey, _manager.handle());
-		wko.saveToRepository();
+		WrappedKeyObject wko = new WrappedKeyObject(getPreviousKeyBlockName(), wrappedKey,SaveType.REPOSITORY,  _manager.handle());
+		wko.save();
 	}
 }

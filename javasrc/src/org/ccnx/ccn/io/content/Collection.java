@@ -23,10 +23,13 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -60,31 +63,40 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	 */
 	public static class CollectionObject extends CCNEncodableObject<Collection> {
 		
-		public CollectionObject(ContentName name, Collection data, CCNHandle handle) throws IOException {
-			super(Collection.class, true, name, data, handle);
+		public CollectionObject(ContentName name, Collection data, 
+								SaveType saveType, CCNHandle handle) throws IOException {
+			super(Collection.class, true, name, data,saveType, handle);
 		}
 		
-		public CollectionObject(ContentName name, java.util.Collection<Link> contents, CCNHandle handle) throws IOException {
-			this(name, new Collection(contents), handle);
+		public CollectionObject(ContentName name, 
+								java.util.Collection<Link> contents, 
+								SaveType saveType, CCNHandle handle) throws IOException {
+			this(name, new Collection(contents), saveType, handle);
 		}
 		
-		public CollectionObject(ContentName name, Link [] contents, CCNHandle handle) throws IOException {
-			this(name, new Collection(contents), handle);			
+		public CollectionObject(ContentName name, Link [] contents, 
+								SaveType saveType, CCNHandle handle) throws IOException {
+			this(name, new Collection(contents),saveType,  handle);			
 		}
 
-		public CollectionObject(ContentName name, Collection data, PublisherPublicKeyDigest publisher, 
+		public CollectionObject(ContentName name, Collection data, SaveType saveType,
+								PublisherPublicKeyDigest publisher, 
 								KeyLocator keyLocator, CCNHandle handle) throws IOException {
-			super(Collection.class, true, name, data, publisher, keyLocator, handle);
+			super(Collection.class, true, name, data, saveType, publisher, keyLocator, handle);
 		}
 
-		public CollectionObject(ContentName name, java.util.Collection<Link> contents, 
+		public CollectionObject(ContentName name, 
+								java.util.Collection<Link> contents, 
+								SaveType saveType,
 								PublisherPublicKeyDigest publisher, KeyLocator keyLocator, CCNHandle handle) throws IOException {
-			this(name, new Collection(contents), publisher, keyLocator, handle);
+			this(name, new Collection(contents), saveType, publisher, keyLocator, handle);
 		}
 		
-		public CollectionObject(ContentName name, Link [] contents, PublisherPublicKeyDigest publisher, 
+		public CollectionObject(ContentName name, Link [] contents, 
+								SaveType saveType,
+								PublisherPublicKeyDigest publisher, 
 								KeyLocator keyLocator, CCNHandle handle) throws IOException {
-			this(name, new Collection(contents), publisher, keyLocator, handle);			
+			this(name, new Collection(contents), saveType, publisher, keyLocator, handle);			
 		}
 
 		public CollectionObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
@@ -101,12 +113,30 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 				throws ContentDecodingException, IOException {
 			super(Collection.class, true, name, (PublisherPublicKeyDigest)null, handle);
 		}
-		
-		public Collection collection() throws ContentNotReadyException, ContentGoneException {
+
+		public CollectionObject(ContentName name, Collection data, 
+				PublisherPublicKeyDigest publisher, 
+				KeyLocator keyLocator, CCNFlowControl flowControl) throws IOException {
+			super(Collection.class, true, name, data, publisher, keyLocator, flowControl);
+		}
+
+		public CollectionObject(ContentName name,
+				PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
+		throws ContentDecodingException, IOException {
+			super(Collection.class, true, name, publisher, flowControl);
+		}
+
+		public CollectionObject(ContentObject firstBlock,
+				CCNFlowControl flowControl) 
+		throws ContentDecodingException, IOException {
+			super(Collection.class, true, firstBlock, flowControl);
+		}
+
+		public Collection collection() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 			return data();
 		}
 		
-		public LinkedList<Link> contents() throws ContentNotReadyException, ContentGoneException { 
+		public LinkedList<Link> contents() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
 			if (null == data())
 				return null;
 			return data().contents(); 
@@ -140,6 +170,30 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		}
 	}
 	
+	/**
+	 * Make a Collection containing Links which only specify names.
+	 * @param nameContents The list of names to link to.
+	 */
+	public Collection(ArrayList<ContentName> nameContents) {
+		if (null != nameContents) {
+			for (ContentName name : nameContents) {
+				_contents.add(new Link(name));
+			}
+		}
+	}
+	
+	/**
+	 * Make a Collection containing Links which only specify names and a single label.
+	 * @param nameContents The list of names to link to.
+	 */
+	public Collection(String label, ArrayList<ContentName> nameContents) {
+		if (null != nameContents) {
+			for (ContentName name : nameContents) {
+				_contents.add(new Link(name, label, null));
+			}
+		}
+	}
+
 	public LinkedList<Link> contents() { 
 		return _contents; 
 	}
@@ -156,6 +210,18 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		_contents.addAll(contents);
 	}
 	
+	public void add(String label, ArrayList<ContentName> nameContents) {
+		if (null != nameContents) {
+			for (ContentName name : nameContents) {
+				_contents.add(new Link(name, label, null));
+			}
+		}
+	}
+	
+	public void add(String label, ContentName target) {
+		_contents.add(new Link(target, label, null));
+	}
+
 	public Link remove(int i) {
 		return _contents.remove(i);
 	}

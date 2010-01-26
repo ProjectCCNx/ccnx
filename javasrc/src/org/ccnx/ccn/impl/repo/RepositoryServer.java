@@ -33,13 +33,13 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
-import org.ccnx.ccn.io.content.Collection;
-import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.CommandMarkers;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
+import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
+import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Exclude;
-import org.ccnx.ccn.protocol.Interest;
 
 /**
  * High level implementation of repository protocol that
@@ -73,11 +73,15 @@ public class RepositoryServer {
 	private int _ephemeralFreshness = FRESHNESS;
 	protected ThreadPoolExecutor _threadpool = null; // pool service
 	
+	private ContentName _responseName = null;
+	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	public static final int THREAD_LIFE = 8;	// in seconds
 	public static final int WINDOW_SIZE = 4;
 	public static final int FRESHNESS = 4;	// in seconds
 		
+	protected Timer _periodicTimer = null;
+	
 	private class NameAndListener {
 		private ContentName name;
 		private CCNFilterListener listener;
@@ -115,6 +119,7 @@ public class RepositoryServer {
 						e.printStackTrace();
 					}
 					_pendingNameSpaceChange = false;
+					_currentListeners.notify();
 				}
 			}
 		}	
@@ -133,6 +138,8 @@ public class RepositoryServer {
 			_repo = repo;
 			_handle = repo.getHandle();
 			_writer = new CCNWriter(_handle);
+			
+			_responseName = KeyProfile.keyName(null, _handle.keyManager().getDefaultKeyID());
 
 			 // At some point we may want to refactor the code to
 			 // write repository info back in a stream.  But for now
@@ -163,8 +170,9 @@ public class RepositoryServer {
 		markerOmissions[1] = CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION;
 		_markerFilter = new Exclude(markerOmissions);
 		
-		Timer periodicTimer = new Timer(true);
-		periodicTimer.scheduleAtFixedRate(new InterestTimer(), PERIOD, PERIOD);
+		_periodicTimer = new Timer(true);
+		_periodicTimer.scheduleAtFixedRate(new InterestTimer(), PERIOD, PERIOD);
+
 	}
 	
 	/**
@@ -172,6 +180,36 @@ public class RepositoryServer {
 	 */
 	public void shutDown() {
 		_repo.shutDown();
+		
+		if( _periodicTimer != null ) {
+			synchronized (_currentListeners) {
+				if (_currentListeners.size() != 0) {
+					_pendingNameSpaceChange = true; // Don't allow any more requests to come in
+					boolean interrupted;
+					do {
+						try {
+							interrupted = false;
+							_currentListeners.wait();
+						} catch (InterruptedException e) {
+							interrupted = true;
+						}
+					} while (interrupted);
+				}
+				_periodicTimer.cancel();
+			}
+		}
+		
+		_threadpool.shutdownNow();
+		
+		try {
+			_writer.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		_handle.close();
+		
+		
 	}
 	
 	/**
@@ -284,7 +322,7 @@ public class RepositoryServer {
 		return _repoFilters;
 	}
 	
-	public void addListener(Interest interest, Interest readInterest, RepositoryDataListener listener) {
+	public void addListener(RepositoryDataListener listener) {
 		synchronized(_currentListeners) {
 			_currentListeners.add(listener);
 		}
@@ -306,6 +344,10 @@ public class RepositoryServer {
 		return _ephemeralFreshness;
 	}
 	
+	public ContentName getResponseName() {
+		return _responseName;
+	}
+	
 	
 	/**
 	 * Method to write out name enumeration responses.  This is called directly
@@ -320,7 +362,7 @@ public class RepositoryServer {
 	 */
 	public void sendEnumerationResponse(NameEnumerationResponse ner){
 		if(ner!=null && ner.getPrefix()!=null && ner.hasNames()){
-			CollectionObject co = null;
+			NameEnumerationResponseMessageObject neResponseObject = null;
 			try{
 				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
 					Log.finer("returning names for prefix: {0}", ner.getPrefix());
@@ -333,19 +375,23 @@ public class RepositoryServer {
 				if (ner.getTimestamp()==null)
 					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
 						Log.info("node.timestamp was null!!!");
-				Collection cd = ner.getNamesInCollectionData();
-				co = new CollectionObject(ner.getPrefix(), cd, _handle);
+				NameEnumerationResponseMessage nem = ner.getNamesForResponse();
+				neResponseObject = new NameEnumerationResponseMessageObject(new ContentName(ner.getPrefix(), _responseName.components()), nem, _handle);
 				// TODO this is only temporary until flow control issues can
 				// be worked out here
-				co.disableFlowControl();
-				co.save(ner.getTimestamp());
+				neResponseObject.disableFlowControl();
+				neResponseObject.save(ner.getTimestamp());
 				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
-					Log.finer("saved collection object: {0}", co.getVersionedName());
+					Log.finer("saved collection object: {0}", neResponseObject.getVersionedName());
 				return;
 
 			} catch(IOException e){
-				Log.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+co.getVersionedName()+")", e);
+				Log.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+neResponseObject.getVersionedName()+")", e);
 			}
 		}
+	}
+	
+	public Object getStatus(String type) {
+		return _repo.getStatus(type);
 	}
 }

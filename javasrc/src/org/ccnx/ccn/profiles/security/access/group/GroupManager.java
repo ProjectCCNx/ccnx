@@ -20,15 +20,17 @@ package org.ccnx.ccn.profiles.security.access.group;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
@@ -165,10 +167,10 @@ public class GroupManager {
 	 * @throws ConfigurationException 
 	 * @throws ContentEncodingException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public Group createGroup(String groupFriendlyName, ArrayList<Link> newMembers) 
-			throws InvalidKeyException, ContentEncodingException, ConfigurationException, IOException, InvalidCipherTextException {
+			throws InvalidKeyException, ContentEncodingException, ConfigurationException, IOException, NoSuchAlgorithmException {
 		Group existingGroup = getGroup(groupFriendlyName);
 		if (null != existingGroup) {
 			existingGroup.setMembershipList(this, newMembers);
@@ -178,7 +180,7 @@ public class GroupManager {
 			MembershipList ml = 
 				new MembershipList(
 						GroupAccessControlProfile.groupMembershipListName(_groupStorage, groupFriendlyName), 
-						new Collection(newMembers), _handle);
+						new Collection(newMembers), SaveType.REPOSITORY, _handle);
 			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _handle, this);
 			cacheGroup(newGroup);
 			if (amCurrentGroupMember(newGroup)) {
@@ -274,11 +276,11 @@ public class GroupManager {
 	 * @return the group private key
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public PrivateKey getGroupPrivateKey(String groupFriendlyName, CCNTime privateKeyVersion) 
-			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException {
+			throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 		// Heuristic check
 		if (!amKnownGroupMember(groupFriendlyName)) {
 			Log.info("Unexpected: we don't think we're a group member of group " + groupFriendlyName);
@@ -300,7 +302,7 @@ public class GroupManager {
 			privateKeyDirectory =
 				new KeyDirectory(_accessManager, 
 					GroupAccessControlProfile.groupPrivateKeyDirectory(versionedPublicKeyName), _handle);
-			privateKeyDirectory.waitForData();
+			privateKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
 			
 			PublicKeyObject thisPublicKey = new PublicKeyObject(versionedPublicKeyName, _handle);
 			thisPublicKey.waitForData();
@@ -344,14 +346,14 @@ public class GroupManager {
 	 * @param principal the principal
 	 * @return the versioned private key
 	 * @throws IOException 
-	 * @throws InvalidCipherTextException 
 	 * @throws ContentNotReadyException
 	 * @throws ContentDecodingException
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) 
 			throws InvalidKeyException, ContentNotReadyException, ContentDecodingException, 
-					InvalidCipherTextException, IOException {
+					IOException, NoSuchAlgorithmException {
 		PrincipalInfo pi = null;
 		pi = keyDirectory.getPrincipalInfo(principal);
 		if (null == pi) {

@@ -287,8 +287,8 @@ public class CCNVersionedInputStreamTest {
 		// we can make a new handle; as long as we don't use the outputHandle it should work
 		ContentObject firstVersionBlock = inputHandle.get(firstVersionName, 1000);
 		ContentObject latestVersionBlock = reader.get(Interest.last(defaultStreamName, defaultStreamName.count(), null), 1000);
-		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionBlock, inputHandle);
-		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(latestVersionBlock, inputHandle);
+		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionBlock, null, inputHandle);
+		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(latestVersionBlock, null, inputHandle);
 		testArgumentRunner(vfirst, vlatest);
 	}
 

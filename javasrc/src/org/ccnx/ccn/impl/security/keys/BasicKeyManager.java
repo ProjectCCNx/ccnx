@@ -32,26 +32,23 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.HashMap;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
-import org.ccnx.ccn.impl.CCNFlowControl.Shape;
-import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.impl.support.DataUtils.Tuple;
+import org.ccnx.ccn.io.content.PublicKeyObject;
+import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.security.access.KeyCache;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
-import org.ccnx.ccn.protocol.KeyName;
-import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
@@ -70,22 +67,70 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class BasicKeyManager extends KeyManager {
 	
+	public static class KeyStoreInfo {
+		// Where did we load this from
+		String _keyStoreURI;
+		KeyStore _keyStore;
+		CCNTime _version;
+		
+		public KeyStoreInfo(String keyStoreURI, KeyStore keyStore, CCNTime version) {
+			_keyStoreURI = keyStoreURI;
+			_keyStore = keyStore;
+			_version = version;
+		}
+		
+		/**
+		 * In case we don't know the 
+		 * @param keyStore
+		 */
+		public void setKeyStore(KeyStore keyStore) {
+			_keyStore = keyStore;
+		}
+		
+		public void setVersion(CCNTime version) {
+			_version = version;
+		}
+		
+		public KeyStore getKeyStore() { return _keyStore; }
+		public CCNTime getVersion() { return _version; }
+		public String getURI() { return _keyStoreURI; }
+	}
+	
 	protected String _userName;
+	protected ContentName _userNamespace; // default location for publishing keys
 	protected String _defaultAlias;
 	protected String _keyStoreDirectory;
 	protected String _keyStoreFileName;
 	protected String _keyStoreType;
 	
-	protected KeyStore _keyStore;
+	protected KeyStoreInfo _keyStoreInfo;
 	protected PublisherPublicKeyDigest _defaultKeyID;
-	protected X509Certificate _certificate;
-	protected PrivateKey _privateKey;
-	protected KeyLocator _keyLocator;
-	protected boolean _initialized = false;
 	
-	protected KeyRepository _keyRepository = null;
+	protected boolean _initialized = false;
+	protected boolean _defaultKeysPublished = false;
 	
 	private char [] _password = null;
+	
+	/**
+	 * Cache of public keys, handles key publishing, etc.
+	 */
+	protected KeyRepository _keyRepository = null;
+	
+	/**
+	 * Cache of private keys, loaded from keystores.
+	 */
+	protected KeyCache _privateKeyCache = null;
+	
+	/**
+	 * Registry of key locators to use. In essence, these are pointers to our
+	 * primary credential for each key. Unless overridden this is what we use
+	 * for each of our signing keys.
+	 * 
+	 * TODO consider adding a second map tracking all the available key locators for
+	 * a given key, to select from them.
+	 */
+	protected HashMap<PublisherPublicKeyDigest, KeyLocator> _currentKeyLocators = new HashMap<PublisherPublicKeyDigest, KeyLocator>();
+	
 	
 	/**
 	 * Subclass constructor that sets store-independent parameters.
@@ -93,11 +138,19 @@ public class BasicKeyManager extends KeyManager {
 	protected BasicKeyManager(String userName, String keyStoreType,
 							  String defaultAlias, char [] password) throws ConfigurationException, IOException {
 		
-		_keyRepository = new KeyRepository();
-		_userName = (null != userName) ? userName : UserConfiguration.userName();
 		_password = (null != password) ? password : UserConfiguration.keystorePassword().toCharArray();
 		_keyStoreType = (null != keyStoreType) ? keyStoreType : UserConfiguration.defaultKeystoreType();
 	    _defaultAlias = (null != defaultAlias) ? defaultAlias : UserConfiguration.defaultKeyAlias();
+	    
+	    String defaultUserName = UserConfiguration.userName();
+	    if ((null == userName) || (userName.equals(defaultUserName))) {
+	    	_userNamespace = UserConfiguration.userNamespace();
+	    	_userName = defaultUserName;
+	    } else {
+	    	_userNamespace = UserConfiguration.userNamespace(userName);
+	    	_userName = userName;
+	    }
+	    // must call initialize
 	}
 		
 	/** 
@@ -112,7 +165,7 @@ public class BasicKeyManager extends KeyManager {
 		this(userName, keyStoreType, defaultAlias, password);
 		_keyStoreFileName = (null != keyStoreFileName) ? 
 				keyStoreFileName : UserConfiguration.keystoreFileName();
-	    _keyStoreDirectory = (null != keyStoreDirectory) ? keyStoreDirectory : UserConfiguration.ccnDirectory();
+	    _keyStoreDirectory = (null != keyStoreDirectory) ? keyStoreDirectory : UserConfiguration.userConfigurationDirectory();
 		// must call initialize
 	}
 	
@@ -133,15 +186,41 @@ public class BasicKeyManager extends KeyManager {
 	 * Could make fake base class constructor, and call loadKeyStore in subclass constructors,
 	 * but this wouldn't work past one level, and this allows subclasses to override initialize behavior.
 	 * @throws ConfigurationException 
+	 * @throws ConfigurationException 
 	 */
-	public synchronized void initialize() throws ConfigurationException {
+	@Override
+	public synchronized void initialize() throws InvalidKeyException, IOException, ConfigurationException {
 		if (_initialized)
 			return;
-		loadKeyStore();
-		_initialized = true;
+		_keyRepository = new KeyRepository(this);
+		_privateKeyCache = new KeyCache();
+		_keyStoreInfo = loadKeyStore();// uses _keyRepository and _privateKeyCache
+		if (!loadValuesFromKeystore(_keyStoreInfo)) {
+			Log.warning("Cannot process keystore!");
+		}
+		if (!loadValuesFromConfiguration()) {
+			Log.warning("Cannot process configuration data!");
+		}
+		_initialized = true;		
+		// Can we publish keys now?
+		publishDefaultKey(null);
 	}
 	
-	protected boolean initialized() { return _initialized; }
+	@Override
+	public boolean initialized() { return _initialized; }
+	
+	/**
+	 * Close any connections we have to the network. Ideally prepare to
+	 * reopen them when they are next needed.
+	 */
+	
+	public void close() {
+		keyRepository().close();
+	}
+	
+	/**
+	 * Publish our default key at a particular name.
+	 */
 	
 	protected void setPassword(char [] password) {
 		_password = password;
@@ -154,29 +233,39 @@ public class BasicKeyManager extends KeyManager {
 	 * 	uses default in user's home directory.
 	 * @throws ConfigurationException
 	 */
-	protected void loadKeyStore() throws ConfigurationException {
+	protected KeyStoreInfo loadKeyStore() throws ConfigurationException, IOException {
 		
 		File keyStoreFile = new File(_keyStoreDirectory, _keyStoreFileName);
-		if (!keyStoreFile.exists()) {
+		
+		KeyStoreInfo keyStoreInfo = null;
+		if (!keyStoreFile.exists() || (0 == keyStoreFile.length())) {
+			// If the BC configuration is screwed up, sometimes a 0-length keystore
+			// gets created. If so, blow it away and make a new one.
 			Log.info("Creating new CCN key store..." + keyStoreFile.getAbsolutePath());
-			_keyStore = createKeyStore();
-			Log.info("...created key store.");
+			keyStoreInfo = createKeyStore();
+			Log.info("...created key store. Version: {0} ({1} ms) Last modified: {2}. Will now load normally.", 
+					keyStoreInfo.getVersion(), keyStoreInfo.getVersion().getTime(), keyStoreFile.lastModified());
+			
+			// For some reason, if we just go from here, sometimes we end up with very slightly
+			// different stat times on the file. This causes havoc with versioning. So,
+			// read the file back in from scratch.
+			keyStoreInfo = null;
 		}
-		if (null == _keyStore) {
+		if (null == keyStoreInfo) {
 			FileInputStream in = null;
-			Log.info("Loading CCN key store from " + keyStoreFile.getAbsolutePath() + "...");
+			KeyStore keyStore = null;
+			Log.info("Loading CCN key store from " + keyStoreFile.getAbsolutePath() + "...last modified " + keyStoreFile.lastModified() + "(ms).");
 			try {
 				in = new FileInputStream(keyStoreFile);
-				readKeyStore(in);
+				keyStore = readKeyStore(in);
+				keyStoreInfo = new KeyStoreInfo(keyStoreFile.toURI().toString(), keyStore, new CCNTime(keyStoreFile.lastModified()));
+				Log.info("Loaded CCN key store from " + keyStoreFile.getAbsolutePath() + "...version " + keyStoreInfo.getVersion() + " ms: " + keyStoreInfo.getVersion().getTime());
 			} catch (FileNotFoundException e) {
 				Log.warning("Cannot open existing key store file: " + _keyStoreFileName);
-				throw new ConfigurationException("Cannot open existing key store file: " + _keyStoreFileName);
+				throw e;
 			} 
 		}
-		// Overriding classes must call this.
-		if (!loadValuesFromKeystore(_keyStore)) {
-			Log.warning("Cannot process keystore!");
-		}
+		return keyStoreInfo;
 	}
 	
 	/**
@@ -185,48 +274,49 @@ public class BasicKeyManager extends KeyManager {
 	 * @param in input stream
 	 * @throws ConfigurationException
 	 */
-	protected void readKeyStore(InputStream in) throws ConfigurationException {
-		if (null == _keyStore) {
+	protected KeyStore readKeyStore(InputStream in) throws ConfigurationException {
+		KeyStore keyStore = null;
+		try {
+			Log.info("Loading CCN key store...");
+			keyStore = KeyStore.getInstance(_keyStoreType);
+			keyStore.load(in, _password);
+		} catch (NoSuchAlgorithmException e) {
+			Log.warning("Cannot load keystore: " + e);
+			throw new ConfigurationException("Cannot load default keystore: " + e);
+		} catch (CertificateException e) {
+			Log.warning("Cannot load keystore with no certificates.");
+			throw new ConfigurationException("Cannot load keystore with no certificates.");
+		} catch (IOException e) {
+			Log.warning("Cannot open existing key store: " + e);
 			try {
-				Log.info("Loading CCN key store...");
-				_keyStore = KeyStore.getInstance(_keyStoreType);
-				_keyStore.load(in, _password);
-			} catch (NoSuchAlgorithmException e) {
-				Log.warning("Cannot load keystore: " + e);
-				throw new ConfigurationException("Cannot load default keystore: " + e);
-			} catch (CertificateException e) {
-				Log.warning("Cannot load keystore with no certificates.");
-				throw new ConfigurationException("Cannot load keystore with no certificates.");
-			} catch (IOException e) {
-				Log.warning("Cannot open existing key store: " + e);
-				try {
-					in.reset();
-					java.io.FileOutputStream bais = new java.io.FileOutputStream("KeyDump.p12");
-					byte [] tmp = new byte[2048];
-					int read = in.read(tmp);
-					while (read > 0) {
-						bais.write(tmp, 0, read);
-					}
-					bais.flush();
-					bais.close();
-				} catch (IOException e1) {
-					Log.info("Another exception: " + e1);
+				in.reset();
+				java.io.FileOutputStream bais = new java.io.FileOutputStream("KeyDump.p12");
+				byte [] tmp = new byte[2048];
+				int read = in.read(tmp);
+				while (read > 0) {
+					bais.write(tmp, 0, read);
+					read = in.read(tmp);
 				}
-				throw new ConfigurationException(e);
-			} catch (KeyStoreException e) {
-				Log.warning("Cannot create instance of preferred key store type: " + _keyStoreType + " " + e.getMessage());
-				Log.warningStackTrace(e);
-				throw new ConfigurationException("Cannot create instance of default key store type: " + _keyStoreType + " " + e.getMessage());
-			} finally {
-				if (null != in)
-					try {
-						in.close();
-					} catch (IOException e) {
-						Log.warning("IOException closing key store file after load.");
-						Log.warningStackTrace(e);
-					}
+				bais.flush();
+				bais.close();
+			} catch (IOException e1) {
+				Log.info("Another exception: " + e1);
 			}
+			throw new ConfigurationException(e);
+		} catch (KeyStoreException e) {
+			Log.warning("Cannot create instance of preferred key store type: " + _keyStoreType + " " + e.getMessage());
+			Log.warningStackTrace(e);
+			throw new ConfigurationException("Cannot create instance of default key store type: " + _keyStoreType + " " + e.getMessage());
+		} finally {
+			if (null != in)
+				try {
+					in.close();
+				} catch (IOException e) {
+					Log.warning("IOException closing key store file after load.");
+					Log.warningStackTrace(e);
+				}
 		}
+		return keyStore;
 	}
 	
 	/**
@@ -234,41 +324,27 @@ public class BasicKeyManager extends KeyManager {
 	 * @param keyStore
 	 * @throws ConfigurationException 
 	 */
-	protected boolean loadValuesFromKeystore(KeyStore keyStore) throws ConfigurationException {
-		
+	protected boolean loadValuesFromKeystore(KeyStoreInfo keyStoreInfo) throws ConfigurationException {
 		KeyStore.PrivateKeyEntry entry = null;
 		try {
-			entry = (KeyStore.PrivateKeyEntry)_keyStore.getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
+			Log.info("Loading key store {0} version {1} version component {2} millis {3}", keyStoreInfo.getURI(), keyStoreInfo.getVersion().toString(), 
+						VersioningProfile.printAsVersionComponent(keyStoreInfo.getVersion()), keyStoreInfo.getVersion().getTime());
+			// Default alias should be a PrivateKeyEntry
+			entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
 			if (null == entry) {
 				Log.warning("Cannot get default key entry: " + _defaultAlias);
+				generateConfigurationException("Cannot retrieve default user keystore entry.", null);
 			}
-		    _privateKey = entry.getPrivateKey();
-		    _certificate = (X509Certificate)entry.getCertificate();
-		    _defaultKeyID = new PublisherPublicKeyDigest(_certificate.getPublicKey());
-			Log.info("Default key ID for user " + _userName + ": " + _defaultKeyID);
-
-		    // Check to make sure we've published information about
-		    // this key. (e.g. in testing, we may frequently
-		    // nuke the contents of our repository even though the
-		    // key remains, so need to republish). Or the first
-		    // time we load this keystore, we need to publish.
-		    ContentName keyName = getDefaultKeyName(_defaultKeyID.digest());
-		    _keyLocator = new KeyLocator(keyName, new PublisherID(_defaultKeyID));
-			Log.info("Default key locator for user " + _userName + ": " + _keyLocator);
-
-		    if (null == getPublicKey(_defaultKeyID, _keyLocator, SystemConfiguration.SHORT_TIMEOUT)) {
-		    	boolean resetFlag = false;
-		    	if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-		    		resetFlag = true;
-		    		SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, false);
-		    	}
-		    	keyRepository().publishKey(_keyLocator.name().name(), _certificate.getPublicKey(), 
-		    								_defaultKeyID, _privateKey);
-		    	if (resetFlag) {
-		    		SystemConfiguration.setDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
-		    	}
+		    X509Certificate certificate = (X509Certificate)entry.getCertificate();
+		    if (null == certificate) {
+				Log.warning("Cannot get certificate for default key entry: " + _defaultAlias);
+				generateConfigurationException("Cannot retrieve certificate for default user keystore entry.", null);		    	
 		    }
-		
+		    _defaultKeyID = new PublisherPublicKeyDigest(certificate.getPublicKey());
+			Log.info("Default key ID for user " + _userName + ": " + _defaultKeyID);
+			
+			_privateKeyCache.loadKeyStore(keyStoreInfo, _password, _keyRepository);
+
 		} catch (Exception e) {
 			generateConfigurationException("Cannot retrieve default user keystore entry.", e);
 		}    
@@ -276,31 +352,94 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	/**
+	 * Load values of relevance to a key manager. Most importantly, loads default
+	 * key locator information
+	 * @return true if successful, false on error
+	 * @throws ConfigurationException
+	 */
+	protected boolean loadValuesFromConfiguration() throws ConfigurationException {
+		// Load key locator information. Might be in two places -- system property/environment variable,
+		// or configuration file. Start with just system property, first round just specify
+		// name, not publisher.
+		// Starting step -- read a key name (no publisher) key locator just for our default
+		// key from an environment variable/system property.
+		String defaultKeyLocatorName = UserConfiguration.defaultKeyLocator();
+		// Doesn't even support publisher specifications yet.
+		if (null != defaultKeyLocatorName) {
+			try {
+				ContentName locatorName = ContentName.fromNative(defaultKeyLocatorName);
+				setKeyLocator(getDefaultKeyID(), new KeyLocator(locatorName));
+			} catch (MalformedContentNameStringException e) {
+				generateConfigurationException("Cannot parse key locator name {0}!", e);
+			}
+		}
+
+		// TODO fill in the rest
+		// load values from our configuration file, which should be read in UserConfiguration
+		// also use that to preconfigure things like keystores and such
+		
+		return true;
+	}
+		
+	/**
+	 * Generate our key store if we don't have one. Use createKeyStoreWriteStream to determine where
+	 * to put it.
+	 * @throws ConfigurationException
+	 */
+	synchronized protected KeyStoreInfo createKeyStore() throws ConfigurationException, IOException {
+		
+		Tuple<KeyStoreInfo, OutputStream>streamInfo = createKeyStoreWriteStream();
+	    KeyStore keyStore = createKeyStore(streamInfo.second());
+	    KeyStoreInfo storeInfo = streamInfo.first();
+	    storeInfo.setKeyStore(keyStore);
+	    if (null == storeInfo.getVersion()) {
+	    	storeInfo.setVersion(getKeyStoreVersion(streamInfo.second()));
+	    }
+	    return storeInfo;
+	}
+
+	protected CCNTime getKeyStoreVersion(OutputStream out) throws IOException {
+		// in our case, our output stream should be a file output stream...
+		if (!(out instanceof FileOutputStream)) {
+			throw new IOException("Unexpected output stream type in getKeyStoreVersion: " + out.getClass().getName());
+		}
+		File keyStoreFile = new File(_keyStoreDirectory, _keyStoreFileName);
+		if (!keyStoreFile.exists()) {
+			throw new IOException("KeyStore doesn't exist in getKeyStoreVersion: " + keyStoreFile.getAbsolutePath());
+		}
+		return new CCNTime(keyStoreFile.lastModified());
+	}
+	
+	/**
 	 * Creates a key store file
 	 * @throws ConfigurationException
 	 */
-	synchronized protected KeyStore createKeyStore() throws ConfigurationException {
+	protected Tuple<KeyStoreInfo, OutputStream> createKeyStoreWriteStream() throws ConfigurationException, IOException {
 		
 		File keyStoreDir = new File(_keyStoreDirectory);
 		if (!keyStoreDir.exists()) {
 			if (!keyStoreDir.mkdirs()) {
-				generateConfigurationException("Cannot create keystore directory: " + keyStoreDir.getAbsolutePath(), null);
+				throw new ConfigurationException("Cannot create keystore directory: " + keyStoreDir.getAbsolutePath(), null);
 			}
 		}
 		
 		// Alas, until 1.6, we can't set permissions on the file or directory...
 		// TODO DKS when switch to 1.6, add permission settings.
 		File keyStoreFile  = new File(keyStoreDir, _keyStoreFileName);
-		if (keyStoreFile.exists())
-			return null;
+		if (keyStoreFile.exists()) {
+			Log.warning("Key store file {0} already exists (length {1}), overrwriting.", keyStoreFile.getAbsolutePath(), keyStoreFile.length());
+		}
 
 	    FileOutputStream out = null;
 		try {
+			Log.finest("Creating FileOutputStream to write keystore to file " + keyStoreFile.getAbsolutePath());
 			out = new FileOutputStream(keyStoreFile);
 		} catch (FileNotFoundException e) {
 			generateConfigurationException("Cannot create keystore file: " + keyStoreFile.getAbsolutePath(), e);
 		} 
-	    return createKeyStore(out);	    
+		
+		KeyStoreInfo storeInfo = new KeyStoreInfo(keyStoreFile.toURI().toString(), null, new CCNTime(keyStoreFile.lastModified()));
+	    return new Tuple<KeyStoreInfo, OutputStream>(storeInfo, out);   
 	}
 	
 	/**
@@ -311,8 +450,11 @@ public class BasicKeyManager extends KeyManager {
 
 		KeyStore ks = null;
 	    try {
+	    	Log.finest("createKeyStore: getting instance of keystore type " + _keyStoreType);
 			ks = KeyStore.getInstance(_keyStoreType);
+			Log.finest("createKeyStore: loading key store.");
 			ks.load(null, _password);
+			Log.finest("createKeyStore: key store loaded.");
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot load empty default keystore.", e);
 		} catch (CertificateException e) {
@@ -329,15 +471,21 @@ public class BasicKeyManager extends KeyManager {
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot generate key using default algorithm: " + UserConfiguration.defaultKeyAlgorithm(), e);
 		}
-		kpg.initialize(UserConfiguration.defaultKeyLength()); 
+		kpg.initialize(UserConfiguration.defaultKeyLength());
+		
+		Log.finest("createKeyStore: generating " + UserConfiguration.defaultKeyLength() + "-bit " + UserConfiguration.defaultKeyAlgorithm() + " key.");
 		KeyPair userKeyPair = kpg.generateKeyPair();
+		Log.finest("createKeyStore: key generated, generating certificate for user " + _userName);
 		
 		// Generate a self-signed certificate.
 		String subjectDN = "CN=" + _userName;
 		X509Certificate ssCert = null;
 		try {
 			 ssCert = 
-				 MinimalCertificateGenerator.GenerateUserCertificate(userKeyPair, subjectDN, MinimalCertificateGenerator.MSEC_IN_YEAR);
+				 MinimalCertificateGenerator.GenerateUserCertificate(userKeyPair, subjectDN, 
+						 											 MinimalCertificateGenerator.MSEC_IN_YEAR);
+			 Log.finest("createKeyStore: certificate generated.");
+			 
 		} catch (Exception e) {
 			generateConfigurationException("InvalidKeyException generating user internal certificate.", e);
 		} 
@@ -346,9 +494,14 @@ public class BasicKeyManager extends KeyManager {
 	        new KeyStore.PrivateKeyEntry(userKeyPair.getPrivate(), new X509Certificate[]{ssCert});
 
 	    try {
+	    	Log.finest("createKeyStore: setting private key entry.");
 		    ks.setEntry(_defaultAlias, entry, 
 			        new KeyStore.PasswordProtection(_password));
+		    
+		    Log.finest("createKeyStore: storing key store.");
 	        ks.store(out, _password);
+		    Log.finest("createKeyStore: wrote key store.");
+
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot save default keystore.", e);
 		} catch (CertificateException e) {
@@ -369,6 +522,8 @@ public class BasicKeyManager extends KeyManager {
 	    }
 		return ks;
 	}
+	
+	public KeyStoreInfo getKeyStoreInfo() { return _keyStoreInfo; }
 
 	/**
 	 * Helper method to turn low-level errors into ConfigurationExceptions
@@ -402,34 +557,90 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PublicKey getDefaultPublicKey() {
-		return _certificate.getPublicKey();
+		return _keyRepository.getPublicKeyFromCache(getDefaultKeyID());
 	}
-	
-	/**
-	 * Get default key locator
-	 * @return default key locator
-	 */
+		
 	@Override
-	public KeyLocator getDefaultKeyLocator() {
-		return _keyLocator;
+	public ContentName getDefaultKeyNamePrefix() {
+		ContentName keyDir =
+			ContentName.fromNative(_userNamespace, 
+				   			       UserConfiguration.defaultKeyNamespaceMarker());
+		return keyDir;
 	}
 	
+	@Override
+	public ContentName getDefaultKeyName(PublisherPublicKeyDigest keyID) {
+		if (null == keyID)
+			keyID = getDefaultKeyID();
+		return getDefaultKeyName(getDefaultKeyNamePrefix(), keyID, getKeyVersion(keyID));
+	}
+		
 	/**
-	 * Get key locator given a public key digest
-	 * @param key public key digest
+	 * Get the key locator to use for a given key. If a value has been stored
+	 * by calling setKeyLocator, that value will be used. Such values can
+	 * also be initialized using command-line properties, environment variables,
+	 * or configuration files. Usually it refers to content already published.
+	 * As we don't know where the key might be published, if no value is
+	 * specified, we return a locator of type KEY. We have deprecated the
+	 * previous behavior of trying to look at objects we have published
+	 * containing this key; this does not allow the user enough control over
+	 * what key locator will be used.
 	 * @return key locator
 	 */
 	@Override
-	public KeyLocator getKeyLocator(PublisherPublicKeyDigest key) {
-		if ((null == key) || (key.equals(_defaultKeyID)))
-			return _keyLocator;
-		ContentObject keyObject = _keyRepository.retrieve(key);
-		if (null != keyObject) {
-			return new KeyLocator(new KeyName(keyObject.fullName(), new PublisherID(keyObject.signedInfo().getPublisherKeyID())));
+	public KeyLocator getKeyLocator(PublisherPublicKeyDigest keyID) {
+		if (null == keyID) {
+			keyID = getDefaultKeyID();
 		}
-		Log.info("Cannot find key locator for key: " + key);
-		return null;
+		KeyLocator keyLocator = getStoredKeyLocator(keyID);
+		if (null == keyLocator) {
+			keyLocator = getKeyTypeKeyLocator(keyID);
+		}
+		Log.info("getKeyLocator: returning locator {0} for key {1}", keyID);
+		return keyLocator;
 	}
+	
+	@Override 
+	public KeyLocator getStoredKeyLocator(PublisherPublicKeyDigest keyID) {
+		return _currentKeyLocators.get(keyID);
+	}
+
+	@Override 
+	public boolean haveStoredKeyLocator(PublisherPublicKeyDigest keyID) {
+		return _currentKeyLocators.containsKey(keyID);
+	}
+
+	/**
+	 * Helper method to get the key locator for one of our signing keys.
+	 */
+	@Override
+	public KeyLocator getKeyLocator(PrivateKey signingKey) {
+		PublisherPublicKeyDigest keyID = _privateKeyCache.getPublicKeyIdentifier(signingKey);
+		return getKeyLocator(keyID);
+	}
+	
+	/**
+	 * Remember the key locator to use for a given key. Use
+	 * this to publish this key in the future if not overridden by method
+	 * calls. If no key locator stored for this key, and no override
+	 * given, compute a KEY type key locator if this key has not been
+	 * published, and the name given to it when published if it has.
+	 * @param publisherKeyID the key whose locator to set
+	 * @param keyLocator the new key locator for this key; overrides any previous value.
+	 * 	If null, erases previous value and defaults will be used.
+	 */
+	public void setKeyLocator(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) {
+		if (null == publisherKeyID)
+			publisherKeyID = getDefaultKeyID();;
+		_currentKeyLocators.put(publisherKeyID, keyLocator);
+	}
+
+	
+	@Override
+	public CCNTime getKeyVersion(PublisherPublicKeyDigest keyID) {
+		return _keyRepository.getPublicKeyVersionFromCache(keyID);
+	}
+	
 	
 	/**
 	 * Get private key
@@ -437,85 +648,18 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PrivateKey getDefaultSigningKey() {
-		return _privateKey;
+		return _privateKeyCache.getPrivateKey(getDefaultKeyID().digest());
 	}
 	
-	/**
-	 * Return the key's content name for a given key id. 
-	 * The default key name is the publisher ID itself,
-	 * under the user's key collection. 
-	 * @param keyID[] publisher ID
-	 * @return content name
-	 */
-	@Override
-	public ContentName getDefaultKeyName(byte [] keyID) {
-		ContentName keyDir =
-			ContentName.fromNative(UserConfiguration.defaultUserNamespace(), 
-				   			UserConfiguration.defaultKeyName());
-		return new ContentName(keyDir, keyID);
-	}
-	
-	/** 
-	 * Get public key given a string alias
-	 * @param alias alias for certificate
-	 * @return public key
-	 */
-	@Override
-	public PublicKey getPublicKey(String alias) {
-		Certificate cert = null;;
-		try {
-			cert = _keyStore.getCertificate(alias);
-		} catch (KeyStoreException e) {
-			Log.info("No certificate for alias " + alias + " in BasicKeymManager keystore.");
-			return null;
-		}
-		return cert.getPublicKey();
-	}
-	
-	/**
-	 * Get signing key given string alias
-	 * @param alias certificate alias
-	 * @return private signing key
-	 */
-	@Override
-	public PrivateKey getSigningKey(String alias) {
-		PrivateKey key = null;
-		try {
-			key = (PrivateKey)_keyStore.getKey(alias, _password);
-		} catch (Exception e) {
-			Log.info("No key for alias " + alias + " in BasicKeymManager keystore. " + 
-						e.getClass().getName() + ": " + e.getMessage());
-			return null;
-		}
-		return key;
-	}
-
 	/**
 	 * Get signing keys
 	 * @return private signing keys
 	 */
 	@Override
 	public PrivateKey [] getSigningKeys() {
-		// For now just return our default key. Eventually return multiple identity keys.
-		return new PrivateKey[]{getDefaultSigningKey()};
+		return _privateKeyCache.getPrivateKeys();
 	}
 	
-	/**
-	 * Get public key for publisher
-	 * @param publisher publisher public key digest
-	 * @return public key
-	 * @throws IOException
-	 */
-	@Override
-	public PublicKey getPublicKey(PublisherPublicKeyDigest publisher) throws IOException {
-		// TODO Auto-generated method stub
-		Log.finer("getPublicKey: retrieving key: " + publisher);
-		
-		if (_defaultKeyID.equals(publisher))
-			return _certificate.getPublicKey();
-		return keyRepository().getPublicKey(publisher);
-	}
-
 	/**
 	 * Get private signing key for a publisher. 
 	 * If I am the publisher, return signing key;
@@ -525,11 +669,10 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PrivateKey getSigningKey(PublisherPublicKeyDigest publisher) {
-		// TODO Auto-generated method stub
 		Log.finer("getSigningKey: retrieving key: " + publisher);
-		if (_defaultKeyID.equals(publisher))
-			return _privateKey;
-		return null;
+		if (null == publisher)
+			return null;
+		return _privateKeyCache.getPrivateKey(publisher.digest());
 	}
 
 	/**
@@ -541,13 +684,43 @@ public class BasicKeyManager extends KeyManager {
 	 * @return public key
 	 */
 	@Override
-	public PublicKey getPublicKey(PublisherPublicKeyDigest publisherID, KeyLocator keyLocator, long timeout) throws IOException {		
-		Log.finer("getPublicKey: retrieving key: " + publisherID + " located at: " + keyLocator);
+	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator keyLocator, long timeout) throws IOException {		
+		Log.finer("getPublicKey: retrieving key: " + desiredKeyID + " located at: " + keyLocator);
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
 		// or not we should trust it for some reason, we have to get fancy.
-		return keyRepository().getPublicKey(publisherID, keyLocator, timeout);
+		return keyRepository().getPublicKey(desiredKeyID, keyLocator, timeout);
+	}
+	
+	/**
+	 * Get a public key object for this key locator and publisher, if there is one.
+	 * This is less general than the method above, which retrieves keys we have cached
+	 * but which have never been published -- our keys, keys listed explicitly in locators,
+	 * etc.
+	 * @param desiredKeyID
+	 * @param locator
+	 * @param timeout
+	 * @return
+	 * @throws IOException
+	 */
+	@Override 
+	public PublicKeyObject getPublicKeyObject(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
+		Log.finer("getPublicKey: retrieving key: " + desiredKeyID + " located at: " + locator);
+		// this will try local caches, the locator itself, and if it 
+		// has to, will go to the network. The result will be stored in the cache.
+		// All this tells us is that the key matches the publisher. For whether
+		// or not we should trust it for some reason, we have to get fancy.
+		return keyRepository().getPublicKeyObject(desiredKeyID, locator, timeout);
+	}	
+	
+	/**
+	 * Attempt to retrieve public key from cache.
+	 * @throws IOException 
+	 */
+	@Override
+	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) {
+		return keyRepository().getPublicKeyFromCache(desiredKeyID);
 	}
 
 	/**
@@ -557,23 +730,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PublisherPublicKeyDigest getPublisherKeyID(PrivateKey signingKey) {
-		if (_privateKey.equals(signingKey))
-			return _defaultKeyID;
-		return null;
-	}
-	
-	/** 
-	 * Get key locator for publisher
-	 * @param signingKey private signing key
-	 * @return key locator
-	 */
-	@Override
-	public KeyLocator getKeyLocator(PrivateKey signingKey) {
-		if (signingKey.equals(_privateKey))
-			return getDefaultKeyLocator();
-		
-		// DKS TODO
-		return null;
+		return _privateKeyCache.getPublicKeyIdentifier(signingKey);
 	}
 
 	/** 
@@ -585,27 +742,71 @@ public class BasicKeyManager extends KeyManager {
 		return _keyRepository;
 	}
 
+	@Override
+	public synchronized PublicKeyObject publishDefaultKey(ContentName keyName) throws IOException, InvalidKeyException {
+		if (!initialized()) {
+			throw new IOException("Cannot publish keys, have not yet initialized KeyManager!");
+		}
+		// we've put together enough of this KeyManager to let the
+		// KeyRepository use it to make a CCNHandle, even though we're
+		// not done...
+		if (_defaultKeysPublished) {
+			return null;
+		}
+
+		PublicKeyObject keyObject = publishKey(keyName, getDefaultKeyID(), null, null);
+		_defaultKeysPublished = true;
+		return keyObject;
+	}
 	/**
-	 * Make the public key available to other ccn agents
+	 * Publish my public key to a local key server run in this JVM.
 	 * @param keyName content name of the public key
 	 * @param keyToPublish public key digest
+	 * @param handle handle for ccn
 	 * @throws IOException
 	 * @throws InvalidKeyException
-	 * @throws ConfigurationException 
+	 * @throws ConfigurationException
 	 */
 	@Override
-	public void publishKey(ContentName keyName,
-			PublisherPublicKeyDigest keyToPublish) throws IOException, InvalidKeyException, ConfigurationException {
-		PublicKey key = null;
+	public PublicKeyObject publishKey(ContentName keyName, 
+						   PublisherPublicKeyDigest keyToPublish,
+						   PublisherPublicKeyDigest signingKeyID,
+						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException {
 		if (null == keyToPublish) {
-			key = getDefaultPublicKey();
-		} else {
-			key = getPublicKey(keyToPublish);
-			if (null == key) {
-				throw new InvalidKeyException("Cannot retrieive key " + keyToPublish);
-			}
+			keyToPublish = getDefaultKeyID();
+		} 
+		PublicKey theKey = getPublicKey(keyToPublish);
+		if (null == theKey) {
+			Log.warning("Cannot publish key {0} to name {1}, do not have public key in cache.", keyToPublish, keyName);
+			return null;
 		}
-		keyRepository().publishKey(keyName, key, getDefaultKeyID(), getDefaultSigningKey());
+		return publishKey(keyName, theKey, signingKeyID, signingKeyLocator);
+	}
+
+	@Override
+	public PublicKeyObject publishKey(ContentName keyName, 
+						   PublicKey keyToPublish,
+						   PublisherPublicKeyDigest signingKeyID,
+						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException {
+		if (null == keyToPublish) {
+			keyToPublish = getDefaultPublicKey();
+		} 
+		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(keyToPublish);
+		
+		if (null == keyName) {
+			keyName = getDefaultKeyName(keyDigest);
+		}
+		Log.info("publishKey: publishing key {0} under specified key name {1}", keyDigest, keyName);
+		PublicKeyObject keyObject =  _keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
+		
+		if (!haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
+			// So once we publish self-signed key object, we store a pointer to that
+			// to use. Don't override any manually specified values.
+			KeyLocator newKeyLocator = new KeyLocator(keyObject.getVersionedName(), keyObject.getContentPublisher());
+			setKeyLocator(keyDigest, newKeyLocator);
+			Log.info("publishKey: storing key locator {1} for key {1}", keyDigest, newKeyLocator);
+		}
+		return keyObject;
 	}
 
 	/**
@@ -619,57 +820,26 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public void publishKeyToRepository(ContentName keyName, 
-									   PublisherPublicKeyDigest keyToPublish, 
-									   CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException {
-		PublicKey key = null;
+									   PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException {
 		if (null == keyToPublish) {
-			key = getDefaultPublicKey();
 			keyToPublish = getDefaultKeyID();
-		} else {
-			key = getPublicKey(keyToPublish);
-			if (null == key) {
-				throw new InvalidKeyException("Cannot retrieive key " + keyToPublish);
-			}
+		} 
+		if (null == keyName) {
+			keyName = getKeyLocator(keyToPublish).name().name();
 		}
-
-		// HACK - want to use repo confirmation protocol to make sure data makes it to a repo
-		// even if it doesn't come from us. Problem is, we may have already written it, and don't
-		// want to write a brand new version of identical data. If we try to publish it under
-		// the same (unversioned) name, the repository may get some of the data from the ccnd
-		// cache, which will cause us to think it hasn't been written. So for the moment, we use the
-		// name enumeration protocol to determine whether this key has been written to a repository
-		// already.
-		// This works because the last explicit name component of the key is its publisherID. 
-		// We then use a further trick, just calling startWrite on the key, to get the repo
-		// to read it -- not from here, but from the key server embedded in the KeyManager.
-		EnumeratedNameList enl = new EnumeratedNameList(keyName.parent(), handle);
-		enl.waitForData(500); // have to time out, may be nothing there.
-		enl.stopEnumerating();
-		if (enl.hasChildren()) {
-			Log.info("Looking for children of {0} matching {1}.", keyName.parent(), keyName);
-			for (ContentName name: enl.getChildren()) {
-				Log.info("Child: {0}", name);
-			}
-		}
-		if (!enl.hasChildren() || !enl.hasChild(keyName.lastComponent())) {
-			RepositoryFlowControl rfc = new RepositoryFlowControl(keyName, handle);
-			rfc.startWrite(keyName, Shape.STREAM);
-			Log.info("Key {0} published to repository.", keyName);
-		} else {
-			Log.info("Key {0} already published to repository, not re-publishing.", keyName);
-		}
+		_keyRepository.publishKeyToRepository(keyName, keyToPublish);
 	}
 	
 	/**
-	 * publish my public key to repository
+	 * Publish my public key to repository
 	 * @param handle handle for ccn
 	 * @throws IOException
 	 * @throws InvalidKeyException
 	 * @throws ConfigurationException
 	 */
 	@Override
-	public void publishKeyToRepository(CCNHandle handle) throws InvalidKeyException, IOException, ConfigurationException {
-		publishKeyToRepository(_keyLocator.name().name(), null, handle);
+	public void publishKeyToRepository() throws InvalidKeyException, IOException {
+		publishKeyToRepository(null, null);
 	}
 
 }

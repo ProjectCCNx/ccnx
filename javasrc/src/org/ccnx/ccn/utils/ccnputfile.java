@@ -173,7 +173,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 		// If we are using a repository, make sure our key is available to
 		// repository clients. For now, write an unversioned form of key.
 		if (!rawMode) {
-			handle.keyManager().publishKeyToRepository(handle);
+			handle.keyManager().publishKeyToRepository();
 		}
 
 		CCNOutputStream ostream;

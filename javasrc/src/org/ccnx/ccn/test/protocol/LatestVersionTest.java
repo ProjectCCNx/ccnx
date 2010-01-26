@@ -133,8 +133,9 @@ public class LatestVersionTest {
 	 * with a single ContentObject.
 	 * 
 	 * @param obj ContentObject to respond to Interests with.
+	 * @throws IOException 
 	 */
-	private void setUpResponder(ContentObject obj) {
+	private void setUpResponder(ContentObject obj) throws IOException {
 		Thread t = new Thread(new Responder(obj));
 		t.run();
 		
@@ -147,7 +148,7 @@ public class LatestVersionTest {
 		ContentObject object;
 		CCNHandle handle;
 
-		public Responder(ContentObject obj) {
+		public Responder(ContentObject obj) throws IOException {
 			object = obj;
 			try {
 				handle = CCNHandle.open();

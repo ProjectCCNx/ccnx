@@ -171,7 +171,8 @@ ccn_client.o: ccn_client.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccn_private.h ../include/ccn/ccnd.h \
   ../include/ccn/digest.h ../include/ccn/hashtb.h \
-  ../include/ccn/signing.h
+  ../include/ccn/reg_mgmt.h ../include/ccn/signing.h \
+  ../include/ccn/keystore.h ../include/ccn/uri.h
 ccn_coding.o: ccn_coding.c ../include/ccn/coding.h
 ccn_digest.o: ccn_digest.c ../include/ccn/digest.h
 ccn_dtag_table.o: ccn_dtag_table.c ../include/ccn/coding.h

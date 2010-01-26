@@ -28,10 +28,12 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.SortedSet;
 
-import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -122,18 +124,17 @@ public class Group {
 	 * @throws ContentEncodingException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
 					CCNHandle handle, GroupManager manager) 
-			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, InvalidCipherTextException {	
+			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException {	
 		_handle = handle;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
 		_groupManager = manager;
 		
 		_groupMembers = members;
-		_groupMembers.saveToRepository();
+		_groupMembers.save();
 
 		createGroupPublicKey(members);
 	}
@@ -144,12 +145,11 @@ public class Group {
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public void addMembers(ArrayList<Link> newUsers) 
-			throws InvalidKeyException, InvalidCipherTextException, 
-					ContentDecodingException, ConfigurationException, IOException {
+			throws InvalidKeyException, ContentDecodingException, ConfigurationException, IOException, NoSuchAlgorithmException {
 		modify(newUsers, null);						
 	}
 
@@ -159,15 +159,15 @@ public class Group {
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public void removeMembers( ArrayList<Link> removedUsers) 
-			throws InvalidKeyException, InvalidCipherTextException, ContentDecodingException, 
-					ConfigurationException, IOException {
+			throws InvalidKeyException, ContentDecodingException, 
+					ConfigurationException, IOException, NoSuchAlgorithmException {
 		modify(null, removedUsers);
 	}
-
+	
 	/**
 	 * Checks whether the group public key has been created.
 	 * @return
@@ -249,6 +249,7 @@ public class Group {
 			_groupMembers = new MembershipList(GroupAccessControlProfile.groupMembershipListName(_groupNamespace, _groupFriendlyName), _handle);
 			// Keep dynamically updating.
 			_groupMembers.updateInBackground(true);
+			_groupMembers.setupSave(SaveType.REPOSITORY);
 		}
 		return _groupMembers; 
 	}
@@ -304,8 +305,9 @@ public class Group {
 	 * @return the group public key
 	 * @throws ContentNotReadyException
 	 * @throws ContentGoneException
+	 * @throws ErrorStateException 
 	 */
-	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException { 
+	public PublicKey publicKey() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
 		return _groupPublicKey.publicKey(); 
 	}
 	
@@ -333,13 +335,12 @@ public class Group {
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
 	 * @throws ConfigurationException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public void setMembershipList(GroupManager groupManager, java.util.Collection<Link> newMembers) 
-			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException, 
-					ConfigurationException {
+			throws ContentDecodingException, IOException, InvalidKeyException, 
+					ConfigurationException, NoSuchAlgorithmException {
 		// need to figure out if we need to know private key; if we do and we don't, throw access denied.
 		// We're deleting anyone that exists
 		this._groupManager = groupManager;
@@ -366,13 +367,12 @@ public class Group {
 	 * @throws ContentEncodingException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException
+	 * @throws NoSuchAlgorithmException 
 	 */
 	private void newGroupPublicKeyNonRecursive(MembershipList ml) 
-			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, 
-					InvalidCipherTextException {
+			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, NoSuchAlgorithmException{
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		oldPrivateKeyDirectory.waitForData();
+		oldPrivateKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have access rights to private key for group " + friendlyName());
@@ -391,8 +391,8 @@ public class Group {
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
-		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _handle);
-		precededByBlock.saveToRepository();
+		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, SaveType.REPOSITORY, _handle);
+		precededByBlock.save();
 	}
 	
 	/**
@@ -407,13 +407,12 @@ public class Group {
 	 * @throws ContentEncodingException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public void newGroupPublicKey(MembershipList ml) 
-			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, 
-					InvalidCipherTextException {
+			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, NoSuchAlgorithmException {
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		oldPrivateKeyDirectory.waitForData();
+		oldPrivateKeyDirectory.waitForChildren();
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have access rights to private key for group " + friendlyName());
@@ -432,8 +431,8 @@ public class Group {
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
-		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, _handle);
-		precededByBlock.saveToRepository();
+		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, SaveType.REPOSITORY, _handle);
+		precededByBlock.save();
 		
 		// generate new public keys for ancestor groups
 		ArrayList<Link> ancestors = recursiveAncestorList(null);
@@ -455,10 +454,9 @@ public class Group {
 	 * @throws ContentEncodingException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException
-	 * @throws InvalidCipherTextException 
 	 */	
 	public Key createGroupPublicKey(MembershipList ml) 
-			throws ContentEncodingException, IOException, ConfigurationException, InvalidKeyException, InvalidCipherTextException {
+			throws ContentEncodingException, IOException, ConfigurationException, InvalidKeyException {
 		
 		KeyPairGenerator kpg = null;
 		try {
@@ -476,9 +474,9 @@ public class Group {
 		_groupPublicKey = 
 			new PublicKeyObject(
 					GroupAccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), 
-					pair.getPublic(),
+					pair.getPublic(), SaveType.REPOSITORY,
 					_handle);
-		_groupPublicKey.saveToRepository();
+		_groupPublicKey.save();
 		_groupPublicKey.updateInBackground(true);
 		
 		stopPrivateKeyDirectoryEnumeration();
@@ -514,10 +512,9 @@ public class Group {
 	 * @throws AccessDeniedException
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 */
 	public void updateGroupPublicKey(Key privateKeyWrappingKey, java.util.Collection<Link> membersToAdd) 
-			throws InvalidKeyException, InvalidCipherTextException, ContentDecodingException, AccessDeniedException, IOException {		
+			throws InvalidKeyException, ContentDecodingException, AccessDeniedException, IOException {		
 		if ((null == membersToAdd) || (membersToAdd.size() == 0))
 			return;
 		
@@ -535,8 +532,8 @@ public class Group {
 					// PG TODO check for existence of back pointer to avoid writing multiple copies of the same pointer
 					Link backPointer = new Link(groupName(), friendlyName(), null);
 					ContentName bpNamespace = GroupAccessControlProfile.groupPointerToParentGroupName(lr.targetName());
-					LinkObject bplo = new LinkObject(ContentName.fromNative(bpNamespace, friendlyName()), backPointer, _handle);
-					bplo.saveToRepository();
+					LinkObject bplo = new LinkObject(ContentName.fromNative(bpNamespace, friendlyName()), backPointer, SaveType.REPOSITORY, _handle);
+					bplo.save();
 				}
 
 				latestPublicKey = new PublicKeyObject(pkName, _handle);
@@ -597,13 +594,13 @@ public class Group {
 	 * @param membersToRemove list of group members to be removed
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
 	 * @throws ConfigurationException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public void modify(java.util.Collection<Link> membersToAdd,
 					   java.util.Collection<Link> membersToRemove) 
-			throws InvalidKeyException, InvalidCipherTextException, ContentDecodingException, IOException, ConfigurationException {
+			throws InvalidKeyException, ContentDecodingException, IOException, ConfigurationException, NoSuchAlgorithmException {
 		
 		boolean addedMembers = false;
 		boolean removedMembers = false;
@@ -616,7 +613,7 @@ public class Group {
 		// Assume no concurrent writer.  
 		
 		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		privateKeyDirectory.waitForData();
+		privateKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
@@ -626,6 +623,9 @@ public class Group {
 
 		// Do we need to wait for data to come in? We use this to create new groups as well...
 		// so in that case, don't expect any.
+		
+		// Get the existing membership list, if we don't have it already
+		if (null == _groupMembers) membershipList();
 		
 		// Add before remove so that remove overrides adds.
 		if ((null != membersToAdd) && (!membersToAdd.isEmpty())) {
@@ -661,7 +661,7 @@ public class Group {
 		}
 		// Don't actually save the new membership list till we're sure we can update the
 		// key.
-		_groupMembers.saveToRepository();
+		_groupMembers.save();
 	}
 
 	public void delete() throws IOException {
@@ -684,7 +684,7 @@ public class Group {
 		
 		ContentName cn = GroupAccessControlProfile.groupPointerToParentGroupName(groupName());
 		EnumeratedNameList parentList = new EnumeratedNameList(cn, _handle);
-		parentList.waitForData(PARENT_GROUP_ENUMERATION_TIMEOUT);
+		parentList.waitForChildren(PARENT_GROUP_ENUMERATION_TIMEOUT);
 		if (parentList.hasChildren()) {
 			SortedSet<ContentName> parents = parentList.getChildren();
 			for (ContentName parentLinkName : parents) {

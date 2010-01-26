@@ -32,8 +32,9 @@ import org.ccnx.ccn.impl.CCNNetworkManager;
  * TODO This is not actually yet used in any tests and therefore is itself not well tested
  */
 public class CCNDaemon extends Daemon {
-	
+	public static final String PROP_CCND_COMMAND = "ccnd.command";
 	public static final String PROP_CCND_DEBUG = "ccnd.debug";
+	public static final String PROP_CCND_TRYFIB = "ccnd.tryfib";
 	
 	private static final String DEFAULT_CCND_COMMAND_STRING = "../ccnd/agent/ccnd";
 	protected String _command = DEFAULT_CCND_COMMAND_STRING;
@@ -77,6 +78,10 @@ public class CCNDaemon extends Daemon {
 		 * Start ccnd but set up a shutdown hook to allow it to stop
 		 */
 		public void initialize() {
+			String commandVal = System.getProperty(PROP_CCND_COMMAND);
+			if (commandVal != null) {
+				_command = commandVal;
+			}
 			Runtime.getRuntime().addShutdownHook(new CCNDShutdownHook());
 			ProcessBuilder pb = new ProcessBuilder(_command);		
 			Map<String, String> env = pb.environment();
@@ -88,6 +93,10 @@ public class CCNDaemon extends Daemon {
 			String debugVal = System.getProperty(PROP_CCND_DEBUG);
 			if (debugVal != null) {
 				env.put("CCND_DEBUG", debugVal);
+			}
+			String fibVal = System.getProperty(PROP_CCND_TRYFIB);
+			if (fibVal != null) {
+				env.put("CCND_TRYFIB", fibVal);
 			}
 			try {
 				_ccndProcess = pb.start();
@@ -116,6 +125,10 @@ public class CCNDaemon extends Daemon {
 		
 		public boolean signal(String name) {
 			return false;
+		}
+		
+		public Object status(String type) {
+			return "running";
 		}
 	}
 	

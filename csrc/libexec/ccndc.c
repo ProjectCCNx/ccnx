@@ -85,13 +85,20 @@ static unsigned char ccndid_storage[32] = {0};
 static const unsigned char *ccndid = ccndid_storage;
 static size_t ccndid_size;
 
+/*
+ * Global data
+ */
+int verbose = 0;
+
+
 static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-d] (-f configfile | (add|del) uri proto host [port [flags [mcastttl [mcastif]]]])\n"
+            "%s [-d] [-v] (-f configfile | (add|del) uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])\n"
             "   -d enter dynamic mode and create FIB entries based on DNS SRV records\n"
             "   -f configfile add or delete FIB entries based on contents of configfile\n"
+            "   -v increase logging level\n"
             "	add|del add or delete FIB entry based on parameters\n",
             progname);
     exit(1);
@@ -133,10 +140,20 @@ on_error_exit(int res, int lineno)
 }
 
 #define ON_ERROR_CLEANUP(resval) \
-	{ 			\
-            if ((resval) < 0) \
-                                   goto Cleanup; \
-        }
+    { 			\
+        if ((resval) < 0) { \
+            if (verbose > 0) ccndc_warn (__LINE__, "OnError cleanup\n"); \
+            goto Cleanup; \
+        } \
+    }
+
+#define ON_NULL_CLEANUP(resval) \
+    { 			\
+        if ((resval) == NULL) { \
+            if (verbose > 0) ccndc_warn(__LINE__, "OnNull cleanup\n"); \
+        goto Cleanup; \
+        } \
+    }
 
 static void
 initialize_global_data(void) {
@@ -246,40 +263,12 @@ static void prefix_face_list_destroy(struct prefix_face_list_item **pflpp)
     *pflpp = NULL;
 }
 
-/**
- *  @brief Register an interest prefix as being routed to a given face
- *  @param h  the ccnd handle
- *  @param keystore  a ccn keystore containing the keys used to authenticate this operation
- *  @param name_prefix  the prefix to be registered
- *  @param face_instance  the face to which the interests with the prefix should be routed
- *  @param flags
- *  @result returns (positive) faceid on success, -1 on error
- */
-static int
-register_prefix(struct ccn *h, struct ccn_keystore *keystore, struct ccn_charbuf *name_prefix, struct ccn_face_instance *face_instance, int flags)
+static struct ccn_charbuf *
+signed_info_create(struct ccn_keystore *keystore)
 {
-    struct ccn_charbuf *temp = NULL;
-    struct ccn_charbuf *resultbuf = NULL;
-    struct ccn_charbuf *keylocator = NULL;
-    struct ccn_charbuf *signed_info = NULL;
-    struct ccn_charbuf *newface = NULL;
-    struct ccn_charbuf *name = NULL;
-    struct ccn_charbuf *prefixreg = NULL;
-    struct ccn_parsed_ContentObject pcobuf = {0};
-    struct ccn_face_instance *new_face_instance = NULL;
-    struct ccn_forwarding_entry forwarding_entry_storage = {0};
-    struct ccn_forwarding_entry *forwarding_entry = &forwarding_entry_storage;
-    const unsigned char *ptr = NULL;
-    size_t length = 0;
-    long expire = -1;
+    struct ccn_charbuf *keylocator;
+    struct ccn_charbuf *signed_info;
     int res;
-
-    /* Encode the given face instance */
-    newface = ccn_charbuf_create();
-    if (newface == NULL) {
-        ON_ERROR_CLEANUP(-1);
-    }
-    ON_ERROR_CLEANUP(ccnb_append_face_instance(newface, face_instance));
 
     /* Construct a key locator containing the key itself */
     keylocator = ccn_charbuf_create();
@@ -288,21 +277,59 @@ register_prefix(struct ccn *h, struct ccn_keystore *keystore, struct ccn_charbuf
     ON_ERROR_CLEANUP(ccn_append_pubkey_blob(keylocator, ccn_keystore_public_key(keystore)));
     ON_ERROR_CLEANUP(ccn_charbuf_append_closer(keylocator));	/* </Key> */
     ON_ERROR_CLEANUP(ccn_charbuf_append_closer(keylocator));	/* </KeyLocator> */
+
     signed_info = ccn_charbuf_create();
     res = ccn_signed_info_create(signed_info,
                                  /* pubkeyid */ ccn_keystore_public_key_digest(keystore),
                                  /* publisher_key_id_size */ ccn_keystore_public_key_digest_length(keystore),
                                  /* datetime */ NULL,
                                  /* type */ CCN_CONTENT_DATA,
-                                 /* freshness */ expire,
+                                 /* freshness */ -1L,
                                  /* finalblockid */ NULL,
                                  keylocator);
     ON_ERROR_CLEANUP(res);
+    ccn_charbuf_destroy(&keylocator);
+    return (signed_info);
+
+ Cleanup:
+    ccn_charbuf_destroy(&keylocator);
+    ccn_charbuf_destroy(&signed_info);
+    return (NULL);
+}
+/**
+ *  @brief Create or destroy a face based on the face attributes
+ *  @param h  the ccnd handle
+ *  @param keystore  a ccn keystore containing the keys used to authenticate this operation
+ *  @param face_instance  the parameters of the face to be created or destroyed
+ *  @param flags
+ *  @result returns new face_instance representing the face created or destroyed
+ */
+static struct ccn_face_instance *
+do_face_action(struct ccn *h, struct ccn_keystore *keystore,
+               struct ccn_face_instance *face_instance)
+{
+    struct ccn_charbuf *newface = NULL;
+    struct ccn_charbuf *signed_info = NULL;
+    struct ccn_charbuf *temp = NULL;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *resultbuf = NULL;
+    struct ccn_parsed_ContentObject pcobuf = {0};
+    struct ccn_face_instance *new_face_instance = NULL;
+    const unsigned char *ptr = NULL;
+    size_t length = 0;
+    int res = 0;
+
+    /* Encode the given face instance */
+    newface = ccn_charbuf_create();
+    ON_NULL_CLEANUP(newface);
+    ON_ERROR_CLEANUP(ccnb_append_face_instance(newface, face_instance));
+
+    signed_info = signed_info_create(keystore);
+    ON_NULL_CLEANUP(signed_info);
 
     temp = ccn_charbuf_create();
-    if (temp == NULL) {
-        ON_ERROR_CLEANUP(-1);
-    }
+    ON_NULL_CLEANUP(temp);
+
     res = ccn_encode_ContentObject(temp,
                                    no_name,
                                    signed_info,
@@ -313,44 +340,81 @@ register_prefix(struct ccn *h, struct ccn_keystore *keystore, struct ccn_charbuf
     ON_ERROR_CLEANUP(res);
     
     resultbuf = ccn_charbuf_create();
-    if (resultbuf == NULL) {
-        ON_ERROR_CLEANUP(-1);
-    }
+    ON_NULL_CLEANUP(resultbuf);
 
-    /* Construct the Interest name that will create the new face */
+    /* Construct the Interest name that will create/destroy the face */
     name = ccn_charbuf_create();
-    if (name == NULL) {
-        ON_ERROR_CLEANUP(-1);
-    }
+    ON_NULL_CLEANUP(name);
     ON_ERROR_CLEANUP(ccn_name_init(name));
     ON_ERROR_CLEANUP(ccn_name_append_str(name, "ccnx"));
     ON_ERROR_CLEANUP(ccn_name_append(name, face_instance->ccnd_id, face_instance->ccnd_id_size));
-    ON_ERROR_CLEANUP(ccn_name_append_str(name, "newface"));
+    ON_ERROR_CLEANUP(ccn_name_append_str(name, face_instance->action));
     ON_ERROR_CLEANUP(ccn_name_append(name, temp->buf, temp->length));
     res = ccn_get(h, name, local_scope_template, 1000, resultbuf, &pcobuf, NULL, 0);
     ON_ERROR_CLEANUP(res);
 
     ON_ERROR_CLEANUP(ccn_content_get_value(resultbuf->buf, resultbuf->length, &pcobuf, &ptr, &length));
     new_face_instance = ccn_face_instance_parse(ptr, length);
-    if (new_face_instance == NULL)
-        ON_ERROR_CLEANUP(-1);
+    ON_NULL_CLEANUP(new_face_instance);
     ON_ERROR_CLEANUP(new_face_instance->faceid);
-    
-    /* Finally, register the prefix */
+    ccn_charbuf_destroy(&newface);
+    ccn_charbuf_destroy(&signed_info);
+    ccn_charbuf_destroy(&temp);
+    ccn_charbuf_destroy(&resultbuf);
+    ccn_charbuf_destroy(&name);
+    return (new_face_instance);
+
+ Cleanup:
+    ccn_charbuf_destroy(&newface);
+    ccn_charbuf_destroy(&signed_info);
+    ccn_charbuf_destroy(&temp);
+    ccn_charbuf_destroy(&resultbuf);
+    ccn_charbuf_destroy(&name);
+    ccn_face_instance_destroy(&new_face_instance);
+    return (NULL);
+}
+/**
+ *  @brief Register an interest prefix as being routed to a given face
+ *  @param h  the ccnd handle
+ *  @param keystore  a ccn keystore containing the keys used to authenticate this operation
+ *  @param name_prefix  the prefix to be registered
+ *  @param face_instance  the face to which the interests with the prefix should be routed
+ *  @param flags
+ *  @result returns (positive) faceid on success, -1 on error
+ */
+static int
+register_prefix(struct ccn *h,
+                struct ccn_keystore *keystore,
+                struct ccn_charbuf *name_prefix,
+                struct ccn_face_instance *face_instance,
+                int flags)
+{
+    struct ccn_charbuf *temp = NULL;
+    struct ccn_charbuf *resultbuf = NULL;
+    struct ccn_charbuf *signed_info = NULL;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *prefixreg = NULL;
+    struct ccn_parsed_ContentObject pcobuf = {0};
+    struct ccn_forwarding_entry forwarding_entry_storage = {0};
+    struct ccn_forwarding_entry *forwarding_entry = &forwarding_entry_storage;
+    int res;
+
+    /* Register the prefix */
     forwarding_entry->action = "prefixreg";
     forwarding_entry->name_prefix = name_prefix;
     forwarding_entry->ccnd_id = face_instance->ccnd_id;
     forwarding_entry->ccnd_id_size = face_instance->ccnd_id_size;
-    forwarding_entry->faceid = new_face_instance->faceid;
+    forwarding_entry->faceid = face_instance->faceid;
     forwarding_entry->flags = flags;
     forwarding_entry->lifetime = (~0U) >> 1;
 
     prefixreg = ccn_charbuf_create();
-    if (prefixreg == NULL) {
-        ON_ERROR_CLEANUP(-1);
-    }
+    ON_NULL_CLEANUP(prefixreg);
     ON_ERROR_CLEANUP(ccnb_append_forwarding_entry(prefixreg, forwarding_entry));
-    temp->length = 0;
+    temp = ccn_charbuf_create();
+    ON_NULL_CLEANUP(temp);
+    signed_info = signed_info_create(keystore);
+    ON_NULL_CLEANUP(signed_info);
     res = ccn_encode_ContentObject(temp,
                                    no_name,
                                    signed_info,
@@ -359,6 +423,7 @@ register_prefix(struct ccn *h, struct ccn_keystore *keystore, struct ccn_charbuf
                                    NULL,
                                    ccn_keystore_private_key(keystore));
     ON_ERROR_CLEANUP(res);
+    name = ccn_charbuf_create();
     ON_ERROR_CLEANUP(ccn_name_init(name));
     ON_ERROR_CLEANUP(ccn_name_append_str(name, "ccnx"));
     ON_ERROR_CLEANUP(ccn_name_append(name, face_instance->ccnd_id, face_instance->ccnd_id_size));
@@ -367,15 +432,12 @@ register_prefix(struct ccn *h, struct ccn_keystore *keystore, struct ccn_charbuf
     res = ccn_get(h, name, local_scope_template, 1000, resultbuf, &pcobuf, NULL, 0);
     ON_ERROR_CLEANUP(res);
 
-    res = new_face_instance->faceid;
+    res = face_instance->faceid;
 
-    ccn_charbuf_destroy(&newface);
-    ccn_charbuf_destroy(&keylocator);
     ccn_charbuf_destroy(&signed_info);
     ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&resultbuf);
     ccn_charbuf_destroy(&name);
-    ccn_face_instance_destroy(&new_face_instance);
     ccn_charbuf_destroy(&prefixreg);
     
     return (res);
@@ -384,13 +446,10 @@ register_prefix(struct ccn *h, struct ccn_keystore *keystore, struct ccn_charbuf
      * and we must free any storage we allocated before returning.
      */
  Cleanup:
-    ccn_charbuf_destroy(&newface);
-    ccn_charbuf_destroy(&keylocator);
     ccn_charbuf_destroy(&signed_info);
     ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&resultbuf);
     ccn_charbuf_destroy(&name);
-    ccn_face_instance_destroy(&new_face_instance);
     ccn_charbuf_destroy(&prefixreg);
 
     return (-1);
@@ -412,7 +471,7 @@ fill_prefix_face_list_item(struct prefix_face_list_item *pflp,
     struct ccn_charbuf *store = NULL;
 
     pflp->prefix = prefix;
-    pflp->fi->action = "newface";
+    pflp->fi->action = (lifetime > 0) ? "newface" : "destroyface";
     pflp->fi->descr.ipproto = ipproto;
     pflp->fi->descr.mcast_ttl = mcast_ttl;
         
@@ -530,7 +589,7 @@ process_command_tokens(struct prefix_face_list_item *pfltail,
     iflags = 0;
     if (flags != NULL) {
         iflags = atoi(flags);
-        if ((iflags & ~(CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_ADVERTISE)) != 0) {
+        if ((iflags & ~(CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_ADVERTISE | CCN_FORW_LAST)) != 0) {
             ccndc_warn(__LINE__, "command error (line %d), invalid flags 0x%x\n", lineno, iflags);
             return (-1);
         }
@@ -757,11 +816,22 @@ incoming_interest(
                                  NULL, NULL, NULL);
     if (res < 0)
         return (CCN_UPCALL_RESULT_ERR);
-
+    
     for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
+        struct ccn_face_instance *nfi;
         pfl->fi->ccnd_id = ccndid;
         pfl->fi->ccnd_id_size = ccndid_size;
-        res = register_prefix(info->h, keystore, pfl->prefix, pfl->fi, pfl->flags);
+        nfi = do_face_action(info->h, keystore, pfl->fi);
+        if (nfi == NULL) {
+            ccndc_warn(__LINE__, "Unable to create/delete face\n");
+            continue;
+        }
+        if (pfl->fi->lifetime > 0) {
+            res = register_prefix(info->h, keystore, pfl->prefix, nfi, pfl->flags);
+        } else {
+            res = 0;
+        }
+        ccn_face_instance_destroy(&nfi);
         if (res < 0) {
             ccndc_warn(__LINE__, "Unable to register prefix %s\n", pfl->prefix);
         }
@@ -789,13 +859,16 @@ main(int argc, char **argv)
     initialize_global_data();
 
     progname = argv[0];
-    while ((ch = getopt(argc, argv, "hf:d")) != -1) {
+    while ((ch = getopt(argc, argv, "hf:dv")) != -1) {
         switch (ch) {
         case 'f':
             configfile = optarg;
             break;
         case 'd':
             dynamic = 1;
+            break;
+        case 'v':
+            verbose++;
             break;
         case 'h':
         default:
@@ -849,9 +922,21 @@ main(int argc, char **argv)
 
     ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
     for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
+        struct ccn_face_instance *nfi;
         pfl->fi->ccnd_id = ccndid;
         pfl->fi->ccnd_id_size = ccndid_size;
-        res = register_prefix(h, keystore, pfl->prefix, pfl->fi, pfl->flags);
+        nfi = do_face_action(h, keystore, pfl->fi);
+        if (nfi == NULL) {
+            ccndc_warn(__LINE__, "Unable to create/delete face\n");
+            continue;
+        }
+        if (pfl->fi->lifetime > 0) {
+            res = register_prefix(h, keystore, pfl->prefix, nfi, pfl->flags);
+        } else {
+            res = 0;
+        }
+        ccn_face_instance_destroy(&nfi);
+
         if (res < 0) {
             ccndc_warn(__LINE__, "Unable to register prefix %s\n", pfl->prefix);
         }
@@ -861,7 +946,8 @@ main(int argc, char **argv)
         /* Set up a handler for interests */
         interest_closure.data = keystore;
         ccn_name_init(temp);
-        ccn_set_interest_filter(h, temp, &interest_closure);
+        ccn_set_interest_filter_with_flags(h, temp, &interest_closure,
+                                           CCN_FORW_ACTIVE | CCN_FORW_LAST);
         ccn_charbuf_destroy(&temp);
         ccn_run(h, -1);
     }

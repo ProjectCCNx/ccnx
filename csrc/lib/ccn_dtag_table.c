@@ -96,6 +96,14 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_Namespace, "Namespace"},
     {CCN_DTAG_GlobalPrefixName, "GlobalPrefixName"},
     {CCN_DTAG_PolicyVersion, "PolicyVersion"},
+    {CCN_DTAG_KeyValueSet, "KeyValueSet"},
+    {CCN_DTAG_KeyValuePair, "KeyValuePair"},
+    {CCN_DTAG_IntegerValue, "IntegerValue"},
+    {CCN_DTAG_DecimalValue, "DecimalValue"},
+    {CCN_DTAG_StringValue, "StringValue"},
+    {CCN_DTAG_BinaryValue, "BinaryValue"},
+    {CCN_DTAG_NameValue, "NameValue"},
+    {CCN_DTAG_Entry, "Entry"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
     {0, 0}
 };

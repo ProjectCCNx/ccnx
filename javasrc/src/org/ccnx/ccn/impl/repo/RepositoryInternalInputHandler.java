@@ -20,6 +20,7 @@ package org.ccnx.ccn.impl.repo;
 import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -30,9 +31,9 @@ import org.ccnx.ccn.protocol.Interest;
 public class RepositoryInternalInputHandler extends CCNHandle {
 	protected RepositoryStore _repo = null;
 
-	protected RepositoryInternalInputHandler(RepositoryStore repo) throws ConfigurationException,
+	protected RepositoryInternalInputHandler(RepositoryStore repo, KeyManager km) throws ConfigurationException,
 			IOException {
-		super();
+		super(km);
 		_repo = repo;
 	}
 	

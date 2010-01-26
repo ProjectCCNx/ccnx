@@ -3,7 +3,7 @@
  * 
  * Main program of ccnd - the CCNx Daemon
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -283,6 +283,20 @@ content_queue_destroy(struct ccnd_handle *h, struct content_queue **pq)
 }
 
 static void
+ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
+{
+    int res;
+    if (*pfd != -1) {
+        res = close(*pfd);
+        if (res == -1)
+            ccnd_msg(h, "close failed for face %u fd=%d: %s", faceid, *pfd, strerror(errno));
+        else
+            ccnd_msg(h, "closing fd %d while finalizing face %u", *pfd, faceid);
+        *pfd = -1;
+    }
+}
+
+static void
 finalize_face(struct hashtb_enumerator *e)
 {
     struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
@@ -292,6 +306,11 @@ finalize_face(struct hashtb_enumerator *e)
     int recycle = 0;
     
     if (i < h->face_limit && h->faces_by_faceid[i] == face) {
+        if (e->ht == h->faces_by_fd) {
+            if (face->send_fd != face->recv_fd)
+                ccnd_close_fd(h, face->faceid, &face->recv_fd);
+            ccnd_close_fd(h, face->faceid, &face->send_fd);
+        }
         h->faces_by_faceid[i] = NULL;
         if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
               face->faceid == ((h->face_rover - 1) | h->face_gen)) {
@@ -305,11 +324,11 @@ finalize_face(struct hashtb_enumerator *e)
             recycle ? "recycling" : "releasing",
             face->faceid, face->faceid & MAXFACES);
         /* If face->addr is not NULL, it is our key so don't free it. */
-        ccn_charbuf_destroy(&face->inbuf);
-        ccn_charbuf_destroy(&face->outbuf);
     }
-    else
+    else if (face->faceid != CCN_NOFACEID)
         ccnd_msg(h, "orphaned face %u", face->faceid);
+    ccn_charbuf_destroy(&face->inbuf);
+    ccn_charbuf_destroy(&face->outbuf);
 }
 
 static struct content_entry *
@@ -656,7 +675,7 @@ link_propagating_interest_to_nameprefix(struct ccnd_handle *h,
         head = calloc(1, sizeof(*head));
         head->next = head;
         head->prev = head;
-        head->faceid = ~0;
+        head->faceid = CCN_NOFACEID;
         npe->propagating_head = head;
     }
     pe->next = head;
@@ -910,6 +929,11 @@ shutdown_client_fd(struct ccnd_handle *h, int fd)
     if (hashtb_seek(e, &fd, sizeof(fd), 0) == HT_OLD_ENTRY) {
         face = e->data;
         if (face->recv_fd != fd) abort();
+        if (face->faceid == CCN_NOFACEID) {
+            ccnd_msg(h, "error indication on fd %d ignored", fd);
+            hashtb_end(e);
+            return;
+        }
         close(fd);
         if (face->send_fd != fd)
             close(face->send_fd);
@@ -1226,7 +1250,7 @@ note_content_from(struct ccnd_handle *h,
 {
     if (npe->src == from_faceid)
         adjust_ipe_predicted_response(h, npe, 0);
-    else if (npe->src == ~0)
+    else if (npe->src == CCN_NOFACEID)
         npe->src = from_faceid;
     else {
         npe->osrc = npe->src;
@@ -1242,9 +1266,9 @@ reorder_outbound_using_history(struct ccnd_handle *h,
                                struct nameprefix_entry *npe,
                                struct ccn_indexbuf *outbound)
 {
-    if (npe->osrc != ~0)
+    if (npe->osrc != CCN_NOFACEID)
         ccn_indexbuf_move_to_end(outbound, npe->osrc);
-    if (npe->src != ~0)
+    if (npe->src != CCN_NOFACEID)
         ccn_indexbuf_move_to_end(outbound, npe->src);
 }
 
@@ -1405,7 +1429,7 @@ check_dgram_faces(struct ccnd_handle *h)
  * Destroys the face identified by faceid.
  * @returns 0 for success, -1 for failure.
  */
-static int
+int
 destroy_face(struct ccnd_handle *h, unsigned faceid)
 {
     struct hashtb_enumerator ee;
@@ -1504,7 +1528,7 @@ check_nameprefix_entries(struct ccnd_handle *h)
     for (npe = e->data; npe != NULL; npe = e->data) {
         if (npe->forward_to != NULL)
             check_forward_to(h, npe);
-        if (  npe->src == ~0 &&
+        if (  npe->src == CCN_NOFACEID &&
               npe->forward_to == NULL &&
               npe->children == 0 &&
               npe->forwarding == NULL) {
@@ -1516,7 +1540,7 @@ check_nameprefix_entries(struct ccnd_handle *h)
             }
         }
         npe->osrc = npe->src;
-        npe->src = ~0;
+        npe->src = CCN_NOFACEID;
         hashtb_next(e);
     }
     hashtb_end(e);
@@ -1576,6 +1600,8 @@ remove_content(struct ccnd_handle *h, struct content_entry *content)
                       content->key_size, content->size - content->key_size);
     if (res != HT_OLD_ENTRY)
         abort();
+    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
+        h->n_stale--;
     if (h->debug & 4)
         ccnd_debug_ccnb(h, __LINE__, "remove", NULL,
                         content->key, content->size);
@@ -1788,13 +1814,19 @@ ccnd_reg_prefix(struct ccnd_handle *h,
     struct ccn_forwarding *f = NULL;
     struct nameprefix_entry *npe = NULL;
     int res;
+    struct face *face = NULL;
 
     if ((flags & (CCN_FORW_CHILD_INHERIT |
                   CCN_FORW_ACTIVE        |
-                  CCN_FORW_ADVERTISE      )) != flags)
+                  CCN_FORW_ADVERTISE     |
+                  CCN_FORW_LAST          )) != flags)
         return(-1);
-    if (face_from_faceid(h, faceid) == NULL)
+    face = face_from_faceid(h, faceid);
+    if (face == NULL)
         return(-1);
+    /* This is a bit hacky, but it gives us a way to set CCN_FACE_DC */
+    if ((flags & CCN_FORW_LAST) != 0)
+        face->flags |= CCN_FACE_DC;
     hashtb_start(h->nameprefix_tab, e);
     res = nameprefix_seek(h, e, msg, comps, ncomps);
     if (res >= 0) {
@@ -2124,7 +2156,7 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     if (selfreg) {
         if (strcmp(forwarding_entry->action, "selfreg") != 0)
             goto Finish;
-        if (forwarding_entry->faceid == ~0)
+        if (forwarding_entry->faceid == CCN_NOFACEID)
             forwarding_entry->faceid = h->interest_faceid;
         else if (forwarding_entry->faceid != h->interest_faceid)
             goto Finish;
@@ -2232,8 +2264,93 @@ struct ccn_charbuf *
 ccnd_req_unreg(struct ccnd_handle *h,
                    const unsigned char *msg, size_t size)
 {
-    ccnd_msg(h, "unreg request not yet implemented");
-    return(NULL);
+    struct ccn_charbuf *result = NULL;
+    struct ccn_parsed_ContentObject pco = {0};
+    int n_name_comp = 0;
+    int res;
+    const unsigned char *req;
+    size_t req_size;
+    size_t start;
+    size_t stop;
+    int found;
+    struct ccn_forwarding_entry *forwarding_entry = NULL;
+    struct face *face = NULL;
+    struct face *reqface = NULL;
+    struct ccn_indexbuf *comps = NULL;
+    struct ccn_forwarding **p = NULL;
+    struct ccn_forwarding *f = NULL;
+    struct nameprefix_entry *npe = NULL;
+
+    res = ccn_parse_ContentObject(msg, size, &pco, NULL);
+    if (res < 0)
+        goto Finish;        
+    res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
+    if (res < 0)
+        goto Finish;
+    forwarding_entry = ccn_forwarding_entry_parse(req, req_size);
+    if (forwarding_entry == NULL || forwarding_entry->action == NULL)
+        goto Finish;
+    if (strcmp(forwarding_entry->action, "unreg") != 0)
+        goto Finish;
+    if (forwarding_entry->faceid == CCN_NOFACEID)
+        goto Finish;
+    if (forwarding_entry->name_prefix == NULL)
+        goto Finish;
+    // XXX - probably ccnd_id should be mandatory.
+    if (forwarding_entry->ccnd_id_size == sizeof(h->ccnd_id)) {
+        if (memcmp(forwarding_entry->ccnd_id,
+                   h->ccnd_id, sizeof(h->ccnd_id)) != 0)
+            goto Finish;
+    }
+    else if (forwarding_entry->ccnd_id_size != 0)
+        goto Finish;
+    face = face_from_faceid(h, forwarding_entry->faceid);
+    if (face == NULL)
+        goto Finish;
+    /* consider the source ... */
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+        goto Finish;
+    
+    comps = ccn_indexbuf_create();
+    n_name_comp = ccn_name_split(forwarding_entry->name_prefix, comps);
+    if (n_name_comp < 0)
+        goto Finish;
+    if (n_name_comp + 1 > comps->n)
+        goto Finish;
+    start = comps->buf[0];
+    stop = comps->buf[n_name_comp];
+    npe = hashtb_lookup(h->nameprefix_tab,
+        forwarding_entry->name_prefix->buf + start,
+        stop - start);
+    if (npe == NULL)
+    	goto Finish;
+    found = 0;
+    p = &npe->forwarding;
+    for (f = npe->forwarding; f != NULL; f = f->next) {
+	if (f->faceid == forwarding_entry->faceid) {
+	    found = 1;
+            *p = f->next;
+            free(f);
+            f = NULL;
+            h->forward_to_gen += 1;
+	    break;
+	}
+        p = &(f->next);
+    }
+    if (!found) 
+    	goto Finish;    
+    result = ccn_charbuf_create();
+    forwarding_entry->action = NULL;
+    forwarding_entry->ccnd_id = h->ccnd_id;
+    forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
+    res = ccnb_append_forwarding_entry(result, forwarding_entry);
+    if (res < 0)
+        ccn_charbuf_destroy(&result);
+Finish:
+    ccn_forwarding_entry_destroy(&forwarding_entry);
+    ccn_indexbuf_destroy(&comps);
+    return(result);
 }
 
 /**
@@ -2322,6 +2439,8 @@ get_outbound_faces(struct ccnd_handle *h,
             if (h->debug & 32)
                 ccnd_msg(h, "at %d adding %u", __LINE__, face->faceid);
             ccn_indexbuf_append_element(x, face->faceid);
+            if ((face->flags & CCN_FACE_DC) != 0)
+                ccn_indexbuf_move_to_front(x, face->faceid);
         }
     }
     return(x);
@@ -2703,7 +2822,7 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
                 npe->usec = parent->usec;
             }
             else {
-                npe->src = npe->osrc = ~0;
+                npe->src = npe->osrc = CCN_NOFACEID;
                 npe->usec = (nrand48(h->seed) % 4096U) + 8192;
             }
         }
@@ -2920,6 +3039,7 @@ mark_stale(struct ccnd_handle *h, struct content_entry *content)
             ccnd_debug_ccnb(h, __LINE__, "stale", NULL,
                             content->key, content->size);
     content->flags |= CCN_CONTENT_ENTRY_STALE;
+    h->n_stale++;
     if (accession < h->min_stale)
         h->min_stale = accession;
     if (accession > h->max_stale)
@@ -2968,9 +3088,15 @@ static void
 set_content_timer(struct ccnd_handle *h, struct content_entry *content,
                   struct ccn_parsed_ContentObject *pco)
 {
-    int seconds;
+    int seconds = 0;
+    int microseconds = 0;
     size_t start = pco->offset[CCN_PCO_B_FreshnessSeconds];
     size_t stop  = pco->offset[CCN_PCO_E_FreshnessSeconds];
+    if (h->force_zero_freshness) {
+        /* Keep around for long enough to make it through the queues */
+        microseconds = 8 * h->data_pause_microsec + 10000;
+        goto Finish;
+    }
     if (start == stop)
         return;
     seconds = ccn_fetch_tagged_nonNegativeInteger(
@@ -2984,7 +3110,9 @@ set_content_timer(struct ccnd_handle *h, struct content_entry *content,
             content->key, pco->offset[CCN_PCO_E]);
         return;
     }
-    ccn_schedule_event(h->sched, seconds * 1000000,
+    microseconds = seconds * 1000000;
+Finish:
+    ccn_schedule_event(h->sched, microseconds,
                        &expire_content, NULL, content->accession);
 }
 
@@ -3069,6 +3197,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         else if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
             /* When old content arrives after it has gone stale, freshen it */
             content->flags &= ~CCN_CONTENT_ENTRY_STALE;
+            h->n_stale--;
             set_content_timer(h, content, &obj);
         }
         else {
@@ -3554,6 +3683,19 @@ ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
     result->micros = now.tv_usec;
 }
 
+void
+ccnd_setsockopt_v6only(struct ccnd_handle *h, int fd)
+{
+    int yes = 1;
+    int res = 0;
+#ifdef IPV6_V6ONLY
+    res = setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &yes, sizeof(yes));
+#endif
+    if (res == -1)
+        ccnd_msg(h, "warning - could not set IPV6_V6ONLY on fd %d: %s",
+                 fd, strerror(errno));
+}
+
 /**
  * Start a new ccnd instance
  * @param progname - name of program binary, used for locating helpers
@@ -3641,6 +3783,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->capacity = ~0;
     if (entrylimit != NULL && entrylimit[0] != 0) {
         h->capacity = atol(entrylimit);
+        if (h->capacity == 0)
+            h->force_zero_freshness = 1;
         if (h->capacity <= 0)
             h->capacity = 10;
     }
@@ -3662,7 +3806,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
             h->data_pause_microsec = 1000000;
     }
     fib = getenv("CCND_TRYFIB"); // XXX - Temporary, for transition period
-    if (fib != NULL && fib[0] != 0)
+    if (fib != NULL && fib[0] != 0 && strchr("0FNfn", fib[0]) == NULL)
         h->flood = 0;
     else
         h->flood = 1;
@@ -3696,6 +3840,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
                         close(fd);
                     else {
                         face = e->data;
+                        face->faceid = CCN_NOFACEID;
                         face->recv_fd = face->send_fd = fd;
                         face->flags |= CCN_FACE_DGRAM;
                         if (a->ai_family == AF_INET) {
@@ -3719,6 +3864,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
                     const char *af = "";
                     int yes = 1;
 		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+                    if (a->ai_family == AF_INET6)
+                        ccnd_setsockopt_v6only(h, fd);
 		    res = bind(fd, a->ai_addr, a->ai_addrlen);
                     if (res != 0) {
                         close(fd);
@@ -3758,4 +3905,64 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     free(sockname);
     sockname = NULL;
     return(h);
+}
+
+static void
+close_fd(int *pfd)
+{
+    if (*pfd != -1) {
+        close(*pfd);
+        *pfd = -1;
+    }
+}
+
+/**
+ * Destroy the ccnd instance, releasing all associated resources.
+ */
+void
+ccnd_destroy(struct ccnd_handle **pccnd)
+{
+    struct ccnd_handle *h = *pccnd;
+    if (h == NULL)
+        return;
+    ccnd_internal_client_stop(h);
+    ccn_schedule_destroy(&h->sched);
+    hashtb_destroy(&h->dgram_faces);
+    hashtb_destroy(&h->faces_by_fd);
+    hashtb_destroy(&h->content_tab);
+    hashtb_destroy(&h->propagating_tab);
+    hashtb_destroy(&h->nameprefix_tab);
+    hashtb_destroy(&h->sparse_straggler_tab);
+    if (h->fds != NULL) {
+        free(h->fds);
+        h->fds = NULL;
+        h->nfds = 0;
+    }
+    close_fd(&h->tcp4_fd);
+    close_fd(&h->tcp6_fd);
+    close_fd(&h->udp4_fd);
+    close_fd(&h->udp6_fd);
+    close_fd(&h->local_listener_fd);
+    if (h->faces_by_faceid != NULL) {
+        free(h->faces_by_faceid);
+        h->faces_by_faceid = NULL;
+        h->face_limit = h->face_gen = 0;
+    }
+    if (h->content_by_accession != NULL) {
+        free(h->content_by_accession);
+        h->content_by_accession = NULL;
+        h->content_by_accession_window = 0;
+    }
+    ccn_charbuf_destroy(&h->scratch_charbuf);
+    ccn_indexbuf_destroy(&h->skiplinks);
+    ccn_indexbuf_destroy(&h->scratch_indexbuf);
+    ccn_indexbuf_destroy(&h->unsol);
+    if (h->face0 != NULL) {
+        ccn_charbuf_destroy(&h->face0->inbuf);
+        ccn_charbuf_destroy(&h->face0->outbuf);
+        free(h->face0);
+        h->face0 = NULL;
+    }
+    free(h);
+    *pccnd = NULL;
 }

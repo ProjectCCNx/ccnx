@@ -67,8 +67,24 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  */
 public class CCNFlowControl implements CCNFilterListener {
 	
-	public enum Shape {STREAM};
+	public enum Shape {
+		STREAM("STREAM");
+		
+		Shape(String str) { this._str = str; }
+		public String value() { return _str; }
+		
+		private final String _str;
+	}
 	
+	public enum SaveType {
+		RAW ("RAW"), REPOSITORY ("REPOSITORY");
+
+		SaveType(String str) { this._str = str; }
+		public String value() { return _str; }
+		
+		private final String _str;
+	}
+
 	protected CCNHandle _handle = null;
 		
 	// Designed to allow a CCNOutputStream to flush its current output once without
@@ -167,8 +183,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * Add a new namespace to the controller. The controller will register a filter with ccnd to receive
 	 * interests in this namespace.
 	 * @param name
+	 * @throws IOException 
 	 */
-	public void addNameSpace(ContentName name) {
+	public void addNameSpace(ContentName name) throws IOException {
 		if (!_flowControlEnabled)
 			return;
 		Iterator<ContentName> it = _filteredNames.iterator();
@@ -199,8 +216,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	/**
 	 * Filter handler method, add a namespace and respond to an existing Interest.
+	 * @throws IOException 
 	 */
-	public void addNameSpace(ContentName name, Interest outstandingInterest) {
+	public void addNameSpace(ContentName name, Interest outstandingInterest) throws IOException {
 		addNameSpace(name);
 		handleInterest(outstandingInterest);
 	}
@@ -247,6 +265,20 @@ public class CCNFlowControl implements CCNFilterListener {
 				break;
 			}
 		}
+	}
+	
+	/**
+	 * Stop attending to all namespaces.
+	 */
+	public void removeAllNamespaces() {
+		removeNameSpace(null, true);
+	}
+	
+	/**
+	 * Helper method to clean up and close.
+	 */
+	public void close() {
+		removeAllNamespaces();
 	}
 	
 	/**
@@ -562,12 +594,14 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
-	 * Shutdown but wait for data to be sent to ccnd first
+	 * Shutdown operation of this flow controller -- wait for all current
+	 * data to clear, and unregister all outstanding interests. Do *not*
+	 * shut down the handle; we might not own it.
 	 * @throws IOException if buffer doesn't drain within timeout
 	 */
 	public void shutdown() throws IOException {
 		waitForPutDrain();
-		_handle.getNetworkManager().shutdown();
+		removeAllNamespaces();
 	}
 	
 	/**
@@ -613,6 +647,13 @@ public class CCNFlowControl implements CCNFilterListener {
 	 */
 	public void setCapacity(int value) {
 		_capacity = value;
+	}
+	
+	/**
+	 * Set the capacity to the maximum possible value, Integer.MAX_VALUE.
+	 */
+	public void setMaximumCapacity() {
+		_capacity = Integer.MAX_VALUE;
 	}
 	
 	/**
@@ -687,4 +728,9 @@ public class CCNFlowControl implements CCNFilterListener {
 		removeNameSpace(null, true);
 		_flowControlEnabled = false;
 	}
+	
+	/**
+	 * Help users determine what type of flow controller this is.
+	 */
+	public SaveType saveType() { return SaveType.RAW; }
 }

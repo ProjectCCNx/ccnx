@@ -18,12 +18,16 @@
 package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
+import java.util.EnumSet;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
+import org.ccnx.ccn.io.ErrorStateException;
+import org.ccnx.ccn.io.CCNAbstractInputStream.FlagTypes;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -63,13 +67,15 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	 */
 	public static class LinkObject extends CCNEncodableObject<Link> {
 		
-		public LinkObject(ContentName name, Link data, CCNHandle handle) throws IOException {
-			super(Link.class, true, name, data, handle);
+		public LinkObject(ContentName name, Link data, SaveType saveType, CCNHandle handle) throws IOException {
+			super(Link.class, true, name, data, saveType, handle);
 		}
 		
-		public LinkObject(ContentName name, Link data, PublisherPublicKeyDigest publisher, 
+		public LinkObject(ContentName name, Link data, SaveType saveType,
+						  PublisherPublicKeyDigest publisher, 
 						  KeyLocator keyLocator, CCNHandle handle) throws IOException {
-			super(Link.class, true, name, data, publisher, keyLocator, handle);
+			super(Link.class, true, name, data, saveType,
+					publisher, keyLocator, handle);
 		}
 
 		public LinkObject(ContentName name, CCNHandle handle) 
@@ -87,6 +93,10 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 			super(Link.class, true, firstBlock, handle);
 		}
 		
+		public LinkObject(CCNEncodableObject<? extends Link> other) {
+			super(Link.class, other);
+		}
+		
 		/**
 		 * Subclasses that need to write an object of a particular type can override.
 		 * @return Content type to use.
@@ -94,21 +104,21 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		@Override
 		public ContentType contentType() { return ContentType.LINK; }
 
-		public ContentName getTargetName() throws ContentGoneException, ContentNotReadyException { 
+		public ContentName getTargetName() throws ContentGoneException, ContentNotReadyException, ErrorStateException { 
 			Link lr = link();
 			if (null == lr)
 				return null;
 			return lr.targetName(); 
 		}
 
-		public LinkAuthenticator getTargetAuthenticator() throws ContentNotReadyException, ContentGoneException { 
+		public LinkAuthenticator getTargetAuthenticator() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
 			Link lr = link();
 			if (null == lr)
 				return null;
 			return lr.targetAuthenticator(); 
 		}
 
-		public Link link() throws ContentNotReadyException, ContentGoneException { 
+		public Link link() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
 			if (null == data())
 				return null;
 			return data(); 
@@ -118,6 +128,16 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 			if (null == data())
 				return null;
 			return link().dereference(timeout, _handle);
+		}
+		
+		/**
+		 * Modify the properties of the input streams we read to read links themselves,
+		 * rather than dereferencing them and causing an infinite loop; must modify
+		 * in constructor to handle passed in content objects..
+		 */
+		@Override
+		protected EnumSet<FlagTypes> getInputStreamFlags() {
+			return EnumSet.of(FlagTypes.DONT_DEREFERENCE);
 		}
 	}
 
@@ -188,8 +208,13 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		}
 		// Don't know if we are referencing a particular object, so don't look for segments.
 		PublisherPublicKeyDigest desiredPublisher = (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null;
-		return VersioningProfile.getLatestVersion(targetName(), 
+		ContentObject result = VersioningProfile.getLatestVersion(targetName(), 
 				desiredPublisher, timeout, new ContentObject.SimpleVerifier(desiredPublisher), handle);
+		if (null != result) {
+			return result;
+		}
+		// Alright, last shot -- resolve link to unversioned data.
+		return handle.get(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
 	}
 	
 	@Override
@@ -280,6 +305,13 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	@Override
 	public Object clone() throws CloneNotSupportedException {
 		return new Link(this);
+	}
+
+	@Override
+	public String toString() {
+		return "Link [targetName=" + targetName() + 
+				", targetLabel=" + targetLabel() + 
+				", targetAuthenticator=" + targetAuthenticator() + "]";
 	}
 
 }

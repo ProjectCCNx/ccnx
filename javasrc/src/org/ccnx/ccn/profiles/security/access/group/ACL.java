@@ -27,7 +27,10 @@ import java.util.TreeSet;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -37,6 +40,7 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
@@ -45,9 +49,9 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * and manage (i.e. edit access rights to) the content in a CCN namespace.  
  *
  */
-
-
 public class ACL extends Collection {
+	
+	public static final String ACL_ELEMENT = "ACL";
 	
 	/** Readers can read content */
 	public static final String LABEL_READER = "r";
@@ -150,7 +154,8 @@ public class ACL extends Collection {
 	protected TreeSet<Link> _managers = new TreeSet<Link>(_comparator);
 
 	/**
-	 * ACL CCN objects.
+	 * ACL CCN objects; as it only makes sense right now to
+	 * operate on ACLs in repositories, it writes all data to repositories..
 	 *
 	 */
 	public static class ACLObject extends CCNEncodableObject<ACL> {
@@ -164,7 +169,14 @@ public class ACL extends Collection {
 		 * @throws IOException
 		 */
 		public ACLObject(ContentName name, ACL data, CCNHandle handle) throws IOException {
-			super(ACL.class, true, name, data, handle);
+			super(ACL.class, true, name, data, SaveType.REPOSITORY, handle);
+		}
+
+		public ACLObject(ContentName name, ACL data, 
+				PublisherPublicKeyDigest publisher, KeyLocator keyLocator,
+				CCNHandle handle) throws IOException {
+			super(ACL.class, true, name, data, SaveType.REPOSITORY, publisher, keyLocator,
+					handle);
 		}
 
 		/**
@@ -177,6 +189,7 @@ public class ACL extends Collection {
 		public ACLObject(ContentName name, CCNHandle handle) 
 					throws ContentDecodingException, IOException {
 			super(ACL.class, true, name, (PublisherPublicKeyDigest)null, handle);
+			setSaveType(SaveType.REPOSITORY);
 		}
 		
 		/**
@@ -190,14 +203,33 @@ public class ACL extends Collection {
 		public ACLObject(ContentName name, PublisherPublicKeyDigest publisher,
 						CCNHandle handle) throws ContentDecodingException, IOException {
 			super(ACL.class, true, name, publisher, handle);
+			setSaveType(SaveType.REPOSITORY);
 		}
 		
 		public ACLObject(ContentObject firstBlock, CCNHandle handle) 
 				throws ContentDecodingException, IOException {
 			super(ACL.class, true, firstBlock, handle);
+			setSaveType(SaveType.REPOSITORY);
 		}
-		
-		public ACL acl() throws ContentNotReadyException, ContentGoneException { return data(); }
+
+		public ACLObject(ContentName name, PublisherPublicKeyDigest publisher,
+				CCNFlowControl flowControl) throws ContentDecodingException,
+				IOException {
+			super(ACL.class, true, name, publisher, flowControl);
+		}
+
+		public ACLObject(ContentObject firstBlock, CCNFlowControl flowControl)
+				throws ContentDecodingException, IOException {
+			super(ACL.class, true, firstBlock, flowControl);
+		}
+
+		public ACLObject(ContentName name, ACL data, PublisherPublicKeyDigest publisher,
+				KeyLocator keyLocator, CCNFlowControl flowControl)
+				throws IOException {
+			super(ACL.class, true, name, data, publisher, keyLocator, flowControl);
+		}
+
+		public ACL acl() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 	}
 
 	public ACL() {
@@ -493,6 +525,14 @@ public class ACL extends Collection {
 		_readers.clear();
 		_writers.clear();
 		_managers.clear();
+	}
+	
+	/**
+	 * TODO: Need to add to schema.
+	 */
+	@Override
+	public String getElementLabel() { 
+		return ACL_ELEMENT;
 	}
 
 }

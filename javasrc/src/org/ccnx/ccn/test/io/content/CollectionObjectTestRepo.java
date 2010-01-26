@@ -25,6 +25,7 @@ import java.util.LinkedList;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
@@ -64,14 +65,15 @@ public class CollectionObjectTestRepo {
 		ContentName collectionName = ContentName.fromNative(testHelper.getTestNamespace("testCollections"), "myCollection");
 		
 		// Write something that isn't a collection
-		CCNSerializableStringObject so = new CCNSerializableStringObject(nonCollectionName, "This is not a collection.", putLibrary);
-		so.saveToRepository();
+		CCNSerializableStringObject so = new CCNSerializableStringObject(nonCollectionName, "This is not a collection.", SaveType.REPOSITORY, putLibrary);
+		so.save();
 		
 		Link[] references = new Link[2];
 		references[0] = new Link(ContentName.fromNative(collectionName, "r1"));
 		references[1] = new Link(ContentName.fromNative(collectionName, "r2"));
-		CollectionObject collection = new CollectionObject(collectionName, references, putLibrary);
-		collection.saveToRepository();
+		CollectionObject collection = 
+			new CollectionObject(collectionName, references, SaveType.REPOSITORY, putLibrary);
+		collection.save();
 		
 		try {
 			CollectionObject notAnObject = new CollectionObject(nonCollectionName, getLibrary);

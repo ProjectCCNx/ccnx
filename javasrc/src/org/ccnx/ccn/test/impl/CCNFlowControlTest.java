@@ -19,6 +19,7 @@ package org.ccnx.ccn.test.impl;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Queue;
 
@@ -26,9 +27,11 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -55,21 +58,21 @@ public class CCNFlowControlTest extends CCNTestBase {
 			_reader = new CCNReader(_handle);
 			
 			name1 = ContentName.fromNative("/foo/bar");
-			v1 = VersioningProfile.addVersion(name1);
-			// JDT TODO -- sleep is needed because no easy way yet to generate 
-			// separate version numbers if generating names fast.
-			Thread.sleep(2);
-			v2 = VersioningProfile.addVersion(name1);	
-
+			// DKS remove unnecessary sleep, force separate versions.
+			CCNTime now = new CCNTime();
+			Timestamp afterNow = new Timestamp(now.getTime());
+			afterNow.setNanos(afterNow.getNanos() + 540321);
+			v1 = VersioningProfile.addVersion(name1, now);
+			v2 = VersioningProfile.addVersion(name1, new CCNTime(afterNow));	
+			Log.info("Version 1 {0} ({1}), version 2 {2} ({3})", v1, now, v2, afterNow);
+			Assert.assertFalse(v1.equals(v2));
 		} catch (ConfigurationException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (MalformedContentNameStringException e) {
 			e.printStackTrace();
-		} catch (InterruptedException e) {
-			// no-op
-		}
+		} 
 	}
 	
 	@Before
@@ -228,7 +231,8 @@ public class CCNFlowControlTest extends CCNTestBase {
 		testLast(objv1s1, objv1s4);
 		testLast(objv1s1, objv1s3);
 		testLast(objv1s1, objv1s2);
-		_handle.get(new Interest(v1s1), 0);
+		ContentObject lastOne = _handle.get(new Interest(v1s1), 0);
+		Log.info("Retrieved final object {0}, blocks still in fc: {1}", lastOne.name(), fc.getCapacity()-fc.availableCapacity());
 		
 		System.out.println("Testing \"waitForPutDrain\"");
 		try {
@@ -250,6 +254,7 @@ public class CCNFlowControlTest extends CCNTestBase {
 		
 		// Test that put over highwater fails with nothing draining
 		// the buffer
+		System.out.println("Testing \"testHighwaterWait\"");
 		normalReset(name1);
 		fc.setCapacity(4);
 		fc.put(objv1s1);

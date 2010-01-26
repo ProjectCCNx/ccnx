@@ -28,7 +28,7 @@ ccn_xmltoccnb -w - <<EOF >prefixreg.ccnb
      <Component ccnbencoding="text">Junk</Component>
   </Name>
   <FaceID>$FACEID</FaceID>  
-  <FreshnessSeconds>19</FreshnessSeconds>
+  <FreshnessSeconds>2147483647</FreshnessSeconds>
 </ForwardingEntry>
 EOF
 

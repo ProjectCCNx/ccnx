@@ -25,6 +25,8 @@ import junit.framework.AssertionFailedError;
 
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys.ContentInfo;
+import org.ccnx.ccn.impl.security.crypto.ContentKeys.KeyAndIV;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -48,8 +50,8 @@ public class KeyDerivationFunctionTest {
 
 	static SecretKeySpec keySpec;
 	static byte [] key = new byte[16];
-	static ContentKeys keyandiv;
-	static ContentKeys keyandivnolabel;
+	static KeyAndIV keyandiv;
+	static KeyAndIV keyandivnolabel;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -62,19 +64,22 @@ public class KeyDerivationFunctionTest {
 		testNameVersion2 = VersioningProfile.addVersion(testName);
 
 		random.nextBytes(key);
-		SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+		SecretKeySpec keySpec = new SecretKeySpec(key, ContentKeys.DEFAULT_KEY_ALGORITHM);
 		Assert.assertArrayEquals("raw bytes of key not the same as the encoded key!", key, keySpec.getEncoded());
 		
-		keyandiv = KeyDerivationFunction.DeriveKeysForObject(keySpec.getEncoded(), 
-										functionalLabel, testName, publisher);
-		keyandivnolabel = KeyDerivationFunction.DeriveKeysForObject(keySpec.getEncoded(), 
-				null, testName, publisher);
+		keyandiv = KeyDerivationFunction.DeriveKeysForObject(ContentKeys.DEFAULT_KEY_ALGORITHM,
+				keySpec.getEncoded(), 
+				new ContentInfo(testName, publisher, functionalLabel));
+		keyandivnolabel = KeyDerivationFunction.DeriveKeysForObject(ContentKeys.DEFAULT_KEY_ALGORITHM,
+				keySpec.getEncoded(), 
+				new ContentInfo(testName, publisher, null));
 	}
 
 	@Test
 	public void testKeysSameTwice() throws Exception {
-		ContentKeys keyandiv2 = KeyDerivationFunction.DeriveKeysForObject(keySpec.getEncoded(), 
-				functionalLabel, testName, publisher);
+		KeyAndIV keyandiv2 = KeyDerivationFunction.DeriveKeysForObject(ContentKeys.DEFAULT_KEY_ALGORITHM,
+				keySpec.getEncoded(), 
+				new ContentInfo(testName, publisher, functionalLabel));
 		Assert.assertEquals(keyandiv, keyandiv2);
 	}
 	
@@ -85,17 +90,20 @@ public class KeyDerivationFunctionTest {
 	
 	@Test
 	public void testNoLabelSameTwice() throws Exception {
-		ContentKeys keyandivnolabel2 = KeyDerivationFunction.DeriveKeysForObject(keySpec.getEncoded(), 
-				null, testName, publisher);
+		KeyAndIV keyandivnolabel2 = KeyDerivationFunction.DeriveKeysForObject(ContentKeys.DEFAULT_KEY_ALGORITHM,
+				keySpec.getEncoded(), 
+				new ContentInfo(testName, publisher, null));
 		Assert.assertEquals(keyandivnolabel, keyandivnolabel2);
 	}
 	
 	@Test(expected=AssertionFailedError.class)
 	public void testVersionMakesDifference() throws Exception {
-		ContentKeys keyandivv1 = KeyDerivationFunction.DeriveKeysForObject(keySpec.getEncoded(), 
-				null, testNameVersion1, publisher);
-		ContentKeys keyandivv2 = KeyDerivationFunction.DeriveKeysForObject(keySpec.getEncoded(), 
-				null, testNameVersion2, publisher);
+		KeyAndIV keyandivv1 = KeyDerivationFunction.DeriveKeysForObject(ContentKeys.DEFAULT_KEY_ALGORITHM,
+				keySpec.getEncoded(), 
+				new ContentInfo(testNameVersion1, publisher, null));
+		KeyAndIV keyandivv2 = KeyDerivationFunction.DeriveKeysForObject(ContentKeys.DEFAULT_KEY_ALGORITHM,
+				keySpec.getEncoded(), 
+				new ContentInfo(testNameVersion2, publisher, null));
 		Assert.assertEquals(keyandivv1, keyandivv2);
 	}
 }

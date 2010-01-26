@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -37,14 +37,21 @@ import java.util.concurrent.TimeUnit;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
+import org.ccnx.ccn.profiles.ccnd.CCNDaemonProfile;
+import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager;
+import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ForwardingEntry;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.WirePacket;
 
 
@@ -77,28 +84,62 @@ public class CCNNetworkManager implements Runnable {
 	public static final String KEEPALIVE_NAME = "/HereIAm";
 	public static final int THREAD_LIFE = 8;	// in seconds
 	
+	/**
+	 *  Definitions for which network protocol to use.  This allows overriding
+	 *  the current default.
+	 */
+	public enum NetworkProtocol {
+		UDP (17), TCP (6);
+		NetworkProtocol(Integer i) { this._i = i; }
+		private final Integer _i;
+		public Integer value() { return _i; }
+	}
+		
+	public static final String PROP_AGENT_PROTOCOL_KEY = "ccn.agent.protocol";
+	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.UDP;
+	public static final String PROP_AGENT_PREFIX_REG = "ccn.agent.prefix_reg";
+	public static final String ENV_AGENT_PREFIX_REG = "CCND_TRYFIB";
+
+	
+	/*
+	 *  This ccndId is set on the first connection with 'ccnd' and is the
+	 *  'device name' that all of our control communications will use to
+	 *  ensure that we are talking to our local 'ccnd'.
+	 */
+	protected static Integer _idSyncer = new Integer(0);
+	protected static PublisherPublicKeyDigest _ccndId = null;
+	protected Integer _faceID = null;
+	protected CCNDIdGetter _getter = null;
+	
 	/*
 	 * Static singleton.
 	 */
-	
 	protected Thread _thread = null; // the main processing thread
 	protected ThreadPoolExecutor _threadpool = null; // pool service for callback threads
 	protected DatagramChannel _channel = null; // for use by run thread only!
 	protected Selector _selector = null;
 	protected Throwable _error = null; // Marks error state of socket
 	protected boolean _run = true;
-	protected KeyManager _keyManager;
-	protected ContentObject _keepalive; 
+
+	// protected ContentObject _keepalive; 
 	protected FileOutputStream _tapStreamOut = null;
 	protected FileOutputStream _tapStreamIn = null;
 	protected long _lastHeartbeat = 0;
 	protected int _port = DEFAULT_AGENT_PORT;
 	protected String _host = DEFAULT_AGENT_HOST;
+	protected NetworkProtocol _protocol = DEFAULT_PROTOCOL;
 
+	
+	// For handling protocol to speak to ccnd, must have keys
+	protected KeyManager _keyManager;
+	protected int _localPort = -1;
+	
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
-	
+	public static final boolean DEFAULT_PREFIX_REG = false; // Until ccnd gets updated
+	protected boolean _usePrefixReg = DEFAULT_PREFIX_REG;
+	protected PrefixRegistrationManager _prefixMgr = null;
 	private Timer _periodicTimer = null;
 	private boolean _timersSetup = false;
 	
@@ -109,14 +150,14 @@ public class CCNNetworkManager implements Runnable {
 		// TODO Interest refresh time is supposed to "decay" over time but there are currently
 		// unresolved problems with this.
 		public void run() {
-			
+
 			long ourTime = new Date().getTime();
 			if ((ourTime - _lastHeartbeat) > HEARTBEAT_PERIOD) {
 				_lastHeartbeat = ourTime;
 				heartbeat();
 			}
 
-			long minRefreshTime = PERIOD + ourTime;
+			long minInterestRefreshTime = PERIOD + ourTime;
 			// Library.finest("Refreshing interests (size " + _myInterests.size() + ")");
 
 			// Re-express interests that need to be re-expressed
@@ -128,30 +169,80 @@ public class CCNNetworkManager implements Runnable {
 							Log.finer("Refresh interest: {0}", reg.interest);
 							// Temporarily back out refresh period decay
 							//reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
-									//: reg.nextRefreshPeriod * 2;
+							//: reg.nextRefreshPeriod * 2;
 							reg.nextRefresh += reg.nextRefreshPeriod;
 							try {
 								write(reg.interest);
 							} catch (NotYetConnectedException nyce) {}
 						}
-						if (minRefreshTime > reg.nextRefresh)
-							minRefreshTime = reg.nextRefresh;
+						if (minInterestRefreshTime > reg.nextRefresh)
+							minInterestRefreshTime = reg.nextRefresh;
 					}
 				}
 			} catch (ContentEncodingException xmlex) {
-				Log.severe("Processing thread failure (Malformed datagram): {0}", xmlex.getMessage()); 
+				Log.severe("PeriodicWriter interest refresh thread failure (Malformed datagram): {0}", xmlex.getMessage()); 
 				Log.warningStackTrace(xmlex);
 			}
+
+
+			long minFilterRefreshTime = PERIOD + ourTime;
+			// Re-express prefix registrations that need to be re-expressed
+			// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
+			// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
+			// prefix we use Integer.MAX_VALUE as the requested lifetime.
+			if (_usePrefixReg) {
+				synchronized (_myFilters) {
+					Log.fine("Refresh registration.  size: " + _myFilters.size() + " sizeNames: " + _myFilters.sizeNames());
+					for (Entry<Filter> entry : _myFilters.values()) {
+						Filter filter = entry.value();
+						if (null != filter.forwarding && filter.lifetime != -1 && filter.nextRefresh != -1) {
+							if (ourTime > filter.nextRefresh) {
+								Log.finer("Refresh registration: {0}", filter.prefix);
+								filter.nextRefresh = -1;
+								try {
+									ForwardingEntry forwarding = _prefixMgr.selfRegisterPrefix(filter.prefix);
+									if (null != forwarding) {
+										filter.lifetime = forwarding.getLifetime();
+										filter.nextRefresh = new Date().getTime() + (filter.lifetime / 2);
+									}
+									filter.forwarding = forwarding;
+
+								} catch (CCNDaemonException e) {
+									Log.warning(e.getMessage());
+									filter.forwarding = null;
+									filter.lifetime = -1;
+									filter.nextRefresh = -1;
+								}
+							}	
+							if (minFilterRefreshTime > filter.nextRefresh)
+								minFilterRefreshTime = filter.nextRefresh;
+						}
+					} /* for (Entry<Filter> entry : _myFilters.values()) */
+				} /* synchronized (_myFilters) */
+			} /* _usePrefixReg */
+
+			long currentTime = System.currentTimeMillis();
+			long checkInterestDelay = minInterestRefreshTime - currentTime;
+			if (checkInterestDelay < 0)
+				checkInterestDelay = 0;
+			if (checkInterestDelay > PERIOD)
+				checkInterestDelay = PERIOD;
+
+			long checkPrefixDelay = minFilterRefreshTime - currentTime;
+			if (checkPrefixDelay < 0)
+				checkPrefixDelay = 0;
+			if (checkPrefixDelay > PERIOD)
+				checkPrefixDelay = PERIOD;
 			
-			long checkDelay = minRefreshTime - System.currentTimeMillis();
-			if (checkDelay < 0)
-				checkDelay = 0;
-			if (checkDelay > PERIOD)
-				checkDelay = PERIOD;
-			
-			_periodicTimer.schedule(new PeriodicWriter(), checkDelay);
-		}
-	}
+			long useMe;
+			if (checkInterestDelay < checkPrefixDelay) {
+				useMe = checkInterestDelay;
+			} else {
+				useMe = checkPrefixDelay;
+			}
+			_periodicTimer.schedule(new PeriodicWriter(), useMe);
+		} /* run */
+	} /* private class PeriodicWriter extends TimerTask */
 	
 	/**
 	 * Send the heartbeat. Also attempt to detect ccnd going down.
@@ -280,7 +371,7 @@ public class CCNNetworkManager implements Runnable {
 				return super.hashCode();
 			}
 		}
-	}
+	} /* protected abstract class ListenerRegistration implements Runnable */
 	
 	/**
 	 * Record of Interest
@@ -423,7 +514,7 @@ public class CCNNetworkManager implements Runnable {
 			}
 			super.run();
 		}
-	}
+	} /* protected class InterestRegistration extends ListenerRegistration */
 	
 	/**
 	 * Record of a filter describing portion of namespace for which this 
@@ -431,13 +522,30 @@ public class CCNNetworkManager implements Runnable {
 	 * to registered interest handlers
 	 */
 	protected class Filter extends ListenerRegistration {
-		public ContentName name;
-		protected boolean deliveryPending = false;
-		protected ArrayList<Interest> interests= new ArrayList<Interest>(1);
-		public Filter(CCNNetworkManager mgr, ContentName n, CCNFilterListener l, Object o) {
-			name = n; listener = l; owner = o;
+		public ContentName prefix;  /* Also used to remember registration with ccnd */
+		protected ArrayList<Interest> interests = new ArrayList<Interest>(1);
+		// protected Integer faceId = null;
+		ForwardingEntry forwarding = null;
+		// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
+		// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
+		// prefix we use Integer.MAX_VALUE as the requested lifetime.
+		long lifetime = -1; // in seconds
+		long nextRefresh = -1;
+		
+		public Filter(CCNNetworkManager mgr, ContentName n, CCNFilterListener l, Object o, ForwardingEntry e) {
+			prefix = n; listener = l; owner = o;
 			manager = mgr;
+			forwarding = e;
+			if (null != forwarding) {
+				lifetime = forwarding.getLifetime();
+				nextRefresh = new Date().getTime() + (lifetime / 2);
+			}
 		}
+		
+		public ForwardingEntry getEntry() {
+			return forwarding;
+		}
+		
 		public synchronized void add(Interest i) {
 			interests.add(i);
 		}
@@ -459,10 +567,10 @@ public class CCNNetworkManager implements Runnable {
 				
 				if (null != results) {								
 					// Call into client code without holding any library locks
-					Log.finer("Filter callback ({0} interests) for: {1}", results.size(), name);
+					Log.finer("Filter callback ({0} interests) for: {1}", results.size(), prefix);
 					listener.handleInterests(results);
 				} else {
-					Log.finer("Filter callback skipped (no interests) for: {0}", name);
+					Log.finer("Filter callback skipped (no interests) for: {0}", prefix);
 				}
 			} catch (RuntimeException ex) {
 				Log.warning("failed to deliver interest: {0}", ex);
@@ -470,15 +578,56 @@ public class CCNNetworkManager implements Runnable {
 		}
 		@Override
 		public String toString() {
-			return name.toString();
+			return prefix.toString();
 		}
-	}
-	
+	} /* protected class Filter extends ListenerRegistration */
+
+	private class CCNDIdGetter implements Runnable {
+		CCNNetworkManager _networkManager;
+		KeyManager _keyManager;
+
+		public CCNDIdGetter(CCNNetworkManager networkManager, KeyManager keyManager) { 
+			_networkManager = networkManager;
+			_keyManager = keyManager;
+		}
+
+		public void run() {
+			boolean isNull = false;
+			PublisherPublicKeyDigest sentID = null;
+			synchronized (_idSyncer) {
+				isNull = (null == _ccndId);
+			}
+			if (isNull) {
+				try {
+					sentID = fetchCCNDId(_networkManager, _keyManager);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				if (null == sentID) {
+					Log.severe("CCNDIdGetter: call to fetchCCNDId returned null.");
+				}
+				synchronized(_idSyncer) {
+					_ccndId = sentID;
+					Log.info("CCNDIdGetter: ccndId {0}", ContentName.componentPrintURI(sentID.digest()));
+				}
+			} /* null == _ccndId */
+		} /* run() */
+
+	} /* private class CCNDIdGetter implements Runnable */
+
 	/**
 	 * The constructor. Attempts to connect to a ccnd at the currently specified port number
 	 * @throws IOException if the port is invalid
 	 */
-	public CCNNetworkManager() throws IOException {
+	public CCNNetworkManager(KeyManager keyManager) throws IOException {
+		if (null == keyManager) {
+			// Unless someone gives us one later, we won't be able to register filters. Log this.
+			Log.info("CCNNetworkManager: being created with null KeyManager. Must set KeyManager later to be able to register filters.");
+		}
+		
+		_keyManager = keyManager;
+		
 		// Determine port at which to contact agent
 		String portval = System.getProperty(PROP_AGENT_PORT);
 		if (null != portval) {
@@ -494,6 +643,43 @@ public class CCNNetworkManager implements Runnable {
 			_host = hostval;
 			Log.warning("Non-standard CCN agent host " + _host + " per property " + PROP_AGENT_HOST);
 		}
+		
+		String proto = System.getProperty(PROP_AGENT_PROTOCOL_KEY);
+		if (null != proto) {
+			boolean found = false;
+			for (NetworkProtocol p : NetworkProtocol.values()) {
+				String pAsString = p.toString();
+				if (proto.equalsIgnoreCase(pAsString)) {
+					Log.warning("CCN agent protocol changed to " + pAsString + "per property");
+					_protocol = p;
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				throw new IOException("Invalid protocol '" + proto + "' specified in " + PROP_AGENT_PROTOCOL_KEY);
+			}
+		} else {
+			_protocol = DEFAULT_PROTOCOL;
+		}
+
+		String prefix = System.getProperty(PROP_AGENT_PREFIX_REG);
+		if (null == prefix) {
+			prefix = System.getenv(ENV_AGENT_PREFIX_REG);
+		}
+		if (null != prefix) {
+			/* if the property is anything other than 'false' assume using prefix registration */
+			if (prefix.equalsIgnoreCase("false")) {
+				_usePrefixReg = false;
+			} else {
+				_usePrefixReg = true;
+			}
+			Log.warning("CCN agent use of prefix registration changed to " + _usePrefixReg + " per property");
+		} else {
+			_usePrefixReg = DEFAULT_PREFIX_REG;
+		}
+		
+
 		Log.info("Contacting CCN agent at " + _host + ":" + _port);
 		
 		String tapname = System.getProperty(PROP_TAP);
@@ -515,11 +701,13 @@ public class CCNNetworkManager implements Runnable {
 		_channel.configureBlocking(false);
 		_selector = Selector.open();
 		_channel.register(_selector, SelectionKey.OP_READ);
+		_localPort = _channel.socket().getLocalPort();
+		Log.info("Connection to CCN agent using local port number: " + _localPort);
 		
 		// Create callback threadpool and main processing thread
 		_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
 		_threadpool.setKeepAliveTime(THREAD_LIFE, TimeUnit.SECONDS);
-		_thread = new Thread(this);
+		_thread = new Thread(this, "CCNNetworkManager");
 		_thread.start();
 	}
 	
@@ -564,6 +752,56 @@ public class CCNNetworkManager implements Runnable {
 			_tapStreamIn = new FileOutputStream(new File(pathname + "_in"));
 			Log.info("Tap writing to {0}", pathname);
 		}
+	}
+	
+	/**
+	 * Get the CCN Name of the 'ccnd' we're connected to.
+	 * 
+	 * @return the CCN Name of the 'ccnd' this CCNNetworkManager is connected to.
+	 * @throws IOException 
+	 */
+	public PublisherPublicKeyDigest getCCNDId() throws IOException {
+		/*
+		 *  Now arrange to have the ccndId read.  We can't do that here because we need
+		 *  to return back to the create before we know we get the answer back.  We can
+		 *  cause the prefix registration to wait.
+		 */
+		PublisherPublicKeyDigest sentID = null;
+		boolean doFetch = false;
+		
+		synchronized (_idSyncer) {
+			if (null == _ccndId) {
+				doFetch = true;
+			} else {
+				return _ccndId;
+			}
+		}
+		
+		if (doFetch) {
+			sentID = fetchCCNDId(this, _keyManager);
+			if (null == sentID) {
+				Log.severe("getCCNDId: call to fetchCCNDId returned null.");
+				return null;
+			}
+		}
+		synchronized (_idSyncer) {
+			_ccndId = sentID;
+			return _ccndId;
+		}
+	}
+	
+	/**
+	 * 
+	 */
+	public KeyManager getKeyManager() {
+		return _keyManager;
+	}
+	
+	/**
+	 * 
+	 */
+	public void setKeyManager(KeyManager manager) {
+		_keyManager = manager;
 	}
 	
 	/**
@@ -678,18 +916,41 @@ public class CCNNetworkManager implements Runnable {
 	 * @param caller 	must not be null
 	 * @param filter	ContentName containing prefix of interests to match
 	 * @param callbackListener a CCNFilterListener
+	 * @throws IOException 
 	 */
-	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) {
+	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) throws IOException {
 		Log.fine("setInterestFilter: {0}", filter);
+		if ((null == _keyManager) || (!_keyManager.initialized() || (null == _keyManager.getDefaultKeyID()))) {
+			Log.warning("Cannot set interest filter -- key manager not ready!");
+			throw new IOException("Cannot set interest filter -- key manager not ready!");
+		}
 		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
 		// serving any useful purpose.
 		setupTimers();
-		synchronized (_myFilters) {
-			_myFilters.add(filter, new Filter(this, filter, callbackListener, caller));
+		ForwardingEntry entry = null;
+		if (_usePrefixReg) {
+			try {
+				if (null == _prefixMgr) {
+					_prefixMgr = new PrefixRegistrationManager(this);
+				}
+				entry = _prefixMgr.selfRegisterPrefix(filter);
+			} catch (CCNDaemonException e) {
+				Log.warning("setInterestFilter: unexpected CCNDaemonException: " + e.getMessage());
+				throw new IOException(e.getMessage());
+			}
 		}
-		// tell ccnd to send me interests that start to filter
+		if (null != entry) {
+			// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
+			// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
+			// prefix we use Integer.MAX_VALUE as the requested lifetime.
+			Log.fine("setInterestFilter: entry.lifetime: " + entry.getLifetime() + " entry.faceID: " + entry.getFaceID());
+		}
+		Filter newOne = new Filter(this, filter, callbackListener, caller, entry);
+		synchronized (_myFilters) {
+			_myFilters.add(filter, newOne);
+		}
 	}
-	
+
 	/**
 	 * Unregister a standing interest filter
 	 *
@@ -701,10 +962,26 @@ public class CCNNetworkManager implements Runnable {
 		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
 		// serving any useful purpose.
 		Log.fine("cancelInterestFilter: {0}", filter);
+		Filter newOne = new Filter(this, filter, callbackListener, caller, null);
 		synchronized (_myFilters) {
-			Entry<Filter> found = _myFilters.remove(filter, new Filter(this, filter, callbackListener, caller));
+			Entry<Filter> found = _myFilters.remove(filter, newOne);
 			if (null != found) {
-				found.value().invalidate();
+				Filter thisOne = found.value();
+				thisOne.invalidate();
+				ForwardingEntry entry = thisOne.getEntry();
+				if (_usePrefixReg) {
+					if (!entry.getPrefixName().equals(filter)) {
+						Log.severe("cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
+					}
+					try {
+						if (null == _prefixMgr) {
+							_prefixMgr = new PrefixRegistrationManager(this);
+						}
+						_prefixMgr.unRegisterPrefix(filter, entry.getFaceID());
+					} catch (CCNDaemonException e) {
+						Log.warning("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage());
+					}
+				}
 			}
 		}
 	}
@@ -783,7 +1060,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	public void run() {
 		if (! _run) {
-			Log.warning("CCNSimpleNetworkManager run() called after shutdown");
+			Log.warning("CCNNetworkManager run() called after shutdown");
 			return;
 		}
 		// Allocate datagram buffer: want to wrap array to ensure backed by
@@ -791,7 +1068,7 @@ public class CCNNetworkManager implements Runnable {
 		byte[] buffer = new byte[MAX_PAYLOAD];
 		ByteBuffer datagram = ByteBuffer.wrap(buffer);
 		WirePacket packet = new WirePacket();
-		Log.info("CCNSimpleNetworkManager processing thread started");
+		Log.info("CCNNetworkManager processing thread started for port: " + _localPort);
 		while (_run) {
 			try {
 				
@@ -805,10 +1082,10 @@ public class CCNNetworkManager implements Runnable {
 						synchronized (_channel) {
 							_channel.read(datagram); // queue readers and writers
 						}
-						Log.finest("Read datagram (" + datagram.position() + " bytes)");
+						Log.finest("Read datagram (" + datagram.position() + " bytes) for port: " + _localPort);
 						_selector.selectedKeys().clear();
 						if (null != _error) {
-							Log.info("Receive error cleared");
+							Log.info("Receive error cleared for port: " + _localPort);
 							_error = null;
 						}
 						datagram.flip(); // make ready to decode
@@ -828,10 +1105,18 @@ public class CCNNetworkManager implements Runnable {
 							break;
 						}
 						if (!_channel.isConnected()) {
+							/*
+							 * This is the case where we noticed that the connect to ccnd went away.  We
+							 * try to reconnect, and if successful, we need to re-register our collection
+							 * of prefix registrations.
+							 */
 							_channel.connect(new InetSocketAddress(_host, _port));
 							if (_channel.isConnected()) {
 								_selector = Selector.open();
 								_channel.register(_selector, SelectionKey.OP_READ);
+								_localPort = _channel.socket().getLocalPort();
+								_faceID = null;
+								Log.info("Reconnecting to CCN agent at " + _host + ":" + _port + "on local port" + _localPort);
 							}
 						}
 					}
@@ -839,7 +1124,7 @@ public class CCNNetworkManager implements Runnable {
 					// We see IOException on receive every time if agent is gone
 					// so track it to log only start and end of outages
 					if (null == _error) {
-						Log.info("Unable to receive from agent: is it still running?");
+						Log.info("Unable to receive from agent: is it still running? Port: " + _localPort);
 					}
 					_error = io;
 					packet.clear();
@@ -853,7 +1138,7 @@ public class CCNNetworkManager implements Runnable {
 				// parties (registered interests and getters).
 				//--------------------------------- Process data from net (if any) 
 				for (ContentObject co : packet.data()) {
-					Log.fine("Data from net: {0}", co.name());
+					Log.fine("Data from net for port: " + _localPort + " {0}", co.name());
 					//	SystemConfiguration.logObject("Data from net:", co);
 					
 					deliverData(co);
@@ -863,20 +1148,20 @@ public class CCNNetworkManager implements Runnable {
 
 				//--------------------------------- Process interests from net (if any)
 				for (Interest interest : packet.interests()) {
-					Log.fine("Interest from net: {0}", interest);
+					Log.fine("Interest from net for port: " + _localPort + " {0}", interest);
 					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
 					deliverInterest(oInterest);
 					// External interests never go back to network
 				} // for interests
 				
 			} catch (Exception ex) {
-				Log.severe("Processing thread failure (UNKNOWN): " + ex.getMessage());
-                                Log.warningStackTrace(ex);
+				Log.severe("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
+                Log.warningStackTrace(ex);
 			}
 		}
 		
 		_threadpool.shutdown();
-		Log.info("Shutdown complete");
+		Log.info("Shutdown complete for port: " + _localPort);
 	}
 
 	/**
@@ -909,4 +1194,53 @@ public class CCNNetworkManager implements Runnable {
 			}
 		}
 	}
+	
+	
+	protected PublisherPublicKeyDigest fetchCCNDId(CCNNetworkManager mgr, KeyManager keyManager) throws IOException {
+			try {
+				Interest interested = new Interest(CCNDaemonProfile.ping);
+				interested.nonce(Interest.generateNonce());
+				interested.scope(1);
+				ContentObject contented = mgr.get(interested, 500);
+				if (null == contented) {
+					String msg = ("fetchCCNDId: Fetch of content from ping uri failed due to timeout.");
+					Log.severe(msg);
+					throw new IOException(msg);
+				}
+				PublisherPublicKeyDigest sentID = contented.signedInfo().getPublisherKeyID();
+				
+				// TODO: This needs to be fixed once the KeyRepository is fixed to provide a KeyManager
+				if (null != keyManager) {
+					ContentVerifier verifyer = new ContentObject.SimpleVerifier(sentID, keyManager);
+					if (!verifyer.verify(contented)) {
+						String msg = ("fetchCCNDId: Fetch of content reply from ping failed to verify.");
+						Log.severe(msg);
+						throw new IOException(msg);
+					}
+				} else {
+					Log.severe("fetchCCNDId: do not have a KeyManager. Cannot verify ccndID.");
+					return null;
+				}
+				return sentID;
+			} catch (InterruptedException e) {
+				Log.warningStackTrace(e);
+				throw new IOException(e.getMessage());
+			} catch (MalformedContentNameStringException e) {
+				String reason = e.getMessage();
+				Log.warningStackTrace(e);
+				String msg = ("fetchCCNDId: Unexpected MalformedContentNameStringException in call creating: " + CCNDaemonProfile.ping + " reason: " + reason);
+				Log.severe(msg);
+				throw new IOException(msg);
+			} catch (IOException e) {
+				String reason = e.getMessage();
+				Log.warningStackTrace(e);
+				String msg = ("fetchCCNDId: Unexpected IOException in call getting ping Interest reason: " + reason);
+				Log.severe(msg);
+				throw new IOException(msg);
+			}
+	} /* PublisherPublicKeyDigest fetchCCNDId() */
+
+	
 }
+
+

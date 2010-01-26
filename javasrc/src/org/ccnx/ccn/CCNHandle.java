@@ -40,15 +40,9 @@ import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
  */
 public class CCNHandle implements CCNBase {
 	
-	static {
-		// This needs to be done once. Do it here to be sure it happens before 
-		// any work that needs it.
-		KeyManager.initializeProvider();
-	}
-	
 	protected static CCNHandle _handle = null;
 
-	protected KeyManager _userKeyManager = null;
+	protected KeyManager _keyManager = null;
 	
 	/**
 	 * A CCNNetworkManager embodies a connection to ccnd.
@@ -84,8 +78,9 @@ public class CCNHandle implements CCNBase {
 	 * run as if you were a different "user", with a different collection of keys.
 	 * @param keyManager the KeyManager to use
 	 * @return the CCNHandle
+	 * @throws IOException 
 	 */
-	public static CCNHandle open(KeyManager keyManager) { 
+	public static CCNHandle open(KeyManager keyManager) throws IOException { 
 		synchronized (CCNHandle.class) {
 			return new CCNHandle(keyManager);
 		}
@@ -129,16 +124,20 @@ public class CCNHandle implements CCNBase {
 	/**
 	 * Create a CCNHandle using the specified KeyManager
 	 * @param keyManager the KeyManager to use. cannot be null.
+	 * @throws IOException 
 	 */
-	protected CCNHandle(KeyManager keyManager) {
-		_userKeyManager = keyManager;
+	protected CCNHandle(KeyManager keyManager) throws IOException {
+		if (null == keyManager) {
+			throw new IOException("Cannot instantiate handle -- KeyManager is null. Use CCNHandle() constructor to get default KeyManager, or specify one here.");
+		}
+		_keyManager = keyManager;
 		// force initialization of network manager
 		try {
-			_networkManager = new CCNNetworkManager();
+			_networkManager = new CCNNetworkManager(_keyManager);
 		} catch (IOException ex){
 			Log.warning("IOException instantiating network manager: " + ex.getMessage());
-			ex.printStackTrace();
-			_networkManager = null;
+			Log.warningStackTrace(ex);
+			throw ex;
 		}
 	}
 
@@ -159,10 +158,8 @@ public class CCNHandle implements CCNBase {
 	protected CCNHandle(boolean useNetwork) {}
 	
 	/**
-	 * Retrieve a static singleton CCNNetworkManager. Care must be used to
-	 * determine when to use a shared network manager, and when to make a new
-	 * one. Clients should not call this method directly, and instead should
-	 * create/retrieve a CCNHandle.
+	 * Retrieve this handle's network manager. Should only be called by low-level
+	 * methods seeking direct access to the network.
 	 * @return the CCN network manager
 	 */
 	public CCNNetworkManager getNetworkManager() { 
@@ -170,7 +167,7 @@ public class CCNHandle implements CCNBase {
 			synchronized(this) {
 				if (null == _networkManager) {
 					try {
-						_networkManager = new CCNNetworkManager();
+						_networkManager = new CCNNetworkManager(_keyManager);
 					} catch (IOException ex){
 						Log.warning("IOException instantiating network manager: " + ex.getMessage());
 						ex.printStackTrace();
@@ -191,14 +188,14 @@ public class CCNHandle implements CCNBase {
 			Log.warning("StandardCCNLibrary::setKeyManager: Key manager cannot be null!");
 			throw new IllegalArgumentException("Key manager cannot be null!");
 		}
-		_userKeyManager = keyManager;
+		_keyManager = keyManager;
 	}
 	
 	/**
 	 * Return the KeyManager we are using.
 	 * @return our current KeyManager
 	 */
-	public KeyManager keyManager() { return _userKeyManager; }
+	public KeyManager keyManager() { return _keyManager; }
 
 	/**
 	 * Get the publisher ID of the default public key we use to sign content
@@ -282,7 +279,7 @@ public class CCNHandle implements CCNBase {
 	 * @param callbackListener
 	 */
 	public void registerFilter(ContentName filter,
-			CCNFilterListener callbackListener) {
+			CCNFilterListener callbackListener) throws IOException {
 		getNetworkManager().setInterestFilter(this, filter, callbackListener);
 	}
 	

@@ -23,7 +23,9 @@ import java.io.OutputStream;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -48,26 +50,30 @@ public class CCNStringObject extends CCNNetworkObject<String> {
 	 * @param name
 	 * @param data Initial value for data. Can be null; but needs to be set with
 	 * 	setData before save is called (or passed as an argument to save). 
+	 * @param saveType where this object saves its data to; options include
+	 * 	RAW and REPOSITORY
 	 * @param handle
 	 * @throws IOException
 	 */
-	public CCNStringObject(ContentName name, String data, CCNHandle handle) 
+	public CCNStringObject(ContentName name, String data, SaveType saveType, CCNHandle handle) 
 				throws IOException {
-		super(String.class, false, name, data, handle);
+		super(String.class, false, name, data, saveType, handle);
 	}
 	
 	/**
 	 * Write constructor.
 	 * @param name
 	 * @param data
+	 * @param saveType where this object saves its data to; options include
+	 * 	RAW and REPOSITORY
 	 * @param publisher
 	 * @param locator
 	 * @param handle
 	 * @throws IOException
 	 */
-	public CCNStringObject(ContentName name, String data, PublisherPublicKeyDigest publisher, 
+	public CCNStringObject(ContentName name, String data, SaveType saveType, PublisherPublicKeyDigest publisher, 
 							KeyLocator locator, CCNHandle handle) throws IOException {
-		super(String.class, false, name, data, publisher, locator, handle);
+		super(String.class, false, name, data, saveType, publisher, locator, handle);
 	}
 
 	/**
@@ -171,5 +177,5 @@ public class CCNStringObject extends CCNNetworkObject<String> {
 		output.write(stringData);
 	}
 
-	public String string() throws ContentNotReadyException, ContentGoneException { return data(); }
+	public String string() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 }

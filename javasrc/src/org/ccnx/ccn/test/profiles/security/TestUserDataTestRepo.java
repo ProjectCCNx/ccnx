@@ -39,8 +39,8 @@ public class TestUserDataTestRepo {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		testPrefix = UserConfiguration.defaultNamespace();
-		userKeyStorePrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_access_");
-		userNamespace = ContentName.fromNative(testPrefix, "home");
+		userKeyStorePrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "home");
+		userNamespace = ContentName.fromNative(testPrefix, "Users");
 		System.out.println("testPrefix = " + testPrefix);
 		System.out.println("userKeyStorePrefix =" + userKeyStorePrefix);
 		System.out.println("userNamespace = " + userNamespace);
@@ -57,7 +57,7 @@ public class TestUserDataTestRepo {
 		}
 		System.out.println(sb.toString());
 		
-		td.saveUserPK2Repo(userNamespace);
+		td.publishUserKeysToRepository(userNamespace);
 		
 		// OK, now let's make a handle using one of these users and make sure the publisher ID
 		// and such defaults correctly.

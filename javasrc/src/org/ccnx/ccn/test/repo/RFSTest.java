@@ -228,6 +228,24 @@ public class RFSTest extends RepoTestBase {
 			repo.saveContent(ContentObject.buildContentObject(segmented, segmentContent.getBytes(), null, null, finalBlockID));
 			checkData(repo, segmented, segmentContent);
 		}
+		
+		System.out.println("Repotest - testing min and max in retrieval");
+		ContentName shortName = ContentName.fromNative("/repoTest/1/2");
+		ContentName longName = ContentName.fromNative("/repoTest/1/2/3/4/5/6");
+		ContentName middleName = ContentName.fromNative("/repoTest/1/2/3/4");
+		repo.saveContent(ContentObject.buildContentObject(shortName, "short".getBytes()));
+		repo.saveContent(ContentObject.buildContentObject(longName, "long".getBytes()));
+		repo.saveContent(ContentObject.buildContentObject(middleName, "middle".getBytes()));
+		Interest minInterest = new Interest(ContentName.fromNative("/repoTest/1"));
+		minInterest.minSuffixComponents(4);
+		checkData(repo, minInterest, "long");
+		Interest maxInterest = new Interest(ContentName.fromNative("/repoTest/1"));
+		maxInterest.maxSuffixComponents(3);
+		checkData(repo, maxInterest, "short");
+		Interest middleInterest = new Interest(ContentName.fromNative("/repoTest/1"));
+		middleInterest.maxSuffixComponents(4);
+		middleInterest.minSuffixComponents(3);
+		checkData(repo, middleInterest, "middle");
 
 		//adding in fast name enumeration response tests
 		System.out.println("Repotest - testing fast name enumeration response");
@@ -247,14 +265,15 @@ public class RFSTest extends RepoTestBase {
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
 		Interest interest = new Interest(new ContentName(nerpre, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION));
+		ContentName responseName = new ContentName();
 		Log.info("RFSTEST: Name enumeration prefix:{0}", interest.name());
-		neresponse = repo.getNamesWithPrefix(interest);
+		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse == null || neresponse.hasNames()==false);
 		//now saving the first piece of content in the repo.  interest flag not set, so it should not get an object back
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner, "FastNameRespTest".getBytes()));
 		Assert.assertTrue(neresponse==null || neresponse.hasNames()==false);
 		//now checking with the prefix that the first name is in
-		neresponse = repo.getNamesWithPrefix(interest);
+		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse.getNames().contains(nername1));
 
 		Assert.assertTrue(neresponse.getPrefix().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION));
@@ -263,7 +282,7 @@ public class RFSTest extends RepoTestBase {
 		//have to use the version from the last response (or at least a version after the last write
 		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
 		//the response should be null and the flag set
-		neresponse = repo.getNamesWithPrefix(interest);
+		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse==null || neresponse.hasNames()==false);
 		//save content.  if the flag was set, we should get an enumeration response
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner2, "FastNameRespTest".getBytes()));
@@ -275,7 +294,7 @@ public class RFSTest extends RepoTestBase {
 		//need to reconstruct the interest again
 		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
 		//another interest to set interest flag, response should be null
-		neresponse = repo.getNamesWithPrefix(interest);
+		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse == null || neresponse.hasNames()==false);
 		//interest flag should now be set, so when i add something - this is a longer name, i should be handed back an object
 		neresponse = repo.saveContent(ContentObject.buildContentObject(ner3, "FastNameRespTest".getBytes()));
@@ -314,6 +333,7 @@ public class RFSTest extends RepoTestBase {
 	
 	@Test
 	public void testPolicy() throws Exception {
+		// Writes all this content signed with the repository's key
 		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
 			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);
@@ -323,8 +343,9 @@ public class RFSTest extends RepoTestBase {
 			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (RepositoryException re) {}
+		// Make repository using repo's keystore, not user's
 		repo.initialize(_fileTestDir,  
-					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, putHandle);
+					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
 		repo.saveContent(content);

@@ -110,6 +110,8 @@ public class SegmentationProfile implements CCNProfile {
 	}
 
 	public static boolean isSegment(ContentName name) {
+		if (null == name)
+			return false;
 		return (!isUnsegmented(name));
 	}
 
@@ -247,15 +249,17 @@ public class SegmentationProfile implements CCNProfile {
 	/**
 	 * Retrieves a specific segment, following the above naming conventions.
 	 * If necessary (not currently), will issue repeated requests until it gets a segment
-	 * that matches requirements and verifies, or it times out.
+	 * that matches requirements and verifies, or it times out. If it
+	 * can't find anything, should return null.
 	 * TODO Eventually cope if verification fails (exclude, warn and retry).
 	 * @param desiredContent
 	 * @param segmentNumber If null, gets baseSegment().
 	 * @param timeout
 	 * @param verifier Cannot be null.
 	 * @param handle
-	 * @return
-	 * @throws IOException
+	 * @return the segment it got, or null if nothing matching could be found in the
+	 * 	allotted time
+	 * @throws IOException only on error
 	 */
 	public static ContentObject getSegment(ContentName desiredContent, Long desiredSegmentNumber, 
 											PublisherPublicKeyDigest publisher, long timeout, 
@@ -275,11 +279,14 @@ public class SegmentationProfile implements CCNProfile {
 	
 		if (null == segment) {
 			Log.info("Cannot get segment " + desiredSegmentNumber + " of file {0} expected segment: {1}.", desiredContent,  segmentName);
-			throw new IOException("Cannot get segment " + desiredSegmentNumber + " of file " + desiredContent + " expected segment: " + segmentName);
+			return null; // used to throw IOException, which was wrong. Do we want to be more aggressive?
 		} else {
 			Log.info("getsegment: retrieved segment {0}.", segment.name());
 		}
 		
+		if (null == verifier) {
+			verifier = ContentObject.SimpleVerifier.getDefaultVerifier();
+		}
 		// So for the segment, we assume we have a potential document.
 		if (!verifier.verify(segment)) {
 			// TODO eventually try to go and look for another option

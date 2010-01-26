@@ -18,14 +18,25 @@
 package org.ccnx.ccn.profiles.security.access;
 
 import java.security.Key;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.util.TreeMap;
+import java.security.UnrecoverableEntryException;
+import java.security.cert.X509Certificate;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.Enumeration;
+import java.util.TreeMap;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.security.keys.KeyRepository;
+import org.ccnx.ccn.impl.security.keys.BasicKeyManager.KeyStoreInfo;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
@@ -48,7 +59,6 @@ public class KeyCache {
 	private TreeMap<byte [], ContentName> _keyNameMap = new TreeMap<byte [], ContentName>(byteArrayComparator);
 	
 	public KeyCache() {
-		this(KeyManager.getKeyManager());
 	}
 	
 	/**
@@ -58,10 +68,58 @@ public class KeyCache {
 	public KeyCache(KeyManager keyManagerToLoadFrom) {
 		PrivateKey [] pks = keyManagerToLoadFrom.getSigningKeys();
 		for (PrivateKey pk : pks) {
-			addMyPrivateKey(keyManagerToLoadFrom.getPublisherKeyID(pk).digest(), pk);
+			PublisherPublicKeyDigest ppkd = keyManagerToLoadFrom.getPublisherKeyID(pk);
+			Log.info("KeyCache: loading signing key {0}", ppkd);
+			addMyPrivateKey(ppkd.digest(), pk);
 		}
 	}
 	
+	/**
+	 * Load the private keys from a KeyStore.
+	 * @param keystore
+	 * @throws KeyStoreException 
+	 */
+	public void loadKeyStore(KeyStoreInfo keyStoreInfo, char [] password, KeyRepository publicKeyCache) throws KeyStoreException {
+		Enumeration<String> aliases = keyStoreInfo.getKeyStore().aliases();
+		String alias;
+		KeyStore.PrivateKeyEntry entry = null;
+		KeyStore.PasswordProtection passwordProtection = new KeyStore.PasswordProtection(password);
+		while (aliases.hasMoreElements()) {
+			alias = aliases.nextElement();
+			if (keyStoreInfo.getKeyStore().isKeyEntry(alias)) {
+				try {
+					entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(alias, passwordProtection);
+				} catch (NoSuchAlgorithmException e) {
+					throw new KeyStoreException("Unexpected NoSuchAlgorithm retrieving key for alias : " + alias, e);
+				} catch (UnrecoverableEntryException e) {
+					throw new KeyStoreException("Unexpected UnrecoverableEntryException retrieving key for alias : " + alias, e);
+				}
+				if (null == entry) {
+					Log.warning("Cannot get private key entry for alias: " + alias);
+				} else {
+					PrivateKey pk = entry.getPrivateKey();
+					if (null != pk) {
+						X509Certificate certificate = (X509Certificate)entry.getCertificate();
+						if (null != certificate) {
+							PublisherPublicKeyDigest ppkd = new PublisherPublicKeyDigest(certificate.getPublicKey());
+							if (null != ppkd) {
+								Log.info("KeyCache: loading signing key {0}, remembering public key in public key cache.", ppkd);
+								addMyPrivateKey(ppkd.digest(), pk);
+								publicKeyCache.remember(certificate, keyStoreInfo.getVersion());
+							} else {
+								Log.warning("Certificate has null public key for alias " + alias + "!");
+							}
+						} else {
+							Log.warning("Private key for alias: " + alias + " has no certificate entry. No way to get public key. Not caching.");
+						}
+					} else {
+						Log.warning("Cannot retrieve private key for key entry alias " + alias);
+					}
+				}
+			}
+		}
+	}
+
 	/**
 	 * Retrieve a key specified by its digest
 	 * To restrict access to keys, store key cache in a private variable, and don't
@@ -126,6 +184,13 @@ public class KeyCache {
 		return key;
 	}
 	
+	public PrivateKey [] getPrivateKeys() {
+		Collection<PrivateKey> myKeys = _myKeyMap.values();
+		myKeys.addAll(_privateKeyMap.values());
+		PrivateKey [] pkarray = new PrivateKey[myKeys.size()];
+		return myKeys.toArray(pkarray);
+	}
+	
 	/**
 	 * Records a private key and the name and digest of the corresponding public key.
 	 * @param keyName the name of the public key
@@ -157,7 +222,14 @@ public class KeyCache {
 	public void addKey(ContentName name, Key key) {
 		byte [] id = getKeyIdentifier(key);
 		_keyMap.put(id, key);
-		_keyNameMap.put(id, name);
+		if (null != name) {
+			_keyNameMap.put(id, name);
+		}
+	}
+	
+	public PublisherPublicKeyDigest getPublicKeyIdentifier(PrivateKey pk) {
+		// TODO make map store PPKD's directly
+		return new PublisherPublicKeyDigest(_privateKeyIdentifierMap.get(getKeyIdentifier(pk)));
 	}
 	
 	/**

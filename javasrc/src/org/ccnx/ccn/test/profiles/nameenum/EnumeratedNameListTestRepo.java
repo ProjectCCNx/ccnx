@@ -27,10 +27,11 @@ import junit.framework.Assert;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.io.content.CCNSerializableStringObject;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -126,7 +127,7 @@ public class EnumeratedNameListTestRepo {
 
 			// adding content to repo
 			ContentName latestName = addContentToRepo(name1, handle);
-			testList.waitForData();
+			testList.waitForChildren();
 			Log.info("Added data to repo: " + latestName);
 
 			//testing that the enumerator has new data
@@ -237,7 +238,7 @@ public class EnumeratedNameListTestRepo {
 			}
 			
 			EnumeratedNameList versionList = new EnumeratedNameList(name1, handle);
-			versionList.waitForData();
+			versionList.waitForChildren();
 			Assert.assertTrue(versionList.hasNewData());
 			// Even though the addition of versions above is blocking and the new EnumeratedNameList
 			// is not created to start enumerating names until after the versions have been written,
@@ -269,22 +270,12 @@ public class EnumeratedNameListTestRepo {
 	
 	/*
 	 * Adds data to the repo for testing
-	 * DKS -- previous version that used repo streams somehow wasn't getting data in.
 	 * */
 	private ContentName addContentToRepo(ContentName name, CCNHandle handle) throws ConfigurationException, IOException {
 		//method to load something to repo for testing
-		// DKS -- don't know why this wasn't working
-		/*
-		RepositoryOutputStream ros = putHandle.repoOpen(name, null, putHandle.getDefaultPublisher());
-		ros.setTimeout(5000);
-		byte [] data = "Testing 1 2 3".getBytes();
-		ros.write(data, 0, data.length);
-		ros.close();
-		return name;
-		*/
-		
-		CCNSerializableStringObject cso = new CCNSerializableStringObject(name, ContentName.componentPrintNative(name.lastComponent()), handle);
-		cso.saveToRepository();
+		CCNStringObject cso = 
+			new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), SaveType.REPOSITORY, handle);
+		cso.save();
 		System.out.println("Saved new object: " + cso.getVersionedName());
 		return cso.getVersionedName();
 		

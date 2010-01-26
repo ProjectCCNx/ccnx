@@ -115,12 +115,16 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
 		return _index.get(interest, this);
 	}
 		
-	public NameEnumerationResponse getNamesWithPrefix(Interest i) {
-		return _index.getNamesWithPrefix(i);
+	public NameEnumerationResponse getNamesWithPrefix(Interest i, ContentName responseName) {
+		return _index.getNamesWithPrefix(i, responseName);
 	}
 
     public void shutDown() {
     	// no-op
     }
+
+	public Object getStatus(String type) {
+		return null;
+	}
     
 }

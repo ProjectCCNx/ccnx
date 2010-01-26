@@ -27,6 +27,10 @@ Fail () {
   exit 1
 }
 
+Failed () {
+  Fail Failed $*
+}
+
 SkipTest () {
   echo "***" Skipping $TESTNAME - $*
   exit 9

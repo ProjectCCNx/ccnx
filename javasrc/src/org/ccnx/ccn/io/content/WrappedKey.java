@@ -31,17 +31,20 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 
-import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.jce.AESWrapWithPad;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
@@ -106,8 +109,14 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	 */
 	public static class WrappedKeyObject extends CCNEncodableObject<WrappedKey> {
 
-		public WrappedKeyObject(ContentName name, WrappedKey data, CCNHandle handle) throws IOException {
-			super(WrappedKey.class, true, name, data, handle);
+		public WrappedKeyObject(ContentName name, WrappedKey data, SaveType saveType, CCNHandle handle) throws IOException {
+			super(WrappedKey.class, true, name, data, saveType, handle);
+		}
+
+		public WrappedKeyObject(ContentName name, WrappedKey data, SaveType saveType,
+				PublisherPublicKeyDigest publisher, 
+				KeyLocator locator, CCNHandle handle) throws IOException {
+			super(WrappedKey.class, true, name, data, saveType, publisher, locator, handle);
 		}
 
 		public WrappedKeyObject(ContentName name, CCNHandle handle) 
@@ -126,7 +135,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			super(WrappedKey.class, true, firstBlock, handle);
 		}
 		
-		public WrappedKey wrappedKey() throws ContentNotReadyException, ContentGoneException { return data(); }
+		public WrappedKey wrappedKey() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 	}
 
 	private static final Map<String,String> _WrapAlgorithmMap = new HashMap<String,String>();
@@ -189,6 +198,11 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		
 		byte [] wrappedNonceKey = null;
 		byte [] wrappedKey = null;
+		
+		Log.finer("wrapKey: wrapping key with id {0} under key with id {1} using label {2}",
+				DataUtils.printHexBytes(wrappingKeyIdentifier(keyToBeWrapped)),
+				DataUtils.printHexBytes(wrappingKeyIdentifier(wrappingKey)),
+				keyLabel);
 
 		if (wrappingAlgorithm.equalsIgnoreCase("AESWrapWithPad")) {
 			try {
@@ -248,9 +262,12 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			}
 		}
 		// Default wrapping algorithm is being used, don't need to include it.
-	    return new WrappedKey(null, null, 
+	    WrappedKey wk = new WrappedKey(null, null, 
 	    					 ((null == keyAlgorithm) ? keyToBeWrapped.getAlgorithm() : keyAlgorithm), 
 	    					 keyLabel, wrappedNonceKey, wrappedKey);
+		Log.finer("wrapKey: got {0} by wrapping {1} with {2}", wk, 
+					DataUtils.printHexBytes(keyToBeWrapped.getEncoded()), DataUtils.printHexBytes(wrappingKey.getEncoded()));
+		return wk;
 	}
 	
 	/**
@@ -321,18 +338,21 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	/**
 	 * Unwraps an encrypted key, and decodes it into a Key of an algorithm type
 	 * specified by keyAlgorithm(). See unwrapKey(Key, String) for details.
+	 * @throws NoSuchAlgorithmException 
+	 * @throws  
 	 * @see unwrapKey(Key, String)
 	 **/
-	public Key unwrapKey(Key unwrapKey) throws InvalidKeyException, InvalidCipherTextException {
+	public Key unwrapKey(Key unwrapKey) throws InvalidKeyException, NoSuchAlgorithmException {
 
 		if (null == keyAlgorithm()) {
-			throw new InvalidCipherTextException("No algorithm specified for key to be unwrapped!");
+			throw new NoSuchAlgorithmException("Null algorithm specified for key to be unwrapped!");
 		}
-		try {
-			return unwrapKey(unwrapKey, keyAlgorithm());
-		} catch (NoSuchAlgorithmException e) {
-			throw new InvalidCipherTextException("Algorithm specified for wrapped key " + keyAlgorithm() + " is unknown: " + e.getMessage());
-		}
+		byte [] wki = wrappingKeyIdentifier(unwrapKey);
+		Log.finer("WrappedKey: unwrapping key wrapped with wrapping key ID {1}, incoming wrapping key digest {2} match? {3}",
+					DataUtils.printHexBytes(wrappingKeyIdentifier()), 
+					DataUtils.printHexBytes(wki),
+					Arrays.equals(wki, wrappingKeyIdentifier()));
+		return unwrapKey(unwrapKey, keyAlgorithm());
 	}
 
 	/**
@@ -342,15 +362,16 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	 * @param wrappedKeyAlgorithm the algorithm of the wrapped key, used in decoding it.
 	 * @return the decrypted key if successful.
 	 * @throws InvalidKeyException if we encounter an error using the unwrapKey to decrypt.
-	 * @throws InvalidCipherTextException if the wrapped key is not a valid encrypted key.
 	 * @throws NoSuchAlgorithmException if we do not recognize the wrappedKeyAlgorithm.
 	 **/
 	public Key unwrapKey(Key unwrapKey, String wrappedKeyAlgorithm) 
-			throws InvalidKeyException, InvalidCipherTextException, NoSuchAlgorithmException {
+			throws InvalidKeyException, NoSuchAlgorithmException {
 
 		Key unwrappedKey = null;
 		Log.info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
 				wrapAlgorithmForKey(unwrapKey.getAlgorithm()));
+		Log.finer("unwrapKey: unwrapping {0} with {1}", this, DataUtils.printHexBytes(wrappingKeyIdentifier(unwrapKey)));
+		
 		if (((null != wrapAlgorithm()) && (wrapAlgorithm().equalsIgnoreCase("AESWrapWithPad"))) || 
 							wrapAlgorithmForKey(unwrapKey.getAlgorithm()).equalsIgnoreCase("AESWrapWithPad")) {
 			unwrappedKey = AESUnwrapWithPad(unwrapKey, wrappedKeyAlgorithm, encryptedKey(), 0, encryptedKey().length);
@@ -608,6 +629,14 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			return false;
 		return true;
 	}
+	
+	@Override
+	public String toString() {
+		return "WrappedKey: wrapping key ID: " + DataUtils.printHexBytes(_wrappingKeyIdentifier) + 
+				" wrapping key name: " + _wrappingKeyName + " wrap algorithm: " + _wrapAlgorithm + 
+				" key algorithm: " + _keyAlgorithm + " label: " + _label + " has nonce key? " + (null != _encryptedNonceKey);
+					
+	}
 
 	public static int getCipherType(String cipherAlgorithm) {
 		if (cipherAlgorithm.equalsIgnoreCase("ECIES") || cipherAlgorithm.equalsIgnoreCase("EC") ||
@@ -660,7 +689,8 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	 * @throws IllegalBlockSizeException 
 	 * @throws InvalidKeyException 
 	 */
-	protected static byte [] AESWrapWithPad(Key wrappingKey, Key keyToBeWrapped) throws InvalidKeyException, IllegalBlockSizeException {
+	protected static byte [] AESWrapWithPad(Key wrappingKey, Key keyToBeWrapped) 
+					throws InvalidKeyException, IllegalBlockSizeException {
 		if (! wrappingKey.getAlgorithm().equals("AES")) {
 			throw new IllegalArgumentException("AES wrap must wrap with with an AES key.");
 		}
@@ -680,7 +710,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	 * @return decrypted, decoded key.
 	 */
 	protected static Key AESUnwrapWithPad(Key unwrappingKey, String wrappedKeyAlgorithm,
-				byte [] input, int offset, int length) throws InvalidCipherTextException, InvalidKeyException {
+				byte [] input, int offset, int length) throws InvalidKeyException {
 		if (! unwrappingKey.getAlgorithm().equals("AES")) {
 			throw new IllegalArgumentException("AES wrap must unwrap with with an AES key.");
 		}

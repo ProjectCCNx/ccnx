@@ -51,7 +51,7 @@ public class GroupTestRepo {
 	static ContentName testStorePrefix = null;
 	static ContentName userNamespace = null;
 	static ContentName groupStore = null;
-	static ContentName userKeyStore = null;
+	static ContentName userKeyStorePrefix = null;
 	
 	static EnumeratedNameList _userList = null;
 	static CCNHandle _handle = null;
@@ -75,8 +75,8 @@ public class GroupTestRepo {
 			myUserName = UserConfiguration.userName();
 			System.out.println("Username = " + myUserName);
 			testStorePrefix = UserConfiguration.defaultNamespace();
-			userNamespace = ContentName.fromNative(testStorePrefix, "home");
-			userKeyStore = ContentName.fromNative(testStorePrefix, "_access_");
+			userNamespace = ContentName.fromNative(testStorePrefix, "Users");
+			userKeyStorePrefix = ContentName.fromNative(testStorePrefix, "ccnx_keystore");
 			groupStore = GroupAccessControlProfile.groupNamespaceName(testStorePrefix);
 
 			System.out.println("prefix: " + testStorePrefix);
@@ -87,10 +87,10 @@ public class GroupTestRepo {
 			userHandle = _handle;
 	
 			
-			users = new TestUserData(userKeyStore, NUM_USERS,
+			users = new TestUserData(userKeyStorePrefix, NUM_USERS,
 					USE_REPO,
 					USER_PASSWORD, userHandle);
-			users.saveUserPK2Repo(userNamespace);
+			users.publishUserKeysToRepository(userNamespace);
 			
 			_acm = new GroupAccessControlManager(testStorePrefix, groupStore, userNamespace);
 			_acm.publishMyIdentity(myUserName, KeyManager.getDefaultKeyManager().getDefaultPublicKey());
@@ -115,7 +115,7 @@ public class GroupTestRepo {
 		Log.info("***************** Prefix is "+ prefixTest.toString());
 		Assert.assertEquals(prefixTest, userNamespace);
 
-		_userList.waitForData();
+		_userList.waitForChildren();
 		Assert.assertTrue(_userList.hasNewData());
 		SortedSet<ContentName> returnedBytes = _userList.getNewData();
 		Assert.assertNotNull(returnedBytes);
@@ -131,16 +131,15 @@ public class GroupTestRepo {
 		Iterator<ContentName> it = returnedBytes.iterator();
 
 		ArrayList<Link> newMembers = new ArrayList<Link>();
-		System.out.println("member to add:" + UserConfiguration.defaultUserNamespace());
-		newMembers.add(new Link(UserConfiguration.defaultUserNamespace()));
+		ContentName userID = ContentName.fromNative(userNamespace, myUserName);
+		System.out.println("member to add:" + userID);
+		newMembers.add(new Link(userID));
 
 		for(int i = 0; i <2; i++){
 			ContentName name = it.next();
 			String fullname = _userList.getName().toString() + name.toString();
-			if (!fullname.equals(UserConfiguration.defaultUserNamespace())){
-				System.out.println("member to add:" + fullname);
-				newMembers.add(new Link(ContentName.fromNative(fullname)));
-			}
+			System.out.println("member to add:" + fullname);
+			newMembers.add(new Link(ContentName.fromNative(fullname)));
 		}
 		System.out.println("creating a group...");
 		Group newGroup = _gm.createGroup(_randomGroupName, newMembers);

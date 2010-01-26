@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+<!-- Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
 
   Part of the CCNx Java Library.
 
@@ -42,6 +42,7 @@
 	<property name="CCND_CMD" value="../../csrc/ccnd/ccnd"/>
 	<property name="CCND_DEBUG" value="-1"/>
 	<property name="CCND_CAP" value="50000"/>
+	<property name="CCND_TRYFIB" value="false"/>
 	<property name="REPO_ROOT" value="${testout}/repotest"/>
 	<property name="REPO_LOCAL_ROOT" value="repotest"/>
 	<property name="REPO_LOCAL" value="TestRepository"/>
@@ -54,6 +55,7 @@
         with an isolated ccnd rather than the "live" ccnd on the machine.
         -->
 	<property name="TEST_PORT" value="61999"/>
+	<property name="PROTOCOL_KEY" value="ccn.agent.protocol"/>
 
         <!-- Classpaths are actually defined in a separate file so 
              that it can be included by ant files of apps so they 
@@ -133,11 +135,12 @@
 			<mkdir dir="${testout}"/>
 			<parallel failonany="true">
 				<daemons>
-					<echo message="Running test ccnd on port ${TEST_PORT}"/>
+					<echo message="Running test ccnd on port ${TEST_PORT} with CCND_TRYFIB set to ${CCND_TRYFIB}"/>
 					<exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-baselib.txt">
 						<env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
 						<env key="CCND_CAP" value="${CCND_CAP}"/>
 						<env key="CCND_DEBUG" value="${CCND_DEBUG}"/>
+						<env key="CCND_TRYFIB" value="${CCND_TRYFIB}"/>
 					</exec>
 				</daemons>
 	                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
@@ -157,6 +160,8 @@
 					<sysproperty key="ccn.daemon.output" value="${testout}/TEST-ccnd-baselib.txt" />
 					<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 					<sysproperty key="ccnd.debug" value="${CCND_DEBUG}" />
+					<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
+					<sysproperty key="ccnd.tryfib" value="${CCND_TRYFIB}" />
 					<arg value="-interactive" />
 					<arg value="-command" />
 					<arg value="${CCND_CMD}" />
@@ -193,10 +198,11 @@
 	<target name="ccnd-testport">
 		<mkdir dir="${testout}"/>
 		<parallel failonany="true">
-			<echo message="Running test ccnd on port ${TEST_PORT}"/>
+			<echo message="Running test ccnd on port ${TEST_PORT} with CCND_TRYFIB set to ${CCND_TRYFIB}"/>
 			<exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-baselib.txt">
 				<env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
 				<env key="CCND_DEBUG" value="-1"/>
+				<env key="CCND_TRYFIB" value="${CCND_TRYFIB}"/>
 			</exec>
 		</parallel>
 	</target>
@@ -214,6 +220,7 @@
 					</classpath>
 					<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
 					<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+					<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 
 					<!-- allow debugger attachment if repo loops <jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" /> -->
 					<arg value="-interactive" />
@@ -243,6 +250,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RepoInitializationTest.class"/>
@@ -261,6 +269,7 @@
 			</classpath>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" />
 			<arg value="-interactive" />
 			<arg value="-root" />
@@ -292,6 +301,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -311,6 +321,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINEST"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/protocol/*TestRepo.class"/>
@@ -319,7 +330,7 @@
 		</junit>
 	</target>
 
-	<target name="test-impl" depends="test-impl-without-repo, test-impl-with-repo">
+	<target name="test-impl" depends="test-impl-without-repo, test-impl-with-repo, test-ccnd-controls">
 	</target>
 	
 	<target name="test-impl-without-repo" depends="jar, ccnd">
@@ -331,6 +342,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -351,6 +363,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -372,6 +385,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -391,6 +405,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -411,6 +426,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -431,6 +447,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
@@ -464,6 +481,7 @@
 					<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 					<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 					<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+					<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 					<batchtest todir="${testout}" >
 						<fileset dir="${build}">
 							<include name="org/ccnx/ccn/test/profiles/nameenum/*TestRepo.class"/>
@@ -486,6 +504,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RFSTest.class"/>
@@ -517,6 +536,7 @@
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RepoInitialReadTest.class"/>
@@ -537,6 +557,7 @@
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RepoIOTest.class"/>
@@ -557,6 +578,7 @@
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="UNDEFINED"/>
@@ -578,6 +600,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RemoteRepoIOPutTest.class"/>
@@ -596,6 +619,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RemoteRepoIOGetTest.class"/>
@@ -615,9 +639,11 @@
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RepoNameEnumeratorTest.class"/>
+					<include name="org/ccnx/ccn/test/repo/MultiResponderNameEnumerationTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -641,6 +667,8 @@
 			<arg file="-s"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="ALL"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<jvmarg line="${DEBUG_OPTIONS}"/>
 		</java>
 		<echo message="Running text XML puttap tests"/>
@@ -652,6 +680,8 @@
 			<arg file="-s"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="ALL"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<jvmarg line="${DEBUG_OPTIONS}"/>
 		</java> 
 	</target>
@@ -667,6 +697,7 @@
 				<formatter type="xml" usefile="true"/>
 				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 				<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+				<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 				<test todir="${testout}"  name="org.ccnx.ccn.test.endtoend.EndToEndTestSource"/>
 			</junit>
 			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="60000" dir="${testout}" showoutput="${showoutput}">
@@ -676,6 +707,7 @@
 				<formatter type="xml" usefile="true"/>
 				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 				<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+				<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 				<test todir="${testout}"  name="org.ccnx.ccn.test.endtoend.EndToEndTestSink"/>
 			</junit>
 		</parallel>
@@ -696,6 +728,7 @@
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/security/crypto/*Test.class"/>
@@ -718,6 +751,7 @@
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/security/crypto/*TestRepo.class"/>
@@ -734,7 +768,7 @@
 	<target name="test-access-control-without-repo" depends="jar, ccnd">
 		<!-- Access Control tests that don't need a repo running -->
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="no" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -743,6 +777,7 @@
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/profiles/security/access/**/*Test.class"/>
@@ -755,7 +790,7 @@
 	<target name="test-access-control-with-repo" depends="jar, ccnd, repo">
 		<!-- Access Control tests that need a repo running -->
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="no" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -764,6 +799,7 @@
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/profiles/security/access/**/*TestRepo.class"/>
@@ -772,7 +808,42 @@
 		</junit>
 		<!-- <delete dir="${REPO_ROOT}"/> -->
 	</target>
-
+	
+	<!-- Tests to validate the interactions with ccnd.  Not yet added to list of tests yet -->
+	<target name="test-ccnd-controls" depends="jar, ccnd">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="org/ccnx/ccn/test/profiles/ccnd/FaceManagerTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="ccn.agent.prefix_reg" value="${CCND_TRYFIB}"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="org/ccnx/ccn/test/profiles/ccnd/PrefixRegistrationManagerTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
+	
     <target name="run-explorer" depends="jar"> 
 		<!-- Not a unit test, this is to run the utility -->
 		<java classname="org.ccnx.ccn.utils.explorer.ContainerGUI" fork="true">

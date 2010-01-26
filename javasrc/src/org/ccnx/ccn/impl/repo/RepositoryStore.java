@@ -21,6 +21,8 @@ import java.io.File;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -47,7 +49,8 @@ public interface RepositoryStore {
 	public static final String REPO_DATA = "data";
 	public static final String REPO_LOGGING = "repo";
 	
-	
+	public static final String REPO_SIMPLE_STATUS_REQUEST = "simpleStatus";
+		
 	/**
 	 * Initialize the repository
 	 * @param repositoryRoot
@@ -118,19 +121,22 @@ public interface RepositoryStore {
 	/**
 	 * Get information about repository to return to write
 	 * requestor, possibly with confirmation filename for sync
+	 * @param name ContentName of netobject to write back out
+	 * @param names Names of acked data for Ack protocol (currently unused)
 	 * 
 	 * @return
 	 */
-	public byte [] getRepoInfo(ArrayList<ContentName> names);
+	RepositoryInfoObject getRepoInfo(ContentName name, ArrayList<ContentName> names);
 		
 	/**
 	 * Get names to respond to name enumeration requests.  Returns null if there
 	 * is nothing after the prefix or if there is nothing new after the prefix if
 	 * there is a version on the incoming interest
 	 * @param i NameEnumeration Interest defining which names to get
+	 * @param responseName 
 	 * @return NameEnumerationResponse
 	 */
-    public NameEnumerationResponse getNamesWithPrefix(Interest i);
+    public NameEnumerationResponse getNamesWithPrefix(Interest i, ContentName responseName);
     
     /**
      * Hook to shutdown the store (close files for example)
@@ -155,4 +161,15 @@ public interface RepositoryStore {
      * @return true if diagnostic operation is supported and was performed, false otherwise
      */
     public boolean diagnostic(String name);
+    
+    /**
+     * Get the repo's key manager. We should sign all repo data using this keymanager
+     * @return the KeyManager
+     */
+    public KeyManager getKeyManager();
+    
+    /**
+     * Get implementation defined status
+     */
+    public Object getStatus(String type);
 }

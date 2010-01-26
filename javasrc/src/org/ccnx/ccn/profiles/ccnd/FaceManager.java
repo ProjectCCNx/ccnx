@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -18,9 +18,10 @@
 package org.ccnx.ccn.profiles.ccnd;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLCodecFactory;
@@ -42,20 +43,11 @@ public class FaceManager extends CCNDaemonHandle /* extends GenericXMLEncodable 
 	
 	public enum ActionType {
 		NewFace ("newface"), DestroyFace ("destroyface"), QueryFace ("queryface");
-
 		ActionType(String st) { this.st = st; }
 		private final String st;
 		public String value() { return st; }
 	}
 	
-	public enum NetworkProtocol {
-		UDP (17), TCP (6);
-		NetworkProtocol(Integer i) { this.i = i; }
-		private final Integer i;
-		public Integer value() { return i; }
-	}
-		
-
 public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 	/* extends CCNEncodableObject<PolicyXML>  */
 	
@@ -133,6 +125,9 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 			throw new IllegalArgumentException("Unexpected error decoding FaceInstance from bytes.  reason: " + reason);
 		}
 	}
+	
+	public FaceInstance() {
+	}
 
 	public Integer faceID() { return _faceID; }
 	public void setFaceID(Integer faceID) { _faceID = faceID; }
@@ -140,10 +135,6 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 	public String action() { return _action; }
 
 	
-	public PublisherPublicKeyDigest ccndId() { return _ccndId; }
-	public void setccndId(PublisherPublicKeyDigest id) { _ccndId = id; }
-
-
 	public String toFormattedString() {
 		String out = "";
 		if (null != _action) {
@@ -168,24 +159,6 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 		}
 		return out;
 	}	
-
-	public byte[] getBinaryEncoding() {
-		// Do setup. Binary codec doesn't write a preamble or anything.
-		// If allow to pick, text encoder would sometimes write random stuff...
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		XMLEncoder encoder = XMLCodecFactory.getEncoder(BinaryXMLCodec.CODEC_NAME);
-		try {
-			encoder.beginEncoding(baos);
-			encode(encoder);
-			encoder.endEncoding();	
-		} catch (ContentEncodingException e) {
-			String reason = e.getMessage();
-			Log.fine("Unexpected error encoding allocated FaceInstance.  reason: " + reason + "\n");
-			Log.warningStackTrace(e);
-			throw new IllegalArgumentException("Unexpected error encoding allocated FaceInstance.  reason: " + reason);
-		}
-		return baos.toByteArray();
-	}
 
 	public boolean validateAction(String action) {
 		if (action != null){
@@ -351,65 +324,65 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 /*************************************************************************************/
 
 	public FaceManager(CCNHandle handle) throws CCNDaemonException {
-		super(handle, null);
-	}
-
-	public FaceManager(CCNHandle handle, PublisherPublicKeyDigest ccndID) throws CCNDaemonException {
-		super(handle, ccndID);
-		
-	}
-	public Integer createFace(NetworkProtocol ipProto, String host, Integer port) 
-							throws CCNDaemonException {
-		return this.createFace(ipProto, host, port, null, null, null);
+		super(handle);
 	}
 	
-	public Integer createFace(NetworkProtocol ipProto, String host, Integer port, Integer freshnessSeconds) 
+	public FaceManager() { }
+	
+	private PublisherPublicKeyDigest getId() throws CCNDaemonException {
+		PublisherPublicKeyDigest id = null;
+		try {
+			id = _manager.getCCNDId();
+		} catch (IOException e) {
+			throw new CCNDaemonException(e.getMessage());
+		}
+		return id;
+	}
+	
+	public Integer createFace(NetworkProtocol ipProto, String host, Integer port) 
 							throws CCNDaemonException {
-		return this.createFace(ipProto, host, port, null, null, freshnessSeconds);
+		return createFace(ipProto, host, port, null, null, null);
+	}
+	
+	public Integer createFace(NetworkProtocol ipProto, String host, Integer port, Integer lifetime) 
+							throws CCNDaemonException {
+		return createFace(ipProto, host, port, null, null, lifetime);
 	}
 
 	public Integer createFace(NetworkProtocol ipProto, String host, Integer port,
-			String multicastInterface, Integer multicastTTL, Integer freshnessSeconds) 
+			String multicastInterface, Integer multicastTTL, Integer lifetime) 
 							throws CCNDaemonException {
-		FaceInstance face = new FaceInstance(ActionType.NewFace, _ccndId, ipProto, host, port, 
-											multicastInterface, multicastTTL, freshnessSeconds);
-		FaceInstance returned = this.sendIt(face);
+		FaceInstance face = new FaceInstance(ActionType.NewFace, getId(), ipProto, host, port, 
+											multicastInterface, multicastTTL, lifetime);
+		FaceInstance returned = sendIt(face);
 		return returned.faceID();
 	}
 		
 	public void deleteFace(Integer faceID) throws CCNDaemonException {
-		FaceInstance face = new FaceInstance(ActionType.DestroyFace, _ccndId, faceID);
-		this.sendIt(face);
+		FaceInstance face = new FaceInstance(ActionType.DestroyFace, getId(), faceID);
+		sendIt(face);
 	}
 	
 	public FaceInstance queryFace(Integer faceID) throws CCNDaemonException {
-		FaceInstance face = new FaceInstance(ActionType.QueryFace, _ccndId, faceID);
-		FaceInstance returned = this.sendIt(face);
+		FaceInstance face = new FaceInstance(ActionType.QueryFace, getId(), faceID);
+		FaceInstance returned = sendIt(face);
 		return returned;
 	}
 	
 	private FaceInstance sendIt(FaceInstance face) throws CCNDaemonException {
-
-		byte[] faceBits = face.getBinaryEncoding();
-
-		/*
-		 * First create a name that looks like 'ccnx:/ccnx/CCNDId/action/ContentObjectWithFaceInIt'
-		 */
 		final String startURI = "ccnx:/ccnx/";
 		ContentName interestName = null;
 		try {
 			interestName = ContentName.fromURI(startURI);
-			interestName = ContentName.fromNative(interestName, _ccndId.digest());
+			interestName = ContentName.fromNative(interestName, getId().digest());
 			interestName = ContentName.fromNative(interestName, face.action());
 		} catch (MalformedContentNameStringException e) {
-			String reason = e.getMessage();
-			Log.fine("Call to create ContentName failed: " + reason + "\n");
-			Log.warningStackTrace(e);
-			String msg = ("Unexpected MalformedContentNameStringException in call creating ContentName, reason: " + reason);
+			Log.fine("Call to create ContentName failed: " + e.getMessage() + "\n");
+			String msg = ("Unexpected MalformedContentNameStringException in call creating ContentName, reason: " + e.getMessage());
 			throw new CCNDaemonException(msg);
 		}
 
-		byte[] payloadBack = super.sendIt(interestName, faceBits);
+		byte[] payloadBack = super.sendIt(interestName, face);
 		FaceInstance faceBack = new FaceInstance(payloadBack);
 
 		String formattedFace = faceBack.toFormattedString();

@@ -19,6 +19,7 @@ package org.ccnx.ccn.profiles.security;
 import java.io.IOException;
 
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -30,6 +31,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class KeyProfile implements CCNProfile {
 	
+	public static final byte [] KEY_NAME_COMPONENT = ContentName.componentParseNative("KEYS");
 	public static final byte [] KEY_ID_PREFIX = ContentName.componentParseNative("keyid" + CCNProfile.COMPONENT_SEPARATOR_STRING);
 	public static byte [] KEY_ID_POSTFIX = {}; // probably empty
 	
@@ -62,7 +64,20 @@ public class KeyProfile implements CCNProfile {
 		offset += encodedKeyIDBytes.length;
 		System.arraycopy(KEY_ID_POSTFIX, 0, component, offset, KEY_ID_POSTFIX.length);
 		
+		Log.info("keyIDToNameComponent key id {0}, base64 {1}, result {2} as uri {3}", 
+				DataUtils.printHexBytes(keyID), 
+				new String(encodedKeyIDBytes),
+				ContentName.componentPrintNative(component),
+				ContentName.componentPrintURI(component));
+
 		return component;
+	}
+	
+	/**
+	 * Helper method to return key ID name component as a string.
+	 */
+	public static String keyIDToNameComponentAsString(PublisherPublicKeyDigest keyID) {
+		return ContentName.componentPrintNative(keyIDToNameComponent(keyID));
 	}
 	
 	/**

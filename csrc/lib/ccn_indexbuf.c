@@ -24,6 +24,9 @@
 
 #define ELEMENT size_t
 
+/**
+ * Create a new indexbuf.
+ */
 struct ccn_indexbuf *
 ccn_indexbuf_create(void)
 {
@@ -32,6 +35,9 @@ ccn_indexbuf_create(void)
     return(c);
 }
 
+/**
+ * Deallocate indexbuf.
+ */
 void
 ccn_indexbuf_destroy(struct ccn_indexbuf **cbp)
 {
@@ -46,7 +52,7 @@ ccn_indexbuf_destroy(struct ccn_indexbuf **cbp)
 }
 
 /**
- * expand buffer as necessary to hold at least n more values
+ * Expand buffer as necessary to hold at least n more values.
  * @returns pointer to reserved space
  */
 ELEMENT *
@@ -71,6 +77,10 @@ ccn_indexbuf_reserve(struct ccn_indexbuf *c, size_t n)
     return(buf);
 }
 
+/**
+ * Append multiple elements to the indexbuf.
+ * @returns 0 for success, -1 for failure.
+ */
 int
 ccn_indexbuf_append(struct ccn_indexbuf *c, const ELEMENT *p, size_t n)
 {
@@ -82,6 +92,10 @@ ccn_indexbuf_append(struct ccn_indexbuf *c, const ELEMENT *p, size_t n)
     return(0);
 }
 
+/**
+ * Append v to the indexbuf
+ * @returns 0 for success, -1 for failure.
+ */
 int
 ccn_indexbuf_append_element(struct ccn_indexbuf *c, ELEMENT v)
 {
@@ -93,6 +107,9 @@ ccn_indexbuf_append_element(struct ccn_indexbuf *c, ELEMENT v)
     return(0);
 }
 
+/**
+ * @returns index at which the element was found or appended, or -1 if not found.
+ */
 int
 ccn_indexbuf_member(struct ccn_indexbuf *x, ELEMENT val)
 {
@@ -105,6 +122,10 @@ ccn_indexbuf_member(struct ccn_indexbuf *x, ELEMENT val)
     return(-1);
 }
 
+/**
+ * Removes up to one instance of val from the indexbuf.
+ * Order of elements not preserved.
+ */
 void
 ccn_indexbuf_remove_element(struct ccn_indexbuf *x, ELEMENT val)
 {
@@ -118,7 +139,8 @@ ccn_indexbuf_remove_element(struct ccn_indexbuf *x, ELEMENT val)
 }
 
 /**
- * @returns index at which the element was found or appended, or -1 in case of error.
+ * @returns index at which the element was found or appended,
+ *          or -1 in case of error.
  */
 int
 ccn_indexbuf_set_insert(struct ccn_indexbuf *x, ELEMENT val)
@@ -134,10 +156,10 @@ ccn_indexbuf_set_insert(struct ccn_indexbuf *x, ELEMENT val)
     return(i);
 }
 
-/*
+/**
  * Removes first occurence of val, preserving order
- * Returns index at which the element was found,
- * or -1 if the element was not found.
+ * @returns index at which the element was found,
+ *          or -1 if the element was not found.
  */
 int
 ccn_indexbuf_remove_first_match(struct ccn_indexbuf *x, ELEMENT val)
@@ -159,7 +181,7 @@ ccn_indexbuf_remove_first_match(struct ccn_indexbuf *x, ELEMENT val)
     return(-1);
 }
 
-/*
+/**
  * If val is present in the indexbuf, move it to the final place.
  */
 void
@@ -179,3 +201,26 @@ ccn_indexbuf_move_to_end(struct ccn_indexbuf *x, ELEMENT val)
         }
     }
 }
+
+/**
+ * If val is present in the indexbuf, move it to the first place.
+ */
+void
+ccn_indexbuf_move_to_front(struct ccn_indexbuf *x, ELEMENT val)
+{
+    int i;
+    int n;
+    if (x == NULL)
+        return;
+    for (i = 0, n = x->n; i < n; i++) {
+        if (x->buf[i] == val) {
+            memmove(&(x->buf[1]),
+                    &(x->buf[0]),
+                    sizeof(x->buf[i]) * i);
+            x->buf[0] = val;
+            return;
+        }
+    }
+
+}
+

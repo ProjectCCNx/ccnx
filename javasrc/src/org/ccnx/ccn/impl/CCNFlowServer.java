@@ -12,45 +12,48 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * to readers. Unlike standard flow controllers, this class doesn't care if
  * anyone ever reads its blocks -- it doesn't call waitForPutDrain. If no one
  * is interested, it simply persists until deleted/cleared. 
- * This version of flow server holds blocks indefinitely, regardless of how
- * many times they are read, until they are manually removed or cleared, or the 
+ * This version of flow server holds blocks until they have been
+ * read once, manually removed or cleared, or the 
  * server is deleted by canceling all its registered prefixes. It does not
  * signal an error if the blocks are never read.
  */
-public class CCNPersistentFlowServer extends CCNFlowControl {
+public class CCNFlowServer extends CCNFlowControl {
 
 	boolean _persistent = true;
 	
-	public CCNPersistentFlowServer(ContentName name, Integer capacity, CCNHandle handle) throws IOException {
+	public CCNFlowServer(ContentName name, Integer capacity, boolean persistent, CCNHandle handle) throws IOException {
 		super(name, handle);
+		_persistent = persistent;
 		if (null != capacity)
 			setCapacity(capacity);
 	}
 
-	public CCNPersistentFlowServer(String name, Integer capacity, CCNHandle handle)
+	public CCNFlowServer(String name, Integer capacity, CCNHandle handle)
 			throws MalformedContentNameStringException, IOException {
 		super(name, handle);
 		if (null != capacity)
 			setCapacity(capacity);
 	}
 
-	public CCNPersistentFlowServer(Integer capacity, CCNHandle handle) throws IOException {
+	public CCNFlowServer(Integer capacity, boolean persistent, CCNHandle handle) throws IOException {
 		super(handle);
+		_persistent = persistent;
 		if (null != capacity)
 			setCapacity(capacity);
 	}
 	
 	/**
-	 * Do not remove objects from the buffered pool as they are written to the
-	 * network; keep them around as an in-memory server. Objects can be removed
-	 * manually with the remove() interface.
+	 * If this is a non-persistent flow server, remove
+	 * content objects after they have been read once; otherwise do nothing.
 	 * 
 	 * @param co ContentObject to remove from flow controller.
 	 * @throws IOException may be thrown by overriding subclasses
- 	 */
+	 */
 	@Override
 	public void afterPutAction(ContentObject co) throws IOException {
-		// do nothing
+		if (!_persistent) {
+			remove(co);
+		}
 	}
 
 	/**
@@ -58,7 +61,7 @@ public class CCNPersistentFlowServer extends CCNFlowControl {
 	 * no one wants it, that's just fine.
 	 */
 	@Override
-	public void afterClose() {
+	public void afterClose() throws IOException {
 		// do nothing
 	}
 }
