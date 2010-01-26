@@ -42,10 +42,10 @@ public class GACMNodeKeyDirtyTestRepo {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		directoryBase = ContentName.fromNative("/test/ACMNodeKeyDirtyTestRepo");
+		directoryBase = UserConfiguration.defaultNamespace();
 		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
 		userKeyStorePrefix = ContentName.fromNative(directoryBase, "_access_");
-		userNamespace = ContentName.fromNative(directoryBase, "home");
+		userNamespace = ContentName.fromNative(directoryBase, "Users");
 
 		// create user identities with TestUserData		
 		Log.info("Creating {0} test users, if they do not already exist.", numberOfusers);
@@ -66,6 +66,9 @@ public class GACMNodeKeyDirtyTestRepo {
 		Link lk = new Link(ContentName.fromNative(userNamespace, friendlyNames[0]), ACL.LABEL_MANAGER, null);
 		ArrayList<Link> rootACLcontents = new ArrayList<Link>();
 		rootACLcontents.add(lk);
+		String myUserName = UserConfiguration.userName();
+		Link mlk = new Link(ContentName.fromNative(userNamespace, myUserName), ACL.LABEL_MANAGER, null);
+		rootACLcontents.add(mlk);
 		ACL rootACL = new ACL(rootACLcontents);
 		acm.initializeNamespace(rootACL);
 	}
