@@ -36,6 +36,7 @@ import java.util.Vector;
 import javax.security.auth.x500.X500Principal;
 
 import org.bouncycastle.asn1.ASN1EncodableVector;
+import org.bouncycastle.asn1.DEREncodable;
 import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.DERSequence;
@@ -100,7 +101,7 @@ public class MinimalCertificateGenerator {
 	protected ASN1EncodableVector _subjectAltNames = new ASN1EncodableVector();
 
 	/**
-	 * Generates an X509 certificate for a specified user key pair, 
+	 * Generates a X509 certificate for a specified user , 
 	 * subject distinguished name and duration.
 	 * @param userKeyPair the user key pair.
 	 * @param subjectDN the distinguished name of the user.
@@ -112,14 +113,21 @@ public class MinimalCertificateGenerator {
 	 * @throws NoSuchAlgorithmException
 	 * @throws SignatureException
 	 */
-	public static X509Certificate GenerateUserCertificate(KeyPair userKeyPair, String subjectDN, long duration) throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, SignatureException {
-		MinimalCertificateGenerator mg = new MinimalCertificateGenerator(subjectDN, userKeyPair.getPublic(), duration, false);
+	public static X509Certificate GenerateUserCertificate(PublicKey userPublicKey, String subjectDN, long duration, PrivateKey signingKey) throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, SignatureException {
+		MinimalCertificateGenerator mg = new MinimalCertificateGenerator(subjectDN, userPublicKey, duration, false, false);
 		mg.setClientAuthenticationUsage();
-		return mg.sign(null, userKeyPair.getPrivate());
+		return mg.sign(null, signingKey);
+	}
+	
+	/**
+	 * Helper method
+	 */
+	public static X509Certificate GenerateUserCertificate(KeyPair userKeyPair, String subjectDN, long duration) throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, SignatureException {
+		return GenerateUserCertificate(userKeyPair.getPublic(), subjectDN, duration, userKeyPair.getPrivate());
 	}
 
 	/**
-	 * Generates an X509 certificate for a specified user key pair,
+	 * Generates an X509 certificate for a specified user key,
 	 * subject distinguished name, email address and duration.
 	 * @param userKeyPair the user key pair.
 	 * @param subjectDN the distinguished name of the subject.
@@ -132,13 +140,20 @@ public class MinimalCertificateGenerator {
 	 * @throws NoSuchAlgorithmException
 	 * @throws SignatureException
 	 */
-	public static X509Certificate GenerateUserCertificate(KeyPair userKeyPair, String subjectDN, String emailAddress, long duration) throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, SignatureException {
-		MinimalCertificateGenerator mg = new MinimalCertificateGenerator(subjectDN, userKeyPair.getPublic(), duration, false);
+	public static X509Certificate GenerateUserCertificate(PublicKey userPublicKey, String subjectDN, String emailAddress, long duration, PrivateKey signingKey) throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, SignatureException {
+		MinimalCertificateGenerator mg = new MinimalCertificateGenerator(subjectDN, userPublicKey, duration, false, false);
 		mg.setClientAuthenticationUsage();
 		mg.setSecureEmailUsage(emailAddress);
-		return mg.sign(null, userKeyPair.getPrivate());
+		return mg.sign(null, signingKey);
 	}
-
+	
+	/**
+	 * Helper method
+	 */
+	public static X509Certificate GenerateUserCertificate(KeyPair userKeyPair, String subjectDN, String emailAddress, long duration) throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, SignatureException {
+		return GenerateUserCertificate(userKeyPair.getPublic(), subjectDN, emailAddress, duration, userKeyPair.getPrivate());
+	}
+	
 	/**
 	 * Certificate issued under an existing CA.
 	 * @param subjectDN the distinguished name of the subject.
@@ -146,13 +161,14 @@ public class MinimalCertificateGenerator {
 	 * @param issuerCertificate the certificate of the issuer.
 	 * @param duration the validity duration of the certificate.
 	 * @param isCA 
+	 * @param allUsage if isCA is true, add "regular" KeyUsage flags, for dual-use cert
 	 * @throws CertificateEncodingException
 	 * @throws IOException
 	 */
 	public MinimalCertificateGenerator(String subjectDN, PublicKey subjectPublicKey,  
-									   X509Certificate issuerCertificate, long duration, boolean isCA) throws CertificateEncodingException, IOException {
+									   X509Certificate issuerCertificate, long duration, boolean isCA, boolean allUsage) throws CertificateEncodingException, IOException {
 
-		this(subjectDN, subjectPublicKey, issuerCertificate.getSubjectX500Principal(), duration, isCA);
+		this(subjectDN, subjectPublicKey, issuerCertificate.getSubjectX500Principal(), duration, isCA, allUsage);
 		// Pull the existing subject identifier out of the issuer cert. 
 		byte [] subjectKeyID = issuerCertificate.getExtensionValue(X509Extensions.SubjectKeyIdentifier.toString());
 		if (null == subjectKeyID) {
@@ -172,12 +188,13 @@ public class MinimalCertificateGenerator {
 	 * @param subjectDN the distinguished name of the subject.
 	 * @param subjectPublicKey the public key of the subject.
 	 * @param duration the validity duration of the certificate.
-	 * @param isCA
+	 * @param isCA add basic constraints
+	 * @param allUsage if isCA is true, add "regular" KeyUsage flags, for dual-use cert
 	 */
 	public MinimalCertificateGenerator(String subjectDN, PublicKey subjectPublicKey,  
-									   long duration, boolean isCA) {
+									   long duration, boolean isCA, boolean allUsage) {
 
-		this(subjectDN, subjectPublicKey, new X500Principal(subjectDN), duration, isCA);
+		this(subjectDN, subjectPublicKey, new X500Principal(subjectDN), duration, isCA, allUsage);
 		// This needs to match what we are using for a subject key identifier.
 		AuthorityKeyIdentifier aki = 
 			new AuthorityKeyIdentifier(CryptoUtil.generateKeyID(subjectPublicKey));
@@ -191,9 +208,10 @@ public class MinimalCertificateGenerator {
 	 * @param issuerDN the distinguished name of the issuer.
 	 * @param duration the validity duration of the certificate.
 	 * @param isCA
+	 * @param allUsage if isCA is true, add "regular" KeyUsage flags, for dual-use cert
 	 */
 	public MinimalCertificateGenerator(String subjectDN, PublicKey subjectPublicKey, 
-									   X500Principal issuerDN, long duration, boolean isCA) {
+									   X500Principal issuerDN, long duration, boolean isCA, boolean allUsage) {
 		
 		_generator.setSubjectDN(new X509Name(subjectDN));
 		_generator.setIssuerDN(issuerDN);
@@ -206,14 +224,21 @@ public class MinimalCertificateGenerator {
 		_generator.setNotAfter(stopTime);
 
 		// CA key usage
-		final KeyUsage caKeyUsage = new KeyUsage(KeyUsage.digitalSignature | KeyUsage.nonRepudiation | KeyUsage.keyCertSign | KeyUsage.cRLSign);
+		final int caKeyUsage = KeyUsage.digitalSignature | KeyUsage.nonRepudiation | KeyUsage.keyCertSign | KeyUsage.cRLSign;
 		// Non-CA key usage
-		final KeyUsage nonCAKeyUsage = new KeyUsage(KeyUsage.digitalSignature | KeyUsage.nonRepudiation | KeyUsage.keyEncipherment | KeyUsage.dataEncipherment | KeyUsage.keyAgreement);
+		final int nonCAKeyUsage = KeyUsage.digitalSignature | KeyUsage.nonRepudiation | KeyUsage.keyEncipherment | KeyUsage.dataEncipherment | KeyUsage.keyAgreement;
+		
+		int ourUsage;
 		if (isCA) {
-			_generator.addExtension(X509Extensions.KeyUsage, false, caKeyUsage);
+			if (!allUsage) {
+				ourUsage = caKeyUsage;
+			} else {
+				ourUsage = caKeyUsage | nonCAKeyUsage;
+			}
 		} else {
-			_generator.addExtension(X509Extensions.KeyUsage, false, nonCAKeyUsage);			
+			ourUsage = nonCAKeyUsage;
 		}
+		_generator.addExtension(X509Extensions.KeyUsage, false, new KeyUsage(ourUsage));			
 		
 		BasicConstraints bc = new BasicConstraints(isCA);
 		_generator.addExtension(X509Extensions.BasicConstraints, true, bc);
@@ -323,4 +348,24 @@ public class MinimalCertificateGenerator {
 		GeneralNames genNames = new GeneralNames(new DERSequence(_subjectAltNames));
 		_generator.addExtension(X509Extensions.SubjectAlternativeName, false, genNames);
 	}
+	
+	/**
+	 * Open up the ability to add additional extensions that aren't 
+	 * EKU or SubjectAltName (which we manage).
+	 */
+	 public void addExtension(
+		        String oid,
+		        boolean critical,
+		        DEREncodable value) {
+		 if (null == oid)
+			 throw new IllegalArgumentException("OID cannot be null!");
+		 
+		 DERObjectIdentifier derOID = new DERObjectIdentifier(oid);
+		 if ((derOID.equals(X509Extensions.ExtendedKeyUsage)) || (derOID.equals(X509Extensions.SubjectAlternativeName)) ||
+				 (derOID.equals(X509Extensions.AuthorityKeyIdentifier))) {
+			 throw new IllegalArgumentException("Cannot use addExtension to set ExtendedKeyUsage or SubjectAlternativeName or AuthorityKeyIdentifier!");
+		 }
+		 _generator.addExtension(derOID, critical, value);
+	 }
 }
+
