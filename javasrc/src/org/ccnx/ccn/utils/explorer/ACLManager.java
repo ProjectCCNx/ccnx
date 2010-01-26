@@ -63,7 +63,7 @@ public class ACLManager extends JDialog implements ActionListener {
 	private JButton cancelChangesButton;
 	
 	
-	public ACLManager(String path) {
+	public ACLManager(String path, GroupAccessControlManager gacm) {
 
 		super();
 		setBounds(100, 100, 400, 500);
@@ -72,8 +72,7 @@ public class ACLManager extends JDialog implements ActionListener {
 		
 		// enumerate existing users and groups
 		try{
-			ContentName baseNode = ContentName.fromNative("/");
-			acm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, CCNHandle.open());
+			acm = gacm;
 			NamespaceManager.registerACM(acm);
 			gm = acm.groupManager();
 		} catch (Exception e) {
@@ -204,7 +203,7 @@ public class ACLManager extends JDialog implements ActionListener {
 			// TODO: we set the ACL, then update it, to handle correctly the case
 			// where the node had no ACL to start with.
 			// It would be more efficient to set and update the ACL in a single step.
-			acm.setACL(node, currentACL);
+//			acm.setACL(node, currentACL);
 			acm.updateACL(node, userUpdates);
 			acm.updateACL(node, groupUpdates);
 		} catch (AccessDeniedException ade) {

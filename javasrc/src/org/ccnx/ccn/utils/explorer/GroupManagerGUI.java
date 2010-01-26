@@ -37,7 +37,6 @@ import javax.swing.border.BevelBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
@@ -94,7 +93,7 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 	private int SELECTOR_HEIGHT = 300;
 	
 
-	public GroupManagerGUI(String path) {
+	public GroupManagerGUI(String path, GroupAccessControlManager acm) {
 
 		super();
 		setTitle("Group Manager");
@@ -103,7 +102,6 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 
 		// enumerate existing users and groups
 		try{
-			GroupAccessControlManager acm = new GroupAccessControlManager(null, groupStorage, userStorage, CCNHandle.open());
 			gm = acm.groupManager();
 		} catch (Exception e) {
 			e.printStackTrace();
