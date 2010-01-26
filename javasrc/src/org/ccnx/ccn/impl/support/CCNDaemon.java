@@ -34,6 +34,7 @@ import org.ccnx.ccn.impl.CCNNetworkManager;
 public class CCNDaemon extends Daemon {
 	public static final String PROP_CCND_COMMAND = "ccnd.command";
 	public static final String PROP_CCND_DEBUG = "ccnd.debug";
+	public static final String PROP_CCND_TRYFIB = "ccnd.tryfib";
 	
 	private static final String DEFAULT_CCND_COMMAND_STRING = "../ccnd/agent/ccnd";
 	protected String _command = DEFAULT_CCND_COMMAND_STRING;
@@ -92,6 +93,10 @@ public class CCNDaemon extends Daemon {
 			String debugVal = System.getProperty(PROP_CCND_DEBUG);
 			if (debugVal != null) {
 				env.put("CCND_DEBUG", debugVal);
+			}
+			String fibVal = System.getProperty(PROP_CCND_TRYFIB);
+			if (fibVal != null) {
+				env.put("CCND_TRYFIB", fibVal);
 			}
 			try {
 				_ccndProcess = pb.start();

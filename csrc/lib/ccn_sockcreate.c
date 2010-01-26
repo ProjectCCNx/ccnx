@@ -160,6 +160,10 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
     socks->sending = socks->recving = -1;
     if (descr->ipproto > 0)
         hints.ai_protocol = descr->ipproto;
+    if (descr->ipproto == IPPROTO_UDP)
+        hints.ai_socktype = SOCK_DGRAM;
+    else if (descr->ipproto == IPPROTO_TCP)
+        hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags =  AI_NUMERICHOST;
     if (descr->port == NULL ||
         strspn(descr->port, "0123456789") != strlen(descr->port)) {
@@ -168,7 +172,6 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
     }
     GOT_HERE;
     if (descr->source_address != NULL) {
-	hints.ai_socktype = SOCK_DGRAM;
 	res = getaddrinfo(descr->source_address, descr->port,
                           &hints, &mcast_source_addrinfo);
 	if (res != 0 || mcast_source_addrinfo == NULL) {

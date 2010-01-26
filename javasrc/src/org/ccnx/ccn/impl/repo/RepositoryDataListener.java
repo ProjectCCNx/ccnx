@@ -57,13 +57,13 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private long _finalBlockID = -1; 	// expected last block of the stream
 	
 	/**
-	 * @param origInterest	used only to log the actual interest that created this listener
-	 * @param interest		interest to be used to identify this listener to filter out subsequent duplicate or overlapping
-	 * 						requests
+	 * @param origInterest	interest to be used to identify this listener to filter out subsequent duplicate or overlapping
+	 * 		requests
+	 * @param interest	used only to log the actual interest that created this listener
 	 * @param server		associated RepositoryServer
 	 */
 	public RepositoryDataListener(Interest origInterest, Interest interest, RepositoryServer server) {
-		_origInterest = interest;
+		_origInterest = origInterest;
 		_server = server;
 		_handle = server.getHandle();
 		_timer = new Date().getTime();

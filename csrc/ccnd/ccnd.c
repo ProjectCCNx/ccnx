@@ -3,7 +3,7 @@
  * 
  * Main program of ccnd - the CCNx Daemon
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -283,6 +283,20 @@ content_queue_destroy(struct ccnd_handle *h, struct content_queue **pq)
 }
 
 static void
+ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
+{
+    int res;
+    if (*pfd != -1) {
+        res = close(*pfd);
+        if (res == -1)
+            ccnd_msg(h, "close failed for face %u fd=%d: %s", faceid, *pfd, strerror(errno));
+        else
+            ccnd_msg(h, "closing fd %d while finalizing face %u", *pfd, faceid);
+        *pfd = -1;
+    }
+}
+
+static void
 finalize_face(struct hashtb_enumerator *e)
 {
     struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
@@ -292,6 +306,11 @@ finalize_face(struct hashtb_enumerator *e)
     int recycle = 0;
     
     if (i < h->face_limit && h->faces_by_faceid[i] == face) {
+        if (e->ht == h->faces_by_fd) {
+            if (face->send_fd != face->recv_fd)
+                ccnd_close_fd(h, face->faceid, &face->recv_fd);
+            ccnd_close_fd(h, face->faceid, &face->send_fd);
+        }
         h->faces_by_faceid[i] = NULL;
         if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
               face->faceid == ((h->face_rover - 1) | h->face_gen)) {
@@ -305,11 +324,11 @@ finalize_face(struct hashtb_enumerator *e)
             recycle ? "recycling" : "releasing",
             face->faceid, face->faceid & MAXFACES);
         /* If face->addr is not NULL, it is our key so don't free it. */
-        ccn_charbuf_destroy(&face->inbuf);
-        ccn_charbuf_destroy(&face->outbuf);
     }
-    else
+    else if (face->faceid != CCN_NOFACEID)
         ccnd_msg(h, "orphaned face %u", face->faceid);
+    ccn_charbuf_destroy(&face->inbuf);
+    ccn_charbuf_destroy(&face->outbuf);
 }
 
 static struct content_entry *
@@ -1410,7 +1429,7 @@ check_dgram_faces(struct ccnd_handle *h)
  * Destroys the face identified by faceid.
  * @returns 0 for success, -1 for failure.
  */
-static int
+int
 destroy_face(struct ccnd_handle *h, unsigned faceid)
 {
     struct hashtb_enumerator ee;
@@ -1581,6 +1600,8 @@ remove_content(struct ccnd_handle *h, struct content_entry *content)
                       content->key_size, content->size - content->key_size);
     if (res != HT_OLD_ENTRY)
         abort();
+    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
+        h->n_stale--;
     if (h->debug & 4)
         ccnd_debug_ccnb(h, __LINE__, "remove", NULL,
                         content->key, content->size);
@@ -3018,6 +3039,7 @@ mark_stale(struct ccnd_handle *h, struct content_entry *content)
             ccnd_debug_ccnb(h, __LINE__, "stale", NULL,
                             content->key, content->size);
     content->flags |= CCN_CONTENT_ENTRY_STALE;
+    h->n_stale++;
     if (accession < h->min_stale)
         h->min_stale = accession;
     if (accession > h->max_stale)
@@ -3066,9 +3088,15 @@ static void
 set_content_timer(struct ccnd_handle *h, struct content_entry *content,
                   struct ccn_parsed_ContentObject *pco)
 {
-    int seconds;
+    int seconds = 0;
+    int microseconds = 0;
     size_t start = pco->offset[CCN_PCO_B_FreshnessSeconds];
     size_t stop  = pco->offset[CCN_PCO_E_FreshnessSeconds];
+    if (h->force_zero_freshness) {
+        /* Keep around for long enough to make it through the queues */
+        microseconds = 8 * h->data_pause_microsec + 10000;
+        goto Finish;
+    }
     if (start == stop)
         return;
     seconds = ccn_fetch_tagged_nonNegativeInteger(
@@ -3082,7 +3110,9 @@ set_content_timer(struct ccnd_handle *h, struct content_entry *content,
             content->key, pco->offset[CCN_PCO_E]);
         return;
     }
-    ccn_schedule_event(h->sched, seconds * 1000000,
+    microseconds = seconds * 1000000;
+Finish:
+    ccn_schedule_event(h->sched, microseconds,
                        &expire_content, NULL, content->accession);
 }
 
@@ -3167,6 +3197,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         else if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
             /* When old content arrives after it has gone stale, freshen it */
             content->flags &= ~CCN_CONTENT_ENTRY_STALE;
+            h->n_stale--;
             set_content_timer(h, content, &obj);
         }
         else {
@@ -3752,6 +3783,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->capacity = ~0;
     if (entrylimit != NULL && entrylimit[0] != 0) {
         h->capacity = atol(entrylimit);
+        if (h->capacity == 0)
+            h->force_zero_freshness = 1;
         if (h->capacity <= 0)
             h->capacity = 10;
     }
@@ -3773,7 +3806,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
             h->data_pause_microsec = 1000000;
     }
     fib = getenv("CCND_TRYFIB"); // XXX - Temporary, for transition period
-    if (fib != NULL && fib[0] != 0)
+    if (fib != NULL && fib[0] != 0 && strchr("0FNfn", fib[0]) == NULL)
         h->flood = 0;
     else
         h->flood = 1;
@@ -3872,4 +3905,64 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     free(sockname);
     sockname = NULL;
     return(h);
+}
+
+static void
+close_fd(int *pfd)
+{
+    if (*pfd != -1) {
+        close(*pfd);
+        *pfd = -1;
+    }
+}
+
+/**
+ * Destroy the ccnd instance, releasing all associated resources.
+ */
+void
+ccnd_destroy(struct ccnd_handle **pccnd)
+{
+    struct ccnd_handle *h = *pccnd;
+    if (h == NULL)
+        return;
+    ccnd_internal_client_stop(h);
+    ccn_schedule_destroy(&h->sched);
+    hashtb_destroy(&h->dgram_faces);
+    hashtb_destroy(&h->faces_by_fd);
+    hashtb_destroy(&h->content_tab);
+    hashtb_destroy(&h->propagating_tab);
+    hashtb_destroy(&h->nameprefix_tab);
+    hashtb_destroy(&h->sparse_straggler_tab);
+    if (h->fds != NULL) {
+        free(h->fds);
+        h->fds = NULL;
+        h->nfds = 0;
+    }
+    close_fd(&h->tcp4_fd);
+    close_fd(&h->tcp6_fd);
+    close_fd(&h->udp4_fd);
+    close_fd(&h->udp6_fd);
+    close_fd(&h->local_listener_fd);
+    if (h->faces_by_faceid != NULL) {
+        free(h->faces_by_faceid);
+        h->faces_by_faceid = NULL;
+        h->face_limit = h->face_gen = 0;
+    }
+    if (h->content_by_accession != NULL) {
+        free(h->content_by_accession);
+        h->content_by_accession = NULL;
+        h->content_by_accession_window = 0;
+    }
+    ccn_charbuf_destroy(&h->scratch_charbuf);
+    ccn_indexbuf_destroy(&h->skiplinks);
+    ccn_indexbuf_destroy(&h->scratch_indexbuf);
+    ccn_indexbuf_destroy(&h->unsol);
+    if (h->face0 != NULL) {
+        ccn_charbuf_destroy(&h->face0->inbuf);
+        ccn_charbuf_destroy(&h->face0->outbuf);
+        free(h->face0);
+        h->face0 = NULL;
+    }
+    free(h);
+    *pccnd = NULL;
 }

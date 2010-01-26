@@ -12,6 +12,7 @@ public class AccessControlProfile {
 	public static final byte [] ROOT_NAME_BYTES = ContentName.componentParseNative(ROOT_NAME);
 	public static final String DATA_KEY_NAME = "DK";
 	public static final byte [] DATA_KEY_NAME_BYTES = ContentName.componentParseNative(DATA_KEY_NAME);
+	protected static final ContentName ROOT_POSTFIX_NAME = new ContentName(new byte [][] {ACCESS_CONTROL_MARKER_BYTES, ROOT_NAME_BYTES});
 
 	/**
 	 * Returns whether the specified name contains the access control marker
@@ -37,8 +38,15 @@ public class AccessControlProfile {
 	 **/
 	public static ContentName rootName(ContentName nodeName) {
 		ContentName baseName = (isAccessName(nodeName) ? accessRoot(nodeName) : nodeName);
-		ContentName aclRootName = new ContentName(baseName, ACCESS_CONTROL_MARKER_BYTES, ROOT_NAME_BYTES);
+		ContentName aclRootName = baseName.append(rootPostfix());
 		return aclRootName;
+	}
+	
+	/**
+	 * Return the set of name components to add to an access root to get the root name.
+	 */
+	public static ContentName rootPostfix() {
+		return ROOT_POSTFIX_NAME;
 	}
 
 	/**

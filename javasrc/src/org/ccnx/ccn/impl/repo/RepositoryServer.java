@@ -40,7 +40,6 @@ import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationRes
 import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Exclude;
-import org.ccnx.ccn.protocol.Interest;
 
 /**
  * High level implementation of repository protocol that
@@ -81,6 +80,8 @@ public class RepositoryServer {
 	public static final int WINDOW_SIZE = 4;
 	public static final int FRESHNESS = 4;	// in seconds
 		
+	protected Timer _periodicTimer = null;
+	
 	private class NameAndListener {
 		private ContentName name;
 		private CCNFilterListener listener;
@@ -118,6 +119,7 @@ public class RepositoryServer {
 						e.printStackTrace();
 					}
 					_pendingNameSpaceChange = false;
+					_currentListeners.notify();
 				}
 			}
 		}	
@@ -168,8 +170,9 @@ public class RepositoryServer {
 		markerOmissions[1] = CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION;
 		_markerFilter = new Exclude(markerOmissions);
 		
-		Timer periodicTimer = new Timer(true);
-		periodicTimer.scheduleAtFixedRate(new InterestTimer(), PERIOD, PERIOD);
+		_periodicTimer = new Timer(true);
+		_periodicTimer.scheduleAtFixedRate(new InterestTimer(), PERIOD, PERIOD);
+
 	}
 	
 	/**
@@ -177,6 +180,36 @@ public class RepositoryServer {
 	 */
 	public void shutDown() {
 		_repo.shutDown();
+		
+		if( _periodicTimer != null ) {
+			synchronized (_currentListeners) {
+				if (_currentListeners.size() != 0) {
+					_pendingNameSpaceChange = true; // Don't allow any more requests to come in
+					boolean interrupted;
+					do {
+						try {
+							interrupted = false;
+							_currentListeners.wait();
+						} catch (InterruptedException e) {
+							interrupted = true;
+						}
+					} while (interrupted);
+				}
+				_periodicTimer.cancel();
+			}
+		}
+		
+		_threadpool.shutdownNow();
+		
+		try {
+			_writer.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		_handle.close();
+		
+		
 	}
 	
 	/**
@@ -289,7 +322,7 @@ public class RepositoryServer {
 		return _repoFilters;
 	}
 	
-	public void addListener(Interest interest, Interest readInterest, RepositoryDataListener listener) {
+	public void addListener(RepositoryDataListener listener) {
 		synchronized(_currentListeners) {
 			_currentListeners.add(listener);
 		}
@@ -356,5 +389,9 @@ public class RepositoryServer {
 				Log.logException("error saving name enumeration response for write out (prefix = "+ner.getPrefix()+" collection name: "+neResponseObject.getVersionedName()+")", e);
 			}
 		}
+	}
+	
+	public Object getStatus(String type) {
+		return _repo.getStatus(type);
 	}
 }

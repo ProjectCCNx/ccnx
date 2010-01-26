@@ -36,6 +36,9 @@ import org.ccnx.ccn.config.SystemConfiguration;
  */
 public class DataUtils {
 	
+	public static final int BITS_PER_BYTE = 8;
+	public static final String EMPTY = "";	
+
 	/**
 	 * Useful when we move over to 1.6, and can avoid UnsupportedCharsetExceptions this way.
 	 */
@@ -182,6 +185,9 @@ public class DataUtils {
 	 * @return the data as a Hexadecimal String
 	 */
 	public static String printHexBytes(byte [] bytes) {
+		if ((null == bytes) || (bytes.length == 0)) {
+			return "<empty>";
+		}
 		BigInteger bi = new BigInteger(1, bytes);
 		return bi.toString(16);
 	}
@@ -410,5 +416,5 @@ public class DataUtils {
 		if (arr1.length < arr2.length)
 			return -1;
 		return 0;
-	}	
+	}
 }

@@ -377,7 +377,8 @@ public class ContentTree {
 	 * doesn't specify a specific way to match data within several pieces of matching data.
 	 * 
 	 * @param interest the interest to match
-	 * @param matchlen total number of components required in final answer or -1 if not specified
+	 * @param matchmin minimum number of components required in final answer or -1 if not specified
+	 * @param matchmax maximum number of components allowed in final answer or -1 if not specified
 	 * @param node the node rooting a subtree to search
 	 * @param nodeName the full name of this node from the root up to and its component
 	 * @param depth the length of name of node including its component (number of components)
@@ -385,8 +386,10 @@ public class ContentTree {
 	 * @param getter a handler to pull actual ContentObjects for final match testing
 	 * @return ContentObject matching the interest or null if not found
 	 */
-	protected final ContentObject leftSearch(Interest interest, int matchlen, TreeNode node, ContentName nodeName, int depth, boolean anyOK, ContentGetter getter) {
-		if ( (nodeName.count() >= 0) && (matchlen == -1 || matchlen == depth)) {
+	protected final ContentObject leftSearch(Interest interest, int matchmin, int matchmax, TreeNode node, ContentName nodeName, int depth, boolean anyOK, ContentGetter getter) {
+		if ( (nodeName.count() >= 0) && ((matchmin == -1 && matchmax == -1) || (matchmin == -1 && depth <= matchmax))
+																		  || (matchmax == -1 && depth >= matchmin)
+																		  || (matchmin != -1 && matchmax != -1 && (depth <= matchmax && depth >= matchmin))) {
 			if (null != node.oneContent || null != node.content) {
 				// Since the name INCLUDES digest component and the Interest.matches() convention for name
 				// matching is that the name DOES NOT include digest component (conforming to the convention 
@@ -424,7 +427,7 @@ public class ContentTree {
 			}
 		}
 		// Now search children if applicable and if any
-		if (matchlen != -1 && matchlen <= depth || (node.children==null && node.oneChild==null)) {
+		if (matchmax != -1 && matchmax <= depth || (node.children==null && node.oneChild==null)) {
 			// Any child would make the total name longer than requested so no point in 
 			// checking children
 			return null;
@@ -448,7 +451,7 @@ public class ContentTree {
 				//if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0) {
 				if (anyOK || comp >= 0) {
 					ContentObject result = null;
-					result = leftSearch(interest, matchlen, child, 
+					result = leftSearch(interest, matchmin, matchmax, child, 
 							new ContentName(nodeName, child.component), depth+1, comp > 0, getter);
 	
 					if (null != result) {
@@ -648,7 +651,8 @@ public class ContentTree {
 						ncc, getter);
 			}
 			else{
-				return leftSearch(interest, (null == addl) ? -1 : addl + ncc,
+				int min = null == interest.minSuffixComponents() ? -1 : interest.minSuffixComponents();
+				return leftSearch(interest, min + ncc, (null == addl) ? -1 : addl + ncc,
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
 						ncc, false, getter);
 			}

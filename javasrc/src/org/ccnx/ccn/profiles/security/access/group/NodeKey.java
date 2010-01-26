@@ -19,13 +19,16 @@ package org.ccnx.ccn.profiles.security.access.group;
 
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.util.Arrays;
 
 import javax.crypto.spec.SecretKeySpec;
 
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -54,6 +57,11 @@ public class NodeKey {
 	 * Default key label for key derivation function. 
 	 */
 	public static final String DEFAULT_KEY_LABEL = "NodeKey";
+	
+	/**
+	 * KeyID for empty keys (signaling no encryption).
+	 */
+	public static final byte [] NULL_NODE_KEY_ID = "NULL_KEY".getBytes();
 	
 	/**
 	 * The node this key is associated with, with _access_ information stripped.
@@ -86,7 +94,7 @@ public class NodeKey {
 	 * @param unwrappedNodeKey the unwrapped node key
 	 */
 	public NodeKey(ContentName nodeKeyName, Key unwrappedNodeKey) {
-		if ((null == nodeKeyName) || (null == unwrappedNodeKey)) {
+		if (null == nodeKeyName) {
 			throw new IllegalArgumentException("NodeKey: key name and key cannot be null!");
 		}
 		// DKS TODO make sure the version is of the NK, not the blocks underneath it.
@@ -94,7 +102,7 @@ public class NodeKey {
 			throw new IllegalArgumentException("Expect stored node key name to be versioned: " + nodeKeyName);
 		}
 		_storedNodeKeyName = nodeKeyName;
-		_storedNodeKeyID = generateKeyID(unwrappedNodeKey.getEncoded());
+		_storedNodeKeyID = (null == unwrappedNodeKey) ? nullNodeKeyID() : generateKeyID(unwrappedNodeKey.getEncoded());
 		_nodeKey = unwrappedNodeKey;
 		_nodeName = GroupAccessControlProfile.accessRoot(nodeKeyName);
 		if ((null == _nodeName) || (!GroupAccessControlProfile.isNodeKeyName(nodeKeyName))) {
@@ -183,6 +191,18 @@ public class NodeKey {
 	}
 	
 	/**
+	 * Emtpy key, signaling no encryption.
+	 * @return
+	 */
+	public boolean isNullNodeKey() { 
+		return (null == nodeKey());
+	}
+	
+	public static byte [] nullNodeKeyID() { 
+		return NULL_NODE_KEY_ID;
+	}
+	
+	/**
 	 * Get the version of the stored node key name
 	 * @return the version
 	 */
@@ -223,8 +243,60 @@ public class NodeKey {
 		return CCNDigestHelper.digest(key.getEncoded());
 	}
 
-	public NodeKey getPreviousKey() {
-		// TODO Auto-generated method stub
-		return null;
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((_nodeKey == null) ? 0 : Arrays.hashCode(_nodeKey.getEncoded()));
+		result = prime * result
+				+ ((_nodeName == null) ? 0 : _nodeName.hashCode());
+		result = prime * result + Arrays.hashCode(_storedNodeKeyID);
+		result = prime
+				* result
+				+ ((_storedNodeKeyName == null) ? 0 : _storedNodeKeyName
+						.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		NodeKey other = (NodeKey) obj;
+		if (_nodeKey == null) {
+			if (other._nodeKey != null)
+				return false;
+		} else if (other._nodeKey == null)  {
+			return false;
+		} else if (!Arrays.equals(_nodeKey.getEncoded(), other._nodeKey.getEncoded())) {
+			return false;
+		}
+		if (_nodeName == null) {
+			if (other._nodeName != null)
+				return false;
+		} else if (!_nodeName.equals(other._nodeName))
+			return false;
+		if (!Arrays.equals(_storedNodeKeyID, other._storedNodeKeyID))
+			return false;
+		if (_storedNodeKeyName == null) {
+			if (other._storedNodeKeyName != null)
+				return false;
+		} else if (!_storedNodeKeyName.equals(other._storedNodeKeyName))
+			return false;
+		return true;
+	}
+	
+	@Override
+	public String toString() {
+		// not great to print out keys, but nec for debugging
+		return "NodeKey for node: " + _nodeName + " Stored at: " + _storedNodeKeyName + 
+						" Stored ID: " + DataUtils.printHexBytes(_storedNodeKeyID) +
+						" Key: " + ((null == _nodeKey) ? "null" :
+							DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(_nodeKey)));
 	}
 }

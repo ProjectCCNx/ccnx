@@ -25,11 +25,16 @@ import java.util.ArrayList;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
+import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.profiles.namespace.NamespaceManager;
+import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
@@ -69,6 +74,7 @@ public class ACLManager extends JDialog implements ActionListener {
 		try{
 			ContentName baseNode = ContentName.fromNative("/");
 			acm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, CCNHandle.open());
+			NamespaceManager.registerACM(acm);
 			gm = acm.groupManager();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -85,7 +91,7 @@ public class ACLManager extends JDialog implements ActionListener {
 		// title label
 		final JLabel userAndGroupLabel = new JLabel();
 		userAndGroupLabel.setBounds(10, 30, 300, 15);
-		userAndGroupLabel.setText("User and Group Permissions for " + path);
+		userAndGroupLabel.setText("Permissions for " + path);
 		getContentPane().add(userAndGroupLabel);
 				
 		// user table
@@ -133,6 +139,11 @@ public class ACLManager extends JDialog implements ActionListener {
 		
 	}
 
+	public boolean hasACL() {
+		if (currentACL != null) return true;
+		return false;
+	}
+	
 	private void getNodeName(String path) {
 		try{
 			node = ContentName.fromNative(path);
@@ -146,9 +157,34 @@ public class ACLManager extends JDialog implements ActionListener {
 		try{
 			currentACL = acm.getEffectiveACLObject(node).acl();
 		}
+		catch (IllegalStateException ise) {
+			System.out.println("The repository has no root ACL.");
+			System.out.println("Attempting to create missing root ACL.");
+			createRootACL();
+		}
 		catch (Exception e) {
 			e.printStackTrace();
 		}		
+	}
+	
+	private void createRootACL() {
+		ContentName cn = ContentName.fromNative(userStorage, "Alice");
+		Link lk = new Link(cn, ACL.LABEL_MANAGER, null);
+		ArrayList<Link> rootACLcontents = new ArrayList<Link>();
+		rootACLcontents.add(lk);
+		ACL rootACL = new ACL(rootACLcontents);
+		try{
+			acm.initializeNamespace(rootACL);
+			currentACL = rootACL;
+			NamespaceManager.registerACM(acm);
+		} 
+		catch (ContentNotReadyException cnre) {
+			System.out.println("Fatal error: the system assumes the existence of user: " + cn);
+			cnre.printStackTrace();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 
@@ -165,11 +201,23 @@ public class ACLManager extends JDialog implements ActionListener {
 		System.out.println("Group updates:");
 		for (ACLOperation aclo: groupUpdates) System.out.println(aclo.targetName() + " ---> " + aclo.targetLabel());
 		try {
+			// TODO: we set the ACL, then update it, to handle correctly the case
+			// where the node had no ACL to start with.
+			// It would be more efficient to set and update the ACL in a single step.
+			acm.setACL(node, currentACL);
 			acm.updateACL(node, userUpdates);
 			acm.updateACL(node, groupUpdates);
-		} catch (Exception e) {
+		} catch (AccessDeniedException ade) {
+			JOptionPane.showMessageDialog(this, "You do not have the access right to edit the ACL at this node.");
+			ade.printStackTrace();
+		}
+		catch (Exception e) {
 			e.printStackTrace();
 		}
+		// refresh user and group tables with new ACL
+		getExistingACL();
+		userACLTable.initializeACLTable(currentACL); 
+		groupACLTable.initializeACLTable(currentACL); 
 	}
 	
 	private void cancelChanges() {

@@ -38,7 +38,8 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -414,7 +415,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			// Get the content name without the segment parent
 			ContentName contentName = SegmentationProfile.segmentRoot(newSegment.name());
 			// Attempt to retrieve the keys for this namespace
-			_keys = GroupAccessControlManager.keysForInput(contentName, newSegment.signedInfo().getPublisherKeyID(), _handle);
+			_keys = AccessControlManager.keysForInput(contentName, newSegment.signedInfo().getPublisherKeyID(), _handle);
+			if (_keys == null) throw new AccessDeniedException("Cannot find keys to decrypt content.");
 		}
 		setCurrentSegment(newSegment);
 	}
@@ -448,7 +450,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				try {
 					// Reuse of current segment OK. Don't expect to have two separate readers
 					// independently use this stream without state confusion anyway.
-					_cipher = _keys.getSegmentDecryptionCipher(
+					
+					// Assume getBaseName() returns name without segment information.
+					// Log verification only on highest log level (won't execute on lower logging level).
+					Log.finest("Assert check: does getBaseName() match segmentless part of _currentSegment.name()? {0}",
+							   (SegmentationProfile.segmentRoot(_currentSegment.name()).equals(getBaseName())));
+					
+					_cipher = _keys.getSegmentDecryptionCipher(getBaseName(), _publisher,
 							SegmentationProfile.getSegmentNumber(_currentSegment.name()));
 				} catch (InvalidKeyException e) {
 					Log.warning("InvalidKeyException: " + e.getMessage());
@@ -486,7 +494,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				}
 				if ((null == tailData) || (0 == tailData.length)) {
 					_segmentReadStream = new ByteArrayInputStream(bodyData);
-				} else {
+				} 
+				else if ((null == bodyData) || (0 == bodyData.length)) {
+					_segmentReadStream = new ByteArrayInputStream(tailData);						
+				}
+				else {
 					byte [] allData = new byte[bodyData.length + tailData.length];
 					// Still avoid 1.6 array ops
 					System.arraycopy(bodyData, 0, allData, 0, bodyData.length);

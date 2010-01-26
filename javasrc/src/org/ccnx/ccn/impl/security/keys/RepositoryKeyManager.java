@@ -22,6 +22,7 @@ import java.io.OutputStream;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
@@ -63,7 +64,9 @@ public class RepositoryKeyManager extends NetworkKeyManager {
 	 * @throws IOException
 	 */
 	@Override
-	protected OutputStream createKeyStoreWriteStream() throws IOException {
-		return new RepositoryVersionedOutputStream(_keystoreName, _handle);
+	protected Tuple<KeyStoreInfo,OutputStream> createKeyStoreWriteStream() throws IOException {
+		// Have to get the version after we write, unless we force it.
+		return new Tuple<KeyStoreInfo,OutputStream>(new KeyStoreInfo(_keystoreName.toURIString(), null, null), 
+											  new RepositoryVersionedOutputStream(_keystoreName, _handle));
 	}
 }

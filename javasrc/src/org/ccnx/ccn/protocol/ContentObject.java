@@ -74,21 +74,30 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	
 	public static class SimpleVerifier implements ContentVerifier {
 		
-		public static SimpleVerifier _defaultVerifier = new SimpleVerifier(null);
+		public static SimpleVerifier _defaultVerifier = null;
 
 		PublisherPublicKeyDigest _publisher; 
 		KeyManager _keyManager;
 		
-		public static ContentVerifier getDefaultVerifier() { return _defaultVerifier; }
+		public static ContentVerifier getDefaultVerifier() { 
+			if (null == _defaultVerifier) {
+				synchronized(SimpleVerifier.class) {
+					if (null == _defaultVerifier) {
+						_defaultVerifier = new SimpleVerifier(null);
+					}
+				}
+			}
+			return _defaultVerifier; 
+		}
 		
 		public SimpleVerifier(PublisherPublicKeyDigest publisher) {
 			_publisher = publisher;
-			_keyManager = KeyManager.getKeyManager();
+			_keyManager = KeyManager.getDefaultKeyManager();
 		}
 		
 		public SimpleVerifier(PublisherPublicKeyDigest publisher, KeyManager keyManager) {
 			_publisher = publisher;
-			_keyManager = (null != keyManager) ? keyManager : KeyManager.getKeyManager();
+			_keyManager = (null != keyManager) ? keyManager : KeyManager.getDefaultKeyManager();
 		}
 		
 		/* (non-Javadoc)
@@ -102,14 +111,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 					return false;
 			}
 			try {
-				PublicKey publicKey = 
-					_keyManager.getPublicKey(
-							object.signedInfo().getPublisherKeyID(),
-							object.signedInfo().getKeyLocator());
-				if (null == publicKey) {
-					Log.fine("SimpleVerifier.verify: cannot retrieve public key for locator {0} from specified key manager. Will try again with default manager. {0}", object.signedInfo().getKeyLocator());
-				}
-				return object.verify(publicKey);
+				return object.verify(_keyManager);
 				
 			} catch (Exception e) {
 				Log.fine(e.getClass().getName() + " exception attempting to retrieve public key with key locator {0}: " + e.getMessage(), object.signedInfo().getKeyLocator());
@@ -222,21 +224,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			SignedInfo signedInfo,
 			byte [] content, int offset, int length,
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException {
+		
 		this(name, signedInfo, content, offset, length, (Signature)null);
 		_signature = sign(_name, _signedInfo, _content, 0, _content.length, signingKey);
-		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-			Log.info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp());
-			try {
-				if (!this.verify((PublicKey)null)) {
-					Log.warning("ContentObject: " + fullName() + " (length: " + length + ") fails to verify!");
-				} else {
-					Log.info("ContentObject: " + fullName() + " (length: " + length + ") verified OK.");
-				}
-			} catch (Exception e) {
-				Log.warning("Exception attempting to verify signature: " + e.getClass().getName() + ": " + e.getMessage());
-				Log.warningStackTrace(e);
-			}
-		}
 	}
 
 	public ContentObject(ContentName name, 
@@ -544,8 +534,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * @throws InvalidKeyException 
 	 */
 	public static boolean verify(ContentObject object,
-			PublicKey publicKey) throws SignatureException, InvalidKeyException, 
+								 PublicKey publicKey) throws SignatureException, InvalidKeyException, 
 					NoSuchAlgorithmException, ContentEncodingException {
+
+		if (null == publicKey) {
+			throw new SignatureException("Cannot verify object without public key -- public key cannot be null!");
+		}
 
 		// Start with the cheap part. Derive the content proxy that was signed. This is
 		// either the root of the MerkleHash tree, the content itself, or the digest of
@@ -557,31 +551,13 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			// The proxy may be dependent on the whole object. If there is a proxy, signature
 			// is over that. Otherwise, signature is over hash of the content and name and signedInfo.
 			contentProxy = object.computeProxy();
+			
 		} catch (CertificateEncodingException e) {
 			Log.info("Encoding exception attempting to verify content digest for object: " + object.name() + ". Signature verification fails.");
 			return false;
 		}
 
 		if (null != contentProxy) {
-			if (null == publicKey) {
-				// Get a copy of the public key.
-				// Simple routers will install key manager that
-				// will just pull from CCN.
-				try {
-					publicKey = 
-						KeyManager.getKeyManager().getPublicKey(
-								object.signedInfo().getPublisherKeyID(),
-								object.signedInfo().getKeyLocator());
-
-					if (null == publicKey) {
-						throw new SignatureException("Cannot obtain public key to verify object: " + object.name() + ". Key locator: " + 
-								object.signedInfo().getKeyLocator());
-					}
-				} catch (IOException e) {
-					throw new SignatureException("Cannot obtain public key to verify object: " + object.name() + ". Key locator: " + 
-							object.signedInfo().getKeyLocator() + " exception: " + e.getMessage(), e);				
-				}
-			}
 			return CCNSignatureHelper.verify(contentProxy, object.signature().signature(), object.signature().digestAlgorithm(), publicKey);
 		}
 
@@ -589,15 +565,24 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	}
 	
 	public static boolean verify(ContentObject object,
-			KeyManager keyManager) throws SignatureException, InvalidKeyException, 
+								 KeyManager keyManager) throws SignatureException, InvalidKeyException, 
 					NoSuchAlgorithmException, ContentEncodingException {
 		try {
 			if (null == keyManager)
-				keyManager = KeyManager.getKeyManager();
-			return verify(object, 
-					 keyManager.getPublicKey(
-							object.signedInfo().getPublisherKeyID(),
-							object.signedInfo().getKeyLocator()));
+				keyManager = KeyManager.getDefaultKeyManager();
+			
+			PublicKey publicKey = keyManager.getPublicKey(
+					object.signedInfo().getPublisherKeyID(),
+					object.signedInfo().getKeyLocator());
+			
+			if (null == publicKey) {
+				throw new SignatureException("Cannot obtain public key to verify object. Publisher: " + 
+						object.signedInfo().getPublisherKeyID() + " Key locator: " + 
+						object.signedInfo().getKeyLocator());
+			}
+			
+			return verify(object, publicKey);
+			
 		} catch (IOException e) {
 			throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
 					object.signedInfo().getKeyLocator() + " exception: " + e.getMessage(), e);				
@@ -627,23 +612,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 								ContentEncodingException {
 
 		if (null == publicKey) {
-			// Get a copy of the public key.
-			// Simple routers will install key manager that
-			// will just pull from CCN.
-			try {
-				publicKey = 
-					KeyManager.getKeyManager().getPublicKey(
-							signedInfo.getPublisherKeyID(),
-							signedInfo.getKeyLocator());
-
-				if (null == publicKey) {
-					throw new SignatureException("Cannot obtain public key to verify object: " + name + ". Key locator: " + 
-							signedInfo.getKeyLocator());
-				}
-			} catch (IOException e) {
-				throw new SignatureException("Cannot obtain public key to verify object: " + name + ". Key locator: " + 
-						signedInfo.getKeyLocator() + " exception: " + e.getMessage(), e);				
-			}
+			throw new SignatureException("Cannot verify object without public key -- public key cannot be null!");
 		}
 
 		byte [] preparedContent = prepareContent(name, signedInfo, content); 
@@ -668,50 +637,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		return result;
 
 	}
-	
-	public static boolean verify(
-			ContentName name,
-			SignedInfo signedInfo,
-			byte [] content,
-			Signature signature,
-			KeyManager keyManager) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException, 
-								ContentEncodingException {
-		try {
-			if (null == keyManager)
-				keyManager = KeyManager.getKeyManager();
-			return verify(name, signedInfo, content, signature, 
-					 keyManager.getPublicKey(
-							signedInfo.getPublisherKeyID(),
-							signedInfo.getKeyLocator()));
-		} catch (IOException e) {
-			throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
-					signedInfo.getKeyLocator() + " exception: " + e.getMessage(), e);				
-		}
-	}
 
 	public static boolean verify(byte[] proxy, byte [] signature, SignedInfo signedInfo,
 			String digestAlgorithm, PublicKey publicKey) throws InvalidKeyException, SignatureException, 
 									NoSuchAlgorithmException {
 		if (null == publicKey) {
-			// Get a copy of the public key.
-			// Simple routers will install key manager that
-			// will just pull from CCN.
-			try {
-				// KeyManager ensures that this key matches the publisher ID;
-				// if it verifies the signature, we're happy with this object.
-				publicKey = 
-					KeyManager.getKeyManager().getPublicKey(
-							signedInfo.getPublisherKeyID(),
-							signedInfo.getKeyLocator());
-
-				if (null == publicKey) {
-					throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
-							signedInfo.getKeyLocator());
-				}
-			} catch (IOException e) {
-				throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
-						signedInfo.getKeyLocator() + " exception: " + e.getMessage(), e);				
-			}
+			throw new SignatureException("Cannot verify object without public key -- public key cannot be null!");
 		}
 
 		// Now, check the signature.
@@ -725,16 +656,25 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 
 	public static boolean verify(byte[] proxy, byte [] signature, SignedInfo signedInfo,
 			String digestAlgorithm, KeyManager keyManager) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+
 		try {
 			if (null == keyManager)
-				keyManager = KeyManager.getKeyManager();
-			return verify(proxy, signature, signedInfo, digestAlgorithm, 
-					 keyManager.getPublicKey(
-							signedInfo.getPublisherKeyID(),
-							signedInfo.getKeyLocator()));
+				keyManager = KeyManager.getDefaultKeyManager();
+			
+			PublicKey publicKey = keyManager.getPublicKey(
+					signedInfo.getPublisherKeyID(),
+					signedInfo.getKeyLocator());
+			
+			if (null == publicKey) {
+				throw new SignatureException("Cannot obtain public key to verify object. Publisher: " + 
+						signedInfo.getPublisherKeyID() + " Key locator: " + 
+						signedInfo.getKeyLocator());
+			}
+			return verify(proxy, signature, signedInfo, digestAlgorithm, publicKey);
+			
 		} catch (IOException e) {
-			throw new SignatureException("Cannot obtain public key to verify object. Key locator: " + 
-					signedInfo.getKeyLocator() + " exception: " + e.getMessage(), e);				
+			throw new SignatureException("IOException attempting to  obtain public key to verify object. Key locator: " + 
+					signedInfo.getKeyLocator() + " exception: " + e.getClass().getName() + ": " + e.getMessage(), e);				
 		}
 	}
 	

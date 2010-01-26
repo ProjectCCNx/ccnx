@@ -512,6 +512,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	} 
 	
 	/**
+	 * Print as string with scheme in front. toString already
+	 * prints in URI format with leading /, just add scheme.
+	 */
+	public String toURIString() {
+		return SCHEME + toString();
+	}
+	
+	/**
 	 * Print bytes in the URI Generic Syntax of RFC 3986 
 	 * including byte sequences that are not legal character
 	 * encodings in any character set and byte sequences that have special 
@@ -815,6 +823,27 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public int count() { 
 		if (null == _components) return 0;
 		return _components.size(); 
+	}
+	
+	/**
+	 * Append a segmented name to this name.
+	 */
+	public ContentName append(ContentName other) {
+		return new ContentName(this, other.components());
+	}
+	
+	/**
+	 * Append a name to this one, where the child name might have more than one
+	 * path component -- e.g. foo/bar/bash. Will add leading / to postfix for
+	 * parsing, if one not present.
+	 * @throws MalformedContentNameStringException 
+	 */
+	public ContentName append(String postfix) throws MalformedContentNameStringException {
+		if (!postfix.startsWith("/")) {
+			postfix = "/" + postfix;
+		}
+		ContentName postfixName = ContentName.fromNative(postfix);
+		return this.append(postfixName);
 	}
 
 	/**

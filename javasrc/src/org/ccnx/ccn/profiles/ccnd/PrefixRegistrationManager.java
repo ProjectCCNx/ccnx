@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -18,8 +18,10 @@
 package org.ccnx.ccn.profiles.ccnd;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLCodecFactory;
@@ -29,7 +31,6 @@ import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
-import org.ccnx.ccn.profiles.ccnd.FaceManager.ActionType;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -48,7 +49,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 	public static final int CCN_FORW_ADVERTISE = 4;
 	public static final int CCN_FORW_LAST = 8;
 	
-	public static final Integer DEFAULT_SELF_REG_FLAGS = new Integer(CCN_FORW_CHILD_INHERIT + CCN_FORW_ADVERTISE);
+	public static final Integer DEFAULT_SELF_REG_FLAGS = new Integer(CCN_FORW_ACTIVE + CCN_FORW_CHILD_INHERIT);
 
 	/*
 	 * 	#define CCN_FORW_ACTIVE         1
@@ -87,7 +88,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		protected PublisherPublicKeyDigest _ccndId;
 		protected Integer		_faceID;
 		protected Integer		_flags;
-		protected Integer 		_lifetime;
+		protected Integer 		_lifetime;  // in seconds
 
 
 		public ForwardingEntry(ContentName prefixName, Integer faceID, Integer flags) {
@@ -125,13 +126,22 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		public ForwardingEntry() {
 		}
 
-		public Integer faceID() { return _faceID; }
+		public ContentName getPrefixName() { return _prefixName; }
+		
+		public Integer getFaceID() { return _faceID; }
 		public void setFaceID(Integer faceID) { _faceID = faceID; }
 
 		public String action() { return _action; }
 		
-		public PublisherPublicKeyDigest ccndId() { return _ccndId; }
+		public PublisherPublicKeyDigest getccndId() { return _ccndId; }
 		public void setccndId(PublisherPublicKeyDigest id) { _ccndId = id; }
+		
+		/**
+		 * 
+		 * @return lifetime of registration in seconds
+		 */
+		public Integer getLifetime() { return new Integer(_lifetime.intValue()); }
+		
 
 		public String toFormattedString() {
 			String out = "";
@@ -155,14 +165,19 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			} else {
 				out.concat("Flags: not present\n");
 			}
+			if (null != _lifetime) {
+				out.concat("Lifetime: "+ _lifetime.toString() + "\n");
+			} else {
+				out.concat("Lifetime: not present\n");
+			}
 			return out;
 		}	
 
 		public boolean validateAction(String action) {
-			if (action != null){
-				if (action.equals(ActionType.Register.value()) ||
-						action.equals(ActionType.SelfRegister.value()) ||
-						action.equals(ActionType.UnRegister.value())) {
+			if (action != null && action.length() != 0){
+				if (action.equalsIgnoreCase(ActionType.Register.value()) ||
+						action.equalsIgnoreCase(ActionType.SelfRegister.value()) ||
+						action.equalsIgnoreCase(ActionType.UnRegister.value())) {
 					return true;
 				}
 			}
@@ -258,7 +273,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			ForwardingEntry other = (ForwardingEntry) obj;
 			if (_action == null) {
 				if (other._action != null) return false;
-			} else if (!_action.equals(other._action)) return false;
+			} else if (!_action.equalsIgnoreCase(other._action)) return false;
 			if (_prefixName == null) {
 				if (other._prefixName != null) return false;
 			} else if (!_prefixName.equals(other._prefixName)) return false;
@@ -286,6 +301,10 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		super(handle);
 	}
 
+	public PrefixRegistrationManager(CCNNetworkManager networkManager) throws CCNDaemonException {
+		super(networkManager);
+	}
+
 	public PrefixRegistrationManager() {
 	}
 
@@ -296,7 +315,13 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 	public void registerPrefix(String uri, PublisherPublicKeyDigest publisher, Integer faceID, Integer flags, 
 							Integer lifetime) throws CCNDaemonException {
 		if (null == publisher)
-			publisher = _manager.getCCNDId();
+			try {
+				publisher = _manager.getCCNDId();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+				throw new CCNDaemonException(e1.getMessage());
+			}
 		
 		ContentName prefixToRegister;
 		try {
@@ -327,12 +352,16 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			Log.warningStackTrace(e);
 			String msg = ("Unexpected MalformedContentNameStringException in call creating ContentName for Interest, reason: " + reason);
 			throw new CCNDaemonException(msg);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new CCNDaemonException(e.getMessage());
 		}
 		super.sendIt(interestName, forward);
 	}
 
 	
-	public Integer selfRegisterPrefix(String uri) throws CCNDaemonException {
+	public ForwardingEntry selfRegisterPrefix(String uri) throws CCNDaemonException {
 		ContentName prefixToRegister;
 		try {
 			prefixToRegister = ContentName.fromURI(uri);
@@ -346,21 +375,28 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		return selfRegisterPrefix(prefixToRegister, null, DEFAULT_SELF_REG_FLAGS, Integer.MAX_VALUE);
 	}
 	
-	public Integer selfRegisterPrefix(ContentName prefixToRegister) throws CCNDaemonException {
+	public ForwardingEntry selfRegisterPrefix(ContentName prefixToRegister) throws CCNDaemonException {
 		return selfRegisterPrefix(prefixToRegister, null, DEFAULT_SELF_REG_FLAGS, Integer.MAX_VALUE);
 	}
 	
-	public Integer selfRegisterPrefix(ContentName prefixToRegister, Integer faceID) throws CCNDaemonException {
+	public ForwardingEntry selfRegisterPrefix(ContentName prefixToRegister, Integer faceID) throws CCNDaemonException {
 		return selfRegisterPrefix(prefixToRegister, faceID, DEFAULT_SELF_REG_FLAGS, Integer.MAX_VALUE);
 	}
 	
-	public Integer selfRegisterPrefix(ContentName prefixToRegister, Integer faceID, Integer flags) throws CCNDaemonException {
+	public ForwardingEntry selfRegisterPrefix(ContentName prefixToRegister, Integer faceID, Integer flags) throws CCNDaemonException {
 		return selfRegisterPrefix(prefixToRegister, faceID, flags, Integer.MAX_VALUE);
 	}
 	
-	public Integer selfRegisterPrefix(ContentName prefixToRegister, Integer faceID, Integer flags, Integer lifetime) throws CCNDaemonException {
+	public ForwardingEntry selfRegisterPrefix(ContentName prefixToRegister, Integer faceID, Integer flags, Integer lifetime) throws CCNDaemonException {
 		final String startURI = "ccnx:/ccnx/";
-		PublisherPublicKeyDigest ccndId = _manager.getCCNDId();
+		PublisherPublicKeyDigest ccndId;
+		try {
+			ccndId = _manager.getCCNDId();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+			throw new CCNDaemonException(e1.getMessage());
+		}
 		ContentName interestName;
 		try {
 			interestName = ContentName.fromURI(startURI);
@@ -378,12 +414,19 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		byte[] payloadBack = super.sendIt(interestName, forward);
 		ForwardingEntry entryBack = new ForwardingEntry(payloadBack);
 		Log.finest("registerPrefix: returned {0}", entryBack);
-		return entryBack.faceID(); 
+		return entryBack; 
 	}
 	
 	public void unRegisterPrefix(ContentName prefixToRegister, Integer faceID) throws CCNDaemonException {
 		final String startURI = "ccnx:/ccnx/";
-		PublisherPublicKeyDigest ccndId = _manager.getCCNDId();
+		PublisherPublicKeyDigest ccndId;
+		try {
+			ccndId = _manager.getCCNDId();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+			throw new CCNDaemonException(e1.getMessage());
+		}
 		ContentName interestName;
 		try {
 			interestName = ContentName.fromURI(startURI);

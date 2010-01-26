@@ -34,7 +34,6 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo;
-import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
@@ -60,8 +59,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  */
 public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 
-	protected SignedInfo.ContentType _type;
-
 	public CCNBlockOutputStream(ContentName baseName, SignedInfo.ContentType type) throws IOException {
 		this(baseName, type, null, null);
 	}
@@ -77,27 +74,11 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 			KeyLocator locator, PublisherPublicKeyDigest publisher,
 			ContentKeys keys, CCNFlowControl flowControl)
 			throws IOException {
-		super(locator, publisher, new CCNSegmenter(flowControl, new CCNBlockSigner(), keys));
-		init(baseName, type);
+		super((SegmentationProfile.isSegment(baseName) ? SegmentationProfile.segmentRoot(baseName) : baseName),
+			  locator, publisher, type, keys, new CCNSegmenter(flowControl, new CCNBlockSigner()));
+		startWrite(); // set up flow controller to write
 	}
 
-	private void init(ContentName baseName, SignedInfo.ContentType type) {
-		_type = type;
-
-		ContentName nameToOpen = baseName;
-		
-		// If someone gave us a fragment name, at least strip that.
-		if (SegmentationProfile.isSegment(nameToOpen)) {
-			// DKS TODO: should we do this?
-			nameToOpen = SegmentationProfile.segmentRoot(nameToOpen);
-		}
-
-		// Don't go looking for or adding versions. Might be unversioned,
-		// unfragmented content (e.g. RTP streams). Assume caller knows
-		// what name they want.
-		_baseName = nameToOpen;
-	}
-	
 	public void useByteCountSequenceNumbers() {
 		getSegmenter().setSequenceType(SegmentNumberType.SEGMENT_BYTE_COUNT);
 		getSegmenter().setByteScale(1);
@@ -116,7 +97,7 @@ public class CCNBlockOutputStream extends CCNAbstractOutputStream {
 	@Override
 	public void write(byte[] b, int off, int len) throws IOException {
 		try {
-			getSegmenter().put(_baseName, b, off, len, false, ContentType.DATA, null, null, null);
+			getSegmenter().put(_baseName, b, off, len, false, getType(), null, null, null, _keys);
 		} catch (InvalidKeyException e) {
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {
