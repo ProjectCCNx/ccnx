@@ -860,6 +860,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 			keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
 			keyDirectory.waitForChildren();
+			try{Thread.sleep(10000);} catch (Exception e) {e.printStackTrace();}
 			// this will handle the caching.
 			Key unwrappedKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
 			if (null != unwrappedKey) {
