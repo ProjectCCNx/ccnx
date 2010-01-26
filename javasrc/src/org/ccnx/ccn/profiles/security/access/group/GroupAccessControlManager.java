@@ -919,8 +919,10 @@ public class GroupAccessControlManager extends AccessControlManager {
 		} else {
 			Log.info("Found node key at " + nodeKey.storedNodeKeyName());
 		}
+		Log.finer("getFreshEffectiveNodeKey: retrieved stored node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), nodeKey);
 		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
-		Log.info("Computing effective node key for " + nodeName + " using stored node key " + effectiveNodeKey.storedNodeKeyName());
+		Log.finer("getFreshEffectiveNodeKey: computed effective node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), effectiveNodeKey);
+		Log.info("Computed effective node key for " + nodeName + " using stored node key " + effectiveNodeKey.storedNodeKeyName());
 		return effectiveNodeKey;
 	}
 	
@@ -1238,9 +1240,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 				return null;
 			}
 		}
-		Log.finer("getNodeKeyForObject: retrieved stored node key for node {0}: {1}", nodeName, nk);
-		NodeKey enk = nk.computeDescendantNodeKey(nodeName, dataKeyLabel());
-		Log.finer("getNodeKeyForObject: computed effective node key for node {0}: {1}", nodeName, enk);
+		Log.finer("getNodeKeyForObject: retrieved stored node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), nk);
+		NodeKey enk = nk.computeDescendantNodeKey(nodeName, nodeKeyLabel());
+		Log.finer("getNodeKeyForObject: computed effective node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), enk);
 		return enk;
 	}
 	
