@@ -58,7 +58,7 @@ public class TestUserData {
 	 * second, and so on. This allows them to be enumerated without requiring them to be stored
 	 * in a repo.
 	 */
-	public static final String [] USER_NAMES = {"Bob", "Alice", "Carol", "Mary", "Oswald", "Binky",
+	public static final String [] USER_NAMES = {"Alice", "Bob", "Carol", "Dave", "Oswald", "Binky",
 												"Spot", "Fred", "Eve", "Harold", "Barack", "Newt",
 												"Allison", "Zed", "Walter", "Gizmo", "Nick", "Michael",
 												"Nathan", "Rebecca", "Diana", "Jim", "Van", "Teresa",
@@ -382,6 +382,7 @@ public class TestUserData {
 			String userNamesString = args[arg++];
 			userNames = userNamesString.split(",");
 		}
+		else userNames = USER_NAMES;
 		
 		int count = Integer.valueOf(args[arg++]);
 		
