@@ -264,6 +264,21 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 	
 	/**
+	 * Add an identity to my set. Assume the key is already published.
+	 */
+	public void addMyIdentity(ContentName identity) {
+		_myIdentities.add(identity);
+	}
+	
+	/**
+	 * Add an identity in the default user namesapce to my set. Assume the key is already published.
+	 */
+	public void addMyIdentity(String userName) {
+		_myIdentities.add(GroupAccessControlProfile.userNamespaceName(_userStorage, userName));
+	}
+	
+	
+	/**
 	 * Publish the specified identity (i.e. the public key) of a specified user
 	 * @param userName the name of the user
 	 * @param userPublicKey the public key of the user
