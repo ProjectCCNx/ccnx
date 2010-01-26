@@ -2,6 +2,7 @@ package org.ccnx.ccn.utils.explorer;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.util.logging.Level;
 
 import javax.swing.JButton;
@@ -30,9 +31,10 @@ public class UserSelector extends JDialog implements ActionListener {
 	ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
 	ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
 	
-	private int nbUsers;
+	private static int nbUsers;
 	private JButton[] userButton;
 	private static ContentName root;
+	private static String userConfigDirBase = null;
 	private static GroupAccessControlManager gacm = null;
 	
 	public UserSelector() {
@@ -47,7 +49,6 @@ public class UserSelector extends JDialog implements ActionListener {
 		pleaseSelect.setBounds(10, 10, 150, 20);
 		getContentPane().add(pleaseSelect);
 		
-		nbUsers = 4;
 		userButton = new JButton[nbUsers];
 		
 		for (int i=0; i<nbUsers; i++) {
@@ -84,9 +85,26 @@ public class UserSelector extends JDialog implements ActionListener {
 		this.dispose();
 	}
 	
+	public static void usage() {
+		System.out.println("usage: UserSelector -f <file directory for keystores> <user count>");
+	}
+	
 	public static void main(String[] args) {
-		Log.setDefaultLevel(Level.FINEST);
+		Log.setDefaultLevel(Level.WARNING);
 		
+		if (args.length < 3) {
+			usage();
+			return;
+		}
+		
+		if (! args[0].equals("-f")) {
+			usage();
+			return;
+		}
+		
+		userConfigDirBase = args[1];
+		nbUsers = Integer.parseInt(args[2]);
+				
 		root = null;
 		try {
 			root = ContentName.fromNative("/");
@@ -97,11 +115,12 @@ public class UserSelector extends JDialog implements ActionListener {
 		new UserSelector();		
 	}
 	
-	private void setUser(String userName) {
-		System.out.println("Setting user: " + userName);
-		
+	private void setUser(String userName) {		
 		// Note: the user must be set before any handle or group manager is created.
-		UserConfiguration.setUserConfigurationDirectory("/home/pgolle/ccn/external/javasrc/TestUsers/" + userName);
+		File userDirectory = new File(userConfigDirBase, userName);
+		String userConfigDir = userDirectory.getAbsolutePath();
+		System.out.println("User configuration directory: " + userConfigDir);
+		UserConfiguration.setUserConfigurationDirectory(userConfigDir);
 		UserConfiguration.setUserName(userName);
 		try{
 			UserConfiguration.setUserNamespacePrefix("/ccnx.org/Users");
@@ -110,6 +129,7 @@ public class UserSelector extends JDialog implements ActionListener {
 		}
 		
 		// create and set the group access control manager
+		System.out.println("Setting user: " + userName);
 		try {
 			ContentName baseNode = ContentName.fromNative("/");
 			CCNHandle handle = CCNHandle.open();
