@@ -33,6 +33,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
@@ -73,6 +74,7 @@ public class ACLManager extends JDialog implements ActionListener {
 		try{
 			ContentName baseNode = ContentName.fromNative("/");
 			acm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, CCNHandle.open());
+			NamespaceManager.registerACM(acm);
 			gm = acm.groupManager();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -174,6 +176,7 @@ public class ACLManager extends JDialog implements ActionListener {
 		try{
 			acm.initializeNamespace(rootACL);
 			currentACL = rootACL;
+			NamespaceManager.registerACM(acm);
 		} 
 		catch (ContentNotReadyException cnre) {
 			System.out.println("Fatal error: the system assumes the existence of user: " + cn);
