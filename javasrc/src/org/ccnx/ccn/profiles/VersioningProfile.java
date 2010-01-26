@@ -621,9 +621,11 @@ public class VersioningProfile implements CCNProfile {
 					//excludes = addVersionToExcludes(excludes, result.name());
 					System.out.println("result did not verify, trying to find a verifiable answer");
 					excludeList = addVersionToExcludes(excludeList, result.name());
+					//note:  need to use the full name, but want to exclude this particular digest.  This means we can't cut off the segment marker.
+					//Interest retry = new Interest(SegmentationProfile.segmentRoot(result.name()), publisher);
+					//retry.maxSuffixComponents(1);
+					Interest retry = new Interest(result.name(), publisher);
 					
-					Interest retry = new Interest(SegmentationProfile.segmentRoot(result.name()), publisher);
-					retry.maxSuffixComponents(1);
 					boolean verifyDone = false;
 					while(!verifyDone) {
 						if(retry.exclude() == null)
