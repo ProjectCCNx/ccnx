@@ -170,7 +170,8 @@ public class UserSelector extends JDialog implements ActionListener {
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
-		ContentExplorer.setGroupAccessControlManager(gacm);		
+		ContentExplorer.setGroupAccessControlManager(gacm);	
+		ContentExplorer.setUsername(userName);
 	}
 
 }

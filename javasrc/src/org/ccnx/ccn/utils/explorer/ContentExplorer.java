@@ -90,6 +90,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	
 	private static boolean accessControlOn = false;
 	private static GroupAccessControlManager gacm = null;
+	private static String userName = null;
 
 	private CCNNameEnumerator _nameEnumerator = null;
 	protected static CCNHandle _handle = null;
@@ -145,6 +146,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 */
 	public ContentExplorer() {
 		super("CCN Content Explorer");
+		if (userName != null) this.setTitle("CCN Content Explorer for " + userName);
 		
 		//vlcSupported = checkVLCsupport();
 
@@ -1217,6 +1219,10 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	
 	public static void setGroupAccessControlManager(GroupAccessControlManager acm) {
 		gacm = acm;
+	}
+	
+	public static void setUsername(String name) {
+		userName = name;
 	}
 	
 }
