@@ -36,6 +36,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
@@ -553,6 +554,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				_activeWriteFile.openFile.close();
 				_activeWriteFile.openFile = null;
 			} catch (IOException e) {}
+		}
+		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.REPO_EXITDUMP)) {
+			Log.warning("Debug flag ({0}) is set: dumping nametree now (on shutdown)", DEBUGGING_FLAGS.REPO_EXITDUMP.toString());
+			dumpNames(-1);
 		}
 	}
 

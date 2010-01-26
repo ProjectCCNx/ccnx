@@ -354,6 +354,12 @@ public class Daemon {
 		String memval = System.getProperty(PROP_DAEMON_MEMORY);
 		if (memval != null)
 			argList.add("-Xmx" + memval);
+		String debugFlagVal = System.getProperty(SystemConfiguration.DEBUG_FLAG_PROPERTY);
+		if (debugFlagVal != null)
+			argList.add("-D" + SystemConfiguration.DEBUG_FLAG_PROPERTY + "=" + debugFlagVal);
+		String debugDirVal = System.getProperty(SystemConfiguration.DEBUG_DATA_DIRECTORY_PROPERTY);
+		if (debugDirVal != null) 
+			argList.add("-D" + SystemConfiguration.DEBUG_DATA_DIRECTORY_PROPERTY + "=" + debugDirVal);
 		
 		String suspend = System.getProperty(PROP_DAEMON_DEBUG_SUSPEND);
 		String doSuspend = suspend == null ? "n" : "y";
