@@ -494,7 +494,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				}
 				if ((null == tailData) || (0 == tailData.length)) {
 					_segmentReadStream = new ByteArrayInputStream(bodyData);
-				} else {
+				} 
+				else if ((null == bodyData) || (0 == bodyData.length)) {
+					_segmentReadStream = new ByteArrayInputStream(tailData);						
+				}
+				else {
 					byte [] allData = new byte[bodyData.length + tailData.length];
 					// Still avoid 1.6 array ops
 					System.arraycopy(bodyData, 0, allData, 0, bodyData.length);
