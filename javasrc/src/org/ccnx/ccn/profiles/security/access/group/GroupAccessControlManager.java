@@ -264,6 +264,21 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 	
 	/**
+	 * Add an identity to my set. Assume the key is already published.
+	 */
+	public void addMyIdentity(ContentName identity) {
+		_myIdentities.add(identity);
+	}
+	
+	/**
+	 * Add an identity in the default user namesapce to my set. Assume the key is already published.
+	 */
+	public void addMyIdentity(String userName) {
+		_myIdentities.add(GroupAccessControlProfile.userNamespaceName(_userStorage, userName));
+	}
+	
+	
+	/**
 	 * Publish the specified identity (i.e. the public key) of a specified user
 	 * @param userName the name of the user
 	 * @param userPublicKey the public key of the user
@@ -597,7 +612,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 					// do nothing
 				}
 				if (latestKey.available()) {
-					Log.info("Adding wrapped key block for reader: " + latestKey.getVersionedName());
+					Log.info("updateACL: Adding wrapped key block for reader: " + latestKey.getVersionedName());
 					try {
 						keyDirectory.addWrappedKeyBlock(latestNodeKey.nodeKey(), latestKey.getVersionedName(), latestKey.publicKey());
 					} catch (VersionMissingException e) {
@@ -605,7 +620,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 					}
 				} else {
 					// Do we use an old key or give up?
-					Log.info("No key for " + principal + " found. Skipping.");
+					Log.info("updateACL: No key for " + principal + " found. Skipping.");
 				}
 			}
 		} finally {
@@ -845,6 +860,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 			keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
 			keyDirectory.waitForChildren();
+			try{Thread.sleep(10000);} catch (Exception e) {e.printStackTrace();}
 			// this will handle the caching.
 			Key unwrappedKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
 			if (null != unwrappedKey) {
@@ -1254,6 +1270,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 	public boolean isProtectedContent(ContentName name, PublisherPublicKeyDigest publisher, ContentType contentType, CCNHandle handle) {
 		if (GroupAccessControlProfile.isGroupName(name)) {
 			// Don't encrypt the group metadata
+			return false;
+		}
+		if (GroupAccessControlProfile.isUserName(name)) {
 			return false;
 		}
 		return super.isProtectedContent(name, publisher, contentType, handle);

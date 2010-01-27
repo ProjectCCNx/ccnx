@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.EnumSet;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
@@ -93,6 +94,23 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 			super(Link.class, true, firstBlock, handle);
 		}
 		
+		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher,
+				CCNFlowControl flowControl) throws ContentDecodingException,
+				IOException {
+			super(Link.class, true, name, publisher, flowControl);
+		}
+
+		public LinkObject(ContentObject firstBlock, CCNFlowControl flowControl)
+				throws ContentDecodingException, IOException {
+			super(Link.class, true, firstBlock, flowControl);
+		}
+
+		public LinkObject(ContentName name, Link data, PublisherPublicKeyDigest publisher,
+				KeyLocator keyLocator, CCNFlowControl flowControl)
+				throws IOException {
+			super(Link.class, true, name, data, publisher, keyLocator, flowControl);
+		}
+
 		public LinkObject(CCNEncodableObject<? extends Link> other) {
 			super(Link.class, other);
 		}

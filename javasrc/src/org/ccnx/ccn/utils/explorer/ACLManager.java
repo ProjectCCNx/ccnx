@@ -63,7 +63,7 @@ public class ACLManager extends JDialog implements ActionListener {
 	private JButton cancelChangesButton;
 	
 	
-	public ACLManager(String path) {
+	public ACLManager(String path, GroupAccessControlManager gacm) {
 
 		super();
 		setBounds(100, 100, 400, 500);
@@ -72,9 +72,7 @@ public class ACLManager extends JDialog implements ActionListener {
 		
 		// enumerate existing users and groups
 		try{
-			ContentName baseNode = ContentName.fromNative("/");
-			acm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, CCNHandle.open());
-			NamespaceManager.registerACM(acm);
+			acm = gacm;
 			gm = acm.groupManager();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -158,35 +156,13 @@ public class ACLManager extends JDialog implements ActionListener {
 			currentACL = acm.getEffectiveACLObject(node).acl();
 		}
 		catch (IllegalStateException ise) {
-			System.out.println("The repository has no root ACL.");
-			System.out.println("Attempting to create missing root ACL.");
-			createRootACL();
+			System.out.println("Fatal error: the repository has no root ACL.");
+			ise.printStackTrace();
 		}
 		catch (Exception e) {
 			e.printStackTrace();
 		}		
-	}
-	
-	private void createRootACL() {
-		ContentName cn = ContentName.fromNative(userStorage, "Alice");
-		Link lk = new Link(cn, ACL.LABEL_MANAGER, null);
-		ArrayList<Link> rootACLcontents = new ArrayList<Link>();
-		rootACLcontents.add(lk);
-		ACL rootACL = new ACL(rootACLcontents);
-		try{
-			acm.initializeNamespace(rootACL);
-			currentACL = rootACL;
-			NamespaceManager.registerACM(acm);
-		} 
-		catch (ContentNotReadyException cnre) {
-			System.out.println("Fatal error: the system assumes the existence of user: " + cn);
-			cnre.printStackTrace();
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-	
+	}	
 
 	public void actionPerformed(ActionEvent ae) {
 		if (applyChangesButton == ae.getSource()) applyChanges();
@@ -204,7 +180,7 @@ public class ACLManager extends JDialog implements ActionListener {
 			// TODO: we set the ACL, then update it, to handle correctly the case
 			// where the node had no ACL to start with.
 			// It would be more efficient to set and update the ACL in a single step.
-			acm.setACL(node, currentACL);
+//			acm.setACL(node, currentACL);
 			acm.updateACL(node, userUpdates);
 			acm.updateACL(node, groupUpdates);
 		} catch (AccessDeniedException ade) {

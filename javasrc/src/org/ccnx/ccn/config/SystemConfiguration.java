@@ -50,7 +50,7 @@ import org.ccnx.ccn.protocol.ContentObject;
  */
 public class SystemConfiguration {
 	
-	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES, DUMP_DAEMONCMD};
+	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES, DUMP_DAEMONCMD, REPO_EXITDUMP};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
 
 	/**
@@ -244,6 +244,7 @@ public class SystemConfiguration {
 	private static Object runtimeMXBean = null;
 
 	public static void setDebugFlag(DEBUGGING_FLAGS debugFlag, boolean value) {
+		Log.info("Debug Flag {0} set to {1}", debugFlag.toString(), value);
 		DEBUG_FLAG_VALUES.put(debugFlag, Boolean.valueOf(value));
 	}
 

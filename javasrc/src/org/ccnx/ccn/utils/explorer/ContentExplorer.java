@@ -70,6 +70,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -86,7 +87,10 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 public class ContentExplorer extends JFrame implements BasicNameEnumeratorListener, ActionListener {
 
 	private static ContentName root;
+	
 	private static boolean accessControlOn = false;
+	private static GroupAccessControlManager gacm = null;
+	private static String userName = null;
 
 	private CCNNameEnumerator _nameEnumerator = null;
 	protected static CCNHandle _handle = null;
@@ -142,6 +146,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 */
 	public ContentExplorer() {
 		super("CCN Content Explorer");
+		if (userName != null) this.setTitle("CCN Content Explorer for " + userName);
 		
 		//vlcSupported = checkVLCsupport();
 
@@ -939,8 +944,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 						System.err.println("Could not parse root path: " + args[i] + " (exiting)");
 						System.exit(1);
 					}
-				} else if (s.equals("-accessControl"))
+				} else if (s.equals("-accessControl")) {
 					accessControlOn = true;
+				}
 				else {
 					usage();
 					System.exit(1);
@@ -1013,7 +1019,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	/**
 	 * Static method to create and display the GUI.
 	 */
-	private static void createAndShowGUI() {
+	public static void createAndShowGUI() {
 		if (useSystemLookAndFeel) {
 			try {
 				UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -1120,7 +1126,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			EventQueue.invokeLater(new Runnable() {
 				public void run() {
 					try {
-						ACLManager dialog = new ACLManager(selectedPrefix);
+						ACLManager dialog = new ACLManager(selectedPrefix, gacm);
 						if (dialog.hasACL()) dialog.setVisible(true);
 						else {
 							dialog.setVisible(false);
@@ -1136,7 +1142,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			EventQueue.invokeLater(new Runnable() {
 				public void run() {
 					try {
-						GroupManagerGUI dialog = new GroupManagerGUI(selectedPrefix);
+						GroupManagerGUI dialog = new GroupManagerGUI(selectedPrefix, gacm);
 						dialog.setVisible(true);
 					} catch (Exception e) {
 						Log.warningStackTrace(e);
@@ -1202,4 +1208,21 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 		return check;
 	}
+	
+	public static void setRoot(ContentName r) {
+		root = r;
+	}
+	
+	public static void setAccessControl(boolean ac) {
+		accessControlOn = ac;
+	}
+	
+	public static void setGroupAccessControlManager(GroupAccessControlManager acm) {
+		gacm = acm;
+	}
+	
+	public static void setUsername(String name) {
+		userName = name;
+	}
+	
 }
