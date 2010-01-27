@@ -29,11 +29,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.io.content.ContentNotReadyException;
-import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
