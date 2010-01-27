@@ -2,7 +2,6 @@ package org.ccnx.ccn.test.protocol;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
@@ -15,7 +14,6 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
-import org.ccnx.ccn.impl.support.Log;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -39,7 +37,6 @@ public class LatestVersionTest {
 	ContentName baseName;
 	
 	public static ContentObject lastVersionPublished = null;
-	public static long attempts = 0;
 	public static ContentName pingResponder = null;
 	
 	public static ArrayList<ContentObject> responseObjects = null;
@@ -294,7 +291,7 @@ public class LatestVersionTest {
 		}
 		
 		//now put 15 responses in....
-		for(int i = 0; i < VersioningProfile.GET_LATEST_VERSION_ATTEMPTS + 5; i++)
+		for(int i = 0; i < SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS + 5; i++)
 			responseObjects.add(ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 0), "here is version generated".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0)));
 		
 		lastVersionPublished = responseObjects.get(responseObjects.size()-1);
@@ -302,25 +299,18 @@ public class LatestVersionTest {
 		//test for sending in a null timeout
 		try {
 			
-			//reset attempts
-			attempts = 0;
-			
 			object = VersioningProfile.getLatestVersion(baseName, null, SystemConfiguration.NO_TIMEOUT, getHandle.defaultVerifier(), getHandle);
-			System.out.println("got back :"+object.name() + " responder count: "+attempts);
+			System.out.println("got back :"+object.name());
 			Assert.assertTrue(object.name().equals(lastVersionPublished.name()));
-			//Assert.assertTrue(attempts == VersioningProfile.GET_LATEST_VERSION_ATTEMPTS + 5);
 			System.out.println("passed test for no timeout");
-			
-			//reset attempts
-			attempts = 0;
-			for(int i =0; i < VersioningProfile.GET_LATEST_VERSION_ATTEMPTS; i++)
+		
+			for(int i =0; i < SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS; i++)
 				responseObjects.add(ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 0), "here is version generated".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0)));
 			
 			lastVersionPublished = responseObjects.get(responseObjects.size()-1);
 			
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, SystemConfiguration.NO_TIMEOUT, getHandle.defaultVerifier(), getHandle);
 			Assert.assertTrue(object.name().equals(lastVersionPublished.name()));
-			//Assert.assertTrue(attempts == VersioningProfile.GET_LATEST_VERSION_ATTEMPTS + 5);
 			System.out.println("passed test for no timeout");
 			
 			Assert.assertTrue(responseObjects.size() == 0);
@@ -491,7 +481,6 @@ public class LatestVersionTest {
 	 * @throws IOException 
 	 */
 	private void setUpResponder() throws IOException {
-		attempts = 0;
 		
 		Thread t = new Thread(new Responder());
 		t.run();
@@ -551,7 +540,6 @@ public class LatestVersionTest {
 				if (i.matches(responseObjects.get(0))) {
 					try {
 						System.out.println("returning: "+ responseObjects.get(0).fullName());
-						//LatestVersionTest.attempts++;
 						handle.put(responseObjects.remove(0));
 					} catch (IOException e) {
 						Assert.fail("could not put object in responder");
