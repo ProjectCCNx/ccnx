@@ -803,8 +803,8 @@ public class KeyDirectory extends EnumeratedNameList {
 		wko.save();
 		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new Link(wko.getVersionedName()), SaveType.REPOSITORY, _manager.handle());
 		lo.save();
-		Log.finer("KeyDirectory addWrappedKeyBlock: wrapped secret key {0} under public key named {1} for key directory {2}", 
-				DataUtils.printHexBytes(secretKeyToWrap.getEncoded()), publicKeyName, this._namePrefix);
+		Log.finer("KeyDirectory addWrappedKeyBlock: wrapped secret key {0} under public key named {1} whose id is {2} for key directory {3}", 
+				DataUtils.printHexBytes(secretKeyToWrap.getEncoded()), publicKeyName, DataUtils.printHexBytes(publicKey.getEncoded()), this._namePrefix);
 	}
 	
 	/**
@@ -896,5 +896,10 @@ public class KeyDirectory extends EnumeratedNameList {
 		wrappedKey.setWrappingKeyName(supersedingKeyName);
 		WrappedKeyObject wko = new WrappedKeyObject(getPreviousKeyBlockName(), wrappedKey,SaveType.REPOSITORY,  _manager.handle());
 		wko.save();
+		Log.finer("KeyDirectory addPreviousKeyBlock: old wrapping key is {0} and superseding key name is {1} and new wrapping key is {2}.", 
+				DataUtils.printHexBytes(oldPrivateKeyWrappingKey.getEncoded()),
+				supersedingKeyName,
+				DataUtils.printHexBytes(newPrivateKeyWrappingKey.getEncoded())
+				);
 	}
 }

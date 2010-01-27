@@ -1135,7 +1135,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 					ContentGoneException, IOException {
 		// Get the name of the key directory; this is unversioned. Make a new version of it.
 		ContentName nodeKeyDirectoryName = VersioningProfile.addVersion(GroupAccessControlProfile.nodeKeyName(nodeName));
-		Log.info("Generating new node key " + nodeKeyDirectoryName);
+		Log.info("GenerateNewNodeKey: generating new node key " + nodeKeyDirectoryName);
+		Log.finer("GenerateNewNodeKey: for node {0} with old effective node key {1}", nodeName, oldEffectiveNodeKey);
 		
 		// Now, generate the node key.
 		if (effectiveACL.publiclyReadable()) {
@@ -1147,6 +1148,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		byte [] nodeKeyBytes = new byte[NodeKey.DEFAULT_NODE_KEY_LENGTH];
 		_random.nextBytes(nodeKeyBytes);
 		Key nodeKey = new SecretKeySpec(nodeKeyBytes, NodeKey.DEFAULT_NODE_KEY_ALGORITHM);
+		Log.finer("GenerateNewNodeKey: for node {0} the new node key is {1}", nodeName, DataUtils.printHexBytes(nodeKey.getEncoded()));
 		
 		// Now, wrap it under the keys listed in its ACL.
 		
@@ -1185,14 +1187,17 @@ public class GroupAccessControlManager extends AccessControlManager {
 			// 			NK/vn replaced by NK/vn+k -- new node key will be later version of previous node key
 			//   -- we don't get called if we are deleting an ACL here -- no new node key is added.
 			if (oldEffectiveNodeKey != null) {
+				Log.finer("GenerateNewNodeKey: old effective node key is not null.");
 				if (oldEffectiveNodeKey.isDerivedNodeKey()) {
+					Log.finer("GenerateNewNodeKey: old effective node key is derived node key.");
 					// Interposing an ACL. 
 					// Add a previous key block wrapping the previous key. There is nothing to link to.
 					nodeKeyDirectory.addPreviousKeyBlock(oldEffectiveNodeKey.nodeKey(), nodeKeyDirectoryName, nodeKey);
 				} else {
+					Log.finer("GenerateNewNodeKey: old effective node key is not a derived node key.");					
 					try {
 						if (!VersioningProfile.isLaterVersionOf(nodeKeyDirectoryName, oldEffectiveNodeKey.storedNodeKeyName())) {
-							Log.warning("Unexpected: replacing node key stored at " + oldEffectiveNodeKey.storedNodeKeyName() + " with new node key " + 
+							Log.warning("GenerateNewNodeKey: Unexpected: replacing node key stored at " + oldEffectiveNodeKey.storedNodeKeyName() + " with new node key " + 
 									nodeKeyDirectoryName + " but latter is not later version of the former.");
 						}
 					} catch (VersionMissingException vex) {
@@ -1237,12 +1242,15 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// it should be, and attempt to decrypt it from there.
 		NodeKey nk = null;
 		try {
+			Log.finer("getNodeKeyForObject: trying to get specific node key at {0}", wko.wrappedKey().wrappingKeyName());
 			nk = getSpecificNodeKey(wko.wrappedKey().wrappingKeyName(), 
 										wko.wrappedKey().wrappingKeyIdentifier());
+			Log.finer("getNodeKeyForObject: got specific node key {0} at {1}", nk, wko.wrappedKey().wrappingKeyName());
 		} catch (AccessDeniedException ex) {
 			// ignore
 		}
 		if (null == nk) {
+			Log.finer("getNodeKeyForObject: trying to get node key using interposed ACL for {0}", wko.wrappedKey().wrappingKeyName());
 			// OK, we will have gotten an exception if the node key simply didn't exist
 			// there, so this means that we don't have rights to read it there.
 			// The only way we might have rights not visible from this link is if an

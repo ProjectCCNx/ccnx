@@ -91,6 +91,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	private static boolean accessControlOn = false;
 	private static GroupAccessControlManager gacm = null;
 	private static String userName = null;
+	private static boolean previewTextFiles = true;
 
 	private CCNNameEnumerator _nameEnumerator = null;
 	protected static CCNHandle _handle = null;
@@ -998,7 +999,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		String p = toExpand.toString();
 		Log.finer("toExpand: " + toExpand + " p: " + p);
 
-		if (fnode.name != null && (ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".txt") || ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".text"))) {
+		if (fnode.name != null && previewTextFiles && (ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".txt") || ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".text"))) {
 			// get the file from the repo
 			Log.fine("Retrieve from Repo: " + p);
 			retrieveFromRepo(p);
@@ -1223,6 +1224,10 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	
 	public static void setUsername(String name) {
 		userName = name;
+	}
+	
+	public static void setPreviewTextfiles(boolean ptf) {
+		previewTextFiles = ptf;
 	}
 	
 }

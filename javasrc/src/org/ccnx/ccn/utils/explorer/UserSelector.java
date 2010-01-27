@@ -189,6 +189,7 @@ public class UserSelector extends JDialog implements ActionListener {
 		}
 		ContentExplorer.setGroupAccessControlManager(gacm);	
 		ContentExplorer.setUsername(userName);
+		ContentExplorer.setPreviewTextfiles(false);
 	}
 
 }

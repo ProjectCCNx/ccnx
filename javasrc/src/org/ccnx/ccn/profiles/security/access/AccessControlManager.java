@@ -124,7 +124,7 @@ public abstract class AccessControlManager {
 		// Could simplify to remove cache-retry logic.
 		if (null == wrappingKey) {
 			// No dice. Try subclass-specific retrieval.
-			Log.info("getDataKey: key {0} not in cache, getting data key wrapping key for data node {0} with wrapped key {1}", 
+			Log.info("getDataKey: key {0} not in cache, getting data key wrapping key for data node {1} with wrapped key {2}", 
 						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()), dataNodeName, wdko);
 			wrappingKey = getDataKeyWrappingKey(dataNodeName, wdko);
 		}
