@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -106,6 +106,8 @@ public class Log {
 				logFileName.append(DEFAULT_LOG_SUFFIX);
 
 				theHandler = new FileHandler(logFileName.toString());
+				// Force a standard XML encoding (avoids unusual ones like MacRoman in XML)
+				theHandler.setEncoding("UTF-8");
 				System.out.println("Writing log records to " + logFileName);
 				
 			} catch (IOException e) {
