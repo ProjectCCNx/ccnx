@@ -586,6 +586,7 @@ public class CCNNetworkManager implements Runnable {
 		CCNNetworkManager _networkManager;
 		KeyManager _keyManager;
 
+		@SuppressWarnings("unused")
 		public CCNDIdGetter(CCNNetworkManager networkManager, KeyManager keyManager) { 
 			_networkManager = networkManager;
 			_keyManager = keyManager;
