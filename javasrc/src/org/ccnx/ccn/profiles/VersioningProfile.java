@@ -536,6 +536,9 @@ public class VersioningProfile implements CCNProfile {
 		Log.info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion+" called with timeout: "+timeout);
 		
 		int attempts = 0;
+		//TODO  This timeout is set to SystemConfiguration.MEDIUM_TIMEOUT to work around the problem
+		//in ccnd where some interests take >300ms (and sometimes longer, have seen periodic delays >800ms)
+		//when that bug is found and fixed, this can be reduced back to the SHORT_TIMEOUT.
 		//long attemptTimeout = SystemConfiguration.SHORT_TIMEOUT;
 		long attemptTimeout = SystemConfiguration.MEDIUM_TIMEOUT;
 		if (timeout == SystemConfiguration.NO_TIMEOUT) {
