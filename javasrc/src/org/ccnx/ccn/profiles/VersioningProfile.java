@@ -71,8 +71,6 @@ public class VersioningProfile implements CCNProfile {
 	public static final byte FF = (byte) 0xFF;
 	public static final byte OO = (byte) 0x00;
 
-	public static final int GET_LATEST_VERSION_ATTEMPTS = 10;
-	
 	/**
 	 * Add a version field to a ContentName.
 	 * @return ContentName with a version appended. Does not affect previous versions.
@@ -554,7 +552,7 @@ public class VersioningProfile implements CCNProfile {
 		Exclude excludes = null;
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
 		
-		while (attempts < GET_LATEST_VERSION_ATTEMPTS && remainingTime > 0) {
+		while (attempts < SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS && remainingTime > 0) {
 			System.out.println("attempts: "+attempts+" attemptTimeout: "+attemptTimeout+" remainingTime: "+remainingTime+" (timeout: "+timeout+")");
 			lastResult = result;
 			attempts++;
@@ -681,7 +679,7 @@ public class VersioningProfile implements CCNProfile {
 						
 						if (timeout == 0) {
 							//caller just wants the first answer...
-							attempts = GET_LATEST_VERSION_ATTEMPTS;
+							attempts = SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS;
 							remainingTime = 0;
 						}
 						
@@ -691,7 +689,7 @@ public class VersioningProfile implements CCNProfile {
 							attemptTimeout = remainingTime;
 						} else {
 							System.out.println("time is up, return what we have");
-							attempts = GET_LATEST_VERSION_ATTEMPTS;
+							attempts = SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS;
 						}
 					
 						

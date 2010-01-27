@@ -130,6 +130,13 @@ public class SystemConfiguration {
 	public final static int NO_TIMEOUT = -1;
 	
 	/**
+	 * Set the maximum number of attempts that VersioningProfile.getLatestVersion will
+	 * try to get a later version of an object.
+	 */
+	public static final int GET_LATEST_VERSION_ATTEMPTS = 10;
+	
+	
+	/**
 	 * Can set compile-time default encoding here. Choices are
 	 * currently "Text" and "Binary", or better yet
 	 * BinaryXMLCodec.codecName() or TextXMLCodec.codecName().
