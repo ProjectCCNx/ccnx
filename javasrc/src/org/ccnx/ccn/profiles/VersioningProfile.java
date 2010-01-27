@@ -516,9 +516,7 @@ public class VersioningProfile implements CCNProfile {
 												  Long startingSegmentNumber,
 												  boolean getFirstSegment) throws IOException {
 		
-		Log.info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion);
-		
-		System.out.println("called with timeout: "+timeout);
+		Log.info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion+" called with timeout: "+timeout);
 		
 		int attempts = 0;
 		//long attemptTimeout = SystemConfiguration.SHORT_TIMEOUT;
@@ -553,7 +551,7 @@ public class VersioningProfile implements CCNProfile {
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
 		
 		while (attempts < SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS && remainingTime > 0) {
-			System.out.println("attempts: "+attempts+" attemptTimeout: "+attemptTimeout+" remainingTime: "+remainingTime+" (timeout: "+timeout+")");
+			Log.fine("gLV attempts: {0} attemptTimeout: {1} remainingTime: {2} (timeout: {3})", attempts, attemptTimeout, remainingTime, timeout);
 			lastResult = result;
 			attempts++;
 			Interest getLatestInterest = null;
@@ -571,26 +569,25 @@ public class VersioningProfile implements CCNProfile {
 			}
 			
 			
-			System.out.println("INTEREST: "+getLatestInterest);
-			System.out.println("trying handle.get with timeout: "+attemptTimeout);
+			Log.fine("gLV INTEREST: {0}", getLatestInterest);
+			Log.fine("gLV trying handle.get with timeout: {0}", attemptTimeout);
 			startTime = System.currentTimeMillis();
-			System.out.println("sending Interest from gLV at "+System.currentTimeMillis());
+			Log.fine("gLVTime sending Interest from gLV at {0}", System.currentTimeMillis());
 			result = handle.get(getLatestInterest, attemptTimeout);
 			respondTime = System.currentTimeMillis() - startTime;
-			System.out.println("returned from handle.get in "+respondTime+" ms");
+			Log.fine("gLVTime returned from handle.get in {0} ms",respondTime);
 			remainingTime = remainingTime - respondTime;
 			remainingNullTime = remainingNullTime - respondTime;
-			System.out.println("remaining time is now "+remainingTime+"ms");
+			Log.fine("gLV remaining time is now {0} ms", remainingTime);
 			if (null != result){
-				System.out.println("we got something back...");
-				Log.info("getFirstBlockOfLatestVersion: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
+				Log.info("gLV getLatestVersion: retrieved latest version object {0} type: {1}", result.name(), result.signedInfo().getTypeName());
 			
 				//did it verify?
 				//if it doesn't verify, we need to try harder to get a different content object (exclude this digest)
 				//make this a loop?
 				if (!verifier.verify(result)) {
 					//excludes = addVersionToExcludes(excludes, result.name());
-					System.out.println("result did not verify, trying to find a verifiable answer");
+					Log.fine("gLV result did not verify, trying to find a verifiable answer");
 					excludeList = addVersionToExcludes(excludeList, result.name());
 					//note:  need to use the full name, but want to exclude this particular digest.  This means we can't cut off the segment marker.
 					//Interest retry = new Interest(SegmentationProfile.segmentRoot(result.name()), publisher);
@@ -602,22 +599,22 @@ public class VersioningProfile implements CCNProfile {
 						if(retry.exclude() == null)
 							retry.exclude(new Exclude());
 						retry.exclude().add(new byte[][] {result.digest()});
-						System.out.println("result did not verify!  doing retry!! "+retry.toString());
-						System.out.println("sending retry interest at "+System.currentTimeMillis());
+						Log.fine("gLV result did not verify!  doing retry!! {0}", retry);
+						Log.fine("gLVTime sending retry interest at {0}", System.currentTimeMillis());
 						result = handle.get(retry, attemptTimeout);
 						
 						if (result!=null) {
-							System.out.println("we got something back: "+result.name());
+							Log.fine("gLV we got something back: {0}", result.name());
 							if(verifier.verify(result)) {
-								System.out.println("the returned answer verifies");
+								Log.fine("gLV the returned answer verifies");
 								verifyDone = true;
 							} else {
-								System.out.println("this answer did not verify either...  try again");
+								Log.fine("gLV this answer did not verify either...  try again");
 								
 							}
 						} else {
 							//result is null, we didn't find a verifiable answer
-							System.out.println("did not get a verifiable answer back");
+							Log.fine("gLV did not get a verifiable answer back");
 							verifyDone = true;
 						}
 					}	
@@ -653,7 +650,7 @@ public class VersioningProfile implements CCNProfile {
 							//if this isn't the first segment...  then we should exclude it.  otherwise, we can use it!
 							if(result == null) {
 								//we couldn't get a new segment...
-								System.out.println("could not get the first segment of the version we just found...  should exclude the version");
+								Log.fine("gLV could not get the first segment of the version we just found...  should exclude the version");
 								//excludes = addVersionToExcludes(excludes, startingVersion);
 								excludeList = addVersionToExcludes(excludeList, notFirstBlockVersion);
 							}
@@ -685,10 +682,10 @@ public class VersioningProfile implements CCNProfile {
 						
 						if (remainingTime > 0) {
 							//we still have time to try for a better answer
-							System.out.println("we still have time to try for a better answer");
+							Log.fine("gLV we still have time to try for a better answer");
 							attemptTimeout = remainingTime;
 						} else {
-							System.out.println("time is up, return what we have");
+							Log.fine("gLV time is up, return what we have");
 							attempts = SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS;
 						}
 					
@@ -701,26 +698,26 @@ public class VersioningProfile implements CCNProfile {
 			} //we got something back
 			
 			if (result == null) {
-				System.out.println("we didn't get anything");
-				Log.info("getFirstBlockOfLatestVersion: no block available for later version of " + startingVersion);
+				Log.fine("gLV we didn't get anything");
+				Log.info("getFirstBlockOfLatestVersion: no block available for later version of {0}", startingVersion);
 				//we didn't get a new version...  we can return the last one we received if it isn't null.
 				if (lastResult!=null) {
-					System.out.println("returning the last result that wasn't null... ");
-					System.out.println("returning: "+lastResult.name());
+					Log.fine("gLV returning the last result that wasn't null... ");
+					Log.fine("gLV returning: {0}",lastResult.name());
 					return lastResult;
 				}
 				else {
-					System.out.println("we didn't get anything, and we haven't had anything at all... try with remaining long timeout");
+					Log.fine("gLV we didn't get anything, and we haven't had anything at all... try with remaining long timeout");
 					attemptTimeout = remainingNullTime;
 					remainingTime = remainingNullTime;
 				}
 			}
-			System.out.println("(after) attempts: "+attempts+" attemptTimeout: "+attemptTimeout+" remainingTime: "+remainingTime+" (timeout: "+timeout+")");
+			Log.fine("gLV (after) attempts: {0} attemptTimeout: {1} remainingTime: {2} (timeout: {3})", attempts, attemptTimeout, remainingTime, timeout);
 			if (result!=null)
 				startingVersion = SegmentationProfile.segmentRoot(result.name());
 		}
 		if(result!=null)
-			System.out.println("returning: "+result.name());
+			Log.fine("gLV returning: {0}", result.name());
 		return result;
 	}
 	
@@ -791,9 +788,7 @@ public class VersioningProfile implements CCNProfile {
 	private static ArrayList<byte[]> addVersionToExcludes(ArrayList<byte[]> excludeList, ContentName name) {
 		try {
 			excludeList.add(VersioningProfile.addVersion(new ContentName(),VersioningProfile.getLastVersionAsLong(name)).component(0));
-
-			//excludes.add(new byte[][] {VersioningProfile.addVersion(new ContentName(),VersioningProfile.getLastVersionAsLong(name)).component(0)});
-			System.out.println("was able to exclude: "+excludeList.toString());
+			
 		} catch (VersionMissingException e) {
 			Log.warning("failed to exclude content object version that did not verify: {0}",name);
 		}
