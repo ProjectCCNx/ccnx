@@ -481,7 +481,7 @@ public class VersioningProfile implements CCNProfile {
 	}
 
 	/**
-	 * Gets the latest version using a single interest/response. There may be newer versions available
+	 * Function to (best effort) get the latest version. There may be newer versions available
 	 * if you ask again passing in the version found (i.e. each response will be the latest version
 	 * a given responder knows about. Further queries will move past that responder to other responders,
 	 * who may have newer information.)
@@ -490,12 +490,11 @@ public class VersioningProfile implements CCNProfile {
 	 * than that, and will time out if no such later version exists. If the name does not end in a 
 	 * version then this call just looks for the latest version.
 	 * @param publisher Currently unused, will limit query to a specific publisher.
-	 * @param timeout
-	 * @return A ContentObject with the latest version, or null if the query timed out. Note - the content
-	 * returned could be any name under this new version - by default it will get the leftmost item,
-	 * but right now that is generally a repo start write, not a segment. Changing the marker values
-	 * used will fix that.
-	 * @result Returns a matching ContentObject, *unverified*.
+	 * @param timeout  This is the time to wait until you get any response.  If nothing is returned, this method will return null.
+	 * @param verifier Used to verify the returned content objects
+	 * @param handle CCNHandle used to get the latest version
+	 * @return A ContentObject with the latest version, or null if the query timed out. 
+	 * @result Returns a matching ContentObject, verified.
 	 * @throws IOException
 	 */
 	public static ContentObject getLatestVersion(ContentName startingVersion, 
@@ -508,6 +507,24 @@ public class VersioningProfile implements CCNProfile {
 		
 	}
 	
+	/**
+	 * Function to (best effort) get the latest version. There may be newer versions available
+	 * if you ask again passing in the version found (i.e. each response will be the latest version
+	 * a given responder knows about. Further queries will move past that responder to other responders,
+	 * who may have newer information.)
+	 *  
+	 * @param name If the name ends in a version then this method explicitly looks for a newer version
+	 * than that, and will time out if no such later version exists. If the name does not end in a 
+	 * version then this call just looks for the latest version.
+	 * @param publisher Currently unused, will limit query to a specific publisher.
+	 * @param timeout  This is the time to wait until you get any response.  If nothing is returned, this method will return null.
+	 * @param verifier Used to verify the returned content objects.
+ 	 * @param handle CCNHandle used to get the latest version.
+ 	 * @param startingSegmentNumber Get the latest version with this starting segment marker.
+	 * @return A ContentObject with the latest version, or null if the query timed out. 
+	 * @result Returns a matching ContentObject, verified.
+	 * @throws IOException
+	 */
 	private static ContentObject getLatestVersion(ContentName startingVersion, 
 												  PublisherPublicKeyDigest publisher,
 												  long timeout,
@@ -727,6 +744,7 @@ public class VersioningProfile implements CCNProfile {
 	 * 		- if no version given, gets the first segment of the latest version
 	 * 		- if a starting version given, gets the latest version available *after* that version or times out
 	 *    Will ensure that what it returns is a segment of a version of that object.
+	 *    Also makes sure to return the latest version with a SegmentationProfile.baseSegment() marker.
 	 *	 * @param desiredName The name of the object we are looking for the first segment of.
 	 * 					  If (VersioningProfile.hasTerminalVersion(desiredName) == false), will get latest version it can
 	 * 							find of desiredName.
@@ -736,7 +754,7 @@ public class VersioningProfile implements CCNProfile {
 	 * @param publisher, if one is specified.
 	 * @param timeout
 	 * @return The first block of a stream with a version later than desiredName, or null if timeout is reached.
-	 *   		This block is *unverified*.
+	 *   		This block is verified.
 	 * @throws IOException
 	 */
 	public static ContentObject getFirstBlockOfLatestVersion(ContentName startingVersion, 
@@ -785,6 +803,13 @@ public class VersioningProfile implements CCNProfile {
 		return false;
 	}
 
+	/**
+	 * Adds version components to the exclude list for the getLatestVersion method.
+	 * @param excludeList current excludes
+	 * @param name component to add to the exclude list
+	 * @return updated exclude list
+	 */
+	
 	private static ArrayList<byte[]> addVersionToExcludes(ArrayList<byte[]> excludeList, ContentName name) {
 		try {
 			excludeList.add(VersioningProfile.addVersion(new ContentName(),VersioningProfile.getLastVersionAsLong(name)).component(0));
