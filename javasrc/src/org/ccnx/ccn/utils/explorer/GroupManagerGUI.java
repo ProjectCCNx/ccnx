@@ -356,7 +356,8 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 			((SortedListModel) userSelector.getModel()).removeElement(obj);
 			ContentName userContentName = (ContentName) obj;
 			Link lk = new Link(userContentName);
-			membersToAdd.add(lk);
+			if (membersToRemove.contains(lk)) membersToRemove.remove(lk);
+			else membersToAdd.add(lk);
 		}
 		userSelector.clearSelection();
 		
@@ -372,7 +373,8 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 			((SortedListModel) groupSelector.getModel()).removeElement(obj);
 			ContentName groupContentName = (ContentName) obj;
 			Link lk = new Link(groupContentName);
-			membersToAdd.add(lk);
+			if (membersToRemove.contains(lk)) membersToRemove.remove(lk);
+			else membersToAdd.add(lk);
 		}
 		groupSelector.clearSelection();
 		
@@ -401,7 +403,8 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 			else System.out.println("Warning: the principal " + principalContentName + " is neither a known group or a know user.");
 			((SortedListModel) groupMembershipList.getModel()).removeElement(obj);
 			Link lk = new Link(principalContentName);
-			membersToRemove.add(lk);
+			if (membersToAdd.contains(lk)) membersToAdd.remove(lk);
+			else membersToRemove.add(lk);
 		}
 		groupMembershipList.clearSelection();
 	}

@@ -185,15 +185,15 @@ public class ACLManager extends JDialog implements ActionListener {
 			acm.updateACL(node, groupUpdates);
 		} catch (AccessDeniedException ade) {
 			JOptionPane.showMessageDialog(this, "You do not have the access right to edit the ACL at this node.");
+			this.setVisible(false);
+			this.dispose();
 			ade.printStackTrace();
 		}
 		catch (Exception e) {
 			e.printStackTrace();
 		}
-		// refresh user and group tables with new ACL
-		getExistingACL();
-		userACLTable.initializeACLTable(currentACL); 
-		groupACLTable.initializeACLTable(currentACL); 
+		this.setVisible(false);
+		this.dispose();
 	}
 	
 	private void cancelChanges() {
