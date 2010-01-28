@@ -123,6 +123,32 @@ public class MinimalCertificateGenerator {
 	}
 	
 	/**
+	 * Generates a X509 certificate for a specified user , 
+	 * subject distinguished name and duration.
+	 * @param userKeyPair the user key pair.
+	 * @param subjectDN the distinguished name of the user.
+	 * @param duration the duration of validity of the certificate.
+	 * @return the X509 certificate.
+	 * @throws CertificateEncodingException
+	 * @throws InvalidKeyException
+	 * @throws IllegalStateException
+	 * @throws NoSuchAlgorithmException
+	 * @throws SignatureException
+	 * @throws IOException 
+	 */
+	public static X509Certificate GenerateUserCertificate(
+			String subjectDN, PublicKey userPublicKey, 
+			X509Certificate issuerCertificate, long duration, 
+			PrivateKey signingKey) 
+	         throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, 
+	         						SignatureException, IOException {
+		MinimalCertificateGenerator mg = 
+			new MinimalCertificateGenerator(subjectDN, userPublicKey, issuerCertificate, duration, false, false);
+		mg.setClientAuthenticationUsage();
+		return mg.sign(null, signingKey);
+	}
+
+	/**
 	 * Helper method
 	 */
 	public static X509Certificate GenerateUserCertificate(KeyPair userKeyPair, String subjectDN, long duration) throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, SignatureException {
