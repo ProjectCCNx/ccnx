@@ -886,7 +886,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				throw new RuntimeException(e);
 			}
 		}
-		Log.finer("mark: block: " + segmentNumber() + " offset: " + _markOffset);
+		Log.finest("mark: block: " + segmentNumber() + " offset: " + _markOffset);
 	}
 
 	@Override
@@ -907,7 +907,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				// Reset and skip.
 				if (_segmentReadStream.markSupported()) {
 					_segmentReadStream.reset();
-					Log.finer("reset within block: block: " + segmentNumber() + " offset: " + _markOffset + " eof? " + _atEOF);
+					Log.finest("reset within block: block: " + segmentNumber() + " offset: " + _markOffset + " eof? " + _atEOF);
 					return;
 				} else {
 					setCurrentSegment(_currentSegment);
@@ -919,7 +919,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		}
 		_segmentReadStream.skip(_markOffset);
 		_atEOF = false;
-		Log.finer("reset: block: " + segmentNumber() + " offset: " + _markOffset + " eof? " + _atEOF);
+		Log.finest("reset: block: " + segmentNumber() + " offset: " + _markOffset + " eof? " + _atEOF);
 	}
 
 	@Override

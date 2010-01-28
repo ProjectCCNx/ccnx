@@ -153,9 +153,17 @@ public class UserSelector extends JDialog implements ActionListener {
 			ContentName baseNode = ContentName.fromNative("/");
 			CCNHandle handle = CCNHandle.open();
 			gacm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, handle);
+			// Have to publish the user first, otherwise we can't make a root acl...
+			
+			System.out.println("Setting user: " + userName);
+			ContentName myIdentity = ContentName.fromNative(userStorage, userName);
+			gacm.publishMyIdentity(myIdentity, handle.keyManager().getDefaultPublicKey());
+			System.out.println(myIdentity);
+			System.out.println(gacm.haveIdentity(myIdentity));
+			
 			gacm.getEffectiveACLObject(baseNode).acl();
-		}
-		catch (IllegalStateException ise) {
+			
+		} catch (IllegalStateException ise) {
 			System.out.println("The repository has no root ACL.");
 			System.out.println("Attempting to create missing root ACL with user " + userName + " as root manager.");
 			ContentName cn = ContentName.fromNative(userStorage, userName);
@@ -168,25 +176,12 @@ public class UserSelector extends JDialog implements ActionListener {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		// ACM is ready to use
+		NamespaceManager.registerACM(gacm);
 		
-		// create and set the group access control manager
-		System.out.println("Setting user: " + userName);
-		try {
-			ContentName baseNode = ContentName.fromNative("/");
-			CCNHandle handle = CCNHandle.open();
-			gacm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, handle);
-			NamespaceManager.registerACM(gacm);
-			ContentName myIdentity = ContentName.fromNative(userStorage, userName);
-			gacm.publishMyIdentity(myIdentity, handle.keyManager().getDefaultPublicKey());
-			System.out.println(myIdentity);
-			System.out.println(gacm.haveIdentity(myIdentity));
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
 		ContentExplorer.setGroupAccessControlManager(gacm);	
 		ContentExplorer.setUsername(userName);
 		ContentExplorer.setPreviewTextfiles(false);
