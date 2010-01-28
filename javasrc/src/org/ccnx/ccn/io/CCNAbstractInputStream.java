@@ -24,6 +24,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.logging.Level;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -453,7 +454,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					
 					// Assume getBaseName() returns name without segment information.
 					// Log verification only on highest log level (won't execute on lower logging level).
-					Log.finest("Assert check: does getBaseName() match segmentless part of _currentSegment.name()? {0}",
+					if( Log.isLoggable(Level.FINEST ))
+						Log.finest("Assert check: does getBaseName() match segmentless part of _currentSegment.name()? {0}",
 							   (SegmentationProfile.segmentRoot(_currentSegment.name()).equals(getBaseName())));
 					
 					_cipher = _keys.getSegmentDecryptionCipher(getBaseName(), _publisher,

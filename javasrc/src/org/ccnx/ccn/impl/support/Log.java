@@ -252,6 +252,15 @@ public class Log {
 	public static Level getLevel() {
 		return _systemLogger.getLevel();
 	}
+	
+	/**
+	 * Would the given log level write to the log?
+	 * @param level
+	 * @return true means would write log
+	 */
+	public static boolean isLoggable(Level level) {
+		return _systemLogger.isLoggable(level);
+	}
 
 	/**
 	 * The main logging wrapper. Allows for variable parameters to the message.
