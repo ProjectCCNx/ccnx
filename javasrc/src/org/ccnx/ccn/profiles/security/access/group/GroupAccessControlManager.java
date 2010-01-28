@@ -1083,6 +1083,27 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 	
 	/**
+	 * Get the data key wrapping key if we happened to have cached a copy of the decryption key.
+	 * @param dataNodeName
+	 * @param wrappedDataKeyObject
+	 * @param cachedWrappingKey
+	 * @return
+	 * @throws ContentEncodingException 
+	 * @throws InvalidKeyException 
+	 */
+	@Override 
+	public Key getDataKeyWrappingKey(ContentName dataNodeName, ContentName wrappingKeyName, Key cachedWrappingKey) throws InvalidKeyException, ContentEncodingException {
+		NodeKey cachedWrappingKeyNK = new NodeKey(wrappingKeyName, cachedWrappingKey);
+		Log.finer("getNodeKeyForObject: retrieved stored node key for node {0} label {1}: {2}", dataNodeName, nodeKeyLabel(), cachedWrappingKeyNK);
+		NodeKey enk = cachedWrappingKeyNK.computeDescendantNodeKey(dataNodeName, nodeKeyLabel());
+		Log.finer("getNodeKeyForObject: computed effective node key for node {0} label {1}: {2}", dataNodeName, nodeKeyLabel(), enk);
+		if (null != enk) {
+			return enk.nodeKey();
+		}
+		return null;
+	}
+	
+	/**
 	 * We've looked for a node key we can decrypt at the expected node key location,
 	 * but no dice. See if a new ACL has been interposed granting us rights at a lower
 	 * portion of the tree.
@@ -1098,6 +1119,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	protected NodeKey getNodeKeyUsingInterposedACL(ContentName dataNodeName,
 			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) 
 			throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
+
 		ACLObject nearestACL = findAncestorWithACL(dataNodeName);
 		
 		if (null == nearestACL) {
@@ -1111,8 +1133,21 @@ public class GroupAccessControlManager extends AccessControlManager {
 			return null;
 		}
 		
-		NodeKey nk = getLatestNodeKeyForNode(GroupAccessControlProfile.accessRoot(nearestACL.getVersionedName()));
-		return nk;
+		NodeKey currentNodeKey = getLatestNodeKeyForNode(GroupAccessControlProfile.accessRoot(nearestACL.getVersionedName()));
+		
+		// We have retrieved the current node key at the node where the ACL was interposed.
+		// But the data key is wrapped in the previous node key that was at this node prior to the ACL interposition.
+		// So we need to retrieve the previous node key, which was wrapped with KeyDirectory.addPreviousKeyBlock 
+		// at the time the ACL was interposed.
+		ContentName previousKeyName = ContentName.fromNative(currentNodeKey.storedNodeKeyName(), GroupAccessControlProfile.PREVIOUS_KEY_NAME);
+		Log.finer("getNodeKeyUsingInterposedACL: retrieving previous key at {0}", previousKeyName);
+		WrappedKeyObject wrappedPreviousNodeKey = new WrappedKeyObject(previousKeyName, _handle);
+		wrappedPreviousNodeKey.update();
+		Key pnk = wrappedPreviousNodeKey.wrappedKey().unwrapKey(currentNodeKey.nodeKey());
+		Log.finer("getNodeKeyUsingInterposedACL: returning previous node key for node {0}", currentNodeKey.nodeName());
+		NodeKey previousNodeKey = new NodeKey(currentNodeKey.nodeName(), pnk);
+
+		return previousNodeKey;
 	}	
 	
 	/**
