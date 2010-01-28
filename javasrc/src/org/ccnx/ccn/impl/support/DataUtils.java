@@ -38,6 +38,7 @@ public class DataUtils {
 	
 	public static final int BITS_PER_BYTE = 8;
 	public static final String EMPTY = "";	
+	public static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
 	/**
 	 * Useful when we move over to 1.6, and can avoid UnsupportedCharsetExceptions this way.
@@ -211,6 +212,59 @@ public class DataUtils {
 	
 	public static byte [] base64Encode(byte [] input) {
 		return Base64.encode(input);
+	}
+	
+	public static String base64Encode(byte [] input, Integer lineLength) {
+		byte [] encodedBytes = lineWrapBase64(base64Encode(input), lineLength);
+		return DataUtils.getUTF8StringFromBytes(encodedBytes);
+	}
+	
+	public static final int LINELEN = 64;
+
+	public static byte [] lineWrapBase64(byte [] input, int lineLength) {
+		int finalLen = input.length + 2*(input.length/lineLength) + 1;
+		byte output[] = new byte[finalLen];
+		// add line breaks
+		int outidx = 0;
+		int inidx = 0;
+		while (inidx < input.length) {
+			output[outidx] = input[inidx];
+			outidx++;
+			inidx++;
+			if ((inidx % lineLength) == 0) {
+				output[outidx++] = (byte)0x0D;
+				output[outidx++] = (byte)0x0A;
+			}
+		}
+		output[outidx]='\0';
+		return (output);
+
+	}
+	
+	/**
+	 * Not working right.
+	 * @param inputString
+	 * @param lineLength
+	 * @return
+	 */
+	public static String lineWrap(String inputString, int lineLength) {
+		if ((null == inputString) || (inputString.length() <= lineLength)) {
+			return inputString;
+		}
+		
+		StringBuffer line = new StringBuffer(inputString);
+		
+		int length = inputString.length();
+		int sepLen = LINE_SEPARATOR.length();
+		int index = length = sepLen;
+		while (index < length - sepLen - 1) {
+			line.insert(index, LINE_SEPARATOR);
+			index += lineLength;
+			length += sepLen;
+		}
+		System.out.println("Wrapped string " + inputString);
+		System.out.println("Result " + line);
+		return line.toString();
 	}
 
 	/**
