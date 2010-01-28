@@ -35,18 +35,11 @@ import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.profiles.security.TestUserData;
 
 public class UserSelector extends JDialog implements ActionListener {
 
-	private static final long serialVersionUID = 1L;
-
-	public static final String [] USER_NAMES = {"Alice", "Bob", "Carol", "Dave", "Oswald", "Binky",
-		"Spot", "Fred", "Eve", "Harold", "Barack", "Newt",
-		"Allison", "Zed", "Walter", "Gizmo", "Nick", "Michael",
-		"Nathan", "Rebecca", "Diana", "Jim", "Van", "Teresa",
-		"Russ", "Tim", "Sharon", "Jessica", "Elaine", "Mark",
-		"Weasel", "Ralph", "Junior", "Beki", "Darth", "Cauliflower",
-		"Pico", "Eric", "Eric", "Eric", "Erik", "Richard"};
+	private static final long serialVersionUID = -1950067955162414507L;
 	
 	ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
 	ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
@@ -73,7 +66,7 @@ public class UserSelector extends JDialog implements ActionListener {
 		
 		for (int i=0; i<nbUsers; i++) {
 			userButton[i] = new JButton();
-			userButton[i].setText(USER_NAMES[i]);
+			userButton[i].setText(TestUserData.USER_NAMES[i]);
 			userButton[i].addActionListener(this);
 			userButton[i].setBounds(10, 60 + 30*i, 200, 20);
 			getContentPane().add(userButton[i] );
@@ -86,7 +79,7 @@ public class UserSelector extends JDialog implements ActionListener {
 		
 		for (int i=0; i<nbUsers; i++) {
 			if (userButton[i] == e.getSource()) {
-				setUser(USER_NAMES[i]);
+				setUser(TestUserData.USER_NAMES[i]);
 				break;
 			}
 		}
