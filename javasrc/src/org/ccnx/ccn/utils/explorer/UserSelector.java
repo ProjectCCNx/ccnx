@@ -1,3 +1,20 @@
+/**
+ * A CCNx command line utility.
+ *
+ * Copyright (C) 2010, Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation. 
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+
 package org.ccnx.ccn.utils.explorer;
 
 import java.awt.event.ActionEvent;
@@ -136,9 +153,17 @@ public class UserSelector extends JDialog implements ActionListener {
 			ContentName baseNode = ContentName.fromNative("/");
 			CCNHandle handle = CCNHandle.open();
 			gacm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, handle);
+			// Have to publish the user first, otherwise we can't make a root acl...
+			
+			System.out.println("Setting user: " + userName);
+			ContentName myIdentity = ContentName.fromNative(userStorage, userName);
+			gacm.publishMyIdentity(myIdentity, handle.keyManager().getDefaultPublicKey());
+			System.out.println(myIdentity);
+			System.out.println(gacm.haveIdentity(myIdentity));
+			
 			gacm.getEffectiveACLObject(baseNode).acl();
-		}
-		catch (IllegalStateException ise) {
+			
+		} catch (IllegalStateException ise) {
 			System.out.println("The repository has no root ACL.");
 			System.out.println("Attempting to create missing root ACL with user " + userName + " as root manager.");
 			ContentName cn = ContentName.fromNative(userStorage, userName);
@@ -151,27 +176,15 @@ public class UserSelector extends JDialog implements ActionListener {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		// ACM is ready to use
+		NamespaceManager.registerACM(gacm);
 		
-		// create and set the group access control manager
-		System.out.println("Setting user: " + userName);
-		try {
-			ContentName baseNode = ContentName.fromNative("/");
-			CCNHandle handle = CCNHandle.open();
-			gacm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, handle);
-			NamespaceManager.registerACM(gacm);
-			ContentName myIdentity = ContentName.fromNative(userStorage, userName);
-			gacm.publishMyIdentity(myIdentity, handle.keyManager().getDefaultPublicKey());
-			System.out.println(myIdentity);
-			System.out.println(gacm.haveIdentity(myIdentity));
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
 		ContentExplorer.setGroupAccessControlManager(gacm);	
 		ContentExplorer.setUsername(userName);
+		ContentExplorer.setPreviewTextfiles(false);
 	}
 
 }

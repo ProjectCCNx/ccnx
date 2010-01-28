@@ -29,11 +29,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.io.content.ContentNotReadyException;
-import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
@@ -180,7 +176,7 @@ public class ACLManager extends JDialog implements ActionListener {
 			// TODO: we set the ACL, then update it, to handle correctly the case
 			// where the node had no ACL to start with.
 			// It would be more efficient to set and update the ACL in a single step.
-//			acm.setACL(node, currentACL);
+			acm.setACL(node, currentACL);
 			acm.updateACL(node, userUpdates);
 			acm.updateACL(node, groupUpdates);
 		} catch (AccessDeniedException ade) {

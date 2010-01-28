@@ -19,7 +19,6 @@ package org.ccnx.ccn.test.repo;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -29,10 +28,9 @@ import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.CCNTestHelper;
-
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.Assert;
 
 /**
  * Test to verify the library handles multiple responders for name enumeration properly.
