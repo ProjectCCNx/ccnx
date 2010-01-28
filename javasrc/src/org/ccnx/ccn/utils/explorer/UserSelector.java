@@ -44,15 +44,27 @@ public class UserSelector extends JDialog implements ActionListener {
 	ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
 	ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
 	
-	private static int nbUsers;
-	private JButton[] userButton;
-	private static ContentName root;
-	private static String userConfigDirBase = null;
-	private static GroupAccessControlManager gacm = null;
+	private int _nbUsers;
+	private JButton[] _userButton;
+	private ContentName _root;
+	private File _userConfigDir = null;
+	private GroupAccessControlManager _gacm = null;
+	private String [] _userNames;
 	
-	public UserSelector() {
+	public UserSelector(File userConfigDir, int numUsers, ContentName root) {
 
 		super();
+		
+		_userConfigDir = userConfigDir;
+		_nbUsers = numUsers;
+		_root = root;
+		
+		_userNames = getUserNames(_userConfigDir);
+		if (_userNames.length > _nbUsers) {
+			Log.warning("Cannot load {0} users, only {1} available.", _nbUsers, _userNames);
+			_nbUsers = _userNames.length;
+		}
+		
 		setTitle("User selector");
 		getContentPane().setLayout(null);
 		setBounds(100, 100, 250, 300);
@@ -62,14 +74,14 @@ public class UserSelector extends JDialog implements ActionListener {
 		pleaseSelect.setBounds(10, 10, 150, 20);
 		getContentPane().add(pleaseSelect);
 		
-		userButton = new JButton[nbUsers];
+		_userButton = new JButton[_nbUsers];
 		
-		for (int i=0; i<nbUsers; i++) {
-			userButton[i] = new JButton();
-			userButton[i].setText(TestUserData.USER_NAMES[i]);
-			userButton[i].addActionListener(this);
-			userButton[i].setBounds(10, 60 + 30*i, 200, 20);
-			getContentPane().add(userButton[i] );
+		for (int i=0; i<_nbUsers; i++) {
+			_userButton[i] = new JButton();
+			_userButton[i].setText(TestUserData.USER_NAMES[i]);
+			_userButton[i].addActionListener(this);
+			_userButton[i].setBounds(10, 60 + 30*i, 200, 20);
+			getContentPane().add(_userButton[i] );
 		}
 
 		setVisible(true);
@@ -77,8 +89,8 @@ public class UserSelector extends JDialog implements ActionListener {
 	
 	public void actionPerformed(ActionEvent e) {
 		
-		for (int i=0; i<nbUsers; i++) {
-			if (userButton[i] == e.getSource()) {
+		for (int i=0; i<_nbUsers; i++) {
+			if (_userButton[i] == e.getSource()) {
 				setUser(TestUserData.USER_NAMES[i]);
 				break;
 			}
@@ -87,7 +99,7 @@ public class UserSelector extends JDialog implements ActionListener {
 		// start the content explorer
 		javax.swing.SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
-				ContentExplorer.setRoot(root);
+				ContentExplorer.setRoot(_root);
 				ContentExplorer.setAccessControl(true);
 				ContentExplorer.createAndShowGUI();
 			}
@@ -96,6 +108,16 @@ public class UserSelector extends JDialog implements ActionListener {
 		// dispose of the user selector
 		this.setVisible(false);
 		this.dispose();
+	}
+	
+	public static String [] getUserNames(File directory) {
+		
+		if ((null == directory) || (!directory.exists()) || (!directory.isDirectory())) {
+			Log.severe("Cannot load users from non-existent directory {0}!", 
+					((null == directory) ? "null" : directory.getAbsolutePath()));
+			return new String[0]; // return no names, will pop up empty list. may want to do something more sensible.
+		}
+		return directory.list();
 	}
 	
 	public static void usage() {
@@ -115,22 +137,22 @@ public class UserSelector extends JDialog implements ActionListener {
 			return;
 		}
 		
-		userConfigDirBase = args[1];
-		nbUsers = Integer.parseInt(args[2]);
+		File userConfigDirBase = new File(args[1]);
+		int nbUsers = Integer.parseInt(args[2]);
 				
-		root = null;
+		ContentName root = null;
 		try {
 			root = ContentName.fromNative("/");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		
-		new UserSelector();		
+		new UserSelector(userConfigDirBase, nbUsers, root);		
 	}
 	
 	private void setUser(String userName) {		
 		// Note: the user configuration directory must be set before any handle or group manager is created.
-		File userDirectory = new File(userConfigDirBase, userName);
+		File userDirectory = new File(_userConfigDir, userName);
 		String userConfigDir = userDirectory.getAbsolutePath();
 		System.out.println("User configuration directory: " + userConfigDir);
 		UserConfiguration.setUserConfigurationDirectory(userConfigDir);
@@ -145,16 +167,16 @@ public class UserSelector extends JDialog implements ActionListener {
 		try{
 			ContentName baseNode = ContentName.fromNative("/");
 			CCNHandle handle = CCNHandle.open();
-			gacm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, handle);
+			_gacm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, handle);
 			// Have to publish the user first, otherwise we can't make a root acl...
 			
 			System.out.println("Setting user: " + userName);
 			ContentName myIdentity = ContentName.fromNative(userStorage, userName);
-			gacm.publishMyIdentity(myIdentity, handle.keyManager().getDefaultPublicKey());
+			_gacm.publishMyIdentity(myIdentity, handle.keyManager().getDefaultPublicKey());
 			System.out.println(myIdentity);
-			System.out.println(gacm.haveIdentity(myIdentity));
+			System.out.println(_gacm.haveIdentity(myIdentity));
 			
-			gacm.getEffectiveACLObject(baseNode).acl();
+			_gacm.getEffectiveACLObject(baseNode).acl();
 			
 		} catch (IllegalStateException ise) {
 			System.out.println("The repository has no root ACL.");
@@ -165,7 +187,7 @@ public class UserSelector extends JDialog implements ActionListener {
 			rootACLcontents.add(lk);
 			ACL rootACL = new ACL(rootACLcontents);
 			try{
-				gacm.initializeNamespace(rootACL);
+				_gacm.initializeNamespace(rootACL);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -173,9 +195,11 @@ public class UserSelector extends JDialog implements ActionListener {
 			e.printStackTrace();
 		}
 		// ACM is ready to use
-		NamespaceManager.registerACM(gacm);
+		NamespaceManager.registerACM(_gacm);
 		
-		ContentExplorer.setGroupAccessControlManager(gacm);	
+		// Here is where we'd want to drop in the ability to run different programs,
+		// or maybe just have another program run the UserSelector first and then do its own thing.
+		ContentExplorer.setGroupAccessControlManager(_gacm);	
 		ContentExplorer.setUsername(userName);
 		ContentExplorer.setPreviewTextfiles(false);
 	}
