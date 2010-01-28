@@ -66,7 +66,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_origInterest = origInterest;
 		_server = server;
 		_handle = server.getHandle();
-		_timer = new Date().getTime();
+		_timer = System.currentTimeMillis();
 		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
 			Log.info("Starting up repository listener on original interest: {0} interest {1}", origInterest, interest);
 		}
@@ -79,7 +79,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	public Interest handleContent(ArrayList<ContentObject> results,
 			Interest interest) {
 		
-		_timer = new Date().getTime();
+		_timer = System.currentTimeMillis();
 		
 		for (ContentObject co : results) {
 			handleData(co);

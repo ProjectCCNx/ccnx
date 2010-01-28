@@ -67,6 +67,7 @@ public class TestUserData {
 												"Pico", "Eric", "Eric", "Eric", "Erik", "Richard"};
 	
 	protected HashMap<String, ContentName> _userContentNames = new HashMap<String,ContentName>();
+	protected HashMap<String, File> _userKeystoreDirectories = new HashMap<String,File>();
 	protected HashMap<String,KeyManager> _userKeyManagers = new HashMap<String, KeyManager>();	
 	
 		
@@ -228,6 +229,7 @@ public class TestUserData {
 												null, null, password);
 			userKeyManager.initialize();
 			_userKeyManagers.put(friendlyName, userKeyManager);
+			_userKeystoreDirectories.put(friendlyName, userDirectory.getAbsoluteFile());
 			
 		}
 	}
@@ -305,6 +307,10 @@ public class TestUserData {
 	
 	public KeyManager getUser(String friendlyName) {
 		return _userKeyManagers.get(friendlyName);
+	}
+	
+	public File getUserDirectory(String friendlyName) {
+		return _userKeystoreDirectories.get(friendlyName);
 	}
 	
 	public CCNHandle getHandleForUser(String friendlyName) throws IOException {
