@@ -90,7 +90,12 @@ public class DataUtils {
 	}
 	
 	/**
-	 * Perform a lexigraphical comparison of byte arrays in canonical CCN ordering
+	 * Perform a shortlex comparison of byte arrays in canonical CCN ordering.
+	 * Shortlex ordering is ordering by cardinality, then by lexigraphic.
+	 * 
+	 * MM - This method should really be renamed to "shortlex" or something
+	 * other than "compare", unless it is needed for an Override name.
+	 * 
 	 * @param left
 	 * @param right
 	 * @return < 0 if left comes before right, 0 if they are equal, > 0 if left comes after right
@@ -130,6 +135,9 @@ public class DataUtils {
 	}
 	
 	/**
+	 * This is not like compare(byte[], byte[]).  That is shortlex.  This
+	 * is an actual lexigraphic ordering based on the shortlex compare
+	 * of each byte array.
 	 * @see compare(byte[], byte[])
 	 */
 	public static int compare(ArrayList<byte []> left, ArrayList<byte []> right) {
@@ -241,9 +249,17 @@ public class DataUtils {
 		if (right == null) {
 			return ((left == null) ? true : false);
 		}
-		if (left.length < length || right.length < length)
-			return false;
-		for (int i = 0; i < length; i++) {
+		
+		// If one of left or right is shorter than length, arrays
+		// must be same length to be equal.
+		if( left.length < length || right.length < length )
+			if( left.length != right.length )
+				return false;
+		
+		int minarray = (left.length < right.length) ? left.length : right.length;
+		int minlen   = (length < minarray) ? length : minarray;
+		
+		for (int i = 0; i < minlen; i++) {
 			if (left[i] != right[i])
 				return false;
 		}
