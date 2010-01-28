@@ -402,6 +402,9 @@ public class TestUserData {
 				td = new TestUserData(userNamespace, userNames, count,
 						useRepo,
 						password.toCharArray(), CCNHandle.open());
+				if (publishKeysToRepo) {
+					td.publishUserKeysToRepository();
+				}
 			}
 			System.out.println("Generated/retrieved " + td.count() + " user keystores, for users : " + td.friendlyNames());
 		} catch (Exception e) {
