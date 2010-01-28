@@ -1083,6 +1083,27 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 	
 	/**
+	 * Get the data key wrapping key if we happened to have cached a copy of the decryption key.
+	 * @param dataNodeName
+	 * @param wrappedDataKeyObject
+	 * @param cachedWrappingKey
+	 * @return
+	 * @throws ContentEncodingException 
+	 * @throws InvalidKeyException 
+	 */
+	@Override 
+	public Key getDataKeyWrappingKey(ContentName dataNodeName, ContentName wrappingKeyName, Key cachedWrappingKey) throws InvalidKeyException, ContentEncodingException {
+		NodeKey cachedWrappingKeyNK = new NodeKey(wrappingKeyName, cachedWrappingKey);
+		Log.finer("getNodeKeyForObject: retrieved stored node key for node {0} label {1}: {2}", dataNodeName, nodeKeyLabel(), cachedWrappingKeyNK);
+		NodeKey enk = cachedWrappingKeyNK.computeDescendantNodeKey(dataNodeName, nodeKeyLabel());
+		Log.finer("getNodeKeyForObject: computed effective node key for node {0} label {1}: {2}", dataNodeName, nodeKeyLabel(), enk);
+		if (null != enk) {
+			return enk.nodeKey();
+		}
+		return null;
+	}
+	
+	/**
 	 * We've looked for a node key we can decrypt at the expected node key location,
 	 * but no dice. See if a new ACL has been interposed granting us rights at a lower
 	 * portion of the tree.
