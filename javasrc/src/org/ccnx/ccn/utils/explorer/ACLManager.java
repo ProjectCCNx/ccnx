@@ -127,7 +127,7 @@ public class ACLManager extends JDialog implements ActionListener {
 		cancelChangesButton = new JButton();
 		cancelChangesButton.addActionListener(this);
 		cancelChangesButton.setMargin(new Insets(2, 2, 2, 2));
-		cancelChangesButton.setText("Cancel Changes");
+		cancelChangesButton.setText("Cancel");
 		cancelChangesButton.setBounds(200, 400, 112, 25);
 		getContentPane().add(cancelChangesButton);
 		
@@ -162,7 +162,7 @@ public class ACLManager extends JDialog implements ActionListener {
 
 	public void actionPerformed(ActionEvent ae) {
 		if (applyChangesButton == ae.getSource()) applyChanges();
-		else if (cancelChangesButton == ae.getSource()) cancelChanges();	
+		else if (cancelChangesButton == ae.getSource()) closeACLManagerWindow();	
 	}
 	
 	private void applyChanges() {
@@ -181,20 +181,18 @@ public class ACLManager extends JDialog implements ActionListener {
 			acm.updateACL(node, groupUpdates);
 		} catch (AccessDeniedException ade) {
 			JOptionPane.showMessageDialog(this, "You do not have the access right to edit the ACL at this node.");
-			this.setVisible(false);
-			this.dispose();
+			closeACLManagerWindow();
 			ade.printStackTrace();
 		}
 		catch (Exception e) {
 			e.printStackTrace();
 		}
-		this.setVisible(false);
-		this.dispose();
+		closeACLManagerWindow();
 	}
 	
-	private void cancelChanges() {
-		userACLTable.cancelChanges();
-		groupACLTable.cancelChanges();
+	private void closeACLManagerWindow() {
+		this.setVisible(false);
+		this.dispose();
 	}
 	
 }
