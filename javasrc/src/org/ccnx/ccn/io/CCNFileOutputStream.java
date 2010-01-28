@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
@@ -130,7 +131,8 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		
 		// Really want to query the segmenter about the last block we wrote.
 		Header headerData = new Header(SegmentationProfile.baseSegment(), this._baseNameIndex, blockSize, contentLength, contentDigest, contentTreeAuthenticator);
-		Log.finest("HEADER: Writing header, starting segment " + headerData.start() + " count " + headerData.count() + " length " + headerData.length());
+		if( Log.isLoggable(Level.FINEST ))
+			Log.finest("HEADER: Writing header, starting segment " + headerData.start() + " count " + headerData.count() + " length " + headerData.length());
 		// DKS TODO -- deal with header encryption, making sure it has same publisher as
 		// rest of file via the segmenter
 		// The segmenter contains the flow controller. Should do the right thing whether this
