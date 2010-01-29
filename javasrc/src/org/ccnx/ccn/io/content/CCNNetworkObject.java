@@ -1269,7 +1269,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public String toString() { 
 		try {
 			if (isSaved()) {
-				return getVersionedName() + ": " + (isGone() ? "GONE" : data());
+				return getVersionedName() + ": " + (isGone() ? "GONE" : "\nData:" + data()) + "\n	Publisher: " +
+						getContentPublisher() + "\n		Publisher KeyLocator: " + getPublisherKeyLocator() + "\n";
 			} else if (available()) {
 				return getBaseName() + " (unsaved): " + data();
 			} else {
