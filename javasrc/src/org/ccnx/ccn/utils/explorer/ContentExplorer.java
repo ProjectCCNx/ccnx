@@ -386,7 +386,32 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					try {
 						ContentName contentName = ContentName.fromURI(selectedPrefix);
 						contentName = ContentName.fromURI(contentName, file.getName());
-
+						ContentName temp = null;
+						while (temp==null) {
+							String name = JOptionPane.showInputDialog("Send File to Repo As:", contentName.toString());
+							if (name == null) {
+								Log.fine("user selected cancel, returning");
+								return;
+							}
+							
+							Log.info("user entered [{0}]", name);
+							
+							try {
+								if (name.startsWith("ccnx:/"))
+									name = name.replaceFirst("ccnx:/", "/");
+								temp = ContentName.fromNative(name);
+								contentName = temp;
+								Log.info("saving as [{0}]", contentName);
+							}
+							catch (Exception e) {
+								Log.fine("User entered invalid name for save: {0}", e.getMessage());
+								if(name.equals(""))
+									JOptionPane.showMessageDialog(chooser, "Please enter a CCNx name for the content that starts with \"/\".");
+								else
+									JOptionPane.showMessageDialog(chooser, (name + " is not a valid CCNx name.  Please be sure it starts with \"/\""));
+							}
+						}
+						
 						sendFile(file, contentName);
 					} catch (MalformedContentNameStringException e) {
 						Log.logException("could not create content name for selected file: "+file.getName(), e);
