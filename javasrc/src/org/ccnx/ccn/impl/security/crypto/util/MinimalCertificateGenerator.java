@@ -202,10 +202,13 @@ public class MinimalCertificateGenerator {
 		byte [] subjectKeyID = issuerCertificate.getExtensionValue(X509Extensions.SubjectKeyIdentifier.toString());
 		if (null == subjectKeyID) {
 			subjectKeyID = CryptoUtil.generateKeyID(subjectPublicKey);
+
 		} else {
 			// content of extension is wrapped in a DEROctetString
 			DEROctetString content = (DEROctetString)CryptoUtil.decode(subjectKeyID);
-			subjectKeyID = content.getOctets();
+			byte [] encapsulatedOctetString = content.getOctets();
+			DEROctetString octetStringKeyID = (DEROctetString)CryptoUtil.decode(encapsulatedOctetString);
+			subjectKeyID = octetStringKeyID.getOctets();
 		}
 		AuthorityKeyIdentifier aki = 
 			new AuthorityKeyIdentifier(subjectKeyID);
@@ -435,18 +438,20 @@ public class MinimalCertificateGenerator {
 	  * @param chain a set of certificates to write after any user certificate. Written
 	  *   in order given, can be used to write an ordered chain or a set of roots where
 	  *   order doesn't matter.
+	  * @param chainOffset the index into chain to start writing
+	  * @param chainCount the number of certs to output.
 	  * @throws CertificateEncodingException 
 	  * @throws FileNotFoundException 
 	  */
 	 public static void writeCertificateChain(File targetFile,
 			 X509Certificate userCertificate,
-			 X509Certificate[] chain) throws CertificateEncodingException, FileNotFoundException {
+			 X509Certificate[] chain, int chainOffset, int chainCount) throws CertificateEncodingException, FileNotFoundException {
 		targetFile.getParentFile().mkdirs();
 		PrintWriter writer = new PrintWriter(targetFile.getAbsolutePath());
 		if (null != userCertificate) {
 			writePEMCertificate(writer, userCertificate);
 		}
-		for (int i=0; i < chain.length; ++i) {
+		for (int i=chainOffset; i < chainOffset + chainCount; ++i) {
 			writePEMCertificate(writer, chain[i]);
 		}
 		writer.close();
