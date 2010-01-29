@@ -33,6 +33,7 @@ import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.NetworkKeyManager;
 import org.ccnx.ccn.impl.security.keys.RepositoryKeyManager;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
@@ -375,7 +376,7 @@ public class TestUserData {
 	 * opened under that user, and the count of arguments read, or null if the argument
 	 * at offset was not -as.
 	 */
-	public static CCNHandle handleAs(String [] args, int offset) throws ConfigurationException, 
+	public static Tuple<Integer, CCNHandle> handleAs(String [] args, int offset) throws ConfigurationException, 
 					IOException, InvalidKeyException {
 
 		String friendlyName = null;
@@ -399,23 +400,20 @@ public class TestUserData {
 		}
 
 		File keystoreFileOrDirectory = new File(keystoreFileOrDirectoryPath);
-		
-		if (!keystoreFileOrDirectory.exists()) {
-			Log.warning("Cannot open keystore directory {0}, it does not exist!", keystoreFileOrDirectory);
-			return null;
-		}
-		
-		if ((null == friendlyName) && (keystoreFileOrDirectory.isDirectory())) {
-			// if its a directory, and we don't know anything else, use last component as user name
+		if ((null == friendlyName) && 
+			((keystoreFileOrDirectory.exists() && (keystoreFileOrDirectory.isDirectory())) || 
+			  (!keystoreFileOrDirectory.exists()))) {
+			// if its a directory, or it doesn't exist yet and we're going to make it as one, 
+			// use last component as user name
 			friendlyName = keystoreFileOrDirectory.getName();
 		}
 		
 		Log.info("handleAs: loading data for user {0} from location {1}", friendlyName, keystoreFileOrDirectory);
 		
-
 		KeyManager manager = TestUserData.loadKeystoreFile(keystoreFileOrDirectory, friendlyName,
 				UserConfiguration.keystorePassword().toCharArray());
-		return CCNHandle.open(manager);
+		
+		return new Tuple<Integer, CCNHandle>(argsUsed, CCNHandle.open(manager));
 	}
 	
 	public static void usage() {
