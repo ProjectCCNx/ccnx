@@ -214,15 +214,15 @@ public class DataUtils {
 		return Base64.encode(input);
 	}
 	
-	public static String base64Encode(byte [] input, Integer lineLength) {
-		byte [] encodedBytes = lineWrapBase64(base64Encode(input), lineLength);
-		return DataUtils.getUTF8StringFromBytes(encodedBytes);
-	}
-	
 	public static final int LINELEN = 64;
 
+	public static String base64Encode(byte [] input, Integer lineLength) {
+		byte [] encodedBytes = base64Encode(input);
+		return lineWrap(DataUtils.getUTF8StringFromBytes(encodedBytes), LINELEN);
+	}
+	
 	public static byte [] lineWrapBase64(byte [] input, int lineLength) {
-		int finalLen = input.length + 2*(input.length/lineLength) + 1;
+		int finalLen = input.length + 2*(input.length/lineLength) + 3;
 		byte output[] = new byte[finalLen];
 		// add line breaks
 		int outidx = 0;
@@ -242,7 +242,6 @@ public class DataUtils {
 	}
 	
 	/**
-	 * Not working right.
 	 * @param inputString
 	 * @param lineLength
 	 * @return
@@ -256,17 +255,15 @@ public class DataUtils {
 		
 		int length = inputString.length();
 		int sepLen = LINE_SEPARATOR.length();
-		int index = length = sepLen;
-		while (index < length - sepLen - 1) {
+		int index = lineLength - sepLen;
+		while (index < length - sepLen) {
 			line.insert(index, LINE_SEPARATOR);
 			index += lineLength;
-			length += sepLen;
+			length += sepLen+1;
 		}
-		System.out.println("Wrapped string " + inputString);
-		System.out.println("Result " + line);
 		return line.toString();
 	}
-
+ 
 	/**
 	 * byte array compare
 	 * @param left
