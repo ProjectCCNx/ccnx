@@ -17,7 +17,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.profiles.security.TestUserData;
+import org.ccnx.ccn.test.profiles.security.CreateUserData;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -32,7 +32,7 @@ public class GACMNodeKeyDirtyTestRepo {
 	static GroupAccessControlManager acm;
 	static ContentName directoryBase, userKeyStorePrefix, userNamespace, groupStore;
 	static final int numberOfusers = 3;
-	static TestUserData td;
+	static CreateUserData td;
 	static String[] friendlyNames;
 	static final int numberOfGroups = 3;
 	static String[] groupName = new String[numberOfGroups];
@@ -49,7 +49,7 @@ public class GACMNodeKeyDirtyTestRepo {
 
 		// create user identities with TestUserData		
 		Log.info("Creating {0} test users, if they do not already exist.", numberOfusers);
-		td = new TestUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
+		td = new CreateUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
 		Log.info("Created {0} test users, or retrieved them from repository.", numberOfusers);
 		td.publishUserKeysToRepository(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);				

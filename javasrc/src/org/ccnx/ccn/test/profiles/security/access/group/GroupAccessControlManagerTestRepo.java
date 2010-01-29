@@ -14,7 +14,7 @@ import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.profiles.security.TestUserData;
+import org.ccnx.ccn.test.profiles.security.CreateUserData;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -30,7 +30,7 @@ public class GroupAccessControlManagerTestRepo {
 	static ContentName baseNode, childNode, grandchildNode;
 	static ContentName userKeyStorePrefix, userNamespace;
 	static int userCount = 3;
-	static TestUserData td;
+	static CreateUserData td;
 	static String[] friendlyNames;
 	static ContentName user0, user1, user2;
 	static ACL baseACL, childACL;
@@ -48,7 +48,7 @@ public class GroupAccessControlManagerTestRepo {
 		ContentName testPrefix = UserConfiguration.defaultNamespace();
 		userKeyStorePrefix = ContentName.fromNative(testPrefix, "_access_");
 		userNamespace = ContentName.fromNative(testPrefix, "home");
-		td = new TestUserData(userKeyStorePrefix, userCount, true, "password".toCharArray(), CCNHandle.open());
+		td = new CreateUserData(userKeyStorePrefix, userCount, true, "password".toCharArray(), CCNHandle.open());
 		td.publishUserKeysToRepository(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);
 		Assert.assertEquals(userCount, friendlyNames.length);

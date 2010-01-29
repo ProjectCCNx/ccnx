@@ -52,7 +52,7 @@ import org.ccnx.ccn.test.Flosser;
  * @author smetters
  *
  */
-public class TestUserData {
+public class CreateUserData {
 	
 	/**
 	 * Our users are named, in order, from this list, with 1 attached the first time, and 2 the
@@ -88,7 +88,7 @@ public class TestUserData {
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
-	public TestUserData(ContentName userKeyStorePrefix, String [] userNames,
+	public CreateUserData(ContentName userKeyStorePrefix, String [] userNames,
 			int userCount, boolean storeInRepo, char [] password, CCNHandle handle) throws ConfigurationException, IOException, InvalidKeyException {
 	
 		ContentName childName = null;
@@ -124,7 +124,7 @@ public class TestUserData {
 	/**
 	 * Backwards compatibility constructor
 	 */
-	public TestUserData(ContentName userKeyStorePrefix, 
+	public CreateUserData(ContentName userKeyStorePrefix, 
 			int userCount, boolean storeInRepo, char [] password, CCNHandle handle) throws ConfigurationException, IOException, InvalidKeyException {
 		this(userKeyStorePrefix, null, userCount, storeInRepo, password, handle);
 	}
@@ -136,7 +136,7 @@ public class TestUserData {
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
-	public TestUserData(ContentName userKeystoreDataPrefix, char [] password, CCNHandle handle) throws IOException, ConfigurationException, InvalidKeyException {
+	public CreateUserData(ContentName userKeystoreDataPrefix, char [] password, CCNHandle handle) throws IOException, ConfigurationException, InvalidKeyException {
 		
 		EnumeratedNameList userDirectory = new EnumeratedNameList(userKeystoreDataPrefix, handle);
 		userDirectory.waitForChildren(); // will block
@@ -192,7 +192,7 @@ public class TestUserData {
 	 * @throws InvalidKeyException 
 	 * @throws InvalidKeyException 
 	 */
-	public TestUserData(File userKeystoreDirectory, String [] userNames,
+	public CreateUserData(File userKeystoreDirectory, String [] userNames,
 						int userCount, char [] password) throws ConfigurationException, IOException, InvalidKeyException {
 	
 		String friendlyName = null;
@@ -279,7 +279,7 @@ public class TestUserData {
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
-	public static TestUserData readUserDataDirectory(File userDirectory, char [] keystorePassword) throws ConfigurationException, IOException, InvalidKeyException {
+	public static CreateUserData readUserDataDirectory(File userDirectory, char [] keystorePassword) throws ConfigurationException, IOException, InvalidKeyException {
 		
 		if (!userDirectory.exists()) {
 			Log.warning("Asked to read data from user directory {0}, but it does not exist!", userDirectory);
@@ -293,7 +293,7 @@ public class TestUserData {
 		// Right now assume everything below here is a directory.
 		String [] children = userDirectory.list();
 		
-		return new TestUserData(userDirectory, children, children.length, keystorePassword);
+		return new CreateUserData(userDirectory, children, children.length, keystorePassword);
 	}
 	
 	public void closeAll() {
@@ -410,7 +410,7 @@ public class TestUserData {
 		
 		Log.info("handleAs: loading data for user {0} from location {1}", friendlyName, keystoreFileOrDirectory);
 		
-		KeyManager manager = TestUserData.loadKeystoreFile(keystoreFileOrDirectory, friendlyName,
+		KeyManager manager = CreateUserData.loadKeystoreFile(keystoreFileOrDirectory, friendlyName,
 				UserConfiguration.keystorePassword().toCharArray());
 		
 		return new Tuple<Integer, CCNHandle>(argsUsed, CCNHandle.open(manager));
@@ -432,7 +432,7 @@ public class TestUserData {
 		
 		String [] userNames = null;
 		
-		TestUserData td = null;
+		CreateUserData td = null;
 
 		int arg = 0;
 		if (args.length < 2) {
@@ -487,13 +487,13 @@ public class TestUserData {
 		
 		try {
 			if (null != directory) {
-				td = new TestUserData(directory, userNames, count,
+				td = new CreateUserData(directory, userNames, count,
 						password.toCharArray());
 				if (publishKeysToRepo) {
 					td.publishUserKeysToRepository();
 				}
 			} else {
-				td = new TestUserData(userNamespace, userNames, count,
+				td = new CreateUserData(userNamespace, userNames, count,
 						useRepo,
 						password.toCharArray(), CCNHandle.open());
 				if (publishKeysToRepo) {

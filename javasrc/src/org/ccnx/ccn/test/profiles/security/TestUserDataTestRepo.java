@@ -48,7 +48,7 @@ public class TestUserDataTestRepo {
 	
    @Test
 	public void testUserCreation() throws Exception {
-		TestUserData td = new TestUserData(userKeyStorePrefix, userCount,
+		CreateUserData td = new CreateUserData(userKeyStorePrefix, userCount,
 				true,
 				"password".toCharArray(), CCNHandle.open());
 		StringBuffer sb = new StringBuffer("Users: ");
@@ -69,7 +69,7 @@ public class TestUserDataTestRepo {
 		Assert.assertNotNull(userKeyManager.getDefaultKeyID());
 		
 		System.out.println("Attempting to recover stored users.");
-		TestUserData td2 = new TestUserData(userKeyStorePrefix, userCount,
+		CreateUserData td2 = new CreateUserData(userKeyStorePrefix, userCount,
 				true,
 				"password".toCharArray(), CCNHandle.open());
 		Assert.assertEquals(td.friendlyNames(), td2.friendlyNames());

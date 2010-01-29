@@ -38,7 +38,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.profiles.security.TestUserData;
+import org.ccnx.ccn.test.profiles.security.CreateUserData;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -64,7 +64,7 @@ public class GroupTestRepo {
 	 * Have to make a bunch of users.
 	 * @throws Exception
 	 */
-	static TestUserData users = null;
+	static CreateUserData users = null;
 	static CCNHandle userHandle = null;
 	static GroupAccessControlManager _acm = null;
 	static GroupManager _gm = null;
@@ -89,7 +89,7 @@ public class GroupTestRepo {
 			userHandle = _handle;
 	
 			
-			users = new TestUserData(userKeyStorePrefix, NUM_USERS,
+			users = new CreateUserData(userKeyStorePrefix, NUM_USERS,
 					USE_REPO,
 					USER_PASSWORD, userHandle);
 			users.publishUserKeysToRepository(userNamespace);
