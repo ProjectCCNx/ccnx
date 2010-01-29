@@ -33,7 +33,9 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
+import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.protocol.ContentName;
 
@@ -50,6 +52,7 @@ public class ACLManager extends JDialog implements ActionListener {
 	
 	private ContentName[] userList;
 	private ContentName[] groupList;
+	private ACLObject currentACLObject;
 	private ACL currentACL;
 	private ACLTable userACLTable;
 	private ACLTable groupACLTable;
@@ -81,6 +84,11 @@ public class ACLManager extends JDialog implements ActionListener {
 		
 		getNodeName(path);
 		getExistingACL();
+		try {
+			currentACL = currentACLObject.acl();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		
 		// title label
 		final JLabel userAndGroupLabel = new JLabel();
@@ -134,7 +142,7 @@ public class ACLManager extends JDialog implements ActionListener {
 	}
 
 	public boolean hasACL() {
-		if (currentACL != null) return true;
+		if (currentACLObject != null) return true;
 		return false;
 	}
 	
@@ -149,7 +157,7 @@ public class ACLManager extends JDialog implements ActionListener {
 	
 	private void getExistingACL() {
 		try{
-			currentACL = acm.getEffectiveACLObject(node).acl();
+			currentACLObject = acm.getEffectiveACLObject(node);
 		}
 		catch (IllegalStateException ise) {
 			System.out.println("Fatal error: the repository has no root ACL.");
@@ -172,13 +180,14 @@ public class ACLManager extends JDialog implements ActionListener {
 		for (ACLOperation aclo: userUpdates) System.out.println(aclo.targetName() + " ---> " + aclo.targetLabel());
 		System.out.println("Group updates:");
 		for (ACLOperation aclo: groupUpdates) System.out.println(aclo.targetName() + " ---> " + aclo.targetLabel());
-		try {
-			// TODO: we set the ACL, then update it, to handle correctly the case
-			// where the node had no ACL to start with.
-			// It would be more efficient to set and update the ACL in a single step.
-			acm.setACL(node, currentACL);
-			acm.updateACL(node, userUpdates);
-			acm.updateACL(node, groupUpdates);
+		try {			
+			if (! currentACLObject.getBaseName().equals(GroupAccessControlProfile.aclName(node))) {
+				// There is no actual ACL at this node.
+				// So we copy the effective ACL to this node before updating it.
+				acm.setACL(node, currentACL);
+			}
+			if (userUpdates.size() > 0) acm.updateACL(node, userUpdates);
+			if (groupUpdates.size() > 0) acm.updateACL(node, groupUpdates);
 		} catch (AccessDeniedException ade) {
 			JOptionPane.showMessageDialog(this, "You do not have the access right to edit the ACL at this node.");
 			closeACLManagerWindow();
