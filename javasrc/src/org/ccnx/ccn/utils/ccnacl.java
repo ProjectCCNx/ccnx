@@ -28,6 +28,8 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.protocol.ContentName;
 
@@ -123,12 +125,15 @@ public class ccnacl {
 			ContentName baseNode = ContentName.fromNative("/");
 			GroupAccessControlManager acm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, CCNHandle.open());
 			ContentName node = ContentName.fromNative(nodeName);
-			// TODO: we set the ACL, then update it, to handle correctly the case
-			// where the node had no ACL to start with.
-			// It would be more efficient to set and update the ACL in a single step.
-			ACL initialACL = acm.getEffectiveACLObject(node).acl();
-			acm.setACL(node, initialACL);
 			
+			ACLObject initialACLObject = acm.getEffectiveACLObject(node);
+			ACL initialACL = initialACLObject.acl();
+			if (! initialACLObject.getBaseName().equals(GroupAccessControlProfile.aclName(node))) {
+				// There is no actual ACL at this node.
+				// So we copy the effective ACL to this node before updating it.
+				acm.setACL(node, initialACL);
+			}
+						
 			// initial role
 			ContentName principal = ContentName.fromNative(principalName);
 			Link plk = new Link(principal);
