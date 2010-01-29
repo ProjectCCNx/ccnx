@@ -239,28 +239,32 @@ public class TestUserData {
 	 * For writing apps that run "as" a particular user. 
 	 * @param userKeystoreDirectory This is the path to this particular user's keystore directory,
 	 *   not the path above it where a bunch of users might have been generated. Assumes keystore
-	 *   file has default name in that directory.
+	 *   file has default name in that directory. If you give it a path that doesn't exist, it
+	 *   takes it as a directory and makes a keystore there making the parent directories if necessary.
 	 * @return
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
-	public static KeyManager loadKeystoreFile(File userKeystoreDirectory, String friendlyName, char [] password) throws ConfigurationException, IOException, InvalidKeyException {
+	public static KeyManager loadKeystoreFile(File userKeystoreFileOrDirectory, String friendlyName, char [] password) throws ConfigurationException, IOException, InvalidKeyException {
 
-		if ((!userKeystoreDirectory.exists()) || (!userKeystoreDirectory.isDirectory())) {
-			Log.severe("Specified path {0} must be a directory!", userKeystoreDirectory);
-			throw new IllegalArgumentException("Specified path " + userKeystoreDirectory + " must be a directory!");
+		// Could actually easily generate this... probably should do that instead.
+		if (!userKeystoreFileOrDirectory.exists())  {
+			userKeystoreFileOrDirectory.mkdirs();
 		}
 
-		File userKeystoreFile = new File(userKeystoreDirectory, UserConfiguration.keystoreFileName());
+		File userKeystoreFile = userKeystoreFileOrDirectory.isDirectory() ? 
+				new File(userKeystoreFileOrDirectory, UserConfiguration.keystoreFileName()) :
+				userKeystoreFileOrDirectory;
+
 		if (userKeystoreFile.exists()) {
 			Log.info("Loading user: from " + userKeystoreFile.getAbsolutePath());
 		} else {
 			Log.info("Creating user's: keystore in file " + userKeystoreFile.getAbsolutePath());
 		}
 
-		KeyManager userKeyManager = new BasicKeyManager(friendlyName, userKeystoreDirectory.getAbsolutePath(), 
-				UserConfiguration.keystoreFileName(), 
+		KeyManager userKeyManager = new BasicKeyManager(friendlyName, userKeystoreFile.getParent(), 
+				userKeystoreFile.getName(), 
 				null, null, password);
 		userKeyManager.initialize();
 		return userKeyManager;
@@ -361,40 +365,57 @@ public class TestUserData {
 	}
 	
 	/**
-	 * Helper method for other programs that want to use TestUserData
+	 * Helper method for other programs that want to use TestUserData. Takes an args
+	 * array, and an offset int it, at which it expects to find (optionally)
+	 * [-as keystoreDirectoryorFilePath [-name friendlyName]]. If the latter refers to
+	 * a file, it takes it as the keystore file. If it refers to a directory, it looks
+	 * for the default keystore file name under that directory. If the friendly name
+	 * argument is given, it uses that as the friendly name, otherwise it uses the last
+	 * component of the keystoreDirectoryOrFilePath. It returns a Tuple of a handle
+	 * opened under that user, and the count of arguments read, or null if the argument
+	 * at offset was not -as.
 	 */
-	public static CCNHandle handleAs(String [] args, int offset) throws ConfigurationException, IOException, InvalidKeyException {
+	public static CCNHandle handleAs(String [] args, int offset) throws ConfigurationException, 
+					IOException, InvalidKeyException {
 
-		String user = null;
-		String directory = ".";
-		if (args.length >= offset+2) {
-			if (!args[2].equals("-as")) {
+		String friendlyName = null;
+		String keystoreFileOrDirectoryPath = null;
+		int argsUsed = 0;
+		
+		if (args.length >= offset+3) {
+			if (!args[offset+2].equals("-as")) {
 				return null; // caller must print usage()
 			} else {
-				user = args[3];
+				keystoreFileOrDirectoryPath = args[offset+3];
+				argsUsed += 2;
 			}
 		}
 
-		if (args.length >= 6) {
-			if (!args[4].equals("-path")) {
-				return null;
-			} else {
-				directory = args[5];
+		if (args.length >= offset+5) {
+			if (args[offset+4].equals("-name")) {
+				friendlyName = args[offset+5];
+				argsUsed += 2;
 			}
 		}
 
-		CCNHandle handle = null;
-
-		if (null == user) {
-			handle = CCNHandle.open();
-		} else {
-			KeyManager manager = TestUserData.loadKeystoreFile(new File(directory, user), user,
-					UserConfiguration.keystorePassword().toCharArray());
-			handle = CCNHandle.open(manager);
-
+		File keystoreFileOrDirectory = new File(keystoreFileOrDirectoryPath);
+		
+		if (!keystoreFileOrDirectory.exists()) {
+			Log.warning("Cannot open keystore directory {0}, it does not exist!", keystoreFileOrDirectory);
+			return null;
 		}
-		return handle;
+		
+		if ((null == friendlyName) && (keystoreFileOrDirectory.isDirectory())) {
+			// if its a directory, and we don't know anything else, use last component as user name
+			friendlyName = keystoreFileOrDirectory.getName();
+		}
+		
+		Log.info("handleAs: loading data for user {0} from location {1}", friendlyName, keystoreFileOrDirectory);
+		
 
+		KeyManager manager = TestUserData.loadKeystoreFile(keystoreFileOrDirectory, friendlyName,
+				UserConfiguration.keystorePassword().toCharArray());
+		return CCNHandle.open(manager);
 	}
 	
 	public static void usage() {
