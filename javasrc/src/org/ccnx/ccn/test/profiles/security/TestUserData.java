@@ -230,8 +230,41 @@ public class TestUserData {
 			userKeyManager.initialize();
 			_userKeyManagers.put(friendlyName, userKeyManager);
 			_userKeystoreDirectories.put(friendlyName, userDirectory.getAbsoluteFile());
-			
+
 		}
+	}
+
+	
+	/**
+	 * For writing apps that run "as" a particular user. 
+	 * @param userKeystoreDirectory This is the path to this particular user's keystore directory,
+	 *   not the path above it where a bunch of users might have been generated. Assumes keystore
+	 *   file has default name in that directory.
+	 * @return
+	 * @throws IOException 
+	 * @throws ConfigurationException 
+	 * @throws InvalidKeyException 
+	 */
+	public static KeyManager loadKeystoreFile(File userKeystoreDirectory, String friendlyName, char [] password) throws ConfigurationException, IOException, InvalidKeyException {
+
+		if ((!userKeystoreDirectory.exists()) || (!userKeystoreDirectory.isDirectory())) {
+			Log.severe("Specified path {0} must be a directory!", userKeystoreDirectory);
+			throw new IllegalArgumentException("Specified path " + userKeystoreDirectory + " must be a directory!");
+		}
+
+		File userKeystoreFile = new File(userKeystoreDirectory, UserConfiguration.keystoreFileName());
+		if (userKeystoreFile.exists()) {
+			Log.info("Loading user: from " + userKeystoreFile.getAbsolutePath());
+		} else {
+			Log.info("Creating user's: keystore in file " + userKeystoreFile.getAbsolutePath());
+		}
+
+		KeyManager userKeyManager = new BasicKeyManager(friendlyName, userKeystoreDirectory.getAbsolutePath(), 
+				UserConfiguration.keystoreFileName(), 
+				null, null, password);
+		userKeyManager.initialize();
+		return userKeyManager;
+
 	}
 	
 	/**
@@ -241,16 +274,15 @@ public class TestUserData {
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
-	public static TestUserData readUserDataDirectory(String userDataDirectory, char [] keystorePassword) throws ConfigurationException, IOException, InvalidKeyException {
+	public static TestUserData readUserDataDirectory(File userDirectory, char [] keystorePassword) throws ConfigurationException, IOException, InvalidKeyException {
 		
-		File userDirectory = new File(userDataDirectory);
 		if (!userDirectory.exists()) {
-			Log.warning("Asked to read data from user directory {0}, but it does not exist!", userDataDirectory);
+			Log.warning("Asked to read data from user directory {0}, but it does not exist!", userDirectory);
 			return null;
 		}
 		
 		if (!userDirectory.isDirectory()) {
-			Log.warning("Asked to read data from user directory {0}, but it isn't a directory!", userDataDirectory);
+			Log.warning("Asked to read data from user directory {0}, but it isn't a directory!", userDirectory);
 			return null;
 		}
 		// Right now assume everything below here is a directory.
@@ -326,6 +358,43 @@ public class TestUserData {
 
 	public int count() {
 		return _userKeyManagers.size();
+	}
+	
+	/**
+	 * Helper method for other programs that want to use TestUserData
+	 */
+	public static CCNHandle handleAs(String [] args, int offset) throws ConfigurationException, IOException, InvalidKeyException {
+
+		String user = null;
+		String directory = ".";
+		if (args.length >= offset+2) {
+			if (!args[2].equals("-as")) {
+				return null; // caller must print usage()
+			} else {
+				user = args[3];
+			}
+		}
+
+		if (args.length >= 6) {
+			if (!args[4].equals("-path")) {
+				return null;
+			} else {
+				directory = args[5];
+			}
+		}
+
+		CCNHandle handle = null;
+
+		if (null == user) {
+			handle = CCNHandle.open();
+		} else {
+			KeyManager manager = TestUserData.loadKeystoreFile(new File(directory, user), user,
+					UserConfiguration.keystorePassword().toCharArray());
+			handle = CCNHandle.open(manager);
+
+		}
+		return handle;
+
 	}
 	
 	public static void usage() {
