@@ -101,6 +101,7 @@ public class UserSelector extends JDialog implements ActionListener {
 			public void run() {
 				ContentExplorer.setRoot(_root);
 				ContentExplorer.setAccessControl(true);
+				ContentExplorer.setShowVersions(true);
 				ContentExplorer.createAndShowGUI();
 			}
 		});
