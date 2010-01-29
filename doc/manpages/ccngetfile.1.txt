@@ -56,8 +56,3 @@ EXIT STATUS
 AUTHOR
 ------
 Diana Smetters, <smetters@parc.com>
-
-
-
-
-

@@ -1,22 +1,56 @@
-TITLE(1)
-=============
+CCNGROUP(1)
+===========
 
 NAME
 ----
-util - 
+ccngroup - show and modify access control groups for access control of
+a CCNx content namespace.
 
 SYNOPSIS
 --------
-*util* [-flag 'value'] 'arg1' 'arg2'
+*ccnGroup* -list
+
+*ccnGroup* -listmembers 'groupFriendlyName'
+
+*ccnGroup* -create 'groupFriendlyName' 'groupMember'...
+
+*ccnGroup* -delete 'groupFriendlyName'
+
+*ccnGroup* -add 'groupFriendlyName' 'groupMemberToAdd'...
+
+*ccnGroup* -remove 'groupFriendlyName' 'groupMemberToRemove'...
 
 DESCRIPTION
 -----------
-The *util* utility ...
+The *ccngroup* utility lists or modifies access control groups
+published with CCNx. Groups may be referenced in access control lists
+(ACLs) under the CCNx access control profile.
+
+Groups have short, human-readable "friendly" names by which they are identified
+with this tool although the internal identifier for a group
+is a digest of a public key.
 
 OPTIONS
 -------
-*-flag* 'VALUE'::
-	Do X
+*-list*::
+	List the groups that exist.
+
+*-listmembers* 'groupFriendlyName'::
+	List the members of the group 'groupFriendlyName'.
+
+*-create* 'groupFriendlyName' 'groupMember'...::
+	Create the group named 'groupFriendlyName' with initial
+	members 'groupMember'...
+
+*-delete* 'groupFriendlyName'::
+	Delete the group named 'groupFriendlyName'.
+
+*-add* 'groupFriendlyName' 'groupMemberToAdd'...::
+        Add the 'groupMemberToAdd'... members to the group 'groupFriendlyName'.
+       	
+*-remove* 'groupFriendlyName' 'groupMemberToRemove'...::
+	Remove the 'groupMemberToRemove'... members from the group
+	'groupFriendlyName'.
 
 EXIT STATUS
 -----------
@@ -28,6 +62,7 @@ EXIT STATUS
 
 AUTHOR
 ------
+Philippe Golle <pgolle@parc.com>
 
 
 

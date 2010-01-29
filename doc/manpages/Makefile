@@ -1,7 +1,9 @@
 
 # The order here determines the order in the generated index.
 DERIVED_HTML =				\
-	ccngetfile.1.html
+	ccngetfile.1.html		\
+	ccnacl.1.html			\
+	ccngroup.1.html			\
 
 DERIVED_INDEX = index.html index.txt
 #DEBRIS = .tagname.csv
