@@ -289,12 +289,24 @@ public class Log {
 		} catch (ClassNotFoundException e) {
 			throw new RuntimeException(e);
 		}
+		
+		// Some loggers e.g. the XML logger do not substitute parameters correctly
+		// Therefore we do our own parameter substitution here and do not rely
+		// on the system logger's ability to do it.
+		int i = 0;
 		for(Object o : params) {
 			if (o == null) {
 				o = "(null)";
 			}
+			int index = msg.indexOf("{" + i++ + "}");
+			if (index > 0) {
+				StringBuffer sb = new StringBuffer(msg.substring(0, index));
+				sb.append(o);
+				sb.append(msg.substring(index + 3));
+				msg = sb.toString();
+			}
 		}
-		_systemLogger.logp(l, c.getCanonicalName(), ste.getMethodName(), msg, params);
+		_systemLogger.logp(l, c.getCanonicalName(), ste.getMethodName(), msg);
 	}
 	
 	public static void flush() {

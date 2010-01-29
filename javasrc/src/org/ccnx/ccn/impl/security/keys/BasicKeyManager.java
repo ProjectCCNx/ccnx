@@ -613,7 +613,7 @@ public class BasicKeyManager extends KeyManager {
 			keyLocator = getKeyTypeKeyLocator(keyID);
 		}
 		if( Log.isLoggable(Level.INFO) )
-			Log.info("getKeyLocator: returning locator {0} for key {1}", keyID);
+			Log.info("getKeyLocator: returning locator {0} for key {1}", keyLocator, keyID);
 		return keyLocator;
 	}
 	
@@ -826,7 +826,7 @@ public class BasicKeyManager extends KeyManager {
 			KeyLocator newKeyLocator = new KeyLocator(keyObject.getVersionedName(), keyObject.getContentPublisher());
 			setKeyLocator(keyDigest, newKeyLocator);
 			if( Log.isLoggable(Level.INFO) )
-				Log.info("publishKey: storing key locator {1} for key {1}", keyDigest, newKeyLocator);
+				Log.info("publishKey: storing key locator {0} for key {1}", keyDigest, newKeyLocator);
 		}
 		return keyObject;
 	}
