@@ -1144,8 +1144,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 		WrappedKeyObject wrappedPreviousNodeKey = new WrappedKeyObject(previousKeyName, _handle);
 		wrappedPreviousNodeKey.update();
 		Key pnk = wrappedPreviousNodeKey.wrappedKey().unwrapKey(currentNodeKey.nodeKey());
-		Log.finer("getNodeKeyUsingInterposedACL: returning previous node key for node {0}", currentNodeKey.nodeName());
-		NodeKey previousNodeKey = new NodeKey(currentNodeKey.nodeName(), pnk);
+		Log.finer("getNodeKeyUsingInterposedACL: returning previous node key for node {0}", currentNodeKey.storedNodeKeyName());
+		NodeKey previousNodeKey = new NodeKey(currentNodeKey.storedNodeKeyName(), pnk);
 
 		return previousNodeKey;
 	}	
