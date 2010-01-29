@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -70,6 +70,14 @@ public class SystemConfiguration {
 	 */
 	
 	/**
+	 * Enumerated Name List looping timeout in ms.
+	 * Default is 1000ms
+	 */
+	protected static final String CHILD_WAIT_INTERVAL_PROPERTY = "org.ccnx.EnumList.WaitInterval";
+	public static int CHILD_WAIT_INTERVAL = 1000;
+	
+	
+	/**
 	 * System operation timeout. Very long timeout used to wait for system events
 	 * such as stopping Daemons.
 	 */
@@ -128,6 +136,13 @@ public class SystemConfiguration {
 	 * want to block forever.
 	 */
 	public final static int NO_TIMEOUT = -1;
+	
+	/**
+	 * Set the maximum number of attempts that VersioningProfile.getLatestVersion will
+	 * try to get a later version of an object.
+	 */
+	public static final int GET_LATEST_VERSION_ATTEMPTS = 10;
+	
 	
 	/**
 	 * Can set compile-time default encoding here. Choices are
@@ -191,6 +206,16 @@ public class SystemConfiguration {
 			
 		DEBUG_DATA_DIRECTORY = System.getProperty(DEBUG_DATA_DIRECTORY_PROPERTY, DEFAULT_DEBUG_DATA_DIRECTORY);
 		
+	}
+	
+	static {
+		// Allow override of default enumerated name list child wait timeout.
+		try {
+		CHILD_WAIT_INTERVAL = Integer.parseInt(System.getProperty(CHILD_WAIT_INTERVAL_PROPERTY, "1000"));
+		} catch (NumberFormatException e) {
+			System.err.println("The ChildWaitInterval must be an integer.");
+			throw e;
+		}
 	}
 
 
