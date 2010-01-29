@@ -1,5 +1,5 @@
 /**
- * A CCNx library test.
+ * A CCNx command line utility.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
  *
@@ -44,13 +44,16 @@ import org.ccnx.ccn.test.Flosser;
 
 
 /**
+ * The standard CCNx mechanisms try to generate a keystore for each user that uses
+ * them. This tool allows you to make keys for additional users, on the command line
+ * or programmatically. It is primarily useful for tests, and for generating credentials
+ * that will be prepared offline and then given to their intended users.
+ * 
  * Creates and loads a set of simulated users. Will store them into
- * a repository if asked, and then will reload them from there the next time.
+ * a repository if asked, or to files and then will reload them from there the next time.
  * 
  * As long as you are careful to create your CCNHandle objects pointing at these
  * users' keystores, you can create data as any of these users.
- * @author smetters
- *
  */
 public class CreateUserData {
 	
