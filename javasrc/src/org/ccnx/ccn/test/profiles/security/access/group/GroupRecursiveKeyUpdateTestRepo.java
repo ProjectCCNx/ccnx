@@ -14,7 +14,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.profiles.security.CreateUserData;
+import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.BeforeClass;
 import org.junit.Test;
 

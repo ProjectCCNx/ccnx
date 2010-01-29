@@ -35,7 +35,7 @@ import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.profiles.security.CreateUserData;
+import org.ccnx.ccn.utils.CreateUserData;
 
 public class UserSelector extends JDialog implements ActionListener {
 

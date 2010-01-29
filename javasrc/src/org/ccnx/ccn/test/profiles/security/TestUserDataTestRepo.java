@@ -24,6 +24,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;

@@ -28,7 +28,7 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.test.CCNTestHelper;
-import org.ccnx.ccn.test.profiles.security.CreateUserData;
+import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.BeforeClass;
 import org.junit.Test;
 

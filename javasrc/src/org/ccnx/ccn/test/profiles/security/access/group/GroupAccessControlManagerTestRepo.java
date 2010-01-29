@@ -14,7 +14,7 @@ import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.profiles.security.CreateUserData;
+import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
