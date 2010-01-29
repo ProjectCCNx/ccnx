@@ -45,13 +45,14 @@ CLASSPATH=$CP1:$CP2
 MEMORY=
 DEBUG_PORT=
 DEBUG_SUSPEND=
+DEBUG_NOSHARE=
 OUTPUT_FILE=
 LOCAL_PORT=
 DEBUG_DAEMON=
 PROFILE_INFO=
 DEBUG_FLAGS=
 usage="usage: ccn_repo [-memory <memory>] [-debug <portno>] [-output <output_file>] \n\t\t[-debug-daemon <portno>] [-profile <profile_info>] [-suspend] \
-                \n\t\t[-debug-flags <flags>] \
+                \n\t\t[-noshare] [-debug-flags <flags>] \
 		\n\t\t<repository_directory> [-log <loglevel>] [-prefix <prefix>]\n\t\t[-global <global_prefix>] [-local <localname>]\
 		\n\t| interactive <respository_directory> \n\t| stop <pid> \n\t| stopall \n\t| signal <name> <pid>]"
 
@@ -62,7 +63,7 @@ else
   if [ ! "$CCN_LOCAL_PORT" = "" ]; then
   	  LOCAL_PORT="-Dccn.agent.port=$CCN_LOCAL_PORT"
   fi
-  while [ $# -gt 2 ]; do
+  while [ $# -gt 1 ]; do
   	  if [ "$1" = "-memory" ]; then
   	      MEMORY_INFO="-Dccn.daemon.memory=$2"
   	      MEMORY=-Xmx$2
@@ -72,6 +73,9 @@ else
   	      shift 2
   	  elif [ "$1" = "-suspend" ]; then
   	      DEBUG_SUSPEND="-Dccn.daemon.debug.suspend=y"
+  	      shift
+  	  elif [ "$1" = "-noshare" ]; then
+  	      DEBUG_NOSHARE="-Dccn.daemon.debug.noshare=y"
   	      shift
   	  elif [ "$1" = "-output" ]; then
   	      OUTPUT_FILE="-Dccn.daemon.output=$2"
@@ -108,6 +112,6 @@ else
  	  shift
       $JAVA -cp $CLASSPATH $PROFILE $MEMORY org.ccnx.ccn.impl.repo.RepositoryDaemon -interactive -root $*
   else
-  	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY_INFO $DEBUG_FLAGS $DEBUG_PORT $DEBUG_SUSPEND $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -start -root $*
+  	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY_INFO $DEBUG_FLAGS $DEBUG_PORT $DEBUG_SUSPEND $DEBUG_NOSHARE $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -start -root $*
   fi
 fi

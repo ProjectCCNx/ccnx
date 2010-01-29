@@ -567,7 +567,6 @@ public class VersioningProfile implements CCNProfile {
 		ContentObject result = null;
 		ContentObject lastResult = null;
 		
-		Exclude excludes = null;
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
 		
 		while (attempts < SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS && remainingTime > 0) {

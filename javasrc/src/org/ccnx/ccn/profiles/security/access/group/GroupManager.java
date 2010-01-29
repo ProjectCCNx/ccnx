@@ -72,6 +72,18 @@ public class GroupManager {
 		groupList();
 	}
 	
+	/**
+	 * A "quiet" constructor that doesn't enumerate anything, and in fact does 
+	 * little to be used for non-group based uses of KeyDirectory, really
+	 * a temporary hack till we refactor KD.
+	 * @return
+	 */
+	GroupManager(GroupAccessControlManager accessManager, CCNHandle handle) throws IOException {
+		_handle = handle;
+		_accessManager = accessManager;
+		_groupStorage = null; // try this, see if it explodes
+	}
+	
 	public GroupAccessControlManager getAccessManager() { return _accessManager; }
 
 	/**
