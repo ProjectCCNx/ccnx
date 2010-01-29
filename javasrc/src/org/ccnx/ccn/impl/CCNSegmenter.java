@@ -25,6 +25,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
+import java.util.logging.Level;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -184,7 +185,8 @@ public class CCNSegmenter {
 		if (null != blockString) {
 			try {
 				_blockSize = new Integer(blockString).intValue();
-				Log.info("Using specified fragmentation block size " + _blockSize);
+				if( Log.isLoggable(Level.INFO))
+					Log.info("Using specified fragmentation block size " + _blockSize);
 			} catch (NumberFormatException e) {
 				// Do nothing
 				Log.warning("Error: malformed property value " + PROP_BLOCK_SIZE + ": " + blockString + " should be an integer.");
@@ -470,7 +472,8 @@ public class CCNSegmenter {
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
 		// DKS -- someone should have done this for us already, can we remove it?
-		Log.info("Adding namespace in segmenter, probably redundantly. Namespace: {0}", rootName);
+		if( Log.isLoggable(Level.INFO))
+			Log.info("Adding namespace in segmenter, probably redundantly. Namespace: {0}", rootName);
 		getFlowControl().addNameSpace(rootName);
 
 		if (null == type) {
@@ -698,7 +701,8 @@ public class CCNSegmenter {
 							freshnessSeconds, 
 							finalBlockID), 
 							content, offset, length, signingKey);
-		Log.info("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
+		if( Log.isLoggable(Level.INFO))
+			Log.info("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
 		_flowControl.put(co);
 
 		return nextSegmentIndex(segmentNumber, co.contentLength());
@@ -739,7 +743,8 @@ public class CCNSegmenter {
 
 				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
 				Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
-				Log.finest("Created new encryption cipher "+thisCipher);
+				if( Log.isLoggable(Level.FINEST))
+					Log.finest("Created new encryption cipher "+thisCipher);
 				// Override content type to mark encryption.
 				// Note: we don't require that writers use our facilities for encryption, so
 				// content previously encrypted may not be marked as type ENCR. So on the decryption

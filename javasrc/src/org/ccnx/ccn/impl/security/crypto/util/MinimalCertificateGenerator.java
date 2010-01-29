@@ -17,7 +17,10 @@
 
 package org.ccnx.ccn.impl.security.crypto.util;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
@@ -48,6 +51,7 @@ import org.bouncycastle.asn1.x509.SubjectKeyIdentifier;
 import org.bouncycastle.asn1.x509.X509Extensions;
 import org.bouncycastle.asn1.x509.X509Name;
 import org.bouncycastle.x509.X509V3CertificateGenerator;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 
 
@@ -119,6 +123,32 @@ public class MinimalCertificateGenerator {
 	}
 	
 	/**
+	 * Generates a X509 certificate for a specified user , 
+	 * subject distinguished name and duration.
+	 * @param userKeyPair the user key pair.
+	 * @param subjectDN the distinguished name of the user.
+	 * @param duration the duration of validity of the certificate.
+	 * @return the X509 certificate.
+	 * @throws CertificateEncodingException
+	 * @throws InvalidKeyException
+	 * @throws IllegalStateException
+	 * @throws NoSuchAlgorithmException
+	 * @throws SignatureException
+	 * @throws IOException 
+	 */
+	public static X509Certificate GenerateUserCertificate(
+			String subjectDN, PublicKey userPublicKey, 
+			X509Certificate issuerCertificate, long duration, 
+			PrivateKey signingKey) 
+	         throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, 
+	         						SignatureException, IOException {
+		MinimalCertificateGenerator mg = 
+			new MinimalCertificateGenerator(subjectDN, userPublicKey, issuerCertificate, duration, false, false);
+		mg.setClientAuthenticationUsage();
+		return mg.sign(null, signingKey);
+	}
+
+	/**
 	 * Helper method
 	 */
 	public static X509Certificate GenerateUserCertificate(KeyPair userKeyPair, String subjectDN, long duration) throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, SignatureException {
@@ -172,10 +202,13 @@ public class MinimalCertificateGenerator {
 		byte [] subjectKeyID = issuerCertificate.getExtensionValue(X509Extensions.SubjectKeyIdentifier.toString());
 		if (null == subjectKeyID) {
 			subjectKeyID = CryptoUtil.generateKeyID(subjectPublicKey);
+
 		} else {
 			// content of extension is wrapped in a DEROctetString
 			DEROctetString content = (DEROctetString)CryptoUtil.decode(subjectKeyID);
-			subjectKeyID = content.getOctets();
+			byte [] encapsulatedOctetString = content.getOctets();
+			DEROctetString octetStringKeyID = (DEROctetString)CryptoUtil.decode(encapsulatedOctetString);
+			subjectKeyID = octetStringKeyID.getOctets();
 		}
 		AuthorityKeyIdentifier aki = 
 			new AuthorityKeyIdentifier(subjectKeyID);
@@ -365,6 +398,76 @@ public class MinimalCertificateGenerator {
 			 throw new IllegalArgumentException("Cannot use addExtension to set ExtendedKeyUsage or SubjectAlternativeName or AuthorityKeyIdentifier!");
 		 }
 		 _generator.addExtension(derOID, critical, value);
+	 }
+	 
+	 /**
+	  * Writes client certificate and chain in the form expected by 
+	  * SSL_CTX_use_certificate_chain_file().
+	  * @param targetFile
+	  * @param x509Certificate
+	  * @param chain
+	  */
+	 public static void writeUserCertificateChain(File targetFile,
+			 X509Certificate x509Certificate, X509Certificate[] chain) {
+		 // TODO Auto-generated method stub
+
+	 }
+	 
+	 /**
+	  * Writes file of certificates in the form expected by SSL_CTX_load_verify_locations()
+	  * and (if in the right order) SSL_CTX_use_certificate_chain_file
+	  * Quoting from the OpenSSL documentation:
+	  * If CAfile is not NULL, it points to a file of CA certificates in PEM format. 
+	  * The file can contain several CA certificates identified by
+	  * -----BEGIN CERTIFICATE-----
+	  * ... (CA certificate in base64 encoding) ...
+	  * -----END CERTIFICATE-----
+	  * sequences. Before, between, and after the certificates text is allowed 
+	  * which can be used e.g. for descriptions of the certificates.
+	  * 
+	  * From documentation: SSL_CTX_use_certificate_chain_file loads a 
+	  * certificate chain from file into ctx. The certificates must be in 
+	  * PEM format and must be sorted starting with the subject's 
+	  * certificate (actual client or server certificate), followed by 
+	  * intermediate CA certificates if applicable, and ending at the 
+	  * highest level (root) CA. There is no corresponding function 
+	  * working on a single SSL object.
+	  * This method assumes the caller already has ordered the chain.
+	  * @param userDirectory
+	  * @param userCertificate if not null, the first cert to write in the chain
+	  * @param chain a set of certificates to write after any user certificate. Written
+	  *   in order given, can be used to write an ordered chain or a set of roots where
+	  *   order doesn't matter.
+	  * @param chainOffset the index into chain to start writing
+	  * @param chainCount the number of certs to output.
+	  * @throws CertificateEncodingException 
+	  * @throws FileNotFoundException 
+	  */
+	 public static void writeCertificateChain(File targetFile,
+			 X509Certificate userCertificate,
+			 X509Certificate[] chain, int chainOffset, int chainCount) throws CertificateEncodingException, FileNotFoundException {
+		targetFile.getParentFile().mkdirs();
+		PrintWriter writer = new PrintWriter(targetFile.getAbsolutePath());
+		if (null != userCertificate) {
+			writePEMCertificate(writer, userCertificate);
+		}
+		for (int i=chainOffset; i < chainOffset + chainCount; ++i) {
+			writePEMCertificate(writer, chain[i]);
+		}
+		writer.close();
+	 }
+
+	 
+	 public static final String BEGIN_CERTIFICATE = "-----BEGIN CERTIFICATE-----";
+	 public static final String END_CERTIFICATE = "-----END CERTIFICATE-----";
+	 public static final int CERTIFICATE_WRAP_LENGTH = 40; // TODO what should this be?
+	 
+	 public static void writePEMCertificate(PrintWriter writer, X509Certificate certificate) throws CertificateEncodingException {
+		 writer.println(BEGIN_CERTIFICATE);
+		 // TODO print or println?
+		 writer.println(DataUtils.base64Encode(certificate.getEncoded(), CERTIFICATE_WRAP_LENGTH));
+		 writer.println(END_CERTIFICATE);
+		 writer.println();
 	 }
 }
 

@@ -110,7 +110,7 @@ public class MultiResponderNameEnumerationTest implements BasicNameEnumeratorLis
 			Assert.assertTrue(putne.containsRegisteredName(n));
 			
 			//the names are registered...
-			Log.info("the names are now registered: {0]", n);
+			Log.info("the names are now registered: {0}", n);
 		} catch(InterruptedException e){
 			System.err.println("error waiting for names to be registered by name enumeration responder");
 			Assert.fail();

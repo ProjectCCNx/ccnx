@@ -74,6 +74,7 @@ public class Daemon {
 	public static final String PROP_DAEMON_OUTPUT = "ccn.daemon.output";
 	public static final String PROP_DAEMON_PROFILE = "ccn.daemon.profile";
 	public static final String PROP_DAEMON_DEBUG_SUSPEND = "ccn.daemon.debug.suspend";
+	public static final String PROP_DAEMON_DEBUG_NOSHARE = "ccn.daemon.debug.noshare";
 	
 	/**
 	 * Interface describing the RMI server object sitting inside
@@ -369,6 +370,10 @@ public class Daemon {
 		} else if (doSuspend.equals("y"))
 			Log.info("Suspend requested without debug attach");
 		
+		String unshared = System.getProperty(PROP_DAEMON_DEBUG_NOSHARE);
+		if (null != unshared)
+			argList.add("-Xshare:off");
+		
 		String profileInfo = System.getProperty(PROP_DAEMON_PROFILE);
 		if (profileInfo != null) {
 			argList.add(profileInfo);
@@ -423,6 +428,10 @@ public class Daemon {
 					byte[] childMsgBytes = new byte[childMsgs.available()];
 					childMsgs.read(childMsgBytes);;
 					String childOutput = new String(childMsgBytes);
+					childMsgs = child.getInputStream();
+					childMsgBytes = new byte[childMsgs.available()];
+					childMsgs.read(childMsgBytes);
+					childOutput += new String(childMsgBytes);
 					System.err.println("Messages from the child were: \"" + childOutput + "\"");
 					return;
 				} catch (IllegalThreadStateException e) {

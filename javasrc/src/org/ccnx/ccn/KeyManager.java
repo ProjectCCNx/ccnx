@@ -23,6 +23,7 @@ import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
+import java.util.logging.Level;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -79,7 +80,8 @@ public abstract class KeyManager {
 	 */
 	public static synchronized KeyManager getDefaultKeyManager() {
 		// could print a stack trace
-		Log.finer("NOTICE: retrieving default key manager.");
+		if( Log.isLoggable(Level.FINER) )
+			Log.finer("NOTICE: retrieving default key manager.");
 		if (null != _defaultKeyManager) 
 			return _defaultKeyManager;
 		try {

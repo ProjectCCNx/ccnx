@@ -210,7 +210,13 @@ public class GroupAccessControlManager extends AccessControlManager {
 		this(namespace, groupStorage, userStorage, null);
 	}
 	
-	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage, CCNHandle handle) throws ConfigurationException, IOException {
+	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, 
+			ContentName userStorage, CCNHandle handle) throws ConfigurationException, IOException {
+		this(namespace, groupStorage, userStorage, false, handle);
+	}
+	
+	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, 
+										ContentName userStorage, boolean quiet, CCNHandle handle) throws ConfigurationException, IOException {
 		_namespace = namespace;
 		_userStorage = userStorage;
 		if (null == handle) {
@@ -220,9 +226,11 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		_keyCache = new KeyCache(_handle.keyManager());
 		
-		// start enumerating users in the background
-		userList();
 		_groupManager = new GroupManager(this, groupStorage, _handle);
+		if (!quiet) { // start enumerating in the background in most cases
+			_groupManager.groupList();
+			userList();
+		}
 		// TODO here, check for a namespace marker, and if one not there, write it (async)
 	}
 	
@@ -1144,8 +1152,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 		WrappedKeyObject wrappedPreviousNodeKey = new WrappedKeyObject(previousKeyName, _handle);
 		wrappedPreviousNodeKey.update();
 		Key pnk = wrappedPreviousNodeKey.wrappedKey().unwrapKey(currentNodeKey.nodeKey());
-		Log.finer("getNodeKeyUsingInterposedACL: returning previous node key for node {0}", currentNodeKey.nodeName());
-		NodeKey previousNodeKey = new NodeKey(currentNodeKey.nodeName(), pnk);
+		Log.finer("getNodeKeyUsingInterposedACL: returning previous node key for node {0}", currentNodeKey.storedNodeKeyName());
+		NodeKey previousNodeKey = new NodeKey(currentNodeKey.storedNodeKeyName(), pnk);
 
 		return previousNodeKey;
 	}	

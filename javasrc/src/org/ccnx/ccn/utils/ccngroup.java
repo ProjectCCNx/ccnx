@@ -17,12 +17,15 @@
 
 package org.ccnx.ccn.utils;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.SortedSet;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
@@ -42,55 +45,59 @@ public class ccngroup {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		// silence logging
+		Log.setDefaultLevel(Level.WARNING);
+		
 		if ((args == null) || (args.length == 0)) {
 			usage();
 		}
-		else if (args[0].equals("-list")) {
+		
+		int pos = 0;
+		if (args[pos].equals("-as")) {
+			if (args.length < pos+2) usage();
+			pos++;
+			setUser(args[pos]);
+			pos++;
+		}
+		
+		if (args[pos].equals("-list")) {
 			listGroups();
 			System.exit(0);
 		}
-		else if (args[0].equals("-listmembers")) {
-			if (args.length < 2) {
-				usage();
-				System.exit(1);
-			}
-			String groupName = args[1];
+		else if (args[pos].equals("-listmembers")) {
+			if (args.length < pos + 2) usage();
+			pos++;
+			String groupName = args[pos];
 			listMembers(groupName);
 			System.exit(0);
 		}
-		else if (args[0].equals("-delete")) {
-			if (args.length < 2) {
-				usage();
-				System.exit(1);
-			}
-			String groupName = args[1];
+		else if (args[pos].equals("-delete")) {
+			if (args.length < pos + 2) usage();
+			pos ++;
+			String groupName = args[pos];
 			deleteGroup(groupName);
 			System.exit(0);
 		}
-		else if ( args[0].equals("-create")
-				|| args[0].equals("-add")
-				|| args[0].equals("-remove")) 
-		{
-			if (args.length < 2) {
-				usage();
-				System.exit(1);
-			}
-			String groupName = args[1];
+		else if (args[pos].equals("-create") || args[pos].equals("-add") || args[pos].equals("-remove")) {
+			if (args.length < pos + 2) usage();
+			String command = args[pos];
+			pos++;
+			String groupName = args[pos];
+			pos++;
 			ArrayList<Link> groupMembers = new ArrayList<Link>();
-			for (int i=2; i<args.length; i++) {
+			for (int i=pos; i<args.length; i++) {
 				try {
 					Link lk = new Link(ContentName.fromNative(args[i]));
 					groupMembers.add(lk);
 				} 
 				catch (Exception e) {
 					e.printStackTrace();
-					usage();
 					System.exit(1);
 				}
 			}
-			if (args[0].equals("-create")) createGroup(groupName, groupMembers);
-			else if (args[0].equals("-add")) addMember(groupName, groupMembers);
-			else if (args[0].equals("-remove")) removeMember(groupName, groupMembers);
+			if (command.equals("-create")) createGroup(groupName, groupMembers);
+			else if (command.equals("-add")) addMember(groupName, groupMembers);
+			else if (command.equals("-remove")) removeMember(groupName, groupMembers);
 			System.exit(0);
 		}
 		else {
@@ -101,13 +108,24 @@ public class ccngroup {
 
 	public static void usage() {
 		System.out.println("usage:");
-		System.out.println("ccnGroup -list");
-		System.out.println("ccnGroup -listmembers groupFriendlyName");
-		System.out.println("ccnGroup -create groupFriendlyName (groupMember)*");
-		System.out.println("ccnGroup -delete groupFriendlyName");
-		System.out.println("ccnGroup -add groupFriendlyName (groupMemberToAdd)*");
-		System.out.println("ccnGroup -remove groupFriendlyName (groupMemberToRemove)*");		
+		System.out.println("ccngroup [-as pathToKeystore] -list");
+		System.out.println("ccngroup [-as pathToKeystore] -listmembers groupFriendlyName");
+		System.out.println("ccngroup [-as pathToKeystore] [-create | -add | -remove] groupFriendlyName (groupMember)*");
+		System.out.println("ccngroup [-as pathToKeystore] -delete groupFriendlyName");
 		System.exit(1);
+	}
+
+	public static void setUser(String pathToKeystore) {
+		File userDirectory = new File(pathToKeystore);
+		String userConfigDir = userDirectory.getAbsolutePath();
+		System.out.println("Loading keystore from: " + userConfigDir);
+		UserConfiguration.setUserConfigurationDirectory(userConfigDir);
+		// Assume here that the name of the file is the userName
+		String userName = userDirectory.getName();
+		if (userName != null) {
+			System.out.println("User: " + userName);
+			UserConfiguration.setUserName(userName);
+		}
 	}
 	
 	public static void listGroups() {
@@ -118,9 +136,10 @@ public class ccngroup {
 			
 			SortedSet<ContentName> availableChildren = userDirectory.getChildren();
 			if ((null == availableChildren) || (availableChildren.size() == 0)) {
-				System.out.println("No available keystore data in directory " + groupStorage + ", giving up.");
+				System.out.println("No group found in: " + groupStorage);
 			}
 			else {
+				System.out.println(availableChildren.size() + " group(s) found in: " + groupStorage);
 				for (ContentName child : availableChildren) {
 					ContentName fullName = new ContentName(groupStorage, child.components());
 					System.out.println(fullName);
@@ -140,14 +159,13 @@ public class ccngroup {
 			Group g = gm.getGroup(groupName);
 			MembershipList ml = g.membershipList();
 			LinkedList<Link> lll = ml.contents();
-			System.out.println("Membership of group " + groupName + ": ");
+			System.out.println("The group " + groupName + " has " + lll.size() + " members:");
 			for (Link l: lll) {
 				System.out.println(l.targetName());
 			}
 		}
 		catch (Exception e) {
 			e.printStackTrace();
-			usage();
 			System.exit(1);
 		}
 	}
@@ -194,7 +212,6 @@ public class ccngroup {
 		}
 		catch (Exception e) {
 			e.printStackTrace();
-			usage();
 			System.exit(1);
 		}
 		System.out.println("Added to group " + groupName + " the following members: ");
@@ -217,7 +234,6 @@ public class ccngroup {
 		}
 		catch (Exception e) {
 			e.printStackTrace();
-			usage();
 			System.exit(1);
 		}
 		System.out.println("Removed from group " + groupName + " the following members: ");

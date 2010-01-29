@@ -28,7 +28,7 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.test.CCNTestHelper;
-import org.ccnx.ccn.test.profiles.security.TestUserData;
+import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -42,7 +42,7 @@ public class KeyPublishingTestRepo {
 	
 	public static final int NUM_USERS = 3; // plus the user running the test. should coordinate with other
 											// tests so we only have to run key generation once...
-	static TestUserData testUsers;
+	static CreateUserData testUsers;
 	static PublicKeyObject [] userKeyObjects;
 	static String [] userNames;
 	static CCNHandle [] userHandles;
@@ -55,7 +55,7 @@ public class KeyPublishingTestRepo {
 	public static void setUpBeforeClass() throws Exception {
 		myHandle = CCNHandle.open();
 		// Generate users to a repository
-		testUsers = new TestUserData(testHelper.getClassChildName(USER_NAMESPACE), NUM_USERS, true, PASSWORD, myHandle);
+		testUsers = new CreateUserData(testHelper.getClassChildName(USER_NAMESPACE), NUM_USERS, true, PASSWORD, myHandle);
 		userNames = testUsers.friendlyNames().toArray(new String[NUM_USERS]);
 		userHandles = new CCNHandle[NUM_USERS];
 		for (int i=0; i < NUM_USERS; ++i) {

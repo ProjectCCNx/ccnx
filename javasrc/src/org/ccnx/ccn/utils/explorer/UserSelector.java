@@ -35,7 +35,7 @@ import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.profiles.security.TestUserData;
+import org.ccnx.ccn.utils.CreateUserData;
 
 public class UserSelector extends JDialog implements ActionListener {
 
@@ -78,7 +78,7 @@ public class UserSelector extends JDialog implements ActionListener {
 		
 		for (int i=0; i<_nbUsers; i++) {
 			_userButton[i] = new JButton();
-			_userButton[i].setText(TestUserData.USER_NAMES[i]);
+			_userButton[i].setText(CreateUserData.USER_NAMES[i]);
 			_userButton[i].addActionListener(this);
 			_userButton[i].setBounds(10, 60 + 30*i, 200, 20);
 			getContentPane().add(_userButton[i] );
@@ -91,7 +91,7 @@ public class UserSelector extends JDialog implements ActionListener {
 		
 		for (int i=0; i<_nbUsers; i++) {
 			if (_userButton[i] == e.getSource()) {
-				setUser(TestUserData.USER_NAMES[i]);
+				setUser(CreateUserData.USER_NAMES[i]);
 				break;
 			}
 		}
@@ -101,6 +101,7 @@ public class UserSelector extends JDialog implements ActionListener {
 			public void run() {
 				ContentExplorer.setRoot(_root);
 				ContentExplorer.setAccessControl(true);
+				ContentExplorer.setShowVersions(true);
 				ContentExplorer.createAndShowGUI();
 			}
 		});
