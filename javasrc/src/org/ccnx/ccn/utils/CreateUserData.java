@@ -386,18 +386,18 @@ public class CreateUserData {
 		String keystoreFileOrDirectoryPath = null;
 		int argsUsed = 0;
 		
-		if (args.length >= offset+3) {
-			if (!args[offset+2].equals("-as")) {
+		if (args.length >= offset+2) {
+			if (!args[offset].equals("-as")) {
 				return null; // caller must print usage()
 			} else {
-				keystoreFileOrDirectoryPath = args[offset+3];
+				keystoreFileOrDirectoryPath = args[offset+1];
 				argsUsed += 2;
 			}
 		}
 
 		if (args.length >= offset+5) {
-			if (args[offset+4].equals("-name")) {
-				friendlyName = args[offset+5];
+			if (args[offset+2].equals("-name")) {
+				friendlyName = args[offset+3];
 				argsUsed += 2;
 			}
 		}
