@@ -23,7 +23,11 @@ DEBRIS = $(foreach name,$(PAGE_NAMES),$(name).1.fo) $(foreach name,$(PAGE_NAMES)
 SRC_HTML = # any checked-in html files should go here
 INDEXED_HTML = $(DERIVED_HTML) $(SRC_HTML)
 
-all documentation dist-docs: $(DERIVED_HTML) $(DERIVED_PDF) $(DERIVED_MAN) $(DERIVED_INDEX)
+all documentation dist-docs: html $(DERIVED_MAN) $(DERIVED_INDEX)
+
+html: $(DERIVED_HTML)
+
+pdf: $(DERIVED_PDF)
 
 clean:
 	rm -f $(DERIVED_HTML) $(DERIVED_PDF) $(DERIVED_MAN) $(DERIVED_INDEX) $(DEBRIS)
