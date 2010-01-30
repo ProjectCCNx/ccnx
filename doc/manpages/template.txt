@@ -1,9 +1,9 @@
 TITLE(1)
-=============
+========
 
 NAME
 ----
-util - 
+util - some text
 
 SYNOPSIS
 --------
@@ -28,6 +28,7 @@ EXIT STATUS
 
 AUTHOR
 ------
+someone <someone@parc.com>
 
 
 

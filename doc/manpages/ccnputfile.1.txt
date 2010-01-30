@@ -1,9 +1,9 @@
 TITLE(1)
-=============
+========
 
 NAME
 ----
-util - 
+ccnputfile - some text
 
 SYNOPSIS
 --------
@@ -28,6 +28,6 @@ EXIT STATUS
 
 AUTHOR
 ------
-
+someone <someone@parc.com>
 
 

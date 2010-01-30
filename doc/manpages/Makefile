@@ -1,9 +1,16 @@
 
 # The order here determines the order in the generated index.
 PAGE_NAMES = 			\
-	ccngetfile		\
 	ccnacl			\
 	ccngroup		\
+	ccnd			\
+	ccndc			\
+	ccndstart		\
+	ccnexplore		\
+	ccnls			\
+	ccnlsrepo		\
+	ccngetfile		\
+	ccnputfile		\
 
 # Yes, this is gmake specific
 DERIVED_HTML =	$(foreach name,$(PAGE_NAMES),$(name).1.html)
