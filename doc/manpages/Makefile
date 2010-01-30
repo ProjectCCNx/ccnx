@@ -1,19 +1,25 @@
 
 # The order here determines the order in the generated index.
-DERIVED_HTML =				\
-	ccngetfile.1.html		\
-	ccnacl.1.html			\
-	ccngroup.1.html			\
+PAGE_NAMES = 			\
+	ccngetfile		\
+	ccnacl			\
+	ccngroup		\
+
+# Yes, this is gmake specific
+DERIVED_HTML =	$(foreach name,$(PAGE_NAMES),$(name).1.html)
+DERIVED_PDF = $(foreach name,$(PAGE_NAMES),$(name).1.pdf)
+DERIVED_MAN = $(foreach name,$(PAGE_NAMES),$(name).1)
 
 DERIVED_INDEX = index.html index.txt
 #DEBRIS = .tagname.csv
+DEBRIS = $(foreach name,$(PAGE_NAMES),$(name).1.fo) $(foreach name,$(PAGE_NAMES),$(name).1.xml)
 SRC_HTML = # any checked-in html files should go here
 INDEXED_HTML = $(DERIVED_HTML) $(SRC_HTML)
 
-all documentation dist-docs: $(DERIVED_HTML) $(DERIVED_INDEX)
+all documentation dist-docs: $(DERIVED_HTML) $(DERIVED_PDF) $(DERIVED_MAN) $(DERIVED_INDEX)
 
 clean:
-	rm -f $(DERIVED_HTML) $(DERIVED_INDEX) $(DEBRIS)
+	rm -f $(DERIVED_HTML) $(DERIVED_PDF) $(DERIVED_MAN) $(DERIVED_INDEX) $(DEBRIS)
 
 index.html: index.txt
 	asciidoc index.txt
@@ -24,6 +30,12 @@ index.txt: $(INDEXED_HTML) .genindex.sh
 
 %.html : %.txt
 	asciidoc -d manpage $<
+
+%.pdf : %.txt 
+	a2x -f pdf -d manpage $<
+
+%.1 : %.1.txt
+	a2x -f manpage -d manpage $<
 
 default all clean depend test check shared documentation dist-docs testinstall install uninstall: _always
 

@@ -1,0 +1,8 @@
+This directory contains man page documentation for tools.  
+
+The source is asciidoc. The derived formats are HTML, PDF, and man
+page.
+
+Note that even with asciidoc you may be missing the required xmlto
+program because of poor asciidoc package dependencies and the
+diagnostics in this case are not very helpful.
