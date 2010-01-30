@@ -63,6 +63,10 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
     	super();
     	this._publisher = publisher;
     }
+    
+    public LinkAuthenticator(PublisherPublicKeyDigest publisher) {
+    	this(new PublisherID(publisher));
+    }
 
     public LinkAuthenticator() {}
     
