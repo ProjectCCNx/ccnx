@@ -98,7 +98,7 @@ public class AddChildren implements Runnable {
 				// check if a version marker
 				//if (VersioningProfile.containsVersion(cn)) {
 				if (VersioningProfile.hasTerminalVersion(cn)) {
-					if (!ContentExplorer.showVersions)
+					if (!ContentExplorer.showVersions && !ContentExplorer.debugMode)
 						addToParent = false;
 
 					// this name is a version, that means the parent is
@@ -108,7 +108,7 @@ public class AddChildren implements Runnable {
 
 					Name parentNameNode = app.getNameNode(parentNode);
 					if (parentNameNode.isDirectory) {
-						if (!ContentExplorer.showVersions)
+						if (!ContentExplorer.showVersions && !ContentExplorer.debugMode)
 							parentNameNode.setIsDirectory(false);
 						((IconData) parentNode.getUserObject()).setIcon(ContentExplorer.ICON_DOCUMENT);
 						app.m_model.nodeChanged(parentNode);
@@ -120,11 +120,13 @@ public class AddChildren implements Runnable {
 				}
 				// check if a segment marker
 				if (SegmentationProfile.isSegment(cn)) {
-					addToParent = false;
+					if (!ContentExplorer.showVersions && !ContentExplorer.debugMode)
+						addToParent = false;
 					
 					Name parentNameNode = app.getNameNode(parentNode);
 					if (parentNameNode.isDirectory) {
-						parentNameNode.setIsDirectory(false);
+						if (!ContentExplorer.showVersions && !ContentExplorer.debugMode)
+							parentNameNode.setIsDirectory(false);
 						((IconData) parentNode.getUserObject()).setIcon(ContentExplorer.ICON_DOCUMENT);
 						app.m_model.nodeChanged(parentNode);
 					}

@@ -24,9 +24,12 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
+import org.ccnx.ccn.profiles.namespace.NamespaceManager;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -39,6 +42,9 @@ public class ccngetfile {
 	public static Integer timeout = null;
 	public static boolean unversioned = false;
 
+	private static ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
+	private static ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
+	
 	/**
 	 * @param args
 	 */
@@ -76,7 +82,19 @@ public class ccngetfile {
 				Log.setLevel(level);
 				if (startArg <= i)
 					startArg = i + 1;
-			} else {
+			} else if (args[i].equals("-as")) {
+				if (args.length < (i + 2)) {
+					usage();
+				}
+				setUser(args[++i]);
+				if (startArg <= i)
+					startArg = i + 1;				
+			} else if (args[i].equals("-ac")) {
+				setAccessControl();
+				if (startArg <= i)
+					startArg = i + 1;				
+			}
+			else {
 				usage();
 				System.exit(1);
 			}
@@ -141,6 +159,31 @@ public class ccngetfile {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: ccngetfile [-unversioned] [-timeout millis] <ccnname> <filename>");
+		System.out.println("usage: ccngetfile [-unversioned] [-timeout millis] [-as pathToKeystore] [-ac (access control)] <ccnname> <filename>");
 	}
+	
+	private static void setUser(String pathToKeystore) {
+		File userDirectory = new File(pathToKeystore);
+		String userConfigDir = userDirectory.getAbsolutePath();
+		System.out.println("Loading keystore from: " + userConfigDir);
+		UserConfiguration.setUserConfigurationDirectory(userConfigDir);
+		// Assume here that the name of the file is the userName
+		String userName = userDirectory.getName();
+		if (userName != null) {
+			System.out.println("User: " + userName);
+			UserConfiguration.setUserName(userName);
+		}
+	}
+	
+	private static void setAccessControl() {
+		// register a group access control manager with the namespace manager
+		try {
+			GroupAccessControlManager gacm = new GroupAccessControlManager(ContentName.fromNative("/"), groupStorage, userStorage, CCNHandle.open());
+			NamespaceManager.registerACM(gacm);
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+	
 }

@@ -90,6 +90,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	
 	private static boolean accessControlOn = false;
 	protected static boolean showVersions = false;
+	protected static boolean debugMode = false;
 	private static GroupAccessControlManager gacm = null;
 	private static String userName = null;
 	private static boolean previewTextFiles = true;
@@ -357,11 +358,16 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				// if we don't have a file then we should show a file chooser
 				// otherwise give an error message "Please select a folder"
 
-				if (((selectedPrefix.toString()).split("\\.")).length > 2) {
-					JOptionPane.showMessageDialog(this.frame,
-							"Please Select a Directory to add a file",
-							"Select Directory", JOptionPane.ERROR_MESSAGE);
-				} else {
+				//commented out this behavior.  we have many things that do have a . in them.  also
+				//when showing versions, they may have characters that are interpreted as a .
+				
+				/*if (((selectedPrefix.toString()).split("\\.")).length > 2) {
+				*	JOptionPane.showMessageDialog(this.frame,
+				*			"Please Select a Directory to add a file",
+				  *			"Select Directory", JOptionPane.ERROR_MESSAGE);
+				 * } else {
+				 * 
+				 */
 					// Show dialog; this method does not return until dialog is
 					// closed
 
@@ -386,11 +392,41 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					try {
 						ContentName contentName = ContentName.fromURI(selectedPrefix);
 						contentName = ContentName.fromURI(contentName, file.getName());
+						ContentName temp = null;
+						while (temp==null) {
+							String name = JOptionPane.showInputDialog("Send File to Repo As:", contentName.toString());
+							if (name == null) {
+								Log.fine("user selected cancel, returning");
+								return;
+							}
+							
+							Log.info("user entered [{0}]", name);
+							//System.out.println("user entered ["+name+"]");
 
+							
+							try {
+								if (name.startsWith("ccnx:/"))
+									name = name.replaceFirst("ccnx:/", "/");
+								temp = ContentName.fromURI(name);
+								//temp = ContentName.fromNative(name);
+								contentName = temp;
+								Log.info("saving as [{0}]", contentName);
+								//System.out.println("saving as ["+contentName+"]");
+
+							}
+							catch (Exception e) {
+								Log.fine("User entered invalid name for save: {0}", e.getMessage());
+								if(name.equals(""))
+									JOptionPane.showMessageDialog(chooser, "Please enter a CCNx name for the content that starts with \"/\".");
+								else
+									JOptionPane.showMessageDialog(chooser, (name + " is not a valid CCNx name.  Please be sure it starts with \"/\""));
+							}
+						}
+						
 						sendFile(file, contentName);
 					} catch (MalformedContentNameStringException e) {
 						Log.logException("could not create content name for selected file: "+file.getName(), e);
-					}
+					//}
 				}
 			}
 		}
@@ -971,8 +1007,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					accessControlOn = true;
 				} else if (s.equals("-showVersions")) {
 					showVersions = true;
-				}
-				else {
+				} else if (s.equals("-debugMode")) {
+					debugMode = true;
+				} else {
 					usage();
 					System.exit(1);
 				}
@@ -1244,6 +1281,10 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	
 	public static void setShowVersions(boolean sv) {
 		showVersions = sv;
+	}
+	
+	public static void setDebugMode(boolean dm) {
+		debugMode = dm;
 	}
 	
 	public static void setGroupAccessControlManager(GroupAccessControlManager acm) {
