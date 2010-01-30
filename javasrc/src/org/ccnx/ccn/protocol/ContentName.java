@@ -419,7 +419,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if (!name.startsWith(SEPARATOR)){
 			throw new MalformedContentNameStringException("ContentName native strings must begin with " + SEPARATOR);
 		}
-		if((name == null) || (name.length() == 0)) {
+		if ((name == null) || (name.length() == 0)) {
 			result._components = null;
 		} else {
 			String[] parts;
