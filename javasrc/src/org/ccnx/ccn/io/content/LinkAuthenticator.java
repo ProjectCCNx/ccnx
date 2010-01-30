@@ -232,6 +232,43 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		result = prime * result + ((_type == null) ? 0 : _type.hashCode());
 		return result;
 	}
+	
+	/**
+	 * Approximately equals -- matches on each field of target that is non-null
+	 */
+	public boolean approximates(LinkAuthenticator target) {
+		if (null != target._contentDigest) {
+			if (null == _contentDigest)
+				return false;
+			if (!Arrays.equals(target._contentDigest, _contentDigest))
+				return false;
+		}
+		if (null != target._nameComponentCount) {
+			if (null == _nameComponentCount)
+				return false;
+			if (!target._nameComponentCount.equals(_nameComponentCount))
+				return false;
+		}
+		if (null != target._publisher) {
+			if (null == _publisher)
+				return false;
+			if (!target._publisher.equals(_publisher))
+				return false;
+		}
+		if (null != target._timestamp) {
+			if (null == _timestamp)
+				return false;
+			if (!target._timestamp.equals(_timestamp))
+				return false;
+		}
+		if (null != target._type) {
+			if (null == _type)
+				return false;
+			if (!target._type.equals(_type))
+				return false;
+		}
+		return true;
+	}
 
 	@Override
 	public boolean equals(Object obj) {
