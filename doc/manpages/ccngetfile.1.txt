@@ -7,7 +7,7 @@ ccngetfile - retrieve a file published as CCNx content and save it to a local fi
 
 SYNOPSIS
 --------
-*ccngetfile* [-unversioned] [-timeout 'millis'] 'ccnxname' 'filename'
+*ccngetfile* [-unversioned] [-timeout 'millis'] [-as 'pathToKeystore'] [-ac]  'ccnxname' 'filename'
 
 DESCRIPTION
 -----------
@@ -24,6 +24,14 @@ pathname syntax with / delimiters.
 
 The 'filename' must be the pathname of a local file that will be
 written and will be overwritten if it already exists.
+
+The '-as' option sets the user key for decrypting published content.  This
+must point to a place in the filesystem where CCNx compatible keys have been
+saved.
+
+The '-ac' flag forces *ccngetfile* to obey access control restrictions.  If
+the user is not permitted to read in a given namespace, decryption will fail.
+
 
 OPTIONS
 -------
@@ -44,6 +52,16 @@ OPTIONS
 *-log* 'LEVEL'::
      Set the logging level. 'LEVEL' must be the an acceptable Java
      Logger level: either an integer or a level name (e.g. SEVERE).
+
+*-as* 'pathToKeystore'::
+     Set the user for decrypting published content.  This must point to a place
+     in the filesystem where ccnx compatible keys have been saved.
+
+*-ac*::
+     This options forces *ccngetfile* to obey access control restrictions.  If
+     the user is not permitted to read in a given namespace, decryption will
+     fail.
+
 
 EXIT STATUS
 -----------
