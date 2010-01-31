@@ -33,6 +33,7 @@ import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 import java.util.SimpleTimeZone;
 import java.util.Vector;
@@ -456,14 +457,14 @@ public class MinimalCertificateGenerator {
 	  */
 	 public static void writeCertificateChain(File targetFile,
 			 X509Certificate userCertificate,
-			 X509Certificate[] chain, int chainOffset, int chainCount) throws CertificateEncodingException, FileNotFoundException {
+			 List<X509Certificate> chain, int chainOffset, int chainCount) throws CertificateEncodingException, FileNotFoundException {
 		targetFile.getParentFile().mkdirs();
 		PrintWriter writer = new PrintWriter(targetFile.getAbsolutePath());
 		if (null != userCertificate) {
 			writePEMCertificate(writer, userCertificate);
 		}
 		for (int i=chainOffset; i < chainOffset + chainCount; ++i) {
-			writePEMCertificate(writer, chain[i]);
+			writePEMCertificate(writer, chain.get(i));
 		}
 		writer.close();
 	 }
