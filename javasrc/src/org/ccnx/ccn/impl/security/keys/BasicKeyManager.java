@@ -406,6 +406,12 @@ public class BasicKeyManager extends KeyManager {
 		// Currently have saved data override command line, which might be bad...
 		// also use that to preconfigure things like keystores and such
 		// for right now, just as a super-fast trick, use java serialization to get out minmal data necessary
+		if ((null == _keyStoreDirectory) || (null == _configurationFileName))  {
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("No configuration directory/file set, not loading.");
+			}
+			return true;
+		}
 		File configurationFile = new File(_keyStoreDirectory, _configurationFileName);
 		if (configurationFile.exists()) {
 			try {
@@ -415,6 +421,12 @@ public class BasicKeyManager extends KeyManager {
 				_currentKeyLocators.putAll(savedKeyLocators);
 				
 				keyStoreInfo.setConfigurationFileURI(configurationFile.toURI().toString());
+				
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("Loaded configuration data from file {0}, got {1} key locator values.", 
+							configurationFile.getAbsolutePath(), savedKeyLocators.size());
+				}
+
 			} catch (FileNotFoundException e) {
 				throw new ConfigurationException("Cannot read configuration file even though it claims to exist: " + configurationFile.getAbsolutePath(), e);
 			} catch (IOException e) {
