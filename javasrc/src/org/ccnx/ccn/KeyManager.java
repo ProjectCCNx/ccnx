@@ -193,6 +193,12 @@ public abstract class KeyManager {
 	 */
 	public abstract PublisherPublicKeyDigest getDefaultKeyID();
 	
+	public boolean isOurDefaultKey(PublisherPublicKeyDigest keyID) {
+		if (getDefaultKeyID().equals(keyID))
+			return true;
+		return false;
+	}
+	
 	/**
 	 * Get our default private key.
 	 * @return our default private key
