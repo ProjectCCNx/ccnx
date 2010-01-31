@@ -403,7 +403,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_publisher = other._publisher;
 		_keyLocator = other._keyLocator;
 		_saveType = other._saveType;
-		_keys = other._keys.clone();
+		_keys = (null != other._keys) ? other._keys.clone() : null;
 		// Do not copy update behavior. Even if other one is updating, we won't
 		// pick that up. Have to kick off manually.
 		
