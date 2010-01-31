@@ -71,6 +71,8 @@ public class InterestTable<V> {
 	 * We need names in longest first order, not canonical order.
 	 */
 	protected class LongestFirstContentName extends ContentName {
+		private static final long serialVersionUID = -3070093705531774465L;
+
 		public LongestFirstContentName(ContentName name) {
 			super(name);
 		}

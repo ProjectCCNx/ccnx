@@ -229,7 +229,7 @@ public class CreateUserData {
 			}
 			
 			userKeyManager = new BasicKeyManager(friendlyName, userDirectory.getAbsolutePath(), 
-												 UserConfiguration.keystoreFileName(), 
+												null, null, 
 												null, null, password);
 			userKeyManager.initialize();
 			_userKeyManagers.put(friendlyName, userKeyManager);
@@ -268,8 +268,7 @@ public class CreateUserData {
 		}
 
 		KeyManager userKeyManager = new BasicKeyManager(friendlyName, userKeystoreFile.getParent(), 
-				userKeystoreFile.getName(), 
-				null, null, password);
+				null, null, null, null, password);
 		userKeyManager.initialize();
 		return userKeyManager;
 
@@ -417,6 +416,24 @@ public class CreateUserData {
 				UserConfiguration.keystorePassword().toCharArray());
 		
 		return new Tuple<Integer, CCNHandle>(argsUsed, CCNHandle.open(manager));
+	}
+	
+	public static KeyManager keyManagerAs(String keystoreFileOrDirectoryPath, String friendlyName) throws InvalidKeyException, ConfigurationException, IOException {
+		File keystoreFileOrDirectory = new File(keystoreFileOrDirectoryPath);
+		if ((null == friendlyName) && 
+			((keystoreFileOrDirectory.exists() && (keystoreFileOrDirectory.isDirectory())) || 
+			  (!keystoreFileOrDirectory.exists()))) {
+			// if its a directory, or it doesn't exist yet and we're going to make it as one, 
+			// use last component as user name
+			friendlyName = keystoreFileOrDirectory.getName();
+		}
+		
+		Log.info("handleAs: loading data for user {0} from location {1}", friendlyName, keystoreFileOrDirectory);
+		
+		KeyManager manager = CreateUserData.loadKeystoreFile(keystoreFileOrDirectory, friendlyName,
+				UserConfiguration.keystorePassword().toCharArray());
+		
+		return manager;
 	}
 	
 	public static void usage() {
