@@ -420,7 +420,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 */
 	public static ContentName getLatestVersionName(ContentName name, CCNHandle handle) throws IOException {
 		EnumeratedNameList enl = new EnumeratedNameList(name, handle);
-		enl.waitForChildren();
+		enl.waitForUpdates(SystemConfiguration.CHILD_WAIT_INTERVAL);
 		ContentName childLatestVersion = enl.getLatestVersionChildName();
 		enl.stopEnumerating();
 		if (null != childLatestVersion) {
