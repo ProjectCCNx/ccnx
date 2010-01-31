@@ -515,6 +515,6 @@ public class CreateUserData {
 			td.closeAll();
 		}
 		System.out.println("Finished.");
-		return;
+		System.exit(0);
 	}
 }
