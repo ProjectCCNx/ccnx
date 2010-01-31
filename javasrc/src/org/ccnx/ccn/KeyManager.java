@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.PrivateKey;
@@ -453,5 +454,8 @@ public abstract class KeyManager {
 	 * @return our KeyRepository
 	 */
 	public abstract KeyRepository keyRepository();
+
+	public abstract void saveConfigurationState() throws FileNotFoundException,
+			IOException;
 
 }

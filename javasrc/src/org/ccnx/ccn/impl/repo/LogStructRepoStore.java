@@ -275,7 +275,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			try {
 				_km = 
 					new BasicKeyManager(LogStructRepoStoreProfile.REPOSITORY_USER, 
-							_repositoryRoot, LogStructRepoStoreProfile.KEYSTORE_FILE,
+							_repositoryRoot, null, LogStructRepoStoreProfile.KEYSTORE_FILE,
 							null, LogStructRepoStoreProfile.REPOSITORY_KEYSTORE_ALIAS, 
 							LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
 				_km.initialize();
