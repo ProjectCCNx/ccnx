@@ -97,9 +97,6 @@ public class CCNNetworkManager implements Runnable {
 		
 	public static final String PROP_AGENT_PROTOCOL_KEY = "ccn.agent.protocol";
 	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.UDP;
-	public static final String PROP_AGENT_PREFIX_REG = "ccn.agent.prefix_reg";
-	public static final String ENV_AGENT_PREFIX_REG = "CCND_TRYFIB";
-
 	
 	/*
 	 *  This ccndId is set on the first connection with 'ccnd' and is the
@@ -679,22 +676,7 @@ public class CCNNetworkManager implements Runnable {
 			_protocol = DEFAULT_PROTOCOL;
 		}
 
-		String prefix = System.getProperty(PROP_AGENT_PREFIX_REG);
-		if (null == prefix) {
-			prefix = System.getenv(ENV_AGENT_PREFIX_REG);
-		}
-		if (null != prefix) {
-			/* if the property is anything other than 'false' assume using prefix registration */
-			if (prefix.equalsIgnoreCase("false")) {
-				_usePrefixReg = false;
-			} else {
-				_usePrefixReg = true;
-			}
-			Log.warning("CCN agent use of prefix registration changed to " + _usePrefixReg + " per property");
-		} else {
-			_usePrefixReg = DEFAULT_PREFIX_REG;
-		}
-		
+		_usePrefixReg = true;
 
 		if( Log.isLoggable(Level.INFO) )
 			Log.info("Contacting CCN agent at " + _host + ":" + _port);
