@@ -320,6 +320,19 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		return true;
 	}
 
+	/**
+	 * More concise toString.
+	 */
+	public String toString() {
+		
+		StringBuffer sbuf = new StringBuffer(getElementLabel() + ":\n");
+		for (Link link : _contents) {
+			sbuf.append("	" + link.toString() + "\n");
+		}
+		sbuf.append("\n");
+		return sbuf.toString();
+	}
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Iterable#iterator()
 	 */
