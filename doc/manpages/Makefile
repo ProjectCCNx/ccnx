@@ -11,6 +11,8 @@ PAGE_NAMES = 			\
 	ccnlsrepo		\
 	ccngetfile		\
 	ccnputfile		\
+	ccnrm			\
+	ccn_repo		\
 
 # Yes, this is gmake specific
 DERIVED_HTML =	$(foreach name,$(PAGE_NAMES),$(name).1.html)
