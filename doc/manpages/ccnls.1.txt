@@ -1,22 +1,32 @@
-TITLE(1)
+CCNLS(1)
 ========
 
 NAME
 ----
-ccnls - some text
+ccnls - Attempts to list name components available at the next level of the hierarchy for a given CCNx name prefix. 
 
 SYNOPSIS
 --------
-*util* [-flag 'value'] 'arg1' 'arg2'
+*ccnls* 'ccnxname'
 
 DESCRIPTION
 -----------
-The *util* utility ...
+The *ccnls* utility lists name components available after the supplied CCNx name prefix, 'ccnxname', for content objects that are cached in the local *ccnd*.
+
+This utility does not have explicit flags or options, but can be modified via environment variables.  These include the amount of time to wait between responses from *ccnd* ('CCN_LINGER') and whether verification is needed ('CCN_VERIFY').
+
+
 
 OPTIONS
 -------
-*-flag* 'VALUE'::
-	Do X
+The *ccnls* utility does not have additional flags or options.  Behavior can be changed by using the following two environment variables.
+
+    CCN_LINGER=
+      Timeout for not receiving data.  The default is 0.5seconds.
+      
+    CCN_VERIFY=
+      Indicates if signature verification is required (non-zero).
+
 
 EXIT STATUS
 -----------
@@ -28,4 +38,4 @@ EXIT STATUS
 
 AUTHOR
 ------
-someone <someone@parc.com>
+Michael Plass <plass@parc.com>
