@@ -29,7 +29,7 @@ import org.ccnx.ccn.protocol.ContentName;
 public class ccnprintlink {
 
 	public static void usage() {
-		System.err.println("usage: ccnprintlink <link uri> [<link uri> ...]");
+		System.err.println("usage: ccnlink [-q] <link uri> [<link uri> ...]  (-q == quiet)");
 	}
 	/**
 	 * @param args
