@@ -10,7 +10,6 @@ import java.security.SecureRandom;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -28,7 +27,6 @@ import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager.Root.RootObject;
-import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -94,36 +92,43 @@ public abstract class AccessControlManager {
 	 * @return
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public Key getDataKey(ContentName dataNodeName) throws ContentDecodingException,
-				IOException, InvalidKeyException, InvalidCipherTextException {
+				IOException, InvalidKeyException, NoSuchAlgorithmException {
 		
 		// Let subclasses change data key storage conventions.
 		WrappedKeyObject wdko = retrieveWrappedDataKey(dataNodeName);
 		if (null == wdko) {
 			return null;
 		}
+		Log.finer("getDataKey: data key is wrapped by key {0} stored at {1}, attempting to retrieve.", 
+				DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()), wdko.wrappedKey().wrappingKeyName());
 		
 		Key dataKey = null;
 		Key wrappingKey = null;
 		
 		if (hasKey(wdko.wrappedKey().wrappingKeyIdentifier())) {
-			wrappingKey = getKey(wdko.wrappedKey().wrappingKeyIdentifier());
-			if (null == wrappingKey) {
+			Key cachedKey = getKey(wdko.wrappedKey().wrappingKeyIdentifier());
+			if (null == cachedKey) {
 				Log.warning("Thought we had key {0} in cache, but cannot retrieve it! Data node: {1}.", 
 						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()),
 						dataNodeName);
 				// fall through, try subclass retrieval
 			} else {
-				Log.fine("Unwrapping key for data node {0} with cached key {1}.", dataNodeName,
-						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()));	
+				Log.fine("Unwrapping key for data node {0} with cached key whose id is {1}.", dataNodeName,
+						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()));
+				// The cached key is not actually the key we want. We need to hand it to our access
+				// control manager to do any key prep.
+				wrappingKey = getDataKeyWrappingKey(dataNodeName, wdko.wrappedKey().wrappingKeyName(), cachedKey);
 			}
 		}
 		// Could simplify to remove cache-retry logic.
 		if (null == wrappingKey) {
 			// No dice. Try subclass-specific retrieval.
+			Log.info("getDataKey: key {0} not in cache, getting data key wrapping key for data node {1} with wrapped key {2}", 
+						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()), dataNodeName, wdko);
 			wrappingKey = getDataKeyWrappingKey(dataNodeName, wdko);
 		}
 		if (null != wrappingKey) {
@@ -135,7 +140,7 @@ public abstract class AccessControlManager {
 	
 	protected abstract Key getDataKeyWrappingKey(ContentName dataNodeName, WrappedKeyObject wrappedDataKeyObject) throws
 			InvalidKeyException, ContentNotReadyException, ContentGoneException, ContentEncodingException, 
-				ContentDecodingException, InvalidCipherTextException, IOException;		
+				ContentDecodingException, IOException, NoSuchAlgorithmException;		
 	
 	protected WrappedKeyObject retrieveWrappedDataKey(ContentName dataNodeName) 
 				throws ContentDecodingException, ContentGoneException, ContentNotReadyException, IOException {
@@ -164,11 +169,22 @@ public abstract class AccessControlManager {
 	 * @throws InvalidKeyException 
 	 * @throws ContentEncodingException
 	 * @throws IOException
-	 * @throws InvalidCipherTextException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public abstract NodeKey getDataKeyWrappingKey(ContentName dataNodeName, PublisherPublicKeyDigest publisher)
 	 	throws AccessDeniedException, InvalidKeyException,
-	 		ContentEncodingException, IOException, InvalidCipherTextException;
+	 		ContentEncodingException, IOException, NoSuchAlgorithmException;
+
+	/**
+	 * Get the data key wrapping key if we happened to have cached a copy of the decryption key.
+	 * @param dataNodeName
+	 * @param wrappedDataKeyObject
+	 * @param cachedWrappingKey
+	 * @return
+	 * @throws ContentEncodingException 
+	 * @throws InvalidKeyException 
+	 */
+	public abstract Key getDataKeyWrappingKey(ContentName dataNodeName, ContentName wrappingKeyName, Key cachedWrappingKey) throws InvalidKeyException, ContentEncodingException;
 
 	/**
 	 * Wrap a data key in a given node key and store it.
@@ -180,9 +196,14 @@ public abstract class AccessControlManager {
 	 * @throws IOException
 	 */
 	public void storeDataKey(ContentName dataNodeName, Key dataKey, NodeKey wrappingKey) throws InvalidKeyException, ContentEncodingException, IOException {
-		Log.info("Wrapping data key for node: " + dataNodeName + " with ewrappingKey for node: " + 
+		Log.info("storeDataKey: Wrapping data key " +
+				DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(dataKey)) + " for node: " + dataNodeName + 
+				" with wrappingKey for node: " + 
 				wrappingKey.nodeName() + " derived from stored node key for node: " + 
 				wrappingKey.storedNodeKeyName());
+		Log.info("storeDataKey: stored node key has key id {0}, derived key has id {1}",
+				DataUtils.printHexBytes(wrappingKey.storedNodeKeyID()),
+				DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(wrappingKey.nodeKey())));
 		// TODO another case where we're wrapping in an effective node key but labeling it with
 		// the stored node key information. This will work except if we interpose an ACL in the meantime -- 
 		// we may not have the information necessary to figure out how to decrypt.
@@ -197,15 +218,8 @@ public abstract class AccessControlManager {
 
 	/**
 	 * Generate a random data key.
-	 * @throws IOException 
-	 * @throws ContentEncodingException 
-	 * @throws AccessDeniedException 
-	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException 
 	 **/
-	public Key generateDataKey(ContentName dataNodeName)
-	throws InvalidKeyException, AccessDeniedException,
-	ContentEncodingException, IOException, InvalidCipherTextException {
+	public Key generateDataKey(ContentName dataNodeName) {
 		// Generate new random data key of appropriate length
 		byte [] dataKeyBytes = new byte[DEFAULT_DATA_KEY_LENGTH];
 		_random.nextBytes(dataKeyBytes);
@@ -270,11 +284,11 @@ public abstract class AccessControlManager {
 	 * @return Returns the keys ready to be used for en/decryption, or null if the content is not encrypted.
 	 * @throws IOException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException 
 	 * @throws AccessDeniedException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public ContentKeys getContentKeys(ContentName dataNodeName, PublisherPublicKeyDigest publisher)
-	throws InvalidKeyException, InvalidCipherTextException, AccessDeniedException, IOException {
+	throws InvalidKeyException, AccessDeniedException, IOException, NoSuchAlgorithmException {
 		if (SegmentationProfile.isSegment(dataNodeName)) {
 			dataNodeName = SegmentationProfile.segmentRoot(dataNodeName);
 		}
@@ -322,12 +336,15 @@ public abstract class AccessControlManager {
 			}
 		} catch (ConfigurationException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
-		} catch (InvalidCipherTextException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			Log.logException("ConfigurationException in keysForInput", e);
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidKeyException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			Log.logException("InvalidKeyException in keysForInput", e);
+			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
+		} catch (NoSuchAlgorithmException e) {
+			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			Log.logException("NoSuchAlgorithmException in keysForInput", e);
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		}
 		return null;
@@ -365,17 +382,23 @@ public abstract class AccessControlManager {
 					return null; // no keys
 				}
 				Key dataKey = acm.generateDataKey(name);
+				Log.finer("keysForOutput: content {0} publisher {1} data key {2} wrapping key {3}", name, publisher, 
+						DataUtils.printHexBytes(dataKey.getEncoded()), dataKeyWrappingKey);
 				acm.storeDataKey(name, dataKey, dataKeyWrappingKey);
+				
 				return getDefaultAlgorithmContentKeys(dataKey);
 			}
 		} catch (ConfigurationException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
-		} catch (InvalidCipherTextException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			Log.logException("ConfigurationException in keysForInput", e);
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidKeyException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			Log.logException("InvalidKeyException in keysForInput", e);
+			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
+		} catch (NoSuchAlgorithmException e) {
+			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
+			Log.logException("NoSuchAlgorithmException in keysForInput", e);
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		}
 		return null;

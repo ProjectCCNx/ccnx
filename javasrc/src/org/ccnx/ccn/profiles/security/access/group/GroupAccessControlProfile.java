@@ -108,6 +108,10 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		return name.contains(GROUP_PREFIX_BYTES);
 	}
 	
+	public static boolean isUserName(ContentName name) {
+		return name.contains(USER_PREFIX_BYTES);
+	}
+	
 	/**
 	 * Get the name of the node key for a given content node, if there is one.
 	 * This is nodeName/_access_/NK, with a version then added for a specific node key.

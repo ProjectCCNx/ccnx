@@ -14,7 +14,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.profiles.security.TestUserData;
+import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -24,7 +24,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 	static ContentName directoryBase, userKeyStorePrefix, userNamespace, groupStore;
 
 	static final int numberOfusers = 2;
-	static TestUserData td;
+	static CreateUserData td;
 	static String[] friendlyNames;
 
 	static final int numberOfGroups = 5;
@@ -43,7 +43,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		userNamespace = ContentName.fromNative(directoryBase, "home");
 
 		// create user identities with TestUserData		
-		td = new TestUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
+		td = new CreateUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
 		td.publishUserKeysToRepository(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);				
 		

@@ -97,6 +97,8 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	
 	private static class GlobalPrefix extends ContentName {
 		
+		private static final long serialVersionUID = -6669511721290965466L;
+
 		public GlobalPrefix(ContentName cn) {
 			super(cn);
 		}

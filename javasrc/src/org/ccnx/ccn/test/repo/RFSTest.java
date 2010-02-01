@@ -333,6 +333,7 @@ public class RFSTest extends RepoTestBase {
 	
 	@Test
 	public void testPolicy() throws Exception {
+		// Writes all this content signed with the repository's key
 		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
 			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);
@@ -342,8 +343,9 @@ public class RFSTest extends RepoTestBase {
 			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null, null);
 			Assert.fail("Bad policy file succeeded");
 		} catch (RepositoryException re) {}
+		// Make repository using repo's keystore, not user's
 		repo.initialize(_fileTestDir,  
-					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, putHandle);
+					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
 		ContentName name = ContentName.fromNative("/testNameSpace/data1");
 		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
 		repo.saveContent(content);

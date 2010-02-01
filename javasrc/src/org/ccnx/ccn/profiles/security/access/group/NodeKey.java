@@ -19,13 +19,16 @@ package org.ccnx.ccn.profiles.security.access.group;
 
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.util.Arrays;
 
 import javax.crypto.spec.SecretKeySpec;
 
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -238,5 +241,68 @@ public class NodeKey {
 		if (null == key)
 			return null;
 		return CCNDigestHelper.digest(key.getEncoded());
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((_nodeKey == null) ? 0 : Arrays.hashCode(_nodeKey.getEncoded()));
+		result = prime * result
+				+ ((_nodeName == null) ? 0 : _nodeName.hashCode());
+		result = prime * result + Arrays.hashCode(_storedNodeKeyID);
+		result = prime
+				* result
+				+ ((_storedNodeKeyName == null) ? 0 : _storedNodeKeyName
+						.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		NodeKey other = (NodeKey) obj;
+		if (_nodeKey == null) {
+			if (other._nodeKey != null)
+				return false;
+		} else if (other._nodeKey == null)  {
+			return false;
+		} else if (!Arrays.equals(_nodeKey.getEncoded(), other._nodeKey.getEncoded())) {
+			return false;
+		}
+		if (_nodeName == null) {
+			if (other._nodeName != null)
+				return false;
+		} else if (!_nodeName.equals(other._nodeName))
+			return false;
+		if (!Arrays.equals(_storedNodeKeyID, other._storedNodeKeyID))
+			return false;
+		if (_storedNodeKeyName == null) {
+			if (other._storedNodeKeyName != null)
+				return false;
+		} else if (!_storedNodeKeyName.equals(other._storedNodeKeyName))
+			return false;
+		return true;
+	}
+	
+	@Override
+	public String toString() {
+		if (null == _nodeKey) {
+			return "NodeKey for node: " + _nodeName + " Stored at: " + _storedNodeKeyName + 
+		" Stored ID: " + DataUtils.printHexBytes(_storedNodeKeyID) +
+		" Key: null" + " Key id: null";
+		}
+		
+		// not great to print out keys, but nec for debugging
+		return "NodeKey for node: " + _nodeName + " Stored at: " + _storedNodeKeyName + 
+						" Stored ID: " + DataUtils.printHexBytes(_storedNodeKeyID) +
+						" Key: " + DataUtils.printHexBytes(_nodeKey.getEncoded()) +
+						" Key id: " + DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(_nodeKey));
 	}
 }

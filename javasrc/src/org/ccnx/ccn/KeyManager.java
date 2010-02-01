@@ -17,12 +17,14 @@
 
 package org.ccnx.ccn;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
+import java.util.logging.Level;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -31,6 +33,8 @@ import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.KeyRepository;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
+import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -77,13 +81,18 @@ public abstract class KeyManager {
 	 */
 	public static synchronized KeyManager getDefaultKeyManager() {
 		// could print a stack trace
-		Log.info("NOTICE: retrieving default key manager.");
+		if( Log.isLoggable(Level.FINER) )
+			Log.finer("NOTICE: retrieving default key manager.");
 		if (null != _defaultKeyManager) 
 			return _defaultKeyManager;
 		try {
 			return createDefaultKeyManager();
 		} catch (IOException io) {
 			Log.warning("IOException attempting to get KeyManager: " + io.getClass().getName() + ":" + io.getMessage());
+			Log.warningStackTrace(io);
+			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",io);
+		} catch (InvalidKeyException io) {
+			Log.warning("InvalidKeyException attempting to get KeyManager: " + io.getClass().getName() + ":" + io.getMessage());
 			Log.warningStackTrace(io);
 			throw new RuntimeException("Error in system configuration. Cannot get KeyManager.",io);
 		} catch (ConfigurationException e) {
@@ -110,8 +119,9 @@ public abstract class KeyManager {
 	 * @throws ConfigurationException if there is a problem with the user or system configuration
 	 * 	that requires intervention to fix
 	 * @throws IOException if there is an operational problem loading data or initializing the key store
+	 * @throws ConfigurationException 
 	 */
-	protected static synchronized KeyManager createDefaultKeyManager() throws ConfigurationException, IOException {
+	protected static synchronized KeyManager createDefaultKeyManager() throws InvalidKeyException, IOException, ConfigurationException {
 		if (null == _defaultKeyManager) {
 			_defaultKeyManager = new BasicKeyManager();
 			_defaultKeyManager.initialize();
@@ -174,33 +184,22 @@ public abstract class KeyManager {
 	 * @throws ConfigurationException
 	 * @throws IOException 
 	 */
-	public abstract void initialize() throws ConfigurationException, IOException;
+	public abstract void initialize() throws InvalidKeyException, IOException, ConfigurationException;
 	
 	public abstract boolean initialized();
-	
-	/**
-	 * Allow subclasses to specialize key publication, if any.
-	 * @param defaultPrefix our default namespace, if we know
-	 * 	one for this environment. If null, take user defaults.
-	 * @throws ConfigurationException 
-	 */
-	public abstract void publishDefaultKey(ContentName defaultPrefix) throws IOException, ConfigurationException;
-	
-	/**
-	 * Allow subclasses to override default publishing location.
-	 */
-	public abstract ContentName getDefaultKeyNamePrefix();
-	
-	/**
-	 * Generate default key name for key locators.
-	 */
-	public abstract ContentName getDefaultKeyName(ContentName keyPrefix, byte [] keyID, CCNTime keyVersion);
+		
 	/**
 	 * Get our default key ID.
 	 * @return the digest of our default key
 	 */
 	public abstract PublisherPublicKeyDigest getDefaultKeyID();
-
+	
+	public boolean isOurDefaultKey(PublisherPublicKeyDigest keyID) {
+		if (getDefaultKeyID().equals(keyID))
+			return true;
+		return false;
+	}
+	
 	/**
 	 * Get our default private key.
 	 * @return our default private key
@@ -214,22 +213,74 @@ public abstract class KeyManager {
 	public abstract PublicKey getDefaultPublicKey();
 
 	/**
-	 * Get our default key locator.
-	 * @return our default key locator
+	 * Return the key's content name for a given key id, given
+	 * a specified prefix and version. 
+	 * The default key name is the publisher ID itself,
+	 * under the user's key collection. 
+	 * @param keyID[] publisher ID
+	 * @return content name
 	 */
-	public abstract KeyLocator getDefaultKeyLocator();
+	public ContentName getDefaultKeyName(ContentName keyPrefix, PublisherPublicKeyDigest keyID, CCNTime keyVersion) {
+		if (null == keyPrefix) {
+			keyPrefix = getDefaultKeyNamePrefix();
+			Log.info("Got default key name prefix: {0}", keyPrefix);
+		}
+		ContentName keyName = KeyProfile.keyName(keyPrefix, keyID);
+		if (null != keyVersion) {
+			return VersioningProfile.addVersion(keyName, keyVersion);
+		}
+		return keyName;
+	}
 
 	/**
-	 * Get the default key locator for a particular public key
-	 * @param publisherKeyID the key whose locator we want to retrieve
-	 * @return the default key locator for that key
+	 * Get the key-manager determined default key name for a key. Might include
+	 * a version, might allow caller to save with generated version.
+	 */
+	public abstract ContentName getDefaultKeyName(PublisherPublicKeyDigest keyID);
+
+	
+	/**
+	 * Allow subclasses to override default publishing location.
+	 */
+	public abstract ContentName getDefaultKeyNamePrefix();
+	
+	/**
+	 * Gets the preferred key locator for this signing key.
+	 * @param publisherKeyID the key whose locator we want to retrieve, 
+	 * 		if null retrieves the key locator for our default key
+	 * @return the current preferred key locator for that key
 	 */
 	public abstract KeyLocator getKeyLocator(PublisherPublicKeyDigest publisherKeyID);
 
 	/**
-	 * Helper method, get the default key locator for one of our signing keys.
+	 * Get our current preferred key locator for this signing key. Uses
+	 * getKeyLocator(PublisherPublicKeyDigest).
 	 */
 	public abstract KeyLocator getKeyLocator(PrivateKey signingKey);
+	
+	/**
+	 * Get the key locator for our default key. Same as getKeyLocator(null)
+	 */
+	public KeyLocator getDefaultKeyLocator() {
+		return getKeyLocator(getDefaultKeyID());
+	}
+
+	public abstract boolean haveStoredKeyLocator(PublisherPublicKeyDigest keyID);
+
+	public abstract KeyLocator getStoredKeyLocator(PublisherPublicKeyDigest keyID);
+
+	/**
+	 * Remember the key locator to use for a given key. Use
+	 * this to publish this key in the future if not overridden by method
+	 * calls. If no key locator stored for this key, and no override
+	 * given, compute a KEY type key locator if this key has not been
+	 * published, and the name given to it when published if it has.
+	 * @param publisherKeyID the key whose locator to set; if null sets it for our
+	 * 		default key
+	 * @param keyLocator the new key locator for this key; overrides any previous value.
+	 * 	If null, erases previous value and defaults will be used.
+	 */
+	public abstract void setKeyLocator(PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator);
 	
 	/**
 	 * Get a KEY type key locator for a particular public key.
@@ -275,6 +326,13 @@ public abstract class KeyManager {
 	public abstract PrivateKey[] getSigningKeys();
 	
 	/**
+	 * Get any timestamp associate with this key.
+	 * @param keyID
+	 * @return
+	 */
+	public abstract CCNTime getKeyVersion(PublisherPublicKeyDigest keyID);
+
+	/**
 	 * Get the public key for a given publisher, going to the network to retrieve it if necessary.
 	 * @param publisherKeyID the digest of the keys we want
 	 * @param keyLocator the key locator to tell us where to retrieve the key from
@@ -310,6 +368,14 @@ public abstract class KeyManager {
 	public abstract PublicKeyObject getPublicKeyObject(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException;
 
 	/**
+	 * Allow subclasses to specialize key publication, if any.
+	 * @param defaultPrefix our default namespace, if we know
+	 * 	one for this environment. If null, take user defaults.
+	 * @throws ConfigurationException 
+	 */
+	public abstract PublicKeyObject publishDefaultKey(ContentName defaultPrefix) throws IOException, InvalidKeyException;
+
+	/**
 	 * Publish a key at a certain name, signed by a specified identity (our
 	 * default, if null). Usually used to
 	 * publish our own keys, but can specify other keys we have in our cache.
@@ -329,10 +395,10 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 * @throws ConfigurationException 
 	 */
-	public abstract void publishKey(ContentName keyName, 
+	public abstract PublicKeyObject publishKey(ContentName keyName, 
 			   PublisherPublicKeyDigest keyToPublish,
 			   PublisherPublicKeyDigest signingKeyID,
-			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException, ConfigurationException;
+			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException;
 
 	/**
 	 * Publish a key at a certain name, signed by our default identity. Usually used to
@@ -353,10 +419,10 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 * @throws ConfigurationException 
 	 */
-	public abstract void publishKey(ContentName keyName, 
+	public abstract PublicKeyObject publishKey(ContentName keyName, 
 			   PublicKey keyToPublish,
 			   PublisherPublicKeyDigest signingKeyID,
-			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException, ConfigurationException;
+			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException;
 
 	/**
 	 * Publish a key at a certain name, ensuring that it is stored in a repository. Will throw an
@@ -371,7 +437,8 @@ public abstract class KeyManager {
 	 * @throws ConfigurationException
 	 */
 	public abstract void publishKeyToRepository(ContentName keyName, 
-												PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException, ConfigurationException;
+												PublisherPublicKeyDigest keyToPublish) 
+		throws InvalidKeyException, IOException;
 
 	/**
 	 * Publish our default key to a repository at its default location.
@@ -380,12 +447,15 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 * @throws ConfigurationException
 	 */
-	public abstract void publishKeyToRepository() throws InvalidKeyException, IOException, ConfigurationException;
+	public abstract void publishKeyToRepository() throws InvalidKeyException, IOException;
 
 	/**
 	 * Access our internal key store/key server.
 	 * @return our KeyRepository
 	 */
 	public abstract KeyRepository keyRepository();
+
+	public abstract void saveConfigurationState() throws FileNotFoundException,
+			IOException;
 
 }

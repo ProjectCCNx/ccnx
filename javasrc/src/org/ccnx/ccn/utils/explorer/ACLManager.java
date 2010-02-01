@@ -29,13 +29,13 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
+import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.protocol.ContentName;
 
@@ -52,6 +52,7 @@ public class ACLManager extends JDialog implements ActionListener {
 	
 	private ContentName[] userList;
 	private ContentName[] groupList;
+	private ACLObject currentACLObject;
 	private ACL currentACL;
 	private ACLTable userACLTable;
 	private ACLTable groupACLTable;
@@ -61,7 +62,7 @@ public class ACLManager extends JDialog implements ActionListener {
 	private JButton cancelChangesButton;
 	
 	
-	public ACLManager(String path) {
+	public ACLManager(String path, GroupAccessControlManager gacm) {
 
 		super();
 		setBounds(100, 100, 400, 500);
@@ -70,8 +71,7 @@ public class ACLManager extends JDialog implements ActionListener {
 		
 		// enumerate existing users and groups
 		try{
-			ContentName baseNode = ContentName.fromNative("/");
-			acm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, CCNHandle.open());
+			acm = gacm;
 			gm = acm.groupManager();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -84,6 +84,11 @@ public class ACLManager extends JDialog implements ActionListener {
 		
 		getNodeName(path);
 		getExistingACL();
+		try {
+			currentACL = currentACLObject.acl();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		
 		// title label
 		final JLabel userAndGroupLabel = new JLabel();
@@ -130,12 +135,17 @@ public class ACLManager extends JDialog implements ActionListener {
 		cancelChangesButton = new JButton();
 		cancelChangesButton.addActionListener(this);
 		cancelChangesButton.setMargin(new Insets(2, 2, 2, 2));
-		cancelChangesButton.setText("Cancel Changes");
+		cancelChangesButton.setText("Cancel");
 		cancelChangesButton.setBounds(200, 400, 112, 25);
 		getContentPane().add(cancelChangesButton);
 		
 	}
 
+	public boolean hasACL() {
+		if (currentACLObject != null) return true;
+		return false;
+	}
+	
 	private void getNodeName(String path) {
 		try{
 			node = ContentName.fromNative(path);
@@ -147,32 +157,20 @@ public class ACLManager extends JDialog implements ActionListener {
 	
 	private void getExistingACL() {
 		try{
-			currentACL = acm.getEffectiveACLObject(node).acl();
+			currentACLObject = acm.getEffectiveACLObject(node);
+		}
+		catch (IllegalStateException ise) {
+			System.out.println("Fatal error: the repository has no root ACL.");
+			ise.printStackTrace();
 		}
 		catch (Exception e) {
-			System.out.println("Creating missing root ACL");
-			createRootACL();
 			e.printStackTrace();
 		}		
-	}
-	
-	private void createRootACL() {
-		ContentName cn = ContentName.fromNative(userStorage, UserConfiguration.userName());
-		Link lk = new Link(cn, ACL.LABEL_MANAGER, null);
-		ArrayList<Link> rootACLcontents = new ArrayList<Link>();
-		rootACLcontents.add(lk);
-		ACL rootACL = new ACL(rootACLcontents);
-		try{
-			acm.initializeNamespace(rootACL);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-	
+	}	
 
 	public void actionPerformed(ActionEvent ae) {
 		if (applyChangesButton == ae.getSource()) applyChanges();
-		else if (cancelChangesButton == ae.getSource()) cancelChanges();	
+		else if (cancelChangesButton == ae.getSource()) closeACLManagerWindow();	
 	}
 	
 	private void applyChanges() {
@@ -182,29 +180,28 @@ public class ACLManager extends JDialog implements ActionListener {
 		for (ACLOperation aclo: userUpdates) System.out.println(aclo.targetName() + " ---> " + aclo.targetLabel());
 		System.out.println("Group updates:");
 		for (ACLOperation aclo: groupUpdates) System.out.println(aclo.targetName() + " ---> " + aclo.targetLabel());
-		try {
-			// TODO: we set the ACL, then update it, to handle correctly the case
-			// where the node had no ACL to start with.
-			// It would be more efficient to set and update the ACL in a single step.
-			acm.setACL(node, currentACL);
-			acm.updateACL(node, userUpdates);
-			acm.updateACL(node, groupUpdates);
+		try {			
+			if (! currentACLObject.getBaseName().equals(GroupAccessControlProfile.aclName(node))) {
+				// There is no actual ACL at this node.
+				// So we copy the effective ACL to this node before updating it.
+				acm.setACL(node, currentACL);
+			}
+			if (userUpdates.size() > 0) acm.updateACL(node, userUpdates);
+			if (groupUpdates.size() > 0) acm.updateACL(node, groupUpdates);
 		} catch (AccessDeniedException ade) {
 			JOptionPane.showMessageDialog(this, "You do not have the access right to edit the ACL at this node.");
+			closeACLManagerWindow();
 			ade.printStackTrace();
 		}
 		catch (Exception e) {
 			e.printStackTrace();
 		}
-		// refresh user and group tables with new ACL
-		getExistingACL();
-		userACLTable.initializeACLTable(currentACL); 
-		groupACLTable.initializeACLTable(currentACL); 
+		closeACLManagerWindow();
 	}
 	
-	private void cancelChanges() {
-		userACLTable.cancelChanges();
-		groupACLTable.cancelChanges();
+	private void closeACLManagerWindow() {
+		this.setVisible(false);
+		this.dispose();
 	}
 	
 }

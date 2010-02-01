@@ -20,13 +20,13 @@ package org.ccnx.ccn.profiles.security.access.group;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -70,6 +70,18 @@ public class GroupManager {
 		_accessManager = accessManager;
 		_groupStorage = groupStorage;
 		groupList();
+	}
+	
+	/**
+	 * A "quiet" constructor that doesn't enumerate anything, and in fact does 
+	 * little to be used for non-group based uses of KeyDirectory, really
+	 * a temporary hack till we refactor KD.
+	 * @return
+	 */
+	GroupManager(GroupAccessControlManager accessManager, CCNHandle handle) throws IOException {
+		_handle = handle;
+		_accessManager = accessManager;
+		_groupStorage = null; // try this, see if it explodes
 	}
 	
 	public GroupAccessControlManager getAccessManager() { return _accessManager; }
@@ -167,10 +179,10 @@ public class GroupManager {
 	 * @throws ConfigurationException 
 	 * @throws ContentEncodingException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public Group createGroup(String groupFriendlyName, ArrayList<Link> newMembers) 
-			throws InvalidKeyException, ContentEncodingException, ConfigurationException, IOException, InvalidCipherTextException {
+			throws InvalidKeyException, ContentEncodingException, ConfigurationException, IOException, NoSuchAlgorithmException {
 		Group existingGroup = getGroup(groupFriendlyName);
 		if (null != existingGroup) {
 			existingGroup.setMembershipList(this, newMembers);
@@ -248,8 +260,11 @@ public class GroupManager {
 	 */
 	public boolean amCurrentGroupMember(Group group) throws ContentDecodingException, IOException {
 		MembershipList ml = group.membershipList(); // will update
+		Log.finer("amCurrentGroupMember: group {0} has {1} member(s).", group.groupName(), ml.membershipList().size());
 		for (Link lr : ml.membershipList().contents()) {
+			Log.finer("amCurrentGroupMember: {0} is a member of group {1}", lr.targetName(), group.groupName());
 			if (isGroup(lr)) {
+				Log.finer("amCurrentGroupMember: {0} is itself a group.", lr.targetName());
 				String groupFriendlyName = GroupAccessControlProfile.groupNameToFriendlyName(lr.targetName());
 				if (amCurrentGroupMember(groupFriendlyName)) {
 					_myGroupMemberships.add(groupFriendlyName);
@@ -261,8 +276,11 @@ public class GroupManager {
 			} else {
 				// Not a group. Is it me?
 				if (_accessManager.haveIdentity(lr.targetName())) {
+					Log.finer("amCurrentGroupMember: {0} is me!", lr.targetName());
+					_myGroupMemberships.add(group.friendlyName());
 					return true;
 				}
+				else Log.finer("amCurrentGroupMember: {0} is not me.", lr.targetName());
 			}
 		}
 		return false;
@@ -276,11 +294,11 @@ public class GroupManager {
 	 * @return the group private key
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public PrivateKey getGroupPrivateKey(String groupFriendlyName, CCNTime privateKeyVersion) 
-			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException {
+			throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 		// Heuristic check
 		if (!amKnownGroupMember(groupFriendlyName)) {
 			Log.info("Unexpected: we don't think we're a group member of group " + groupFriendlyName);
@@ -292,6 +310,7 @@ public class GroupManager {
 		if (null == privateKeyVersion) {
 			Group theGroup = getGroup(groupFriendlyName); // will pull latest public key
 			privateKeyDirectory = theGroup.privateKeyDirectory(_accessManager);
+			privateKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
 			theGroupPublicKey = theGroup.publicKey();
 		} else {
 			// Assume one is there...
@@ -346,14 +365,14 @@ public class GroupManager {
 	 * @param principal the principal
 	 * @return the versioned private key
 	 * @throws IOException 
-	 * @throws InvalidCipherTextException 
 	 * @throws ContentNotReadyException
 	 * @throws ContentDecodingException
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) 
 			throws InvalidKeyException, ContentNotReadyException, ContentDecodingException, 
-					InvalidCipherTextException, IOException {
+					IOException, NoSuchAlgorithmException {
 		PrincipalInfo pi = null;
 		pi = keyDirectory.getPrincipalInfo(principal);
 		if (null == pi) {

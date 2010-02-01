@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -43,8 +43,6 @@ import org.ccnx.ccn.protocol.ContentName;
  * @see BasicNameEnumeratorListener
  */
 public class EnumeratedNameList implements BasicNameEnumeratorListener {
-	
-	protected static final long CHILD_WAIT_INTERVAL = 1000;
 	
 	protected ContentName _namePrefix;
 	protected CCNNameEnumerator _enumerator;
@@ -175,6 +173,15 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 	
 	/**
+	 * Returns the number of children we have, or 0 if we have none.
+	 */
+	public int childCount() {
+		if (null == _children)
+			return 0;
+		return _children.size();
+	}
+	
+	/**
 	 * Returns true if we know the prefix has a child matching the given name component.
 	 * 
 	 * @param childComponent name component to check for in the stored child names.
@@ -215,7 +222,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			while (((null == _lastUpdate) || ((null != lastUpdate) && !_lastUpdate.after(lastUpdate))) && 
 				   ((timeout == SystemConfiguration.NO_TIMEOUT) || (timeRemaining > 0))) {
 				try {
-					_childLock.wait((timeout != SystemConfiguration.NO_TIMEOUT) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
+					_childLock.wait((timeout != SystemConfiguration.NO_TIMEOUT) ? Math.min(timeRemaining, SystemConfiguration.CHILD_WAIT_INTERVAL) : SystemConfiguration.CHILD_WAIT_INTERVAL);
 					if (timeout != SystemConfiguration.NO_TIMEOUT) {
 						timeRemaining = timeout - (System.currentTimeMillis() - startTime);
 					}
@@ -379,6 +386,13 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		return latestName;
 	}
 	
+	public byte [] getLatestVersionChildNameComponent() {
+		ContentName latestVersionName = getLatestVersionChildName();
+		if (null == latestVersionName)
+			return null;
+		return latestVersionName.component(0);
+	}
+	
 	/**
 	 * Returns the latest version available under this prefix as a CCNTime object.
 	 * 
@@ -406,7 +420,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 */
 	public static ContentName getLatestVersionName(ContentName name, CCNHandle handle) throws IOException {
 		EnumeratedNameList enl = new EnumeratedNameList(name, handle);
-		enl.waitForChildren();
+		enl.waitForUpdates(SystemConfiguration.CHILD_WAIT_INTERVAL);
 		ContentName childLatestVersion = enl.getLatestVersionChildName();
 		enl.stopEnumerating();
 		if (null != childLatestVersion) {
@@ -455,9 +469,9 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		while (childIndex < childName.count()) {
 			byte[] childNameComponent = childName.component(childIndex);
 			parentEnumerator = new EnumeratedNameList(parentName, handle);
-			parentEnumerator.waitForChildren(CHILD_WAIT_INTERVAL);
+			parentEnumerator.waitForChildren(SystemConfiguration.CHILD_WAIT_INTERVAL);
 			while (! parentEnumerator.hasChild(childNameComponent)) {
-				if (! parentEnumerator.waitForNewChildren(CHILD_WAIT_INTERVAL)) break;
+				if (! parentEnumerator.waitForNewChildren(SystemConfiguration.CHILD_WAIT_INTERVAL)) break;
 			}
 			if (parentEnumerator.hasChild(childNameComponent)) {
 				childIndex++;

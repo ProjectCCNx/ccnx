@@ -78,7 +78,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected PublisherID _publisher;
 	protected Exclude _exclude;
 	protected Integer _childSelector;
-	protected Integer _answerOriginKind = ANSWER_CONTENT_STORE | ANSWER_GENERATED;
+	
+	protected static final int DEFAULT_ANSWER_ORIGIN_KIND = ANSWER_CONTENT_STORE | ANSWER_GENERATED;
+	protected Integer _answerOriginKind = null;
 	protected Integer _scope;
 	protected byte[] _nonce;
 
@@ -135,8 +137,20 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public Integer childSelector() { return _childSelector;}
 	public void childSelector(int childSelector) { _childSelector = childSelector; }
 	
-	public Integer answerOriginKind() { return _answerOriginKind; }
-	public void answerOriginKind(int answerOriginKind) { _answerOriginKind = answerOriginKind; }
+	public Integer answerOriginKind() { 
+		if (null == _answerOriginKind) {
+			return DEFAULT_ANSWER_ORIGIN_KIND;
+		}
+		return _answerOriginKind; 
+	}
+	
+	public void answerOriginKind(int answerOriginKind) {
+		if (DEFAULT_ANSWER_ORIGIN_KIND == answerOriginKind) {
+			_answerOriginKind = null;
+		} else {
+			_answerOriginKind = answerOriginKind; 
+		}
+	}
 	
 	public Integer scope() { return _scope; }
 	public void scope(int scope) { _scope = scope; }
@@ -475,7 +489,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		}
 		
 		if (decoder.peekStartElement(ANSWER_ORIGIN_KIND)) {
-			_answerOriginKind = decoder.readIntegerElement(ANSWER_ORIGIN_KIND);
+			// call setter to handle defaulting
+			answerOriginKind(decoder.readIntegerElement(ANSWER_ORIGIN_KIND));
 		}
 		
 		if (decoder.peekStartElement(SCOPE_ELEMENT)) {
@@ -516,7 +531,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (null != childSelector()) 
 			encoder.writeIntegerElement(CHILD_SELECTOR, childSelector());
 
-		if (null != answerOriginKind()) 
+		if (DEFAULT_ANSWER_ORIGIN_KIND != answerOriginKind()) 
 			encoder.writeIntegerElement(ANSWER_ORIGIN_KIND, answerOriginKind());
 
 		if (null != scope()) 

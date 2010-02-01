@@ -68,7 +68,9 @@ public class KeyCache {
 	public KeyCache(KeyManager keyManagerToLoadFrom) {
 		PrivateKey [] pks = keyManagerToLoadFrom.getSigningKeys();
 		for (PrivateKey pk : pks) {
-			addMyPrivateKey(keyManagerToLoadFrom.getPublisherKeyID(pk).digest(), pk);
+			PublisherPublicKeyDigest ppkd = keyManagerToLoadFrom.getPublisherKeyID(pk);
+			Log.info("KeyCache: loading signing key {0}", ppkd);
+			addMyPrivateKey(ppkd.digest(), pk);
 		}
 	}
 	
@@ -101,6 +103,7 @@ public class KeyCache {
 						if (null != certificate) {
 							PublisherPublicKeyDigest ppkd = new PublisherPublicKeyDigest(certificate.getPublicKey());
 							if (null != ppkd) {
+								Log.info("KeyCache: loading signing key {0}, remembering public key in public key cache.", ppkd);
 								addMyPrivateKey(ppkd.digest(), pk);
 								publicKeyCache.remember(certificate, keyStoreInfo.getVersion());
 							} else {

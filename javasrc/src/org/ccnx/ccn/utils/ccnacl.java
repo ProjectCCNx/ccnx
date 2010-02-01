@@ -17,13 +17,19 @@
 
 package org.ccnx.ccn.utils;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.protocol.ContentName;
 
@@ -36,34 +42,63 @@ public class ccnacl {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		// silence logging
+		Log.setDefaultLevel(Level.WARNING);
+		
 		if ((args == null) || (args.length == 0)) {
 			usage();
 		}
-		else if (args[0].equals("-show")) {
-			if (args.length < 2) {
+		
+		int pos = 0;
+		if (args[pos].equals("-as")) {
+			if (args.length < pos+2) usage();
+			pos++;
+			setUser(args[pos]);
+			pos++;
+		}
+		
+		if (args[pos].equals("-show")) {
+			if (args.length < pos + 2) {
 				usage();
 				System.exit(1);
 			}
-			String nodeName = args[1];
+			pos++;
+			String nodeName = args[pos];
 			showACL(nodeName);
 		}
-		else if (args[0].equals("-edit")) {
-			if (args.length < 4) {
+		else if (args[pos].equals("-edit")) {
+			if (args.length < pos + 4) {
 				usage();
 				System.exit(1);
 			}
-			String nodeName = args[1];
-			String principalName = args[2];
-			String role = args[3];
+			String nodeName = args[pos + 1];
+			String principalName = args[pos + 2];
+			String role = args[pos + 3];
+			if (! (role.equals("none") || role.equals(ACL.LABEL_READER) || role.equals(ACL.LABEL_WRITER) || role.equals(ACL.LABEL_MANAGER))) {
+				usage();
+			}
 			editACL(nodeName, principalName, role);
 		}
 	}
 
 	public static void usage() {
 		System.out.println("usage:");
-		System.out.println("ccnacl -show nodeName");
-		System.out.println("ccnacl -edit nodeName principalName [null|r|rw|rw+]");
+		System.out.println("ccnacl [-as pathToKeystore] -show nodeName");
+		System.out.println("ccnacl [-as pathToKeystore] -edit nodeName principalName [none|r|rw|rw+]");
 		System.exit(1);
+	}
+	
+	public static void setUser(String pathToKeystore) {
+		File userDirectory = new File(pathToKeystore);
+		String userConfigDir = userDirectory.getAbsolutePath();
+		System.out.println("Loading keystore from: " + userConfigDir);
+		UserConfiguration.setUserConfigurationDirectory(userConfigDir);
+		// Assume here that the name of the file is the userName
+		String userName = userDirectory.getName();
+		if (userName != null) {
+			System.out.println("User: " + userName);
+			UserConfiguration.setUserName(userName);
+		}
 	}
 	
 	public static void showACL(String nodeName) {
@@ -90,12 +125,15 @@ public class ccnacl {
 			ContentName baseNode = ContentName.fromNative("/");
 			GroupAccessControlManager acm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, CCNHandle.open());
 			ContentName node = ContentName.fromNative(nodeName);
-			// TODO: we set the ACL, then update it, to handle correctly the case
-			// where the node had no ACL to start with.
-			// It would be more efficient to set and update the ACL in a single step.
-			ACL initialACL = acm.getEffectiveACLObject(node).acl();
-			acm.setACL(node, initialACL);
 			
+			ACLObject initialACLObject = acm.getEffectiveACLObject(node);
+			ACL initialACL = initialACLObject.acl();
+			if (! initialACLObject.getBaseName().equals(GroupAccessControlProfile.aclName(node))) {
+				// There is no actual ACL at this node.
+				// So we copy the effective ACL to this node before updating it.
+				acm.setACL(node, initialACL);
+			}
+						
 			// initial role
 			ContentName principal = ContentName.fromNative(principalName);
 			Link plk = new Link(principal);
@@ -115,12 +153,12 @@ public class ccnacl {
 				else if (role.equals(ACL.LABEL_MANAGER)) ACLUpdates.add(ACLOperation.addManagerOperation(plk));
 			}
 			else if (initialRole.equals(ACL.LABEL_READER)) {
-				if (role == null) ACLUpdates.add(ACLOperation.removeReaderOperation(plk));
+				if (role.equals("none")) ACLUpdates.add(ACLOperation.removeReaderOperation(plk));
 				else if (role.equals(ACL.LABEL_WRITER)) ACLUpdates.add(ACLOperation.addWriterOperation(plk));
 				else if (role.equals(ACL.LABEL_MANAGER)) ACLUpdates.add(ACLOperation.addManagerOperation(plk));
 			}
 			else if (initialRole.equals(ACL.LABEL_WRITER)) {
-				if (role == null) ACLUpdates.add(ACLOperation.removeWriterOperation(plk));
+				if (role.equals("none")) ACLUpdates.add(ACLOperation.removeWriterOperation(plk));
 				else if (role.equals(ACL.LABEL_READER)) {
 					ACLUpdates.add(ACLOperation.removeWriterOperation(plk));
 					ACLUpdates.add(ACLOperation.addReaderOperation(plk));
@@ -128,7 +166,7 @@ public class ccnacl {
 				else if (role.equals(ACL.LABEL_MANAGER)) ACLUpdates.add(ACLOperation.addManagerOperation(plk));
 			}
 			else if (initialRole.equals(ACL.LABEL_MANAGER)) {
-				if (role == null) ACLUpdates.add(ACLOperation.removeManagerOperation(plk));
+				if (role.equals("none")) ACLUpdates.add(ACLOperation.removeManagerOperation(plk));
 				else if (role.equals(ACL.LABEL_READER)) {
 					ACLUpdates.add(ACLOperation.removeManagerOperation(plk));
 					ACLUpdates.add(ACLOperation.addReaderOperation(plk));
@@ -142,6 +180,10 @@ public class ccnacl {
 			acm.updateACL(node, ACLUpdates);
 			
 			System.out.println("ACL for node: " + nodeName + " updated to assign role " + role + " to principal " + principalName);
+		}
+		catch (AccessDeniedException ade) {
+			System.out.println("You do not have the permission to edit the acl at node: " + nodeName);
+			System.exit(1);
 		}
 		catch (Exception e) {
 			e.printStackTrace();

@@ -19,6 +19,7 @@ package org.ccnx.ccn.io;
 
 import java.io.IOException;
 import java.util.EnumSet;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
@@ -289,7 +290,8 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 			return; // done already
 		// Ask for the header, but update it in the background, as it may not be there yet.
 		_header = new HeaderObject(SegmentationProfile.headerName(baseName), null, null, publisher, null, _handle);
-		Log.info("Retrieving header : " + _header.getBaseName() + " in background.");
+		if( Log.isLoggable(Level.INFO ))
+			Log.info("Retrieving header : " + _header.getBaseName() + " in background.");
 		_header.updateInBackground();
 	}
 

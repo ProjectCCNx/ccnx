@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.SortedSet;
 
-import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -125,11 +124,10 @@ public class Group {
 	 * @throws ContentEncodingException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
 					CCNHandle handle, GroupManager manager) 
-			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, InvalidCipherTextException {	
+			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException {	
 		_handle = handle;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
@@ -147,12 +145,11 @@ public class Group {
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public void addMembers(ArrayList<Link> newUsers) 
-			throws InvalidKeyException, InvalidCipherTextException, 
-					ContentDecodingException, ConfigurationException, IOException {
+			throws InvalidKeyException, ContentDecodingException, ConfigurationException, IOException, NoSuchAlgorithmException {
 		modify(newUsers, null);						
 	}
 
@@ -162,12 +159,12 @@ public class Group {
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public void removeMembers( ArrayList<Link> removedUsers) 
-			throws InvalidKeyException, InvalidCipherTextException, ContentDecodingException, 
-					ConfigurationException, IOException {
+			throws InvalidKeyException, ContentDecodingException, 
+					ConfigurationException, IOException, NoSuchAlgorithmException {
 		modify(null, removedUsers);
 	}
 	
@@ -209,7 +206,7 @@ public class Group {
 	 * @throws IOException
 	 */
 	protected void stopPrivateKeyDirectoryEnumeration() throws IOException {
-		if(_privKeyDirectory != null){
+		if (_privKeyDirectory != null) {
 			_privKeyDirectory.stopEnumerating();
 		}
 	}
@@ -338,13 +335,12 @@ public class Group {
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
 	 * @throws ConfigurationException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public void setMembershipList(GroupManager groupManager, java.util.Collection<Link> newMembers) 
-			throws ContentDecodingException, IOException, InvalidKeyException, InvalidCipherTextException, 
-					ConfigurationException {
+			throws ContentDecodingException, IOException, InvalidKeyException, 
+					ConfigurationException, NoSuchAlgorithmException {
 		// need to figure out if we need to know private key; if we do and we don't, throw access denied.
 		// We're deleting anyone that exists
 		this._groupManager = groupManager;
@@ -371,11 +367,10 @@ public class Group {
 	 * @throws ContentEncodingException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException
+	 * @throws NoSuchAlgorithmException 
 	 */
 	private void newGroupPublicKeyNonRecursive(MembershipList ml) 
-			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, 
-					InvalidCipherTextException {
+			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, NoSuchAlgorithmException{
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		oldPrivateKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
@@ -412,11 +407,10 @@ public class Group {
 	 * @throws ContentEncodingException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
-	 * @throws InvalidCipherTextException
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public void newGroupPublicKey(MembershipList ml) 
-			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, 
-					InvalidCipherTextException {
+			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, NoSuchAlgorithmException {
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		oldPrivateKeyDirectory.waitForChildren();
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
@@ -460,10 +454,9 @@ public class Group {
 	 * @throws ContentEncodingException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException
-	 * @throws InvalidCipherTextException 
 	 */	
 	public Key createGroupPublicKey(MembershipList ml) 
-			throws ContentEncodingException, IOException, ConfigurationException, InvalidKeyException, InvalidCipherTextException {
+			throws ContentEncodingException, IOException, ConfigurationException, InvalidKeyException {
 		
 		KeyPairGenerator kpg = null;
 		try {
@@ -519,10 +512,9 @@ public class Group {
 	 * @throws AccessDeniedException
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 */
 	public void updateGroupPublicKey(Key privateKeyWrappingKey, java.util.Collection<Link> membersToAdd) 
-			throws InvalidKeyException, InvalidCipherTextException, ContentDecodingException, AccessDeniedException, IOException {		
+			throws InvalidKeyException, ContentDecodingException, AccessDeniedException, IOException {		
 		if ((null == membersToAdd) || (membersToAdd.size() == 0))
 			return;
 		
@@ -602,13 +594,13 @@ public class Group {
 	 * @param membersToRemove list of group members to be removed
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
-	 * @throws InvalidCipherTextException 
 	 * @throws InvalidKeyException 
 	 * @throws ConfigurationException 
+	 * @throws NoSuchAlgorithmException 
 	 */
 	public void modify(java.util.Collection<Link> membersToAdd,
 					   java.util.Collection<Link> membersToRemove) 
-			throws InvalidKeyException, InvalidCipherTextException, ContentDecodingException, IOException, ConfigurationException {
+			throws InvalidKeyException, ContentDecodingException, IOException, ConfigurationException, NoSuchAlgorithmException {
 		
 		boolean addedMembers = false;
 		boolean removedMembers = false;

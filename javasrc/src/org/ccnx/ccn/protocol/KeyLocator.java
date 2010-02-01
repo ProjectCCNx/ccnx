@@ -19,6 +19,7 @@ package org.ccnx.ccn.protocol;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.Serializable;
 import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
@@ -44,7 +45,10 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * necessary to verify a piece of content. It might include the key itself, a certificate
  * containing the key, or a CCN name pointing to a location where the key can be found.
  */
-public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
+public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Serializable {
+
+	private static final long serialVersionUID = 7608180398885293453L;
+
 	/**
 	 * KeyLocator(name) must allow for a complete name -- i.e.
 	 * a name and authentication information.
@@ -78,7 +82,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
      * @param name the name
      */
     public KeyLocator(ContentName name) {
-    	this (name, null);
+    	this (name, (PublisherID)null);
     }
     
     /**
@@ -87,6 +91,15 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
      * @param publisher the desired publisher
      */
     public KeyLocator(ContentName name, PublisherID publisher) {
+    	this(new KeyName(name, publisher));
+    }
+       
+    /**
+     * Make a KeyLocator containing a key name and the desired publisher
+     * @param name the key name
+     * @param publisher the desired publisher
+     */
+    public KeyLocator(ContentName name, PublisherPublicKeyDigest publisher) {
     	this(new KeyName(name, publisher));
     }
     
