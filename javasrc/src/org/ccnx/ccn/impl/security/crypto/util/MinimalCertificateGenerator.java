@@ -22,6 +22,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.math.BigInteger;
+import java.net.URI;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
@@ -32,6 +33,7 @@ import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 import java.util.SimpleTimeZone;
 import java.util.Vector;
@@ -102,6 +104,7 @@ public class MinimalCertificateGenerator {
 	 */
 	protected Vector<DERObjectIdentifier> _ekus = new Vector<DERObjectIdentifier>();
 	protected ASN1EncodableVector _subjectAltNames = new ASN1EncodableVector();
+	protected AuthorityKeyIdentifier _aki = null;
 
 	/**
 	 * Generates a X509 certificate for a specified user , 
@@ -210,9 +213,7 @@ public class MinimalCertificateGenerator {
 			DEROctetString octetStringKeyID = (DEROctetString)CryptoUtil.decode(encapsulatedOctetString);
 			subjectKeyID = octetStringKeyID.getOctets();
 		}
-		AuthorityKeyIdentifier aki = 
-			new AuthorityKeyIdentifier(subjectKeyID);
-		_generator.addExtension(X509Extensions.AuthorityKeyIdentifier, false, aki);
+		_aki = new AuthorityKeyIdentifier(subjectKeyID);
 	}
 
 	/**
@@ -228,9 +229,7 @@ public class MinimalCertificateGenerator {
 
 		this(subjectDN, subjectPublicKey, new X500Principal(subjectDN), duration, isCA, allUsage);
 		// This needs to match what we are using for a subject key identifier.
-		AuthorityKeyIdentifier aki = 
-			new AuthorityKeyIdentifier(CryptoUtil.generateKeyID(subjectPublicKey));
-		_generator.addExtension(X509Extensions.AuthorityKeyIdentifier, false, aki);
+		_aki = new AuthorityKeyIdentifier(CryptoUtil.generateKeyID(subjectPublicKey));
 	}
 
 	/**
@@ -325,6 +324,22 @@ public class MinimalCertificateGenerator {
 		_subjectAltNames.add(name);
 		_ekus.add(id_kp_ipsec);
 	}
+	
+	public void addSubjectAltName(URI subjectURI) {
+		GeneralName name = new GeneralName(GeneralName.uniformResourceIdentifier, subjectURI.toString());
+		_subjectAltNames.add(name);
+	}
+	
+	/**
+	 * Add additional AuthorityKeyIdentifier information. We've already set
+	 * key ID.
+	 */
+	public void addAuthorityName(URI authorityName) {
+		if (null == _aki) {
+			_aki = new AuthorityKeyIdentifier(null, null, null);
+		}
+		_aki.setIssuerName(authorityName);
+	}
 
 	/**
 	 * Generate an X509 certificate, based on the current issuer and subject using the default provider.
@@ -346,6 +361,7 @@ public class MinimalCertificateGenerator {
 		 */
 		addExtendedKeyUsageExtension();
 		addSubjectAltNamesExtension();
+		addAuthorityKeyIdentifierExtension();
 		
 		if (null == digestAlgorithm) 
 			digestAlgorithm = DEFAULT_DIGEST_ALGORITHM;
@@ -369,6 +385,15 @@ public class MinimalCertificateGenerator {
 			return;
 		ExtendedKeyUsage eku = new ExtendedKeyUsage(_ekus);
 		_generator.addExtension(X509Extensions.ExtendedKeyUsage, false, eku);
+	}
+
+	/**
+	 * Adds an authority key identifier extension to the certificate.
+	 */
+	protected void addAuthorityKeyIdentifierExtension() {
+		if (null == _aki)
+			return;
+		_generator.addExtension(X509Extensions.AuthorityKeyIdentifier, false, _aki);
 	}
 
 	/**
@@ -398,19 +423,6 @@ public class MinimalCertificateGenerator {
 			 throw new IllegalArgumentException("Cannot use addExtension to set ExtendedKeyUsage or SubjectAlternativeName or AuthorityKeyIdentifier!");
 		 }
 		 _generator.addExtension(derOID, critical, value);
-	 }
-	 
-	 /**
-	  * Writes client certificate and chain in the form expected by 
-	  * SSL_CTX_use_certificate_chain_file().
-	  * @param targetFile
-	  * @param x509Certificate
-	  * @param chain
-	  */
-	 public static void writeUserCertificateChain(File targetFile,
-			 X509Certificate x509Certificate, X509Certificate[] chain) {
-		 // TODO Auto-generated method stub
-
 	 }
 	 
 	 /**
@@ -445,14 +457,14 @@ public class MinimalCertificateGenerator {
 	  */
 	 public static void writeCertificateChain(File targetFile,
 			 X509Certificate userCertificate,
-			 X509Certificate[] chain, int chainOffset, int chainCount) throws CertificateEncodingException, FileNotFoundException {
+			 List<X509Certificate> chain, int chainOffset, int chainCount) throws CertificateEncodingException, FileNotFoundException {
 		targetFile.getParentFile().mkdirs();
 		PrintWriter writer = new PrintWriter(targetFile.getAbsolutePath());
 		if (null != userCertificate) {
 			writePEMCertificate(writer, userCertificate);
 		}
 		for (int i=chainOffset; i < chainOffset + chainCount; ++i) {
-			writePEMCertificate(writer, chain[i]);
+			writePEMCertificate(writer, chain.get(i));
 		}
 		writer.close();
 	 }

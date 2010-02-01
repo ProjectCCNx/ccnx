@@ -292,6 +292,33 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 				+ ((_targetName == null) ? 0 : _targetName.hashCode());
 		return result;
 	}
+	
+	/**
+	 * Return true if this link matches target on all fields where
+	 * target is non-null.
+	 * @param linkToMatch The specification of the values we want.
+	 * @return
+	 */
+	public boolean approximates(Link linkToMatch) {
+		if (null != _targetName) {
+			if (null == linkToMatch._targetName)
+				return false;
+			if (!linkToMatch._targetName.equals(_targetName))
+				return false;
+		}
+		if (null != _targetLabel) {
+			if (null == linkToMatch._targetLabel)
+				return false;
+			if (!linkToMatch._targetLabel.equals(_targetLabel))
+				return false;
+		}
+		if (null != _targetAuthenticator) {
+			if (null == linkToMatch._targetAuthenticator)
+				return false;
+			return _targetAuthenticator.approximates(linkToMatch._targetAuthenticator);
+		}
+		return true;
+	}
 
 	@Override
 	public boolean equals(Object obj) {

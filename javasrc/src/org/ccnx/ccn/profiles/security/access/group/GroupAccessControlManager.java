@@ -936,17 +936,17 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		// This should be the latest node key; i.e. not superseded.
 		if (nodeKeyIsDirty(nodeKey.storedNodeKeyName())) {
-			Log.info("Found node key at " + nodeKey.storedNodeKeyName() + ", updating.");
+			Log.info("getFreshEffectiveNodeKey: Found node key at " + nodeKey.storedNodeKeyName() + ", updating.");
 			ContentName nodeKeyNodeName = GroupAccessControlProfile.accessRoot(nodeKey.storedNodeKeyName());
 			ACLObject acl = getACLObjectForNode(nodeKeyNodeName);
 			nodeKey = generateNewNodeKey(nodeKeyNodeName, nodeKey, acl.acl());
 		} else {
-			Log.info("Found node key at " + nodeKey.storedNodeKeyName());
+			Log.info("getFreshEffectiveNodeKey: Found node key at " + nodeKey.storedNodeKeyName());
 		}
 		Log.finer("getFreshEffectiveNodeKey: retrieved stored node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), nodeKey);
 		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
 		Log.finer("getFreshEffectiveNodeKey: computed effective node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), effectiveNodeKey);
-		Log.info("Computed effective node key for " + nodeName + " using stored node key " + effectiveNodeKey.storedNodeKeyName());
+		Log.info("getFreshEffectiveNodeKey: Computed effective node key for " + nodeName + " using stored node key " + effectiveNodeKey.storedNodeKeyName());
 		return effectiveNodeKey;
 	}
 	

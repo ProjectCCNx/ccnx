@@ -88,6 +88,8 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	 */
 	public class WrappingKeyName extends ContentName {
 
+		private static final long serialVersionUID = 1813748512053079957L;
+
 		public WrappingKeyName(ContentName name) {
 			super(name);
 		}

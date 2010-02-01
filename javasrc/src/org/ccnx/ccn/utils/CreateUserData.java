@@ -229,7 +229,7 @@ public class CreateUserData {
 			}
 			
 			userKeyManager = new BasicKeyManager(friendlyName, userDirectory.getAbsolutePath(), 
-												 UserConfiguration.keystoreFileName(), 
+												null, null, 
 												null, null, password);
 			userKeyManager.initialize();
 			_userKeyManagers.put(friendlyName, userKeyManager);
@@ -268,8 +268,7 @@ public class CreateUserData {
 		}
 
 		KeyManager userKeyManager = new BasicKeyManager(friendlyName, userKeystoreFile.getParent(), 
-				userKeystoreFile.getName(), 
-				null, null, password);
+				null, null, null, null, password);
 		userKeyManager.initialize();
 		return userKeyManager;
 
@@ -386,18 +385,18 @@ public class CreateUserData {
 		String keystoreFileOrDirectoryPath = null;
 		int argsUsed = 0;
 		
-		if (args.length >= offset+3) {
-			if (!args[offset+2].equals("-as")) {
+		if (args.length >= offset+2) {
+			if (!args[offset].equals("-as")) {
 				return null; // caller must print usage()
 			} else {
-				keystoreFileOrDirectoryPath = args[offset+3];
+				keystoreFileOrDirectoryPath = args[offset+1];
 				argsUsed += 2;
 			}
 		}
 
 		if (args.length >= offset+5) {
-			if (args[offset+4].equals("-name")) {
-				friendlyName = args[offset+5];
+			if (args[offset+2].equals("-name")) {
+				friendlyName = args[offset+3];
 				argsUsed += 2;
 			}
 		}
@@ -419,8 +418,26 @@ public class CreateUserData {
 		return new Tuple<Integer, CCNHandle>(argsUsed, CCNHandle.open(manager));
 	}
 	
+	public static KeyManager keyManagerAs(String keystoreFileOrDirectoryPath, String friendlyName) throws InvalidKeyException, ConfigurationException, IOException {
+		File keystoreFileOrDirectory = new File(keystoreFileOrDirectoryPath);
+		if ((null == friendlyName) && 
+			((keystoreFileOrDirectory.exists() && (keystoreFileOrDirectory.isDirectory())) || 
+			  (!keystoreFileOrDirectory.exists()))) {
+			// if its a directory, or it doesn't exist yet and we're going to make it as one, 
+			// use last component as user name
+			friendlyName = keystoreFileOrDirectory.getName();
+		}
+		
+		Log.info("handleAs: loading data for user {0} from location {1}", friendlyName, keystoreFileOrDirectory);
+		
+		KeyManager manager = CreateUserData.loadKeystoreFile(keystoreFileOrDirectory, friendlyName,
+				UserConfiguration.keystorePassword().toCharArray());
+		
+		return manager;
+	}
+	
 	public static void usage() {
-		System.out.println("usage: TestUserData [[-f <file directory for keystores>] | [-r] <ccn uri for keystores>] [\"comma-separated user names\"] <user count> [<password>] [-p] (-r == use repo, -f == use files)");
+		System.out.println("usage: CreateUserData [[-f <file directory for keystores>] | [-r] <ccn uri for keystores>] [\"comma-separated user names\"] <user count> [<password>] [-p] (-r == use repo, -f == use files)");
 	}
 	
 	/**
@@ -515,6 +532,6 @@ public class CreateUserData {
 			td.closeAll();
 		}
 		System.out.println("Finished.");
-		return;
+		System.exit(0);
 	}
 }

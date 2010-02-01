@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.protocol;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
@@ -38,7 +39,9 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * To create a ContentName from Strings, a client must call one of the static 
  * methods that implements a conversion.
  */
-public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName> {
+public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName>, Serializable {
+
+	private static final long serialVersionUID = 2754391169423477552L;
 
 	/**
 	 * Official CCN URI scheme.
@@ -419,7 +422,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if (!name.startsWith(SEPARATOR)){
 			throw new MalformedContentNameStringException("ContentName native strings must begin with " + SEPARATOR);
 		}
-		if((name == null) || (name.length() == 0)) {
+		if ((name == null) || (name.length() == 0)) {
 			result._components = null;
 		} else {
 			String[] parts;

@@ -23,6 +23,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
@@ -42,7 +44,9 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
+import static org.ccnx.ccn.impl.support.Serial.readObject;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
+import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.security.access.KeyCache;
@@ -71,6 +75,7 @@ public class BasicKeyManager extends KeyManager {
 	public static class KeyStoreInfo {
 		// Where did we load this from
 		String _keyStoreURI;
+		String _configurationFileURI;
 		KeyStore _keyStore;
 		CCNTime _version;
 		
@@ -92,9 +97,15 @@ public class BasicKeyManager extends KeyManager {
 			_version = version;
 		}
 		
+		public void setConfigurationFileURI(String configurationFileURI) {
+			_configurationFileURI = configurationFileURI;
+		}
+		
 		public KeyStore getKeyStore() { return _keyStore; }
 		public CCNTime getVersion() { return _version; }
-		public String getURI() { return _keyStoreURI; }
+		public String getKeyStoreURI() { return _keyStoreURI; }
+		public String getConfigurationFileURI() { return _configurationFileURI; }
+
 	}
 	
 	protected String _userName;
@@ -103,6 +114,7 @@ public class BasicKeyManager extends KeyManager {
 	protected String _keyStoreDirectory;
 	protected String _keyStoreFileName;
 	protected String _keyStoreType;
+	protected String _configurationFileName;
 	
 	protected KeyStoreInfo _keyStoreInfo;
 	protected PublisherPublicKeyDigest _defaultKeyID;
@@ -121,6 +133,11 @@ public class BasicKeyManager extends KeyManager {
 	 * Cache of private keys, loaded from keystores.
 	 */
 	protected KeyCache _privateKeyCache = null;
+	
+	/**
+	 * Configuration data
+	 */
+	protected KeyValueSet _configurationData = null;
 	
 	/**
 	 * Registry of key locators to use. In essence, these are pointers to our
@@ -161,11 +178,14 @@ public class BasicKeyManager extends KeyManager {
 	 * @throws IOException
 	 */
 	public BasicKeyManager(String userName, String keyStoreDirectory,
+						   String configurationFileName,
 						   String keyStoreFileName, String keyStoreType, 
 						   String defaultAlias, char [] password) throws ConfigurationException, IOException {
 		this(userName, keyStoreType, defaultAlias, password);
 		_keyStoreFileName = (null != keyStoreFileName) ? 
 				keyStoreFileName : UserConfiguration.keystoreFileName();
+		_configurationFileName = (null != configurationFileName) ? 
+				configurationFileName : UserConfiguration.configurationFileName();
 	    _keyStoreDirectory = (null != keyStoreDirectory) ? keyStoreDirectory : UserConfiguration.userConfigurationDirectory();
 		// must call initialize
 	}
@@ -176,7 +196,7 @@ public class BasicKeyManager extends KeyManager {
 	 * @throws ConfigurationException 
 	 */
 	public BasicKeyManager() throws ConfigurationException, IOException {
-		this(null, null, null, null, null, null);
+		this(null, null, null, null, null, null, null);
 	}
 	
 	/**
@@ -199,7 +219,7 @@ public class BasicKeyManager extends KeyManager {
 		if (!loadValuesFromKeystore(_keyStoreInfo)) {
 			Log.warning("Cannot process keystore!");
 		}
-		if (!loadValuesFromConfiguration()) {
+		if (!loadValuesFromConfiguration(_keyStoreInfo)) {
 			Log.warning("Cannot process configuration data!");
 		}
 		_initialized = true;		
@@ -332,7 +352,7 @@ public class BasicKeyManager extends KeyManager {
 		KeyStore.PrivateKeyEntry entry = null;
 		try {
 			if (Log.isLoggable(Level.INFO))
-				Log.info("Loading key store {0} version {1} version component {2} millis {3}", keyStoreInfo.getURI(), keyStoreInfo.getVersion().toString(), 
+				Log.info("Loading key store {0} version {1} version component {2} millis {3}", keyStoreInfo.getKeyStoreURI(), keyStoreInfo.getVersion().toString(), 
 						VersioningProfile.printAsVersionComponent(keyStoreInfo.getVersion()), keyStoreInfo.getVersion().getTime());
 			// Default alias should be a PrivateKeyEntry
 			entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
@@ -363,7 +383,7 @@ public class BasicKeyManager extends KeyManager {
 	 * @return true if successful, false on error
 	 * @throws ConfigurationException
 	 */
-	protected boolean loadValuesFromConfiguration() throws ConfigurationException {
+	protected boolean loadValuesFromConfiguration(KeyStoreInfo keyStoreInfo) throws ConfigurationException {
 		// Load key locator information. Might be in two places -- system property/environment variable,
 		// or configuration file. Start with just system property, first round just specify
 		// name, not publisher.
@@ -381,10 +401,58 @@ public class BasicKeyManager extends KeyManager {
 		}
 
 		// TODO fill in the rest
-		// load values from our configuration file, which should be read in UserConfiguration
+		// Load values from our configuration file, which should be read in UserConfiguration.
+		
+		// Currently have saved data override command line, which might be bad...
 		// also use that to preconfigure things like keystores and such
+		// for right now, just as a super-fast trick, use java serialization to get out minmal data necessary
+		if ((null == _keyStoreDirectory) || (null == _configurationFileName))  {
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("No configuration directory/file set, not loading.");
+			}
+			return true;
+		}
+		File configurationFile = new File(_keyStoreDirectory, _configurationFileName);
+		if (configurationFile.exists()) {
+			try {
+				ObjectInputStream input = new ObjectInputStream(new FileInputStream(configurationFile));
+				
+				HashMap<PublisherPublicKeyDigest, KeyLocator> savedKeyLocators = readObject(input);
+				_currentKeyLocators.putAll(savedKeyLocators);
+				
+				keyStoreInfo.setConfigurationFileURI(configurationFile.toURI().toString());
+				
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("Loaded configuration data from file {0}, got {1} key locator values.", 
+							configurationFile.getAbsolutePath(), savedKeyLocators.size());
+				}
+
+			} catch (FileNotFoundException e) {
+				throw new ConfigurationException("Cannot read configuration file even though it claims to exist: " + configurationFile.getAbsolutePath(), e);
+			} catch (IOException e) {
+				throw new ConfigurationException("I/O error reading configuration file: " + configurationFile.getAbsolutePath(), e);
+			} catch (ClassNotFoundException e) {
+				throw new ConfigurationException("ClassNotFoundException deserializing configuration file: " + configurationFile.getAbsolutePath(), e);
+			}
+		}
 		
 		return true;
+	}
+	
+	/**
+	 * As a very initial pass, save configuration state as Java serialization. Later
+	 * we'll clean this up...
+	 * @throws IOException 
+	 * @throws FileNotFoundException 
+	 */
+	@Override
+	public void saveConfigurationState() throws FileNotFoundException, IOException {
+		File configurationFile = new File(_keyStoreDirectory, _configurationFileName); 
+		
+		// Update configuration data:
+		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(configurationFile));
+		oos.writeObject(_currentKeyLocators);
+		oos.close();
 	}
 		
 	/**
@@ -703,7 +771,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator keyLocator, long timeout) throws IOException {		
-		if( Log.isLoggable(Level.FINER) )
+		if (Log.isLoggable(Level.FINER))
 			Log.finer("getPublicKey: retrieving key: " + desiredKeyID + " located at: " + keyLocator);
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.

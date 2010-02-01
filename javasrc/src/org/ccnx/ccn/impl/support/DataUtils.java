@@ -259,7 +259,7 @@ public class DataUtils {
 		while (index < length - sepLen) {
 			line.insert(index, LINE_SEPARATOR);
 			index += lineLength;
-			length += sepLen+1;
+			length += sepLen;
 		}
 		return line.toString();
 	}
