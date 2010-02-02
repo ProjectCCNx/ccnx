@@ -446,7 +446,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		while (_sentInterests.size() + inOrderSegments.size() + outOfOrderSegments.size()  < PIPELINE_SIZE && !doneAdvancing) {
 			//we have tokens to use
 			Interest i = null;
-			if(outOfOrderSegments.size() > 0) {
+			/*if(outOfOrderSegments.size() > 0) {
 				//holes...  just ask for the next segment we are expecting and break
 				i = SegmentationProfile.segmentInterest(_basePipelineName, nextInOrderSegmentNeeded(), _publisher);
 				try {
@@ -457,8 +457,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					Log.warning("failed to express interest for CCNAbstractInputStream pipeline");
 				}
 				break;
-			} else {
+			  } else {
 				//no holes...  ask for next after our previously highest requested segment
+			 */
 				System.out.println("_lastSegmentNumber = "+ _lastSegmentNumber);
 				if (_lastSegmentNumber == -1) {
 					//we don't have the last segment already...
@@ -475,7 +476,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					System.out.println("setting doneAdvancing to true");
 					doneAdvancing = true;
 				}
-			}
+			//} //was part of if (check for holes) else (no holes)
 		}
 	}
 	
