@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -106,6 +106,8 @@ public class Log {
 				logFileName.append(DEFAULT_LOG_SUFFIX);
 
 				theHandler = new FileHandler(logFileName.toString());
+				// Force a standard XML encoding (avoids unusual ones like MacRoman in XML)
+				theHandler.setEncoding("UTF-8");
 				System.out.println("Writing log records to " + logFileName);
 				
 			} catch (IOException e) {
@@ -250,6 +252,15 @@ public class Log {
 	public static Level getLevel() {
 		return _systemLogger.getLevel();
 	}
+	
+	/**
+	 * Would the given log level write to the log?
+	 * @param level
+	 * @return true means would write log
+	 */
+	public static boolean isLoggable(Level level) {
+		return _systemLogger.isLoggable(level);
+	}
 
 	/**
 	 * The main logging wrapper. Allows for variable parameters to the message.
@@ -278,12 +289,24 @@ public class Log {
 		} catch (ClassNotFoundException e) {
 			throw new RuntimeException(e);
 		}
+		
+		// Some loggers e.g. the XML logger do not substitute parameters correctly
+		// Therefore we do our own parameter substitution here and do not rely
+		// on the system logger's ability to do it.
+		int i = 0;
 		for(Object o : params) {
 			if (o == null) {
 				o = "(null)";
 			}
+			int index = msg.indexOf("{" + i++ + "}");
+			if (index > 0) {
+				StringBuffer sb = new StringBuffer(msg.substring(0, index));
+				sb.append(o);
+				sb.append(msg.substring(index + 3));
+				msg = sb.toString();
+			}
 		}
-		_systemLogger.logp(l, c.getCanonicalName(), ste.getMethodName(), msg, params);
+		_systemLogger.logp(l, c.getCanonicalName(), ste.getMethodName(), msg);
 	}
 	
 	public static void flush() {

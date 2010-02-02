@@ -17,12 +17,14 @@
 
 package org.ccnx.ccn;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
+import java.util.logging.Level;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -79,7 +81,8 @@ public abstract class KeyManager {
 	 */
 	public static synchronized KeyManager getDefaultKeyManager() {
 		// could print a stack trace
-		Log.finer("NOTICE: retrieving default key manager.");
+		if( Log.isLoggable(Level.FINER) )
+			Log.finer("NOTICE: retrieving default key manager.");
 		if (null != _defaultKeyManager) 
 			return _defaultKeyManager;
 		try {
@@ -190,6 +193,12 @@ public abstract class KeyManager {
 	 * @return the digest of our default key
 	 */
 	public abstract PublisherPublicKeyDigest getDefaultKeyID();
+	
+	public boolean isOurDefaultKey(PublisherPublicKeyDigest keyID) {
+		if (getDefaultKeyID().equals(keyID))
+			return true;
+		return false;
+	}
 	
 	/**
 	 * Get our default private key.
@@ -445,5 +454,8 @@ public abstract class KeyManager {
 	 * @return our KeyRepository
 	 */
 	public abstract KeyRepository keyRepository();
+
+	public abstract void saveConfigurationState() throws FileNotFoundException,
+			IOException;
 
 }

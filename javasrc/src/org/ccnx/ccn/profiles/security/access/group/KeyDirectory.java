@@ -545,6 +545,11 @@ public class KeyDirectory extends EnumeratedNameList {
 	public Key getUnwrappedKey(byte [] expectedKeyID) 
 			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		
+		if (expectedKeyID == null) Log.finer("KeyDirectory getUnwrappedKey: at {0} unwrapping key wihtout expectedKeyID", this._namePrefix);
+		else Log.finer("KeyDirectory getUnwrappedKey: at {0} unwrapping key with expectedKeyID {1} ", 
+				this._namePrefix,
+				DataUtils.printHexBytes(expectedKeyID));
+
 		WrappedKeyObject wko = null;
 		Key unwrappedKey = null;
 		byte [] retrievedKeyID = null;
@@ -558,7 +563,10 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		try {
 			_keyIDLock.readLock().lock();
+			Log.finer("KeyDirectory getUnwrappedKey: the directory has {0} wrapping keys.", _keyIDs.size());
 			for (byte [] keyid : _keyIDs) {
+				Log.finer("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under a key whose id is {0}", 
+						DataUtils.printHexBytes(keyid) );
 				if (_manager.hasKey(keyid)) {
 					// We have it, pull the block, unwrap the node key.
 					wko = getWrappedKeyForKeyID(keyid);
@@ -604,7 +612,7 @@ public class KeyDirectory extends EnumeratedNameList {
 
 			} else {
 				// This is the current key. Enumerate principals and see if we can get a key to unwrap.
-				Log.info("At latest version of key " + getName() + ", attempting to unwrap.");
+				Log.info("KeyDirectory getUnwrappedKey: at latest version of key " + getName() + ", attempting to unwrap.");
 				// Assumption: if this key was encrypted directly for me, I would have had a cache
 				// hit already. The assumption is that I pre-load my cache with my own private key(s).
 				// So I don't care about principal entries if I get here, I only care about groups.
@@ -614,6 +622,7 @@ public class KeyDirectory extends EnumeratedNameList {
 				if (_manager.groupManager().haveKnownGroupMemberships()) {
 					try{
 						_principalsLock.readLock().lock();
+						Log.finer("KeyDirectory getUnwrappedKey: the directory has {0} principals.", _principals.size());
 						for (String principal : _principals.keySet()) {
 							if ((!_manager.groupManager().isGroup(principal)) || (!_manager.groupManager().amKnownGroupMember(principal))) {
 								// On this pass, only do groups that I think I'm a member of. Do them
@@ -642,11 +651,16 @@ public class KeyDirectory extends EnumeratedNameList {
 					try{
 							_principalsLock.readLock().lock();
 							for (String principal : _principals.keySet()) {
+								Log.finer("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under the key of principal {0}", 
+										principal);
 								if ((!_manager.groupManager().isGroup(principal)) || (_manager.groupManager().amKnownGroupMember(principal))) {
 									// On this pass, only do groups that I don't think I'm a member of.
+									if (!_manager.groupManager().isGroup(principal)) Log.finer("KeyDirectory getUnwrappedKey: Principal {0} is not a group.", principal);
+									if (_manager.groupManager().amKnownGroupMember(principal)) Log.finer("KeyDirectory getUnwrappedKey: I am already known to be a member of the group {0} ", principal);
 									continue;
 								}
 								if (_manager.groupManager().amCurrentGroupMember(principal)) {
+									Log.finer("KeyDirectory getUnwrappedKey: I am a member of group {0} ", principal);
 									try {
 										Key principalKey = _manager.groupManager().getVersionedPrivateKeyForGroup(this, principal);
 										unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
@@ -659,6 +673,7 @@ public class KeyDirectory extends EnumeratedNameList {
 										continue;
 									}
 								}
+								else Log.finer("KeyDirectory getUnwrappedKey: I am not a member of group {0} ", principal);
 							}
 					} finally {
 						_principalsLock.readLock().unlock();
@@ -788,6 +803,8 @@ public class KeyDirectory extends EnumeratedNameList {
 		wko.save();
 		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new Link(wko.getVersionedName()), SaveType.REPOSITORY, _manager.handle());
 		lo.save();
+		Log.finer("KeyDirectory addWrappedKeyBlock: wrapped secret key {0} under public key named {1} whose id is {2} for key directory {3}", 
+				DataUtils.printHexBytes(secretKeyToWrap.getEncoded()), publicKeyName, DataUtils.printHexBytes(publicKey.getEncoded()), this._namePrefix);
 	}
 	
 	/**
@@ -879,5 +896,10 @@ public class KeyDirectory extends EnumeratedNameList {
 		wrappedKey.setWrappingKeyName(supersedingKeyName);
 		WrappedKeyObject wko = new WrappedKeyObject(getPreviousKeyBlockName(), wrappedKey,SaveType.REPOSITORY,  _manager.handle());
 		wko.save();
+		Log.finer("KeyDirectory addPreviousKeyBlock: old wrapping key is {0} and superseding key name is {1} and new wrapping key is {2}.", 
+				DataUtils.printHexBytes(oldPrivateKeyWrappingKey.getEncoded()),
+				supersedingKeyName,
+				DataUtils.printHexBytes(newPrivateKeyWrappingKey.getEncoded())
+				);
 	}
 }

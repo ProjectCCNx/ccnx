@@ -110,8 +110,8 @@ public abstract class AccessControlManager {
 		Key wrappingKey = null;
 		
 		if (hasKey(wdko.wrappedKey().wrappingKeyIdentifier())) {
-			wrappingKey = getKey(wdko.wrappedKey().wrappingKeyIdentifier());
-			if (null == wrappingKey) {
+			Key cachedKey = getKey(wdko.wrappedKey().wrappingKeyIdentifier());
+			if (null == cachedKey) {
 				Log.warning("Thought we had key {0} in cache, but cannot retrieve it! Data node: {1}.", 
 						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()),
 						dataNodeName);
@@ -119,12 +119,15 @@ public abstract class AccessControlManager {
 			} else {
 				Log.fine("Unwrapping key for data node {0} with cached key whose id is {1}.", dataNodeName,
 						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()));
+				// The cached key is not actually the key we want. We need to hand it to our access
+				// control manager to do any key prep.
+				wrappingKey = getDataKeyWrappingKey(dataNodeName, wdko.wrappedKey().wrappingKeyName(), cachedKey);
 			}
 		}
 		// Could simplify to remove cache-retry logic.
 		if (null == wrappingKey) {
 			// No dice. Try subclass-specific retrieval.
-			Log.info("getDataKey: key {0} not in cache, getting data key wrapping key for data node {0} with wrapped key {1}", 
+			Log.info("getDataKey: key {0} not in cache, getting data key wrapping key for data node {1} with wrapped key {2}", 
 						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()), dataNodeName, wdko);
 			wrappingKey = getDataKeyWrappingKey(dataNodeName, wdko);
 		}
@@ -173,6 +176,17 @@ public abstract class AccessControlManager {
 	 		ContentEncodingException, IOException, NoSuchAlgorithmException;
 
 	/**
+	 * Get the data key wrapping key if we happened to have cached a copy of the decryption key.
+	 * @param dataNodeName
+	 * @param wrappedDataKeyObject
+	 * @param cachedWrappingKey
+	 * @return
+	 * @throws ContentEncodingException 
+	 * @throws InvalidKeyException 
+	 */
+	public abstract Key getDataKeyWrappingKey(ContentName dataNodeName, ContentName wrappingKeyName, Key cachedWrappingKey) throws InvalidKeyException, ContentEncodingException;
+
+	/**
 	 * Wrap a data key in a given node key and store it.
 	 * @param dataNodeName
 	 * @param dataKey
@@ -196,8 +210,8 @@ public abstract class AccessControlManager {
 		WrappedKey wrappedDataKey = WrappedKey.wrapKey(dataKey, 
 				null, dataKeyLabel(), 
 				wrappingKey.nodeKey());
-		wrappedDataKey.setWrappingKeyIdentifier(WrappedKey.wrappingKeyIdentifier(wrappingKey.nodeKey()));
-		wrappedDataKey.setWrappingKeyName(wrappingKey.nodeName());
+		wrappedDataKey.setWrappingKeyIdentifier(wrappingKey.storedNodeKeyID());
+		wrappedDataKey.setWrappingKeyName(wrappingKey.storedNodeKeyName());
 
 		storeKeyContent(AccessControlProfile.dataKeyName(dataNodeName), wrappedDataKey);		
 	}

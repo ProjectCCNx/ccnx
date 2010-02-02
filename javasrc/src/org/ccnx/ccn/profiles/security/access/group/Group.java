@@ -206,7 +206,7 @@ public class Group {
 	 * @throws IOException
 	 */
 	protected void stopPrivateKeyDirectoryEnumeration() throws IOException {
-		if(_privKeyDirectory != null){
+		if (_privKeyDirectory != null) {
 			_privKeyDirectory.stopEnumerating();
 		}
 	}

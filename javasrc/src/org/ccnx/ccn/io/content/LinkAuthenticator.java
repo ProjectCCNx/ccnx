@@ -63,6 +63,10 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
     	super();
     	this._publisher = publisher;
     }
+    
+    public LinkAuthenticator(PublisherPublicKeyDigest publisher) {
+    	this(new PublisherID(publisher));
+    }
 
     public LinkAuthenticator() {}
     
@@ -231,6 +235,43 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 				+ ((_timestamp == null) ? 0 : _timestamp.hashCode());
 		result = prime * result + ((_type == null) ? 0 : _type.hashCode());
 		return result;
+	}
+	
+	/**
+	 * Approximately equals -- matches on each field of target that is non-null
+	 */
+	public boolean approximates(LinkAuthenticator target) {
+		if (null != target._contentDigest) {
+			if (null == _contentDigest)
+				return false;
+			if (!Arrays.equals(target._contentDigest, _contentDigest))
+				return false;
+		}
+		if (null != target._nameComponentCount) {
+			if (null == _nameComponentCount)
+				return false;
+			if (!target._nameComponentCount.equals(_nameComponentCount))
+				return false;
+		}
+		if (null != target._publisher) {
+			if (null == _publisher)
+				return false;
+			if (!target._publisher.equals(_publisher))
+				return false;
+		}
+		if (null != target._timestamp) {
+			if (null == _timestamp)
+				return false;
+			if (!target._timestamp.equals(_timestamp))
+				return false;
+		}
+		if (null != target._type) {
+			if (null == _type)
+				return false;
+			if (!target._type.equals(_type))
+				return false;
+		}
+		return true;
 	}
 
 	@Override

@@ -19,6 +19,7 @@ package org.ccnx.ccn.protocol;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.Serializable;
 import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
@@ -44,7 +45,10 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * necessary to verify a piece of content. It might include the key itself, a certificate
  * containing the key, or a CCN name pointing to a location where the key can be found.
  */
-public class KeyLocator extends GenericXMLEncodable implements XMLEncodable {
+public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Serializable {
+
+	private static final long serialVersionUID = 7608180398885293453L;
+
 	/**
 	 * KeyLocator(name) must allow for a complete name -- i.e.
 	 * a name and authentication information.

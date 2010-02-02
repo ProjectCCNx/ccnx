@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.protocol;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
@@ -38,7 +39,9 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * To create a ContentName from Strings, a client must call one of the static 
  * methods that implements a conversion.
  */
-public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName> {
+public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName>, Serializable {
+
+	private static final long serialVersionUID = 2754391169423477552L;
 
 	/**
 	 * Official CCN URI scheme.
@@ -419,7 +422,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if (!name.startsWith(SEPARATOR)){
 			throw new MalformedContentNameStringException("ContentName native strings must begin with " + SEPARATOR);
 		}
-		if((name == null) || (name.length() == 0)) {
+		if ((name == null) || (name.length() == 0)) {
 			result._components = null;
 		} else {
 			String[] parts;
@@ -1023,6 +1026,25 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return -1;
 		}
 	}
+
+	/**
+	 * Looks for a component, starting from the end..
+	 * @param str Component to search for, encoded using URI encoding.
+	 * @return The index of the first component that matched. Starts at 0.
+	 * @throws URISyntaxException
+	 */
+	public int whereLast(String str) throws URISyntaxException {
+		try {
+			byte[] parsed = componentParseURI(str);
+			if (null == parsed) {
+				return -1;
+			} else {
+				return whereLast(parsed);
+			}
+		} catch (DotDotComponent c) {
+			return -1;
+		}
+	}
 	
 	/**
 	 * Return component index of the first matching component if it exists.
@@ -1043,6 +1065,25 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return -1;		
 	}
 	
+	/**
+	 * Return component index of the last matching component if it exists.
+	 * @param component Component to search for.
+	 * @return -1 on failure, component index otherwise (starts at 0).
+	 */
+	public int whereLast(byte [] component) {
+		int i=0;
+		boolean result = false;
+		for (i=_components.size()-1; i >= 0; --i) {
+			if (Arrays.equals(_components.get(i),component)) {
+				result = true;
+				break;
+			}	
+		}
+		if (result)
+			return i;
+		return -1;		
+	}
+
 	/**
 	 * Return the first componentNumber components of this name as a new name.
 	 * @param componentNumber

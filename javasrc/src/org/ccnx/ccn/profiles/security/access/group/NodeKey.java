@@ -293,10 +293,16 @@ public class NodeKey {
 	
 	@Override
 	public String toString() {
+		if (null == _nodeKey) {
+			return "NodeKey for node: " + _nodeName + " Stored at: " + _storedNodeKeyName + 
+		" Stored ID: " + DataUtils.printHexBytes(_storedNodeKeyID) +
+		" Key: null" + " Key id: null";
+		}
+		
 		// not great to print out keys, but nec for debugging
 		return "NodeKey for node: " + _nodeName + " Stored at: " + _storedNodeKeyName + 
 						" Stored ID: " + DataUtils.printHexBytes(_storedNodeKeyID) +
-						" Key: " + ((null == _nodeKey) ? "null" :
-							DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(_nodeKey)));
+						" Key: " + DataUtils.printHexBytes(_nodeKey.getEncoded()) +
+						" Key id: " + DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(_nodeKey));
 	}
 }

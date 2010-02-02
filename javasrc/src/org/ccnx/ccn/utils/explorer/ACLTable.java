@@ -72,7 +72,7 @@ public class ACLTable extends AbstractTableModel {
 		return principals.length;
 	}
 
-	public Class getColumnClass(int col) {
+	public Class<?> getColumnClass(int col) {
 		return getValueAt(0, col).getClass();
 	}
 	

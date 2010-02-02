@@ -36,6 +36,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
@@ -170,10 +171,11 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 						RepoFile rfile = new RepoFile();
 						rfile.file = new File(_repositoryFile,filenames[i]);
 						rfile.openFile = new RandomAccessFile(rfile.file, "r");
-						InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile));
+						InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8196);
 						
 						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-							Log.fine("Creating index for {0}", filenames[i]);
+							if( Log.isLoggable(Level.FINE))
+								Log.fine("Creating index for {0}", filenames[i]);
 						}
 						while (true) {
 							FileRef ref = new FileRef();
@@ -189,7 +191,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 								}
 								else{
 									if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-										Log.info("at the end of the file");
+										if( Log.isLoggable(Level.INFO))
+											Log.info("at the end of the file");
 									}
 									rfile.openFile.close();
 									rfile.openFile = null;
@@ -272,16 +275,18 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			try {
 				_km = 
 					new BasicKeyManager(LogStructRepoStoreProfile.REPOSITORY_USER, 
-							_repositoryRoot, LogStructRepoStoreProfile.KEYSTORE_FILE,
+							_repositoryRoot, null, LogStructRepoStoreProfile.KEYSTORE_FILE,
 							null, LogStructRepoStoreProfile.REPOSITORY_KEYSTORE_ALIAS, 
 							LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
 				_km.initialize();
 				
-				Log.finest("Initialized repository key store.");
+				if( Log.isLoggable(Level.FINEST))
+					Log.finest("Initialized repository key store.");
 				
 				handle = CCNHandle.open(_km);
 				
-				Log.finest("Opened repository handle.");
+				if( Log.isLoggable(Level.FINEST))
+					Log.finest("Opened repository handle.");
 				
 				// Let's use our key manager as the default. That will make us less
 				// prone to accidentally loading the user's key manager. If we close it more than
@@ -348,12 +353,14 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		checkName = checkFile(LogStructRepoStoreProfile.REPO_GLOBALPREFIX, globalPrefix, globalFromArgs);
 		globalPrefix = checkName != null ? checkName : globalPrefix;
 		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-			Log.info("REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
+			if( Log.isLoggable(Level.INFO))
+				Log.info("REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
 		}
 		try {
 			_policy.setGlobalPrefix(globalPrefix);
 			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-				Log.info("REPO: initializing policy location: {0} for global prefix {1} and local name {2}", localName, globalPrefix,  localName);
+				if( Log.isLoggable(Level.INFO))
+					Log.info("REPO: initializing policy location: {0} for global prefix {1} and local name {2}", localName, globalPrefix,  localName);
 			}
 		} catch (MalformedContentNameStringException e2) {
 			throw new RepositoryException(e2.getMessage());
@@ -405,7 +412,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		}
 		if (!nameSpaceOK) {
 			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-				Log.info("Repo rejecting content: {0}, not in registered namespace.", content.name());
+				if( Log.isLoggable(Level.INFO))
+					Log.info("Repo rejecting content: {0}, not in registered namespace.", content.name());
 			}
 			return null;
 		}
@@ -423,11 +431,13 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				_index.insert(content, ref, System.currentTimeMillis(), this, ner);
 				if (ner==null || ner.getPrefix()==null) {
 					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-						Log.fine("new content did not trigger an interest flag");
+						if( Log.isLoggable(Level.FINE))
+							Log.fine("new content did not trigger an interest flag");
 					}
 				} else {
 					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-						Log.fine("new content was added where there was a name enumeration response interest flag");
+						if( Log.isLoggable(Level.FINE))
+							Log.fine("new content was added where there was a name enumeration response interest flag");
 					}
 				}
 				return ner;
@@ -460,7 +470,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				}
 				file.openFile.seek(fref.offset);
 				ContentObject content = new ContentObject();
-				InputStream is = new BufferedInputStream(new RandomAccessInputStream(file.openFile));
+				InputStream is = new BufferedInputStream(new RandomAccessInputStream(file.openFile), 8196);
 				content.decode(is);
 				return content;
 			}
@@ -513,7 +523,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		File namesFile = new File(_repositoryFile, LogStructRepoStoreProfile.DEBUG_TREEDUMP_FILE);
 		try {
 			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-				Log.info("Dumping names to " + namesFile.getAbsolutePath() + " (len " + nodelen + ")");
+				if( Log.isLoggable(Level.INFO))
+					Log.info("Dumping names to " + namesFile.getAbsolutePath() + " (len " + nodelen + ")");
 			}
 			PrintStream namesOut = new PrintStream(namesFile);
 			if (null != _index) {
@@ -553,6 +564,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				_activeWriteFile.openFile.close();
 				_activeWriteFile.openFile = null;
 			} catch (IOException e) {}
+		}
+		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.REPO_EXITDUMP)) {
+			Log.warning("Debug flag ({0}) is set: dumping nametree now (on shutdown)", DEBUGGING_FLAGS.REPO_EXITDUMP.toString());
+			dumpNames(-1);
 		}
 	}
 

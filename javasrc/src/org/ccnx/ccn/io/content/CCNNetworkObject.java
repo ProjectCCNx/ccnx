@@ -403,7 +403,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_publisher = other._publisher;
 		_keyLocator = other._keyLocator;
 		_saveType = other._saveType;
-		_keys = other._keys.clone();
+		_keys = (null != other._keys) ? other._keys.clone() : null;
 		// Do not copy update behavior. Even if other one is updating, we won't
 		// pick that up. Have to kick off manually.
 		
@@ -1269,7 +1269,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public String toString() { 
 		try {
 			if (isSaved()) {
-				return getVersionedName() + ": " + (isGone() ? "GONE" : data());
+				return getVersionedName() + ": " + (isGone() ? "GONE" : "\nData:" + data()) + "\n	Publisher: " +
+						getContentPublisher() + "\n		Publisher KeyLocator: " + getPublisherKeyLocator() + "\n";
 			} else if (available()) {
 				return getBaseName() + " (unsaved): " + data();
 			} else {

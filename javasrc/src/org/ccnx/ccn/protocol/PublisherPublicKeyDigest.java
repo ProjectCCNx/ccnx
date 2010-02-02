@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.protocol;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.security.PublicKey;
 import java.util.Arrays;
@@ -44,9 +45,12 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * 
  * To generate a PublisherPublicKeyDigest, we use the digest of the encoded PublicKey (the encoded SubjectPublicKeyInfo).
  */
-public class PublisherPublicKeyDigest extends GenericXMLEncodable implements XMLEncodable, Comparable<PublisherPublicKeyDigest> {
+public class PublisherPublicKeyDigest extends GenericXMLEncodable 
+			implements XMLEncodable, Comparable<PublisherPublicKeyDigest>, Serializable {
     
-    public static final String PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT = "PublisherPublicKeyDigest";
+ 	private static final long serialVersionUID = -1636681985247106846L;
+
+	public static final String PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT = "PublisherPublicKeyDigest";
 
     protected byte [] _publisherPublicKeyDigest;
     

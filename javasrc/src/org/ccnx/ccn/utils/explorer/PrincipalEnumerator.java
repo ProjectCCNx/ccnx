@@ -1,13 +1,11 @@
 package org.ccnx.ccn.utils.explorer;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.SortedSet;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.access.group.Group;

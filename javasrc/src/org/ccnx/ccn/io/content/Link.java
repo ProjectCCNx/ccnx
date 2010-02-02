@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.EnumSet;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
@@ -93,6 +94,23 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 			super(Link.class, true, firstBlock, handle);
 		}
 		
+		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher,
+				CCNFlowControl flowControl) throws ContentDecodingException,
+				IOException {
+			super(Link.class, true, name, publisher, flowControl);
+		}
+
+		public LinkObject(ContentObject firstBlock, CCNFlowControl flowControl)
+				throws ContentDecodingException, IOException {
+			super(Link.class, true, firstBlock, flowControl);
+		}
+
+		public LinkObject(ContentName name, Link data, PublisherPublicKeyDigest publisher,
+				KeyLocator keyLocator, CCNFlowControl flowControl)
+				throws IOException {
+			super(Link.class, true, name, data, publisher, keyLocator, flowControl);
+		}
+
 		public LinkObject(CCNEncodableObject<? extends Link> other) {
 			super(Link.class, other);
 		}
@@ -273,6 +291,33 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		result = prime * result
 				+ ((_targetName == null) ? 0 : _targetName.hashCode());
 		return result;
+	}
+	
+	/**
+	 * Return true if this link matches target on all fields where
+	 * target is non-null.
+	 * @param linkToMatch The specification of the values we want.
+	 * @return
+	 */
+	public boolean approximates(Link linkToMatch) {
+		if (null != _targetName) {
+			if (null == linkToMatch._targetName)
+				return false;
+			if (!linkToMatch._targetName.equals(_targetName))
+				return false;
+		}
+		if (null != _targetLabel) {
+			if (null == linkToMatch._targetLabel)
+				return false;
+			if (!linkToMatch._targetLabel.equals(_targetLabel))
+				return false;
+		}
+		if (null != _targetAuthenticator) {
+			if (null == linkToMatch._targetAuthenticator)
+				return false;
+			return _targetAuthenticator.approximates(linkToMatch._targetAuthenticator);
+		}
+		return true;
 	}
 
 	@Override
