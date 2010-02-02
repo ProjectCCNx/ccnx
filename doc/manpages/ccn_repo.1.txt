@@ -57,23 +57,23 @@ OPTIONS
      Allows for debugging a running repository through the supplied port.
 
 *-profile* 'profile_info'::
-     To be described.
+     Allows arbitrary system flags to the JVM for profiling or other uses.
 
 *-suspend*::
-     To be described.
+     Only useful in combination with '-debug'.  Suspends the daemon at startup.
 
 *-noshare*::
-     To be described.
+     Used to turn off Java sharing.  Needed for the vmvisual profiler.
 
 *-debug-flags* 'flags'::
-     To be described.
+     Used to set Java properties.  For the repository, using 'REPO_EXITDUMP' will cause the repository to write out its name tree on exit without requiring a dynamic signal.
 
 *-log*  'LEVEL'::
      Set the logging level. 'LEVEL' must be the an acceptable Java
      Logger level: either an integer or a level name (e.g. SEVERE).
 
 *-prefix* 'prefix'::
-     To be described.
+     Please note, this implementation is incomplete.  This allows you to set a single prefix for the repo namespace. The default is '/'.
 
 *-global* 'global_prefix'::
      Sets the global name prefix for the repository (NOT the content it stores).
