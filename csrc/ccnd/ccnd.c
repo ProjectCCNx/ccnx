@@ -1677,6 +1677,7 @@ clean_deamon(struct ccn_schedule *sched,
             (content->flags & CCN_CONTENT_ENTRY_PRECIOUS) == 0)
             remove_content(h, content);
     }
+    n = hashtb_n(h->content_tab);
     h->unsol->n = 0;
     if (h->min_stale <= h->max_stale) {
         /* clean out stale content next */
