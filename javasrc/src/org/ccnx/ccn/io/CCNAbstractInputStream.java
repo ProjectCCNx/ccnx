@@ -439,7 +439,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		System.out.print("have interests out for segments: [");
 		for(Interest i: _sentInterests)
 			System.out.print(" "+SegmentationProfile.getSegmentNumber(i.name()));
-		System.out.println("]");
+		System.out.println(" ]");
 		for(Interest i: _sentInterests)
 			System.out.println(i.name());
 		
