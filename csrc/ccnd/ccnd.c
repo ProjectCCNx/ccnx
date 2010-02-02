@@ -3264,7 +3264,7 @@ Bail:
         struct content_queue *q;
         n_matches = match_interests(h, content, &obj, NULL, face);
         if (res == HT_NEW_ENTRY && n_matches == 0 &&
-            (face->flags && CCN_FACE_GG) == 0) {
+            (face->flags & CCN_FACE_GG) == 0) {
             content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
             ccn_indexbuf_append_element(h->unsol, content->accession);
         }
