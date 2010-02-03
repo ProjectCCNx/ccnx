@@ -43,6 +43,7 @@
 #include "ccnd_private.h"
 
 #define CRLF "\r\n"
+#define NL   "\n"
 
 struct ccnd_stats {
     long total_interest_counts;
@@ -98,13 +99,13 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
     int port;
     
     nodebuf = ccn_charbuf_create();
-    ccn_charbuf_putf(b, "<h4>Faces</h4>");
+    ccn_charbuf_putf(b, "<h4>Faces</h4>" NL);
     ccn_charbuf_putf(b, "<ul>");
     for (i = 0; i < h->face_limit; i++) {
         struct face *face = h->faces_by_faceid[i];
         if (face != NULL && (face->flags & CCN_FACE_UNDECIDED) == 0) {
-            ccn_charbuf_putf(b, "<li>");
-            ccn_charbuf_putf(b, " <b>face:</b> %u <b>flags:</b> 0x%x",
+            ccn_charbuf_putf(b, " <li>");
+            ccn_charbuf_putf(b, "<b>face:</b> %u <b>flags:</b> 0x%x",
                              face->faceid, face->flags);
             ccn_charbuf_putf(b, " <b>pending:</b> %d",
                              face->pending_interests);
@@ -128,7 +129,7 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
                     ccn_charbuf_putf(b, " <b>remote:</b> %s:%d",
                                      node, port);
             }
-            ccn_charbuf_putf(b, "</li>");
+            ccn_charbuf_putf(b, "</li>" NL);
         }
     }
     ccn_charbuf_putf(b, "</ul>");
@@ -144,7 +145,7 @@ collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
     int res;
     struct ccn_charbuf *name = ccn_charbuf_create();
     
-    ccn_charbuf_putf(b, "<h4>Forwarding</h4>");
+    ccn_charbuf_putf(b, "<h4>Forwarding</h4>" NL);
     ccn_charbuf_putf(b, "<ul>");
     hashtb_start(h->nameprefix_tab, e);
     for (; e->data != NULL; hashtb_next(e)) {
@@ -154,22 +155,22 @@ collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
         if (res < 0)
             abort();
         if (0) {
-            ccn_charbuf_putf(b, "<li>");
+            ccn_charbuf_putf(b, " <li>");
             ccn_uri_append(b, name->buf, name->length, 1);
-            ccn_charbuf_putf(b, "</li>");
+            ccn_charbuf_putf(b, "</li>" NL);
         }
         for (f = ipe->forwarding; f != NULL; f = f->next) {
             if ((f->flags & CCN_FORW_ACTIVE) != 0) {
                 ccn_name_init(name);
                 res = ccn_name_append_components(name, e->key, 0, e->keysize);
-                ccn_charbuf_putf(b, "<li>");
+                ccn_charbuf_putf(b, " <li>");
                 ccn_uri_append(b, name->buf, name->length, 1);
                 ccn_charbuf_putf(b,
                                  " <b>face:</b> %u"
                                  " <b>flags:</b> 0x%x"
                                  " <b>expires:</b> %d",
                                  f->faceid, f->flags, f->expires);
-                ccn_charbuf_putf(b, "</li>");
+                ccn_charbuf_putf(b, "</li>" NL);
             }
         }
     }
@@ -203,15 +204,15 @@ collect_stats_html(struct ccnd_handle *h)
         "<style type='text/css'>"
         " p.header {color: white; background-color: blue} "
         "</style>"
-        "</head>"
+        "</head>" NL
         "<body>"
-        "<p class='header' width='100%%'>%s ccnd[%d] local port %s</p>"
+        "<p class='header' width='100%%'>%s ccnd[%d] local port %s</p>" NL
         "<div><b>Content items:</b> %llu accessioned,"
-        " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>"
+        " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
         "<div><b>Interests:</b> %d names,"
-        " %ld pending, %ld propagating, %ld noted</div>"
+        " %ld pending, %ld propagating, %ld noted</div>" NL
         "<div><b>Interest totals:</b> %lu accepted,"
-        " %lu dropped, %lu sent, %lu stuffed</div>",
+        " %lu dropped, %lu sent, %lu stuffed</div>" NL,
         un.nodename,
         pid,
         un.nodename,
@@ -230,7 +231,7 @@ collect_stats_html(struct ccnd_handle *h)
         h->interests_sent, h->interests_stuffed);
     if (0)
         ccn_charbuf_putf(b,
-                         "<div><b>Active faces and listeners:</b> %d</div>",
+                         "<div><b>Active faces and listeners:</b> %d</div>" NL,
                          hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
     collect_faces_html(h, b);
     collect_forwarding_html(h, b);
