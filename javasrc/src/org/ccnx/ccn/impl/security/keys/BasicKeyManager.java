@@ -408,11 +408,14 @@ public class BasicKeyManager extends KeyManager {
 		// for right now, just as a super-fast trick, use java serialization to get out minmal data necessary
 		if ((null == _keyStoreDirectory) || (null == _configurationFileName))  {
 			if (Log.isLoggable(Level.INFO)) {
-				Log.info("No configuration directory/file set, not loading.");
+				Log.info("loadValuesFromConfiguration: No configuration directory/file set, not loading.");
 			}
 			return true;
 		}
 		File configurationFile = new File(_keyStoreDirectory, _configurationFileName);
+		if (Log.isLoggable(Level.INFO)) {
+			Log.info("loadValuesFromConfiguration: attempting to load configuration from {0}", configurationFile.getAbsolutePath());
+		}
 		if (configurationFile.exists()) {
 			try {
 				ObjectInputStream input = new ObjectInputStream(new FileInputStream(configurationFile));
@@ -433,6 +436,10 @@ public class BasicKeyManager extends KeyManager {
 				throw new ConfigurationException("I/O error reading configuration file: " + configurationFile.getAbsolutePath(), e);
 			} catch (ClassNotFoundException e) {
 				throw new ConfigurationException("ClassNotFoundException deserializing configuration file: " + configurationFile.getAbsolutePath(), e);
+			}
+		} else {
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("loadValuesFromConfiguration: configuration file {0} does not exist.", configurationFile.getAbsolutePath());
 			}
 		}
 		

@@ -32,6 +32,7 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
@@ -154,7 +155,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	static {
 		// In Java 1.5, many of these require BouncyCastle. They are typically built in in 1.6.
 		_WrapAlgorithmMap.put("AES", "AESWRAPWITHPAD");
-		_WrapAlgorithmMap.put("RSA", "RSA/NONE/OAEPWithSHA-256AndMGF1Padding");
+		_WrapAlgorithmMap.put("RSA", "RSA/NONE/OAEPWithSHA256AndMGF1Padding");
 	}
 	
 	/*
@@ -350,7 +351,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			throw new NoSuchAlgorithmException("Null algorithm specified for key to be unwrapped!");
 		}
 		byte [] wki = wrappingKeyIdentifier(unwrapKey);
-		Log.finer("WrappedKey: unwrapping key wrapped with wrapping key ID {0}, incoming wrapping key digest {1} match? {2}",
+		Log.info("WrappedKey: unwrapping key wrapped with wrapping key ID {0}, incoming wrapping key digest {1} match? {2}",
 					DataUtils.printHexBytes(wrappingKeyIdentifier()), 
 					DataUtils.printHexBytes(wki),
 					Arrays.equals(wki, wrappingKeyIdentifier()));
@@ -372,8 +373,8 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		Key unwrappedKey = null;
 		Log.info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
 				wrapAlgorithmForKey(unwrapKey.getAlgorithm()));
-		Log.finer("unwrapKey: unwrapping {0} with {1}", this, DataUtils.printHexBytes(wrappingKeyIdentifier(unwrapKey)));
-		
+		Log.info("unwrapKey: unwrapping {0} with {1}", this, DataUtils.printHexBytes(wrappingKeyIdentifier(unwrapKey)));
+		Log.info("Is BC provider OK? " + KeyManager.checkDefaultProvider());
 		if (((null != wrapAlgorithm()) && (wrapAlgorithm().equalsIgnoreCase("AESWrapWithPad"))) || 
 							wrapAlgorithmForKey(unwrapKey.getAlgorithm()).equalsIgnoreCase("AESWrapWithPad")) {
 			unwrappedKey = AESUnwrapWithPad(unwrapKey, wrappedKeyAlgorithm, encryptedKey(), 0, encryptedKey().length);

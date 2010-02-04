@@ -21,15 +21,22 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.impl.support.DataUtils.Tuple;
+import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.protocol.ContentName;
 
-public class ccnprintlink {
+/**
+ * Command linke utility for making links. Currently does not take authenticator
+ * information, just target name.
+ * TODO add ability to specify authenticators
+ */
+public class ccnlink {
 
 	public static void usage() {
-		System.err.println("usage: ccnlink [-q] <link uri> [<link uri> ...]  (-q == quiet)");
+		System.err.println("usage: ccnlink [-q] [-r] <link uri> <link target uri> [-as <pathToKeystore> [-name <friendly name]] (-q == quiet, -r == raw)");
 	}
 	/**
 	 * @param args
@@ -37,33 +44,37 @@ public class ccnprintlink {
 	public static void main(String[] args) {
 		try {
 			
-			if (args.length < 1) {
-				usage();
-				return;
-			}
-			CCNHandle handle = CCNHandle.getHandle();
-			
 			int offset = 0;
 			if ((args.length > 1) && (args[0].equals("-q"))) {
 				Log.setDefaultLevel(Level.WARNING);
 				offset++;
 			}
-
-			ContentName linkName = null;
-			LinkObject linkObject = null;
-			for (int i=offset; i < args.length; ++i) {
-				try {
-				linkName = ContentName.fromURI(args[i]);
-				linkObject = new LinkObject(linkName, handle);
-				if (linkObject.available()) {
-					System.out.println("Link: " + linkObject);
-				} else {
-					System.out.println("No data available at " + linkName);
-				}
-				} catch (ContentDecodingException e) {
-					System.out.println(linkName + " is not a link: " + e.getMessage());
-				}
+			
+			SaveType type = SaveType.REPOSITORY;
+			if ((args.length-offset > 1) && (args[0].equals("-r"))) {
+				type = SaveType.RAW;	
+				offset++;
 			}
+
+			if (args.length-offset < 2) {
+				usage();
+				return;
+			}
+
+			ContentName linkName = ContentName.fromURI(args[offset++]);
+			ContentName targetName = ContentName.fromURI(args[offset++]);
+
+			Tuple<Integer, CCNHandle> tuple = CreateUserData.handleAs(args, offset);
+
+			// Can also use command line system properties and environment variables to
+			// point this handle to the correct user.
+			CCNHandle handle = ((null == tuple) || (null == tuple.second())) ? CCNHandle.getHandle() : tuple.second();
+
+			LinkObject theLink = new LinkObject(linkName, new Link(targetName), type, handle);
+			theLink.save();
+			theLink.close();
+			
+			System.out.println("Created link: " + theLink);
 			
 			handle.close();
 			handle.keyManager().close();

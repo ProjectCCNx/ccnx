@@ -195,6 +195,7 @@ struct face {
 #define CCN_FACE_NOSEND (1 << 8) /**< Don't send anymore */
 #define CCN_FACE_UNDECIDED (1 << 9) /**< Might not be talking ccn */
 #define CCN_FACE_PERMANENT (1 << 10) /**< No timeout for inactivity */
+#define CCN_FACE_CONNECTING (1 << 11) /**< Connect in progress */
 
 #define CCN_NOFACEID    (~0U)    /** denotes no face */
 
