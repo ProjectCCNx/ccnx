@@ -47,6 +47,7 @@ import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
@@ -1131,6 +1132,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) 
 			throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 
+		Log.info("getNodeKeyUsingInterposedACL: looking for an ACL above {0} but below {1}",
+				dataNodeName, AccessControlProfile.accessRoot(wrappingKeyName));
 		ACLObject nearestACL = findAncestorWithACL(dataNodeName);
 		
 		if (null == nearestACL) {
@@ -1288,15 +1291,16 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// it should be, and attempt to decrypt it from there.
 		NodeKey nk = null;
 		try {
-			Log.finer("getNodeKeyForObject: trying to get specific node key at {0}", wko.wrappedKey().wrappingKeyName());
+			Log.info("getNodeKeyForObject: trying to get specific node key at {0}", wko.wrappedKey().wrappingKeyName());
 			nk = getSpecificNodeKey(wko.wrappedKey().wrappingKeyName(), 
 										wko.wrappedKey().wrappingKeyIdentifier());
-			Log.finer("getNodeKeyForObject: got specific node key {0} at {1}", nk, wko.wrappedKey().wrappingKeyName());
+			Log.info("getNodeKeyForObject: got specific node key {0} at {1}", nk, wko.wrappedKey().wrappingKeyName());
 		} catch (AccessDeniedException ex) {
 			// ignore
+			Log.info("getNodeKeyForObject: ignoring access denied exception as we're gong to try harder: " + ex.getMessage());
 		}
 		if (null == nk) {
-			Log.finer("getNodeKeyForObject: trying to get node key using interposed ACL for {0}", wko.wrappedKey().wrappingKeyName());
+			Log.info("getNodeKeyForObject: trying to get node key using interposed ACL for {0}", wko.wrappedKey().wrappingKeyName());
 			// OK, we will have gotten an exception if the node key simply didn't exist
 			// there, so this means that we don't have rights to read it there.
 			// The only way we might have rights not visible from this link is if an
@@ -1310,9 +1314,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 				return null;
 			}
 		}
-		Log.finer("getNodeKeyForObject: retrieved stored node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), nk);
+		Log.info("getNodeKeyForObject: retrieved stored node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), nk);
 		NodeKey enk = nk.computeDescendantNodeKey(nodeName, nodeKeyLabel());
-		Log.finer("getNodeKeyForObject: computed effective node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), enk);
+		Log.info("getNodeKeyForObject: computed effective node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), enk);
 		return enk;
 	}
 	

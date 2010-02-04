@@ -563,9 +563,9 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		try {
 			_keyIDLock.readLock().lock();
-			Log.finer("KeyDirectory getUnwrappedKey: the directory has {0} wrapping keys.", _keyIDs.size());
+			Log.info("KeyDirectory getUnwrappedKey: the directory has {0} wrapping keys.", _keyIDs.size());
 			for (byte [] keyid : _keyIDs) {
-				Log.finer("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under a key whose id is {0}", 
+				Log.info("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under a key whose id is {0}", 
 						DataUtils.printHexBytes(keyid) );
 				if (_manager.hasKey(keyid)) {
 					// We have it, pull the block, unwrap the node key.
@@ -622,7 +622,7 @@ public class KeyDirectory extends EnumeratedNameList {
 				if (_manager.groupManager().haveKnownGroupMemberships()) {
 					try{
 						_principalsLock.readLock().lock();
-						Log.finer("KeyDirectory getUnwrappedKey: the directory has {0} principals.", _principals.size());
+						Log.info("KeyDirectory getUnwrappedKey: the directory has {0} principals.", _principals.size());
 						for (String principal : _principals.keySet()) {
 							if ((!_manager.groupManager().isGroup(principal)) || (!_manager.groupManager().amKnownGroupMember(principal))) {
 								// On this pass, only do groups that I think I'm a member of. Do them
