@@ -412,14 +412,17 @@ public class GroupAccessControlManager extends AccessControlManager {
 				ancestorACLObject = null;
 			}
 			nextParentName = parentName.parent();
+			Log.info("findAncestorWithACL: no ACL object at node {0}, looking next at {1}", parentName, nextParentName);
 			// stop looking once we're above our namespace, or if we've already checked the top level
 			if (nextParentName.count() < _namespace.count() || parentName.count() == 0) {
+				Log.info("findAncestorWithACL: giving up, namespace is {0}, no ACL found", _namespace);
 				break;
 			}
 			parentName = nextParentName;
 		}
 		if (null == ancestorACLObject) {
-			throw new IllegalStateException("No ACL available in ancestor tree for node : " + dataNodeName);
+			throw new IllegalStateException("No ACL available in ancestor tree for node : " + dataNodeName + " searched up to " + parentName + 
+					" out of namespace rooted at " + _namespace + ".");
 		}
 		Log.info("Found ACL for " + dataNodeName + " at ancestor :" + ancestorACLObject.getVersionedName());
 		return ancestorACLObject;
