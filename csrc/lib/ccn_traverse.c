@@ -48,7 +48,7 @@ struct ccn_traversal {
 #define EXCLUDE_HIGH 2
 #define MUST_VERIFY 4
 #define LOCAL_SCOPE 8
-#define ALLOW_STALE 0x10 // NYI
+#define ALLOW_STALE 0x10
 
 /* Prototypes */
 static int namecompare(const void *a, const void *b);
@@ -62,7 +62,7 @@ static enum ccn_upcall_res incoming_content(struct ccn_closure *selfp,
                                             enum ccn_upcall_kind kind,
                                             struct ccn_upcall_info *);
 static struct ccn_charbuf *ccn_charbuf_duplicate(struct ccn_charbuf *);
-static void answer_passive(struct ccn_charbuf *templ);
+static void answer_passive(struct ccn_charbuf *templ, int allow_stale);
 static void local_scope(struct ccn_charbuf *templ);
 
 /**
@@ -262,7 +262,7 @@ express_my_interest(struct ccn *h,
             append_Any_filter(templ);
         ccn_charbuf_append_closer(templ); /* </Exclude> */
     }
-    answer_passive(templ);
+    answer_passive(templ, (data->flags & ALLOW_STALE) != 0);
     if ((data->flags & LOCAL_SCOPE) != 0)
         local_scope(templ);
     ccn_charbuf_append_closer(templ); /* </Interest> */
@@ -340,16 +340,16 @@ ccn_charbuf_duplicate(struct ccn_charbuf *c)
 }
 
 /*
- * Append AnswerOriginKind=1 to partially constructed Interest, meaning
- * do not generate new content.
+ * Append AnswerOriginKind element to partially constructed Interest,
+ * requesting to not generate new content.
  */
 static void
-answer_passive(struct ccn_charbuf *templ)
+answer_passive(struct ccn_charbuf *templ, int allow_stale)
 {
-    ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-    ccn_charbuf_append(templ, "1", 1);
-    ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+    int aok = CCN_AOK_CS;
+    if (allow_stale)
+        aok |= CCN_AOK_STALE;
+    ccnb_tagged_putf(templ, CCN_DTAG_AnswerOriginKind, "%d", aok);
 }
 
 /*
