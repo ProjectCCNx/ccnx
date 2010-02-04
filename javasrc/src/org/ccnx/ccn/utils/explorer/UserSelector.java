@@ -50,14 +50,16 @@ public class UserSelector extends JDialog implements ActionListener {
 	private File _userConfigDir = null;
 	private GroupAccessControlManager _gacm = null;
 	private String [] _userNames;
+	private boolean _publishIdentity;
 	
-	public UserSelector(File userConfigDir, int numUsers, ContentName root) {
+	public UserSelector(File userConfigDir, int numUsers, ContentName root, boolean publishIdentity) {
 
 		super();
 		
 		_userConfigDir = userConfigDir;
 		_nbUsers = numUsers;
 		_root = root;
+		_publishIdentity = publishIdentity;
 		
 		_userNames = getUserNames(_userConfigDir);
 		if (_userNames.length > _nbUsers) {
@@ -122,24 +124,32 @@ public class UserSelector extends JDialog implements ActionListener {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: UserSelector -f <file directory for keystores> <user count>");
+		System.out.println("usage: UserSelector [-n] -f <file directory for keystores> <user count>");
 	}
 	
 	public static void main(String[] args) {
-		Log.setDefaultLevel(Level.WARNING);
+		Log.setDefaultLevel(Level.FINEST);
 		
-		if (args.length < 3) {
+		boolean publish = true;
+		
+		int offset = 0;
+		if ((args.length > 1) && (args[offset].equals("-n"))) {
+			publish = false;
+			offset++;
+		}
+		
+		if (args.length-offset < 3) {
 			usage();
 			return;
 		}
 		
-		if (! args[0].equals("-f")) {
+		if (! args[offset++].equals("-f")) {
 			usage();
 			return;
 		}
 		
-		File userConfigDirBase = new File(args[1]);
-		int nbUsers = Integer.parseInt(args[2]);
+		File userConfigDirBase = new File(args[offset++]);
+		int nbUsers = Integer.parseInt(args[offset++]);
 				
 		ContentName root = null;
 		try {
@@ -148,7 +158,7 @@ public class UserSelector extends JDialog implements ActionListener {
 			e.printStackTrace();
 		}
 		
-		new UserSelector(userConfigDirBase, nbUsers, root);		
+		new UserSelector(userConfigDirBase, nbUsers, root, publish);		
 	}
 	
 	private void setUser(String userName) {		
@@ -169,11 +179,13 @@ public class UserSelector extends JDialog implements ActionListener {
 			ContentName baseNode = ContentName.fromNative("/");
 			CCNHandle handle = CCNHandle.open();
 			_gacm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, handle);
-			// Have to publish the user first, otherwise we can't make a root acl...
+			// Have to the user first, otherwise we can't make a root acl...
 			
 			System.out.println("Setting user: " + userName);
 			ContentName myIdentity = ContentName.fromNative(userStorage, userName);
-			_gacm.publishMyIdentity(myIdentity, handle.keyManager().getDefaultPublicKey());
+			if (_publishIdentity) {
+				_gacm.publishMyIdentity(myIdentity, handle.keyManager().getDefaultPublicKey());
+			}
 			System.out.println(myIdentity);
 			System.out.println(_gacm.haveIdentity(myIdentity));
 			
