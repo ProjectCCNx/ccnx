@@ -35,6 +35,7 @@ $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 CCND_OBJ = ccnd_main.o ccnd.o ccnd_msg.o ccnd_stats.o ccnd_internal_client.o
 ccnd: $(CCND_OBJ) 
 	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+        @test -x ./build_ccnd_wrapper && ./build_ccnd_wrapper || :
 
 ccnd-init-keystore-helper: ccnd-init-keystore-helper.sh
 	sed -e 's@/bin/sh@'`which sh`'@g' ccnd-init-keystore-helper.sh > $@
