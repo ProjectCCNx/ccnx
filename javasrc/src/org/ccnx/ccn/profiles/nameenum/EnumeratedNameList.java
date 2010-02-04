@@ -455,12 +455,14 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @throws IOException 
 	 */
 	public static EnumeratedNameList exists(ContentName childName, ContentName prefixKnownToExist, CCNHandle handle) throws IOException {
+		Log.finer("EnumeratedNameList.exists: the prefix known to exist is {0} and we are looking for childName {1}", prefixKnownToExist, childName);
 		if ((null == prefixKnownToExist) || (null == childName) || (!prefixKnownToExist.isPrefixOf(childName))) {
-			Log.info("Child " + childName + " must be prefixed by name " + prefixKnownToExist);
+			Log.info("EnumeratedNameList.exists: Child " + childName + " must be prefixed by name " + prefixKnownToExist);
 			throw new IllegalArgumentException("Child " + childName + " must be prefixed by name " + prefixKnownToExist);
 		}
 		if (childName.count() == prefixKnownToExist.count()) {
 			// we're already there
+			Log.finer("EnumeratedNameList.exists: we're already there.");
 			return new EnumeratedNameList(childName, handle);
 		}
 		ContentName parentName = prefixKnownToExist;
@@ -469,19 +471,23 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		while (childIndex < childName.count()) {
 			byte[] childNameComponent = childName.component(childIndex);
 			parentEnumerator = new EnumeratedNameList(parentName, handle);
+			Log.finer("EnumeratedNameList.exists: enumerating the parent name {0}", parentName);
 			parentEnumerator.waitForChildren(SystemConfiguration.CHILD_WAIT_INTERVAL);
 			while (! parentEnumerator.hasChild(childNameComponent)) {
 				if (! parentEnumerator.waitForNewChildren(SystemConfiguration.CHILD_WAIT_INTERVAL)) break;
 			}
 			if (parentEnumerator.hasChild(childNameComponent)) {
+				Log.finer("EnumeratedNameList.exists: the parent enumerator {0} has children.", parentName);
 				childIndex++;
 				if (childIndex == childName.count()) {
+					Log.finer("EnumeratedNameList.exists: we found the childName we were looking for: {0}", childName);
 					return parentEnumerator;
 				}
 				parentEnumerator.stopEnumerating();
 				parentName = new ContentName(parentName, childNameComponent);
 				continue;
 			} else {
+				Log.finer("EnumeratedNameList.exists: the parent enumerator {0} has no children.", parentName);
 				break;
 			}
 		}
