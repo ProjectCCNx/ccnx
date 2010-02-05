@@ -651,7 +651,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					try{
 							_principalsLock.readLock().lock();
 							for (String principal : _principals.keySet()) {
-								Log.finer("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under the key of principal {0}", 
+								Log.info("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under the key of principal {0}", 
 										principal);
 								if ((!_manager.groupManager().isGroup(principal)) || (_manager.groupManager().amKnownGroupMember(principal))) {
 									// On this pass, only do groups that I don't think I'm a member of.
@@ -673,7 +673,7 @@ public class KeyDirectory extends EnumeratedNameList {
 										continue;
 									}
 								}
-								else Log.finer("KeyDirectory getUnwrappedKey: I am not a member of group {0} ", principal);
+								else Log.info("KeyDirectory getUnwrappedKey: I am not a member of group {0} ", principal);
 							}
 					} finally {
 						_principalsLock.readLock().unlock();
