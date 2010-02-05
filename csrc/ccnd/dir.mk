@@ -33,9 +33,12 @@ all: default $(BROKEN_PROGRAMS)
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
 CCND_OBJ = ccnd_main.o ccnd.o ccnd_msg.o ccnd_stats.o ccnd_internal_client.o
-ccnd: $(CCND_OBJ) 
+ccnd: $(CCND_OBJ) ccnd_built.sh
 	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
-        @test -x ./build_ccnd_wrapper && ./build_ccnd_wrapper || :
+	sh ./ccnd_built.sh
+
+ccnd_built.sh:
+	touch ccnd_built.sh
 
 ccnd-init-keystore-helper: ccnd-init-keystore-helper.sh
 	sed -e 's@/bin/sh@'`which sh`'@g' ccnd-init-keystore-helper.sh > $@
