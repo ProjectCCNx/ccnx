@@ -74,7 +74,7 @@ public class SystemConfiguration {
 	 * Default is 1000ms
 	 */
 	protected static final String CHILD_WAIT_INTERVAL_PROPERTY = "org.ccnx.EnumList.WaitInterval";
-	public static int CHILD_WAIT_INTERVAL = 1000;
+	public static int CHILD_WAIT_INTERVAL = 10000;
 	
 	
 	/**
