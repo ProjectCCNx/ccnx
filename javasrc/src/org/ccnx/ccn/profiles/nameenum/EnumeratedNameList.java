@@ -477,7 +477,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 				if (! parentEnumerator.waitForNewChildren(SystemConfiguration.CHILD_WAIT_INTERVAL)) break;
 			}
 			if (parentEnumerator.hasChild(childNameComponent)) {
-				Log.info("EnumeratedNameList.exists: the parent enumerator {0} has children.", parentName);
+				Log.info("EnumeratedNameList.exists: we have a matching child to {0} and the parent enumerator {1} has {2} children.", 
+						ContentName.componentPrintURI(childNameComponent), parentName, parentEnumerator.childCount());
 				childIndex++;
 				if (childIndex == childName.count()) {
 					Log.info("EnumeratedNameList.exists: we found the childName we were looking for: {0}", childName);
@@ -487,7 +488,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 				parentName = new ContentName(parentName, childNameComponent);
 				continue;
 			} else {
-				Log.info("EnumeratedNameList.exists: the parent enumerator {0} has no children.", parentName);
+				Log.info("EnumeratedNameList.exists: the parent enumerator {0} has {1} children but none of them are {2}.", 
+						parentName, parentEnumerator.childCount(), ContentName.componentPrintURI(childNameComponent));
 				break;
 			}
 		}
