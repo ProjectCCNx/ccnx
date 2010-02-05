@@ -20,6 +20,7 @@ package org.ccnx.ccn.protocol;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
@@ -222,19 +223,22 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			int nameCount = name.count();
 			int lengthDiff = nameCount + (digestIncluded?0:1) - name().count();
 			if (null != maxSuffixComponents() && lengthDiff > maxSuffixComponents()) {
-				Log.fine("Interest match failed: " + lengthDiff + " more than the " + maxSuffixComponents() + " components between expected " +
-						name() + " and tested " + name);
+				if (Log.isLoggable(Level.FINE))
+					Log.fine("Interest match failed: " + lengthDiff + " more than the " + maxSuffixComponents() + " components between expected " +
+							name() + " and tested " + name);
 				return false;
 			}
 			if (null != minSuffixComponents() && lengthDiff < minSuffixComponents()) {
-				Log.fine("Interest match failed: " + lengthDiff + " less than the " + minSuffixComponents() + " components between expected " +
-						name() + " and tested " + name);
+				if (Log.isLoggable(Level.FINEST))
+					Log.fine("Interest match failed: " + lengthDiff + " less than the " + minSuffixComponents() + " components between expected " +
+							name() + " and tested " + name);
 				return false;
 			}
 		}
 		if (null != exclude()) {
 			if (exclude().match(name.component(name().count()))) {
-				Log.finest("Interest match failed. " + name + " has been excluded");
+				if (Log.isLoggable(Level.FINEST))
+					Log.finest("Interest match failed. " + name + " has been excluded");
 				return false;
 			}
 		}
@@ -245,10 +249,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			}
 			// Should this be more general?
 			// TODO DKS handle issuer
-			Log.finest("Interest match handed off to trust manager for name: " + name);
+			if (Log.isLoggable(Level.FINEST))
+				Log.finest("Interest match handed off to trust manager for name: " + name);
 			return TrustManager.getTrustManager().matchesRole(publisherID(), resultPublisherKeyID);
-		} 
-		Log.finest("Interest match succeeded to name: " + name);
+		}
+		if (Log.isLoggable(Level.FINEST))
+			Log.finest("Interest match succeeded to name: " + name);
 		return true;
 	}
 	
