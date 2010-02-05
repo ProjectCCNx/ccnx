@@ -78,6 +78,14 @@ public class SystemConfiguration {
 	
 	
 	/**
+	 * Pipeline size for pipeline in CCNAbstractInputStream
+	 * Default is 4
+	 */
+	protected static final String PIPELINE_SIZE_PROPERTY = "org.ccnx.PipelineSize";
+	protected static final String PIPELINE_SIZE_ENV_VAR = "JAVA_PIPELINE_SIZE";
+	public static int PIPELINE_SIZE = 4;
+	
+	/**
 	 * System operation timeout. Very long timeout used to wait for system events
 	 * such as stopping Daemons.
 	 */
@@ -211,13 +219,24 @@ public class SystemConfiguration {
 	static {
 		// Allow override of default enumerated name list child wait timeout.
 		try {
-		CHILD_WAIT_INTERVAL = Integer.parseInt(System.getProperty(CHILD_WAIT_INTERVAL_PROPERTY, "1000"));
+			CHILD_WAIT_INTERVAL = Integer.parseInt(System.getProperty(CHILD_WAIT_INTERVAL_PROPERTY, "1000"));
 		} catch (NumberFormatException e) {
 			System.err.println("The ChildWaitInterval must be an integer.");
 			throw e;
 		}
 	}
 
+	static {
+		// Allow override of default pipeline size for CCNAbstractInputStream
+		try {
+			PIPELINE_SIZE = Integer.parseInt(retrievePropertyOrEvironmentVariable(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
+			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
+		} catch (NumberFormatException e) {
+			System.err.println("The PipelineSize must be an integer.");
+			throw e;
+		}
+	}
+	
 
 	public static String getLocalHost() {
 //		InetAddress.getLocalHost().toString(),

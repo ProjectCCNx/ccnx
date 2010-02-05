@@ -17,6 +17,7 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.CCNTestHelper;
@@ -97,6 +98,9 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		}
 		Log.info("Finished writing, read result {0}, write result {1}", DataUtils.printHexBytes(resultDigest), DataUtils.printHexBytes(writeDigest));
 		Assert.assertArrayEquals(resultDigest, writeDigest);
+		
+		readHandle.close();
+		writeHandle.close();
 	}
 	
 	public static byte [] readFile(InputStream inputStream) throws IOException {
@@ -160,6 +164,12 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 	
 	public int handleInterests(ArrayList<Interest> interests) {
 		Interest interest = interests.get(0);
+		if(interest.exclude()!=null && !interest.exclude().empty()) {
+			Log.info("this interest is probably a gLV interest, this is what we are looking for");
+		} else {
+			Log.info("this is not a gLV interest, dropping");
+			return 0;
+		}
 		// we only deal with the first interest, at least for now
 		if (null != writer) {
 			Log.info("handleInterests: already writing stream, ignoring interest {0} of set of {1}", interest, interests.size());
