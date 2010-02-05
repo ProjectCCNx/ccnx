@@ -134,7 +134,7 @@ public class CCNNetworkManager implements Runnable {
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
-	public static final boolean DEFAULT_PREFIX_REG = false; // Until ccnd gets updated
+	public static final boolean DEFAULT_PREFIX_REG = true;
 	protected boolean _usePrefixReg = DEFAULT_PREFIX_REG;
 	protected PrefixRegistrationManager _prefixMgr = null;
 	private Timer _periodicTimer = null;
@@ -675,8 +675,6 @@ public class CCNNetworkManager implements Runnable {
 		} else {
 			_protocol = DEFAULT_PROTOCOL;
 		}
-
-		_usePrefixReg = true;
 
 		if( Log.isLoggable(Level.INFO) )
 			Log.info("Contacting CCN agent at " + _host + ":" + _port);
