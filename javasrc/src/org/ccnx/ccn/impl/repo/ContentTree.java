@@ -586,7 +586,7 @@ public class ContentTree {
 				}
 			} else {
 				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-					Log.info("the new version doesn't match, no response needed: interest = {0} would be collection name: {1}", interest, potentialCollectionName);
+					Log.finer("the new version doesn't match, no response needed: interest = {0} would be collection name: {1}", interest, potentialCollectionName);
 				}
 				parent.interestFlag = true;
 				return null;

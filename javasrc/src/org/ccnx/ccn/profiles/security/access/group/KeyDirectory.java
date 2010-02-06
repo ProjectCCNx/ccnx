@@ -563,9 +563,9 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		try {
 			_keyIDLock.readLock().lock();
-			Log.finer("KeyDirectory getUnwrappedKey: the directory has {0} wrapping keys.", _keyIDs.size());
+			Log.info("KeyDirectory getUnwrappedKey: the directory has {0} wrapping keys.", _keyIDs.size());
 			for (byte [] keyid : _keyIDs) {
-				Log.finer("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under a key whose id is {0}", 
+				Log.info("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under a key whose id is {0}", 
 						DataUtils.printHexBytes(keyid) );
 				if (_manager.hasKey(keyid)) {
 					// We have it, pull the block, unwrap the node key.
@@ -622,7 +622,7 @@ public class KeyDirectory extends EnumeratedNameList {
 				if (_manager.groupManager().haveKnownGroupMemberships()) {
 					try{
 						_principalsLock.readLock().lock();
-						Log.finer("KeyDirectory getUnwrappedKey: the directory has {0} principals.", _principals.size());
+						Log.info("KeyDirectory getUnwrappedKey: the directory has {0} principals.", _principals.size());
 						for (String principal : _principals.keySet()) {
 							if ((!_manager.groupManager().isGroup(principal)) || (!_manager.groupManager().amKnownGroupMember(principal))) {
 								// On this pass, only do groups that I think I'm a member of. Do them
@@ -651,7 +651,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					try{
 							_principalsLock.readLock().lock();
 							for (String principal : _principals.keySet()) {
-								Log.finer("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under the key of principal {0}", 
+								Log.info("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under the key of principal {0}", 
 										principal);
 								if ((!_manager.groupManager().isGroup(principal)) || (_manager.groupManager().amKnownGroupMember(principal))) {
 									// On this pass, only do groups that I don't think I'm a member of.
@@ -673,7 +673,7 @@ public class KeyDirectory extends EnumeratedNameList {
 										continue;
 									}
 								}
-								else Log.finer("KeyDirectory getUnwrappedKey: I am not a member of group {0} ", principal);
+								else Log.info("KeyDirectory getUnwrappedKey: I am not a member of group {0} ", principal);
 							}
 					} finally {
 						_principalsLock.readLock().unlock();
