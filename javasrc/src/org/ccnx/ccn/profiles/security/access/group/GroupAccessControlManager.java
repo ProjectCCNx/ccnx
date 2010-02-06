@@ -417,7 +417,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 			nextParentName = parentName.parent();
 			Log.info("findAncestorWithACL: no ACL object at node {0}, looking next at {1}", parentName, nextParentName);
 			// stop looking once we're above our namespace, or if we've already checked the top level
-			if (nextParentName.count() < _namespace.count() || parentName.count() == 0) {
+//			if (nextParentName.count() < _namespace.count() || parentName.count() == 0) {
+			if (parentName.count() == 0) {
 				Log.info("findAncestorWithACL: giving up, namespace is {0}, no ACL found", _namespace);
 				break;
 			}
