@@ -28,6 +28,7 @@ import java.util.LinkedList;
 
 import javax.crypto.spec.SecretKeySpec;
 
+import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -54,6 +55,7 @@ import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
@@ -460,7 +462,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 */
 	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) throws ContentDecodingException, IOException {
 		
-		EnumeratedNameList aclNameList = EnumeratedNameList.exists(GroupAccessControlProfile.aclName(aclNodeName), aclNodeName, handle());
+//		EnumeratedNameList aclNameList = EnumeratedNameList.exists(GroupAccessControlProfile.aclName(aclNodeName), aclNodeName, handle());
+		ContentObject aclNameList = VersioningProfile.getLatestVersion(GroupAccessControlProfile.aclName(aclNodeName), 
+				null, SystemConfiguration.MEDIUM_TIMEOUT, handle().defaultVerifier(), handle()); 
 		
 		if (null != aclNameList) {
 			ContentName aclName = new ContentName(GroupAccessControlProfile.aclName(aclNodeName));
