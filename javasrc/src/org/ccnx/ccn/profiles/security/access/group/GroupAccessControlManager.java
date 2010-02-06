@@ -1146,7 +1146,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 			return null;
 		}
 		
-		if (nearestACL.equals(GroupAccessControlProfile.accessRoot(wrappingKeyName))) {
+		if (GroupAccessControlProfile.accessRoot(nearestACL.getBaseName()).equals(GroupAccessControlProfile.accessRoot(wrappingKeyName))) {
 			Log.info("Node key: " + wrappingKeyName + " is the nearest ACL to " + dataNodeName);
 			return null;
 		}
