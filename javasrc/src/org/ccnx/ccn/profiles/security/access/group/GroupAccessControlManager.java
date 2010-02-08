@@ -892,8 +892,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		if (co != null) {
 			nodeKeyVersionedName = co.name().subname(0, nodeKeyPrefix.count() + 1);
 			Log.fine("getLatestNodeKeyForNode: {0} is the latest version found for {1}.", nodeKeyVersionedName, nodeName);
-		}
-		else {
+		} else {
 			Log.fine("getLatestNodeKeyForNode: no latest version found for {0}.", nodeName);
 		}
  			
