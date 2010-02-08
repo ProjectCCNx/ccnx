@@ -47,6 +47,8 @@ import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.search.Pathfinder;
+import org.ccnx.ccn.profiles.search.Pathfinder.SearchResults;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
@@ -395,31 +397,63 @@ public class GroupAccessControlManager extends AccessControlManager {
 	public ACLObject getEffectiveACLObject(ContentName nodeName) throws ContentDecodingException, IOException {
 		
 		// Find the closest node that has a non-gone ACL
-		ACLObject aclo = findAncestorWithACL(nodeName);
+		ACLObject aclo = findAncestorWithACL(nodeName, null);
 		if (null == aclo) {
 			Log.warning("Unexpected: cannot find an ancestor of node " + nodeName + " that has an ACL.");
 			throw new IOException("Unexpected: cannot find an ancestor of node " + nodeName + " that has an ACL.");	
 		}
 		return aclo;
 	}
+	
+	private ACLObject findAncestorWithACL(ContentName dataNodeName, ContentName stopPoint) throws ContentDecodingException, IOException {
+		// selector method, remove when pick faster one.
+		return findAncestorWithACLSerial(dataNodeName, stopPoint);
+	}
 
-	private ACLObject findAncestorWithACL(ContentName dataNodeName) throws ContentDecodingException, IOException {
+	/**
+	 * Look for an ACL that is on dataNodeName or above, but below stopPoint. If stopPoint is
+	 * null, then take it to be the root for this AccessControlManager (which we assume to have
+	 * an ACL).
+	 * @param dataNodeName
+	 * @param stopPoint
+	 * @return
+	 * @throws ContentDecodingException
+	 * @throws IOException
+	 */
+	private ACLObject findAncestorWithACLSerial(ContentName dataNodeName, ContentName stopPoint) throws ContentDecodingException, IOException {
 
+		if (null == stopPoint)  {
+			stopPoint = getNamespaceRoot();
+		} else if (!getNamespaceRoot().isPrefixOf(stopPoint)) {
+			Log.warning("findAncestorWithACL: Stopping point {0} must be an ancestor of the starting point {1}!", 
+					stopPoint, dataNodeName);
+			throw new IOException("findAncestorWithACL: invalid search space: stopping point " + stopPoint + " must be an ancestor of the starting point " +
+					dataNodeName + "!");
+		}
+		Log.info("findAncestorWithACL: start point {0}, stop before {1}", dataNodeName, stopPoint);
+		int stopCount = stopPoint.count();
+		
 		ACLObject ancestorACLObject = null;
 		ContentName parentName = dataNodeName;
 		ContentName nextParentName = null;
 		while (null == ancestorACLObject) {
 			ancestorACLObject = getACLObjectForNodeIfExists(parentName);
-			if ((null != ancestorACLObject) && (ancestorACLObject.isGone())) {
-				Log.info("Found an ACL object at " + ancestorACLObject.getVersionedName() + " but its GONE.");
-				ancestorACLObject = null;
+			if (null != ancestorACLObject) {
+				if (ancestorACLObject.isGone()) {
+					Log.info("Found an ACL object at " + ancestorACLObject.getVersionedName() + " but its GONE.");
+					ancestorACLObject = null;
+				} else {
+					// got one
+					Log.info("Found an ACL object at " + ancestorACLObject.getVersionedName());
+					break;
+				}
 			}
 			nextParentName = parentName.parent();
 			Log.info("findAncestorWithACL: no ACL object at node {0}, looking next at {1}", parentName, nextParentName);
 			// stop looking once we're above our namespace, or if we've already checked the top level
-//			if (nextParentName.count() < _namespace.count() || parentName.count() == 0) {
-			if (parentName.count() == 0) {
-				Log.info("findAncestorWithACL: giving up, namespace is {0}, no ACL found", _namespace);
+			if (parentName.count() == stopCount) {
+				Log.info("findAncestorWithACL: giving up, next search point would be {0}, stop point is {1}, no ACL found",
+						parentName, stopPoint);
 				break;
 			}
 			parentName = nextParentName;
@@ -430,6 +464,37 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		Log.info("Found ACL for " + dataNodeName + " at ancestor :" + ancestorACLObject.getVersionedName());
 		return ancestorACLObject;
+	}
+	
+	/**
+	 * Implement a parallel findAncestorWithACL; drop it in separately so we can 
+	 * switch back and forth in testing.
+	 */
+	private ACLObject findAncestorWithACLInParallel(ContentName dataNodeName, ContentName stopPoint) throws ContentDecodingException, IOException {
+
+		if (null == stopPoint)  {
+			stopPoint = getNamespaceRoot();
+		} else if (!getNamespaceRoot().isPrefixOf(stopPoint)) {
+			Log.warning("findAncestorWithACLInParallel: Stopping point {0} must be an ancestor of the starting point {1}!", 
+					stopPoint, dataNodeName);
+			throw new IOException("findAncestorWithACLInParallel: invalid search space: stopping point " + stopPoint + " must be an ancestor of the starting point " +
+					dataNodeName + "!");
+		}
+		Log.info("findAncestorWithACLInParallel: start point {0}, stop before {1}", dataNodeName, stopPoint);
+		int stopCount = stopPoint.count();
+		
+		// Pathfinder searches from start point to stop point inclusive, want exclusive, so hand
+		// it one level down from stop point.
+		Pathfinder pathfinder = new Pathfinder(dataNodeName, dataNodeName.cut(stopCount+1), 
+				GroupAccessControlProfile.aclPostfix(), true, false, SystemConfiguration.MEDIUM_TIMEOUT,
+				null, handle());
+		
+		SearchResults searchResults = pathfinder.waitForResults();
+		if (null != searchResults.first()) {
+			Log.info("findAncestorWithACLInParallel: found " + searchResults.first().name());
+			return new ACLObject(searchResults.first(), handle());
+		}
+		return null;
 	}
 
 	/**
@@ -789,7 +854,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 					ContentDecodingException, IOException, NoSuchAlgorithmException {
 		// climb up looking for node keys, then make sure that one isn't GONE
 		// if it isn't, call read-side routine to figure out how to decrypt it
-		ACLObject effectiveACL = findAncestorWithACL(nodeName);
+		ACLObject effectiveACL = findAncestorWithACL(nodeName, null);
 		if (null == effectiveACL) {
 			Log.warning("Unexpected: could not find effective ACL for node: " + nodeName);
 			throw new IOException("Unexpected: could not find effective ACL for node: " + nodeName);
@@ -1139,9 +1204,10 @@ public class GroupAccessControlManager extends AccessControlManager {
 			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) 
 			throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 
+		ContentName stopPoint = AccessControlProfile.accessRoot(wrappingKeyName);
 		Log.info("getNodeKeyUsingInterposedACL: looking for an ACL above {0} but below {1}",
-				dataNodeName, AccessControlProfile.accessRoot(wrappingKeyName));
-		ACLObject nearestACL = findAncestorWithACL(dataNodeName);
+				dataNodeName, stopPoint);
+		ACLObject nearestACL = findAncestorWithACL(dataNodeName, stopPoint);
 		
 		if (null == nearestACL) {
 			Log.warning("Unexpected -- node with no ancestor ACL: " + dataNodeName);
