@@ -26,12 +26,14 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.profiles.namespace.NamespaceManager;
+import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.profiles.security.TestUserData;
+import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -57,7 +59,7 @@ public class GroupTestRepo {
 	 * Have to make a bunch of users.
 	 * @throws Exception
 	 */
-	static TestUserData users = null;
+	static CreateUserData users = null;
 	static CCNHandle userHandle = null;
 	static GroupAccessControlManager _acm = null;
 	static GroupManager _gm = null;
@@ -82,7 +84,7 @@ public class GroupTestRepo {
 			userHandle = _handle;
 	
 			
-			users = new TestUserData(userKeyStorePrefix, NUM_USERS,
+			users = new CreateUserData(userKeyStorePrefix, NUM_USERS,
 					USE_REPO,
 					USER_PASSWORD, userHandle);
 			users.publishUserKeysToRepository(userNamespace);
@@ -90,6 +92,17 @@ public class GroupTestRepo {
 			_acm = new GroupAccessControlManager(testStorePrefix, groupStore, userNamespace);
 			_acm.publishMyIdentity(ContentName.fromNative(userKeyStorePrefix, myUserName), KeyManager.getDefaultKeyManager().getDefaultPublicKey());
 			_userList = users.friendlyNames().toArray(new String[0]);
+			
+			// create the root ACL
+			// myUserName is a manager
+			Link lk = new Link(ContentName.fromNative(userNamespace, myUserName), ACL.LABEL_MANAGER, null);
+			ArrayList<Link> rootACLcontents = new ArrayList<Link>();
+			rootACLcontents.add(lk);
+			ACL rootACL = new ACL(rootACLcontents);
+			_acm.initializeNamespace(rootACL);
+			
+			NamespaceManager.registerACM(_acm);
+			
 			_gm = _acm.groupManager();
 			
 			_random = new Random();

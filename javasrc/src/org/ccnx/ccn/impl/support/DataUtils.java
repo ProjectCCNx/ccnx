@@ -38,6 +38,7 @@ public class DataUtils {
 	
 	public static final int BITS_PER_BYTE = 8;
 	public static final String EMPTY = "";	
+	public static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
 	/**
 	 * Useful when we move over to 1.6, and can avoid UnsupportedCharsetExceptions this way.
@@ -90,7 +91,12 @@ public class DataUtils {
 	}
 	
 	/**
-	 * Perform a lexigraphical comparison of byte arrays in canonical CCN ordering
+	 * Perform a shortlex comparison of byte arrays in canonical CCN ordering.
+	 * Shortlex ordering is ordering by cardinality, then by lexigraphic.
+	 * 
+	 * MM - This method should really be renamed to "shortlex" or something
+	 * other than "compare", unless it is needed for an Override name.
+	 * 
 	 * @param left
 	 * @param right
 	 * @return < 0 if left comes before right, 0 if they are equal, > 0 if left comes after right
@@ -130,6 +136,9 @@ public class DataUtils {
 	}
 	
 	/**
+	 * This is not like compare(byte[], byte[]).  That is shortlex.  This
+	 * is an actual lexigraphic ordering based on the shortlex compare
+	 * of each byte array.
 	 * @see compare(byte[], byte[])
 	 */
 	public static int compare(ArrayList<byte []> left, ArrayList<byte []> right) {
@@ -204,7 +213,57 @@ public class DataUtils {
 	public static byte [] base64Encode(byte [] input) {
 		return Base64.encode(input);
 	}
+	
+	public static final int LINELEN = 64;
 
+	public static String base64Encode(byte [] input, Integer lineLength) {
+		byte [] encodedBytes = base64Encode(input);
+		return lineWrap(DataUtils.getUTF8StringFromBytes(encodedBytes), LINELEN);
+	}
+	
+	public static byte [] lineWrapBase64(byte [] input, int lineLength) {
+		int finalLen = input.length + 2*(input.length/lineLength) + 3;
+		byte output[] = new byte[finalLen];
+		// add line breaks
+		int outidx = 0;
+		int inidx = 0;
+		while (inidx < input.length) {
+			output[outidx] = input[inidx];
+			outidx++;
+			inidx++;
+			if ((inidx % lineLength) == 0) {
+				output[outidx++] = (byte)0x0D;
+				output[outidx++] = (byte)0x0A;
+			}
+		}
+		output[outidx]='\0';
+		return (output);
+
+	}
+	
+	/**
+	 * @param inputString
+	 * @param lineLength
+	 * @return
+	 */
+	public static String lineWrap(String inputString, int lineLength) {
+		if ((null == inputString) || (inputString.length() <= lineLength)) {
+			return inputString;
+		}
+		
+		StringBuffer line = new StringBuffer(inputString);
+		
+		int length = inputString.length();
+		int sepLen = LINE_SEPARATOR.length();
+		int index = lineLength - sepLen;
+		while (index < length - sepLen) {
+			line.insert(index, LINE_SEPARATOR);
+			index += lineLength;
+			length += sepLen;
+		}
+		return line.toString();
+	}
+ 
 	/**
 	 * byte array compare
 	 * @param left
@@ -241,9 +300,17 @@ public class DataUtils {
 		if (right == null) {
 			return ((left == null) ? true : false);
 		}
-		if (left.length < length || right.length < length)
-			return false;
-		for (int i = 0; i < length; i++) {
+		
+		// If one of left or right is shorter than length, arrays
+		// must be same length to be equal.
+		if( left.length < length || right.length < length )
+			if( left.length != right.length )
+				return false;
+		
+		int minarray = (left.length < right.length) ? left.length : right.length;
+		int minlen   = (length < minarray) ? length : minarray;
+		
+		for (int i = 0; i < minlen; i++) {
 			if (left[i] != right[i])
 				return false;
 		}

@@ -33,7 +33,7 @@ ccn_xmltoccnb -w - <<EOF >destroyface.ccnb
 EOF
 
 # The name does not matter for the request, but make it unique.
-REQNAME=`openssl dgst -sha1 < destroyface.ccnb`
+REQNAME=`openssl dgst -sha1 destroyface.ccnb | sed -e 's/^.*=[ ]*//'`
 
 cat destroyface.ccnb | ccnput -x 30 /$REQNAME
 

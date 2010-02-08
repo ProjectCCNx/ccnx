@@ -31,7 +31,7 @@ public class UserConfiguration {
 	/**
 	 * Our eventual configuration file location.
 	 */
-	protected static final String USER_CONFIG_FILE = "ccnx_config.xml";
+	protected static final String DEFAULT_CONFIGURATION_FILE_NAME = "ccnx_config.bin";
 
 	
 	protected static final String DEFAULT_KEYSTORE_FILE_NAME = ".ccnx_keystore";
@@ -123,6 +123,14 @@ public class UserConfiguration {
 	protected static final String CCNX_KEYSTORE_PASSWORD_ENVIRONMENT_VARIABLE = "CCNX_KEYSTORE_PASSWORD";
 
 	/**
+	 * Property and variable to set the keystore file name to something other than the default ccnx_user.conf
+	 * (the directory is handled separately, as the CCNX_USER_CONFIG_DIRECTORY...)
+	 */
+	protected static final String CCNX_CONFIGURATION_FILENAME_PROPERTY = 
+		"org.ccnx.config.ConfigurationFilename";
+	protected static final String CCNX_CONFIGURATION_FILENAME_ENVIRONMENT_VARIABLE = "CCNX_CONFIG_FILENAME";
+
+	/**
 	 * Property and variable to set the key locator to use for the default key. Need something
 	 * more complicated, probably read from a configuration file. But this will get us started.
 	 * Parse this as "key locator for the default key", not "the default value for the key locator".
@@ -167,6 +175,11 @@ public class UserConfiguration {
 	 */
 	protected static String _keystorePassword;
 
+	/**
+	 * Configuration file name. This is the name of the actual file, without the directory.
+	 */
+	protected static String _configurationFileName;
+	
 	protected static final String USER_DIR = System.getProperty("user.home");
 	protected static String FILE_SEP = System.getProperty("file.separator");
 	
@@ -271,10 +284,6 @@ public class UserConfiguration {
 		return _userNamespacePrefix; 
 	}
 
-	public static String userConfigFile() { 
-		return userConfigurationDirectory() + FILE_SEP + USER_CONFIG_FILE; }
-	
-	
 	public static void setKeystoreFileName(String fileName) {
 		_keystoreFileName = fileName;
 	}
@@ -286,6 +295,15 @@ public class UserConfiguration {
 															DEFAULT_KEYSTORE_FILE_NAME);
 		}
 		return _keystoreFileName; 
+	}
+	
+	public static String configurationFileName() { 
+		if (null == _configurationFileName) {
+			_configurationFileName = SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_CONFIGURATION_FILENAME_PROPERTY, 
+																		 CCNX_CONFIGURATION_FILENAME_ENVIRONMENT_VARIABLE,
+															DEFAULT_CONFIGURATION_FILE_NAME);
+		}
+		return _configurationFileName; 
 	}
 	
 	public static void setKeystorePassword(String password) {

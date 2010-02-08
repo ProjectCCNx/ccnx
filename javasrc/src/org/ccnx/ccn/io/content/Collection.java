@@ -236,6 +236,28 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	
 	public int size() { return _contents.size(); }
 	
+	/**
+	 * Find all the elements in this Collection that match target on any of the 
+	 * parameters it has set, and return them.
+	 */
+	public ArrayList<Link> find(Link target) {
+		ArrayList<Link> results = new ArrayList<Link>();
+		for (Link link : _contents) {
+			if (target.approximates(link)) {
+				results.add(link);
+			}
+		}
+		return results;
+	}
+	
+	public ArrayList<Link> find(ContentName targetName) {
+		return find(new Link(targetName));
+	}
+	
+	public ArrayList<Link> find(String targetLabel) {
+		return find(new Link(null, targetLabel, null));
+	}
+
 	@Override
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		_contents.clear();
@@ -298,6 +320,19 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		return true;
 	}
 
+	/**
+	 * More concise toString.
+	 */
+	public String toString() {
+		
+		StringBuffer sbuf = new StringBuffer(getElementLabel() + ":\n");
+		for (Link link : _contents) {
+			sbuf.append("	" + link.toString() + "\n");
+		}
+		sbuf.append("\n");
+		return sbuf.toString();
+	}
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Iterable#iterator()
 	 */

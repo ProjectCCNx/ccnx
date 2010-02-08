@@ -70,6 +70,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -86,7 +87,13 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 public class ContentExplorer extends JFrame implements BasicNameEnumeratorListener, ActionListener {
 
 	private static ContentName root;
+	
 	private static boolean accessControlOn = false;
+	protected static boolean showVersions = false;
+	protected static boolean debugMode = false;
+	private static GroupAccessControlManager gacm = null;
+	private static String userName = null;
+	private static boolean previewTextFiles = true;
 
 	private CCNNameEnumerator _nameEnumerator = null;
 	protected static CCNHandle _handle = null;
@@ -142,6 +149,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 */
 	public ContentExplorer() {
 		super("CCN Content Explorer");
+		if (userName != null) this.setTitle("CCN Content Explorer for " + userName);
 		
 		//vlcSupported = checkVLCsupport();
 
@@ -166,7 +174,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		// add each component of the root
 		Log.fine("root = " + root.toString());
 		for (int i = 0; i < root.count(); i++) {
-			Log.finer("adding component: " + root.stringComponent(i));
+			Log.fine("adding component: " + root.stringComponent(i));
 			// add each component to the tree
 			newNode = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
 					null, new Name(root.component(i), root.copy(i), true)));
@@ -350,11 +358,16 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				// if we don't have a file then we should show a file chooser
 				// otherwise give an error message "Please select a folder"
 
-				if (((selectedPrefix.toString()).split("\\.")).length > 2) {
-					JOptionPane.showMessageDialog(this.frame,
-							"Please Select a Directory to add a file",
-							"Select Directory", JOptionPane.ERROR_MESSAGE);
-				} else {
+				//commented out this behavior.  we have many things that do have a . in them.  also
+				//when showing versions, they may have characters that are interpreted as a .
+				
+				/*if (((selectedPrefix.toString()).split("\\.")).length > 2) {
+				*	JOptionPane.showMessageDialog(this.frame,
+				*			"Please Select a Directory to add a file",
+				  *			"Select Directory", JOptionPane.ERROR_MESSAGE);
+				 * } else {
+				 * 
+				 */
 					// Show dialog; this method does not return until dialog is
 					// closed
 
@@ -379,11 +392,41 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					try {
 						ContentName contentName = ContentName.fromURI(selectedPrefix);
 						contentName = ContentName.fromURI(contentName, file.getName());
+						ContentName temp = null;
+						while (temp==null) {
+							String name = JOptionPane.showInputDialog("Send File to Repo As:", contentName.toString());
+							if (name == null) {
+								Log.fine("user selected cancel, returning");
+								return;
+							}
+							
+							Log.info("user entered [{0}]", name);
+							//System.out.println("user entered ["+name+"]");
 
+							
+							try {
+								if (name.startsWith("ccnx:/"))
+									name = name.replaceFirst("ccnx:/", "/");
+								temp = ContentName.fromURI(name);
+								//temp = ContentName.fromNative(name);
+								contentName = temp;
+								Log.info("saving as [{0}]", contentName);
+								//System.out.println("saving as ["+contentName+"]");
+
+							}
+							catch (Exception e) {
+								Log.fine("User entered invalid name for save: {0}", e.getMessage());
+								if(name.equals(""))
+									JOptionPane.showMessageDialog(chooser, "Please enter a CCNx name for the content that starts with \"/\".");
+								else
+									JOptionPane.showMessageDialog(chooser, (name + " is not a valid CCNx name.  Please be sure it starts with \"/\""));
+							}
+						}
+						
 						sendFile(file, contentName);
 					} catch (MalformedContentNameStringException e) {
 						Log.logException("could not create content name for selected file: "+file.getName(), e);
-					}
+					//}
 				}
 			}
 		}
@@ -543,22 +586,31 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 * @return DefaultMutableTreeNode The node in the tree representing the supplied prefix.
 	 */
 	DefaultMutableTreeNode getTreeNode(ContentName ccnContentName) {
-		Log.finer("handling returned names!!! prefix = "+ ccnContentName.toString());
+		Log.fine("handling returned names!!! prefix = "+ ccnContentName.toString());
+		Log.fine("handling returned names!!! prefix = "+ ccnContentName.toString());
+
 		TreePath prefixPath = new TreePath(usableRoot);
 
-		Log.finer("prefix path: " + prefixPath.toString());
+		Log.fine("prefix path: " + prefixPath.toString());
+		Log.fine("prefix path: " + prefixPath.toString());
+
 		ArrayList<byte[]> nbytes = ccnContentName.components();
 		String[] names = new String[nbytes.size()];
 		int ind = 0;
+		ContentName newName = null;
 		for (byte[] n : nbytes) {
-			names[ind] = new String(n);
+			Log.fine("adding n: "+new String(n));
+			//names[ind] = new String(n);
 			//TODO: switch to the following line after current changes are checked in
-			//names[ind] = ContentName.fromNative(new ContentName(), n).toString();
+			newName = ContentName.fromNative(new ContentName(), n);
+			Log.fine("newName = "+newName+" "+newName.toString().replace("/", ""));
+			names[ind] = newName.toString();
 			ind++;
 		}
 
 		DefaultMutableTreeNode p = find(prefixPath, 0, names);
-
+		if(p == null)
+			Log.fine("returning null could not find: "+prefixPath.toString());
 		return p;
 	}
 
@@ -573,49 +625,57 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	private DefaultMutableTreeNode find(TreePath parent, int depth, String[] names) {
 		DefaultMutableTreeNode node = (DefaultMutableTreeNode) parent.getLastPathComponent();
 		String nodeName = node.toString().replace("/", "");
-		Log.finer("check nodeName: " + nodeName);
+		Log.fine("check nodeName: [" + nodeName + "] node: [" + node.toString()+ "]");
+		Log.fine("depth = "+depth +" names.length = "+names.length);
+				
 		if (names.length <= depth) {
 			// we don't have to look far... this matches the root
-			Log.finer("this is the root, and we want the root...  returning the root");
+			Log.fine("this is the root, and we want the root...  returning the root");
+
 			return node;
 		}
 
-		if (node.isRoot()) {
+		if(node.equals(usableRoot)) {
+			Log.fine("this is the usable root");
 			node = findMatchingChild(parent, node, names[depth]);
 			nodeName = node.toString();
+			Log.fine("using root child: "+nodeName);
 		}
 
-		Log.finer("names[depth] " + names[depth]);
-
+		String nameToCheck = names[depth].replace("/","");
+		
+		Log.fine("names[depth] " + names[depth]);
+		Log.fine("nameToCheck: "+nameToCheck);
 		// we added an extra empty slash at the top... need to account for this
 
-		if (names[depth].equals(nodeName)) {
-			Log.finer("we have a match!");
+		if (nameToCheck.equals(nodeName)) {
+			Log.fine("we have a match!");
+
 			if (depth == names.length) {
-				Log.finer("we are at the right depth! returning this node!");
+				Log.fine("we are at the right depth! returning this node!");
 				return node;
 			} else {
-				Log.finer("need to keep digging...");
+				Log.fine("need to keep digging...");
 				if (node.getChildCount() > 0) {
-					Log.finer("we have children: "	+ node.getChildCount());
+					Log.fine("we have children: "	+ node.getChildCount());
 					DefaultMutableTreeNode result = null;
 					if (names.length > depth + 1)
 						result = findMatchingChild(parent, node, names[depth + 1]);
 					if (result == null) {
-						Log.finer("no matching child... returning this node");
+						Log.fine("no matching child... returning this node");
 						return node;
 					} else {
-						Log.finer("result was not null...  we have a matching child");
+						Log.fine("result was not null...  we have a matching child");
 					}
 					TreePath path = parent.pathByAddingChild(result);
 					return find(path, depth + 1, names);
 				} else {
-					Log.finer("did not have any children...");
+					Log.fine("did not have any children...");
 					return node;
 				}
 			}
 		} else {
-			Log.finer("not a match...");
+			Log.fine("not a match...");
 		}
 
 		return null;
@@ -639,9 +699,13 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			DefaultMutableTreeNode c = null;
 			for (int i = 0; i < n.getChildCount(); i++) {
 				c = (DefaultMutableTreeNode) n.getChildAt(i);
-				Log.finer("child name: " + c.toString() + " name: "	+ name);
-				if (c.toString().equals(name))
+				Log.fine("child name: " + c.toString() + " name: "	+ name);
+				if (c.toString().equals(name)) {
+					Log.fine("child names are equal...  returning child");
 					return c;
+				}
+				else
+					Log.fine("child names not equal");
 			}
 		}
 		return null;
@@ -852,7 +916,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		public void treeCollapsed(TreeExpansionEvent event) {
 			DefaultMutableTreeNode node = getTreeNode(event.getPath());
 			Name nodeName = getNameNode(node);
-			Log.finer("nodeName: " + nodeName.toString());
+			Log.fine("nodeName: " + nodeName.toString());
 			ContentName prefixToCancel = new ContentName();
 			if (nodeName.path == null) {
 				Log.fine("collapsed the tree at the root");
@@ -939,9 +1003,13 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 						System.err.println("Could not parse root path: " + args[i] + " (exiting)");
 						System.exit(1);
 					}
-				} else if (s.equals("-accessControl"))
+				} else if (s.equals("-accessControl")) {
 					accessControlOn = true;
-				else {
+				} else if (s.equals("-showVersions")) {
+					showVersions = true;
+				} else if (s.equals("-debugMode")) {
+					debugMode = true;
+				} else {
 					usage();
 					System.exit(1);
 				}
@@ -980,9 +1048,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 */
 	public String getNodes(Name fnode) {
 		if (fnode.path == null)
-			Log.finer("the path is null");
+			Log.fine("the path is null");
 		else
-			Log.finer("fnode: " + ContentName.fromNative(new ContentName(), fnode.name) + " path: " + fnode.path.toString());
+			Log.fine("fnode: " + ContentName.fromNative(new ContentName(), fnode.name) + " path: " + fnode.path.toString());
 		ContentName toExpand = null;
 		if (fnode.path == null)
 			toExpand = new ContentName();
@@ -990,9 +1058,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			toExpand = ContentName.fromNative(fnode.path, fnode.name);
 
 		String p = toExpand.toString();
-		Log.finer("toExpand: " + toExpand + " p: " + p);
+		Log.fine("toExpand: " + toExpand + " p: " + p);
 
-		if (fnode.name != null && (ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".txt") || ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".text"))) {
+		if (fnode.name != null && previewTextFiles && (ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".txt") || ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".text"))) {
 			// get the file from the repo
 			Log.fine("Retrieve from Repo: " + p);
 			retrieveFromRepo(p);
@@ -1000,9 +1068,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		
 		// this is a directory that we want to enumerate...  if it is a text file, we will still want to get the versions
 		if (fnode.path == null)
-			Log.finer("the path is null");
+			Log.fine("the path is null");
 		else
-			Log.finer("this is the path: " + fnode.path.toString() + " this is the name: " + ContentName.fromNative(new ContentName(), fnode.name));
+			Log.fine("this is the path: " + fnode.path.toString() + " this is the name: " + ContentName.fromNative(new ContentName(), fnode.name));
 		Log.info("Registering Prefix: " + p);
 		registerPrefix(p);
 
@@ -1013,7 +1081,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	/**
 	 * Static method to create and display the GUI.
 	 */
-	private static void createAndShowGUI() {
+	public static void createAndShowGUI() {
 		if (useSystemLookAndFeel) {
 			try {
 				UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -1116,11 +1184,11 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	public void actionPerformed(ActionEvent e) {
 
 		if (openACL == e.getSource()) {
-			Log.finer("Path is " + selectedPrefix);
+			Log.fine("Path is " + selectedPrefix);
 			EventQueue.invokeLater(new Runnable() {
 				public void run() {
 					try {
-						ACLManager dialog = new ACLManager(selectedPrefix);
+						ACLManager dialog = new ACLManager(selectedPrefix, gacm);
 						if (dialog.hasACL()) dialog.setVisible(true);
 						else {
 							dialog.setVisible(false);
@@ -1132,11 +1200,11 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				}
 			});
 		} else if (openGroup == e.getSource()) {
-			Log.finer("Path is " + selectedPrefix);
+			Log.fine("Path is " + selectedPrefix);
 			EventQueue.invokeLater(new Runnable() {
 				public void run() {
 					try {
-						GroupManagerGUI dialog = new GroupManagerGUI(selectedPrefix);
+						GroupManagerGUI dialog = new GroupManagerGUI(selectedPrefix, gacm);
 						dialog.setVisible(true);
 					} catch (Exception e) {
 						Log.warningStackTrace(e);
@@ -1181,7 +1249,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			String line = null;
 			BufferedReader brCleanUp = new BufferedReader (new InputStreamReader (output));
 			while ((line = brCleanUp.readLine ()) != null) {
-				//System.out.println ("[Stdout] " + line);
+				//Log.fine ("[Stdout] " + line);
 				if(line.toLowerCase().contains("ccn")) {
 					check = true;
 					Log.fine("ContentExplorer found CCN VLC plugin, enabling play option");
@@ -1202,4 +1270,33 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 		return check;
 	}
+	
+	public static void setRoot(ContentName r) {
+		root = r;
+	}
+	
+	public static void setAccessControl(boolean ac) {
+		accessControlOn = ac;
+	}
+	
+	public static void setShowVersions(boolean sv) {
+		showVersions = sv;
+	}
+	
+	public static void setDebugMode(boolean dm) {
+		debugMode = dm;
+	}
+	
+	public static void setGroupAccessControlManager(GroupAccessControlManager acm) {
+		gacm = acm;
+	}
+	
+	public static void setUsername(String name) {
+		userName = name;
+	}
+	
+	public static void setPreviewTextfiles(boolean ptf) {
+		previewTextFiles = ptf;
+	}
+	
 }

@@ -88,7 +88,6 @@ public class CCNDaemonHandle {
 		 */
 		interestNamePrefix = ContentName.fromNative(interestNamePrefix, contentOutBits);
 		Interest interested = new Interest(interestNamePrefix);
-		interested.nonce(Interest.generateNonce());
 		interested.scope(1);
 		ContentObject contentIn;
 

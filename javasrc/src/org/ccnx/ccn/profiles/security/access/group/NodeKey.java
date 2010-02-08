@@ -28,6 +28,7 @@ import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -292,9 +293,16 @@ public class NodeKey {
 	
 	@Override
 	public String toString() {
+		if (null == _nodeKey) {
+			return "NodeKey for node: " + _nodeName + " Stored at: " + _storedNodeKeyName + 
+		" Stored ID: " + DataUtils.printHexBytes(_storedNodeKeyID) +
+		" Key: null" + " Key id: null";
+		}
+		
 		// not great to print out keys, but nec for debugging
 		return "NodeKey for node: " + _nodeName + " Stored at: " + _storedNodeKeyName + 
 						" Stored ID: " + DataUtils.printHexBytes(_storedNodeKeyID) +
-						" Key: " + ((null == _nodeKey) ? "null" : DataUtils.printHexBytes(_nodeKey.getEncoded()));
+						" Key: " + DataUtils.printHexBytes(_nodeKey.getEncoded()) +
+						" Key id: " + DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(_nodeKey));
 	}
 }

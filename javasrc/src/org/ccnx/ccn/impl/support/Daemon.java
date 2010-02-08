@@ -74,6 +74,7 @@ public class Daemon {
 	public static final String PROP_DAEMON_OUTPUT = "ccn.daemon.output";
 	public static final String PROP_DAEMON_PROFILE = "ccn.daemon.profile";
 	public static final String PROP_DAEMON_DEBUG_SUSPEND = "ccn.daemon.debug.suspend";
+	public static final String PROP_DAEMON_DEBUG_NOSHARE = "ccn.daemon.debug.noshare";
 	
 	/**
 	 * Interface describing the RMI server object sitting inside
@@ -354,6 +355,12 @@ public class Daemon {
 		String memval = System.getProperty(PROP_DAEMON_MEMORY);
 		if (memval != null)
 			argList.add("-Xmx" + memval);
+		String debugFlagVal = System.getProperty(SystemConfiguration.DEBUG_FLAG_PROPERTY);
+		if (debugFlagVal != null)
+			argList.add("-D" + SystemConfiguration.DEBUG_FLAG_PROPERTY + "=" + debugFlagVal);
+		String debugDirVal = System.getProperty(SystemConfiguration.DEBUG_DATA_DIRECTORY_PROPERTY);
+		if (debugDirVal != null) 
+			argList.add("-D" + SystemConfiguration.DEBUG_DATA_DIRECTORY_PROPERTY + "=" + debugDirVal);
 		
 		String suspend = System.getProperty(PROP_DAEMON_DEBUG_SUSPEND);
 		String doSuspend = suspend == null ? "n" : "y";
@@ -362,6 +369,10 @@ public class Daemon {
 			argList.add("-Xrunjdwp:transport=dt_socket,address=" + debugPort + ",server=y,suspend=" + doSuspend);
 		} else if (doSuspend.equals("y"))
 			Log.info("Suspend requested without debug attach");
+		
+		String unshared = System.getProperty(PROP_DAEMON_DEBUG_NOSHARE);
+		if (null != unshared)
+			argList.add("-Xshare:off");
 		
 		String profileInfo = System.getProperty(PROP_DAEMON_PROFILE);
 		if (profileInfo != null) {
@@ -417,6 +428,10 @@ public class Daemon {
 					byte[] childMsgBytes = new byte[childMsgs.available()];
 					childMsgs.read(childMsgBytes);;
 					String childOutput = new String(childMsgBytes);
+					childMsgs = child.getInputStream();
+					childMsgBytes = new byte[childMsgs.available()];
+					childMsgs.read(childMsgBytes);
+					childOutput += new String(childMsgBytes);
 					System.err.println("Messages from the child were: \"" + childOutput + "\"");
 					return;
 				} catch (IllegalThreadStateException e) {

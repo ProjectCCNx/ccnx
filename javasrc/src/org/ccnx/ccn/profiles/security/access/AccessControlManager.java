@@ -100,26 +100,32 @@ public abstract class AccessControlManager {
 		if (null == wdko) {
 			return null;
 		}
-		Log.finer("getDataKey: data key is wrapped by key {0} stored at {1}, attempting to retrieve.", wdko.wrappedKey().wrappingKeyIdentifier(), wdko.wrappedKey().wrappingKeyName());
+		Log.finer("getDataKey: data key is wrapped by key {0} stored at {1}, attempting to retrieve.", 
+				DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()), wdko.wrappedKey().wrappingKeyName());
 		
 		Key dataKey = null;
 		Key wrappingKey = null;
 		
 		if (hasKey(wdko.wrappedKey().wrappingKeyIdentifier())) {
-			wrappingKey = getKey(wdko.wrappedKey().wrappingKeyIdentifier());
-			if (null == wrappingKey) {
+			Key cachedKey = getKey(wdko.wrappedKey().wrappingKeyIdentifier());
+			if (null == cachedKey) {
 				Log.warning("Thought we had key {0} in cache, but cannot retrieve it! Data node: {1}.", 
 						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()),
 						dataNodeName);
 				// fall through, try subclass retrieval
 			} else {
-				Log.fine("Unwrapping key for data node {0} with cached key {1}.", dataNodeName,
-						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()));	
+				Log.fine("Unwrapping key for data node {0} with cached key whose id is {1}.", dataNodeName,
+						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()));
+				// The cached key is not actually the key we want. We need to hand it to our access
+				// control manager to do any key prep.
+				wrappingKey = getDataKeyWrappingKey(dataNodeName, wdko.wrappedKey().wrappingKeyName(), cachedKey);
 			}
 		}
 		// Could simplify to remove cache-retry logic.
 		if (null == wrappingKey) {
 			// No dice. Try subclass-specific retrieval.
+			Log.info("getDataKey: key {0} not in cache, getting data key wrapping key for data node {1} with wrapped key {2}", 
+						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()), dataNodeName, wdko);
 			wrappingKey = getDataKeyWrappingKey(dataNodeName, wdko);
 		}
 		if (null != wrappingKey) {
@@ -167,6 +173,17 @@ public abstract class AccessControlManager {
 	 		ContentEncodingException, IOException, NoSuchAlgorithmException;
 
 	/**
+	 * Get the data key wrapping key if we happened to have cached a copy of the decryption key.
+	 * @param dataNodeName
+	 * @param wrappedDataKeyObject
+	 * @param cachedWrappingKey
+	 * @return
+	 * @throws ContentEncodingException 
+	 * @throws InvalidKeyException 
+	 */
+	public abstract Key getDataKeyWrappingKey(ContentName dataNodeName, ContentName wrappingKeyName, Key cachedWrappingKey) throws InvalidKeyException, ContentEncodingException;
+
+	/**
 	 * Wrap a data key in a given node key and store it.
 	 * @param dataNodeName
 	 * @param dataKey
@@ -176,9 +193,14 @@ public abstract class AccessControlManager {
 	 * @throws IOException
 	 */
 	public void storeDataKey(ContentName dataNodeName, Key dataKey, NodeKey wrappingKey) throws InvalidKeyException, ContentEncodingException, IOException {
-		Log.info("Wrapping data key for node: " + dataNodeName + " with ewrappingKey for node: " + 
+		Log.info("storeDataKey: Wrapping data key " +
+				DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(dataKey)) + " for node: " + dataNodeName + 
+				" with wrappingKey for node: " + 
 				wrappingKey.nodeName() + " derived from stored node key for node: " + 
 				wrappingKey.storedNodeKeyName());
+		Log.info("storeDataKey: stored node key has key id {0}, derived key has id {1}",
+				DataUtils.printHexBytes(wrappingKey.storedNodeKeyID()),
+				DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(wrappingKey.nodeKey())));
 		// TODO another case where we're wrapping in an effective node key but labeling it with
 		// the stored node key information. This will work except if we interpose an ACL in the meantime -- 
 		// we may not have the information necessary to figure out how to decrypt.
@@ -357,10 +379,10 @@ public abstract class AccessControlManager {
 					return null; // no keys
 				}
 				Key dataKey = acm.generateDataKey(name);
-				acm.storeDataKey(name, dataKey, dataKeyWrappingKey);
-				
 				Log.finer("keysForOutput: content {0} publisher {1} data key {2} wrapping key {3}", name, publisher, 
 						DataUtils.printHexBytes(dataKey.getEncoded()), dataKeyWrappingKey);
+				acm.storeDataKey(name, dataKey, dataKeyWrappingKey);
+				
 				return getDefaultAlgorithmContentKeys(dataKey);
 			}
 		} catch (ConfigurationException e) {

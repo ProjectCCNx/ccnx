@@ -37,7 +37,6 @@ import javax.swing.border.BevelBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
@@ -94,7 +93,7 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 	private int SELECTOR_HEIGHT = 300;
 	
 
-	public GroupManagerGUI(String path) {
+	public GroupManagerGUI(String path, GroupAccessControlManager acm) {
 
 		super();
 		setTitle("Group Manager");
@@ -103,7 +102,6 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 
 		// enumerate existing users and groups
 		try{
-			GroupAccessControlManager acm = new GroupAccessControlManager(null, groupStorage, userStorage, CCNHandle.open());
 			gm = acm.groupManager();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -358,7 +356,8 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 			((SortedListModel) userSelector.getModel()).removeElement(obj);
 			ContentName userContentName = (ContentName) obj;
 			Link lk = new Link(userContentName);
-			membersToAdd.add(lk);
+			if (membersToRemove.contains(lk)) membersToRemove.remove(lk);
+			else membersToAdd.add(lk);
 		}
 		userSelector.clearSelection();
 		
@@ -374,7 +373,8 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 			((SortedListModel) groupSelector.getModel()).removeElement(obj);
 			ContentName groupContentName = (ContentName) obj;
 			Link lk = new Link(groupContentName);
-			membersToAdd.add(lk);
+			if (membersToRemove.contains(lk)) membersToRemove.remove(lk);
+			else membersToAdd.add(lk);
 		}
 		groupSelector.clearSelection();
 		
@@ -403,7 +403,8 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 			else System.out.println("Warning: the principal " + principalContentName + " is neither a known group or a know user.");
 			((SortedListModel) groupMembershipList.getModel()).removeElement(obj);
 			Link lk = new Link(principalContentName);
-			membersToRemove.add(lk);
+			if (membersToAdd.contains(lk)) membersToAdd.remove(lk);
+			else membersToRemove.add(lk);
 		}
 		groupMembershipList.clearSelection();
 	}

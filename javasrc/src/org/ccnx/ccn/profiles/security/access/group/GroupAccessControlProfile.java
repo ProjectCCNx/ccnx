@@ -56,6 +56,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	// These two must be the same length
 	public static final byte [] USER_PRINCIPAL_PREFIX = ContentName.componentParseNative("p");
 	public static final byte [] GROUP_PRINCIPAL_PREFIX = ContentName.componentParseNative("g");
+	public static final ContentName ACL_POSTFIX = new ContentName(new byte[][]{ACCESS_CONTROL_MARKER_BYTES, ACL_NAME_BYTES});
 
 	/**
 	 * This class records information about a CCN principal.
@@ -234,7 +235,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		}
 		return false;
 	}
-		
+
 	/**
 	 * Get the name of the node key for a given content node, if there is one.
 	 * This is nodeName/_access_/NK, with a version then added for a specific node key.
@@ -255,8 +256,11 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 */
 	public static ContentName aclName(ContentName nodeName) {
 		ContentName baseName = accessRoot(nodeName);
-		ContentName aclName = new ContentName(baseName, ACCESS_CONTROL_MARKER_BYTES, ACL_NAME_BYTES);
-		return aclName;
+		return baseName.append(aclPostfix());
+	}
+	
+	public static ContentName aclPostfix() {
+		return ACL_POSTFIX;
 	}
 	
 	/**

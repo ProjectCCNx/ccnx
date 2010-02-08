@@ -27,16 +27,19 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileOutputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.io.RepositoryOutputStream;
+import org.ccnx.ccn.profiles.namespace.NamespaceManager;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
- * Command-line utiltiy to write a file to ccnd; requires a corresponding ccngetfile
+ * Command-line utility to write a file to ccnd; requires a corresponding ccngetfile
  * to pull the data or it will not move (flow balance).
  **/
  public class ccnputfile {
@@ -47,6 +50,9 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 	private static Integer timeout = null;
 	private static boolean unversioned = false;
 	private static boolean verbose = false;
+	
+	private static ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
+	private static ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
 
 	/**
 	 * @param args
@@ -92,7 +98,19 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 				verbose = true;
 				if (startArg <= i)
 					startArg = i + 1;
-			} else {
+			} else if (args[i].equals("-as")) {
+				if (args.length < (i + 2)) {
+					usage();
+				}
+				setUser(args[++i]);
+				if (startArg <= i)
+					startArg = i + 1;				
+			} else if (args[i].equals("-ac")) {
+				setAccessControl();
+				if (startArg <= i)
+					startArg = i + 1;				
+			}
+			else {
 				usage();
 			}
 				
@@ -215,8 +233,32 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 	}
 	
 	public static void usage() {
-		System.out.println("usage: ccnputfile [-v (verbose)] [-raw] [-unversioned] [-timeout millis] [-log level] <ccnname> (<filename>|<url>)*");
+		System.out.println("usage: ccnputfile [-v (verbose)] [-raw] [-unversioned] [-timeout millis] [-log level] [-as pathToKeystore] [-ac (access control)] <ccnname> (<filename>|<url>)*");
 		System.exit(1);
 	}
 
+	private static void setUser(String pathToKeystore) {
+		File userDirectory = new File(pathToKeystore);
+		String userConfigDir = userDirectory.getAbsolutePath();
+		System.out.println("Loading keystore from: " + userConfigDir);
+		UserConfiguration.setUserConfigurationDirectory(userConfigDir);
+		// Assume here that the name of the file is the userName
+		String userName = userDirectory.getName();
+		if (userName != null) {
+			System.out.println("User: " + userName);
+			UserConfiguration.setUserName(userName);
+		}
+	}
+	
+	private static void setAccessControl() {
+		// register a group access control manager with the namespace manager
+		try {
+			GroupAccessControlManager gacm = new GroupAccessControlManager(ContentName.fromNative("/"), groupStorage, userStorage, CCNHandle.open());
+			NamespaceManager.registerACM(gacm);
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+	
 }

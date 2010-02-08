@@ -18,6 +18,7 @@
 package org.ccnx.ccn;
 
 import java.io.IOException;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNNetworkManager;
@@ -263,7 +264,8 @@ public class CCNHandle implements CCNBase {
 		boolean interrupted = false;
 		do {
 			try {
-				Log.finest("Putting content on wire: " + co.name());
+				if( Log.isLoggable(Level.FINEST) )
+					Log.finest("Putting content on wire: " + co.name());
 				return getNetworkManager().put(co);
 			} catch (InterruptedException e) {
 				interrupted = true;

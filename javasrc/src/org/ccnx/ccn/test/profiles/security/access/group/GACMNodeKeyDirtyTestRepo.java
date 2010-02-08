@@ -7,6 +7,7 @@ import java.util.Random;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.io.content.Link;
@@ -16,7 +17,7 @@ import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.test.profiles.security.TestUserData;
+import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -31,7 +32,7 @@ public class GACMNodeKeyDirtyTestRepo {
 	static GroupAccessControlManager acm;
 	static ContentName directoryBase, userKeyStorePrefix, userNamespace, groupStore;
 	static final int numberOfusers = 3;
-	static TestUserData td;
+	static CreateUserData td;
 	static String[] friendlyNames;
 	static final int numberOfGroups = 3;
 	static String[] groupName = new String[numberOfGroups];
@@ -41,14 +42,14 @@ public class GACMNodeKeyDirtyTestRepo {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		directoryBase = ContentName.fromNative("/test/ACMNodeKeyDirtyTestRepo");
+		directoryBase = UserConfiguration.defaultNamespace();
 		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
 		userKeyStorePrefix = ContentName.fromNative(directoryBase, "_access_");
-		userNamespace = ContentName.fromNative(directoryBase, "home");
+		userNamespace = ContentName.fromNative(directoryBase, "Users");
 
 		// create user identities with TestUserData		
 		Log.info("Creating {0} test users, if they do not already exist.", numberOfusers);
-		td = new TestUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
+		td = new CreateUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
 		Log.info("Created {0} test users, or retrieved them from repository.", numberOfusers);
 		td.publishUserKeysToRepository(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);				
@@ -58,15 +59,20 @@ public class GACMNodeKeyDirtyTestRepo {
 		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
 		acm.publishMyIdentity(ContentName.fromNative(userNamespace, friendlyNames[0]), handle.keyManager().getDefaultPublicKey());
 		handle.keyManager().publishKeyToRepository();
-		NamespaceManager.registerACM(acm);
 		
 		// create the root ACL
 		// The root has user0 as a manager
 		Link lk = new Link(ContentName.fromNative(userNamespace, friendlyNames[0]), ACL.LABEL_MANAGER, null);
 		ArrayList<Link> rootACLcontents = new ArrayList<Link>();
 		rootACLcontents.add(lk);
+		String myUserName = UserConfiguration.userName();
+		Link mlk = new Link(ContentName.fromNative(userNamespace, myUserName), ACL.LABEL_MANAGER, null);
+		rootACLcontents.add(mlk);
 		ACL rootACL = new ACL(rootACLcontents);
 		acm.initializeNamespace(rootACL);
+		
+		// Register ACM so it can be found
+		NamespaceManager.registerACM(acm);
 	}
 	
 	/**

@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -43,8 +43,6 @@ import org.ccnx.ccn.protocol.ContentName;
  * @see BasicNameEnumeratorListener
  */
 public class EnumeratedNameList implements BasicNameEnumeratorListener {
-	
-	protected static final long CHILD_WAIT_INTERVAL = 1000;
 	
 	protected ContentName _namePrefix;
 	protected CCNNameEnumerator _enumerator;
@@ -224,7 +222,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			while (((null == _lastUpdate) || ((null != lastUpdate) && !_lastUpdate.after(lastUpdate))) && 
 				   ((timeout == SystemConfiguration.NO_TIMEOUT) || (timeRemaining > 0))) {
 				try {
-					_childLock.wait((timeout != SystemConfiguration.NO_TIMEOUT) ? Math.min(timeRemaining, CHILD_WAIT_INTERVAL) : CHILD_WAIT_INTERVAL);
+					_childLock.wait((timeout != SystemConfiguration.NO_TIMEOUT) ? Math.min(timeRemaining, SystemConfiguration.CHILD_WAIT_INTERVAL) : SystemConfiguration.CHILD_WAIT_INTERVAL);
 					if (timeout != SystemConfiguration.NO_TIMEOUT) {
 						timeRemaining = timeout - (System.currentTimeMillis() - startTime);
 					}
@@ -422,7 +420,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 */
 	public static ContentName getLatestVersionName(ContentName name, CCNHandle handle) throws IOException {
 		EnumeratedNameList enl = new EnumeratedNameList(name, handle);
-		enl.waitForChildren();
+		enl.waitForUpdates(SystemConfiguration.CHILD_WAIT_INTERVAL);
 		ContentName childLatestVersion = enl.getLatestVersionChildName();
 		enl.stopEnumerating();
 		if (null != childLatestVersion) {
@@ -457,12 +455,14 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @throws IOException 
 	 */
 	public static EnumeratedNameList exists(ContentName childName, ContentName prefixKnownToExist, CCNHandle handle) throws IOException {
+		Log.info("EnumeratedNameList.exists: the prefix known to exist is {0} and we are looking for childName {1}", prefixKnownToExist, childName);
 		if ((null == prefixKnownToExist) || (null == childName) || (!prefixKnownToExist.isPrefixOf(childName))) {
-			Log.info("Child " + childName + " must be prefixed by name " + prefixKnownToExist);
+			Log.info("EnumeratedNameList.exists: Child " + childName + " must be prefixed by name " + prefixKnownToExist);
 			throw new IllegalArgumentException("Child " + childName + " must be prefixed by name " + prefixKnownToExist);
 		}
 		if (childName.count() == prefixKnownToExist.count()) {
 			// we're already there
+			Log.info("EnumeratedNameList.exists: we're already there.");
 			return new EnumeratedNameList(childName, handle);
 		}
 		ContentName parentName = prefixKnownToExist;
@@ -471,22 +471,29 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		while (childIndex < childName.count()) {
 			byte[] childNameComponent = childName.component(childIndex);
 			parentEnumerator = new EnumeratedNameList(parentName, handle);
-			parentEnumerator.waitForChildren(CHILD_WAIT_INTERVAL);
+			Log.info("EnumeratedNameList.exists: enumerating the parent name {0}", parentName);
+			parentEnumerator.waitForChildren(SystemConfiguration.CHILD_WAIT_INTERVAL);
 			while (! parentEnumerator.hasChild(childNameComponent)) {
-				if (! parentEnumerator.waitForNewChildren(CHILD_WAIT_INTERVAL)) break;
+				if (! parentEnumerator.waitForNewChildren(SystemConfiguration.CHILD_WAIT_INTERVAL)) break;
 			}
 			if (parentEnumerator.hasChild(childNameComponent)) {
+				Log.info("EnumeratedNameList.exists: we have a matching child to {0} and the parent enumerator {1} has {2} children.", 
+						ContentName.componentPrintURI(childNameComponent), parentName, parentEnumerator.childCount());
 				childIndex++;
 				if (childIndex == childName.count()) {
+					Log.info("EnumeratedNameList.exists: we found the childName we were looking for: {0}", childName);
 					return parentEnumerator;
 				}
 				parentEnumerator.stopEnumerating();
 				parentName = new ContentName(parentName, childNameComponent);
 				continue;
 			} else {
+				Log.info("EnumeratedNameList.exists: the parent enumerator {0} has {1} children but none of them are {2}.", 
+						parentName, parentEnumerator.childCount(), ContentName.componentPrintURI(childNameComponent));
 				break;
 			}
 		}
+		Log.info("EnumeratedNameList.exists: returning null for search of {0}", childName);
 		return null;
 	}
 }

@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.protocol;
 
+import java.io.Serializable;
+
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -39,8 +41,10 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * For now we allow a variety of specification of publisher, including some using
  * digital certificates. These may be unnecessary and elided in the future.
  */
-public class KeyName extends GenericXMLEncodable implements XMLEncodable {
+public class KeyName extends GenericXMLEncodable implements XMLEncodable, Serializable {
 	
+	private static final long serialVersionUID = -4486998061731593809L;
+
 	protected static final String KEY_NAME_ELEMENT = "KeyName";
 
 	protected ContentName _name;

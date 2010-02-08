@@ -17,12 +17,14 @@
 
 package org.ccnx.ccn;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
+import java.util.logging.Level;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -79,7 +81,8 @@ public abstract class KeyManager {
 	 */
 	public static synchronized KeyManager getDefaultKeyManager() {
 		// could print a stack trace
-		Log.finer("NOTICE: retrieving default key manager.");
+		if( Log.isLoggable(Level.FINER) )
+			Log.finer("NOTICE: retrieving default key manager.");
 		if (null != _defaultKeyManager) 
 			return _defaultKeyManager;
 		try {
@@ -145,13 +148,27 @@ public abstract class KeyManager {
 	public static void initializeProvider() {
 		synchronized(KeyManager.class) {
 			if (null == BC_PROVIDER) {
-				Provider bc = new BouncyCastleProvider();
-				Security.addProvider(bc);
-				BC_PROVIDER = bc;
-				if (null != BC_PROVIDER)
-					Log.fine("Installed BouncyCastle provider.");
-				else
-					Log.severe("ERROR: NULL default provider! Cannot load BouncyCastle!");
+				BC_PROVIDER = Security.getProvider("BC");
+				if (null == BC_PROVIDER) {
+					Provider bc = new BouncyCastleProvider();
+					int result = Security.addProvider(bc);
+					BC_PROVIDER = bc;
+					if (null != BC_PROVIDER) {
+						if (result > 0) {
+							Log.info("KeyManager: Successfully initialized BouncyCastle provider at position " + result);
+						} else {
+							Log.info("KeyManager: BouncyCastle provider already installed.");
+						}
+					} else {
+						Log.severe("ERROR: NULL default provider! Cannot load BouncyCastle! Result of addProvider: " + result);
+					}
+				} else {
+					Log.info("KeyManager: BouncyCastle provider installed by default.");
+				}
+				Provider checkProvider = Security.getProvider("BC");
+				if (null == checkProvider) {
+					Log.severe("Could not load BouncyCastle provider back in!");
+				}
 			}
 		}
 	}
@@ -168,6 +185,19 @@ public abstract class KeyManager {
 			Log.severe("ERROR: NULL default provider! Cannot load BouncyCastle!");
 		}
 		return BC_PROVIDER;
+	}
+	
+	public static boolean checkDefaultProvider() {
+		boolean test = true;
+		if (null == BC_PROVIDER) {
+			test = false;
+			Log.warning("checkDefaultProvider: initialization of BouncyCastle provider did not proceed properly, no BC_PROVIDER.");
+		}
+		if (null == Security.getProvider("BC")) {
+			test = false;
+			Log.warning("checkDefaultProvider: cannot load BouncyCastle provider!");
+		}
+		return test;
 	}
 	
 	/**
@@ -190,6 +220,12 @@ public abstract class KeyManager {
 	 * @return the digest of our default key
 	 */
 	public abstract PublisherPublicKeyDigest getDefaultKeyID();
+	
+	public boolean isOurDefaultKey(PublisherPublicKeyDigest keyID) {
+		if (getDefaultKeyID().equals(keyID))
+			return true;
+		return false;
+	}
 	
 	/**
 	 * Get our default private key.
@@ -445,5 +481,8 @@ public abstract class KeyManager {
 	 * @return our KeyRepository
 	 */
 	public abstract KeyRepository keyRepository();
+
+	public abstract void saveConfigurationState() throws FileNotFoundException,
+			IOException;
 
 }

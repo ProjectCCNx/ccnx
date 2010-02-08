@@ -66,7 +66,8 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 			} else if (decoder.peekStartElement(ContentObject.CONTENT_OBJECT_ELEMENT)) {
 				ContentObject data = new ContentObject();
 				data.decode(decoder);
-				SystemConfiguration.logObject(Level.FINEST, "packetDecode", data);
+				if( Log.isLoggable(Level.FINEST) )
+					SystemConfiguration.logObject(Level.FINEST, "packetDecode", data);
 				_contents.add(data);
 			} else {
 				done = true;

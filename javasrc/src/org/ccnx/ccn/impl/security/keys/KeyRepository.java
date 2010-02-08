@@ -526,7 +526,8 @@ public class KeyRepository {
 				}
 				break;
 			}
-			if (retrievedContent.signedInfo().getType().equals(ContentType.KEY)) {
+			if ((retrievedContent.signedInfo().getType().equals(ContentType.KEY)) ||
+				 (retrievedContent.signedInfo().getType().equals(ContentType.LINK))) {
 				theKey = new PublicKeyObject(retrievedContent, handle());
 				if ((null != theKey) && (theKey.available())) {
 					if ((null != desiredKeyID) && (!theKey.publicKeyDigest().equals(desiredKeyID))) {
@@ -545,7 +546,7 @@ public class KeyRepository {
 					throw new IOException("Decoded key at name " + retrievedContent.name() + " without error, but result was null!");
 				}
 			} else {
-				Log.warning("Retrieved an object when looking for key " + locator.name().name() + " at " + retrievedContent.name() + ", but type is " + retrievedContent.signedInfo().getTypeName());
+				Log.info("Retrieved an object when looking for key " + locator.name().name() + " at " + retrievedContent.name() + ", but type is " + retrievedContent.signedInfo().getTypeName());
 			}
 			// TODO -- not sure this is exactly right, but a start...
 			Exclude currentExclude = keyInterest.exclude();

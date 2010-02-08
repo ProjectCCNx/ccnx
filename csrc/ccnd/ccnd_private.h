@@ -104,6 +104,7 @@ struct ccnd_handle {
     ccn_accession_t max_stale;      /**< largest accession of stale content */
     unsigned long capacity;         /**< may toss content if there more than
                                      this many content objects in the store */
+    unsigned long n_stale;          /**< Number of stale content objects */
     struct ccn_indexbuf *unsol;     /**< unsolicited content */
     unsigned long oldformatcontent;
     unsigned long oldformatcontentgrumble;
@@ -125,6 +126,7 @@ struct ccnd_handle {
     int logpid;                     /**< see ccn_msg() */
     int mtu;                        /**< Target size for stuffing interests */
     int flood;                      // XXX - Temporary, for transition period
+    int force_zero_freshness;       /**< Simulate freshness=0 on all content */
     unsigned interest_faceid;       /**< for self_reg internal client */
     const char *progname;           /**< our name, for locating helpers */
     struct ccn *internal_client;    /**< internal client */
@@ -193,6 +195,7 @@ struct face {
 #define CCN_FACE_NOSEND (1 << 8) /**< Don't send anymore */
 #define CCN_FACE_UNDECIDED (1 << 9) /**< Might not be talking ccn */
 #define CCN_FACE_PERMANENT (1 << 10) /**< No timeout for inactivity */
+#define CCN_FACE_CONNECTING (1 << 11) /**< Connect in progress */
 
 #define CCN_NOFACEID    (~0U)    /** denotes no face */
 

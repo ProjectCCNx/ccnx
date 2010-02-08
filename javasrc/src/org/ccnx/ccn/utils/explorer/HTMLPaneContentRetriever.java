@@ -18,9 +18,11 @@
 package org.ccnx.ccn.utils.explorer;
 
 import javax.swing.JEditorPane;
+import javax.swing.JOptionPane;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.io.CCNFileInputStream;
+import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
@@ -119,6 +121,10 @@ public class HTMLPaneContentRetriever implements Runnable {
 			CCNFileInputStream fis = new CCNFileInputStream(fileName, handle);
 				
 			htmlPane.read(fis, fileName);
+		} catch (AccessDeniedException ade) {
+			htmlPane.setText("You don't have the decryption key for file " + name);
+			JOptionPane.showMessageDialog(htmlPane, "You don't have the decryption key for file " + name);
+			txtpopup = false;
 		} catch (Exception e) {
 			System.err.println("Could not retrieve file: "+name);
 			htmlPane.setText(name + " is not available at this time.");

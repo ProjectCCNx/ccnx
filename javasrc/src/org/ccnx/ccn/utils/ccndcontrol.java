@@ -267,6 +267,7 @@ public class ccndcontrol {
 	 * 
 	 * @return void
 	 */
+	@SuppressWarnings("unused")
 	public static void main(String[] args) {
 		boolean dynamic = false;
 		String configFile = null;	
@@ -287,7 +288,7 @@ public class ccndcontrol {
 			} else if (args[i].equals(("-d"))) {
 				if (startArg <= i)
 					startArg = i + 1;
-				dynamic = true;
+				dynamic = true; // never read
 			} else if (args[i].equals("-f")) {
 				if (args.length < (i + 2)) {
 					usage();

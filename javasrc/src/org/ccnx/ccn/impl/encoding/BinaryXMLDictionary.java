@@ -110,7 +110,7 @@ public class BinaryXMLDictionary {
 			throw new IOException("BinaryXMLDictionary: loadDictionary - stream cannot be null.");
 		}
 		BufferedReader reader = 
-			new BufferedReader(new InputStreamReader(in));
+			new BufferedReader(new InputStreamReader(in), 8196);
 		
 		String line = null;
 		final int NULLCOUNT_MAX = 20;

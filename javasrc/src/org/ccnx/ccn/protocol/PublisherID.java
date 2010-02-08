@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.protocol;
 
+import java.io.Serializable;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
@@ -43,7 +44,9 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * @author smetters
  *
  */
-public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Comparable<PublisherID> {
+public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Comparable<PublisherID>, Serializable {
+
+	private static final long serialVersionUID = 1766988029384725706L;
 
 	/**
 	 * Move this to a centralized configuration location.

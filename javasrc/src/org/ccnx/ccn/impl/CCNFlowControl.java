@@ -19,11 +19,11 @@ package org.ccnx.ccn.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
@@ -112,7 +112,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	protected HashSet<ContentName> _filteredNames = new HashSet<ContentName>();
 
 	private class UnmatchedInterest {
-		long timestamp = new Date().getTime();
+		long timestamp = System.currentTimeMillis();
 	}
 	
 	private boolean _flowControlEnabled = true;
@@ -125,7 +125,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	public CCNFlowControl(ContentName name, CCNHandle handle) throws IOException {
 		this(handle);
 		if (name != null) {
-			Log.finest("adding namespace: " + name);
+			if( Log.isLoggable(Level.FINEST))
+				Log.finest("adding namespace: " + name);
 			// don't call full addNameSpace, in order to allow subclasses to 
 			// override. just do minimal part
 			_filteredNames.add(name);
@@ -192,7 +193,8 @@ public class CCNFlowControl implements CCNFilterListener {
 		while (it.hasNext()) {
 			ContentName filteredName = it.next();
 			if (filteredName.isPrefixOf(name)) {
-				Log.info("addNameSpace: not adding name: " + name + " already monitoring prefix: " + filteredName);
+				if( Log.isLoggable(Level.INFO))
+					Log.info("addNameSpace: not adding name: " + name + " already monitoring prefix: " + filteredName);
 				return;		// Already part of filter
 			}
 			if (name.isPrefixOf(filteredName)) {
@@ -202,7 +204,8 @@ public class CCNFlowControl implements CCNFilterListener {
 		}
 		_filteredNames.add(name);
 		_handle.registerFilter(name, this);
-		Log.info("Flow controller addNameSpace: added namespace: " + name);
+		if( Log.isLoggable(Level.INFO))
+			Log.info("Flow controller addNameSpace: added namespace: " + name);
 	}
 	
 	/**
@@ -261,7 +264,8 @@ public class CCNFlowControl implements CCNFilterListener {
 			if (all || filteredName.equals(name)) {
 				_handle.unregisterFilter(filteredName, this);
 				it.remove();
-				Log.finest("removing namespace: " + name);
+				if( Log.isLoggable(Level.FINEST))
+					Log.finest("removing namespace: " + name);
 				break;
 			}
 		}
@@ -396,10 +400,13 @@ public class CCNFlowControl implements CCNFilterListener {
 				// subclasses.  For example, a flow control may retain objects until it 
 				// has verified by separate communication that an intended recipient has 
 				// received them.
-				Log.finest("Holding {0}", co.name());
+				if( Log.isLoggable(Level.FINEST))
+					Log.finest("Holding {0}", co.name());
 				// Must verify space in _holdingArea or block waiting for space
 				if (_holdingArea.size() >= _capacity) {
-					long ourTime = new Date().getTime();
+					// MM don't create all these date objects
+					//long ourTime = new Date().getTime();
+					long ourTime = System.currentTimeMillis();
 					Entry<UnmatchedInterest> removeIt;
 					// TODO Verify the following note
 					// When we're going to be blocked waiting for a reader anyway, 
@@ -420,12 +427,15 @@ public class CCNFlowControl implements CCNFilterListener {
 					long elapsed = 0;
 					do {
 						try {
-							Log.finest("Waiting for drain ({0}, {1})", _holdingArea.size(), elapsed);
+							if( Log.isLoggable(Level.FINEST))
+								Log.finest("Waiting for drain ({0}, {1})", _holdingArea.size(), elapsed);
 							_holdingArea.wait(_timeout-elapsed);
 						} catch (InterruptedException e) {
 							// intentional no-op
 						}
-						elapsed = new Date().getTime() - ourTime;
+						// MM avoid creating all these Date objects
+						//elapsed = new Date().getTime() - ourTime;
+						elapsed = System.currentTimeMillis() - ourTime;
 					} while (_holdingArea.size() >= _capacity && elapsed < _timeout);						
 					if (_holdingArea.size() >= _capacity)
 						throw new IOException("Flow control buffer full and not draining");
@@ -457,10 +467,12 @@ public class CCNFlowControl implements CCNFilterListener {
 	public int handleInterests(ArrayList<Interest> interests) {
 		synchronized (_holdingArea) {
 			for (Interest interest : interests) {
-				Log.fine("Flow controller: got interest: " + interest);
+				if( Log.isLoggable(Level.FINE))
+					Log.fine("Flow controller: got interest: " + interest);
 				ContentObject co = getBestMatch(interest, _holdingArea.keySet());
 				if (co != null) {
-					Log.finest("Found content " + co.name() + " matching interest: " + interest);
+					if( Log.isLoggable(Level.FINEST))
+						Log.finest("Found content " + co.name() + " matching interest: " + interest);
 					try {
 						_handle.put(co);
 						afterPutAction(co);
@@ -507,7 +519,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	private ContentObject getBestMatch(Interest interest, Set<ContentName> set) {
 		ContentObject bestMatch = null;
-		Log.finest("Looking for best match to " + interest + " among " + set.size() + " options.");
+		if( Log.isLoggable(Level.FINEST))
+			Log.finest("Looking for best match to " + interest + " among " + set.size() + " options.");
 		for (ContentName name : set) {
 			ContentObject result = _holdingArea.get(name);
 			
@@ -616,7 +629,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * Remove any currently buffered unmatched interests
 	 */
 	public void clearUnmatchedInterests() {
-		Log.info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
+		if( Log.isLoggable(Level.INFO))
+			Log.info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
 		_unmatchedInterests.clear();
 	}
 	
@@ -624,10 +638,12 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * Debugging function to log unmatched interests.
 	 */
 	public void logUnmatchedInterests(String logMessage) {
-		Log.info("{0}: {1} unmatched interest entries.", logMessage, _unmatchedInterests.size());
+		if( Log.isLoggable(Level.INFO))
+			Log.info("{0}: {1} unmatched interest entries.", logMessage, _unmatchedInterests.size());
 		for (Entry<UnmatchedInterest> interestEntry : _unmatchedInterests.values()) {
 			if (null != interestEntry.interest())
-				Log.info("   Unmatched interest: {0}", interestEntry.interest());
+				if( Log.isLoggable(Level.INFO))
+					Log.info("   Unmatched interest: {0}", interestEntry.interest());
 		}
 	}
 	

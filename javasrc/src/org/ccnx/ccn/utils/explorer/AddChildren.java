@@ -63,6 +63,7 @@ public class AddChildren implements Runnable {
 		Log.finer("addTreeNodes: prefix = " + prefix + " names: " + names.toString());
 		
 		DefaultMutableTreeNode parentNode = app.getTreeNode(prefix);
+
 		synchronized (parentNode) {
 
 			if (parentNode == null) {
@@ -74,6 +75,7 @@ public class AddChildren implements Runnable {
 
 			int numChildren = parentNode.getChildCount();
 			Log.finer("the parent has " + numChildren + " children: ");
+
 			DefaultMutableTreeNode temp = null;
 			for (int i = 0; i < numChildren; i++) {
 				temp = (DefaultMutableTreeNode) parentNode.getChildAt(i);
@@ -87,14 +89,17 @@ public class AddChildren implements Runnable {
 
 			// while we are getting things, wait for stuff to happen
 			Log.finer("Getting Content Names");
+
 			boolean addToParent = true;
 			DefaultMutableTreeNode toRemove = null;
 			for (ContentName cn : names) {
 				addToParent = true;
 
 				// check if a version marker
-				if (VersioningProfile.containsVersion(cn)) {
-					addToParent = false;
+				//if (VersioningProfile.containsVersion(cn)) {
+				if (VersioningProfile.hasTerminalVersion(cn)) {
+					if (!ContentExplorer.showVersions && !ContentExplorer.debugMode)
+						addToParent = false;
 
 					// this name is a version, that means the parent is
 					// something we can grab...
@@ -103,7 +108,8 @@ public class AddChildren implements Runnable {
 
 					Name parentNameNode = app.getNameNode(parentNode);
 					if (parentNameNode.isDirectory) {
-						parentNameNode.setIsDirectory(false);
+						if (!ContentExplorer.showVersions && !ContentExplorer.debugMode)
+							parentNameNode.setIsDirectory(false);
 						((IconData) parentNode.getUserObject()).setIcon(ContentExplorer.ICON_DOCUMENT);
 						app.m_model.nodeChanged(parentNode);
 					}
@@ -114,11 +120,13 @@ public class AddChildren implements Runnable {
 				}
 				// check if a segment marker
 				if (SegmentationProfile.isSegment(cn)) {
-					addToParent = false;
+					if (!ContentExplorer.showVersions && !ContentExplorer.debugMode)
+						addToParent = false;
 					
 					Name parentNameNode = app.getNameNode(parentNode);
 					if (parentNameNode.isDirectory) {
-						parentNameNode.setIsDirectory(false);
+						if (!ContentExplorer.showVersions && !ContentExplorer.debugMode)
+							parentNameNode.setIsDirectory(false);
 						((IconData) parentNode.getUserObject()).setIcon(ContentExplorer.ICON_DOCUMENT);
 						app.m_model.nodeChanged(parentNode);
 					}
@@ -163,6 +171,7 @@ public class AddChildren implements Runnable {
 				}
 			}
 			Log.finer("the parent node now has " + parentNode.getChildCount()+ " children: ");
+
 			numChildren = parentNode.getChildCount();
 			for (int i = 0; i < numChildren; i++) {
 				temp = (DefaultMutableTreeNode) parentNode.getChildAt(i);

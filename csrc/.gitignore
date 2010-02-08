@@ -11,6 +11,7 @@ ccnd/contentmishash.ccnb
 ccnd/minsuffix.ccnb
 ccnd/smoketestccnd
 conf.mk
+conf/local.mk
 cmd/Makefile
 cmd/ccn_ccnbtoxml
 cmd/ccn_splitccnb

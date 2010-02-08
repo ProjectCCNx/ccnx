@@ -23,6 +23,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.util.Arrays;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
@@ -328,7 +329,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			_blockOffset += toWriteNow; // write offset into current block buffer
 			offset += toWriteNow; // read offset into input buffer
 			_totalLength += toWriteNow; // increment here so we can write log entries on partial writes
-			Log.finest("write: added " + toWriteNow + " bytes to buffer. blockOffset: " + _blockOffset + "( " + (thisBufAvail - toWriteNow) + " left in block), " + _totalLength + " written.");
+			if( Log.isLoggable(Level.FINEST ))
+				Log.finest("write: added " + toWriteNow + " bytes to buffer. blockOffset: " + _blockOffset + "( " + (thisBufAvail - toWriteNow) + " left in block), " + _totalLength + " written.");
 
 			if (_blockOffset >= _buffer.length) {
 				// We're out of buffers. Time to flush to the network.
@@ -351,7 +353,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// small data objects (written as single blocks without headers); instead
 		// write them as single-fragment files. Subclasses will determine whether or not
 		// to write a header.
-		Log.fine("closeNetworkData: final flush, wrote " + _totalLength + " bytes, base index " + _baseNameIndex);
+		if( Log.isLoggable(Level.FINE ))
+			Log.fine("closeNetworkData: final flush, wrote " + _totalLength + " bytes, base index " + _baseNameIndex);
 		flush(true); // true means write out the partial last block, if there is one
 	}
 
@@ -439,18 +442,20 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// forced flush/close in order to set finalBlockID).
 
 			// DKS TODO -- think about types, freshness, fix markers for impending last block/first block
-			if ((_blockOffset - saveBytes) < getBlockSize()) {
-				Log.fine("flush(): writing hanging partial last block of file: " + (_blockOffset-saveBytes) + " bytes, block total is " + getBlockSize() + ", holding back " + saveBytes + " bytes, called by close? " + flushLastBlock);
-			} else {
-				Log.fine("flush(): writing single full block of file: " + _baseName + ", holding back " + saveBytes + " bytes.");
-			}
+			if( Log.isLoggable(Level.FINE ))	
+				if ((_blockOffset - saveBytes) < getBlockSize()) {
+					Log.fine("flush(): writing hanging partial last block of file: " + (_blockOffset-saveBytes) + " bytes, block total is " + getBlockSize() + ", holding back " + saveBytes + " bytes, called by close? " + flushLastBlock);
+				} else {
+					Log.fine("flush(): writing single full block of file: " + _baseName + ", holding back " + saveBytes + " bytes.");
+				}
 			_baseNameIndex = 
 				_segmenter.putFragment(_baseName, _baseNameIndex, 
 					_buffer, 0, (_blockOffset-saveBytes), 
 					_type, _timestamp, null, (flushLastBlock ? _baseNameIndex : null), 
 					_locator, _publisher, _keys);
 		} else {
-			Log.info("flush: putting merkle tree to the network, baseName " + _baseName +
+			if( Log.isLoggable(Level.INFO ))
+				Log.info("flush: putting merkle tree to the network, baseName " + _baseName +
 					" basenameindex " + ContentName.componentPrintURI(SegmentationProfile.getSegmentNumberNameComponent(_baseNameIndex)) + "; " 
 					+ _blockOffset + 
 					" bytes written, holding back " + saveBytes + " flushing final blocks? " + flushLastBlock + ".");
@@ -472,7 +477,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		}
 		// zeroise unused bytes
 		Arrays.fill(_buffer, _blockOffset, _buffer.length, (byte)0);
-		Log.info("HEADER: CCNOutputStream: flushToNetwork: new _baseNameIndex {0}", _baseNameIndex);
+		if( Log.isLoggable(Level.INFO ))
+			Log.info("HEADER: CCNOutputStream: flushToNetwork: new _baseNameIndex {0}", _baseNameIndex);
 	}
 	
 	/**

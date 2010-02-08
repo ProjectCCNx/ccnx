@@ -289,7 +289,8 @@ ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
     if (*pfd != -1) {
         res = close(*pfd);
         if (res == -1)
-            ccnd_msg(h, "close failed for face %u fd=%d: %s", faceid, *pfd, strerror(errno));
+            ccnd_msg(h, "close failed for face %u fd=%d: %s (errno=%d)",
+                     faceid, *pfd, strerror(errno), errno);
         else
             ccnd_msg(h, "closing fd %d while finalizing face %u", *pfd, faceid);
         *pfd = -1;
@@ -836,6 +837,7 @@ make_connection(struct ccnd_handle *h, struct sockaddr *who, socklen_t wholen)
     struct hashtb_enumerator *e = &ee;
     int fd;
     int res;
+    int connecting = 0;
     struct face *face;
     const int checkflags = CCN_FACE_LINK | CCN_FACE_DGRAM | CCN_FACE_LOCAL |
                            CCN_FACE_NOSEND | CCN_FACE_UNDECIDED;
@@ -859,14 +861,31 @@ make_connection(struct ccnd_handle *h, struct sockaddr *who, socklen_t wholen)
         ccnd_msg(h, "socket: %s", strerror(errno));
         return(NULL);
     }
+    res = fcntl(fd, F_SETFL, O_NONBLOCK);
+    if (res == -1)
+        ccnd_msg(h, "connect fcntl: %s", strerror(errno));
     res = connect(fd, who, wholen);
+    if (res == -1 && errno == EINPROGRESS) {
+        res = 0;
+        connecting = 1;
+    }
     if (res == -1) {
-        ccnd_msg(h, "connect failed: %s", strerror(errno));
+        ccnd_msg(h, "connect failed: %s (errno = %d)", strerror(errno), errno);
         close(fd);
         return(NULL);
     }
     face = record_connection(h, fd, who, wholen);
-    if (face != NULL)
+    if (face == NULL) {
+        close(fd);
+        return(NULL);
+    }
+    if (connecting) {
+        ccnd_msg(h, "connecting to client fd=%d id=%u", fd, face->faceid);
+        face->flags |= CCN_FACE_CONNECTING;
+        face->outbufindex = 0;
+        face->outbuf = ccn_charbuf_create();
+    }
+    else
         ccnd_msg(h, "connected client fd=%d id=%u", fd, face->faceid);
     return(face);
 }
@@ -1600,6 +1619,8 @@ remove_content(struct ccnd_handle *h, struct content_entry *content)
                       content->key_size, content->size - content->key_size);
     if (res != HT_OLD_ENTRY)
         abort();
+    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
+        h->n_stale--;
     if (h->debug & 4)
         ccnd_debug_ccnb(h, __LINE__, "remove", NULL,
                         content->key, content->size);
@@ -1656,6 +1677,7 @@ clean_deamon(struct ccn_schedule *sched,
             (content->flags & CCN_CONTENT_ENTRY_PRECIOUS) == 0)
             remove_content(h, content);
     }
+    n = hashtb_n(h->content_tab);
     h->unsol->n = 0;
     if (h->min_stale <= h->max_stale) {
         /* clean out stale content next */
@@ -3037,6 +3059,7 @@ mark_stale(struct ccnd_handle *h, struct content_entry *content)
             ccnd_debug_ccnb(h, __LINE__, "stale", NULL,
                             content->key, content->size);
     content->flags |= CCN_CONTENT_ENTRY_STALE;
+    h->n_stale++;
     if (accession < h->min_stale)
         h->min_stale = accession;
     if (accession > h->max_stale)
@@ -3085,9 +3108,15 @@ static void
 set_content_timer(struct ccnd_handle *h, struct content_entry *content,
                   struct ccn_parsed_ContentObject *pco)
 {
-    int seconds;
+    int seconds = 0;
+    int microseconds = 0;
     size_t start = pco->offset[CCN_PCO_B_FreshnessSeconds];
     size_t stop  = pco->offset[CCN_PCO_E_FreshnessSeconds];
+    if (h->force_zero_freshness) {
+        /* Keep around for long enough to make it through the queues */
+        microseconds = 8 * h->data_pause_microsec + 10000;
+        goto Finish;
+    }
     if (start == stop)
         return;
     seconds = ccn_fetch_tagged_nonNegativeInteger(
@@ -3101,7 +3130,9 @@ set_content_timer(struct ccnd_handle *h, struct content_entry *content,
             content->key, pco->offset[CCN_PCO_E]);
         return;
     }
-    ccn_schedule_event(h->sched, seconds * 1000000,
+    microseconds = seconds * 1000000;
+Finish:
+    ccn_schedule_event(h->sched, microseconds,
                        &expire_content, NULL, content->accession);
 }
 
@@ -3186,6 +3217,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         else if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
             /* When old content arrives after it has gone stale, freshen it */
             content->flags &= ~CCN_CONTENT_ENTRY_STALE;
+            h->n_stale--;
             set_content_timer(h, content, &obj);
         }
         else {
@@ -3233,7 +3265,7 @@ Bail:
         struct content_queue *q;
         n_matches = match_interests(h, content, &obj, NULL, face);
         if (res == HT_NEW_ENTRY && n_matches == 0 &&
-            (face->flags && CCN_FACE_GG) == 0) {
+            (face->flags & CCN_FACE_GG) == 0) {
             content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
             ccn_indexbuf_append_element(h->unsol, content->accession);
         }
@@ -3373,20 +3405,26 @@ process_input(struct ccnd_handle *h, int fd)
     face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
     if (face == NULL)
         return;
+    err_sz = sizeof(err);
+    res = getsockopt(face->recv_fd, SOL_SOCKET, SO_ERROR, &err, &err_sz);
+    if (res >= 0 && err != 0) {
+        ccnd_msg(h, "error on face %u: %s (%d)", face->faceid, strerror(err), err);
+        if (err == ETIMEDOUT && (face->flags & CCN_FACE_CONNECTING) != 0) {
+            shutdown_client_fd(h, fd);
+            return;
+        }
+    }
     d = &face->decoder;
     if (face->inbuf == NULL)
         face->inbuf = ccn_charbuf_create();
     if (face->inbuf->length == 0)
         memset(d, 0, sizeof(*d));
     buf = ccn_charbuf_reserve(face->inbuf, 8800);
-    err_sz = sizeof(err);
-    res = getsockopt(face->recv_fd, SOL_SOCKET, SO_ERROR, &err, &err_sz);
-    if (res >= 0 && err != 0)
-        ccnd_msg(h, "error on face %u :%s", face->faceid, strerror(err));
     res = recvfrom(face->recv_fd, buf, face->inbuf->limit - face->inbuf->length,
             /* flags */ 0, addr, &addrlen);
     if (res == -1)
-        ccnd_msg(h, "recvfrom face %u :%s", face->faceid, strerror(errno));
+        ccnd_msg(h, "recvfrom face %u :%s (errno = %d)",
+                    face->faceid, strerror(errno), errno);
     else if (res == 0 && (face->flags & CCN_FACE_DGRAM) == 0)
         shutdown_client_fd(h, fd);
     else {
@@ -3494,8 +3532,8 @@ do_write(struct ccnd_handle *h,
             return;
         }
         else {
-            ccnd_msg(h, "send to face %u failed: %s",
-                     face->faceid, strerror(errno));
+            ccnd_msg(h, "send to face %u failed: %s (errno = %d)",
+                     face->faceid, strerror(errno), errno);
             return;
         }
     }
@@ -3529,7 +3567,7 @@ do_deferred_write(struct ccnd_handle *h, int fd)
                     ccn_charbuf_destroy(&face->outbuf);
                     return;
                 }
-                ccnd_msg(h, "send: %s", strerror(errno));
+                ccnd_msg(h, "send: %s (errno = %d)", strerror(errno), errno);
                 shutdown_client_fd(h, fd);
                 return;
             }
@@ -3544,7 +3582,10 @@ do_deferred_write(struct ccnd_handle *h, int fd)
         face->outbufindex = 0;
         ccn_charbuf_destroy(&face->outbuf);
     }
-    ccnd_msg(h, "ccnd:do_deferred_write: something fishy on %d", fd);
+    if ((face->flags & CCN_FACE_CONNECTING) != 0)
+        face->flags &= ~CCN_FACE_CONNECTING;
+    else
+        ccnd_msg(h, "ccnd:do_deferred_write: something fishy on %d", fd);
 }
 
 /**
@@ -3593,7 +3634,7 @@ ccnd_run(struct ccnd_handle *h)
         res = poll(h->fds, h->nfds, timeout_ms);
         prev_timeout_ms = ((res == 0) ? timeout_ms : 1);
         if (-1 == res) {
-            ccnd_msg(h, "poll: %s", strerror(errno));
+            ccnd_msg(h, "poll: %s (errno = %d)", strerror(errno), errno);
             sleep(1);
             continue;
         }
@@ -3771,6 +3812,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->capacity = ~0;
     if (entrylimit != NULL && entrylimit[0] != 0) {
         h->capacity = atol(entrylimit);
+        if (h->capacity == 0)
+            h->force_zero_freshness = 1;
         if (h->capacity <= 0)
             h->capacity = 10;
     }

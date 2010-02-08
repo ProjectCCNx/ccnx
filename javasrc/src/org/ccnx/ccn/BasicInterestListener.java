@@ -20,6 +20,7 @@ package org.ccnx.ccn;
 import java.io.IOException;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.Interest;
@@ -50,7 +51,8 @@ public abstract class BasicInterestListener implements CCNInterestListener {
 	}
 	
 	public void cancelInterest(Interest interest) throws IOException {
-		Log.info("Interest cancelled: " + interest.name());
+		if( Log.isLoggable(Level.INFO) )
+			Log.info("Interest cancelled: " + interest.name());
 		// What happens if we do this in the middle of cancel interests?
 		_interestProvider.cancelInterest(interest, this);
 		_interests.remove(interest);

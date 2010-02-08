@@ -73,6 +73,18 @@ public class GroupManager {
 		groupList();
 	}
 	
+	/**
+	 * A "quiet" constructor that doesn't enumerate anything, and in fact does 
+	 * little to be used for non-group based uses of KeyDirectory, really
+	 * a temporary hack till we refactor KD.
+	 * @return
+	 */
+	GroupManager(GroupAccessControlManager accessManager, CCNHandle handle) throws IOException {
+		_handle = handle;
+		_accessManager = accessManager;
+		_groupStorage = null; // try this, see if it explodes
+	}
+	
 	public GroupAccessControlManager getAccessManager() { return _accessManager; }
 
 	/**
@@ -249,8 +261,11 @@ public class GroupManager {
 	 */
 	public boolean amCurrentGroupMember(Group group) throws ContentDecodingException, IOException {
 		MembershipList ml = group.membershipList(); // will update
+		Log.finer("amCurrentGroupMember: group {0} has {1} member(s).", group.groupName(), ml.membershipList().size());
 		for (Link lr : ml.membershipList().contents()) {
+			Log.finer("amCurrentGroupMember: {0} is a member of group {1}", lr.targetName(), group.groupName());
 			if (isGroup(lr)) {
+				Log.finer("amCurrentGroupMember: {0} is itself a group.", lr.targetName());
 				String groupFriendlyName = GroupAccessControlProfile.groupNameToFriendlyName(lr.targetName());
 				if (amCurrentGroupMember(groupFriendlyName)) {
 					_myGroupMemberships.add(groupFriendlyName);
@@ -262,8 +277,11 @@ public class GroupManager {
 			} else {
 				// Not a group. Is it me?
 				if (_accessManager.haveIdentity(lr.targetName())) {
+					Log.finer("amCurrentGroupMember: {0} is me!", lr.targetName());
+					_myGroupMemberships.add(group.friendlyName());
 					return true;
 				}
+				else Log.finer("amCurrentGroupMember: {0} is not me.", lr.targetName());
 			}
 		}
 		return false;
@@ -293,6 +311,7 @@ public class GroupManager {
 		if (null == privateKeyVersion) {
 			Group theGroup = getGroup(groupFriendlyName); // will pull latest public key
 			privateKeyDirectory = theGroup.privateKeyDirectory(_accessManager);
+			privateKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
 			theGroupPublicKey = theGroup.publicKey();
 		} else {
 			// Assume one is there...

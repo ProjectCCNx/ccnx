@@ -195,7 +195,7 @@ public class ContentTree {
 						prefix = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 						//prefix = VersioningProfile.addVersion(prefix, new CCNTime(node.timestamp));
 						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-							Log.info("prefix for FastNEResponse: {0}"+prefix);
+							Log.info("prefix for FastNEResponse: {0}", prefix);
 							Log.info("response name will be: {0}", VersioningProfile.addVersion(new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), new CCNTime(node.timestamp)));
 						}
 	
@@ -586,7 +586,7 @@ public class ContentTree {
 				}
 			} else {
 				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-					Log.info("the new version doesn't match, no response needed: interest = {0} would be collection name: {1}", interest, potentialCollectionName);
+					Log.finer("the new version doesn't match, no response needed: interest = {0} would be collection name: {1}", interest, potentialCollectionName);
 				}
 				parent.interestFlag = true;
 				return null;

@@ -221,7 +221,7 @@ collect_stats_html(struct ccnd_handle *h)
         "<body>"
         "<p class='header' width='100%%'>%s ccnd[%d] local port %s</p>"
         "<div><b>Content items:</b> %llu accessioned,"
-        " %d stored, %d sparse, %lu duplicate, %lu sent</div>"
+        " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>"
         "<div><b>Interests:</b> %d names,"
         " %ld pending, %ld propagating, %ld noted</div>"
         "<div><b>Interest totals:</b> %lu accepted,"
@@ -233,6 +233,7 @@ collect_stats_html(struct ccnd_handle *h)
         portstr,
         (unsigned long long)h->accession,
         hashtb_n(h->content_tab),
+        h->n_stale,
         hashtb_n(h->sparse_straggler_tab),
         h->content_dups_recvd,
         h->content_items_sent,
