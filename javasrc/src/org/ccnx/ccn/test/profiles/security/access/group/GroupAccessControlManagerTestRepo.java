@@ -69,7 +69,9 @@ public class GroupAccessControlManagerTestRepo {
 		testSetACL();
 		testUpdateACLAdd();
 		testUpdateACLRemove();
-		deleteACL();
+		deleteACL(); // DKS -- throws NullPointerException, public keys of users getting republished in encrypted
+			// form, due to the fact that CreateUserData doesn't check before publishing keys, and 
+			// current GACM doesn't exempt keys.
 	}
 	
 	/**
