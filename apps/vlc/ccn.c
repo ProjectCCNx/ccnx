@@ -99,6 +99,7 @@ struct access_sys_t
     vlc_url_t  url;
     block_fifo_t *p_fifo;
     unsigned char *buf;
+    int i_bufsize;
     int i_bufoffset;
     int timeouts;
     int i_fifo_max;
@@ -127,7 +128,6 @@ static int CCNOpen(vlc_object_t *p_this)
     access_sys_t *p_sys = NULL;
     struct ccn_charbuf *p_name = NULL;
     struct ccn_header *p_header = NULL;
-    int i_bufsize = 0;
     int i_ret = 0;
     int i_err = VLC_EGENERIC;
 
@@ -145,8 +145,8 @@ static int CCNOpen(vlc_object_t *p_this)
     /* Update default_pts */
     var_Create(p_access, "ccn-caching", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
     p_sys->i_fifo_max = var_CreateGetInteger(p_access, "ccn-fifo-maxblocks");
-    i_bufsize = var_CreateGetInteger(p_access, "ccn-fifo-blocksize");
-    p_sys->buf = calloc(1, i_bufsize);
+    p_sys->i_bufsize = var_CreateGetInteger(p_access, "ccn-fifo-blocksize");
+    p_sys->buf = calloc(1, p_sys->i_bufsize);
     if (p_sys->buf == NULL) {
         i_err = VLC_ENOMEM;
         goto exit_error;
@@ -555,7 +555,7 @@ incoming_content(struct ccn_closure *selfp,
         if (start_offset > data_size) {
             msg_Err(p_access, "start_offset %"PRId64" > data_size %zu", start_offset, data_size);
         } else {
-            if ((data_size - start_offset) + p_sys->i_bufoffset > CCN_FIFO_BLOCK_SIZE) {
+            if ((data_size - start_offset) + p_sys->i_bufoffset > p_sys->i_bufsize) {
                 /* won't fit in buffer, release the buffer upstream */
                 p_block = block_New(p_access, p_sys->i_bufoffset);
                 memcpy(p_block->p_buffer, p_sys->buf, p_sys->i_bufoffset);
