@@ -399,8 +399,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// Find the closest node that has a non-gone ACL
 		ACLObject aclo = findAncestorWithACL(nodeName, null);
 		if (null == aclo) {
-			Log.warning("Unexpected: cannot find an ancestor of node " + nodeName + " that has an ACL.");
-			throw new IOException("Unexpected: cannot find an ancestor of node " + nodeName + " that has an ACL.");	
+			Log.info("No ACL found between node {0} and namespace root {1}. Returning root ACL.",
+					nodeName, getNamespaceRoot());
+			return getACLObjectForNode(getNamespaceRoot());
 		}
 		return aclo;
 	}
@@ -459,8 +460,10 @@ public class GroupAccessControlManager extends AccessControlManager {
 			parentName = nextParentName;
 		}
 		if (null == ancestorACLObject) {
-			throw new IllegalStateException("No ACL available in ancestor tree for node : " + dataNodeName + " searched up to " + parentName + 
-					" out of namespace rooted at " + _namespace + ".");
+			Log.info(
+					"No ACL available in ancestor tree between {0} and {1} (not-inclusive)  out of namespace rooted at {2}.",
+					dataNodeName, stopPoint, getNamespaceRoot());
+			return null;
 		}
 		Log.info("Found ACL for " + dataNodeName + " at ancestor :" + ancestorACLObject.getVersionedName());
 		return ancestorACLObject;
@@ -514,6 +517,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// if there is no update, this will probably throw an exception -- IO or XMLStream
 		if (aclo.isGone()) {
 			// treat as if no acl on node
+			Log.info("getACLObjectForNode: Asked to get an ACL object for specific node {0}, but ACL there is GONE! Returning null.", 
+					aclNodeName);
 			return null;
 		}
 		return aclo;
@@ -855,12 +860,18 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// climb up looking for node keys, then make sure that one isn't GONE
 		// if it isn't, call read-side routine to figure out how to decrypt it
 		ACLObject effectiveACL = findAncestorWithACL(nodeName, null);
-		if (null == effectiveACL) {
-			Log.warning("Unexpected: could not find effective ACL for node: " + nodeName);
-			throw new IOException("Unexpected: could not find effective ACL for node: " + nodeName);
+		
+		if (null != effectiveACL) {
+			Log.info("Got ACL named: " + effectiveACL.getVersionedName() + " attempting to retrieve node key from " + AccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
+		} else {
+			// We're not searching at the namespace root; because we assume we have
+			// already made sure we have an ACL there. So if we get back NULL, we
+			// go stratight to our namespace root.
+			Log.info("No ACL found between node {0} and namespace root {1}, assume ACL is at namespace root.",
+					nodeName, getNamespaceRoot());
 		}
-		Log.info("Got ACL named: " + effectiveACL.getVersionedName() + " attempting to retrieve node key from " + AccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
-		return getLatestNodeKeyForNode(AccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
+		return getLatestNodeKeyForNode(
+				(null != effectiveACL) ? AccessControlProfile.accessRoot(effectiveACL.getBaseName()) : getNamespaceRoot());
 	}
 	
 	/**
@@ -1210,12 +1221,6 @@ public class GroupAccessControlManager extends AccessControlManager {
 		ACLObject nearestACL = findAncestorWithACL(dataNodeName, stopPoint);
 		
 		if (null == nearestACL) {
-			Log.warning("Unexpected -- node with no ancestor ACL: " + dataNodeName);
-			// no dice
-			return null;
-		}
-		
-		if (GroupAccessControlProfile.accessRoot(nearestACL.getBaseName()).equals(GroupAccessControlProfile.accessRoot(wrappingKeyName))) {
 			Log.info("Node key: " + wrappingKeyName + " is the nearest ACL to " + dataNodeName);
 			return null;
 		}
