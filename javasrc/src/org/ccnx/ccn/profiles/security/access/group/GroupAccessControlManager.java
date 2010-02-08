@@ -1295,6 +1295,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 						entryPublicKey = new PublicKeyObject(aclEntry.targetName(), handle());
 					}
 				}
+				entryPublicKey.waitForData(SystemConfiguration.getDefaultTimeout());
 				try {
 					nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getVersionedName(), entryPublicKey.publicKey());
 				} catch (VersionMissingException ve) {
