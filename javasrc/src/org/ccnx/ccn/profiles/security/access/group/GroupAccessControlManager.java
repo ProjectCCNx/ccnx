@@ -897,13 +897,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 			Log.fine("getLatestNodeKeyForNode: no latest version found for {0}.", nodeName);
 		}
  			
-		// Could do this using getLatestVersion...
-		// First we need to figure out what the latest version is of the node key.
-//		ContentName nodeKeyVersionedName = 
-//			EnumeratedNameList.getLatestVersionName(GroupAccessControlProfile.nodeKeyName(nodeName), handle());
 		// DKS TODO this may not handle ACL deletion correctly -- we need to make sure that this
-		// key wasn't superseded by something that isn't a later version of itself.
-		
+		// key wasn't superseded by something that isn't a later version of itself.	
 		// then, pull the node key we can decrypt
 		return getNodeKeyByVersionedName(nodeKeyVersionedName, null);
 	}
@@ -964,7 +959,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 			keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
 			keyDirectory.waitForChildren();
-			try{Thread.sleep(10000);} catch (Exception e) {e.printStackTrace();}
+			
+			try {
+				Thread.sleep(10000);
+			} catch (Exception e) {
+				Log.warningStackTrace(e);
+			}
 			// this will handle the caching.
 			Key unwrappedKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
 			if (null != unwrappedKey) {
