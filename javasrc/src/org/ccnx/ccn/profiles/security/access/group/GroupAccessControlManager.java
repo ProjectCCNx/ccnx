@@ -463,14 +463,16 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 */
 	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) throws ContentDecodingException, IOException {
 		
-//		EnumeratedNameList aclNameList = EnumeratedNameList.exists(GroupAccessControlProfile.aclName(aclNodeName), aclNodeName, handle());
-		ContentObject aclNameList = VersioningProfile.getLatestVersion(GroupAccessControlProfile.aclName(aclNodeName), 
+		// TODO really want to check simple existence here, but need to integrate with verifier
+		// use. GLV too slow for negative results. Given that we need latest version, at least
+		// use the segment we get, and don't pull it twice.
+		ContentName aclName = new ContentName(GroupAccessControlProfile.aclName(aclNodeName));
+		ContentObject aclNameList = VersioningProfile.getLatestVersion(aclName, 
 				null, SystemConfiguration.MEDIUM_TIMEOUT, handle().defaultVerifier(), handle()); 
 		
 		if (null != aclNameList) {
-			ContentName aclName = new ContentName(GroupAccessControlProfile.aclName(aclNodeName));
 			Log.info("Found latest version of acl for " + aclNodeName + " at " + aclName);
-			ACLObject aclo = new ACLObject(aclName, handle());
+			ACLObject aclo = new ACLObject(aclNameList, handle());
 			if (aclo.isGone())
 				return null;
 			return aclo;
@@ -792,8 +794,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 			Log.warning("Unexpected: could not find effective ACL for node: " + nodeName);
 			throw new IOException("Unexpected: could not find effective ACL for node: " + nodeName);
 		}
-		Log.info("Got ACL named: " + effectiveACL.getVersionedName() + " attempting to retrieve node key from " + GroupAccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
-		return getLatestNodeKeyForNode(GroupAccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
+		Log.info("Got ACL named: " + effectiveACL.getVersionedName() + " attempting to retrieve node key from " + AccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
+		return getLatestNodeKeyForNode(AccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
 	}
 	
 	/**
