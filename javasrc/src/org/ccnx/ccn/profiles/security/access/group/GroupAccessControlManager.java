@@ -543,8 +543,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 		if (null != aclNameList) {
 			Log.info("Found latest version of acl for " + aclNodeName + " at " + aclName);
 			ACLObject aclo = new ACLObject(aclNameList, handle());
-			if (aclo.isGone())
-				return null;
+			if (aclo.isGone()) {
+				Log.info("ACL object is GONE, returning anyway {0}", aclo.getVersionedName());
+			}
 			return aclo;
 		}
 		Log.info("No ACL found on node: " + aclNodeName);
