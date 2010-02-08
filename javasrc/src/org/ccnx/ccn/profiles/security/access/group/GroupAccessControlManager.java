@@ -885,10 +885,22 @@ public class GroupAccessControlManager extends AccessControlManager {
 			throws InvalidKeyException, AccessDeniedException, 
 					ContentDecodingException, IOException, NoSuchAlgorithmException {
 		
+		ContentName nodeKeyPrefix = GroupAccessControlProfile.nodeKeyName(nodeName);
+		ContentObject co = VersioningProfile.getLatestVersion(nodeKeyPrefix, 
+				null, SystemConfiguration.MAX_TIMEOUT, handle().defaultVerifier(), handle());
+		ContentName nodeKeyVersionedName = null;
+		if (co != null) {
+			nodeKeyVersionedName = co.name().subname(0, nodeKeyPrefix.count() + 1);
+			Log.fine("getLatestNodeKeyForNode: {0} is the latest version found for {1}.", nodeKeyVersionedName, nodeName);
+		}
+		else {
+			Log.fine("getLatestNodeKeyForNode: no latest version found for {0}.", nodeName);
+		}
+ 			
 		// Could do this using getLatestVersion...
 		// First we need to figure out what the latest version is of the node key.
-		ContentName nodeKeyVersionedName = 
-			EnumeratedNameList.getLatestVersionName(GroupAccessControlProfile.nodeKeyName(nodeName), handle());
+//		ContentName nodeKeyVersionedName = 
+//			EnumeratedNameList.getLatestVersionName(GroupAccessControlProfile.nodeKeyName(nodeName), handle());
 		// DKS TODO this may not handle ACL deletion correctly -- we need to make sure that this
 		// key wasn't superseded by something that isn't a later version of itself.
 		
