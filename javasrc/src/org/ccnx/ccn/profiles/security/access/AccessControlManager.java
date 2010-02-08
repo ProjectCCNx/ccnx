@@ -411,6 +411,11 @@ public abstract class AccessControlManager {
 		if (!inProtectedNamespace(name)) {
 			return false;
 		}
+		
+		// Don't encrypt KEYs or LINKs for now.
+		if ((ContentType.KEY == contentType) || (ContentType.LINK == contentType)) {
+			return false;
+		}
 
 		if (AccessControlProfile.isAccessName(name)) {
 			// Don't encrypt the access control metadata itself, or we couldn't get the
