@@ -894,6 +894,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 			Log.fine("getLatestNodeKeyForNode: {0} is the latest version found for {1}.", nodeKeyVersionedName, nodeName);
 		} else {
 			Log.fine("getLatestNodeKeyForNode: no latest version found for {0}.", nodeName);
+			return null;
 		}
  			
 		// DKS TODO this may not handle ACL deletion correctly -- we need to make sure that this
