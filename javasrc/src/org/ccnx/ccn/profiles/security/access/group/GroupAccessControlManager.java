@@ -1222,9 +1222,11 @@ public class GroupAccessControlManager extends AccessControlManager {
 					entryPublicKey = groupManager().getLatestPublicKeyForGroup(aclEntry);
 				} else {
 					// Calls update. Will get latest version if name unversioned.
-					if (aclEntry.targetAuthenticator() != null)
+					if (aclEntry.targetAuthenticator() != null) {
 						entryPublicKey = new PublicKeyObject(aclEntry.targetName(), aclEntry.targetAuthenticator().publisher(), handle());
-					else entryPublicKey = new PublicKeyObject(aclEntry.targetName(), handle());
+					} else {
+						entryPublicKey = new PublicKeyObject(aclEntry.targetName(), handle());
+					}
 				}
 				try {
 					nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getVersionedName(), entryPublicKey.publicKey());
