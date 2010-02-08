@@ -64,6 +64,7 @@ public class Pathfinder implements CCNInterestListener {
 	}
 	
 	protected ContentName _startingPoint;
+	protected ContentName _stoppingPoint; // where to stop, inclusive; ROOT if non-null
 	protected ContentName _postfix;
 	protected boolean _closestOnPath;
 	protected boolean _goneOK;
@@ -79,12 +80,26 @@ public class Pathfinder implements CCNInterestListener {
 	// In order from startingPoint to root.
 	protected LinkedList<Interest> _outstandingInterests = new LinkedList<Interest>();
 	
-	public Pathfinder(ContentName startingPoint, ContentName desiredPostfix, 
+	/**
+	 * Search from startingPoint to stoppingPoint *inclusive* (i.e. stoppingPoint
+	 * will be searched).
+	 * @param startingPoint
+	 * @param stoppingPoint
+	 * @param desiredPostfix
+	 * @param closestOnPath
+	 * @param goneOK
+	 * @param timeout
+	 * @param searchedPathCache
+	 * @param handle
+	 * @throws IOException
+	 */
+	public Pathfinder(ContentName startingPoint, ContentName stoppingPoint, ContentName desiredPostfix, 
 					  boolean closestOnPath, boolean goneOK,
 					  int timeout, 
 					  Set<ContentName> searchedPathCache,
 					  CCNHandle handle) throws IOException {
 		_startingPoint = startingPoint;
+		_stoppingPoint = (null == stoppingPoint) ? ContentName.ROOT : stoppingPoint;
 		_postfix = desiredPostfix;
 		_closestOnPath = closestOnPath;
 		_goneOK = goneOK;
@@ -111,7 +126,7 @@ public class Pathfinder implements CCNInterestListener {
 				_outstandingInterests.add(theInterest);
 			}
 			
-			if (searchPoint.equals(ContentName.ROOT)) {
+			if (searchPoint.equals(_stoppingPoint)) {
 				searchPoint = null;
 			} else {
 				searchPoint = searchPoint.parent();
