@@ -693,12 +693,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 			for (Link principal : newReaders) {
 				PublicKeyObject latestKey = getLatestKeyForPrincipal(principal);
-				try {
-					if (!latestKey.available()) {
-						latestKey.wait(SystemConfiguration.getDefaultTimeout());
-					}
-				} catch (InterruptedException ex) {
-					// do nothing
+				if (!latestKey.available()) {
+					latestKey.waitForData(SystemConfiguration.getDefaultTimeout());
 				}
 				if (latestKey.available()) {
 					Log.info("updateACL: Adding wrapped key block for reader: " + latestKey.getVersionedName());
