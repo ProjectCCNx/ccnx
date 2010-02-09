@@ -398,7 +398,10 @@ public class GroupAccessControlManager extends AccessControlManager {
 		
 		// Find the closest node that has a non-gone ACL
 		ACLObject aclo = findAncestorWithACL(nodeName, null);
-		if (null == aclo) {
+		if (null != aclo) {
+			aclo.update();
+		}
+		else {
 			Log.info("No ACL found between node {0} and namespace root {1}. Returning root ACL.",
 					nodeName, getNamespaceRoot());
 			return getACLObjectForNode(getNamespaceRoot());
@@ -408,7 +411,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	
 	private ACLObject findAncestorWithACL(ContentName dataNodeName, ContentName stopPoint) throws ContentDecodingException, IOException {
 		// selector method, remove when pick faster one.
-		return findAncestorWithACLSerial(dataNodeName, stopPoint);
+		return findAncestorWithACLInParallel(dataNodeName, stopPoint);
 	}
 
 	/**
@@ -423,6 +426,10 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 */
 	private ACLObject findAncestorWithACLSerial(ContentName dataNodeName, ContentName stopPoint) throws ContentDecodingException, IOException {
 
+		// If dataNodeName is the root of this AccessControlManager, there can be no ACL between
+		// dataNodeName (inclusive) and the root (exclusive), so return null.
+		if (getNamespaceRoot().equals(dataNodeName)) return null;
+		
 		if (null == stopPoint)  {
 			stopPoint = getNamespaceRoot();
 		} else if (!getNamespaceRoot().isPrefixOf(stopPoint)) {
@@ -475,6 +482,10 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 */
 	private ACLObject findAncestorWithACLInParallel(ContentName dataNodeName, ContentName stopPoint) throws ContentDecodingException, IOException {
 
+		// If dataNodeName is the root of this AccessControlManager, there can be no ACL between
+		// dataNodeName (inclusive) and the root (exclusive), so return null.
+		if (getNamespaceRoot().equals(dataNodeName)) return null;
+		
 		if (null == stopPoint)  {
 			stopPoint = getNamespaceRoot();
 		} else if (!getNamespaceRoot().isPrefixOf(stopPoint)) {
@@ -495,7 +506,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 		SearchResults searchResults = pathfinder.waitForResults();
 		if (null != searchResults.first()) {
 			Log.info("findAncestorWithACLInParallel: found " + searchResults.first().name());
-			return new ACLObject(searchResults.first(), handle());
+			ACLObject aclo = new ACLObject(searchResults.first(), handle());
+			return aclo;
 		}
 		return null;
 	}
@@ -1228,7 +1240,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		Log.info("getNodeKeyUsingInterposedACL: looking for an ACL above {0} but below {1}",
 				dataNodeName, stopPoint);
 		ACLObject nearestACL = findAncestorWithACL(dataNodeName, stopPoint);
-		
+		// TODO update to make sure non-gone....
 		if (null == nearestACL) {
 			Log.info("Node key: " + wrappingKeyName + " is the nearest ACL to " + dataNodeName);
 			return null;
