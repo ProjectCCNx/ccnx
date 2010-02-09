@@ -553,7 +553,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 				null, SystemConfiguration.MAX_TIMEOUT, handle().defaultVerifier(), handle()); 
 		
 		if (null != aclNameList) {
-			Log.info("Found latest version of acl for " + aclNodeName + " at " + aclName);
+			Log.info("Found latest version of acl for " + aclNodeName + " at " + aclName + " type: " + aclNameList.signedInfo().getTypeName());
 			ACLObject aclo = new ACLObject(aclNameList, handle());
 			if (aclo.isGone()) {
 				Log.info("ACL object is GONE, returning anyway {0}", aclo.getVersionedName());
