@@ -399,6 +399,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// Find the closest node that has a non-gone ACL
 		ACLObject aclo = findAncestorWithACL(nodeName, null);
 		if (null != aclo) {
+			// parallel find doesn't get us the latest version. Serial does,
+			// but it's kind of an artifact.
 			aclo.update();
 		} else {
 			Log.info("No ACL found between node {0} and namespace root {1}. Returning root ACL.",
