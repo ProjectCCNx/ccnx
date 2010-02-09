@@ -394,7 +394,11 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public ContentName getSupersededBlockName() {
-		return ContentName.fromNative(_namePrefix, GroupAccessControlProfile.SUPERSEDED_MARKER);
+		return getSupersededBlockNameForKey(_namePrefix);
+	}
+	
+	public static ContentName getSupersededBlockNameForKey(ContentName versionedKeyName) {
+		return ContentName.fromNative(versionedKeyName, GroupAccessControlProfile.SUPERSEDED_MARKER);
 	}
 	
 	/**
@@ -836,11 +840,11 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws InvalidKeyException 
 	 */
 	public void addSupersededByBlock(Key oldPrivateKeyWrappingKey,
-			ContentName supersedingKeyName, Key newPrivateKeyWrappingKey) 
+			ContentName storedSupersedingKeyName, byte [] storedSupersedingKeyID, Key newPrivateKeyWrappingKey) 
 			throws InvalidKeyException, ContentEncodingException, IOException {
 		
-		addSupersededByBlock(getSupersededBlockName(), oldPrivateKeyWrappingKey,
-						     supersedingKeyName, newPrivateKeyWrappingKey, _manager.handle());
+		addSupersededByBlock(_namePrefix, oldPrivateKeyWrappingKey,
+				storedSupersedingKeyName, storedSupersedingKeyID, newPrivateKeyWrappingKey, _manager.handle());
 	}
 	
 	/**
@@ -850,14 +854,18 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws IOException 
 	 * @throws InvalidKeyException 
 	 */
-	public static void addSupersededByBlock(ContentName oldKeySupersededBlockName, Key oldKeyToBeSuperseded, 
-											ContentName supersedingKeyName, Key supersedingKey, CCNHandle handle) 
+	public static void addSupersededByBlock(ContentName oldKeyVersionedNameToAddBlockTo, Key oldKeyToBeSuperseded, 
+											ContentName storedSupersedingKeyName, byte [] storedSupersedingKeyID,
+											Key supersedingKey, CCNHandle handle) 
 			throws ContentEncodingException, IOException, InvalidKeyException {
 		
 		WrappedKey wrappedKey = WrappedKey.wrapKey(oldKeyToBeSuperseded, null, null, supersedingKey);
-		wrappedKey.setWrappingKeyIdentifier(supersedingKey);
-		wrappedKey.setWrappingKeyName(supersedingKeyName);
-		WrappedKeyObject wko = new WrappedKeyObject(oldKeySupersededBlockName, wrappedKey, SaveType.REPOSITORY, handle);
+		wrappedKey.setWrappingKeyIdentifier(
+				((null == storedSupersedingKeyID) ? WrappedKey.wrappingKeyIdentifier(supersedingKey) : 
+					storedSupersedingKeyID));
+		wrappedKey.setWrappingKeyName(storedSupersedingKeyName);
+		WrappedKeyObject wko = new WrappedKeyObject(getSupersededBlockNameForKey(oldKeyVersionedNameToAddBlockTo), 
+													wrappedKey, SaveType.REPOSITORY, handle);
 		wko.save();
 	}
 

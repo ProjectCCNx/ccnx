@@ -1375,8 +1375,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 					nodeKeyDirectory.waitForChildren();
 					nodeKeyDirectory.addPreviousKeyLink(oldEffectiveNodeKey.storedNodeKeyName(), null);
 					// OK, just add superseded-by block to the old directory.
-					KeyDirectory.addSupersededByBlock(oldEffectiveNodeKey.storedNodeKeyName(), oldEffectiveNodeKey.nodeKey(), 
-							nodeKeyDirectoryName, nodeKey, handle());
+					KeyDirectory.addSupersededByBlock(
+							oldEffectiveNodeKey.storedNodeKeyName(), oldEffectiveNodeKey.nodeKey(), 
+							theNodeKey.storedNodeKeyName(), theNodeKey.storedNodeKeyID(), theNodeKey.nodeKey(), handle());
 				}
 			}
 		} finally {
