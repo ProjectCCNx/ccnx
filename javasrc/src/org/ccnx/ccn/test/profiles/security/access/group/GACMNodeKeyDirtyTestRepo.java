@@ -59,7 +59,6 @@ public class GACMNodeKeyDirtyTestRepo {
 		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
 		acm.publishMyIdentity(friendlyNames[0], handle.keyManager().getDefaultPublicKey());
 		handle.keyManager().publishKeyToRepository();
-		NamespaceManager.registerACM(acm);
 		
 		// create the root ACL
 		// The root has user0 as a manager
@@ -71,6 +70,9 @@ public class GACMNodeKeyDirtyTestRepo {
 		rootACLcontents.add(mlk);
 		ACL rootACL = new ACL(rootACLcontents);
 		acm.initializeNamespace(rootACL);
+		
+		// Register ACM so it can be found
+		NamespaceManager.registerACM(acm);
 	}
 	
 	/**

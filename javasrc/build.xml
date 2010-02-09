@@ -347,8 +347,10 @@
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/impl/**/*Test.class"/>
+					<!-- should be profiles/**/*Test.class, but don't want to include access control yet -->
 				    <include name="org/ccnx/ccn/test/profiles/nameenum/*Test.class"/>
 					<include name="org/ccnx/ccn/test/profiles/*Test.class"/>
+				    <include name="org/ccnx/ccn/test/profiles/search/*Test.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -368,6 +370,8 @@
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/impl/**/*TestRepo.class"/>
+					<!-- should be profiles/**/*TestRepo.class, but don't want to include access control yet -->
+				    <include name="org/ccnx/ccn/test/profiles/search/*TestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>

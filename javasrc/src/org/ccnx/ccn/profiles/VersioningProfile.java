@@ -520,7 +520,9 @@ public class VersioningProfile implements CCNProfile {
 	 * @param timeout  This is the time to wait until you get any response.  If nothing is returned, this method will return null.
 	 * @param verifier Used to verify the returned content objects.
  	 * @param handle CCNHandle used to get the latest version.
- 	 * @param startingSegmentNumber Get the latest version with this starting segment marker.
+ 	 * @param startingSegmentNumber If we are requiring content to be a segment, what segment number
+ 	 *    do we want. If null, and findASegment is true, uses SegmentationProfile.baseSegment().
+ 	 * @param findASegment are we requiring returned content to be a segment of this version
 	 * @return A ContentObject with the latest version, or null if the query timed out. 
 	 * @result Returns a matching ContentObject, verified.
 	 * @throws IOException
@@ -531,7 +533,7 @@ public class VersioningProfile implements CCNProfile {
 												  ContentVerifier verifier,
 												  CCNHandle handle,
 												  Long startingSegmentNumber,
-												  boolean getFirstSegment) throws IOException {
+												  boolean findASegment) throws IOException {
 		
 		Log.info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion+" called with timeout: "+timeout);
 		
@@ -574,7 +576,7 @@ public class VersioningProfile implements CCNProfile {
 			lastResult = result;
 			attempts++;
 			Interest getLatestInterest = null;
-			if (getFirstSegment) {
+			if (findASegment) {
 				getLatestInterest = firstBlockLatestVersionInterest(startingVersion, publisher);
 			} else {
 				getLatestInterest = latestVersionInterest(startingVersion, null, publisher);
@@ -644,7 +646,7 @@ public class VersioningProfile implements CCNProfile {
 					//it verified!  are we done?
 					
 					//first check if we need to get the first segment...
-					if (getFirstSegment) {
+					if (findASegment) {
 						//yes, we need to have the first segment....
 						// Now we know the version. Did we luck out and get first block?
 						if (VersioningProfile.isVersionedFirstSegment(prefix, result, startingSegmentNumber)) {
@@ -742,8 +744,8 @@ public class VersioningProfile implements CCNProfile {
 	
 	
 	/**
-	 * - find the first segment of the latest version of a name
-	 * 		- if no version given, gets the first segment of the latest version
+	 * Find a particular segment of the latest version of a name
+	 * 		- if no version given, gets the desired segment of the latest version
 	 * 		- if a starting version given, gets the latest version available *after* that version or times out
 	 *    Will ensure that what it returns is a segment of a version of that object.
 	 *    Also makes sure to return the latest version with a SegmentationProfile.baseSegment() marker.
@@ -752,7 +754,7 @@ public class VersioningProfile implements CCNProfile {
 	 * 							find of desiredName.
 	 * 					  If desiredName has a terminal version, will try to find the first block of content whose
 	 * 						    version is *after* desiredName (i.e. getLatestVersion starting from desiredName).
-	 * @param startingSegmentNumber The desired block number, or SegmentationProfile.baseSegment if null.
+	 * @param startingSegmentNumber The desired block number, or SegmentationProfile.baseSegment() if null.
 	 * @param publisher, if one is specified.
 	 * @param timeout
 	 * @return The first block of a stream with a version later than desiredName, or null if timeout is reached.
