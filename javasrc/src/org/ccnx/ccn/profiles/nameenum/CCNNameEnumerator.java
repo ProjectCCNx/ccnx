@@ -177,6 +177,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		callback = c;
 	}
 	
+	public CCNHandle handle() { return _handle; }
+	
 	
 	/**
 	 * Method to register a prefix for name enumeration.  A NERequest and initial interest is created for new prefixes.

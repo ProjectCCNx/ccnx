@@ -64,6 +64,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @param  handle the CCNHandle object for sending interests and receiving content object responses.
 	 */
 	public EnumeratedNameList(ContentName namePrefix, CCNHandle handle) throws IOException {
+		this(namePrefix, true, handle);
+	}
+	
+	public EnumeratedNameList(ContentName namePrefix, boolean startEnumerating, CCNHandle handle) throws IOException {
 		if (null == namePrefix) {
 			throw new IllegalArgumentException("namePrefix cannot be null!");
 		}
@@ -75,7 +79,11 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			}
 		}
 		_namePrefix = namePrefix;
-		_enumerator = new CCNNameEnumerator(namePrefix, handle, this);
+		if (startEnumerating) {
+			_enumerator = new CCNNameEnumerator(namePrefix, handle, this);
+		} else {
+			_enumerator = new CCNNameEnumerator(handle, this);
+		}
 	}
 	
 	/**
@@ -93,6 +101,14 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * */
 	public void stopEnumerating() {
 		_enumerator.cancelPrefix(_namePrefix);
+	}
+	
+	/**
+	 * Starts enumeration, if we're not enumerating already.
+	 * @throws IOException
+	 */
+	public void startEnumerating() throws IOException {
+		_enumerator.registerPrefix(_namePrefix);
 	}
 	
 	/**
