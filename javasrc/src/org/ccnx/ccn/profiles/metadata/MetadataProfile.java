@@ -15,8 +15,9 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.profiles;
+package org.ccnx.ccn.profiles.metadata;
 
+import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class MetadataProfile implements CCNProfile {
