@@ -75,7 +75,7 @@ public class RepositoryServer {
 	
 	private ContentName _responseName = null;
 	
-	public static final int PERIOD = SystemConfiguration.MAX_TIMEOUT; // period for interest timeout check in ms.
+	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	public static final int THREAD_LIFE = 8;	// in seconds
 	public static final int WINDOW_SIZE = 4;
 	public static final int FRESHNESS = 4;	// in seconds
@@ -94,13 +94,13 @@ public class RepositoryServer {
 	private class InterestTimer extends TimerTask {
 
 		public void run() {
-			long currentTime = new Date().getTime();
+			long currentTime = System.currentTimeMillis();
 			synchronized (_currentListeners) {
 				if (_currentListeners.size() > 0) {
 					Iterator<RepositoryDataListener> iterator = _currentListeners.iterator();
 					while (iterator.hasNext()) {
 						RepositoryDataListener listener = iterator.next();
-						if ((currentTime - listener.getTimer()) > (PERIOD * 2)) {
+						if ((currentTime - listener.getTimer()) > SystemConfiguration.MAX_TIMEOUT) {
 							synchronized(_repoFilters) {
 								listener.cancelInterests();
 								iterator.remove();
