@@ -538,7 +538,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// use the segment we get, and don't pull it twice.
 		ContentName aclName = new ContentName(GroupAccessControlProfile.aclName(aclNodeName));
 		ContentObject aclNameList = VersioningProfile.getLatestVersion(aclName, 
-				null, SystemConfiguration.MEDIUM_TIMEOUT, handle().defaultVerifier(), handle()); 
+				null, SystemConfiguration.MAX_TIMEOUT, handle().defaultVerifier(), handle()); 
 		
 		if (null != aclNameList) {
 			Log.info("Found latest version of acl for " + aclNodeName + " at " + aclName);

@@ -75,7 +75,7 @@ public class RepositoryServer {
 	
 	private ContentName _responseName = null;
 	
-	public static final int PERIOD = 2000; // period for interest timeout check in ms.
+	public static final int PERIOD = SystemConfiguration.MAX_TIMEOUT; // period for interest timeout check in ms.
 	public static final int THREAD_LIFE = 8;	// in seconds
 	public static final int WINDOW_SIZE = 4;
 	public static final int FRESHNESS = 4;	// in seconds
