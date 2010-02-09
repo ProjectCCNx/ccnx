@@ -400,8 +400,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		ACLObject aclo = findAncestorWithACL(nodeName, null);
 		if (null != aclo) {
 			aclo.update();
-		}
-		else {
+		} else {
 			Log.info("No ACL found between node {0} and namespace root {1}. Returning root ACL.",
 					nodeName, getNamespaceRoot());
 			return getACLObjectForNode(getNamespaceRoot());
