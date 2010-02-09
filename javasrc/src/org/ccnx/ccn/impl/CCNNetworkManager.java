@@ -1173,8 +1173,8 @@ public class CCNNetworkManager implements Runnable {
 				// parties (registered interests and getters).
 				//--------------------------------- Process data from net (if any) 
 				for (ContentObject co : packet.data()) {
-					if( Log.isLoggable(Level.FINE) )
-						Log.fine("Data from net for port: " + _localPort + " {0}", co.name());
+					if( Log.isLoggable(Level.FINER) )
+						Log.finer("Data from net for port: " + _localPort + " {0}", co.name());
 					//	SystemConfiguration.logObject("Data from net:", co);
 					
 					deliverData(co);
@@ -1184,8 +1184,8 @@ public class CCNNetworkManager implements Runnable {
 
 				//--------------------------------- Process interests from net (if any)
 				for (Interest interest : packet.interests()) {
-					if( Log.isLoggable(Level.FINE) )
-						Log.fine("Interest from net for port: " + _localPort + " {0}", interest);
+					if( Log.isLoggable(Level.FINEST) )
+						Log.finest("Interest from net for port: " + _localPort + " {0}", interest);
 					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
 					deliverInterest(oInterest);
 					// External interests never go back to network
