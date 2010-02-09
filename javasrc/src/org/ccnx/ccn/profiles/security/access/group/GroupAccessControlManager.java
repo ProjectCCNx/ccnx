@@ -28,6 +28,7 @@ import java.util.LinkedList;
 
 import javax.crypto.spec.SecretKeySpec;
 
+import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -46,13 +47,17 @@ import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.search.Pathfinder;
+import org.ccnx.ccn.profiles.search.Pathfinder.SearchResults;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
@@ -392,37 +397,107 @@ public class GroupAccessControlManager extends AccessControlManager {
 	public ACLObject getEffectiveACLObject(ContentName nodeName) throws ContentDecodingException, IOException {
 		
 		// Find the closest node that has a non-gone ACL
-		ACLObject aclo = findAncestorWithACL(nodeName);
+		ACLObject aclo = findAncestorWithACL(nodeName, null);
 		if (null == aclo) {
-			Log.warning("Unexpected: cannot find an ancestor of node " + nodeName + " that has an ACL.");
-			throw new IOException("Unexpected: cannot find an ancestor of node " + nodeName + " that has an ACL.");	
+			Log.info("No ACL found between node {0} and namespace root {1}. Returning root ACL.",
+					nodeName, getNamespaceRoot());
+			return getACLObjectForNode(getNamespaceRoot());
 		}
 		return aclo;
 	}
+	
+	private ACLObject findAncestorWithACL(ContentName dataNodeName, ContentName stopPoint) throws ContentDecodingException, IOException {
+		// selector method, remove when pick faster one.
+		return findAncestorWithACLSerial(dataNodeName, stopPoint);
+	}
 
-	private ACLObject findAncestorWithACL(ContentName dataNodeName) throws ContentDecodingException, IOException {
+	/**
+	 * Look for an ACL that is on dataNodeName or above, but below stopPoint. If stopPoint is
+	 * null, then take it to be the root for this AccessControlManager (which we assume to have
+	 * an ACL).
+	 * @param dataNodeName
+	 * @param stopPoint
+	 * @return
+	 * @throws ContentDecodingException
+	 * @throws IOException
+	 */
+	private ACLObject findAncestorWithACLSerial(ContentName dataNodeName, ContentName stopPoint) throws ContentDecodingException, IOException {
 
+		if (null == stopPoint)  {
+			stopPoint = getNamespaceRoot();
+		} else if (!getNamespaceRoot().isPrefixOf(stopPoint)) {
+			Log.warning("findAncestorWithACL: Stopping point {0} must be an ancestor of the starting point {1}!", 
+					stopPoint, dataNodeName);
+			throw new IOException("findAncestorWithACL: invalid search space: stopping point " + stopPoint + " must be an ancestor of the starting point " +
+					dataNodeName + "!");
+		}
+		Log.info("findAncestorWithACL: start point {0}, stop before {1}", dataNodeName, stopPoint);
+		int stopCount = stopPoint.count();
+		
 		ACLObject ancestorACLObject = null;
 		ContentName parentName = dataNodeName;
 		ContentName nextParentName = null;
 		while (null == ancestorACLObject) {
 			ancestorACLObject = getACLObjectForNodeIfExists(parentName);
-			if ((null != ancestorACLObject) && (ancestorACLObject.isGone())) {
-				Log.info("Found an ACL object at " + ancestorACLObject.getVersionedName() + " but its GONE.");
-				ancestorACLObject = null;
+			if (null != ancestorACLObject) {
+				if (ancestorACLObject.isGone()) {
+					Log.info("Found an ACL object at " + ancestorACLObject.getVersionedName() + " but its GONE.");
+					ancestorACLObject = null;
+				} else {
+					// got one
+					Log.info("Found an ACL object at " + ancestorACLObject.getVersionedName());
+					break;
+				}
 			}
 			nextParentName = parentName.parent();
+			Log.info("findAncestorWithACL: no ACL object at node {0}, looking next at {1}", parentName, nextParentName);
 			// stop looking once we're above our namespace, or if we've already checked the top level
-			if (nextParentName.count() < _namespace.count() || parentName.count() == 0) {
+			if (parentName.count() == stopCount) {
+				Log.info("findAncestorWithACL: giving up, next search point would be {0}, stop point is {1}, no ACL found",
+						parentName, stopPoint);
 				break;
 			}
 			parentName = nextParentName;
 		}
 		if (null == ancestorACLObject) {
-			throw new IllegalStateException("No ACL available in ancestor tree for node : " + dataNodeName);
+			Log.info(
+					"No ACL available in ancestor tree between {0} and {1} (not-inclusive)  out of namespace rooted at {2}.",
+					dataNodeName, stopPoint, getNamespaceRoot());
+			return null;
 		}
 		Log.info("Found ACL for " + dataNodeName + " at ancestor :" + ancestorACLObject.getVersionedName());
 		return ancestorACLObject;
+	}
+	
+	/**
+	 * Implement a parallel findAncestorWithACL; drop it in separately so we can 
+	 * switch back and forth in testing.
+	 */
+	private ACLObject findAncestorWithACLInParallel(ContentName dataNodeName, ContentName stopPoint) throws ContentDecodingException, IOException {
+
+		if (null == stopPoint)  {
+			stopPoint = getNamespaceRoot();
+		} else if (!getNamespaceRoot().isPrefixOf(stopPoint)) {
+			Log.warning("findAncestorWithACLInParallel: Stopping point {0} must be an ancestor of the starting point {1}!", 
+					stopPoint, dataNodeName);
+			throw new IOException("findAncestorWithACLInParallel: invalid search space: stopping point " + stopPoint + " must be an ancestor of the starting point " +
+					dataNodeName + "!");
+		}
+		Log.info("findAncestorWithACLInParallel: start point {0}, stop before {1}", dataNodeName, stopPoint);
+		int stopCount = stopPoint.count();
+		
+		// Pathfinder searches from start point to stop point inclusive, want exclusive, so hand
+		// it one level down from stop point.
+		Pathfinder pathfinder = new Pathfinder(dataNodeName, dataNodeName.cut(stopCount+1), 
+				GroupAccessControlProfile.aclPostfix(), true, false, SystemConfiguration.MEDIUM_TIMEOUT,
+				null, handle());
+		
+		SearchResults searchResults = pathfinder.waitForResults();
+		if (null != searchResults.first()) {
+			Log.info("findAncestorWithACLInParallel: found " + searchResults.first().name());
+			return new ACLObject(searchResults.first(), handle());
+		}
+		return null;
 	}
 
 	/**
@@ -442,6 +517,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// if there is no update, this will probably throw an exception -- IO or XMLStream
 		if (aclo.isGone()) {
 			// treat as if no acl on node
+			Log.info("getACLObjectForNode: Asked to get an ACL object for specific node {0}, but ACL there is GONE! Returning null.", 
+					aclNodeName);
 			return null;
 		}
 		return aclo;
@@ -456,14 +533,19 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 */
 	public ACLObject getACLObjectForNodeIfExists(ContentName aclNodeName) throws ContentDecodingException, IOException {
 		
-		EnumeratedNameList aclNameList = EnumeratedNameList.exists(GroupAccessControlProfile.aclName(aclNodeName), aclNodeName, handle());
+		// TODO really want to check simple existence here, but need to integrate with verifier
+		// use. GLV too slow for negative results. Given that we need latest version, at least
+		// use the segment we get, and don't pull it twice.
+		ContentName aclName = new ContentName(GroupAccessControlProfile.aclName(aclNodeName));
+		ContentObject aclNameList = VersioningProfile.getLatestVersion(aclName, 
+				null, SystemConfiguration.MEDIUM_TIMEOUT, handle().defaultVerifier(), handle()); 
 		
 		if (null != aclNameList) {
-			ContentName aclName = new ContentName(GroupAccessControlProfile.aclName(aclNodeName));
 			Log.info("Found latest version of acl for " + aclNodeName + " at " + aclName);
-			ACLObject aclo = new ACLObject(aclName, handle());
-			if (aclo.isGone())
-				return null;
+			ACLObject aclo = new ACLObject(aclNameList, handle());
+			if (aclo.isGone()) {
+				Log.info("ACL object is GONE, returning anyway {0}", aclo.getVersionedName());
+			}
 			return aclo;
 		}
 		Log.info("No ACL found on node: " + aclNodeName);
@@ -612,12 +694,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 			for (Link principal : newReaders) {
 				PublicKeyObject latestKey = getLatestKeyForPrincipal(principal);
-				try {
-					if (!latestKey.available()) {
-						latestKey.wait(SystemConfiguration.getDefaultTimeout());
-					}
-				} catch (InterruptedException ex) {
-					// do nothing
+				if (!latestKey.available()) {
+					latestKey.waitForData(SystemConfiguration.getDefaultTimeout());
 				}
 				if (latestKey.available()) {
 					Log.info("updateACL: Adding wrapped key block for reader: " + latestKey.getVersionedName());
@@ -778,13 +856,19 @@ public class GroupAccessControlManager extends AccessControlManager {
 					ContentDecodingException, IOException, NoSuchAlgorithmException {
 		// climb up looking for node keys, then make sure that one isn't GONE
 		// if it isn't, call read-side routine to figure out how to decrypt it
-		ACLObject effectiveACL = findAncestorWithACL(nodeName);
-		if (null == effectiveACL) {
-			Log.warning("Unexpected: could not find effective ACL for node: " + nodeName);
-			throw new IOException("Unexpected: could not find effective ACL for node: " + nodeName);
+		ACLObject effectiveACL = findAncestorWithACL(nodeName, null);
+		
+		if (null != effectiveACL) {
+			Log.info("Got ACL named: " + effectiveACL.getVersionedName() + " attempting to retrieve node key from " + AccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
+		} else {
+			// We're not searching at the namespace root; because we assume we have
+			// already made sure we have an ACL there. So if we get back NULL, we
+			// go stratight to our namespace root.
+			Log.info("No ACL found between node {0} and namespace root {1}, assume ACL is at namespace root.",
+					nodeName, getNamespaceRoot());
 		}
-		Log.info("Got ACL named: " + effectiveACL.getVersionedName() + " attempting to retrieve node key from " + GroupAccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
-		return getLatestNodeKeyForNode(GroupAccessControlProfile.accessRoot(effectiveACL.getVersionedName()));
+		return getLatestNodeKeyForNode(
+				(null != effectiveACL) ? AccessControlProfile.accessRoot(effectiveACL.getBaseName()) : getNamespaceRoot());
 	}
 	
 	/**
@@ -801,13 +885,20 @@ public class GroupAccessControlManager extends AccessControlManager {
 			throws InvalidKeyException, AccessDeniedException, 
 					ContentDecodingException, IOException, NoSuchAlgorithmException {
 		
-		// Could do this using getLatestVersion...
-		// First we need to figure out what the latest version is of the node key.
-		ContentName nodeKeyVersionedName = 
-			EnumeratedNameList.getLatestVersionName(GroupAccessControlProfile.nodeKeyName(nodeName), handle());
+		ContentName nodeKeyPrefix = GroupAccessControlProfile.nodeKeyName(nodeName);
+		ContentObject co = VersioningProfile.getLatestVersion(nodeKeyPrefix, 
+				null, SystemConfiguration.MAX_TIMEOUT, handle().defaultVerifier(), handle());
+		ContentName nodeKeyVersionedName = null;
+		if (co != null) {
+			nodeKeyVersionedName = co.name().subname(0, nodeKeyPrefix.count() + 1);
+			Log.fine("getLatestNodeKeyForNode: {0} is the latest version found for {1}.", nodeKeyVersionedName, nodeName);
+		} else {
+			Log.fine("getLatestNodeKeyForNode: no latest version found for {0}.", nodeName);
+			return null;
+		}
+ 			
 		// DKS TODO this may not handle ACL deletion correctly -- we need to make sure that this
-		// key wasn't superseded by something that isn't a later version of itself.
-		
+		// key wasn't superseded by something that isn't a later version of itself.	
 		// then, pull the node key we can decrypt
 		return getNodeKeyByVersionedName(nodeKeyVersionedName, null);
 	}
@@ -868,7 +959,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 			keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
 			keyDirectory.waitForChildren();
-			try{Thread.sleep(10000);} catch (Exception e) {e.printStackTrace();}
+			
+			try {
+				Thread.sleep(10000);
+			} catch (Exception e) {
+				Log.warningStackTrace(e);
+			}
 			// this will handle the caching.
 			Key unwrappedKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
 			if (null != unwrappedKey) {
@@ -1128,15 +1224,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 			ContentName wrappingKeyName, byte[] wrappingKeyIdentifier) 
 			throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 
-		ACLObject nearestACL = findAncestorWithACL(dataNodeName);
+		ContentName stopPoint = AccessControlProfile.accessRoot(wrappingKeyName);
+		Log.info("getNodeKeyUsingInterposedACL: looking for an ACL above {0} but below {1}",
+				dataNodeName, stopPoint);
+		ACLObject nearestACL = findAncestorWithACL(dataNodeName, stopPoint);
 		
 		if (null == nearestACL) {
-			Log.warning("Unexpected -- node with no ancestor ACL: " + dataNodeName);
-			// no dice
-			return null;
-		}
-		
-		if (nearestACL.equals(GroupAccessControlProfile.accessRoot(wrappingKeyName))) {
 			Log.info("Node key: " + wrappingKeyName + " is the nearest ACL to " + dataNodeName);
 			return null;
 		}
@@ -1209,10 +1302,13 @@ public class GroupAccessControlManager extends AccessControlManager {
 					entryPublicKey = groupManager().getLatestPublicKeyForGroup(aclEntry);
 				} else {
 					// Calls update. Will get latest version if name unversioned.
-					if (aclEntry.targetAuthenticator() != null)
+					if (aclEntry.targetAuthenticator() != null) {
 						entryPublicKey = new PublicKeyObject(aclEntry.targetName(), aclEntry.targetAuthenticator().publisher(), handle());
-					else entryPublicKey = new PublicKeyObject(aclEntry.targetName(), handle());
+					} else {
+						entryPublicKey = new PublicKeyObject(aclEntry.targetName(), handle());
+					}
 				}
+				entryPublicKey.waitForData(SystemConfiguration.getDefaultTimeout());
 				try {
 					nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getVersionedName(), entryPublicKey.publicKey());
 				} catch (VersionMissingException ve) {
@@ -1285,15 +1381,16 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// it should be, and attempt to decrypt it from there.
 		NodeKey nk = null;
 		try {
-			Log.finer("getNodeKeyForObject: trying to get specific node key at {0}", wko.wrappedKey().wrappingKeyName());
+			Log.info("getNodeKeyForObject: trying to get specific node key at {0}", wko.wrappedKey().wrappingKeyName());
 			nk = getSpecificNodeKey(wko.wrappedKey().wrappingKeyName(), 
 										wko.wrappedKey().wrappingKeyIdentifier());
-			Log.finer("getNodeKeyForObject: got specific node key {0} at {1}", nk, wko.wrappedKey().wrappingKeyName());
+			Log.info("getNodeKeyForObject: got specific node key {0} at {1}", nk, wko.wrappedKey().wrappingKeyName());
 		} catch (AccessDeniedException ex) {
 			// ignore
+			Log.info("getNodeKeyForObject: ignoring access denied exception as we're gong to try harder: " + ex.getMessage());
 		}
 		if (null == nk) {
-			Log.finer("getNodeKeyForObject: trying to get node key using interposed ACL for {0}", wko.wrappedKey().wrappingKeyName());
+			Log.info("getNodeKeyForObject: trying to get node key using interposed ACL for {0}", wko.wrappedKey().wrappingKeyName());
 			// OK, we will have gotten an exception if the node key simply didn't exist
 			// there, so this means that we don't have rights to read it there.
 			// The only way we might have rights not visible from this link is if an
@@ -1307,9 +1404,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 				return null;
 			}
 		}
-		Log.finer("getNodeKeyForObject: retrieved stored node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), nk);
+		Log.info("getNodeKeyForObject: retrieved stored node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), nk);
 		NodeKey enk = nk.computeDescendantNodeKey(nodeName, nodeKeyLabel());
-		Log.finer("getNodeKeyForObject: computed effective node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), enk);
+		Log.info("getNodeKeyForObject: computed effective node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), enk);
 		return enk;
 	}
 	

@@ -53,6 +53,7 @@ import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherID;
 
 
@@ -117,7 +118,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 */
 	public KeyDirectory(GroupAccessControlManager manager, ContentName directoryName, CCNHandle handle) 
 					throws IOException {
-		super(directoryName, handle);
+		super(directoryName, false, handle);
 		if (null == manager) {
 			stopEnumerating();
 			throw new IllegalArgumentException("Manager cannot be null.");
@@ -126,31 +127,32 @@ public class KeyDirectory extends EnumeratedNameList {
 		initialize();
 	}
 
-	private void initialize() throws IOException {
+	/**
+	 * We don't start enumerating until we get here.
+	 * @throws IOException
+	 */
+	protected void initialize() throws IOException {
 		if (!VersioningProfile.hasTerminalVersion(_namePrefix)) {
-			getNewData();
-			ContentName latestVersionName = getLatestVersionChildName();
-			if (null == latestVersionName) {
-				Log.info("Unexpected: can't get a latest version for key directory name : " + _namePrefix);
-				getNewData();
-				latestVersionName = getLatestVersionChildName();
-				if (null == latestVersionName) {
-					Log.info("Unexpected: really can't get a latest version for key directory name : " + _namePrefix);
-					throw new IOException("Unexpected: really can't get a latest version for key directory name : " + _namePrefix);
-				}
+			ContentObject latestVersionObject = 
+					VersioningProfile.getLatestVersion(_namePrefix, 
+						null, SystemConfiguration.MAX_TIMEOUT, _enumerator.handle().defaultVerifier(), _enumerator.handle());
+			
+			if (null == latestVersionObject) {
+				throw new IOException("Cannot find content for any version of " + _namePrefix + "!");
 			}
-			Log.finer("KeyDirectory, got latest version of {0}, name {1}", _namePrefix, latestVersionName);
-			synchronized (_childLock) {
-				stopEnumerating();
-				_children.clear();
-				_newChildren = null;
-				if (latestVersionName.count() > 1) {
-					Log.warning("Unexpected: NE protocol gave back more than one component!");
-				}
-				_namePrefix = new ContentName(_namePrefix, latestVersionName.component(0));
-				_enumerator.registerPrefix(_namePrefix);
-			}
-		} 
+			
+			ContentName versionedNamePrefix = 
+				latestVersionObject.name().subname(0, _namePrefix.count() + 1);
+			
+			Log.fine("KeyDirectory: initialize: {0} is the latest version found for {1}.", versionedNamePrefix, _namePrefix);
+			_namePrefix = versionedNamePrefix;
+		}
+		
+		// We don't register prefix in constructor anymore; don't start enumerating till we finish
+		// initialize. Note that if you subclass KeyDirectory, will need to override initialize().
+		synchronized(_childLock) {
+			_enumerator.registerPrefix(_namePrefix);
+		}
 	}
 	
 	/**
@@ -563,9 +565,9 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		try {
 			_keyIDLock.readLock().lock();
-			Log.finer("KeyDirectory getUnwrappedKey: the directory has {0} wrapping keys.", _keyIDs.size());
+			Log.info("KeyDirectory getUnwrappedKey: the directory has {0} wrapping keys.", _keyIDs.size());
 			for (byte [] keyid : _keyIDs) {
-				Log.finer("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under a key whose id is {0}", 
+				Log.info("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under a key whose id is {0}", 
 						DataUtils.printHexBytes(keyid) );
 				if (_manager.hasKey(keyid)) {
 					// We have it, pull the block, unwrap the node key.
@@ -622,7 +624,7 @@ public class KeyDirectory extends EnumeratedNameList {
 				if (_manager.groupManager().haveKnownGroupMemberships()) {
 					try{
 						_principalsLock.readLock().lock();
-						Log.finer("KeyDirectory getUnwrappedKey: the directory has {0} principals.", _principals.size());
+						Log.info("KeyDirectory getUnwrappedKey: the directory has {0} principals.", _principals.size());
 						for (String principal : _principals.keySet()) {
 							if ((!_manager.groupManager().isGroup(principal)) || (!_manager.groupManager().amKnownGroupMember(principal))) {
 								// On this pass, only do groups that I think I'm a member of. Do them
@@ -651,7 +653,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					try{
 							_principalsLock.readLock().lock();
 							for (String principal : _principals.keySet()) {
-								Log.finer("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under the key of principal {0}", 
+								Log.info("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under the key of principal {0}", 
 										principal);
 								if ((!_manager.groupManager().isGroup(principal)) || (_manager.groupManager().amKnownGroupMember(principal))) {
 									// On this pass, only do groups that I don't think I'm a member of.
@@ -673,7 +675,7 @@ public class KeyDirectory extends EnumeratedNameList {
 										continue;
 									}
 								}
-								else Log.finer("KeyDirectory getUnwrappedKey: I am not a member of group {0} ", principal);
+								else Log.info("KeyDirectory getUnwrappedKey: I am not a member of group {0} ", principal);
 							}
 					} finally {
 						_principalsLock.readLock().unlock();
