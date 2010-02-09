@@ -633,21 +633,35 @@ public class GroupAccessControlManager extends AccessControlManager {
 		if (null == thisNodeACL) {
 			Log.info("Asked to delete ACL for node " + nodeName + " that doesn't have one. Doing nothing.");
 			return;
+		} else if (thisNodeACL.isGone()) {
+			Log.info("Asked to delete ACL for node " + nodeName + " that has already been deleted. Doing nothing.");
+			return;			
 		}
 		Log.info("Deleting ACL for node " + nodeName + " latest version: " + thisNodeACL.getVersionedName());
 		
-		// Then, find the latest node key. This should not be a derived node key.
-		NodeKey nk = getEffectiveNodeKey(nodeName);
+		// We know we have an ACL at this node. So we know we have a node key at this
+		// node. Get the latest version of this node key.
+		NodeKey nk = getLatestNodeKeyForNode(nodeName);
 		
-		// Next, find the ACL that is in force after the deletion.
+		// Next, find the node key that would be in force here after this deletion. 
+		// Do that by getting the effective node key at the parent
 		ContentName parentName = nodeName.parent();
-		NodeKey effectiveParentNodeKey = getLatestNodeKeyForNode(parentName);
+		NodeKey effectiveParentNodeKey = getEffectiveNodeKey(parentName);
+		// And then deriving what the effective node key would be here, if
+		// we inherited from the parent
+		NodeKey ourEffectiveNodeKeyFromParent = 
+			effectiveParentNodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
 		
 		// Generate a superseded block for this node, wrapping its key in the parent.
 		// TODO want to wrap key in parent's effective key, but can't point to that -- no way to name an
 		// effective node key... need one.
+		
+		// need to mangl stored key name into superseded block name, need to wrap
+		// in ourEffNodeKeyFromParent, make sure stored key id points up to our ENKFP.storedKeyName()
 		KeyDirectory.addSupersededByBlock(nk.storedNodeKeyName(), nk.nodeKey(), 
-										  effectiveParentNodeKey.nodeName(), effectiveParentNodeKey.nodeKey(), handle());
+				ourEffectiveNodeKeyFromParent.storedNodeKeyName(), 
+				ourEffectiveNodeKeyFromParent.storedNodeKeyID(),
+				effectiveParentNodeKey.nodeKey(), handle());
 		
 		// Then mark the ACL as gone.
 		thisNodeACL.saveAsGone();
@@ -1345,6 +1359,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 					// Add a previous key block wrapping the previous key. There is nothing to link to.
 					nodeKeyDirectory.addPreviousKeyBlock(oldEffectiveNodeKey.nodeKey(), nodeKeyDirectoryName, nodeKey);
 				} else {
+					// We're replacing a previous version of this key. New version should have a previous key
+					// entry 
 					Log.finer("GenerateNewNodeKey: old effective node key is not a derived node key.");					
 					try {
 						if (!VersioningProfile.isLaterVersionOf(nodeKeyDirectoryName, oldEffectiveNodeKey.storedNodeKeyName())) {
