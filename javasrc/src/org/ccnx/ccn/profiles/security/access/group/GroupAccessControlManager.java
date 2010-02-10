@@ -398,7 +398,11 @@ public class GroupAccessControlManager extends AccessControlManager {
 		
 		// Find the closest node that has a non-gone ACL
 		ACLObject aclo = findAncestorWithACL(nodeName, null);
-		if (null == aclo) {
+		if (null != aclo) {
+			// parallel find doesn't get us the latest version. Serial does,
+			// but it's kind of an artifact.
+			aclo.update();
+		} else {
 			Log.info("No ACL found between node {0} and namespace root {1}. Returning root ACL.",
 					nodeName, getNamespaceRoot());
 			return getACLObjectForNode(getNamespaceRoot());
@@ -408,7 +412,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	
 	private ACLObject findAncestorWithACL(ContentName dataNodeName, ContentName stopPoint) throws ContentDecodingException, IOException {
 		// selector method, remove when pick faster one.
-		return findAncestorWithACLSerial(dataNodeName, stopPoint);
+		return findAncestorWithACLInParallel(dataNodeName, stopPoint);
 	}
 
 	/**
@@ -423,6 +427,10 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 */
 	private ACLObject findAncestorWithACLSerial(ContentName dataNodeName, ContentName stopPoint) throws ContentDecodingException, IOException {
 
+		// If dataNodeName is the root of this AccessControlManager, there can be no ACL between
+		// dataNodeName (inclusive) and the root (exclusive), so return null.
+		if (getNamespaceRoot().equals(dataNodeName)) return null;
+		
 		if (null == stopPoint)  {
 			stopPoint = getNamespaceRoot();
 		} else if (!getNamespaceRoot().isPrefixOf(stopPoint)) {
@@ -475,6 +483,10 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 */
 	private ACLObject findAncestorWithACLInParallel(ContentName dataNodeName, ContentName stopPoint) throws ContentDecodingException, IOException {
 
+		// If dataNodeName is the root of this AccessControlManager, there can be no ACL between
+		// dataNodeName (inclusive) and the root (exclusive), so return null.
+		if (getNamespaceRoot().equals(dataNodeName)) return null;
+		
 		if (null == stopPoint)  {
 			stopPoint = getNamespaceRoot();
 		} else if (!getNamespaceRoot().isPrefixOf(stopPoint)) {
@@ -495,7 +507,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 		SearchResults searchResults = pathfinder.waitForResults();
 		if (null != searchResults.first()) {
 			Log.info("findAncestorWithACLInParallel: found " + searchResults.first().name());
-			return new ACLObject(searchResults.first(), handle());
+			ACLObject aclo = new ACLObject(searchResults.first(), handle());
+			return aclo;
 		}
 		return null;
 	}
@@ -538,10 +551,10 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// use the segment we get, and don't pull it twice.
 		ContentName aclName = new ContentName(GroupAccessControlProfile.aclName(aclNodeName));
 		ContentObject aclNameList = VersioningProfile.getLatestVersion(aclName, 
-				null, SystemConfiguration.MEDIUM_TIMEOUT, handle().defaultVerifier(), handle()); 
+				null, SystemConfiguration.MAX_TIMEOUT, handle().defaultVerifier(), handle()); 
 		
 		if (null != aclNameList) {
-			Log.info("Found latest version of acl for " + aclNodeName + " at " + aclName);
+			Log.info("Found latest version of acl for " + aclNodeName + " at " + aclName + " type: " + aclNameList.signedInfo().getTypeName());
 			ACLObject aclo = new ACLObject(aclNameList, handle());
 			if (aclo.isGone()) {
 				Log.info("ACL object is GONE, returning anyway {0}", aclo.getVersionedName());
@@ -621,21 +634,35 @@ public class GroupAccessControlManager extends AccessControlManager {
 		if (null == thisNodeACL) {
 			Log.info("Asked to delete ACL for node " + nodeName + " that doesn't have one. Doing nothing.");
 			return;
+		} else if (thisNodeACL.isGone()) {
+			Log.info("Asked to delete ACL for node " + nodeName + " that has already been deleted. Doing nothing.");
+			return;			
 		}
 		Log.info("Deleting ACL for node " + nodeName + " latest version: " + thisNodeACL.getVersionedName());
 		
-		// Then, find the latest node key. This should not be a derived node key.
-		NodeKey nk = getEffectiveNodeKey(nodeName);
+		// We know we have an ACL at this node. So we know we have a node key at this
+		// node. Get the latest version of this node key.
+		NodeKey nk = getLatestNodeKeyForNode(nodeName);
 		
-		// Next, find the ACL that is in force after the deletion.
+		// Next, find the node key that would be in force here after this deletion. 
+		// Do that by getting the effective node key at the parent
 		ContentName parentName = nodeName.parent();
-		NodeKey effectiveParentNodeKey = getLatestNodeKeyForNode(parentName);
+		NodeKey effectiveParentNodeKey = getEffectiveNodeKey(parentName);
+		// And then deriving what the effective node key would be here, if
+		// we inherited from the parent
+		NodeKey ourEffectiveNodeKeyFromParent = 
+			effectiveParentNodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
 		
 		// Generate a superseded block for this node, wrapping its key in the parent.
 		// TODO want to wrap key in parent's effective key, but can't point to that -- no way to name an
 		// effective node key... need one.
+		
+		// need to mangl stored key name into superseded block name, need to wrap
+		// in ourEffNodeKeyFromParent, make sure stored key id points up to our ENKFP.storedKeyName()
 		KeyDirectory.addSupersededByBlock(nk.storedNodeKeyName(), nk.nodeKey(), 
-										  effectiveParentNodeKey.nodeName(), effectiveParentNodeKey.nodeKey(), handle());
+				ourEffectiveNodeKeyFromParent.storedNodeKeyName(), 
+				ourEffectiveNodeKeyFromParent.storedNodeKeyID(),
+				effectiveParentNodeKey.nodeKey(), handle());
 		
 		// Then mark the ACL as gone.
 		thisNodeACL.saveAsGone();
@@ -1228,7 +1255,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		Log.info("getNodeKeyUsingInterposedACL: looking for an ACL above {0} but below {1}",
 				dataNodeName, stopPoint);
 		ACLObject nearestACL = findAncestorWithACL(dataNodeName, stopPoint);
-		
+		// TODO update to make sure non-gone....
 		if (null == nearestACL) {
 			Log.info("Node key: " + wrappingKeyName + " is the nearest ACL to " + dataNodeName);
 			return null;
@@ -1333,6 +1360,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 					// Add a previous key block wrapping the previous key. There is nothing to link to.
 					nodeKeyDirectory.addPreviousKeyBlock(oldEffectiveNodeKey.nodeKey(), nodeKeyDirectoryName, nodeKey);
 				} else {
+					// We're replacing a previous version of this key. New version should have a previous key
+					// entry 
 					Log.finer("GenerateNewNodeKey: old effective node key is not a derived node key.");					
 					try {
 						if (!VersioningProfile.isLaterVersionOf(nodeKeyDirectoryName, oldEffectiveNodeKey.storedNodeKeyName())) {
@@ -1347,8 +1376,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 					nodeKeyDirectory.waitForChildren();
 					nodeKeyDirectory.addPreviousKeyLink(oldEffectiveNodeKey.storedNodeKeyName(), null);
 					// OK, just add superseded-by block to the old directory.
-					KeyDirectory.addSupersededByBlock(oldEffectiveNodeKey.storedNodeKeyName(), oldEffectiveNodeKey.nodeKey(), 
-							nodeKeyDirectoryName, nodeKey, handle());
+					KeyDirectory.addSupersededByBlock(
+							oldEffectiveNodeKey.storedNodeKeyName(), oldEffectiveNodeKey.nodeKey(), 
+							theNodeKey.storedNodeKeyName(), theNodeKey.storedNodeKeyID(), theNodeKey.nodeKey(), handle());
 				}
 			}
 		} finally {

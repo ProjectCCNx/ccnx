@@ -388,7 +388,7 @@ public class Group {
 		Key privateKeyWrappingKey = createGroupPublicKey(ml);
 		
 		// Write superseded block in old key directory
-		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
+		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), null, privateKeyWrappingKey);
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, SaveType.REPOSITORY, _handle);
@@ -428,7 +428,7 @@ public class Group {
 		Key privateKeyWrappingKey = createGroupPublicKey(ml);
 		
 		// Write superseded block in old key directory
-		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
+		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), null, privateKeyWrappingKey);
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, SaveType.REPOSITORY, _handle);

@@ -874,6 +874,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	@Override
 	public synchronized void mark(int readlimit) {
+		
+		// Shouldn't have a problem if we are GONE, and don't want to
+		// deal with exceptions raised by a call to isGone.
 		_readlimit = readlimit;
 		_markBlock = segmentNumber();
 		if (null == _segmentReadStream) {
@@ -898,6 +901,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	@Override
 	public synchronized void reset() throws IOException {
+		
+		if (isGone())
+			return;
+		
 		// TODO: when first block is read in constructor this check can be removed
 		if (_currentSegment == null) {
 			setFirstSegment(getSegment(_markBlock));
@@ -926,6 +933,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	@Override
 	public long skip(long n) throws IOException {
+		
+		if (isGone())
+			return 0;
 
 		Log.info("in skip("+n+")");
 
@@ -951,6 +961,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * @throws IOException
 	 */
 	public void seek(long position) throws IOException {
+		if (isGone())
+			return; // can't seek gone stream
+		
 		Log.info("Seeking stream to " + position);
 		// TODO: when first block is read in constructor this check can be removed
 		if ((_currentSegment == null) || (!SegmentationProfile.isFirstSegment(_currentSegment.name()))) {
@@ -973,6 +986,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * @throws IOException
 	 */
 	public long tell() throws IOException {
+		if (isGone())
+			return 0;
 		return _currentSegment.contentLength() - _segmentReadStream.available();
 	}
 
