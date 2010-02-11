@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -222,39 +222,39 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			// the number of additional components must be this value
 			int nameCount = name.count();
 			int lengthDiff = nameCount + (digestIncluded?0:1) - name().count();
+
 			if (null != maxSuffixComponents() && lengthDiff > maxSuffixComponents()) {
-				if (Log.isLoggable(Level.FINE))
-					Log.fine("Interest match failed: " + lengthDiff + " more than the " + maxSuffixComponents() + " components between expected " +
-							name() + " and tested " + name);
+				//Log.fine("Interest match failed: " + lengthDiff + " more than the " + maxSuffixComponents() + " components between expected " +
+				//		name() + " and tested " + name);
+				if(Log.isLoggable(Level.FINE))
+					Log.fine("Interest match failed: {0} more than the {1} components between expected {2} and tested {3}",lengthDiff, maxSuffixComponents(), name(), name);
 				return false;
 			}
 			if (null != minSuffixComponents() && lengthDiff < minSuffixComponents()) {
-				if (Log.isLoggable(Level.FINEST))
-					Log.fine("Interest match failed: " + lengthDiff + " less than the " + minSuffixComponents() + " components between expected " +
-							name() + " and tested " + name);
+				//Log.fine("Interest match failed: " + lengthDiff + " less than the " + minSuffixComponents() + " components between expected " +
+				//		name() + " and tested " + name);
+				if(Log.isLoggable(Level.FINE))
+					Log.fine("Interest match failed: {0} less than the {1} components between expected {2} and tested {3}",lengthDiff, minSuffixComponents(), name(), name);
 				return false;
 			}
 		}
 		if (null != exclude()) {
 			if (exclude().match(name.component(name().count()))) {
-				if (Log.isLoggable(Level.FINEST))
-					Log.finest("Interest match failed. " + name + " has been excluded");
+				Log.finest("Interest match failed. {0} has been excluded", name);
 				return false;
 			}
 		}
 		if (null != publisherID()) {
 			if (null == resultPublisherKeyID) {
-				Log.finest("Interest match failed, target " + name + " doesn't specify a publisherID and we require a particular one.");
+				Log.finest("Interest match failed, target {0} doesn't specify a publisherID and we require a particular one.", name);
 				return false; 
 			}
 			// Should this be more general?
 			// TODO DKS handle issuer
-			if (Log.isLoggable(Level.FINEST))
-				Log.finest("Interest match handed off to trust manager for name: " + name);
+			Log.finest("Interest match handed off to trust manager for name: {0}", name);
 			return TrustManager.getTrustManager().matchesRole(publisherID(), resultPublisherKeyID);
-		}
-		if (Log.isLoggable(Level.FINEST))
-			Log.finest("Interest match succeeded to name: " + name);
+		} 
+		Log.finest("Interest match succeeded to name: {0}", name);
 		return true;
 	}
 	
