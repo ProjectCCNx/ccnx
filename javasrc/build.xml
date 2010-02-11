@@ -401,8 +401,8 @@
 	
 	<target name="test-io-with-repo" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
-		<!-- <junit printsummary="yes" haltonfailure="yes" fork="false" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}"> -->
-			<junit printsummary="yes" haltonfailure="yes" fork="false" forkmode="perBatch" showoutput="${showoutput}">
+		 <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+		<!--	<junit printsummary="yes" haltonfailure="yes" fork="false" forkmode="perBatch" showoutput="${showoutput}">-->
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>

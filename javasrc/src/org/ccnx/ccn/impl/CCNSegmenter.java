@@ -701,8 +701,8 @@ public class CCNSegmenter {
 							freshnessSeconds, 
 							finalBlockID), 
 							content, offset, length, signingKey);
-		if( Log.isLoggable(Level.INFO))
-			Log.info("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
+		if( Log.isLoggable(Level.FINER))
+			Log.finer("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
 		_flowControl.put(co);
 
 		return nextSegmentIndex(segmentNumber, co.contentLength());
