@@ -24,6 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
@@ -168,7 +169,8 @@ public class InterestTable<V> {
 		if (null == interest.name()) {
 			throw new NullPointerException("InterestTable may not contain Interest with null name");
 		}
-		Log.finest("adding interest " + interest);
+		if (Log.isLoggable(Level.FINEST))
+			Log.finest("adding interest {0}", interest);
 		Holder<V> holder = new InterestHolder<V>(interest, value);
 		add(holder);
 	}
