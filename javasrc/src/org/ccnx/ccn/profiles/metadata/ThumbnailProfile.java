@@ -28,12 +28,18 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 public class ThumbnailProfile implements CCNProfile {
 	public static final byte [] THUMBNAIL_MARKER = ContentName.componentParseNative(MARKER + "thumbnail" + MARKER);
 	
-	public static ContentName metadataName(ContentName baseName) {
+	public static class ThumbnailNamer implements MetadataProfile.MetaNamer {
+		public ContentName getMetaName(ContentName baseName) {
+			return thumbnailName(baseName);
+		}
+	}
+	
+	public static ContentName thumbnailName(ContentName baseName) {
 		return new ContentName(MetadataProfile.metadataName(baseName), THUMBNAIL_MARKER);
 	}
 	
 	public static ContentName getLatestVersion(ContentName baseName, byte[] metaName, PublisherPublicKeyDigest publisher, 
 			 long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
-		return MetadataProfile.getLatestVersion(baseName, THUMBNAIL_MARKER, metaName, publisher, timeout, verifier, handle);
+		return MetadataProfile.getLatestVersion(baseName, new ThumbnailNamer(), publisher, timeout, verifier, handle);
 	}
 }
