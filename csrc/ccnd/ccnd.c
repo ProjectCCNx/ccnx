@@ -1773,6 +1773,18 @@ age_forwarding(struct ccn_schedule *sched,
             next = f->next;
             if ((f->flags & CCN_FORW_REFRESHED) == 0 ||
                   face_from_faceid(h, f->faceid) == NULL) {
+                if (h->debug & 2) {
+                    struct face *face = face_from_faceid(h, f->faceid);
+                    if (face != NULL) {
+                        struct ccn_charbuf *prefix = ccn_charbuf_create();
+                        ccn_name_init(prefix);
+                        ccn_name_append_components(prefix, e->key, 0, e->keysize);
+                        ccnd_debug_ccnb(h, __LINE__, "prefix_expiry", face,
+                                prefix->buf,
+                                prefix->length);
+                        ccn_charbuf_destroy(&prefix);
+                    }
+                }
                 *p = next;
                 free(f);
                 f = NULL;
@@ -1835,7 +1847,7 @@ ccnd_reg_prefix(struct ccnd_handle *h,
     struct nameprefix_entry *npe = NULL;
     int res;
     struct face *face = NULL;
-
+    
     if (flags >= 0 &&
         (flags & CCN_FORW_PUBMASK) != flags)
         return(-1);
@@ -1851,13 +1863,29 @@ ccnd_reg_prefix(struct ccnd_handle *h,
         npe = e->data;
         f = seek_forwarding(h, npe, faceid);
         if (f != NULL) {
-            
             h->forward_to_gen += 1;
             f->expires = expires;
             if (flags < 0)
                 flags = f->flags & CCN_FORW_PUBMASK;
             f->flags = (CCN_FORW_REFRESHED | flags);
             res = flags;
+            if (h->debug & 2) {
+                struct ccn_charbuf *prefix = ccn_charbuf_create();
+                struct ccn_charbuf *debugtag = ccn_charbuf_create();
+                ccn_charbuf_putf(debugtag, "prefix,ff=%d", flags);
+                if (f->expires < (1 << 30))
+                    ccn_charbuf_putf(debugtag, ",sec=%d", expires);
+                ccn_name_init(prefix);
+                ccn_name_append_components(prefix, msg,
+                                           comps->buf[0], comps->buf[ncomps]);
+                ccnd_debug_ccnb(h, __LINE__,
+                                ccn_charbuf_as_string(debugtag),
+                                face,
+                                prefix->buf,
+                                prefix->length);
+                ccn_charbuf_destroy(&prefix);
+                ccn_charbuf_destroy(&debugtag);
+            }
         }
         else
             res = -1;
@@ -2333,7 +2361,6 @@ ccnd_req_unreg(struct ccnd_handle *h,
     reqface = face_from_faceid(h, h->interest_faceid);
     if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
         goto Finish;
-    
     comps = ccn_indexbuf_create();
     n_name_comp = ccn_name_split(forwarding_entry->name_prefix, comps);
     if (n_name_comp < 0)
@@ -2352,6 +2379,10 @@ ccnd_req_unreg(struct ccnd_handle *h,
     for (f = npe->forwarding; f != NULL; f = f->next) {
 	if (f->faceid == forwarding_entry->faceid) {
 	    found = 1;
+            if (h->debug & 2)
+                ccnd_debug_ccnb(h, __LINE__, "prefix_unreg", face,
+                                forwarding_entry->name_prefix->buf,
+                                forwarding_entry->name_prefix->length);
             *p = f->next;
             free(f);
             f = NULL;
