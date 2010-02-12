@@ -985,13 +985,13 @@ public class GroupAccessControlManager extends AccessControlManager {
 		try {
 
 			keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
-			keyDirectory.waitForChildren();
 			
-			try {
-				Thread.sleep(10000);
-			} catch (Exception e) {
-				Log.warningStackTrace(e);
+			// continue waiting for children as long as new children are found before the timeout expires.
+			boolean continueWaitingForChildren = true;
+			while (continueWaitingForChildren) {
+				continueWaitingForChildren = keyDirectory.waitForNewChildren(SystemConfiguration.MEDIUM_TIMEOUT);
 			}
+			
 			// this will handle the caching.
 			Key unwrappedKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
 			if (null != unwrappedKey) {
