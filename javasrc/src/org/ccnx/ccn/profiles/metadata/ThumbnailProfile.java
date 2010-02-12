@@ -28,9 +28,9 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 public class ThumbnailProfile implements CCNProfile {
 	public static final byte [] THUMBNAIL_MARKER = ContentName.componentParseNative(MARKER + "thumbnail" + MARKER);
 	
-	public static class ThumbnailNamer implements MetadataProfile.MetaNamer {
-		public ContentName getMetaName(ContentName baseName) {
-			return thumbnailName(baseName);
+	private static class ThumbnailNamer implements MetadataProfile.MetaNamer {
+		public ContentName getMetaName(ContentName baseName, byte[] metaName) {
+			return new ContentName(thumbnailName(baseName), metaName);
 		}
 	}
 	
@@ -40,6 +40,6 @@ public class ThumbnailProfile implements CCNProfile {
 	
 	public static ContentName getLatestVersion(ContentName baseName, byte[] metaName, PublisherPublicKeyDigest publisher, 
 			 long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
-		return MetadataProfile.getLatestVersion(baseName, new ThumbnailNamer(), publisher, timeout, verifier, handle);
+		return MetadataProfile.getLatestVersion(baseName, new ThumbnailNamer(), metaName, publisher, timeout, verifier, handle);
 	}
 }

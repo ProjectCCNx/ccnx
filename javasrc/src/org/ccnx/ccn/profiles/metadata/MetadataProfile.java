@@ -33,21 +33,21 @@ public class MetadataProfile implements CCNProfile {
 	public static final byte [] METADATA_MARKER = ContentName.componentParseNative(MARKER + "meta" + MARKER);
 	
 	public interface MetaNamer {
-		public ContentName getMetaName(ContentName baseName);
+		public ContentName getMetaName(ContentName baseName, byte[] metaName);
 	}
 	
 	public static ContentName metadataName(ContentName baseName) {
 		return new ContentName(baseName, METADATA_MARKER);
 	}
 	
-	public static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, PublisherPublicKeyDigest publisher, 
+	public static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, byte[] metaName, PublisherPublicKeyDigest publisher, 
 			 long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
 		ContentName baseVersion = baseName;
 		if (!VersioningProfile.containsVersion(baseVersion)) {
 			baseVersion = VersioningProfile.getLatestVersion(baseName, publisher, timeout, verifier, handle).name();
 			baseVersion = SegmentationProfile.segmentRoot(baseVersion);
 		}
-		ContentName unversionedName = namer.getMetaName(baseVersion);
+		ContentName unversionedName = namer.getMetaName(baseVersion, metaName);
 		ContentObject meta = VersioningProfile.getLatestVersion(unversionedName, publisher, timeout, verifier, handle);
 		if (null == meta)
 			return VersioningProfile.addVersion(unversionedName);
