@@ -6,6 +6,7 @@ import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
+import java.util.logging.Level;
 
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
@@ -103,9 +104,10 @@ public abstract class AccessControlManager {
 		if (null == wdko) {
 			return null;
 		}
-		Log.finer("getDataKey: data key is wrapped by key {0} stored at {1}, attempting to retrieve.", 
-				DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()), wdko.wrappedKey().wrappingKeyName());
-		
+		if (Log.isLoggable(Level.FINER)) {
+			Log.finer("getDataKey: data key is wrapped by key {0} stored at {1}, attempting to retrieve.", 
+					DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()), wdko.wrappedKey().wrappingKeyName());
+		}
 		Key dataKey = null;
 		Key wrappingKey = null;
 		
@@ -117,8 +119,10 @@ public abstract class AccessControlManager {
 						dataNodeName);
 				// fall through, try subclass retrieval
 			} else {
-				Log.fine("Unwrapping key for data node {0} with cached key whose id is {1}.", dataNodeName,
-						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()));
+				if (Log.isLoggable(Level.FINE)) {
+					Log.fine("Unwrapping key for data node {0} with cached key whose id is {1}.", dataNodeName,
+							DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()));
+				}
 				// The cached key is not actually the key we want. We need to hand it to our access
 				// control manager to do any key prep.
 				wrappingKey = getDataKeyWrappingKey(dataNodeName, wdko.wrappedKey().wrappingKeyName(), cachedKey);
@@ -127,8 +131,10 @@ public abstract class AccessControlManager {
 		// Could simplify to remove cache-retry logic.
 		if (null == wrappingKey) {
 			// No dice. Try subclass-specific retrieval.
-			Log.info("getDataKey: key {0} not in cache, getting data key wrapping key for data node {1} with wrapped key {2}", 
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("getDataKey: key {0} not in cache, getting data key wrapping key for data node {1} with wrapped key {2}", 
 						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()), dataNodeName, wdko);
+			}
 			wrappingKey = getDataKeyWrappingKey(dataNodeName, wdko);
 		}
 		if (null != wrappingKey) {
@@ -147,7 +153,7 @@ public abstract class AccessControlManager {
 		
 		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), handle());
 		if (null == wdko.wrappedKey()) {
-			Log.warning("Could not retrieve data key for node: " + dataNodeName);
+			Log.warning("Could not retrieve data key for node {0}", dataNodeName);
 			return null;
 		}
 		return wdko;
@@ -196,14 +202,18 @@ public abstract class AccessControlManager {
 	 * @throws IOException
 	 */
 	public void storeDataKey(ContentName dataNodeName, Key dataKey, NodeKey wrappingKey) throws InvalidKeyException, ContentEncodingException, IOException {
-		Log.info("storeDataKey: Wrapping data key " +
-				DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(dataKey)) + " for node: " + dataNodeName + 
-				" with wrappingKey for node: " + 
-				wrappingKey.nodeName() + " derived from stored node key for node: " + 
-				wrappingKey.storedNodeKeyName());
-		Log.info("storeDataKey: stored node key has key id {0}, derived key has id {1}",
-				DataUtils.printHexBytes(wrappingKey.storedNodeKeyID()),
-				DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(wrappingKey.nodeKey())));
+		if (Log.isLoggable(Level.INFO)) {
+			Log.info("storeDataKey: Wrapping data key {0} for node {1} with wrappingKey for node {2} " 
+					+ " derived from stored node key for node {3}",
+					DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(dataKey)), 
+					dataNodeName, 
+					wrappingKey.nodeName(), 
+					wrappingKey.storedNodeKeyName()		
+			);
+			Log.info("storeDataKey: stored node key has key id {0}, derived key has id {1}",
+					DataUtils.printHexBytes(wrappingKey.storedNodeKeyID()),
+					DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(wrappingKey.nodeKey())));
+		}
 		// TODO another case where we're wrapping in an effective node key but labeling it with
 		// the stored node key information. This will work except if we interpose an ACL in the meantime -- 
 		// we may not have the information necessary to figure out how to decrypt.
@@ -371,7 +381,7 @@ public abstract class AccessControlManager {
 		AccessControlManager acm;
 		try {
 			acm = NamespaceManager.findACM(name, handle);
-			Log.info("keysForOutput: found an acm: " + acm);
+			Log.info("keysForOutput: found an acm: {0}", acm);
 			
 			if ((acm != null) && (acm.isProtectedContent(name, publisher, contentType, handle))) {
 				// First we need to figure out whether this content is public or unprotected...
@@ -382,8 +392,10 @@ public abstract class AccessControlManager {
 					return null; // no keys
 				}
 				Key dataKey = acm.generateDataKey(name);
-				Log.finer("keysForOutput: content {0} publisher {1} data key {2} wrapping key {3}", name, publisher, 
-						DataUtils.printHexBytes(dataKey.getEncoded()), dataKeyWrappingKey);
+				if (Log.isLoggable(Level.FINER)) {
+					Log.finer("keysForOutput: content {0} publisher {1} data key {2} wrapping key {3}", name, publisher, 
+							DataUtils.printHexBytes(dataKey.getEncoded()), dataKeyWrappingKey);
+				}
 				acm.storeDataKey(name, dataKey, dataKeyWrappingKey);
 				
 				return getDefaultAlgorithmContentKeys(dataKey);
