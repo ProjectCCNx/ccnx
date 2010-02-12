@@ -238,6 +238,9 @@ public class Pathfinder implements CCNInterestListener {
 		synchronized(this) {
 			int index = _outstandingInterests.indexOf(interest);
 			
+			// if the interest has already been removed from _outstandingInterests, do nothing.
+			if (index == -1) return null;
+			
 			for (ContentObject result : results) {
 				if (result.isGone() && !goneOK()) {
 					Log.finer("Pathfinder found a GONE object when it wasn't looking for one. Replacing interest with one looking for latest version after (0}", result.name());
@@ -297,7 +300,7 @@ public class Pathfinder implements CCNInterestListener {
 			// Order may have changed
 			index = _outstandingInterests.indexOf(interest);
 			_outstandingInterests.remove(index);
-			if (null == returnInterest) {
+			if (null != returnInterest) {
 				_outstandingInterests.add(index, returnInterest);
 			}
 			

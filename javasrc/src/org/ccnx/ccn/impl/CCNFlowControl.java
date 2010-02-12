@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -103,7 +103,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	protected long _nOut = 0;
 	
 	// Unmatched interests are purged from our table if they have remained there longer than this
-	protected static final int PURGE = 2000;
+	protected static final int PURGE = 4000;
 	
 	protected TreeMap<ContentName, ContentObject> _holdingArea = new TreeMap<ContentName, ContentObject>();
 	protected InterestTable<UnmatchedInterest> _unmatchedInterests = new InterestTable<UnmatchedInterest>();
@@ -404,24 +404,12 @@ public class CCNFlowControl implements CCNFilterListener {
 					Log.finest("Holding {0}", co.name());
 				// Must verify space in _holdingArea or block waiting for space
 				if (_holdingArea.size() >= _capacity) {
-					// MM don't create all these date objects
-					//long ourTime = new Date().getTime();
 					long ourTime = System.currentTimeMillis();
-					Entry<UnmatchedInterest> removeIt;
-					// TODO Verify the following note
+
 					// When we're going to be blocked waiting for a reader anyway, 
 					// purge old unmatched interests
-					do {
-						removeIt = null;
-						for (Entry<UnmatchedInterest> uie : _unmatchedInterests.values()) {
-							if ((ourTime - uie.value().timestamp) > PURGE) {
-								removeIt = uie;
-								break;
-							}
-						}
-						if (removeIt != null)
-							_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
-					} while (removeIt != null);
+					removeUnmatchedInterests(ourTime);
+					
 					// Now wait for space to be cleared or timeout
 					// Must guard against "spurious wakeup" so must check elapsed time directly
 					long elapsed = 0;
@@ -433,8 +421,6 @@ public class CCNFlowControl implements CCNFilterListener {
 						} catch (InterruptedException e) {
 							// intentional no-op
 						}
-						// MM avoid creating all these Date objects
-						//elapsed = new Date().getTime() - ourTime;
 						elapsed = System.currentTimeMillis() - ourTime;
 					} while (_holdingArea.size() >= _capacity && elapsed < _timeout);						
 					if (_holdingArea.size() >= _capacity)
@@ -461,45 +447,84 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
+	 * Function to remove expired interests from the flow controller.  This is called when a content
+	 * object is received and when an interest is added to the buffer.
+	 * 
+	 * @param ourTime current time for checking if interests are expired
+	 */
+	private void removeUnmatchedInterests(long ourTime) {
+		synchronized (_holdingArea) {
+			Entry<UnmatchedInterest> removeIt;
+			do {
+				removeIt = null;
+				for (Entry<UnmatchedInterest> uie : _unmatchedInterests.values()) {
+					//TODO need to normalize this with refresh time in CCNNetworkManager and put in SystemConfiguration
+					if ((ourTime - uie.value().timestamp) > PURGE) {
+						removeIt = uie;
+						break;
+					} else {
+						//we add interests at the end...  so older interests are at the top
+						break;
+					}
+				}
+				if (removeIt != null)
+					_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
+			} while (removeIt != null);
+		}
+	}
+	
+	
+	/**
 	 * Match incoming interests with data in the buffer. If the interest doesn't match it is
 	 * buffered awaiting potential later incoming data which may match it.
+	 * 
 	 */
 	public int handleInterests(ArrayList<Interest> interests) {
 		synchronized (_holdingArea) {
+			int count = 0;
 			for (Interest interest : interests) {
-				if( Log.isLoggable(Level.FINE))
-					Log.fine("Flow controller: got interest: " + interest);
-				ContentObject co = getBestMatch(interest, _holdingArea.keySet());
-				if (co != null) {
-					if( Log.isLoggable(Level.FINEST))
-						Log.finest("Found content " + co.name() + " matching interest: " + interest);
-					try {
-						_handle.put(co);
-						afterPutAction(co);
-					} catch (IOException e) {
-						Log.warning("IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
-						Log.warningStackTrace(e);
-					}
-					
-				} else {
-					Log.finest("No content matching pending interest: " + interest + ", holding.");
-					_unmatchedInterests.add(interest, new UnmatchedInterest());
-				}
+				count += handleInterest(interest);
 			}
+			return count;
 		}
-		return interests.size();
 	}
 	
 	/**
-	 * Convenience method.
+	 * Match an incoming interest with data in the buffer. If the interest doesn't match it is
+	 * buffered awaiting potential later incoming data which may match it. This method returns 0
+	 * if the interest was null.
+	 * 
 	 */
-	public int handleInterest(Interest outstandingInterest) {
-		if (null == outstandingInterest)
+	public int handleInterest(Interest i) {
+		if (i == null)
 			return 0;
-		ArrayList<Interest> tmpInterests = new ArrayList<Interest>();
-		tmpInterests.add(outstandingInterest);
-		return handleInterests(tmpInterests);
+		synchronized (_holdingArea) {
+			Log.fine("Flow controller: got interest: {0}", i);
+			ContentObject co = getBestMatch(i, _holdingArea.keySet());
+			if (co != null) {
+				if( Log.isLoggable(Level.FINEST))
+					Log.finest("Found content {0} matching interest: {1}",co.name(), i);
+				try {
+					_handle.put(co);
+					afterPutAction(co);
+				} catch (IOException e) {
+					Log.warning("IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
+					Log.warningStackTrace(e);
+				}
+			} else {
+				
+				//only check if we are adding the interest, and check before we add so we don't check the new interest
+				if (_unmatchedInterests.size() > 0)
+					removeUnmatchedInterests(System.currentTimeMillis());
+				
+				Log.finest("No content matching pending interest: {0}, holding.", i);
+				_unmatchedInterests.add(i, new UnmatchedInterest());
+			}
+				
+			return 1;
+		}
 	}
+	
 	
 	/**
 	 * Allow override of action after a ContentObject is sent to ccnd

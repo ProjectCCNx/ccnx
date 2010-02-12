@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -114,8 +114,10 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 				return object.verify(_keyManager);
 				
 			} catch (Exception e) {
-				Log.fine(e.getClass().getName() + " exception attempting to retrieve public key with key locator {0}: " + e.getMessage(), object.signedInfo().getKeyLocator());
-				Log.logStackTrace(Level.FINE, e);
+				if (Log.isLoggable(Level.FINE)) {
+					Log.fine(e.getClass().getName() + " exception attempting to retrieve public key with key locator {0}: " + e.getMessage(), object.signedInfo().getKeyLocator());
+					Log.logStackTrace(Level.FINE, e);
+				}
 				return false;
 			} 
 		}		
@@ -155,11 +157,15 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			try {
 				byte [] digest = CCNDigestHelper.digest(this.encode());
 				byte [] tbsdigest = CCNDigestHelper.digest(prepareContent(name, signedInfo, content, offset, length));
-				Log.info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp() + " encoded digest: " + DataUtils.printBytes(digest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
-				Log.info("Signature: " + this.signature());
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp() + " encoded digest: " + DataUtils.printBytes(digest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
+					Log.info("Signature: " + this.signature());
+				}
 			} catch (Exception e) {
-				Log.warning("Exception attempting to verify signature: " + e.getClass().getName() + ": " + e.getMessage());
-				Log.warningStackTrace(e);
+				if (Log.isLoggable(Level.WARNING)) {
+					Log.warning("Exception attempting to verify signature: " + e.getClass().getName() + ": " + e.getMessage());
+					Log.warningStackTrace(e);
+				}
 			}
 		}
 	}
@@ -257,7 +263,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 							         new SignedInfo(publisher, null, type, locator, null, finalBlockID), 
 							         contents, signingKey);
 		} catch (Exception e) {
-			Log.warning("Cannot build content object for publisher: " + publisher);
+			Log.warning("Cannot build content object for publisher: {0}", publisher);
 			Log.infoStackTrace(e);
 		}
 		return null;
@@ -424,10 +430,12 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 */
 	public void setSignature(Signature signature) {
 		if (null != _signature) {
-			Log.warning("Setting signature on content object: " + name() + " after signature already set!");
+			if (Log.isLoggable(Level.WARNING))
+				Log.warning("Setting signature on content object: " + name() + " after signature already set!");
 		}
 		if (null == signature) {
-			Log.warning("Setting signature to null on content object: " + name());
+			if (Log.isLoggable(Level.WARNING))
+				Log.warning("Setting signature to null on content object: " + name());
 		}
 		_signature = signature;
 	}
@@ -451,7 +459,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			return sign(name, signedInfo, content, offset, length,
 					CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, signingKey);
 		} catch (NoSuchAlgorithmException e) {
-			Log.warning("Cannot find default digest algorithm: " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+			if (Log.isLoggable(Level.WARNING))
+				Log.warning("Cannot find default digest algorithm: " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
 			Log.warningStackTrace(e);
 			throw new SignatureException(e);
 		}
@@ -553,7 +562,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			contentProxy = object.computeProxy();
 			
 		} catch (CertificateEncodingException e) {
-			Log.info("Encoding exception attempting to verify content digest for object: " + object.name() + ". Signature verification fails.");
+			if (Log.isLoggable(Level.INFO))
+				Log.info("Encoding exception attempting to verify content digest for object: " + object.name() + ". Signature verification fails.");
 			return false;
 		}
 
@@ -623,16 +633,20 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 					(signature.digestAlgorithm() == null) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm(),
 							publicKey);
 		if (!result) {
-			Log.warning("Verification failure: " + name + " timestamp: " + signedInfo.getTimestamp() + " content length: " + content.length + 
+			if (Log.isLoggable(Level.WARNING)) {
+				Log.warning("Verification failure: " + name + " timestamp: " + signedInfo.getTimestamp() + " content length: " + content.length + 
 					" signed content: " + 
 					DataUtils.printBytes(CCNDigestHelper.digest(((signature.digestAlgorithm() == null) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm()), preparedContent)));
+			}
 			SystemConfiguration.logObject(Level.FINEST, "Verification failure:", new ContentObject(name, signedInfo, content, signature));
 			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
 				SystemConfiguration.outputDebugData(name, new ContentObject(name, signedInfo, content, signature));
 			}
 		} else {
-			Log.finer("Verification success: " + name + " timestamp: " + signedInfo.getTimestamp() + 
-					" signed content: " + DataUtils.printBytes(CCNDigestHelper.digest(preparedContent)));
+			if (Log.isLoggable(Level.FINER)) {
+				Log.finer("Verification success: " + name + " timestamp: " + signedInfo.getTimestamp() + 
+						" signed content: " + DataUtils.printBytes(CCNDigestHelper.digest(preparedContent)));
+			}
 		}
 		return result;
 
