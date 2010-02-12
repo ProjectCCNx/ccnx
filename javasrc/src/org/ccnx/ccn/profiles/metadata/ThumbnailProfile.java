@@ -17,13 +17,23 @@
 
 package org.ccnx.ccn.profiles.metadata;
 
-import org.ccnx.ccn.protocol.ContentName;
+import java.io.IOException;
+
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.profiles.CCNProfile;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 public class ThumbnailProfile implements CCNProfile {
 	public static final byte [] THUMBNAIL_MARKER = ContentName.componentParseNative(MARKER + "thumbnail" + MARKER);
 	
 	public static ContentName metadataName(ContentName baseName) {
 		return new ContentName(MetadataProfile.metadataName(baseName), THUMBNAIL_MARKER);
+	}
+	
+	public static ContentName getLatestVersion(ContentName baseName, byte[] metaName, PublisherPublicKeyDigest publisher, 
+			 long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
+		return MetadataProfile.getLatestVersion(baseName, THUMBNAIL_MARKER, metaName, publisher, timeout, verifier, handle);
 	}
 }

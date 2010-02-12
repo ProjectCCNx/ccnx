@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.profiles.CCNProfile;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -35,10 +36,21 @@ public class MetadataProfile implements CCNProfile {
 		return new ContentName(baseName, METADATA_MARKER);
 	}
 	
-	public static ContentName getLatestVersion(ContentName baseName, byte[] metaName, PublisherPublicKeyDigest publisher, 
+	public static ContentName getLatestVersion(ContentName baseName, byte[] metaDir, byte[] metaName, PublisherPublicKeyDigest publisher, 
 			 long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
-		ContentObject baseVersion = VersioningProfile.getLatestVersion(baseName, publisher, timeout, verifier, handle);
-		ContentObject meta = VersioningProfile.getLatestVersion(new ContentName(baseVersion.name(), METADATA_MARKER, metaName), publisher, timeout, verifier, handle);
+		ContentName baseVersion = baseName;
+		if (!VersioningProfile.containsVersion(baseVersion)) {
+			baseVersion = VersioningProfile.getLatestVersion(baseName, publisher, timeout, verifier, handle).name();
+			baseVersion = SegmentationProfile.segmentRoot(baseVersion);
+		}
+		byte[][] newComponents = new byte[3][];
+		newComponents[0] = METADATA_MARKER;
+		newComponents[1] = metaDir;
+		newComponents[2] = metaName;
+		ContentName unversionedName = new ContentName(baseVersion, newComponents);
+		ContentObject meta = VersioningProfile.getLatestVersion(unversionedName, publisher, timeout, verifier, handle);
+		if (null == meta)
+			return VersioningProfile.addVersion(unversionedName);
 		return meta.name();
 	}
 }
