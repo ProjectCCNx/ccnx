@@ -352,14 +352,6 @@ struct ccn_charbuf *ccnd_req_selfreg(struct ccnd_handle *h,
 struct ccn_charbuf *ccnd_req_unreg(struct ccnd_handle *h,
                                    const unsigned char *msg, size_t size);
 
-int ccnd_reg_prefix(struct ccnd_handle *h,
-                    const unsigned char *msg,
-                    struct ccn_indexbuf *comps,
-                    int ncomps,
-                    unsigned faceid,
-                    int flags,
-                    int expires);
-
 int ccnd_reg_uri(struct ccnd_handle *h,
                  const char *uri,
                  unsigned faceid,

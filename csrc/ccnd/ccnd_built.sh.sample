@@ -22,12 +22,15 @@ test -x "$CCND" || exit 1
 cat > ccnd <<EOF
 #!$S
 # generated script
-trap "ccndsmoketest kill 2>/dev/null" 0
+case ":-\$*" in
+	:-) break;;
+	*) exec "$CCND" "\$@";;
+esac
 
+trap "ccndsmoketest kill 2>/dev/null" 0
 
 CCND_DEBUG=71
 "$CCND" 2>>/dev/tty
-
 
 EOF
 chmod +x ccnd

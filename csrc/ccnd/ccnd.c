@@ -1812,7 +1812,7 @@ seek_forwarding(struct ccnd_handle *h,
     f = calloc(1, sizeof(*f));
     if (f != NULL) {
         f->faceid = faceid;
-        f->flags = 0;
+        f->flags = (CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
         f->expires = 0x7FFFFFFF;
         f->next = npe->forwarding;
         npe->forwarding = f;
@@ -1820,7 +1820,7 @@ seek_forwarding(struct ccnd_handle *h,
     return(f);
 }
 
-int
+static int
 ccnd_reg_prefix(struct ccnd_handle *h,
                 const unsigned char *msg,
                 struct ccn_indexbuf *comps,
@@ -1836,7 +1836,8 @@ ccnd_reg_prefix(struct ccnd_handle *h,
     int res;
     struct face *face = NULL;
 
-    if ((flags & (CCN_FORW_CHILD_INHERIT |
+    if (flags >= 0 &&
+        (flags & (CCN_FORW_CHILD_INHERIT |
                   CCN_FORW_ACTIVE        |
                   CCN_FORW_ADVERTISE     |
                   CCN_FORW_LAST          )) != flags)
@@ -1845,7 +1846,7 @@ ccnd_reg_prefix(struct ccnd_handle *h,
     if (face == NULL)
         return(-1);
     /* This is a bit hacky, but it gives us a way to set CCN_FACE_DC */
-    if ((flags & CCN_FORW_LAST) != 0)
+    if (flags >= 0 && (flags & CCN_FORW_LAST) != 0)
         face->flags |= CCN_FACE_DC;
     hashtb_start(h->nameprefix_tab, e);
     res = nameprefix_seek(h, e, msg, comps, ncomps);
@@ -1855,7 +1856,10 @@ ccnd_reg_prefix(struct ccnd_handle *h,
         if (f != NULL) {
             h->forward_to_gen += 1;
             f->expires = expires;
-            f->flags |= (CCN_FORW_REFRESHED | CCN_FORW_ACTIVE | flags);
+            if (flags < 0)
+                flags = f->flags & ~CCN_FORW_REFRESHED;
+            f->flags = (CCN_FORW_REFRESHED | flags);
+            res = flags;
         }
         else
             res = -1;
@@ -1900,7 +1904,8 @@ register_new_face(struct ccnd_handle *h, struct face *face)
     if (h->flood && face->faceid != 0 &&
           (face->flags & CCN_FACE_UNDECIDED) == 0) {
         res = ccnd_reg_uri(h, "ccnx:/", face->faceid,
-                           CCN_FORW_CHILD_INHERIT, 0x7FFFFFFF);
+                           CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
+                           0x7FFFFFFF);
     }
 }
 
@@ -2210,8 +2215,6 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     res = ccn_name_split(forwarding_entry->name_prefix, comps);
     if (res < 0)
         goto Finish;
-    if (forwarding_entry->flags < 0)
-        forwarding_entry->flags = 0;
     res = ccnd_reg_prefix(h,
                           forwarding_entry->name_prefix->buf, comps, res,
                           face->faceid,
@@ -2219,6 +2222,7 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
                           forwarding_entry->lifetime);
     if (res < 0)
         goto Finish;
+    forwarding_entry->flags = res;
     result = ccn_charbuf_create();
     forwarding_entry->action = NULL;
     forwarding_entry->ccnd_id = h->ccnd_id;
