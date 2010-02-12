@@ -319,7 +319,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	@Override
 	public long skip(long n) throws IOException {
 		
-		Log.info("in skip("+n+")");
+		Log.info("in skip({0})", n);
 		
 		if (n < 0) {
 			return 0;
@@ -404,11 +404,13 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 
 	@Override
 	public void seek(long position) throws IOException {
-		Log.info("Seeking stream to " + position + ": have header? " + hasHeader());
+		Log.info("Seeking stream to {0}: have header? {1}", position, hasHeader());
 		if (hasHeader()) {
 			int [] blockAndOffset = _header.positionToSegmentLocation(position);
-			Log.info("seek:  position: " + position + " block: " + blockAndOffset[0] + " offset: " + blockAndOffset[1]);
-			Log.info("currently have block "+ currentSegmentNumber());
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("seek:  position: {0} block: {1} offset: {2}", position, blockAndOffset[0], blockAndOffset[1]);
+				Log.info("currently have block {0}", currentSegmentNumber());
+			}
 			if (currentSegmentNumber() == blockAndOffset[0]) {
 				//already have the correct block
 				if (super.tell() == blockAndOffset[1]){
@@ -432,7 +434,8 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 				setCurrentSegment(getSegment(blockAndOffset[0]));
 			super.skip(blockAndOffset[1]);
 			long check = _header.segmentLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
-			Log.info("current position: block "+blockAndOffset[0]+" _blockOffset "+super.tell()+" ("+check+")");
+			if (Log.isLoggable(Level.INFO))
+				Log.info("current position: block "+blockAndOffset[0]+" _blockOffset "+super.tell()+" ("+check+")");
 
 			if (_currentSegment != null) {
 				_atEOF=false;

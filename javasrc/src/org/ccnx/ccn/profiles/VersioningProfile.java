@@ -20,6 +20,7 @@ package org.ccnx.ccn.profiles;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
@@ -535,7 +536,7 @@ public class VersioningProfile implements CCNProfile {
 												  Long startingSegmentNumber,
 												  boolean findASegment) throws IOException {
 		
-		Log.info("getFirstBlockOfLatestVersion: getting version later than " + startingVersion+" called with timeout: "+timeout);
+		Log.info("getFirstBlockOfLatestVersion: getting version later than {0} called with timeout: {1}", startingVersion, timeout);
 		
 		int attempts = 0;
 		//TODO  This timeout is set to SystemConfiguration.MEDIUM_TIMEOUT to work around the problem
@@ -589,19 +590,22 @@ public class VersioningProfile implements CCNProfile {
 				getLatestInterest.exclude().add(e);
 			}
 			
-			
-			Log.fine("gLV INTEREST: {0}", getLatestInterest);
-			Log.fine("gLV trying handle.get with timeout: {0}", attemptTimeout);
 			startTime = System.currentTimeMillis();
-			Log.fine("gLVTime sending Interest from gLV at {0}", System.currentTimeMillis());
 			result = handle.get(getLatestInterest, attemptTimeout);
 			respondTime = System.currentTimeMillis() - startTime;
-			Log.fine("gLVTime returned from handle.get in {0} ms",respondTime);
 			remainingTime = remainingTime - respondTime;
 			remainingNullTime = remainingNullTime - respondTime;
-			Log.fine("gLV remaining time is now {0} ms", remainingTime);
+			if (Log.isLoggable(Level.FINE)) {
+				Log.fine("gLV INTEREST: {0}", getLatestInterest);
+				Log.fine("gLV trying handle.get with timeout: {0}", attemptTimeout);
+				Log.fine("gLVTime sending Interest from gLV at {0}", startTime);
+				Log.fine("gLVTime returned from handle.get in {0} ms",respondTime);				
+				Log.fine("gLV remaining time is now {0} ms", remainingTime);
+			}
+					
 			if (null != result){
-				Log.info("gLV getLatestVersion: retrieved latest version object {0} type: {1}", result.name(), result.signedInfo().getTypeName());
+				if (Log.isLoggable(Level.INFO))
+					Log.info("gLV getLatestVersion: retrieved latest version object {0} type: {1}", result.name(), result.signedInfo().getTypeName());
 			
 				//did it verify?
 				//if it doesn't verify, we need to try harder to get a different content object (exclude this digest)
@@ -620,18 +624,20 @@ public class VersioningProfile implements CCNProfile {
 						if(retry.exclude() == null)
 							retry.exclude(new Exclude());
 						retry.exclude().add(new byte[][] {result.digest()});
-						Log.fine("gLV result did not verify!  doing retry!! {0}", retry);
-						Log.fine("gLVTime sending retry interest at {0}", System.currentTimeMillis());
+						if (Log.isLoggable(Level.FINE)) {
+							Log.fine("gLV result did not verify!  doing retry!! {0}", retry);
+							Log.fine("gLVTime sending retry interest at {0}", System.currentTimeMillis());
+						}
 						result = handle.get(retry, attemptTimeout);
 						
 						if (result!=null) {
-							Log.fine("gLV we got something back: {0}", result.name());
+							if (Log.isLoggable(Level.FINE))
+								Log.fine("gLV we got something back: {0}", result.name());
 							if(verifier.verify(result)) {
 								Log.fine("gLV the returned answer verifies");
 								verifyDone = true;
 							} else {
 								Log.fine("gLV this answer did not verify either...  try again");
-								
 							}
 						} else {
 							//result is null, we didn't find a verifiable answer
@@ -650,7 +656,8 @@ public class VersioningProfile implements CCNProfile {
 						//yes, we need to have the first segment....
 						// Now we know the version. Did we luck out and get first block?
 						if (VersioningProfile.isVersionedFirstSegment(prefix, result, startingSegmentNumber)) {
-							Log.info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
+							if (Log.isLoggable(Level.INFO))
+								Log.info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
 						} else {
 							//not the first segment...
 							
@@ -723,8 +730,10 @@ public class VersioningProfile implements CCNProfile {
 				Log.info("getFirstBlockOfLatestVersion: no block available for later version of {0}", startingVersion);
 				//we didn't get a new version...  we can return the last one we received if it isn't null.
 				if (lastResult!=null) {
-					Log.fine("gLV returning the last result that wasn't null... ");
-					Log.fine("gLV returning: {0}",lastResult.name());
+					if (Log.isLoggable(Level.FINE)) {
+						Log.fine("gLV returning the last result that wasn't null... ");
+						Log.fine("gLV returning: {0}",lastResult.name());
+					}
 					return lastResult;
 				}
 				else {
@@ -737,8 +746,10 @@ public class VersioningProfile implements CCNProfile {
 			if (result!=null)
 				startingVersion = SegmentationProfile.segmentRoot(result.name());
 		}
-		if(result!=null)
-			Log.fine("gLV returning: {0}", result.name());
+		if(result!=null) {
+			if (Log.isLoggable(Level.FINE))
+				Log.fine("gLV returning: {0}", result.name());
+		}
 		return result;
 	}
 	
@@ -778,25 +789,28 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static boolean isVersionedFirstSegment(ContentName desiredName, ContentObject potentialFirstSegment, Long startingSegmentNumber) {
 		if ((null != potentialFirstSegment) && (SegmentationProfile.isSegment(potentialFirstSegment.name()))) {
-			Log.info("is " + potentialFirstSegment.name() + " a first segment of " + desiredName);
+			if (Log.isLoggable(Level.INFO))
+				Log.info("is " + potentialFirstSegment.name() + " a first segment of " + desiredName);
 			// In theory, the segment should be at most a versioning component different from desiredName.
 			// In the case of complex segmented objects (e.g. a KeyDirectory), where there is a version,
 			// then some name components, then a segment, desiredName should contain all of those other
 			// name components -- you can't use the usual versioning mechanisms to pull first segment anyway.
 			if (!desiredName.isPrefixOf(potentialFirstSegment.name())) {
-				Log.info("Desired name :" + desiredName + " is not a prefix of segment: " + potentialFirstSegment.name());
+				if (Log.isLoggable(Level.INFO))
+					Log.info("Desired name :" + desiredName + " is not a prefix of segment: " + potentialFirstSegment.name());
 				return false;
 			}
 			int difflen = potentialFirstSegment.name().count() - desiredName.count();
 			if (difflen > 2) {
-				Log.info("Have " + difflen + " extra components between " + potentialFirstSegment.name() + " and desired " + desiredName);
+				if (Log.isLoggable(Level.INFO))
+					Log.info("Have " + difflen + " extra components between " + potentialFirstSegment.name() + " and desired " + desiredName);
 				return false;
 			}
 			// Now need to make sure that if the difference is more than 1, that difference is
 			// a version component.
 			if ((difflen == 2) && (!isVersionComponent(potentialFirstSegment.name().component(potentialFirstSegment.name().count()-2)))) {
-				Log.info("The " + difflen + " extra component between " + potentialFirstSegment.name() + " and desired " + desiredName + " is not a version.");
-				
+				if (Log.isLoggable(Level.INFO))
+					Log.info("The " + difflen + " extra component between " + potentialFirstSegment.name() + " and desired " + desiredName + " is not a version.");
 			}
 			if ((null != startingSegmentNumber) && (SegmentationProfile.baseSegment() != startingSegmentNumber)) {
 				return (startingSegmentNumber.equals(SegmentationProfile.getSegmentNumber(potentialFirstSegment.name())));
