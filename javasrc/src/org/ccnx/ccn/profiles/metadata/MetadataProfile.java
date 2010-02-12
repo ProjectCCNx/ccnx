@@ -18,6 +18,7 @@
 package org.ccnx.ccn.profiles.metadata;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
@@ -33,14 +34,25 @@ public class MetadataProfile implements CCNProfile {
 	public static final byte [] METADATA_MARKER = ContentName.componentParseNative(MARKER + "meta" + MARKER);
 	
 	public interface MetaNamer {
-		public ContentName getMetaName(ContentName baseName, byte[] metaName);
+		public ContentName getMetaName(ContentName baseName, ArrayList<byte[]> metaName);
+	}
+	
+	private static class LocalMetaNamer implements MetaNamer {
+		public ContentName getMetaName(ContentName baseName, ArrayList<byte[]> metaName) {
+			return new ContentName(metadataName(baseName), metaName);
+		}
 	}
 	
 	public static ContentName metadataName(ContentName baseName) {
 		return new ContentName(baseName, METADATA_MARKER);
 	}
 	
-	public static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, byte[] metaName, PublisherPublicKeyDigest publisher, 
+	public static ContentName getLatestVersion(ContentName baseName, ContentName metaName, PublisherPublicKeyDigest publisher,
+			long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
+		return getLatestVersion(baseName, new LocalMetaNamer(), metaName.components(), publisher, timeout, verifier, handle);
+	}
+	
+	public static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, ArrayList<byte[]> metaName, PublisherPublicKeyDigest publisher, 
 			 long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
 		ContentName baseVersion = baseName;
 		if (!VersioningProfile.containsVersion(baseVersion)) {

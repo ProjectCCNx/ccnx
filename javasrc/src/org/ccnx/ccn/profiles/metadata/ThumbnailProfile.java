@@ -18,6 +18,7 @@
 package org.ccnx.ccn.profiles.metadata;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
@@ -29,7 +30,7 @@ public class ThumbnailProfile implements CCNProfile {
 	public static final byte [] THUMBNAIL_MARKER = ContentName.componentParseNative(MARKER + "thumbnail" + MARKER);
 	
 	private static class ThumbnailNamer implements MetadataProfile.MetaNamer {
-		public ContentName getMetaName(ContentName baseName, byte[] metaName) {
+		public ContentName getMetaName(ContentName baseName,ArrayList<byte[]> metaName) {
 			return new ContentName(thumbnailName(baseName), metaName);
 		}
 	}
@@ -40,6 +41,8 @@ public class ThumbnailProfile implements CCNProfile {
 	
 	public static ContentName getLatestVersion(ContentName baseName, byte[] metaName, PublisherPublicKeyDigest publisher, 
 			 long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
-		return MetadataProfile.getLatestVersion(baseName, new ThumbnailNamer(), metaName, publisher, timeout, verifier, handle);
+		ArrayList<byte[]> list = new ArrayList<byte[]>();
+		list.add(metaName);
+		return MetadataProfile.getLatestVersion(baseName, new ThumbnailNamer(), list, publisher, timeout, verifier, handle);
 	}
 }
