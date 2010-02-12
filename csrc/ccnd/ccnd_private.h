@@ -269,7 +269,8 @@ struct ccn_forwarding {
  */
 #define CCN_FORW_PUBMASK (CCN_FORW_ACTIVE        | \
                           CCN_FORW_CHILD_INHERIT | \
-                          CCN_FORW_ADVERTISE       )
+                          CCN_FORW_ADVERTISE     | \
+                          CCN_FORW_LAST            )
 #define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */
  
 /**

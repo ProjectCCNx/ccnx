@@ -1837,10 +1837,7 @@ ccnd_reg_prefix(struct ccnd_handle *h,
     struct face *face = NULL;
 
     if (flags >= 0 &&
-        (flags & (CCN_FORW_CHILD_INHERIT |
-                  CCN_FORW_ACTIVE        |
-                  CCN_FORW_ADVERTISE     |
-                  CCN_FORW_LAST          )) != flags)
+        (flags & CCN_FORW_PUBMASK) != flags)
         return(-1);
     face = face_from_faceid(h, faceid);
     if (face == NULL)
@@ -1854,10 +1851,11 @@ ccnd_reg_prefix(struct ccnd_handle *h,
         npe = e->data;
         f = seek_forwarding(h, npe, faceid);
         if (f != NULL) {
+            
             h->forward_to_gen += 1;
             f->expires = expires;
             if (flags < 0)
-                flags = f->flags & ~CCN_FORW_REFRESHED;
+                flags = f->flags & CCN_FORW_PUBMASK;
             f->flags = (CCN_FORW_REFRESHED | flags);
             res = flags;
         }
@@ -1924,7 +1922,7 @@ ccnd_reg_self(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     if (res >= 0) {
         // XXX - for now, ignore the body
         res = ccnd_reg_prefix(h, msg, comps, comps->n - 1, h->interest_faceid,
-                              (CCN_FORW_CHILD_INHERIT | CCN_FORW_ADVERTISE),
+                              -1,
                               60);
         if (res >= 0) {
             result = ccn_charbuf_create();
@@ -1938,7 +1936,7 @@ ccnd_reg_self(struct ccnd_handle *h, const unsigned char *msg, size_t size)
             forwarding_entry->ccnd_id = h->ccnd_id;
             forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
             forwarding_entry->faceid = h->interest_faceid;
-            forwarding_entry->flags = (CCN_FORW_CHILD_INHERIT | CCN_FORW_ADVERTISE);
+            forwarding_entry->flags = res;
             forwarding_entry->lifetime = 60;
             res = ccnb_append_forwarding_entry(result, forwarding_entry);
             if (res < 0)
