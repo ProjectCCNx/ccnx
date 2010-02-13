@@ -27,14 +27,17 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
+import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
- * A command-line utility for pulling files out of ccnd or a repository.
+ * A command-line utility for pulling meta files associated with a file
+ * out of a repository.
  * Note class name needs to match command name to work with ccn_run
  */
-public class ccngetfile {
+public class ccngetmeta {
 	
 	public static Integer timeout = null;
 	public static boolean unversioned = false;
@@ -94,21 +97,19 @@ public class ccngetfile {
 			}
 		}
 		
-		if (args.length < startArg + 2) {
+		if (args.length != startArg + 3) {
 			usage();
 			System.exit(1);
 		}
 		
 		try {
 			int readsize = 1024; // make an argument for testing...
-			// If we get one file name, put as the specific name given.
-			// If we get more than one, put underneath the first as parent.
-			// Ideally want to use newVersion to get latest version. Start
-			// with random version.
-			ContentName argName = ContentName.fromURI(args[startArg]);
 			
 			CCNHandle handle = CCNHandle.open();
 
+			ContentName argName = MetadataProfile.getLatestVersion(ContentName.fromURI(args[startArg]), 
+					ContentName.fromNative(args[startArg + 1]), null, timeout, new ContentObject.SimpleVerifier(null), handle);
+		
 			File theFile = new File(args[startArg + 1]);
 			if (theFile.exists()) {
 				System.out.println("Overwriting file: " + args[startArg + 1]);
@@ -153,7 +154,7 @@ public class ccngetfile {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: ccngetfile [-unversioned] [-timeout millis] [-as pathToKeystore] [-ac (access control)] <ccnname> <filename>");
+		System.out.println("usage: ccngetmeta [-unversioned] [-timeout millis] [-as pathToKeystore] [-ac (access control)] <ccnname> <metaname> <filename>");
 	}
 	
 }
