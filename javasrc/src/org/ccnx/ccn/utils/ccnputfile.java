@@ -113,6 +113,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 					Log.info("ccnputfile: putting file " + args[startArg + 1]);
 				
 				doPut(handle, args[startArg + 1], argName);
+				System.out.println("Inserted file " + args[startArg + 1] + ".");
 				if (CommonParameters.verbose)
 					System.out.println("ccnputfile took: "+(System.currentTimeMillis() - starttime)+" ms");
 				System.exit(0);
@@ -123,6 +124,8 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 					ContentName nodeName = ContentName.fromURI(argName, args[i]);
 					
 					doPut(handle, args[i], nodeName);
+					// leave this one as always printing for now
+					System.out.println("Inserted file " + args[i] + ".");
 				}
 				if (CommonParameters.verbose)
 					System.out.println("ccnputfile took: "+(System.currentTimeMillis() - starttime)+" ms");

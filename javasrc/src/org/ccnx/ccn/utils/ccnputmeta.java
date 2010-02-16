@@ -125,6 +125,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 				Log.info("ccnputmeta: putting metadata file " + args[startArg + 1]);
 			
 			doPut(handle, args[startArg + 2], fileName);
+			System.out.println("Inserted metadata file: " + args[startArg + 1] + " for file: " + args[startArg] + ".");
 			if (CommonParameters.verbose)
 				System.out.println("ccnputmeta took: "+(System.currentTimeMillis() - starttime)+" ms");
 			System.exit(0);

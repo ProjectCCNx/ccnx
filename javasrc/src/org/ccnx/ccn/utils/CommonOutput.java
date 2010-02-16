@@ -80,9 +80,6 @@ public abstract class CommonOutput {
 		if (CommonParameters.timeout != null)
 			ostream.setTimeout(CommonParameters.timeout);
 		do_write(ostream, is);
-				
-		// leave this one as always printing for now
-		System.out.println("Inserted file " + fileName + ".");
 	}
 	
 	private void do_write(CCNOutputStream ostream, InputStream is) throws IOException {
