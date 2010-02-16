@@ -30,7 +30,8 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
- * Command-line utility to write metadata associated with an existing file in ccnd.
+ * Command-line utility to write metadata associated with an existing file in ccnd. The "metaname" should
+ * be the relative path (including filename) for the desired metadata only.
  * By default this writes to the repo. Otherwise there must be a corresponding ccngetfile to retrieve
  * the data.
  **/

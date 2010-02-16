@@ -33,7 +33,8 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
  * A command-line utility for pulling meta files associated with a file
- * out of a repository.
+ * out of a repository. The "metaname" should be the relative path (including filename) for 
+ * the desired metadata only.
  * Note class name needs to match command name to work with ccn_run
  */
 public class ccngetmeta {
