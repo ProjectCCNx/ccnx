@@ -371,6 +371,7 @@
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/impl/**/*TestRepo.class"/>
 					<!-- should be profiles/**/*TestRepo.class, but don't want to include access control yet -->
+				    <include name="org/ccnx/ccn/test/profiles/metadata/*TestRepo.class"/>
 				    <include name="org/ccnx/ccn/test/profiles/search/*TestRepo.class"/>
 				</fileset>
 			</batchtest>
