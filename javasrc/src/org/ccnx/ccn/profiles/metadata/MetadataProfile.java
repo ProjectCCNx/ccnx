@@ -21,13 +21,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.ContentVerifier;
+import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 public class MetadataProfile implements CCNProfile {
 
@@ -47,20 +46,26 @@ public class MetadataProfile implements CCNProfile {
 		return new ContentName(baseName, METADATA_MARKER);
 	}
 	
-	public static ContentName getLatestVersion(ContentName baseName, ContentName metaName, PublisherPublicKeyDigest publisher,
-			long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
-		return getLatestVersion(baseName, new LocalMetaNamer(), metaName.components(), publisher, timeout, verifier, handle);
+	public static ContentName getLatestVersion(ContentName baseName, ContentName metaName, 
+			long timeout, CCNHandle handle) throws IOException {
+		return getLatestVersion(baseName, new LocalMetaNamer(), metaName.components(), timeout, handle);
 	}
 	
-	public static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, ArrayList<byte[]> metaName, PublisherPublicKeyDigest publisher, 
-			 long timeout, ContentVerifier verifier, CCNHandle handle) throws IOException {
+	public static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, ArrayList<byte[]> metaName,
+			 long timeout, CCNHandle handle) throws IOException {
 		ContentName baseVersion = baseName;
+		CCNInputStream checker = new CCNInputStream(baseName, handle);
+		if (null == checker)
+			return null;
 		if (!VersioningProfile.containsVersion(baseVersion)) {
-			baseVersion = VersioningProfile.getLatestVersion(baseName, publisher, timeout, verifier, handle).name();
+			ContentObject co = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, checker.publisher(), timeout, checker, handle);
+			if (null == co)
+				return null;
+			baseVersion = co.name();
 			baseVersion = SegmentationProfile.segmentRoot(baseVersion);
 		}
 		ContentName unversionedName = namer.getMetaName(baseVersion, metaName);
-		ContentObject meta = VersioningProfile.getLatestVersion(unversionedName, publisher, timeout, verifier, handle);
+		ContentObject meta = VersioningProfile.getFirstBlockOfLatestVersion(unversionedName, null, checker.publisher(), timeout, checker, handle);
 		if (null == meta)
 			return VersioningProfile.addVersion(unversionedName);
 		return meta.name();

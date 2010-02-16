@@ -24,9 +24,9 @@ import java.util.logging.Level;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
@@ -43,7 +43,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 		Log.setDefaultLevel(Level.WARNING);
 		int startArg = 0;
 		
-		for (int i = 0; i < args.length - 2; i++) {
+		for (int i = 0; i < args.length - 3; i++) {
 			if (args[i].equals(("-raw"))) {
 				if (startArg <= i)
 					startArg = i + 1;
@@ -110,11 +110,17 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 			// with random version.
 			
 			ContentName baseName = ContentName.fromURI(args[startArg]);
-			ContentName metaPath = ContentName.fromURI(args[startArg + 1]);
+			String metaArg = args[startArg + 1];
+			if (!metaArg.startsWith("/"))
+				metaArg = "/" + metaArg;
+			ContentName metaPath = ContentName.fromURI(metaArg);
 			CCNHandle handle = CCNHandle.open();
-			ContentName fileName = MetadataProfile.getLatestVersion(baseName, metaPath, null, CommonParameters.timeout, 
-					new ContentObject.SimpleVerifier(null), handle);
-			
+			ContentName prevFileName = MetadataProfile.getLatestVersion(baseName, metaPath, CommonParameters.timeout, handle);
+			if (null == prevFileName) {
+				System.out.println("File: " + baseName + " does not exist");
+				System.exit(1);
+			}
+			ContentName fileName = VersioningProfile.updateVersion(prevFileName);
 			if (CommonParameters.verbose)
 				Log.info("ccnputmeta: putting metadata file " + args[startArg + 1]);
 			

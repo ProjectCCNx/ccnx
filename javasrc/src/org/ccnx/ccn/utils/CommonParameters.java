@@ -16,11 +16,12 @@
  */
 package org.ccnx.ccn.utils;
 
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class CommonParameters {
-	protected static Integer timeout = null;
+	protected static Integer timeout = SystemConfiguration.MAX_TIMEOUT;
 	protected static int BLOCK_SIZE = 8096;
 	protected static boolean rawMode = false;
 	protected static boolean unversioned = false;

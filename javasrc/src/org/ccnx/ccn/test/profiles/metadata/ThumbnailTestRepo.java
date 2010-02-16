@@ -19,7 +19,6 @@ package org.ccnx.ccn.test.profiles.metadata;
 
 import java.io.IOException;
 
-import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.io.CCNInputStream;
@@ -29,7 +28,6 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.metadata.ThumbnailProfile;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.test.io.CCNFileStreamTestRepo;
@@ -78,18 +76,17 @@ public class ThumbnailTestRepo extends CCNTestBase {
 		CCNStringObject cso = new CCNStringObject(thumbNailBase, "thumbNailBase", CCNFlowControl.SaveType.REPOSITORY, putHandle);
 		cso.save();
 		cso.close();
-		ContentVerifier putVerifier = new ContentObject.SimpleVerifier(putHandle.getDefaultPublisher());
-		ContentName thumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(), cso.getContentPublisher(),
-					SystemConfiguration.LONG_TIMEOUT, putVerifier, putHandle);
+		ContentName origVersion = SegmentationProfile.segmentRoot(VersioningProfile.getLatestVersion(thumbNailBase, cso.getContentPublisher(), 
+				SystemConfiguration.LONG_TIMEOUT, putHandle.defaultVerifier(), getHandle).name());		
+		ContentName thumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(),
+					SystemConfiguration.LONG_TIMEOUT, putHandle);
 		
 		System.out.println("Check that we can retrieve a simple thumbnail");
 		RepositoryFileOutputStream thumbImage1 = new RepositoryFileOutputStream(thumbName, putHandle);
 		thumbImage1.write(fakeImageData1, 0, fakeImageData1.length);
 		thumbImage1.close();
-		ContentName origVersion = SegmentationProfile.segmentRoot(VersioningProfile.getLatestVersion(thumbNailBase, cso.getContentPublisher(), SystemConfiguration.LONG_TIMEOUT, 
-				putVerifier, getHandle).name());
-		ContentName checkThumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(), cso.getContentPublisher(),
-				SystemConfiguration.LONG_TIMEOUT, putVerifier, putHandle);
+		ContentName checkThumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(),
+				SystemConfiguration.LONG_TIMEOUT, putHandle);
 		checkData(checkThumbName, fakeImageData1);
 		
 		System.out.println("Check that we can retrieve a second version of a thumbnail");
@@ -99,8 +96,8 @@ public class ThumbnailTestRepo extends CCNTestBase {
 		thumbImage2.write(fakeImageData2, 0, fakeImageData2.length);
 		thumbImage2.close();
 		
-		checkThumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(), cso.getContentPublisher(),
-				SystemConfiguration.LONG_TIMEOUT, putVerifier, putHandle);
+		checkThumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(),
+				SystemConfiguration.LONG_TIMEOUT, putHandle);
 		checkData(checkThumbName, fakeImageData2);
 		
 		System.out.println("Check that we can retrieve a thumbnail associated with a second version of a file");
@@ -108,14 +105,12 @@ public class ThumbnailTestRepo extends CCNTestBase {
 		cso.save();
 		cso.close();
 		byte [] fakeImageData3 = "zzz".getBytes();
-		thumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(), cso.getContentPublisher(),
-				SystemConfiguration.LONG_TIMEOUT, putVerifier, putHandle);
+		thumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(), SystemConfiguration.LONG_TIMEOUT, putHandle);
 		RepositoryFileOutputStream thumbImage3 = new RepositoryFileOutputStream(thumbName, putHandle);
 		thumbImage3.write(fakeImageData3, 0, fakeImageData3.length);
 		thumbImage3.close();
 		
-		checkThumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(), cso.getContentPublisher(),
-				SystemConfiguration.LONG_TIMEOUT, putVerifier, putHandle);
+		checkThumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(), SystemConfiguration.LONG_TIMEOUT, putHandle);
 		checkData(checkThumbName, fakeImageData3);
 		
 		System.out.println("Check that we can retrieve a second thumbnail associated with a second version of a file");
@@ -125,13 +120,11 @@ public class ThumbnailTestRepo extends CCNTestBase {
 		thumbImage4.write(fakeImageData4, 0, fakeImageData4.length);
 		thumbImage4.close();
 		
-		checkThumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(), cso.getContentPublisher(),
-				SystemConfiguration.LONG_TIMEOUT, putVerifier, putHandle);
+		checkThumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(), SystemConfiguration.LONG_TIMEOUT, putHandle);
 		checkData(checkThumbName, fakeImageData4);
 
 		System.out.println("Check that we can retrieve the correct thumbnail associated with an arbitrary version of a file");
-		checkThumbName = ThumbnailProfile.getLatestVersion(origVersion, "image.png".getBytes(), cso.getContentPublisher(),
-				SystemConfiguration.LONG_TIMEOUT, putVerifier, putHandle);
+		checkThumbName = ThumbnailProfile.getLatestVersion(origVersion, "image.png".getBytes(), SystemConfiguration.LONG_TIMEOUT, putHandle);
 		checkData(checkThumbName, fakeImageData2);	
 	}
 	

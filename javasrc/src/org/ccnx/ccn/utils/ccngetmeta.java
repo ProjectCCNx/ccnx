@@ -29,7 +29,6 @@ import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
@@ -48,7 +47,7 @@ public class ccngetmeta {
 	public static void main(String[] args) {
 		int startArg = 0;
 		
-		for (int i = 0; i < args.length - 2; i++) {
+		for (int i = 0; i < args.length - 3; i++) {
 			if (args[i].equals("-unversioned")) {
 				if (startArg <= i)
 					startArg = i + 1;
@@ -107,8 +106,11 @@ public class ccngetmeta {
 			
 			CCNHandle handle = CCNHandle.open();
 
+			String metaArg = args[startArg + 1];
+			if (!metaArg.startsWith("/"))
+				metaArg = "/" + metaArg;
 			ContentName argName = MetadataProfile.getLatestVersion(ContentName.fromURI(args[startArg]), 
-					ContentName.fromNative(args[startArg + 1]), null, timeout, new ContentObject.SimpleVerifier(null), handle);
+					ContentName.fromNative(metaArg), timeout, handle);
 		
 			File theFile = new File(args[startArg + 1]);
 			if (theFile.exists()) {
