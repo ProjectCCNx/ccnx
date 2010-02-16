@@ -28,30 +28,68 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
+/**
+ * Includes routines to find correct version of a metadata file based on its base file
+ */
 public class MetadataProfile implements CCNProfile {
 
 	public static final byte [] METADATA_MARKER = ContentName.componentParseNative(MARKER + "meta" + MARKER);
 	
+	/**
+	 * This interface allows getLatestVersion of metadata within one of the supported meta
+	 * namespaces.
+	 */
 	public interface MetaNamer {
 		public ContentName getMetaName(ContentName baseName, ArrayList<byte[]> metaName);
 	}
 	
+	/**
+	 * General getter for generic metadata
+	 */
 	private static class LocalMetaNamer implements MetaNamer {
 		public ContentName getMetaName(ContentName baseName, ArrayList<byte[]> metaName) {
 			return new ContentName(metadataName(baseName), metaName);
 		}
 	}
 	
+	/**
+	 * Get a standard metadata path for a base file
+	 * @param baseName the base file
+	 * @return metadata path for base file
+	 */
 	public static ContentName metadataName(ContentName baseName) {
 		return new ContentName(baseName, METADATA_MARKER);
 	}
 	
+	/**
+	 * Get the latest version of a metadata file which is associated with a base file. Before
+	 * searching for the metadata version, we find the latest version of the base file
+	 * 
+	 * @param baseName the base file
+	 * @param metaName the meta file. This should be a ContentName containing only the relative path
+	 * 				   from the base file.
+	 * @param timeout  time to search for the latest version in ms. Applies separately to each latest
+	 *                 version search.
+	 * @param handle   CCNHandle to use for search.
+	 * @return
+	 * @throws IOException
+	 */
 	public static ContentName getLatestVersion(ContentName baseName, ContentName metaName, 
 			long timeout, CCNHandle handle) throws IOException {
 		return getLatestVersion(baseName, new LocalMetaNamer(), metaName.components(), timeout, handle);
 	}
 	
-	public static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, ArrayList<byte[]> metaName,
+	/**
+	 * Internal version of getLatestVersion
+	 * @param baseName
+	 * @param namer
+	 * @param metaName
+	 * @param timeout
+	 * @param handle
+	 * @return
+	 * @throws IOException
+	 */
+	protected static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, ArrayList<byte[]> metaName,
 			 long timeout, CCNHandle handle) throws IOException {
 		ContentName baseVersion = baseName;
 		CCNInputStream checker = new CCNInputStream(baseName, handle);

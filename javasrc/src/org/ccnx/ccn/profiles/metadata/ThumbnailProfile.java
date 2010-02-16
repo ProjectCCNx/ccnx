@@ -24,6 +24,9 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.protocol.ContentName;
 
+/**
+ * Access metadata files in the thumbnail namespace
+ */
 public class ThumbnailProfile implements CCNProfile {
 	public static final byte [] THUMBNAIL_MARKER = ContentName.componentParseNative(MARKER + "thumbnail" + MARKER);
 	
@@ -33,10 +36,27 @@ public class ThumbnailProfile implements CCNProfile {
 		}
 	}
 	
+	/**
+	 * Get the preset directory level name for metadata for thumbnails based on a base file
+	 * @param baseName the base file as a ContentName
+	 * @return the thumbnail meta directory as a ContentName
+	 */
 	public static ContentName thumbnailName(ContentName baseName) {
 		return new ContentName(MetadataProfile.metadataName(baseName), THUMBNAIL_MARKER);
 	}
 	
+	/**
+	 * Get the latest version of a thumbnail metadata file which is associated with a base file. 
+	 * Before searching for the thumbnail version, we find the latest version of the base file
+	 * 
+	 * @param baseName the base file as a ContentName
+	 * @param metaName the thumbnail filename as a byte array
+	 * @param timeout  time to search for the latest version in ms. Applies separately to each latest
+	 *                 version search.
+	 * @param handle   CCNHandle to use for search.
+	 * @return
+	 * @throws IOException
+	 */
 	public static ContentName getLatestVersion(ContentName baseName, byte[] metaName, long timeout, CCNHandle handle) throws IOException {
 		ArrayList<byte[]> list = new ArrayList<byte[]>();
 		list.add(metaName);
