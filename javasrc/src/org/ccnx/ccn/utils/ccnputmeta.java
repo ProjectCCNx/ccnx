@@ -117,7 +117,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 			CCNHandle handle = CCNHandle.open();
 			ContentName prevFileName = MetadataProfile.getLatestVersion(baseName, metaPath, CommonParameters.timeout, handle);
 			if (null == prevFileName) {
-				System.out.println("File: " + baseName + " does not exist");
+				System.out.println("File " + baseName + " does not exist");
 				System.exit(1);
 			}
 			ContentName fileName = VersioningProfile.updateVersion(prevFileName);

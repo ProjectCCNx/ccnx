@@ -38,9 +38,6 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  */
 public class ccngetmeta {
 	
-	public static Integer timeout = null;
-	public static boolean unversioned = false;
-	
 	/**
 	 * @param args
 	 */
@@ -51,14 +48,14 @@ public class ccngetmeta {
 			if (args[i].equals("-unversioned")) {
 				if (startArg <= i)
 					startArg = i + 1;
-				unversioned = true;
+				CommonParameters.unversioned = true;
 			} else if (args[i].equals("-timeout")) {
 				if (args.length < (i + 2)) {
 					usage();
 					return;
 				}
 				try {
-					timeout = Integer.parseInt(args[++i]);
+					CommonParameters.timeout = Integer.parseInt(args[++i]);
 				} catch (NumberFormatException nfe) {
 					usage();
 					return;
@@ -109,10 +106,10 @@ public class ccngetmeta {
 			String metaArg = args[startArg + 1];
 			if (!metaArg.startsWith("/"))
 				metaArg = "/" + metaArg;
-			ContentName argName = MetadataProfile.getLatestVersion(ContentName.fromURI(args[startArg]), 
-					ContentName.fromNative(metaArg), timeout, handle);
+			ContentName fileName = MetadataProfile.getLatestVersion(ContentName.fromURI(args[startArg]), 
+					ContentName.fromNative(metaArg), CommonParameters.timeout, handle);
 		
-			File theFile = new File(args[startArg + 1]);
+			File theFile = new File(args[startArg + 2]);
 			if (theFile.exists()) {
 				System.out.println("Overwriting file: " + args[startArg + 1]);
 			}
@@ -120,12 +117,12 @@ public class ccngetmeta {
 			
 			long starttime = System.currentTimeMillis();
 			CCNInputStream input;
-			if (unversioned)
-				input = new CCNInputStream(argName, handle);
+			if (CommonParameters.unversioned)
+				input = new CCNInputStream(fileName, handle);
 			else
-				input = new CCNFileInputStream(argName, handle);
-			if (timeout != null) {
-				input.setTimeout(timeout); 
+				input = new CCNFileInputStream(fileName, handle);
+			if (CommonParameters.timeout != null) {
+				input.setTimeout(CommonParameters.timeout); 
 			}
 			byte [] buffer = new byte[readsize];
 			
