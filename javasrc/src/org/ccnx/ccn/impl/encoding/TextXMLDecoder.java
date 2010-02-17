@@ -36,30 +36,25 @@ import org.xmlpull.v1.XmlPullParserFactory;
  */
 public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 
-	protected InputStream _istream = null;
 	protected XmlPullParser _reader = null;
 
 	public TextXMLDecoder() {
+		super();
 	}
-	
-	public void beginDecoding(InputStream istream) throws ContentDecodingException {
-		if (null == istream)
-			throw new IllegalArgumentException("TextXMLDecoder: input stream cannot be null!");
-		_istream = istream;
+
+	public TextXMLDecoder(BinaryXMLDictionary dictionary) {
+		super(dictionary);
+	}
+		
+	public void initializeDecoding() throws ContentDecodingException {
 		try {
 			XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
             factory.setNamespaceAware(true);
 			_reader = factory.newPullParser();
-			_reader.setInput(istream, null);
+			_reader.setInput(_istream, null);
 		} catch (XmlPullParserException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
-		}
-		
-		readStartDocument();
-	}
-	
-	public void endDecoding() throws ContentDecodingException {
-		readEndDocument();
+		}		
 	}
 
 	public void readStartDocument() throws ContentDecodingException {
@@ -86,10 +81,6 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 		if (event != XmlPullParser.END_DOCUMENT) {
 			throw new ContentDecodingException("Expected end document, got: " + XmlPullParser.TYPES[event]);
 		}
-	}
-
-	public void readStartElement(String startTag) throws ContentDecodingException {
-		readStartElement(startTag, null);
 	}
 
 	public void readStartElement(String startTag,
@@ -121,28 +112,56 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 		}
 	}
 
-	public String peekStartElement() throws ContentDecodingException {
+	public void readStartElement(Long startTagLong,
+			TreeMap<String, String> attributes) throws ContentDecodingException {
+		
+		String startTag = tagToString(startTagLong);
+
+		int event = readToNextTag(XmlPullParser.START_TAG);
+		if (event != XmlPullParser.START_TAG) {
+			throw new ContentDecodingException("Expected start element, got: " + XmlPullParser.TYPES[event]);
+		}
+		// Use getLocalPart to strip namespaces.
+		// Assumes we are working with a global default namespace of CCN.
+		if (!startTag.equals(_reader.getName())) {
+			// Coming back with namespace decoration doesn't match
+			throw new ContentDecodingException("Expected start element: " + startTag + " got: " + _reader.getName());
+		}	
+		if (null != attributes) {
+			// we might be expecting attributes
+			for (int i=0; i < _reader.getAttributeCount(); ++i) {
+				// may need fancier namespace handling.
+				attributes.put(_reader.getAttributeName(i), _reader.getAttributeValue(i));
+			}
+		}
+		try {
+			_reader.next();
+		} catch (XmlPullParserException e) {
+			throw new ContentDecodingException(e.getMessage());
+		} catch (IOException e) {
+			throw new ContentDecodingException(e.getMessage());
+		}
+	}
+	public String peekStartElementAsString() throws ContentDecodingException {
 		int event = readToNextTag(XmlPullParser.START_TAG);
 		if (event != XmlPullParser.START_TAG) {
 			return null;
 		}
 		return _reader.getName();
 	}
-
-	public boolean peekStartElement(String startTag) throws ContentDecodingException {
-		String decodedTag = peekStartElement();
-		if ((null == decodedTag) || (!startTag.equals(decodedTag))) {
-			return false;
-		}	
-		return true;
+	
+	public Long peekStartElementAsLong() throws ContentDecodingException {
+		String strTag = peekStartElementAsString();
+		return stringToTag(strTag);
 	}
 	
 	/**
-	 * Helper method to decode text (UTF-8) and binary elements. Consumes the end element.
+	 * Helper method to decode text (UTF-8) and binary elements. Consumes the end element,
+	 * behavior which other decoders are forced to match.
 	 * @return the read data, as a String
 	 * @throws ContentDecodingException if there is a problem decoding the data
 	 */
-	public String readElementText() throws ContentDecodingException {
+	public String readUString() throws ContentDecodingException {
 		StringBuffer buf = new StringBuffer();
 		try {
 			int event = _reader.getEventType();;
@@ -179,31 +198,17 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 		}
 	}
 
-	public String readUTF8Element(String startTag) throws ContentDecodingException {
-		return readUTF8Element(startTag, null);
-	}
-
-	public String readUTF8Element(String startTag,
-								  TreeMap<String, String> attributes) throws ContentDecodingException {
-		readStartElement(startTag, attributes); // can't use getElementText, can't get attributes
-		String strElementText = readElementText();
-		// readEndElement(); // readElementText consumes end element
-		return strElementText;
-	}
-
-	public byte[] readBinaryElement(String startTag) throws ContentDecodingException {
-		return readBinaryElement(startTag, null);
-	}
-
-	public byte[] readBinaryElement(String startTag,
-			TreeMap<String, String> attributes) throws ContentDecodingException {
+	/**
+	 * Read a BLOB. Consumes the end element, so force other versions
+	 * to match.
+	 */
+	public byte [] readBlob() throws ContentDecodingException {
 		try {
-			readStartElement(startTag, attributes); // can't use getElementText, can't get attributes
-			String strElementText = readElementText();
+			String strElementText = readUString();
 			// readEndElement(); // readElementText consumes end element
 			return TextXMLCodec.decodeBinaryElement(strElementText);
 		} catch (IOException e) {
-			throw new ContentDecodingException(e.getMessage(), e);
+			throw new ContentDecodingException(e.getMessage(),e);
 		}
 	}
 	
@@ -221,12 +226,20 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 		return timestamp;
 	}
 
-	public BinaryXMLDictionary popXMLDictionary() {
-		return null;
+	public CCNTime readDateTime(Long startTag) throws ContentDecodingException {
+		String strTimestamp = readUTF8Element(startTag);
+		CCNTime timestamp;
+		try {
+			timestamp = TextXMLCodec.parseDateTime(strTimestamp);
+		} catch (ParseException e) {
+			timestamp = null;
+		}
+		if (null == timestamp) {
+			throw new ContentDecodingException("Cannot parse timestamp: " + strTimestamp);
+		}		
+		return timestamp;
 	}
 
-	public void pushXMLDictionary(BinaryXMLDictionary dictionary) {}
-	
 	private int readToNextTag(int type) throws ContentDecodingException {
 		int event;
 		try {
