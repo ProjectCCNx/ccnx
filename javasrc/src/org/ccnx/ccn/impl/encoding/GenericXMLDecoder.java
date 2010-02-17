@@ -19,7 +19,6 @@ package org.ccnx.ccn.impl.encoding;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Stack;
 import java.util.TreeMap;
 
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -27,21 +26,16 @@ import org.ccnx.ccn.io.content.ContentDecodingException;
 /**
  * This class contains methods for content encoding/decoding common to all or many codecs.
  */
-public abstract class GenericXMLDecoder implements XMLDecoder {
-	_dictionary.peek().decodeTag(tv.val());
+public abstract class GenericXMLDecoder extends GenericXMLHandler implements XMLDecoder {
 
-	protected Stack<BinaryXMLDictionary> _dictionary = new Stack<BinaryXMLDictionary>();
 	protected InputStream _istream = null;
 
 	public GenericXMLDecoder() {
-		this(null);
+		super();
 	}
 
 	public GenericXMLDecoder(BinaryXMLDictionary dictionary) {
-		if (null == dictionary)
-			_dictionary.push(BinaryXMLDictionary.getDefaultDictionary());
-		else
-			_dictionary.push(dictionary);
+		super(dictionary);
 	}
 		
 	public void beginDecoding(InputStream istream) throws ContentDecodingException {
@@ -184,14 +178,4 @@ public abstract class GenericXMLDecoder implements XMLDecoder {
 		}
 		return value;
 	}
-
-	public BinaryXMLDictionary popXMLDictionary() {
-		_dictionary.pop();
-		return null;
-	}
-
-	public void pushXMLDictionary(BinaryXMLDictionary dictionary) {
-		_dictionary.push(dictionary);
-	}
-	
 }

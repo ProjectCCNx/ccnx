@@ -41,8 +41,6 @@ public class TextXMLCodec implements XMLCodec {
 	public static final String CCN_NAMESPACE = "http://www.parc.com/ccn";
 	public static final String CCN_PREFIX = "ccn";	
 	public static final String CODEC_NAME = "Text";
-	public static final String UNKNOWN_TAG_MARKER = "UNKNOWN TAG: ";
-	
 	public static final String BINARY_ATTRIBUTE = "ccnbencoding";
 	public static final String BINARY_ATTRIBUTE_VALUE = "base64Binary";
 	
@@ -171,24 +169,5 @@ public class TextXMLCodec implements XMLCodec {
 		//Library.finest("Parsed timestamp: " + ts + " from string: " + strDateTime);
 		
 		return ts;
-	}
-	
-	/**
-	 * Encoding for unknown binary tags. Reversible.
-	 */
-	public static String unknownTagMarker(long tag) {
-		return UNKNOWN_TAG_MARKER + tag;
-	}
-	
-	public static boolean isUnknownTag(String tagStr) {
-		return ((null == tagStr) ? false : tagStr.startsWith(UNKNOWN_TAG_MARKER));
-	}
-	
-	public static Long decodeUnknownTag(String tagStr) {
-		if (!isUnknownTag(tagStr)) {
-			return null;
-		}
-		String tag = tagStr.substring(UNKNOWN_TAG_MARKER.length());
-		return Long.valueOf(tag);
 	}
 }

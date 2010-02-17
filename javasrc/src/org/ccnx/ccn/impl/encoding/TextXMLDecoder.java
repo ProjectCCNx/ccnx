@@ -18,7 +18,6 @@
 package org.ccnx.ccn.impl.encoding;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.text.ParseException;
 import java.util.TreeMap;
 

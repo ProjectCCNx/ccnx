@@ -18,7 +18,6 @@
 package org.ccnx.ccn.impl.encoding;
 
 import java.io.OutputStream;
-import java.util.Stack;
 import java.util.TreeMap;
 
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -26,24 +25,16 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 /**
  * This class contains methods for content encoding/decoding common to all or many codecs.
  */
-public abstract class GenericXMLEncoder implements XMLEncoder {
+public abstract class GenericXMLEncoder extends GenericXMLHandler implements XMLEncoder {
 
 	protected OutputStream _ostream = null;
-	protected Stack<BinaryXMLDictionary> _dictionary = new Stack<BinaryXMLDictionary>();
 	
 	public GenericXMLEncoder() {
-		this(null);
+		super();
 	}
 
-	/**
-	 * Create a BinaryXMLEncoder initialized with a specified dictionary.
-	 * @param dictionary the dictionary to use, if null the default dictionary is used.
-	 */
 	public GenericXMLEncoder(BinaryXMLDictionary dictionary) {
-		if (null == dictionary)
-			_dictionary.push(BinaryXMLDictionary.getDefaultDictionary());
-		else
-			_dictionary.push(dictionary);
+		super(dictionary);
 	}
 
 	public void writeStartElement(String tag) throws ContentEncodingException {
@@ -135,13 +126,5 @@ public abstract class GenericXMLEncoder implements XMLEncoder {
 
 	public void writeIntegerElement(Long tag, Integer value) throws ContentEncodingException {
 		writeElement(tag, value.toString());
-	}
-
-	public BinaryXMLDictionary popXMLDictionary() {
-		return _dictionary.pop();
-	}
-
-	public void pushXMLDictionary(BinaryXMLDictionary dictionary) {
-		_dictionary.push(dictionary);
 	}
 }

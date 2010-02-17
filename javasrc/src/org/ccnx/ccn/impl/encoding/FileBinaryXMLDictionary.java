@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -14,7 +14,6 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
-
 package org.ccnx.ccn.impl.encoding;
 
 import java.io.BufferedReader;
@@ -30,14 +29,9 @@ import org.ccnx.ccn.impl.support.Log;
  * of those elements and attributes.
  * 
  * This type encapsulates a dictionary loaded from a file.
- * 
- * Remove auto-loading of text dictionary, as it was making encode/decode too slow.
- * Instead, to make a new dictionary, subclass this class and load it with your
- * constant tag/label data.
- *
  * @see BinaryXMLCodec
  */
-public class FileBinaryXMLDictionary {
+public class FileBinaryXMLDictionary extends BinaryXMLDictionary {
 	
 	// Should not necessarily tie this to CCN...
 	protected static String DEFAULT_DICTIONARY_RESNAME = "tagname.csvdict";
@@ -45,17 +39,7 @@ public class FileBinaryXMLDictionary {
 	protected String _dictionaryFileName;
 	protected HashMap<String,Long> _encodingDictionary = new HashMap<String,Long>();
 	protected HashMap<Long,String> _decodingDictionary = new HashMap<Long,String>();
-	
-	protected static FileBinaryXMLDictionary DEFAULT_DICTIONARY = null;
-	
-	static {
-		DEFAULT_DICTIONARY = new FileBinaryXMLDictionary();
-	}
-	
-	public static FileBinaryXMLDictionary getDefaultDictionary() {
-		return DEFAULT_DICTIONARY;
-	}
-	
+		
 	public FileBinaryXMLDictionary(String dictionaryFile) throws IOException {
 		loadDictionaryFile(dictionaryFile);
 	}
@@ -73,16 +57,12 @@ public class FileBinaryXMLDictionary {
 		loadDictionary(dictionaryStream);
 	}
 	
-	public long encodeTag(String tag) {
-		Long value = _encodingDictionary.get(tag);
-		if (null == value)
-			return -1;
-		return value.longValue();
+	public Long stringToTag(String tag) {
+		return _encodingDictionary.get(tag); // caller handles null
 	}
 	
-	public String decodeTag(long tagVal) {
-		String tag = _decodingDictionary.get(Long.valueOf(tagVal));
-		return tag;
+	public String tagToString(long tagVal) {
+		return _decodingDictionary.get(Long.valueOf(tagVal)); // caller handles null
 	}
 	
 	protected void loadDictionaryFile(String dictionaryFile) throws IOException {

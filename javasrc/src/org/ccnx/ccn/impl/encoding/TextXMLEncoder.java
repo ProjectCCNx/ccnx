@@ -89,7 +89,7 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	public void writeStartElement(Long tag, TreeMap<String, String> attributes) throws ContentEncodingException {
 		String strTag = tagToString(tag);
 		if (null == strTag) {
-			strTag = TextXMLCodec.unknownTagMarker(tag);
+			strTag = BinaryXMLDictionary.unknownTagMarker(tag);
 		}
 		writeStartElement(strTag, attributes);
 	}

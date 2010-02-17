@@ -19,7 +19,6 @@ package org.ccnx.ccn.impl.encoding;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.sql.Timestamp;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeMap;
@@ -110,9 +109,9 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 
 	public void writeStartElement(String tag, TreeMap<String,String> attributes) throws ContentEncodingException {
 		try {
-			long dictionaryVal = _dictionary.peek().encodeTag(tag);
+			Long dictionaryVal = stringToTag(tag);
 			
-			if (dictionaryVal < 0) {
+			if (null == dictionaryVal) {
 				Log.info("Unexpected: tag found that is not in our dictionary: " + tag);
 				// not in dictionary
 				// compressed format wants length of tag represented as length-1
@@ -125,33 +124,53 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 			}
 			
 			if (null != attributes) {
-				// the keySet of a TreeMap is sorted.
-				Set<String> keySet = attributes.keySet();
-				Iterator<String> it = keySet.iterator();
-				
-				while (it.hasNext()) {
-					String strAttr = it.next();
-					String strValue = attributes.get(strAttr);
-					
-					// TODO DKS are attributes in different dictionary? right now not using DATTRS
-					long dictionaryAttr = _dictionary.peek().encodeAttr(strAttr);
-					if (dictionaryAttr < 0) {
-						// not in dictionary, encode as attr
-						// compressed format wants length of tag represented as length-1
-						// to save that extra bit, as tag cannot be 0 length.
-						// encodeUString knows to do that.
-						BinaryXMLCodec.encodeUString(_ostream, strAttr, BinaryXMLCodec.XML_ATTR);
-					} else {
-						BinaryXMLCodec.encodeTypeAndVal(BinaryXMLCodec.XML_DATTR, dictionaryAttr, _ostream);
-					}
-					// Write value
-					BinaryXMLCodec.encodeUString(_ostream, strValue);
-				}
-				
+				writeAttributes(attributes); 
 			}
 			
 		} catch (IOException e) {
 			throw new ContentEncodingException(e.getMessage(),e);
+		}
+	}
+	
+	public void writeStartElement(Long tag, TreeMap<String,String> attributes) throws ContentEncodingException {
+		try {
+			
+			BinaryXMLCodec.encodeTypeAndVal(BinaryXMLCodec.XML_DTAG, tag, _ostream);
+			if (null != attributes) {
+				writeAttributes(attributes); 
+			}
+			
+		} catch (IOException e) {
+			throw new ContentEncodingException(e.getMessage(),e);
+		}
+	}
+
+	public void writeAttributes(TreeMap<String,String> attributes) throws IOException {
+		
+		if (null == attributes) {
+			return;
+		}
+
+		// the keySet of a TreeMap is sorted.
+		Set<String> keySet = attributes.keySet();
+		Iterator<String> it = keySet.iterator();
+
+		while (it.hasNext()) {
+			String strAttr = it.next();
+			String strValue = attributes.get(strAttr);
+
+			Long dictionaryAttr = stringToTag(strAttr);
+			if (null == dictionaryAttr) {
+				// not in dictionary, encode as attr
+				// compressed format wants length of tag represented as length-1
+				// to save that extra bit, as tag cannot be 0 length.
+				// encodeUString knows to do that.
+				BinaryXMLCodec.encodeUString(_ostream, strAttr, BinaryXMLCodec.XML_ATTR);
+			} else {
+				BinaryXMLCodec.encodeTypeAndVal(BinaryXMLCodec.XML_DATTR, dictionaryAttr, _ostream);
+			}
+			// Write value
+			BinaryXMLCodec.encodeUString(_ostream, strValue);
 		}
 	}
 	

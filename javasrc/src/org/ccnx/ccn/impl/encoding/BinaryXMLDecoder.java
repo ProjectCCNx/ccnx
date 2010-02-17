@@ -20,7 +20,6 @@ package org.ccnx.ccn.impl.encoding;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.TreeMap;
 
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -73,7 +72,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
 				
 			} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
-				decodedTag = stringToTag(tv.val());	
+				decodedTag = tagToString(tv.val());	
 			}
 			
 			if ((null ==  decodedTag) || (!decodedTag.equals(startTag))) {
@@ -83,7 +82,9 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 			// DKS: does not read attributes out of stream if caller doesn't
 			// ask for them. Should possibly peek and skip over them regardless.
 			// TODO: fix this
-			readAttributes(attributes); // handles null
+			if (null != attributes) {
+				readAttributes(attributes); 
+			}
 			
 		} catch (IOException e) {
 			throw new ContentDecodingException("readStartElement", e);
@@ -119,7 +120,9 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 			// DKS: does not read attributes out of stream if caller doesn't
 			// ask for them. Should possibly peek and skip over them regardless.
 			// TODO: fix this
-			readAttributes(attributes); // handles null
+			if (null != attributes) {
+				readAttributes(attributes); 
+			}
 
 		} catch (IOException e) {
 			throw new ContentDecodingException("readStartElement", e);
@@ -150,7 +153,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 
 				} else if (BinaryXMLCodec.XML_DATTR == thisTV.type()) {
 					// DKS TODO are attributes same or different dictionary?
-					attributeName = _dictionary.peek().decodeTag(thisTV.val());
+					attributeName = tagToString(thisTV.val());
 					if (null == attributeName) {
 						throw new ContentDecodingException("Unknown DATTR value" + thisTV.val());
 					}

@@ -1,3 +1,19 @@
+/**
+ * Part of the CCNx Java Library.
+ *
+ * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 package org.ccnx.ccn.impl.encoding;
 
 
@@ -90,11 +106,30 @@ public enum CCNProtocolDTags {
 	Entry ( 102 ),
 	CCNProtocolDataUnit ( 17702112 );
 
-	int _tag;
+	Long _tag;
 
-	CCNProtocolDTags(int tag) {
+	CCNProtocolDTags(long tag) {
 		this._tag = tag;
 	}
 	
-	int getTag() { return _tag; }
+	Long getTag() { return _tag; }
+	
+	/**
+	 * This is the slow search -- find a tag based on an index. Only 
+	 * used in cases where we need to print based on a binary tag value; 
+	 * this is only used in text encoding of usually binary objects... For
+	 * now, as it's rare, do a scan, rather than taking the up front hit
+	 * to build a hash table.
+	 * @param tagVal
+	 * @return
+	 */
+	static CCNProtocolDTags valueForTag(long tagVal) {
+		CCNProtocolDTags [] dtags = CCNProtocolDTags.values();
+		for (CCNProtocolDTags dtag : dtags) {
+			if (tagVal == dtag.getTag()) {
+				return dtag;
+			}
+		}
+		return null;
+	}
 }
