@@ -301,7 +301,9 @@ public class CCNNetworkManager implements Runnable {
 		/**
 		 * This is called when removing interest or content handlers. It's purpose
 		 * is to insure that once the remove call begins it completes atomically without more 
-		 * handlers being triggered.
+		 * handlers being triggered. Note that there is still not full atomicity here
+		 * because a dispatch to handler might be in progress and we don't hold locks 
+		 * throughout the dispatch to avoid deadlocks.
 		 */
 		public void invalidate() {
 			// There may be a pending delivery in progress, and it doesn't 
@@ -603,9 +605,12 @@ public class CCNNetworkManager implements Runnable {
 					listener.handleInterest(pending);
 					// Now extra callbacks for additional interests
 					if (null != pendingExtra) {
+						int countExtra = 0;
 						for (Interest pi : pendingExtra) {
-							if( Log.isLoggable(Level.FINER) )
-								Log.finer("Filter callback (extra) for: {0}", prefix);
+							if( Log.isLoggable(Level.FINER) ) {
+								countExtra++;
+								Log.finer("Filter callback (extra {0} of {1}) for: {2}", countExtra, pendingExtra.size(), prefix);
+							}
 							listener.handleInterest(pi);
 						}
 					}
