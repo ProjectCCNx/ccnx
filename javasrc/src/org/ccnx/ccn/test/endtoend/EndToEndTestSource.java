@@ -20,8 +20,6 @@ package org.ccnx.ccn.test.endtoend;
 
 import static org.junit.Assert.assertTrue;
 
-import java.util.ArrayList;
-
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.protocol.ContentName;
@@ -68,25 +66,25 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 		}
 	}
 
-	public synchronized int handleInterests(ArrayList<Interest> interests) {
+	public synchronized boolean handleInterest(Interest interest) {
+		boolean result = false;
 		try {
 			if (next >= count) {
-				return 0;
+				return false;
 			}
-			for (Interest interest : interests) {
-				assertTrue(name.isPrefixOf(interest.name()));
-				byte[] content = getRandomContent(next);
-				ContentName putResult = _writer.put(ContentName.fromNative("/BaseLibraryTest/server/" + new Integer(next).toString()), content);
-				System.out.println("Put " + next + " done: " + content.length + " content bytes");
-				checkPutResults(putResult);
-				next++;
-			}
+			assertTrue(name.isPrefixOf(interest.name()));
+			byte[] content = getRandomContent(next);
+			ContentName putResult = _writer.put(ContentName.fromNative("/BaseLibraryTest/server/" + new Integer(next).toString()), content);
+			result = true;
+			System.out.println("Put " + next + " done: " + content.length + " content bytes");
+			checkPutResults(putResult);
+			next++;
 			if (next >= count) {
 				sema.release();
 			}
 		} catch (Throwable e) {
 			error = e;
 		}
-		return 0;
+		return result;
 	}
 }

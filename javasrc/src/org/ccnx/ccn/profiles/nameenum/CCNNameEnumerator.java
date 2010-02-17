@@ -381,96 +381,95 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	 * new names have been registered under the prefix or if no matching NEResponse object is found, a name enumeration
 	 * response is created.
 	 * 
-	 * @param interests ArrayList of Interest objects matching the namespace filter.
+	 * @param interest Interest object matching the namespace filter.
 	 * 
-	 * @return int 
+	 * @return boolean 
 	 */
 	
-	public int handleInterests(ArrayList<Interest> interests) {
+	public boolean handleInterest(Interest interest) {
 		
 		
-		
+		boolean result = false;
 		ContentName responseName = null;
 		Link match;
 		NameEnumerationResponseMessage nem;
 				
 		ContentName name = null;
 		NEResponse r = null;
-		for (Interest i: interests) {
-			if (Log.isLoggable(Level.FINER)) {
-				Log.finer("got an interest: {0}",i.name());
-			}
-			name = i.name().clone();
-			nem = new NameEnumerationResponseMessage();
-			//Verify NameEnumeration Marker is in the name
-			if (!name.contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
-				//Skip...  we don't handle these
-			} else {
-				name = name.cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
-				responseName = new ContentName(name, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+		if (Log.isLoggable(Level.FINER)) {
+			Log.finer("got an interest: {0}",interest.name());
+		}
+		name = interest.name().clone();
+		nem = new NameEnumerationResponseMessage();
+		//Verify NameEnumeration Marker is in the name
+		if (!name.contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
+			//Skip...  we don't handle these
+		} else {
+			name = name.cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+			responseName = new ContentName(name, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 
-				boolean skip = false;
-				
-				synchronized (_handledResponses) {
-					//have we handled this response already?
-					r = getHandledResponse(name);
-					if (r != null) {
-						//we have handled this before!
-						if (r.isDirty()) {
-							//this has updates to send back!!
-						} else {
-							//nothing new to send back...  go ahead and skip to next interest
-							skip = true;
-						}
+			boolean skip = false;
+
+			synchronized (_handledResponses) {
+				//have we handled this response already?
+				r = getHandledResponse(name);
+				if (r != null) {
+					//we have handled this before!
+					if (r.isDirty()) {
+						//this has updates to send back!!
 					} else {
-						//this is a new one...
-						r = new NEResponse(name);
-						_handledResponses.add(r);
+						//nothing new to send back...  go ahead and skip to next interest
+						skip = true;
 					}
-					
-					if (!skip) {
-						
-						for (ContentName n: _registeredNames) {
-							if (name.isPrefixOf(n) && name.count() < n.count()) {
-								ContentName tempName = n.clone();
-								byte[] tn = n.component(name.count());
-								byte[][] na = new byte[1][tn.length];
-								na[0] = tn;
-								tempName = new ContentName(na);
-								match = new Link(tempName);
-								if (!nem.contents().contains(match)) {
-									nem.add(match);
-								}
+				} else {
+					//this is a new one...
+					r = new NEResponse(name);
+					_handledResponses.add(r);
+				}
+
+				if (!skip) {
+
+					for (ContentName n: _registeredNames) {
+						if (name.isPrefixOf(n) && name.count() < n.count()) {
+							ContentName tempName = n.clone();
+							byte[] tn = n.component(name.count());
+							byte[][] na = new byte[1][tn.length];
+							na[0] = tn;
+							tempName = new ContentName(na);
+							match = new Link(tempName);
+							if (!nem.contents().contains(match)) {
+								nem.add(match);
 							}
 						}
 					}
-			
-					if (nem.size() > 0) {
-						try {
-							ContentName responseNameWithId = KeyProfile.keyName(responseName, _handle.keyManager().getDefaultKeyID());
-							NameEnumerationResponseMessageObject nemobj = new NameEnumerationResponseMessageObject(responseNameWithId, nem, _handle);
-							nemobj.save(i);
-							
-							if (Log.isLoggable(Level.FINE)) {
-								Log.fine("Saved collection object in name enumeration: " + nemobj.getVersionedName());
-							}
-							
-							r.clean();
-						} catch(IOException e) {
-							Log.warning("error processing an incoming interest..  dropping and returning");
-							Log.warningStackTrace(e);
-							return 0;
+				}
+
+				if (nem.size() > 0) {
+					try {
+						ContentName responseNameWithId = KeyProfile.keyName(responseName, _handle.keyManager().getDefaultKeyID());
+						NameEnumerationResponseMessageObject nemobj = new NameEnumerationResponseMessageObject(responseNameWithId, nem, _handle);
+						nemobj.save(interest);
+						result = true;
+
+						if (Log.isLoggable(Level.FINE)) {
+							Log.fine("Saved collection object in name enumeration: " + nemobj.getVersionedName());
 						}
-					}
-				
-					Log.finer("this interest did not have any matching names...  not returning anything.");
-					if (r != null)
+
 						r.clean();
-				} //end of synchronized
-			}  //end of name enumeration marker check
-		} //end of interest processing loop
-			
-		return 0;
+					} catch(IOException e) {
+						Log.warning("error processing an incoming interest..  dropping and returning");
+						Log.warningStackTrace(e);
+						return false;
+					}
+				}
+
+				Log.finer("this interest did not have any matching names...  not returning anything.");
+				if (r != null)
+					r.clean();
+			} //end of synchronized
+		}  //end of name enumeration marker check
+
+		return result;
 	}
 
 	/**

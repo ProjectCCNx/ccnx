@@ -60,12 +60,12 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		doTestFail();
 	}
 
-	public int handleInterests(ArrayList<Interest> interests) {
-		Assert.assertTrue(_interestSent.equals(interests.get(0)));
+	public boolean handleInterest(Interest interest) {
+		Assert.assertTrue(_interestSent.equals(interest));
 		synchronized(this) {
 			notify();
 		}
-		return 0;
+		return true;
 	}
 	
 	public Interest handleContent(ArrayList<ContentObject> results,

@@ -478,14 +478,14 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * Match incoming interests with data in the buffer. If the interest doesn't match it is
 	 * buffered awaiting potential later incoming data which may match it.
 	 * 
+	 * Note that this method is used for testing only, since the interest callback only takes one interest
+	 * 
 	 */
-	public int handleInterests(ArrayList<Interest> interests) {
+	public void handleInterests(ArrayList<Interest> interests) {
 		synchronized (_holdingArea) {
-			int count = 0;
 			for (Interest interest : interests) {
-				count += handleInterest(interest);
+				handleInterest(interest);
 			}
-			return count;
 		}
 	}
 	
@@ -495,9 +495,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * if the interest was null.
 	 * 
 	 */
-	public int handleInterest(Interest i) {
+	public boolean handleInterest(Interest i) {
 		if (i == null)
-			return 0;
+			return false;
 		synchronized (_holdingArea) {
 			Log.fine("Flow controller: got interest: {0}", i);
 			ContentObject co = getBestMatch(i, _holdingArea.keySet());
@@ -521,7 +521,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				_unmatchedInterests.add(i, new UnmatchedInterest());
 			}
 				
-			return 1;
+			return true;
 		}
 	}
 	

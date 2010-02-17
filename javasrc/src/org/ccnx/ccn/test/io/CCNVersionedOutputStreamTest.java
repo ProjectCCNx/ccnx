@@ -7,7 +7,6 @@ import java.security.DigestInputStream;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.Random;
 import java.util.logging.Level;
 
@@ -158,14 +157,13 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		return digestStreamWrapper.getMessageDigest().digest();
 	}
 	
-	public int handleInterests(ArrayList<Interest> interests) {
-		Interest interest = interests.get(0);
+	public boolean handleInterest(Interest interest) {
 		// we only deal with the first interest, at least for now
 		if (null != writer) {
-			Log.info("handleInterests: already writing stream, ignoring interest {0} of set of {1}", interest, interests.size());
-			return 0;
+			Log.info("handleInterests: already writing stream, ignoring interest {0}", interest);
+			return false;
 		}
-		Log.info("handleInterests got first interest {0} out of a set of {1}", interest, interests.size());
+		Log.info("handleInterests got interest {0}", interest);
 		CCNVersionedOutputStream vos = null;
 		try {
 			vos = new CCNVersionedOutputStream(interest.name(), writeHandle);
@@ -177,7 +175,7 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		vos.addOutstandingInterest(interest);
 		writer = new Writer(vos, FILE_SIZE);
 		writer.run();
-		return 1;
+		return true;
 	}
 
 }

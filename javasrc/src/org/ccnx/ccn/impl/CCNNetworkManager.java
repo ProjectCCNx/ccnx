@@ -534,7 +534,9 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	protected class Filter extends ListenerRegistration {
 		public ContentName prefix;  /* Also used to remember registration with ccnd */
-		protected ArrayList<Interest> interests = new ArrayList<Interest>(1);
+		protected Interest interest; // interest to be delivered
+		// extra interests to be delivered: separating these allows avoidance of ArrayList obj in many cases
+		protected ArrayList<Interest> extra = new ArrayList<Interest>(1); 
 		// protected Integer faceId = null;
 		ForwardingEntry forwarding = null;
 		// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
@@ -558,7 +560,17 @@ public class CCNNetworkManager implements Runnable {
 		}
 		
 		public synchronized void add(Interest i) {
-			interests.add(i);
+			if (null == interest) {
+				interest = i;
+			} else {
+				// Special case, more than 1 interest pending for delivery
+				// Only 1 interest gets added at a time, but more than 1 
+				// may arrive before a callback is dispatched
+				if (null == extra) {
+					extra = new ArrayList<Interest>(1);
+				}
+				extra.add(i);
+			}
 		}
 		
 		/**
@@ -566,21 +578,37 @@ public class CCNNetworkManager implements Runnable {
 		 */
 		public void deliver() {
 			try {
-				ArrayList<Interest> results = null;
+				Interest pending = null;
+				ArrayList<Interest> pendingExtra = null;
 				CCNFilterListener listener = null;
+				// Grab pending interest(s) under the lock
 				synchronized (this) {
-					if (this.interests.size() > 0) { 
-						results = interests;
-						interests = new ArrayList<Interest>(1);
-						listener = (CCNFilterListener)this.listener;
+					if (null != this.interest) {
+						pending = interest;
+						interest = null;
+						if (null != this.extra) { 
+							pendingExtra = extra;
+							extra = null;
+							// Don't create new ArrayList for extra here, will be done only as needed in add()
+						}
 					}
+					listener = (CCNFilterListener)this.listener;
 				}
-				
-				if (null != results) {								
+	
+				// pending signifies whether there is anything
+				if (null != pending) {	
 					// Call into client code without holding any library locks
 					if( Log.isLoggable(Level.FINER) )
-						Log.finer("Filter callback ({0} interests) for: {1}", results.size(), prefix);
-					listener.handleInterests(results);
+						Log.finer("Filter callback for: {0}", prefix);
+					listener.handleInterest(pending);
+					// Now extra callbacks for additional interests
+					if (null != pendingExtra) {
+						for (Interest pi : pendingExtra) {
+							if( Log.isLoggable(Level.FINER) )
+								Log.finer("Filter callback (extra) for: {0}", prefix);
+							listener.handleInterest(pi);
+						}
+					}
 				} else {
 					if( Log.isLoggable(Level.FINER) )
 						Log.finer("Filter callback skipped (no interests) for: {0}", prefix);

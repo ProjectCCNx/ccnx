@@ -369,22 +369,22 @@ public class LibraryTestBase extends CCNTestBase {
 			}
 		}
 
-		public synchronized int handleInterests(ArrayList<Interest> interests) {
+		public synchronized boolean handleInterest(Interest interest) {
+			boolean result = false;
 			try {
-				for (Interest interest : interests) {
-					try {
-						int val = Integer.parseInt(new String(interest.name().component(interest.name().count()-1)));
-						System.out.println("Got interest in " + val);
-						if (!accumulatedResults.contains(val)) {
-							ContentName putResult = writer.put(ContentName.fromNative(name, Integer.toString(val)), Integer.toString(next).getBytes());
-							System.out.println("Put " + val + " done");
-							checkPutResults(putResult);
-							next++;
-							accumulatedResults.add(val);
-						}
-					} catch (NumberFormatException nfe) {
-						Log.info("Unexpected interest, " + interest.name() + " does not end in an integer!");
+				try {
+					int val = Integer.parseInt(new String(interest.name().component(interest.name().count()-1)));
+					System.out.println("Got interest in " + val);
+					if (!accumulatedResults.contains(val)) {
+						ContentName putResult = writer.put(ContentName.fromNative(name, Integer.toString(val)), Integer.toString(next).getBytes());
+						result = true;
+						System.out.println("Put " + val + " done");
+						checkPutResults(putResult);
+						next++;
+						accumulatedResults.add(val);
 					}
+				} catch (NumberFormatException nfe) {
+					Log.info("Unexpected interest, " + interest.name() + " does not end in an integer!");
 				}
 				if (accumulatedResults.size() >= count) {
 					sema.release();
@@ -392,7 +392,7 @@ public class LibraryTestBase extends CCNTestBase {
 			} catch (Throwable e) {
 				error = e;
 			}
-			return 0;
+			return result;
 		}
 	}
 }
