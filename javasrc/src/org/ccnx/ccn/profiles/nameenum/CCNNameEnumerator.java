@@ -20,6 +20,7 @@ package org.ccnx.ccn.profiles.nameenum;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
@@ -193,14 +194,14 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			NERequest r = getCurrentRequest(prefix);
 			if (r != null) {
 				// this prefix is already registered...
-				Log.info("prefix " + prefix.toString() + " is already registered...  returning");
+				Log.fine("prefix {0} is already registered...  returning", prefix);
 				return;
 			} else {
 				r = new NERequest(prefix);
 				_currentRequests.add(r);
 			}
 
-			Log.info("Registered Prefix: " + prefix.toString());
+			Log.info("Registered Prefix: {0}", prefix);
 
 			ContentName prefixMarked = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 			
@@ -223,13 +224,13 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	 */
 	
 	public boolean cancelPrefix(ContentName prefix) {
-		Log.info("cancel prefix: "+prefix.toString());
+		Log.info("cancel prefix: {0} ", prefix);
 		synchronized(_currentRequests) {
 			//cancel the behind the scenes interests and remove from the local ArrayList
 			NERequest r = getCurrentRequest(prefix);
 			if (r != null) {
 				ArrayList<Interest> is = r.getInterests();
-				Log.fine("we have "+is.size()+" interests to cancel");
+				Log.fine("we have {0} interests to cancel", is.size());
 				Interest i;
 				while (!r.getInterests().isEmpty()) {
 					i=r.getInterests().remove(0);
@@ -294,8 +295,9 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			//note:  if responseIDs are longer than 1 component, need to revisit interest generation for followups
 			if (results != null) {
 				for (ContentObject c: results) {
-					Log.fine("we have a match for: "+interest.name()+" ["+ interest.toString()+"]");
-										
+					if (Log.isLoggable(Level.FINE)) {
+						Log.fine("we have a match for: "+interest.name()+" ["+ interest.toString()+"]");
+					}				
 					ArrayList<Interest> newInterests = new ArrayList<Interest>(); 
 					
 					//we want to get new versions of this object
@@ -315,7 +317,9 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						//if response IDs are hierarchical, we need to avoid exploding the number of Interests we express
 								
 						//if the interest had a responseId in it, we don't need to make a new base interest with an exclude, we would have done this already.
-						Log.fine("response id from interest: "+getIdFromName(interest.name()));
+						if (Log.isLoggable(Level.FINE)) {
+							Log.fine("response id from interest: "+getIdFromName(interest.name()));
+						}
 						
 						if(getIdFromName(interest.name()) != null && getIdFromName(interest.name()).count() > 0) {
 							//the interest has a response ID in it already...  skip making new base interest
@@ -339,7 +343,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						for(Interest i: newInterests) {
 							_handle.expressInterest(i, this);
 							ner.addInterest(i);
-							Log.finest("expressed: "+i);
+							Log.finest("expressed: {0}", i);
 						}
 					} catch (IOException e1) {
 						// error registering new interest
@@ -393,7 +397,9 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		ContentName name = null;
 		NEResponse r = null;
 		for (Interest i: interests) {
-			Log.finer("got an interest: {0}",i.name());
+			if (Log.isLoggable(Level.FINER)) {
+				Log.finer("got an interest: {0}",i.name());
+			}
 			name = i.name().clone();
 			nem = new NameEnumerationResponseMessage();
 			//Verify NameEnumeration Marker is in the name
@@ -445,7 +451,9 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 							NameEnumerationResponseMessageObject nemobj = new NameEnumerationResponseMessageObject(responseNameWithId, nem, _handle);
 							nemobj.save(i);
 							
-							Log.fine("Saved collection object in name enumeration: " + nemobj.getVersionedName());
+							if (Log.isLoggable(Level.FINE)) {
+								Log.fine("Saved collection object in name enumeration: " + nemobj.getVersionedName());
+							}
 							
 							r.clean();
 						} catch(IOException e) {
