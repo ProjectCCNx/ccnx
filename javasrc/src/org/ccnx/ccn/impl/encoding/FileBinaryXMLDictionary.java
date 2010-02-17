@@ -28,10 +28,16 @@ import org.ccnx.ccn.impl.support.Log;
 /**
  * Encapsulates the mapping from textual XML element and attribute names to the ccnb binary encoding
  * of those elements and attributes.
+ * 
+ * This type encapsulates a dictionary loaded from a file.
+ * 
+ * Remove auto-loading of text dictionary, as it was making encode/decode too slow.
+ * Instead, to make a new dictionary, subclass this class and load it with your
+ * constant tag/label data.
  *
  * @see BinaryXMLCodec
  */
-public class BinaryXMLDictionary {
+public class FileBinaryXMLDictionary {
 	
 	// Should not necessarily tie this to CCN...
 	protected static String DEFAULT_DICTIONARY_RESNAME = "tagname.csvdict";
@@ -40,21 +46,21 @@ public class BinaryXMLDictionary {
 	protected HashMap<String,Long> _encodingDictionary = new HashMap<String,Long>();
 	protected HashMap<Long,String> _decodingDictionary = new HashMap<Long,String>();
 	
-	protected static BinaryXMLDictionary DEFAULT_DICTIONARY = null;
+	protected static FileBinaryXMLDictionary DEFAULT_DICTIONARY = null;
 	
 	static {
-		DEFAULT_DICTIONARY = new BinaryXMLDictionary();
+		DEFAULT_DICTIONARY = new FileBinaryXMLDictionary();
 	}
 	
-	public static BinaryXMLDictionary getDefaultDictionary() {
+	public static FileBinaryXMLDictionary getDefaultDictionary() {
 		return DEFAULT_DICTIONARY;
 	}
 	
-	public BinaryXMLDictionary(String dictionaryFile) throws IOException {
+	public FileBinaryXMLDictionary(String dictionaryFile) throws IOException {
 		loadDictionaryFile(dictionaryFile);
 	}
 
-	public BinaryXMLDictionary() {
+	public FileBinaryXMLDictionary() {
 		try {
 			loadDictionaryFile(DEFAULT_DICTIONARY_RESNAME);
 		} catch (IOException fe) {
@@ -63,7 +69,7 @@ public class BinaryXMLDictionary {
 		}
 	}
 	
-	public BinaryXMLDictionary(InputStream dictionaryStream) throws IOException {
+	public FileBinaryXMLDictionary(InputStream dictionaryStream) throws IOException {
 		loadDictionary(dictionaryStream);
 	}
 	
@@ -79,19 +85,6 @@ public class BinaryXMLDictionary {
 		return tag;
 	}
 	
-	// DKS TODO -- do attributes use the same dictionary entries?
-	public long encodeAttr(String attr) {
-		Long value = _encodingDictionary.get(attr);
-		if (null == value)
-			return -1;
-		return value.longValue();
-	}
-	
-	public String decodeAttr(long tagVal) {
-		String tag = _decodingDictionary.get(Long.valueOf(tagVal));
-		return tag;
-	}
-
 	protected void loadDictionaryFile(String dictionaryFile) throws IOException {
 		
 		if (null == dictionaryFile) 
