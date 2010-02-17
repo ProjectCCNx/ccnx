@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.impl.encoding;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Iterator;
 import java.util.TreeMap;
@@ -34,11 +35,23 @@ import org.xmlpull.v1.XmlSerializer;
  */
 public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 
-	protected OutputStream _ostream = null;
 	protected XmlSerializer _serializer = null;
-	protected boolean _isFirstElement = true;
 	
-	public TextXMLEncoder() {}
+	/**
+	 * Create a BinaryXMLEncoder initialized with the default dictionary obtained
+	 * from BinaryXMLDictionary#getDefaultDictionary().
+	 */
+	public TextXMLEncoder() {
+		super();
+	}
+
+	/**
+	 * Create a BinaryXMLEncoder initialized with a specified dictionary.
+	 * @param dictionary the dictionary to use, if null the default dictionary is used.
+	 */
+	public TextXMLEncoder(BinaryXMLDictionary dictionary) {
+		super(dictionary);
+	}
 
 	public void beginEncoding(OutputStream ostream) throws ContentEncodingException {
 		if (null == ostream)
@@ -73,87 +86,17 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		}
 	}
 	
-	public void writeElement(String tag, String utf8Content)
-			throws ContentEncodingException {
-		writeElement(tag, utf8Content, null);
-	}
-
-	public void writeElement(String tag, String utf8Content,
-			TreeMap<String, String> attributes) throws ContentEncodingException {
-		writeStartElement(tag, attributes);
-		try {
-			_serializer.text(utf8Content);
-		} catch (Exception e) {
-			throw new ContentEncodingException(e.getMessage(), e);
+	public void writeStartElement(Long tag, TreeMap<String, String> attributes) throws ContentEncodingException {
+		String strTag = tagToString(tag);
+		if (null == strTag) {
+			strTag = TextXMLCodec.unknownTagMarker(tag);
 		}
-		writeEndElement();
-	}
-
-	public void writeElement(String tag, byte[] binaryContent)
-			throws ContentEncodingException {
-		writeElement(tag, binaryContent, null);
-	}
-
-	public void writeElement(String tag, byte[] binaryContent, int offset, int length)
-			throws ContentEncodingException {
-		writeElement(tag, binaryContent, offset, length, null);
-	}
-
-	public void writeElement(String tag, byte[] binaryContent,
-			TreeMap<String, String> attributes) throws ContentEncodingException {
-		if (null == attributes) {
-			attributes = new TreeMap<String,String>();
-		}
-		if (!attributes.containsKey(TextXMLCodec.BINARY_ATTRIBUTE)) {
-			attributes.put(TextXMLCodec.BINARY_ATTRIBUTE, TextXMLCodec.BINARY_ATTRIBUTE_VALUE);
-		}
-		writeStartElement(tag, attributes);
-		try {
-			_serializer.text(TextXMLCodec.encodeBinaryElement(binaryContent));
-		} catch (Exception e) {
-			throw new ContentEncodingException(e.getMessage(), e);
-		}
-		writeEndElement();
-	}
-
-	public void writeElement(String tag, byte[] binaryContent, int offset, int length,
-			TreeMap<String, String> attributes) throws ContentEncodingException {
-		if (null == attributes) {
-			attributes = new TreeMap<String,String>();
-		}
-		if (!attributes.containsKey(TextXMLCodec.BINARY_ATTRIBUTE)) {
-			attributes.put(TextXMLCodec.BINARY_ATTRIBUTE, TextXMLCodec.BINARY_ATTRIBUTE_VALUE);
-		}
-		writeStartElement(tag, attributes);
-		try {
-			_serializer.text(TextXMLCodec.encodeBinaryElement(binaryContent, offset, length));
-		} catch (Exception e) {
-			throw new ContentEncodingException(e.getMessage(), e);
-		}
-		writeEndElement();
-	}
-
-	public void writeDateTime(String tag, CCNTime dateTime) throws ContentEncodingException {
-		writeElement(tag, 
-				TextXMLCodec.formatDateTime(dateTime));
-	}
-
-	public void writeStartElement(String tag) throws ContentEncodingException {
-		writeStartElement(tag, null);
+		writeStartElement(strTag, attributes);
 	}
 	
 	public void writeStartElement(String tag, TreeMap<String, String> attributes) throws ContentEncodingException {
-		writeStartElement(tag, attributes, null);
-	}
-
-	public void writeStartElement(String tag, TreeMap<String, String> attributes, BinaryXMLDictionary dictionary)
-			throws ContentEncodingException {
 		try {
 			_serializer.startTag(null, tag);
-			if (_isFirstElement) {
-				//_serializer.writeDefaultNamespace(TextXMLCodec.CCN_NAMESPACE);
-				_isFirstElement = false;
-			}
 
 			if (null != attributes) {
 				// keySet of a TreeMap is ordered
@@ -169,19 +112,65 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		}
 	}
 
+	public void writeUString(String utf8Content) throws ContentEncodingException {
+		try {
+			_serializer.text(utf8Content);
+		} catch (IOException e) {
+			throw new ContentEncodingException(e.getMessage(), e);
+		}
+	}
+
+	public void writeBlob(byte [] binaryContent) throws ContentEncodingException {
+		try {
+			_serializer.text(TextXMLCodec.encodeBinaryElement(binaryContent));
+		} catch (IOException e) {
+			throw new ContentEncodingException(e.getMessage(), e);
+		}
+	}
+
+	public void writeBlob(byte [] binaryContent, int offset, int length) throws ContentEncodingException {
+		try {
+			_serializer.text(TextXMLCodec.encodeBinaryElement(binaryContent, offset, length));
+		} catch (IOException e) {
+			throw new ContentEncodingException(e.getMessage(), e);
+		}
+	}
+
+	public void writeElement(String tag, byte[] binaryContent,
+			TreeMap<String, String> attributes) throws ContentEncodingException {
+		if (null == attributes) {
+			attributes = new TreeMap<String,String>();
+		}
+		if (!attributes.containsKey(TextXMLCodec.BINARY_ATTRIBUTE)) {
+			attributes.put(TextXMLCodec.BINARY_ATTRIBUTE, TextXMLCodec.BINARY_ATTRIBUTE_VALUE);
+		}
+		super.writeElement(tag, binaryContent, attributes);
+	}
+
+	public void writeElement(String tag, byte[] binaryContent, int offset, int length,
+			TreeMap<String, String> attributes) throws ContentEncodingException {
+		if (null == attributes) {
+			attributes = new TreeMap<String,String>();
+		}
+		if (!attributes.containsKey(TextXMLCodec.BINARY_ATTRIBUTE)) {
+			attributes.put(TextXMLCodec.BINARY_ATTRIBUTE, TextXMLCodec.BINARY_ATTRIBUTE_VALUE);
+		}
+		super.writeElement(tag, binaryContent, offset, length, attributes);
+	}
+
+	public void writeDateTime(String tag, CCNTime dateTime) throws ContentEncodingException {
+		writeElement(tag, TextXMLCodec.formatDateTime(dateTime));
+	}
+
+	public void writeDateTime(Long tag, CCNTime dateTime) throws ContentEncodingException {
+		writeElement(tag, TextXMLCodec.formatDateTime(dateTime));
+	}
+
 	public void writeEndElement() throws ContentEncodingException {
 		try {
 			_serializer.endTag(null, _serializer.getName());
 		} catch (Exception e) {
 			throw new ContentEncodingException(e.getMessage(), e);
 		}		
-	}
-
-	public BinaryXMLDictionary popXMLDictionary() {
-		return null;
-	}
-
-	public void pushXMLDictionary(BinaryXMLDictionary dictionary) {
-		// do nothing
 	}
 }
