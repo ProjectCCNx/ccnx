@@ -54,7 +54,7 @@ import org.junit.BeforeClass;
  * New tests should probably not use this without some additional cleanup.
  *
  */
-public class LibraryTestBase {
+public class LibraryTestBase extends CCNTestBase {
 
 	protected static boolean exit = false;
 	protected static Throwable error = null; // for errors from other threads
@@ -70,21 +70,7 @@ public class LibraryTestBase {
 		
 	protected HashSet<Integer> _resultSet = new HashSet<Integer>();
 	
-	protected static CCNHandle putHandle = null;
-	protected static CCNHandle getHandle = null;
-	
 	protected static ArrayList<Integer> usedIds = new ArrayList<Integer>();
-
-	static {
-		try {
-			putHandle = CCNHandle.open();
-			getHandle = CCNHandle.open();
-		} catch (ConfigurationException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
