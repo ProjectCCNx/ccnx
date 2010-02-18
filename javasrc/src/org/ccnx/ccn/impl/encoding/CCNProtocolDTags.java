@@ -106,13 +106,13 @@ public enum CCNProtocolDTags {
 	Entry ( 102 ),
 	CCNProtocolDataUnit ( 17702112 );
 
-	Long _tag;
+	final Long _tag;
 
 	CCNProtocolDTags(long tag) {
 		this._tag = tag;
 	}
 	
-	Long getTag() { return _tag; }
+	public Long getTag() { return _tag; }
 	
 	/**
 	 * This is the slow search -- find a tag based on an index. Only 
