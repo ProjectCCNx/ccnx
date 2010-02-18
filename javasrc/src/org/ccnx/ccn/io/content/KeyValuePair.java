@@ -61,19 +61,21 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 		_key = decoder.readUTF8Element(CCNProtocolDTags.Key.getTag());
-		if (decoder.peekStartElement(CCNProtocolDTags.IntegerValue.getTag())) {
-			_value = decoder.readLongElement(CCNProtocolDTags.IntegerValue.getTag());
-		} else if (decoder.peekStartElement(CCNProtocolDTags.DecimalValue.getTag())) {
+		
+		Long valueTag = decoder.peekStartElementAsLong();
+		if (CCNProtocolDTags.IntegerValue.getTag().equals(valueTag)) {
+			_value = decoder.readIntegerElement(CCNProtocolDTags.IntegerValue.getTag());
+		} else if (CCNProtocolDTags.DecimalValue.getTag().equals(valueTag)) {
 			try {
 				_value = new Float(decoder.readUTF8Element(CCNProtocolDTags.DecimalValue.getTag())); 
 			} catch (NumberFormatException nfe) {
 				throw new ContentDecodingException(nfe.getMessage());
 			}
-		} else if (decoder.peekStartElement(CCNProtocolDTags.StringValue.getTag())) {
+		} else if (CCNProtocolDTags.StringValue.getTag().equals(valueTag)) {
 			_value = decoder.readUTF8Element(CCNProtocolDTags.StringValue.getTag());
-		} else if (decoder.peekStartElement(CCNProtocolDTags.BinaryValue.getTag())) {
+		} else if (CCNProtocolDTags.BinaryValue.getTag().equals(valueTag)) {
 			_value = decoder.readBinaryElement(CCNProtocolDTags.BinaryValue.getTag());
-		} else if (decoder.peekStartElement(CCNProtocolDTags.NameValue.getTag())) {
+		} else if (CCNProtocolDTags.NameValue.getTag().equals(valueTag)) {
 			decoder.readStartElement(CCNProtocolDTags.NameValue.getTag());
 			_value = new ContentName();
 			((ContentName)_value).decode(decoder);
@@ -92,6 +94,8 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 		encoder.writeElement(CCNProtocolDTags.Key.getTag(), _key);
 		if (_value instanceof Long) {
 			encoder.writeElement(CCNProtocolDTags.IntegerValue.getTag(), (Long)_value);
+		}  else if (_value instanceof Integer) {
+			encoder.writeElement(CCNProtocolDTags.IntegerValue.getTag(), (Integer)_value);
 		} else if (_value instanceof Float) {
 			encoder.writeElement(CCNProtocolDTags.DecimalValue.getTag(), ((Float)_value).toString());
 		} else if (_value instanceof String) {
