@@ -45,10 +45,11 @@ Linkup 1 0
 Linkup 1 2
 Linkup 1 3
 
-WithCCND 0 ccnls ccnx:/test
-WithCCND 1 ccnls ccnx:/test
+for i in 0 1 2 3; do
+  WithCCND $i CCNDStatus > twohop-status-$i.html
+done
+
 WithCCND 2 ccnls ccnx:/test
-WithCCND 3 ccnls ccnx:/test
 
 export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE+2))
 . ./test_long_consumer
