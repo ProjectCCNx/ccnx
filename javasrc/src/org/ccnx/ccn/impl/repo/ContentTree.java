@@ -134,15 +134,18 @@ public class ContentTree {
 	 * and that the candidate has the correct number of components.
 	 */
 	protected class InterestPreScreener {
-		private int _minComponents = 0;
-		private int _maxComponents = 32767;
-		private Exclude _exclude;
-		protected InterestPreScreener(Interest interest) {
+		protected int _minComponents = 0;
+		protected int _maxComponents = 32767;
+		protected Exclude _exclude;
+		protected int _excludeLevel;
+		
+		protected InterestPreScreener(Interest interest, int excludeLevel) {
 			if (null != interest.minSuffixComponents())
 				_minComponents = interest.minSuffixComponents();
 			if (null != interest.maxSuffixComponents())
 				_maxComponents = interest.maxSuffixComponents() + 1;
 			_exclude = interest.exclude();
+			_excludeLevel = excludeLevel;
 		}
 		
 		/**
@@ -155,7 +158,7 @@ public class ContentTree {
 		protected int preScreen(TreeNode node, int level) {
 			if (level > _maxComponents)
 				return -1;
-			if (level == 1 && null != _exclude) {
+			if (level == _excludeLevel && null != _exclude) {
 				if (_exclude.match(node.component))
 					return -1;
 			}
@@ -553,7 +556,7 @@ public class ContentTree {
 		// TODO This is very inefficient for all but the most optimal case where the last thing in the
 		// subtree happens to be a perfect match
 		ArrayList<TreeNode> options = new ArrayList<TreeNode>();
-		InterestPreScreener ips = new InterestPreScreener(interest);
+		InterestPreScreener ips = new InterestPreScreener(interest, 1);
 		getSubtreeNodes(node, options, 0, ips);
 		return rightCheck(options, interest, node, getter);
 	}
