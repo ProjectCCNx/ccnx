@@ -26,9 +26,9 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
-import java.util.HashMap;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -53,24 +53,9 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Ser
 	 * KeyLocator(name) must allow for a complete name -- i.e.
 	 * a name and authentication information.
 	 */
-    public enum KeyLocatorType { NAME, KEY, CERTIFICATE }
-
-    protected static final HashMap<KeyLocatorType, String> TypeNames = new HashMap<KeyLocatorType, String>();
-    protected static final HashMap<String, KeyLocatorType> NameTypes = new HashMap<String, KeyLocatorType>();
-    
-    static {
-        TypeNames.put(KeyLocatorType.NAME, "NAME");
-        TypeNames.put(KeyLocatorType.KEY, "KEY");
-        TypeNames.put(KeyLocatorType.CERTIFICATE, "CERTIFICATE");
-        NameTypes.put("NAME", KeyLocatorType.NAME);
-        NameTypes.put("KEY", KeyLocatorType.KEY);
-        NameTypes.put("CERTIFICATE", KeyLocatorType.CERTIFICATE);
+    public enum KeyLocatorType { 
+    	NAME, KEY, CERTIFICATE 
     }
-
-    protected static final String KEY_LOCATOR_ELEMENT = "KeyLocator";
-    protected static final String KEY_LOCATOR_TYPE_ELEMENT = "Type";
-    protected static final String PUBLISHER_KEY_ELEMENT = "Key";
-    protected static final String PUBLISHER_CERTIFICATE_ELEMENT = "Certificate";
 
     // Fake out a union.
     protected KeyName _keyName;       // null if wrong type
@@ -220,9 +205,9 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Ser
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
-		if (decoder.peekStartElement(PUBLISHER_KEY_ELEMENT)) {
+		if (decoder.peekStartElement(CCNProtocolDTags.Key.getTag())) {
 			try {
-				byte [] encodedKey = decoder.readBinaryElement(PUBLISHER_KEY_ELEMENT);
+				byte [] encodedKey = decoder.readBinaryElement(CCNProtocolDTags.Key.getTag());
 				// This is a DER-encoded SubjectPublicKeyInfo.
 				_key = CryptoUtil.getPublicKey(encodedKey);
 			} catch (CertificateEncodingException e) {
@@ -235,9 +220,9 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Ser
 			if (null == _key) {
 				throw new ContentDecodingException("Cannot parse key: ");
 			}
-		} else if (decoder.peekStartElement(PUBLISHER_CERTIFICATE_ELEMENT)) {
+		} else if (decoder.peekStartElement(CCNProtocolDTags.Certificate.getTag())) {
 			try {
-				byte [] encodedCert = decoder.readBinaryElement(PUBLISHER_CERTIFICATE_ELEMENT);
+				byte [] encodedCert = decoder.readBinaryElement(CCNProtocolDTags.Certificate.getTag());
 				CertificateFactory factory = CertificateFactory.getInstance("X.509");
 				_certificate = (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(encodedCert));
 			} catch (CertificateException e) {
@@ -272,10 +257,10 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Ser
 		}
 		encoder.writeStartElement(getElementLabel());
 		if (type() == KeyLocatorType.KEY) {
-			encoder.writeElement(PUBLISHER_KEY_ELEMENT, key().getEncoded());
+			encoder.writeElement(CCNProtocolDTags.Key.getTag(), key().getEncoded());
 		} else if (type() == KeyLocatorType.CERTIFICATE) {
 			try {
-				encoder.writeElement(PUBLISHER_CERTIFICATE_ELEMENT, certificate().getEncoded());
+				encoder.writeElement(CCNProtocolDTags.Certificate.getTag(), certificate().getEncoded());
 			} catch (CertificateEncodingException e) {
 				Log.warning("CertificateEncodingException attempting to write key locator: " + e.getMessage());
 				throw new ContentEncodingException("CertificateEncodingException attempting to write key locator: " + e.getMessage(), e);
@@ -287,27 +272,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Ser
 	}
 	
 	@Override
-	public String getElementLabel() { return KEY_LOCATOR_ELEMENT; }
-	
-	/**
-	 * Conversion methods for dealing with enums. Not necessary, and will
-	 * be removed.
-	 * @param type
-	 * @return
-	 */
-	public static String typeToName(KeyLocatorType type) {
-		return TypeNames.get(type);
-	}
-
-	/**
-	 * Conversion methods for dealing with enums. Not necessary, and will
-	 * be removed.
-	 * @param name
-	 * @return
-	 */
-	public static KeyLocatorType nameToType(String name) {
-		return NameTypes.get(name);
-	}
+	public Long getElementLabel() { return CCNProtocolDTags.KeyLocator.getTag(); }
 	
 	@Override
 	public boolean validate() {
@@ -316,7 +281,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Ser
 	
 	@Override
 	public String toString() {
-		String output = typeToName(type()) + ": "; 
+		String output = type().name() + ": "; 
 		if (type() == KeyLocatorType.KEY) {
 			return output + new PublisherPublicKeyDigest(key()).toString();
 		} else if (type() == KeyLocatorType.CERTIFICATE) {
