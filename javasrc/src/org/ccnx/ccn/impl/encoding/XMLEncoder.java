@@ -202,20 +202,20 @@ public interface XMLEncoder {
 			TreeMap<String,String> attributes) throws ContentEncodingException;
 	
 	/**
-	 * Writes an integer to the stream formatted according to this codec.
+	 * Writes a number to the stream formatted according to this codec.
 	 * @param tag start tag to use
-	 * @param value the integer to encode
+	 * @param value the number to encode
 	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
-	public void writeIntegerElement(String tag, Integer value) throws ContentEncodingException;
+	public void writeElement(String tag, Long value) throws ContentEncodingException;
 	
 	/**
-	 * Writes an integer to the stream formatted according to this codec.
+	 * Writes a number to the stream formatted according to this codec.
 	 * @param tag start tag to use
-	 * @param value the integer to encode
+	 * @param value the number to encode
 	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
-	public void writeIntegerElement(Long tag, Integer value) throws ContentEncodingException;
+	public void writeElement(Long tag, Long value) throws ContentEncodingException;
 	
 	/**
 	 * Writes a quantized timestamp to the stream formatted according to this codec.

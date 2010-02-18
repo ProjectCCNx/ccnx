@@ -216,22 +216,22 @@ public interface XMLDecoder {
 	public byte [] readBinaryElement(Long startTag) throws ContentDecodingException;
 	
 	/**
-	 * Read and parse an integer from the stream. 
+	 * Read and parse a number from the stream. 
 	 * @param startTag expected start tag
-	 * @return the decoded integer, or null if content was empty
+	 * @return the decoded value, or null if content was empty
 	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
 	 * 		decoding the element or parsing the integer
 	 */
-	public Integer readIntegerElement(String startTag) throws ContentDecodingException;
+	public Long readLongElement(String startTag) throws ContentDecodingException;
 
 	/**
 	 * Read and parse an integer from the stream. 
 	 * @param startTag expected start tag
-	 * @return the decoded integer, or null if content was empty
+	 * @return the decoded value, or null if content was empty
 	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
 	 * 		decoding the element or parsing the integer
 	 */
-	public Integer readIntegerElement(Long startTag) throws ContentDecodingException;
+	public Long readLongElement(Long startTag) throws ContentDecodingException;
 
 	/**
 	 * Read and parse a timestamp from the stream. 

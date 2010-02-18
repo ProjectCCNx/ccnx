@@ -161,18 +161,18 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 		return blob;
 	}
 
-	public Integer readIntegerElement(String startTag) throws ContentDecodingException {
+	public Long readLongElement(String startTag) throws ContentDecodingException {
 		String strVal = readUTF8Element(startTag); 
-		Integer value = Integer.valueOf(strVal);
+		Long value = Long.valueOf(strVal);
 		if (null == value) {
 			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal);
 		}
 		return value;
 	}
 
-	public Integer readIntegerElement(Long startTag) throws ContentDecodingException {
+	public Long readLongElement(Long startTag) throws ContentDecodingException {
 		String strVal = readUTF8Element(startTag); 
-		Integer value = Integer.valueOf(strVal);
+		Long value = Long.valueOf(strVal);
 		if (null == value) {
 			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal);
 		}
