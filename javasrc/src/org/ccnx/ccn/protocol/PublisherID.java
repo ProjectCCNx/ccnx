@@ -231,6 +231,10 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public static boolean peek(XMLDecoder decoder) throws ContentDecodingException {
 		Long nextTag = decoder.peekStartElementAsLong();
+		if (null == nextTag) {
+			// on end element
+			return false;
+		}
 		return (PublisherType.isTypeTagVal(nextTag));
 	}
 
