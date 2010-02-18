@@ -94,9 +94,7 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 			_putter = putter;
 		}
 		
-		public String getStringValue() { return _tagValue.name(); }
-		
-		public CCNProtocolDTags getTagValue() { return _tagValue; }
+		public Long getTagValue() { return _tagValue.getTag(); }
 	}
 	
 	private static class VersionPutter implements ElementPutter {
@@ -138,20 +136,24 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 		PolicyElement foundElement;
 		do {
 			foundElement = null;
+			// Don't need to back up the stream 4 times for every read...
+			// Probably can improve this yet more given a bit of time.
+			Long startElement = decoder.peekStartElementAsLong();
+			
 			for (PolicyElement element : PolicyElement.values()) {
-				if (decoder.peekStartElement(element.getStringValue())) {
+				if (startElement.equals(element.getTagValue())) {
 					foundElement = element;
 					break;
 				}		
 			}
 			if (null != foundElement) {
-				String value = decoder.readUTF8Element(foundElement.getStringValue());
+				String value = decoder.readUTF8Element(foundElement.getTagValue());
 				try {
 					foundElement._putter.put(this, value);
 				} catch (MalformedContentNameStringException e) {
 					throw new ContentDecodingException(e.getMessage());
 				}
-				Log.fine("Found policy element {0} with value {1}", foundElement.getStringValue(), value);
+				Log.fine("Found policy element {0} with value {1}", foundElement.getTagValue(), value);
 			}
 		} while (null != foundElement);
 		decoder.readEndElement();
