@@ -22,6 +22,7 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -70,8 +71,6 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 		}
 	}
 	
-	protected static final String POLICY_OBJECT_ELEMENT = "Policy";
-	
 	/**
 	 * The following interface and enumeration allow user created policy files with the
 	 * data in any order. The encoder goes through the user's names, checks for matches with
@@ -82,18 +81,22 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 	}
 	
 	private enum PolicyElement {
-		VERSION (POLICY_VERSION, new VersionPutter()),
-		NAMESPACE (POLICY_NAMESPACE, new NameSpacePutter()),
-		LOCALNAME (POLICY_LOCALNAME, new LocalNamePutter()),
-		GLOBALPREFIX (POLICY_GLOBALPREFIX, new GlobalPrefixPutter());
+		VERSION (CCNProtocolDTags.PolicyVersion, new VersionPutter()),
+		NAMESPACE (CCNProtocolDTags.Namespace, new NameSpacePutter()),
+		LOCALNAME (CCNProtocolDTags.LocalName, new LocalNamePutter()),
+		GLOBALPREFIX (CCNProtocolDTags.GlobalPrefix, new GlobalPrefixPutter());
 		
-		private String _stringValue;
+		private CCNProtocolDTags _tagValue;
 		private ElementPutter _putter;
 		
-		PolicyElement(String stringValue, ElementPutter putter) {
-			_stringValue = stringValue;
+		PolicyElement(CCNProtocolDTags tagValue, ElementPutter putter) {
+			_tagValue = tagValue;
 			_putter = putter;
 		}
+		
+		public String getStringValue() { return _tagValue.name(); }
+		
+		public CCNProtocolDTags getTagValue() { return _tagValue; }
 	}
 	
 	private static class VersionPutter implements ElementPutter {
@@ -123,11 +126,6 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 		}
 	}
 	
-	protected static final String POLICY_VERSION = "PolicyVersion";
-	protected static final String POLICY_NAMESPACE = "Namespace";
-	protected static final String POLICY_GLOBALPREFIX = "GlobalPrefix";
-	protected static final String POLICY_LOCALNAME = "LocalName";
-	
 	protected String _version = null;
 	protected ContentName _globalPrefix = null;
 	protected String _localName = null;
@@ -141,19 +139,19 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 		do {
 			foundElement = null;
 			for (PolicyElement element : PolicyElement.values()) {
-				if (decoder.peekStartElement(element._stringValue)) {
+				if (decoder.peekStartElement(element.getStringValue())) {
 					foundElement = element;
 					break;
 				}		
 			}
 			if (null != foundElement) {
-				String value = decoder.readUTF8Element(foundElement._stringValue);
+				String value = decoder.readUTF8Element(foundElement.getStringValue());
 				try {
 					foundElement._putter.put(this, value);
 				} catch (MalformedContentNameStringException e) {
 					throw new ContentDecodingException(e.getMessage());
 				}
-				Log.fine("Found policy element {0} with value {1}", foundElement._stringValue, value);
+				Log.fine("Found policy element {0} with value {1}", foundElement.getStringValue(), value);
 			}
 		} while (null != foundElement);
 		decoder.readEndElement();
@@ -165,22 +163,22 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
-		encoder.writeElement(POLICY_VERSION, _version);	
-		encoder.writeElement(POLICY_LOCALNAME, _localName);
-		encoder.writeElement(POLICY_GLOBALPREFIX, _globalPrefix.toString());
+		encoder.writeElement(CCNProtocolDTags.PolicyVersion.getTag(), _version);	
+		encoder.writeElement(CCNProtocolDTags.LocalName.getTag(), _localName);
+		encoder.writeElement(CCNProtocolDTags.GlobalPrefix.getTag(), _globalPrefix.toString());
 		
 		if (null != _namespace) {
 			synchronized (_namespace) {
 				for (ContentName name : _namespace)
-					encoder.writeElement(POLICY_NAMESPACE, name.toString());
+					encoder.writeElement(CCNProtocolDTags.Namespace.getTag(), name.toString());
 			}
 		}
 		encoder.writeEndElement();   			
 	}
 
 	@Override
-	public String getElementLabel() {
-		return POLICY_OBJECT_ELEMENT;
+	public Long getElementLabel() {
+		return CCNProtocolDTags.Policy.getTag();
 	}
 
 	@Override
