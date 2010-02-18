@@ -215,6 +215,22 @@ public interface XMLEncoder {
 	 * @param value the number to encode
 	 * @throws ContentEncodingException if there is an error encoding or writing the content
 	 */
+	public void writeElement(Long tag, Integer value) throws ContentEncodingException;
+	
+	/**
+	 * Writes a number to the stream formatted according to this codec.
+	 * @param tag start tag to use
+	 * @param value the number to encode
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
+	 */
+	public void writeElement(String tag, Integer value) throws ContentEncodingException;
+	
+	/**
+	 * Writes a number to the stream formatted according to this codec.
+	 * @param tag start tag to use
+	 * @param value the number to encode
+	 * @throws ContentEncodingException if there is an error encoding or writing the content
+	 */
 	public void writeElement(Long tag, Long value) throws ContentEncodingException;
 	
 	/**

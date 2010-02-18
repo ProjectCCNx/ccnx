@@ -120,6 +120,14 @@ public abstract class GenericXMLEncoder extends GenericXMLHandler implements XML
 		writeEndElement();
 	}
 
+	public void writeElement(String tag, Integer value) throws ContentEncodingException {
+		writeElement(tag, value.toString());
+	}
+
+	public void writeElement(Long tag, Integer value) throws ContentEncodingException {
+		writeElement(tag, value.toString());
+	}
+
 	public void writeElement(String tag, Long value) throws ContentEncodingException {
 		writeElement(tag, value.toString());
 	}
