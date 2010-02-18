@@ -11,6 +11,7 @@ PAGE_NAMES = 			\
 	ccnlsrepo		\
 	ccngetfile		\
 	ccnputfile		\
+	ccnputmeta		\
 	ccnrm			\
 	ccn_repo		\
 
