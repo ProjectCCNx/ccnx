@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.protocol;
 
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -27,7 +28,6 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * This element in an Exclude filter matches all components.
  */
 public class ExcludeAny extends Exclude.Filler implements Comparable<ExcludeAny> {
-	public static final String ANY = "Any";
 	
 	public boolean match(byte [] component) {
 		return true;
@@ -46,7 +46,7 @@ public class ExcludeAny extends Exclude.Filler implements Comparable<ExcludeAny>
 	}
 	
 	@Override
-	public String getElementLabel() { return ANY; }
+	public Long getElementLabel() { return CCNProtocolDTags.Any.getTag(); }
 
 	@Override
 	public boolean validate() {
