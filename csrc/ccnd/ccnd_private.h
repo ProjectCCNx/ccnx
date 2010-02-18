@@ -284,13 +284,15 @@ struct ccn_forwarding {
 struct propagating_entry {
     struct propagating_entry *next;
     struct propagating_entry *prev;
-    struct ccn_indexbuf *outbound;
+    struct ccn_indexbuf *outbound; /* in order of use */
     unsigned char *interest_msg;
+    int sent;                   /* leading elements of outbound processed */
     unsigned size;              /* size in bytes of interest_msg */
     unsigned flags;             /* CCN_PR_xxx */
     unsigned faceid;            /* origin of the interest, dest for matches */
     int usec;                   /* usec until timeout */
 };
+// XXX - with new outbound/sent repr, some of these flags may not be needed.
 #define CCN_PR_UNSENT 1  /* interest has not been sent anywhere yet */
 #define CCN_PR_WAIT1  2  /* interest has been sent to one place */
 #define CCN_PR_STUFFED1 4 /* was stuffed before sent anywhere else */
