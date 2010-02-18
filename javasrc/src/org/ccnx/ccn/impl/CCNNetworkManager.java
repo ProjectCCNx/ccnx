@@ -140,8 +140,8 @@ public class CCNNetworkManager implements Runnable {
 	public static final boolean DEFAULT_PREFIX_REG = false; // Until ccnd gets updated
 	protected boolean _usePrefixReg = DEFAULT_PREFIX_REG;
 	protected PrefixRegistrationManager _prefixMgr = null;
-	private Timer _periodicTimer = null;
-	private boolean _timersSetup = false;
+	protected Timer _periodicTimer = null;
+	protected boolean _timersSetup = false;
 	
 	/**
 	 * Do scheduled writes of heartbeats and interest refreshes
