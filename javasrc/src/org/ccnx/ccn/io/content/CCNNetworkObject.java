@@ -1172,41 +1172,39 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_keyLocator = keyLocator;
 	}
 
-	public synchronized Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
+	public synchronized Interest handleContent(ContentObject co, Interest interest) {
 		try {
 			boolean hasNewVersion = false;
-			for (ContentObject co : results) {
-				try {
-					if (Log.isLoggable(Level.INFO))
-						Log.info("handleContent: " + _currentInterest + " retrieved " + co.name());
-					if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
-						// OK, we have something that is a later version of our desired object.
-						// We're not sure it's actually the first content segment.
-						if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
-							if (Log.isLoggable(Level.INFO))
-								Log.info("Background updating of {0}, got first segment: {1}", getVersionedName(), co.name());
-							update(co);
-						} else {
-							// Have something that is not the first segment, like a repo write or a later segment. Go back
-							// for first segment.
-							ContentName latestVersionName = co.name().cut(_currentInterest.name().count() + 1);
-							Log.info("handleContent (network object): Have version information, now querying first segment of {0}", latestVersionName);
-							update(latestVersionName, co.signedInfo().getPublisherKeyID());
-						}
-						_excludeList.clear();
-						hasNewVersion = true;
-					} else {
-						_excludeList.add(co.name().component(_currentInterest.name().count() - 1));
+			try {
+				if (Log.isLoggable(Level.INFO))
+					Log.info("handleContent: " + _currentInterest + " retrieved " + co.name());
+				if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
+					// OK, we have something that is a later version of our desired object.
+					// We're not sure it's actually the first content segment.
+					if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
 						if (Log.isLoggable(Level.INFO))
-							Log.info("handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());						
+							Log.info("Background updating of {0}, got first segment: {1}", getVersionedName(), co.name());
+						update(co);
+					} else {
+						// Have something that is not the first segment, like a repo write or a later segment. Go back
+						// for first segment.
+						ContentName latestVersionName = co.name().cut(_currentInterest.name().count() + 1);
+						Log.info("handleContent (network object): Have version information, now querying first segment of {0}", latestVersionName);
+						update(latestVersionName, co.signedInfo().getPublisherKeyID());
 					}
-				} catch (IOException ex) {
+					_excludeList.clear();
+					hasNewVersion = true;
+				} else {
+					_excludeList.add(co.name().component(_currentInterest.name().count() - 1));
 					if (Log.isLoggable(Level.INFO))
-						Log.info("Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
-					// alright, that one didn't work, try to go on.    				
-				} 
-			}
-			
+						Log.info("handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());						
+				}
+			} catch (IOException ex) {
+				if (Log.isLoggable(Level.INFO))
+					Log.info("Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
+				// alright, that one didn't work, try to go on.    				
+			} 
+
 			if (hasNewVersion) {
 				if (_continuousUpdates) {
 					// DKS TODO -- order with respect to newVersionAvailable and locking...

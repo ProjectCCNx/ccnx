@@ -42,6 +42,10 @@ public class BinaryXMLDictionary {
 	
 	protected static BinaryXMLDictionary DEFAULT_DICTIONARY = null;
 	
+	protected final static boolean USE_ARRAY = true;
+	protected final static int MAX_ARRAY = 256;
+	protected String [] _decodingArray = new String[MAX_ARRAY];
+	
 	static {
 		DEFAULT_DICTIONARY = new BinaryXMLDictionary();
 	}
@@ -75,6 +79,9 @@ public class BinaryXMLDictionary {
 	}
 	
 	public String decodeTag(long tagVal) {
+		if( USE_ARRAY && tagVal < MAX_ARRAY )
+			return _decodingArray[(int)tagVal];
+		
 		String tag = _decodingDictionary.get(Long.valueOf(tagVal));
 		return tag;
 	}
@@ -88,6 +95,9 @@ public class BinaryXMLDictionary {
 	}
 	
 	public String decodeAttr(long tagVal) {
+		if( USE_ARRAY && tagVal < MAX_ARRAY )
+			return _decodingArray[(int)tagVal];
+		
 		String tag = _decodingDictionary.get(Long.valueOf(tagVal));
 		return tag;
 	}
@@ -102,6 +112,7 @@ public class BinaryXMLDictionary {
 		if (null == in) {
 			throw new IOException("BinaryXMLDictionary: getResourceAsStream cannot open resource file: " + dictionaryFile + ".");
 		}
+		
 		loadDictionary(in);
 	}
 	
@@ -109,6 +120,10 @@ public class BinaryXMLDictionary {
 		if (null == in) {
 			throw new IOException("BinaryXMLDictionary: loadDictionary - stream cannot be null.");
 		}
+
+		for(int i = 0; i < MAX_ARRAY; i++ )
+			_decodingArray[i] = null;
+
 		BufferedReader reader = 
 			new BufferedReader(new InputStreamReader(in), 8196);
 		
@@ -141,6 +156,10 @@ public class BinaryXMLDictionary {
 			
 			_encodingDictionary.put(tag, value);
 			_decodingDictionary.put(value, tag);
+			
+			if( value < MAX_ARRAY ) {
+				_decodingArray[value.intValue()] = tag;
+			}
 		}
 		if (nullcount >= NULLCOUNT_MAX) {
 			Log.info("Finished reading dictionary file because we either read too many blank lines, or our reader couldn't decide it was done. Validate reading on this platform.");

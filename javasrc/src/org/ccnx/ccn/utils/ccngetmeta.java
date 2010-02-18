@@ -27,17 +27,17 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
+import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
- * A command-line utility for pulling files out of ccnd or a repository.
+ * A command-line utility for pulling meta files associated with a file
+ * out of a repository. The "metaname" should be the relative path (including filename) for 
+ * the desired metadata only.
  * Note class name needs to match command name to work with ccn_run
  */
-public class ccngetfile {
-	
-	public static Integer timeout = null;
-	public static boolean unversioned = false;
+public class ccngetmeta {
 	
 	/**
 	 * @param args
@@ -45,18 +45,18 @@ public class ccngetfile {
 	public static void main(String[] args) {
 		int startArg = 0;
 		
-		for (int i = 0; i < args.length - 2; i++) {
+		for (int i = 0; i < args.length - 3; i++) {
 			if (args[i].equals("-unversioned")) {
 				if (startArg <= i)
 					startArg = i + 1;
-				unversioned = true;
+				CommonParameters.unversioned = true;
 			} else if (args[i].equals("-timeout")) {
 				if (args.length < (i + 2)) {
 					usage();
 					return;
 				}
 				try {
-					timeout = Integer.parseInt(args[++i]);
+					CommonParameters.timeout = Integer.parseInt(args[++i]);
 				} catch (NumberFormatException nfe) {
 					usage();
 					return;
@@ -94,22 +94,23 @@ public class ccngetfile {
 			}
 		}
 		
-		if (args.length < startArg + 2) {
+		if (args.length != startArg + 3) {
 			usage();
 			System.exit(1);
 		}
 		
 		try {
 			int readsize = 1024; // make an argument for testing...
-			// If we get one file name, put as the specific name given.
-			// If we get more than one, put underneath the first as parent.
-			// Ideally want to use newVersion to get latest version. Start
-			// with random version.
-			ContentName argName = ContentName.fromURI(args[startArg]);
 			
 			CCNHandle handle = CCNHandle.open();
 
-			File theFile = new File(args[startArg + 1]);
+			String metaArg = args[startArg + 1];
+			if (!metaArg.startsWith("/"))
+				metaArg = "/" + metaArg;
+			ContentName fileName = MetadataProfile.getLatestVersion(ContentName.fromURI(args[startArg]), 
+					ContentName.fromNative(metaArg), CommonParameters.timeout, handle);
+		
+			File theFile = new File(args[startArg + 2]);
 			if (theFile.exists()) {
 				System.out.println("Overwriting file: " + args[startArg + 1]);
 			}
@@ -117,12 +118,12 @@ public class ccngetfile {
 			
 			long starttime = System.currentTimeMillis();
 			CCNInputStream input;
-			if (unversioned)
-				input = new CCNInputStream(argName, handle);
+			if (CommonParameters.unversioned)
+				input = new CCNInputStream(fileName, handle);
 			else
-				input = new CCNFileInputStream(argName, handle);
-			if (timeout != null) {
-				input.setTimeout(timeout); 
+				input = new CCNFileInputStream(fileName, handle);
+			if (CommonParameters.timeout != null) {
+				input.setTimeout(CommonParameters.timeout); 
 			}
 			byte [] buffer = new byte[readsize];
 			
@@ -153,7 +154,7 @@ public class ccngetfile {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: ccngetfile [-unversioned] [-timeout millis] [-as pathToKeystore] [-ac (access control)] <ccnname> <filename>");
+		System.out.println("usage: ccngetmeta [-unversioned] [-timeout millis] [-as pathToKeystore] [-ac (access control)] <ccnname> <metaname> <filename>");
 	}
 	
 }

@@ -18,8 +18,6 @@
 package org.ccnx.ccn.test.protocol;
 
 import java.io.IOException;
-import java.util.ArrayList;
-
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.protocol.ContentName;
@@ -60,15 +58,15 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		doTestFail();
 	}
 
-	public int handleInterests(ArrayList<Interest> interests) {
-		Assert.assertTrue(_interestSent.equals(interests.get(0)));
+	public boolean handleInterest(Interest interest) {
+		Assert.assertTrue(_interestSent.equals(interest));
 		synchronized(this) {
 			notify();
 		}
-		return 0;
+		return true;
 	}
 	
-	public Interest handleContent(ArrayList<ContentObject> results,
+	public Interest handleContent(ContentObject data,
 			Interest interest) {
 		// TODO Auto-generated method stub
 		return null;

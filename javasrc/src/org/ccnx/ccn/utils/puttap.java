@@ -20,8 +20,6 @@ package org.ccnx.ccn.utils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -123,7 +121,7 @@ public class puttap implements CCNInterestListener {
 		System.exit(1);
 	}
 
-	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
+	public Interest handleContent(ContentObject data, Interest interest) {
 		// Intentional no-op
 		return null;
 	}

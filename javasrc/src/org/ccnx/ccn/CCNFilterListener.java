@@ -17,8 +17,6 @@
 
 package org.ccnx.ccn;
 
-import java.util.ArrayList;
-
 import org.ccnx.ccn.protocol.Interest;
 
 /**
@@ -36,12 +34,12 @@ import org.ccnx.ccn.protocol.Interest;
 public interface CCNFilterListener {
 
 	/**
-	 * Callback called when we get new interests matching our filter.
-	 * @param interests The matching interests
-	 * @return an integer representing the number of interests this listener has handled
-	 * 	(returned data in response to).
+	 * Callback called when we get a new interest matching our filter.
+	 * @param interests The matching interest
+	 * @return true if this handler has consumed the interest 
+	 * 	(that is the handler returned data satisfying the interest).
 	 */
-    public int handleInterests(ArrayList<Interest> interests);
+    public boolean handleInterest(Interest interest);
     
 
 }
