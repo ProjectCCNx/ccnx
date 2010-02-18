@@ -104,6 +104,7 @@ public enum CCNProtocolDTags {
 	BinaryValue ( 100 ),
 	NameValue ( 101 ),
 	Entry ( 102 ),
+	ACL ( 103 ),
 	CCNProtocolDataUnit ( 17702112 );
 
 	final Long _tag;
