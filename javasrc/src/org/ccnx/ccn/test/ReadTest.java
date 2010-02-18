@@ -184,7 +184,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		assertEquals(DataUtils.compare(content.content(), new Integer((nFilters - 1)).toString().getBytes()), 0);
 	}
 
-	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
+	public Interest handleContent(ContentObject data, Interest interest) {
 		return null;
 	}
 	

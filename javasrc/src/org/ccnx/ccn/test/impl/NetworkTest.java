@@ -18,7 +18,6 @@
 package org.ccnx.ccn.test.impl;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
@@ -171,14 +170,12 @@ public class NetworkTest {
 	
 	class TestListener implements CCNInterestListener {
 
-		public Interest handleContent(ArrayList<ContentObject> results,
+		public Interest handleContent(ContentObject co,
 				Interest interest) {
-			Assert.assertFalse(results == null);
-			for (ContentObject co : results) {
-				ContentName nameBase = SegmentationProfile.segmentRoot(co.name());
-				Assert.assertEquals(nameBase.stringComponent(nameBase.count()-1), new String(co.content()));
-				gotData = true;
-			}
+			Assert.assertFalse(co == null);
+			ContentName nameBase = SegmentationProfile.segmentRoot(co.name());
+			Assert.assertEquals(nameBase.stringComponent(nameBase.count()-1), new String(co.content()));
+			gotData = true;
 			sema.release();
 			
 			/*

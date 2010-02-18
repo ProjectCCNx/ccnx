@@ -75,36 +75,34 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 * Handles packets received from the repository after the start write request.  It's looking
 	 * for a RepoInfo packet indicating a repository has responded.
 	 */
-	public Interest handleContent(ArrayList<ContentObject> results,
+	public Interest handleContent(ContentObject co,
 			Interest interest) {
-		
+
 		Interest interestToReturn = null;
-		for (ContentObject co : results) {
-			Log.info("handleContent: got potential repo message: {0}", co.name());
-			if (co.signedInfo().getType() != ContentType.DATA)
-				continue;
-			RepositoryInfo repoInfo = new RepositoryInfo();
-			try {
-				repoInfo.decode(co.content());
-				switch (repoInfo.getType()) {
-				case INFO:
-					for (Client client : _clients) {
-						if (client._name.isPrefixOf(co.name())) {
-							Log.fine("Marked client {0} initialized", client._name);
-							client._initialized = true;
-						}
+		Log.info("handleContent: got potential repo message: {0}", co.name());
+		if (co.signedInfo().getType() != ContentType.DATA)
+			return interestToReturn;
+		RepositoryInfo repoInfo = new RepositoryInfo();
+		try {
+			repoInfo.decode(co.content());
+			switch (repoInfo.getType()) {
+			case INFO:
+				for (Client client : _clients) {
+					if (client._name.isPrefixOf(co.name())) {
+						Log.fine("Marked client {0} initialized", client._name);
+						client._initialized = true;
 					}
-					//_writeInterest = null;
-					synchronized (this) {
-						notify();
-					}
-					break;
-				default:
-					break;
 				}
-			} catch (ContentDecodingException e) {
-				Log.info("ContentDecodingException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());
+				//_writeInterest = null;
+				synchronized (this) {
+					notify();
+				}
+				break;
+			default:
+				break;
 			}
+		} catch (ContentDecodingException e) {
+			Log.info("ContentDecodingException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());
 		}
 		// So far, we seem never to have anything to return.
 		return interestToReturn;

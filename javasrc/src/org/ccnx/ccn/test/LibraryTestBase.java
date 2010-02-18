@@ -304,22 +304,20 @@ public class LibraryTestBase extends CCNTestBase {
 				error = ex;
 			}
 		}
-		public synchronized Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
+		public synchronized Interest handleContent(ContentObject contentObject, Interest interest) {
 			Interest newInterest = null;
-			for (ContentObject contentObject : results) {
-				try {
-					int val = Integer.parseInt(new String(contentObject.content()));
-					if (!accumulatedResults.contains(val)) {
-						accumulatedResults.add(val);
-						System.out.println("Got " + val);
-					}
-					newInterest = Interest.next(contentObject.fullName(), contentObject.name().count() - 2, null);
-				} catch (NumberFormatException nfe) {
-					Log.info("Unexpected content, " + contentObject.name() + " is not an integer!");
+			try {
+				int val = Integer.parseInt(new String(contentObject.content()));
+				if (!accumulatedResults.contains(val)) {
+					accumulatedResults.add(val);
+					System.out.println("Got " + val);
 				}
+				newInterest = Interest.next(contentObject.fullName(), contentObject.name().count() - 2, null);
+			} catch (NumberFormatException nfe) {
+				Log.info("Unexpected content, " + contentObject.name() + " is not an integer!");
 			}
-			checkGetResults(results.get(0));
-			
+			checkGetResults(contentObject);
+
 			if (accumulatedResults.size() >= count) {
 				System.out.println("GetServer got all content: " + accumulatedResults.size() + ". Releasing semaphore.");
 				sema.release();

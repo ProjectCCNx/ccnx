@@ -389,7 +389,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	protected class InterestRegistration extends ListenerRegistration {
 		public final Interest interest;
-		protected ArrayList<ContentObject> data = new ArrayList<ContentObject>(1); //data for waiting thread
+		ContentObject data = null;
 		protected long nextRefresh;		// next time to refresh the interest
 		protected long nextRefreshPeriod = PERIOD * 2;	// period to wait before refresh
 		
@@ -406,7 +406,10 @@ public class CCNNetworkManager implements Runnable {
 		}
 		
 		/**
-		 * Return true if data was added
+		 * Return true if data was added.
+		 * If data is already pending for delivery for this interest, the 
+	     * interest is already consumed and this new data cannot be delivered.
+	     * @throws NullPointerException If obj is null 
 		 */
 		public synchronized boolean add(ContentObject obj) {
 			// Add a copy of data, not the original data object, so that 
@@ -414,10 +417,14 @@ public class CCNNetworkManager implements Runnable {
 			// We need this even when data comes from network, since receive
 			// buffer will be reused while recipient thread may proceed to read
 			// from buffer it is handed
-			boolean hasData = (null == data);
-			if (!hasData)
-				this.data.add(obj.clone());
-			return !hasData;
+			if (null == data) {
+				// No data pending, this obj will consume interest
+				this.data = obj.clone(); // we let this raise exception if obj == null
+				return true;
+			} else {
+				// Data is already pending, this interest is already consumed, cannot add obj
+				return false;
+			}
 		}
 		
 		/**
@@ -427,9 +434,9 @@ public class CCNNetworkManager implements Runnable {
 		 * Pull the available data out for processing.
 		 * @return
 		 */
-		public synchronized ArrayList<ContentObject> popData() {
-			ArrayList<ContentObject> result = this.data;
-			this.data = new ArrayList<ContentObject>(1);
+		public synchronized ContentObject popData() {
+			ContentObject result = this.data;
+			this.data = null;
 			return result;
 		}
 		
@@ -440,19 +447,19 @@ public class CCNNetworkManager implements Runnable {
 			try {
 				if (null != this.listener) {
 					// Standing interest: call listener callback
-					ArrayList<ContentObject> results = null;
+					ContentObject pending = null;
 					CCNInterestListener listener = null;
 					synchronized (this) {
-						if (this.data.size() > 0) {
-							results = this.data;
-							this.data = new ArrayList<ContentObject>(1);
+						if (this.data != null) {
+							pending = this.data;
+							this.data = null;
 							listener = (CCNInterestListener)this.listener;
 						}
 					}
 					// Call into client code without holding any library locks
-					if (null != results) {
+					if (null != pending) {
 						if( Log.isLoggable(Level.FINER) )
-							Log.finer("Interest callback (" + results.size() + " data) for: {0}", this.interest.name());
+							Log.finer("Interest callback (" + pending + " data) for: {0}", this.interest.name());
 						
 						synchronized (this) {
 							// DKS -- dynamic interests, unregister the interest here and express new one if we have one
@@ -472,7 +479,7 @@ public class CCNNetworkManager implements Runnable {
 						// DKS even more interesting -- how do we update our interest? Do we?
 						// it's final now to avoid contention, but need to change it or change
 						// the registration.
-						Interest updatedInterest = listener.handleContent(results, interest);
+						Interest updatedInterest = listener.handleContent(pending, interest);
 						
 						// Possibly we should optimize here for the case where the same interest is returned back
 						// (now we would unregister it, then reregister it) but need to be careful that the timing
@@ -906,8 +913,7 @@ public class CCNNetworkManager implements Runnable {
 		// Typically the main processing thread will have registered the interest
 		// which must be undone here, but no harm if never registered
 		unregisterInterest(reg);
-		ArrayList<ContentObject> result = reg.popData();
-		return result.size() > 0 ? result.get(0) : null;
+		return reg.popData(); 
 	}
 
 	/**

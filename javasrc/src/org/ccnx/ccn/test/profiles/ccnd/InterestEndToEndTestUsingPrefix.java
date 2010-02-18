@@ -18,8 +18,6 @@
 package org.ccnx.ccn.test.profiles.ccnd;
 
 import java.io.IOException;
-import java.util.ArrayList;
-
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.protocol.ContentName;
@@ -68,7 +66,7 @@ public class InterestEndToEndTestUsingPrefix extends LibraryTestBase implements 
 		return true;
 	}
 	
-	public Interest handleContent(ArrayList<ContentObject> results,
+	public Interest handleContent(ContentObject data,
 			Interest interest) {
 		// TODO Auto-generated method stub
 		return null;
