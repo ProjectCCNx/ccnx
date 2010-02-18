@@ -36,7 +36,7 @@ public abstract class BinaryXMLDictionary {
 	public abstract String tagToString(long tagVal);
 	
 	public static BinaryXMLDictionary getDefaultDictionary() {
-		return CCNProtocolDictionary.getDefaultDictionary();
+		return CCNProtocolDictionary.getDefaultInstance();
 	}
 
 	public static Long decodeUnknownTag(String tagStr) {
