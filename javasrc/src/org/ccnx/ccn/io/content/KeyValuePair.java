@@ -20,6 +20,7 @@ package org.ccnx.ccn.io.content;
 import java.security.InvalidParameterException;
 import java.util.Map;
 
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -28,14 +29,6 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, Comparable<KeyValuePair>, Map.Entry<String, Object> {
-	protected static final String ENTRY = "Entry";
-	protected static final String KEY_ELEMENT = "Key";
-	protected static final String INTEGER_ELEMENT = "IntegerValue";
-	protected static final String DECIMAL_ELEMENT = "DecimalValue";
-	protected static final String STRING_ELEMENT = "StringValue";
-	protected static final String BINARY_ELEMENT = "BinaryValue";
-	protected static final String NAME_ELEMENT = "NameValue";	// ccnx name
-
 
 	protected String _key;
 	protected Object _value;
@@ -67,21 +60,21 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 	@Override
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
-		_key = decoder.readUTF8Element(KEY_ELEMENT);
-		if (decoder.peekStartElement(INTEGER_ELEMENT)) {
-			_value = decoder.readIntegerElement(INTEGER_ELEMENT);
-		} else if (decoder.peekStartElement(DECIMAL_ELEMENT)) {
+		_key = decoder.readUTF8Element(CCNProtocolDTags.Key.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.IntegerValue.getTag())) {
+			_value = decoder.readLongElement(CCNProtocolDTags.IntegerValue.getTag());
+		} else if (decoder.peekStartElement(CCNProtocolDTags.DecimalValue.getTag())) {
 			try {
-				_value = new Float(decoder.readUTF8Element(DECIMAL_ELEMENT)); 
+				_value = new Float(decoder.readUTF8Element(CCNProtocolDTags.DecimalValue.getTag())); 
 			} catch (NumberFormatException nfe) {
 				throw new ContentDecodingException(nfe.getMessage());
 			}
-		} else if (decoder.peekStartElement(STRING_ELEMENT)) {
-			_value = decoder.readUTF8Element(STRING_ELEMENT);
-		} else if (decoder.peekStartElement(BINARY_ELEMENT)) {
-			_value = decoder.readBinaryElement(BINARY_ELEMENT);
-		} else if (decoder.peekStartElement(NAME_ELEMENT)) {
-			decoder.readStartElement(NAME_ELEMENT);
+		} else if (decoder.peekStartElement(CCNProtocolDTags.StringValue.getTag())) {
+			_value = decoder.readUTF8Element(CCNProtocolDTags.StringValue.getTag());
+		} else if (decoder.peekStartElement(CCNProtocolDTags.BinaryValue.getTag())) {
+			_value = decoder.readBinaryElement(CCNProtocolDTags.BinaryValue.getTag());
+		} else if (decoder.peekStartElement(CCNProtocolDTags.NameValue.getTag())) {
+			decoder.readStartElement(CCNProtocolDTags.NameValue.getTag());
 			_value = new ContentName();
 			((ContentName)_value).decode(decoder);
 			decoder.readEndElement();
@@ -96,17 +89,17 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
-		encoder.writeElement(KEY_ELEMENT, _key);
-		if (_value instanceof Integer) {
-			encoder.writeIntegerElement(INTEGER_ELEMENT, (Integer)_value);
+		encoder.writeElement(CCNProtocolDTags.Key.getTag(), _key);
+		if (_value instanceof Long) {
+			encoder.writeElement(CCNProtocolDTags.IntegerValue.getTag(), (Long)_value);
 		} else if (_value instanceof Float) {
-			encoder.writeElement(DECIMAL_ELEMENT, ((Float)_value).toString());
+			encoder.writeElement(CCNProtocolDTags.DecimalValue.getTag(), ((Float)_value).toString());
 		} else if (_value instanceof String) {
-			encoder.writeElement(STRING_ELEMENT, (String)_value);
+			encoder.writeElement(CCNProtocolDTags.StringValue.getTag(), (String)_value);
 		} else if (_value instanceof byte[]) {
-			encoder.writeElement(BINARY_ELEMENT, (byte[])_value);
+			encoder.writeElement(CCNProtocolDTags.BinaryValue.getTag(), (byte[])_value);
 		} else if (_value instanceof ContentName) {
-			encoder.writeStartElement(NAME_ELEMENT);
+			encoder.writeStartElement(CCNProtocolDTags.NameValue.getTag());
 			((ContentName)_value).encode(encoder);
 			encoder.writeEndElement();
 		}
@@ -114,7 +107,7 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 	}
 
 	@Override
-	public String getElementLabel() {return ENTRY;}
+	public Long getElementLabel() {return CCNProtocolDTags.Entry.getTag();}
 
 	@Override
 	public boolean validate() {
