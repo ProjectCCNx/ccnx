@@ -49,7 +49,7 @@ uninstall:
 
 # Use ant to actually do the work for these targets
 jar clean test: _always
-	@type $(ANT) > /dev/null && $(ANT) -k $@ || $(WHINE)
+	@type $(ANT) > /dev/null; if [ $$? -eq 0 ]; then $(ANT) -k $@; else $(WHINE); fi
 	@rm -f _always
 
 documentation: _always
