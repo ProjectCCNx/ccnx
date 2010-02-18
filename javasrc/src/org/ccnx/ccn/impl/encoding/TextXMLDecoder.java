@@ -151,6 +151,9 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 	
 	public Long peekStartElementAsLong() throws ContentDecodingException {
 		String strTag = peekStartElementAsString();
+		if (null == strTag) {
+			return null; // e.g. hit an end tag...
+		}
 		return stringToTag(strTag);
 	}
 	

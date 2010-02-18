@@ -40,6 +40,9 @@ public abstract class GenericXMLHandler {
 	 * @return
 	 */
 	public Long stringToTag(String tagName) {
+		if (null == tagName) {
+			return null;
+		}
 		Long tagVal = null;
 		for (BinaryXMLDictionary dictionary : _dictionary) {
 			tagVal = dictionary.stringToTag(tagName);
