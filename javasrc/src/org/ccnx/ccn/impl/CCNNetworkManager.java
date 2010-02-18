@@ -412,14 +412,9 @@ public class CCNNetworkManager implements Runnable {
 	     * @throws NullPointerException If obj is null 
 		 */
 		public synchronized boolean add(ContentObject obj) {
-			// Add a copy of data, not the original data object, so that 
-			// the recipient cannot disturb the buffers of the sender
-			// We need this even when data comes from network, since receive
-			// buffer will be reused while recipient thread may proceed to read
-			// from buffer it is handed
 			if (null == data) {
 				// No data pending, this obj will consume interest
-				this.data = obj.clone(); // we let this raise exception if obj == null
+				this.data = obj; // we let this raise exception if obj == null
 				return true;
 			} else {
 				// Data is already pending, this interest is already consumed, cannot add obj
