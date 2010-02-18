@@ -203,21 +203,19 @@ public class Flosser implements CCNInterestListener {
 		}
 	}
 
-	public Interest handleContent(ArrayList<ContentObject> results,
+	public Interest handleContent(ContentObject result,
 								  Interest interest) {
-		Log.finest("Interests registered: " + _interests.size() + " content objects returned: "+results.size());
+		Log.finest("Interests registered: " + _interests.size() + " content object returned");
 		// Parameterized behavior that subclasses can override.
 		ContentName interestName = null;
-		for (ContentObject result : results) {
-			if (_processedObjects.contains(result)) {
-				Log.fine("FLOSSER: Got repeated content for interest: {0} content: {1}", interest, result.name());
-				continue;
-			}
+		if (_processedObjects.contains(result)) {
+			Log.fine("FLOSSER: Got repeated content for interest: {0} content: {1}", interest, result.name());
+		} else {
 			Log.finest("FLOSSER: Got new content for interest {0} content name: {1}", interest, result.name());
 			processContent(result);
 			// update the interest. follow process used by ccnslurp.
-            // exclude the next component of this object, and set up a
-            // separate interest to explore its children.
+			// exclude the next component of this object, and set up a
+			// separate interest to explore its children.
 			// first, remove the interest from our list as we aren't going to
 			// reexpress it in exactly the same way
 			synchronized(_interests) {
@@ -230,57 +228,57 @@ public class Flosser implements CCNInterestListener {
 				}
 			}
 
-            int prefixCount = interest.name().count();
-            // DKS TODO should the count above be count()-1 and this just prefixCount?
-            if (prefixCount == result.name().count()) {
-            	if (null == interest.exclude()) {
-              		ArrayList<Exclude.Element> excludes = new ArrayList<Exclude.Element>();
-               		excludes.add(new ExcludeComponent(result.digest()));
-            		interest.exclude(new Exclude(excludes));
-            		Log.finest("Creating new exclude filter for interest {0}", interest.name());
-            	} else {
-            		if (interest.exclude().match(result.digest())) {
-            			Log.fine("We should have already excluded content digest: " + DataUtils.printBytes(result.digest()));
-            		} else {
-            			// Has to be in order...
-            			Log.finest("Adding child component to exclude.");
-            			interest.exclude().add(new byte [][] { result.digest() });
-            		}
-            	}
-            	Log.finer("Excluding content digest: " + DataUtils.printBytes(result.digest()) + " onto interest {0} total excluded: " + interest.exclude().size(), interest.name());
-            } else {
-               	if (null == interest.exclude()) {
-               		ArrayList<Exclude.Element> excludes = new ArrayList<Exclude.Element>();
-               		excludes.add(new ExcludeComponent(result.name().component(prefixCount)));
-            		interest.exclude(new Exclude(excludes));
-            		Log.finest("Creating new exclude filter for interest {0}", interest.name());
-               	} else {
-                    if (interest.exclude().match(result.name().component(prefixCount))) {
-            			Log.fine("We should have already excluded child component: {0}", ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
-                    } else {
-                    	// Has to be in order...
-                    	Log.finest("Adding child component to exclude.");
-            			interest.exclude().add(
-            					new byte [][] { result.name().component(prefixCount) });
-                    }
-            	}
-               	Log.finer("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.exclude().size());
-                // DKS TODO might need to split to matchedComponents like ccnslurp
-                ContentName newNamespace = null;
-                try {
-                	if (interest.name().count() == result.name().count()) {
-                		newNamespace = new ContentName(interest.name(), result.digest());
-                		Log.info("Not adding content exclusion namespace: {0}", newNamespace);
-                	} else {
-                		newNamespace = new ContentName(interest.name(), 
-                			result.name().component(interest.name().count()));
-                       	Log.info("Adding new namespace: {0}", newNamespace);
-                    	handleNamespace(newNamespace, interest.name());
-                   	}
-                } catch (IOException ioex) {
-                	Log.warning("IOException picking up namespace: {0}", newNamespace);
-                }
-            }
+			int prefixCount = interest.name().count();
+			// DKS TODO should the count above be count()-1 and this just prefixCount?
+			if (prefixCount == result.name().count()) {
+				if (null == interest.exclude()) {
+					ArrayList<Exclude.Element> excludes = new ArrayList<Exclude.Element>();
+					excludes.add(new ExcludeComponent(result.digest()));
+					interest.exclude(new Exclude(excludes));
+					Log.finest("Creating new exclude filter for interest {0}", interest.name());
+				} else {
+					if (interest.exclude().match(result.digest())) {
+						Log.fine("We should have already excluded content digest: " + DataUtils.printBytes(result.digest()));
+					} else {
+						// Has to be in order...
+						Log.finest("Adding child component to exclude.");
+						interest.exclude().add(new byte [][] { result.digest() });
+					}
+				}
+				Log.finer("Excluding content digest: " + DataUtils.printBytes(result.digest()) + " onto interest {0} total excluded: " + interest.exclude().size(), interest.name());
+			} else {
+				if (null == interest.exclude()) {
+					ArrayList<Exclude.Element> excludes = new ArrayList<Exclude.Element>();
+					excludes.add(new ExcludeComponent(result.name().component(prefixCount)));
+					interest.exclude(new Exclude(excludes));
+					Log.finest("Creating new exclude filter for interest {0}", interest.name());
+				} else {
+					if (interest.exclude().match(result.name().component(prefixCount))) {
+						Log.fine("We should have already excluded child component: {0}", ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
+					} else {
+						// Has to be in order...
+						Log.finest("Adding child component to exclude.");
+						interest.exclude().add(
+								new byte [][] { result.name().component(prefixCount) });
+					}
+				}
+				Log.finer("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.exclude().size());
+				// DKS TODO might need to split to matchedComponents like ccnslurp
+				ContentName newNamespace = null;
+				try {
+					if (interest.name().count() == result.name().count()) {
+						newNamespace = new ContentName(interest.name(), result.digest());
+						Log.info("Not adding content exclusion namespace: {0}", newNamespace);
+					} else {
+						newNamespace = new ContentName(interest.name(), 
+								result.name().component(interest.name().count()));
+						Log.info("Adding new namespace: {0}", newNamespace);
+						handleNamespace(newNamespace, interest.name());
+					}
+				} catch (IOException ioex) {
+					Log.warning("IOException picking up namespace: {0}", newNamespace);
+				}
+			}
 		}
 		if (null != interest)
 			synchronized(_interests) {

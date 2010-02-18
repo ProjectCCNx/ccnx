@@ -17,7 +17,6 @@
 
 package org.ccnx.ccn.impl.repo;
 
-import java.util.ArrayList;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
@@ -55,36 +54,34 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 * If the interest has no special purpose, its assumed that it's to actually read data from
 	 * the repository and the request is sent to the RepositoryStore to be processed.
 	 */
-	public int handleInterests(ArrayList<Interest> interests) {
-		for (Interest interest : interests) {
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
-				Log.finer("Saw interest: {0}", interest.name());
-			try {
-				if (interest.name().contains(CommandMarkers.COMMAND_MARKER_REPO_START_WRITE)) {
-					if (null != interest.answerOriginKind() && (interest.answerOriginKind() & Interest.ANSWER_GENERATED) == 0)
-						continue;	// Request to not answer
-					startReadProcess(interest);
-				} else if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
-					if (null != interest.answerOriginKind() && (interest.answerOriginKind() & Interest.ANSWER_GENERATED) == 0)
-						continue;	// Request to not answer
-					nameEnumeratorResponse(interest);
+	public boolean handleInterest(Interest interest) {
+		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+			Log.finer("Saw interest: {0}", interest.name());
+		try {
+			if (interest.name().contains(CommandMarkers.COMMAND_MARKER_REPO_START_WRITE)) {
+				if (null != interest.answerOriginKind() && (interest.answerOriginKind() & Interest.ANSWER_GENERATED) == 0)
+					return false;	// Request to not answer
+				startReadProcess(interest);
+			} else if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
+				if (null != interest.answerOriginKind() && (interest.answerOriginKind() & Interest.ANSWER_GENERATED) == 0)
+					return false;	// Request to not answer
+				nameEnumeratorResponse(interest);
+			} else {
+				ContentObject content = _server.getRepository().getContent(interest);
+				if (content != null) {
+					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+						Log.finest("Satisfying interest: {0} with content {1}", interest, content.name());
+					_handle.put(content);
 				} else {
-					ContentObject content = _server.getRepository().getContent(interest);
-					if (content != null) {
-						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
-							Log.finest("Satisfying interest: {0} with content {1}", interest, content.name());
-						_handle.put(content);
-					} else {
-						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
-							Log.fine("Unsatisfied interest: {0}", interest);
-					}
+					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+						Log.fine("Unsatisfied interest: {0}", interest);
 				}
-			} catch (Exception e) {
-				Log.logStackTrace(Level.WARNING, e);
-				e.printStackTrace();
 			}
+		} catch (Exception e) {
+			Log.logStackTrace(Level.WARNING, e);
+			e.printStackTrace();
 		}
-		return interests.size();
+		return true;
 	}
 	
 	/**

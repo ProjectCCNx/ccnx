@@ -18,7 +18,6 @@
 package org.ccnx.ccn.profiles.search;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Set;
@@ -221,7 +220,7 @@ public class Pathfinder implements CCNInterestListener {
 		return _timedOut;
 	}
 	
-	public Interest handleContent(ArrayList<ContentObject> results,
+	public Interest handleContent(ContentObject result,
 								  Interest interest) {
 		// When we get data back, we can cancel all the outstanding interests in the
 		// direction other than the one we want.
@@ -231,7 +230,7 @@ public class Pathfinder implements CCNInterestListener {
 		// content is OK (only relevant for postfixes that will pull specific
 		// information). If it isn't, and we get GONE content, we put out an
 		// interest looking for a later (non-GONE) version at that point.
-		Log.finer("Pathfinder: Got {0} results matching interest {1}, first name is {2}", results.size(), interest, results.get(0).name());
+		Log.finer("Pathfinder: Got result matching interest {0}, first name is {1}", interest, result.name());
 		
 		Interest returnInterest = null;
 		
@@ -241,7 +240,6 @@ public class Pathfinder implements CCNInterestListener {
 			// if the interest has already been removed from _outstandingInterests, do nothing.
 			if (index == -1) return null;
 			
-			for (ContentObject result : results) {
 				if (result.isGone() && !goneOK()) {
 					Log.finer("Pathfinder found a GONE object when it wasn't looking for one. Replacing interest with one looking for latest version after (0}", result.name());
 
@@ -296,7 +294,7 @@ public class Pathfinder implements CCNInterestListener {
 					_searchResult = result; // what if there is more than one
 					
 				}
-			}
+
 			// Order may have changed
 			index = _outstandingInterests.indexOf(interest);
 			_outstandingInterests.remove(index);

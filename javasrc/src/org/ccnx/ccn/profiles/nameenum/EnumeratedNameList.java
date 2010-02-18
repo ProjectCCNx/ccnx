@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.logging.Level;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
@@ -134,8 +135,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 				if (timeout != SystemConfiguration.NO_TIMEOUT)
 					break;
 			}
-			Log.info("Waiting for new data on prefix: " + _namePrefix + " got " + ((null == _newChildren) ? 0 : _newChildren.size())
-					+ ".");
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("Waiting for new data on prefix: " + _namePrefix + " got " + ((null == _newChildren) ? 0 : _newChildren.size())
+						+ ".");
+			}
 
 			if (null != _newChildren) {
 				childArray = _newChildren;
@@ -244,9 +247,11 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 					}
 				} catch (InterruptedException e) {
 				}
-				Log.info("Waiting for new data on prefix: {0}, updated {1}, our update {2}, now have " + 
-						((null == _children) ? 0 : _children.size()), _namePrefix + " new " + 
-						((null == _newChildren) ? 0 : _newChildren.size()) + ".", _lastUpdate, lastUpdate);
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("Waiting for new data on prefix: {0}, updated {1}, our update {2}, now have " + 
+							((null == _children) ? 0 : _children.size()), _namePrefix + " new " + 
+							((null == _newChildren) ? 0 : _newChildren.size()) + ".", _lastUpdate, lastUpdate);
+				}
 			}
 			if ((null != _lastUpdate) && ((null == lastUpdate) || (_lastUpdate.after(lastUpdate)))) foundNewData = true;
 		}
@@ -319,11 +324,13 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	public int handleNameEnumerator(ContentName prefix,
 								    ArrayList<ContentName> names) {
 		
-		Log.info(names.size() + " new name enumeration results: our prefix: " + _namePrefix + " returned prefix: " + prefix);
+		if (Log.isLoggable(Level.INFO)) {
+			Log.info("{0} new name enumeration results: our prefix: {1} returned prefix: {2}", names.size(), _namePrefix, prefix);
+		}
 		if (!prefix.equals(_namePrefix)) {
 			Log.warning("Returned data doesn't match requested prefix!");
 		}
-		Log.info("Handling Name Iteration " + prefix +" ");
+		Log.info("Handling Name Iteration {0}", prefix);
 		// the name enumerator hands off names to us, we own it now
 		// DKS -- want to keep listed as new children we previously had
 		synchronized (_childLock) {
@@ -344,7 +351,9 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 				}
 				_children.addAll(thisRoundNew);
 				_lastUpdate = new CCNTime();
-				Log.info("New children found: at {0} " + thisRoundNew.size() + " total children " + _children.size(), _lastUpdate);
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("New children found: at {0} " + thisRoundNew.size() + " total children " + _children.size(), _lastUpdate);
+				}
 				processNewChildren(thisRoundNew);
 				_childLock.notifyAll();
 			}
@@ -473,7 +482,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	public static EnumeratedNameList exists(ContentName childName, ContentName prefixKnownToExist, CCNHandle handle) throws IOException {
 		Log.info("EnumeratedNameList.exists: the prefix known to exist is {0} and we are looking for childName {1}", prefixKnownToExist, childName);
 		if ((null == prefixKnownToExist) || (null == childName) || (!prefixKnownToExist.isPrefixOf(childName))) {
-			Log.info("EnumeratedNameList.exists: Child " + childName + " must be prefixed by name " + prefixKnownToExist);
+			Log.info("EnumeratedNameList.exists: Child {0} must be prefixed by name {1}", childName, prefixKnownToExist);
 			throw new IllegalArgumentException("Child " + childName + " must be prefixed by name " + prefixKnownToExist);
 		}
 		if (childName.count() == prefixKnownToExist.count()) {
@@ -493,8 +502,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 				if (! parentEnumerator.waitForNewChildren(SystemConfiguration.CHILD_WAIT_INTERVAL)) break;
 			}
 			if (parentEnumerator.hasChild(childNameComponent)) {
-				Log.info("EnumeratedNameList.exists: we have a matching child to {0} and the parent enumerator {1} has {2} children.", 
-						ContentName.componentPrintURI(childNameComponent), parentName, parentEnumerator.childCount());
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("EnumeratedNameList.exists: we have a matching child to {0} and the parent enumerator {1} has {2} children.", 
+							ContentName.componentPrintURI(childNameComponent), parentName, parentEnumerator.childCount());
+				}
 				childIndex++;
 				if (childIndex == childName.count()) {
 					Log.info("EnumeratedNameList.exists: we found the childName we were looking for: {0}", childName);
@@ -504,8 +515,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 				parentName = new ContentName(parentName, childNameComponent);
 				continue;
 			} else {
-				Log.info("EnumeratedNameList.exists: the parent enumerator {0} has {1} children but none of them are {2}.", 
-						parentName, parentEnumerator.childCount(), ContentName.componentPrintURI(childNameComponent));
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("EnumeratedNameList.exists: the parent enumerator {0} has {1} children but none of them are {2}.", 
+							parentName, parentEnumerator.childCount(), ContentName.componentPrintURI(childNameComponent));
+				}
 				break;
 			}
 		}

@@ -25,6 +25,7 @@ import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
@@ -202,10 +203,12 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		byte [] wrappedNonceKey = null;
 		byte [] wrappedKey = null;
 		
-		Log.finer("wrapKey: wrapping key with id {0} under key with id {1} using label {2}",
-				DataUtils.printHexBytes(wrappingKeyIdentifier(keyToBeWrapped)),
-				DataUtils.printHexBytes(wrappingKeyIdentifier(wrappingKey)),
-				keyLabel);
+		if (Log.isLoggable(Level.FINER)) {
+			Log.finer("wrapKey: wrapping key with id {0} under key with id {1} using label {2}",
+					DataUtils.printHexBytes(wrappingKeyIdentifier(keyToBeWrapped)),
+					DataUtils.printHexBytes(wrappingKeyIdentifier(wrappingKey)),
+					keyLabel);
+		}
 
 		if (wrappingAlgorithm.equalsIgnoreCase("AESWrapWithPad")) {
 			try {
@@ -219,7 +222,9 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			Cipher wrapCipher = null;
 			try {
 				wrapCipher = Cipher.getInstance(wrappingAlgorithm);
-				Log.info("Wrap cipher {0}, provider {1}.", wrapCipher.getAlgorithm(), wrapCipher.getProvider());
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("Wrap cipher {0}, provider {1}.", wrapCipher.getAlgorithm(), wrapCipher.getProvider());
+				}
 			} catch (NoSuchAlgorithmException e) {
 				Log.warning("Unexpected NoSuchAlgorithmException attempting to instantiate wrapping algorithm: "+ wrappingAlgorithm);
 				throw new InvalidKeyException("Unexpected NoSuchAlgorithmException attempting to instantiate wrapping algorithm: "+ wrappingAlgorithm);
@@ -268,8 +273,10 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	    WrappedKey wk = new WrappedKey(null, null, 
 	    					 ((null == keyAlgorithm) ? keyToBeWrapped.getAlgorithm() : keyAlgorithm), 
 	    					 keyLabel, wrappedNonceKey, wrappedKey);
-		Log.finer("wrapKey: got {0} by wrapping {1} with {2}", wk, 
-					DataUtils.printHexBytes(keyToBeWrapped.getEncoded()), DataUtils.printHexBytes(wrappingKey.getEncoded()));
+	    if (Log.isLoggable(Level.FINER)) {
+			Log.finer("wrapKey: got {0} by wrapping {1} with {2}", wk, 
+						DataUtils.printHexBytes(keyToBeWrapped.getEncoded()), DataUtils.printHexBytes(wrappingKey.getEncoded()));
+	    }
 		return wk;
 	}
 	
@@ -351,10 +358,12 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			throw new NoSuchAlgorithmException("Null algorithm specified for key to be unwrapped!");
 		}
 		byte [] wki = wrappingKeyIdentifier(unwrapKey);
-		Log.info("WrappedKey: unwrapping key wrapped with wrapping key ID {0}, incoming wrapping key digest {1} match? {2}",
-					DataUtils.printHexBytes(wrappingKeyIdentifier()), 
-					DataUtils.printHexBytes(wki),
-					Arrays.equals(wki, wrappingKeyIdentifier()));
+		if (Log.isLoggable(Level.INFO)) {
+			Log.info("WrappedKey: unwrapping key wrapped with wrapping key ID {0}, incoming wrapping key digest {1} match? {2}",
+						DataUtils.printHexBytes(wrappingKeyIdentifier()), 
+						DataUtils.printHexBytes(wki),
+						Arrays.equals(wki, wrappingKeyIdentifier()));
+		}
 		return unwrapKey(unwrapKey, keyAlgorithm());
 	}
 
@@ -371,10 +380,12 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			throws InvalidKeyException, NoSuchAlgorithmException {
 
 		Key unwrappedKey = null;
-		Log.info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
-				wrapAlgorithmForKey(unwrapKey.getAlgorithm()));
-		Log.info("unwrapKey: unwrapping {0} with {1}", this, DataUtils.printHexBytes(wrappingKeyIdentifier(unwrapKey)));
-		Log.info("Is BC provider OK? " + KeyManager.checkDefaultProvider());
+		if (Log.isLoggable(Level.INFO)) {
+			Log.info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
+					wrapAlgorithmForKey(unwrapKey.getAlgorithm()));
+			Log.info("unwrapKey: unwrapping {0} with {1}", this, DataUtils.printHexBytes(wrappingKeyIdentifier(unwrapKey)));
+			Log.info("Is BC provider OK? " + KeyManager.checkDefaultProvider());
+		}
 		if (((null != wrapAlgorithm()) && (wrapAlgorithm().equalsIgnoreCase("AESWrapWithPad"))) || 
 							wrapAlgorithmForKey(unwrapKey.getAlgorithm()).equalsIgnoreCase("AESWrapWithPad")) {
 			unwrappedKey = AESUnwrapWithPad(unwrapKey, wrappedKeyAlgorithm, encryptedKey(), 0, encryptedKey().length);

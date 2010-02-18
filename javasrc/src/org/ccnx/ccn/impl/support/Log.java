@@ -269,7 +269,8 @@ public class Log {
 	 * params do not have their .toString() methods called if the message is not
 	 * logged).
 	 * @param l Log level.
-	 * @param msg Message or format string.
+	 * @param msg Message or format string. Note that to improve performance, only 
+	 * 			the simplest form of of MessageFormat, i.e. {0}, {1}, {2}... is supported
 	 * @see java.text.MessageFormat
 	 * @param params
 	 */

@@ -17,8 +17,11 @@
 
 package org.ccnx.ccn.test;
 
+import java.io.IOException;
 import java.util.Random;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -35,6 +38,20 @@ public class CCNTestBase {
 	// corresponding to the publisherID's used.
 	static public Signature fakeSignature = null;
 	static public SignedInfo fakeSignedInfo = null;
+	
+	protected static CCNHandle putHandle = null;
+	protected static CCNHandle getHandle = null;
+	
+	static {
+		try {
+			putHandle = CCNHandle.open();
+			getHandle = CCNHandle.open();
+		} catch (ConfigurationException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {

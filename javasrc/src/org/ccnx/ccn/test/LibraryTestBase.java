@@ -54,7 +54,7 @@ import org.junit.BeforeClass;
  * New tests should probably not use this without some additional cleanup.
  *
  */
-public class LibraryTestBase {
+public class LibraryTestBase extends CCNTestBase {
 
 	protected static boolean exit = false;
 	protected static Throwable error = null; // for errors from other threads
@@ -70,21 +70,7 @@ public class LibraryTestBase {
 		
 	protected HashSet<Integer> _resultSet = new HashSet<Integer>();
 	
-	protected static CCNHandle putHandle = null;
-	protected static CCNHandle getHandle = null;
-	
 	protected static ArrayList<Integer> usedIds = new ArrayList<Integer>();
-
-	static {
-		try {
-			putHandle = CCNHandle.open();
-			getHandle = CCNHandle.open();
-		} catch (ConfigurationException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -318,22 +304,20 @@ public class LibraryTestBase {
 				error = ex;
 			}
 		}
-		public synchronized Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
+		public synchronized Interest handleContent(ContentObject contentObject, Interest interest) {
 			Interest newInterest = null;
-			for (ContentObject contentObject : results) {
-				try {
-					int val = Integer.parseInt(new String(contentObject.content()));
-					if (!accumulatedResults.contains(val)) {
-						accumulatedResults.add(val);
-						System.out.println("Got " + val);
-					}
-					newInterest = Interest.next(contentObject.fullName(), contentObject.name().count() - 2, null);
-				} catch (NumberFormatException nfe) {
-					Log.info("Unexpected content, " + contentObject.name() + " is not an integer!");
+			try {
+				int val = Integer.parseInt(new String(contentObject.content()));
+				if (!accumulatedResults.contains(val)) {
+					accumulatedResults.add(val);
+					System.out.println("Got " + val);
 				}
+				newInterest = Interest.next(contentObject.fullName(), contentObject.name().count() - 2, null);
+			} catch (NumberFormatException nfe) {
+				Log.info("Unexpected content, " + contentObject.name() + " is not an integer!");
 			}
-			checkGetResults(results.get(0));
-			
+			checkGetResults(contentObject);
+
 			if (accumulatedResults.size() >= count) {
 				System.out.println("GetServer got all content: " + accumulatedResults.size() + ". Releasing semaphore.");
 				sema.release();
@@ -383,22 +367,22 @@ public class LibraryTestBase {
 			}
 		}
 
-		public synchronized int handleInterests(ArrayList<Interest> interests) {
+		public synchronized boolean handleInterest(Interest interest) {
+			boolean result = false;
 			try {
-				for (Interest interest : interests) {
-					try {
-						int val = Integer.parseInt(new String(interest.name().component(interest.name().count()-1)));
-						System.out.println("Got interest in " + val);
-						if (!accumulatedResults.contains(val)) {
-							ContentName putResult = writer.put(ContentName.fromNative(name, Integer.toString(val)), Integer.toString(next).getBytes());
-							System.out.println("Put " + val + " done");
-							checkPutResults(putResult);
-							next++;
-							accumulatedResults.add(val);
-						}
-					} catch (NumberFormatException nfe) {
-						Log.info("Unexpected interest, " + interest.name() + " does not end in an integer!");
+				try {
+					int val = Integer.parseInt(new String(interest.name().component(interest.name().count()-1)));
+					System.out.println("Got interest in " + val);
+					if (!accumulatedResults.contains(val)) {
+						ContentName putResult = writer.put(ContentName.fromNative(name, Integer.toString(val)), Integer.toString(next).getBytes());
+						result = true;
+						System.out.println("Put " + val + " done");
+						checkPutResults(putResult);
+						next++;
+						accumulatedResults.add(val);
 					}
+				} catch (NumberFormatException nfe) {
+					Log.info("Unexpected interest, " + interest.name() + " does not end in an integer!");
 				}
 				if (accumulatedResults.size() >= count) {
 					sema.release();
@@ -406,7 +390,7 @@ public class LibraryTestBase {
 			} catch (Throwable e) {
 				error = e;
 			}
-			return 0;
+			return result;
 		}
 	}
 }

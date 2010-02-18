@@ -111,49 +111,44 @@ public class CCNFileProxy implements CCNFilterListener {
 		_handle.registerFilter(_prefix, this);
 	}
 	
-	public int handleInterests(ArrayList<Interest> interests) {
+	public boolean handleInterest(Interest interest) {
 		// Alright, we've gotten an interest. Either it's an interest for a stream we're
 		// already reading, or it's a request for a new stream.
-		int count = 0;
-		for (Interest interest : interests) {
-			Log.info("CCNFileProxy main responder: got new interest: {0}", interest);
-			
-			// Test to see if we need to respond to it.
-			if (!_prefix.isPrefixOf(interest.name())) {
-				Log.info("Unexpected: got an interest not matching our prefix (which is {0})", _prefix);
-				continue;
-			}
-			
-			// We see interests for all our segments, and the header. We want to only
-			// handle interests for the first segment of a file, and not the first segment
-			// of the header. Order tests so most common one (segments other than first, non-header)
-			// fails first.
-			if (SegmentationProfile.isSegment(interest.name()) && !SegmentationProfile.isFirstSegment(interest.name())) {
-				Log.info("Got an interest for something other than a first segment, ignoring {0}.", interest.name());
-				continue;
-			} else if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
-					try {
-						Log.info("Got a name enumeration request: {0}", interest);
-						nameEnumeratorResponse(interest);
-					} catch (IOException e) {
-						Log.warning("IOException generating name enumeration response to {0}: {1}: {2}", interest.name(), e.getClass().getName(), e.getMessage());
-					}
-					continue;
-			} else if (SegmentationProfile.isHeader(interest.name())) {
-				Log.info("Got an interest for the first segment of the header, ignoring {0}.", interest.name());
-				continue;
-			} 
+		Log.info("CCNFileProxy main responder: got new interest: {0}", interest);
 
-			// Write the file
-			try {
-				if (writeFile(interest)) {
-					count++;
-				}
-			} catch (IOException e) {
-				Log.warning("IOException writing file {0}: {1}: {2}", interest.name(), e.getClass().getName(), e.getMessage());
-			}
+		// Test to see if we need to respond to it.
+		if (!_prefix.isPrefixOf(interest.name())) {
+			Log.info("Unexpected: got an interest not matching our prefix (which is {0})", _prefix);
+			return false;
 		}
-		return count;
+
+		// We see interests for all our segments, and the header. We want to only
+		// handle interests for the first segment of a file, and not the first segment
+		// of the header. Order tests so most common one (segments other than first, non-header)
+		// fails first.
+		if (SegmentationProfile.isSegment(interest.name()) && !SegmentationProfile.isFirstSegment(interest.name())) {
+			Log.info("Got an interest for something other than a first segment, ignoring {0}.", interest.name());
+			return false;
+		} else if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
+			try {
+				Log.info("Got a name enumeration request: {0}", interest);
+				return nameEnumeratorResponse(interest);
+			} catch (IOException e) {
+				Log.warning("IOException generating name enumeration response to {0}: {1}: {2}", interest.name(), e.getClass().getName(), e.getMessage());
+				return false;
+			}
+		} else if (SegmentationProfile.isHeader(interest.name())) {
+			Log.info("Got an interest for the first segment of the header, ignoring {0}.", interest.name());
+			return false;
+		} 
+
+		// Write the file
+		try {
+			return writeFile(interest);
+		} catch (IOException e) {
+			Log.warning("IOException writing file {0}: {1}: {2}", interest.name(), e.getClass().getName(), e.getMessage());
+			return false;
+		}
 	}
 	
 	protected File ccnNameToFilePath(ContentName name) {
@@ -223,16 +218,18 @@ public class CCNFileProxy implements CCNFilterListener {
 	 * 
 	 * @param interest
 	 * @throws IOException 
+	 * @returns true if interest is consumed
 	 */
-	public void nameEnumeratorResponse(Interest interest) throws IOException {
+	public boolean nameEnumeratorResponse(Interest interest) throws IOException {
 		
+		boolean result = false;
 		ContentName neRequestPrefix = interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 		
 		File directoryToEnumerate = ccnNameToFilePath(neRequestPrefix);
 		
 		if (!directoryToEnumerate.exists() || !directoryToEnumerate.isDirectory()) {
 			// nothing to enumerate
-			return;
+			return result;
 		}
 		
 		NameEnumerationResponse ner = new NameEnumerationResponse();
@@ -270,6 +267,7 @@ public class CCNFileProxy implements CCNFilterListener {
 				NameEnumerationResponseMessage nem = ner.getNamesForResponse();
 				NameEnumerationResponseMessageObject neResponse = new NameEnumerationResponseMessageObject(prefixWithId, nem, _handle);
 				neResponse.save(ner.getTimestamp(), interest);
+				result = true;
 				Log.info("sending back name enumeration response {0}, timestamp (version) {1}.", ner.getPrefix(), ner.getTimestamp());
 			} else {
 				Log.info("no children available: we are not sending back a response to the name enumeration interest (interest = {0}); our response would have been {1}", interest, potentialCollectionName);
@@ -283,6 +281,7 @@ public class CCNFileProxy implements CCNFilterListener {
 				}
 			}
 		}
+		return result;
 	}
 
     /**
