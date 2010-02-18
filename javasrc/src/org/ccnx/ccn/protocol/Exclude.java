@@ -303,7 +303,8 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 		synchronized (_values) {
 			boolean component;
 			boolean any = false;
-			while ((component = decoder.peekStartElement(CCNProtocolDTags.Component.getTag())) || (any = decoder.peekStartElement(ExcludeAny.ANY)) ||
+			while ((component = decoder.peekStartElement(CCNProtocolDTags.Component.getTag())) || 
+					(any = decoder.peekStartElement(CCNProtocolDTags.Any.getTag())) ||
 						decoder.peekStartElement(CCNProtocolDTags.Bloom.getTag())) {
 				Element ee = component?new ExcludeComponent(): any ? new ExcludeAny() : new BloomFilter();
 				ee.decode(decoder);
