@@ -57,7 +57,7 @@ cat <<EOF >selfreg-request.xml
 EOF
 ccn_xmltoccnb -w selfreg-request.xml || Fail botch constructing selfreg-request.ccnb
 
-echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > selfreg-pre.html
+CCNDStatus > selfreg-pre.html
 
 # Try out the request; use udp so our face does not instantly vanish
 ccndsmoketest -u localhost -b send selfreg-request.ccnb recv > selfreg-response.ccnb
@@ -67,7 +67,7 @@ ccn_ccnbtoxml selfreg-response.ccnb || Failed to parse selfreg response
 
 ccnbx -d selfreg-response.ccnb Content | ccn_ccnbtoxml -x -
 
-echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > selfreg-post.html
+CCNDStatus > selfreg-post.html
 grep ccnx:/Junk/Testing/Selfreg selfreg-post.html >/dev/null || Fail Self-registered prefix does not show up in ccnd status
 
 rm selfreg-request.xml
