@@ -178,4 +178,22 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 		}
 		return value;
 	}
+	
+	public Integer readIntegerElement(String startTag) throws ContentDecodingException {
+		String strVal = readUTF8Element(startTag); 
+		Integer value = Integer.valueOf(strVal);
+		if (null == value) {
+			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal);
+		}
+		return value;
+	}
+
+	public Integer readIntegerElement(Long startTag) throws ContentDecodingException {
+		String strVal = readUTF8Element(startTag); 
+		Integer value = Integer.valueOf(strVal);
+		if (null == value) {
+			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal);
+		}
+		return value;
+	}
 }
