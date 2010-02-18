@@ -22,6 +22,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
 import java.util.Random;
 
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -36,7 +37,6 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * Bloom filters are used to exclude keys that are inserted into the filter
  */
 public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilter> {
-	public static final String BLOOM_ELEMENT = "Bloom";
 
 	private int _lgBits;
 	private int _nHash;
@@ -169,7 +169,7 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 	 * Gets the type of element this is within an exclude filter
 	 */
 	@Override
-	public String getElementLabel() { return BLOOM_ELEMENT; }
+	public Long getElementLabel() { return CCNProtocolDTags.Bloom.getTag(); }
 	
 	@Override
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {

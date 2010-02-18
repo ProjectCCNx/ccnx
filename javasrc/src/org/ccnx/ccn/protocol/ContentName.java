@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -55,8 +56,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	
 	public static final String SEPARATOR = "/";
 	public static final ContentName ROOT = new ContentName(0, (ArrayList<byte []>)null);
-	public static final String CONTENT_NAME_ELEMENT = "Name";
-	private static final String COMPONENT_ELEMENT = "Component";
 	
 	protected ArrayList<byte []>  _components;
 	public static class DotDotComponent extends Exception { // Need to strip off a component
@@ -882,8 +881,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		
 		_components = new ArrayList<byte []>();
 		
-		while (decoder.peekStartElement(COMPONENT_ELEMENT)) {
-			_components.add(decoder.readBinaryElement(COMPONENT_ELEMENT));
+		while (decoder.peekStartElement(CCNProtocolDTags.Component.getTag())) {
+			_components.add(decoder.readBinaryElement(CCNProtocolDTags.Component.getTag()));
 		}
 		
 		decoder.readEndElement();
@@ -1169,7 +1168,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		encoder.writeStartElement(getElementLabel());
 		
 		for (int i=0; i < count(); ++i) {
-			encoder.writeElement(COMPONENT_ELEMENT, _components.get(i));
+			encoder.writeElement(CCNProtocolDTags.Component.getTag(), _components.get(i));
 		}
 		encoder.writeEndElement();
 	}
@@ -1180,8 +1179,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 	
 	@Override
-	public String getElementLabel() { 
-		return CONTENT_NAME_ELEMENT;
+	public Long getElementLabel() { 
+		return CCNProtocolDTags.Name.getTag();
 	}
 
 	public ContentName copy(int nameComponentCount) {

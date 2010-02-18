@@ -36,6 +36,7 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLCodecFactory;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
@@ -58,9 +59,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 public class ContentObject extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentObject> {
 
 	public static boolean DEBUG_SIGNING = false;
-
-	protected static final String CONTENT_OBJECT_ELEMENT = "ContentObject";
-	protected static final String CONTENT_ELEMENT = "Content";
 
 	protected ContentName _name;
 	protected SignedInfo _signedInfo;
@@ -349,7 +347,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		_signedInfo = new SignedInfo();
 		_signedInfo.decode(decoder);
 
-		_content = decoder.readBinaryElement(CONTENT_ELEMENT);
+		_content = decoder.readBinaryElement(CCNProtocolDTags.Content.getTag());
 
 		decoder.readEndElement();
 	}
@@ -368,13 +366,13 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		name().encode(encoder);
 		signedInfo().encode(encoder);
 
-		encoder.writeElement(CONTENT_ELEMENT, _content);
+		encoder.writeElement(CCNProtocolDTags.Content.getTag(), _content);
 
 		encoder.writeEndElement();   		
 	}
 
 	@Override
-	public String getElementLabel() { return CONTENT_OBJECT_ELEMENT; }
+	public Long getElementLabel() { return CCNProtocolDTags.ContentObject.getTag(); }
 
 	@Override
 	public boolean validate() { 
@@ -740,7 +738,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		// sign the same thing, plus it's really hard to do the automated codec
 		// stuff without doing a whole document, unless we do some serious
 		// rearranging.
-		encoder.writeElement(CONTENT_ELEMENT, content, offset, length);
+		encoder.writeElement(CCNProtocolDTags.Content.getTag(), content, offset, length);
 
 		encoder.endEncoding();	
 

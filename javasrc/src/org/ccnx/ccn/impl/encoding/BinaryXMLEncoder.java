@@ -19,10 +19,8 @@ package org.ccnx.ccn.impl.encoding;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.sql.Timestamp;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.Stack;
 import java.util.TreeMap;
 
 import org.ccnx.ccn.impl.support.Log;
@@ -39,15 +37,12 @@ import org.ccnx.ccn.protocol.CCNTime;
  */
 public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	
-	protected OutputStream _ostream = null;
-	protected Stack<BinaryXMLDictionary> _dictionary = new Stack<BinaryXMLDictionary>();
-	
 	/**
 	 * Create a BinaryXMLEncoder initialized with the default dictionary obtained
 	 * from BinaryXMLDictionary#getDefaultDictionary().
 	 */
 	public BinaryXMLEncoder() {
-		this(null);
+		super();
 	}
 
 	/**
@@ -55,10 +50,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	 * @param dictionary the dictionary to use, if null the default dictionary is used.
 	 */
 	public BinaryXMLEncoder(BinaryXMLDictionary dictionary) {
-		if (null == dictionary)
-			_dictionary.push(BinaryXMLDictionary.getDefaultDictionary());
-		else
-			_dictionary.push(dictionary);
+		super(dictionary);
 	}
 	
 	public void beginEncoding(OutputStream ostream) throws ContentEncodingException {
@@ -75,61 +67,30 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		}
 	}
 
-	public void writeElement(String tag, String utf8Content)
-			throws ContentEncodingException {
-		writeElement(tag, utf8Content, null);
-	}
-
-	public void writeElement(String tag, String utf8Content,
-			TreeMap<String, String> attributes)
-			throws ContentEncodingException {
+	public void writeUString(String utf8Content) throws ContentEncodingException {
 		try {
-			writeStartElement(tag, attributes);
-			// Will omit if 0-length
 			BinaryXMLCodec.encodeUString(_ostream, utf8Content);
-			writeEndElement();
 		} catch (IOException e) {
 			throw new ContentEncodingException(e.getMessage(), e);
 		}
 	}
-
-	public void writeElement(String tag, byte[] binaryContent)
-			throws ContentEncodingException {
-		writeElement(tag, binaryContent, null);
-	}
-
-	public void writeElement(String tag, byte[] binaryContent, int offset, int length)
-			throws ContentEncodingException {
-		writeElement(tag, binaryContent, offset, length, null);
-	}
-
-	public void writeElement(String tag, byte[] binaryContent,
-			TreeMap<String, String> attributes)
-			throws ContentEncodingException {
+	
+	public void writeBlob(byte [] binaryContent) throws ContentEncodingException {
 		try {
-			writeStartElement(tag, attributes);
-			// Will omit if 0-length
 			BinaryXMLCodec.encodeBlob(_ostream, binaryContent);
-			writeEndElement();
 		} catch (IOException e) {
 			throw new ContentEncodingException(e.getMessage(), e);
 		}
 	}
 
-	public void writeElement(String tag, byte[] binaryContent,
-			int offset, int length,
-			TreeMap<String, String> attributes)
-			throws ContentEncodingException {
+	public void writeBlob(byte [] binaryContent, int offset, int length) throws ContentEncodingException {
 		try {
-			writeStartElement(tag, attributes);
-			// Will omit if 0-length
 			BinaryXMLCodec.encodeBlob(_ostream, binaryContent, offset, length);
-			writeEndElement();
 		} catch (IOException e) {
 			throw new ContentEncodingException(e.getMessage(), e);
 		}
 	}
-
+	
 	/**
 	 * Compact binary encoding of time, same as used for versions.
 	 * @see VersioningProfile
@@ -138,19 +99,19 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		writeElement(tag, dateTime.toBinaryTime());
 	}
 
-	public void writeDateTime(String tag, Timestamp dateTime) throws ContentEncodingException {
-		writeDateTime(tag, new CCNTime(dateTime));
+	/**
+	 * Compact binary encoding of time, same as used for versions.
+	 * @see VersioningProfile
+	 */
+	public void writeDateTime(Long tag, CCNTime dateTime) throws ContentEncodingException {
+		writeElement(tag, dateTime.toBinaryTime());
 	}
 
-	public void writeStartElement(String tag) throws ContentEncodingException {
-		writeStartElement(tag, null);
-	}
-	
 	public void writeStartElement(String tag, TreeMap<String,String> attributes) throws ContentEncodingException {
 		try {
-			long dictionaryVal = _dictionary.peek().encodeTag(tag);
+			Long dictionaryVal = stringToTag(tag);
 			
-			if (dictionaryVal < 0) {
+			if (null == dictionaryVal) {
 				Log.info("Unexpected: tag found that is not in our dictionary: " + tag);
 				// not in dictionary
 				// compressed format wants length of tag represented as length-1
@@ -163,33 +124,53 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 			}
 			
 			if (null != attributes) {
-				// the keySet of a TreeMap is sorted.
-				Set<String> keySet = attributes.keySet();
-				Iterator<String> it = keySet.iterator();
-				
-				while (it.hasNext()) {
-					String strAttr = it.next();
-					String strValue = attributes.get(strAttr);
-					
-					// TODO DKS are attributes in different dictionary? right now not using DATTRS
-					long dictionaryAttr = _dictionary.peek().encodeAttr(strAttr);
-					if (dictionaryAttr < 0) {
-						// not in dictionary, encode as attr
-						// compressed format wants length of tag represented as length-1
-						// to save that extra bit, as tag cannot be 0 length.
-						// encodeUString knows to do that.
-						BinaryXMLCodec.encodeUString(_ostream, strAttr, BinaryXMLCodec.XML_ATTR);
-					} else {
-						BinaryXMLCodec.encodeTypeAndVal(BinaryXMLCodec.XML_DATTR, dictionaryAttr, _ostream);
-					}
-					// Write value
-					BinaryXMLCodec.encodeUString(_ostream, strValue);
-				}
-				
+				writeAttributes(attributes); 
 			}
 			
 		} catch (IOException e) {
 			throw new ContentEncodingException(e.getMessage(),e);
+		}
+	}
+	
+	public void writeStartElement(Long tag, TreeMap<String,String> attributes) throws ContentEncodingException {
+		try {
+			
+			BinaryXMLCodec.encodeTypeAndVal(BinaryXMLCodec.XML_DTAG, tag, _ostream);
+			if (null != attributes) {
+				writeAttributes(attributes); 
+			}
+			
+		} catch (IOException e) {
+			throw new ContentEncodingException(e.getMessage(),e);
+		}
+	}
+
+	public void writeAttributes(TreeMap<String,String> attributes) throws IOException {
+		
+		if (null == attributes) {
+			return;
+		}
+
+		// the keySet of a TreeMap is sorted.
+		Set<String> keySet = attributes.keySet();
+		Iterator<String> it = keySet.iterator();
+
+		while (it.hasNext()) {
+			String strAttr = it.next();
+			String strValue = attributes.get(strAttr);
+
+			Long dictionaryAttr = stringToTag(strAttr);
+			if (null == dictionaryAttr) {
+				// not in dictionary, encode as attr
+				// compressed format wants length of tag represented as length-1
+				// to save that extra bit, as tag cannot be 0 length.
+				// encodeUString knows to do that.
+				BinaryXMLCodec.encodeUString(_ostream, strAttr, BinaryXMLCodec.XML_ATTR);
+			} else {
+				BinaryXMLCodec.encodeTypeAndVal(BinaryXMLCodec.XML_DATTR, dictionaryAttr, _ostream);
+			}
+			// Write value
+			BinaryXMLCodec.encodeUString(_ostream, strValue);
 		}
 	}
 	
@@ -199,13 +180,5 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		} catch (IOException e) {
 			throw new ContentEncodingException(e.getMessage(),e);
 		}
-	}
-
-	public BinaryXMLDictionary popXMLDictionary() {
-		return _dictionary.pop();
-	}
-
-	public void pushXMLDictionary(BinaryXMLDictionary dictionary) {
-		_dictionary.push(dictionary);
 	}
 }

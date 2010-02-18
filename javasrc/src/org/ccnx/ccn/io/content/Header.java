@@ -24,6 +24,7 @@ import java.util.HashMap;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -164,29 +165,13 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
     	SegmentationTypeNames.put(SegmentationType.SIMPLE_BLOCK, "SIMPLE_BLOCK");
     	SegmentationNameTypes.put("SIMPLE_BLOCK", SegmentationType.SIMPLE_BLOCK);
     }
-	
-	public static final String START_ELEMENT = "Start";
-	public static final String HEADER_ELEMENT = "Header";
-	
-	/**
-	 * These are specific to simple block fragmentation.
-	 */
-	protected static final String COUNT_ELEMENT = "Count";
-	protected static final String BLOCKSIZE_ELEMENT = "BlockSize";
-	protected static final String LENGTH_ELEMENT = "Length";
-	
-	/**
-	 * These are generic.
-	 */
-	protected static final String CONTENT_DIGEST_ELEMENT = "ContentDigest";
-	protected static final String MERKLE_ROOT_ELEMENT = "RootDigest";
-	
+		
 	/**
 	 * Specific to simple block fragmentation.
 	 */
 	protected long _start;	// starting block number ( >= 0)
 	protected long _count;	// number of blocks in sequence (>= 0)
-	protected int _blockSize; // size in bytes(?) of a block (> 0)
+	protected long _blockSize; // size in bytes(?) of a block (> 0)
 	protected long _length; // total length in bytes (? same unit as _blockSize) to account for partial last block (>= 0)
 
 	
@@ -251,7 +236,7 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		return _count;
 	}
 	public int blockSize() { 
-		return _blockSize;
+		return (int)_blockSize;
 	}
 	public long length() { 
 		return _length;
@@ -280,17 +265,17 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	@Override
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
-		_start = Integer.valueOf(decoder.readUTF8Element(START_ELEMENT));
-		_count = Integer.valueOf(decoder.readUTF8Element(COUNT_ELEMENT));
-		_blockSize = Integer.valueOf(decoder.readUTF8Element(BLOCKSIZE_ELEMENT));
-		_length = Integer.valueOf(decoder.readUTF8Element(LENGTH_ELEMENT));
-		_contentDigest = decoder.readBinaryElement(CONTENT_DIGEST_ELEMENT);
+		_start = decoder.readLongElement(CCNProtocolDTags.Start.getTag());
+		_count = decoder.readLongElement(CCNProtocolDTags.Count.getTag());
+		_blockSize = decoder.readLongElement(CCNProtocolDTags.BlockSize.getTag());
+		_length = decoder.readLongElement(CCNProtocolDTags.Length.getTag());
+		_contentDigest = decoder.readBinaryElement(CCNProtocolDTags.ContentDigest.getTag());
 		if (null == _contentDigest) {
 			throw new ContentDecodingException("Cannot parse content digest.");
 		}
 		
-		if (decoder.peekStartElement(MERKLE_ROOT_ELEMENT)) {
-			_rootDigest = decoder.readBinaryElement(MERKLE_ROOT_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.RootDigest.getTag())) {
+			_rootDigest = decoder.readBinaryElement(CCNProtocolDTags.RootDigest.getTag());
 			if (null == _rootDigest) {
 				throw new ContentDecodingException("Cannot parse root digest.");
 			}
@@ -308,20 +293,20 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
-		encoder.writeElement(START_ELEMENT,	 Long.toString(_start));
-		encoder.writeElement(COUNT_ELEMENT,	 Long.toString(_count));
-		encoder.writeElement(BLOCKSIZE_ELEMENT,	 Long.toString(_blockSize));
-		encoder.writeElement(LENGTH_ELEMENT,	Long.toString(_length));
-		encoder.writeElement(CONTENT_DIGEST_ELEMENT, contentDigest());
+		encoder.writeElement(CCNProtocolDTags.Start.getTag(), _start);
+		encoder.writeElement(CCNProtocolDTags.Count.getTag(), _count);
+		encoder.writeElement(CCNProtocolDTags.BlockSize.getTag(), _blockSize);
+		encoder.writeElement(CCNProtocolDTags.Length.getTag(), _length);
+		encoder.writeElement(CCNProtocolDTags.ContentDigest.getTag(), contentDigest());
 		if (null != rootDigest())
-			encoder.writeElement(MERKLE_ROOT_ELEMENT, rootDigest());
+			encoder.writeElement(CCNProtocolDTags.RootDigest.getTag(), rootDigest());
 		encoder.writeEndElement();
 		
 		// DKS -- currently not putting _type on the wire, not sure why it's here...
 	}
 
 	@Override
-	public String getElementLabel() { return HEADER_ELEMENT; }
+	public Long getElementLabel() { return CCNProtocolDTags.Header.getTag(); }
 
 	@Override
 	public boolean validate() {
@@ -342,7 +327,7 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + _blockSize;
+		result = prime * result + (int) (_blockSize ^ (_blockSize >>> 32));
 		result = prime * result + Arrays.hashCode(_contentDigest);
 		result = prime * result + (int) (_count ^ (_count >>> 32));
 		result = prime * result + (int) (_length ^ (_length >>> 32));

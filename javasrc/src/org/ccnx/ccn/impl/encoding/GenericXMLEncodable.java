@@ -142,7 +142,7 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 	
 	public abstract void encode(XMLEncoder encoder) throws ContentEncodingException;
 	
-	public abstract String getElementLabel();
+	public abstract Long getElementLabel();
 
 	public abstract boolean validate();
 	
