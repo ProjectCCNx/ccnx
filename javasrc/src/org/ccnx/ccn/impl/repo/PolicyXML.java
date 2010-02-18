@@ -141,7 +141,7 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 			Long startElement = decoder.peekStartElementAsLong();
 			
 			for (PolicyElement element : PolicyElement.values()) {
-				if (startElement.equals(element.getTagValue())) {
+				if (element.getTagValue().equals(startElement)) {
 					foundElement = element;
 					break;
 				}		
