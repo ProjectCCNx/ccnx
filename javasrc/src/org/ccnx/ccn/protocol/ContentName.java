@@ -1179,7 +1179,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 	
 	@Override
-	public Long getElementLabel() { 
+	public long getElementLabel() { 
 		return CCNProtocolDTags.Name.getTag();
 	}
 

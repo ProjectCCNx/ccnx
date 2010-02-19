@@ -333,7 +333,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	}
 
 	@Override
-	public Long getElementLabel() { return CCNProtocolDTags.Exclude.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Exclude.getTag(); }
 
 	@Override
 	public boolean validate() {

@@ -41,7 +41,7 @@ public abstract class GenericXMLEncoder extends GenericXMLHandler implements XML
 		writeStartElement(tag, null);
 	}
 	
-	public void writeStartElement(Long tag) throws ContentEncodingException {
+	public void writeStartElement(long tag) throws ContentEncodingException {
 		writeStartElement(tag, null);
 	}
 	
@@ -49,7 +49,7 @@ public abstract class GenericXMLEncoder extends GenericXMLHandler implements XML
 		writeElement(tag, utf8Content, null);
 	}
 
-	public void writeElement(Long tag, String utf8Content) throws ContentEncodingException {
+	public void writeElement(long tag, String utf8Content) throws ContentEncodingException {
 		writeElement(tag, utf8Content, null);
 	}
 
@@ -61,7 +61,7 @@ public abstract class GenericXMLEncoder extends GenericXMLHandler implements XML
 		writeEndElement();
 	}
 	
-	public void writeElement(Long tag, String utf8Content,
+	public void writeElement(long tag, String utf8Content,
 			TreeMap<String, String> attributes) throws ContentEncodingException {
 		writeStartElement(tag, attributes);
 		// Will omit if 0-length
@@ -73,7 +73,7 @@ public abstract class GenericXMLEncoder extends GenericXMLHandler implements XML
 		writeElement(tag, binaryContent, null);
 	}
 
-	public void writeElement(Long tag, byte[] binaryContent) throws ContentEncodingException {
+	public void writeElement(long tag, byte[] binaryContent) throws ContentEncodingException {
 		writeElement(tag, binaryContent, null);
 	}
 
@@ -81,7 +81,7 @@ public abstract class GenericXMLEncoder extends GenericXMLHandler implements XML
 		writeElement(tag, binaryContent, offset, length, null);
 	}
 
-	public void writeElement(Long tag, byte[] binaryContent, int offset, int length) throws ContentEncodingException {
+	public void writeElement(long tag, byte[] binaryContent, int offset, int length) throws ContentEncodingException {
 		writeElement(tag, binaryContent, offset, length, null);
 	}
 
@@ -94,7 +94,7 @@ public abstract class GenericXMLEncoder extends GenericXMLHandler implements XML
 		writeEndElement();
 	}
 
-	public void writeElement(Long tag, byte[] binaryContent,
+	public void writeElement(long tag, byte[] binaryContent,
 			TreeMap<String, String> attributes) throws ContentEncodingException {
 		writeStartElement(tag, attributes);
 		// Will omit if 0-length
@@ -111,7 +111,7 @@ public abstract class GenericXMLEncoder extends GenericXMLHandler implements XML
 		writeEndElement();
 	}
 
-	public void writeElement(Long tag, byte[] binaryContent,
+	public void writeElement(long tag, byte[] binaryContent,
 			int offset, int length,
 			TreeMap<String, String> attributes) throws ContentEncodingException {
 		writeStartElement(tag, attributes);
@@ -120,19 +120,11 @@ public abstract class GenericXMLEncoder extends GenericXMLHandler implements XML
 		writeEndElement();
 	}
 
-	public void writeElement(String tag, Integer value) throws ContentEncodingException {
-		writeElement(tag, value.toString());
+	public void writeElement(String tag, long value) throws ContentEncodingException {
+		writeElement(tag, Long.toString(value));
 	}
 
-	public void writeElement(Long tag, Integer value) throws ContentEncodingException {
-		writeElement(tag, value.toString());
-	}
-
-	public void writeElement(String tag, Long value) throws ContentEncodingException {
-		writeElement(tag, value.toString());
-	}
-
-	public void writeElement(Long tag, Long value) throws ContentEncodingException {
-		writeElement(tag, value.toString());
+	public void writeElement(long tag, long value) throws ContentEncodingException {
+		writeElement(tag, Long.toString(value));
 	}
 }

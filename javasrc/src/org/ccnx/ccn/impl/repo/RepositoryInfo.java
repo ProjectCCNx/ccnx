@@ -102,7 +102,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		}
 		
 		@Override
-		public Long getElementLabel() { return CCNProtocolDTags.GlobalPrefixName.getTag(); }
+		public long getElementLabel() { return CCNProtocolDTags.GlobalPrefixName.getTag(); }
 	}
 	
 	protected static final HashMap<RepoInfoType, String> _InfoTypeNames = new HashMap<RepoInfoType, String>();
@@ -353,7 +353,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	}
 
 	@Override
-	public Long getElementLabel() { return CCNProtocolDTags.RepositoryInfo.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.RepositoryInfo.getTag(); }
 
 	@Override
 	public boolean validate() {

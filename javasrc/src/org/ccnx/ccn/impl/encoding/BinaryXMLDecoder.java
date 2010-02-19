@@ -91,7 +91,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 		}
 	}
 	
-	public void readStartElement(Long startTag,
+	public void readStartElement(long startTag,
 			TreeMap<String, String> attributes) throws ContentDecodingException {
 		try {
 			BinaryXMLCodec.TypeAndVal tv = BinaryXMLCodec.decodeTypeAndVal(_istream);
@@ -113,7 +113,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 				decodedTag = tv.val();
 			}
 
-			if ((null ==  decodedTag) || (!decodedTag.equals(startTag))) {
+			if ((null ==  decodedTag) || (decodedTag.longValue() != startTag)) {
 				throw new ContentDecodingException("Expected start element: " + startTag + " got: " + decodedTag + "(" + tv.val() + ")");
 			}
 

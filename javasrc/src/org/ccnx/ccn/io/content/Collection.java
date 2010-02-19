@@ -288,7 +288,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	}
 	
 	@Override
-	public Long getElementLabel() { return CCNProtocolDTags.Collection.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Collection.getTag(); }
 
 	@Override
 	public int hashCode() {

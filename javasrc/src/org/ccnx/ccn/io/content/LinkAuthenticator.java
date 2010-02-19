@@ -206,7 +206,7 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 	}
 	
 	@Override
-	public Long getElementLabel() { return CCNProtocolDTags.LinkAuthenticator.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.LinkAuthenticator.getTag(); }
 
 	@Override
 	public boolean validate() {

@@ -91,7 +91,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		public WrappingKeyName() {}
 		
 		@Override
-		public Long getElementLabel() { 
+		public long getElementLabel() { 
 			return CCNProtocolDTags.WrappingKeyName.getTag();
 		}
 	}
@@ -569,7 +569,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	}
 
 	@Override
-	public Long getElementLabel() { 
+	public long getElementLabel() { 
 		return CCNProtocolDTags.WrappedKey.getTag();
 	}
 

@@ -372,7 +372,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	}
 
 	@Override
-	public Long getElementLabel() { return CCNProtocolDTags.ContentObject.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.ContentObject.getTag(); }
 
 	@Override
 	public boolean validate() { 

@@ -269,7 +269,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	}
 	
 	@Override
-	public Long getElementLabel() { return CCNProtocolDTags.Link.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Link.getTag(); }
 
 	@Override
 	public boolean validate() {

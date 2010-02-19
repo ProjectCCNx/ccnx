@@ -70,7 +70,7 @@ public interface XMLDecoder {
 	 * @param startTag next tag we expect to occur
 	 * @throws ContentDecodingException if that tag does not occur, or another error is encountered
 	 */
-	public void readStartElement(Long startTag) throws ContentDecodingException;
+	public void readStartElement(long startTag) throws ContentDecodingException;
 		
 	/**
 	 * Reads an expected element start tag from the stream, extracting any
@@ -89,7 +89,7 @@ public interface XMLDecoder {
 	 * @param attributes map into which we store (attribute, value) pairs
 	 * @throws ContentDecodingException if that tag does not occur, or another error is encountered
 	 */
-	public void readStartElement(Long startTag,
+	public void readStartElement(long startTag,
 			TreeMap<String,String> attributes) throws ContentDecodingException;
 
 	/**
@@ -110,7 +110,7 @@ public interface XMLDecoder {
 	 * @return true if that is the next tag, false otherwise
 	 * @throws ContentDecodingException if an error is encountered
 	 */
-	public boolean peekStartElement(Long startTag) throws ContentDecodingException;
+	public boolean peekStartElement(long startTag) throws ContentDecodingException;
 	
 	/**
 	 * Pulls the next tag out of the stream and then resets the stream to the
@@ -125,7 +125,7 @@ public interface XMLDecoder {
 	 * Pulls the next tag out of the stream and then resets the stream to the
 	 * point before that tag. Requires the underlying stream to return true
 	 * from InputStream#markSupported().
-	 * @return the next tag found
+	 * @return the next tag found, or null if not a start element
 	 * @throws ContentDecodingException if there is an error reading the stream or decoding the tag
 	 */
 	public Long peekStartElementAsLong() throws ContentDecodingException;
@@ -156,7 +156,7 @@ public interface XMLDecoder {
 	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
 	 * 		decoding the element
 	 */
-	public String readUTF8Element(Long startTag,
+	public String readUTF8Element(long startTag,
 			TreeMap<String,String> attributes) throws ContentDecodingException;	
 
 	/**
@@ -175,7 +175,7 @@ public interface XMLDecoder {
 	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
 	 * 		decoding the element
 	 */
-	public String readUTF8Element(Long startTag) throws ContentDecodingException;
+	public String readUTF8Element(long startTag) throws ContentDecodingException;
 	
 	/**
 	 * Read a binary element from the stream.
@@ -195,7 +195,7 @@ public interface XMLDecoder {
 	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
 	 * 		decoding the element
 	 */
-	public byte [] readBinaryElement(Long startTag, TreeMap<String,String> attributes) throws ContentDecodingException;
+	public byte [] readBinaryElement(long startTag, TreeMap<String,String> attributes) throws ContentDecodingException;
 	
 	/**
 	 * Read a binary element with no attributes from the stream.
@@ -213,7 +213,7 @@ public interface XMLDecoder {
 	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
 	 * 		decoding the element
 	 */
-	public byte [] readBinaryElement(Long startTag) throws ContentDecodingException;
+	public byte [] readBinaryElement(long startTag) throws ContentDecodingException;
 	
 	/**
 	 * Read and parse a number from the stream. 
@@ -222,7 +222,7 @@ public interface XMLDecoder {
 	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
 	 * 		decoding the element or parsing the integer
 	 */
-	public Long readLongElement(String startTag) throws ContentDecodingException;
+	public long readLongElement(String startTag) throws ContentDecodingException;
 
 	/**
 	 * Read and parse an integer from the stream. 
@@ -231,7 +231,7 @@ public interface XMLDecoder {
 	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
 	 * 		decoding the element or parsing the integer
 	 */
-	public Long readLongElement(Long startTag) throws ContentDecodingException;
+	public long readLongElement(long startTag) throws ContentDecodingException;
 
 	/**
 	 * Read and parse a number from the stream. 
@@ -240,7 +240,7 @@ public interface XMLDecoder {
 	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
 	 * 		decoding the element or parsing the integer
 	 */
-	public Integer readIntegerElement(String startTag) throws ContentDecodingException;
+	public int readIntegerElement(String startTag) throws ContentDecodingException;
 
 	/**
 	 * Read and parse an integer from the stream. 
@@ -249,7 +249,7 @@ public interface XMLDecoder {
 	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
 	 * 		decoding the element or parsing the integer
 	 */
-	public Integer readIntegerElement(Long startTag) throws ContentDecodingException;
+	public int readIntegerElement(long startTag) throws ContentDecodingException;
 
 	/**
 	 * Read and parse a timestamp from the stream. 

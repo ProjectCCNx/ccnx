@@ -489,7 +489,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		
 		if (decoder.peekStartElement(CCNProtocolDTags.AnswerOriginKind.getTag())) {
 			// call setter to handle defaulting
-			answerOriginKind(decoder.readIntegerElement(CCNProtocolDTags.AnswerOriginKind.getTag()));
+			_answerOriginKind = decoder.readIntegerElement(CCNProtocolDTags.AnswerOriginKind.getTag());
 		}
 		
 		if (decoder.peekStartElement(CCNProtocolDTags.Scope.getTag())) {
@@ -543,7 +543,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	}
 	
 	@Override
-	public Long getElementLabel() { return CCNProtocolDTags.Interest.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Interest.getTag(); }
 
 	@Override
 	public boolean validate() {

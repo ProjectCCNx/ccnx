@@ -86,7 +86,7 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		}
 	}
 	
-	public void writeStartElement(Long tag, TreeMap<String, String> attributes) throws ContentEncodingException {
+	public void writeStartElement(long tag, TreeMap<String, String> attributes) throws ContentEncodingException {
 		String strTag = tagToString(tag);
 		if (null == strTag) {
 			strTag = BinaryXMLDictionary.unknownTagMarker(tag);
@@ -162,7 +162,7 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		writeElement(tag, TextXMLCodec.formatDateTime(dateTime));
 	}
 
-	public void writeDateTime(Long tag, CCNTime dateTime) throws ContentEncodingException {
+	public void writeDateTime(long tag, CCNTime dateTime) throws ContentEncodingException {
 		writeElement(tag, TextXMLCodec.formatDateTime(dateTime));
 	}
 

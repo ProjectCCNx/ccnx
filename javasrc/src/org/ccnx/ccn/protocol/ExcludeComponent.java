@@ -58,7 +58,7 @@ public class ExcludeComponent extends Exclude.Element implements Comparable<Excl
 	}
 
 	@Override
-	public Long getElementLabel() { return CCNProtocolDTags.Component.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Component.getTag(); }
 
 	@Override
 	public boolean validate() {

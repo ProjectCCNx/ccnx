@@ -306,7 +306,7 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	}
 
 	@Override
-	public Long getElementLabel() { return CCNProtocolDTags.Header.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Header.getTag(); }
 
 	@Override
 	public boolean validate() {
