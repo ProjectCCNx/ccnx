@@ -2013,7 +2013,6 @@ ccnd_req_newface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
         goto Finish;        
-    // XXX - should verify signature.
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;
@@ -2137,7 +2136,6 @@ ccnd_req_destroyface(struct ccnd_handle *h, const unsigned char *msg, size_t siz
     ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
     if (res < 0)
         goto Finish;        
-    // XXX - should verify signature.
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;
@@ -2197,7 +2195,6 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
         goto Finish;        
-    // XXX - should verify signature.
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;
