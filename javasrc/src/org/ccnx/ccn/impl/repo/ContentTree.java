@@ -23,6 +23,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -34,6 +35,7 @@ import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 
 /**
@@ -122,6 +124,45 @@ public class ContentTree {
 		
 		public int compareTo(TreeNode o1) {
 			return DataUtils.compare(component, o1.component);
+		}
+	}
+	
+	/**
+	 * Prescreen candidates against elements of an interest that we can so
+	 * we don't need to consider candidates that have no chance of matching.
+	 * Currently we prescreen for matching the exclude filter if there is one
+	 * and that the candidate has the correct number of components.
+	 */
+	protected class InterestPreScreener {
+		protected int _minComponents = 0;
+		protected int _maxComponents = 32767;
+		protected Exclude _exclude;
+		protected int _excludeLevel;
+		
+		protected InterestPreScreener(Interest interest, int excludeLevel) {
+			if (null != interest.minSuffixComponents())
+				_minComponents = interest.minSuffixComponents();
+			if (null != interest.maxSuffixComponents())
+				_maxComponents = interest.maxSuffixComponents() + 1;
+			_exclude = interest.exclude();
+			_excludeLevel = excludeLevel;
+		}
+		
+		/**
+		 * Run the prescreen
+		 * @param level
+		 * @return -1 => reject all entries below this
+		 * 			0 => reject this entry but keep searching
+		 * 			1 => keep this entry
+		 */
+		protected int preScreen(TreeNode node, int level) {
+			if (level > _maxComponents)
+				return -1;
+			if (level == _excludeLevel && null != _exclude) {
+				if (_exclude.match(node.component))
+					return -1;
+			}
+			return (level < _minComponents) ? 0 : 1;
 		}
 	}
 	
@@ -466,39 +507,34 @@ public class ContentTree {
 	
 	/**
 	 * Get all nodes below the given one
-	 * If there is a minimum length specified, we at least don't get nodes that are shorter than
-	 * the minimum length.  Likewsise we don't return nodes longer than the maximum length
-	 * 
+	 *
 	 * @param node the starting node
 	 * @param result list of nodes we are looking for
 	 * @param minComponents minimum depth below here
 	 * @param maxComponents maximum depth below here
 	 */
-	protected boolean getSubtreeNodes(TreeNode node, List<TreeNode> result, Integer minComponents, Integer maxComponents) {
+	protected boolean getSubtreeNodes(TreeNode node, List<TreeNode> result, int level, InterestPreScreener ips) {
 		boolean found = false;
-		if (minComponents != null) {
-			minComponents--;
-		}
-		if (maxComponents != null) {
-			if (--maxComponents < 0)
-				return false;
-		}
+		int preScreen = ips.preScreen(node, level);
+		if (preScreen < 0)
+			return false;
 		synchronized(node) {
 			if (null != node.oneChild) {
-				found = getSubtreeNodes(node.oneChild, result, minComponents, maxComponents);
+				found = getSubtreeNodes(node.oneChild, result, ++level, ips);
 			} else if (null != node.children) {
 				for (TreeNode child : node.children.values()) {
-					boolean tmpFound = getSubtreeNodes(child, result, minComponents, maxComponents);
+					boolean tmpFound = getSubtreeNodes(child, result, ++level, ips);
 					if (!found && tmpFound)
 						found = tmpFound;
 				}
 			} else {
-				found = (minComponents == null || minComponents < 0);
+				found = preScreen > 0;
 			}
 		}
 		if (found)
 			result.add(node);
-		Log.finest("getSubtreeNodes - found was {0} and components was {1} ", found, minComponents);
+		if (Log.isLoggable(Level.FINEST))
+			Log.finest("getSubtreeNodes - found was {0}", found);
 		return found;
 	}
 	
@@ -520,10 +556,12 @@ public class ContentTree {
 		// TODO This is very inefficient for all but the most optimal case where the last thing in the
 		// subtree happens to be a perfect match
 		ArrayList<TreeNode> options = new ArrayList<TreeNode>();
-		Integer maxComponents = interest.maxSuffixComponents();
-		if (null != maxComponents)
-			maxComponents++;
-		getSubtreeNodes(node, options, interest.minSuffixComponents(), maxComponents);
+		InterestPreScreener ips = new InterestPreScreener(interest, 1);
+		getSubtreeNodes(node, options, 0, ips);
+		return rightCheck(options, interest, node, getter);
+	}
+	
+	private ContentObject rightCheck(ArrayList<TreeNode> options, Interest interest, TreeNode node, ContentGetter getter) {
 		for (int i = options.size()-1; i >= 0 ; i--) {
 			TreeNode candidate = options.get(i);
 			if (null != candidate.oneContent || null != candidate.content) {

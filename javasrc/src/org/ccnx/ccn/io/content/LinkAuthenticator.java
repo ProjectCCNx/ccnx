@@ -19,6 +19,7 @@ package org.ccnx.ccn.io.content;
 
 import java.util.Arrays;
 
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -34,12 +35,6 @@ import org.ccnx.ccn.protocol.SignedInfo;
  */
 public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodable, Comparable<LinkAuthenticator> {
 
-    public static final String LINK_AUTHENTICATOR_ELEMENT = "LinkAuthenticator";
-    public static final String NAME_COMPONENT_COUNT_ELEMENT = "NameComponentCount";
-    protected static final String TIMESTAMP_ELEMENT = "Timestamp";
-    protected static final String CONTENT_TYPE_ELEMENT = "Type";
-    protected static final String CONTENT_DIGEST_ELEMENT = "ContentDigest";
-   
     protected PublisherID	_publisher = null;
     protected Integer		_nameComponentCount = null;
     protected CCNTime		_timestamp = null;
@@ -155,24 +150,24 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 			_publisher.decode(decoder);
 		}
 
-		if (decoder.peekStartElement(NAME_COMPONENT_COUNT_ELEMENT)) {
-			_nameComponentCount = decoder.readIntegerElement(NAME_COMPONENT_COUNT_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.NameComponentCount.getTag())) {
+			_nameComponentCount = decoder.readIntegerElement(CCNProtocolDTags.NameComponentCount.getTag());
 		}
 
-		if (decoder.peekStartElement(TIMESTAMP_ELEMENT)) {
-			_timestamp = decoder.readDateTime(TIMESTAMP_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.Timestamp.getTag())) {
+			_timestamp = decoder.readDateTime(CCNProtocolDTags.Timestamp.getTag());
 		}
 
-		if (decoder.peekStartElement(CONTENT_TYPE_ELEMENT)) {
-			String strType = decoder.readUTF8Element(CONTENT_TYPE_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.Type.getTag())) {
+			String strType = decoder.readUTF8Element(CCNProtocolDTags.Type.getTag());
 			_type = SignedInfo.nameToType(strType);
 			if (null == _type) {
 				throw new ContentDecodingException("Cannot parse authenticator type: " + strType);
 			}
 		}
 		
-		if (decoder.peekStartElement(CONTENT_DIGEST_ELEMENT)) {
-			_contentDigest = decoder.readBinaryElement(CONTENT_DIGEST_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.ContentDigest.getTag())) {
+			_contentDigest = decoder.readBinaryElement(CCNProtocolDTags.ContentDigest.getTag());
 			if (null == _contentDigest) {
 				throw new ContentDecodingException("Cannot parse content hash.");
 			}
@@ -193,25 +188,25 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		}
 
 		if (!emptyNameComponentCount()) {
-			encoder.writeIntegerElement(NAME_COMPONENT_COUNT_ELEMENT, nameComponentCount());
+			encoder.writeElement(CCNProtocolDTags.NameComponentCount.getTag(), nameComponentCount());
 		}
 
 		if (!emptyTimestamp()) {
-			encoder.writeDateTime(TIMESTAMP_ELEMENT, timestamp());
+			encoder.writeDateTime(CCNProtocolDTags.Timestamp.getTag(), timestamp());
 		}
 		
 		if (!emptyContentType()) {
-			encoder.writeElement(CONTENT_TYPE_ELEMENT, SignedInfo.typeToName(type()));
+			encoder.writeElement(CCNProtocolDTags.Type.getTag(), SignedInfo.typeToName(type()));
 		}
 		
 		if (!emptyContentDigest()) {
-			encoder.writeElement(CONTENT_DIGEST_ELEMENT, contentDigest());
+			encoder.writeElement(CCNProtocolDTags.ContentDigest.getTag(), contentDigest());
 		}
 		encoder.writeEndElement();   		
 	}
 	
 	@Override
-	public String getElementLabel() { return LINK_AUTHENTICATOR_ELEMENT; }
+	public Long getElementLabel() { return CCNProtocolDTags.LinkAuthenticator.getTag(); }
 
 	@Override
 	public boolean validate() {

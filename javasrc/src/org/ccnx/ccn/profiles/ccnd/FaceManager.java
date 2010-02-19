@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLCodecFactory;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
@@ -63,16 +64,6 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 	 * <xs:element name="MulticastTTL" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
 	 * <xs:element name="FreshnessSeconds" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
 	 */
-
-	protected static final String 	FACE_INSTANCE_OBJECT_ELEMENT = "FaceInstance";
-	protected static final String		ACTION_ELEMENT = "Action";
-	protected static final String		FACE_ID_ELEMENT = "FaceID";
-	protected static final String		IP_PROTO_ELEMENT = "IPProto";
-	protected static final String		HOST_ELEMENT = "Host";
-	protected static final String		PORT_ELEMENT = "Port";
-	protected static final String		MC_INTER_ELEMENT = "MulticastInterface";
-	protected static final String		MC_TTL_ELEMENT = "MulticastTTL";
-	protected static final String		FRESHNESS_ELEMENT = "FreshnessSeconds";
 
 	protected String		_action;
 	protected PublisherPublicKeyDigest _ccndID;
@@ -177,18 +168,18 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 	 */
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
-		if (decoder.peekStartElement(ACTION_ELEMENT)) {
-			_action = decoder.readUTF8Element(ACTION_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.Action.getTag())) {
+			_action = decoder.readUTF8Element(CCNProtocolDTags.Action.getTag()); 
 		}
-		if (decoder.peekStartElement(PublisherPublicKeyDigest.PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT)) {
+		if (decoder.peekStartElement(CCNProtocolDTags.PublisherPublicKeyDigest.getTag())) {
 			_ccndID = new PublisherPublicKeyDigest();
 			_ccndID.decode(decoder);
 		}
-		if (decoder.peekStartElement(FACE_ID_ELEMENT)) {
-			_faceID = decoder.readIntegerElement(FACE_ID_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.FaceID.getTag())) {
+			_faceID = decoder.readIntegerElement(CCNProtocolDTags.FaceID.getTag()); 
 		}
-		if (decoder.peekStartElement(IP_PROTO_ELEMENT)) {
-			Integer proto = decoder.readIntegerElement(IP_PROTO_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.IPProto.getTag())) {
+			Integer proto = decoder.readIntegerElement(CCNProtocolDTags.IPProto.getTag());
 			int pI = proto.intValue();
 			_ipProto = null;
 			if (NetworkProtocol.TCP.value().intValue() == pI) {
@@ -196,23 +187,23 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 			} else if (NetworkProtocol.UDP.value().intValue() == pI) {
 				_ipProto = NetworkProtocol.UDP;
 			} else {
-				throw new ContentDecodingException("FaceInstance.decoder.  Invalid " + IP_PROTO_ELEMENT + " field: " + proto.toString());
+				throw new ContentDecodingException("FaceInstance.decoder.  Invalid " + CCNProtocolDTags.IPProto.name() + " field: " + proto.toString());
 			}
 		}
-		if (decoder.peekStartElement(HOST_ELEMENT)) {
-			_host = decoder.readUTF8Element(HOST_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.Host.getTag())) {
+			_host = decoder.readUTF8Element(CCNProtocolDTags.Host.getTag()); 
 		}
-		if (decoder.peekStartElement(PORT_ELEMENT)) {
-			 _port = decoder.readIntegerElement(PORT_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.Port.getTag())) {
+			 _port = decoder.readIntegerElement(CCNProtocolDTags.Port.getTag()); 
 		}
-		if (decoder.peekStartElement(MC_INTER_ELEMENT)) {
-			_multicastInterface = decoder.readUTF8Element(MC_INTER_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.MulticastInterface.getTag())) {
+			_multicastInterface = decoder.readUTF8Element(CCNProtocolDTags.MulticastInterface.getTag()); 
 		}
-		if (decoder.peekStartElement(MC_TTL_ELEMENT)) {
-			_multicastTTL = decoder.readIntegerElement(MC_TTL_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.MulticastTTL.getTag())) {
+			_multicastTTL = decoder.readIntegerElement(CCNProtocolDTags.MulticastTTL.getTag()); 
 		}
-		if (decoder.peekStartElement(FRESHNESS_ELEMENT)) {
-			_lifetime = decoder.readIntegerElement(FRESHNESS_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.FreshnessSeconds.getTag())) {
+			_lifetime = decoder.readIntegerElement(CCNProtocolDTags.FreshnessSeconds.getTag()); 
 		}
 		decoder.readEndElement();
 	}
@@ -227,36 +218,36 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 		}
 		encoder.writeStartElement(getElementLabel());
 		if (null != _action && _action.length() != 0)
-			encoder.writeElement(ACTION_ELEMENT, _action);	
+			encoder.writeElement(CCNProtocolDTags.Action.getTag(), _action);	
 		if (null != _ccndID) {
 			_ccndID.encode(encoder);
 		}
 		if (null != _faceID) {
-			encoder.writeIntegerElement(FACE_ID_ELEMENT, _faceID);
+			encoder.writeElement(CCNProtocolDTags.FaceID.getTag(), _faceID);
 		}
 		if (null != _ipProto) {
-			encoder.writeIntegerElement(IP_PROTO_ELEMENT, _ipProto.value());
+			encoder.writeElement(CCNProtocolDTags.IPProto.getTag(), _ipProto.value());
 		}
 		if (null != _host && _host.length() != 0) {
-			encoder.writeElement(HOST_ELEMENT, _host);	
+			encoder.writeElement(CCNProtocolDTags.Host.getTag(), _host);	
 		}
 		if (null != _port) {
-			encoder.writeIntegerElement(PORT_ELEMENT, _port);
+			encoder.writeElement(CCNProtocolDTags.Port.getTag(), _port);
 		}
 		if (null != _multicastInterface && _multicastInterface.length() != 0) {
-			encoder.writeElement(MC_INTER_ELEMENT, _multicastInterface);
+			encoder.writeElement(CCNProtocolDTags.MulticastInterface.getTag(), _multicastInterface);
 		}
 		if (null != _multicastTTL) {
-			encoder.writeIntegerElement(MC_TTL_ELEMENT, _multicastTTL);
+			encoder.writeElement(CCNProtocolDTags.MulticastTTL.getTag(), _multicastTTL);
 		}
 		if (null != _lifetime) {
-			encoder.writeIntegerElement(FRESHNESS_ELEMENT, _lifetime);
+			encoder.writeElement(CCNProtocolDTags.FreshnessSeconds.getTag(), _lifetime);
 		}
 		encoder.writeEndElement();   			
 	}
 
 	@Override
-	public String getElementLabel() { return FACE_INSTANCE_OBJECT_ELEMENT; }
+	public Long getElementLabel() { return CCNProtocolDTags.FaceInstance.getTag(); }
 
 	@Override
 	public boolean validate() {

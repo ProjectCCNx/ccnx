@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -59,11 +60,11 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 		_contents = new ArrayList<GenericXMLEncodable>();
 		
 		while (!done) {
-			if (decoder.peekStartElement(Interest.INTEREST_ELEMENT)) {
+			if (decoder.peekStartElement(CCNProtocolDTags.Interest.getTag())) {
 				Interest interest = new Interest();
 				interest.decode(decoder);
 				_contents.add(interest);
-			} else if (decoder.peekStartElement(ContentObject.CONTENT_OBJECT_ELEMENT)) {
+			} else if (decoder.peekStartElement(CCNProtocolDTags.ContentObject.getTag())) {
 				ContentObject data = new ContentObject();
 				data.decode(decoder);
 				if( Log.isLoggable(Level.FINEST) )
@@ -105,7 +106,7 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 	}
 	
 	@Override
-	public String getElementLabel() { // unused, we add nothing to encoding
+	public Long getElementLabel() { // unused, we add nothing to encoding
 		return null;
 	}
 	
