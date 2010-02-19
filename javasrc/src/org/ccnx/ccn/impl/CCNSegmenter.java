@@ -111,7 +111,7 @@ public class CCNSegmenter {
 	// and not signing them till flush()).
 
 	public static final String PROP_BLOCK_SIZE = "ccn.lib.blocksize";
-	public static final Long LAST_SEGMENT = Long.valueOf(-1);
+	public static final long LAST_SEGMENT = Long.valueOf(-1);
 
 	protected int _blockSize = SegmentationProfile.DEFAULT_BLOCKSIZE;
 	protected int _blockIncrement = SegmentationProfile.DEFAULT_INCREMENT;
@@ -482,7 +482,7 @@ public class CCNSegmenter {
 
 		byte [] finalBlockID = null;
 		if (null != finalSegmentIndex) {
-			if (finalSegmentIndex.equals(CCNSegmenter.LAST_SEGMENT)) {
+			if (finalSegmentIndex.longValue() == CCNSegmenter.LAST_SEGMENT) {
 				// compute final segment number
 				// compute final segment number; which might be this one if blockCount == 1
 				int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
@@ -578,7 +578,7 @@ public class CCNSegmenter {
 
 		byte [] finalBlockID = null;
 		if (null != finalSegmentIndex) {
-			if (finalSegmentIndex.equals(CCNSegmenter.LAST_SEGMENT)) {
+			if (finalSegmentIndex.longValue() == CCNSegmenter.LAST_SEGMENT) {
 				long length = 0;
 				for (int j = firstBlockIndex; j < firstBlockIndex + blockCount - 1; j++) {
 					length += contentBlocks[j].length;
@@ -666,7 +666,7 @@ public class CCNSegmenter {
 		_flowControl.addNameSpace(rootName);
 
 		byte [] finalBlockID = ((null == finalSegmentIndex) ? null : 
-			((finalSegmentIndex.equals(LAST_SEGMENT)) ? 
+			((finalSegmentIndex.longValue() == LAST_SEGMENT) ? 
 					SegmentationProfile.getSegmentNumberNameComponent(segmentNumber) : 
 						SegmentationProfile.getSegmentNumberNameComponent(finalSegmentIndex)));
 
