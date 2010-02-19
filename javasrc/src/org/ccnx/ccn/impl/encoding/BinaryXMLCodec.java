@@ -228,14 +228,12 @@ public class BinaryXMLCodec implements XMLCodec {
 		int next;
 		int type = -1;
 		long val = 0;
-		
+		boolean more = true;
+
 		do {
 			next = istream.read();
 			
 			if (next < 0) {
-				if (istream instanceof org.ccnx.ccn.io.CCNInputStream) {
-					Log.info("Reached EOF in decodeTypeAndVal.");
-				}
 				return null; // at EOF
 			}
 			
@@ -247,7 +245,9 @@ public class BinaryXMLCodec implements XMLCodec {
 				return null;
 			}
 			
-			if (0 == (next & XML_TT_NO_MORE)) {
+			more = (0 == (next & XML_TT_NO_MORE));
+			
+			if  (more) {
 				val = val << XML_REG_VAL_BITS;
 				val |= (next & XML_REG_VAL_MASK);
 			} else {
@@ -257,7 +257,7 @@ public class BinaryXMLCodec implements XMLCodec {
 				val |= ((next >>> XML_TT_BITS) & XML_TT_VAL_MASK);
 			}
 			
-		} while (0 == (next & XML_TT_NO_MORE));
+		} while (more);
 		
 		return new TypeAndVal(type, val);
 	}
