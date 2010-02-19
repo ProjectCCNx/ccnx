@@ -21,6 +21,7 @@ import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -48,8 +49,6 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 		Comparable<Exclude> {
 	
-	public static final String EXCLUDE_ELEMENT = "Exclude";
-	public static final String BLOOM_SEED = "BloomSeed";
 	public static int OPTIMUM_FILTER_SIZE = 100;
 	
 	/**
@@ -304,8 +303,9 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 		synchronized (_values) {
 			boolean component;
 			boolean any = false;
-			while ((component = decoder.peekStartElement(ExcludeComponent.COMPONENT_ELEMENT)) || (any = decoder.peekStartElement(ExcludeAny.ANY)) ||
-						decoder.peekStartElement(BloomFilter.BLOOM_ELEMENT)) {
+			while ((component = decoder.peekStartElement(CCNProtocolDTags.Component.getTag())) || 
+					(any = decoder.peekStartElement(CCNProtocolDTags.Any.getTag())) ||
+						decoder.peekStartElement(CCNProtocolDTags.Bloom.getTag())) {
 				Element ee = component?new ExcludeComponent(): any ? new ExcludeAny() : new BloomFilter();
 				ee.decode(decoder);
 				_values.add(ee);
@@ -333,7 +333,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	}
 
 	@Override
-	public String getElementLabel() { return EXCLUDE_ELEMENT; }
+	public long getElementLabel() { return CCNProtocolDTags.Exclude.getTag(); }
 
 	@Override
 	public boolean validate() {

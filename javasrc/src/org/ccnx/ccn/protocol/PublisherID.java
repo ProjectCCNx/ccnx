@@ -23,8 +23,8 @@ import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
-import java.util.HashMap;
 
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -41,8 +41,6 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * Helper wrapper class for publisher IDs. This encodes and decodes
  * as one of 4 inline options, one of which also appears separately
  * as the PublisherPublicKeyDigest.
- * @author smetters
- *
  */
 public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Comparable<PublisherID>, Serializable {
 
@@ -53,26 +51,51 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public static final String PUBLISHER_ID_DIGEST_ALGORITHM = "SHA-256";
     public static final int PUBLISHER_ID_LEN = 256/8;
-    public enum PublisherType {KEY, CERTIFICATE, ISSUER_KEY, ISSUER_CERTIFICATE};
-
-    protected static final HashMap<PublisherType, String> TypeNames = new HashMap<PublisherType, String>();
-    protected static final HashMap<String, PublisherType> NameTypes = new HashMap<String, PublisherType>();
     
-    public static final String PUBLISHER_CERTIFICATE_DIGEST_ELEMENT = "PublisherCertificateDigest";
-    public static final String PUBLISHER_ISSUER_KEY_DIGEST = "PublisherIssuerKeyDigest";
-    public static final String PUBLISHER_ISSUER_CERTFICIATE_DIGEST = "PublisherIssuerCertificateDigest";
+    /**
+     * Encoded as an inline choice. Have to map from the type field to the encoding value.
+     */
+    public enum PublisherType {
+    	KEY 		(CCNProtocolDTags.PublisherPublicKeyDigest), 
+    	CERTIFICATE (CCNProtocolDTags.PublisherCertificateDigest), 
+    	ISSUER_KEY	(CCNProtocolDTags.PublisherIssuerKeyDigest), 
+    	ISSUER_CERTIFICATE	(CCNProtocolDTags.PublisherIssuerCertificateDigest);
     
-    static {
-        TypeNames.put(PublisherType.KEY, PublisherPublicKeyDigest.PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT);
-        TypeNames.put(PublisherType.CERTIFICATE, PUBLISHER_CERTIFICATE_DIGEST_ELEMENT);
-        TypeNames.put(PublisherType.ISSUER_KEY, PUBLISHER_ISSUER_KEY_DIGEST);
-        TypeNames.put(PublisherType.ISSUER_CERTIFICATE, PUBLISHER_ISSUER_CERTFICIATE_DIGEST);
-        NameTypes.put(PublisherPublicKeyDigest.PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT, PublisherType.KEY);
-        NameTypes.put(PUBLISHER_CERTIFICATE_DIGEST_ELEMENT, PublisherType.CERTIFICATE);
-        NameTypes.put(PUBLISHER_ISSUER_KEY_DIGEST, PublisherType.ISSUER_KEY);
-        NameTypes.put(PUBLISHER_ISSUER_CERTFICIATE_DIGEST, PublisherType.ISSUER_CERTIFICATE);
-    }
-
+    	final CCNProtocolDTags _tag;
+    	
+    	PublisherType(CCNProtocolDTags tag) {
+    		this._tag = tag;
+    	}
+    	
+    	public CCNProtocolDTags getTag() { return _tag; }
+    	
+    	public static boolean isTypeTagVal(long tagVal) {
+    		if ((tagVal == CCNProtocolDTags.PublisherPublicKeyDigest.getTag()) ||
+    			(tagVal == CCNProtocolDTags.PublisherCertificateDigest.getTag()) ||
+    			(tagVal == CCNProtocolDTags.PublisherIssuerKeyDigest.getTag()) ||
+    			(tagVal == CCNProtocolDTags.PublisherIssuerCertificateDigest.getTag())) {
+    			return true;
+    		}
+    		return false;
+     	}
+    	
+    	public static PublisherType tagValToType(long tagVal) {
+       		if (tagVal == CCNProtocolDTags.PublisherPublicKeyDigest.getTag()) {
+       			return KEY;
+       		}
+        	if (tagVal == CCNProtocolDTags.PublisherCertificateDigest.getTag()) {
+        		return CERTIFICATE;
+        	}
+        	if (tagVal == CCNProtocolDTags.PublisherIssuerKeyDigest.getTag()) {
+        		return ISSUER_KEY;
+        	}
+        	if (tagVal == CCNProtocolDTags.PublisherIssuerCertificateDigest.getTag()) {
+        		return ISSUER_CERTIFICATE;
+        	}
+        	return null;
+    	}
+    };
+    
     protected byte [] _publisherID;
     protected PublisherType _publisherType;
     
@@ -193,25 +216,13 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @return
 	 */
 	public static boolean isPublisherType(String name) {
-		return NameTypes.containsKey(name);
-	}
-	
-	/**
-	 * Name conversion routines for enums. Unnecessary and will be removed.
-	 * @param type
-	 * @return
-	 */
-	public static String typeToName(PublisherType type) {
-		return TypeNames.get(type);
-	}
-
-	/**
-	 * Name conversion routines for enums. Unnecessary and will be elided.
-	 * @param name
-	 * @return
-	 */
-	public static PublisherType nameToType(String name) {
-		return NameTypes.get(name);
+		try {
+			if (null != PublisherType.valueOf(name)) {
+				return true;
+			}
+		} catch (IllegalArgumentException e) {
+		}
+		return false;
 	}
 	
 	/**
@@ -219,21 +230,25 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	 * when it might be optional, without them having to know about the structure.
 	 */
 	public static boolean peek(XMLDecoder decoder) throws ContentDecodingException {
-		String nextTag = decoder.peekStartElement();
-		return (null != nameToType(nextTag));
+		Long nextTag = decoder.peekStartElementAsLong();
+		if (null == nextTag) {
+			// on end element
+			return false;
+		}
+		return (PublisherType.isTypeTagVal(nextTag));
 	}
 
 	@Override
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		
 		// We have a choice here of one of 4 binary element types.
-		String nextTag = decoder.peekStartElement();
+		Long nextTag = decoder.peekStartElementAsLong();
 		
 		if (null == nextTag) {
 			throw new ContentDecodingException("Cannot parse publisher ID.");
 		} 
 		
-		_publisherType = nameToType(nextTag); 
+		_publisherType = PublisherType.tagValToType(nextTag); 
 		
 		if (null == _publisherType) {
 			throw new ContentDecodingException("Invalid publisher ID, got unexpected type: " + nextTag);
@@ -256,7 +271,9 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 	
 	@Override
-	public String getElementLabel() { return typeToName(type()); }
+	public long getElementLabel() { 
+		return type().getTag().getTag();
+	}
 
 	@Override
 	public boolean validate() {
@@ -317,7 +334,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
  	public int compareTo(PublisherID o) {
 		int result = DataUtils.compare(this.id(), o.id());
 		if (0 == result) {
-			result = typeToName(this.type()).compareTo(typeToName(o.type()));
+			result = (this.type().name()).compareTo(o.type().name());
 		}
 		return result;
 	}
@@ -325,6 +342,6 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	@Override
 	public String toString() {
 		// 	16 would be the most familiar option, but 32 is shorter
-		return typeToName(type()) + ":" + CCNDigestHelper.printBytes(id(), 32);
+		return type().name() + ":" + CCNDigestHelper.printBytes(id(), 32);
 	}
 }

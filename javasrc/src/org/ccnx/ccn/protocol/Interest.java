@@ -23,6 +23,7 @@ import java.util.Random;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.TrustManager;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -45,14 +46,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	// Used to remove spurious *'s
 	public static final String RECURSIVE_POSTFIX = "*";
-	
-	public static final String INTEREST_ELEMENT = "Interest";
-	public static final String MAX_SUFFIX_COMPONENTS = "MaxSuffixComponents";
-	public static final String MIN_SUFFIX_COMPONENTS = "MinSuffixComponents";
-	public static final String CHILD_SELECTOR = "ChildSelector";
-	public static final String ANSWER_ORIGIN_KIND = "AnswerOriginKind";
-	public static final String SCOPE_ELEMENT = "Scope";
-	public static final String NONCE_ELEMENT = "Nonce";
 	
 	// ChildSelector values
 	public static final int CHILD_SELECTOR_LEFT = 0;
@@ -472,12 +465,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		_name = new ContentName();
 		_name.decode(decoder);
 		
-		if (decoder.peekStartElement(MIN_SUFFIX_COMPONENTS)) {
-			_minSuffixComponents = decoder.readIntegerElement(MIN_SUFFIX_COMPONENTS);
+		if (decoder.peekStartElement(CCNProtocolDTags.MinSuffixComponents.getTag())) {
+			_minSuffixComponents = decoder.readIntegerElement(CCNProtocolDTags.MinSuffixComponents.getTag());
 		}
 		
-		if (decoder.peekStartElement(MAX_SUFFIX_COMPONENTS)) {
-			_maxSuffixComponents = decoder.readIntegerElement(MAX_SUFFIX_COMPONENTS);
+		if (decoder.peekStartElement(CCNProtocolDTags.MaxSuffixComponents.getTag())) {
+			_maxSuffixComponents = decoder.readIntegerElement(CCNProtocolDTags.MaxSuffixComponents.getTag());
 		}
 				
 		if (PublisherID.peek(decoder)) {
@@ -485,26 +478,26 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			_publisher.decode(decoder);
 		}
 
-		if (decoder.peekStartElement(Exclude.EXCLUDE_ELEMENT)) {
+		if (decoder.peekStartElement(CCNProtocolDTags.Exclude.getTag())) {
 			_exclude = new Exclude();
 			_exclude.decode(decoder);
 		}
 		
-		if (decoder.peekStartElement(CHILD_SELECTOR)) {
-			_childSelector = decoder.readIntegerElement(CHILD_SELECTOR);
+		if (decoder.peekStartElement(CCNProtocolDTags.ChildSelector.getTag())) {
+			_childSelector = decoder.readIntegerElement(CCNProtocolDTags.ChildSelector.getTag());
 		}
 		
-		if (decoder.peekStartElement(ANSWER_ORIGIN_KIND)) {
+		if (decoder.peekStartElement(CCNProtocolDTags.AnswerOriginKind.getTag())) {
 			// call setter to handle defaulting
-			answerOriginKind(decoder.readIntegerElement(ANSWER_ORIGIN_KIND));
+			_answerOriginKind = decoder.readIntegerElement(CCNProtocolDTags.AnswerOriginKind.getTag());
 		}
 		
-		if (decoder.peekStartElement(SCOPE_ELEMENT)) {
-			_scope = decoder.readIntegerElement(SCOPE_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.Scope.getTag())) {
+			_scope = decoder.readIntegerElement(CCNProtocolDTags.Scope.getTag());
 		}
 		
-		if (decoder.peekStartElement(NONCE_ELEMENT)) {
-			_nonce = decoder.readBinaryElement(NONCE_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.Nonce.getTag())) {
+			_nonce = decoder.readBinaryElement(CCNProtocolDTags.Nonce.getTag());
 		}
 		
 		try {
@@ -523,10 +516,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		name().encode(encoder);
 	
 		if (null != minSuffixComponents()) 
-			encoder.writeIntegerElement(MIN_SUFFIX_COMPONENTS, minSuffixComponents());	
+			encoder.writeElement(CCNProtocolDTags.MinSuffixComponents.getTag(), minSuffixComponents());	
 
 		if (null != maxSuffixComponents()) 
-			encoder.writeIntegerElement(MAX_SUFFIX_COMPONENTS, maxSuffixComponents());
+			encoder.writeElement(CCNProtocolDTags.MaxSuffixComponents.getTag(), maxSuffixComponents());
 
 		if (null != publisherID())
 			publisherID().encode(encoder);
@@ -535,22 +528,22 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			exclude().encode(encoder);
 
 		if (null != childSelector()) 
-			encoder.writeIntegerElement(CHILD_SELECTOR, childSelector());
+			encoder.writeElement(CCNProtocolDTags.ChildSelector.getTag(), childSelector());
 
 		if (DEFAULT_ANSWER_ORIGIN_KIND != answerOriginKind()) 
-			encoder.writeIntegerElement(ANSWER_ORIGIN_KIND, answerOriginKind());
+			encoder.writeElement(CCNProtocolDTags.AnswerOriginKind.getTag(), answerOriginKind());
 
 		if (null != scope()) 
-			encoder.writeIntegerElement(SCOPE_ELEMENT, scope());
+			encoder.writeElement(CCNProtocolDTags.Scope.getTag(), scope());
 		
 		if (null != nonce())
-			encoder.writeElement(NONCE_ELEMENT, nonce());
+			encoder.writeElement(CCNProtocolDTags.Nonce.getTag(), nonce());
 		
 		encoder.writeEndElement();   		
 	}
 	
 	@Override
-	public String getElementLabel() { return INTEREST_ELEMENT; }
+	public long getElementLabel() { return CCNProtocolDTags.Interest.getTag(); }
 
 	@Override
 	public boolean validate() {

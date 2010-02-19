@@ -29,6 +29,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.CCNEncodableObject;
@@ -67,7 +68,6 @@ public class ACL extends Collection {
 	 *
 	 */
 	public static class ACLOperation extends Link {
-		public static final String ACL_OPERATION_ELEMENT = "ACLOperation";
 		
 		public static final String LABEL_ADD_READER = "+r";
 		public static final String LABEL_ADD_WRITER = "+rw";
@@ -99,9 +99,9 @@ public class ACL extends Collection {
 			return new ACLOperation(LABEL_DEL_MANAGER, linkRef);
 		}
 		
-		// In case anyone tries to serialize. NOT IN SCHEMA
+		// In case anyone tries to serialize. NOT IN SCHEMA. Not supposed to be serialized.
 		@Override
-		public String getElementLabel() { return ACL_OPERATION_ELEMENT; }
+		public long getElementLabel() { return -1; }
 	}
 	
 	/**
@@ -527,12 +527,8 @@ public class ACL extends Collection {
 		_managers.clear();
 	}
 	
-	/**
-	 * TODO: Need to add to schema.
-	 */
 	@Override
-	public String getElementLabel() { 
-		return ACL_ELEMENT;
+	public long getElementLabel() { 
+		return CCNProtocolDTags.ACL.getTag();
 	}
-
 }

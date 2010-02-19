@@ -66,6 +66,13 @@ public interface XMLDecoder {
 	public void readStartElement(String startTag) throws ContentDecodingException;
 		
 	/**
+	 * Reads an expected element start tag from the stream
+	 * @param startTag next tag we expect to occur
+	 * @throws ContentDecodingException if that tag does not occur, or another error is encountered
+	 */
+	public void readStartElement(long startTag) throws ContentDecodingException;
+		
+	/**
 	 * Reads an expected element start tag from the stream, extracting any
 	 * attributes that are present on the tag
 	 * @param startTag next tag we expect to occur
@@ -73,6 +80,16 @@ public interface XMLDecoder {
 	 * @throws ContentDecodingException if that tag does not occur, or another error is encountered
 	 */
 	public void readStartElement(String startTag,
+			TreeMap<String,String> attributes) throws ContentDecodingException;
+
+	/**
+	 * Reads an expected element start tag from the stream, extracting any
+	 * attributes that are present on the tag
+	 * @param startTag next tag we expect to occur
+	 * @param attributes map into which we store (attribute, value) pairs
+	 * @throws ContentDecodingException if that tag does not occur, or another error is encountered
+	 */
+	public void readStartElement(long startTag,
 			TreeMap<String,String> attributes) throws ContentDecodingException;
 
 	/**
@@ -86,14 +103,33 @@ public interface XMLDecoder {
 	public boolean peekStartElement(String startTag) throws ContentDecodingException;
 	
 	/**
+	 * Peeks ahead in the stream to see if an expected element is next. Requires
+	 * the underlying stream to return true from InputStream#markSupported(). Resets
+	 * the stream to the point at which it was called afterwards
+	 * @param startTag next tag we expect to occur
+	 * @return true if that is the next tag, false otherwise
+	 * @throws ContentDecodingException if an error is encountered
+	 */
+	public boolean peekStartElement(long startTag) throws ContentDecodingException;
+	
+	/**
 	 * Pulls the next tag out of the stream and then resets the stream to the
 	 * point before that tag. Requires the underlying stream to return true
 	 * from InputStream#markSupported().
 	 * @return the next tag found
 	 * @throws ContentDecodingException if there is an error reading the stream or decoding the tag
 	 */
-	public String peekStartElement() throws ContentDecodingException;
+	public String peekStartElementAsString() throws ContentDecodingException;
 	
+	/**
+	 * Pulls the next tag out of the stream and then resets the stream to the
+	 * point before that tag. Requires the underlying stream to return true
+	 * from InputStream#markSupported().
+	 * @return the next tag found, or null if not a start element
+	 * @throws ContentDecodingException if there is an error reading the stream or decoding the tag
+	 */
+	public Long peekStartElementAsLong() throws ContentDecodingException;
+
 	/**
 	 * Reads an end element from the stream, if this codec has end elements.
 	 * @throws ContentDecodingException if the next element in the stream is not an end element, or
@@ -113,6 +149,17 @@ public interface XMLDecoder {
 			TreeMap<String,String> attributes) throws ContentDecodingException;
 	
 	/**
+	 * Read a UTF-8 encoded string element from the stream.
+	 * @param startTag expected start tag
+	 * @param attributes will be used to hold attributes on this tag, if there are any
+	 * @return the decoded String
+	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
+	 * 		decoding the element
+	 */
+	public String readUTF8Element(long startTag,
+			TreeMap<String,String> attributes) throws ContentDecodingException;	
+
+	/**
 	 * Read a UTF-8 encoded string element which has no attributes from the stream.
 	 * @param startTag expected start tag
 	 * @return the decoded String
@@ -120,6 +167,15 @@ public interface XMLDecoder {
 	 * 		decoding the element
 	 */
 	public String readUTF8Element(String startTag) throws ContentDecodingException;
+	
+	/**
+	 * Read a UTF-8 encoded string element which has no attributes from the stream.
+	 * @param startTag expected start tag
+	 * @return the decoded String
+	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
+	 * 		decoding the element
+	 */
+	public String readUTF8Element(long startTag) throws ContentDecodingException;
 	
 	/**
 	 * Read a binary element from the stream.
@@ -132,6 +188,16 @@ public interface XMLDecoder {
 	public byte [] readBinaryElement(String startTag, TreeMap<String,String> attributes) throws ContentDecodingException;
 	
 	/**
+	 * Read a binary element from the stream.
+	 * @param startTag expected start tag
+	 * @param attributes will be used to hold attributes on this tag, if there are any
+	 * @return the decoded byte array
+	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
+	 * 		decoding the element
+	 */
+	public byte [] readBinaryElement(long startTag, TreeMap<String,String> attributes) throws ContentDecodingException;
+	
+	/**
 	 * Read a binary element with no attributes from the stream.
 	 * @param startTag expected start tag
 	 * @return the decoded byte array
@@ -141,13 +207,49 @@ public interface XMLDecoder {
 	public byte [] readBinaryElement(String startTag) throws ContentDecodingException;
 	
 	/**
-	 * Read and parse an integer from the stream. 
+	 * Read a binary element with no attributes from the stream.
 	 * @param startTag expected start tag
-	 * @return the decoded integer, or null if content was empty
+	 * @return the decoded byte array
+	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
+	 * 		decoding the element
+	 */
+	public byte [] readBinaryElement(long startTag) throws ContentDecodingException;
+	
+	/**
+	 * Read and parse a number from the stream. 
+	 * @param startTag expected start tag
+	 * @return the decoded value, or null if content was empty
 	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
 	 * 		decoding the element or parsing the integer
 	 */
-	public Integer readIntegerElement(String startTag) throws ContentDecodingException;
+	public long readLongElement(String startTag) throws ContentDecodingException;
+
+	/**
+	 * Read and parse an integer from the stream. 
+	 * @param startTag expected start tag
+	 * @return the decoded value, or null if content was empty
+	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
+	 * 		decoding the element or parsing the integer
+	 */
+	public long readLongElement(long startTag) throws ContentDecodingException;
+
+	/**
+	 * Read and parse a number from the stream. 
+	 * @param startTag expected start tag
+	 * @return the decoded value, or null if content was empty
+	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
+	 * 		decoding the element or parsing the integer
+	 */
+	public int readIntegerElement(String startTag) throws ContentDecodingException;
+
+	/**
+	 * Read and parse an integer from the stream. 
+	 * @param startTag expected start tag
+	 * @return the decoded value, or null if content was empty
+	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
+	 * 		decoding the element or parsing the integer
+	 */
+	public int readIntegerElement(long startTag) throws ContentDecodingException;
 
 	/**
 	 * Read and parse a timestamp from the stream. 
@@ -157,6 +259,33 @@ public interface XMLDecoder {
 	 * 		decoding the element or parsing the integer
 	 */
 	public CCNTime readDateTime(String startTag) throws ContentDecodingException;
+	
+	/**
+	 * Read and parse a timestamp from the stream. 
+	 * @param startTag expected start tag
+	 * @return the decoded timestamp, using a quantized CCNTime
+	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
+	 * 		decoding the element or parsing the integer
+	 */
+	public CCNTime readDateTime(Long startTag) throws ContentDecodingException;
+	
+	/**
+	 * Read UTF-8 string data starting from beginning of element (text element
+	 * in text XML, type/value for UDATA in binary, etc). Consumes the end
+	 * element (text has to, so we copy).
+	 * @return the string
+	 * @throws ContentDecodingException
+	 */
+	public String readUString() throws ContentDecodingException;
+	
+	/**
+	 * Read BLOB data starting from beginning of element (encoded binary element
+	 * in text XML, type/value for BLOB in binary, etc). Consumes the end
+	 * element (text has to, so we copy).
+	 * @return the BLOB data
+	 * @throws ContentDecodingException
+	 */
+	public byte [] readBlob() throws ContentDecodingException;
 	
 	/**
 	 * Some codecs use a dictionary to make encoding and decoding more efficient. Those

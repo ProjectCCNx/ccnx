@@ -20,8 +20,6 @@ package org.ccnx.ccn.impl.encoding;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.Stack;
 import java.util.TreeMap;
 
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -41,42 +39,20 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 	protected static final int MARK_LEN = 512; // tag length in UTF-8 encoded bytes, plus length/val bytes
 	protected static final int DEBUG_MAX_LEN = 32768;
 	
-	protected Stack<BinaryXMLDictionary> _dictionary = new Stack<BinaryXMLDictionary>();
-	
-	protected InputStream _istream = null;
-	
 	public BinaryXMLDecoder() {
-		this(null);
+		super();
 	}
 
 	public BinaryXMLDecoder(BinaryXMLDictionary dictionary) {
-		if (null == dictionary)
-			_dictionary.push(BinaryXMLDictionary.getDefaultDictionary());
-		else
-			_dictionary.push(dictionary);
+		super(dictionary);
 	}
 	
-	public void beginDecoding(InputStream istream) throws ContentDecodingException {
-		if (null == istream)
-			throw new IllegalArgumentException("BinaryXMLEncoder: input stream cannot be null!");
-		_istream = istream;	
-		readStartDocument();
-	}
-	
-	public void endDecoding() throws ContentDecodingException {
-		readEndDocument();
-	}
-
 	public void readStartDocument() throws ContentDecodingException {
 		// Currently no start document in binary encoding.
 	}
 
 	public void readEndDocument() throws ContentDecodingException {
 		// Currently no end document in binary encoding.
-	}
-
-	public void readStartElement(String startTag) throws ContentDecodingException {
-		readStartElement(startTag, null);
 	}
 
 	public void readStartElement(String startTag,
@@ -96,7 +72,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
 				
 			} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
-				decodedTag = _dictionary.peek().decodeTag(tv.val());					
+				decodedTag = tagToString(tv.val());	
 			}
 			
 			if ((null ==  decodedTag) || (!decodedTag.equals(startTag))) {
@@ -107,35 +83,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 			// ask for them. Should possibly peek and skip over them regardless.
 			// TODO: fix this
 			if (null != attributes) {
-			
-				// Now need to get attributes.
-				BinaryXMLCodec.TypeAndVal nextTV = BinaryXMLCodec.peekTypeAndVal(_istream);
-				
-				while ((null != nextTV) && ((BinaryXMLCodec.XML_ATTR == nextTV.type()) ||
-											(BinaryXMLCodec.XML_DATTR == nextTV.type()))) {
-					
-					// Decode this attribute. First, really read the type and value.
-					BinaryXMLCodec.TypeAndVal thisTV = BinaryXMLCodec.decodeTypeAndVal(_istream);
-					
-					String attributeName = null;
-					if (BinaryXMLCodec.XML_ATTR == thisTV.type()) {
-						// Tag value represents length-1 as attribute names cannot be empty.
-						attributeName = BinaryXMLCodec.decodeUString(_istream, (int)thisTV.val()+1);
-					
-					} else if (BinaryXMLCodec.XML_DATTR == thisTV.type()) {
-						// DKS TODO are attributes same or different dictionary?
-						attributeName = _dictionary.peek().decodeTag(tv.val());
-						if (null == attributeName) {
-							throw new ContentDecodingException("Unknown DATTR value" + tv.val());
-						}
-					}
-					// Attribute values are always UDATA
-					String attributeValue = BinaryXMLCodec.decodeUString(_istream);
-					
-					attributes.put(attributeName, attributeValue);
-					
-					nextTV = BinaryXMLCodec.peekTypeAndVal(_istream);
-				}
+				readAttributes(attributes); 
 			}
 			
 		} catch (IOException e) {
@@ -143,15 +91,87 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 		}
 	}
 	
-	public boolean peekStartElement(String startTag) throws ContentDecodingException {
-		String decodedTag = peekStartElement();
-		if ((null !=  decodedTag) && (decodedTag.equals(startTag))) {
-			return true;
+	public void readStartElement(long startTag,
+			TreeMap<String, String> attributes) throws ContentDecodingException {
+		try {
+			BinaryXMLCodec.TypeAndVal tv = BinaryXMLCodec.decodeTypeAndVal(_istream);
+
+			if (null == tv) {
+				throw new ContentDecodingException("Expected start element: " + startTag + " got something not a tag.");
+			}
+
+			Long decodedTag = null;
+
+			if (tv.type() == BinaryXMLCodec.XML_TAG) {
+				Log.info("Unexpected: got tag in readStartElement; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
+				// Tag value represents length-1 as tags can never be empty.
+				String strTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
+				
+				decodedTag = stringToTag(strTag);
+
+			} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
+				decodedTag = tv.val();
+			}
+
+			if ((null ==  decodedTag) || (decodedTag.longValue() != startTag)) {
+				throw new ContentDecodingException("Expected start element: " + startTag + " got: " + decodedTag + "(" + tv.val() + ")");
+			}
+
+			// DKS: does not read attributes out of stream if caller doesn't
+			// ask for them. Should possibly peek and skip over them regardless.
+			// TODO: fix this
+			if (null != attributes) {
+				readAttributes(attributes); 
+			}
+
+		} catch (IOException e) {
+			throw new ContentDecodingException("readStartElement", e);
 		}
-		return false;
 	}
 
-	public String peekStartElement() throws ContentDecodingException {
+	
+	public void readAttributes(TreeMap<String,String> attributes) throws ContentDecodingException {
+		
+		if (null == attributes) {
+			return;
+		}
+
+		try {
+			// Now need to get attributes.
+			BinaryXMLCodec.TypeAndVal nextTV = BinaryXMLCodec.peekTypeAndVal(_istream);
+
+			while ((null != nextTV) && ((BinaryXMLCodec.XML_ATTR == nextTV.type()) ||
+					(BinaryXMLCodec.XML_DATTR == nextTV.type()))) {
+
+				// Decode this attribute. First, really read the type and value.
+				BinaryXMLCodec.TypeAndVal thisTV = BinaryXMLCodec.decodeTypeAndVal(_istream);
+
+				String attributeName = null;
+				if (BinaryXMLCodec.XML_ATTR == thisTV.type()) {
+					// Tag value represents length-1 as attribute names cannot be empty.
+					attributeName = BinaryXMLCodec.decodeUString(_istream, (int)thisTV.val()+1);
+
+				} else if (BinaryXMLCodec.XML_DATTR == thisTV.type()) {
+					// DKS TODO are attributes same or different dictionary?
+					attributeName = tagToString(thisTV.val());
+					if (null == attributeName) {
+						throw new ContentDecodingException("Unknown DATTR value" + thisTV.val());
+					}
+				}
+				// Attribute values are always UDATA
+				String attributeValue = BinaryXMLCodec.decodeUString(_istream);
+
+				attributes.put(attributeName, attributeValue);
+
+				nextTV = BinaryXMLCodec.peekTypeAndVal(_istream);
+			}
+
+		} catch (IOException e) {
+			throw new ContentDecodingException("readStartElement", e);
+		}
+	}
+	
+	public String peekStartElementAsString() throws ContentDecodingException {
 		if (!_istream.markSupported()) {
 			Log.info("Cannot peek -- stream without marking ability!");
 			throw new ContentDecodingException("No lookahead in stream!");
@@ -178,7 +198,77 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 					Log.info("Unexpected: got text tag in peekStartElement; length: " + (int)tv.val()+1 + " decoded tag = " + decodedTag);
 
 				} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
-					decodedTag = _dictionary.peek().decodeTag(tv.val());					
+					decodedTag = tagToString(tv.val());					
+				}
+
+			} // else, not a type and val, probably an end element. rewind and return false.
+
+		} catch (ContentDecodingException e) {
+			try {
+				_istream.reset();
+				_istream.mark(MARK_LEN);
+				long ms = System.currentTimeMillis();
+				File tempFile = new File("data_" + Long.toString(ms) + ".ccnb");
+				FileOutputStream fos = new FileOutputStream(tempFile);
+				byte buf[] = new byte[1024];
+				while (_istream.available() > 0) {
+					int count = _istream.read(buf);
+					fos.write(buf,0, count);
+				}
+				fos.close();
+				_istream.reset();
+				Log.info("BinaryXMLDecoder: exception in peekStartElement, dumping offending object to file: " + tempFile.getAbsolutePath());
+				throw e;
+				
+			} catch (IOException ie) {
+				Log.info("IOException in BinaryXMLDecoder error handling: " + e.getMessage());
+				throw new ContentDecodingException("peekStartElement", e);
+
+			}
+		} catch (IOException e) {
+			Log.info("IOException in BinaryXMLDecoder: " + e.getMessage());
+			throw new ContentDecodingException("peekStartElement", e);
+
+		} finally {
+			try {
+				_istream.reset();
+			} catch (IOException e) {
+				throw new ContentDecodingException("Cannot reset stream! " + e.getMessage(), e);
+			}
+		}
+		return decodedTag;
+	}
+	
+	public Long peekStartElementAsLong() throws ContentDecodingException {
+		if (!_istream.markSupported()) {
+			Log.info("Cannot peek -- stream without marking ability!");
+			throw new ContentDecodingException("No lookahead in stream!");
+		}
+
+		_istream.mark(MARK_LEN);
+
+		Long decodedTag = null;
+		try {
+			// Have to distinguish genuine errors from wrong tags. Could either use
+			// a special exception subtype, or redo the work here.
+			BinaryXMLCodec.TypeAndVal tv = BinaryXMLCodec.decodeTypeAndVal(_istream);
+
+			if (null != tv) {
+
+				if (tv.type() == BinaryXMLCodec.XML_TAG) {
+					if (tv.val()+1 > DEBUG_MAX_LEN) {
+						throw new ContentDecodingException("Decoding error: length " + tv.val()+1 + " longer than expected maximum length!");
+					}
+
+					// Tag value represents length-1 as tags can never be empty.
+					String strTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
+					
+					decodedTag = stringToTag(strTag);
+					
+					Log.info("Unexpected: got text tag in peekStartElement; length: " + (int)tv.val()+1 + " decoded tag = " + decodedTag);
+
+				} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
+					decodedTag = tv.val();					
 				}
 
 			} // else, not a type and val, probably an end element. rewind and return false.
@@ -231,54 +321,33 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 	}
 
 	/**
-	 * Expect a start tag (label), a UDATA, and an end element.
+	 * Read a UString. Force this to consume the end element to match the
+	 * behavior on the text side.
 	 */
-	public String readUTF8Element(String startTag) throws ContentDecodingException {
-		return readUTF8Element(startTag, null);
-	}
-
-	/**
-	 * Expect a start tag (label), optional attributes, a UDATA, and an end element.
-	 */
-	public String readUTF8Element(String startTag,
-			TreeMap<String, String> attributes) throws ContentDecodingException {
-		
-		String ustring = null;
+	public String readUString() throws ContentDecodingException {
 		try {
-			readStartElement(startTag, attributes);
-			ustring = BinaryXMLCodec.decodeUString(_istream);
+			String ustring = BinaryXMLCodec.decodeUString(_istream);	
 			readEndElement();
+			return ustring;
 		} catch (IOException e) {
 			throw new ContentDecodingException(e.getMessage(),e);
 		}
-		
-		return ustring;
 	}
 	
 	/**
-	 * Expect a start tag (label), a BLOB, and an end element.
+	 * Read a BLOB. Force this to consume the end element to match the
+	 * behavior on the text side.
 	 */
-	public byte [] readBinaryElement(String startTag) throws ContentDecodingException {
-		return readBinaryElement(startTag, null);
-	}
-
-	/**
-	 * Expect a start tag (label), optional attributes, a BLOB, and an end element.
-	 */
-	public byte [] readBinaryElement(String startTag,
-			TreeMap<String, String> attributes) throws ContentDecodingException {
-		byte [] blob = null;
+	public byte [] readBlob() throws ContentDecodingException {
 		try {
-			readStartElement(startTag, attributes);
-			blob = BinaryXMLCodec.decodeBlob(_istream);
+			byte [] blob = BinaryXMLCodec.decodeBlob(_istream);	
 			readEndElement();
+			return blob;
 		} catch (IOException e) {
 			throw new ContentDecodingException(e.getMessage(),e);
 		}
-		
-		return blob;
 	}
-	
+		
 	public CCNTime readDateTime(String startTag) throws ContentDecodingException {
 		byte [] byteTimestamp = readBinaryElement(startTag);
 		CCNTime timestamp = new CCNTime(byteTimestamp);
@@ -287,13 +356,13 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 		}		
 		return timestamp;
 	}
-
-	public BinaryXMLDictionary popXMLDictionary() {
-		_dictionary.pop();
-		return null;
-	}
-
-	public void pushXMLDictionary(BinaryXMLDictionary dictionary) {
-		_dictionary.push(dictionary);
+	
+	public CCNTime readDateTime(Long startTag) throws ContentDecodingException {
+		byte [] byteTimestamp = readBinaryElement(startTag);
+		CCNTime timestamp = new CCNTime(byteTimestamp);
+		if (null == timestamp) {
+			throw new ContentDecodingException("Cannot parse timestamp: " + DataUtils.printHexBytes(byteTimestamp));
+		}		
+		return timestamp;
 	}	
 }

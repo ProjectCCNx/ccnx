@@ -110,9 +110,8 @@ public class NamespaceManager {
 		}
 
 		@Override
-		public String getElementLabel() {
-			// TODO Auto-generated method stub
-			return null;
+		public long getElementLabel() {
+			return -1;
 		}
 	}
 

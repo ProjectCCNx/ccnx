@@ -19,7 +19,6 @@ package org.ccnx.ccn.impl.repo;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;

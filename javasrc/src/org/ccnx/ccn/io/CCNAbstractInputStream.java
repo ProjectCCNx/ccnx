@@ -673,7 +673,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				return false;
 			}
 			if (null != _startingSegmentNumber) {
-				return (_startingSegmentNumber.equals(SegmentationProfile.getSegmentNumber(segment.name())));
+				return (_startingSegmentNumber.longValue() == SegmentationProfile.getSegmentNumber(segment.name()));
 			} else {
 				return SegmentationProfile.isFirstSegment(segment.name());
 			}

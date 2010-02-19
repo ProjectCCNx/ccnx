@@ -29,6 +29,7 @@ import java.util.TreeMap;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -41,8 +42,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 public class KeyValueSet extends GenericXMLEncodable implements XMLEncodable, Map<String, Object> {
 	
-	protected static final String KEY_VALUE_SET_ELEMENT = "KeyValueSet";
-	 
 	protected TreeMap<String, KeyValuePair> _set = new TreeMap<String, KeyValuePair>();
 	
 	/**
@@ -201,7 +200,7 @@ public class KeyValueSet extends GenericXMLEncodable implements XMLEncodable, Ma
 		decoder.readStartElement(getElementLabel());
 		
 		synchronized (_set) {
-			while (decoder.peekStartElement(KeyValuePair.ENTRY)) {
+			while (decoder.peekStartElement(CCNProtocolDTags.Entry.getTag())) {
 				KeyValuePair kvp = new KeyValuePair();
 				kvp.decode(decoder);
 				_set.put(kvp.getKey(), kvp);
@@ -241,7 +240,7 @@ public class KeyValueSet extends GenericXMLEncodable implements XMLEncodable, Ma
 	}
 
 	@Override
-	public String getElementLabel() {return KEY_VALUE_SET_ELEMENT;}
+	public long getElementLabel() {return CCNProtocolDTags.KeyValueSet.getTag();}
 
 	@Override
 	public boolean validate() {
