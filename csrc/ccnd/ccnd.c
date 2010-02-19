@@ -1885,7 +1885,7 @@ ccnd_reg_prefix(struct ccnd_handle *h,
         npe = e->data;
         f = seek_forwarding(h, npe, faceid);
         if (f != NULL) {
-            h->forward_to_gen += 1;
+            h->forward_to_gen += 1; // XXX - too conservative, should check changes
             f->expires = expires;
             if (flags < 0)
                 flags = f->flags & CCN_FORW_PUBMASK;
@@ -2571,6 +2571,7 @@ do_propagate(struct ccn_schedule *sched,
         reap_needed(h, 0);
         return(0);        
     }
+    // XXX - this might be a good place to check for new registrations, but maybe not.
     if ((pe->flags & CCN_PR_STUFFED1) != 0) {
         pe->flags &= ~CCN_PR_STUFFED1;
         pe->flags |= CCN_PR_WAIT1;
@@ -2621,6 +2622,8 @@ do_propagate(struct ccn_schedule *sched,
  * @result besides possibly updating the outbound set, returns
  *         an extra delay time before propagation.
  */
+// XXX - rearrange to allow dummied-up "sent" entries.
+// XXX - subtle point - when similar interests are present in the PIT, and a new dest appears due to prefix registration, only one of the set should get sent to the new dest.
 static int
 adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                                        unsigned char *msg,
