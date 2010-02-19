@@ -425,13 +425,15 @@ public class GroupAccessControlManager extends AccessControlManager {
 	/**
 	 * Look for an ACL that is on dataNodeName or above, but below stopPoint. If stopPoint is
 	 * null, then take it to be the root for this AccessControlManager (which we assume to have
-	 * an ACL).
+	 * an ACL). This is the old serial search, which has been replaced tyb the parallel search
+	 * below. Keep it here temporarily.
 	 * @param dataNodeName
 	 * @param stopPoint
 	 * @return
 	 * @throws ContentDecodingException
 	 * @throws IOException
 	 */
+	@SuppressWarnings("unused")
 	private ACLObject findAncestorWithACLSerial(ContentName dataNodeName, ContentName stopPoint) throws ContentDecodingException, IOException {
 
 		// If dataNodeName is the root of this AccessControlManager, there can be no ACL between
