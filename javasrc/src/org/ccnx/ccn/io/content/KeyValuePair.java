@@ -63,19 +63,25 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 		_key = decoder.readUTF8Element(CCNProtocolDTags.Key.getTag());
 		
 		Long valueTag = decoder.peekStartElementAsLong();
-		if (CCNProtocolDTags.IntegerValue.getTag().equals(valueTag)) {
+		if (null == valueTag) {
+			throw new ContentDecodingException("Cannot decode key value pair for key " + _key + ": no value given");
+		} 
+		
+		long valueTagVal = valueTag.longValue();
+		
+		if (valueTagVal == CCNProtocolDTags.IntegerValue.getTag()) {
 			_value = decoder.readIntegerElement(CCNProtocolDTags.IntegerValue.getTag());
-		} else if (CCNProtocolDTags.DecimalValue.getTag().equals(valueTag)) {
+		} else if (valueTagVal == CCNProtocolDTags.DecimalValue.getTag()) {
 			try {
 				_value = new Float(decoder.readUTF8Element(CCNProtocolDTags.DecimalValue.getTag())); 
 			} catch (NumberFormatException nfe) {
 				throw new ContentDecodingException(nfe.getMessage());
 			}
-		} else if (CCNProtocolDTags.StringValue.getTag().equals(valueTag)) {
+		} else if (valueTagVal == CCNProtocolDTags.StringValue.getTag()) {
 			_value = decoder.readUTF8Element(CCNProtocolDTags.StringValue.getTag());
-		} else if (CCNProtocolDTags.BinaryValue.getTag().equals(valueTag)) {
+		} else if (valueTagVal == CCNProtocolDTags.BinaryValue.getTag()) {
 			_value = decoder.readBinaryElement(CCNProtocolDTags.BinaryValue.getTag());
-		} else if (CCNProtocolDTags.NameValue.getTag().equals(valueTag)) {
+		} else if (valueTagVal == CCNProtocolDTags.NameValue.getTag()) {
 			decoder.readStartElement(CCNProtocolDTags.NameValue.getTag());
 			_value = new ContentName();
 			((ContentName)_value).decode(decoder);
@@ -111,13 +117,14 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 	}
 
 	@Override
-	public Long getElementLabel() {return CCNProtocolDTags.Entry.getTag();}
+	public long getElementLabel() {return CCNProtocolDTags.Entry.getTag();}
 
 	@Override
 	public boolean validate() {
 		if (null == _key)
 			return false;
-		return ((_value instanceof Integer) || (_value instanceof Float) || (_value instanceof String) || (_value instanceof byte[])
+		return ((_value instanceof Integer) || (_value instanceof Long) || 
+				(_value instanceof Float) || (_value instanceof String) || (_value instanceof byte[])
 				|| (_value instanceof ContentName));
 	}
 

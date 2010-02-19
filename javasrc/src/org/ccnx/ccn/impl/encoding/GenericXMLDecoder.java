@@ -60,7 +60,7 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 		readStartElement(startTag, null);
 	}
 
-	public void readStartElement(Long startTag) throws ContentDecodingException {
+	public void readStartElement(long startTag) throws ContentDecodingException {
 		readStartElement(startTag, null);
 	}
 
@@ -72,9 +72,9 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 		return false;
 	}
 
-	public boolean peekStartElement(Long startTag) throws ContentDecodingException {
+	public boolean peekStartElement(long startTag) throws ContentDecodingException {
 		Long decodedTag = peekStartElementAsLong();
-		if ((null !=  decodedTag) && (decodedTag.equals(startTag))) {
+		if ((null !=  decodedTag) && (decodedTag.longValue() == startTag)) {
 			return true;
 		}
 		return false;
@@ -84,7 +84,7 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 		return readUTF8Element(startTag, null);
 	}
 
-	public String readUTF8Element(Long startTag) throws ContentDecodingException {
+	public String readUTF8Element(long startTag) throws ContentDecodingException {
 		return readUTF8Element(startTag, null);
 	}
 
@@ -106,7 +106,7 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 	 * matching the text decoder (lowest common denominator); allows us to 
 	 * collapse this level of behavior here.
 	 */
-	public String readUTF8Element(Long startTag,
+	public String readUTF8Element(long startTag,
 			TreeMap<String, String> attributes) throws ContentDecodingException {
 		readStartElement(startTag, attributes); // can't use getElementText, can't get attributes
 		String strElementText = readUString();
@@ -118,7 +118,7 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 		return readBinaryElement(startTag, null);
 	}
 	
-	public byte[] readBinaryElement(Long startTag) throws ContentDecodingException {
+	public byte[] readBinaryElement(long startTag) throws ContentDecodingException {
 		return readBinaryElement(startTag, null);
 	}
 
@@ -147,7 +147,7 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 	 * matching the text decoder (lowest common denominator); allows us to 
 	 * collapse this level of behavior here.
 	 */
-	public byte[] readBinaryElement(Long startTag,
+	public byte[] readBinaryElement(long startTag,
 			TreeMap<String, String> attributes) throws ContentDecodingException {
 		byte [] blob = null;
 		try {
@@ -161,39 +161,40 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 		return blob;
 	}
 
-	public Long readLongElement(String startTag) throws ContentDecodingException {
+	public long readLongElement(String startTag) throws ContentDecodingException {
 		String strVal = readUTF8Element(startTag); 
-		Long value = Long.valueOf(strVal);
-		if (null == value) {
-			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal);
+		try {
+			return Long.valueOf(strVal);
+		} catch (NumberFormatException e) {
+			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal, e);
 		}
-		return value;
 	}
 
-	public Long readLongElement(Long startTag) throws ContentDecodingException {
+	public long readLongElement(long startTag) throws ContentDecodingException {
 		String strVal = readUTF8Element(startTag); 
-		Long value = Long.valueOf(strVal);
-		if (null == value) {
-			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal);
+		try {
+			return Long.valueOf(strVal);
+		} catch (NumberFormatException e) {
+			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal, e);
 		}
-		return value;
 	}
 	
-	public Integer readIntegerElement(String startTag) throws ContentDecodingException {
+	public int readIntegerElement(String startTag) throws ContentDecodingException {
 		String strVal = readUTF8Element(startTag); 
-		Integer value = Integer.valueOf(strVal);
-		if (null == value) {
-			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal);
+		try {
+			return Integer.valueOf(strVal);
+		} catch (NumberFormatException e) {
+			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal, e);
 		}
-		return value;
 	}
 
-	public Integer readIntegerElement(Long startTag) throws ContentDecodingException {
+	public int readIntegerElement(long startTag) throws ContentDecodingException {
 		String strVal = readUTF8Element(startTag); 
-		Integer value = Integer.valueOf(strVal);
-		if (null == value) {
-			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal);
+		try {
+			return Integer.valueOf(strVal);
+		} catch (NumberFormatException e) {
+			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal, e);
 		}
-		return value;
 	}
+
 }

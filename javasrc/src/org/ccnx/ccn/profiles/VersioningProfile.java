@@ -813,7 +813,7 @@ public class VersioningProfile implements CCNProfile {
 					Log.info("The " + difflen + " extra component between " + potentialFirstSegment.name() + " and desired " + desiredName + " is not a version.");
 			}
 			if ((null != startingSegmentNumber) && (SegmentationProfile.baseSegment() != startingSegmentNumber)) {
-				return (startingSegmentNumber.equals(SegmentationProfile.getSegmentNumber(potentialFirstSegment.name())));
+				return (startingSegmentNumber.longValue() == SegmentationProfile.getSegmentNumber(potentialFirstSegment.name()));
 			} else {
 				return SegmentationProfile.isFirstSegment(potentialFirstSegment.name());
 			}

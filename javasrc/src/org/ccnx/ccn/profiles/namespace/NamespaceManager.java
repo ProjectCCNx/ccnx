@@ -110,8 +110,8 @@ public class NamespaceManager {
 		}
 
 		@Override
-		public Long getElementLabel() {
-			return null;
+		public long getElementLabel() {
+			return -1;
 		}
 	}
 

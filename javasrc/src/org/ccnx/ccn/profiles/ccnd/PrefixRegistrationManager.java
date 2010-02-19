@@ -236,7 +236,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		}
 
 		@Override
-		public Long getElementLabel() { return CCNProtocolDTags.ForwardingEntry.getTag(); }
+		public long getElementLabel() { return CCNProtocolDTags.ForwardingEntry.getTag(); }
 
 		@Override
 		public boolean validate() {

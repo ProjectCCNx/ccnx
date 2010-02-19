@@ -186,7 +186,7 @@ public interface XMLEncodable {
 	 * changing their encoder/decoders.
 	 * @return the element label to use, as a key in a loaded encoding dictionary
 	 */
-	public Long getElementLabel();
+	public long getElementLabel();
 
 	/**
 	 * Make sure all of the necessary fields are filled in

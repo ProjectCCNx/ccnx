@@ -103,7 +103,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	 * Compact binary encoding of time, same as used for versions.
 	 * @see VersioningProfile
 	 */
-	public void writeDateTime(Long tag, CCNTime dateTime) throws ContentEncodingException {
+	public void writeDateTime(long tag, CCNTime dateTime) throws ContentEncodingException {
 		writeElement(tag, dateTime.toBinaryTime());
 	}
 
@@ -132,7 +132,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 		}
 	}
 	
-	public void writeStartElement(Long tag, TreeMap<String,String> attributes) throws ContentEncodingException {
+	public void writeStartElement(long tag, TreeMap<String,String> attributes) throws ContentEncodingException {
 		try {
 			
 			BinaryXMLCodec.encodeTypeAndVal(BinaryXMLCodec.XML_DTAG, tag, _ostream);

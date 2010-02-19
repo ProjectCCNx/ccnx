@@ -179,15 +179,15 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 			_faceID = decoder.readIntegerElement(CCNProtocolDTags.FaceID.getTag()); 
 		}
 		if (decoder.peekStartElement(CCNProtocolDTags.IPProto.getTag())) {
-			Integer proto = decoder.readIntegerElement(CCNProtocolDTags.IPProto.getTag());
-			int pI = proto.intValue();
+			int pI = decoder.readIntegerElement(CCNProtocolDTags.IPProto.getTag());
 			_ipProto = null;
 			if (NetworkProtocol.TCP.value().intValue() == pI) {
 				_ipProto = NetworkProtocol.TCP;
 			} else if (NetworkProtocol.UDP.value().intValue() == pI) {
 				_ipProto = NetworkProtocol.UDP;
 			} else {
-				throw new ContentDecodingException("FaceInstance.decoder.  Invalid " + CCNProtocolDTags.IPProto.name() + " field: " + proto.toString());
+				throw new ContentDecodingException("FaceInstance.decoder.  Invalid " + 
+						CCNProtocolDTags.IPProto.name() + " field: " + pI);
 			}
 		}
 		if (decoder.peekStartElement(CCNProtocolDTags.Host.getTag())) {
@@ -247,7 +247,7 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 	}
 
 	@Override
-	public Long getElementLabel() { return CCNProtocolDTags.FaceInstance.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.FaceInstance.getTag(); }
 
 	@Override
 	public boolean validate() {

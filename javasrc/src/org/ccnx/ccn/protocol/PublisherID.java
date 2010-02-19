@@ -69,27 +69,27 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
     	
     	public CCNProtocolDTags getTag() { return _tag; }
     	
-    	public static boolean isTypeTagVal(Long tagVal) {
-    		if (tagVal.equals(CCNProtocolDTags.PublisherPublicKeyDigest.getTag()) ||
-    			tagVal.equals(CCNProtocolDTags.PublisherCertificateDigest.getTag()) ||
-    			tagVal.equals(CCNProtocolDTags.PublisherIssuerKeyDigest.getTag()) ||
-    			tagVal.equals(CCNProtocolDTags.PublisherIssuerCertificateDigest.getTag())) {
+    	public static boolean isTypeTagVal(long tagVal) {
+    		if ((tagVal == CCNProtocolDTags.PublisherPublicKeyDigest.getTag()) ||
+    			(tagVal == CCNProtocolDTags.PublisherCertificateDigest.getTag()) ||
+    			(tagVal == CCNProtocolDTags.PublisherIssuerKeyDigest.getTag()) ||
+    			(tagVal == CCNProtocolDTags.PublisherIssuerCertificateDigest.getTag())) {
     			return true;
     		}
     		return false;
      	}
     	
-    	public static PublisherType tagValToType(Long tagVal) {
-       		if (tagVal.equals(CCNProtocolDTags.PublisherPublicKeyDigest.getTag())) {
+    	public static PublisherType tagValToType(long tagVal) {
+       		if (tagVal == CCNProtocolDTags.PublisherPublicKeyDigest.getTag()) {
        			return KEY;
        		}
-        	if (tagVal.equals(CCNProtocolDTags.PublisherCertificateDigest.getTag())) {
+        	if (tagVal == CCNProtocolDTags.PublisherCertificateDigest.getTag()) {
         		return CERTIFICATE;
         	}
-        	if (tagVal.equals(CCNProtocolDTags.PublisherIssuerKeyDigest.getTag())) {
+        	if (tagVal == CCNProtocolDTags.PublisherIssuerKeyDigest.getTag()) {
         		return ISSUER_KEY;
         	}
-        	if (tagVal.equals(CCNProtocolDTags.PublisherIssuerCertificateDigest.getTag())) {
+        	if (tagVal == CCNProtocolDTags.PublisherIssuerCertificateDigest.getTag()) {
         		return ISSUER_CERTIFICATE;
         	}
         	return null;
@@ -271,7 +271,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 	
 	@Override
-	public Long getElementLabel() { 
+	public long getElementLabel() { 
 		return type().getTag().getTag();
 	}
 

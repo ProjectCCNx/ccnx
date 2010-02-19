@@ -106,8 +106,8 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 	}
 	
 	@Override
-	public Long getElementLabel() { // unused, we add nothing to encoding
-		return null;
+	public long getElementLabel() { // unused, we add nothing to encoding
+		return -1;
 	}
 	
 	public void add(ContentObject data) {

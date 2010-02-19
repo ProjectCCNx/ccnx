@@ -240,7 +240,7 @@ public class KeyValueSet extends GenericXMLEncodable implements XMLEncodable, Ma
 	}
 
 	@Override
-	public Long getElementLabel() {return CCNProtocolDTags.KeyValueSet.getTag();}
+	public long getElementLabel() {return CCNProtocolDTags.KeyValueSet.getTag();}
 
 	@Override
 	public boolean validate() {

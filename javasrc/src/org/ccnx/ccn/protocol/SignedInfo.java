@@ -476,7 +476,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	}
 	
 	@Override
-	public Long getElementLabel() { return CCNProtocolDTags.SignedInfo.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.SignedInfo.getTag(); }
 
 	@Override
 	public boolean validate() {

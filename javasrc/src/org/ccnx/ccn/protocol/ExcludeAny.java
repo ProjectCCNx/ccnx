@@ -46,7 +46,7 @@ public class ExcludeAny extends Exclude.Filler implements Comparable<ExcludeAny>
 	}
 	
 	@Override
-	public Long getElementLabel() { return CCNProtocolDTags.Any.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Any.getTag(); }
 
 	@Override
 	public boolean validate() {

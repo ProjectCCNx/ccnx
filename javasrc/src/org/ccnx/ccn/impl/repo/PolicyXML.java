@@ -94,7 +94,7 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 			_putter = putter;
 		}
 		
-		public Long getTagValue() { return _tagValue.getTag(); }
+		public long getTagValue() { return _tagValue.getTag(); }
 	}
 	
 	private static class VersionPutter implements ElementPutter {
@@ -140,8 +140,14 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 			// Probably can improve this yet more given a bit of time.
 			Long startElement = decoder.peekStartElementAsLong();
 			
+			if (null == startElement) {
+				break;
+			}
+			
+			long startElementVal = startElement.longValue();
+			
 			for (PolicyElement element : PolicyElement.values()) {
-				if (element.getTagValue().equals(startElement)) {
+				if (element.getTagValue() == startElementVal) {
 					foundElement = element;
 					break;
 				}		
@@ -179,7 +185,7 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 	}
 
 	@Override
-	public Long getElementLabel() {
+	public long getElementLabel() {
 		return CCNProtocolDTags.Policy.getTag();
 	}
 

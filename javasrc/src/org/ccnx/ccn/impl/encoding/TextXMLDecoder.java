@@ -111,7 +111,7 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 		}
 	}
 
-	public void readStartElement(Long startTagLong,
+	public void readStartElement(long startTagLong,
 			TreeMap<String, String> attributes) throws ContentDecodingException {
 		
 		String startTag = tagToString(startTagLong);

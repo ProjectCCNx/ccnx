@@ -101,7 +101,7 @@ public class ACL extends Collection {
 		
 		// In case anyone tries to serialize. NOT IN SCHEMA. Not supposed to be serialized.
 		@Override
-		public Long getElementLabel() { return null; }
+		public long getElementLabel() { return -1; }
 	}
 	
 	/**
@@ -528,7 +528,7 @@ public class ACL extends Collection {
 	}
 	
 	@Override
-	public Long getElementLabel() { 
+	public long getElementLabel() { 
 		return CCNProtocolDTags.ACL.getTag();
 	}
 }

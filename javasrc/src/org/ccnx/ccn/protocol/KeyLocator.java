@@ -272,7 +272,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Ser
 	}
 	
 	@Override
-	public Long getElementLabel() { return CCNProtocolDTags.KeyLocator.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.KeyLocator.getTag(); }
 	
 	@Override
 	public boolean validate() {
