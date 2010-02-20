@@ -139,11 +139,11 @@ public class ContentTree {
 		protected Exclude _exclude;
 		protected int _excludeLevel;
 		
-		protected InterestPreScreener(Interest interest, int excludeLevel) {
+		protected InterestPreScreener(Interest interest, int excludeLevel, int startLevel) {
 			if (null != interest.minSuffixComponents())
-				_minComponents = interest.minSuffixComponents();
+				_minComponents = interest.minSuffixComponents() + startLevel;
 			if (null != interest.maxSuffixComponents())
-				_maxComponents = interest.maxSuffixComponents() + 1;
+				_maxComponents = interest.maxSuffixComponents() + startLevel + 1;
 			_exclude = interest.exclude();
 			_excludeLevel = excludeLevel;
 		}
@@ -427,10 +427,12 @@ public class ContentTree {
 	 * @param getter a handler to pull actual ContentObjects for final match testing
 	 * @return ContentObject matching the interest or null if not found
 	 */
-	protected final ContentObject leftSearch(Interest interest, int matchmin, int matchmax, TreeNode node, ContentName nodeName, int depth, boolean anyOK, ContentGetter getter) {
-		if ( (nodeName.count() >= 0) && ((matchmin == -1 && matchmax == -1) || (matchmin == -1 && depth <= matchmax))
-																		  || (matchmax == -1 && depth >= matchmin)
-																		  || (matchmin != -1 && matchmax != -1 && (depth <= matchmax && depth >= matchmin))) {
+	protected final ContentObject leftSearch(Interest interest, InterestPreScreener ips, int depth, TreeNode node, ContentName nodeName, 
+				boolean anyOK, ContentGetter getter) {
+		int res = ips.preScreen(node, depth);
+		if (res < 0)
+			return null;
+		if (res > 0) {
 			if (null != node.oneContent || null != node.content) {
 				// Since the name INCLUDES digest component and the Interest.matches() convention for name
 				// matching is that the name DOES NOT include digest component (conforming to the convention 
@@ -467,12 +469,7 @@ public class ContentTree {
 				}
 			}
 		}
-		// Now search children if applicable and if any
-		if (matchmax != -1 && matchmax <= depth || (node.children==null && node.oneChild==null)) {
-			// Any child would make the total name longer than requested so no point in 
-			// checking children
-			return null;
-		}
+	
 		SortedMap<TreeNode, TreeNode> children = null;
 		synchronized(node) {
 			if (null != node.oneChild) {
@@ -492,8 +489,8 @@ public class ContentTree {
 				//if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0) {
 				if (anyOK || comp >= 0) {
 					ContentObject result = null;
-					result = leftSearch(interest, matchmin, matchmax, child, 
-							new ContentName(nodeName, child.component), depth+1, comp > 0, getter);
+					result = leftSearch(interest, ips, depth+1, child, 
+							new ContentName(nodeName, child.component), comp > 0, getter);
 	
 					if (null != result) {
 						return result;
@@ -556,7 +553,7 @@ public class ContentTree {
 		// TODO This is very inefficient for all but the most optimal case where the last thing in the
 		// subtree happens to be a perfect match
 		ArrayList<TreeNode> options = new ArrayList<TreeNode>();
-		InterestPreScreener ips = new InterestPreScreener(interest, 1);
+		InterestPreScreener ips = new InterestPreScreener(interest, 1, 0);
 		getSubtreeNodes(node, options, 0, ips);
 		return rightCheck(options, interest, node, getter);
 	}
@@ -689,10 +686,10 @@ public class ContentTree {
 						ncc, getter);
 			}
 			else{
-				int min = null == interest.minSuffixComponents() ? -1 : interest.minSuffixComponents();
-				return leftSearch(interest, min + ncc, (null == addl) ? -1 : addl + ncc,
+				InterestPreScreener ips = new InterestPreScreener(interest, ncc, ncc);
+				return leftSearch(interest, ips, ncc,
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
-						ncc, false, getter);
+						false, getter);
 			}
 		}
 		return null;
