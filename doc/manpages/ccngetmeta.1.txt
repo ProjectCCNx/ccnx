@@ -79,8 +79,7 @@ EXIT STATUS
 EXAMPLE
 -------
 The following example retrieves the thumbnail metadata image.png associated 
-with ccnx content "ccnx:/mydocument" and places it into the file 
-"checkimage.png"
+with the latest version of ccnx content "ccnx:/mydocument" and places it into the file "checkimage.png"
 
     ccngetmeta "ccnx:/mydocument" "_thumbnail_/image.png" "checkimage.png"
 

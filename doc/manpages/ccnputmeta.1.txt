@@ -85,7 +85,7 @@ EXIT STATUS
 EXAMPLE
 -------
 The following example associates the file "image.png" as thumbnail metadata of
-the published ccnx content "ccnx:/mydocument"
+the latest version of published ccnx content "ccnx:/mydocument"
 
     ccnputmeta "ccnx:/mydocument" "_thumbnail_/image.png" "image.png"
 
