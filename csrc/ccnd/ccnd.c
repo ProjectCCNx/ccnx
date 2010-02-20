@@ -666,11 +666,6 @@ link_propagating_interest_to_nameprefix(struct ccnd_handle *h,
     struct propagating_entry *pe, struct nameprefix_entry *npe)
 {
     struct propagating_entry *head = &npe->pe_head;
-    if (head->next == NULL) {
-        head->next = head;
-        head->prev = head;
-        head->faceid = CCN_NOFACEID;
-    }
     pe->next = head;
     pe->prev = head->prev;
     pe->prev->next = pe->next->prev = pe;
@@ -1204,8 +1199,6 @@ consume_matching_interests(struct ccnd_handle *h,
     struct face *f;
     
     head = &npe->pe_head;
-    if (head->next == NULL)
-        return(0);
     content_msg = content->key;
     content_size = content->size;
     f = face;
@@ -1399,34 +1392,32 @@ ccn_stuff_interest(struct ccnd_handle *h,
         struct nameprefix_entry *npe = e->data;
         struct propagating_entry *head = &npe->pe_head;
         struct propagating_entry *p;
-        if (head->next != NULL) {
-            for (p = head->prev; p != head; p = p->prev) {
-                if (p->outbound != NULL &&
-                      p->outbound->n > p->sent &&
-                      p->size <= remaining_space &&
-                      p->interest_msg != NULL &&
-                      ((p->flags & (CCN_PR_STUFFED1 | CCN_PR_WAIT1)) == 0) &&
-                      ((p->flags & CCN_PR_UNSENT) == 0 ||
-                        p->outbound->buf[p->sent] == face->faceid) &&
-                      promote_outbound(p, face->faceid) != -1) {
-                    remaining_space -= p->size;
-                    if ((p->flags & CCN_PR_UNSENT) != 0) {
-                        p->flags &= ~CCN_PR_UNSENT;
-                        p->flags |= CCN_PR_STUFFED1;
-                    }
-                    p->sent++;
-                    n_stuffed++;
-                    ccn_charbuf_append(c, p->interest_msg, p->size);
-                    h->interests_stuffed++;
-                    if (h->debug & 2)
-                        ccnd_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
-                                        p->interest_msg, p->size);
-                    /*
-                     * Don't stuff multiple interests with same prefix
-                     * to avoid subverting attempts at redundancy.
-                     */
-                    break;
+        for (p = head->prev; p != head; p = p->prev) {
+            if (p->outbound != NULL &&
+                p->outbound->n > p->sent &&
+                p->size <= remaining_space &&
+                p->interest_msg != NULL &&
+                ((p->flags & (CCN_PR_STUFFED1 | CCN_PR_WAIT1)) == 0) &&
+                ((p->flags & CCN_PR_UNSENT) == 0 ||
+                 p->outbound->buf[p->sent] == face->faceid) &&
+                promote_outbound(p, face->faceid) != -1) {
+                remaining_space -= p->size;
+                if ((p->flags & CCN_PR_UNSENT) != 0) {
+                    p->flags &= ~CCN_PR_UNSENT;
+                    p->flags |= CCN_PR_STUFFED1;
                 }
+                p->sent++;
+                n_stuffed++;
+                ccn_charbuf_append(c, p->interest_msg, p->size);
+                h->interests_stuffed++;
+                if (h->debug & 2)
+                    ccnd_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
+                                    p->interest_msg, p->size);
+                /*
+                 * Don't stuff multiple interests with same prefix
+                 * to avoid subverting attempts at redundancy.
+                 */
+                break;
             }
         }
     }
@@ -1572,7 +1563,7 @@ check_nameprefix_entries(struct ccnd_handle *h)
               npe->children == 0 &&
               npe->forwarding == NULL) {
             head = &npe->pe_head;
-            if ((head->next == NULL || head == head->next)) {
+            if (head == head->next) {
                 count += 1;
                 hashtb_delete(e);
                 continue;
@@ -2387,8 +2378,8 @@ ccnd_req_unreg(struct ccnd_handle *h,
     start = comps->buf[0];
     stop = comps->buf[n_name_comp];
     npe = hashtb_lookup(h->nameprefix_tab,
-        forwarding_entry->name_prefix->buf + start,
-        stop - start);
+                        forwarding_entry->name_prefix->buf + start,
+                        stop - start);
     if (npe == NULL)
     	goto Finish;
     found = 0;
@@ -2643,7 +2634,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
 
     if ((face->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
         max_redundant = 0;
-    if (head->next != NULL && outbound != NULL) {
+    if (outbound != NULL) {
         for (p = head->next; p != head && outbound->n > 0; p = p->next) {
             if (p->size > minsize &&
                 p->interest_msg != NULL &&
@@ -2870,6 +2861,7 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
     int res = -1;
     struct nameprefix_entry *parent = NULL;
     struct nameprefix_entry *npe = NULL;
+    struct propagating_entry *head = NULL;
 
     if (ncomps + 1 > comps->n)
         return(-1);
@@ -2880,6 +2872,10 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
             break;
         npe = e->data;
         if (res == HT_NEW_ENTRY) {
+            head = &npe->pe_head;
+            head->next = head;
+            head->prev = head;
+            head->faceid = CCN_NOFACEID;
             npe->parent = parent;
             npe->forwarding = NULL;
             npe->fgen = h->forward_to_gen - 1;
