@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -241,7 +242,9 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 	
 	public Long peekStartElementAsLong() throws ContentDecodingException {
 		if (!_istream.markSupported()) {
-			Log.info("Cannot peek -- stream without marking ability!");
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("Cannot peek -- stream without marking ability!");
+			}
 			throw new ContentDecodingException("No lookahead in stream!");
 		}
 
@@ -265,8 +268,10 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 					
 					decodedTag = stringToTag(strTag);
 					
-					Log.info("Unexpected: got text tag in peekStartElement; length: " + (int)tv.val()+1 + " decoded tag = " + decodedTag);
-
+					if (Log.isLoggable(Level.INFO)) {
+						Log.info("Unexpected: got text tag in peekStartElement; length: " + (int)tv.val()+1 + " decoded tag = " + decodedTag);
+					}
+					
 				} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
 					decodedTag = tv.val();					
 				}
