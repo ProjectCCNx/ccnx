@@ -948,7 +948,7 @@ main(int argc, char **argv)
         interest_closure.data = keystore;
         ccn_name_init(temp);
         ccn_set_interest_filter_with_flags(h, temp, &interest_closure,
-                                           CCN_FORW_ACTIVE | CCN_FORW_LAST);
+                    CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_LAST);
         ccn_charbuf_destroy(&temp);
         ccn_run(h, -1);
     }

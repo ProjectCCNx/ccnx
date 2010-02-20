@@ -29,8 +29,7 @@ esac
 
 trap "ccndsmoketest kill 2>/dev/null" 0
 
-CCND_DEBUG=71
-"$CCND" 2>>/dev/tty
+CCND_DEBUG=71 "$CCND" 2>>/dev/tty
 
 EOF
 chmod +x ccnd
