@@ -644,10 +644,10 @@ finalize_nameprefix(struct hashtb_enumerator *e)
 {
     struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
     struct nameprefix_entry *npe = e->data;
-    if (npe->propagating_head != NULL) {
-        consume(h, npe->propagating_head);
-        free(npe->propagating_head);
-        npe->propagating_head = NULL;
+    struct propagating_entry *head = &npe->pe_head;
+    if (head->next != NULL) {
+        while (head->next != head)
+            consume(h, head->next);
     }
     ccn_indexbuf_destroy(&npe->forward_to);
     while (npe->forwarding != NULL) {
@@ -665,13 +665,11 @@ static void
 link_propagating_interest_to_nameprefix(struct ccnd_handle *h,
     struct propagating_entry *pe, struct nameprefix_entry *npe)
 {
-    struct propagating_entry *head = npe->propagating_head;
-    if (head == NULL) {
-        head = calloc(1, sizeof(*head));
+    struct propagating_entry *head = &npe->pe_head;
+    if (head->next == NULL) {
         head->next = head;
         head->prev = head;
         head->faceid = CCN_NOFACEID;
-        npe->propagating_head = head;
     }
     pe->next = head;
     pe->prev = head->prev;
@@ -1205,8 +1203,8 @@ consume_matching_interests(struct ccnd_handle *h,
     size_t content_size;
     struct face *f;
     
-    head = npe->propagating_head;
-    if (head == NULL)
+    head = &npe->pe_head;
+    if (head->next == NULL)
         return(0);
     content_msg = content->key;
     content_size = content->size;
@@ -1399,9 +1397,9 @@ ccn_stuff_interest(struct ccnd_handle *h,
     for (hashtb_start(h->nameprefix_tab, e);
          remaining_space >= 20 && e->data != NULL; hashtb_next(e)) {
         struct nameprefix_entry *npe = e->data;
-        struct propagating_entry *head = npe->propagating_head;
+        struct propagating_entry *head = &npe->pe_head;
         struct propagating_entry *p;
-        if (head != NULL) {
+        if (head->next != NULL) {
             for (p = head->prev; p != head; p = p->prev) {
                 if (p->outbound != NULL &&
                       p->outbound->n > p->sent &&
@@ -1573,8 +1571,8 @@ check_nameprefix_entries(struct ccnd_handle *h)
               npe->forward_to == NULL &&
               npe->children == 0 &&
               npe->forwarding == NULL) {
-            head = npe->propagating_head;
-            if ((head == NULL || head == head->next)) {
+            head = &npe->pe_head;
+            if ((head->next == NULL || head == head->next)) {
                 count += 1;
                 hashtb_delete(e);
                 continue;
@@ -2461,7 +2459,6 @@ update_inherited(struct ccnd_handle *h,
 static void
 update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
 {
-    struct ccn_forwarding *f;
     struct ccn_indexbuf *x = npe->forward_to;
     
     if (x == NULL)
@@ -2631,7 +2628,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                                        struct nameprefix_entry *npe,
                                        struct ccn_indexbuf *outbound)
 {
-    struct propagating_entry *head = npe->propagating_head;
+    struct propagating_entry *head = &npe->pe_head;
     struct propagating_entry *p;
     size_t presize = pi->offset[CCN_PI_B_Nonce];
     size_t postsize = pi->offset[CCN_PI_E] - pi->offset[CCN_PI_E_Nonce];
@@ -2646,7 +2643,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
 
     if ((face->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
         max_redundant = 0;
-    if (head != NULL && outbound != NULL) {
+    if (head->next != NULL && outbound != NULL) {
         for (p = head->next; p != head && outbound->n > 0; p = p->next) {
             if (p->size > minsize &&
                 p->interest_msg != NULL &&

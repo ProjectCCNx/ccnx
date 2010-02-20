@@ -64,9 +64,9 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
     for (sum = 0, hashtb_start(h->nameprefix_tab, e);
          e->data != NULL; hashtb_next(e)) {
         struct nameprefix_entry *ipe = e->data;
-        struct propagating_entry *head = ipe->propagating_head;
+        struct propagating_entry *head = &ipe->pe_head;
         struct propagating_entry *p;
-        if (head != NULL) {
+        if (head->next != NULL) {
             for (p = head->next; p != head; p = p->next) {
                 // XXX - This should check p->faceid before counting p
                 // ... but face_from_faceid() is private.

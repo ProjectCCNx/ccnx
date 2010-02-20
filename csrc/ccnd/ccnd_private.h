@@ -259,7 +259,7 @@ struct propagating_entry {
  * the Name prefix.
  */
 struct nameprefix_entry {
-    struct propagating_entry *propagating_head;
+    struct propagating_entry pe_head; /**< list head for propagating entries */
     struct ccn_indexbuf *forward_to; /**< faceids to forward to */
     struct ccn_forwarding *forwarding; /**< detailed forwarding info */
     struct nameprefix_entry *parent; /**< link to next-shorter prefix */
