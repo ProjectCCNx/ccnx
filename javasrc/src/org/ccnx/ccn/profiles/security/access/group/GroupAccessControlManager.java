@@ -1022,7 +1022,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 			// continue waiting for children as long as new children are found before the timeout expires.
 			boolean continueWaitingForChildren = true;
 			while (continueWaitingForChildren) {
-				continueWaitingForChildren = keyDirectory.waitForNewChildren(SystemConfiguration.MEDIUM_TIMEOUT);
+				continueWaitingForChildren = keyDirectory.waitForNewChildren(SystemConfiguration.LONG_TIMEOUT);
 			}
 			
 			// this will handle the caching.
