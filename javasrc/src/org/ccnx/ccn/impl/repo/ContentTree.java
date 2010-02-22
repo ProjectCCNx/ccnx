@@ -686,7 +686,7 @@ public class ContentTree {
 						ncc, getter);
 			}
 			else{
-				InterestPreScreener ips = new InterestPreScreener(interest, ncc, ncc);
+				InterestPreScreener ips = new InterestPreScreener(interest, ncc + 1, ncc);
 				return leftSearch(interest, ips, ncc,
 						prefixRoot, new ContentName(ncc, interest.name().components()), 
 						false, getter);

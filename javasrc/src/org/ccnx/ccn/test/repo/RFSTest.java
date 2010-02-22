@@ -35,6 +35,7 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo;
@@ -171,19 +172,9 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, badCharLongName, "Long and funny");
 		
 		System.out.println("Repotest - Testing different kinds of interests");
-		ContentName name1 = ContentName.fromNative("/repoTest/nextTest/aaa");
-		ContentObject content1 = ContentObject.buildContentObject(name1, "aaa".getBytes());
-		repo.saveContent(content1);
-		ContentName name2 = ContentName.fromNative("/repoTest/nextTest/bbb");
-		repo.saveContent(ContentObject.buildContentObject(name2, "bbb".getBytes()));
-		ContentName name3= ContentName.fromNative("/repoTest/nextTest/ccc");
-		repo.saveContent(ContentObject.buildContentObject(name3, "ccc".getBytes()));
-		ContentName name4= ContentName.fromNative("/repoTest/nextTest/ddd");
-		repo.saveContent(ContentObject.buildContentObject(name4, "ddd".getBytes()));
-		ContentName name5= ContentName.fromNative("/repoTest/nextTest/eee");
-		repo.saveContent(ContentObject.buildContentObject(name5, "eee".getBytes()));
-		ContentName name6= ContentName.fromNative("/repoTest/nextTest/fff");
-		repo.saveContent(ContentObject.buildContentObject(name6, "fff".getBytes()));
+		String prefix1 = "/repoTest/nextTest";
+		ContentName name1 = ContentName.fromNative(prefix1 + "/aaa");
+		ContentObject content1 = addRelativeTestContent(repo, prefix1, "");
 		checkData(repo, Interest.next(new ContentName(name1, content1.digest()), 2, null), "bbb");
 		checkData(repo, Interest.last(new ContentName(name1, content1.digest()), 2, null), "fff");
 		checkData(repo, Interest.next(new ContentName(name1, content1.digest()), 
@@ -191,28 +182,33 @@ public class RFSTest extends RepoTestBase {
 		
 		System.out.println("Repotest - Testing different kinds of interests in a mixture of encoded/standard data");
 		ContentName nonLongName = ContentName.fromNative("/repoTestLong/nextTestLong/aaa");
-		ContentObject nonLongContent = ContentObject.buildContentObject(nonLongName, "aaa".getBytes());
-		repo.saveContent(nonLongContent);
-		ContentName longName2 = ContentName.fromNative("/repoTestLong/nextTestLong/bbb/" + tooLongName);
-		repo.saveContent(ContentObject.buildContentObject(longName2, "bbb".getBytes()));
-		ContentName nonLongName2 = ContentName.fromNative("/repoTestLong/nextTestLong/ccc");
-		repo.saveContent(ContentObject.buildContentObject(nonLongName2, "ccc".getBytes()));
-		ContentName longName3 = ContentName.fromNative("/repoTestLong/nextTestLong/ddd/" + tooLongName);
-		repo.saveContent(ContentObject.buildContentObject(longName3, "ddd".getBytes()));
-		ContentName longName4 = ContentName.fromNative("/repoTestLong/nextTestLong/eee/" + tooLongName);
-		repo.saveContent(ContentObject.buildContentObject(longName4, "eee".getBytes()));
+		ContentObject nonLongContent = addRelativeTestContent(repo, "/repoTestLong/nextTestLong", "/" + tooLongName);
 		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.digest()), 2, null), "bbb");
-		checkData(repo, Interest.last(new ContentName(nonLongName, nonLongContent.digest()), 2, null), "eee");
+		checkData(repo, Interest.last(new ContentName(nonLongName, nonLongContent.digest()), 2, null), "fff");
 		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.digest()), 
 				new Exclude(new byte [][] {"bbb".getBytes(), "ccc".getBytes()}), 2, null, null, null), "ddd");
 		
-		System.out.println("Test some unusual right searches that could break its optimization");
+		System.out.println("Test some unusual left and right searches that could break the prescanner");
 		Exclude excludeEandF = new Exclude(new byte [][] {"eee".getBytes(), "fff".getBytes()});
-		checkData(repo, Interest.last(new ContentName(nonLongName, nonLongContent.digest()), 
+		checkData(repo, Interest.last(new ContentName(name1, content1.digest()), 
 				excludeEandF, 2, null, null, null), "ddd");
 		Interest handInterest = Interest.constructInterest(ContentName.fromNative("/repoTest/nextTest"), 
 				excludeEandF, Interest.CHILD_SELECTOR_RIGHT, null, null, null);	
 		checkData(repo, handInterest, "ddd");
+		String prefix2 = "/repoTest/nextTest/bbb";
+		ContentName name2 = ContentName.fromNative(prefix2 + "/aaa");
+		ContentObject content2= addRelativeTestContent(repo, prefix2, "");
+		checkData(repo, Interest.next(new ContentName(name2, content2.digest()), 3, null), "bbb");
+		checkData(repo, Interest.next(new ContentName(name2, content2.digest()), 
+				new Exclude(new byte [][] {"bbb".getBytes(), "ccc".getBytes()}), 3, null, null, null), "ddd");
+		String prefix3 = "/repoTest/nextTest/ddd";
+		ContentName name3 = ContentName.fromNative(prefix3 + "/aaa");
+		ContentObject content3 = addRelativeTestContent(repo, prefix3, "");
+		checkData(repo, Interest.last(new ContentName(name3, content3.digest()), 
+				excludeEandF, 3, null, null, null), "ddd");
+		Interest handInterest1 = Interest.constructInterest(ContentName.fromNative(prefix3), 
+				excludeEandF, Interest.CHILD_SELECTOR_RIGHT, null, null, null);	
+		checkData(repo, handInterest1, "ddd");
 		
 		System.out.println("Repotest - testing version and segment files");
 		versionedName = ContentName.fromNative("/repoTest/testVersion");
@@ -403,5 +399,23 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertFalse(testContent == null);
 		Assert.assertEquals(data, new String(testContent.content()));
 		Assert.assertTrue(testContent.signedInfo().getPublisherKeyID().equals(publisher));
+	}
+	
+	private ContentObject addRelativeTestContent(RepositoryStore repo, String prefix, String name) throws RepositoryException, 
+				MalformedContentNameStringException {
+		ContentName name1 = ContentName.fromNative(prefix + "/aaa" + name);
+		ContentObject content1 = ContentObject.buildContentObject(name1, "aaa".getBytes());
+		repo.saveContent(content1);
+		ContentName name2 = ContentName.fromNative(prefix + "/bbb" + name);
+		repo.saveContent(ContentObject.buildContentObject(name2, "bbb".getBytes()));
+		ContentName name3= ContentName.fromNative(prefix + "/ccc" + name);
+		repo.saveContent(ContentObject.buildContentObject(name3, "ccc".getBytes()));
+		ContentName name4= ContentName.fromNative(prefix + "/ddd" + name);
+		repo.saveContent(ContentObject.buildContentObject(name4, "ddd".getBytes()));
+		ContentName name5= ContentName.fromNative(prefix + "/eee" + name);
+		repo.saveContent(ContentObject.buildContentObject(name5, "eee".getBytes()));
+		ContentName name6= ContentName.fromNative(prefix + "/fff" + name);
+		repo.saveContent(ContentObject.buildContentObject(name6, "fff".getBytes()));
+		return content1;
 	}
 }
