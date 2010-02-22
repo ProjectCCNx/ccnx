@@ -18,7 +18,7 @@ ccndsmoketest || SkipTest no ccnd
 
 # Create the body of a simple registration request (with zero-length content)
 
-: | ccnput /test/registered/prefix
+: | ccnput -f /test/registered/prefix
 
 # Pull it out to use in the registration request.  Base-64 encode it for the benefit of the shell.
 
