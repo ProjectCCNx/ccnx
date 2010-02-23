@@ -347,8 +347,10 @@
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/impl/**/*Test.class"/>
+					<!-- should be profiles/**/*Test.class, but don't want to include access control yet -->
 				    <include name="org/ccnx/ccn/test/profiles/nameenum/*Test.class"/>
 					<include name="org/ccnx/ccn/test/profiles/*Test.class"/>
+				    <include name="org/ccnx/ccn/test/profiles/search/*Test.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -368,6 +370,9 @@
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/impl/**/*TestRepo.class"/>
+					<!-- should be profiles/**/*TestRepo.class, but don't want to include access control yet -->
+				    <include name="org/ccnx/ccn/test/profiles/metadata/*TestRepo.class"/>
+				    <include name="org/ccnx/ccn/test/profiles/search/*TestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -397,8 +402,8 @@
 	
 	<target name="test-io-with-repo" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
-		<!-- <junit printsummary="yes" haltonfailure="yes" fork="false" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}"> -->
-			<junit printsummary="yes" haltonfailure="yes" fork="false" forkmode="perBatch" showoutput="${showoutput}">
+		 <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+		<!--	<junit printsummary="yes" haltonfailure="yes" fork="false" forkmode="perBatch" showoutput="${showoutput}">-->
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>

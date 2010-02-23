@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -682,7 +682,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	
-	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
+	public Interest handleContent(ContentObject result, Interest interest) {
 				
 		synchronized(inOrderSegments) {
 			System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].2");
@@ -698,12 +698,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			}
 		
 			//method to handle content that comes back from pipeline requests
-			for(ContentObject co: results) {
-				if (verify(co))
-					receivePipelineContent(co);
-				else {
-					System.out.println("content failed verify");
-				}
+			if (verify(result))
+				receivePipelineContent(result);
+			else {
+				System.out.println("content failed verify");
 			}
 		}
 		
@@ -847,7 +845,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			
 			// dereference will check for link cycles
 			newSegment = _dereferencedLink.dereference(_timeout);
-			Log.info("CCNAbstractInputStream: dereferencing link {0} to {1}, resulting data {2}", theLink.getVersionedName(),
+			if (Log.isLoggable(Level.INFO))
+				Log.info("CCNAbstractInputStream: dereferencing link {0} to {1}, resulting data {2}", theLink.getVersionedName(),
 						theLink.link(), ((null == newSegment) ? "null" : newSegment.name()));
 			if (newSegment == null) {
 				// TODO -- catch error states. Do we throw exception or return null?
@@ -857,8 +856,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				if (_dereferencedLink.hasError()) {
 					if (_dereferencedLink.getError() instanceof LinkCycleException) {
 						// Leave the link set on the input stream, so that caller can explore errors.
-						Log.warning("Hit link cycle on link {0} pointing to {1}, cannot dereference. See this.dereferencedLink() for more information!",
+						if (Log.isLoggable(Level.WARNING)) {
+							Log.warning("Hit link cycle on link {0} pointing to {1}, cannot dereference. See this.dereferencedLink() for more information!",
 								_dereferencedLink.getVersionedName(), _dereferencedLink.link().targetName());
+						}
 					}
 					// Might also cover NoMatchingContentFoundException here...for now, just return null
 					// so can call it more than once.
@@ -873,7 +874,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		
 		if (newSegment.isType(ContentType.GONE)) {
 			_goneSegment = newSegment;
-			Log.info("getFirstSegment: got gone segment: " + _goneSegment.name());
+			if (Log.isLoggable(Level.INFO))
+				Log.info("getFirstSegment: got gone segment: {0}", _goneSegment.name());
 		} else if (newSegment.isType(ContentType.ENCR) && (null == _keys)) {
 			// The block is encrypted and we don't have keys
 			// Get the content name without the segment parent
@@ -895,7 +897,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		_currentSegment = null;
 		_segmentReadStream = null;
 		if (null == newSegment) {
-			Log.info("FINDME: Setting current segment to null! Did a segment fail to verify?");
+			if (Log.isLoggable(Level.INFO))
+				Log.info("FINDME: Setting current segment to null! Did a segment fail to verify?");
 			return;
 		}
 
@@ -917,7 +920,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					
 					// Assume getBaseName() returns name without segment information.
 					// Log verification only on highest log level (won't execute on lower logging level).
-					if( Log.isLoggable(Level.FINEST ))
+					if ( Log.isLoggable(Level.FINEST ))
 						Log.finest("Assert check: does getBaseName() match segmentless part of _currentSegment.name()? {0}",
 							   (SegmentationProfile.segmentRoot(_currentSegment.name()).equals(getBaseName())));
 					
@@ -986,7 +989,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 */
 	protected void rewindSegment() throws IOException {
 		if (null == _currentSegment) {
-			Log.info("Cannot reqind null segment.");
+			if (Log.isLoggable(Level.INFO))
+				Log.info("Cannot rewind null segment.");
 		}
 		if (null == _segmentReadStream) {
 			setCurrentSegment(_currentSegment);
@@ -1085,12 +1089,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 		// We're looking at content marked GONE
 		if (null != _goneSegment) {
-			Log.info("getNextSegment: We have a gone segment, no next segment. Gone segment: " + _goneSegment.name());
+			if (Log.isLoggable(Level.INFO))
+				Log.info("getNextSegment: We have a gone segment, no next segment. Gone segment: {0}", _goneSegment.name());
 			return false;
 		}
 		
 		if (null == _currentSegment) {
-			Log.severe("hasNextSegment() called when we have no current segment!");
+			if (Log.isLoggable(Level.SEVERE))
+				Log.severe("hasNextSegment() called when we have no current segment!");
 			throw new IOException("hasNextSegment() called when we have no current segment!");
 		}
 
@@ -1101,14 +1107,17 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		// Normally by the time they write that segment, they either know they're done or not.
 		if (null != _currentSegment.signedInfo().getFinalBlockID()) {
 			if (Arrays.equals(_currentSegment.signedInfo().getFinalBlockID(), _currentSegment.name().lastComponent())) {
-				Log.info("getNextSegment: there is no next segment. We have segment: " + 
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("getNextSegment: there is no next segment. We have segment: " + 
 						DataUtils.printHexBytes(_currentSegment.name().lastComponent()) + " which is marked as the final segment.");
+				}
 				return false;
 			}
 		}
 		
 		if (!SegmentationProfile.isSegment(_currentSegment.name())) {
-			Log.info("Unsegmented content: {0}. No next segment.", _currentSegment.name());
+			if (Log.isLoggable(Level.INFO))
+				Log.info("Unsegmented content: {0}. No next segment.", _currentSegment.name());
 			return false;
 		}
 		return true;
@@ -1121,11 +1130,12 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 */
 	protected ContentObject getNextSegment() throws IOException {
 		if (null == _currentSegment) {
-			Log.info("getNextSegment: no current segment, getting first segment.");
+			if (Log.isLoggable(Level.INFO))
+				Log.info("getNextSegment: no current segment, getting first segment.");
 			return getFirstSegment();
 		}
-
-		Log.info("getNextSegment: getting segment after " + _currentSegment.name());
+		if (Log.isLoggable(Level.INFO))
+			Log.info("getNextSegment: getting segment after {0}", _currentSegment.name());
 		return getSegment(nextSegmentNumber());
 	}
 
@@ -1139,9 +1149,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected ContentObject getFirstSegment() throws IOException {
 		if (null != _startingSegmentNumber) {
 			ContentObject firstSegment = getSegment(_startingSegmentNumber);
-			Log.info("getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " + 
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " + 
 					((null == firstSegment) ? "no " : firstSegment.name()));
-			
+			}
 			return firstSegment;
 		} else {
 			throw new IOException("Stream does not have a valid starting segment number.");
@@ -1163,17 +1174,19 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 */
 	protected boolean isFirstSegment(ContentName desiredName, ContentObject segment) {
 		if ((null != segment) && (SegmentationProfile.isSegment(segment.name()))) {
-			Log.info("is " + segment.name() + " a first segment of " + desiredName);
+			if (Log.isLoggable(Level.INFO))
+				Log.info("is {0} a first segment of {1}", segment.name(), desiredName);
 			// In theory, the segment should be at most a versioning component different from desiredName.
 			// In the case of complex segmented objects (e.g. a KeyDirectory), where there is a version,
 			// then some name components, then a segment, desiredName should contain all of those other
 			// name components -- you can't use the usual versioning mechanisms to pull first segment anyway.
 			if (!desiredName.equals(SegmentationProfile.segmentRoot(segment.name()))) {
-				Log.info("Desired name :" + desiredName + " is not a prefix of segment: " + segment.name());
+				if (Log.isLoggable(Level.INFO))
+					Log.info("Desired name :{0} is not a prefix of segment: {1}",desiredName, segment.name());
 				return false;
 			}
 			if (null != _startingSegmentNumber) {
-				return (_startingSegmentNumber.equals(SegmentationProfile.getSegmentNumber(segment.name())));
+				return (_startingSegmentNumber.longValue() == SegmentationProfile.getSegmentNumber(segment.name()));
 			} else {
 				return SegmentationProfile.isFirstSegment(segment.name());
 			}
@@ -1200,8 +1213,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		}
 		if (null != _dereferencedLink) {
 			if (null != dereferencedLink.getDereferencedLink()) {
-				Log.warning("Merging two link stacks -- {0} already has a dereferenced link from {1}. Behavior unpredictable.",
+				if (Log.isLoggable(Level.WARNING)) {
+					Log.warning("Merging two link stacks -- {0} already has a dereferenced link from {1}. Behavior unpredictable.",
 							dereferencedLink.getVersionedName(), dereferencedLink.getDereferencedLink().getVersionedName());
+				}
 			}
 			dereferencedLink.pushDereferencedLink(_dereferencedLink);
 		}
@@ -1238,9 +1253,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			if ((null != _verifiedRootSignature) && (Arrays.equals(_verifiedRootSignature, segment.signature().signature()))) {
 				if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
 					Log.warning("Found segment: " + segment.name() + " whose digest fails to verify; segment length: " + segment.contentLength());
-					Log.info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
+					if (Log.isLoggable(Level.INFO)) {
+						Log.info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
 							" proxy: " + DataUtils.printBytes(proxy) +
 							" expected proxy: " + DataUtils.printBytes(_verifiedProxy));
+					}
 	 				return false;
 				}
 			} else {
@@ -1254,8 +1271,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					_verifiedRootSignature = segment.signature().signature();
 					_verifiedProxy = proxy;
 				}
-			} 
-			Log.info("Got segment: " + segment.name().toString() + ", verified.");
+			}
+			if (Log.isLoggable(Level.INFO))
+				Log.info("Got segment: {0}, verified.", segment.name());
 		} catch (Exception e) {
 			Log.warning("Got an " + e.getClass().getName() + " exception attempting to verify segment: " + segment.name().toString() + ", treat as failure to verify.");
 			Log.warningStackTrace(e);
@@ -1390,6 +1408,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	@Override
 	public synchronized void mark(int readlimit) {
+		
+		// Shouldn't have a problem if we are GONE, and don't want to
+		// deal with exceptions raised by a call to isGone.
 		_readlimit = readlimit;
 		_markBlock = segmentNumber();
 		if (null == _segmentReadStream) {
@@ -1404,7 +1425,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				throw new RuntimeException(e);
 			}
 		}
-		Log.finest("mark: block: " + segmentNumber() + " offset: " + _markOffset);
+		if (Log.isLoggable(Level.FINEST))
+			Log.finest("mark: block: " + segmentNumber() + " offset: " + _markOffset);
 	}
 
 	@Override
@@ -1414,6 +1436,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	@Override
 	public synchronized void reset() throws IOException {
+		
+		if (isGone())
+			return;
+		
 		// TODO: when first block is read in constructor this check can be removed
 		if (_currentSegment == null) {
 			setFirstSegment(getSegment(_markBlock));
@@ -1425,7 +1451,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				// Reset and skip.
 				if (_segmentReadStream.markSupported()) {
 					_segmentReadStream.reset();
-					Log.finest("reset within block: block: " + segmentNumber() + " offset: " + _markOffset + " eof? " + _atEOF);
+					if (Log.isLoggable(Level.FINEST))
+						Log.finest("reset within block: block: " + segmentNumber() + " offset: " + _markOffset + " eof? " + _atEOF);
 					return;
 				} else {
 					setCurrentSegment(_currentSegment);
@@ -1437,13 +1464,17 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		}
 		_segmentReadStream.skip(_markOffset);
 		_atEOF = false;
-		Log.finest("reset: block: " + segmentNumber() + " offset: " + _markOffset + " eof? " + _atEOF);
+		if (Log.isLoggable(Level.FINEST))
+			Log.finest("reset: block: " + segmentNumber() + " offset: " + _markOffset + " eof? " + _atEOF);
 	}
 
 	@Override
 	public long skip(long n) throws IOException {
-
-		Log.info("in skip("+n+")");
+		
+		if (isGone())
+			return 0;
+		if (Log.isLoggable(Level.INFO))
+			Log.info("in skip("+n+")");
 
 		if (n < 0) {
 			return 0;
@@ -1467,7 +1498,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * @throws IOException
 	 */
 	public void seek(long position) throws IOException {
-		Log.info("Seeking stream to " + position);
+		if (isGone())
+			return; // can't seek gone stream
+		Log.info("Seeking stream to {0}", position);
 		// TODO: when first block is read in constructor this check can be removed
 		if ((_currentSegment == null) || (!SegmentationProfile.isFirstSegment(_currentSegment.name()))) {
 			setFirstSegment(getFirstSegment());
@@ -1489,6 +1522,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * @throws IOException
 	 */
 	public long tell() throws IOException {
+		if (isGone())
+			return 0;
 		return _currentSegment.contentLength() - _segmentReadStream.available();
 	}
 

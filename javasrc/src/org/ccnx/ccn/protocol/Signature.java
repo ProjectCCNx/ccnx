@@ -21,6 +21,7 @@ import java.security.cert.CertificateEncodingException;
 import java.util.Arrays;
 
 import org.bouncycastle.asn1.x509.DigestInfo;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -53,11 +54,6 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 public class Signature extends GenericXMLEncodable implements XMLEncodable,
 		Comparable<Signature> {
 	
-    protected static final String SIGNATURE_ELEMENT = "Signature";
-    protected static final String DIGEST_ALGORITHM_ELEMENT = "DigestAlgorithm";
-	protected static final String WITNESS_ELEMENT = "Witness";
-    protected static final String SIGNATURE_BITS_ELEMENT = "SignatureBits";
-
     byte [] _witness;
 	byte [] _signature;
 	String _digestAlgorithm;
@@ -123,15 +119,15 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
-		if (decoder.peekStartElement(DIGEST_ALGORITHM_ELEMENT)) {
-			_digestAlgorithm = decoder.readUTF8Element(DIGEST_ALGORITHM_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.DigestAlgorithm.getTag())) {
+			_digestAlgorithm = decoder.readUTF8Element(CCNProtocolDTags.DigestAlgorithm.getTag()); 
 		}
 
-		if (decoder.peekStartElement(WITNESS_ELEMENT)) {
-			_witness = decoder.readBinaryElement(WITNESS_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.Witness.getTag())) {
+			_witness = decoder.readBinaryElement(CCNProtocolDTags.Witness.getTag()); 
 		}
 
-		_signature = decoder.readBinaryElement(SIGNATURE_BITS_ELEMENT);
+		_signature = decoder.readBinaryElement(CCNProtocolDTags.SignatureBits.getTag());
 		
 		decoder.readEndElement();
 	}
@@ -146,21 +142,21 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 		encoder.writeStartElement(getElementLabel());
 		
 		if ((null != digestAlgorithm()) && (!digestAlgorithm().equals(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM))) {
-			encoder.writeElement(DIGEST_ALGORITHM_ELEMENT, OIDLookup.getDigestOID(digestAlgorithm()));
+			encoder.writeElement(CCNProtocolDTags.DigestAlgorithm.getTag(), OIDLookup.getDigestOID(digestAlgorithm()));
 		}
 		
 		if (null != witness()) {
 			// needs to handle null witness
-			encoder.writeElement(WITNESS_ELEMENT, _witness);
+			encoder.writeElement(CCNProtocolDTags.Witness.getTag(), _witness);
 		}
 
-		encoder.writeElement(SIGNATURE_BITS_ELEMENT, _signature);
+		encoder.writeElement(CCNProtocolDTags.SignatureBits.getTag(), _signature);
 
 		encoder.writeEndElement();   		
 	}
 
 	@Override
-	public String getElementLabel() { return SIGNATURE_ELEMENT; }
+	public long getElementLabel() { return CCNProtocolDTags.Signature.getTag(); }
 
 	@Override
 	public boolean validate() {

@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -24,6 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
@@ -168,7 +169,7 @@ public class InterestTable<V> {
 		if (null == interest.name()) {
 			throw new NullPointerException("InterestTable may not contain Interest with null name");
 		}
-		Log.finest("adding interest " + interest);
+		Log.finest("adding interest {0}", interest);
 		Holder<V> holder = new InterestHolder<V>(interest, value);
 		add(holder);
 	}
@@ -183,7 +184,7 @@ public class InterestTable<V> {
 		if (null == name) {
 			throw new NullPointerException("InterestTable may not contain null name");
 		}
-		Log.finest("adding name " + name);
+		Log.finest("adding name {0}", name);
 		Holder<V> holder = new NameHolder<V>(name, value);
 		add(holder);
 	}
@@ -222,7 +223,9 @@ public class InterestTable<V> {
 	
 	protected Holder<V> getMatchByName(ContentName name, ContentObject target) {
 		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
-		Log.finest("name: " + name + " target: " + target.name() + " possible matches: " + ((null == list) ? 0 : list.size()));
+		//Log.finest("name: " + name + " target: " + target.name() + " possible matches: " + ((null == list) ? 0 : list.size()));
+		if (Log.isLoggable(Level.FINEST));
+			Log.finest("name: {0} target: {1} possible matches: {2}", name, target.name(), ((null == list) ? 0 : list.size()));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -245,7 +248,8 @@ public class InterestTable<V> {
 	 * @return
 	 */
 	protected List<Holder<V>> getAllMatchByName(ContentName name, ContentObject target) {
-		Log.finest("name: " + name + " target: " + target.name());
+		if(Log.isLoggable(Level.FINEST))
+			Log.finest("name: {0} target: {1}", name, target.name());
 		List<Holder<V>> matches = new ArrayList<Holder<V>>();
 		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
 		if (null != list) {
@@ -262,7 +266,8 @@ public class InterestTable<V> {
 	}
 
 	protected Holder<V> removeMatchByName(ContentName name, ContentObject target) {
-		Log.finest("name: " + name + " target: " + target.name());
+		if(Log.isLoggable(Level.FINEST))
+			Log.finest("name: {0} target: {1}", name, target.name());
 		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
@@ -404,7 +409,8 @@ public class InterestTable<V> {
 	 * @return Entry of longest match if any, null if no match
 	 */
 	public Entry<V> getMatch(ContentObject target) {
-		Log.finest("target: " + target.name());
+		if(Log.isLoggable(Level.FINEST))
+			Log.finest("target: {0}", target.name());
 		Entry<V> match = null;
 		for (LongestFirstContentName name : _contents.keySet()) {
 			Entry<V> found = getMatchByName(name, target);
@@ -423,7 +429,8 @@ public class InterestTable<V> {
 	 * @return 			list of all matching values
 	 */
 	public List<V> getValues(ContentObject target) {
-		Log.finest("target: " + target.name());
+		if(Log.isLoggable(Level.FINEST))
+			Log.finest("target: {0}", target.name());
 
 		List<V> result = new ArrayList<V>();
 		List<Entry<V>> matches = getMatches(target);
@@ -446,7 +453,8 @@ public class InterestTable<V> {
 	 * @return List of matches, empty if no match
 	 */
 	public List<Entry<V>> getMatches(ContentObject target) {
-		Log.finest("target object name: " + target.name());
+		if(Log.isLoggable(Level.FINEST))
+			Log.finest("target object name: {0}", target.name());
 
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		if (null != target) {
@@ -469,7 +477,7 @@ public class InterestTable<V> {
 	 * @return Entry of longest match if any, null if no match
 	 */
 	public V getValue(ContentName target) {
-		Log.finest("target: " + target);
+		Log.finest("target: {0}", target);
 
 		Entry<V> match = getMatch(target);
 		if (null != match) {
@@ -488,7 +496,7 @@ public class InterestTable<V> {
 	 * @return			longest matching entry or null if none found
 	 */
 	public Entry<V> getMatch(ContentName target) {
-		Log.finest("target: " + target);
+		Log.finest("target: {0}", target);
 
 		Entry<V> match = null;
 		for (LongestFirstContentName name : _contents.keySet()) {
@@ -506,7 +514,7 @@ public class InterestTable<V> {
 	 * @return 			list of values associated with this ContentName
 	 */
 	public List<V> getValues(ContentName target) {
-		Log.finest("target: " + target);
+		Log.finest("target: {0}", target);
 
 		List<V> result = new ArrayList<V>();
 		List<Entry<V>> matches = getMatches(target);
@@ -527,7 +535,7 @@ public class InterestTable<V> {
 	 * @return List of matches ordered from longest match to shortest, empty if no match
 	 */
 	public List<Entry<V>> getMatches(ContentName target) {
-		Log.finest("target: " + target);
+		Log.finest("target: {0}", target);
 
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		for (LongestFirstContentName name : _contents.keySet()) {
@@ -587,8 +595,8 @@ public class InterestTable<V> {
 		Entry<V> match = null;
 		if (null != target) {
 			ContentName matchName = null;
-			Log.finest("removeMatch: looking for match to target " + target.name() +
-					" among " + _contents.keySet().size() + " possibilities.");				
+			if(Log.isLoggable(Level.FINEST))
+				Log.finest("removeMatch: looking for match to target {0} among {1} possibilities.", target.name(), _contents.keySet().size());				
 			for (LongestFirstContentName name : _contents.keySet()) {
 				Entry<V> found = getMatchByName(name, target);
 				if (null != found) {

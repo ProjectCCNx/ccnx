@@ -20,6 +20,7 @@ package org.ccnx.ccn.profiles.nameenum;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
@@ -177,6 +178,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		callback = c;
 	}
 	
+	public CCNHandle handle() { return _handle; }
+	
 	
 	/**
 	 * Method to register a prefix for name enumeration.  A NERequest and initial interest is created for new prefixes.
@@ -191,14 +194,14 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 			NERequest r = getCurrentRequest(prefix);
 			if (r != null) {
 				// this prefix is already registered...
-				Log.info("prefix " + prefix.toString() + " is already registered...  returning");
+				Log.fine("prefix {0} is already registered...  returning", prefix);
 				return;
 			} else {
 				r = new NERequest(prefix);
 				_currentRequests.add(r);
 			}
 
-			Log.info("Registered Prefix: " + prefix.toString());
+			Log.info("Registered Prefix: {0}", prefix);
 
 			ContentName prefixMarked = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 			
@@ -221,13 +224,13 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	 */
 	
 	public boolean cancelPrefix(ContentName prefix) {
-		Log.info("cancel prefix: "+prefix.toString());
+		Log.info("cancel prefix: {0} ", prefix);
 		synchronized(_currentRequests) {
 			//cancel the behind the scenes interests and remove from the local ArrayList
 			NERequest r = getCurrentRequest(prefix);
 			if (r != null) {
 				ArrayList<Interest> is = r.getInterests();
-				Log.fine("we have "+is.size()+" interests to cancel");
+				Log.fine("we have {0} interests to cancel", is.size());
 				Interest i;
 				while (!r.getInterests().isEmpty()) {
 					i=r.getInterests().remove(0);
@@ -250,7 +253,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	 * interests to further enumerate the prefix.  Please note that the current implementation will
 	 * need to be updated if responseIDs are more than one component long. 
 	 * 
-	 * @param results ArrayList of ContentObjects containing the ContentNames under a registered prefix
+	 * @param c ContentObject containing the ContentNames under a registered prefix
 	 * @param interest The interest matching or triggering a name enumeration response
 	 * 
 	 * @return Interest Returns a new Interest to further enumerate or null to cancel the interest
@@ -261,7 +264,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	 * @see CCNInterestHandler
 	 */
 	
-	public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
+	public Interest handleContent(ContentObject c, Interest interest) {
 		
 		if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
 			//the NEMarker is in the name...  good!
@@ -290,78 +293,79 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		
 			//update: now supports multiple responders!
 			//note:  if responseIDs are longer than 1 component, need to revisit interest generation for followups
-			if (results != null) {
-				for (ContentObject c: results) {
+			if (c != null) {
+				if (Log.isLoggable(Level.FINE)) {
 					Log.fine("we have a match for: "+interest.name()+" ["+ interest.toString()+"]");
-										
-					ArrayList<Interest> newInterests = new ArrayList<Interest>(); 
-					
-					//we want to get new versions of this object
-					newInterest = VersioningProfile.firstBlockLatestVersionInterest(c.name(), null);
-					newInterests.add(newInterest);
-					
-					//does this content object have a response id in it?
-					ContentName responseName = getIdFromName(c.name());
-					
-					if (responseName==null ) {
-						//no response name...  this is an error!
-						Log.warning("CCNNameEnumerator received a response without a responseID: {0} matching interest {1}", c.name(), interest.name());
-					} else {
-						//we have a response name. 
-						
-						//supports single component response IDs
-						//if response IDs are hierarchical, we need to avoid exploding the number of Interests we express
-								
-						//if the interest had a responseId in it, we don't need to make a new base interest with an exclude, we would have done this already.
+				}				
+				ArrayList<Interest> newInterests = new ArrayList<Interest>(); 
+
+				//we want to get new versions of this object
+				newInterest = VersioningProfile.firstBlockLatestVersionInterest(c.name(), null);
+				newInterests.add(newInterest);
+
+				//does this content object have a response id in it?
+				ContentName responseName = getIdFromName(c.name());
+
+				if (responseName==null ) {
+					//no response name...  this is an error!
+					Log.warning("CCNNameEnumerator received a response without a responseID: {0} matching interest {1}", c.name(), interest.name());
+				} else {
+					//we have a response name. 
+
+					//supports single component response IDs
+					//if response IDs are hierarchical, we need to avoid exploding the number of Interests we express
+
+					//if the interest had a responseId in it, we don't need to make a new base interest with an exclude, we would have done this already.
+					if (Log.isLoggable(Level.FINE)) {
 						Log.fine("response id from interest: "+getIdFromName(interest.name()));
-						
-						if(getIdFromName(interest.name()) != null && getIdFromName(interest.name()).count() > 0) {
-							//the interest has a response ID in it already...  skip making new base interest
-						} else {
-							//also need to add this responder to the exclude list to find more responders
-							ContentName prefixWithMarker = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
-							Exclude excludes = interest.exclude();
-							if(excludes==null)
-								excludes = new Exclude();
-							excludes.add(new byte[][]{responseName.component(0)});
-							newInterest = Interest.constructInterest(prefixWithMarker, excludes, null, null, 4, null); 
-											
-							//check to make sure the interest isn't already expressed
-							if(!ner.containsInterest(newInterest))
-								newInterests.add(newInterest);
-						}
-						
 					}
-					
-					try {
-						for(Interest i: newInterests) {
-							_handle.expressInterest(i, this);
-							ner.addInterest(i);
-							Log.finest("expressed: "+i);
-						}
-					} catch (IOException e1) {
-						// error registering new interest
-						Log.warning("error registering new interest in handleContent");
-						Log.warningStackTrace(e1);
+
+					if(getIdFromName(interest.name()) != null && getIdFromName(interest.name()).count() > 0) {
+						//the interest has a response ID in it already...  skip making new base interest
+					} else {
+						//also need to add this responder to the exclude list to find more responders
+						ContentName prefixWithMarker = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+						Exclude excludes = interest.exclude();
+						if(excludes==null)
+							excludes = new Exclude();
+						excludes.add(new byte[][]{responseName.component(0)});
+						newInterest = Interest.constructInterest(prefixWithMarker, excludes, null, null, 4, null); 
+
+						//check to make sure the interest isn't already expressed
+						if(!ner.containsInterest(newInterest))
+							newInterests.add(newInterest);
 					}
-					
-					newInterests.clear();
-					
-					try {
-						neResponse = new NameEnumerationResponseMessageObject(c, _handle);
-						links = neResponse.contents();
-						for (Link l: links) {
-							names.add(l.targetName());
-						}
-						//strip off NEMarker before passing through callback
-						callback.handleNameEnumerator(interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), names);
-					} catch(ContentDecodingException e) {
-						Log.warning("Error parsing Collection from ContentObject in CCNNameEnumerator");
-						Log.warningStackTrace(e);
-					} catch(IOException e) {
-						Log.warning("error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");
-						Log.warningStackTrace(e);
+
+				}
+
+				try {
+					for(Interest i: newInterests) {
+						_handle.expressInterest(i, this);
+						ner.addInterest(i);
+						Log.finest("expressed: {0}", i);
 					}
+				} catch (IOException e1) {
+					// error registering new interest
+					Log.warning("error registering new interest in handleContent");
+					Log.warningStackTrace(e1);
+				}
+
+				newInterests.clear();
+
+				try {
+					neResponse = new NameEnumerationResponseMessageObject(c, _handle);
+					links = neResponse.contents();
+					for (Link l: links) {
+						names.add(l.targetName());
+					}
+					//strip off NEMarker before passing through callback
+					callback.handleNameEnumerator(interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), names);
+				} catch(ContentDecodingException e) {
+					Log.warning("Error parsing Collection from ContentObject in CCNNameEnumerator");
+					Log.warningStackTrace(e);
+				} catch(IOException e) {
+					Log.warning("error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");
+					Log.warningStackTrace(e);
 				}
 			}
 		}
@@ -375,92 +379,95 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	 * new names have been registered under the prefix or if no matching NEResponse object is found, a name enumeration
 	 * response is created.
 	 * 
-	 * @param interests ArrayList of Interest objects matching the namespace filter.
+	 * @param interest Interest object matching the namespace filter.
 	 * 
-	 * @return int 
+	 * @return boolean 
 	 */
 	
-	public int handleInterests(ArrayList<Interest> interests) {
+	public boolean handleInterest(Interest interest) {
 		
 		
-		
+		boolean result = false;
 		ContentName responseName = null;
 		Link match;
 		NameEnumerationResponseMessage nem;
 				
 		ContentName name = null;
 		NEResponse r = null;
-		for (Interest i: interests) {
-			Log.finer("got an interest: {0}",i.name());
-			name = i.name().clone();
-			nem = new NameEnumerationResponseMessage();
-			//Verify NameEnumeration Marker is in the name
-			if (!name.contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
-				//Skip...  we don't handle these
-			} else {
-				name = name.cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
-				responseName = new ContentName(name, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+		if (Log.isLoggable(Level.FINER)) {
+			Log.finer("got an interest: {0}",interest.name());
+		}
+		name = interest.name().clone();
+		nem = new NameEnumerationResponseMessage();
+		//Verify NameEnumeration Marker is in the name
+		if (!name.contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
+			//Skip...  we don't handle these
+		} else {
+			name = name.cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+			responseName = new ContentName(name, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
 
-				boolean skip = false;
-				
-				synchronized (_handledResponses) {
-					//have we handled this response already?
-					r = getHandledResponse(name);
-					if (r != null) {
-						//we have handled this before!
-						if (r.isDirty()) {
-							//this has updates to send back!!
-						} else {
-							//nothing new to send back...  go ahead and skip to next interest
-							skip = true;
-						}
+			boolean skip = false;
+
+			synchronized (_handledResponses) {
+				//have we handled this response already?
+				r = getHandledResponse(name);
+				if (r != null) {
+					//we have handled this before!
+					if (r.isDirty()) {
+						//this has updates to send back!!
 					} else {
-						//this is a new one...
-						r = new NEResponse(name);
-						_handledResponses.add(r);
+						//nothing new to send back...  go ahead and skip to next interest
+						skip = true;
 					}
-					
-					if (!skip) {
-						
-						for (ContentName n: _registeredNames) {
-							if (name.isPrefixOf(n) && name.count() < n.count()) {
-								ContentName tempName = n.clone();
-								byte[] tn = n.component(name.count());
-								byte[][] na = new byte[1][tn.length];
-								na[0] = tn;
-								tempName = new ContentName(na);
-								match = new Link(tempName);
-								if (!nem.contents().contains(match)) {
-									nem.add(match);
-								}
+				} else {
+					//this is a new one...
+					r = new NEResponse(name);
+					_handledResponses.add(r);
+				}
+
+				if (!skip) {
+
+					for (ContentName n: _registeredNames) {
+						if (name.isPrefixOf(n) && name.count() < n.count()) {
+							ContentName tempName = n.clone();
+							byte[] tn = n.component(name.count());
+							byte[][] na = new byte[1][tn.length];
+							na[0] = tn;
+							tempName = new ContentName(na);
+							match = new Link(tempName);
+							if (!nem.contents().contains(match)) {
+								nem.add(match);
 							}
 						}
 					}
-			
-					if (nem.size() > 0) {
-						try {
-							ContentName responseNameWithId = KeyProfile.keyName(responseName, _handle.keyManager().getDefaultKeyID());
-							NameEnumerationResponseMessageObject nemobj = new NameEnumerationResponseMessageObject(responseNameWithId, nem, _handle);
-							nemobj.save(i);
-							
+				}
+
+				if (nem.size() > 0) {
+					try {
+						ContentName responseNameWithId = KeyProfile.keyName(responseName, _handle.keyManager().getDefaultKeyID());
+						NameEnumerationResponseMessageObject nemobj = new NameEnumerationResponseMessageObject(responseNameWithId, nem, _handle);
+						nemobj.save(interest);
+						result = true;
+
+						if (Log.isLoggable(Level.FINE)) {
 							Log.fine("Saved collection object in name enumeration: " + nemobj.getVersionedName());
-							
-							r.clean();
-						} catch(IOException e) {
-							Log.warning("error processing an incoming interest..  dropping and returning");
-							Log.warningStackTrace(e);
-							return 0;
 						}
-					}
-				
-					Log.finer("this interest did not have any matching names...  not returning anything.");
-					if (r != null)
+
 						r.clean();
-				} //end of synchronized
-			}  //end of name enumeration marker check
-		} //end of interest processing loop
-			
-		return 0;
+					} catch(IOException e) {
+						Log.warning("error processing an incoming interest..  dropping and returning");
+						Log.warningStackTrace(e);
+						return false;
+					}
+				}
+
+				Log.finer("this interest did not have any matching names...  not returning anything.");
+				if (r != null)
+					r.clean();
+			} //end of synchronized
+		}  //end of name enumeration marker check
+
+		return result;
 	}
 
 	/**

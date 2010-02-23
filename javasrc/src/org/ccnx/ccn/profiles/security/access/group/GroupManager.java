@@ -26,6 +26,7 @@ import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -212,10 +213,10 @@ public class GroupManager {
 		Group existingGroup = getGroup(friendlyName);		
 		// We really want to be sure we get the group if it's out there...
 		if (null != existingGroup) {
-			Log.info("Got existing group to delete: " + existingGroup);
+			Log.info("Got existing group to delete: {0}", existingGroup);
 			existingGroup.delete();
 		} else {
-			Log.warning("No existing group: " + friendlyName + ", ignoring delete request.");
+			Log.warning("No existing group: {0}, ignoring delete request.", friendlyName);
 		}
 	}
 	
@@ -260,11 +261,17 @@ public class GroupManager {
 	 */
 	public boolean amCurrentGroupMember(Group group) throws ContentDecodingException, IOException {
 		MembershipList ml = group.membershipList(); // will update
-		Log.finer("amCurrentGroupMember: group {0} has {1} member(s).", group.groupName(), ml.membershipList().size());
+		if (Log.isLoggable(Level.FINER)) {
+			Log.finer("amCurrentGroupMember: group {0} has {1} member(s).", group.groupName(), ml.membershipList().size());
+		}
 		for (Link lr : ml.membershipList().contents()) {
-			Log.finer("amCurrentGroupMember: {0} is a member of group {1}", lr.targetName(), group.groupName());
+			if (Log.isLoggable(Level.FINER)) {
+				Log.finer("amCurrentGroupMember: {0} is a member of group {1}", lr.targetName(), group.groupName());
+			}
 			if (isGroup(lr)) {
-				Log.finer("amCurrentGroupMember: {0} is itself a group.", lr.targetName());
+				if (Log.isLoggable(Level.FINER)) {
+					Log.finer("amCurrentGroupMember: {0} is itself a group.", lr.targetName());
+				}
 				String groupFriendlyName = GroupAccessControlProfile.groupNameToFriendlyName(lr.targetName());
 				if (amCurrentGroupMember(groupFriendlyName)) {
 					_myGroupMemberships.add(groupFriendlyName);
@@ -276,11 +283,17 @@ public class GroupManager {
 			} else {
 				// Not a group. Is it me?
 				if (_accessManager.haveIdentity(lr.targetName())) {
-					Log.finer("amCurrentGroupMember: {0} is me!", lr.targetName());
+					if (Log.isLoggable(Level.FINER)) {
+						Log.finer("amCurrentGroupMember: {0} is me!", lr.targetName());
+					}
 					_myGroupMemberships.add(group.friendlyName());
 					return true;
 				}
-				else Log.finer("amCurrentGroupMember: {0} is not me.", lr.targetName());
+				else {
+					if (Log.isLoggable(Level.FINER)) {
+						Log.finer("amCurrentGroupMember: {0} is not me.", lr.targetName());
+					}
+				}
 			}
 		}
 		return false;
@@ -328,8 +341,10 @@ public class GroupManager {
 			theGroupPublicKey = thisPublicKey.publicKey();
 		}
 		if (null == privateKeyDirectory) {
-			Log.info("Unexpected: null private key directory for group " + groupFriendlyName + " version " + privateKeyVersion + " as stamp " + 
-					DataUtils.printHexBytes(privateKeyVersion.toBinaryTime()));
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("Unexpected: null private key directory for group {0} version {1} as stamp {2}",
+						groupFriendlyName, privateKeyVersion, DataUtils.printHexBytes(privateKeyVersion.toBinaryTime()));
+			}
 			return null;
 		}
 		
@@ -376,12 +391,17 @@ public class GroupManager {
 		PrincipalInfo pi = null;
 		pi = keyDirectory.getPrincipalInfo(principal);
 		if (null == pi) {
-			Log.info("No key available for principal : " + principal + " on node " + keyDirectory.getName());
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("No key available for principal {0} on node {1}", principal, keyDirectory.getName());
+			}
 			return null;
 		}
 		Key privateKey = getGroupPrivateKey(principal, pi.versionTimestamp());
 		if (null == privateKey) {
-			Log.info("Unexpected: we beleive we are a member of group " + principal + " but cannot retrieve private key version: " + keyDirectory.getPrincipalInfo(principal) + " our membership revoked?");			
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("Unexpected: we believe we are a member of group {0} but cannot retrieve private key version {1} our membership revoked?",
+						principal, keyDirectory.getPrincipalInfo(principal));			
+			}
 			// Check to see if we are a current member.
 			if (!amCurrentGroupMember(principal)) {
 				// Removes this group from my list of known groups, adds it to my

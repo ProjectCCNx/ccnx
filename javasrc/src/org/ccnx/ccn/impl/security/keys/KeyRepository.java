@@ -293,7 +293,7 @@ public class KeyRepository {
 
 		PublicKey key = getPublicKeyFromCache(keyToPublish);
 		if (null == key) {
-			throw new InvalidKeyException("Cannot retrieive key " + keyToPublish);
+			throw new InvalidKeyException("Cannot retrieve key " + keyToPublish);
 		}
 
 		// HACK - want to use repo confirmation protocol to make sure data makes it to a repo

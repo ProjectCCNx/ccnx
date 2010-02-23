@@ -110,9 +110,8 @@ public class NamespaceManager {
 		}
 
 		@Override
-		public String getElementLabel() {
-			// TODO Auto-generated method stub
-			return null;
+		public long getElementLabel() {
+			return -1;
 		}
 	}
 
@@ -147,7 +146,7 @@ public class NamespaceManager {
 		}
 
 		// Search up a path (towards the root) for an Access Control root marker
-		Pathfinder pathfinder = new Pathfinder(searchName, AccessControlProfile.rootPostfix(), true, false, 
+		Pathfinder pathfinder = new Pathfinder(searchName, null, AccessControlProfile.rootPostfix(), true, false, 
 											  SystemConfiguration.SHORT_TIMEOUT, 
 											  _searchedPathCache,
 											  handle);

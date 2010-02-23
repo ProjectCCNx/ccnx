@@ -184,9 +184,9 @@ public interface XMLEncodable {
 	 * Allow the encoder/decoder to retrieve the top-level element name
 	 * programmatically. This allows subclasses to rename elements without
 	 * changing their encoder/decoders.
-	 * @return the element label to use 
+	 * @return the element label to use, as a key in a loaded encoding dictionary
 	 */
-	public String getElementLabel();
+	public long getElementLabel();
 
 	/**
 	 * Make sure all of the necessary fields are filled in

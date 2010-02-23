@@ -378,13 +378,10 @@ public class CCNLibraryTest extends LibraryTestBase {
 			_mainThread = mainThread;
 		}
 
-		public Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
+		public Interest handleContent(ContentObject co, Interest interest) {
 			byte[] content = null;
 			try {
-				if (null != results) {
-					Iterator<ContentObject> rit = results.iterator();
-					while (rit.hasNext()) {
-						ContentObject co = rit.next();
+				if (null != co) {
 						System.out.println("handleContent: got " + co.name());
 
 						content = co.content();
@@ -415,7 +412,6 @@ public class CCNLibraryTest extends LibraryTestBase {
 						default:
 							Assert.fail("Somehow got a third update");
 						}
-					}
 				}
 			} catch (VersionMissingException vex) {
 				Assert.fail("No version when expecting one -- though be careful to make sure we should have been.");

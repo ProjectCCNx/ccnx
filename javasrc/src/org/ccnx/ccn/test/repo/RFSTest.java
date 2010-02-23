@@ -182,8 +182,10 @@ public class RFSTest extends RepoTestBase {
 		repo.saveContent(ContentObject.buildContentObject(name4, "ddd".getBytes()));
 		ContentName name5= ContentName.fromNative("/repoTest/nextTest/eee");
 		repo.saveContent(ContentObject.buildContentObject(name5, "eee".getBytes()));
+		ContentName name6= ContentName.fromNative("/repoTest/nextTest/fff");
+		repo.saveContent(ContentObject.buildContentObject(name6, "fff".getBytes()));
 		checkData(repo, Interest.next(new ContentName(name1, content1.digest()), 2, null), "bbb");
-		checkData(repo, Interest.last(new ContentName(name1, content1.digest()), 2, null), "eee");
+		checkData(repo, Interest.last(new ContentName(name1, content1.digest()), 2, null), "fff");
 		checkData(repo, Interest.next(new ContentName(name1, content1.digest()), 
 				new Exclude(new byte [][] {"bbb".getBytes(), "ccc".getBytes()}), 2, null, null, null), "ddd");
 		
@@ -203,6 +205,14 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, Interest.last(new ContentName(nonLongName, nonLongContent.digest()), 2, null), "eee");
 		checkData(repo, Interest.next(new ContentName(nonLongName, nonLongContent.digest()), 
 				new Exclude(new byte [][] {"bbb".getBytes(), "ccc".getBytes()}), 2, null, null, null), "ddd");
+		
+		System.out.println("Test some unusual right searches that could break its optimization");
+		Exclude excludeEandF = new Exclude(new byte [][] {"eee".getBytes(), "fff".getBytes()});
+		checkData(repo, Interest.last(new ContentName(nonLongName, nonLongContent.digest()), 
+				excludeEandF, 2, null, null, null), "ddd");
+		Interest handInterest = Interest.constructInterest(ContentName.fromNative("/repoTest/nextTest"), 
+				excludeEandF, Interest.CHILD_SELECTOR_RIGHT, null, null, null);	
+		checkData(repo, handInterest, "ddd");
 		
 		System.out.println("Repotest - testing version and segment files");
 		versionedName = ContentName.fromNative("/repoTest/testVersion");

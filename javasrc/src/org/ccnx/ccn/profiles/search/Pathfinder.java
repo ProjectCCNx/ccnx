@@ -18,7 +18,6 @@
 package org.ccnx.ccn.profiles.search;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Set;
@@ -64,6 +63,7 @@ public class Pathfinder implements CCNInterestListener {
 	}
 	
 	protected ContentName _startingPoint;
+	protected ContentName _stoppingPoint; // where to stop, inclusive; ROOT if non-null
 	protected ContentName _postfix;
 	protected boolean _closestOnPath;
 	protected boolean _goneOK;
@@ -79,12 +79,26 @@ public class Pathfinder implements CCNInterestListener {
 	// In order from startingPoint to root.
 	protected LinkedList<Interest> _outstandingInterests = new LinkedList<Interest>();
 	
-	public Pathfinder(ContentName startingPoint, ContentName desiredPostfix, 
+	/**
+	 * Search from startingPoint to stoppingPoint *inclusive* (i.e. stoppingPoint
+	 * will be searched).
+	 * @param startingPoint
+	 * @param stoppingPoint
+	 * @param desiredPostfix
+	 * @param closestOnPath
+	 * @param goneOK
+	 * @param timeout
+	 * @param searchedPathCache
+	 * @param handle
+	 * @throws IOException
+	 */
+	public Pathfinder(ContentName startingPoint, ContentName stoppingPoint, ContentName desiredPostfix, 
 					  boolean closestOnPath, boolean goneOK,
 					  int timeout, 
 					  Set<ContentName> searchedPathCache,
 					  CCNHandle handle) throws IOException {
 		_startingPoint = startingPoint;
+		_stoppingPoint = (null == stoppingPoint) ? ContentName.ROOT : stoppingPoint;
 		_postfix = desiredPostfix;
 		_closestOnPath = closestOnPath;
 		_goneOK = goneOK;
@@ -111,7 +125,7 @@ public class Pathfinder implements CCNInterestListener {
 				_outstandingInterests.add(theInterest);
 			}
 			
-			if (searchPoint.equals(ContentName.ROOT)) {
+			if (searchPoint.equals(_stoppingPoint)) {
 				searchPoint = null;
 			} else {
 				searchPoint = searchPoint.parent();
@@ -206,7 +220,7 @@ public class Pathfinder implements CCNInterestListener {
 		return _timedOut;
 	}
 	
-	public Interest handleContent(ArrayList<ContentObject> results,
+	public Interest handleContent(ContentObject result,
 								  Interest interest) {
 		// When we get data back, we can cancel all the outstanding interests in the
 		// direction other than the one we want.
@@ -216,14 +230,16 @@ public class Pathfinder implements CCNInterestListener {
 		// content is OK (only relevant for postfixes that will pull specific
 		// information). If it isn't, and we get GONE content, we put out an
 		// interest looking for a later (non-GONE) version at that point.
-		Log.finer("Pathfinder: Got {0} results matching interest {1}, first name is {2}", results.size(), interest, results.get(0).name());
+		Log.finer("Pathfinder: Got result matching interest {0}, first name is {1}", interest, result.name());
 		
 		Interest returnInterest = null;
 		
 		synchronized(this) {
 			int index = _outstandingInterests.indexOf(interest);
 			
-			for (ContentObject result : results) {
+			// if the interest has already been removed from _outstandingInterests, do nothing.
+			if (index == -1) return null;
+			
 				if (result.isGone() && !goneOK()) {
 					Log.finer("Pathfinder found a GONE object when it wasn't looking for one. Replacing interest with one looking for latest version after (0}", result.name());
 
@@ -278,11 +294,11 @@ public class Pathfinder implements CCNInterestListener {
 					_searchResult = result; // what if there is more than one
 					
 				}
-			}
+
 			// Order may have changed
 			index = _outstandingInterests.indexOf(interest);
 			_outstandingInterests.remove(index);
-			if (null == returnInterest) {
+			if (null != returnInterest) {
 				_outstandingInterests.add(index, returnInterest);
 			}
 			

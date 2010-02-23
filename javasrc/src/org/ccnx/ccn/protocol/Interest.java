@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -20,8 +20,10 @@ package org.ccnx.ccn.protocol;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.TrustManager;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -44,14 +46,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	// Used to remove spurious *'s
 	public static final String RECURSIVE_POSTFIX = "*";
-	
-	public static final String INTEREST_ELEMENT = "Interest";
-	public static final String MAX_SUFFIX_COMPONENTS = "MaxSuffixComponents";
-	public static final String MIN_SUFFIX_COMPONENTS = "MinSuffixComponents";
-	public static final String CHILD_SELECTOR = "ChildSelector";
-	public static final String ANSWER_ORIGIN_KIND = "AnswerOriginKind";
-	public static final String SCOPE_ELEMENT = "Scope";
-	public static final String NONCE_ELEMENT = "Nonce";
 	
 	// ChildSelector values
 	public static final int CHILD_SELECTOR_LEFT = 0;
@@ -221,34 +215,39 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			// the number of additional components must be this value
 			int nameCount = name.count();
 			int lengthDiff = nameCount + (digestIncluded?0:1) - name().count();
+
 			if (null != maxSuffixComponents() && lengthDiff > maxSuffixComponents()) {
-				Log.fine("Interest match failed: " + lengthDiff + " more than the " + maxSuffixComponents() + " components between expected " +
-						name() + " and tested " + name);
+				//Log.fine("Interest match failed: " + lengthDiff + " more than the " + maxSuffixComponents() + " components between expected " +
+				//		name() + " and tested " + name);
+				if(Log.isLoggable(Level.FINE))
+					Log.fine("Interest match failed: {0} more than the {1} components between expected {2} and tested {3}",lengthDiff, maxSuffixComponents(), name(), name);
 				return false;
 			}
 			if (null != minSuffixComponents() && lengthDiff < minSuffixComponents()) {
-				Log.fine("Interest match failed: " + lengthDiff + " less than the " + minSuffixComponents() + " components between expected " +
-						name() + " and tested " + name);
+				//Log.fine("Interest match failed: " + lengthDiff + " less than the " + minSuffixComponents() + " components between expected " +
+				//		name() + " and tested " + name);
+				if(Log.isLoggable(Level.FINE))
+					Log.fine("Interest match failed: {0} less than the {1} components between expected {2} and tested {3}",lengthDiff, minSuffixComponents(), name(), name);
 				return false;
 			}
 		}
 		if (null != exclude()) {
 			if (exclude().match(name.component(name().count()))) {
-				Log.finest("Interest match failed. " + name + " has been excluded");
+				Log.finest("Interest match failed. {0} has been excluded", name);
 				return false;
 			}
 		}
 		if (null != publisherID()) {
 			if (null == resultPublisherKeyID) {
-				Log.finest("Interest match failed, target " + name + " doesn't specify a publisherID and we require a particular one.");
+				Log.finest("Interest match failed, target {0} doesn't specify a publisherID and we require a particular one.", name);
 				return false; 
 			}
 			// Should this be more general?
 			// TODO DKS handle issuer
-			Log.finest("Interest match handed off to trust manager for name: " + name);
+			Log.finest("Interest match handed off to trust manager for name: {0}", name);
 			return TrustManager.getTrustManager().matchesRole(publisherID(), resultPublisherKeyID);
 		} 
-		Log.finest("Interest match succeeded to name: " + name);
+		Log.finest("Interest match succeeded to name: {0}", name);
 		return true;
 	}
 	
@@ -466,12 +465,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		_name = new ContentName();
 		_name.decode(decoder);
 		
-		if (decoder.peekStartElement(MIN_SUFFIX_COMPONENTS)) {
-			_minSuffixComponents = decoder.readIntegerElement(MIN_SUFFIX_COMPONENTS);
+		if (decoder.peekStartElement(CCNProtocolDTags.MinSuffixComponents.getTag())) {
+			_minSuffixComponents = decoder.readIntegerElement(CCNProtocolDTags.MinSuffixComponents.getTag());
 		}
 		
-		if (decoder.peekStartElement(MAX_SUFFIX_COMPONENTS)) {
-			_maxSuffixComponents = decoder.readIntegerElement(MAX_SUFFIX_COMPONENTS);
+		if (decoder.peekStartElement(CCNProtocolDTags.MaxSuffixComponents.getTag())) {
+			_maxSuffixComponents = decoder.readIntegerElement(CCNProtocolDTags.MaxSuffixComponents.getTag());
 		}
 				
 		if (PublisherID.peek(decoder)) {
@@ -479,26 +478,26 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			_publisher.decode(decoder);
 		}
 
-		if (decoder.peekStartElement(Exclude.EXCLUDE_ELEMENT)) {
+		if (decoder.peekStartElement(CCNProtocolDTags.Exclude.getTag())) {
 			_exclude = new Exclude();
 			_exclude.decode(decoder);
 		}
 		
-		if (decoder.peekStartElement(CHILD_SELECTOR)) {
-			_childSelector = decoder.readIntegerElement(CHILD_SELECTOR);
+		if (decoder.peekStartElement(CCNProtocolDTags.ChildSelector.getTag())) {
+			_childSelector = decoder.readIntegerElement(CCNProtocolDTags.ChildSelector.getTag());
 		}
 		
-		if (decoder.peekStartElement(ANSWER_ORIGIN_KIND)) {
+		if (decoder.peekStartElement(CCNProtocolDTags.AnswerOriginKind.getTag())) {
 			// call setter to handle defaulting
-			answerOriginKind(decoder.readIntegerElement(ANSWER_ORIGIN_KIND));
+			_answerOriginKind = decoder.readIntegerElement(CCNProtocolDTags.AnswerOriginKind.getTag());
 		}
 		
-		if (decoder.peekStartElement(SCOPE_ELEMENT)) {
-			_scope = decoder.readIntegerElement(SCOPE_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.Scope.getTag())) {
+			_scope = decoder.readIntegerElement(CCNProtocolDTags.Scope.getTag());
 		}
 		
-		if (decoder.peekStartElement(NONCE_ELEMENT)) {
-			_nonce = decoder.readBinaryElement(NONCE_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.Nonce.getTag())) {
+			_nonce = decoder.readBinaryElement(CCNProtocolDTags.Nonce.getTag());
 		}
 		
 		try {
@@ -517,10 +516,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		name().encode(encoder);
 	
 		if (null != minSuffixComponents()) 
-			encoder.writeIntegerElement(MIN_SUFFIX_COMPONENTS, minSuffixComponents());	
+			encoder.writeElement(CCNProtocolDTags.MinSuffixComponents.getTag(), minSuffixComponents());	
 
 		if (null != maxSuffixComponents()) 
-			encoder.writeIntegerElement(MAX_SUFFIX_COMPONENTS, maxSuffixComponents());
+			encoder.writeElement(CCNProtocolDTags.MaxSuffixComponents.getTag(), maxSuffixComponents());
 
 		if (null != publisherID())
 			publisherID().encode(encoder);
@@ -529,22 +528,22 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			exclude().encode(encoder);
 
 		if (null != childSelector()) 
-			encoder.writeIntegerElement(CHILD_SELECTOR, childSelector());
+			encoder.writeElement(CCNProtocolDTags.ChildSelector.getTag(), childSelector());
 
 		if (DEFAULT_ANSWER_ORIGIN_KIND != answerOriginKind()) 
-			encoder.writeIntegerElement(ANSWER_ORIGIN_KIND, answerOriginKind());
+			encoder.writeElement(CCNProtocolDTags.AnswerOriginKind.getTag(), answerOriginKind());
 
 		if (null != scope()) 
-			encoder.writeIntegerElement(SCOPE_ELEMENT, scope());
+			encoder.writeElement(CCNProtocolDTags.Scope.getTag(), scope());
 		
 		if (null != nonce())
-			encoder.writeElement(NONCE_ELEMENT, nonce());
+			encoder.writeElement(CCNProtocolDTags.Nonce.getTag(), nonce());
 		
 		encoder.writeEndElement();   		
 	}
 	
 	@Override
-	public String getElementLabel() { return INTEREST_ELEMENT; }
+	public long getElementLabel() { return CCNProtocolDTags.Interest.getTag(); }
 
 	@Override
 	public boolean validate() {

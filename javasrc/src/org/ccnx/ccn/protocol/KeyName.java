@@ -19,6 +19,7 @@ package org.ccnx.ccn.protocol;
 
 import java.io.Serializable;
 
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -44,8 +45,6 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 public class KeyName extends GenericXMLEncodable implements XMLEncodable, Serializable {
 	
 	private static final long serialVersionUID = -4486998061731593809L;
-
-	protected static final String KEY_NAME_ELEMENT = "KeyName";
 
 	protected ContentName _name;
 	protected PublisherID _publisher;
@@ -126,7 +125,7 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable, Serial
 	}
 	
 	@Override
-	public String getElementLabel() { return KEY_NAME_ELEMENT; }
+	public long getElementLabel() { return CCNProtocolDTags.KeyName.getTag(); }
 
 	@Override
 	public boolean validate() {

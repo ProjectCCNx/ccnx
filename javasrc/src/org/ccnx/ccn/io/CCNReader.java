@@ -57,7 +57,7 @@ public class CCNReader {
 	}
 	
 	/**
-	 * Gets a ContentObject matching this interest
+	 * Gets a ContentObject matching this interest, CURRENTLY UNVERIFIED.
 	 * @param interest interest for desired object
 	 * @param timeout milliseconds to wait for data
 	 * @return data matching the interest or null

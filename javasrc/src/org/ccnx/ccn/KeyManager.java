@@ -148,13 +148,27 @@ public abstract class KeyManager {
 	public static void initializeProvider() {
 		synchronized(KeyManager.class) {
 			if (null == BC_PROVIDER) {
-				Provider bc = new BouncyCastleProvider();
-				Security.addProvider(bc);
-				BC_PROVIDER = bc;
-				if (null != BC_PROVIDER)
-					Log.fine("Installed BouncyCastle provider.");
-				else
-					Log.severe("ERROR: NULL default provider! Cannot load BouncyCastle!");
+				BC_PROVIDER = Security.getProvider("BC");
+				if (null == BC_PROVIDER) {
+					Provider bc = new BouncyCastleProvider();
+					int result = Security.addProvider(bc);
+					BC_PROVIDER = bc;
+					if (null != BC_PROVIDER) {
+						if (result > 0) {
+							Log.info("KeyManager: Successfully initialized BouncyCastle provider at position " + result);
+						} else {
+							Log.info("KeyManager: BouncyCastle provider already installed.");
+						}
+					} else {
+						Log.severe("ERROR: NULL default provider! Cannot load BouncyCastle! Result of addProvider: " + result);
+					}
+				} else {
+					Log.info("KeyManager: BouncyCastle provider installed by default.");
+				}
+				Provider checkProvider = Security.getProvider("BC");
+				if (null == checkProvider) {
+					Log.severe("Could not load BouncyCastle provider back in!");
+				}
 			}
 		}
 	}
@@ -171,6 +185,19 @@ public abstract class KeyManager {
 			Log.severe("ERROR: NULL default provider! Cannot load BouncyCastle!");
 		}
 		return BC_PROVIDER;
+	}
+	
+	public static boolean checkDefaultProvider() {
+		boolean test = true;
+		if (null == BC_PROVIDER) {
+			test = false;
+			Log.warning("checkDefaultProvider: initialization of BouncyCastle provider did not proceed properly, no BC_PROVIDER.");
+		}
+		if (null == Security.getProvider("BC")) {
+			test = false;
+			Log.warning("checkDefaultProvider: cannot load BouncyCastle provider!");
+		}
+		return test;
 	}
 	
 	/**

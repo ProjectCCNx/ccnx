@@ -23,6 +23,7 @@ import java.util.EnumSet;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -159,9 +160,6 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		}
 	}
 
-	protected static final String LINK_ELEMENT = "Link";
-	protected static final String LABEL_ELEMENT = "Label"; // overlaps with WrappedKey.LABEL_ELEMENT,
-															// shared dictionary entry	
 	protected ContentName _targetName;
 	protected String _targetLabel;
 	protected LinkAuthenticator _targetAuthenticator = null;
@@ -242,11 +240,11 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		_targetName = new ContentName();
 		_targetName.decode(decoder);
 		
-		if (decoder.peekStartElement(LABEL_ELEMENT)) {
-			_targetLabel = decoder.readUTF8Element(LABEL_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.Label.getTag())) {
+			_targetLabel = decoder.readUTF8Element(CCNProtocolDTags.Label.getTag()); 
 		}
 
-		if (decoder.peekStartElement(LinkAuthenticator.LINK_AUTHENTICATOR_ELEMENT)) {
+		if (decoder.peekStartElement(CCNProtocolDTags.LinkAuthenticator.getTag())) {
 			_targetAuthenticator = new LinkAuthenticator();
 			_targetAuthenticator.decode(decoder);
 		}
@@ -263,7 +261,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		encoder.writeStartElement(getElementLabel());
 		_targetName.encode(encoder);
 		if (null != targetLabel()) {
-			encoder.writeElement(LABEL_ELEMENT, targetLabel());
+			encoder.writeElement(CCNProtocolDTags.Label.getTag(), targetLabel());
 		}
 		if (null != _targetAuthenticator)
 			_targetAuthenticator.encode(encoder);
@@ -271,7 +269,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	}
 	
 	@Override
-	public String getElementLabel() { return LINK_ELEMENT; }
+	public long getElementLabel() { return CCNProtocolDTags.Link.getTag(); }
 
 	@Override
 	public boolean validate() {

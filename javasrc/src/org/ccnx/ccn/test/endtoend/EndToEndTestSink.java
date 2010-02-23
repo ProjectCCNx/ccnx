@@ -19,7 +19,6 @@ package org.ccnx.ccn.test.endtoend;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.ArrayList;
 import java.util.Random;
 
 import org.ccnx.ccn.CCNInterestListener;
@@ -69,16 +68,14 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 		}
 	}
 	
-	public synchronized Interest handleContent(ArrayList<ContentObject> results, Interest matchInterest) {
+	public synchronized Interest handleContent(ContentObject contentObject, Interest matchInterest) {
 		Interest interest = null;
 		try {
-			for (ContentObject contentObject : results) {
-				String objString = contentObject.name().toString();
-				interest = new Interest(objString.substring(0, "/BaseLibraryTest/server".length()) + "/" + new Integer(next).toString());
-				// Register interest
-				next++;
-			}
-			checkGetResults(results.get(0));
+			String objString = contentObject.name().toString();
+			interest = new Interest(objString.substring(0, "/BaseLibraryTest/server".length()) + "/" + new Integer(next).toString());
+			// Register interest
+			next++;
+			checkGetResults(contentObject);
 			if (next >= BaseLibrarySource.count) {
 				sema.release();
 			}

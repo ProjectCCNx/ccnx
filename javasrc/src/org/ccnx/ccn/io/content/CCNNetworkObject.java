@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -22,6 +22,7 @@ import java.io.InvalidObjectException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
@@ -441,7 +442,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// Have to register the version root. If we just register this specific version, we won't
 			// see any shorter interests -- i.e. for get latest version.
 			_flowControl.addNameSpace(_baseName);
-			Log.info("Created " + _saveType + " flow controller, for prefix {0}, save type " + _flowControl.saveType(), _baseName);
+			if (Log.isLoggable(Level.INFO))
+				Log.info("Created " + _saveType + " flow controller, for prefix {0}, save type " + _flowControl.saveType(), _baseName);
 		}
 	}
 		
@@ -593,7 +595,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		Tuple<ContentName, byte []> nameAndVersion = null;
 		try {
 			if (inputStream.isGone()) {
-				Log.fine("Reading from GONE stream: {0}", inputStream.getBaseName());
+				if (Log.isLoggable(Level.FINE))
+					Log.fine("Reading from GONE stream: {0}", inputStream.getBaseName());
 				_data = null;
 
 				// This will have a final version and a segment
@@ -613,14 +616,16 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				_isGone = false;
 			}
 		} catch (NoMatchingContentFoundException nme) {
-			Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available. Updating once in background.", inputStream.getBaseName());
+			if (Log.isLoggable(Level.INFO))
+				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available. Updating once in background.", inputStream.getBaseName());
 			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
 			_baseName = nameAndVersion.first();
 			updateInBackground();
 			// not an error state, merely a not ready state.
 			return false;
 		} catch (LinkCycleException lce) {
-			Log.info("Link cycle exception: {0}", lce.getMessage());
+			if (Log.isLoggable(Level.INFO))
+				Log.info("Link cycle exception: {0}", lce.getMessage());
 			setError(lce);
 			throw lce;
 		}
@@ -1110,8 +1115,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		if (null != _dereferencedLink) {
 			if (null != dereferencedLink.getDereferencedLink()) {
-				Log.warning("Merging two link stacks -- {0} already has a dereferenced link from {1}. Behavior unpredictable.",
+				if (Log.isLoggable(Level.WARNING)) {
+					Log.warning("Merging two link stacks -- {0} already has a dereferenced link from {1}. Behavior unpredictable.",
 							dereferencedLink.getVersionedName(), dereferencedLink.getDereferencedLink().getVersionedName());
+				}
 			}
 			dereferencedLink.pushDereferencedLink(_dereferencedLink);
 		}
@@ -1132,7 +1139,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 			return getBaseName();
 		} catch (IOException e) {
-			Log.warning("Invalid state for object {0}, cannot get current version name: {1}", getBaseName(), e);
+			if (Log.isLoggable(Level.WARNING))
+				Log.warning("Invalid state for object {0}, cannot get current version name: {1}", getBaseName(), e);
 			return getBaseName();
 		}
 	}
@@ -1164,37 +1172,39 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_keyLocator = keyLocator;
 	}
 
-	public synchronized Interest handleContent(ArrayList<ContentObject> results, Interest interest) {
+	public synchronized Interest handleContent(ContentObject co, Interest interest) {
 		try {
 			boolean hasNewVersion = false;
-			for (ContentObject co : results) {
-				try {
+			try {
+				if (Log.isLoggable(Level.INFO))
 					Log.info("handleContent: " + _currentInterest + " retrieved " + co.name());
-					if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
-						// OK, we have something that is a later version of our desired object.
-						// We're not sure it's actually the first content segment.
-						if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
+				if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
+					// OK, we have something that is a later version of our desired object.
+					// We're not sure it's actually the first content segment.
+					if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
+						if (Log.isLoggable(Level.INFO))
 							Log.info("Background updating of {0}, got first segment: {1}", getVersionedName(), co.name());
-							update(co);
-						} else {
-							// Have something that is not the first segment, like a repo write or a later segment. Go back
-							// for first segment.
-							ContentName latestVersionName = co.name().cut(_currentInterest.name().count() + 1);
-							Log.info("handleContent (network object): Have version information, now querying first segment of {0}", latestVersionName);
-							update(latestVersionName, co.signedInfo().getPublisherKeyID());
-						}
-						_excludeList.clear();
-						hasNewVersion = true;
+						update(co);
 					} else {
-						_excludeList.add(co.name().component(_currentInterest.name().count() - 1));  
-						Log.info("handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());						
+						// Have something that is not the first segment, like a repo write or a later segment. Go back
+						// for first segment.
+						ContentName latestVersionName = co.name().cut(_currentInterest.name().count() + 1);
+						Log.info("handleContent (network object): Have version information, now querying first segment of {0}", latestVersionName);
+						update(latestVersionName, co.signedInfo().getPublisherKeyID());
 					}
-				} catch (IOException ex) {
+					_excludeList.clear();
+					hasNewVersion = true;
+				} else {
+					_excludeList.add(co.name().component(_currentInterest.name().count() - 1));
+					if (Log.isLoggable(Level.INFO))
+						Log.info("handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());						
+				}
+			} catch (IOException ex) {
+				if (Log.isLoggable(Level.INFO))
 					Log.info("Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
-					// alright, that one didn't work, try to go on.    				
-				} 
-			}
-			
+				// alright, that one didn't work, try to go on.    				
+			} 
+
 			if (hasNewVersion) {
 				if (_continuousUpdates) {
 					// DKS TODO -- order with respect to newVersionAvailable and locking...
@@ -1212,7 +1222,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				return _currentInterest;
 			} 
 		} catch (IOException ex) {
-			Log.info("Exception {0}: {1}  attempting to request further updates : {2}", ex.getClass().getName(), ex.getMessage(), _currentInterest);
+			if (Log.isLoggable(Level.INFO))
+				Log.info("Exception {0}: {1}  attempting to request further updates : {2}", ex.getClass().getName(), ex.getMessage(), _currentInterest);
 			return null;
 		}
 	}

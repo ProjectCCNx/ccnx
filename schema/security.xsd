@@ -21,6 +21,7 @@
 <!-- Top-level objects that can appear in 
      documents, messages, etc. -->
 <xs:element name="WrappedKey" type="WrappedKeyType"/>
+<xs:element name="ACL" type="CollectionType"/> <!-- All we're doing is changing the tag... -->
 
 <xs:complexType name="WrappedKeyType">
 <!-- A wrapped (encrypted) key. The wrapped key may be secret (symmetric) or private,

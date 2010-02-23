@@ -17,6 +17,7 @@
 package org.ccnx.ccn.profiles.security;
 
 import java.io.IOException;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -64,12 +65,14 @@ public class KeyProfile implements CCNProfile {
 		offset += encodedKeyIDBytes.length;
 		System.arraycopy(KEY_ID_POSTFIX, 0, component, offset, KEY_ID_POSTFIX.length);
 		
-		Log.info("keyIDToNameComponent key id {0}, base64 {1}, result {2} as uri {3}", 
-				DataUtils.printHexBytes(keyID), 
-				new String(encodedKeyIDBytes),
-				ContentName.componentPrintNative(component),
-				ContentName.componentPrintURI(component));
-
+		if (Log.isLoggable(Level.INFO)) {
+			Log.info("keyIDToNameComponent key id {0}, base64 {1}, result {2} as uri {3}", 
+					DataUtils.printHexBytes(keyID), 
+					new String(encodedKeyIDBytes),
+					ContentName.componentPrintNative(component),
+					ContentName.componentPrintURI(component));
+		}
+		
 		return component;
 	}
 	

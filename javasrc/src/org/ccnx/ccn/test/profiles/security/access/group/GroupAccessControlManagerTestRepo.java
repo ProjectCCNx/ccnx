@@ -69,7 +69,7 @@ public class GroupAccessControlManagerTestRepo {
 		testSetACL();
 		testUpdateACLAdd();
 		testUpdateACLRemove();
-		deleteACL();
+		deleteACL(); 
 	}
 	
 	/**
@@ -199,6 +199,9 @@ public class GroupAccessControlManagerTestRepo {
 		// retrieve ACL at grandchild node
 		ACLObject aclo = acm.getEffectiveACLObject(grandchildNode);
 		Assert.assertTrue(aclo.acl().equals(baseACL));
+		
+		// TODO need to be sure that people who now have access from the ancestor ACL
+		// can read content, and new content is protected under the ancestor ACL
 	}
 	
 }
