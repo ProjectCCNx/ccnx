@@ -31,6 +31,7 @@ ALLTESTS = \
   test_long_consumer \
   test_long_consumer2 \
   test_long_producer \
+  test_new_provider \
   test_newface \
   test_prefixreg \
   test_prefix_registration \
