@@ -63,6 +63,8 @@ usage(const char *progname)
             "\n"
             "  -V seg - generate version, use seg as name suffix"
             "\n"
+            "  -w seconds - fail after this long if no interest arrives"
+            "\n"
             "  -x seconds - set FreshnessSeconds"
             "\n"
             "  -t ( DATA | ENCR | GONE | KEY | LINK | NACK ) - set type"
@@ -89,6 +91,7 @@ incoming_interest(
                     info->pi)) {
                 res = ccn_put(info->h, cob->buf, cob->length);
                 if (res >= 0) {
+                    selfp->intdata = 1;
                     ccn_set_run_timeout(info->h, 0);
                     return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
                 }
@@ -119,9 +122,10 @@ main(int argc, char **argv)
     const char *postver = NULL;
     int force = 0;
     int verbose = 0;
+    int timeout = -1;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
-    while ((res = getopt(argc, argv, "fhlvV:t:x:")) != -1) {
+    while ((res = getopt(argc, argv, "fhlvV:t:w:x:")) != -1) {
         switch (res) {
             case 'f':
                 force = 1;
@@ -140,6 +144,12 @@ main(int argc, char **argv)
             case 'V':
                 versioned = 1;
                 postver = optarg;
+                break;
+	    case 'w':
+                timeout = atol(optarg);
+                if (timeout <= 0)
+                    usage(progname);
+                timeout *= 1000;
                 break;
             case 't':
                 if (0 == strcasecmp(optarg, "DATA")) {
@@ -261,7 +271,12 @@ main(int argc, char **argv)
             fprintf(stderr, "Failed to register interest (res == %d)\n", res);
             exit(1);
         }
-        res = ccn_run(ccn, -1);
+        res = ccn_run(ccn, timeout);
+        if (in_interest.intdata == 0) {
+            if (verbose)
+                fprintf(stderr, "Nobody's interested\n");
+            exit(1);
+        }
     }
     
     if (verbose) {
@@ -271,8 +286,8 @@ main(int argc, char **argv)
         printf("wrote %s\n", ccn_charbuf_as_string(uri));
         ccn_charbuf_destroy(&uri);
     }
+    ccn_destroy(&ccn);
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&temp);
-    ccn_destroy(&ccn);
     exit(status);
 }
