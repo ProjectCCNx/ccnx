@@ -2469,7 +2469,7 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
  * @param msg points to the ccnb-encoded interest message
  * @param pi must be the parse information for msg
  * @param npe should be the result of the longest-match lookup
- * @result Newly allocated set of outgoing faceids
+ * @result Newly allocated set of outgoing faceids (never NULL)
  */
 static struct ccn_indexbuf *
 get_outbound_faces(struct ccnd_handle *h,
@@ -3070,13 +3070,13 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                     if (face->q[c] != NULL)
                         k = ccn_indexbuf_member(face->q[c]->send_queue, content->accession);
                 if (k == -1) {
-                    // XXX - this makes a little more work for ourselves, because we are about to consume this interest anyway.
-                    propagate_interest(h, face, msg, pi, npe, NULL);
-                    matched = match_interests(h, content, NULL, face, NULL);
-                    if (matched < 1 && h->debug)
-                        ccnd_debug_ccnb(h, __LINE__, "expected_match_did_not_happen",
-                                            face, content->key,
-                                            content->size);
+                    k = face_send_queue_insert(h, face, content);
+                    if (k >= 0) {
+                        if (h->debug & (16 | 8))
+                            ccnd_debug_ccnb(h, __LINE__, "consume", face, msg, size);
+                    }
+                    /* Any other matched interests need to be consumed, too. */
+                    match_interests(h, content, NULL, face, NULL);
                 }
                 if ((pi->answerfrom & CCN_AOK_EXPIRE) != 0)
                     mark_stale(h, content);
