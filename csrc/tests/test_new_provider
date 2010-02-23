@@ -28,3 +28,4 @@ ccnput -v -x 30 -w 1 /test/test_new_arrival/$NAME < testdata.txt
 # Make sure the ccnget has finished.
 wait %%
 diff testdata.txt testdata.out || Fail Interest was not sent to latecomer provider.
+rm testdata.txt testdata.out
