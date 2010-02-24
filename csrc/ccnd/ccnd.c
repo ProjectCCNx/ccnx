@@ -3787,6 +3787,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     const char *entrylimit;
     const char *mtu;
     const char *data_pause;
+    const char *fib;
     int fd;
     int res;
     int whichpf;
