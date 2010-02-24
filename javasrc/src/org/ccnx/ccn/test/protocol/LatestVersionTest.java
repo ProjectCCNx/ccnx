@@ -76,7 +76,7 @@ public class LatestVersionTest {
 	}
 	
 	@After
-	public void close() {
+	public void tearDown() {
 		getHandle.close();
 		responderHandle.close();
 	}

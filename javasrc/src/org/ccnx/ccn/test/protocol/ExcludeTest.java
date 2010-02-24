@@ -66,7 +66,7 @@ public class ExcludeTest {
 	}
 	
 	@Before
-	public void setUpBefore() {
+	public void setUp() {
 		al.clear();
 	}
 
