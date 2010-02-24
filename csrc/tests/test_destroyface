@@ -57,12 +57,12 @@ cat <<EOF >destroyface-request.xml
 EOF
 ccn_xmltoccnb -w destroyface-request.xml || Fail botch constructing destroyface-request.ccnb
 
-echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv | tail -n +1 > destroyface-pre.html
+CCNDStatus > destroyface-pre.html
 
 # Try out the destroyface request
 ccndsmoketest -b -t 4000 send destroyface-request.ccnb recv > destroyface-response.ccnb
 
-echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv | tail -n +1 > destroyface-post.html
+CCNDStatus > destroyface-post.html
 
 cmp -s /dev/null destroyface-response.ccnb && Fail did not get destroyface response
 
