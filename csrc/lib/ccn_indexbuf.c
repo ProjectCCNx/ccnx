@@ -157,7 +157,7 @@ ccn_indexbuf_set_insert(struct ccn_indexbuf *x, ELEMENT val)
 }
 
 /**
- * Removes first occurence of val, preserving order
+ * Removes first occurrence of val, preserving order
  * @returns index at which the element was found,
  *          or -1 if the element was not found.
  */

@@ -49,6 +49,10 @@ CheckForCCND () {
   return 1
 }
 
+CCNDStatus () {
+  echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv
+}
+
 ExpectLines () {
   local file lines minimum maximum
   lines=`wc -l < $1` || Fail

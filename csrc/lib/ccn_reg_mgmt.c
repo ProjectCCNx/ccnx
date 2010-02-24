@@ -125,7 +125,7 @@ ccnb_append_forwarding_entry(struct ccn_charbuf *c,
     if (fe->faceid != ~0)
         res |= ccnb_tagged_putf(c, CCN_DTAG_FaceID, "%u",
                                    fe->faceid);
-    if (fe->flags > 0)
+    if (fe->flags >= 0)
         res |= ccnb_tagged_putf(c, CCN_DTAG_ForwardingFlags, "%d",
                                    fe->flags);
     if (fe->lifetime >= 0)
