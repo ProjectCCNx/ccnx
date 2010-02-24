@@ -15,7 +15,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.profiles.security.access;
+package org.ccnx.ccn.impl.security.keys;
 
 import java.security.Key;
 import java.security.KeyStore;
@@ -31,8 +31,6 @@ import java.util.TreeMap;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
-import org.ccnx.ccn.impl.security.keys.KeyRepository;
-import org.ccnx.ccn.impl.security.keys.KeyStoreInfo;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
