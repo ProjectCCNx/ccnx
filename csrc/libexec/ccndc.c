@@ -241,6 +241,7 @@ static struct prefix_face_list_item *prefix_face_list_item_create(void)
         if (pfl) free(pfl);
         if (fi) ccn_face_instance_destroy(&fi);
         if (store) ccn_charbuf_destroy(&store);
+        return (NULL);
     }
     pfl->fi = fi;
     pfl->fi->store = store;
