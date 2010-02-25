@@ -2690,11 +2690,11 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
  * Schedules the propagation of an Interest message.
  */
 static int
-propagate_interest(struct ccnd_handle *h, struct face *face,
-                      unsigned char *msg,
-                      struct ccn_parsed_interest *pi,
-                      struct nameprefix_entry *npe,
-                      struct ccn_indexbuf *outbound)
+propagate_interest(struct ccnd_handle *h,
+                   struct face *face,
+                   unsigned char *msg,
+                   struct ccn_parsed_interest *pi,
+                   struct nameprefix_entry *npe)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -2708,6 +2708,9 @@ propagate_interest(struct ccnd_handle *h, struct face *face,
     int usec;
     int delaymask;
     int extra_delay = 0;
+    struct ccn_indexbuf *outbound;
+    
+    outbound = get_outbound_faces(h, face, msg, pi, npe);
     if (outbound != NULL) {
         extra_delay = adjust_outbound_for_existing_interests(h, face, msg, pi, npe, outbound);
         if (outbound->n == 0)
@@ -3076,8 +3079,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
             }
         }
         if (!matched && pi->scope != 0)
-            propagate_interest(h, face, msg, pi, npe,
-                               get_outbound_faces(h, face, msg, pi, npe));
+            propagate_interest(h, face, msg, pi, npe);
         hashtb_end(e);
     }
     indexbuf_release(h, comps);
