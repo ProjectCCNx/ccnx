@@ -1534,6 +1534,7 @@ check_propagating(struct ccnd_handle *h)
                 continue;
             }
             pe->size = (pe->size > 1); /* go around twice */
+            /* XXX - could use a flag bit instead of hacking size */
         }
         hashtb_next(e);
     }
@@ -2596,7 +2597,8 @@ do_propagate(struct ccn_schedule *sched,
  * Adjust the outbound face list for a new Interest, based upon 
  * existing similar interests.
  * @result besides possibly updating the outbound set, returns
- *         an extra delay time before propagation.
+ *         an extra delay time before propagation.  A negative return value
+ *         indicates the interest should be dropped.
  */
 // XXX - rearrange to allow dummied-up "sent" entries.
 // XXX - subtle point - when similar interests are present in the PIT, and a new dest appears due to prefix registration, only one of the set should get sent to the new dest.
@@ -2646,7 +2648,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                     if ((++k) < max_redundant)
                         continue;
                     outbound->n = 0;
-                    return(0);
+                    return(-1);
                 }
                 // XXX - If we had actual forwarding tables, would need to take that into account since the outbound set could differ in non-trivial ways
                 // XXX - newly arrived faces might miss a few interests because of this tactic, but those will get repaired as interests time out.
@@ -2655,7 +2657,9 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                  * but we still need to send this interest there or we
                  * could miss an answer from that direction. Note that
                  * interests from two other faces could conspire to cover
-                 * this one completely.
+                 * this one completely as far as propagation is concerned,
+                 * but it is still necessary to keep it around for the sake
+                 * or returning content.
                  * This assumes a unicast link.  If there are multiple
                  * parties on this face (broadcast or multicast), we
                  * do not want to send right away, because it is highly likely
@@ -2709,7 +2713,7 @@ propagate_interest(struct ccnd_handle *h,
     outbound = get_outbound_faces(h, face, msg, pi, npe);
     if (outbound->n != 0) {
         extra_delay = adjust_outbound_for_existing_interests(h, face, msg, pi, npe, outbound);
-        if (outbound->n == 0) {
+        if (extra_delay < 0) {
             /*
              * Completely subsumed by other interests.
              * We do not have to worry about keeping track of the nonce.
