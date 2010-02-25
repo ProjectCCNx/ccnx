@@ -38,10 +38,13 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * A cache for decrypted symmetric keys for access control.
- *
+ * A container for our private keys and other secret key 
+ * material that we have retrieved (e.g. from access control).
+ * 
+ * TODO: provide mechanism to save and reload at least the non-keystore keys
+ * as encrypted CCNx content.
  */
-public class KeyCache {
+public class SecureKeyCache {
 	
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 	
@@ -56,14 +59,14 @@ public class KeyCache {
 	/** Map the digest of a key to its name */
 	private TreeMap<byte [], ContentName> _keyNameMap = new TreeMap<byte [], ContentName>(byteArrayComparator);
 	
-	public KeyCache() {
+	public SecureKeyCache() {
 	}
 	
 	/**
 	 * Constructor that loads keys from a KeyManager
 	 * @param keyManagerToLoadFrom the key manager
 	 */
-	public KeyCache(KeyManager keyManagerToLoadFrom) {
+	public SecureKeyCache(KeyManager keyManagerToLoadFrom) {
 		PrivateKey [] pks = keyManagerToLoadFrom.getSigningKeys();
 		for (PrivateKey pk : pks) {
 			PublisherPublicKeyDigest ppkd = keyManagerToLoadFrom.getPublisherKeyID(pk);

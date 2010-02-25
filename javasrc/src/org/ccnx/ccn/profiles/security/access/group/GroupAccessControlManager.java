@@ -35,7 +35,7 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
-import org.ccnx.ccn.impl.security.keys.KeyCache;
+import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -231,7 +231,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		} else {
 			_handle = handle;
 		}
-		_keyCache = new KeyCache(_handle.keyManager());
+		_keyCache = new SecureKeyCache(_handle.keyManager());
 		
 		_groupManager = new GroupManager(this, groupStorage, _handle);
 		if (!quiet) { // start enumerating in the background in most cases

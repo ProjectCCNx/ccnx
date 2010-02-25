@@ -17,7 +17,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.security.crypto.KDFContentKeys;
-import org.ccnx.ccn.impl.security.keys.KeyCache;
+import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -48,7 +48,7 @@ public abstract class AccessControlManager {
 	public static final String DEFAULT_DATA_KEY_ALGORITHM = "AES";
 	public static final String DATA_KEY_LABEL = "Data Key";
 	protected ContentName _namespace;
-	protected KeyCache _keyCache;
+	protected SecureKeyCache _keyCache;
 	protected CCNHandle _handle;
 	protected SecureRandom _random = new SecureRandom();
 
@@ -73,7 +73,7 @@ public abstract class AccessControlManager {
 
 	public CCNHandle handle() { return _handle; }
 
-	protected KeyCache keyCache() { return _keyCache; }
+	protected SecureKeyCache keyCache() { return _keyCache; }
 	
 	public boolean inProtectedNamespace(ContentName content) {
 		return _namespace.isPrefixOf(content);

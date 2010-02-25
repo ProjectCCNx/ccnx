@@ -95,7 +95,7 @@ public class BasicKeyManager extends KeyManager {
 	/**
 	 * Cache of private keys, loaded from keystores.
 	 */
-	protected KeyCache _privateKeyCache = null;
+	protected SecureKeyCache _privateKeyCache = null;
 	
 	/**
 	 * Configuration data
@@ -177,7 +177,7 @@ public class BasicKeyManager extends KeyManager {
 		if (_initialized)
 			return;
 		_keyRepository = new KeyRepository(this);
-		_privateKeyCache = new KeyCache();
+		_privateKeyCache = new SecureKeyCache();
 		_keyStoreInfo = loadKeyStore();// uses _keyRepository and _privateKeyCache
 		if (!loadValuesFromKeystore(_keyStoreInfo)) {
 			Log.warning("Cannot process keystore!");
