@@ -518,7 +518,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		
 		// Pathfinder searches from start point to stop point inclusive, want exclusive, so hand
 		// it one level down from stop point.
-		Pathfinder pathfinder = new Pathfinder(dataNodeName, dataNodeName.cut(stopCount+1), 
+		Pathfinder pathfinder = new LatestVersionPathfinder(dataNodeName, dataNodeName.cut(stopCount+1), 
 				GroupAccessControlProfile.aclPostfix(), true, false, SystemConfiguration.MEDIUM_TIMEOUT,
 				null, handle());
 		
