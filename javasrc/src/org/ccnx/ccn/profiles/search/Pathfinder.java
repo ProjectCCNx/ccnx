@@ -235,6 +235,7 @@ public class Pathfinder implements CCNInterestListener {
 		}
 		if (done()) {
 			Log.finer("Pathfinder: found answer, {0}", (null == _searchResult) ? "null"  : _searchResult.getResult().name());
+			if (null == _searchResult) _searchResult = new SearchResults(null, null);
 			return _searchResult;
 		} else {
 			Set<ContentName> excluded = stopSearch();
@@ -242,6 +243,7 @@ public class Pathfinder implements CCNInterestListener {
 			// we found? 
 			_timedOut = true;
 			Log.finer("Pathfinder: timed out, best answer so far: {0}", (null == _searchResult) ? "null"  : _searchResult.getResult().name());
+			if (null == _searchResult) _searchResult = new SearchResults(null, null);
 			_searchResult.setExcluded(excluded);
 			return _searchResult;
 		}
