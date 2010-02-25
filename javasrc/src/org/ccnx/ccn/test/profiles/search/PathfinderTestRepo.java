@@ -66,7 +66,7 @@ public class PathfinderTestRepo {
 		Pathfinder finder = new Pathfinder(startingPoint,null, TARGET_POSTFIX_NAME, true, false, 
 									SystemConfiguration.SHORT_TIMEOUT, null, readHandle);
 		SearchResults results = finder.waitForResults();
-		Assert.assertNotNull(results.first());
+		Assert.assertNotNull(results.getResult());
 	}
 	
 

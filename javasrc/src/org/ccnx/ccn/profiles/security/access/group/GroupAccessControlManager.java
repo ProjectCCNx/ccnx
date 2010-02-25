@@ -48,6 +48,7 @@ import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.search.LatestVersionPathfinder;
 import org.ccnx.ccn.profiles.search.Pathfinder;
 import org.ccnx.ccn.profiles.search.Pathfinder.SearchResults;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
@@ -522,11 +523,11 @@ public class GroupAccessControlManager extends AccessControlManager {
 				null, handle());
 		
 		SearchResults searchResults = pathfinder.waitForResults();
-		if (null != searchResults.first()) {
+		if (null != searchResults.getResult()) {
 			if (Log.isLoggable(Level.INFO)) {
-				Log.info("findAncestorWithACLInParallel: found {0}", searchResults.first().name());
+				Log.info("findAncestorWithACLInParallel: found {0}", searchResults.getResult().name());
 			}
-			ACLObject aclo = new ACLObject(searchResults.first(), handle());
+			ACLObject aclo = new ACLObject(searchResults.getResult(), handle());
 			return aclo;
 		}
 		return null;

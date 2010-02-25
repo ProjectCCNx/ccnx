@@ -151,14 +151,14 @@ public class NamespaceManager {
 											  _searchedPathCache,
 											  handle);
 		SearchResults results = pathfinder.waitForResults();
-		if (null != results.second()) {
-			_searchedPathCache.addAll(results.second());
+		if (null != results.getExcluded()) {
+			_searchedPathCache.addAll(results.getExcluded());
 		}
 		
-		if (null != results.first()) {
+		if (null != results.getResult()) {
 			// does this seek?
-			Log.info("Got a segment of an object, is it the first segment of the right object: {0}", results.first().name());
-			RootObject ro = new RootObject(results.first(), handle);
+			Log.info("Got a segment of an object, is it the first segment of the right object: {0}", results.getResult().name());
+			RootObject ro = new RootObject(results.getResult(), handle);
 			AccessControlManager acm = AccessControlManager.createManager(ro, handle);
 			registerACM(acm);
 			return acm;
