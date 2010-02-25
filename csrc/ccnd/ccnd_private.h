@@ -237,17 +237,25 @@ struct sparse_straggler_entry {
 
 /**
  * The propagating interest hash table is keyed by Nonce.
+ *
+ * While the interest is pending, the pe is also kept in a doubly-linked
+ * list off of a nameprefix_entry.
+ *
+ * When the interest is consumed, the pe is removed from tne doubly-linked
+ * list and is cleaned up by freeing unnecessary bits (including the interest
+ * message itself).  It remains in the hash table for a time to catch
+ * duplicate nonces.
  */
 struct propagating_entry {
     struct propagating_entry *next;
     struct propagating_entry *prev;
-    struct ccn_indexbuf *outbound; /* in order of use */
-    unsigned char *interest_msg;
-    int sent;                   /* leading elements of outbound processed */
-    unsigned size;              /* size in bytes of interest_msg */
-    unsigned flags;             /* CCN_PR_xxx */
-    unsigned faceid;            /* origin of the interest, dest for matches */
-    int usec;                   /* usec until timeout */
+    unsigned flags;             /**< CCN_PR_xxx */
+    unsigned faceid;            /**< origin of the interest, dest for matches */
+    int usec;                   /**< usec until timeout */
+    int sent;                   /**< leading faceids of outbound processed */
+    struct ccn_indexbuf *outbound; /**< in order of use */
+    unsigned char *interest_msg; /**< pending interest message */
+    unsigned size;              /**< size in bytes of interest_msg */
 };
 // XXX - with new outbound/sent repr, some of these flags may not be needed.
 #define CCN_PR_UNSENT 1  /* interest has not been sent anywhere yet */

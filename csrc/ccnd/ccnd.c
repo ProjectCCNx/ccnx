@@ -2189,6 +2189,9 @@ Finish:
     return(result);
 }
 
+/**
+ * Worker bee for two very similar public functions.
+ */
 static struct ccn_charbuf *
 ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
                    const unsigned char *msg, size_t size, int selfreg)
@@ -2276,15 +2279,12 @@ Finish:
  * @param msg points to a ccnd-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
- * @param selfreg is true if this is actually a self-registration
  * @result on success the returned charbuf holds a new ccnd-encoded
  *         ForwardingEntry;
  *         returns NULL for any error.
- *
  */
 struct ccn_charbuf *
-ccnd_req_prefixreg(struct ccnd_handle *h,
-                   const unsigned char *msg, size_t size)
+ccnd_req_prefixreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
 {
     return(ccnd_req_prefix_or_self_reg(h, msg, size, 0));
 }
@@ -2298,11 +2298,9 @@ ccnd_req_prefixreg(struct ccnd_handle *h,
  * @result on success the returned charbuf holds a new ccnd-encoded
  *         ForwardingEntry;
  *         returns NULL for any error.
- *
  */
 struct ccn_charbuf *
-ccnd_req_selfreg(struct ccnd_handle *h,
-                   const unsigned char *msg, size_t size)
+ccnd_req_selfreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
 {
     return(ccnd_req_prefix_or_self_reg(h, msg, size, 1));
 }
@@ -2316,11 +2314,9 @@ ccnd_req_selfreg(struct ccnd_handle *h,
  * @result on success the returned charbuf holds a new ccnd-encoded
  *         ForwardingEntry;
  *         returns NULL for any error.
- *
  */
 struct ccn_charbuf *
-ccnd_req_unreg(struct ccnd_handle *h,
-                   const unsigned char *msg, size_t size)
+ccnd_req_unreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
 {
     struct ccn_charbuf *result = NULL;
     struct ccn_parsed_ContentObject pco = {0};
