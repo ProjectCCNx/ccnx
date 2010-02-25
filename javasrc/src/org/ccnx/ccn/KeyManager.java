@@ -30,7 +30,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
-import org.ccnx.ccn.impl.security.keys.KeyRepository;
+import org.ccnx.ccn.impl.security.keys.PublicKeyCache;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -503,7 +503,7 @@ public abstract class KeyManager {
 	 * Access our internal key store/key server.
 	 * @return our KeyRepository
 	 */
-	public abstract KeyRepository keyRepository();
+	public abstract PublicKeyCache getPublicKeyCache();
 
 	public abstract void saveConfigurationState() throws FileNotFoundException,
 			IOException;

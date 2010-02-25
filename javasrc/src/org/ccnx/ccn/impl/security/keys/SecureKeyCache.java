@@ -80,7 +80,7 @@ public class SecureKeyCache {
 	 * @param keystore
 	 * @throws KeyStoreException 
 	 */
-	public void loadKeyStore(KeyStoreInfo keyStoreInfo, char [] password, KeyRepository publicKeyCache) throws KeyStoreException {
+	public void loadKeyStore(KeyStoreInfo keyStoreInfo, char [] password, PublicKeyCache publicKeyCache) throws KeyStoreException {
 		Enumeration<String> aliases = keyStoreInfo.getKeyStore().aliases();
 		String alias;
 		KeyStore.PrivateKeyEntry entry = null;
