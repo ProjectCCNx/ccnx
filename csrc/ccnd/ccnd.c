@@ -2415,23 +2415,31 @@ Finish:
 }
 
 /**
- * Add all the active faceids of npe and its inheritable ancestors to x
+ * Recompute the contents of npe->forward_to from forwarding lists of
+ * npe and all of its ancestors
  */
 static void
-update_inherited(struct ccnd_handle *h,
-                 struct nameprefix_entry *npe,
-                 struct ccn_indexbuf *x)
+update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
 {
-    struct ccn_forwarding *f;
-    unsigned wantflags = CCN_FORW_ACTIVE;
-    unsigned lastfaceid = CCN_NOFACEID;
-    
-    for (; npe != NULL; npe = npe->parent) {
-        for (f = npe->forwarding; f != NULL; f = f->next) {
+    struct ccn_indexbuf *x = NULL;
+    struct ccn_forwarding *f = NULL;
+    struct nameprefix_entry *p = NULL;
+    unsigned wantflags;
+    unsigned lastfaceid;
+
+    x = npe->forward_to;
+    if (x == NULL)
+        npe->forward_to = x = ccn_indexbuf_create();
+    else
+        x->n = 0;
+    wantflags = CCN_FORW_ACTIVE;
+    lastfaceid = CCN_NOFACEID;
+    for (p = npe; p != NULL; p = p->parent) {
+        for (f = p->forwarding; f != NULL; f = f->next) {
             if ((f->flags & wantflags) == wantflags &&
                   face_from_faceid(h, f->faceid) != NULL) {
                 if (h->debug & 32)
-                    ccnd_msg(h, "update_inherited.%d adding %u", __LINE__, f->faceid);
+                    ccnd_msg(h, "update_forward_to.%d adding %u", __LINE__, f->faceid);
                 ccn_indexbuf_set_insert(x, f->faceid);
                 if ((f->flags & CCN_FORW_LAST) != 0)
                     lastfaceid = f->faceid;
@@ -2441,22 +2449,6 @@ update_inherited(struct ccnd_handle *h,
     }
     if (lastfaceid != CCN_NOFACEID)
         ccn_indexbuf_move_to_end(x, lastfaceid);
-}
-
-/**
- * Recompute the contents of npe->forward_to from forwarding lists of
- * npe and all of its ancestors
- */
-static void
-update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
-{
-    struct ccn_indexbuf *x = npe->forward_to;
-    
-    if (x == NULL)
-        npe->forward_to = x = ccn_indexbuf_create();
-    else
-        x->n = 0;
-    update_inherited(h, npe, x);
     npe->fgen = h->forward_to_gen;
     if (x->n == 0)
         ccn_indexbuf_destroy(&npe->forward_to);
