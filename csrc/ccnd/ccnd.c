@@ -2708,20 +2708,30 @@ propagate_interest(struct ccnd_handle *h,
     int usec;
     int delaymask;
     int extra_delay = 0;
-    struct ccn_indexbuf *outbound;
+    struct ccn_indexbuf *outbound = NULL;
     
     outbound = get_outbound_faces(h, face, msg, pi, npe);
-    if (outbound != NULL) {
+    if (outbound->n != 0) {
         extra_delay = adjust_outbound_for_existing_interests(h, face, msg, pi, npe, outbound);
-        if (outbound->n == 0)
+        if (outbound->n == 0) {
+            /*
+             * Completely subsumed by other interests.
+             * We do not have to worry about keeping track of the nonce.
+             */ 
+            if (h->debug & 16)
+                ccnd_debug_ccnb(h, __LINE__, "interest_subsumed", face,
+                                msg_out, msg_out_size);
+            h->interests_dropped += 1;
             ccn_indexbuf_destroy(&outbound);
+            return(0);
+        }
     }
     if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
         /* This interest has no nonce; add one before going on */
         int noncebytes = 6;
         size_t nonce_start = 0;
         int i;
-        unsigned char *s;
+        unsigned char *s = NULL;
         cb = charbuf_obtain(h);
         ccn_charbuf_append(cb, msg, pi->offset[CCN_PI_B_Nonce]);
         nonce_start = cb->length;
@@ -2766,7 +2776,7 @@ propagate_interest(struct ccnd_handle *h,
             pe->outbound = outbound;
             link_propagating_interest_to_nameprefix(h, pe, npe);
             reorder_outbound_using_history(h, npe, pe);
-            if (outbound != NULL && outbound->n > 0 &&
+            if (outbound->n > 0 &&
                   outbound->buf[0] == npe->src &&
                   extra_delay == 0) {
                 pe->flags = CCN_PR_UNSENT;
@@ -2774,10 +2784,7 @@ propagate_interest(struct ccnd_handle *h,
             }
             outbound = NULL;
             res = 0;
-            if (pe->outbound == NULL)
-                usec = pe->usec;
-            else
-                usec = (nrand48(h->seed) & delaymask) + 1 + extra_delay;
+            usec = (nrand48(h->seed) & delaymask) + 1 + extra_delay;
             usec = pe_next_usec(h, pe, usec, __LINE__);
             ccn_schedule_event(h->sched, usec, do_propagate, pe, npe->usec);
         }
