@@ -86,7 +86,6 @@ public class BasicKeyManager extends KeyManager {
 	protected PublisherPublicKeyDigest _defaultKeyID;
 	
 	protected boolean _initialized = false;
-	protected PublicKeyObject _publishedDefaultKeys = null;
 	
 	private char [] _password = null;
 	
@@ -99,6 +98,11 @@ public class BasicKeyManager extends KeyManager {
 	 * Cache of private keys, loaded from keystores.
 	 */
 	protected SecureKeyCache _privateKeyCache = null;
+	
+	/**
+	 * Key server, offering up our keys, if we need one.
+	 */
+	protected KeyServer _keyServer = null;
 	
 	/**
 	 * Configuration data
@@ -194,11 +198,10 @@ public class BasicKeyManager extends KeyManager {
 			Log.warning("Cannot process configuration data!");
 		}
 		_initialized = true;		
-
 		// If we haven't been called off, initialize the key server
 		if (UserConfiguration.publishKeys()) {
-			// Can we publish keys now?
-			publishDefaultKey(null);
+			_keyServer = new KeyServer(getPublicKeyCache(), getPublicKeyCache().handle());
+			_keyServer.publishKey(getDefaultKeyName(getDefaultKeyID()), getDefaultPublicKey(), null, null);
 		}
 	}
 	
@@ -214,10 +217,6 @@ public class BasicKeyManager extends KeyManager {
 			_publicKeyCache.close();
 		}
 	}
-	
-	/**
-	 * Publish our default key at a particular name.
-	 */
 	
 	protected void setPassword(char [] password) {
 		_password = password;
@@ -829,22 +828,6 @@ public class BasicKeyManager extends KeyManager {
 		return _publicKeyCache;
 	}
 
-	@Override
-	public synchronized PublicKeyObject publishDefaultKey(ContentName keyName) throws IOException, InvalidKeyException {
-
-		if (!initialized()) {
-			throw new IOException("Cannot publish keys, have not yet initialized KeyManager!");
-		}
-		// we've put together enough of this KeyManager to let the
-		// KeyRepository use it to make a CCNHandle, even though we're
-		// not done...
-		if (null != _publishedDefaultKeys) {
-			return _publishedDefaultKeys;
-		}
-		_publishedDefaultKeys = publishKey(keyName, getDefaultKeyID(), null, null);
-		return _publishedDefaultKeys;
-	}
-	
 	/**
 	 * Publish my public key to a local key server run in this JVM.
 	 * @param keyName content name of the public key
@@ -886,7 +869,7 @@ public class BasicKeyManager extends KeyManager {
 		if (Log.isLoggable(Level.INFO))
 			Log.info("publishKey: publishing key {0} under specified key name {1}", keyDigest, keyName);
 
-		PublicKeyObject keyObject =  getPublicKeyCache().publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
+		PublicKeyObject keyObject =  _keyServer.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
 		
 		if (!haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
 			// So once we publish self-signed key object, we store a pointer to that
@@ -899,35 +882,31 @@ public class BasicKeyManager extends KeyManager {
 		return keyObject;
 	}
 
-	/**
-	 * Publish my public key to repository
-	 * @param keyName content name of the public key
-	 * @param keyToPublish public key digest
-	 * @param handle handle for ccn
-	 * @throws IOException
-	 * @throws InvalidKeyException
-	 */
 	@Override
-	public PublicKeyObject publishKeyToRepository(ContentName keyName, 
-									   PublisherPublicKeyDigest keyToPublish) 
-			throws InvalidKeyException, IOException {
+	public PublicKeyObject publishDefaultKey(ContentName keyName)
+			throws IOException, InvalidKeyException {
+		if (!initialized()) {
+			throw new IOException("KeyServer: cannot publish keys, have not yet initialized KeyManager!");
+		}
+		return publishKey(keyName, getDefaultKeyID(), null, null);
+	}
+
+	@Override
+	public PublicKeyObject publishKeyToRepository(ContentName keyName,
+			PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException,
+			IOException {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
-		} 
+		}
 		if (null == keyName) {
 			keyName = getKeyLocator(keyToPublish).name().name();
 		}
-		return getPublicKeyCache().publishKeyToRepository(keyName, keyToPublish, null, null);
+		return _keyServer.publishKeyToRepository(keyName, keyToPublish, null, null);
 	}
-	
-	/**
-	 * Publish my public key to repository
-	 * @param handle handle for ccn
-	 * @throws IOException
-	 * @throws InvalidKeyException
-	 */
+
 	@Override
-	public PublicKeyObject publishKeyToRepository() throws InvalidKeyException, IOException {
+	public PublicKeyObject publishKeyToRepository() throws InvalidKeyException,
+			IOException {
 		return publishKeyToRepository(null, null);
 	}
 
@@ -950,5 +929,4 @@ public class BasicKeyManager extends KeyManager {
 			_acmList.add(acm);
 		}
 	}
-
 }
