@@ -24,7 +24,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -251,6 +250,18 @@ public class ContentTree {
 		}
 	}
 	
+	/**
+	 * Search for data matching an interest in which the rightmost (canonically largest) data among several
+	 * matching pieces should be returned.
+	 * 
+	 * @param interest
+	 * @param matchlen
+	 * @param node
+	 * @param nodeName
+	 * @param depth
+	 * @param getter
+	 * @return
+	 */
 	protected class RightSearch extends Search {
 
 		protected RightSearch(Interest interest, InterestPreScreener ips) {
@@ -261,9 +272,30 @@ public class ContentTree {
 		protected Iterator<TreeNode> initIterator(boolean anyOK, int depth, byte[] interestComp) {
 			TreeNode testNode = new TreeNode();
 			testNode.component = interestComp;
-			SortedMap<TreeNode, TreeNode> map = anyOK || null == interestComp ? _children : _children.tailMap(testNode);
-			return map.keySet().iterator();
+			SortedMap<TreeNode, TreeNode> map = anyOK || null == interestComp ? _children : _children.headMap(testNode);
+			return new RightIterator(map);
 		}
+	}
+	
+	protected class RightIterator implements Iterator<TreeNode> {
+		protected SortedMap<TreeNode, TreeNode> _map;
+		
+		protected RightIterator(SortedMap<TreeNode, TreeNode> map) {
+			_map = map;
+		}
+
+		public boolean hasNext() {
+			return _map.size() > 0;
+		}
+
+		public TreeNode next() {
+			TreeNode node = _map.lastKey();
+			_map = _map.subMap(_map.firstKey(), _map.lastKey());
+			return node;
+		}
+
+		public void remove() {}
+		
 	}
 	
 	protected TreeNode _root;
@@ -553,83 +585,6 @@ public class ContentTree {
 		return null;
 	}
 	
-	/**
-	 * Get all nodes below the given one
-	 *
-	 * @param node the starting node
-	 * @param result list of nodes we are looking for
-	 * @param minComponents minimum depth below here
-	 * @param maxComponents maximum depth below here
-	 */
-	protected void getSubtreeNodes(TreeNode node, List<TreeNode> result, int level, InterestPreScreener ips) {
-		int preScreen = ips.preScreen(node, level);
-		if (preScreen < 0)
-			return;
-		synchronized(node) {
-			if (null != node.oneChild) {
-				getSubtreeNodes(node.oneChild, result, ++level, ips);
-				return;
-			} else if (null != node.children) {
-				for (TreeNode child : node.children.values()) {
-					getSubtreeNodes(child, result, ++level, ips);
-				}
-				return;
-			}
-		}
-		if (preScreen > 0) {
-			result.add(node);
-			if (Log.isLoggable(Level.FINEST))
-				Log.finest("getSubtreeNodes - added {0}", node);
-		}
-	}
-	
-	/**
-	 * Search for data matching an interest in which the rightmost (canonically largest) data among several
-	 * matching pieces should be returned.
-	 * 
-	 * @param interest
-	 * @param matchlen
-	 * @param node
-	 * @param nodeName
-	 * @param depth
-	 * @param getter
-	 * @return
-	 */
-	protected final ContentObject rightSearch(Interest interest, int matchlen, TreeNode node, ContentName nodeName, int depth, ContentGetter getter) {
-		// A shortcut compared to leftSearch() for moment, just accumulate all options in forward order
-		// and then go through them in reverse direction and do full test
-		// TODO This is very inefficient for all but the most optimal case where the last thing in the
-		// subtree happens to be a perfect match
-		ArrayList<TreeNode> options = new ArrayList<TreeNode>();
-		InterestPreScreener ips = new InterestPreScreener(interest, 2, 1);
-		getSubtreeNodes(node, options, 0, ips);
-		return rightCheck(options, interest, node, getter);
-	}
-	
-	private ContentObject rightCheck(ArrayList<TreeNode> options, Interest interest, TreeNode node, ContentGetter getter) {
-		for (int i = options.size()-1; i >= 0 ; i--) {
-			TreeNode candidate = options.get(i);
-			if (null != candidate.oneContent || null != candidate.content) {
-				List<ContentRef> content = null;
-				synchronized(candidate) {
-					if (null != candidate.oneContent) {
-						content = new ArrayList<ContentRef>();
-						content.add(candidate.oneContent);
-					} else {
-						assert(null != node.content);
-						content = new ArrayList<ContentRef>(candidate.content);
-					}
-				}
-				for (ContentRef ref : content) {
-					ContentObject cand = getter.get(ref);
-					if (cand!=null && interest.matches(cand)) {
-						return cand;
-					}
-				}
-			}
-		}
-		return null;
-	}
 	
 	/**
 	 * Return all names with a prefix matching the name within the interest for name enumeration.
@@ -726,15 +681,14 @@ public class ContentTree {
 				return null;
 			}
 			
+			InterestPreScreener ips = new InterestPreScreener(interest, ncc + 1, ncc);
 			if (null != interest.childSelector() && ((interest.childSelector() & (Interest.CHILD_SELECTOR_RIGHT))
 					== (Interest.CHILD_SELECTOR_RIGHT))) {
 				// Traverse to find latest match
-				return rightSearch(interest, (null == addl) ? -1 : addl + ncc, 
-						prefixRoot, new ContentName(ncc, interest.name().components()), 
-						ncc, getter);
+				return new RightSearch(interest, ips).search(prefixRoot, new ContentName(ncc, interest.name().components()), 
+						getter, ncc, false);
 			}
 			else{
-				InterestPreScreener ips = new InterestPreScreener(interest, ncc + 1, ncc);
 				return new LeftSearch(interest, ips).search(prefixRoot, new ContentName(ncc, interest.name().components()), 
 						getter, ncc, false);
 			}
