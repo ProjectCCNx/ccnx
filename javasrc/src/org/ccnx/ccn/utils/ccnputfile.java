@@ -17,24 +17,13 @@
 
 package org.ccnx.ccn.utils;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
 import java.security.InvalidKeyException;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.CCNFileOutputStream;
-import org.ccnx.ccn.io.CCNOutputStream;
-import org.ccnx.ccn.io.RepositoryFileOutputStream;
-import org.ccnx.ccn.io.RepositoryOutputStream;
-import org.ccnx.ccn.profiles.namespace.NamespaceManager;
-import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -42,22 +31,12 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * Command-line utility to write a file to ccnd; requires a corresponding ccngetfile
  * to pull the data or it will not move (flow balance).
  **/
- public class ccnputfile {
+ public class ccnputfile extends CommonOutput {
  
-	
-	private static int BLOCK_SIZE = 8096;
-	private static boolean rawMode = false;
-	private static Integer timeout = null;
-	private static boolean unversioned = false;
-	private static boolean verbose = false;
-	
-	private static ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
-	private static ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
-
 	/**
 	 * @param args
 	 */
-	public static void main(String[] args) {
+	public void write(String[] args) {
 		Log.setDefaultLevel(Level.WARNING);
 		int startArg = 0;
 		
@@ -65,17 +44,17 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 			if (args[i].equals(("-raw"))) {
 				if (startArg <= i)
 					startArg = i + 1;
-				rawMode = true;
+				CommonParameters.rawMode = true;
 			} else if (args[i].equals("-unversioned")) {
 				if (startArg <= i)
 					startArg = i + 1;
-				unversioned = true;
+				CommonParameters.unversioned = true;
 			} else if (args[i].equals("-timeout")) {
 				if (args.length < (i + 2)) {
 					usage();
 				}
 				try {
-					timeout = Integer.parseInt(args[++i]);
+					CommonParameters.timeout = Integer.parseInt(args[++i]);
 				} catch (NumberFormatException nfe) {
 					usage();
 				}
@@ -95,25 +74,24 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 				if (startArg <= i)
 					startArg = i + 1;
 			} else if (args[i].equals("-v")) {
-				verbose = true;
+				CommonParameters.verbose = true;
 				if (startArg <= i)
 					startArg = i + 1;
 			} else if (args[i].equals("-as")) {
 				if (args.length < (i + 2)) {
 					usage();
 				}
-				setUser(args[++i]);
+				CommonSecurity.setUser(args[++i]);
 				if (startArg <= i)
 					startArg = i + 1;				
 			} else if (args[i].equals("-ac")) {
-				setAccessControl();
+				CommonSecurity.setAccessControl();
 				if (startArg <= i)
 					startArg = i + 1;				
 			}
 			else {
 				usage();
-			}
-				
+			}	
 		}
 		
 		if (args.length < startArg + 2) {
@@ -131,11 +109,12 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 			CCNHandle handle = CCNHandle.open();
 			
 			if (args.length == (startArg + 2)) {
-				if (verbose)
+				if (CommonParameters.verbose)
 					Log.info("ccnputfile: putting file " + args[startArg + 1]);
 				
 				doPut(handle, args[startArg + 1], argName);
-				if (verbose)
+				System.out.println("Inserted file " + args[startArg + 1] + ".");
+				if (CommonParameters.verbose)
 					System.out.println("ccnputfile took: "+(System.currentTimeMillis() - starttime)+" ms");
 				System.exit(0);
 			} else {
@@ -145,8 +124,10 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 					ContentName nodeName = ContentName.fromURI(argName, args[i]);
 					
 					doPut(handle, args[i], nodeName);
+					// leave this one as always printing for now
+					System.out.println("Inserted file " + args[i] + ".");
 				}
-				if (verbose)
+				if (CommonParameters.verbose)
 					System.out.println("ccnputfile took: "+(System.currentTimeMillis() - starttime)+" ms");
 				System.exit(0);
 			}
@@ -166,99 +147,14 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 		System.exit(1);
 
 	}
-
-	protected static void doPut(CCNHandle handle, String fileName,
-			ContentName nodeName) throws IOException, InvalidKeyException, ConfigurationException {
-		InputStream is;
-		if (verbose)
-			System.out.printf("filename %s\n", fileName);
-		if (fileName.startsWith("http://")) {
-			if (verbose)
-				System.out.printf("filename is http\n");			
-			is = new URL(fileName).openStream();
-		} else {
-			if (verbose)
-				System.out.printf("filename is file\n");			
-			File theFile = new File(fileName);
 	
-			if (!theFile.exists()) {
-				System.out.println("No such file: " + theFile.getName());
-				usage();
-			}
-			is = new FileInputStream(theFile);
-		}
-
-		// If we are using a repository, make sure our key is available to
-		// repository clients. For now, write an unversioned form of key.
-		if (!rawMode) {
-			handle.keyManager().publishKeyToRepository();
-		}
-
-		CCNOutputStream ostream;
-		
-		// Use file stream in both cases to match behavior. CCNOutputStream doesn't do
-		// versioning and neither it nor CCNVersionedOutputStream add headers.
-		if (rawMode) {
-			if (unversioned)
-				ostream = new CCNOutputStream(nodeName, handle);
-			else
-				ostream = new CCNFileOutputStream(nodeName, handle);
-		} else {
-			if (unversioned)
-				ostream = new RepositoryOutputStream(nodeName, handle);
-			else
-				ostream = new RepositoryFileOutputStream(nodeName, handle);
-		}
-		if (timeout != null)
-			ostream.setTimeout(timeout);
-		do_write(ostream, is);
-				
-		// leave this one as always printing for now
-		System.out.println("Inserted file " + fileName + ".");
-	}
-	
-	private static void do_write(CCNOutputStream ostream, InputStream is) throws IOException {
-		long time = System.currentTimeMillis();
-		int size = BLOCK_SIZE;
-		int readLen = 0;
-		byte [] buffer = new byte[BLOCK_SIZE];
-		Log.finer("do_write: " + is.available() + " bytes left.");
-		while ((readLen = is.read(buffer, 0, size)) != -1){	
-			ostream.write(buffer, 0, readLen);
-			Log.finer("do_write: wrote " + size + " bytes.");
-			Log.finer("do_write: " + is.available() + " bytes left.");
-		}
-		ostream.close();
-		Log.fine("finished write: "+(System.currentTimeMillis() - time));
-	}
-	
-	public static void usage() {
+	public void usage() {
 		System.out.println("usage: ccnputfile [-v (verbose)] [-raw] [-unversioned] [-timeout millis] [-log level] [-as pathToKeystore] [-ac (access control)] <ccnname> (<filename>|<url>)*");
 		System.exit(1);
 	}
 
-	private static void setUser(String pathToKeystore) {
-		File userDirectory = new File(pathToKeystore);
-		String userConfigDir = userDirectory.getAbsolutePath();
-		System.out.println("Loading keystore from: " + userConfigDir);
-		UserConfiguration.setUserConfigurationDirectory(userConfigDir);
-		// Assume here that the name of the file is the userName
-		String userName = userDirectory.getName();
-		if (userName != null) {
-			System.out.println("User: " + userName);
-			UserConfiguration.setUserName(userName);
-		}
-	}
 	
-	private static void setAccessControl() {
-		// register a group access control manager with the namespace manager
-		try {
-			GroupAccessControlManager gacm = new GroupAccessControlManager(ContentName.fromNative("/"), groupStorage, userStorage, CCNHandle.open());
-			NamespaceManager.registerACM(gacm);
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
+	public static void main(String[] args) {
+		new ccnputfile().write(args);
 	}
-	
 }

@@ -76,7 +76,7 @@ public class LatestVersionTest {
 	}
 	
 	@After
-	public void close() {
+	public void tearDown() {
 		getHandle.close();
 		responderHandle.close();
 	}
@@ -541,32 +541,32 @@ public class LatestVersionTest {
 		public void run() {
 		}
 
-		public int handleInterests(ArrayList<Interest> interests) {
-			System.out.println(System.currentTimeMillis()+ " handling interest "+ interests.get(0).name());
+		public boolean handleInterest(Interest interest) {
+			System.out.println(System.currentTimeMillis()+ " handling interest "+ interest.name());
 			
 			System.out.println("current objects: ");
 			for(ContentObject o: responseObjects)
 				System.out.println(o.fullName());
-			
-			for (Interest i : interests) {
-				if(responseObjects.size() == 0) {
-					System.out.println("responseObjects size == 0");
-					return 0;
-				}
-				
-				if (i.matches(responseObjects.get(0))) {
-					try {
-						System.out.println("returning: "+ responseObjects.get(0).fullName());
-						handle.put(responseObjects.remove(0));
-					} catch (IOException e) {
-						Assert.fail("could not put object in responder");
-					}
-				} else {
-					System.out.println("didn't have a match with: "+responseObjects.get(0).fullName());
-					System.out.println("full interest: "+i.toString());
-				}
+
+			if(responseObjects.size() == 0) {
+				System.out.println("responseObjects size == 0");
+				return false;
 			}
-			return 0;
+
+			if (interest.matches(responseObjects.get(0))) {
+				try {
+					System.out.println("returning: "+ responseObjects.get(0).fullName());
+					handle.put(responseObjects.remove(0));
+					return true;
+				} catch (IOException e) {
+					Assert.fail("could not put object in responder");
+					return false;
+				}
+			} else {
+				System.out.println("didn't have a match with: "+responseObjects.get(0).fullName());
+				System.out.println("full interest: "+interest.toString());
+				return false;
+			}
 		}
 
 	}

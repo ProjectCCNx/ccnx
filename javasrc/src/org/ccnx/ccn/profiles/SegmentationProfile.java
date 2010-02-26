@@ -21,10 +21,12 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
@@ -268,7 +270,7 @@ public class SegmentationProfile implements CCNProfile {
 		ContentObject segment = handle.get(Interest.lower(segmentName, 1, publisher), timeout);
 	
 		if (null == segment) {
-			Log.info("Cannot get segment " + desiredSegmentNumber + " of file {0} expected segment: {1}.", desiredContent,  segmentName);
+			Log.info("Cannot get segment {0} of file {1} expected segment: {2}.", desiredSegmentNumber, desiredContent,  segmentName);
 			return null; // used to throw IOException, which was wrong. Do we want to be more aggressive?
 		} else {
 			Log.info("getsegment: retrieved segment {0}.", segment.name());
@@ -438,7 +440,8 @@ public class SegmentationProfile implements CCNProfile {
 				Log.finer("Null returned from getLastSegment for name: {0}",name);
 				return null;
 			} else {
-				Log.finer("returned contentObject: {0}",co.fullName());
+				if (Log.isLoggable(Level.FINER))
+					Log.finer("returned contentObject: {0}",co.fullName());
 			}
 			
 			//now we should have a content object after the segment in the name we started with, but is it the last one?
@@ -454,7 +457,8 @@ public class SegmentationProfile implements CCNProfile {
 						return co;
 					} else {
 						//this did not verify...  need to determine how to handle this
-						Log.warning("VERIFICATION FAILURE: " + co.name() + ", need to find better way to decide what to do next.");
+						if (Log.isLoggable(Level.WARNING))
+							Log.warning("VERIFICATION FAILURE: " + co.name() + ", need to find better way to decide what to do next.");
 					}
 				} else {
 					//this was not the last segment..  use the co.name() to try again.
@@ -464,7 +468,8 @@ public class SegmentationProfile implements CCNProfile {
 					Log.fine("an object was returned...  but not the last segment, next Interest: {0}",getLastInterest);
 				}
 			} else {
-				Log.warning("SegmentationProfile.getLastSegment: had a content object returned that did not have a segment in the last component Interest = {0} ContentObject = {1}", segmentName, co.name());
+				if (Log.isLoggable(Level.WARNING))
+					Log.warning("SegmentationProfile.getLastSegment: had a content object returned that did not have a segment in the last component Interest = {0} ContentObject = {1}", segmentName, co.name());
 				return null;
 			}
 		}

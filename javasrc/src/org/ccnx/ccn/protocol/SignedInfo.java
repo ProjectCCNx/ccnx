@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -71,12 +72,6 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     // turns into object ==.
     protected static final HashMap<byte[], ContentType> ContentValueTypes = new HashMap<byte[], ContentType>();
  
-    public static final String SIGNED_INFO_ELEMENT = "SignedInfo";
-    protected static final String TIMESTAMP_ELEMENT = "Timestamp";
-    protected static final String CONTENT_TYPE_ELEMENT = "Type";
-    protected static final String FRESHNESS_SECONDS_ELEMENT = "FreshnessSeconds";
-    protected static final String FINAL_BLOCK_ID_ELEMENT = "FinalBlockID";
-
     // These are encoded as 3-byte binary values, whose base64 encodings 
     // are chosen to make sense and look like the tags.
     static {
@@ -410,17 +405,17 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 		
-		if (decoder.peekStartElement(PublisherPublicKeyDigest.PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT)) {
+		if (decoder.peekStartElement(CCNProtocolDTags.PublisherPublicKeyDigest.getTag())) {
 			_publisher = new PublisherPublicKeyDigest();
 			_publisher.decode(decoder);
 		}
 
-		if (decoder.peekStartElement(TIMESTAMP_ELEMENT)) {
-			_timestamp = decoder.readDateTime(TIMESTAMP_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.Timestamp.getTag())) {
+			_timestamp = decoder.readDateTime(CCNProtocolDTags.Timestamp.getTag());
 		}
 
-		if (decoder.peekStartElement(CONTENT_TYPE_ELEMENT)) {
-			byte [] binType = decoder.readBinaryElement(CONTENT_TYPE_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.Type.getTag())) {
+			byte [] binType = decoder.readBinaryElement(CCNProtocolDTags.Type.getTag());
 			_type = valueToType(binType);
 			if (null == _type) {
 				throw new ContentDecodingException("Cannot parse signedInfo type: " + DataUtils.printHexBytes(binType) + " " + binType.length + " bytes.");
@@ -429,15 +424,15 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			_type = ContentType.DATA; // default
 		}
 		
-		if (decoder.peekStartElement(FRESHNESS_SECONDS_ELEMENT)) {
-			_freshnessSeconds = decoder.readIntegerElement(FRESHNESS_SECONDS_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.FreshnessSeconds.getTag())) {
+			_freshnessSeconds = decoder.readIntegerElement(CCNProtocolDTags.FreshnessSeconds.getTag());
 		}
 		
-		if (decoder.peekStartElement(FINAL_BLOCK_ID_ELEMENT)) {
-			_finalBlockID = decoder.readBinaryElement(FINAL_BLOCK_ID_ELEMENT);
+		if (decoder.peekStartElement(CCNProtocolDTags.FinalBlockID.getTag())) {
+			_finalBlockID = decoder.readBinaryElement(CCNProtocolDTags.FinalBlockID.getTag());
 		}
 		
-		if (decoder.peekStartElement(KeyLocator.KEY_LOCATOR_ELEMENT)) {
+		if (decoder.peekStartElement(CCNProtocolDTags.KeyLocator.getTag())) {
 			_locator = new KeyLocator();
 			_locator.decode(decoder);
 		}
@@ -457,20 +452,20 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		}
 
 		if (!emptyTimestamp()) {
-			encoder.writeDateTime(TIMESTAMP_ELEMENT, getTimestamp());
+			encoder.writeDateTime(CCNProtocolDTags.Timestamp.getTag(), getTimestamp());
 		}
 		
 		if (!defaultContentType()) {
 			// DATA is default, element is optional, so omit if DATA
-			encoder.writeElement(CONTENT_TYPE_ELEMENT, getTypeValue());
+			encoder.writeElement(CCNProtocolDTags.Type.getTag(), getTypeValue());
 		}
 		
 		if (!emptyFreshnessSeconds()) {
-			encoder.writeIntegerElement(FRESHNESS_SECONDS_ELEMENT, getFreshnessSeconds());
+			encoder.writeElement(CCNProtocolDTags.FreshnessSeconds.getTag(), getFreshnessSeconds());
 		}
 
 		if (!emptyFinalBlockID()) {
-			encoder.writeElement(FINAL_BLOCK_ID_ELEMENT, getFinalBlockID());
+			encoder.writeElement(CCNProtocolDTags.FinalBlockID.getTag(), getFinalBlockID());
 		}
 
 		if (!emptyKeyLocator()) {
@@ -481,7 +476,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	}
 	
 	@Override
-	public String getElementLabel() { return SIGNED_INFO_ELEMENT; }
+	public long getElementLabel() { return CCNProtocolDTags.SignedInfo.getTag(); }
 
 	@Override
 	public boolean validate() {

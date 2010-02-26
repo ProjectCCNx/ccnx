@@ -41,7 +41,6 @@ public class TextXMLCodec implements XMLCodec {
 	public static final String CCN_NAMESPACE = "http://www.parc.com/ccn";
 	public static final String CCN_PREFIX = "ccn";	
 	public static final String CODEC_NAME = "Text";
-	
 	public static final String BINARY_ATTRIBUTE = "ccnbencoding";
 	public static final String BINARY_ATTRIBUTE_VALUE = "base64Binary";
 	

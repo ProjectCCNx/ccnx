@@ -286,7 +286,7 @@
 	<!-- test is for running all current automated tests to validate code 
 	     IMPORTANT: test-repo must be run before any test that will start a repo because it
 	     requires that a repo *not* be running when it starts -->
-	<target name="test" depends="test-puttap, test-repo, test-protocol, test-impl, test-io, test-endtoend">
+	<target name="test" depends="test-repo, test-protocol, test-impl, test-io, test-endtoend">
 	</target>
 
 	<target name="test-protocol" depends="test-protocol-without-repo, test-protocol-with-repo">
@@ -371,6 +371,7 @@
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/impl/**/*TestRepo.class"/>
 					<!-- should be profiles/**/*TestRepo.class, but don't want to include access control yet -->
+				    <include name="org/ccnx/ccn/test/profiles/metadata/*TestRepo.class"/>
 				    <include name="org/ccnx/ccn/test/profiles/search/*TestRepo.class"/>
 				</fileset>
 			</batchtest>
@@ -401,8 +402,8 @@
 	
 	<target name="test-io-with-repo" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
-		<!-- <junit printsummary="yes" haltonfailure="yes" fork="false" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}"> -->
-			<junit printsummary="yes" haltonfailure="yes" fork="false" forkmode="perBatch" showoutput="${showoutput}">
+		 <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+		<!--	<junit printsummary="yes" haltonfailure="yes" fork="false" forkmode="perBatch" showoutput="${showoutput}">-->
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -661,6 +662,7 @@
             and so does NOT need any ccnd to be running.
             We run against the test agent port just to avoid 
             unnecessarily polluting the real ccnd cache on the machine.  -->
+        <!-- XXX puttap needs to be changed to turn off selfreg, since selfreg needs ccnd. -->
 		<mkdir dir="${testout}"/>
 		<echo message="Running binary puttap tests"/>
 		<java classname="org.ccnx.ccn.utils.puttap" classpathref="classpath-run" failonerror="true" output="${testout}/TEST-org.ccnx.ccn.utils.puttap1.txt" fork="true">

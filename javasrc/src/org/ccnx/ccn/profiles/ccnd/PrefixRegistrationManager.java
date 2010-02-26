@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLCodecFactory;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
@@ -75,13 +76,6 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
       	 * 		</xs:sequence>
       	 * 	</xs:complexType>
 		 */
-
-		protected static final String 	FORWARDING_ENTRY_OBJECT_ELEMENT = "ForwardingEntry";
-		protected static final String		ACTION_ELEMENT = "Action";
-		protected static final String		FACE_ID_ELEMENT = "FaceID";
-		protected static final String		FORWARDING_FLAGS_ELEMENT = "ForwardingFlags";
-		protected static final String		FRESHNESS_ELEMENT = "FreshnessSeconds";
-
 
 		protected String		_action;
 		protected ContentName	_prefixName;
@@ -189,25 +183,25 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		 */
 		public void decode(XMLDecoder decoder) throws ContentDecodingException {
 			decoder.readStartElement(getElementLabel());
-			if (decoder.peekStartElement(ACTION_ELEMENT)) {
-				_action = decoder.readUTF8Element(ACTION_ELEMENT); 
+			if (decoder.peekStartElement(CCNProtocolDTags.Action.getTag())) {
+				_action = decoder.readUTF8Element(CCNProtocolDTags.Action.getTag()); 
 			}
-			if (decoder.peekStartElement(ContentName.CONTENT_NAME_ELEMENT)) {
+			if (decoder.peekStartElement(CCNProtocolDTags.Name.getTag())) {
 				_prefixName = new ContentName();
 				_prefixName.decode(decoder) ;
 			}
-			if (decoder.peekStartElement(PublisherPublicKeyDigest.PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT)) {
+			if (decoder.peekStartElement(CCNProtocolDTags.PublisherPublicKeyDigest.getTag())) {
 				_ccndId = new PublisherPublicKeyDigest();
 				_ccndId.decode(decoder);
 			}
-			if (decoder.peekStartElement(FACE_ID_ELEMENT)) {
-				_faceID = decoder.readIntegerElement(FACE_ID_ELEMENT); 
+			if (decoder.peekStartElement(CCNProtocolDTags.FaceID.getTag())) {
+				_faceID = decoder.readIntegerElement(CCNProtocolDTags.FaceID.getTag()); 
 			}
-			if (decoder.peekStartElement(FORWARDING_FLAGS_ELEMENT)) {
-				_flags = decoder.readIntegerElement(FORWARDING_FLAGS_ELEMENT); 
+			if (decoder.peekStartElement(CCNProtocolDTags.ForwardingFlags.getTag())) {
+				_flags = decoder.readIntegerElement(CCNProtocolDTags.ForwardingFlags.getTag()); 
 			}
-			if (decoder.peekStartElement(FRESHNESS_ELEMENT)) {
-				_lifetime = decoder.readIntegerElement(FRESHNESS_ELEMENT); 
+			if (decoder.peekStartElement(CCNProtocolDTags.FreshnessSeconds.getTag())) {
+				_lifetime = decoder.readIntegerElement(CCNProtocolDTags.FreshnessSeconds.getTag()); 
 			}
 			decoder.readEndElement();
 		}
@@ -222,7 +216,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			}
 			encoder.writeStartElement(getElementLabel());
 			if (null != _action && _action.length() != 0)
-				encoder.writeElement(ACTION_ELEMENT, _action);	
+				encoder.writeElement(CCNProtocolDTags.Action.getTag(), _action);	
 			if (null != _prefixName) {
 				_prefixName.encode(encoder);
 			}
@@ -230,19 +224,19 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 				_ccndId.encode(encoder);
 			}
 			if (null != _faceID) {
-				encoder.writeIntegerElement(FACE_ID_ELEMENT, _faceID);
+				encoder.writeElement(CCNProtocolDTags.FaceID.getTag(), _faceID);
 			}
 			if (null != _flags) {
-				encoder.writeIntegerElement(FORWARDING_FLAGS_ELEMENT, _flags);
+				encoder.writeElement(CCNProtocolDTags.ForwardingFlags.getTag(), _flags);
 			}
 			if (null != _lifetime) {
-				encoder.writeIntegerElement(FRESHNESS_ELEMENT, _lifetime);
+				encoder.writeElement(CCNProtocolDTags.FreshnessSeconds.getTag(), _lifetime);
 			}
 			encoder.writeEndElement();   			
 		}
 
 		@Override
-		public String getElementLabel() { return FORWARDING_ENTRY_OBJECT_ELEMENT; }
+		public long getElementLabel() { return CCNProtocolDTags.ForwardingEntry.getTag(); }
 
 		@Override
 		public boolean validate() {

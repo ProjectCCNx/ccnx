@@ -25,6 +25,7 @@ import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
@@ -34,6 +35,7 @@ import javax.crypto.NoSuchPaddingException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -71,15 +73,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
-	protected static final String WRAPPED_KEY_ELEMENT = "WrappedKey";
-	protected static final String WRAPPING_KEY_IDENTIFIER_ELEMENT = "WrappingKeyIdentifier";
-	protected static final String WRAPPING_KEY_NAME_ELEMENT = "WrappingKeyName";
-	protected static final String WRAP_ALGORITHM_ELEMENT = "WrapAlgorithm";
-	protected static final String KEY_ALGORITHM_ELEMENT = "KeyAlgorithm";
-	protected static final String LABEL_ELEMENT = "Label";
-	protected static final String ENCRYPTED_NONCE_KEY_ELEMENT = "EncryptedNonceKey";
-	protected static final String ENCRYPTED_KEY_ELEMENT = "EncryptedKey";
-	
 	protected static final String NONCE_KEY_ALGORITHM = "AES";
 	protected static final int NONCE_KEY_LENGTH = 128;
 	
@@ -98,8 +91,8 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		public WrappingKeyName() {}
 		
 		@Override
-		public String getElementLabel() { 
-			return WRAPPING_KEY_NAME_ELEMENT;
+		public long getElementLabel() { 
+			return CCNProtocolDTags.WrappingKeyName.getTag();
 		}
 	}
 
@@ -202,10 +195,12 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		byte [] wrappedNonceKey = null;
 		byte [] wrappedKey = null;
 		
-		Log.finer("wrapKey: wrapping key with id {0} under key with id {1} using label {2}",
-				DataUtils.printHexBytes(wrappingKeyIdentifier(keyToBeWrapped)),
-				DataUtils.printHexBytes(wrappingKeyIdentifier(wrappingKey)),
-				keyLabel);
+		if (Log.isLoggable(Level.FINER)) {
+			Log.finer("wrapKey: wrapping key with id {0} under key with id {1} using label {2}",
+					DataUtils.printHexBytes(wrappingKeyIdentifier(keyToBeWrapped)),
+					DataUtils.printHexBytes(wrappingKeyIdentifier(wrappingKey)),
+					keyLabel);
+		}
 
 		if (wrappingAlgorithm.equalsIgnoreCase("AESWrapWithPad")) {
 			try {
@@ -219,7 +214,9 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			Cipher wrapCipher = null;
 			try {
 				wrapCipher = Cipher.getInstance(wrappingAlgorithm);
-				Log.info("Wrap cipher {0}, provider {1}.", wrapCipher.getAlgorithm(), wrapCipher.getProvider());
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("Wrap cipher {0}, provider {1}.", wrapCipher.getAlgorithm(), wrapCipher.getProvider());
+				}
 			} catch (NoSuchAlgorithmException e) {
 				Log.warning("Unexpected NoSuchAlgorithmException attempting to instantiate wrapping algorithm: "+ wrappingAlgorithm);
 				throw new InvalidKeyException("Unexpected NoSuchAlgorithmException attempting to instantiate wrapping algorithm: "+ wrappingAlgorithm);
@@ -268,8 +265,10 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	    WrappedKey wk = new WrappedKey(null, null, 
 	    					 ((null == keyAlgorithm) ? keyToBeWrapped.getAlgorithm() : keyAlgorithm), 
 	    					 keyLabel, wrappedNonceKey, wrappedKey);
-		Log.finer("wrapKey: got {0} by wrapping {1} with {2}", wk, 
-					DataUtils.printHexBytes(keyToBeWrapped.getEncoded()), DataUtils.printHexBytes(wrappingKey.getEncoded()));
+	    if (Log.isLoggable(Level.FINER)) {
+			Log.finer("wrapKey: got {0} by wrapping {1} with {2}", wk, 
+						DataUtils.printHexBytes(keyToBeWrapped.getEncoded()), DataUtils.printHexBytes(wrappingKey.getEncoded()));
+	    }
 		return wk;
 	}
 	
@@ -351,10 +350,12 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			throw new NoSuchAlgorithmException("Null algorithm specified for key to be unwrapped!");
 		}
 		byte [] wki = wrappingKeyIdentifier(unwrapKey);
-		Log.info("WrappedKey: unwrapping key wrapped with wrapping key ID {0}, incoming wrapping key digest {1} match? {2}",
-					DataUtils.printHexBytes(wrappingKeyIdentifier()), 
-					DataUtils.printHexBytes(wki),
-					Arrays.equals(wki, wrappingKeyIdentifier()));
+		if (Log.isLoggable(Level.INFO)) {
+			Log.info("WrappedKey: unwrapping key wrapped with wrapping key ID {0}, incoming wrapping key digest {1} match? {2}",
+						DataUtils.printHexBytes(wrappingKeyIdentifier()), 
+						DataUtils.printHexBytes(wki),
+						Arrays.equals(wki, wrappingKeyIdentifier()));
+		}
 		return unwrapKey(unwrapKey, keyAlgorithm());
 	}
 
@@ -371,10 +372,12 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			throws InvalidKeyException, NoSuchAlgorithmException {
 
 		Key unwrappedKey = null;
-		Log.info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
-				wrapAlgorithmForKey(unwrapKey.getAlgorithm()));
-		Log.info("unwrapKey: unwrapping {0} with {1}", this, DataUtils.printHexBytes(wrappingKeyIdentifier(unwrapKey)));
-		Log.info("Is BC provider OK? " + KeyManager.checkDefaultProvider());
+		if (Log.isLoggable(Level.INFO)) {
+			Log.info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
+					wrapAlgorithmForKey(unwrapKey.getAlgorithm()));
+			Log.info("unwrapKey: unwrapping {0} with {1}", this, DataUtils.printHexBytes(wrappingKeyIdentifier(unwrapKey)));
+			Log.info("Is BC provider OK? " + KeyManager.checkDefaultProvider());
+		}
 		if (((null != wrapAlgorithm()) && (wrapAlgorithm().equalsIgnoreCase("AESWrapWithPad"))) || 
 							wrapAlgorithmForKey(unwrapKey.getAlgorithm()).equalsIgnoreCase("AESWrapWithPad")) {
 			unwrappedKey = AESUnwrapWithPad(unwrapKey, wrappedKeyAlgorithm, encryptedKey(), 0, encryptedKey().length);
@@ -494,32 +497,32 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
-		if (decoder.peekStartElement(WRAPPING_KEY_IDENTIFIER_ELEMENT)) {
-			_wrappingKeyIdentifier = decoder.readBinaryElement(WRAPPING_KEY_IDENTIFIER_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.WrappingKeyIdentifier.getTag())) {
+			_wrappingKeyIdentifier = decoder.readBinaryElement(CCNProtocolDTags.WrappingKeyIdentifier.getTag()); 
 		}
 		
-		if (decoder.peekStartElement(WRAPPING_KEY_NAME_ELEMENT)) {
+		if (decoder.peekStartElement(CCNProtocolDTags.WrappingKeyName.getTag())) {
 			_wrappingKeyName = new WrappingKeyName();
 			_wrappingKeyName.decode(decoder);
 		}
 		
-		if (decoder.peekStartElement(WRAP_ALGORITHM_ELEMENT)) {
-			_wrapAlgorithm = decoder.readUTF8Element(WRAP_ALGORITHM_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.WrapAlgorithm.getTag())) {
+			_wrapAlgorithm = decoder.readUTF8Element(CCNProtocolDTags.WrapAlgorithm.getTag()); 
 		}
 
-		if (decoder.peekStartElement(KEY_ALGORITHM_ELEMENT)) {
-			_keyAlgorithm = decoder.readUTF8Element(KEY_ALGORITHM_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.KeyAlgorithm.getTag())) {
+			_keyAlgorithm = decoder.readUTF8Element(CCNProtocolDTags.KeyAlgorithm.getTag()); 
 		}
 
-		if (decoder.peekStartElement(LABEL_ELEMENT)) {
-			_label = decoder.readUTF8Element(LABEL_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.Label.getTag())) {
+			_label = decoder.readUTF8Element(CCNProtocolDTags.Label.getTag()); 
 		}
 
-		if (decoder.peekStartElement(ENCRYPTED_NONCE_KEY_ELEMENT)) {
-			_encryptedNonceKey = decoder.readBinaryElement(ENCRYPTED_NONCE_KEY_ELEMENT); 
+		if (decoder.peekStartElement(CCNProtocolDTags.EncryptedNonceKey.getTag())) {
+			_encryptedNonceKey = decoder.readBinaryElement(CCNProtocolDTags.EncryptedNonceKey.getTag()); 
 		}
 		
-		_encryptedKey = decoder.readBinaryElement(ENCRYPTED_KEY_ELEMENT);
+		_encryptedKey = decoder.readBinaryElement(CCNProtocolDTags.EncryptedKey.getTag());
 		
 		decoder.readEndElement();
 	}
@@ -535,7 +538,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		
 		if (null != wrappingKeyIdentifier()) {
 			// needs to handle null WKI
-			encoder.writeElement(WRAPPING_KEY_IDENTIFIER_ELEMENT, wrappingKeyIdentifier());
+			encoder.writeElement(CCNProtocolDTags.WrappingKeyIdentifier.getTag(), wrappingKeyIdentifier());
 		}
 		
 		if (null != wrappingKeyName()) {
@@ -544,30 +547,30 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
 		if (null != wrapAlgorithm()) {
 			//String wrapOID = OIDLookup.getCipherOID(wrapAlgorithm());
-			encoder.writeElement(WRAP_ALGORITHM_ELEMENT, wrapAlgorithm());
+			encoder.writeElement(CCNProtocolDTags.WrapAlgorithm.getTag(), wrapAlgorithm());
 		}
 		
 		if (null != keyAlgorithm()) {
 			//String keyOID = OIDLookup.getCipherOID(keyAlgorithm());
-			encoder.writeElement(KEY_ALGORITHM_ELEMENT, keyAlgorithm());
+			encoder.writeElement(CCNProtocolDTags.KeyAlgorithm.getTag(), keyAlgorithm());
 		}		
 
 		if (null != label()) {
-			encoder.writeElement(LABEL_ELEMENT, label());
+			encoder.writeElement(CCNProtocolDTags.Label.getTag(), label());
 		}
 
 		if (null != encryptedNonceKey()) {
-			encoder.writeElement(ENCRYPTED_NONCE_KEY_ELEMENT, encryptedNonceKey());
+			encoder.writeElement(CCNProtocolDTags.EncryptedNonceKey.getTag(), encryptedNonceKey());
 		}
 
-		encoder.writeElement(ENCRYPTED_KEY_ELEMENT, encryptedKey());
+		encoder.writeElement(CCNProtocolDTags.EncryptedKey.getTag(), encryptedKey());
 
 		encoder.writeEndElement();   		
 	}
 
 	@Override
-	public String getElementLabel() { 
-		return WRAPPED_KEY_ELEMENT;
+	public long getElementLabel() { 
+		return CCNProtocolDTags.WrappedKey.getTag();
 	}
 
 	@Override

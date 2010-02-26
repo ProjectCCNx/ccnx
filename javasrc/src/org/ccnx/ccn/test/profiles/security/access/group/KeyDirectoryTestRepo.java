@@ -284,7 +284,7 @@ public class KeyDirectoryTestRepo {
 				
 		// add a superseded block
 		ContentName supersedingKeyName = keyDirectoryName;
-		skd.addSupersededByBlock(supersededAESSecretKey, supersedingKeyName, AESSecretKey);
+		skd.addSupersededByBlock(supersededAESSecretKey, supersedingKeyName, null, AESSecretKey);
 		while (!skd.hasChildren() || !skd.hasSupersededBlock()) 
 			skd.waitForNewChildren();
 		Assert.assertTrue(skd.hasSupersededBlock());

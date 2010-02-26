@@ -3,6 +3,7 @@
 ccnd/anything.ccnb
 ccnd/Makefile
 ccnd/ccnd
+ccnd/ccnd_built.sh
 ccnd/ccnd-init-keystore-helper
 ccnd/ccndsmoketest
 ccnd/contentobjecthash.ccnb

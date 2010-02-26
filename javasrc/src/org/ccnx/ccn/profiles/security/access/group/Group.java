@@ -67,7 +67,7 @@ import org.ccnx.ccn.protocol.PublisherID;
  */
 public class Group {
 	
-	private static final long PARENT_GROUP_ENUMERATION_TIMEOUT = 1000;
+	private static final long PARENT_GROUP_ENUMERATION_TIMEOUT = 3000;
 	
 	private ContentName _groupNamespace;
 	private PublicKeyObject _groupPublicKey;
@@ -372,7 +372,7 @@ public class Group {
 	private void newGroupPublicKeyNonRecursive(MembershipList ml) 
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, NoSuchAlgorithmException{
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		oldPrivateKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
+		oldPrivateKeyDirectory.waitForUpdates(SystemConfiguration.MEDIUM_TIMEOUT);
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have access rights to private key for group " + friendlyName());
@@ -388,7 +388,7 @@ public class Group {
 		Key privateKeyWrappingKey = createGroupPublicKey(ml);
 		
 		// Write superseded block in old key directory
-		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
+		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), null, privateKeyWrappingKey);
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, SaveType.REPOSITORY, _handle);
@@ -428,7 +428,7 @@ public class Group {
 		Key privateKeyWrappingKey = createGroupPublicKey(ml);
 		
 		// Write superseded block in old key directory
-		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), privateKeyWrappingKey);
+		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), null, privateKeyWrappingKey);
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
 		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, SaveType.REPOSITORY, _handle);

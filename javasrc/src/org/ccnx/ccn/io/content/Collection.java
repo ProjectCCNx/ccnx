@@ -25,6 +25,7 @@ import java.util.LinkedList;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -143,12 +144,6 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		}
 	}
 	
-	/**
-	 * Default tag used for encoding a collection. See ccn.xsd for definition of a Collection's
-	 * wire format.
-	 */
-	protected static final String COLLECTION_ELEMENT = "Collection";
-
 	protected LinkedList<Link> _contents = new LinkedList<Link>();
 	
 	public Collection() {
@@ -265,7 +260,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		decoder.readStartElement(getElementLabel());
 
 		Link link = null;
-		while (decoder.peekStartElement(Link.LINK_ELEMENT)) {
+		while (decoder.peekStartElement(CCNProtocolDTags.Link.getTag())) {
 			link = new Link();
 			link.decode(decoder);
 			add(link);
@@ -293,7 +288,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	}
 	
 	@Override
-	public String getElementLabel() { return COLLECTION_ELEMENT; }
+	public long getElementLabel() { return CCNProtocolDTags.Collection.getTag(); }
 
 	@Override
 	public int hashCode() {

@@ -18,7 +18,6 @@
 package org.ccnx.ccn.test;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -69,9 +68,7 @@ public class CCNLibraryTestHarness extends CCNHandle {
 	
 	public ContentObject get(Interest interest, long timeout) throws IOException {
 		for (CCNFilterListener listener : _listeners.getValues(interest.name())) {
-			ArrayList<Interest> al = new ArrayList<Interest>();
-			al.add(interest);
-			listener.handleInterests(al);
+			listener.handleInterest(interest);
 		}
 		return _outputQueue.remove();
 	}

@@ -265,7 +265,7 @@ ccnd_uri_listen(struct ccnd_handle *ccnd, const char *uri,
     /* To bootstrap, we need to register explicitly */
     ccnd_reg_uri(ccnd, uri,
                  0, /* special faceid for internal client */
-                 CCN_FORW_CHILD_INHERIT,
+                 CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
                  0x7FFFFFFF);
     ccn_set_interest_filter(ccnd->internal_client, name, closure);
     ccn_charbuf_destroy(&name);

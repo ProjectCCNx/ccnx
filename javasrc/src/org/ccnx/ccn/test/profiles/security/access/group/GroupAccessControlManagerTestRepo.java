@@ -70,9 +70,7 @@ public class GroupAccessControlManagerTestRepo {
 		testSetACL();
 		testUpdateACLAdd();
 		testUpdateACLRemove();
-		deleteACL(); // DKS -- throws NullPointerException, public keys of users getting republished in encrypted
-			// form, due to the fact that CreateUserData doesn't check before publishing keys, and 
-			// current GACM doesn't exempt keys.
+		deleteACL(); 
 	}
 	
 	/**
@@ -202,6 +200,9 @@ public class GroupAccessControlManagerTestRepo {
 		// retrieve ACL at grandchild node
 		ACLObject aclo = acm.getEffectiveACLObject(grandchildNode);
 		Assert.assertTrue(aclo.acl().equals(baseACL));
+		
+		// TODO need to be sure that people who now have access from the ancestor ACL
+		// can read content, and new content is protected under the ancestor ACL
 	}
 	
 }

@@ -22,6 +22,7 @@ import java.math.BigInteger;
 import java.security.PublicKey;
 import java.util.Arrays;
 
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -50,9 +51,7 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
     
  	private static final long serialVersionUID = -1636681985247106846L;
 
-	public static final String PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT = "PublisherPublicKeyDigest";
-
-    protected byte [] _publisherPublicKeyDigest;
+ 	protected byte [] _publisherPublicKeyDigest;
     
     /**
      * Create a PublisherPublicKeyDigest from a PublicKey
@@ -147,7 +146,7 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 	}
 	
 	@Override
-	public String getElementLabel() { return PUBLISHER_PUBLIC_KEY_DIGEST_ELEMENT; }
+	public long getElementLabel() { return CCNProtocolDTags.PublisherPublicKeyDigest.getTag(); }
 
 	@Override
 	public boolean validate() {

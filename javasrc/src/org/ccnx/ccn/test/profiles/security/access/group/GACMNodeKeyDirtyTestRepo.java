@@ -3,10 +3,13 @@ package org.ccnx.ccn.test.profiles.security.access.group;
 
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.logging.Level;
 
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
@@ -42,6 +45,7 @@ public class GACMNodeKeyDirtyTestRepo {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		Log.setDefaultLevel(Level.WARNING);
 		directoryBase = UserConfiguration.defaultNamespace();
 		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
 		userKeyStorePrefix = ContentName.fromNative(directoryBase, "_access_");
@@ -65,7 +69,9 @@ public class GACMNodeKeyDirtyTestRepo {
 		Link lk = new Link(ContentName.fromNative(userNamespace, friendlyNames[0]), ACL.LABEL_MANAGER, null);
 		ArrayList<Link> rootACLcontents = new ArrayList<Link>();
 		rootACLcontents.add(lk);
+		// it also has me as a manager, which means I'd better publish my identity as well
 		String myUserName = UserConfiguration.userName();
+		acm.publishMyIdentity(GroupAccessControlProfile.userNamespaceName(userNamespace, myUserName), KeyManager.getDefaultKeyManager().getDefaultPublicKey());
 		Link mlk = new Link(ContentName.fromNative(userNamespace, myUserName), ACL.LABEL_MANAGER, null);
 		rootACLcontents.add(mlk);
 		ACL rootACL = new ACL(rootACLcontents);
@@ -173,6 +179,11 @@ public class GACMNodeKeyDirtyTestRepo {
 	}
 
 	public void writeMoreNodeContent() throws Exception {
+		// The node keys are not dirty
+		for (int i=0; i<numberOfGroups; i++) {
+			Assert.assertFalse(acm.nodeKeyIsDirty(node[i]));				
+		}
+		
 		// write some content in nodes
 		for (int i=0; i<numberOfGroups; i++) {
 			RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(node[i], handle);
@@ -182,7 +193,7 @@ public class GACMNodeKeyDirtyTestRepo {
 			rvos.close();			
 		}
 		
-		// The node keys are not dirty
+		// The node keys are still not dirty
 		for (int i=0; i<numberOfGroups; i++) {
 			Assert.assertFalse(acm.nodeKeyIsDirty(node[i]));				
 		}
@@ -199,6 +210,12 @@ public class GACMNodeKeyDirtyTestRepo {
 	}
 	
 	public void writeEvenMoreNodeContent() throws Exception {
+		// The node keys are dirty for nodes 0 and 1, but not 2.
+		Thread.sleep(SystemConfiguration.MAX_TIMEOUT);
+		Assert.assertTrue(acm.nodeKeyIsDirty(node[0]));
+		Assert.assertTrue(acm.nodeKeyIsDirty(node[1]));
+		Assert.assertFalse(acm.nodeKeyIsDirty(node[2]));
+
 		// write some content in nodes
 		for (int i=0; i<numberOfGroups; i++) {
 			RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(node[i], handle);
@@ -208,11 +225,10 @@ public class GACMNodeKeyDirtyTestRepo {
 			rvos.close();			
 		}
 		
-		// The node keys are dirty for nodes 0 and 1, but not 2.
-		Thread.sleep(1000);
-		Assert.assertTrue(acm.nodeKeyIsDirty(node[0]));
-		Assert.assertTrue(acm.nodeKeyIsDirty(node[1]));
-		Assert.assertFalse(acm.nodeKeyIsDirty(node[2]));
+		// The node keys are no longer dirty
+		for (int i=0; i<numberOfGroups; i++) {
+			Assert.assertFalse(acm.nodeKeyIsDirty(node[i]));				
+		}
 	}
 
 

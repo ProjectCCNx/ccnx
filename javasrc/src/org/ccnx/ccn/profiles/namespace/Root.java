@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
@@ -46,10 +47,6 @@ import org.ccnx.ccn.protocol.ContentObject;
  */
 public class Root extends GenericXMLEncodable {
 	
-	public static final String ROOT_ELEMENT = "Root";
-	public static final String PROFILE_NAME_ELEMENT = "ProfileName";
-	public static final String PARAMETER_ELEMENT = "Parameters";
-
 	ProfileName _profileName;
 	ArrayList<ParameterizedName> _parameterizedNames = new ArrayList<ParameterizedName>();
 	KeyValueSet _parameters;
@@ -85,8 +82,8 @@ public class Root extends GenericXMLEncodable {
 		public ProfileName() {}
 		
 		@Override
-		public String getElementLabel() {
-			return PROFILE_NAME_ELEMENT;
+		public long getElementLabel() {
+			return CCNProtocolDTags.ProfileName.getTag();
 		}
 	}
 
@@ -136,13 +133,13 @@ public class Root extends GenericXMLEncodable {
 		_profileName = new ProfileName();
 		_profileName.decode(decoder);
 
-		while (decoder.peekStartElement(ParameterizedName.PARAMETERIZED_NAME_ELEMENT)) {
+		while (decoder.peekStartElement(CCNProtocolDTags.ParameterizedName.getTag())) {
 			ParameterizedName pn = new ParameterizedName();
 			pn.decode(decoder);
 			_parameterizedNames.add(pn);
 		}
 		
-		if (decoder.peekStartElement(PARAMETER_ELEMENT)) {
+		if (decoder.peekStartElement(CCNProtocolDTags.Parameters.getTag())) {
 			_parameters = new KeyValueSet();
 			_parameters.decode(decoder);
 		}
@@ -177,8 +174,8 @@ public class Root extends GenericXMLEncodable {
 	}
 
 	@Override
-	public String getElementLabel() {
-		return ROOT_ELEMENT;
+	public long getElementLabel() {
+		return CCNProtocolDTags.Root.getTag();
 	}
 }
 

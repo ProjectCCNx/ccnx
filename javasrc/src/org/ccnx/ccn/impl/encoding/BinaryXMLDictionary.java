@@ -14,136 +14,48 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
-
 package org.ccnx.ccn.impl.encoding;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.HashMap;
-
-import org.ccnx.ccn.impl.support.Log;
 
 /**
  * Encapsulates the mapping from textual XML element and attribute names to the ccnb binary encoding
  * of those elements and attributes.
+ * 
+ * Remove auto-loading of text dictionary, as it was making encode/decode too slow.
+ * Instead, to make a new dictionary, subclass this class and load it with your
+ * constant tag/label data. If you want to use a text dictionary directly,
+ * use FileBinaryXMLDictionary.
  *
  * @see BinaryXMLCodec
  */
-public class BinaryXMLDictionary {
+public abstract class BinaryXMLDictionary {
 	
-	// Should not necessarily tie this to CCN...
-	protected static String DEFAULT_DICTIONARY_RESNAME = "tagname.csvdict";
+	public static final String UNKNOWN_TAG_MARKER = "UNKNOWN TAG: ";
+
+	public abstract Long stringToTag(String tag);
 	
-	protected String _dictionaryFileName;
-	protected HashMap<String,Long> _encodingDictionary = new HashMap<String,Long>();
-	protected HashMap<Long,String> _decodingDictionary = new HashMap<Long,String>();
-	
-	protected static BinaryXMLDictionary DEFAULT_DICTIONARY = null;
-	
-	static {
-		DEFAULT_DICTIONARY = new BinaryXMLDictionary();
-	}
+	public abstract String tagToString(long tagVal);
 	
 	public static BinaryXMLDictionary getDefaultDictionary() {
-		return DEFAULT_DICTIONARY;
-	}
-	
-	public BinaryXMLDictionary(String dictionaryFile) throws IOException {
-		loadDictionaryFile(dictionaryFile);
+		return CCNProtocolDictionary.getDefaultInstance();
 	}
 
-	public BinaryXMLDictionary() {
-		try {
-			loadDictionaryFile(DEFAULT_DICTIONARY_RESNAME);
-		} catch (IOException fe) {
-			Log.warning("Cannot parse default CCN encoding dictionary: " + DEFAULT_DICTIONARY_RESNAME + ":" + 
-					fe.getMessage());
+	public static Long decodeUnknownTag(String tagStr) {
+		if (!isUnknownTag(tagStr)) {
+			return null;
 		}
-	}
-	
-	public BinaryXMLDictionary(InputStream dictionaryStream) throws IOException {
-		loadDictionary(dictionaryStream);
-	}
-	
-	public long encodeTag(String tag) {
-		Long value = _encodingDictionary.get(tag);
-		if (null == value)
-			return -1;
-		return value.longValue();
-	}
-	
-	public String decodeTag(long tagVal) {
-		String tag = _decodingDictionary.get(Long.valueOf(tagVal));
-		return tag;
-	}
-	
-	// DKS TODO -- do attributes use the same dictionary entries?
-	public long encodeAttr(String attr) {
-		Long value = _encodingDictionary.get(attr);
-		if (null == value)
-			return -1;
-		return value.longValue();
-	}
-	
-	public String decodeAttr(long tagVal) {
-		String tag = _decodingDictionary.get(Long.valueOf(tagVal));
-		return tag;
+		String tag = tagStr.substring(UNKNOWN_TAG_MARKER.length());
+		return Long.valueOf(tag);
 	}
 
-	protected void loadDictionaryFile(String dictionaryFile) throws IOException {
-		
-		if (null == dictionaryFile) 
-			throw new IOException("BinaryXMLDictionary: dictionary file name cannot be null!");
-		
-		InputStream in = getClass().getResourceAsStream(dictionaryFile);
-		
-		if (null == in) {
-			throw new IOException("BinaryXMLDictionary: getResourceAsStream cannot open resource file: " + dictionaryFile + ".");
-		}
-		loadDictionary(in);
+	public static boolean isUnknownTag(String tagStr) {
+		return ((null == tagStr) ? false : tagStr.startsWith(UNKNOWN_TAG_MARKER));
 	}
-	
-	protected void loadDictionary(InputStream in) throws IOException {
-		if (null == in) {
-			throw new IOException("BinaryXMLDictionary: loadDictionary - stream cannot be null.");
-		}
-		BufferedReader reader = 
-			new BufferedReader(new InputStreamReader(in), 8196);
-		
-		String line = null;
-		final int NULLCOUNT_MAX = 20;
-		int nullcount = 0; // deal with platforms where reader.ready doesn't work. allow some number of blank
-						   // lines, then decide we've had a problem
-		
-		while (reader.ready() && (nullcount < NULLCOUNT_MAX)) {
-			line = reader.readLine();
-			if (null == line) {
-				nullcount++;
-				continue;
-			}
-			nullcount = 0;
-			String [] parts = line.split(",");
-			
-			// Format: <num>,<name>[,<modifier>]  where <modifier> is one of Deprecated or Obsolete
-			if (parts.length > 3) {
-				if (parts.length != 0) // if 0, just empty line
-					Log.info("Cannot parse dictionary line: " + line);
-				continue;
-			} 
-			
-			if ((parts.length == 3) && ((parts[2].equals("Deprecated") || (parts[2].equals("Obsolete"))))) {
-				continue; // skip old stuff
-			}
-			Long value = Long.valueOf(parts[0]);
-			String tag = parts[1];
-			
-			_encodingDictionary.put(tag, value);
-			_decodingDictionary.put(value, tag);
-		}
-		if (nullcount >= NULLCOUNT_MAX) {
-			Log.info("Finished reading dictionary file because we either read too many blank lines, or our reader couldn't decide it was done. Validate reading on this platform.");
-		}
+
+	/**
+	 * Encoding for unknown binary tags. Reversible.
+	 */
+	public static String unknownTagMarker(long tag) {
+		return UNKNOWN_TAG_MARKER + tag;
 	}
+
 }
