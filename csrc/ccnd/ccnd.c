@@ -2411,6 +2411,8 @@ Finish:
     return(result);
 }
 
+static void set_all_pe_flags(struct ccnd_handle *h, struct nameprefix_entry *npe, unsigned f);
+
 /**
  * Recompute the contents of npe->forward_to from forwarding lists of
  * npe and all of its ancestors
@@ -2447,6 +2449,7 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     if (lastfaceid != CCN_NOFACEID)
         ccn_indexbuf_move_to_end(x, lastfaceid);
     npe->fgen = h->forward_to_gen;
+    set_all_pe_flags(h, npe, CCN_PR_FRESHEN);
     if (x->n == 0)
         ccn_indexbuf_destroy(&npe->forward_to);
 }
@@ -2518,6 +2521,8 @@ pe_next_usec(struct ccnd_handle *h,
     return(next_delay);
 }
 
+static void replan_propagation(struct ccnd_handle *, struct propagating_entry *);
+
 static int
 do_propagate(struct ccn_schedule *sched,
              void *clienth,
@@ -2576,11 +2581,15 @@ do_propagate(struct ccn_schedule *sched,
             ccn_indexbuf_remove_first_match(pe->outbound, faceid);
     }
     /* The internal client may have already consumed the interest */
-    if (pe->outbound == NULL || pe->sent == pe->outbound->n) {
+    if (pe->outbound == NULL)
+        next_delay = CCN_INTEREST_LIFETIME_MICROSEC;
+    else if (pe->sent == pe->outbound->n) {
         if (pe->usec <= CCN_INTEREST_LIFETIME_MICROSEC * 3 / 4)
             next_delay = CCN_INTEREST_LIFETIME_MICROSEC;
         else if (special_delay == 0)
-            next_delay = CCN_INTEREST_LIFETIME_MICROSEC / 4;
+            next_delay = CCN_INTEREST_LIFETIME_MICROSEC / 8;
+        if ((pe->flags & CCN_PR_FRESHEN) != 0)
+            replan_propagation(h, pe);
     }
     else {
         unsigned faceid = pe->outbound->buf[pe->sent];
@@ -2680,6 +2689,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                         break;
                     }
                 }
+                p->flags |= CCN_PR_EQV; /* Don't add new faces */
             }
         }
     }
@@ -2774,6 +2784,11 @@ propagate_interest(struct ccnd_handle *h,
             delaymask = 0xFFF;
             pe->sent = 0;            
             pe->outbound = outbound;
+            pe->flags = 0;
+            if (pi->scope == 0)
+                pe->flags |= CCN_PR_SCOPE0;
+            else if (pi->scope == 1)
+                pe->flags |= CCN_PR_SCOPE1;
             link_propagating_interest_to_nameprefix(h, pe, npe);
             reorder_outbound_using_history(h, npe, pe);
             if (outbound->n > 0 &&
@@ -2799,6 +2814,69 @@ propagate_interest(struct ccnd_handle *h,
         charbuf_release(h, cb);
     ccn_indexbuf_destroy(&outbound);
     return(res);
+}
+
+static void
+set_all_pe_flags(struct ccnd_handle *h, struct nameprefix_entry *npe, unsigned f)
+{
+    struct propagating_entry *head;
+    struct propagating_entry *p;
+    
+    head = &npe->pe_head;
+    for (p = head->next; p != head; p = p->next) {
+        ccnd_debug_ccnb(h, __LINE__, "pe", NULL, p->interest_msg, p->size);
+        p->flags |= f;
+    }
+}
+
+static struct nameprefix_entry *
+nameprefix_for_pe(struct ccnd_handle *h, struct propagating_entry *pe)
+{
+    struct nameprefix_entry *npe;
+    struct propagating_entry *p;
+    
+    /* If any significant time is spent here, a direct link is possible, but costs space. */
+    for (p = pe->next; p->faceid != CCN_NOFACEID; p = p->next)
+        continue;
+    npe = (void *)(((char *)p) - offsetof(struct nameprefix_entry, pe_head));
+    return(npe);
+}
+
+static void
+replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
+{
+    struct nameprefix_entry *npe = NULL;
+    struct ccn_indexbuf *x = pe->outbound;
+    struct face *face = NULL;
+    int i;
+    int k;
+    int n;
+    unsigned faceid;
+    unsigned checkmask = 0;
+    
+    pe->flags &= ~CCN_PR_FRESHEN;
+    if ((pe->flags & (CCN_PR_SCOPE0 | CCN_PR_EQV)) != 0)
+        return;
+    npe = nameprefix_for_pe(h, pe);
+    if (npe->fgen != h->forward_to_gen)
+        update_forward_to(h, npe);
+    pe->flags &= ~CCN_PR_FRESHEN;
+    if (npe->forward_to == NULL || npe->forward_to->n == 0)
+        return;
+    if ((pe->flags & CCN_PR_SCOPE1) != 0)
+        checkmask = CCN_FACE_GG;
+    for (n = npe->forward_to->n, i = 0; i < n; i++) {
+        faceid = npe->forward_to->buf[i];
+        face = face_from_faceid(h, faceid);
+        if (face != NULL && faceid != pe->faceid &&
+            ((face->flags & checkmask) == checkmask)) {
+            k = x->n;
+            ccn_indexbuf_append_element(x, faceid);
+            if (x->n > k && (h->debug & 32) != 0)
+                ccnd_msg(h, "at %d adding %u", __LINE__, faceid);
+        }
+    }
+    // XXX - should account for similar interests, history, etc.
 }
 
 /**
@@ -2847,6 +2925,7 @@ nameprefix_longest_match(struct ccnd_handle *h, const unsigned char *msg,
         if (npe->children == 0)
             break;
     }
+    ccnd_msg(h, "nameprefix_longest_match returning %d", answer);
     return(answer);
 }
 
