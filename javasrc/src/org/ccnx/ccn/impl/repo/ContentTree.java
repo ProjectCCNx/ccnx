@@ -700,8 +700,7 @@ public class ContentTree {
 					== (Interest.CHILD_SELECTOR_RIGHT))) {
 				return new RightSearch(interest, ips).search(prefixRoot, new ContentName(ncc, interest.name().components()), 
 						getter, ncc, false);
-			}
-			else{
+			} else {
 				return new LeftSearch(interest, ips).search(prefixRoot, new ContentName(ncc, interest.name().components()), 
 						getter, ncc, false);
 			}

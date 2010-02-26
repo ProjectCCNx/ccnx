@@ -197,6 +197,8 @@ public class RFSTest extends RepoTestBase {
 		checkData(repo, handInterest, "ddd");
 		String prefix2 = "/repoTest/nextTest/bbb";
 		ContentName name2 = ContentName.fromNative(prefix2 + "/aaa");
+		
+		// Make sure exclude prescan is at correct level
 		ContentObject content2= addRelativeTestContent(repo, prefix2, "");
 		checkData(repo, Interest.next(new ContentName(name2, content2.digest()), 3, null), "bbb");
 		checkData(repo, Interest.next(new ContentName(name2, content2.digest()), 
@@ -209,6 +211,10 @@ public class RFSTest extends RepoTestBase {
 		Interest handInterest1 = Interest.constructInterest(ContentName.fromNative(prefix3), 
 				excludeEandF, Interest.CHILD_SELECTOR_RIGHT, null, null, null);	
 		checkData(repo, handInterest1, "ddd");
+		Exclude excludeAll = Exclude.uptoFactory("fff".getBytes());
+		Interest excludeLeftInterest = Interest.next(name3, excludeAll, 2, null, null, null);
+		ContentObject testScreenOut = repo.getContent(excludeLeftInterest);
+		Assert.assertTrue(testScreenOut == null);
 		
 		System.out.println("Repotest - testing version and segment files");
 		versionedName = ContentName.fromNative("/repoTest/testVersion");
