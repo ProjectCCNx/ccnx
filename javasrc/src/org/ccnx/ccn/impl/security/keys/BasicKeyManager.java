@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.impl.security.keys;
 
+import static org.ccnx.ccn.impl.support.Serial.readObject;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -41,12 +43,12 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
-import static org.ccnx.ccn.impl.support.Serial.readObject;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.io.content.PublicKeyObject;
@@ -182,13 +184,12 @@ public class BasicKeyManager extends KeyManager {
 	 * Could make fake base class constructor, and call loadKeyStore in subclass constructors,
 	 * but this wouldn't work past one level, and this allows subclasses to override initialize behavior.
 	 * @throws ConfigurationException 
-	 * @throws ConfigurationException 
 	 */
 	@Override
-	public synchronized void initialize() throws InvalidKeyException, IOException, ConfigurationException {
+	public synchronized void initialize() throws ConfigurationException, IOException {
 		if (_initialized)
 			return;
-		_publicKeyCache = new PublicKeyCache(this);
+		_publicKeyCache = new PublicKeyCache(handle);
 		_privateKeyCache = new SecureKeyCache();
 		_keyStoreInfo = loadKeyStore();// uses _keyRepository and _privateKeyCache
 		if (!loadValuesFromKeystore(_keyStoreInfo)) {
@@ -200,9 +201,16 @@ public class BasicKeyManager extends KeyManager {
 		_initialized = true;		
 		// If we haven't been called off, initialize the key server
 		if (UserConfiguration.publishKeys()) {
-			_keyServer = new KeyServer(getPublicKeyCache(), getPublicKeyCache().handle());
-			_keyServer.publishKey(getDefaultKeyName(getDefaultKeyID()), getDefaultPublicKey(), null, null);
+			initializeKeyServer(handle);
 		}
+	}
+	
+	public synchronized void initializeKeyServer(CCNHandle handle) {
+		if (null != _keyServer) {
+			return;
+		}
+		_keyServer = new KeyServer(_publicKeyCache, handle);
+		_keyServer.serveKey(getDefaultKeyName(getDefaultKeyID()), getDefaultPublicKey(), null, null);
 	}
 	
 	@Override
@@ -213,8 +221,8 @@ public class BasicKeyManager extends KeyManager {
 	 * reopen them when they are next needed.
 	 */
 	public synchronized void close() {
-		if (null != _publicKeyCache) {
-			_publicKeyCache.close();
+		if (null != _keyServer) {
+			_keyServer.close();
 		}
 	}
 	
@@ -768,7 +776,10 @@ public class BasicKeyManager extends KeyManager {
 	 * @return public key
 	 */
 	@Override
-	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator keyLocator, long timeout) throws IOException {		
+	public PublicKey getPublicKey(
+			PublisherPublicKeyDigest desiredKeyID, KeyLocator keyLocator, 
+			long timeout, CCNHandle handle) throws IOException {		
+		
 		if (Log.isLoggable(Level.FINER))
 			Log.finer("getPublicKey: retrieving key: " + desiredKeyID + " located at: " + keyLocator);
 		// this will try local caches, the locator itself, and if it 
@@ -790,7 +801,10 @@ public class BasicKeyManager extends KeyManager {
 	 * @throws IOException
 	 */
 	@Override 
-	public PublicKeyObject getPublicKeyObject(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
+	public PublicKeyObject getPublicKeyObject(
+			PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, 
+			long timeout, CCNHandle handle) throws IOException {
+		
 		if( Log.isLoggable(Level.FINER) )
 			Log.finer("getPublicKey: retrieving key: " + desiredKeyID + " located at: " + locator);
 		// this will try local caches, the locator itself, and if it 

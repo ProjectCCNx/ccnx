@@ -116,7 +116,7 @@ public class KeyManagerTest {
 		// now we try getting it back..
 		for (int i=0; i < KEY_COUNT; ++i) {
 			System.out.println("Attempting to retrieive key " + i + ":");
-			PublicKey pk = km.getPublicKey(publishers[i], keyLocs[i]);
+			PublicKey pk = km.getPublicKey(publishers[i], keyLocs[i], km.getPublicKeyCache().handle());
 			if (null == pk) {
 				System.out.println("..... failed.");
 			} else {
