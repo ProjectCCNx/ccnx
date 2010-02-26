@@ -197,7 +197,8 @@ public class CreateUserData {
 	 * @throws InvalidKeyException 
 	 */
 	public CreateUserData(File userKeystoreDirectory, String [] userNames,
-						int userCount, char [] password) throws ConfigurationException, IOException, InvalidKeyException {
+						int userCount, char [] password,
+						boolean clearSavedState) throws ConfigurationException, IOException, InvalidKeyException {
 	
 		String friendlyName = null;
 		KeyManager userKeyManager = null;
@@ -232,11 +233,19 @@ public class CreateUserData {
 			userKeyManager = new BasicKeyManager(friendlyName, userDirectory.getAbsolutePath(), 
 												null, null, 
 												null, null, password);
+			if (clearSavedState) {
+				userKeyManager.clearSavedConfigurationState();
+			}
 			userKeyManager.initialize();
 			_userKeyManagers.put(friendlyName, userKeyManager);
 			_userKeystoreDirectories.put(friendlyName, userDirectory.getAbsoluteFile());
 
 		}
+	}
+	
+	public CreateUserData(File userKeystoreDirectory, String [] userNames,
+			int userCount, char [] password) throws ConfigurationException, IOException, InvalidKeyException {
+		this(userKeystoreDirectory, userNames, userCount, password, false);
 	}
 
 	

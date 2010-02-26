@@ -214,6 +214,8 @@ public abstract class KeyManager {
 	public abstract void initialize() throws InvalidKeyException, IOException, ConfigurationException;
 	
 	public abstract boolean initialized();
+	
+	public abstract void clearSavedConfigurationState() throws FileNotFoundException, IOException;
 		
 	/**
 	 * Get our default key ID.

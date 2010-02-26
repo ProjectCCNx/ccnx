@@ -461,6 +461,22 @@ public class BasicKeyManager extends KeyManager {
 		oos.writeObject(_currentKeyLocators);
 		oos.close();
 	}
+	
+	/**
+	 * Need a way to clear this programmatically. Call this before initialize().
+	 */
+	@Override 
+	public void clearSavedConfigurationState() throws FileNotFoundException, IOException {
+		File configurationFile = new File(_keyStoreDirectory, _configurationFileName); 
+		if (configurationFile.exists()) {
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("Deleting configuration state file {0}.", configurationFile.getAbsolutePath());
+			}
+			if (!configurationFile.delete()) {
+				Log.warning("Unable to delete configuration state file {0}.", configurationFile.getAbsolutePath());
+			}
+		}
+	}
 		
 	/**
 	 * Generate our key store if we don't have one. Use createKeyStoreWriteStream to determine where
