@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
@@ -67,10 +66,6 @@ public class PublicKeyCache {
 	// Stop logging to key cache by default.
 	protected static final boolean _DEBUG = false;
 
-	protected CCNHandle _handle = null;
-	protected boolean _ourHandle = false;
-	protected KeyManager _keyManager = null;
-	
 	// Reference count in case we are shared. 
 	protected int _refCount = 0;
 
@@ -80,26 +75,9 @@ public class PublicKeyCache {
 	protected HashMap<PublisherPublicKeyDigest, ArrayList<Certificate>> _rawCertificateMap = new HashMap<PublisherPublicKeyDigest, ArrayList<Certificate>>();
 	protected HashMap<PublisherPublicKeyDigest, CCNTime> _rawVersionMap = new HashMap<PublisherPublicKeyDigest, CCNTime>();
 
-	/** 
-	 * Constructor. Doesn't actually use the KeyManager right away;
-	 * doesn't attempt network operations until initializeKeyServer
-	 * is called (usually by publishKey).
-	 */
-	public PublicKeyCache(KeyManager keyManager) {
-		_keyManager = keyManager;
+	public PublicKeyCache() {
 	}
 
-	/**
-	 * Constructor; uses existing handle.
-	 * @param handle
-	 */
-	public PublicKeyCache(CCNHandle handle) {
-		_handle = handle;
-		_keyManager = handle.keyManager();
-	}
-
-	public CCNHandle handle() { return _handle; }
-	
 	/**
 	 * Remember a public key and the corresponding key object.
 	 * @param theKey public key to remember
@@ -213,7 +191,9 @@ public class PublicKeyCache {
 	 * @param timeout timeout value
 	 * @throws IOException 
 	 */
-	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
+	public PublicKey getPublicKey(
+			PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, 
+			long timeout, CCNHandle handle) throws IOException {
 
 		// Look for it in our cache first.
 		PublicKey publicKey = getPublicKeyFromCache(desiredKeyID);
@@ -239,7 +219,7 @@ public class PublicKeyCache {
 				return key;
 			}
 		} else {
-			PublicKeyObject publicKeyObject = getPublicKeyObject(desiredKeyID, locator, timeout);
+			PublicKeyObject publicKeyObject = getPublicKeyObject(desiredKeyID, locator, timeout, handle);
 			if (null == publicKeyObject) {
 				Log.info("Could not retrieve key " + desiredKeyID + " from network with locator " + locator + "!");
 			} else {
@@ -250,7 +230,10 @@ public class PublicKeyCache {
 		return null;
 	}
 	
-	public PublicKeyObject getPublicKeyObject(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
+	public PublicKeyObject getPublicKeyObject(
+			PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, 
+			long timeout, CCNHandle handle) throws IOException {
+		
 		// take code from #BasicKeyManager.getKey, to validate more complex publisher constraints
 		PublicKeyObject theKey = retrieve(locator.name().name(), locator.name().publisher());
 		if ((null != theKey) && (theKey.available())) {
@@ -282,7 +265,7 @@ public class PublicKeyCache {
 				try {
 					Log.fine("Trying network retrieval of key: " + keyInterest.name());
 					// use more aggressive high-level get
-					retrievedContent = handle().get(keyInterest, timeout);
+					retrievedContent = handle.get(keyInterest, timeout);
 				} catch (IOException e) {
 					Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
 					Log.warningStackTrace(e);
@@ -304,7 +287,7 @@ public class PublicKeyCache {
 			}
 			if ((retrievedContent.signedInfo().getType().equals(ContentType.KEY)) ||
 				 (retrievedContent.signedInfo().getType().equals(ContentType.LINK))) {
-				theKey = new PublicKeyObject(retrievedContent, handle());
+				theKey = new PublicKeyObject(retrievedContent, handle);
 				if ((null != theKey) && (theKey.available())) {
 					if ((null != desiredKeyID) && (!theKey.publicKeyDigest().equals(desiredKeyID))) {
 						Log.fine("Got key at expected name {0}, but it wasn't the right key, wanted {0}, got {1}", 
@@ -388,19 +371,5 @@ public class PublicKeyCache {
 			}
 		}
 		return null;
-	}
-
-	/**
-	 * Close our handle, set it to null. Currently will recreate it automatically
-	 * when we next need it. This might be a little too automatic...
-	 */
-	public synchronized void close() {
-		if (null != _handle) {
-			if (!_ourHandle) {
-				Log.info("KeyRepository: asked to close a handle that we didn't create. Should we? Could be used elsewhere.");
-			}
-			_handle.close();
-			_handle = null;
-		}
 	}
 }
