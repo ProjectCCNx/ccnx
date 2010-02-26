@@ -72,7 +72,8 @@ public class CreateUserData {
 	
 	protected HashMap<String, ContentName> _userContentNames = new HashMap<String,ContentName>();
 	protected HashMap<String, File> _userKeystoreDirectories = new HashMap<String,File>();
-	protected HashMap<String,KeyManager> _userKeyManagers = new HashMap<String, KeyManager>();	
+	protected HashMap<String,KeyManager> _userKeyManagers = new HashMap<String, KeyManager>();
+	protected HashMap<String,CCNHandle> _userHandles = new HashMap<String, CCNHandle>();
 	
 		
 	/**
@@ -300,6 +301,10 @@ public class CreateUserData {
 	
 	public void closeAll() {
 		for (String user : _userKeyManagers.keySet()) {
+			CCNHandle handle = _userHandles.get(user);
+			if (null != handle) {
+				handle.close();
+			}
 			KeyManager km = _userKeyManagers.get(user);
 			if (null != km) {
 				km.close();
@@ -353,10 +358,17 @@ public class CreateUserData {
 	}
 	
 	public CCNHandle getHandleForUser(String friendlyName) throws IOException {
-		KeyManager km = getUser(friendlyName);
-		if (null == km)
-			return null;
-		return CCNHandle.open(km);
+		synchronized (_userHandles) {
+			CCNHandle userHandle = _userHandles.get(friendlyName);
+			if (null == userHandle) {
+				KeyManager km = getUser(friendlyName);
+				if (null == km)
+					return null;
+				userHandle = CCNHandle.open(km);
+				_userHandles.put(friendlyName, userHandle);
+			}
+			return userHandle;
+		}
 	}
 
 	public Set<String> friendlyNames() {
