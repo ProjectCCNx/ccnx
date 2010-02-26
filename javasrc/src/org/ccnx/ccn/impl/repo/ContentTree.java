@@ -150,7 +150,8 @@ public class ContentTree {
 		
 		/**
 		 * Run the prescreen
-		 * @param level
+		 * @param level the level within the hierarchy in which this prescreen was called. Used to
+		 *        decide when to run the exclude test.
 		 * @return -1 => reject all entries below this
 		 * 			0 => reject this entry but keep searching
 		 * 			1 => keep this entry
@@ -166,6 +167,9 @@ public class ContentTree {
 		}
 	}
 	
+	/**
+	 * Implements the generic pieces of both left and right searches
+	 */
 	protected abstract class Search {
 		protected Interest _interest;
 		protected InterestPreScreener _ips;
@@ -177,17 +181,13 @@ public class ContentTree {
 		}
 		
 		/**
-		 * Search for data matching an interest that specifies either the leftmost (canonically smallest) match or
-		 * doesn't specify a specific way to match data within several pieces of matching data.
+		 * Do the actual search. Use abstract method to decide how to traverse the tree
 		 * 
-		 * @param interest the interest to match
-		 * @param matchmin minimum number of components required in final answer or -1 if not specified
-		 * @param matchmax maximum number of components allowed in final answer or -1 if not specified
 		 * @param node the node rooting a subtree to search
 		 * @param nodeName the full name of this node from the root up to and its component
+		 * @param getter a handler to pull actual ContentObjects for final match testing
 		 * @param depth the length of name of node including its component (number of components)
 		 * @param anyOK true if we aren't required to go left at this level
-		 * @param getter a handler to pull actual ContentObjects for final match testing
 		 * @return ContentObject matching the interest or null if not found
 		 */
 		protected ContentObject search(TreeNode node, ContentName nodeName, ContentGetter getter, 
@@ -198,9 +198,11 @@ public class ContentTree {
 			if (res < 0)
 				return null;
 			if (res > 0) {
-				ContentObject result = getContent(_interest, depth, node, nodeName, getter);
-				if (null != result)
-					return result;
+				if (null != node.oneContent || null != node.content) {
+					ContentObject result = getContent(_interest, node, nodeName, getter);
+					if (null != result)
+						return result;
+				}
 			}
 		
 			synchronized(node) {
@@ -213,7 +215,7 @@ public class ContentTree {
 			}
 			if (null != _children) {
 				byte[] interestComp = _interest.name().component(depth);
-				Iterator<TreeNode>it = initIterator(anyOK, depth, interestComp);
+				Iterator<TreeNode>it = initIterator(anyOK, interestComp);
 				while(it.hasNext()) {
 					TreeNode child = it.next();
 					int comp = DataUtils.compare(child.component, interestComp);
@@ -232,9 +234,20 @@ public class ContentTree {
 			return null;
 		}
 		
-		protected abstract Iterator<TreeNode> initIterator(boolean anyOK, int depth, byte[] interestComp);
+		/**
+		 * Return an iterator through children at this level.
+		 * 
+		 * @param anyOK leftSearch only - if false must go "left by one" at this level
+		 * @param interestComp component to start search with
+		 * @return the iterator
+		 */
+		protected abstract Iterator<TreeNode> initIterator(boolean anyOK, byte[] interestComp);
 	}
 	
+	/**
+	 * Search for data matching an interest that specifies either the leftmost (canonically smallest) match or
+	 * doesn't specify a specific way to match data within several pieces of matching data.
+	 */
 	protected class LeftSearch extends Search {
 
 		protected LeftSearch(Interest interest, InterestPreScreener ips) {
@@ -242,7 +255,7 @@ public class ContentTree {
 		}
 
 		@Override
-		protected Iterator<TreeNode> initIterator(boolean anyOK, int depth, byte[] interestComp) {
+		protected Iterator<TreeNode> initIterator(boolean anyOK, byte[] interestComp) {
 			TreeNode testNode = new TreeNode();
 			testNode.component = interestComp;
 			SortedMap<TreeNode, TreeNode> map = anyOK || null == interestComp ? _children : _children.tailMap(testNode);
@@ -253,14 +266,6 @@ public class ContentTree {
 	/**
 	 * Search for data matching an interest in which the rightmost (canonically largest) data among several
 	 * matching pieces should be returned.
-	 * 
-	 * @param interest
-	 * @param matchlen
-	 * @param node
-	 * @param nodeName
-	 * @param depth
-	 * @param getter
-	 * @return
 	 */
 	protected class RightSearch extends Search {
 
@@ -269,7 +274,7 @@ public class ContentTree {
 		}
 
 		@Override
-		protected Iterator<TreeNode> initIterator(boolean anyOK, int depth, byte[] interestComp) {
+		protected Iterator<TreeNode> initIterator(boolean anyOK, byte[] interestComp) {
 			TreeNode testNode = new TreeNode();
 			testNode.component = interestComp;
 			SortedMap<TreeNode, TreeNode> map = anyOK || null == interestComp ? _children : _children.headMap(testNode);
@@ -277,6 +282,9 @@ public class ContentTree {
 		}
 	}
 	
+	/**
+	 * Create an iterator that goes backwards through the candidates for right search
+	 */
 	protected class RightIterator implements Iterator<TreeNode> {
 		protected SortedMap<TreeNode, TreeNode> _map;
 		
@@ -545,46 +553,51 @@ public class ContentTree {
 		}
 	}
 	
-	private ContentObject getContent(Interest interest, int depth, TreeNode node, ContentName nodeName, ContentGetter getter) {
-			if (null != node.oneContent || null != node.content) {
-				// Since the name INCLUDES digest component and the Interest.matches() convention for name
-				// matching is that the name DOES NOT include digest component (conforming to the convention 
-				// for ContentObject.name() that the digest is not present) we must REMOVE the content 
-				// digest first or this test will not always be correct
-				//
-				// That is unless we are specifically trying to exclude a digest...
-				// The test below which uses the name with the digest for the match only if there is an exclude request
-				// and the exclude is at the final (digest) level of the name does that. Since we are prechecking without
-				// the actual ContentObject there may be no cleaner way to do this.
-				ContentName digestFreeName = new ContentName(nodeName.count()-1, nodeName.components());
-				Interest publisherFreeInterest = interest.clone();
-				publisherFreeInterest.publisherID(null);
-				boolean initialMatch = (null != interest.exclude() && interest.name().count() == nodeName.count() - 1) 
-							? publisherFreeInterest.matches(nodeName, null)
-							: publisherFreeInterest.matches(digestFreeName, null); 
-				if (initialMatch) {
-					List<ContentRef> content = null;
-					synchronized(node) {
-						if (null != node.oneContent) {
-							content = new ArrayList<ContentRef>();
-							content.add(node.oneContent);
-						} else {
-							assert(null != node.content);
-							content = new ArrayList<ContentRef>(node.content);
-						}
+	/**
+	 * Return content at this level if there is matching content
+	 * 
+	 * @param interest - interest to match agains
+	 * @param node	   - the node
+	 * @param nodeName - name of node as a ContentName
+	 * @param getter   - getter to get actual data for final match and return if matches
+	 * @return matching ContentObject if matches, null otherwise
+	 */
+	private ContentObject getContent(Interest interest, TreeNode node, ContentName nodeName, ContentGetter getter) {
+		// Since the name INCLUDES digest component and the Interest.matches() convention for name
+		// matching is that the name DOES NOT include digest component (conforming to the convention 
+		// for ContentObject.name() that the digest is not present) we must REMOVE the content 
+		// digest first or this test will not always be correct
+		//
+		// That is unless we are specifically trying to exclude a digest...
+		// The test below which uses the name with the digest for the match only if there is an exclude request
+		// and the exclude is at the final (digest) level of the name does that. Since we are prechecking without
+		// the actual ContentObject there may be no cleaner way to do this.
+		ContentName digestFreeName = new ContentName(nodeName.count()-1, nodeName.components());
+		Interest publisherFreeInterest = interest.clone();
+		publisherFreeInterest.publisherID(null);
+		boolean initialMatch = (null != interest.exclude() && interest.name().count() == nodeName.count() - 1) 
+					? publisherFreeInterest.matches(nodeName, null)
+					: publisherFreeInterest.matches(digestFreeName, null); 
+		if (initialMatch) {
+			synchronized(node) {
+				if (null != node.oneContent) {
+					ContentObject cand = getter.get(node.oneContent);
+					if (interest.matches(cand)) {
+						return cand;
 					}
-					for (ContentRef ref : content) {
+				} else {
+					assert(null != node.content);
+					for (ContentRef ref : node.content) {
 						ContentObject cand = getter.get(ref);
 						if (interest.matches(cand)) {
 							return cand;
 						}
 					}
 				}
-		
+			}
 		}
 		return null;
 	}
-	
 	
 	/**
 	 * Return all names with a prefix matching the name within the interest for name enumeration.
@@ -676,6 +689,7 @@ public class ContentTree {
 				}
 			}
 		} else {
+			// Traverse to find latest match
 			TreeNode prefixRoot = lookupNode(interest.name(), ncc);
 			if (prefixRoot == null) {
 				return null;
@@ -684,7 +698,6 @@ public class ContentTree {
 			InterestPreScreener ips = new InterestPreScreener(interest, ncc + 1, ncc);
 			if (null != interest.childSelector() && ((interest.childSelector() & (Interest.CHILD_SELECTOR_RIGHT))
 					== (Interest.CHILD_SELECTOR_RIGHT))) {
-				// Traverse to find latest match
 				return new RightSearch(interest, ips).search(prefixRoot, new ContentName(ncc, interest.name().components()), 
 						getter, ncc, false);
 			}
