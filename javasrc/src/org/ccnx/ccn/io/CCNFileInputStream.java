@@ -304,6 +304,9 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 		// Give up efficiency where we try to detect auto-caught header, and just
 		// use superclass method to really get us a first content block, then
 		// go after the header. Later on we can worry about re-adding the optimization.
+		// This helps because the superclass method dereferences any links, so when we retrieve
+		// the header we use the resolved name of the content to do so, which is more likely
+		// to be correct.
 		ContentObject result = super.getFirstSegment();
 		if (null == result) {
 			throw new IOException("Cannot retrieve first block of " + _baseName + "!");
