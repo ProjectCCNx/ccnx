@@ -256,12 +256,13 @@ struct propagating_entry {
     struct ccn_indexbuf *outbound; /**< in order of use */
     unsigned char *interest_msg; /**< pending interest message */
     unsigned size;              /**< size in bytes of interest_msg */
+    int fgen;                   /**< decide if outbound is stale */
 };
 // XXX - with new outbound/sent repr, some of these flags may not be needed.
 #define CCN_PR_UNSENT   0x01 /**< interest has not been sent anywhere yet */
 #define CCN_PR_WAIT1    0x02 /**< interest has been sent to one place */
 #define CCN_PR_STUFFED1 0x04 /**< was stuffed before sent anywhere else */
-#define CCN_PR_FRESHEN  0x08 /**< check for new face registrations */
+#define CCN_PR________  0x08
 #define CCN_PR_EQV      0x10 /**< a younger similar interest exists */
 #define CCN_PR_SCOPE0   0x20 /**< interest scope is 0 */
 #define CCN_PR_SCOPE1   0x40 /**< interest scope is 1 */
