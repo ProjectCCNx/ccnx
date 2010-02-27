@@ -2460,50 +2460,40 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
  * @param from is the handle for the originating face (may be NULL).
  * @param msg points to the ccnb-encoded interest message
  * @param pi must be the parse information for msg
- * @param comps must the name parse information for msg
- * @result Newly allocated set of outgoing faceids
+ * @param npe should be the result of the longest-match lookup
+ * @result Newly allocated set of outgoing faceids (never NULL)
  */
 static struct ccn_indexbuf *
 get_outbound_faces(struct ccnd_handle *h,
     struct face *from,
     unsigned char *msg,
     struct ccn_parsed_interest *pi,
-    struct ccn_indexbuf *comps)
+    struct nameprefix_entry *npe)
 {
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    struct nameprefix_entry *npe = NULL;
-    struct ccn_indexbuf *x = NULL;
-    struct face *face = NULL;
+    int checkmask = 0;
+    struct ccn_indexbuf *x;
+    struct face *face;
     int i;
     int n;
-    int checkmask;
     unsigned faceid;
     
-    x = ccn_indexbuf_create();
-    hashtb_start(h->nameprefix_tab, e);
-    i = nameprefix_longest_match(h, msg, comps, pi->prefix_comps);
-    nameprefix_seek(h, e, msg, comps, i);
-    npe = e->data;
-    if (npe == NULL || x == NULL)
-        goto Bail;
     if (npe->fgen != h->forward_to_gen)
         update_forward_to(h, npe);
+    x = ccn_indexbuf_create();
     if (pi->scope == 0 || npe->forward_to == NULL || npe->forward_to->n == 0)
-        goto Bail;
-    checkmask = (pi->scope == 1) ? CCN_FACE_GG : 0;
+        return(x);
+    if (pi->scope == 1)
+        checkmask = CCN_FACE_GG;
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         faceid = npe->forward_to->buf[i];
         face = face_from_faceid(h, faceid);
         if (face != NULL && face != from &&
             ((face->flags & checkmask) == checkmask)) {
             if (h->debug & 32)
-                ccnd_msg(h, "at %d adding %u", __LINE__, faceid);
-            ccn_indexbuf_append_element(x, faceid);
+                ccnd_msg(h, "at %d adding %u", __LINE__, face->faceid);
+            ccn_indexbuf_append_element(x, face->faceid);
         }
     }
-Bail:
-    hashtb_end(e);
     return(x);
 }
 
@@ -2714,7 +2704,6 @@ propagate_interest(struct ccnd_handle *h,
                    struct face *face,
                    unsigned char *msg,
                    struct ccn_parsed_interest *pi,
-                   struct ccn_indexbuf *comps,
                    struct nameprefix_entry *npe)
 {
     struct hashtb_enumerator ee;
@@ -2731,12 +2720,7 @@ propagate_interest(struct ccnd_handle *h,
     int extra_delay = 0;
     struct ccn_indexbuf *outbound = NULL;
     
-    outbound = get_outbound_faces(h, face, msg, pi, comps);
-    if (outbound == NULL) {
-        /* ENOMEM, presumably */
-        h->interests_dropped += 1;
-        return(-1);
-    }
+    outbound = get_outbound_faces(h, face, msg, pi, npe);
     if (outbound->n != 0) {
         extra_delay = adjust_outbound_for_existing_interests(h, face, msg, pi, npe, outbound);
         if (extra_delay < 0) {
@@ -3099,8 +3083,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         matched = 0;
         hashtb_start(h->nameprefix_tab, e);
         npe = NULL;
-        // res = nameprefix_longest_match(h, msg, comps, pi->prefix_comps);
-        res = (pi->prefix_comps > 0) ? pi->prefix_comps : 0;
+        res = nameprefix_longest_match(h, msg, comps, pi->prefix_comps);
         if (res >= 0) {
             res = nameprefix_seek(h, e, msg, comps, res);
             npe = e->data;
@@ -3182,7 +3165,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
             }
         }
         if (!matched && pi->scope != 0)
-            propagate_interest(h, face, msg, pi, comps, npe);
+            propagate_interest(h, face, msg, pi, npe);
         hashtb_end(e);
     }
     indexbuf_release(h, comps);
