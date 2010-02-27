@@ -90,7 +90,7 @@ public class GroupTestRepo {
 			users.publishUserKeysToRepository(userNamespace);
 			
 			_acm = new GroupAccessControlManager(testStorePrefix, groupStore, userNamespace);
-			_acm.publishMyIdentity(ContentName.fromNative(userKeyStorePrefix, myUserName), KeyManager.getDefaultKeyManager().getDefaultPublicKey());
+			_acm.publishMyIdentity(ContentName.fromNative(userNamespace, myUserName), KeyManager.getDefaultKeyManager().getDefaultPublicKey());
 			_userList = users.friendlyNames().toArray(new String[0]);
 			
 			// create the root ACL
