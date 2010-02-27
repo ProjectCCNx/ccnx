@@ -125,7 +125,7 @@ public class GroupTestRepo {
 		for(int i = 0; i <2; i++){
 			String name = _userList[i];
 			System.out.println("member to add:" + name);
-			newMembers.add(new Link(ContentName.fromNative(userKeyStorePrefix, name)));
+			newMembers.add(new Link(ContentName.fromNative(userNamespace, name)));
 		}
 		System.out.println("creating a group...");
 		Group newGroup = _gm.createGroup(_randomGroupName, newMembers);
@@ -137,7 +137,7 @@ public class GroupTestRepo {
 		String name = _userList[2];
 		System.out.println("adding member to group:"+ name);
 		ArrayList<Link> addMembers = new ArrayList<Link>();
-		addMembers.add(new Link(ContentName.fromNative(userKeyStorePrefix, name)));
+		addMembers.add(new Link(ContentName.fromNative(userNamespace, name)));
 		
 		// add members to the group
 		newGroup.addMembers(addMembers);
@@ -188,7 +188,7 @@ public class GroupTestRepo {
 		Assert.assertTrue(ourExistingGroup == aPointerCopy);
 		
 		GroupAccessControlManager ourACM = new GroupAccessControlManager(testStorePrefix, groupStore, userNamespace);
-		ourACM.publishMyIdentity(ContentName.fromNative(userKeyStorePrefix, myUserName), KeyManager.getDefaultKeyManager().getDefaultPublicKey());
+		ourACM.publishMyIdentity(ContentName.fromNative(userNamespace, myUserName), KeyManager.getDefaultKeyManager().getDefaultPublicKey());
 		GroupManager ourGM = ourACM.groupManager();
 		Thread.sleep(1000);
 		
