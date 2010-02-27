@@ -228,7 +228,6 @@ public class KeyCache {
 	}
 	
 	public PublisherPublicKeyDigest getPublicKeyIdentifier(PrivateKey pk) {
-		// TODO make map store PPKD's directly
 		return new PublisherPublicKeyDigest(_privateKeyIdentifierMap.get(getKeyIdentifier(pk)));
 	}
 	
