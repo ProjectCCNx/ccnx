@@ -15,7 +15,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.profiles.security.access;
+package org.ccnx.ccn.impl.security.keys;
 
 import java.security.Key;
 import java.security.KeyStore;
@@ -31,8 +31,6 @@ import java.util.TreeMap;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
-import org.ccnx.ccn.impl.security.keys.KeyRepository;
-import org.ccnx.ccn.impl.security.keys.BasicKeyManager.KeyStoreInfo;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
@@ -40,10 +38,13 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * A cache for decrypted symmetric keys for access control.
- *
+ * A container for our private keys and other secret key 
+ * material that we have retrieved (e.g. from access control).
+ * 
+ * TODO: provide mechanism to save and reload at least the non-keystore keys
+ * as encrypted CCNx content.
  */
-public class KeyCache {
+public class SecureKeyCache {
 	
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 	
@@ -58,14 +59,14 @@ public class KeyCache {
 	/** Map the digest of a key to its name */
 	private TreeMap<byte [], ContentName> _keyNameMap = new TreeMap<byte [], ContentName>(byteArrayComparator);
 	
-	public KeyCache() {
+	public SecureKeyCache() {
 	}
 	
 	/**
 	 * Constructor that loads keys from a KeyManager
 	 * @param keyManagerToLoadFrom the key manager
 	 */
-	public KeyCache(KeyManager keyManagerToLoadFrom) {
+	public SecureKeyCache(KeyManager keyManagerToLoadFrom) {
 		PrivateKey [] pks = keyManagerToLoadFrom.getSigningKeys();
 		for (PrivateKey pk : pks) {
 			PublisherPublicKeyDigest ppkd = keyManagerToLoadFrom.getPublisherKeyID(pk);
@@ -79,7 +80,7 @@ public class KeyCache {
 	 * @param keystore
 	 * @throws KeyStoreException 
 	 */
-	public void loadKeyStore(KeyStoreInfo keyStoreInfo, char [] password, KeyRepository publicKeyCache) throws KeyStoreException {
+	public void loadKeyStore(KeyStoreInfo keyStoreInfo, char [] password, PublicKeyCache publicKeyCache) throws KeyStoreException {
 		Enumeration<String> aliases = keyStoreInfo.getKeyStore().aliases();
 		String alias;
 		KeyStore.PrivateKeyEntry entry = null;
@@ -228,7 +229,6 @@ public class KeyCache {
 	}
 	
 	public PublisherPublicKeyDigest getPublicKeyIdentifier(PrivateKey pk) {
-		// TODO make map store PPKD's directly
 		return new PublisherPublicKeyDigest(_privateKeyIdentifierMap.get(getKeyIdentifier(pk)));
 	}
 	

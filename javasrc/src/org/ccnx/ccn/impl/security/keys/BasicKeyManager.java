@@ -49,7 +49,6 @@ import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.security.access.KeyCache;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -72,42 +71,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class BasicKeyManager extends KeyManager {
 	
-	public static class KeyStoreInfo {
-		// Where did we load this from
-		String _keyStoreURI;
-		String _configurationFileURI;
-		KeyStore _keyStore;
-		CCNTime _version;
-		
-		public KeyStoreInfo(String keyStoreURI, KeyStore keyStore, CCNTime version) {
-			_keyStoreURI = keyStoreURI;
-			_keyStore = keyStore;
-			_version = version;
-		}
-		
-		/**
-		 * In case we don't know the 
-		 * @param keyStore
-		 */
-		public void setKeyStore(KeyStore keyStore) {
-			_keyStore = keyStore;
-		}
-		
-		public void setVersion(CCNTime version) {
-			_version = version;
-		}
-		
-		public void setConfigurationFileURI(String configurationFileURI) {
-			_configurationFileURI = configurationFileURI;
-		}
-		
-		public KeyStore getKeyStore() { return _keyStore; }
-		public CCNTime getVersion() { return _version; }
-		public String getKeyStoreURI() { return _keyStoreURI; }
-		public String getConfigurationFileURI() { return _configurationFileURI; }
-
-	}
-	
 	protected String _userName;
 	protected ContentName _userNamespace; // default location for publishing keys
 	protected String _defaultAlias;
@@ -127,12 +90,12 @@ public class BasicKeyManager extends KeyManager {
 	/**
 	 * Cache of public keys, handles key publishing, etc.
 	 */
-	protected KeyRepository _keyRepository = null;
+	protected PublicKeyCache _publicKeyCache = null;
 	
 	/**
 	 * Cache of private keys, loaded from keystores.
 	 */
-	protected KeyCache _privateKeyCache = null;
+	protected SecureKeyCache _privateKeyCache = null;
 	
 	/**
 	 * Configuration data
@@ -213,8 +176,8 @@ public class BasicKeyManager extends KeyManager {
 	public synchronized void initialize() throws InvalidKeyException, IOException, ConfigurationException {
 		if (_initialized)
 			return;
-		_keyRepository = new KeyRepository(this);
-		_privateKeyCache = new KeyCache();
+		_publicKeyCache = new PublicKeyCache(this);
+		_privateKeyCache = new SecureKeyCache();
 		_keyStoreInfo = loadKeyStore();// uses _keyRepository and _privateKeyCache
 		if (!loadValuesFromKeystore(_keyStoreInfo)) {
 			Log.warning("Cannot process keystore!");
@@ -223,8 +186,12 @@ public class BasicKeyManager extends KeyManager {
 			Log.warning("Cannot process configuration data!");
 		}
 		_initialized = true;		
-		// Can we publish keys now?
-		publishDefaultKey(null);
+
+		// If we haven't been called off, initialize the key server
+		if (UserConfiguration.publishKeys()) {
+			// Can we publish keys now?
+			publishDefaultKey(null);
+		}
 	}
 	
 	@Override
@@ -234,9 +201,10 @@ public class BasicKeyManager extends KeyManager {
 	 * Close any connections we have to the network. Ideally prepare to
 	 * reopen them when they are next needed.
 	 */
-	
-	public void close() {
-		keyRepository().close();
+	public synchronized void close() {
+		if (null != _publicKeyCache) {
+			_publicKeyCache.close();
+		}
 	}
 	
 	/**
@@ -369,7 +337,7 @@ public class BasicKeyManager extends KeyManager {
 			if (Log.isLoggable(Level.INFO))
 				Log.info("Default key ID for user " + _userName + ": " + _defaultKeyID);
 			
-			_privateKeyCache.loadKeyStore(keyStoreInfo, _password, _keyRepository);
+			_privateKeyCache.loadKeyStore(keyStoreInfo, _password, _publicKeyCache);
 
 		} catch (Exception e) {
 			generateConfigurationException("Cannot retrieve default user keystore entry.", e);
@@ -460,6 +428,22 @@ public class BasicKeyManager extends KeyManager {
 		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(configurationFile));
 		oos.writeObject(_currentKeyLocators);
 		oos.close();
+	}
+	
+	/**
+	 * Need a way to clear this programmatically. Call this before initialize().
+	 */
+	@Override 
+	public void clearSavedConfigurationState() throws FileNotFoundException, IOException {
+		File configurationFile = new File(_keyStoreDirectory, _configurationFileName); 
+		if (configurationFile.exists()) {
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("Deleting configuration state file {0}.", configurationFile.getAbsolutePath());
+			}
+			if (!configurationFile.delete()) {
+				Log.warning("Unable to delete configuration state file {0}.", configurationFile.getAbsolutePath());
+			}
+		}
 	}
 		
 	/**
@@ -648,7 +632,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PublicKey getDefaultPublicKey() {
-		return _keyRepository.getPublicKeyFromCache(getDefaultKeyID());
+		return _publicKeyCache.getPublicKeyFromCache(getDefaultKeyID());
 	}
 		
 	@Override
@@ -730,7 +714,7 @@ public class BasicKeyManager extends KeyManager {
 	
 	@Override
 	public CCNTime getKeyVersion(PublisherPublicKeyDigest keyID) {
-		return _keyRepository.getPublicKeyVersionFromCache(keyID);
+		return _publicKeyCache.getPublicKeyVersionFromCache(keyID);
 	}
 	
 	
@@ -784,7 +768,7 @@ public class BasicKeyManager extends KeyManager {
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
 		// or not we should trust it for some reason, we have to get fancy.
-		return keyRepository().getPublicKey(desiredKeyID, keyLocator, timeout);
+		return getPublicKeyCache().getPublicKey(desiredKeyID, keyLocator, timeout);
 	}
 	
 	/**
@@ -806,7 +790,7 @@ public class BasicKeyManager extends KeyManager {
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
 		// or not we should trust it for some reason, we have to get fancy.
-		return keyRepository().getPublicKeyObject(desiredKeyID, locator, timeout);
+		return getPublicKeyCache().getPublicKeyObject(desiredKeyID, locator, timeout);
 	}	
 	
 	/**
@@ -815,7 +799,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID) {
-		return keyRepository().getPublicKeyFromCache(desiredKeyID);
+		return getPublicKeyCache().getPublicKeyFromCache(desiredKeyID);
 	}
 
 	/**
@@ -833,8 +817,8 @@ public class BasicKeyManager extends KeyManager {
 	 * @return key repository
 	 */
 	@Override
-	public KeyRepository keyRepository() {
-		return _keyRepository;
+	public PublicKeyCache getPublicKeyCache() {
+		return _publicKeyCache;
 	}
 
 	@Override
@@ -893,7 +877,7 @@ public class BasicKeyManager extends KeyManager {
 		}
 		if (Log.isLoggable(Level.INFO))
 			Log.info("publishKey: publishing key {0} under specified key name {1}", keyDigest, keyName);
-		PublicKeyObject keyObject =  _keyRepository.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
+		PublicKeyObject keyObject =  getPublicKeyCache().publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
 		
 		if (!haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
 			// So once we publish self-signed key object, we store a pointer to that
@@ -924,7 +908,7 @@ public class BasicKeyManager extends KeyManager {
 		if (null == keyName) {
 			keyName = getKeyLocator(keyToPublish).name().name();
 		}
-		_keyRepository.publishKeyToRepository(keyName, keyToPublish);
+		getPublicKeyCache().publishKeyToRepository(keyName, keyToPublish);
 	}
 	
 	/**
