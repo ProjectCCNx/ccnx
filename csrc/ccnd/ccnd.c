@@ -2457,7 +2457,7 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
  * @param from is the handle for the originating face (may be NULL).
  * @param msg points to the ccnb-encoded interest message
  * @param pi must be the parse information for msg
- * @param npe should be the result of the longest-match lookup
+ * @param npe should be the result of the prefix lookup
  * @result Newly allocated set of outgoing faceids (never NULL)
  */
 static struct ccn_indexbuf *
@@ -2474,6 +2474,8 @@ get_outbound_faces(struct ccnd_handle *h,
     int n;
     unsigned faceid;
     
+    while (npe->parent != NULL && npe->forwarding == NULL)
+        npe = npe->parent;
     if (npe->fgen != h->forward_to_gen)
         update_forward_to(h, npe);
     x = ccn_indexbuf_create();
@@ -2843,6 +2845,8 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
     if ((pe->flags & (CCN_PR_SCOPE0 | CCN_PR_EQV)) != 0)
         return;
     npe = nameprefix_for_pe(h, pe);
+    while (npe->parent != NULL && npe->forwarding == NULL)
+        npe = npe->parent;
     if (npe->fgen != h->forward_to_gen)
         update_forward_to(h, npe);
     if (npe->forward_to == NULL || npe->forward_to->n == 0)
