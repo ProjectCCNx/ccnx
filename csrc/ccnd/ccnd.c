@@ -1218,7 +1218,7 @@ consume_matching_interests(struct ccnd_handle *h,
 }
 
 static void
-adjust_ipe_predicted_response(struct ccnd_handle *h,
+adjust_npe_predicted_response(struct ccnd_handle *h,
                               struct nameprefix_entry *npe, int up)
 {
     unsigned t = npe->usec;
@@ -1254,13 +1254,13 @@ adjust_predicted_response(struct ccnd_handle *h,
     npe = hashtb_lookup(h->nameprefix_tab,
                         pe->interest_msg + start, stop - start);
     if (npe != NULL)
-        adjust_ipe_predicted_response(h, npe, up);
+        adjust_npe_predicted_response(h, npe, up);
     if (pi->prefix_comps > 0) {
         stop = comps->buf[pi->prefix_comps - 1];
         npe = hashtb_lookup(h->nameprefix_tab,
                             pe->interest_msg + start, stop - start);
         if (npe != NULL)
-            adjust_ipe_predicted_response(h, npe, up);
+            adjust_npe_predicted_response(h, npe, up);
     }
     indexbuf_release(h, comps);
 }
@@ -1274,7 +1274,7 @@ note_content_from(struct ccnd_handle *h,
                   unsigned from_faceid)
 {
     if (npe->src == from_faceid)
-        adjust_ipe_predicted_response(h, npe, 0);
+        adjust_npe_predicted_response(h, npe, 0);
     else if (npe->src == CCN_NOFACEID)
         npe->src = from_faceid;
     else {
