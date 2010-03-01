@@ -127,8 +127,8 @@ public class RFSTest extends RepoTestBase {
 		PublisherPublicKeyDigest pubKey2 = new PublisherPublicKeyDigest(pair2.getPublic());
 		kl = new KeyLocator(new ContentName(keyprefix, pubKey2.digest()));
 		repo.saveContent(ContentObject.buildContentObject(kl.name().name(), pubKey2.digest()));
-		si = new SignedInfo(pubKey2, kl);
-		ContentObject digestSame2 = new ContentObject(name, si, "Testing2".getBytes(), pair2.getPrivate());
+		SignedInfo si2 = new SignedInfo(pubKey2, kl);
+		ContentObject digestSame2 = new ContentObject(name, si2, "Testing2".getBytes(), pair2.getPrivate());
 		repo.saveContent(digestSame2);
 		checkDataAndPublisher(repo, name, "Testing2", pubKey1);
 		checkDataAndPublisher(repo, name, "Testing2", pubKey2);
@@ -215,7 +215,12 @@ public class RFSTest extends RepoTestBase {
 		Interest excludeLeftInterest = Interest.next(name3, excludeAll, 2, null, null, null);
 		ContentObject testScreenOut = repo.getContent(excludeLeftInterest);
 		Assert.assertTrue(testScreenOut == null);
-		
+		repo.saveContent(new ContentObject(ContentName.fromNative(prefix1 + "/bbb"), si, "funnyRightSearch".getBytes(), pair1.getPrivate()));
+		repo.saveContent(new ContentObject(ContentName.fromNative(prefix1 + "/aaa"), si, "wrongRightSearch".getBytes(), pair1.getPrivate()));
+		ContentName name4 = ContentName.fromNative(prefix1 + "/aa");
+		Interest rightSearch = Interest.last(name4, null, 2, null, null, pubKey1);
+		checkData(repo, rightSearch, "funnyRightSearch");
+			
 		System.out.println("Repotest - testing version and segment files");
 		versionedName = ContentName.fromNative("/repoTest/testVersion");
 		versionedName = VersioningProfile.addVersion(versionedName);
