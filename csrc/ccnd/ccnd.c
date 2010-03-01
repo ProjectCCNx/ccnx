@@ -655,10 +655,6 @@ finalize_nameprefix(struct hashtb_enumerator *e)
         npe->forwarding = f->next;
         free(f);
     }
-    if (npe->parent != NULL) {
-        npe->parent->children--;
-        npe->parent = NULL;
-    }
 }
 
 static void
@@ -1554,7 +1550,7 @@ check_nameprefix_entries(struct ccnd_handle *h)
     struct hashtb_enumerator *e = &ee;
     struct propagating_entry *head;
     struct nameprefix_entry *npe;    
-
+    
     hashtb_start(h->nameprefix_tab, e);
     for (npe = e->data; npe != NULL; npe = e->data) {
         if (npe->forward_to != NULL)
@@ -1566,6 +1562,10 @@ check_nameprefix_entries(struct ccnd_handle *h)
             head = &npe->pe_head;
             if (head == head->next) {
                 count += 1;
+                if (npe->parent != NULL) {
+                    npe->parent->children--;
+                    npe->parent = NULL;
+                }
                 hashtb_delete(e);
                 continue;
             }
