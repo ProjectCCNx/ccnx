@@ -2562,10 +2562,10 @@ do_propagate(struct ccn_schedule *sched,
     if (pe->outbound == NULL)
         next_delay = CCN_INTEREST_LIFETIME_MICROSEC;
     else if (pe->sent == pe->outbound->n) {
-        if (pe->usec <= CCN_INTEREST_LIFETIME_MICROSEC * 3 / 4)
+        if (pe->usec <= CCN_INTEREST_LIFETIME_MICROSEC / 4)
             next_delay = CCN_INTEREST_LIFETIME_MICROSEC;
         else if (special_delay == 0)
-            next_delay = CCN_INTEREST_LIFETIME_MICROSEC / 8;
+            next_delay = CCN_INTEREST_LIFETIME_MICROSEC / 16;
         if (pe->fgen != h->forward_to_gen)
             replan_propagation(h, pe);
     }
