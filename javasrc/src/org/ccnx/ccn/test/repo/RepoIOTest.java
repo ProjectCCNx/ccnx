@@ -21,6 +21,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.BasicPolicy;
 import org.ccnx.ccn.impl.repo.PolicyXML;
@@ -121,7 +122,7 @@ public class RepoIOTest extends RepoTestBase {
 		fis.close();
 		ContentName basePolicy = BasicPolicy.getPolicyName(ContentName.fromNative(_globalPrefix), _repoName);
 		ContentName policyName = new ContentName(basePolicy, Interest.generateNonce());
-		PolicyObject po = new PolicyObject(policyName, pxml, SaveType.REPOSITORY, putHandle, null);
+		PolicyObject po = new PolicyObject(policyName, pxml, SaveType.REPOSITORY, putHandle);
 		po.save();
 		Thread.sleep(4000);
 	}

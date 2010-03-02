@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
@@ -35,7 +36,10 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
  * Represents repo policy data
@@ -44,31 +48,77 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 	
 	public static class PolicyObject extends CCNEncodableObject<PolicyXML> {
 		
-		protected RepositoryStore _repo = null;	// Non null if we are saving from within a repository
-		
-		public PolicyObject(ContentName name, PolicyXML data, SaveType saveType, CCNHandle handle, RepositoryStore repo) throws IOException {
-			super(PolicyXML.class, true, name, data, saveType, handle);
-			_repo = repo;
-		}
-		
-		public PolicyObject(ContentName name, PolicyXML data, SaveType saveType, CCNHandle handle) throws IOException {
-			this(name, data, saveType, handle, null);
-		}
-		
 		public PolicyObject(ContentName name, CCNHandle handle) 
+		throws ContentDecodingException, IOException {
+			super(PolicyXML.class, true, name, (PublisherPublicKeyDigest)null, handle);
+		}
+
+		/**
+		 * Read constructor.
+		 */
+		public PolicyObject(ContentName name,
+				PublisherPublicKeyDigest publisher, CCNHandle handle)
 				throws ContentDecodingException, IOException {
-			super(PolicyXML.class, true, name, handle);
+			super(PolicyXML.class, true, name, publisher, handle);
+		}
+
+		/**
+		 * Read constructor.
+		 */
+		public PolicyObject(ContentName name,
+				PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
+				throws ContentDecodingException, IOException {
+			super(PolicyXML.class, true, name, publisher, flowControl);
+		}
+
+		/**
+		 * Read constructor.
+		 */
+		public PolicyObject(ContentObject firstBlock,
+				CCNHandle handle) throws ContentDecodingException, IOException {
+			super(PolicyXML.class, true, firstBlock, handle);
+		}
+
+		/**
+		 * Read constructor.
+		 */
+		public PolicyObject(ContentObject firstBlock,
+				CCNFlowControl flowControl) throws ContentDecodingException,
+				IOException {
+			super(PolicyXML.class, true, firstBlock, flowControl);
+		}
+
+		/**
+		 * Write constructor.
+		 */
+		public PolicyObject(ContentName name,
+				PolicyXML data, SaveType saveType, CCNHandle handle)
+				throws IOException {
+			super(PolicyXML.class, true, name, data, saveType, handle);
+		}
+	
+		/**
+		 * Write constructor.
+		 */
+		public PolicyObject(ContentName name,
+				PolicyXML data, SaveType saveType,
+				PublisherPublicKeyDigest publisher, KeyLocator keyLocator,
+				CCNHandle handle) throws IOException {
+			super(PolicyXML.class, true, name, data, saveType, publisher, keyLocator,
+					handle);
+		}
+
+		/**
+		 * Write constructor.
+		 */
+		public PolicyObject(ContentName name,
+				PolicyXML data, PublisherPublicKeyDigest publisher,
+				KeyLocator keyLocator, CCNFlowControl flowControl)
+				throws IOException {
+			super(PolicyXML.class, true, name, data, publisher, keyLocator, flowControl);
 		}
 		
-		public PolicyXML policyXML() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
-			return data();
-		}
-		
-		protected synchronized void createFlowController() throws IOException {
-			if (null != _repo)
-				_flowControl = new RepositoryInternalFlowControl(_repo, _handle);
-			super.createFlowController();
-		}
+		public PolicyXML policyInfo() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 	}
 	
 	/**

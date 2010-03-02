@@ -38,7 +38,7 @@ public class RepositoryPolicyHandler {
 	public RepositoryPolicyHandler(Interest origInterest, Interest interest,
 			RepositoryServer server) throws RepositoryException, ContentDecodingException, IOException, MalformedContentNameStringException {
 		PolicyObject po = new PolicyObject(interest.name(), server.getHandle());
-		PolicyXML pxml = po.policyXML();
+		PolicyXML pxml = po.policyInfo();
 		Policy policy = server.getRepository().getPolicy();
 		policy.update(pxml, true);
 		ContentName policyName = VersioningProfile.addVersion(

@@ -171,7 +171,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 				ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), localName);
 				PolicyObject policyObject = new PolicyObject(policyName, riih);
 				if (policyObject != null) {
-					_policy.update(policyObject.policyXML(), false);
+					_policy.update(policyObject.policyInfo(), false);
 				}
 			} catch (Exception e) {}	// presumably there is no currently stored policy file
 			if (null != riih)
