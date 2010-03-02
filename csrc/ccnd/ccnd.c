@@ -2532,7 +2532,6 @@ do_propagate(struct ccn_schedule *sched,
         reap_needed(h, 0);
         return(0);        
     }
-    // XXX - this might be a good place to check for new registrations, but maybe not.
     if ((pe->flags & CCN_PR_STUFFED1) != 0) {
         pe->flags &= ~CCN_PR_STUFFED1;
         pe->flags |= CCN_PR_WAIT1;
@@ -2638,8 +2637,6 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                     outbound->n = 0;
                     return(-1);
                 }
-                // XXX - If we had actual forwarding tables, would need to take that into account since the outbound set could differ in non-trivial ways
-                // XXX - newly arrived faces might miss a few interests because of this tactic, but those will get repaired as interests time out.
                 /*
                  * The existing interest from another face will serve for us,
                  * but we still need to send this interest there or we
