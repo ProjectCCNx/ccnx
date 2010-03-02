@@ -275,10 +275,7 @@ public class ContentTree {
 
 		@Override
 		protected Iterator<TreeNode> initIterator(boolean anyOK, byte[] interestComp) {
-			TreeNode testNode = new TreeNode();
-			testNode.component = interestComp;
-			SortedMap<TreeNode, TreeNode> map = anyOK || null == interestComp ? _children : _children.headMap(testNode);
-			return new RightIterator(map);
+			return new RightIterator(_children);
 		}
 	}
 	
