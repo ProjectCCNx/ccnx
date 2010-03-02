@@ -2,6 +2,7 @@ Makefile
 FAILING
 SKIPPED
 STATUS/
+testdata.txt
 testdriver
 ephemeral*
 *.out

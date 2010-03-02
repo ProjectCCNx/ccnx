@@ -237,22 +237,35 @@ struct sparse_straggler_entry {
 
 /**
  * The propagating interest hash table is keyed by Nonce.
+ *
+ * While the interest is pending, the pe is also kept in a doubly-linked
+ * list off of a nameprefix_entry.
+ *
+ * When the interest is consumed, the pe is removed from the doubly-linked
+ * list and is cleaned up by freeing unnecessary bits (including the interest
+ * message itself).  It remains in the hash table for a time, in order to catch
+ * duplicate nonces.
  */
 struct propagating_entry {
     struct propagating_entry *next;
     struct propagating_entry *prev;
-    struct ccn_indexbuf *outbound; /* in order of use */
-    unsigned char *interest_msg;
-    int sent;                   /* leading elements of outbound processed */
-    unsigned size;              /* size in bytes of interest_msg */
-    unsigned flags;             /* CCN_PR_xxx */
-    unsigned faceid;            /* origin of the interest, dest for matches */
-    int usec;                   /* usec until timeout */
+    unsigned flags;             /**< CCN_PR_xxx */
+    unsigned faceid;            /**< origin of the interest, dest for matches */
+    int usec;                   /**< usec until timeout */
+    int sent;                   /**< leading faceids of outbound processed */
+    struct ccn_indexbuf *outbound; /**< in order of use */
+    unsigned char *interest_msg; /**< pending interest message */
+    unsigned size;              /**< size in bytes of interest_msg */
+    int fgen;                   /**< decide if outbound is stale */
 };
 // XXX - with new outbound/sent repr, some of these flags may not be needed.
-#define CCN_PR_UNSENT 1  /* interest has not been sent anywhere yet */
-#define CCN_PR_WAIT1  2  /* interest has been sent to one place */
-#define CCN_PR_STUFFED1 4 /* was stuffed before sent anywhere else */
+#define CCN_PR_UNSENT   0x01 /**< interest has not been sent anywhere yet */
+#define CCN_PR_WAIT1    0x02 /**< interest has been sent to one place */
+#define CCN_PR_STUFFED1 0x04 /**< was stuffed before sent anywhere else */
+#define CCN_PR________  0x08
+#define CCN_PR_EQV      0x10 /**< a younger similar interest exists */
+#define CCN_PR_SCOPE0   0x20 /**< interest scope is 0 */
+#define CCN_PR_SCOPE1   0x40 /**< interest scope is 1 */
 
 /**
  * The nameprefix hash table is keyed by the Component elements of
