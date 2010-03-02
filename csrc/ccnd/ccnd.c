@@ -60,7 +60,6 @@
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
 static int create_local_listener(const char *sockname, int backlog);
-static int accept_new_local_client(struct ccnd_handle *h);
 static void process_input_message(struct ccnd_handle *h, struct face *face,
                                   unsigned char *msg, size_t size, int pdu_ok);
 static void process_input(struct ccnd_handle *h, int fd);
@@ -71,7 +70,8 @@ static void do_write(struct ccnd_handle *h, struct face *face,
 static void do_deferred_write(struct ccnd_handle *h, int fd);
 static void clean_needed(struct ccnd_handle *h);
 static struct face *get_dgram_source(struct ccnd_handle *h, struct face *face,
-                                     struct sockaddr *addr, socklen_t addrlen);
+                                     struct sockaddr *addr, socklen_t addrlen,
+                                     int flags);
 static void content_skiplist_insert(struct ccnd_handle *h,
                                     struct content_entry *content);
 static void content_skiplist_remove(struct ccnd_handle *h,
@@ -708,37 +708,6 @@ create_local_listener(const char *sockname, int backlog)
 }
 
 static int
-accept_new_local_client(struct ccnd_handle *h)
-{
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    struct sockaddr who;
-    socklen_t wholen = sizeof(who);
-    int fd;
-    int res;
-    struct face *face;
-    fd = accept(h->local_listener_fd, &who, &wholen);
-    if (fd == -1) {
-        ccnd_msg(h, "accept: %s", strerror(errno));
-        return(-1);
-    }
-    res = fcntl(fd, F_SETFL, O_NONBLOCK);
-    if (res == -1)
-        ccnd_msg(h, "fcntl: %s", strerror(errno));
-    hashtb_start(h->faces_by_fd, e);
-    res = -1;
-    if (hashtb_seek(e, &fd, sizeof(fd), 0) == HT_NEW_ENTRY) {
-        face = e->data;
-        face->recv_fd = face->send_fd = fd;
-        face->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
-        res = enroll_face(h, face);
-        ccnd_msg(h, "accepted client fd=%d id=%d", fd, res);
-    }
-    hashtb_end(e);
-    return(res);
-}
-
-static int
 establish_min_recv_bufsize(struct ccnd_handle *h, int fd, int minsize)
 {
     int res;
@@ -777,9 +746,11 @@ record_connection(struct ccnd_handle *h, int fd,
         face = e->data;
         face->recv_fd = face->send_fd = fd;
         if (who->sa_family == AF_INET)
-            face->flags |= CCN_FACE_INET;
+            face->flags |= (CCN_FACE_UNDECIDED | CCN_FACE_INET);
         if (who->sa_family == AF_INET6)
-            face->flags |= CCN_FACE_INET6;
+            face->flags |= (CCN_FACE_UNDECIDED | CCN_FACE_INET6);
+        if (who->sa_family == AF_UNIX)
+            face->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
         face->addrlen = e->extsize;
         addrspace = ((unsigned char *)e->key) + e->keysize;
         face->addr = (struct sockaddr *)addrspace;
@@ -793,21 +764,19 @@ record_connection(struct ccnd_handle *h, int fd,
 static int
 accept_connection(struct ccnd_handle *h, int listener_fd)
 {
-    struct sockaddr who[4];
+    struct sockaddr_storage who;
     socklen_t wholen = sizeof(who);
     int fd;
     struct face *face;
 
-    fd = accept(listener_fd, who, &wholen);
+    fd = accept(listener_fd, (struct sockaddr *)&who, &wholen);
     if (fd == -1) {
         ccnd_msg(h, "accept: %s", strerror(errno));
         return(-1);
     }
-    face = record_connection(h, fd, who, wholen);
-    if (face != NULL) {
+    face = record_connection(h, fd, (struct sockaddr *)&who, wholen);
+    if (face != NULL)
         ccnd_msg(h, "accepted client fd=%d id=%u", fd, face->faceid);
-        face->flags |= CCN_FACE_UNDECIDED; /* might be http */
-    }
     return(fd);
 }
 
@@ -2071,7 +2040,8 @@ ccnd_req_newface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
             goto Finish;
         newface = get_dgram_source(h, face,
                                    addrinfo->ai_addr,
-                                   addrinfo->ai_addrlen);
+                                   addrinfo->ai_addrlen,
+                                   0);
     }
     else if (addrinfo->ai_socktype == SOCK_STREAM) {
         newface = make_connection(h,
@@ -3414,7 +3384,7 @@ process_input_message(struct ccnd_handle *h, struct face *face,
 
 static struct face *
 get_dgram_source(struct ccnd_handle *h, struct face *face,
-           struct sockaddr *addr, socklen_t addrlen)
+           struct sockaddr *addr, socklen_t addrlen, int flags)
 {
     struct face *source = NULL;
     struct hashtb_enumerator ee;
@@ -3514,7 +3484,7 @@ process_input(struct ccnd_handle *h, int fd)
     else if (res == 0 && (face->flags & CCN_FACE_DGRAM) == 0)
         shutdown_client_fd(h, fd);
     else {
-        source = get_dgram_source(h, face, addr, addrlen);
+        source = get_dgram_source(h, face, addr, addrlen, 1);
         source->recvcount++;
         source->surplus = 0;
         if (res <= 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
@@ -3729,12 +3699,8 @@ ccnd_run(struct ccnd_handle *h)
             if (h->fds[i].revents != 0) {
                 if (h->fds[i].revents & (POLLERR | POLLNVAL | POLLHUP))
                     return;
-                if (h->fds[i].revents & (POLLIN)) {
-                    if (i == 0)
-                        accept_new_local_client(h);
-                    else
-                        accept_connection(h, h->fds[i].fd);
-                }
+                if (h->fds[i].revents & (POLLIN))
+                    accept_connection(h, h->fds[i].fd);
                 check_comm_file(h);
                 res--;
             }
