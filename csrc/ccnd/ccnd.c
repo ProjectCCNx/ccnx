@@ -83,10 +83,8 @@ static ccn_accession_t content_skiplist_next(struct ccnd_handle *h,
 static void reap_needed(struct ccnd_handle *h, int init_delay_usec);
 static void check_comm_file(struct ccnd_handle *h);
 static const char *unlink_this_at_exit = NULL;
-static int nameprefix_longest_match(struct ccnd_handle *h,
-                                    const unsigned char *msg,
-                                    struct ccn_indexbuf *comps,
-                                    int ncomps);
+static struct nameprefix_entry *nameprefix_for_pe(struct ccnd_handle *h,
+                                                  struct propagating_entry *pe);
 static int nameprefix_seek(struct ccnd_handle *h,
                            struct hashtb_enumerator *e,
                            const unsigned char *msg,
@@ -1237,32 +1235,14 @@ static void
 adjust_predicted_response(struct ccnd_handle *h,
                           struct propagating_entry *pe, int up)
 {
-    struct ccn_indexbuf *comps = indexbuf_obtain(h);
-    struct ccn_parsed_interest parsed_interest = {0};
-    struct ccn_parsed_interest *pi = &parsed_interest;
     struct nameprefix_entry *npe;
-    int res;
-    size_t start;
-    size_t stop;
-    res = ccn_parse_interest(pe->interest_msg, pe->size, pi, comps);
-    if (res < 0 || pi->prefix_comps >= comps->n) abort();
-    res = nameprefix_longest_match(h, pe->interest_msg, comps, pi->prefix_comps);
-    if (res < 0) abort();
-    start = comps->buf[0];
-    stop = comps->buf[res];
-    
-    npe = hashtb_lookup(h->nameprefix_tab,
-                        pe->interest_msg + start, stop - start);
-    if (npe != NULL)
-        adjust_npe_predicted_response(h, npe, up);
-    if (pi->prefix_comps > 0) {
-        stop = comps->buf[pi->prefix_comps - 1];
-        npe = hashtb_lookup(h->nameprefix_tab,
-                            pe->interest_msg + start, stop - start);
-        if (npe != NULL)
-            adjust_npe_predicted_response(h, npe, up);
-    }
-    indexbuf_release(h, comps);
+        
+    npe = nameprefix_for_pe(h, pe);
+    if (npe == NULL)
+        return;
+    adjust_npe_predicted_response(h, npe, up);
+    if (npe->parent != NULL)
+        adjust_npe_predicted_response(h, npe->parent, up);
 }
 
 /**
@@ -2893,7 +2873,7 @@ is_duplicate_flooded(struct ccnd_handle *h, unsigned char *msg,
 /**
  * Finds the longest matching nameprefix, returns the component count or -1 for error.
  */
-static int
+/* UNUSED */ int
 nameprefix_longest_match(struct ccnd_handle *h, const unsigned char *msg,
                          struct ccn_indexbuf *comps, int ncomps)
 {
