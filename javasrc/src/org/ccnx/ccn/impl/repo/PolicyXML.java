@@ -36,7 +36,6 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -48,44 +47,12 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 	
 	public static class PolicyObject extends CCNEncodableObject<PolicyXML> {
 		
+		/**
+		 * Read constructor
+		 */
 		public PolicyObject(ContentName name, CCNHandle handle) 
 		throws ContentDecodingException, IOException {
 			super(PolicyXML.class, true, name, (PublisherPublicKeyDigest)null, handle);
-		}
-
-		/**
-		 * Read constructor.
-		 */
-		public PolicyObject(ContentName name,
-				PublisherPublicKeyDigest publisher, CCNHandle handle)
-				throws ContentDecodingException, IOException {
-			super(PolicyXML.class, true, name, publisher, handle);
-		}
-
-		/**
-		 * Read constructor.
-		 */
-		public PolicyObject(ContentName name,
-				PublisherPublicKeyDigest publisher, CCNFlowControl flowControl)
-				throws ContentDecodingException, IOException {
-			super(PolicyXML.class, true, name, publisher, flowControl);
-		}
-
-		/**
-		 * Read constructor.
-		 */
-		public PolicyObject(ContentObject firstBlock,
-				CCNHandle handle) throws ContentDecodingException, IOException {
-			super(PolicyXML.class, true, firstBlock, handle);
-		}
-
-		/**
-		 * Read constructor.
-		 */
-		public PolicyObject(ContentObject firstBlock,
-				CCNFlowControl flowControl) throws ContentDecodingException,
-				IOException {
-			super(PolicyXML.class, true, firstBlock, flowControl);
 		}
 
 		/**
@@ -95,17 +62,6 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 				PolicyXML data, SaveType saveType, CCNHandle handle)
 				throws IOException {
 			super(PolicyXML.class, true, name, data, saveType, handle);
-		}
-	
-		/**
-		 * Write constructor.
-		 */
-		public PolicyObject(ContentName name,
-				PolicyXML data, SaveType saveType,
-				PublisherPublicKeyDigest publisher, KeyLocator keyLocator,
-				CCNHandle handle) throws IOException {
-			super(PolicyXML.class, true, name, data, saveType, publisher, keyLocator,
-					handle);
 		}
 
 		/**
@@ -119,6 +75,12 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 		}
 		
 		public PolicyXML policyInfo() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
+		
+		public boolean update(ContentName name, PublisherPublicKeyDigest publisher) throws ContentDecodingException, IOException {
+			if (_handle instanceof RepositoryInternalInputHandler)
+				return true;
+			return super.update(name, publisher);
+		}
 	}
 	
 	/**

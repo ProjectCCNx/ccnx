@@ -21,7 +21,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.BasicPolicy;
 import org.ccnx.ccn.impl.repo.PolicyXML;
