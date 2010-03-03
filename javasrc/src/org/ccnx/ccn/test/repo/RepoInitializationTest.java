@@ -36,7 +36,7 @@ public class RepoInitializationTest extends RepoTestBase {
 	public void testRepoIsUp() throws Throwable {
 		while (countDown >= 0) {
 			try {
-				testWriteToRepo(ContentName.fromNative("/repoTest/upTest"));
+				writeToRepo(ContentName.fromNative("/repoTest/upTest"));
 				return;
 			} catch (IOException ioe) {}
 			Thread.sleep(TEST_INTERVAL);

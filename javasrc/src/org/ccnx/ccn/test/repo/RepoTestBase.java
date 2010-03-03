@@ -63,7 +63,7 @@ public class RepoTestBase extends LibraryTestBase {
 		ContentName name = ContentName.fromNative(contentName);
 		ContentName baseName = null;
 		try {
-			baseName = testWriteToRepo(name);
+			baseName = writeToRepo(name);
 		} catch (IOException ex) {
 			if (expected)
 				Assert.fail(ex.getMessage());
@@ -84,7 +84,7 @@ public class RepoTestBase extends LibraryTestBase {
 		input.close();
 	}
 	
-	protected ContentName testWriteToRepo(ContentName name) throws Exception {
+	protected ContentName writeToRepo(ContentName name) throws Exception {
 		RepositoryFileOutputStream ros = new RepositoryFileOutputStream(name, putHandle);	
 		byte [] data = "Testing 1 2 3".getBytes();
 		ros.write(data, 0, data.length);
