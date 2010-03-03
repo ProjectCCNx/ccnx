@@ -52,8 +52,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class ACL extends Collection {
 	
-	public static final String ACL_ELEMENT = "ACL";
-	
 	/** Readers can read content */
 	public static final String LABEL_READER = "r";
 	/** Writers can read and write (or edit) content */

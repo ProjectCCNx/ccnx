@@ -19,100 +19,63 @@ package org.ccnx.ccn.profiles.namespace;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
-import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
-import org.ccnx.ccn.impl.encoding.XMLDecoder;
-import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.CCNEncodableObject;
-import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.ErrorStateException;
+import org.ccnx.ccn.io.content.ContentGoneException;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.namespace.NamespaceManager.Root.RootObject;
+import org.ccnx.ccn.profiles.namespace.Root.RootObject;
 import org.ccnx.ccn.profiles.search.Pathfinder;
 import org.ccnx.ccn.profiles.search.Pathfinder.SearchResults;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.group.ACL;
-import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
  *
  **/
 public class NamespaceManager {
+	
+	protected static Map<ContentName, Class<? extends AccessControlManager>> _accessControlManagerTypes = 
+				new TreeMap<ContentName, Class<? extends AccessControlManager>>();
 
 	protected static Set<AccessControlManager> _acmList = new HashSet<AccessControlManager>(); 
 	protected static Set<ContentName> _searchedPathCache = new HashSet<ContentName>();
-
-	/**
-	 * Used to mark the top level in a namespace under access control
-	 * This class currently holds no data - it will be extended to hold access control 
-	 * configuration information for that namespace.
-	 */
-	public static class Root extends GenericXMLEncodable {
-
-		public static class RootObject extends CCNEncodableObject<Root> {
-
-			// Not mutable yet, but will be soon.
-			public RootObject(ContentName name, CCNHandle handle) throws IOException {
-				super(Root.class, true, name, handle);
-			}
-
-			public RootObject(ContentName name, Root r, SaveType saveType, CCNHandle handle) throws IOException {
-				super(Root.class, true, name, r, saveType, handle);
-			}
-
-			public RootObject(ContentObject firstBlock, CCNHandle handle)
-					throws ContentDecodingException, IOException {
-				super(Root.class, true, firstBlock, handle);
-			}
-
-			public ContentName namespace() {
-				return _baseName.copy(_baseName.count()-2);
-			}
+	
+	static {
+		try {
+			NamespaceManager.registerAccessControlManagerType(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), 
+																GroupAccessControlManager.class);
+		} catch (MalformedContentNameStringException e) {
+			throw new RuntimeException("Cannot parse built-in profile name: " + GroupAccessControlManager.PROFILE_NAME_STRING);
 		}
-
-		/**
-		 * Set up a part of the namespace to be under access control.
-		 * This method writes the root block and root ACL to a repository.
-		 * @param name The top of the namespace to be under access control
-		 * @param acl The access control list to be used for the root of the
-		 * namespace under access control.
-		 * @throws IOException 
-		 * @throws ConfigurationException 
-		 */
-		public static void create(ContentName name, ACL acl, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException {
-			Root r = new Root();
-			RootObject ro = new RootObject(AccessControlProfile.accessRoot(name), r, saveType, handle);
-			ro.save();
-			ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
-			aclo.save();
+	}
+	
+	public static AccessControlManager createAccessControlManager(RootObject policyInformation, CCNHandle handle) throws ContentNotReadyException, ContentGoneException, ErrorStateException, InstantiationException, IllegalAccessException, ConfigurationException, IOException {
+		Class<? extends AccessControlManager> acmClazz = null;
+		synchronized(NamespaceManager.class) {
+			acmClazz = _accessControlManagerTypes.get(policyInformation.root().profileName());
 		}
-
-		@Override
-		public void decode(XMLDecoder decoder) {
+		if (null != acmClazz) {
+			AccessControlManager acm = (AccessControlManager)acmClazz.newInstance();
+			acm.initialize(policyInformation, handle);
+			return acm;
 		}
-
-		@Override
-		public void encode(XMLEncoder encoder) {
-		}
-
-		@Override
-		public boolean validate() {
-			return true;
-		}
-
-		@Override
-		public long getElementLabel() {
-			return -1;
-		}
+		return null;
+	}
+	
+	public static synchronized void registerAccessControlManagerType(ContentName profileName, 
+																	 Class<? extends AccessControlManager> acmClazz) {
+		_accessControlManagerTypes.put(profileName, acmClazz);
 	}
 
 	/**
@@ -159,7 +122,18 @@ public class NamespaceManager {
 			// does this seek?
 			Log.info("Got a segment of an object, is it the first segment of the right object: {0}", results.getResult().name());
 			RootObject ro = new RootObject(results.getResult(), handle);
-			AccessControlManager acm = AccessControlManager.createManager(ro, handle);
+			AccessControlManager acm;
+			try {
+				acm = NamespaceManager.createAccessControlManager(ro, handle);
+			} catch (InstantiationException e) {
+				Log.severe("InstantiationException attempting to create access control manager: " + e.getMessage());
+				Log.warningStackTrace(e);
+				throw new ConfigurationException("InstantiationException attempting to create access control manager: " + e.getMessage(), e);
+			} catch (IllegalAccessException e) {
+				Log.severe("IllegalAccessException attempting to create access control manager: " + e.getMessage());
+				Log.warningStackTrace(e);
+				throw new ConfigurationException("IllegalAccessException attempting to create access control manager: " + e.getMessage(), e);
+			}
 			registerACM(acm);
 			return acm;
 		}

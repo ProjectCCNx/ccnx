@@ -28,7 +28,7 @@ import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
-import org.ccnx.ccn.profiles.namespace.NamespaceManager.Root.RootObject;
+import org.ccnx.ccn.profiles.namespace.Root.RootObject;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -53,15 +53,12 @@ public abstract class AccessControlManager {
 	protected SecureRandom _random = new SecureRandom();
 
 	/**
-	 * Factory method.
-	 * Eventually split between a superclass AccessControlManager that handles many
-	 * access schemes and a subclass GroupBasedAccessControlManager. For now, put
-	 * a factory method here that makes you an ACM based on information in a stored
-	 * root object. Have to trust that object as a function of who signed it.
+	 * Subclasses should implement a default constructor and set themselves up with an 
+	 * initialize method.
 	 */
-	public static AccessControlManager createManager(RootObject policyInformation, CCNHandle handle) {
-		return null; // TODO fill in 
-	}
+	public AccessControlManager() {}
+	
+	public abstract boolean initialize(RootObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException;
 
 	/**
 	 * Labels for deriving various types of keys.
