@@ -61,7 +61,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		// create and register ACM
 		handle = td.getHandleForUser(friendlyNames[0]);
 		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
-		acm.publishMyIdentity(friendlyNames[0], handle.keyManager().getDefaultPublicKey());
+		acm.publishMyIdentity(ContentName.fromNative(userNamespace, friendlyNames[0]), handle.keyManager().getDefaultPublicKey());
 		handle.keyManager().publishKeyToRepository();
 		
 		// create the root ACL
@@ -71,7 +71,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		rootACLcontents.add(lk);
 		// it also has me as a manager, which means I'd better publish my identity as well
 		String myUserName = UserConfiguration.userName();
-		acm.publishMyIdentity(myUserName, KeyManager.getDefaultKeyManager().getDefaultPublicKey());
+		acm.publishMyIdentity(GroupAccessControlProfile.userNamespaceName(userNamespace, myUserName), KeyManager.getDefaultKeyManager().getDefaultPublicKey());
 		Link mlk = new Link(ContentName.fromNative(userNamespace, myUserName), ACL.LABEL_MANAGER, null);
 		rootACLcontents.add(mlk);
 		ACL rootACL = new ACL(rootACLcontents);
@@ -148,9 +148,8 @@ public class GACMNodeKeyDirtyTestRepo {
 			ArrayList<Link> ACLcontents = new ArrayList<Link>();
 			ACLcontents.add(lk);
 			ACL aclNode = new ACL(ACLcontents);
-			if (i==0) acm.initializeNamespace(aclNode);
 			acm.setACL(node[i], aclNode);
-		}		
+		}
 	}
 	
 	public void writeNodeContent() throws Exception {

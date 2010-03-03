@@ -105,6 +105,12 @@ public enum CCNProtocolDTags {
 	NameValue ( 101 ),
 	Entry ( 102 ),
 	ACL ( 103 ),
+	ParameterizedName ( 104 ),
+	Prefix ( 105 ),
+	Suffix ( 106 ),
+	Root ( 107 ),
+	ProfileName ( 108 ),
+	Parameters ( 109 ),
 	CCNProtocolDataUnit ( 17702112 );
 
 	final long _tag;

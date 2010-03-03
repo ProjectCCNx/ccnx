@@ -50,7 +50,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		// create ACM
 		handle = td.getHandleForUser(friendlyNames[1]);
 		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
-		acm.publishMyIdentity(friendlyNames[1], handle.keyManager().getDefaultPublicKey());
+		acm.publishMyIdentity(ContentName.fromNative(userNamespace, friendlyNames[1]), handle.keyManager().getDefaultPublicKey());
 	}
 	
 	/**

@@ -19,8 +19,11 @@ package org.ccnx.ccn.profiles.security.access.group;
 
 
 import org.bouncycastle.util.Arrays;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.support.DataUtils.Tuple;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -44,44 +47,177 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	public static final String USER_PREFIX = "Users";
 	public static final byte [] USER_PREFIX_BYTES = ContentName.componentParseNative(USER_PREFIX);
 	
-	public static final String GROUP_PUBLIC_KEY_NAME = "Key";
-	public static final String GROUP_PRIVATE_KEY_NAME = "PrivateKey";
 	public static final String GROUP_MEMBERSHIP_LIST_NAME = "MembershipList";
 	public static final String GROUP_POINTER_TO_PARENT_GROUP_NAME = "PointerToParentGroup";
-	public static final String PREVIOUS_KEY_NAME = "PreviousKey";
 	public static final String ACL_NAME = "ACL";
 	public static final byte [] ACL_NAME_BYTES = ContentName.componentParseNative(ACL_NAME);
 	public static final String NODE_KEY_NAME = "NK";
 	public static final byte [] NODE_KEY_NAME_BYTES = ContentName.componentParseNative(NODE_KEY_NAME);	
 	// These two must be the same length
-	public static final byte [] PRINCIPAL_PREFIX = ContentName.componentParseNative("p" + CCNProfile.COMPONENT_SEPARATOR_STRING);
-	public static final byte [] GROUP_PRINCIPAL_PREFIX = ContentName.componentParseNative("g" + CCNProfile.COMPONENT_SEPARATOR_STRING);
+	public static final byte [] USER_PRINCIPAL_PREFIX = ContentName.componentParseNative("p");
+	public static final byte [] GROUP_PRINCIPAL_PREFIX = ContentName.componentParseNative("g");
 	public static final ContentName ACL_POSTFIX = new ContentName(new byte[][]{ACCESS_CONTROL_MARKER_BYTES, ACL_NAME_BYTES});
 
-	public static final String SUPERSEDED_MARKER = "SupersededBy";
-	
 	/**
 	 * This class records information about a CCN principal.
 	 * This information includes: 
 	 * - principal type (group, etc),
 	 * - friendly name (the name the principal is known by)
 	 * - version
+	 * 
+	 * We define a mapping between name components and principals:
+	 * <TYPE_PREFIX>:<NAMESPACE_HASH>:<FRIENDLY_NAME>:<VERSION>
 	 *
 	 */
 	public static class PrincipalInfo {
+		
+		// Number of parts expected in a PI component representation
+		private static final int PI_COMPONENT_COUNT = 4;
+		
+		// However long our distinguishing hashes should be
+		public static final int DISTINGUISHING_HASH_LENGTH = 8;
+	
 		private byte [] _typeMarker;
+		private byte[] _distinguishingHash;
 		private String _friendlyName;
 		private CCNTime _versionTimestamp;
 		
-		public PrincipalInfo(byte [] type, String friendlyName, CCNTime versionTimestamp) {
+		public PrincipalInfo(byte [] type, byte[] distinguishingHash, String friendlyName, CCNTime versionTimestamp) {
 			_typeMarker = type;
+			_distinguishingHash = distinguishingHash;
 			_friendlyName = friendlyName;
 			_versionTimestamp = versionTimestamp;
 		}
 		
+		/**
+		 * Parse the principal info for a specified public key name
+		 * @param isGroup whether the principal is a group
+		 * @param publicKeyName the public key name
+		 * @return the corresponding principal info
+		 * @throws VersionMissingException
+		 * @throws ContentEncodingException 
+		 */
+		public PrincipalInfo(GroupAccessControlManager accessControlManager, ContentName publicKeyName) throws VersionMissingException, ContentEncodingException {
+			boolean isGroup = accessControlManager.isGroupName(publicKeyName);
+			_typeMarker = (isGroup ? GROUP_PRINCIPAL_PREFIX : USER_PRINCIPAL_PREFIX);
+			_versionTimestamp = VersioningProfile.getLastVersionAsTimestamp(publicKeyName);
+			
+			// Now need to parse the principal name into a distinguishing hash and friendly name
+			// How to do this depends on which group it is; there might be a postfix for the
+			// name to deal with
+			Tuple<ContentName, String> distinguishingPrefixAndFriendlyName = accessControlManager.parsePrefixAndFriendlyNameFromPublicKeyName(publicKeyName);
+			_distinguishingHash = contentPrefixToDistinguishingHash(distinguishingPrefixAndFriendlyName.first());
+			_friendlyName = distinguishingPrefixAndFriendlyName.second();
+		}
+		
+		public PrincipalInfo(byte [] principalInfoNameComponent) {
+			
+			if (!PrincipalInfo.isPrincipalNameComponent(principalInfoNameComponent) || (principalInfoNameComponent.length <= USER_PRINCIPAL_PREFIX.length))
+				throw new IllegalArgumentException("Not a valid principal name component!");
+			
+			// First time we see COMPONENT_SEPARATOR is the separation point.
+			// Could jump back based on fixed width of timestamp.
+			byte [][] pieces = DataUtils.binarySplit(principalInfoNameComponent, CCNProfile.COMPONENT_SEPARATOR[0]);
+			if (pieces.length < PI_COMPONENT_COUNT) {
+				Log.warning("Unexpected principal name format - insufficient number of components: " + 
+						ContentName.componentPrintURI(principalInfoNameComponent, USER_PRINCIPAL_PREFIX.length, principalInfoNameComponent.length-USER_PRINCIPAL_PREFIX.length));
+				throw new IllegalArgumentException("Not a valid principal name component -- insufficient number of components!");				
+			}
+			
+			_typeMarker = pieces[0];
+			_distinguishingHash = pieces[1];
+			_friendlyName = ContentName.componentPrintNative(pieces[2]);
+			_versionTimestamp = new CCNTime(pieces[3]);
+		}
+		
+		/**
+		 * Principal names for links to wrapped key blocks take the form:
+		 * {GROUP_PRINCIPAL_PREFIX | PRINCIPAL_PREFIX} COMPONENT_SEPARATOR distinguisingHash COMPONENT_SEPARATOR friendlName COMPONENT_SEPARATOR timestamp as 12-bit binary
+		 * This allows a single enumeration of a wrapped key directory to determine
+		 * not only which principals the keys are wrapped for, but also what versions of their
+		 * private keys the keys are wrapped under (also determinable from the contents of the
+		 * wrapped key blocks, but to do that you have to pull the wrapped key block).
+		 * These serve as the name of a link to the actual wrapped key block.
+		 */
+		public byte[] toNameComponent() {
+			byte [] prefix = (isGroup() ? GROUP_PRINCIPAL_PREFIX : USER_PRINCIPAL_PREFIX);
+			byte [] bytePrincipal = ContentName.componentParseNative(friendlyName());
+			byte [] byteTime = versionTimestamp().toBinaryTime();
+			byte [] component = new byte[prefix.length + distinguishingHash().length + bytePrincipal.length + 
+			                             byteTime.length + 3*COMPONENT_SEPARATOR.length];
+			// java 1.6 has much better functions for array copying
+			int offset = 0;
+			System.arraycopy(prefix, 0, component, offset, prefix.length);
+			offset += prefix.length;
+			System.arraycopy(COMPONENT_SEPARATOR, 0, component, offset, COMPONENT_SEPARATOR.length);
+			offset += COMPONENT_SEPARATOR.length;
+
+			System.arraycopy(distinguishingHash(), 0, component, offset, distinguishingHash().length);
+			offset += distinguishingHash().length;
+			System.arraycopy(COMPONENT_SEPARATOR, 0, component, offset, COMPONENT_SEPARATOR.length);
+			offset += COMPONENT_SEPARATOR.length;
+
+			System.arraycopy(bytePrincipal, 0, component, offset, bytePrincipal.length);
+			offset += bytePrincipal.length;
+			System.arraycopy(COMPONENT_SEPARATOR, 0, component, offset, COMPONENT_SEPARATOR.length);
+			offset += COMPONENT_SEPARATOR.length;
+			
+			System.arraycopy(byteTime, 0, component, offset, byteTime.length);
+			
+			return component;
+		}
+		
+		/**
+		 * Parses the principal name from a group public key.
+		 * For groups, the last component of the public key is GROUP_PUBLIC_KEY_NAME = "Key".
+		 * The principal name is the one-before-last component.
+		 * @param publicKeyName the name of the group public key
+		 * @return the corresponding principal name
+		 */
+		public static String parsePrincipalNameFromGroupPublicKeyName(ContentName publicKeyName) {
+			ContentName cn = VersioningProfile.cutTerminalVersion(publicKeyName).first();
+			return ContentName.componentPrintNative(cn.component(cn.count() - 2));
+		}
+		
+		/**
+		 * Parses the principal name from a public key name.
+		 * Do not use this method for group public keys.
+		 * For groups, use instead parsePrincipalNameFromGroupPublicKeyName
+		 * @param publicKeyName the public key name
+		 * @return the corresponding principal name
+		 */
+		public static String parsePrincipalNameFromPublicKeyName(ContentName publicKeyName) {
+			return ContentName.componentPrintNative(VersioningProfile.cutTerminalVersion(publicKeyName).first().lastComponent());
+		}
+
 		public boolean isGroup() { return Arrays.areEqual(GROUP_PRINCIPAL_PREFIX, _typeMarker); }
 		public String friendlyName() { return _friendlyName; }
+		public byte[] distinguishingHash() { return _distinguishingHash; }
 		public CCNTime versionTimestamp() { return _versionTimestamp; }
+
+		/**
+		 * Returns whether a specified name component is the name of a principal
+		 * @param nameComponent the name component
+		 * @return
+		 */
+		public static boolean isPrincipalNameComponent(byte [] nameComponent) {
+			return (DataUtils.isBinaryPrefix(GroupAccessControlProfile.USER_PRINCIPAL_PREFIX, nameComponent) ||
+					DataUtils.isBinaryPrefix(GroupAccessControlProfile.GROUP_PRINCIPAL_PREFIX, nameComponent));
+		}
+		
+		/**
+		 * A first stab
+		 * @throws ContentEncodingException 
+		 */
+		public static byte [] contentPrefixToDistinguishingHash(ContentName name) throws ContentEncodingException {
+			byte [] fullDigest = CCNDigestHelper.digest(name.encode());
+			if (fullDigest.length > DISTINGUISHING_HASH_LENGTH) {
+				byte [] returnedDigest = new byte[DISTINGUISHING_HASH_LENGTH];
+				System.arraycopy(fullDigest, 0, returnedDigest, 0, DISTINGUISHING_HASH_LENGTH);
+				return returnedDigest;
+			}
+			return fullDigest;
+		}
 	}
 	
 	/**
@@ -99,20 +235,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		}
 		return false;
 	}
-	
-	/**
-	 * Returns whether the specified name contains the group prefix
-	 * @param name the name
-	 * @return
-	 */
-	public static boolean isGroupName(ContentName name) {
-		return name.contains(GROUP_PREFIX_BYTES);
-	}
-	
-	public static boolean isUserName(ContentName name) {
-		return name.contains(USER_PREFIX_BYTES);
-	}
-	
+
 	/**
 	 * Get the name of the node key for a given content node, if there is one.
 	 * This is nodeName/_access_/NK, with a version then added for a specific node key.
@@ -193,7 +316,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the name of the group public key
 	 */
 	public static ContentName groupPublicKeyName(ContentName groupNamespaceName, String groupFriendlyName) {
-		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName, groupFriendlyName),  GROUP_PUBLIC_KEY_NAME);
+		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName, groupFriendlyName),  AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
 	}
 	
 	/**
@@ -202,7 +325,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the name of the group public key
 	 */
 	public static ContentName groupPublicKeyName(ContentName groupFullName) {
-		return ContentName.fromNative(groupFullName,  GROUP_PUBLIC_KEY_NAME);
+		return ContentName.fromNative(groupFullName,  AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
 	}
 	
 	/**
@@ -238,117 +361,4 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		return ContentName.fromNative(groupFullName, GROUP_POINTER_TO_PARENT_GROUP_NAME);
 	}
 
-	/**
-	 * Returns whether a specified name component is the name of a principal
-	 * @param nameComponent the name component
-	 * @return
-	 */
-	public static boolean isPrincipalNameComponent(byte [] nameComponent) {
-		return (DataUtils.isBinaryPrefix(PRINCIPAL_PREFIX, nameComponent) ||
-				DataUtils.isBinaryPrefix(GROUP_PRINCIPAL_PREFIX, nameComponent));
-	}
-
-	/**
-	 * Get the principalInfo corresponding to a specified name component
-	 * @param childName the name component
-	 * @return the corresponding principal info
-	 */
-	public static PrincipalInfo parsePrincipalInfoFromNameComponent(
-			byte[] childName) {
-		if (!isPrincipalNameComponent(childName) || (childName.length <= PRINCIPAL_PREFIX.length))
-			return null;
-		
-		// First time we see COMPONENT_SEPARATOR is the separation point.
-		// Could jump back based on fixed width of timestamp.
-		int sepIndex = -1;
-		for (sepIndex = PRINCIPAL_PREFIX.length; sepIndex < childName.length; sepIndex++) {
-			if (childName[sepIndex] == CCNProfile.COMPONENT_SEPARATOR[0])
-				break;
-		}
-		if (sepIndex == childName.length) {
-			Log.warning("Unexpected principal name format - no separator: " + 
-					ContentName.componentPrintURI(childName, PRINCIPAL_PREFIX.length, childName.length-PRINCIPAL_PREFIX.length));
-			return null;
-		}
-		byte [] type = new byte[PRINCIPAL_PREFIX.length];
-		byte [] principal = new byte[sepIndex - PRINCIPAL_PREFIX.length];
-		byte [] timestamp = new byte[childName.length - sepIndex -1];
-		System.arraycopy(childName, 0, type, 0, PRINCIPAL_PREFIX.length);
-		System.arraycopy(childName, PRINCIPAL_PREFIX.length, principal, 0, principal.length);
-		System.arraycopy(childName, sepIndex+1, timestamp, 0, timestamp.length);
-		
-		String strPrincipal = ContentName.componentPrintNative(principal);
-		// Represent as version or just the timestamp part?
-		CCNTime version = new CCNTime(timestamp);
-		return new PrincipalInfo(type, strPrincipal, version);	
-	}
-
-	/**
-	 * Principal names for links to wrapped key blocks take the form:
-	 * {GROUP_PRINCIPAL_PREFIX | PRINCIPAL_PREFIX} COMPONENT_SEPARATOR principalName COMPONENT_SEPARATOR timestamp as 12-bit binary
-	 * This allows a single enumeration of a wrapped key directory to determine
-	 * not only which principals the keys are wrapped for, but also what versions of their
-	 * private keys the keys are wrapped under (also determinable from the contents of the
-	 * wrapped key blocks, but to do that you have to pull the wrapped key block).
-	 * These serve as the name of a link to the actual wrapped key block.
-	 * @param isGroup
-	 * @param principalName
-	 * @param timestamp
-	 * @return
-	 */
-	public static byte[] principalInfoToNameComponent(PrincipalInfo pi) {
-		byte [] bytePrincipal = ContentName.componentParseNative(pi.friendlyName());
-		byte [] byteTime = pi.versionTimestamp().toBinaryTime();
-		byte [] prefix = (pi.isGroup() ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
-		byte [] component = new byte[prefix.length + bytePrincipal.length + CCNProfile.COMPONENT_SEPARATOR.length + byteTime.length];
-		// java 1.6 has much better functions for array copying
-		System.arraycopy(prefix, 0, component, 0, prefix.length);
-		System.arraycopy(bytePrincipal, 0, component, prefix.length, bytePrincipal.length);
-		System.arraycopy(CCNProfile.COMPONENT_SEPARATOR, 0, component, prefix.length+bytePrincipal.length, CCNProfile.COMPONENT_SEPARATOR.length);
-		System.arraycopy(byteTime, 0, component, prefix.length+bytePrincipal.length+CCNProfile.COMPONENT_SEPARATOR.length, 
-				byteTime.length);
-		
-		return component;
-	}
-	
-	/**
-	 * Parses the principal name from a group public key.
-	 * For groups, the last component of the public key is GROUP_PUBLIC_KEY_NAME = "Key".
-	 * The principal name is the one-before-last component.
-	 * @param publicKeyName the name of the group public key
-	 * @return the corresponding principal name
-	 */
-	public static String parsePrincipalNameFromGroupPublicKeyName(ContentName publicKeyName) {
-		ContentName cn = VersioningProfile.cutTerminalVersion(publicKeyName).first();
-		return ContentName.componentPrintNative(cn.component(cn.count() - 2));
-	}
-	
-	/**
-	 * Parses the principal name from a public key name.
-	 * Do not use this method for group public keys.
-	 * For groups, use instead parsePrincipalNameFromGroupPublicKeyName
-	 * @param publicKeyName the public key name
-	 * @return the corresponding principal name
-	 */
-	public static String parsePrincipalNameFromPublicKeyName(ContentName publicKeyName) {
-		return ContentName.componentPrintNative(VersioningProfile.cutTerminalVersion(publicKeyName).first().lastComponent());
-	}
-
-	/**
-	 * Parse the principal info for a specified public key name
-	 * @param isGroup whether the principal is a group
-	 * @param publicKeyName the public key name
-	 * @return the corresponding principal info
-	 * @throws VersionMissingException
-	 */
-	public static PrincipalInfo parsePrincipalInfoFromPublicKeyName(boolean isGroup, ContentName publicKeyName) throws VersionMissingException {
-		byte [] type = (isGroup ? GROUP_PRINCIPAL_PREFIX : PRINCIPAL_PREFIX);
-		CCNTime version = VersioningProfile.getLastVersionAsTimestamp(publicKeyName);
-		
-		String principal;
-		if (isGroup) principal = parsePrincipalNameFromGroupPublicKeyName(publicKeyName);
-		else principal = parsePrincipalNameFromPublicKeyName(publicKeyName);
-		
-		return new PrincipalInfo(type, principal, version);
-	}
 }

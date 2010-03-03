@@ -16,8 +16,8 @@
 ccnrm /experiments/multicast
 export CCN_EXPERIMENT_ID="$SELF:`./waitgo`"
 NOW=`date '+%s'`
-echo $NOW START $CCN_EXPERIMENT_ID | tee | ccnput /experiments/multicast/results/tcp/$NOW/$SELF/START
+echo $NOW START $CCN_EXPERIMENT_ID | tee | ccnput -f /experiments/multicast/results/tcp/$NOW/$SELF/START
 curl http://$DATAHOST:$HTTPPORT/$DATASET | dd of=/dev/null
 NOW=`date '+%s'`
-echo $NOW STOP $CCN_EXPERIMENT_ID | tee | ccnput /experiments/multicast/results/tcp/$NOW/$SELF/STOP
+echo $NOW STOP $CCN_EXPERIMENT_ID | tee | ccnput -f /experiments/multicast/results/tcp/$NOW/$SELF/STOP
 echo ''wake up, it is ready.

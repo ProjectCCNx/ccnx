@@ -15,5 +15,5 @@
 . ./settings
 PRESENT=`ccnls /experiments/multicast/hosts | cut -d ' ' -f 1  | sort | xargs | tr ' ' /`
 EXPERIMENTID=${1:-run}-$PRESENT-`date "+%s"`
-echo $EXPERIMENTID | ccnput -x 1 /experiments/multicast/GO
+echo $EXPERIMENTID | ccnput -f -x 1 /experiments/multicast/GO
 ccnget -c /experiments/multicast/GO

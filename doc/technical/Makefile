@@ -20,6 +20,7 @@ DERIVED_HTML =				\
 	ContentObject.html		\
 	CryptographicAlgorithms.html	\
 	InterestMessage.html		\
+	CanonicalOrder.html		\
 	BinaryEncoding.html		\
 	NameConventions.html		\
 	Timestamp.html			\
@@ -70,6 +71,9 @@ CryptographicAlgorithms.html: CryptographicAlgorithms.txt
 
 InterestMessage.html: InterestMessage.txt
 	asciidoc InterestMessage.txt
+
+CanonicalOrder.html: CanonicalOrder.txt
+	asciidoc CanonicalOrder.txt
 
 NameConventions.html: NameConventions.txt
 	asciidoc NameConventions.txt
