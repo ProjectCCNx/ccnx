@@ -2372,6 +2372,7 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     struct ccn_forwarding *f = NULL;
     struct nameprefix_entry *p = NULL;
     unsigned wantflags;
+    unsigned moreflags;
     unsigned lastfaceid;
 
     x = npe->forward_to;
@@ -2382,6 +2383,7 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     wantflags = CCN_FORW_ACTIVE;
     lastfaceid = CCN_NOFACEID;
     for (p = npe; p != NULL; p = p->parent) {
+        moreflags = CCN_FORW_CHILD_INHERIT;
         for (f = p->forwarding; f != NULL; f = f->next) {
             if ((f->flags & wantflags) == wantflags &&
                   face_from_faceid(h, f->faceid) != NULL) {
@@ -2391,8 +2393,10 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
                 if ((f->flags & CCN_FORW_LAST) != 0)
                     lastfaceid = f->faceid;
             }
+            if ((f->flags & CCN_FORW_CAPTURE) != 0)
+                moreflags |= CCN_FORW_LAST;
         }
-        wantflags = (CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
+        wantflags |= moreflags;
     }
     if (lastfaceid != CCN_NOFACEID)
         ccn_indexbuf_move_to_end(x, lastfaceid);

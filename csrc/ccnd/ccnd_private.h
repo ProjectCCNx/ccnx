@@ -298,15 +298,13 @@ struct ccn_forwarding {
  * @def CCN_FORW_ACTIVE         1
  * @def CCN_FORW_CHILD_INHERIT  2
  * @def CCN_FORW_ADVERTISE      4
+ * @def CCN_FORW_LAST           8
+ * @def CCN_FORW_CAPTURE       16
  */
-#define CCN_FORW_PUBMASK (CCN_FORW_ACTIVE        | \
-                          CCN_FORW_CHILD_INHERIT | \
-                          CCN_FORW_ADVERTISE     | \
-                          CCN_FORW_LAST            )
 #define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */
  
 /**
- * Determines how frequently we age our fowarding entries
+ * Determines how frequently we age our forwarding entries
  */
 #define CCN_FWU_SECS 5
 

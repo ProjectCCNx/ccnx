@@ -3,7 +3,7 @@
  *
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -38,6 +38,12 @@ struct ccn_forwarding_entry {
 #define CCN_FORW_CHILD_INHERIT  2
 #define CCN_FORW_ADVERTISE      4
 #define CCN_FORW_LAST           8
+#define CCN_FORW_CAPTURE       16
+#define CCN_FORW_PUBMASK (CCN_FORW_ACTIVE        | \
+                          CCN_FORW_CHILD_INHERIT | \
+                          CCN_FORW_ADVERTISE     | \
+                          CCN_FORW_LAST          | \
+                          CCN_FORW_CAPTURE       )
 
 struct ccn_forwarding_entry *
 ccn_forwarding_entry_parse(const unsigned char *p, size_t size);
