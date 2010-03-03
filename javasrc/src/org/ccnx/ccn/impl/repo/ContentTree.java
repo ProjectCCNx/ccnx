@@ -187,11 +187,11 @@ public class ContentTree {
 		 * @param nodeName the full name of this node from the root up to and its component
 		 * @param getter a handler to pull actual ContentObjects for final match testing
 		 * @param depth the length of name of node including its component (number of components)
-		 * @param anyOK true if we aren't required to go left at this level
+		 * @param leftSearch true if we should search down the left side of the tree at this level
 		 * @return ContentObject matching the interest or null if not found
 		 */
 		protected ContentObject search(TreeNode node, ContentName nodeName, ContentGetter getter, 
-						int depth, boolean anyOK) {
+						int depth, boolean leftSearch) {
 			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
 				Log.fine("Searching for: {0}", nodeName);
 			int res = _ips.preScreen(node, depth);
@@ -215,15 +215,13 @@ public class ContentTree {
 			}
 			if (null != _children) {
 				byte[] interestComp = _interest.name().component(depth);
-				Iterator<TreeNode>it = initIterator(anyOK, interestComp);
+				Iterator<TreeNode>it = initIterator(leftSearch, interestComp);
 				while(it.hasNext()) {
 					TreeNode child = it.next();
 					int comp = DataUtils.compare(child.component, interestComp);
-					//if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0) {
-					if (anyOK || comp >= 0) {
+					if (leftSearch || comp >= 0) {
 						ContentObject result = null;
-						result = search(child, new ContentName(nodeName, child.component), getter, depth + 1, comp > 0);
-		
+						result = search(child, new ContentName(nodeName, child.component), getter, depth + 1, true);
 						if (null != result) {
 							return result;
 						}
@@ -241,7 +239,12 @@ public class ContentTree {
 		 * @param interestComp component to start search with
 		 * @return the iterator
 		 */
-		protected abstract Iterator<TreeNode> initIterator(boolean anyOK, byte[] interestComp);
+		protected abstract Iterator<TreeNode> initIterator(boolean leftSearch, byte[] interestComp);
+		
+		/**
+		 * 
+		 */
+		protected abstract boolean continueSearch(boolean leftSearch, TreeNode child, byte[] component);
 	}
 	
 	/**
@@ -255,11 +258,18 @@ public class ContentTree {
 		}
 
 		@Override
-		protected Iterator<TreeNode> initIterator(boolean anyOK, byte[] interestComp) {
+		protected Iterator<TreeNode> initIterator(boolean leftSearch, byte[] interestComp) {
 			TreeNode testNode = new TreeNode();
 			testNode.component = interestComp;
-			SortedMap<TreeNode, TreeNode> map = anyOK || null == interestComp ? _children : _children.tailMap(testNode);
+			SortedMap<TreeNode, TreeNode> map = leftSearch || null == interestComp ? _children : _children.tailMap(testNode);
 			return map.keySet().iterator();
+		}
+
+		@Override
+		protected boolean continueSearch(boolean leftSearch, TreeNode child,
+				byte[] component) {
+			int comp = DataUtils.compare(child.component, component);
+			return (leftSearch || comp >= 0);
 		}
 	}
 	
@@ -274,8 +284,16 @@ public class ContentTree {
 		}
 
 		@Override
-		protected Iterator<TreeNode> initIterator(boolean anyOK, byte[] interestComp) {
+		protected Iterator<TreeNode> initIterator(boolean leftSearch, byte[] interestComp) {
+			if (leftSearch)
+				return _children.keySet().iterator();
 			return new RightIterator(_children);
+		}
+
+		@Override
+		protected boolean continueSearch(boolean leftSearch, TreeNode child,
+				byte[] component) {
+			return true;
 		}
 	}
 	
