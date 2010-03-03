@@ -223,6 +223,15 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// must call initialize
 	}
 	
+	public GroupAccessControlManager(ContentName namespace) throws ConfigurationException, IOException, MalformedContentNameStringException {
+		this(namespace, null);	
+	}
+	
+	public GroupAccessControlManager(ContentName namespace, CCNHandle handle) throws ConfigurationException, IOException, MalformedContentNameStringException {
+		this(namespace, GroupAccessControlProfile.groupNamespaceName(namespace), 
+				GroupAccessControlProfile.userNamespaceName(namespace), handle);
+	}
+	
 	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws ConfigurationException, IOException, MalformedContentNameStringException {
 		this(namespace, groupStorage, userStorage, null);
 	}
