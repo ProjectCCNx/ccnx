@@ -1,0 +1,14 @@
+Canonical CCNx Ordering
+=======================
+
+In several contexts within CCNx it is useful to have a consistent
+ordering of names and name components.  Names in CCNx consist of a
+sequence of Components, and each Component is a sequence of zero or
+more 8-bit bytes.  The ordering for components is such that:
+
+* If __a__ is shorter than __b__ (i.e., has fewer bytes), then __a__ comes before __b__.
+* If __a__ is the same length as, but different than, __b__, and __i__ is the first place they differ, then __a__ comes before __b__ if and only if __a__[__i__] < __b__[__i__] (treating __a__[__i__] and __b__[__i__] as unsigned 8-bit values).  (This is just memcmp() ordering.)
+
+For Names, the ordering is just based on the ordering of the first
+component where they differ.  If one name is a proper prefix of the
+other, then it comes first.
