@@ -3583,7 +3583,7 @@ do_write(struct ccnd_handle *h,
     if (res == size)
         return;
     if (res == -1) {
-        if (errno == EAGAIN)
+        if (errno == EAGAIN || errno == EISCONN)
             res = 0;
         else if (errno == EPIPE) {
             face->flags |= CCN_FACE_NOSEND;
