@@ -215,11 +215,19 @@ public class RFSTest extends RepoTestBase {
 		Interest excludeLeftInterest = Interest.next(name3, excludeAll, 2, null, null, null);
 		ContentObject testScreenOut = repo.getContent(excludeLeftInterest);
 		Assert.assertTrue(testScreenOut == null);
+		
+		System.out.println("Repotest - test that rightSearch iterates backwards through objects");
 		repo.saveContent(new ContentObject(ContentName.fromNative(prefix1 + "/bbb"), si, "funnyRightSearch".getBytes(), pair1.getPrivate()));
 		repo.saveContent(new ContentObject(ContentName.fromNative(prefix1 + "/aaa"), si, "wrongRightSearch".getBytes(), pair1.getPrivate()));
 		ContentName name4 = ContentName.fromNative(prefix1 + "/aa");
 		Interest rightSearch = Interest.last(name4, null, 2, null, null, pubKey1);
 		checkData(repo, rightSearch, "funnyRightSearch");
+		
+		System.out.println("Repotest - test that rightSearch gives left branch of rightMost object");
+		String prefix4 = "/repoTest/nextTest/fff";
+		addRelativeTestContent(repo, prefix4, "");
+		Interest rightInterest = Interest.last(name1, null, null);
+		checkData(repo, rightInterest, "aaa");
 			
 		System.out.println("Repotest - testing version and segment files");
 		versionedName = ContentName.fromNative("/repoTest/testVersion");

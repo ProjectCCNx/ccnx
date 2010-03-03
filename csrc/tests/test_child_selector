@@ -16,7 +16,7 @@ BEFORE : test_single_ccnd_teardown
 
 for ver in 0 1 2 3; do
   for blk in 0 1 2 3 4; do
-    echo "block $blk in version $ver" | ccnput /test/child_selector/$ver/$blk
+    echo "block $blk in version $ver" | ccnput -f /test/child_selector/$ver/$blk
   done
 done
 

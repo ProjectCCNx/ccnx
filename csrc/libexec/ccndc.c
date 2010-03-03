@@ -591,7 +591,7 @@ process_command_tokens(struct prefix_face_list_item *pfltail,
     iflags = -1;
     if (flags != NULL && flags[0] != 0) {
         iflags = atoi(flags);
-        if ((iflags & ~(CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_ADVERTISE | CCN_FORW_LAST)) != 0) {
+        if ((iflags & ~CCN_FORW_PUBMASK) != 0) {
             ccndc_warn(__LINE__, "command error (line %d), invalid flags 0x%x\n", lineno, iflags);
             return (-1);
         }

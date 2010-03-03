@@ -37,7 +37,6 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
-import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.support.Log;
@@ -379,7 +378,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			pxml = _policy.getPolicyXML();
 			ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), _policy.getLocalName());
 			try {
-				PolicyObject po = new PolicyObject(policyName, pxml, SaveType.REPOSITORY, _handle, this);
+				PolicyObject po = new PolicyObject(policyName, pxml, null, null, new RepositoryInternalFlowControl(this, handle));
 				po.save();
 			} catch (IOException e) {
 				throw new RepositoryException(e.getMessage());

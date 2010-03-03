@@ -32,7 +32,7 @@ ccn_xmltoccnb -w - <<EOF >unreg.ccnb
 EOF
 
 TNAME=`GenSym _ignored_`
-cat unreg.ccnb | ccnput -x 30 /$TNAME
+cat unreg.ccnb | ccnput -f -x 30 /$TNAME
 
 # Pull it out to use in the unreg request.  Base-64 encode it for the benefit of the shell.
 
