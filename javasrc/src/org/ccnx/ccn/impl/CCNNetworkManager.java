@@ -223,7 +223,8 @@ public class CCNNetworkManager implements Runnable {
 		private void close() throws IOException {
 			if (_ncProto == NetworkProtocol.UDP) {
 				_ncDGrmChannel.close();
-				_ncHeartBeatTimer.cancel();
+				if (null != _ncHeartBeatTimer)
+					_ncHeartBeatTimer.cancel();
 			} else if (_ncProto == NetworkProtocol.TCP) {
 				_ncSockChannel.close();
 			} else {
@@ -280,7 +281,7 @@ public class CCNNetworkManager implements Runnable {
 		private void startup() {
 			if (_ncProto == NetworkProtocol.UDP) {
 				_ncHeartBeatTimer = new Timer(true);
-				_ncHeartBeatTimer.schedule(new HeartBeatTimer(), PERIOD);
+				_ncHeartBeatTimer.schedule(new HeartBeatTimer(), 0L);
 			}
 		}
 				
