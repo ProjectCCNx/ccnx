@@ -26,6 +26,7 @@ import java.nio.channels.DatagramChannel;
 import java.nio.channels.NotYetConnectedException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -56,8 +57,8 @@ import org.ccnx.ccn.protocol.WirePacket;
 
 
 /**
- * The low level interface to ccnd. Connects to a ccnd and maintains the connection by sending 
- * heartbeats to it.  Other functions include reading and writing interests and content
+ * The low level interface to ccnd. Connects to a ccnd. For UDP it must maintain the connection by 
+ * sending heartbeats to it.  Other functions include reading and writing interests and content
  * to/from the ccnd, starting handler threads to feed interests and content to registered handlers,
  * and refreshing unsatisfied interests. 
  * 
@@ -113,10 +114,8 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	protected Thread _thread = null; // the main processing thread
 	protected ThreadPoolExecutor _threadpool = null; // pool service for callback threads
-	protected DatagramChannel _channel = null; // for use by run thread only!
-	protected Boolean _connected = false;	   // Is the channel connected currently? (isConnected doesn't
-											   // work reliably
-	protected Selector _selector = null;
+
+	protected NetworkChannel _channel = null; // for use by run thread only!
 	protected Throwable _error = null; // Marks error state of socket
 	protected boolean _run = true;
 
@@ -167,20 +166,164 @@ public class CCNNetworkManager implements Runnable {
 	}
 	
 	/**
+	 *  This guy manages all of the access to the network connection.
+	 *  We do this as a separate class so we can support both TCP and UDP
+	 *  transports.
+	 */
+	private class NetworkChannel {
+		protected String _ncHost;
+		protected int _ncPort;
+		protected NetworkProtocol _ncProto;
+		protected int _ncLocalPort;
+		protected DatagramChannel _ncDGrmChannel = null; // for use by run thread only!
+		protected SocketChannel _ncSockChannel = null;
+		protected Selector _ncSelector = null;
+		protected Boolean _ncConnected = false;
+		protected boolean _ncInitialized = false;
+		Timer _ncHeartBeatTimer = null;
+
+		private NetworkChannel(String host, int port, NetworkProtocol proto) throws IOException {
+			_ncHost = host;
+			_ncPort = port;
+			_ncProto = proto;
+			_ncSelector = Selector.open();
+		}
+		
+		public void open() throws IOException {
+			if (_ncProto == NetworkProtocol.UDP) {
+				_ncDGrmChannel = DatagramChannel.open();
+				_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
+				_ncDGrmChannel.configureBlocking(false);
+				try {
+					ByteBuffer test = ByteBuffer.allocate(1);
+					_ncDGrmChannel.write(test);
+				} catch (IOException io) {
+					return;
+				}
+				_ncDGrmChannel.register(_ncSelector, SelectionKey.OP_READ);
+				_ncLocalPort = _ncDGrmChannel.socket().getLocalPort();
+				_ncConnected = true;
+				if (!_ncInitialized) {
+					_ncHeartBeatTimer = new Timer(true);
+					_ncHeartBeatTimer.schedule(new HeartBeatTimer(), PERIOD);
+				}
+			} else if (_ncProto == NetworkProtocol.TCP) {
+				_ncSockChannel = SocketChannel.open();
+				_ncSockChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
+				_ncSockChannel.configureBlocking(false);
+				_ncSockChannel.register(_ncSelector, SelectionKey.OP_READ);
+				_ncLocalPort = _ncSockChannel.socket().getLocalPort();
+			} else {
+				throw new IOException("NetworkChannel: invalid protocol specified");
+			}
+			String connecting = (_ncInitialized ? "Reconnecting to" : "Contacting");
+			Log.info(connecting + " CCN agent at " + _ncHost + ":" + _ncPort + " on local port " + _ncLocalPort);
+		}
+		
+		private void close() throws IOException {
+			if (_ncProto == NetworkProtocol.UDP) {
+				_ncDGrmChannel.close();
+				_ncHeartBeatTimer.cancel();
+			} else if (_ncProto == NetworkProtocol.TCP) {
+				_ncSockChannel.close();
+			} else {
+				throw new IOException("NetworkChannel: invalid protocol specified");
+			}
+		}
+		
+		private boolean isConnected() {
+			if (_ncProto == NetworkProtocol.UDP) {
+				return _ncConnected;
+			} else if (_ncProto == NetworkProtocol.TCP) {
+				return (_ncSockChannel.isConnected());
+			} else {
+				Log.severe("NetworkChannel: invalid protocol specified");
+				return false;
+			}
+		}
+		
+		private int read(ByteBuffer dst) throws IOException {
+			Log.finest("NetworkChannel.read() on port " + _ncLocalPort);
+			if (_ncProto == NetworkProtocol.UDP) {
+				return (_ncDGrmChannel.read(dst));
+			} else if (_ncProto == NetworkProtocol.TCP) {
+				return (_ncSockChannel.read(dst));
+			} else {
+				throw new IOException("NetworkChannel: invalid protocol specified");
+			}
+		}
+        
+		private int write(ByteBuffer src) throws IOException {
+			Log.finest("NetworkChannel.write() on port " + _ncLocalPort);
+			if (_ncProto == NetworkProtocol.UDP) {
+				return (_ncDGrmChannel.write(src));
+			} else if (_ncProto == NetworkProtocol.TCP) {
+				return (_ncSockChannel.write(src));
+			} else {
+				throw new IOException("NetworkChannel: invalid protocol specified");
+			}
+		}
+		
+		
+		private void clearSelectedKeys() {
+			_ncSelector.selectedKeys().clear();
+		}
+
+		private int select(long timeout) throws IOException {
+			return (_ncSelector.select(timeout));
+		}
+		
+		private Selector wakeup() {
+			return (_ncSelector.wakeup());
+		}
+		
+		private void startup() {
+			if (_ncProto == NetworkProtocol.UDP) {
+				_ncHeartBeatTimer = new Timer(true);
+				_ncHeartBeatTimer.schedule(new HeartBeatTimer(), PERIOD);
+			}
+		}
+				
+		/**
+		 * Do scheduled writes of heartbeats on UDP connections.
+		 */
+		private class HeartBeatTimer extends TimerTask {
+			
+			public void run() {
+				long ourTime = System.currentTimeMillis();
+				if ((ourTime - _lastHeartbeat) > HEARTBEAT_PERIOD) {
+					_lastHeartbeat = ourTime;
+					try {
+						ByteBuffer heartbeat = ByteBuffer.allocate(1);
+						if (_ncDGrmChannel.isConnected())
+							_ncDGrmChannel.write(heartbeat);
+					} catch (IOException io) {
+						// We do not see errors on send typically even if 
+						// agent is gone, so log each but do not track
+						Log.warning("Error sending heartbeat packet: {0}", io.getMessage());
+						try {
+							if (_ncDGrmChannel.isConnected()) {
+								_ncDGrmChannel.disconnect();
+							}
+						} catch (IOException e) {}
+					}
+				}
+				_ncHeartBeatTimer.schedule(new HeartBeatTimer(), PERIOD);
+			} /* run() */
+			
+		} /* private class HeartBeatTimer extends TimerTask */
+
+	} /* NetworkChannel */
+	
+	
+	/**
 	 * Do scheduled writes of heartbeats and interest refreshes
 	 */
 	private class PeriodicWriter extends TimerTask {
 		// TODO Interest refresh time is supposed to "decay" over time but there are currently
 		// unresolved problems with this.
-		public void run() {
-			// MM Avoid new calls
-			//long ourTime = new Date().getTime();
+		public void run() {		
 			long ourTime = System.currentTimeMillis();
-			if ((ourTime - _lastHeartbeat) > HEARTBEAT_PERIOD) {
-				_lastHeartbeat = ourTime;
-				heartbeat();
-			}
-
 			long minInterestRefreshTime = PERIOD + ourTime;
 			// Library.finest("Refreshing interests (size " + _myInterests.size() + ")");
 
@@ -274,37 +417,15 @@ public class CCNNetworkManager implements Runnable {
 	} /* private class PeriodicWriter extends TimerTask */
 	
 	/**
-	 * Send the heartbeat. Also attempt to detect ccnd going down.
-	 */
-	private void heartbeat() {
-		synchronized (_connected) {
-			if (_connected) {
-				try {
-					ByteBuffer heartbeat = ByteBuffer.allocate(1);
-					_channel.write(heartbeat);
-				} catch (IOException io) {
-					// We do not see errors on send typically even if 
-					// agent is gone, so log each but do not track
-					Log.warning("Error sending heartbeat packet: {0}", io.getMessage());
-					try {
-						_channel.close();
-					} catch (IOException e) {}
-					_connected = false;
-				}
-			}
-		}
-	}
-	
-	/**
 	 * First time startup of timing stuff after first registration
 	 * We don't bother to "unstartup" if everything is deregistered
 	 */
 	private void setupTimers() {
 		if (!_timersSetup) {
 			_timersSetup = true;
-			heartbeat();
+			_channel.startup();		// Starts UDP heartbeat (if using UDP)
 			
-			// Create timer for heartbeats and other periodic behavior
+			// Create timer for periodic behavior
 			_periodicTimer = new Timer(true);
 			_periodicTimer.schedule(new PeriodicWriter(), PERIOD);
 		}
@@ -741,9 +862,8 @@ public class CCNNetworkManager implements Runnable {
 			setTap(unique_tapname);
 		}
 		
-		// Socket is to belong exclusively to run thread started here
-		_selector = Selector.open();
-		openChannel();
+		_channel = new NetworkChannel(_host, _port, _protocol);
+		_channel.open();
 		
 		// Create callback threadpool and main processing thread
 		_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
@@ -760,7 +880,7 @@ public class CCNNetworkManager implements Runnable {
 		_run = false;
 		if (_periodicTimer != null)
 			_periodicTimer.cancel();
-		_selector.wakeup();
+		_channel.wakeup();
 		try {
 			setTap(null);
 			_channel.close();
@@ -1187,7 +1307,7 @@ public class CCNNetworkManager implements Runnable {
 				
 				//--------------------------------- Read and decode
 				try {
-					if (_selector.select(SOCKET_TIMEOUT) != 0) {
+					if (_channel.select(SOCKET_TIMEOUT) != 0) {
 						// Note: we're selecting on only one channel to get
 						// the ability to use wakeup, so there is no need to 
 						// inspect the selected-key set
@@ -1197,7 +1317,7 @@ public class CCNNetworkManager implements Runnable {
 						}
 						if( Log.isLoggable(Level.FINEST) )
 							Log.finest("Read datagram (" + datagram.position() + " bytes) for port: " + _localPort);
-						_selector.selectedKeys().clear();
+						_channel.clearSelectedKeys();
 						if (null != _error) {
 							if( Log.isLoggable(Level.INFO) )
 								Log.info("Receive error cleared for port: " + _localPort);
@@ -1219,20 +1339,16 @@ public class CCNNetworkManager implements Runnable {
 							// exit immediately if wakeup for shutdown
 							break;
 						}
-						synchronized (_connected) {
-							if (! _connected) {
-								/*
-								 * This is the case where we noticed that the connect to ccnd went away.  We
-								 * try to reconnect, and if successful, we need to re-register our collection
-								 * of prefix registrations.
-								 */
-								openChannel();
-								if (_connected) {
-									_faceID = null;
-									reregisterPrefixes();
-									if( Log.isLoggable(Level.INFO) )
-										Log.info("Reconnecting to CCN agent at " + _host + ":" + _port + "on local port" + _localPort);
-								}
+						if (!_channel.isConnected()) {
+							/*
+							 * This is the case where we noticed that the connect to ccnd went away.  We
+							 * try to reconnect, and if successful, we need to re-register our collection
+							 * of prefix registrations.
+							 */
+							_channel.open();
+							if (_channel.isConnected()) {
+								_faceID = null;
+								reregisterPrefixes();
 							}
 						}
 					}
@@ -1353,31 +1469,9 @@ public class CCNNetworkManager implements Runnable {
 	} /* PublisherPublicKeyDigest fetchCCNDId() */
 	
 	/**
-	 * Open a channel to be used exclusively by the main run thread
-	 */
-	private void openChannel() throws IOException {
-		_channel = DatagramChannel.open();
-		_channel.connect(new InetSocketAddress(_host, _port));
-		_channel.configureBlocking(false);
-		try {
-			ByteBuffer test = ByteBuffer.allocate(1);
-			_channel.write(test);
-		} catch (IOException io) {
-			return;
-		}
-		_channel.register(_selector, SelectionKey.OP_READ);
-		_localPort = _channel.socket().getLocalPort();
-		_connected = true;
-		if( Log.isLoggable(Level.INFO) )
-			Log.info("Connection to CCN agent using local port number: " + _localPort);
-	}
-	
-	/**
 	 * Reregister all current prefixes with ccnd after ccnd goes down and then comes back up
 	 */
 	private void reregisterPrefixes() throws CCNDaemonException {
-		if (_timersSetup)
-			heartbeat();
 		TreeMap<ContentName, RegisteredPrefix> newPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
 		synchronized (_registeredPrefixes) {
 			for (ContentName prefix : _registeredPrefixes.keySet()) {
