@@ -60,7 +60,9 @@ ccn_xmltoccnb -w selfreg-request.xml || Fail botch constructing selfreg-request.
 CCNDStatus > selfreg-pre.html
 
 # Try out the request; use udp so our face does not instantly vanish
-ccndsmoketest -u localhost -b send selfreg-request.ccnb recv > selfreg-response.ccnb
+# Send a heartbeat first to convince ccnd to trust us to selfreg
+dd if=/dev/zero bs=1 count=1 > heartbeat.ccnb
+ccndsmoketest -u localhost -b send heartbeat.ccnb send selfreg-request.ccnb recv > selfreg-response.ccnb
 
 cmp -s /dev/null selfreg-response.ccnb && Fail did not get selfreg response
 ccn_ccnbtoxml selfreg-response.ccnb || Failed to parse selfreg response

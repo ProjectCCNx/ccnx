@@ -71,7 +71,7 @@ static void do_deferred_write(struct ccnd_handle *h, int fd);
 static void clean_needed(struct ccnd_handle *h);
 static struct face *get_dgram_source(struct ccnd_handle *h, struct face *face,
                                      struct sockaddr *addr, socklen_t addrlen,
-                                     int flags);
+                                     int why);
 static void content_skiplist_insert(struct ccnd_handle *h,
                                     struct content_entry *content);
 static void content_skiplist_remove(struct ccnd_handle *h,
@@ -728,6 +728,31 @@ establish_min_recv_bufsize(struct ccnd_handle *h, int fd, int minsize)
     return(rcvbuf);
 }
 
+static void
+set_face_flags(struct ccnd_handle *h, struct face *face)
+{
+    const struct sockaddr *addr = face->addr;
+    const unsigned char *rawaddr = NULL;
+    
+    if (addr->sa_family == AF_INET6) {
+        const struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)addr;
+        face->flags |= CCN_FACE_INET6;
+#ifdef IN6_IS_ADDR_LOOPBACK
+        if (IN6_IS_ADDR_LOOPBACK(&addr6->sin6_addr))
+            face->flags |= CCN_FACE_LOOPBACK;
+#endif
+    }
+    else if (addr->sa_family == AF_INET) {
+        const struct sockaddr_in *addr4 = (struct sockaddr_in *)addr;
+        rawaddr = (const unsigned char *)&addr4->sin_addr.s_addr;
+        face->flags |= CCN_FACE_INET;
+        if (rawaddr[0] == 127)
+            face->flags |= CCN_FACE_LOOPBACK;
+    }
+    else if (addr->sa_family == AF_UNIX)
+        face->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
+}
+
 static struct face *
 record_connection(struct ccnd_handle *h, int fd,
                   struct sockaddr *who, socklen_t wholen)
@@ -745,17 +770,18 @@ record_connection(struct ccnd_handle *h, int fd,
     if (hashtb_seek(e, &fd, sizeof(fd), wholen) == HT_NEW_ENTRY) {
         face = e->data;
         face->recv_fd = face->send_fd = fd;
-        if (who->sa_family == AF_INET)
-            face->flags |= (CCN_FACE_UNDECIDED | CCN_FACE_INET);
-        if (who->sa_family == AF_INET6)
-            face->flags |= (CCN_FACE_UNDECIDED | CCN_FACE_INET6);
-        if (who->sa_family == AF_UNIX)
-            face->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
         face->addrlen = e->extsize;
         addrspace = ((unsigned char *)e->key) + e->keysize;
         face->addr = (struct sockaddr *)addrspace;
         memcpy(addrspace, who, e->extsize);
+        set_face_flags(h, face);
+        if ((face->flags & (CCN_FACE_DGRAM | CCN_FACE_LOCAL)) == 0)
+            face->flags |= CCN_FACE_UNDECIDED;
         res = enroll_face(h, face);
+        if (res == -1) {
+            hashtb_delete(e);
+            face = NULL;
+        }
     }
     hashtb_end(e);
     return(face);
@@ -883,6 +909,7 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
     }
     face->send_fd = socks.sending;
     face->flags |= (CCN_FACE_MCAST | CCN_FACE_DGRAM);
+    face->flags &= ~CCN_FACE_UNDECIDED;
     ccnd_msg(h, "multicast on fd=%d,%d id=%u",
              face->recv_fd, face->send_fd, face->faceid);
     return(face);
@@ -3386,18 +3413,41 @@ process_input_message(struct ccnd_handle *h, struct face *face,
     ccnd_msg(h, "discarding unknown message; size = %lu", (unsigned long)size);
 }
 
+static void
+ccnd_new_face_msg(struct ccnd_handle *h, struct face *face)
+{
+    const struct sockaddr *addr = face->addr;
+    int port = 0;
+    const unsigned char *rawaddr = NULL;
+    char printable[80];
+    const char *peer = NULL;
+    if (addr->sa_family == AF_INET6) {
+        const struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)addr;
+        rawaddr = (const unsigned char *)&addr6->sin6_addr;
+        port = htons(addr6->sin6_port);
+    }
+    else if (addr->sa_family == AF_INET) {
+        const struct sockaddr_in *addr4 = (struct sockaddr_in *)addr;
+        rawaddr = (const unsigned char *)&addr4->sin_addr.s_addr;
+        port = htons(addr4->sin_port);
+    }
+    if (rawaddr != NULL)
+        peer = inet_ntop(addr->sa_family, rawaddr, printable, sizeof(printable));
+    if (peer == NULL)
+        peer = "(unknown)";
+    ccnd_msg(h,
+             "accepted datagram client id=%d (flags=0x%x) %s port %d",
+             face->faceid, face->flags, peer, port);
+}
+
 static struct face *
 get_dgram_source(struct ccnd_handle *h, struct face *face,
-           struct sockaddr *addr, socklen_t addrlen, int flags)
+           struct sockaddr *addr, socklen_t addrlen, int why)
 {
     struct face *source = NULL;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int res;
-    const unsigned char *rawaddr = NULL;
-    char printable[80];
-    const char *peer = NULL;
-    int port = 0;
     if ((face->flags & CCN_FACE_DGRAM) == 0)
         return(face);
     if ((face->flags & CCN_FACE_MCAST) != 0)
@@ -3406,41 +3456,26 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
     res = hashtb_seek(e, addr, addrlen, 0);
     if (res >= 0) {
         source = e->data;
+        source->recvcount++;
         if (source->addr == NULL) {
             source->addr = e->key;
             source->addrlen = e->keysize;
             source->recv_fd = face->recv_fd;
             source->send_fd = face->send_fd;
             source->flags |= CCN_FACE_DGRAM;
-            if (addr->sa_family == AF_INET6) {
-                const struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)addr;
-                rawaddr = (const unsigned char *)&addr6->sin6_addr;
-                source->flags |= CCN_FACE_INET6;
-                port = htons(addr6->sin6_port);
-#ifdef IN6_IS_ADDR_LOOPBACK
-                if (IN6_IS_ADDR_LOOPBACK(&addr6->sin6_addr))
-                    source->flags |= CCN_FACE_GG;
-#endif
-            }
-            else if (addr->sa_family == AF_INET) {
-                const struct sockaddr_in *addr4 = (struct sockaddr_in *)addr;
-                rawaddr = (const unsigned char *)&addr4->sin_addr.s_addr;
-                source->flags |= CCN_FACE_INET;
-                port = htons(addr4->sin_port);
-                if (rawaddr[0] == 127)
-                    source->flags |= CCN_FACE_GG;
-            }
-            if (rawaddr != NULL)
-                peer = inet_ntop(addr->sa_family, rawaddr, printable, sizeof(printable));
-            if (peer == NULL)
-                peer = "(unknown)";
+            set_face_flags(h, source);
+            if (why == 1 && (source->flags & CCN_FACE_LOOPBACK) != 0)
+                source->flags |= CCN_FACE_GG;
             res = enroll_face(h, source);
-            ccnd_msg(h,
-                     "accepted datagram client id=%d (flags=0x%x) %s port %d",
-                     res, source->flags, peer, port);
-            reap_needed(h, CCN_INTEREST_LIFETIME_MICROSEC);
+            if (res == -1) {
+                hashtb_delete(e);
+                source = NULL;
+            }
+            else {
+                ccnd_new_face_msg(h, source);
+                reap_needed(h, CCN_INTEREST_LIFETIME_MICROSEC);
+            }
         }
-        source->recvcount++;
     }
     hashtb_end(e);
     return(source);
@@ -3488,7 +3523,7 @@ process_input(struct ccnd_handle *h, int fd)
     else if (res == 0 && (face->flags & CCN_FACE_DGRAM) == 0)
         shutdown_client_fd(h, fd);
     else {
-        source = get_dgram_source(h, face, addr, addrlen, 1);
+        source = get_dgram_source(h, face, addr, addrlen, (res == 1) ? 1 : 2);
         source->recvcount++;
         source->surplus = 0;
         if (res <= 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
@@ -3505,6 +3540,8 @@ process_input(struct ccnd_handle *h, int fd)
                 return;
             }
             face->flags &= ~CCN_FACE_UNDECIDED;
+            if ((face->flags & CCN_FACE_LOOPBACK) != 0)
+                face->flags |= CCN_FACE_GG;
         }
         dres = ccn_skeleton_decode(d, buf, res);
         if (0) ccnd_msg(h, "ccn_skeleton_decode of %d bytes accepted %d",
