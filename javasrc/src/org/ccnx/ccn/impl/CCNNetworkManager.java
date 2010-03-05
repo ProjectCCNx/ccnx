@@ -29,6 +29,7 @@ import java.nio.channels.Selector;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.TreeMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -139,6 +140,18 @@ public class CCNNetworkManager implements Runnable {
 	protected PrefixRegistrationManager _prefixMgr = null;
 	protected Timer _periodicTimer = null;
 	protected boolean _timersSetup = false;
+	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes 
+				= new TreeMap<ContentName, RegisteredPrefix>();
+	
+	private class RegisteredPrefix {
+		private ContentName _prefix;
+		private int _refCount;
+		
+		private RegisteredPrefix(ContentName prefix) {
+			_prefix = prefix;
+			_refCount = 1;
+		}
+	}
 	
 	/**
 	 * Do scheduled writes of heartbeats and interest refreshes
@@ -972,19 +985,27 @@ public class CCNNetworkManager implements Runnable {
 				if (null == _prefixMgr) {
 					_prefixMgr = new PrefixRegistrationManager(this);
 				}
-				entry = _prefixMgr.selfRegisterPrefix(filter);
+				synchronized(_registeredPrefixes) {
+					RegisteredPrefix oldPrefix = _registeredPrefixes.get(filter);
+					if (null != oldPrefix)
+						oldPrefix._refCount++;
+					else {
+						RegisteredPrefix newPrefix = new RegisteredPrefix(filter);
+						_registeredPrefixes.put(filter, newPrefix);
+						entry = _prefixMgr.selfRegisterPrefix(filter);
+						// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
+						// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
+						// prefix we use Integer.MAX_VALUE as the requested lifetime.
+						if( Log.isLoggable(Level.FINE) )
+							Log.fine("setInterestFilter: entry.lifetime: " + entry.getLifetime() + " entry.faceID: " + entry.getFaceID());
+					}
+				}
 			} catch (CCNDaemonException e) {
 				Log.warning("setInterestFilter: unexpected CCNDaemonException: " + e.getMessage());
 				throw new IOException(e.getMessage());
 			}
 		}
-		if (null != entry) {
-			// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
-			// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
-			// prefix we use Integer.MAX_VALUE as the requested lifetime.
-			if( Log.isLoggable(Level.FINE) )
-				Log.fine("setInterestFilter: entry.lifetime: " + entry.getLifetime() + " entry.faceID: " + entry.getFaceID());
-		}
+		
 		Filter newOne = new Filter(this, filter, callbackListener, caller, entry);
 		synchronized (_myFilters) {
 			_myFilters.add(filter, newOne);
@@ -1004,24 +1025,33 @@ public class CCNNetworkManager implements Runnable {
 		if( Log.isLoggable(Level.FINE) )
 			Log.fine("cancelInterestFilter: {0}", filter);
 		Filter newOne = new Filter(this, filter, callbackListener, caller, null);
+		Entry<Filter> found = null;
 		synchronized (_myFilters) {
-			Entry<Filter> found = _myFilters.remove(filter, newOne);
-			if (null != found) {
-				Filter thisOne = found.value();
-				thisOne.invalidate();
-				ForwardingEntry entry = thisOne.getEntry();
-				if (_usePrefixReg) {
-					if (!entry.getPrefixName().equals(filter)) {
-						Log.severe("cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
-					}
-					try {
-						if (null == _prefixMgr) {
-							_prefixMgr = new PrefixRegistrationManager(this);
+			found = _myFilters.remove(filter, newOne);
+		}
+		if (null != found) {
+			Filter thisOne = found.value();
+			thisOne.invalidate();
+			if (_usePrefixReg) {
+				// Deregister it with ccnd only if the refCount would go to 0
+				synchronized (_registeredPrefixes) {
+					RegisteredPrefix prefix = _registeredPrefixes.get(filter);
+					if (null == prefix || prefix._refCount <= 1) {
+						_registeredPrefixes.remove(filter);
+						ForwardingEntry entry = thisOne.getEntry();
+						if (!entry.getPrefixName().equals(filter)) {
+							Log.severe("cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
 						}
-						_prefixMgr.unRegisterPrefix(filter, entry.getFaceID());
-					} catch (CCNDaemonException e) {
-						Log.warning("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage());
-					}
+						try {
+							if (null == _prefixMgr) {
+								_prefixMgr = new PrefixRegistrationManager(this);
+							}
+							_prefixMgr.unRegisterPrefix(filter, entry.getFaceID());
+						} catch (CCNDaemonException e) {
+							Log.warning("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage());
+						}
+					} else
+						prefix._refCount--;
 				}
 			}
 		}
@@ -1062,7 +1092,6 @@ public class CCNNetworkManager implements Runnable {
 			Log.warning("Error sending packet: " + io.toString());
 		}
 	}
-
 
 	/**
 	 * Pass things on to the network stack.
