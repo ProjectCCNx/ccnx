@@ -144,13 +144,7 @@ public class CCNNetworkManager implements Runnable {
 				= new TreeMap<ContentName, RegisteredPrefix>();
 	
 	private class RegisteredPrefix {
-		private ContentName _prefix;
-		private int _refCount;
-		
-		private RegisteredPrefix(ContentName prefix) {
-			_prefix = prefix;
-			_refCount = 1;
-		}
+		private int _refCount = 1;
 	}
 	
 	/**
@@ -990,7 +984,7 @@ public class CCNNetworkManager implements Runnable {
 					if (null != oldPrefix)
 						oldPrefix._refCount++;
 					else {
-						RegisteredPrefix newPrefix = new RegisteredPrefix(filter);
+						RegisteredPrefix newPrefix = new RegisteredPrefix();
 						_registeredPrefixes.put(filter, newPrefix);
 						entry = _prefixMgr.selfRegisterPrefix(filter);
 						// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
