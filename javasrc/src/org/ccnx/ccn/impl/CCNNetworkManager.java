@@ -889,6 +889,14 @@ public class CCNNetworkManager implements Runnable {
 			// Ignore since we're shutting down
 		}
 	}
+
+	/**
+	 * Get the protocol this network manager is using
+	 * @return the protocol
+	 */
+	public NetworkProtocol getProtocol() {
+		return _protocol;
+	}
 	
 	/**
 	 * Turns on writing of all packets to a file for test/debug
