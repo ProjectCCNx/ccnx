@@ -30,6 +30,9 @@
 <!ELEMENT Root (ProfileName, ParameterizedName*, Parameters?)>
 <!ATTLIST Root %commonattrs;>
 
+<!ELEMENT ACL                   (Link*)> <!-- same structure as Collection -->
+<!ATTLIST ACL                   %commonattrs;>
+
 <!ELEMENT ProfileName		(Component*)>
 <!ATTLIST ProfileName		%commonattrs;>
 

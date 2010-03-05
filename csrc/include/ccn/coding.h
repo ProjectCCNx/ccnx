@@ -5,7 +5,7 @@
  *
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -138,6 +138,13 @@ enum ccn_dtag {
     CCN_DTAG_BinaryValue = 100,
     CCN_DTAG_NameValue = 101,
     CCN_DTAG_Entry = 102,
+    CCN_DTAG_ACL = 103,
+    CCN_DTAG_ParameterizedName = 104,
+    CCN_DTAG_Prefix = 105,
+    CCN_DTAG_Suffix = 106,
+    CCN_DTAG_Root = 107,
+    CCN_DTAG_ProfileName = 108,
+    CCN_DTAG_Parameters = 109,
     CCN_DTAG_CCNProtocolDataUnit = 17702112
 };
 
