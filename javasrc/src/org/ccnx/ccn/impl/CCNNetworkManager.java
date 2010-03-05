@@ -97,7 +97,6 @@ public class CCNNetworkManager implements Runnable {
 	}
 		
 	public static final String PROP_AGENT_PROTOCOL_KEY = "ccn.agent.protocol";
-	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.TCP;
 	
 	/*
 	 *  This ccndId is set on the first connection with 'ccnd' and is the
@@ -125,7 +124,7 @@ public class CCNNetworkManager implements Runnable {
 	protected long _lastHeartbeat = 0;
 	protected int _port = DEFAULT_AGENT_PORT;
 	protected String _host = DEFAULT_AGENT_HOST;
-	protected NetworkProtocol _protocol = DEFAULT_PROTOCOL;
+	protected NetworkProtocol _protocol = SystemConfiguration.DEFAULT_PROTOCOL;
 
 	
 	// For handling protocol to speak to ccnd, must have keys
@@ -844,7 +843,7 @@ public class CCNNetworkManager implements Runnable {
 				throw new IOException("Invalid protocol '" + proto + "' specified in " + PROP_AGENT_PROTOCOL_KEY);
 			}
 		} else {
-			_protocol = DEFAULT_PROTOCOL;
+			_protocol = SystemConfiguration.DEFAULT_PROTOCOL;
 		}
 
 		if( Log.isLoggable(Level.INFO) )
