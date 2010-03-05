@@ -97,7 +97,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 		
 	public static final String PROP_AGENT_PROTOCOL_KEY = "ccn.agent.protocol";
-	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.UDP;
+	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.TCP;
 	
 	/*
 	 *  This ccndId is set on the first connection with 'ccnd' and is the
