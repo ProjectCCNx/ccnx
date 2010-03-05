@@ -149,12 +149,12 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	private class RegisteredPrefix {
 		private int _refCount = 1;
-		ForwardingEntry _forwarding = null;
+		private ForwardingEntry _forwarding = null;
 		// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
 		// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
 		// prefix we use Integer.MAX_VALUE as the requested lifetime.
-		long _lifetime = -1; // in seconds
-		long _nextRefresh = -1;
+		private long _lifetime = -1; // in seconds
+		private long _nextRefresh = -1;
 		
 		private RegisteredPrefix(ForwardingEntry forwarding) {
 			_forwarding = forwarding;
@@ -208,12 +208,11 @@ public class CCNNetworkManager implements Runnable {
 				Log.warningStackTrace(xmlex);
 			}
 
-
-			long minFilterRefreshTime = PERIOD + ourTime;
 			// Re-express prefix registrations that need to be re-expressed
 			// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
 			// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
 			// prefix we use Integer.MAX_VALUE as the requested lifetime.
+			long minFilterRefreshTime = PERIOD + ourTime;
 			if (_usePrefixReg) {
 				synchronized (_registeredPrefixes) {
 					if( Log.isLoggable(Level.FINE) )
@@ -959,7 +958,8 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * Register a standing interest filter with callback to receive any 
 	 * matching interests seen. Any interests whose prefix completely matches "filter" will
-	 * be delivered to the listener
+	 * be delivered to the listener. Also if this filter matches no currently registered
+	 * prefixes, register its prefix with ccnd.
 	 *
 	 * @param caller 	must not be null
 	 * @param filter	ContentName containing prefix of interests to match
@@ -1189,9 +1189,9 @@ public class CCNNetworkManager implements Runnable {
 								_channel.register(_selector, SelectionKey.OP_READ);
 								_localPort = _channel.socket().getLocalPort();
 								_faceID = null;
+								reRegisterPrefixes();
 								if( Log.isLoggable(Level.INFO) )
-									Log.info("Reconnecting to CCN agent at " + _host + ":" + _port + "on local port" + _localPort);
-							}
+									Log.info("Reconnecting to CCN agent at " + _host + ":" + _port + "on local port" + _localPort);							}
 						}
 					}
 				} catch (IOException io) {
@@ -1317,6 +1317,20 @@ public class CCNNetworkManager implements Runnable {
 				throw new IOException(msg);
 			}
 	} /* PublisherPublicKeyDigest fetchCCNDId() */
+	
+	/**
+	 * Reregister all current prefixes with ccnd after ccnd goes down
+	 */
+	private void reRegisterPrefixes() throws CCNDaemonException {
+		TreeMap<ContentName, RegisteredPrefix> newPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
+		for (ContentName prefix : _registeredPrefixes.keySet()) {
+			ForwardingEntry entry = _prefixMgr.selfRegisterPrefix(prefix);
+			RegisteredPrefix newPrefixEntry = new RegisteredPrefix(entry);
+			newPrefixEntry._refCount = _registeredPrefixes.get(prefix)._refCount;
+			_registeredPrefixes.put(prefix, newPrefixEntry);
+		}
+		_registeredPrefixes = newPrefixes;
+	}
 
 	
 }
