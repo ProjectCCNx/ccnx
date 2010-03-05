@@ -49,8 +49,7 @@ default all: $(SCRIPTSRC) testdriver
 
 clean:
 	rm -rf log logs depend testdriver STATUS SKIPPED FAILING \
-        *.out ephemeral*.ccnb keyfetch*.ccnb test_coders_*.ccnb  \
-        prefix*.ccnb newface*.ccnb *pre.html *post.html selfreg*.ccnb
+        *.out *.ccnb *pre.html *post.html *status*.html
 
 check test: $(SCRIPTSRC) testdriver stubs
 	mkdir -p log
