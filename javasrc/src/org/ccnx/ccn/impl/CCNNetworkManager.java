@@ -143,6 +143,10 @@ public class CCNNetworkManager implements Runnable {
 	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes 
 				= new TreeMap<ContentName, RegisteredPrefix>();
 	
+	/**
+	 * Keep track of prefixes that are actually registered with ccnd (as opposed to Filters used
+	 * to dispatch interests). There may be several filters for each registered prefix.
+	 */
 	private class RegisteredPrefix {
 		private int _refCount = 1;
 		ForwardingEntry _forwarding = null;
