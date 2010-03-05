@@ -3613,14 +3613,14 @@ do_write(struct ccnd_handle *h,
         process_internal_client_buffer(h);
         return;
     }
-    if (face->addr == NULL)
+    if ((face->flags & CCN_FACE_DGRAM) == 0)
         res = send(face->send_fd, data, size, 0);
     else
         res = sendto(face->send_fd, data, size, 0, face->addr, face->addrlen);
     if (res == size)
         return;
     if (res == -1) {
-        if (errno == EAGAIN || errno == EISCONN)
+        if (errno == EAGAIN)
             res = 0;
         else if (errno == EPIPE) {
             face->flags |= CCN_FACE_NOSEND;
@@ -3631,7 +3631,10 @@ do_write(struct ccnd_handle *h,
         else {
             ccnd_msg(h, "send to face %u failed: %s (errno = %d)",
                      face->faceid, strerror(errno), errno);
-            return;
+            if (errno == EISCONN)
+                res = 0;
+            else
+                return;
         }
     }
     if ((face->flags & CCN_FACE_DGRAM) != 0) {
