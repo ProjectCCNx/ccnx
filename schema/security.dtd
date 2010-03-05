@@ -3,9 +3,6 @@
 <!ENTITY % commonattrs
 	"xmlns %URI; #FIXED 'http://www.ccnx.org/content/schema/20090915'">
 
-<!ELEMENT ACL	(Link*)>
-<!ATTLIST ACL	%commonattrs;>
-
 <!ELEMENT WrappedKey (WrappingKeyIdentifier?, WrappingKeyName?, WrapAlgorithm?, KeyAlgorithm?, Label?, EncryptedNonceKey?, EncryptedKey)>
 <!ATTLIST WrappedKey %commonattrs;>
 
