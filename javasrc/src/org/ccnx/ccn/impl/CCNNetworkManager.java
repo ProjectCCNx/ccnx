@@ -145,6 +145,20 @@ public class CCNNetworkManager implements Runnable {
 	
 	private class RegisteredPrefix {
 		private int _refCount = 1;
+		ForwardingEntry _forwarding = null;
+		// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
+		// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
+		// prefix we use Integer.MAX_VALUE as the requested lifetime.
+		long _lifetime = -1; // in seconds
+		long _nextRefresh = -1;
+		
+		private RegisteredPrefix(ForwardingEntry forwarding) {
+			_forwarding = forwarding;
+			if (null != forwarding) {
+				_lifetime = forwarding.getLifetime();
+				_nextRefresh = System.currentTimeMillis() + (_lifetime / 2);
+			}
+		}
 	}
 	
 	/**
@@ -197,34 +211,35 @@ public class CCNNetworkManager implements Runnable {
 			// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
 			// prefix we use Integer.MAX_VALUE as the requested lifetime.
 			if (_usePrefixReg) {
-				synchronized (_myFilters) {
+				synchronized (_registeredPrefixes) {
 					if( Log.isLoggable(Level.FINE) )
-						Log.fine("Refresh registration.  size: " + _myFilters.size() + " sizeNames: " + _myFilters.sizeNames());
-					for (Entry<Filter> entry : _myFilters.values()) {
-						Filter filter = entry.value();
-						if (null != filter.forwarding && filter.lifetime != -1 && filter.nextRefresh != -1) {
-							if (ourTime > filter.nextRefresh) {
+						Log.fine("Refresh registration.  size: " + _registeredPrefixes.size() + " sizeNames: " + _myFilters.sizeNames());
+					for (ContentName prefix : _registeredPrefixes.keySet()) {
+						RegisteredPrefix rp = _registeredPrefixes.get(prefix);
+						if (null != rp._forwarding && rp._lifetime != -1 && rp._nextRefresh != -1) {
+							if (ourTime > rp._nextRefresh) {
 								if( Log.isLoggable(Level.FINER) )
-									Log.finer("Refresh registration: {0}", filter.prefix);
-								filter.nextRefresh = -1;
+									Log.finer("Refresh registration: {0}", prefix);
+								rp._nextRefresh = -1;
 								try {
-									ForwardingEntry forwarding = _prefixMgr.selfRegisterPrefix(filter.prefix);
+									ForwardingEntry forwarding = _prefixMgr.selfRegisterPrefix(prefix);
 									if (null != forwarding) {
-										filter.lifetime = forwarding.getLifetime();
+										rp._lifetime = forwarding.getLifetime();
 //										filter.nextRefresh = new Date().getTime() + (filter.lifetime / 2);
-										filter.nextRefresh = System.currentTimeMillis() + (filter.lifetime / 2);
+										rp._nextRefresh = System.currentTimeMillis() + (rp._lifetime / 2);
 									}
-									filter.forwarding = forwarding;
+									rp._forwarding = forwarding;
 
 								} catch (CCNDaemonException e) {
 									Log.warning(e.getMessage());
-									filter.forwarding = null;
-									filter.lifetime = -1;
-									filter.nextRefresh = -1;
+									// XXX - don't think this is right
+									rp._forwarding = null;
+									rp._lifetime = -1;
+									rp._nextRefresh = -1;
 								}
 							}	
-							if (minFilterRefreshTime > filter.nextRefresh)
-								minFilterRefreshTime = filter.nextRefresh;
+							if (minFilterRefreshTime > rp._nextRefresh)
+								minFilterRefreshTime = rp._nextRefresh;
 						}
 					} /* for (Entry<Filter> entry : _myFilters.values()) */
 				} /* synchronized (_myFilters) */
@@ -541,30 +556,14 @@ public class CCNNetworkManager implements Runnable {
 	 * to registered interest handlers
 	 */
 	protected class Filter extends ListenerRegistration {
-		public ContentName prefix;  /* Also used to remember registration with ccnd */
 		protected Interest interest; // interest to be delivered
 		// extra interests to be delivered: separating these allows avoidance of ArrayList obj in many cases
-		protected ArrayList<Interest> extra = new ArrayList<Interest>(1); 
-		// protected Integer faceId = null;
-		ForwardingEntry forwarding = null;
-		// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
-		// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
-		// prefix we use Integer.MAX_VALUE as the requested lifetime.
-		long lifetime = -1; // in seconds
-		long nextRefresh = -1;
+		protected ArrayList<Interest> extra = new ArrayList<Interest>(1);
+		protected ContentName prefix = null;
 		
-		public Filter(CCNNetworkManager mgr, ContentName n, CCNFilterListener l, Object o, ForwardingEntry e) {
+		public Filter(CCNNetworkManager mgr, ContentName n, CCNFilterListener l, Object o) {
 			prefix = n; listener = l; owner = o;
 			manager = mgr;
-			forwarding = e;
-			if (null != forwarding) {
-				lifetime = forwarding.getLifetime();
-				nextRefresh = System.currentTimeMillis() + (lifetime / 2);
-			}
-		}
-		
-		public ForwardingEntry getEntry() {
-			return forwarding;
 		}
 		
 		public synchronized void add(Interest i) {
@@ -984,9 +983,9 @@ public class CCNNetworkManager implements Runnable {
 					if (null != oldPrefix)
 						oldPrefix._refCount++;
 					else {
-						RegisteredPrefix newPrefix = new RegisteredPrefix();
-						_registeredPrefixes.put(filter, newPrefix);
 						entry = _prefixMgr.selfRegisterPrefix(filter);
+						RegisteredPrefix newPrefix = new RegisteredPrefix(entry);
+						_registeredPrefixes.put(filter, newPrefix);
 						// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
 						// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
 						// prefix we use Integer.MAX_VALUE as the requested lifetime.
@@ -1000,7 +999,7 @@ public class CCNNetworkManager implements Runnable {
 			}
 		}
 		
-		Filter newOne = new Filter(this, filter, callbackListener, caller, entry);
+		Filter newOne = new Filter(this, filter, callbackListener, caller);
 		synchronized (_myFilters) {
 			_myFilters.add(filter, newOne);
 		}
@@ -1018,7 +1017,7 @@ public class CCNNetworkManager implements Runnable {
 		// serving any useful purpose.
 		if( Log.isLoggable(Level.FINE) )
 			Log.fine("cancelInterestFilter: {0}", filter);
-		Filter newOne = new Filter(this, filter, callbackListener, caller, null);
+		Filter newOne = new Filter(this, filter, callbackListener, caller);
 		Entry<Filter> found = null;
 		synchronized (_myFilters) {
 			found = _myFilters.remove(filter, newOne);
@@ -1032,7 +1031,7 @@ public class CCNNetworkManager implements Runnable {
 					RegisteredPrefix prefix = _registeredPrefixes.get(filter);
 					if (null == prefix || prefix._refCount <= 1) {
 						_registeredPrefixes.remove(filter);
-						ForwardingEntry entry = thisOne.getEntry();
+						ForwardingEntry entry = prefix._forwarding;
 						if (!entry.getPrefixName().equals(filter)) {
 							Log.severe("cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
 						}
