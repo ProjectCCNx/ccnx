@@ -1322,6 +1322,8 @@ public class CCNNetworkManager implements Runnable {
 	 * Reregister all current prefixes with ccnd after ccnd goes down
 	 */
 	private void reRegisterPrefixes() throws CCNDaemonException {
+		if (_timersSetup)
+			heartbeat();
 		TreeMap<ContentName, RegisteredPrefix> newPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
 		for (ContentName prefix : _registeredPrefixes.keySet()) {
 			ForwardingEntry entry = _prefixMgr.selfRegisterPrefix(prefix);
