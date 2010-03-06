@@ -158,11 +158,18 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected ArrayList<Interest> _sentInterests = new ArrayList<Interest>();
 	private Thread waitingThread = null;
 	private long waitingSegment;
+	private long waitSleep = 0;
 	private long _holes = 0;
 	private long _totalReceived = 0;
 	private long _pipelineStartTime;
+	private String readerReady = "-1";
 	
+	private double avgResponseTime = -1;
 	
+	private Thread processor = null;
+	private long processingSegment = -1;
+	private ArrayList<IncomingSegment> incoming = new ArrayList<IncomingSegment>();
+		
 	/**
 	 * Set up an input stream to read segmented CCN content under a given name. 
 	 * Note that this constructor does not currently retrieve any
@@ -276,10 +283,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	
 	
 	private void startPipeline() {
-		Log.finer("starting pipelining");
+		System.out.println("starting pipelining");
 		
 		_pipelineStartTime = System.currentTimeMillis();
-		System.out.println("plot 0 inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].1");		
+		System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].1"+ " toProcess "+incoming.size());		
 		
 		long segmentToGet = -1;
 		Interest interest = null;
@@ -288,34 +295,34 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			_basePipelineName = _baseName.clone();
 		}
 		
-		Log.finer("BaseName for pipeline: {0} base name: {1}", _basePipelineName, _baseName);
+		System.out.println("BaseName for pipeline: "+_basePipelineName +" base name: "+_baseName);
 		
 		if (_currentSegment!=null) {
-			Log.finer("we already have the first segment...  start from there: {0}",_currentSegment.name());
+			System.out.println("we already have the first segment...  start from there:"+_currentSegment.name());
 			//we already have the starting segment...
 			
 			//is the first segment the last one?
 			if (SegmentationProfile.isLastSegment(_currentSegment)) {
 				//this is the last segment...  don't pipeline
-				Log.finer("we already have the last segment...  don't need to pipeline (returning)");
+				System.out.println("we already have the last segment...  don't need to pipeline (returning)");
 				return;
 			} else {
 				//this isn't the last segment, start up pipelining...  only ask for next segment to start
-				Log.finer("this isn't the last segment...  need to start up pipelining");
+				System.out.println("this isn't the last segment...  need to start up pipelining");
 			}
 		} else {
-			Log.finer("need to get the first segment: startingSegmentNumber={0}",_startingSegmentNumber);
+			System.out.println("need to get the first segment: startingSegmentNumber="+_startingSegmentNumber);
 		}
 		
 		segmentToGet = nextSegmentNumber();
 		_nextPipelineSegment = segmentToGet;
 		interest = SegmentationProfile.segmentInterest(_basePipelineName, segmentToGet, _publisher);
 		try {
+			interest.userTime = System.currentTimeMillis();
 			_handle.expressInterest(interest, this);
 			_sentInterests.add(interest);
 			_lastRequestedPipelineSegment = segmentToGet;
-			if(Log.isLoggable(Level.FINER))
-				Log.finer("expressed interest for segment {0} in startPipeline(): {1}", segmentToGet, interest);
+			System.out.println("expressed interest for segment "+segmentToGet+" in startPipeline(): "+interest);
 		} catch(IOException e) {
 			//could not express interest for next segment...  logging the error
 			Log.warning("Failed to express interest for pipelining segments in CCNAbstractInputStream:  Interest = {0}", interest.name());
@@ -323,62 +330,124 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	private void receivePipelineContent(ContentObject co) {
+		long returnedSegment = SegmentationProfile.getSegmentNumber(co.name());
+		ArrayList<Interest> toRemove = new ArrayList<Interest>();	
 		
-		Log.finer("received pipeline segment: {0}",co.name());
+		//is there a reader ready?
+		long rr;
+		synchronized(readerReady) {
+			rr = Long.parseLong(readerReady);
+		}
+			//while(rr > -1) {
+			if(rr > -1) {
+				//there is a reader waiting
+				System.out.println("there is a reader waiting, we should wait unless we have their segment");
+				if(returnedSegment == rr) {
+					//this is the segment they want, we should just finish
+					System.out.println("we are working on their segment...  we should finish!");
+					//break;
+				} else {
+					if (haveSegmentBuffered(rr)) {
+						//we have their segment
+						//this isn't their segment, but the one they want is here. we should defer
+						System.out.println("we are deferring until they are done");
+						try {
+							inOrderSegments.wait();
+							//readerReady.wait();
+							synchronized(readerReady) {
+								rr = Long.parseLong(readerReady);
+							}
+						} catch (InterruptedException e) {
+							System.out.println("we can go back to processing");
+							//break;
+						}
+					} else {
+						//we don't have their segment, we should keep going
+						System.out.println("we don't have their segment, keep processing this one.");
+						
+					}
+				}
+			}
+		
+		
+		//are we at the last segment?
+		synchronized(inOrderSegments) {
+			if (SegmentationProfile.isLastSegment(co)) {
+				System.out.println("we just got the last segment...");
+				_lastSegmentNumber = returnedSegment;
+			}
+		//}
+		long segNum;
+		//synchronized (_sentInterests) {
+			for(Interest i: _sentInterests) {
+				segNum = SegmentationProfile.getSegmentNumber(i.name());
+				if(segNum == returnedSegment || (_lastSegmentNumber > -1 && segNum > _lastSegmentNumber)) {
+					System.out.println("cancelling interest for segment "+SegmentationProfile.getSegmentNumber(i.name())+" Interest: "+i);
+					_handle.cancelInterest(i, this);
+					toRemove.add(i);
+				}
+			}
+			_sentInterests.removeAll(toRemove);
+			toRemove.clear();
+		}
+		
 		
 		synchronized(inOrderSegments) {
-
-			long returnedSegment = SegmentationProfile.getSegmentNumber(co.name());
+			System.out.println("received pipeline segment: "+co.name());
 			
-			if (SegmentationProfile.getSegmentNumber(co.name()) == _nextPipelineSegment) {
+			/*
+			synchronized(readySegment) {
+				//can we help the reader with a shortcut
+				if (readySegment == null) {
+					//need to set the ready segment
+					if(inOrderSegments.size() > 0)
+						readySegment = inOrderSegments.get(0);
+				}
+			}
+			*/
+			
+			if (returnedSegment == _nextPipelineSegment) {
 				_totalReceived++;
-				Log.finer("we got the segment ({0}) we were expecting!", returnedSegment);
+				System.out.println("we got the segment ("+returnedSegment+") we were expecting!");
+				if(waitingSegment!=-1)
+					System.out.println("someone is waiting for segment: "+waitingSegment);
 				//this is the next segment in order
 				inOrderSegments.add(co);
 				_lastInOrderSegment = returnedSegment;
 				//do we have any out of order segments to move over?
-				if(Log.isLoggable(Level.FINER)) {
-					printSegments(" before checking ooos:");
-				}
-				while (outOfOrderSegments.size() > 0 ) {
-					Log.finer("we have out of order segments to check");
+				System.out.print(" before checking ooos:" );
+				printSegments();
+				if (outOfOrderSegments.size() > 0 ) {
+					System.out.println("we have out of order segments to check");
 					
 					//this was a hole..  cancel its other interests
-					ArrayList<Interest> toRemove = new ArrayList<Interest>();
-					for(Interest i: _sentInterests) {
-						if(SegmentationProfile.getSegmentNumber(i.name()) == returnedSegment) {
-							if(Log.isLoggable(Level.FINER))
-								Log.finer("canceling interest for segment {0} Interest: {1}", SegmentationProfile.getSegmentNumber(i.name()),i);
-							_handle.cancelInterest(i, this);
-							toRemove.add(i);
+					
+					while (outOfOrderSegments.size() > 0 ) {
+						if(SegmentationProfile.getSegmentNumber(outOfOrderSegments.get(0).name()) == nextInOrderSegmentNeeded()) {
+							_lastInOrderSegment = SegmentationProfile.getSegmentNumber(outOfOrderSegments.get(0).name());
+							inOrderSegments.add(outOfOrderSegments.remove(0));
+						} else {
+							//the first one isn't what we wanted..
+							System.out.println("we have "+SegmentationProfile.getSegmentNumber(outOfOrderSegments.get(0).name())+" but need "+nextInOrderSegmentNeeded()+" breaking from loop, we don't have the one we need");
+							break;
 						}
 					}
-					_sentInterests.removeAll(toRemove);
-					
-					if(SegmentationProfile.getSegmentNumber(outOfOrderSegments.get(0).name()) == nextInOrderSegmentNeeded()) {
-						_lastInOrderSegment = SegmentationProfile.getSegmentNumber(outOfOrderSegments.get(0).name());
-						inOrderSegments.add(outOfOrderSegments.remove(0));
-					} else {
-						//the first one isn't what we wanted..
-						if (Log.isLoggable(Level.FINER))
-							Log.finer("we have {0} but need {1} breaking from loop, we don't have the one we need", SegmentationProfile.getSegmentNumber(outOfOrderSegments.get(0).name()), nextInOrderSegmentNeeded());
-						break;
-					}
 				}
-				if (Log.isLoggable(Level.FINER)) {
-					printSegments(" after checking ooos: ");
-				}
+				System.out.print(" after checking ooos: ");
+				printSegments();
 				
+				//if we had out of order segments, we might still want to advance the pipeline...
 				
 				
 			} else {
-				Log.finer("we got segment {0} an Out of Order segment...  we were expecting segment {1}", returnedSegment, _nextPipelineSegment);
+				System.out.println("we got segment "+returnedSegment+" an Out of Order segment...  we were expecting segment "+_nextPipelineSegment);
 				//this segment is out of order
 				//make sure it wasn't a previous segment that we don't need any more...
 				if (_nextPipelineSegment > returnedSegment) {
-					Log.finer("this is a previous segment...  drop");
+					System.out.println("this is a previous segment...  drop");
+					
 				} else {
-					Log.finer("this is a pipeline segment, add to outOfOrderSegment queue");
+					System.out.println("this is a pipeline segment, add to outOfOrderSegment queue");
 					_totalReceived++;
 					_holes++;
 					int i = 0;
@@ -390,155 +459,269 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					outOfOrderSegments.add(i, co);
 				
 					//now we have a hole to fill
-					if (Log.isLoggable(Level.FINER))
-						Log.finer("we got a segment out of order, need to fill a hole at {0}", nextInOrderSegmentNeeded());
+					System.out.println("we got a segment out of order, need to fill a hole at "+nextInOrderSegmentNeeded());
+					attemptHoleFilling(_nextPipelineSegment);
 				}
 			}
 			
-			//are we at the last segment?
-			if (SegmentationProfile.isLastSegment(co)) {
-				Log.finer("we just got the last segment...");
-				_lastSegmentNumber = returnedSegment;
-				ArrayList<Interest> toRemove = null;
-				for(Interest i: _sentInterests) {
-					if(SegmentationProfile.getSegmentNumber(i.name()) > _lastSegmentNumber) {
-						if (Log.isLoggable(Level.FINER))
-							Log.finer("canceling interest for segment {0}", SegmentationProfile.getSegmentNumber(i.name()));
-						_handle.cancelInterest(i, this);
-						if (toRemove==null)
-							toRemove = new ArrayList<Interest>(1);
-						toRemove.add(i);
-					}
-				}
-				if (toRemove!=null) {
-					_sentInterests.removeAll(toRemove);
-					toRemove = null;
-				}
-			}
 			
-			if(waitingThread!=null && returnedSegment == waitingSegment) {
-				Log.finer("waitingSegment = {0}", waitingSegment);
-				waitingThread.interrupt();
-				Log.finer("interrupted thread");
-			}
 			
 			_nextPipelineSegment = nextInOrderSegmentNeeded();
-			Log.finer("the next segment needed is {0}", _nextPipelineSegment);
-			
-			advancePipeline();
-			
+			System.out.println("the next segment needed is "+_nextPipelineSegment);
+		    synchronized(incoming) {
+		    	processingSegment = -1;
+		    }
+		    
+		    /*
+		//if there is a waiting thread, let them know the data is ready
 			if(waitingThread!=null && returnedSegment == waitingSegment) {
-				inOrderSegments.notify();
-			}
-		}
-	}
-
-	private void advancePipeline() {
-		//first check if we have tokens to spend on interests...
-		boolean doneAdvancing = false;
-		
-		//check outstanding interests
-		if (Log.isLoggable(Level.FINER)) {
-			String toLog = "have interests out for segments: [";
-			for(Interest i: _sentInterests)
-				toLog += " "+SegmentationProfile.getSegmentNumber(i.name());
-			toLog += " ]";
-			Log.finer(toLog);
-			for(Interest i: _sentInterests)
-				Log.finer("",i.name());
-		}
-		
-		Interest i = null;
-		
-		///* aggressive hole filling...  
-			//we have a hole and don't want to wait for interest re-expression
-		if(outOfOrderSegments.size() > 0) {
-			attemptHoleFilling(nextInOrderSegmentNeeded());
-		}
-		//*/
-		
-		while (_sentInterests.size() + inOrderSegments.size() + outOfOrderSegments.size()  < SystemConfiguration.PIPELINE_SIZE && !doneAdvancing) {
-			//we have tokens to use
-			i = null;
-			
-			//add a little delay...  just to test
-			/*try {
-				Thread.sleep(2);
-			} catch (InterruptedException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
+				System.out.println("waitingSegment = " + waitingSegment);
+				//waitingThread.interrupt();
+				System.out.println("interrupted thread: min sleep "+(System.currentTimeMillis()-waitSleep));
 			}
 			*/
-			
-			Log.finer("_lastSegmentNumber = {0}", _lastSegmentNumber);
-			if (_lastSegmentNumber == -1) {
-				//we don't have the last segment already...
-				i = SegmentationProfile.segmentInterest(_basePipelineName, _lastRequestedPipelineSegment + 1, _publisher);
+		
+			if(waitingThread!=null && returnedSegment == waitingSegment) {
+				inOrderSegments.notifyAll();
+				System.out.println("notifyAll: min sleep "+(System.currentTimeMillis()-waitSleep));
 				try {
-					_handle.expressInterest(i, this);
-					_sentInterests.add(i);
-					_lastRequestedPipelineSegment++;
-					Log.finer("requested segment {0} ({1} tokens)", _lastRequestedPipelineSegment, (SystemConfiguration.PIPELINE_SIZE - _sentInterests.size()));
-				} catch (IOException e) {
-					Log.warning("failed to express interest for CCNAbstractInputStream pipeline");
+					inOrderSegments.wait();
+				} catch (InterruptedException e) {
+					//back to me...  keep going
 				}
-			} else {
-				Log.finer("setting doneAdvancing to true");
-				doneAdvancing = true;
+			}
+		}
+		
+	}
+
+	private void advancePipeline(boolean attemptHoleFilling) {
+		synchronized(inOrderSegments) {
+			//first check if we have tokens to spend on interests...
+			boolean doneAdvancing = false;
+			
+			//check outstanding interests
+			System.out.print("have interests out for segments: [");
+			for(Interest i: _sentInterests)
+				System.out.print(" "+SegmentationProfile.getSegmentNumber(i.name()));
+			System.out.println(" ]");
+			for(Interest i: _sentInterests)
+				System.out.println(i.name());
+			
+			Interest i = null;
+				
+			while (_sentInterests.size() + inOrderSegments.size() + outOfOrderSegments.size()  < SystemConfiguration.PIPELINE_SIZE && !doneAdvancing) {
+				//we have tokens to use
+				i = null;
+			
+				System.out.println("_lastSegmentNumber = "+ _lastSegmentNumber);
+				if (_lastSegmentNumber == -1) {
+					//we don't have the last segment already...
+					i = SegmentationProfile.segmentInterest(_basePipelineName, _lastRequestedPipelineSegment + 1, _publisher);
+					try {
+						i.userTime = System.currentTimeMillis();
+						_handle.expressInterest(i, this);
+						_sentInterests.add(i);
+						_lastRequestedPipelineSegment++;
+						System.out.println("requested segment "+_lastRequestedPipelineSegment +" ("+(SystemConfiguration.PIPELINE_SIZE - _sentInterests.size())+" tokens)");
+					} catch (IOException e) {
+						Log.warning("failed to express interest for CCNAbstractInputStream pipeline");
+					}
+				} else {
+					System.out.println("setting doneAdvancing to true");
+					doneAdvancing = true;
+				}
 			}
 		}
 	}
 	
+	private void attemptHoleFilling() {
+		synchronized(inOrderSegments) {
+			if(outOfOrderSegments.size() > 0) {
+				long firstOOO = SegmentationProfile.getSegmentNumber(outOfOrderSegments.get(0).name());
+				long holeCheck = _nextPipelineSegment;
+				while (holeCheck < firstOOO) {
+					attemptHoleFilling(holeCheck);
+					holeCheck++;
+				}
+			}
+		}
+		
+	}
+	
 	private void attemptHoleFilling(long hole) {
 		//holes...  just ask for the next segment we are expecting if we haven't already
-		Interest i = SegmentationProfile.segmentInterest(_basePipelineName, hole, _publisher);
-		Exclude ex = new Exclude();
-		ex.add(new byte[][]{SegmentationProfile.getSegmentNumberNameComponent(hole-1)});
 
-		try {
-			//see if this interest is already there
-			if (_sentInterests.contains(i)) {
-				Log.finer("base interest is already there, try adding excludes");
-				i.exclude(ex);
-			}
+		System.out.println("checking for a hole at segment: "+hole);
+		
+		//first check the incoming segments to see if it is here already
+		synchronized (incoming) {
+			for (IncomingSegment i: incoming)
+				if(i.segmentNumber == hole) {
+					System.out.println("segment "+hole+" is already here, just needs to be processed");
+					return;
+				}
 			
-			if (_sentInterests.contains(i)) {
-				Log.finer("have already attempted to fill the hole, returning");
+			if(processingSegment != -1 && hole == processingSegment) {
+				System.out.println("the segment is being processed... not a hole.");
 				return;
 			}
-			
-			_handle.expressInterest(i, this);
-			_sentInterests.add(i);
-			Log.finer("requested segment {0} to fill hole: {1} with Interest: {2}", nextInOrderSegmentNeeded(), i.name(), i);
-			
+				
+		}
+		
+		Interest i = SegmentationProfile.segmentInterest(_basePipelineName, hole, _publisher);
+		
+		
+		int index = -1;
+		int index2 = -1;
+		
+		long elapsed1 = -1;
+		long elapsed2 = -1;
+		
+		Interest expressed;
+		try {
+			synchronized (inOrderSegments) {
+				// see if this interest is already there
+				index = _sentInterests.indexOf(i);
+				if (index > -1) {
+					expressed = _sentInterests.get(index);
+					elapsed1 = System.currentTimeMillis() - expressed.userTime;
+					
+					if(elapsed1 == -1) {
+						System.out.println("base segment is there, but the express time is -1, it must be getting processed");
+						return;
+					}
+					
+					System.out.println("base interest is already there, try adding excludes elapsed time = "+elapsed1);					
+				} else {
+					// base interest isn't there, the the exclude could be.
+				}
+				
+				for (int attempt = 1; attempt < SystemConfiguration.PIPELINE_SEGMENTATTEMPTS; attempt++) {
+					Exclude ex = new Exclude();
+					ex.add(new byte[][]{SegmentationProfile.getSegmentNumberNameComponent(hole+attempt)});
+				
+					i.exclude(ex);
+					Interest toDelete = null;
+					for(Interest expInt: _sentInterests) {
+						//System.out.println("comparing interests: "+i+" expressed: "+expInt + " = "+ expInt.compareTo(i));
+						
+						if (expInt.compareTo(i) == 0 && ex.equals(expInt.exclude())) {
+							System.out.println("we have already done "+attempt+" attempt(s) at holefilling...  try again! expressed: "+expInt);
+							if(attempt+1 < SystemConfiguration.PIPELINE_SEGMENTATTEMPTS) {
+								toDelete = expInt;
+								ex = new Exclude();
+								ex.add(new byte[][]{SegmentationProfile.getSegmentNumberNameComponent(hole+attempt+1)});
+								i.exclude(ex);
+								System.out.println("going to express the next attempt: "+i);
+							}
+							else {
+								System.out.println("we have tried as many times as we can...  break here");
+								return;
+							}
+							break;
+						} else {
+							//System.out.println("this is not the interest we are looking for: "+i);
+							//System.out.println("this holefilling interest (attempt "+attempt+") isn't there...  maybe we have tried more!");
+						}
+					}
+					
+					if(toDelete!=null) {
+						System.out.println("we can try again to fill the hole!");
+						expressed = toDelete;
+						if(expressed.userTime == -1) {
+							System.out.println("hole filling segment is there, but the express time is -1, it must be getting processed");
+							return;
+						} else {
+							elapsed2 = System.currentTimeMillis() - expressed.userTime;
+							System.out.println("elapsed2 time "+elapsed2);
+							if(elapsed2 > avgResponseTime*2 && avgResponseTime > -1) {
+								System.out.println("expressing the next interest! "+i);
+								i.userTime = System.currentTimeMillis();
+								_handle.expressInterest(i, this);
+								_sentInterests.add(i);
+
+								_handle.cancelInterest(toDelete, this);
+								_sentInterests.remove(toDelete);
+								
+								System.out.println("expressed: "+i+" deleted: "+toDelete);
+								
+								System.out.println("current expressed interests: ");
+								for(Interest p: _sentInterests)
+									System.out.println(p);
+								
+								return;
+							} else {
+								System.out.println("need to give the earlier attempt a chance to work");
+								return;
+							}
+						}
+						
+					} else {
+						System.out.println("we don't have any holefilling attempts...");
+						if (index == -1) {
+							// the base interest wasn't even there (neither was the
+							// hole filling one)
+							i.exclude(null);
+						}
+					}
+				/**	
+				if (_sentInterests.contains(i)) {
+					index2 = _sentInterests.indexOf(i);
+					expressed = _sentInterests.get(index2);
+					elapsed2 = System.currentTimeMillis() - expressed.expressTime;
+					if(elapsed2 == -1) {
+						System.out.println("hole filling segment is there, but the express time is -1, it must be getting processed");
+						return;
+					}
+					System.out.println("have already attempted to fill the hole (elapsed time = "+elapsed2+"), returning");					
+					return;
+				} else {
+					if (index == -1) {
+						// the base interest wasn't even there (neither was the
+						// hole filling one)
+						i.exclude(null);
+					}
+				}
+				**/
+				if(elapsed1 > avgResponseTime * 2 && avgResponseTime > -1) {
+					System.out.println("adding the base interest or the first holefilling attempt!!! " + i);
+					i.userTime = System.currentTimeMillis();
+					_handle.expressInterest(i, this);
+					_sentInterests.add(i);
+					// remove the first instance after we express and insert the new
+					// interest
+					if (index != -1)
+						_handle.cancelInterest(_sentInterests.remove(index), this);
+					
+					System.out.println("requested segment "	+ hole + " to fill hole: " + i.name() + " with Interest: " + i);
+					return;
+				}
+				}
+			}
 		} catch (IOException e) {
 			Log.warning("failed to express interest for CCNAbstractInputStream pipeline");
 		}
 	}
 	
-	private void printSegments(String logLine) {
-		if (!Log.isLoggable(Level.FINER))
-			return;
-		if (logLine==null)
-			logLine = "";
-		logLine += " inOrder: [";
+	private void printSegments() {
+		System.out.print("inOrder: [");
 		for(ContentObject c: inOrderSegments)
-			logLine+=" "+SegmentationProfile.getSegmentNumber(c.name());
-		logLine+=" ] outOrder: [";
+			System.out.print(" "+SegmentationProfile.getSegmentNumber(c.name()));
+		System.out.print(" ] outOrder: [");
 		for(ContentObject c: outOfOrderSegments)
-			logLine+=" "+SegmentationProfile.getSegmentNumber(c.name());
-		logLine+=" ]";
-		Log.finer(logLine);
+			System.out.print(" "+SegmentationProfile.getSegmentNumber(c.name()));
+		System.out.println(" ]");
 	}
 	
 	private long nextInOrderSegmentNeeded() {
 		synchronized(inOrderSegments) {
-			if (Log.isLoggable(Level.FINER)) {
-				if (_currentSegment==null)
-					Log.finer(" current segment: - lastInOrderSegment number {0} _startingSegmentNumber {1}", _lastInOrderSegment, _startingSegmentNumber);
-				else
-					Log.finer(" current segment: {0} lastInOrderSegment number {1} _startingSegmentNumber {2}",SegmentationProfile.getSegmentNumber(_currentSegment.name()) ,_lastInOrderSegment ,_startingSegmentNumber);
-			}
+			if (_currentSegment==null)
+				System.out.println(" current segment: -"+ " lastInOrderSegment number "+_lastInOrderSegment
+						+ " _startingSegmentNumber "+_startingSegmentNumber);
+			else
+				System.out.println(" current segment: "+SegmentationProfile.getSegmentNumber(_currentSegment.name())
+						+ " lastInOrderSegment number "+_lastInOrderSegment
+						+ " _startingSegmentNumber "+_startingSegmentNumber);
 			/*
 			if(inOrderSegments.size() > 0)
 				System.out.println(" current segment: "+SegmentationProfile.getSegmentNumber(_currentSegment.name())
@@ -551,18 +734,56 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						
 			*/
 						
-			if(Log.isLoggable(Level.FINER) && outOfOrderSegments.size() > 0) {
-				printSegments("we have out of order segments...");
+			if(outOfOrderSegments.size() > 0) {
+				System.out.print("we have out of order segments...");
+				printSegments();
 			}
 			
 			
-			if (inOrderSegments.size() > 0)
-				return _lastInOrderSegment + 1;
-				//return SegmentationProfile.getSegmentNumber(inOrderSegments.get(inOrderSegments.size()-1).name()) +1;
-			else if (_currentSegment!=null)
-				return SegmentationProfile.getSegmentNumber(_currentSegment.name())+1;
+			/*if (inOrderSegments.size() > 0)
+			return _lastInOrderSegment + 1;
+			//return SegmentationProfile.getSegmentNumber(inOrderSegments.get(inOrderSegments.size()-1).name()) +1;
+			else if (_currentSegment!=null) {
+			return _lastInOrderSegment + 1;
+			//return SegmentationProfile.getSegmentNumber(_currentSegment.name())+1;
+			}
+			 */
+			if(_lastInOrderSegment != -1)
+				return _lastInOrderSegment +1;
 			else
 				return _startingSegmentNumber;
+		}
+	}
+	
+	private boolean haveSegmentBuffered(long segmentNumber) {
+		synchronized(inOrderSegments) {
+			ContentObject co = null;
+			for (int i = 0; i < inOrderSegments.size(); i++) {
+				co = inOrderSegments.get(i);
+				if (SegmentationProfile.getSegmentNumber(co.name()) == segmentNumber) {
+					System.out.println("have segment "+segmentNumber+" in iOS, return true.");
+					return true;
+				}
+			}
+			
+			for (int i = 0; i < outOfOrderSegments.size(); i++) {
+				co = outOfOrderSegments.get(i);
+				if (SegmentationProfile.getSegmentNumber(co.name()) == segmentNumber) {
+					//this is the segment we wanted
+					System.out.println("segment "+segmentNumber+" is in our oOOS queue, return true");
+					return true;
+
+				} else {
+					if(SegmentationProfile.getSegmentNumber(co.name()) > segmentNumber) {
+						//we have a hole to fill...
+						System.out.println("our out of order segments are past the requested segment...  we have a hole");
+						attemptHoleFilling();
+						//attemptHoleFilling(segmentNumber);
+						break;
+					}
+				}
+			}
+			return false;
 		}
 	}
 	
@@ -571,10 +792,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			ContentObject co = null;
 			while (inOrderSegments.size() > 0) {
 				co = inOrderSegments.remove(0);
-				advancePipeline();
 				if (SegmentationProfile.getSegmentNumber(co.name()) == segmentNumber) {
-					Log.finer("had segment {0} in iOS, setting current.", segmentNumber);
+					System.out.println("had segment "+segmentNumber+" in iOS, setting current.");
 					_currentSegment = co;
+					if (inOrderSegments.size() > 0 || segmentNumber == 1)
+						advancePipeline(false);
+					else
+						advancePipeline(true);
 					return co;
 				}
 			}
@@ -583,62 +807,56 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				co = outOfOrderSegments.get(0);
 				if (SegmentationProfile.getSegmentNumber(co.name()) == segmentNumber) {
 					//this is the segment we wanted
-					Log.finer("segment {0} was in our oOOS queue", segmentNumber);
+					System.out.println("segment "+segmentNumber+" was in our oOOS queue");
 					outOfOrderSegments.remove(0);
 					_currentSegment = co;
 					return co;
 				} else {
 					if(SegmentationProfile.getSegmentNumber(co.name()) > segmentNumber) {
 						//we have a hole to fill...
-						Log.finer("our out of order segments are past the requested segment...  we have a hole");
+						System.out.println("our out of order segments are past the requested segment...  we have a hole");
 						break;
 					}
 				}
 			}
 		
-			if (Log.isLoggable(Level.FINER)) {
-				Log.finer("we do not have the segment yet...  was it requested?");
-				Log.finer("need segment: {0} _lastRequestedPipelineSegment: {1}", segmentNumber, _lastRequestedPipelineSegment);
-				String logLine = "current interests out for segments: [";
-				for(Interest i: _sentInterests)
-					logLine+=" "+SegmentationProfile.getSegmentNumber(i.name());
-				logLine+="]";
-				Log.finer(logLine);
-			}
+			System.out.println("we do not have the segment yet...  was it requested?");
+			System.out.println("need segment: "+segmentNumber+" _lastRequestedPipelineSegment: "+_lastRequestedPipelineSegment);
 			
+			System.out.print("current interests out for segments: [");
+			for(Interest i: _sentInterests)
+				System.out.print(" "+SegmentationProfile.getSegmentNumber(i.name()));
+			System.out.println("]");
+					
 			//need to actually get the requested segment if it hasn't been asked for
 			//this is needed for seek, skip, etc
 			
 			//if we haven't requested the segment...  should we ditch everything we have?  probably
 			if (requestedSegment(segmentNumber)) {
 				//we already requested it.  just wait for it to come in
-				
-				//TODO should we try asking for it again?
+				attemptHoleFilling(segmentNumber);
 			} else {
 				//we haven't requested it...  send request and ditch what we have
 				Interest interest = SegmentationProfile.segmentInterest(_basePipelineName, segmentNumber, _publisher);
 				try {
+					interest.userTime = System.currentTimeMillis();
 					_handle.expressInterest(interest, this);
 					cancelInterests();
 					_sentInterests.add(interest);
 					resetPipelineState();
 					_lastRequestedPipelineSegment = segmentNumber;
 					_nextPipelineSegment = segmentNumber;
-					if (Log.isLoggable(Level.FINER))
-						Log.finer("we hadn't asked for segment {0} asking now... {1}", segmentNumber, interest);
+					System.out.println("we hadn't asked for segment "+segmentNumber+" asking now... "+interest);
 				} catch (IOException e) {
 					Log.warning("failed to express interest for CCNAbstractInputStream pipeline");
 				}
 			}
 			
-			if (Log.isLoggable(Level.FINER)) {
-				//check outstanding interests
-				String logLine = "have interests out for segments: [";
-				for(Interest i: _sentInterests)
-					logLine+=" "+SegmentationProfile.getSegmentNumber(i.name());
-				logLine+="]";
-				Log.finer(logLine);
-			}
+			//check outstanding interests
+			System.out.print("have interests out for segments: [");
+			for(Interest i: _sentInterests)
+				System.out.print(" "+SegmentationProfile.getSegmentNumber(i.name()));
+			System.out.println("]");
 		}
 		
 		return null;
@@ -648,7 +866,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		synchronized(inOrderSegments) {
 			for (Interest i: _sentInterests) {
 				_handle.cancelInterest(i, this);
-				Log.finer("canceling interest: {0}", i);
+				System.out.println("canceling interest: "+i);
 			}
 			_sentInterests.clear();
 		}
@@ -668,6 +886,18 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	
 	
 	private boolean requestedSegment(long number) {
+		synchronized(incoming) {
+			for(IncomingSegment i: incoming)
+				if (i.segmentNumber == number) {
+					System.out.println("we already asked for it and it is just waiting to be processed");
+					return true;
+				}
+			
+			if (processingSegment!=-1 && processingSegment == number) {
+				System.out.println("someone is processing it right now!");
+				return true;
+			}
+		}
 		synchronized(inOrderSegments) {
 			for (Interest i: _sentInterests)
 				if(SegmentationProfile.getSegmentNumber(i.name()) == number)
@@ -679,18 +909,16 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	private void setPipelineName(ContentName n) {
 		//we need to set the base name for pipelining...  we might not have had the version (or the full name)
 		_basePipelineName = n.clone();
-		Log.finer("setting _basePipelineName {0}", _basePipelineName);
+		System.out.println("setting _basePipelineName "+_basePipelineName);
 		
 		synchronized(inOrderSegments) {
 			//need to remove interest for first segment of old name
-			ArrayList<Interest> remove = null;
+			ArrayList<Interest> remove = new ArrayList<Interest>();
 			for(Interest i: _sentInterests) {
 				if(SegmentationProfile.segmentRoot(i.name()).equals(_basePipelineName)) {
 					//the name matches, keep it
 				} else {
 					//name doesn't match...  remove it
-					if (remove == null)
-						remove = new ArrayList<Interest>(1);
 					remove.add(i);
 				}
 			}
@@ -703,18 +931,192 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 	
 	
-	public Interest handleContent(ContentObject result, Interest interest) {
-				
+	public boolean readerReadyCheck(long nextSegment) {
 		synchronized(inOrderSegments) {
+			//is there a reader ready?
+			long rr;
+			synchronized(readerReady) {
+				rr = Long.parseLong(readerReady);
+			}
+			//while(rr > -1) {
+			if(rr > -1) {
+				//there is a reader waiting
+				System.out.println("there is a reader waiting, we should wait unless we have their segment");
+				if(nextSegment == rr) {
+					//this is the segment they want, we should just finish
+					System.out.println("we are working on their segment...  we should finish!");
+					return false;
+					//break;
+				} else {
+					if (haveSegmentBuffered(rr)) {
+						//we have their segment
+						//this isn't their segment, but the one they want is here. we should defer
+						System.out.println("we are deferring until they are done");
+						return true;
+						/*
+						try {
+							inOrderSegments.wait();
+							//readerReady.wait();
+							synchronized(readerReady) {
+								rr = Long.parseLong(readerReady);
+							}
+						} catch (InterruptedException e) {
+							System.out.println("we can go back to processing");
+							//break;
+						}
+						*/
+					} else {
+						//we don't have their segment, we should keep going
+						System.out.println("we don't have their segment, keep processing this one.");
+						return false;
+					}
+				}
+			}
+			return false;
+		}
+	}
+	
+	
+	public Interest handleContent(ContentObject result, Interest interest) {
+		System.out.println("in handleContent for "+result.name()+" at "+System.currentTimeMillis());
+		
+		long starttime = System.currentTimeMillis();
+		IncomingSegment is;
+		
+		synchronized(incoming) {
+			if(avgResponseTime == -1) {
+				avgResponseTime = starttime - interest.userTime;
+			} else {
+				//do not include hole filling responses, they will be extra fast
+				if (interest.exclude()==null)
+					avgResponseTime = 0.9 * avgResponseTime + 0.1 * (starttime - interest.userTime);
+			}
+			
+			interest.userTime = -1;
+			
+			System.out.println("in handleContent after reading "+ result.name() +" avgResponseTime "+avgResponseTime);
+			is = new IncomingSegment(result, interest);
+			int index = 0;
+			for (IncomingSegment i: incoming) {
+				if(i.segmentNumber > is.segmentNumber)
+					break;
+				index++;
+			}
+			incoming.add(index, is);
+			System.out.print("segments to process: [");
+			for (IncomingSegment i: incoming)
+				System.out.print(" "+i.segmentNumber);
+			System.out.println(" ]");
+			
+			if (processor == null) {
+				System.out.println("processor was null, setting it to me.");
+				//no threads are actively processing content...  this one will
+				processor = Thread.currentThread();
+				//synchronized(inOrderSegments) {
+					is = incoming.remove(0);
+					//_sentInterests.add(is.interest);
+					processingSegment = SegmentationProfile.getSegmentNumber(is.content.name());
+				//}
+			} else {
+				System.out.println("processor not null, returning");
+				//another thread is already processing...  just dump my content object and return
+				System.out.println((System.currentTimeMillis() - starttime)+" done with handleContent after reading "+ result.name());
+				return null;
+			}
+		}
+		//this thread will continue processing the incoming content objects until they are empty
+		synchronized(inOrderSegments){
+		while (is != null) {
+			
+			//was this a content object we were looking for?
+			//synchronized(inOrderSegments) {
+				
+				System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].2"+ " toProcess "+incoming.size());
+				
+				if (_sentInterests.remove(is.interest)) {
+					//we had this interest outstanding...
+					System.out.println("we were expecting this data! we had outstanding interests: "+is.interest);
+				} else {
+					//we must have canceled the interest...  drop content object
+					System.out.println("we must have canceled the interest, dropping ContentObject(s).  old interest: "+is.interest);
+
+					//does this match one of our other interests?
+					Interest checkInterest;
+					is.interest = null;
+					for (int i = 0; i < _sentInterests.size(); i++) {
+						checkInterest = _sentInterests.get(i);
+						if (checkInterest.matches(result)) {
+							//we found a match!
+							System.out.println("the incoming packet's interest is gone, but it matches another interest, using that");
+							is.interest = checkInterest;
+							break;
+						}
+					}
+					if (is.interest == null)
+						is = null;
+				}
+				
+				
+			//}
+			
+			//verify the content object
+			if (verify(result)) {
+				//this content verified
+			} else {
+				//content didn't verify, don't hand it up...
+				//TODO content that fails verification needs to be handled better.  need to express a new interest
+				Log.info("Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
+				_sentInterests.remove(is.interest);
+				is = null;
+	 		}
+			
+			if (is != null)
+				receivePipelineContent(is.content);
+			
+			synchronized(incoming) {
+				if (incoming.size() == 0) {
+					processor = null;
+					is = null;
+					System.out.println("that was the last one, resetting processor to null");
+				} else {
+					is = incoming.remove(0);
+					//_sentInterests.add(is.interest);
+					processingSegment = SegmentationProfile.getSegmentNumber(is.content.name());
+					System.out.println("processing first segment in incoming arraylist, segment "+is.segmentNumber);
+				}
+
+				System.out.print("segments to process: [");
+				for (IncomingSegment i: incoming)
+					System.out.print(" "+i.segmentNumber);
+				System.out.println(" ]");
+				
+			}
+			
+			advancePipeline(false);
+		}//try holding lock more consistently to control how notify is done
+		} //while loop for processing incoming segments
+		//System.out.println("calling attemptHoleFilling()");
+		attemptHoleFilling();
+		//advancePipeline(false);
+		
+		System.out.println((System.currentTimeMillis() - starttime)+" done with handleContent after reading "+ result.name());
+
+		return null;
+		
+		/*
+		
+		synchronized(inOrderSegments) {
+			System.out.println(starttime+" in handleContent after reading "+ result.name());
+			
 			System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].2");
 			
 			//remove if the content verified
 			if (_sentInterests.remove(interest)) {
 				//we had this interest outstanding...
-				Log.finer("we were expecting this data! we had outstanding interests: {0}", interest);
+				System.out.println("we were expecting this data! we had outstanding interests: "+interest);
 			} else {
 				//we must have canceled the interest...  drop content object
-				Log.finer("we must have canceled the interest, dropping ContentObject(s).  old interest: {0}", interest);
+				System.out.println("we must have canceled the interest, dropping ContentObject(s).  old interest: "+interest);
 				return null;
 			}
 		
@@ -722,12 +1124,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			if (verify(result))
 				receivePipelineContent(result);
 			else {
-				//TODO need to handle content that fails to verify better!
-				Log.finer("content failed verify");
+				System.out.println("content failed verify");
 			}
 		}
+		*/
 		
-		return null;
 	}
 	
 	
@@ -1034,69 +1435,121 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 *  	or if there is an error at lower layers.
 	 **/
 	protected ContentObject getSegment(long number) throws IOException {
-
+		long ttgl = System.currentTimeMillis();
+		
+		synchronized(readerReady){
+			readerReady = Long.toString(number);
+		}
+		
 		synchronized (inOrderSegments) {
-
+			System.out.println("time to get lock in getSegment (number) "+(System.currentTimeMillis() - ttgl));
 			// check if the base name was updated (in case we didn't have the version) for pipelining
+			
 			if (_baseName.equals(_basePipelineName)) {
 				// we already have the base name...
-				System.out.println("plot " + (System.currentTimeMillis() - _pipelineStartTime) + " inOrder: " + inOrderSegments.size() + " outOfOrder: " + outOfOrderSegments.size() + " interests: " + _sentInterests.size() + " holes: " + _holes + " received: " + _totalReceived + " [" + _baseName + "].3");
+				System.out.println("plot " + (System.currentTimeMillis() - _pipelineStartTime) + " inOrder: " + inOrderSegments.size() + " outOfOrder: " + outOfOrderSegments.size() + " interests: " + _sentInterests.size() + " holes: " + _holes + " received: " + _totalReceived + " [" + _baseName + "].3"+ " toProcess "+incoming.size());
 			} else {
 				// we don't have the base name... set for pipelining.
 				setPipelineName(_baseName);
 				startPipeline();
 			}
-
+			
 			if (_currentSegment != null) {
 				// what segment do we have right now? maybe we already have it
-				synchronized (inOrderSegments) {
-					if (currentSegmentNumber() == number) {
-						// we already have this segment... just use it
-						return _currentSegment;
-					}
+				if (currentSegmentNumber() == number) {
+					// we already have this segment... just use it
+					return _currentSegment;
 				}
 			}
-			ContentObject co = getPipelineSegment(number);
-			if (co != null) {
-				Log.finer("we had segment {0} already!!", number);
-				return co;
-			} else {
-				Log.finer("we don't have segment {0} pipelined... blocking", number);
+		
+		ContentObject co = getPipelineSegment(number);
+		if (co != null) {
+			System.out.println("we had segment " + number + " already!!");
+			advancePipeline(false);
+			synchronized(readerReady) {
+				//readerReady.notifyAll();
+				readerReady = "-1";
+				inOrderSegments.notifyAll();
 			}
-
-			// the segment was not available... we need to wait until the
-			// pipeline gets it in
+			return co;
+		} else {
+			System.out.println("we don't have segment " + number + " pipelined... blocking");
+		}
+				
+		// the segment was not available... we need to wait until the
+		// pipeline gets it in
+		synchronized(inOrderSegments) {
 			long start = System.currentTimeMillis();
 			long sleep = 0;
-			try {
-				Log.finer("_timeout = {0}", _timeout);
-
-				waitingThread = Thread.currentThread();
-				waitingSegment = number;
-				while (sleep < _timeout) {
-					start = System.currentTimeMillis();
-					inOrderSegments.wait(_timeout);
-					sleep += System.currentTimeMillis() - start;
-				}
-				Log.finer("awake: done sleeping {0}", sleep);
-			} catch (InterruptedException e1) {
+			long sleepCheck = 0;
+			//try {
+				System.out.println("_timeout = " + _timeout);
+				//synchronized(inOrderSegments) {
+					waitingThread = Thread.currentThread();
+					waitingSegment = number;
+					while (sleep < _timeout) {
+						try{
+						start = System.currentTimeMillis();
+						waitSleep = start;
+						sleepCheck = _timeout - sleep;
+						if(avgResponseTime > 0 && avgResponseTime < (long)SystemConfiguration.SHORT_TIMEOUT) {
+							if(avgResponseTime > sleepCheck)
+								inOrderSegments.wait(sleepCheck);
+							else
+								inOrderSegments.wait((long)avgResponseTime);
+						}
+						else {
+							if((long)SystemConfiguration.SHORT_TIMEOUT > sleepCheck)
+								inOrderSegments.wait(sleepCheck);
+							else
+								inOrderSegments.wait((long)SystemConfiguration.SHORT_TIMEOUT);
+						}
+						} catch(InterruptedException e1) {
+							System.out.println("awake: interrupted! " + (sleep));
+							//break;
+						}
+						//inOrderSegments.wait(_timeout);
+						sleep += System.currentTimeMillis() - start;
+						System.out.println("slept for "+sleep+" ms total");
+						if(haveSegmentBuffered(number))
+							break;
+						else {
+							attemptHoleFilling(number);
+						}
+							
+						//co = getPipelineSegment(number);
+						//if(co!=null)
+						//	break;
+					}
+					//}
+					System.out.println("awake: done sleeping " + (sleep));
+			//} catch (InterruptedException e1) {
 				// interrupted... maybe the data is here!
-				Log.finer("awake: interrupted! {0}", sleep);
-			}
-
+			//	System.out.println("awake: interrupted! " + (sleep));
+				//when I am done, make sure I wake the processing thread back up.
+			//	inOrderSegments.notifyAll();
+			//}
 			waitingThread = null;
 			waitingSegment = -1;
-
+			//if (co == null)
 			co = getPipelineSegment(number);
-			if (co != null) {
-				Log.finer("we had segment {0} already!!", number);
-				return co;
-			} else {
-				Log.finer("we don't have segment {0} pipelined... what happened?", number);
-			}
-			String exceptionMsg = "Cannot get segment " + number + " of file "+ _baseName + " expected segment: "+ SegmentationProfile.segmentName(_baseName, number);
-			Log.info(exceptionMsg);
-			throw new IOException(exceptionMsg);
+		}
+		
+		synchronized(readerReady) {
+			//readerReady.notifyAll();
+			readerReady = "-1";
+			inOrderSegments.notifyAll();
+		}
+		
+		if (co != null) {
+			System.out.println("we had segment " + number + " already!!");
+			return co;
+		} else {
+			System.out.println("we don't have segment " + number + " pipelined... what happened?");
+		}
+		
+		Log.info("Cannot get segment " + number + " of file {0} expected segment: {1}.", _baseName, SegmentationProfile.segmentName(_baseName, number));
+		throw new IOException("Cannot get segment " + number + " of file "+ _baseName + " expected segment: "+ SegmentationProfile.segmentName(_baseName, number));
 		}
 	}
 
@@ -1555,4 +2008,17 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	public long length() throws IOException {
 		return -1;
 	}
+	
+	private class IncomingSegment {
+		public ContentObject content;
+		public Interest interest;
+		public long segmentNumber;
+		
+		private IncomingSegment(ContentObject co, Interest i) {
+			content = co;
+			interest = i;
+			segmentNumber = SegmentationProfile.getSegmentNumber(co.name());
+		}
+	}
+	
 }

@@ -86,6 +86,15 @@ public class SystemConfiguration {
 	public static int PIPELINE_SIZE = 4;
 	
 	/**
+	 * Pipeline segment attempts for pipeline in CCNAbstractInputStream
+	 * Default is 5
+	 */
+	protected static final String PIPELINE_ATTEMPTS_PROPERTY = "org.ccnx.PipelineAttempts";
+	protected static final String PIPELINE_ATTEMPTS_ENV_VAR = "JAVA_PIPELINE_ATTEMPTS";
+	public static int PIPELINE_SEGMENTATTEMPTS = 5;
+	
+	
+	/**
 	 * System operation timeout. Very long timeout used to wait for system events
 	 * such as stopping Daemons.
 	 */
@@ -237,6 +246,16 @@ public class SystemConfiguration {
 		}
 	}
 	
+	static {
+		// Allow override of default pipeline size for CCNAbstractInputStream
+		try {
+			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(retrievePropertyOrEvironmentVariable(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
+			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
+		} catch (NumberFormatException e) {
+			System.err.println("The PipelineAttempts must be an integer.");
+			throw e;
+		}
+	}
 
 	public static String getLocalHost() {
 //		InetAddress.getLocalHost().toString(),

@@ -78,6 +78,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected Integer _scope;
 	protected byte[] _nonce;
 
+	public long userTime;
+	
 	/**
 	 * TODO: DKS figure out how to handle encoding faster,
 	 * and how to handle shorter version of names without
