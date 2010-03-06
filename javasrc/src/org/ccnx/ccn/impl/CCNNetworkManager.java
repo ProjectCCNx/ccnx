@@ -1319,19 +1319,21 @@ public class CCNNetworkManager implements Runnable {
 	} /* PublisherPublicKeyDigest fetchCCNDId() */
 	
 	/**
-	 * Reregister all current prefixes with ccnd after ccnd goes down
+	 * Reregister all current prefixes with ccnd after ccnd goes down and then comes back up
 	 */
 	private void reRegisterPrefixes() throws CCNDaemonException {
 		if (_timersSetup)
 			heartbeat();
 		TreeMap<ContentName, RegisteredPrefix> newPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
-		for (ContentName prefix : _registeredPrefixes.keySet()) {
-			ForwardingEntry entry = _prefixMgr.selfRegisterPrefix(prefix);
-			RegisteredPrefix newPrefixEntry = new RegisteredPrefix(entry);
-			newPrefixEntry._refCount = _registeredPrefixes.get(prefix)._refCount;
-			_registeredPrefixes.put(prefix, newPrefixEntry);
+		synchronized (_registeredPrefixes) {
+			for (ContentName prefix : _registeredPrefixes.keySet()) {
+				ForwardingEntry entry = _prefixMgr.selfRegisterPrefix(prefix);
+				RegisteredPrefix newPrefixEntry = new RegisteredPrefix(entry);
+				newPrefixEntry._refCount = _registeredPrefixes.get(prefix)._refCount;
+				_registeredPrefixes.put(prefix, newPrefixEntry);
+			}
+			_registeredPrefixes = newPrefixes;
 		}
-		_registeredPrefixes = newPrefixes;
 	}
 
 	
