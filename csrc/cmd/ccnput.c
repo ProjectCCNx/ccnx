@@ -86,7 +86,7 @@ incoming_interest(
             break;
         case CCN_UPCALL_INTEREST:
             if (ccn_content_matches_interest(cob->buf, cob->length,
-                    0, NULL,
+                    1, NULL,
                     info->interest_ccnb, info->pi->offset[CCN_PI_E],
                     info->pi)) {
                 res = ccn_put(info->h, cob->buf, cob->length);
