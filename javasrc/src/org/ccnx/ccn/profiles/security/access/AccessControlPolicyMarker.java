@@ -46,32 +46,32 @@ import org.ccnx.ccn.protocol.ContentObject;
  * This class currently holds no data - it will be extended to hold access control 
  * configuration information for that namespace.
  */
-public class Root extends GenericXMLEncodable implements PolicyMarker {
+public class AccessControlPolicyMarker extends GenericXMLEncodable implements PolicyMarker {
 	
 	ProfileName _profileName;
 	ArrayList<ParameterizedName> _parameterizedNames = new ArrayList<ParameterizedName>();
 	KeyValueSet _parameters;
 	
-	public static class RootObject extends CCNEncodableObject<Root> {
+	public static class RootObject extends CCNEncodableObject<AccessControlPolicyMarker> {
 
 		public RootObject(ContentName name, CCNHandle handle) throws IOException {
-			super(Root.class, true, name, handle);
+			super(AccessControlPolicyMarker.class, true, name, handle);
 		}
 
-		public RootObject(ContentName name, Root r, SaveType saveType, CCNHandle handle) throws IOException {
-			super(Root.class, true, name, r, saveType, handle);
+		public RootObject(ContentName name, AccessControlPolicyMarker r, SaveType saveType, CCNHandle handle) throws IOException {
+			super(AccessControlPolicyMarker.class, true, name, r, saveType, handle);
 		}
 
 		public RootObject(ContentObject firstBlock, CCNHandle handle)
 				throws ContentDecodingException, IOException {
-			super(Root.class, true, firstBlock, handle);
+			super(AccessControlPolicyMarker.class, true, firstBlock, handle);
 		}
 
 		public ContentName namespace() {
 			return _baseName.copy(_baseName.count()-2);
 		}
 		
-		public Root root() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
+		public AccessControlPolicyMarker root() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 	}
 
 	public static class ProfileName extends ContentName {
@@ -100,24 +100,24 @@ public class Root extends GenericXMLEncodable implements PolicyMarker {
 	 * @throws ConfigurationException 
 	 */
 	public static void create(ContentName name, ACL acl, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException {
-		Root r = new Root();
+		AccessControlPolicyMarker r = new AccessControlPolicyMarker();
 		RootObject ro = new RootObject(AccessControlProfile.accessRoot(name), r, saveType, handle);
 		ro.save();
 		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
 		aclo.save();
 	}
 	
-	public Root(ContentName profileName) {
+	public AccessControlPolicyMarker(ContentName profileName) {
 		_profileName = new ProfileName(profileName);
 	}
 	
-	public Root(ContentName profileName, ArrayList<ParameterizedName> parameterizedNames, KeyValueSet parameters) {
+	public AccessControlPolicyMarker(ContentName profileName, ArrayList<ParameterizedName> parameterizedNames, KeyValueSet parameters) {
 		this(profileName);
 		_parameterizedNames.addAll(parameterizedNames);
 		_parameters = parameters;
 	}
 
-	public Root() {}
+	public AccessControlPolicyMarker() {}
 	
 	public void addParameterizedName(ParameterizedName name) { _parameterizedNames.add(name); }
 	

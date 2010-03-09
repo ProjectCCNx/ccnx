@@ -60,8 +60,8 @@ import org.ccnx.ccn.profiles.search.Pathfinder.SearchResults;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
-import org.ccnx.ccn.profiles.security.access.Root;
-import org.ccnx.ccn.profiles.security.access.Root.RootObject;
+import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker;
+import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker.RootObject;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
@@ -265,7 +265,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 			ParameterizedName pName = new ParameterizedName("Group", gStorage, null);
 			parameterizedNames.add(pName);
 		}
-		Root r = new Root(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), parameterizedNames, null);
+		AccessControlPolicyMarker r = new AccessControlPolicyMarker(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), parameterizedNames, null);
 		RootObject policyInformation = new RootObject(namespace, r, SaveType.REPOSITORY, handle);
 		initialize(policyInformation, handle);				
 	}

@@ -35,7 +35,7 @@ import org.ccnx.ccn.profiles.search.Pathfinder;
 import org.ccnx.ccn.profiles.search.Pathfinder.SearchResults;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.Root.RootObject;
+import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker.RootObject;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
