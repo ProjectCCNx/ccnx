@@ -14,7 +14,7 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
-package org.ccnx.ccn.profiles.namespace;
+package org.ccnx.ccn.profiles.security.access;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,7 +33,7 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.KeyValueSet;
-import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
+import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;

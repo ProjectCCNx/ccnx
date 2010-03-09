@@ -28,7 +28,7 @@ import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
-import org.ccnx.ccn.profiles.namespace.Root.RootObject;
+import org.ccnx.ccn.profiles.security.access.Root.RootObject;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
