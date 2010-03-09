@@ -3544,11 +3544,7 @@ process_input(struct ccnd_handle *h, int fd)
                 face->flags |= CCN_FACE_GG;
         }
         dres = ccn_skeleton_decode(d, buf, res);
-        if (0) ccnd_msg(h, "ccn_skeleton_decode of %d bytes accepted %d",
-                        (int)res, (int)dres);
         while (d->state == 0) {
-            if (0) ccnd_msg(h, "%lu byte msg received on %d",
-                (unsigned long)(d->index - msgstart), fd);
             process_input_message(h, source,
                                   face->inbuf->buf + msgstart, 
                                   d->index - msgstart,
@@ -3561,18 +3557,17 @@ process_input(struct ccnd_handle *h, int fd)
             dres = ccn_skeleton_decode(d,
                     face->inbuf->buf + d->index,
                     res = face->inbuf->length - d->index);
-            if (0) ccnd_msg(h, "  ccn_skeleton_decode of %d bytes accepted %d",
-                            (int)res, (int)dres);
         }
         if ((face->flags & CCN_FACE_DGRAM) != 0) {
-            ccnd_msg(h, "protocol error, discarding %d bytes",
-                (int)(face->inbuf->length - d->index));
+            ccnd_msg(h, "protocol error on face %u, discarding %u bytes",
+                source->faceid,
+                (unsigned)(face->inbuf->length));
             face->inbuf->length = 0;
             /* XXX - should probably ignore this source for a while */
             return;
         }
         else if (d->state < 0) {
-            ccnd_msg(h, "protocol error on fd %d", fd);
+            ccnd_msg(h, "protocol error on face %u", source->faceid);
             shutdown_client_fd(h, fd);
             return;
         }
