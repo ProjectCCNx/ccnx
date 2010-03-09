@@ -6,6 +6,8 @@ import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.logging.Level;
 
 import javax.crypto.NoSuchPaddingException;
@@ -20,6 +22,7 @@ import org.ccnx.ccn.impl.security.crypto.KDFContentKeys;
 import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
@@ -28,13 +31,50 @@ import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
-import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker.RootObject;
+import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker.AccessControlPolicyMarkerObject;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 public abstract class AccessControlManager {
+
+	/**
+	 * Track available access control profiles.
+	 */
+	protected static Map<ContentName, Class<? extends AccessControlManager>> _accessControlManagerTypes = 
+		new TreeMap<ContentName, Class<? extends AccessControlManager>>();
+
+	static {
+		try {
+			registerAccessControlManagerType(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), 
+																GroupAccessControlManager.class);
+		} catch (MalformedContentNameStringException e) {
+			throw new RuntimeException("Cannot parse built-in profile name: " + GroupAccessControlManager.PROFILE_NAME_STRING);
+		}
+	}
+	
+	public static synchronized void registerAccessControlManagerType(ContentName profileName, 
+																	 Class<? extends AccessControlManager> acmClazz) {
+		_accessControlManagerTypes.put(profileName, acmClazz);
+	}
+
+	public static AccessControlManager 
+			createAccessControlManager(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ContentNotReadyException, ContentGoneException, ErrorStateException, InstantiationException, IllegalAccessException, ConfigurationException, IOException {
+		
+		Class<? extends AccessControlManager> acmClazz = null;
+		synchronized(NamespaceManager.class) {
+			acmClazz = _accessControlManagerTypes.get(policyInformation.policy().profileName());
+		}
+		if (null != acmClazz) {
+			AccessControlManager acm = (AccessControlManager)acmClazz.newInstance();
+			acm.initialize(policyInformation, handle);
+			return acm;
+		}
+		return null;
+	}
 
 	/**
 	 * Default data key length in bytes. No real reason this can't be bumped up to 32. It
@@ -58,7 +98,7 @@ public abstract class AccessControlManager {
 	 */
 	public AccessControlManager() {}
 	
-	public abstract boolean initialize(RootObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException;
+	public abstract boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException;
 
 	/**
 	 * Labels for deriving various types of keys.

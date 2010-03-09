@@ -45,20 +45,9 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  **/
 public class NamespaceManager {
 	
-	protected static Map<ContentName, Class<? extends AccessControlManager>> _accessControlManagerTypes = 
-				new TreeMap<ContentName, Class<? extends AccessControlManager>>();
-
 	protected static Set<AccessControlManager> _acmList = new HashSet<AccessControlManager>(); 
 	protected static Set<ContentName> _searchedPathCache = new HashSet<ContentName>();
 	
-	static {
-		try {
-			NamespaceManager.registerAccessControlManagerType(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), 
-																GroupAccessControlManager.class);
-		} catch (MalformedContentNameStringException e) {
-			throw new RuntimeException("Cannot parse built-in profile name: " + GroupAccessControlManager.PROFILE_NAME_STRING);
-		}
-	}
 	
 	public static AccessControlManager createAccessControlManager(RootObject policyInformation, CCNHandle handle) throws ContentNotReadyException, ContentGoneException, ErrorStateException, InstantiationException, IllegalAccessException, ConfigurationException, IOException {
 		Class<? extends AccessControlManager> acmClazz = null;
@@ -71,11 +60,6 @@ public class NamespaceManager {
 			return acm;
 		}
 		return null;
-	}
-	
-	public static synchronized void registerAccessControlManagerType(ContentName profileName, 
-																	 Class<? extends AccessControlManager> acmClazz) {
-		_accessControlManagerTypes.put(profileName, acmClazz);
 	}
 
 	/**
