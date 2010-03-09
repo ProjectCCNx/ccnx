@@ -2105,9 +2105,7 @@ Finish:
  *         FaceInstance including faceid;
  *         returns NULL for any error.
  *
- * Is is permitted for the face to already exist.
- * A newly created face will have no registered prefixes, and so will not
- * receive any traffic.
+ * Is is an error if the face does not exist.
  */
 struct ccn_charbuf *
 ccnd_req_destroyface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
