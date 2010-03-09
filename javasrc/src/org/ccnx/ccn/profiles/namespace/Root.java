@@ -75,6 +75,8 @@ public class Root extends GenericXMLEncodable {
 
 	public static class ProfileName extends ContentName {
 		
+		private static final long serialVersionUID = 7724253492801976571L;
+
 		public ProfileName(ContentName other) {
 			super(other);
 		}
