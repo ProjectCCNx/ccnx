@@ -34,6 +34,7 @@ import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.profiles.namespace.ParameterizedName;
+import org.ccnx.ccn.profiles.namespace.PolicyMarker;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
@@ -45,7 +46,7 @@ import org.ccnx.ccn.protocol.ContentObject;
  * This class currently holds no data - it will be extended to hold access control 
  * configuration information for that namespace.
  */
-public class Root extends GenericXMLEncodable {
+public class Root extends GenericXMLEncodable implements PolicyMarker {
 	
 	ProfileName _profileName;
 	ArrayList<ParameterizedName> _parameterizedNames = new ArrayList<ParameterizedName>();
