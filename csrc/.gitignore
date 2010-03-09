@@ -1,4 +1,5 @@
 *.out
+!include
 00MANIFEST
 ccnd/anything.ccnb
 ccnd/Makefile
@@ -32,6 +33,7 @@ cmd/ccnls
 cmd/ccnput
 cmd/ccnrm
 cmd/ccnsendchunks
+cmd/ccnseqwriter
 cmd/ccnslurp
 cmd/ccntimestamps
 cmd/dataresponsetest
