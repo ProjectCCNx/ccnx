@@ -61,7 +61,7 @@ import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker;
-import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker.RootObject;
+import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker.AccessControlPolicyMarkerObject;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
@@ -266,18 +266,18 @@ public class GroupAccessControlManager extends AccessControlManager {
 			parameterizedNames.add(pName);
 		}
 		AccessControlPolicyMarker r = new AccessControlPolicyMarker(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), parameterizedNames, null);
-		RootObject policyInformation = new RootObject(namespace, r, SaveType.REPOSITORY, handle);
+		AccessControlPolicyMarkerObject policyInformation = new AccessControlPolicyMarkerObject(namespace, r, SaveType.REPOSITORY, handle);
 		initialize(policyInformation, handle);				
 	}
 	
 	@Override
-	public boolean initialize(RootObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException {
+	public boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException {
 		// set up information based on contents of policy
 		// also need a static method/command line program to create a Root with the right types of information
 		// for this access control manager type
 		_namespace = policyInformation.getBaseName();
 
-		ArrayList<ParameterizedName> parameterizedNames = policyInformation.root().parameterizedNames();
+		ArrayList<ParameterizedName> parameterizedNames = policyInformation.policy().parameterizedNames();
 		for (ParameterizedName pName: parameterizedNames) {
 			String label = pName.label();
 			if (label.equals("Group")) {

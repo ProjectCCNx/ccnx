@@ -52,17 +52,17 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 	ArrayList<ParameterizedName> _parameterizedNames = new ArrayList<ParameterizedName>();
 	KeyValueSet _parameters;
 	
-	public static class RootObject extends CCNEncodableObject<AccessControlPolicyMarker> {
+	public static class AccessControlPolicyMarkerObject extends CCNEncodableObject<AccessControlPolicyMarker> {
 
-		public RootObject(ContentName name, CCNHandle handle) throws IOException {
+		public AccessControlPolicyMarkerObject(ContentName name, CCNHandle handle) throws IOException {
 			super(AccessControlPolicyMarker.class, true, name, handle);
 		}
 
-		public RootObject(ContentName name, AccessControlPolicyMarker r, SaveType saveType, CCNHandle handle) throws IOException {
+		public AccessControlPolicyMarkerObject(ContentName name, AccessControlPolicyMarker r, SaveType saveType, CCNHandle handle) throws IOException {
 			super(AccessControlPolicyMarker.class, true, name, r, saveType, handle);
 		}
 
-		public RootObject(ContentObject firstBlock, CCNHandle handle)
+		public AccessControlPolicyMarkerObject(ContentObject firstBlock, CCNHandle handle)
 				throws ContentDecodingException, IOException {
 			super(AccessControlPolicyMarker.class, true, firstBlock, handle);
 		}
@@ -71,7 +71,7 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 			return _baseName.copy(_baseName.count()-2);
 		}
 		
-		public AccessControlPolicyMarker root() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
+		public AccessControlPolicyMarker policy() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 	}
 
 	public static class ProfileName extends ContentName {
@@ -101,7 +101,7 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 	 */
 	public static void create(ContentName name, ACL acl, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException {
 		AccessControlPolicyMarker r = new AccessControlPolicyMarker();
-		RootObject ro = new RootObject(AccessControlProfile.accessRoot(name), r, saveType, handle);
+		AccessControlPolicyMarkerObject ro = new AccessControlPolicyMarkerObject(AccessControlProfile.accessRoot(name), r, saveType, handle);
 		ro.save();
 		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
 		aclo.save();
