@@ -1101,6 +1101,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 			keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
 			
 			// continue waiting for children as long as new children are found before the timeout expires.
+			// TODO stop waiting for children as soon as we can get something we can use
 			boolean continueWaitingForChildren = true;
 			while (continueWaitingForChildren) {
 				continueWaitingForChildren = keyDirectory.waitForNewChildren(SystemConfiguration.LONG_TIMEOUT);
