@@ -58,6 +58,8 @@ public class SecureKeyCache {
 	private TreeMap<byte [], byte []> _privateKeyIdentifierMap = new TreeMap<byte [], byte[]>(byteArrayComparator);
 	/** Map the digest of a key to its name */
 	private TreeMap<byte [], ContentName> _keyNameMap = new TreeMap<byte [], ContentName>(byteArrayComparator);
+	/** Map the name of a key to its digest */
+	private TreeMap<ContentName, byte []> _nameKeyMap = new TreeMap<ContentName, byte []>();
 	
 	public SecureKeyCache() {
 	}
@@ -151,13 +153,25 @@ public class SecureKeyCache {
 		}
 		return false;
 	}
+	
+	/**
+	 * As the map from name to content is not unique, this might not give you a
+	 * definite answer, and you should still check the digest.
+	 * @param keyName
+	 * @return
+	 */
+	public boolean containsKey(ContentName keyName) {
+		if (_nameKeyMap.containsKey(keyName))
+			return true;
+		return false;
+	}
 
 	/**
 	 * Returns the name of a key specified by its digest
 	 * @param keyIdentifier the digest of the key.
 	 * @return the name of the key.
 	 */
-	public ContentName getKeyName(byte [] keyIdentifier) {
+	public ContentName getNameForKey(byte [] keyIdentifier) {
 		return _keyNameMap.get(keyIdentifier);
 	}
 	
@@ -166,8 +180,18 @@ public class SecureKeyCache {
 	 * @param key the key
 	 * @return the name
 	 */
-	public ContentName getKeyName(Key key) {
-		return getKeyName(getKeyIdentifier(key));
+	public ContentName getNameForKey(Key key) {
+		return getNameForKey(getKeyIdentifier(key));
+	}
+	
+	/**
+	 * Get the key ID associated with a name, if we have one. Currently store
+	 * keys under versioned names -- might be nice to effectively search
+	 * over versions of a key... This can be used to look up the key, allowing
+	 * the caller to be sure they have the right key.
+	 */
+	public byte [] getKeyID(ContentName versionedName) {
+		return _nameKeyMap.get(versionedName);
 	}
 
 	/**
@@ -201,8 +225,10 @@ public class SecureKeyCache {
 	public void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyMap.put(publicKeyIdentifier, pk);
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
-		if (null != keyName)
+		if (null != keyName) {
 			_keyNameMap.put(publicKeyIdentifier, keyName);
+			_nameKeyMap.put(keyName, publicKeyIdentifier);
+		}
 	}
 
 	/**
@@ -225,6 +251,7 @@ public class SecureKeyCache {
 		_keyMap.put(id, key);
 		if (null != name) {
 			_keyNameMap.put(id, name);
+			_nameKeyMap.put(name, id);
 		}
 	}
 	

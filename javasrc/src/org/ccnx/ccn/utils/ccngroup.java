@@ -32,7 +32,7 @@ import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
-import org.ccnx.ccn.profiles.security.access.group.MembershipList;
+import org.ccnx.ccn.profiles.security.access.group.MembershipListObject;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class ccngroup {
@@ -157,7 +157,7 @@ public class ccngroup {
 			GroupManager gm = acm.groupManager();
 			Thread.sleep(TIMEOUT);
 			Group g = gm.getGroup(groupName);
-			MembershipList ml = g.membershipList();
+			MembershipListObject ml = g.membershipList();
 			LinkedList<Link> lll = ml.contents();
 			System.out.println("The group " + groupName + " has " + lll.size() + " members:");
 			for (Link l: lll) {

@@ -71,7 +71,7 @@ public class Group {
 	
 	private ContentName _groupNamespace;
 	private PublicKeyObject _groupPublicKey;
-	private MembershipList _groupMembers; 
+	private MembershipListObject _groupMembers; 
 	private String _groupFriendlyName;
 	private CCNHandle _handle;
 	private GroupManager _groupManager;
@@ -125,7 +125,7 @@ public class Group {
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
-	Group(ContentName namespace, String groupFriendlyName, MembershipList members, 
+	Group(ContentName namespace, String groupFriendlyName, MembershipListObject members, 
 					CCNHandle handle, GroupManager manager) 
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException {	
 		_handle = handle;
@@ -241,12 +241,12 @@ public class Group {
 	 * @throws ContentDecodingException
 	 * @throws IOException
 	 */
-	public MembershipList membershipList() throws ContentDecodingException, IOException { 
+	public MembershipListObject membershipList() throws ContentDecodingException, IOException { 
 		if (null == _groupMembers) {
 			// Read constructor. Synchronously updates. 
 			// Throws an exception if no membership list is found or upon error.
 			// Reading membership list from network. Needs error handling.
-			_groupMembers = new MembershipList(GroupAccessControlProfile.groupMembershipListName(_groupNamespace, _groupFriendlyName), _handle);
+			_groupMembers = new MembershipListObject(GroupAccessControlProfile.groupMembershipListName(_groupNamespace, _groupFriendlyName), _handle);
 			// Keep dynamically updating.
 			_groupMembers.updateInBackground(true);
 			_groupMembers.setupSave(SaveType.REPOSITORY);
@@ -344,7 +344,8 @@ public class Group {
 		// need to figure out if we need to know private key; if we do and we don't, throw access denied.
 		// We're deleting anyone that exists
 		this._groupManager = groupManager;
-		MembershipList ml = membershipList(); // force retrieval if haven't already.
+		// TODO don't pull ML twice -- either get it and hand it to modify or let modify get it
+		MembershipListObject ml = membershipList(); // force retrieval if haven't already.
 		if (ml.available() && !ml.isGone() && (ml.membershipList().contents().size() > 0)) {
 			modify(newMembers, ml.membershipList().contents());
 		} else {
@@ -369,7 +370,7 @@ public class Group {
 	 * @throws InvalidKeyException 
 	 * @throws NoSuchAlgorithmException 
 	 */
-	private void newGroupPublicKeyNonRecursive(MembershipList ml) 
+	private void newGroupPublicKeyNonRecursive(MembershipListObject ml) 
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, NoSuchAlgorithmException{
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		oldPrivateKeyDirectory.waitForUpdates(SystemConfiguration.MEDIUM_TIMEOUT);
@@ -409,7 +410,7 @@ public class Group {
 	 * @throws InvalidKeyException 
 	 * @throws NoSuchAlgorithmException 
 	 */
-	public void newGroupPublicKey(MembershipList ml) 
+	public void newGroupPublicKey(MembershipListObject ml) 
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, NoSuchAlgorithmException {
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		oldPrivateKeyDirectory.waitForChildren();
@@ -455,7 +456,7 @@ public class Group {
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException
 	 */	
-	public Key createGroupPublicKey(MembershipList ml) 
+	public Key createGroupPublicKey(MembershipListObject ml) 
 			throws ContentEncodingException, IOException, ConfigurationException, InvalidKeyException {
 		
 		KeyPairGenerator kpg = null;

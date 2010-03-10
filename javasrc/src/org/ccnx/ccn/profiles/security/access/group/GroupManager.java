@@ -191,8 +191,8 @@ public class GroupManager {
 			return existingGroup;
 		} else {
 			// Need to make key pair, directory, and store membership list.
-			MembershipList ml = 
-				new MembershipList(
+			MembershipListObject ml = 
+				new MembershipListObject(
 						GroupAccessControlProfile.groupMembershipListName(_groupStorage.prefix(), groupFriendlyName), 
 						new Collection(newMembers), SaveType.REPOSITORY, _handle);
 			Group newGroup =  new Group(_groupStorage.prefix(), groupFriendlyName, ml, _handle, this);
@@ -261,7 +261,7 @@ public class GroupManager {
 	 * @throws ContentDecodingException 
 	 */
 	public boolean amCurrentGroupMember(Group group) throws ContentDecodingException, IOException {
-		MembershipList ml = group.membershipList(); // will update
+		MembershipListObject ml = group.membershipList(); // will update
 		if (Log.isLoggable(Level.FINER)) {
 			Log.finer("amCurrentGroupMember: group {0} has {1} member(s).", group.groupName(), ml.membershipList().size());
 		}
