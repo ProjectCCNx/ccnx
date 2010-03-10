@@ -405,7 +405,7 @@ public abstract class KeyManager {
 	 */
 	public abstract PublicKey getPublicKey(
 			PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator, 
-			long timeout, CCNHandle handle) throws IOException;
+			long timeout) throws IOException;
 
 	/**
 	 * Get the public key for a given publisher, going to the network to retrieve it if necessary.
@@ -416,8 +416,8 @@ public abstract class KeyManager {
 	 * @throws IOException if we run into an error attempting to read the key
 	 */
 	public PublicKey getPublicKey(
-			PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator, CCNHandle handle) throws IOException {
-		return getPublicKey(publisherKeyID, keyLocator, SystemConfiguration.EXTRA_LONG_TIMEOUT, handle);
+			PublisherPublicKeyDigest publisherKeyID, KeyLocator keyLocator) throws IOException {
+		return getPublicKey(publisherKeyID, keyLocator, SystemConfiguration.EXTRA_LONG_TIMEOUT);
 	}
 	
 	/**
@@ -432,7 +432,7 @@ public abstract class KeyManager {
 	 * @throws IOException if we run into an error attempting to read the key
 	 */
 	public abstract PublicKeyObject getPublicKeyObject(
-			PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout, CCNHandle handle) throws IOException;
+			PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException;
 
 	/**
 	 * Allow subclasses to specialize key publication, if any.
