@@ -364,6 +364,20 @@ Finish:
     return(res);
 }
 
+/**
+ * Called by ccnd when a face undergoes a substantive status change that
+ * should be reported to interested parties.
+ */
+void
+ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
+{
+    struct ccn_indexbuf *chface = ccnd->chface;
+    if (chface != NULL) {
+        ccn_indexbuf_set_insert(chface, faceid);
+    }
+    //fprintf(stderr, "ccnd_face_status_change(h, %u)\n", faceid); // XXX - temp
+}
+
 int
 ccnd_internal_client_start(struct ccnd_handle *ccnd)
 {
@@ -399,6 +413,8 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
 void
 ccnd_internal_client_stop(struct ccnd_handle *ccnd)
 {
+    ccnd->facelog = NULL; /* ccn_destroy will free */
+    ccn_indexbuf_destroy(&ccnd->chface);
     ccn_destroy(&ccnd->internal_client);
     if (ccnd->internal_client_refresh != NULL)
         ccn_schedule_cancel(ccnd->sched, ccnd->internal_client_refresh);

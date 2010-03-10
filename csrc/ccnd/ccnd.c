@@ -322,7 +322,9 @@ finalize_face(struct hashtb_enumerator *e)
         ccnd_msg(h, "%s face id %u (slot %u)",
             recycle ? "recycling" : "releasing",
             face->faceid, face->faceid & MAXFACES);
-        /* If face->addr is not NULL, it is our key so don't free it. */
+        if ((face->flags & CCN_FACE_UNDECIDED) == 0)
+            ccnd_face_status_change(h, face->faceid);
+        /* If face->addr is not NULL, it is our key so don't free it. XXX - check this - no longer true? */
     }
     else if (face->faceid != CCN_NOFACEID)
         ccnd_msg(h, "orphaned face %u", face->faceid);
@@ -909,7 +911,10 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
     }
     face->send_fd = socks.sending;
     face->flags |= (CCN_FACE_MCAST | CCN_FACE_DGRAM);
-    face->flags &= ~CCN_FACE_UNDECIDED;
+    if ((face->flags & CCN_FACE_UNDECIDED) != 0) {
+        ccnd_face_status_change(h, face->faceid);
+        face->flags &= ~CCN_FACE_UNDECIDED;
+    }
     ccnd_msg(h, "multicast on fd=%d,%d id=%u",
              face->recv_fd, face->send_fd, face->faceid);
     return(face);
@@ -920,12 +925,14 @@ shutdown_client_fd(struct ccnd_handle *h, int fd)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    struct face *face;
+    struct face *face = NULL;
+    unsigned faceid = CCN_NOFACEID;
     hashtb_start(h->faces_by_fd, e);
     if (hashtb_seek(e, &fd, sizeof(fd), 0) == HT_OLD_ENTRY) {
         face = e->data;
         if (face->recv_fd != fd) abort();
-        if (face->faceid == CCN_NOFACEID) {
+        faceid = face->faceid;
+        if (faceid == CCN_NOFACEID) {
             ccnd_msg(h, "error indication on fd %d ignored", fd);
             hashtb_end(e);
             return;
@@ -934,9 +941,10 @@ shutdown_client_fd(struct ccnd_handle *h, int fd)
         if (face->send_fd != fd)
             close(face->send_fd);
         face->recv_fd = face->send_fd = -1;
-        ccnd_msg(h, "shutdown client fd=%d id=%d", fd, (int)face->faceid);
+        ccnd_msg(h, "shutdown client fd=%d id=%u", fd, faceid);
         ccn_charbuf_destroy(&face->inbuf);
         ccn_charbuf_destroy(&face->outbuf);
+        face = NULL;
     }
     hashtb_delete(e);
     hashtb_end(e);
@@ -1440,13 +1448,10 @@ destroy_face(struct ccnd_handle *h, unsigned faceid)
     int dgram_chk = CCN_FACE_DGRAM | CCN_FACE_MCAST;
     int dgram_want = CCN_FACE_DGRAM;
     
-    ccnd_msg(h, "destroy_face %u", faceid);
     face = face_from_faceid(h, faceid);
     if (face == NULL)
         return(-1);
-    ccnd_msg(h, "destroy_face line %d", __LINE__);
     if ((face->flags & dgram_chk) == dgram_want) {
-        ccnd_msg(h, "destroy_face line %d", __LINE__);
         hashtb_start(h->dgram_faces, e);
         hashtb_seek(e, face->addr, face->addrlen, 0);
         if (e->data == face)
@@ -1456,7 +1461,6 @@ destroy_face(struct ccnd_handle *h, unsigned faceid)
         if (face == NULL)
             return(0);
     }
-    ccnd_msg(h, "destroy_face line %d", __LINE__);
     shutdown_client_fd(h, face->recv_fd);
     face = NULL;
     return(0);
@@ -1914,12 +1918,12 @@ ccnd_reg_uri(struct ccnd_handle *h,
 static void
 register_new_face(struct ccnd_handle *h, struct face *face)
 {
-    int res;
-    if (h->flood && face->faceid != 0 &&
-          (face->flags & CCN_FACE_UNDECIDED) == 0) {
-        res = ccnd_reg_uri(h, "ccnx:/", face->faceid,
-                           CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
-                           0x7FFFFFFF);
+    if (face->faceid != 0 && (face->flags & CCN_FACE_UNDECIDED) == 0) {
+        ccnd_face_status_change(h, face->faceid);
+        if (h->flood)
+            ccnd_reg_uri(h, "ccnx:/", face->faceid,
+                         CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
+                         0x7FFFFFFF);
     }
 }
 
@@ -3491,6 +3495,7 @@ process_input(struct ccnd_handle *h, int fd)
             face->flags &= ~CCN_FACE_UNDECIDED;
             if ((face->flags & CCN_FACE_LOOPBACK) != 0)
                 face->flags |= CCN_FACE_GG;
+            ccnd_face_status_change(h, face->faceid);
         }
         dres = ccn_skeleton_decode(d, buf, res);
         while (d->state == 0) {

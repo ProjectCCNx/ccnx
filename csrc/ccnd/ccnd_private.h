@@ -35,6 +35,7 @@
 #include <ccn/coding.h>
 #include <ccn/reg_mgmt.h>
 #include <ccn/schedule.h>
+#include <ccn/seqwriter.h>
 
 /*
  * These are defined in other ccn headers, but the incomplete types suffice
@@ -132,6 +133,8 @@ struct ccnd_handle {
     struct ccn *internal_client;    /**< internal client */
     struct ccn_keystore *internal_keys; /**< the internal client's keys */
     struct face *face0;             /**< special face for internal client */
+    struct ccn_seqwriter *facelog;  /**< for notices of face status changes */
+    struct ccn_indexbuf *chface;    /**< faceids w/ recent status chnages */
     struct ccn_scheduled_event *internal_client_refresh;
     unsigned data_pause_microsec;   /**< tunable, see choose_face_delay() */
 };
@@ -387,6 +390,7 @@ void shutdown_client_fd(struct ccnd_handle *h, int fd);
 struct ccnd_handle *ccnd_create(const char *, ccnd_logger, void *);
 void ccnd_run(struct ccnd_handle *h);
 void ccnd_destroy(struct ccnd_handle **);
+void ccnd_face_status_change(struct ccnd_handle *, unsigned);
 extern const char *ccnd_usage_message;
 
 #endif
