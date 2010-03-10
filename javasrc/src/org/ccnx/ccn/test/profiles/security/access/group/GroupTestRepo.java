@@ -103,7 +103,7 @@ public class GroupTestRepo {
 			_acm.initializeNamespace(rootACL);
 			
 			// Whose access control manager is this supposed to be?
-			handle.keyManager().rememberAccessControlManager(_acm);
+			_handle.keyManager().rememberAccessControlManager(_acm);
 			
 			_gm = _acm.groupManager();
 			
