@@ -29,6 +29,8 @@ public class ParameterizedName extends GenericXMLEncodable {
 	
 	public static class PrefixName extends ContentName {
 		
+		private static final long serialVersionUID = 5093471560639087706L;
+
 		public PrefixName(ContentName other) {
 			super(other);
 		}
@@ -43,6 +45,8 @@ public class ParameterizedName extends GenericXMLEncodable {
 
 	public static class SuffixName extends ContentName {
 		
+		private static final long serialVersionUID = 3252505381608872546L;
+
 		public SuffixName(ContentName other) {
 			super(other);
 		}

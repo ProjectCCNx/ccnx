@@ -279,8 +279,19 @@ public abstract class AccessControlManager {
 		return _keyCache.containsKey(keyID);
 	}
 	
+	public boolean hasKey(ContentName keyName) {
+		return _keyCache.containsKey(keyName);
+	}
+	
 	protected Key getKey(byte [] desiredKeyIdentifier) {
 		return _keyCache.getKey(desiredKeyIdentifier);
+	}
+
+	protected Key getKey(ContentName keyName) {
+		byte [] keyID = _keyCache.getKeyID(keyName);
+		if (null == keyID)
+			return null;
+		return _keyCache.getKey(keyID);
 	}
 
 	/**

@@ -47,7 +47,6 @@
 #define MUST_VERIFY1   (MUST_VERIFY + 1)
 #define OPER_MASK      0xFF00
 #define OP_PING        0x0000
-#define OP_REG_SELF    0x0100
 #define OP_NEWFACE     0x0200
 #define OP_DESTROYFACE 0x0300
 #define OP_PREFIXREG   0x0400
@@ -127,9 +126,6 @@ ccnd_answer_req(struct ccn_closure *selfp,
         case OP_PING:
             reply_body = ccn_charbuf_create();
             freshness = (info->pi->prefix_comps == info->matched_comps) ? 60 : 5;
-            break;
-        case OP_REG_SELF: 
-            reply_body = ccnd_reg_self(ccnd, final_comp, final_size);
             break;
         case OP_NEWFACE:
             reply_body = ccnd_req_newface(ccnd, final_comp, final_size);
@@ -368,6 +364,20 @@ Finish:
     return(res);
 }
 
+/**
+ * Called by ccnd when a face undergoes a substantive status change that
+ * should be reported to interested parties.
+ */
+void
+ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
+{
+    struct ccn_indexbuf *chface = ccnd->chface;
+    if (chface != NULL) {
+        ccn_indexbuf_set_insert(chface, faceid);
+    }
+    //fprintf(stderr, "ccnd_face_status_change(h, %u)\n", faceid); // XXX - temp
+}
+
 int
 ccnd_internal_client_start(struct ccnd_handle *ccnd)
 {
@@ -383,8 +393,6 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                     &ccnd_answer_req, OP_PING);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/ping",
                     &ccnd_answer_req, OP_PING);
-    ccnd_uri_listen(ccnd, "ccnx:/ccnx/reg/self",
-                    &ccnd_answer_req, OP_REG_SELF + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/newface",
                     &ccnd_answer_req, OP_NEWFACE + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/destroyface",
@@ -405,6 +413,8 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
 void
 ccnd_internal_client_stop(struct ccnd_handle *ccnd)
 {
+    ccnd->facelog = NULL; /* ccn_destroy will free */
+    ccn_indexbuf_destroy(&ccnd->chface);
     ccn_destroy(&ccnd->internal_client);
     if (ccnd->internal_client_refresh != NULL)
         ccn_schedule_cancel(ccnd->sched, ccnd->internal_client_refresh);

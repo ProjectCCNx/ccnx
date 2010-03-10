@@ -51,7 +51,6 @@ import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ForwardingEntry;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
-import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.WirePacket;
 
@@ -1272,11 +1271,9 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 	
-	
 	protected PublisherPublicKeyDigest fetchCCNDId(CCNNetworkManager mgr, KeyManager keyManager) throws IOException {
 			try {
-				Interest interested = new Interest(CCNDaemonProfile.ping);
-				interested.nonce(Interest.generateNonce());
+				Interest interested = new Interest(new ContentName(CCNDaemonProfile.ping, Interest.generateNonce()));
 				interested.scope(1);
 				ContentObject contented = mgr.get(interested, 500);
 				if (null == contented) {
@@ -1302,12 +1299,6 @@ public class CCNNetworkManager implements Runnable {
 			} catch (InterruptedException e) {
 				Log.warningStackTrace(e);
 				throw new IOException(e.getMessage());
-			} catch (MalformedContentNameStringException e) {
-				String reason = e.getMessage();
-				Log.warningStackTrace(e);
-				String msg = ("fetchCCNDId: Unexpected MalformedContentNameStringException in call creating: " + CCNDaemonProfile.ping + " reason: " + reason);
-				Log.severe(msg);
-				throw new IOException(msg);
 			} catch (IOException e) {
 				String reason = e.getMessage();
 				Log.warningStackTrace(e);

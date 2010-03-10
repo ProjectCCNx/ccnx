@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -17,9 +17,20 @@
 
 package org.ccnx.ccn.profiles.ccnd;
 
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+
 public class CCNDaemonProfile {
 	
-	public static final String ping = "ccnx:/ccnx/ping/";
-
+	public static final ContentName ping;
 	
+	static {
+		ContentName tmpPing;
+		try {
+			tmpPing = ContentName.fromURI("ccnx:/ccnx/ping/");
+		} catch (MalformedContentNameStringException e) {
+			tmpPing = null;
+		}
+		ping = tmpPing;
+	}
 }
