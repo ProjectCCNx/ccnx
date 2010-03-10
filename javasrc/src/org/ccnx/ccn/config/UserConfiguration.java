@@ -250,7 +250,7 @@ public class UserConfiguration {
 					throw new RuntimeException("Attempt to configure invalid default user namespace: " + userNamespaceString + "!");
 				}
 			} else {
-				_userNamespace = ContentName.fromNative(userNamespacePrefix(), userName());
+				_userNamespace = userNamespace(userName());
 			}
 		}
 		return _userNamespace; 
