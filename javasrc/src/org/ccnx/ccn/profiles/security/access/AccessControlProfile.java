@@ -12,6 +12,8 @@ public class AccessControlProfile {
 	public static final byte [] ROOT_NAME_BYTES = ContentName.componentParseNative(ROOT_NAME);
 	public static final String DATA_KEY_NAME = "DK";
 	public static final byte [] DATA_KEY_NAME_BYTES = ContentName.componentParseNative(DATA_KEY_NAME);
+	public static final String ACCESS_CONTROL_POLICY_NAME = "AccessControl";
+	public static final byte [] ACCESS_CONTROL_POLICY_NAME_BYTES = ACCESS_CONTROL_POLICY_NAME.getBytes();
 
 	/**
 	 * Used by KeyDirectory
@@ -84,6 +86,15 @@ public class AccessControlProfile {
 			return true;
 		}
 		return false;
+	}
+	
+	/**
+	 * Return the name of the access control policy under a known policy prefix.
+	 * @param policyPrefix
+	 * @return
+	 */
+	public static final ContentName getAccessControlPolicyName(ContentName policyPrefix) {
+		return new ContentName(policyPrefix, ACCESS_CONTROL_POLICY_NAME_BYTES);
 	}
 
 }
