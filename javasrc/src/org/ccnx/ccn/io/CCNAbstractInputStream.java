@@ -47,6 +47,7 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
+import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -596,14 +597,30 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					// base interest isn't there, the the exclude could be.
 				}
 				
+				
 				for (int attempt = 1; attempt < SystemConfiguration.PIPELINE_SEGMENTATTEMPTS; attempt++) {
 					Exclude ex = new Exclude();
 					ex.add(new byte[][]{SegmentationProfile.getSegmentNumberNameComponent(hole+attempt)});
 				
 					i.exclude(ex);
+					
 					Interest toDelete = null;
+					index2 = 0;
+					long excludedSegment = -1;
+					ExcludeComponent ec = null;
 					for(Interest expInt: _sentInterests) {
-						//System.out.println("comparing interests: "+i+" expressed: "+expInt + " = "+ expInt.compareTo(i));
+						
+						if(SegmentationProfile.getSegmentNumber(expInt.name()) == hole) {
+							//this is the interest we want to look at
+							if(expInt.exclude()!=null) {
+								ec = (ExcludeComponent)expInt.exclude().value(0);
+								for (int a = 1; a < SystemConfiguration.PIPELINE_SEGMENTATTEMPTS; a++) {
+									
+								}
+								excludedSegment = SegmentationProfile.getSegmentNumber(ec.getBytes());
+								System.out.println("the excluded number is: " + excludedSegment);
+							}
+						}
 						
 						if (expInt.compareTo(i) == 0 && ex.equals(expInt.exclude())) {
 							System.out.println("we have already done "+attempt+" attempt(s) at holefilling...  try again! expressed: "+expInt);
@@ -623,6 +640,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 							//System.out.println("this is not the interest we are looking for: "+i);
 							//System.out.println("this holefilling interest (attempt "+attempt+") isn't there...  maybe we have tried more!");
 						}
+						index2++;
 					}
 					
 					if(toDelete!=null) {
