@@ -182,7 +182,7 @@ public class Pathfinder implements CCNInterestListener {
 	 */
 	public synchronized Set<ContentName> stopSearch() {
 		HashSet<ContentName> outstandingPrefixes = new HashSet<ContentName>();
-		int cutCount = AccessControlProfile.rootPostfix().count();
+		int cutCount = _postfix.count();
 		ContentName prefixName;
 		
 		for (Interest interest : _outstandingInterests) {
