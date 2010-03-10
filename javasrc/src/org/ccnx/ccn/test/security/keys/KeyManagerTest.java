@@ -27,6 +27,7 @@ import java.util.Random;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.keys.PublicKeyCache;
@@ -91,10 +92,11 @@ public class KeyManagerTest {
 
 		// Important -- make a different key repository, with a separate cache, so when
 		// we retrieve we don't pull from our own cache.
-		PublicKeyCache kr = new PublicKeyCache(km);
-		KeyServer ks = new KeyServer(kr, kr.handle());
+		CCNHandle handle = CCNHandle.open(km);
+		PublicKeyCache kr = new PublicKeyCache();
+		KeyServer ks = new KeyServer(handle);
 		for (int i=0; i < KEY_COUNT; ++i) {
-			ks.publishKey(keyLocs[i].name().name(), pairs[i].getPublic(), km.getDefaultKeyID(), null);
+			ks.serveKey(keyLocs[i].name().name(), pairs[i].getPublic(), km.getDefaultKeyID(), null);
 		}
 
 		Random rand = new Random();
@@ -116,7 +118,7 @@ public class KeyManagerTest {
 		// now we try getting it back..
 		for (int i=0; i < KEY_COUNT; ++i) {
 			System.out.println("Attempting to retrieive key " + i + ":");
-			PublicKey pk = km.getPublicKey(publishers[i], keyLocs[i], km.getPublicKeyCache().handle());
+			PublicKey pk = kr.getPublicKey(publishers[i], keyLocs[i], SystemConfiguration.getDefaultTimeout(), handle);
 			if (null == pk) {
 				System.out.println("..... failed.");
 			} else {
