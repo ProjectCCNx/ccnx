@@ -2790,7 +2790,7 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
         if (face != NULL && faceid != pe->faceid &&
             ((face->flags & checkmask) == checkmask)) {
             k = x->n;
-            ccn_indexbuf_append_element(x, faceid);
+            ccn_indexbuf_set_insert(x, faceid);
             if (x->n > k && (h->debug & 32) != 0)
                 ccnd_msg(h, "at %d adding %u", __LINE__, faceid);
         }
