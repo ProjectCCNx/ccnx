@@ -59,6 +59,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
 
 
 /**
@@ -110,6 +111,11 @@ public class BasicKeyManager extends KeyManager {
 	 * Configuration data
 	 */
 	protected KeyValueSet _configurationData = null;
+	
+	/**
+	 * Handle used by key server and key retrieval.
+	 */
+	protected CCNHandle _handle = null;
 	
 	/**
 	 * Registry of key locators to use. In essence, these are pointers to our
@@ -189,7 +195,8 @@ public class BasicKeyManager extends KeyManager {
 	public synchronized void initialize() throws ConfigurationException, IOException {
 		if (_initialized)
 			return;
-		_publicKeyCache = new PublicKeyCache(handle);
+		_handle = CCNHandle.open(this);
+		_publicKeyCache = new PublicKeyCache();
 		_privateKeyCache = new SecureKeyCache();
 		_keyStoreInfo = loadKeyStore();// uses _keyRepository and _privateKeyCache
 		if (!loadValuesFromKeystore(_keyStoreInfo)) {
@@ -201,15 +208,15 @@ public class BasicKeyManager extends KeyManager {
 		_initialized = true;		
 		// If we haven't been called off, initialize the key server
 		if (UserConfiguration.publishKeys()) {
-			initializeKeyServer(handle);
+			initializeKeyServer(_handle);
 		}
 	}
 	
-	public synchronized void initializeKeyServer(CCNHandle handle) {
+	public synchronized void initializeKeyServer(CCNHandle handle) throws IOException {
 		if (null != _keyServer) {
 			return;
 		}
-		_keyServer = new KeyServer(_publicKeyCache, handle);
+		_keyServer = new KeyServer(handle);
 		_keyServer.serveKey(getDefaultKeyName(getDefaultKeyID()), getDefaultPublicKey(), null, null);
 	}
 	
@@ -221,10 +228,10 @@ public class BasicKeyManager extends KeyManager {
 	 * reopen them when they are next needed.
 	 */
 	public synchronized void close() {
-		if (null != _keyServer) {
-			_keyServer.close();
-		}
+		_handle.close();
 	}
+	
+	public CCNHandle handle() { return _handle; }
 	
 	protected void setPassword(char [] password) {
 		_password = password;
@@ -778,7 +785,7 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public PublicKey getPublicKey(
 			PublisherPublicKeyDigest desiredKeyID, KeyLocator keyLocator, 
-			long timeout, CCNHandle handle) throws IOException {		
+			long timeout) throws IOException {		
 		
 		if (Log.isLoggable(Level.FINER))
 			Log.finer("getPublicKey: retrieving key: " + desiredKeyID + " located at: " + keyLocator);
@@ -786,7 +793,7 @@ public class BasicKeyManager extends KeyManager {
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
 		// or not we should trust it for some reason, we have to get fancy.
-		return getPublicKeyCache().getPublicKey(desiredKeyID, keyLocator, timeout);
+		return getPublicKeyCache().getPublicKey(desiredKeyID, keyLocator, timeout, handle());
 	}
 	
 	/**
@@ -803,7 +810,7 @@ public class BasicKeyManager extends KeyManager {
 	@Override 
 	public PublicKeyObject getPublicKeyObject(
 			PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, 
-			long timeout, CCNHandle handle) throws IOException {
+			long timeout) throws IOException {
 		
 		if( Log.isLoggable(Level.FINER) )
 			Log.finer("getPublicKey: retrieving key: " + desiredKeyID + " located at: " + locator);
@@ -811,7 +818,7 @@ public class BasicKeyManager extends KeyManager {
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
 		// or not we should trust it for some reason, we have to get fancy.
-		return getPublicKeyCache().getPublicKeyObject(desiredKeyID, locator, timeout);
+		return getPublicKeyCache().getPublicKeyObject(desiredKeyID, locator, timeout, handle());
 	}	
 	
 	/**
@@ -883,7 +890,8 @@ public class BasicKeyManager extends KeyManager {
 		if (Log.isLoggable(Level.INFO))
 			Log.info("publishKey: publishing key {0} under specified key name {1}", keyDigest, keyName);
 
-		PublicKeyObject keyObject =  _keyServer.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
+		PublicKeyObject keyObject =  
+			_keyServer.serveKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
 		
 		if (!haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
 			// So once we publish self-signed key object, we store a pointer to that
@@ -912,10 +920,22 @@ public class BasicKeyManager extends KeyManager {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
 		}
-		if (null == keyName) {
-			keyName = getKeyLocator(keyToPublish).name().name();
+		
+		PublicKey theKey = getPublicKeyCache().getPublicKeyFromCache(keyToPublish);
+		if (null == theKey) {
+			throw new InvalidKeyException("Key " + keyToPublish + " not available in cache, cannot publish!");
 		}
-		return _keyServer.publishKeyToRepository(keyName, keyToPublish, null, null);
+		
+		if (null == keyName) {
+			KeyLocator locator = getKeyLocator(keyToPublish);
+			if (locator.type() != KeyLocatorType.NAME) {
+				// can't get a name from here, pull from the default namespace.
+				keyName = getDefaultKeyName(keyToPublish);
+			} else {
+				keyName = locator.name().name();
+			}
+		}
+		return KeyManager.publishKeyToRepository(keyName, theKey, getDefaultKeyID(), getDefaultKeyLocator(), handle());
 	}
 
 	@Override
