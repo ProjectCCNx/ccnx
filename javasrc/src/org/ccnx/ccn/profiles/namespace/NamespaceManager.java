@@ -75,7 +75,7 @@ public class NamespaceManager {
 			_searchedPathCache.addAll(results.getExcluded());
 		}
 		if (null != results.getResult()) {
-			ContentName policyPrefix = results.getResult().name().cut(results.getInterestName().count() + NamespaceProfile.policyPostfix().count());
+			ContentName policyPrefix = results.getResult().name().cut(results.getInterestName().count());
 			_policyControlledNamespaces.add(policyPrefix);
 			return policyPrefix;
 		}
