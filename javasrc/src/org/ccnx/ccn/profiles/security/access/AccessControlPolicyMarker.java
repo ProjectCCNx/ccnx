@@ -33,6 +33,7 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.KeyValueSet;
+import org.ccnx.ccn.profiles.namespace.NamespaceProfile;
 import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.namespace.PolicyMarker;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
@@ -101,8 +102,12 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 	 */
 	public static void create(ContentName name, ACL acl, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException {
 		AccessControlPolicyMarker r = new AccessControlPolicyMarker();
-		AccessControlPolicyMarkerObject ro = new AccessControlPolicyMarkerObject(AccessControlProfile.accessRoot(name), r, saveType, handle);
+
+		ContentName policyPrefix = NamespaceProfile.policyNamespace(name);
+		ContentName policyMarkerName = AccessControlProfile.getAccessControlPolicyName(policyPrefix);
+		AccessControlPolicyMarkerObject ro = new AccessControlPolicyMarkerObject(policyMarkerName, r, saveType, handle);
 		ro.save();
+		
 		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
 		aclo.save();
 	}
@@ -123,8 +128,12 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 	public static void create(ContentName name, ContentName profileName, ACL acl, ArrayList<ParameterizedName> parameterizedNames,
 			KeyValueSet parameters, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException {
 		AccessControlPolicyMarker r = new AccessControlPolicyMarker(profileName, parameterizedNames, parameters);
-		AccessControlPolicyMarkerObject ro = new AccessControlPolicyMarkerObject(name, r, saveType, handle);
+		
+		ContentName policyPrefix = NamespaceProfile.policyNamespace(name);
+		ContentName policyMarkerName = AccessControlProfile.getAccessControlPolicyName(policyPrefix);
+		AccessControlPolicyMarkerObject ro = new AccessControlPolicyMarkerObject(policyMarkerName, r, saveType, handle);
 		ro.save();
+
 		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
 		aclo.save();
 	}	
