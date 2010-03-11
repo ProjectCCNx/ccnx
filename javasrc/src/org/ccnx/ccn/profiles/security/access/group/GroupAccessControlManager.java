@@ -306,13 +306,13 @@ public class GroupAccessControlManager extends AccessControlManager {
 	
 	public GroupManager groupManager(byte[] distinguishingHash) {
 		GroupManager gm = hashToGroupManagerMap.get(distinguishingHash);
-		if (gm == null) Log.severe("Failed to retrieve a group manager with distinguishing hash " + DataUtils.printHexBytes(distinguishingHash));
+		if (gm == null) Log.info("Failed to retrieve a group manager with distinguishing hash " + DataUtils.printHexBytes(distinguishingHash));
 		return gm;
 	}
 	
 	public GroupManager groupManager(ContentName prefixName) {
 		GroupManager gm = prefixToGroupManagerMap.get(prefixName);
-		if (gm == null) Log.severe("GroupAccessControlManager: failed to retrieve a group manager with prefix " + prefixName);
+		if (gm == null) Log.info("GroupAccessControlManager: failed to retrieve a group manager with prefix " + prefixName);
 		return gm;		
 	}
 	
