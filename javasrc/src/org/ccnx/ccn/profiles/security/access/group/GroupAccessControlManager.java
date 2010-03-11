@@ -306,7 +306,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	
 	public GroupManager groupManager(byte[] distinguishingHash) {
 		GroupManager gm = hashToGroupManagerMap.get(distinguishingHash);
-		if (gm == null) Log.severe("Failed to retrieve a group manager with distinguishing hash " + distinguishingHash);
+		if (gm == null) Log.severe("Failed to retrieve a group manager with distinguishing hash " + DataUtils.printHexBytes(distinguishingHash));
 		return gm;
 	}
 	
