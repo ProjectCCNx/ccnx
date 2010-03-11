@@ -107,6 +107,28 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 		aclo.save();
 	}
 	
+	/**
+	 * Set up a part of the namespace to be under access control.
+	 * This method writes the root block and root ACL to a repository.
+	 * @param name The top of the namespace to be under access control
+	 * @param acl The access control list to be used for the root of the
+	 * namespace under access control.
+	 * @param parameterizedNames
+	 * @param parameters
+	 * @param saveType
+	 * @param handle
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
+	public static void create(ContentName name, ContentName profileName, ACL acl, ArrayList<ParameterizedName> parameterizedNames,
+			KeyValueSet parameters, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException {
+		AccessControlPolicyMarker r = new AccessControlPolicyMarker(profileName, parameterizedNames, parameters);
+		AccessControlPolicyMarkerObject ro = new AccessControlPolicyMarkerObject(name, r, saveType, handle);
+		ro.save();
+		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
+		aclo.save();
+	}	
+	
 	public AccessControlPolicyMarker(ContentName profileName) {
 		_profileName = new ProfileName(profileName);
 	}
