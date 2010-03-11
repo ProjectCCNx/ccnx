@@ -241,13 +241,6 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 	
 	public GroupAccessControlManager(ContentName namespace, ContentName[] groupStorage, ContentName[] userStorage, CCNHandle handle) throws ConfigurationException, IOException, MalformedContentNameStringException {
-		if (null == handle) {
-			_handle = CCNHandle.open();
-		} else {
-			_handle = handle;
-		}
-		_keyCache = new SecureKeyCache(_handle.keyManager());
-		
 		initialize(namespace, groupStorage, userStorage, handle);
 	}
 	
@@ -265,6 +258,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 			ParameterizedName pName = new ParameterizedName("Group", gStorage, null);
 			parameterizedNames.add(pName);
 		}
+		if (null == handle) handle = CCNHandle.open();
 		AccessControlPolicyMarker r = new AccessControlPolicyMarker(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), parameterizedNames, null);
 		AccessControlPolicyMarkerObject policyInformation = new AccessControlPolicyMarkerObject(namespace, r, SaveType.REPOSITORY, handle);
 		initialize(policyInformation, handle);				
@@ -272,6 +266,13 @@ public class GroupAccessControlManager extends AccessControlManager {
 	
 	@Override
 	public boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException {
+		if (null == handle) {
+			_handle = CCNHandle.open();
+		} else {
+			_handle = handle;
+		}
+		_keyCache = new SecureKeyCache(_handle.keyManager());
+
 		// set up information based on contents of policy
 		// also need a static method/command line program to create a Root with the right types of information
 		// for this access control manager type
