@@ -53,6 +53,7 @@ import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.namespace.NamespaceProfile;
 import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.search.LatestVersionPathfinder;
 import org.ccnx.ccn.profiles.search.Pathfinder;
@@ -260,7 +261,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		if (null == handle) handle = CCNHandle.open();
 		AccessControlPolicyMarker r = new AccessControlPolicyMarker(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), parameterizedNames, null);
-		AccessControlPolicyMarkerObject policyInformation = new AccessControlPolicyMarkerObject(namespace, r, SaveType.REPOSITORY, handle);
+		ContentName policyPrefix = NamespaceProfile.policyNamespace(namespace);
+		ContentName policyMarkerName = AccessControlProfile.getAccessControlPolicyName(policyPrefix);
+		AccessControlPolicyMarkerObject policyInformation = new AccessControlPolicyMarkerObject(policyMarkerName, r, SaveType.REPOSITORY, handle);
 		initialize(policyInformation, handle);				
 	}
 	
@@ -276,7 +279,10 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// set up information based on contents of policy
 		// also need a static method/command line program to create a Root with the right types of information
 		// for this access control manager type
-		_namespace = policyInformation.getBaseName();
+		int componentCount = policyInformation.getBaseName().count();
+		componentCount -= NamespaceProfile.policyPostfix().count(); 
+		componentCount -= AccessControlProfile.AccessControlPolicyContentName().count();
+		_namespace = policyInformation.getBaseName().cut(componentCount);
 
 		ArrayList<ParameterizedName> parameterizedNames = policyInformation.policy().parameterizedNames();
 		for (ParameterizedName pName: parameterizedNames) {
