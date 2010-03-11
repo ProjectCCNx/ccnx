@@ -322,7 +322,9 @@ finalize_face(struct hashtb_enumerator *e)
         ccnd_msg(h, "%s face id %u (slot %u)",
             recycle ? "recycling" : "releasing",
             face->faceid, face->faceid & MAXFACES);
-        /* If face->addr is not NULL, it is our key so don't free it. */
+        if ((face->flags & CCN_FACE_UNDECIDED) == 0)
+            ccnd_face_status_change(h, face->faceid);
+        /* If face->addr is not NULL, it is our key so don't free it. XXX - check this - no longer true? */
     }
     else if (face->faceid != CCN_NOFACEID)
         ccnd_msg(h, "orphaned face %u", face->faceid);
@@ -909,7 +911,10 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
     }
     face->send_fd = socks.sending;
     face->flags |= (CCN_FACE_MCAST | CCN_FACE_DGRAM);
-    face->flags &= ~CCN_FACE_UNDECIDED;
+    if ((face->flags & CCN_FACE_UNDECIDED) != 0) {
+        ccnd_face_status_change(h, face->faceid);
+        face->flags &= ~CCN_FACE_UNDECIDED;
+    }
     ccnd_msg(h, "multicast on fd=%d,%d id=%u",
              face->recv_fd, face->send_fd, face->faceid);
     return(face);
@@ -920,12 +925,14 @@ shutdown_client_fd(struct ccnd_handle *h, int fd)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    struct face *face;
+    struct face *face = NULL;
+    unsigned faceid = CCN_NOFACEID;
     hashtb_start(h->faces_by_fd, e);
     if (hashtb_seek(e, &fd, sizeof(fd), 0) == HT_OLD_ENTRY) {
         face = e->data;
         if (face->recv_fd != fd) abort();
-        if (face->faceid == CCN_NOFACEID) {
+        faceid = face->faceid;
+        if (faceid == CCN_NOFACEID) {
             ccnd_msg(h, "error indication on fd %d ignored", fd);
             hashtb_end(e);
             return;
@@ -934,9 +941,10 @@ shutdown_client_fd(struct ccnd_handle *h, int fd)
         if (face->send_fd != fd)
             close(face->send_fd);
         face->recv_fd = face->send_fd = -1;
-        ccnd_msg(h, "shutdown client fd=%d id=%d", fd, (int)face->faceid);
+        ccnd_msg(h, "shutdown client fd=%d id=%u", fd, faceid);
         ccn_charbuf_destroy(&face->inbuf);
         ccn_charbuf_destroy(&face->outbuf);
+        face = NULL;
     }
     hashtb_delete(e);
     hashtb_end(e);
@@ -1440,13 +1448,10 @@ destroy_face(struct ccnd_handle *h, unsigned faceid)
     int dgram_chk = CCN_FACE_DGRAM | CCN_FACE_MCAST;
     int dgram_want = CCN_FACE_DGRAM;
     
-    ccnd_msg(h, "destroy_face %u", faceid);
     face = face_from_faceid(h, faceid);
     if (face == NULL)
         return(-1);
-    ccnd_msg(h, "destroy_face line %d", __LINE__);
     if ((face->flags & dgram_chk) == dgram_want) {
-        ccnd_msg(h, "destroy_face line %d", __LINE__);
         hashtb_start(h->dgram_faces, e);
         hashtb_seek(e, face->addr, face->addrlen, 0);
         if (e->data == face)
@@ -1456,7 +1461,6 @@ destroy_face(struct ccnd_handle *h, unsigned faceid)
         if (face == NULL)
             return(0);
     }
-    ccnd_msg(h, "destroy_face line %d", __LINE__);
     shutdown_client_fd(h, face->recv_fd);
     face = NULL;
     return(0);
@@ -1914,54 +1918,13 @@ ccnd_reg_uri(struct ccnd_handle *h,
 static void
 register_new_face(struct ccnd_handle *h, struct face *face)
 {
-    int res;
-    if (h->flood && face->faceid != 0 &&
-          (face->flags & CCN_FACE_UNDECIDED) == 0) {
-        res = ccnd_reg_uri(h, "ccnx:/", face->faceid,
-                           CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
-                           0x7FFFFFFF);
+    if (face->faceid != 0 && (face->flags & CCN_FACE_UNDECIDED) == 0) {
+        ccnd_face_status_change(h, face->faceid);
+        if (h->flood)
+            ccnd_reg_uri(h, "ccnx:/", face->faceid,
+                         CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
+                         0x7FFFFFFF);
     }
-}
-
-// XXX This form is deprecated
-struct ccn_charbuf *
-ccnd_reg_self(struct ccnd_handle *h, const unsigned char *msg, size_t size)
-{
-    struct ccn_parsed_ContentObject pco = {0};
-    struct ccn_indexbuf *comps = ccn_indexbuf_create();
-    int res;
-    struct ccn_charbuf *result = NULL;
-    struct ccn_forwarding_entry forwarding_entry_storage = {0};
-    struct ccn_forwarding_entry *forwarding_entry = &forwarding_entry_storage;
-    
-    res = ccn_parse_ContentObject(msg, size, &pco, comps);
-    if (res >= 0) {
-        // XXX - for now, ignore the body
-        res = ccnd_reg_prefix(h, msg, comps, comps->n - 1, h->interest_faceid,
-                              -1,
-                              60);
-        if (res >= 0) {
-            result = ccn_charbuf_create();
-            forwarding_entry->action = NULL;
-            forwarding_entry->name_prefix = ccn_charbuf_create();
-            ccn_name_init(forwarding_entry->name_prefix);
-            ccn_name_append_components(forwarding_entry->name_prefix,
-                                       msg,
-                                       comps->buf[0],
-                                       comps->buf[comps->n - 1]);
-            forwarding_entry->ccnd_id = h->ccnd_id;
-            forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
-            forwarding_entry->faceid = h->interest_faceid;
-            forwarding_entry->flags = res;
-            forwarding_entry->lifetime = 60;
-            res = ccnb_append_forwarding_entry(result, forwarding_entry);
-            if (res < 0)
-                ccn_charbuf_destroy(&result);
-            ccn_charbuf_destroy(&forwarding_entry->name_prefix);
-        }
-    }
-    ccn_indexbuf_destroy(&comps);
-    return(result);
 }
 
 /**
@@ -2105,64 +2068,54 @@ Finish:
  *         FaceInstance including faceid;
  *         returns NULL for any error.
  *
- * Is is permitted for the face to already exist.
- * A newly created face will have no registered prefixes, and so will not
- * receive any traffic.
+ * Is is an error if the face does not exist.
  */
 struct ccn_charbuf *
 ccnd_req_destroyface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
 {
     struct ccn_parsed_ContentObject pco = {0};
     int res;
+    int at = 0;
     const unsigned char *req;
     size_t req_size;
     struct ccn_charbuf *result = NULL;
     struct ccn_face_instance *face_instance = NULL;
-    //struct face *face = NULL;
     struct face *reqface = NULL;
 
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
-    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
-    if (res < 0)
-        goto Finish;        
+    if (res < 0) { at = __LINE__; goto Finish; }
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
-    if (res < 0)
-        goto Finish;
+    if (res < 0) { at = __LINE__; goto Finish; }
     face_instance = ccn_face_instance_parse(req, req_size);
-    if (face_instance == NULL || face_instance->action == NULL)
-        goto Finish;
-    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    if (face_instance == NULL) { at = __LINE__; goto Finish; }
+    if (face_instance->action == NULL) { at = __LINE__; goto Finish; }
     if (strcmp(face_instance->action, "destroyface") != 0)
-        goto Finish;
-    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+        { at = __LINE__; goto Finish; }
     if (face_instance->ccnd_id_size == sizeof(h->ccnd_id)) {
         if (memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0)
-            goto Finish;
+            { at = __LINE__; goto Finish; }
     }
-    else if (face_instance->ccnd_id_size |= 0)
-        goto Finish;
-    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
-    if (face_instance->faceid == 0)
-        goto Finish;
+    else if (face_instance->ccnd_id_size |= 0) { at = __LINE__; goto Finish; }
+    if (face_instance->faceid == 0) { at = __LINE__; goto Finish; }
     /* consider the source ... */
-    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
     reqface = face_from_faceid(h, h->interest_faceid);
-    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
-        goto Finish;
-    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    if (reqface == NULL) { at = __LINE__; goto Finish; }
+    if ((reqface->flags & CCN_FACE_GG) == 0) { at = __LINE__; goto Finish; }
     res = destroy_face(h, face_instance->faceid);
-    if (res < 0)
-        goto Finish;
-    ccnd_msg(h, "ccnd_req_destroyface line %d", __LINE__);
+    if (res < 0) { at = __LINE__; goto Finish; }
     result = ccn_charbuf_create();
     face_instance->action = NULL;
     face_instance->ccnd_id = h->ccnd_id;
     face_instance->ccnd_id_size = sizeof(h->ccnd_id);
     face_instance->lifetime = 0;
     res = ccnb_append_face_instance(result, face_instance);
-    if (res < 0)
+    if (res < 0) {
+        at = __LINE__;
         ccn_charbuf_destroy(&result);
+    }
 Finish:
+    if (at != 0)
+        ccnd_msg(h, "ccnd_req_destroyface failed (line %d, res %d)", at, res);
     ccn_face_instance_destroy(&face_instance);
     return(result);
 }
@@ -2837,7 +2790,7 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
         if (face != NULL && faceid != pe->faceid &&
             ((face->flags & checkmask) == checkmask)) {
             k = x->n;
-            ccn_indexbuf_append_element(x, faceid);
+            ccn_indexbuf_set_insert(x, faceid);
             if (x->n > k && (h->debug & 32) != 0)
                 ccnd_msg(h, "at %d adding %u", __LINE__, faceid);
         }
@@ -3542,13 +3495,10 @@ process_input(struct ccnd_handle *h, int fd)
             face->flags &= ~CCN_FACE_UNDECIDED;
             if ((face->flags & CCN_FACE_LOOPBACK) != 0)
                 face->flags |= CCN_FACE_GG;
+            ccnd_face_status_change(h, face->faceid);
         }
         dres = ccn_skeleton_decode(d, buf, res);
-        if (0) ccnd_msg(h, "ccn_skeleton_decode of %d bytes accepted %d",
-                        (int)res, (int)dres);
         while (d->state == 0) {
-            if (0) ccnd_msg(h, "%lu byte msg received on %d",
-                (unsigned long)(d->index - msgstart), fd);
             process_input_message(h, source,
                                   face->inbuf->buf + msgstart, 
                                   d->index - msgstart,
@@ -3561,18 +3511,17 @@ process_input(struct ccnd_handle *h, int fd)
             dres = ccn_skeleton_decode(d,
                     face->inbuf->buf + d->index,
                     res = face->inbuf->length - d->index);
-            if (0) ccnd_msg(h, "  ccn_skeleton_decode of %d bytes accepted %d",
-                            (int)res, (int)dres);
         }
         if ((face->flags & CCN_FACE_DGRAM) != 0) {
-            ccnd_msg(h, "protocol error, discarding %d bytes",
-                (int)(face->inbuf->length - d->index));
+            ccnd_msg(h, "protocol error on face %u, discarding %u bytes",
+                source->faceid,
+                (unsigned)(face->inbuf->length));
             face->inbuf->length = 0;
             /* XXX - should probably ignore this source for a while */
             return;
         }
         else if (d->state < 0) {
-            ccnd_msg(h, "protocol error on fd %d", fd);
+            ccnd_msg(h, "protocol error on face %u", source->faceid);
             shutdown_client_fd(h, fd);
             return;
         }

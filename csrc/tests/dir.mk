@@ -34,7 +34,6 @@ ALLTESTS = \
   test_new_provider \
   test_newface \
   test_prefixreg \
-  test_prefix_registration \
   test_selfreg \
   test_short_stuff \
   test_single_ccnd \
