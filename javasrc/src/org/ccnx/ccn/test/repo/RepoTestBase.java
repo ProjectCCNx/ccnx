@@ -40,7 +40,7 @@ public class RepoTestBase extends LibraryTestBase {
 	public static final String TOP_DIR = "ccn.test.topdir";
 	
 	protected static String _topdir;
-	protected static String _fileTestDir = "repotest";
+	protected static String _fileTestDir;
 	protected static String _repoName = "TestRepository";
 	protected static String _globalPrefix = "/parc.com/csl/ccn/repositories";
 	protected static File _fileTest;
@@ -53,13 +53,17 @@ public class RepoTestBase extends LibraryTestBase {
 		_topdir = System.getProperty(TOP_DIR);
 		if (null == _topdir)
 			_topdir = "src";
+		
+		_fileTestDir = System.getProperty("REPO_ROOT");
+		if( null == _fileTestDir )
+			_fileTestDir = "repotest";
 	}
 	
 	protected void checkNameSpace(String contentName, boolean expected) throws Exception {
 		ContentName name = ContentName.fromNative(contentName);
 		ContentName baseName = null;
 		try {
-			baseName = testWriteToRepo(name);
+			baseName = writeToRepo(name);
 		} catch (IOException ex) {
 			if (expected)
 				Assert.fail(ex.getMessage());
@@ -80,7 +84,7 @@ public class RepoTestBase extends LibraryTestBase {
 		input.close();
 	}
 	
-	protected ContentName testWriteToRepo(ContentName name) throws Exception {
+	protected ContentName writeToRepo(ContentName name) throws Exception {
 		RepositoryFileOutputStream ros = new RepositoryFileOutputStream(name, putHandle);	
 		byte [] data = "Testing 1 2 3".getBytes();
 		ros.write(data, 0, data.length);

@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -50,16 +50,20 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-h] [-v] [-V seg] [-x freshness_seconds] [-t type]"
+            "%s [-fhv] [-V seg] [-x freshness_seconds] [-t type]"
             " ccnx:/some/place\n"
             " Reads data from stdin and sends it to the local ccnd"
             " as a single ContentObject under the given URI"
             "\n"
             "  -h - print this message and exit"
             "\n"
+            "  -f - force - send content even if no interest received"
+            "\n"
             "  -v - verbose"
             "\n"
             "  -V seg - generate version, use seg as name suffix"
+            "\n"
+            "  -w seconds - fail after this long if no interest arrives"
             "\n"
             "  -x seconds - set FreshnessSeconds"
             "\n"
@@ -74,12 +78,28 @@ incoming_interest(
     enum ccn_upcall_kind kind,
     struct ccn_upcall_info *info)
 {
-    /*
-     * We only have one ContentObject to send, so we'll just send whether or
-     * not we see an interest.  We still should set up the handler, though,
-     * or the local ccnd would be perfectly justified in
-     * dropping our precious bits on the floor.
-     */
+    struct ccn_charbuf *cob = selfp->data;
+    int res;
+    
+    switch (kind) {
+        case CCN_UPCALL_FINAL:
+            break;
+        case CCN_UPCALL_INTEREST:
+            if (ccn_content_matches_interest(cob->buf, cob->length,
+                    1, NULL,
+                    info->interest_ccnb, info->pi->offset[CCN_PI_E],
+                    info->pi)) {
+                res = ccn_put(info->h, cob->buf, cob->length);
+                if (res >= 0) {
+                    selfp->intdata = 1;
+                    ccn_set_run_timeout(info->h, 0);
+                    return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
+                }
+            }
+            break;
+        default:
+            break;
+    }
     return(CCN_UPCALL_RESULT_OK);
 }
 
@@ -90,7 +110,6 @@ main(int argc, char **argv)
     struct ccn *ccn = NULL;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *temp = NULL;
-    struct ccn_charbuf *templ = NULL;
     long expire = -1;
     int versioned = 0;
     size_t blocksize = 8*1024;
@@ -101,11 +120,16 @@ main(int argc, char **argv)
     enum ccn_content_type content_type = CCN_CONTENT_DATA;
     struct ccn_closure in_interest = {.p=&incoming_interest};
     const char *postver = NULL;
+    int force = 0;
     int verbose = 0;
+    int timeout = -1;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
-    while ((res = getopt(argc, argv, "hlvV:t:x:")) != -1) {
+    while ((res = getopt(argc, argv, "fhlvV:t:w:x:")) != -1) {
         switch (res) {
+            case 'f':
+                force = 1;
+                break;
             case 'l':
                 // NYI - set FinalBlockID to last comp of name
                 break;
@@ -120,6 +144,12 @@ main(int argc, char **argv)
             case 'V':
                 versioned = 1;
                 postver = optarg;
+                break;
+	    case 'w':
+                timeout = atol(optarg);
+                if (timeout <= 0)
+                    usage(progname);
+                timeout *= 1000;
                 break;
             case 't':
                 if (0 == strcasecmp(optarg, "DATA")) {
@@ -201,10 +231,6 @@ main(int argc, char **argv)
         }
     }
     temp = ccn_charbuf_create();
-    templ = ccn_charbuf_create();
-    
-    /* Set up a handler for interests */
-    ccn_set_interest_filter(ccn, name, &in_interest);
     
     /* Ask for a FinalBlockID if appropriate. */
     if (postver != NULL && 0 == memcmp(postver, "%00", 3))
@@ -220,11 +246,6 @@ main(int argc, char **argv)
         fprintf(stderr, "Failed to encode ContentObject (res == %d)\n", res);
         exit(1);
     }
-    res = ccn_put(ccn, temp->buf, temp->length);
-    if (res < 0) {
-        fprintf(stderr, "ccn_put failed (res == %d)\n", res);
-        exit(1);
-    }
     if (read_res == blocksize) {
         read_res = read_full(0, buf, 1);
         if (read_res == 1) {
@@ -234,13 +255,39 @@ main(int argc, char **argv)
     }
     free(buf);
     buf = NULL;
-    if (verbose) {
-        temp->length = 0;
-        ccn_uri_append(temp, name->buf, name->length, 1);
-        printf("wrote %s\n", ccn_charbuf_as_string(temp));
+    if (force) {
+        /* At user request, send without waiting to see an interest */
+        res = ccn_put(ccn, temp->buf, temp->length);
+        if (res < 0) {
+            fprintf(stderr, "ccn_put failed (res == %d)\n", res);
+            exit(1);
+        }
     }
+    else {
+        in_interest.data = temp;
+        /* Set up a handler for interests */
+        res = ccn_set_interest_filter(ccn, name, &in_interest);
+        if (res < 0) {
+            fprintf(stderr, "Failed to register interest (res == %d)\n", res);
+            exit(1);
+        }
+        res = ccn_run(ccn, timeout);
+        if (in_interest.intdata == 0) {
+            if (verbose)
+                fprintf(stderr, "Nobody's interested\n");
+            exit(1);
+        }
+    }
+    
+    if (verbose) {
+        struct ccn_charbuf *uri = ccn_charbuf_create();
+        uri->length = 0;
+        ccn_uri_append(uri, name->buf, name->length, 1);
+        printf("wrote %s\n", ccn_charbuf_as_string(uri));
+        ccn_charbuf_destroy(&uri);
+    }
+    ccn_destroy(&ccn);
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&temp);
-    ccn_destroy(&ccn);
     exit(status);
 }

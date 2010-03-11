@@ -76,7 +76,7 @@ public class LatestVersionTest {
 	}
 	
 	@After
-	public void close() {
+	public void tearDown() {
 		getHandle.close();
 		responderHandle.close();
 	}
@@ -229,7 +229,7 @@ public class LatestVersionTest {
 			checkTime = System.currentTimeMillis() - checkTime;
 			System.out.println("took us "+checkTime+"ms to get nothing back");
 			Assert.assertNull(object);
-			Assert.assertTrue(checkTime > 200 && checkTime < 300);
+			Assert.assertTrue(checkTime >= 200 && checkTime < 300);
 			System.out.println("passed test for waiting 200ms");
 			
 			Assert.assertTrue(responseObjects.size() == 0);

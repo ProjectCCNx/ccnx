@@ -78,7 +78,11 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		synchronized (this) {
 			wait(TIMEOUT);
 		}
-		Assert.assertTrue((System.currentTimeMillis() - startTime) < TIMEOUT);
+		long stopTime = System.currentTimeMillis();
+		long duration = stopTime - startTime;
+		System.out.println("doTest time: "+duration);
+		
+		Assert.assertTrue(duration < TIMEOUT);
 	}
 
 	private void doTestFail() throws IOException, InterruptedException {
@@ -87,7 +91,11 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		synchronized (this) {
 			wait(TIMEOUT);
 		}
-		Assert.assertFalse((System.currentTimeMillis() - startTime) < TIMEOUT);
+		long stopTime = System.currentTimeMillis();
+		long duration = stopTime - startTime;
+		System.out.println("doTestFail time: "+duration);
+		
+		Assert.assertFalse(duration < TIMEOUT);
 	}
 
 }

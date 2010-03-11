@@ -241,6 +241,7 @@ static struct prefix_face_list_item *prefix_face_list_item_create(void)
         if (pfl) free(pfl);
         if (fi) ccn_face_instance_destroy(&fi);
         if (store) ccn_charbuf_destroy(&store);
+        return (NULL);
     }
     pfl->fi = fi;
     pfl->fi->store = store;
@@ -568,7 +569,8 @@ process_command_tokens(struct prefix_face_list_item *pfltail,
         return (-1);
     }
 
-    if (port == NULL) port = CCN_DEFAULT_UNICAST_PORT;
+    if (port == NULL || port[0] == 0)
+        port = CCN_DEFAULT_UNICAST_PORT;
 
     hints.ai_socktype = socktype;
     res = getaddrinfo(host, port, &hints, &raddrinfo);
@@ -586,10 +588,10 @@ process_command_tokens(struct prefix_face_list_item *pfltail,
         return (-1);
     }
 
-    iflags = 0;
-    if (flags != NULL) {
+    iflags = -1;
+    if (flags != NULL && flags[0] != 0) {
         iflags = atoi(flags);
-        if ((iflags & ~(CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_ADVERTISE | CCN_FORW_LAST)) != 0) {
+        if ((iflags & ~CCN_FORW_PUBMASK) != 0) {
             ccndc_warn(__LINE__, "command error (line %d), invalid flags 0x%x\n", lineno, iflags);
             return (-1);
         }
@@ -947,7 +949,7 @@ main(int argc, char **argv)
         interest_closure.data = keystore;
         ccn_name_init(temp);
         ccn_set_interest_filter_with_flags(h, temp, &interest_closure,
-                                           CCN_FORW_ACTIVE | CCN_FORW_LAST);
+                    CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_LAST);
         ccn_charbuf_destroy(&temp);
         ccn_run(h, -1);
     }

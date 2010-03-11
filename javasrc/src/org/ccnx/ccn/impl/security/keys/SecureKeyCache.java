@@ -15,7 +15,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.ccnx.ccn.profiles.security.access;
+package org.ccnx.ccn.impl.security.keys;
 
 import java.security.Key;
 import java.security.KeyStore;
@@ -31,8 +31,6 @@ import java.util.TreeMap;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
-import org.ccnx.ccn.impl.security.keys.KeyRepository;
-import org.ccnx.ccn.impl.security.keys.BasicKeyManager.KeyStoreInfo;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
@@ -40,10 +38,13 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * A cache for decrypted symmetric keys for access control.
- *
+ * A container for our private keys and other secret key 
+ * material that we have retrieved (e.g. from access control).
+ * 
+ * TODO: provide mechanism to save and reload at least the non-keystore keys
+ * as encrypted CCNx content.
  */
-public class KeyCache {
+public class SecureKeyCache {
 	
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 	
@@ -57,15 +58,17 @@ public class KeyCache {
 	private TreeMap<byte [], byte []> _privateKeyIdentifierMap = new TreeMap<byte [], byte[]>(byteArrayComparator);
 	/** Map the digest of a key to its name */
 	private TreeMap<byte [], ContentName> _keyNameMap = new TreeMap<byte [], ContentName>(byteArrayComparator);
+	/** Map the name of a key to its digest */
+	private TreeMap<ContentName, byte []> _nameKeyMap = new TreeMap<ContentName, byte []>();
 	
-	public KeyCache() {
+	public SecureKeyCache() {
 	}
 	
 	/**
 	 * Constructor that loads keys from a KeyManager
 	 * @param keyManagerToLoadFrom the key manager
 	 */
-	public KeyCache(KeyManager keyManagerToLoadFrom) {
+	public SecureKeyCache(KeyManager keyManagerToLoadFrom) {
 		PrivateKey [] pks = keyManagerToLoadFrom.getSigningKeys();
 		for (PrivateKey pk : pks) {
 			PublisherPublicKeyDigest ppkd = keyManagerToLoadFrom.getPublisherKeyID(pk);
@@ -79,7 +82,7 @@ public class KeyCache {
 	 * @param keystore
 	 * @throws KeyStoreException 
 	 */
-	public void loadKeyStore(KeyStoreInfo keyStoreInfo, char [] password, KeyRepository publicKeyCache) throws KeyStoreException {
+	public void loadKeyStore(KeyStoreInfo keyStoreInfo, char [] password, PublicKeyCache publicKeyCache) throws KeyStoreException {
 		Enumeration<String> aliases = keyStoreInfo.getKeyStore().aliases();
 		String alias;
 		KeyStore.PrivateKeyEntry entry = null;
@@ -150,13 +153,25 @@ public class KeyCache {
 		}
 		return false;
 	}
+	
+	/**
+	 * As the map from name to content is not unique, this might not give you a
+	 * definite answer, and you should still check the digest.
+	 * @param keyName
+	 * @return
+	 */
+	public boolean containsKey(ContentName keyName) {
+		if (_nameKeyMap.containsKey(keyName))
+			return true;
+		return false;
+	}
 
 	/**
 	 * Returns the name of a key specified by its digest
 	 * @param keyIdentifier the digest of the key.
 	 * @return the name of the key.
 	 */
-	public ContentName getKeyName(byte [] keyIdentifier) {
+	public ContentName getNameForKey(byte [] keyIdentifier) {
 		return _keyNameMap.get(keyIdentifier);
 	}
 	
@@ -165,8 +180,18 @@ public class KeyCache {
 	 * @param key the key
 	 * @return the name
 	 */
-	public ContentName getKeyName(Key key) {
-		return getKeyName(getKeyIdentifier(key));
+	public ContentName getNameForKey(Key key) {
+		return getNameForKey(getKeyIdentifier(key));
+	}
+	
+	/**
+	 * Get the key ID associated with a name, if we have one. Currently store
+	 * keys under versioned names -- might be nice to effectively search
+	 * over versions of a key... This can be used to look up the key, allowing
+	 * the caller to be sure they have the right key.
+	 */
+	public byte [] getKeyID(ContentName versionedName) {
+		return _nameKeyMap.get(versionedName);
 	}
 
 	/**
@@ -200,8 +225,10 @@ public class KeyCache {
 	public void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyMap.put(publicKeyIdentifier, pk);
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
-		if (null != keyName)
+		if (null != keyName) {
 			_keyNameMap.put(publicKeyIdentifier, keyName);
+			_nameKeyMap.put(keyName, publicKeyIdentifier);
+		}
 	}
 
 	/**
@@ -224,11 +251,11 @@ public class KeyCache {
 		_keyMap.put(id, key);
 		if (null != name) {
 			_keyNameMap.put(id, name);
+			_nameKeyMap.put(name, id);
 		}
 	}
 	
 	public PublisherPublicKeyDigest getPublicKeyIdentifier(PrivateKey pk) {
-		// TODO make map store PPKD's directly
 		return new PublisherPublicKeyDigest(_privateKeyIdentifierMap.get(getKeyIdentifier(pk)));
 	}
 	

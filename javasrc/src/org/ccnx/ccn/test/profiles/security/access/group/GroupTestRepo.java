@@ -17,25 +17,20 @@
 
 package org.ccnx.ccn.test.profiles.security.access.group;
 
-import static org.junit.Assert.assertTrue;
-
 import java.security.PrivateKey;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Random;
-import java.util.SortedSet;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
+import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.utils.CreateUserData;
@@ -55,7 +50,7 @@ public class GroupTestRepo {
 	static ContentName groupStore = null;
 	static ContentName userKeyStorePrefix = null;
 	
-	static EnumeratedNameList _userList = null;
+	static String[] _userList = null;
 	static CCNHandle _handle = null;
 	
 	static String myUserName = null;
@@ -95,7 +90,8 @@ public class GroupTestRepo {
 			users.publishUserKeysToRepository(userNamespace);
 			
 			_acm = new GroupAccessControlManager(testStorePrefix, groupStore, userNamespace);
-			_acm.publishMyIdentity(myUserName, KeyManager.getDefaultKeyManager().getDefaultPublicKey());
+			_acm.publishMyIdentity(ContentName.fromNative(userNamespace, myUserName), KeyManager.getDefaultKeyManager().getDefaultPublicKey());
+			_userList = users.friendlyNames().toArray(new String[0]);
 			
 			// create the root ACL
 			// myUserName is a manager
@@ -107,7 +103,6 @@ public class GroupTestRepo {
 			
 			NamespaceManager.registerACM(_acm);
 			
-			_userList = _acm.userList();
 			_gm = _acm.groupManager();
 			
 			_random = new Random();
@@ -122,37 +117,15 @@ public class GroupTestRepo {
 	
 	@Test
 	public void testGroup() throws Exception {
-		Assert.assertNotNull(_userList);
-		ContentName prefixTest = _userList.getName();
-		Assert.assertNotNull(prefixTest);
-		Log.info("***************** Prefix is "+ prefixTest.toString());
-		Assert.assertEquals(prefixTest, userNamespace);
-
-		_userList.waitForChildren();
-		Assert.assertTrue(_userList.hasNewData());
-		SortedSet<ContentName> returnedBytes = _userList.getNewData();
-		Assert.assertNotNull(returnedBytes);
-		Assert.assertFalse(returnedBytes.isEmpty());
-
-		System.out.println("Got " + returnedBytes.size() + " children: " + returnedBytes);
-		System.out.print("names in list:");
-		for(ContentName n: returnedBytes)
-			System.out.print(" "+n);
-		System.out.println();
-
-		assertTrue(returnedBytes.size() >= NUM_USERS);
-		Iterator<ContentName> it = returnedBytes.iterator();
-
 		ArrayList<Link> newMembers = new ArrayList<Link>();
 		ContentName userID = ContentName.fromNative(userNamespace, myUserName);
 		System.out.println("member to add:" + userID);
 		newMembers.add(new Link(userID));
 
 		for(int i = 0; i <2; i++){
-			ContentName name = it.next();
-			String fullname = _userList.getName().toString() + name.toString();
-			System.out.println("member to add:" + fullname);
-			newMembers.add(new Link(ContentName.fromNative(fullname)));
+			String name = _userList[i];
+			System.out.println("member to add:" + name);
+			newMembers.add(new Link(ContentName.fromNative(userNamespace, name)));
 		}
 		System.out.println("creating a group...");
 		Group newGroup = _gm.createGroup(_randomGroupName, newMembers);
@@ -161,11 +134,10 @@ public class GroupTestRepo {
 		Assert.assertTrue(_gm.amCurrentGroupMember(newGroup));
 		Assert.assertTrue(_gm.amCurrentGroupMember(_randomGroupName));
 
-		ContentName name = it.next();
-		String fullname = _userList.getName().toString() + name.toString();
-		System.out.println("adding member to group:"+ fullname);
+		String name = _userList[2];
+		System.out.println("adding member to group:"+ name);
 		ArrayList<Link> addMembers = new ArrayList<Link>();
-		addMembers.add(new Link(ContentName.fromNative(fullname)));
+		addMembers.add(new Link(ContentName.fromNative(userNamespace, name)));
 		
 		// add members to the group
 		newGroup.addMembers(addMembers);
@@ -216,7 +188,7 @@ public class GroupTestRepo {
 		Assert.assertTrue(ourExistingGroup == aPointerCopy);
 		
 		GroupAccessControlManager ourACM = new GroupAccessControlManager(testStorePrefix, groupStore, userNamespace);
-		ourACM.publishMyIdentity(myUserName, KeyManager.getDefaultKeyManager().getDefaultPublicKey());
+		ourACM.publishMyIdentity(ContentName.fromNative(userNamespace, myUserName), KeyManager.getDefaultKeyManager().getDefaultPublicKey());
 		GroupManager ourGM = ourACM.groupManager();
 		Thread.sleep(1000);
 		

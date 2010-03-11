@@ -484,4 +484,71 @@ public class DataUtils {
 			return -1;
 		return 0;
 	}
+	
+	/**
+	 * Finds the index of the first occurrence of byteToFind in array starting at given
+	 * offset, returns array.length if not found.
+	 * @param array array to search
+	 * @param startingOffset offset into array to start at
+	 * @param byteToFind byte to seek
+	 * @return position in array containing first occurrence of byteToFind, or array.length if not found
+	 */
+	public static int byteindex(byte [] array, int startingOffset, byte byteToFind) {
+		int byteindex;
+		for (byteindex = startingOffset; byteindex < array.length; byteindex++) {
+			if (array[byteindex] == byteToFind)
+				break;
+		}
+		return byteindex;
+	}
+	
+	/**
+	 * Finds the index of the first occurrence of byteToFind in array, returns array.length if not found.
+	 * @param array array to search
+	 * @param byteToFind byte to seek
+	 * @return position in array containing first occurrence of byteToFind, or array.length if not found
+	 */
+	public static int byteindex(byte [] array, byte byteToFind) {
+		return byteindex(array, 0, byteToFind);
+	}
+	
+	/**
+	 * Count how may times a given byte occurs in an array.
+	 */
+	public static int occurcount(byte [] array, byte byteToFind) {
+		int count = 0;
+		if (array == null) 
+			return 0;
+		
+		for (int i=0; i < array.length; ++i) {
+			if (array[i] == byteToFind) {
+				count++;
+			}
+		}
+		return count;
+	}
+
+	/**
+	 * Akin to String.split for binary arrays; splits on a given byte value.
+	 */
+	public static byte [][] binarySplit(byte [] array, byte splitValue) {
+		int index = 0;
+		int offset = 0;
+		int lastoffset = 0;
+		int count = occurcount(array, splitValue) + 1;
+		if (count == 1) {
+			// no split values; just return the original array
+			return new byte [][]{array};
+		} 
+		byte [][] components = new byte[count][];
+		while (index < count) {
+			offset = byteindex(array, lastoffset, splitValue);
+			components[index] = new byte[offset - lastoffset];
+			System.arraycopy(array, lastoffset, components[index], 0, components[index].length);
+			lastoffset = offset + 1;
+			index++;
+		}
+		return components;
+	}
+	
 }

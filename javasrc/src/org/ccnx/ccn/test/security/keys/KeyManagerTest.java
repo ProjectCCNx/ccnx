@@ -29,7 +29,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
-import org.ccnx.ccn.impl.security.keys.KeyRepository;
+import org.ccnx.ccn.impl.security.keys.PublicKeyCache;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -92,7 +92,7 @@ public class KeyManagerTest {
 			
 			// Important -- make a different key repository, with a separate cache, so when
 			// we retrieve we don't pull from our own cache.
-			KeyRepository kr = new KeyRepository(km);
+			PublicKeyCache kr = new PublicKeyCache(km);
 			for (int i=0; i < KEY_COUNT; ++i) {
 				kr.publishKey(keyLocs[i].name().name(), pairs[i].getPublic(), km.getDefaultKeyID(), null);
 			}

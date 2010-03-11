@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -67,8 +67,8 @@ answer_highest(struct ccn_charbuf *templ)
 static void
 append_future_vcomp(struct ccn_charbuf *templ)
 {
-    /* A distant future version stamp */
-    unsigned char b[7] = {CCN_MARKER_VERSION, FF, FF, FF, FF, FF, FF};
+    /* One beyond a distant future version stamp */
+    unsigned char b[7] = {CCN_MARKER_VERSION + 1, 0, 0, 0, 0, 0, 0};
     ccn_charbuf_append_tt(templ, CCN_DTAG_Component, CCN_DTAG);
     ccn_charbuf_append_tt(templ, sizeof(b), CCN_BLOB);
     ccn_charbuf_append(templ, b, sizeof(b));
@@ -139,7 +139,7 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
         ccn_perror(h, "ccn_resolve_version is only implemented for versioning_flags = CCN_V_HIGHEST");
         goto Finish;
     }
-    n = ccn_name_split(name, nix);
+    n = ccn_name_split(name, nix); /* Do this just to validate name */
     if (n < 0)
         goto Finish;
     templ = resolve_templ(templ, lowtime, sizeof(lowtime));
@@ -154,12 +154,11 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
             break;
         if (vers_size == 7 && vers[0] == CCN_MARKER_VERSION) {
             /* Looks like we have versions. */
-            res = ccn_name_chop(name, nix, n);
-            if (res != n) abort();
+            name->length = 0;
+            ccn_charbuf_append(name, prefix->buf, prefix->length);
             ccn_name_append(name, vers, vers_size);
-            ccn_name_split(name, nix); // XXX should have append that updates nix, too
             myres = 0;
-            templ = resolve_templ(templ, name->buf + nix->buf[n], nix->buf[n+1] - nix->buf[n]);
+            templ = resolve_templ(templ, vers, vers_size);
             if (templ == NULL) break;
             cobj->length = 0;
             res = ccn_get(h, prefix, templ, timeout_ms, cobj, pco, ndx,
@@ -190,8 +189,9 @@ Finish:
  *        later than the existing one, or to return an error.
  *        CCN_V_NOW bases the version on the current time rather than the
  *        supplied time.
- * @param secs is the desired time, in seconds since epoch (ignored if CCN_V_NOW is set).
- * @param nsecs is the number of nanoseconds
+ * @param secs is the desired time, in seconds since epoch
+ *        (ignored if CCN_V_NOW is set).
+ * @param nsecs is the number of nanoseconds.
  * @returns -1 for error, 0 for success.
  */
 int

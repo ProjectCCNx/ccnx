@@ -104,6 +104,13 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_BinaryValue, "BinaryValue"},
     {CCN_DTAG_NameValue, "NameValue"},
     {CCN_DTAG_Entry, "Entry"},
+    {CCN_DTAG_ACL, "ACL"},
+    {CCN_DTAG_ParameterizedName, "ParameterizedName"},
+    {CCN_DTAG_Prefix, "Prefix"},
+    {CCN_DTAG_Suffix, "Suffix"},
+    {CCN_DTAG_Root, "Root"},
+    {CCN_DTAG_ProfileName, "ProfileName"},
+    {CCN_DTAG_Parameters, "Parameters"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
     {0, 0}
 };

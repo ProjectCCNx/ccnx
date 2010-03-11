@@ -79,4 +79,10 @@
 101,NameValue
 102,Entry
 103,ACL
+104,ParameterizedName
+105,Prefix
+106,Suffix
+107,Root
+108,ProfileName
+109,Parameters
 17702112,CCNProtocolDataUnit

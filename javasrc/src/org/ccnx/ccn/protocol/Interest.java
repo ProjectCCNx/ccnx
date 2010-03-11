@@ -151,8 +151,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public Integer scope() { return _scope; }
 	public void scope(int scope) { _scope = scope; }
 	
+	/**
+	 * XXX - This isn't user settable and is only useful for ccnd internal functionality. 
+	 * Do we ever need to return it?
+	 * @return
+	 */
 	public byte[] nonce() { return _nonce; }
-	public void nonce(byte[] nonce) { _nonce = nonce; }
 
 	/**
 	 * Determine whether a piece of content matches the Interest
@@ -578,9 +582,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		
 		result = DataUtils.compare(scope(), o.scope());
 		if (result != 0) return result;
-		
-		result = DataUtils.compare(nonce(), o.nonce());
-		if (result != 0) return result;
 
 		return result;
 	}
@@ -663,8 +664,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 				return false;
 		} else if (!_scope.equals(other._scope))
 			return false;
-		//if (!Arrays.equals(_nonce, other._nonce))
-		//	return false;
 		return true;
 	}
 	
@@ -702,8 +701,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			clone.answerOriginKind(answerOriginKind());
 		if (null != _scope)
 			clone.scope(scope());
-		if (null != _nonce)
-			clone.nonce(nonce());
 		return clone;
 	}
 

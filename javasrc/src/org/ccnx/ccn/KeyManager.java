@@ -30,7 +30,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
-import org.ccnx.ccn.impl.security.keys.KeyRepository;
+import org.ccnx.ccn.impl.security.keys.PublicKeyCache;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -39,6 +39,7 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
 
 
 /**
@@ -72,6 +73,11 @@ public abstract class KeyManager {
 	 * different "users" for testing purposes.
 	 */
 	protected static KeyManager _defaultKeyManager = null;
+	
+	/**
+	 * A default verifier to use, relative to these key caches and all. Move to TrustManager eventually.
+	 */
+	protected ContentVerifier _verifier = null;
 	
 	/**
 	 * Accessor to retrieve default key manager instance, or create it if necessary.
@@ -138,6 +144,7 @@ public abstract class KeyManager {
 			Log.warning("Setting default key manager to NULL. Default user key manager will be loaded on next request for default key manager.");
 		}
 		closeDefaultKeyManager();
+		Log.info("Setting default key manager: new KeyManager {0}", keyManager.getClass().getName());
 		_defaultKeyManager = keyManager;
 	}
 	
@@ -201,6 +208,20 @@ public abstract class KeyManager {
 	}
 	
 	/**
+	 * Subclasses can override with fancier verification behavior; again move to TrustManager eventually
+	 */
+	public ContentVerifier getDefaultVerifier() {
+		if (null == _verifier) {
+			synchronized(this) {
+				if (null == _verifier) {
+					_verifier = new SimpleVerifier(null, this);
+				}
+			}
+		}
+		return _verifier;
+	}
+	
+	/**
 	 * Close any connections we have to the network. Ideally prepare to
 	 * reopen them when they are next needed.
 	 */
@@ -214,6 +235,8 @@ public abstract class KeyManager {
 	public abstract void initialize() throws InvalidKeyException, IOException, ConfigurationException;
 	
 	public abstract boolean initialized();
+	
+	public abstract void clearSavedConfigurationState() throws FileNotFoundException, IOException;
 		
 	/**
 	 * Get our default key ID.
@@ -480,7 +503,7 @@ public abstract class KeyManager {
 	 * Access our internal key store/key server.
 	 * @return our KeyRepository
 	 */
-	public abstract KeyRepository keyRepository();
+	public abstract PublicKeyCache getPublicKeyCache();
 
 	public abstract void saveConfigurationState() throws FileNotFoundException,
 			IOException;

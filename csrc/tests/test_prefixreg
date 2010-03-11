@@ -33,7 +33,7 @@ ccn_xmltoccnb -w - <<EOF >prefixreg.ccnb
 EOF
 
 TNAME=`GenSym _ignored_`
-cat prefixreg.ccnb | ccnput -x 30 /$TNAME
+cat prefixreg.ccnb | ccnput -f -x 30 /$TNAME
 
 # Pull it out to use in the prefixreg request.  Base-64 encode it for the benefit of the shell.
 
@@ -64,7 +64,7 @@ cat <<EOF >prefixreg-request.xml
 EOF
 ccn_xmltoccnb -w prefixreg-request.xml || Fail botch constructing prefixreg-request.ccnb
 
-echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > prefixreg-pre.html
+CCNDStatus > prefixreg-pre.html
 
 # Try out the request
 ccndsmoketest -b send prefixreg-request.ccnb recv > prefixreg-response.ccnb
@@ -74,6 +74,6 @@ ccn_ccnbtoxml prefixreg-response.ccnb || Failed to parse prefixreg response
 
 ccnbx -d prefixreg-response.ccnb Content | ccn_ccnbtoxml -x -
 
-echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > prefixreg-post.html
+CCNDStatus > prefixreg-post.html
 
 rm prefixreg-request.xml

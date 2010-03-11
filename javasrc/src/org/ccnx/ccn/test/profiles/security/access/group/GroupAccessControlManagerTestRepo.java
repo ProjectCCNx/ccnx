@@ -28,7 +28,7 @@ public class GroupAccessControlManagerTestRepo {
 
 	static GroupAccessControlManager acm;
 	static ContentName baseNode, childNode, grandchildNode;
-	static ContentName userKeyStorePrefix, userNamespace;
+	static ContentName userKeyStorePrefix, userNamespace, groupNamespace;
 	static int userCount = 3;
 	static CreateUserData td;
 	static String[] friendlyNames;
@@ -48,6 +48,7 @@ public class GroupAccessControlManagerTestRepo {
 		ContentName testPrefix = UserConfiguration.defaultNamespace();
 		userKeyStorePrefix = ContentName.fromNative(testPrefix, "_access_");
 		userNamespace = ContentName.fromNative(testPrefix, "home");
+		groupNamespace = ContentName.fromNative(testPrefix, "groups");
 		td = new CreateUserData(userKeyStorePrefix, userCount, true, "password".toCharArray(), CCNHandle.open());
 		td.publishUserKeysToRepository(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);
@@ -82,7 +83,7 @@ public class GroupAccessControlManagerTestRepo {
 		ACLcontents.add(lk);
 		baseACL = new ACL(ACLcontents);
 		CCNHandle handle = td.getHandleForUser(friendlyNames[0]);
-		acm = new GroupAccessControlManager(baseNode, handle);
+		acm = new GroupAccessControlManager(baseNode, groupNamespace, userNamespace, handle);
 		acm.initializeNamespace(baseACL);
 	}
 

@@ -35,7 +35,11 @@ EOF
 # The name does not matter for the request, but make it unique.
 REQNAME=`openssl dgst -sha1 destroyface.ccnb | sed -e 's/^.*=[ ]*//'`
 
-cat destroyface.ccnb | ccnput -x 30 /$REQNAME
+echo REQNAME is $REQNAME >&2
+
+cat destroyface.ccnb | ccnput -f -x 30 /$REQNAME
+
+ccnslurp /$REQNAME
 
 # Pull it out to use in the destroyface request.  Base-64 encode it for the benefit of the shell.
 DFBLOB="`ccnrm -o - /$REQNAME | openssl enc -base64`"
@@ -57,12 +61,12 @@ cat <<EOF >destroyface-request.xml
 EOF
 ccn_xmltoccnb -w destroyface-request.xml || Fail botch constructing destroyface-request.ccnb
 
-echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv | tail -n +1 > destroyface-pre.html
+CCNDStatus > destroyface-pre.html
 
 # Try out the destroyface request
 ccndsmoketest -b -t 4000 send destroyface-request.ccnb recv > destroyface-response.ccnb
 
-echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv | tail -n +1 > destroyface-post.html
+CCNDStatus > destroyface-post.html
 
 cmp -s /dev/null destroyface-response.ccnb && Fail did not get destroyface response
 

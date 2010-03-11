@@ -42,6 +42,7 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
@@ -59,14 +60,14 @@ import org.ccnx.ccn.protocol.PublisherID;
 public class GroupManager {
 	
 	private GroupAccessControlManager _accessManager;
-	private ContentName _groupStorage;
+	private ParameterizedName _groupStorage;
 	private EnumeratedNameList _groupList;
 	private HashMap<String, Group> _groupCache = new HashMap<String, Group>();
 	private HashSet<String> _myGroupMemberships = new HashSet<String>();
 	private CCNHandle _handle;
 
 	public GroupManager(GroupAccessControlManager accessManager,
-						ContentName groupStorage, CCNHandle handle) throws IOException {
+						ParameterizedName groupStorage, CCNHandle handle) throws IOException {
 		_handle = handle;
 		_accessManager = accessManager;
 		_groupStorage = groupStorage;
@@ -94,7 +95,7 @@ public class GroupManager {
 	 */
 	public EnumeratedNameList groupList() throws IOException {
 		if (null == _groupList) {
-			_groupList = new EnumeratedNameList(_groupStorage, _handle);
+			_groupList = new EnumeratedNameList(_groupStorage.prefix(), _handle);
 		}
 		return _groupList;
 	}
@@ -130,7 +131,7 @@ public class GroupManager {
 			synchronized(_groupCache) {
 				theGroup = _groupCache.get(groupFriendlyName);
 				if (null == theGroup) {
-					theGroup = new Group(_groupStorage, groupFriendlyName, _handle, this);
+					theGroup = new Group(_groupStorage.prefix(), groupFriendlyName, _handle, this);
 					// wait for group to be ready?
 					_groupCache.put(groupFriendlyName, theGroup);
 				}
@@ -190,11 +191,11 @@ public class GroupManager {
 			return existingGroup;
 		} else {
 			// Need to make key pair, directory, and store membership list.
-			MembershipList ml = 
-				new MembershipList(
-						GroupAccessControlProfile.groupMembershipListName(_groupStorage, groupFriendlyName), 
+			MembershipListObject ml = 
+				new MembershipListObject(
+						GroupAccessControlProfile.groupMembershipListName(_groupStorage.prefix(), groupFriendlyName), 
 						new Collection(newMembers), SaveType.REPOSITORY, _handle);
-			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _handle, this);
+			Group newGroup =  new Group(_groupStorage.prefix(), groupFriendlyName, ml, _handle, this);
 			cacheGroup(newGroup);
 			if (amCurrentGroupMember(newGroup)) {
 				_myGroupMemberships.add(groupFriendlyName);
@@ -227,7 +228,7 @@ public class GroupManager {
 	 * @return
 	 */
 	public boolean isGroup(Link member) {
-		return _groupStorage.isPrefixOf(member.targetName());
+		return _groupStorage.prefix().isPrefixOf(member.targetName());
 	}
 	
 	public boolean isGroup(String principal) {
@@ -235,7 +236,7 @@ public class GroupManager {
 	}
 	
 	public boolean isGroup(ContentName publicKeyName) {
-		return _groupStorage.isPrefixOf(publicKeyName);
+		return _groupStorage.prefix().isPrefixOf(publicKeyName);
 	}
 
 	public boolean haveKnownGroupMemberships() {
@@ -260,7 +261,7 @@ public class GroupManager {
 	 * @throws ContentDecodingException 
 	 */
 	public boolean amCurrentGroupMember(Group group) throws ContentDecodingException, IOException {
-		MembershipList ml = group.membershipList(); // will update
+		MembershipListObject ml = group.membershipList(); // will update
 		if (Log.isLoggable(Level.FINER)) {
 			Log.finer("amCurrentGroupMember: group {0} has {1} member(s).", group.groupName(), ml.membershipList().size());
 		}
@@ -329,7 +330,7 @@ public class GroupManager {
 			// Assume one is there...
 			ContentName versionedPublicKeyName = 
 				VersioningProfile.addVersion(
-						GroupAccessControlProfile.groupPublicKeyName(_groupStorage, groupFriendlyName),
+						GroupAccessControlProfile.groupPublicKeyName(_groupStorage.prefix(), groupFriendlyName),
 						privateKeyVersion);
 			privateKeyDirectory =
 				new KeyDirectory(_accessManager, 
@@ -372,6 +373,14 @@ public class GroupManager {
 	 */
 	public String getGroupKeyAlgorithm() {
 		return GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM;
+	}
+	
+	/**
+	 * Get the parameterized Name used by this group manager 
+	 * @return the parameterized name for the group storage location
+	 */
+	public ParameterizedName getGroupStorage() {
+		return _groupStorage;
 	}
 
 	/**

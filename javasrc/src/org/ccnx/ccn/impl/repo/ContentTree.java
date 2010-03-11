@@ -20,10 +20,10 @@ package org.ccnx.ccn.impl.repo;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -139,18 +139,19 @@ public class ContentTree {
 		protected Exclude _exclude;
 		protected int _excludeLevel;
 		
-		protected InterestPreScreener(Interest interest, int excludeLevel) {
+		protected InterestPreScreener(Interest interest, int excludeLevel, int startLevel) {
 			if (null != interest.minSuffixComponents())
-				_minComponents = interest.minSuffixComponents();
+				_minComponents = interest.minSuffixComponents() + startLevel;
 			if (null != interest.maxSuffixComponents())
-				_maxComponents = interest.maxSuffixComponents() + 1;
+				_maxComponents = interest.maxSuffixComponents() + startLevel;
 			_exclude = interest.exclude();
 			_excludeLevel = excludeLevel;
 		}
 		
 		/**
 		 * Run the prescreen
-		 * @param level
+		 * @param level the level within the hierarchy in which this prescreen was called. Used to
+		 *        decide when to run the exclude test.
 		 * @return -1 => reject all entries below this
 		 * 			0 => reject this entry but keep searching
 		 * 			1 => keep this entry
@@ -164,6 +165,160 @@ public class ContentTree {
 			}
 			return (level < _minComponents) ? 0 : 1;
 		}
+	}
+	
+	/**
+	 * Implements the generic pieces of both left and right searches
+	 */
+	protected abstract class Search {
+		protected Interest _interest;
+		protected InterestPreScreener _ips;
+		protected SortedMap<TreeNode, TreeNode> _children = null;
+		
+		protected Search(Interest interest, InterestPreScreener ips) {
+			_interest = interest;
+			_ips = ips;
+		}
+		
+		/**
+		 * Do the actual search. Use abstract method to decide how to traverse the tree
+		 * 
+		 * @param node the node rooting a subtree to search
+		 * @param nodeName the full name of this node from the root up to and its component
+		 * @param getter a handler to pull actual ContentObjects for final match testing
+		 * @param depth the length of name of node including its component (number of components)
+		 * @param leftSearch true if we should search down the left side of the tree at this level
+		 * @return ContentObject matching the interest or null if not found
+		 */
+		protected ContentObject search(TreeNode node, ContentName nodeName, ContentGetter getter, 
+						int depth, boolean leftSearch) {
+			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+				Log.fine("Searching for: {0}", nodeName);
+			int res = _ips.preScreen(node, depth);
+			if (res < 0)
+				return null;
+			if (res > 0) {
+				if (null != node.oneContent || null != node.content) {
+					ContentObject result = getContent(_interest, node, nodeName, getter);
+					if (null != result)
+						return result;
+				}
+			}
+		
+			synchronized(node) {
+				if (null != node.oneChild) {
+					_children = new TreeMap<TreeNode, TreeNode>(); // Don't bother with comparator, will only hold one element
+					_children.put(node.oneChild, node.oneChild);
+				} else {
+					_children = node.children;
+				}
+			}
+			if (null != _children) {
+				byte[] interestComp = _interest.name().component(depth);
+				Iterator<TreeNode>it = initIterator(leftSearch, interestComp);
+				while(it.hasNext()) {
+					TreeNode child = it.next();
+					int comp = DataUtils.compare(child.component, interestComp);
+					if (leftSearch || comp >= 0) {
+						ContentObject result = null;
+						result = search(child, new ContentName(nodeName, child.component), getter, depth + 1, true);
+						if (null != result) {
+							return result;
+						}
+					}
+				}
+			}
+			// No match found
+			return null;
+		}
+		
+		/**
+		 * Return an iterator through children at this level.
+		 * 
+		 * @param anyOK leftSearch only - if false must go "left by one" at this level
+		 * @param interestComp component to start search with
+		 * @return the iterator
+		 */
+		protected abstract Iterator<TreeNode> initIterator(boolean leftSearch, byte[] interestComp);
+		
+		/**
+		 * 
+		 */
+		protected abstract boolean continueSearch(boolean leftSearch, TreeNode child, byte[] component);
+	}
+	
+	/**
+	 * Search for data matching an interest that specifies either the leftmost (canonically smallest) match or
+	 * doesn't specify a specific way to match data within several pieces of matching data.
+	 */
+	protected class LeftSearch extends Search {
+
+		protected LeftSearch(Interest interest, InterestPreScreener ips) {
+			super(interest, ips);
+		}
+
+		@Override
+		protected Iterator<TreeNode> initIterator(boolean leftSearch, byte[] interestComp) {
+			TreeNode testNode = new TreeNode();
+			testNode.component = interestComp;
+			SortedMap<TreeNode, TreeNode> map = leftSearch || null == interestComp ? _children : _children.tailMap(testNode);
+			return map.keySet().iterator();
+		}
+
+		@Override
+		protected boolean continueSearch(boolean leftSearch, TreeNode child,
+				byte[] component) {
+			int comp = DataUtils.compare(child.component, component);
+			return (leftSearch || comp >= 0);
+		}
+	}
+	
+	/**
+	 * Search for data matching an interest in which the rightmost (canonically largest) data among several
+	 * matching pieces should be returned.
+	 */
+	protected class RightSearch extends Search {
+
+		protected RightSearch(Interest interest, InterestPreScreener ips) {
+			super(interest, ips);
+		}
+
+		@Override
+		protected Iterator<TreeNode> initIterator(boolean leftSearch, byte[] interestComp) {
+			if (leftSearch)
+				return _children.keySet().iterator();
+			return new RightIterator(_children);
+		}
+
+		@Override
+		protected boolean continueSearch(boolean leftSearch, TreeNode child,
+				byte[] component) {
+			return true;
+		}
+	}
+	
+	/**
+	 * Create an iterator that goes backwards through the candidates for right search
+	 */
+	protected class RightIterator implements Iterator<TreeNode> {
+		protected SortedMap<TreeNode, TreeNode> _map;
+		
+		protected RightIterator(SortedMap<TreeNode, TreeNode> map) {
+			_map = map;
+		}
+
+		public boolean hasNext() {
+			return _map.size() > 0;
+		}
+
+		public TreeNode next() {
+			TreeNode node = _map.lastKey();
+			_map = _map.subMap(_map.firstKey(), _map.lastKey());
+			return node;
+		}
+
+		public void remove() {}
+		
 	}
 	
 	protected TreeNode _root;
@@ -412,173 +567,46 @@ public class ContentTree {
 			}
 		}
 	}
-
+	
 	/**
-	 * Search for data matching an interest that specifies either the leftmost (canonically smallest) match or
-	 * doesn't specify a specific way to match data within several pieces of matching data.
+	 * Return content at this level if there is matching content
 	 * 
-	 * @param interest the interest to match
-	 * @param matchmin minimum number of components required in final answer or -1 if not specified
-	 * @param matchmax maximum number of components allowed in final answer or -1 if not specified
-	 * @param node the node rooting a subtree to search
-	 * @param nodeName the full name of this node from the root up to and its component
-	 * @param depth the length of name of node including its component (number of components)
-	 * @param anyOK true if we aren't required to go left at this level
-	 * @param getter a handler to pull actual ContentObjects for final match testing
-	 * @return ContentObject matching the interest or null if not found
+	 * @param interest - interest to match agains
+	 * @param node	   - the node
+	 * @param nodeName - name of node as a ContentName
+	 * @param getter   - getter to get actual data for final match and return if matches
+	 * @return matching ContentObject if matches, null otherwise
 	 */
-	protected final ContentObject leftSearch(Interest interest, int matchmin, int matchmax, TreeNode node, ContentName nodeName, int depth, boolean anyOK, ContentGetter getter) {
-		if ( (nodeName.count() >= 0) && ((matchmin == -1 && matchmax == -1) || (matchmin == -1 && depth <= matchmax))
-																		  || (matchmax == -1 && depth >= matchmin)
-																		  || (matchmin != -1 && matchmax != -1 && (depth <= matchmax && depth >= matchmin))) {
-			if (null != node.oneContent || null != node.content) {
-				// Since the name INCLUDES digest component and the Interest.matches() convention for name
-				// matching is that the name DOES NOT include digest component (conforming to the convention 
-				// for ContentObject.name() that the digest is not present) we must REMOVE the content 
-				// digest first or this test will not always be correct
-				//
-				// That is unless we are specifically trying to exclude a digest...
-				// The test below which uses the name with the digest for the match only if there is an exclude request
-				// and the exclude is at the final (digest) level of the name does that. Since we are prechecking without
-				// the actual ContentObject there may be no cleaner way to do this.
-				ContentName digestFreeName = new ContentName(nodeName.count()-1, nodeName.components());
-				Interest publisherFreeInterest = interest.clone();
-				publisherFreeInterest.publisherID(null);
-				boolean initialMatch = (null != interest.exclude() && interest.name().count() == nodeName.count() - 1) 
-							? publisherFreeInterest.matches(nodeName, null)
-							: publisherFreeInterest.matches(digestFreeName, null); 
-				if (initialMatch) {
-					List<ContentRef> content = null;
-					synchronized(node) {
-						if (null != node.oneContent) {
-							content = new ArrayList<ContentRef>();
-							content.add(node.oneContent);
-						} else {
-							assert(null != node.content);
-							content = new ArrayList<ContentRef>(node.content);
-						}
+	private ContentObject getContent(Interest interest, TreeNode node, ContentName nodeName, ContentGetter getter) {
+		// Since the name INCLUDES digest component and the Interest.matches() convention for name
+		// matching is that the name DOES NOT include digest component (conforming to the convention 
+		// for ContentObject.name() that the digest is not present) we must REMOVE the content 
+		// digest first or this test will not always be correct
+		//
+		// That is unless we are specifically trying to exclude a digest...
+		// The test below which uses the name with the digest for the match only if there is an exclude request
+		// and the exclude is at the final (digest) level of the name does that. Since we are prechecking without
+		// the actual ContentObject there may be no cleaner way to do this.
+		ContentName digestFreeName = new ContentName(nodeName.count()-1, nodeName.components());
+		Interest publisherFreeInterest = interest.clone();
+		publisherFreeInterest.publisherID(null);
+		boolean initialMatch = (null != interest.exclude() && interest.name().count() == nodeName.count() - 1) 
+					? publisherFreeInterest.matches(nodeName, null)
+					: publisherFreeInterest.matches(digestFreeName, null); 
+		if (initialMatch) {
+			synchronized(node) {
+				if (null != node.oneContent) {
+					ContentObject cand = getter.get(node.oneContent);
+					if (interest.matches(cand)) {
+						return cand;
 					}
-					for (ContentRef ref : content) {
+				} else {
+					assert(null != node.content);
+					for (ContentRef ref : node.content) {
 						ContentObject cand = getter.get(ref);
 						if (interest.matches(cand)) {
 							return cand;
 						}
-					}
-				}
-			}
-		}
-		// Now search children if applicable and if any
-		if (matchmax != -1 && matchmax <= depth || (node.children==null && node.oneChild==null)) {
-			// Any child would make the total name longer than requested so no point in 
-			// checking children
-			return null;
-		}
-		SortedMap<TreeNode, TreeNode> children = null;
-		synchronized(node) {
-			if (null != node.oneChild) {
-				children = new TreeMap<TreeNode, TreeNode>(); // Don't bother with comparator, will only hold one element
-				children.put(node.oneChild, node.oneChild);
-			} else {
-				children = node.children;
-			}
-		}
-		if (null != children) {
-			byte[] interestComp = interest.name().component(depth);
-			TreeNode testNode = new TreeNode();
-			testNode.component = interestComp;
-			SortedMap<TreeNode, TreeNode> set = anyOK || null == interestComp ? children : children.tailMap(testNode);
-			for (TreeNode child : set.keySet()) {
-				int comp = DataUtils.compare(child.component, interestComp);
-				//if (null == interestComp || DataUtils.compare(child.component, interestComp) >= 0) {
-				if (anyOK || comp >= 0) {
-					ContentObject result = null;
-					result = leftSearch(interest, matchmin, matchmax, child, 
-							new ContentName(nodeName, child.component), depth+1, comp > 0, getter);
-	
-					if (null != result) {
-						return result;
-					}
-				}
-			}
-		}
-		// No match found
-		return null;
-	}
-	
-	/**
-	 * Get all nodes below the given one
-	 *
-	 * @param node the starting node
-	 * @param result list of nodes we are looking for
-	 * @param minComponents minimum depth below here
-	 * @param maxComponents maximum depth below here
-	 */
-	protected boolean getSubtreeNodes(TreeNode node, List<TreeNode> result, int level, InterestPreScreener ips) {
-		boolean found = false;
-		int preScreen = ips.preScreen(node, level);
-		if (preScreen < 0)
-			return false;
-		synchronized(node) {
-			if (null != node.oneChild) {
-				found = getSubtreeNodes(node.oneChild, result, ++level, ips);
-			} else if (null != node.children) {
-				for (TreeNode child : node.children.values()) {
-					boolean tmpFound = getSubtreeNodes(child, result, ++level, ips);
-					if (!found && tmpFound)
-						found = tmpFound;
-				}
-			} else {
-				found = preScreen > 0;
-			}
-		}
-		if (found)
-			result.add(node);
-		if (Log.isLoggable(Level.FINEST))
-			Log.finest("getSubtreeNodes - found was {0}", found);
-		return found;
-	}
-	
-	/**
-	 * Search for data matching an interest in which the rightmost (canonically largest) data among several
-	 * matching pieces should be returned.
-	 * 
-	 * @param interest
-	 * @param matchlen
-	 * @param node
-	 * @param nodeName
-	 * @param depth
-	 * @param getter
-	 * @return
-	 */
-	protected final ContentObject rightSearch(Interest interest, int matchlen, TreeNode node, ContentName nodeName, int depth, ContentGetter getter) {
-		// A shortcut compared to leftSearch() for moment, just accumulate all options in forward order
-		// and then go through them in reverse direction and do full test
-		// TODO This is very inefficient for all but the most optimal case where the last thing in the
-		// subtree happens to be a perfect match
-		ArrayList<TreeNode> options = new ArrayList<TreeNode>();
-		InterestPreScreener ips = new InterestPreScreener(interest, 1);
-		getSubtreeNodes(node, options, 0, ips);
-		return rightCheck(options, interest, node, getter);
-	}
-	
-	private ContentObject rightCheck(ArrayList<TreeNode> options, Interest interest, TreeNode node, ContentGetter getter) {
-		for (int i = options.size()-1; i >= 0 ; i--) {
-			TreeNode candidate = options.get(i);
-			if (null != candidate.oneContent || null != candidate.content) {
-				List<ContentRef> content = null;
-				synchronized(candidate) {
-					if (null != candidate.oneContent) {
-						content = new ArrayList<ContentRef>();
-						content.add(candidate.oneContent);
-					} else {
-						assert(null != node.content);
-						content = new ArrayList<ContentRef>(candidate.content);
-					}
-				}
-				for (ContentRef ref : content) {
-					ContentObject cand = getter.get(ref);
-					if (cand!=null && interest.matches(cand)) {
-						return cand;
 					}
 				}
 			}
@@ -676,23 +704,20 @@ public class ContentTree {
 				}
 			}
 		} else {
+			// Traverse to find latest match
 			TreeNode prefixRoot = lookupNode(interest.name(), ncc);
 			if (prefixRoot == null) {
 				return null;
 			}
 			
+			InterestPreScreener ips = new InterestPreScreener(interest, ncc + 1, ncc);
 			if (null != interest.childSelector() && ((interest.childSelector() & (Interest.CHILD_SELECTOR_RIGHT))
 					== (Interest.CHILD_SELECTOR_RIGHT))) {
-				// Traverse to find latest match
-				return rightSearch(interest, (null == addl) ? -1 : addl + ncc, 
-						prefixRoot, new ContentName(ncc, interest.name().components()), 
-						ncc, getter);
-			}
-			else{
-				int min = null == interest.minSuffixComponents() ? -1 : interest.minSuffixComponents();
-				return leftSearch(interest, min + ncc, (null == addl) ? -1 : addl + ncc,
-						prefixRoot, new ContentName(ncc, interest.name().components()), 
-						ncc, false, getter);
+				return new RightSearch(interest, ips).search(prefixRoot, new ContentName(ncc, interest.name().components()), 
+						getter, ncc, false);
+			} else {
+				return new LeftSearch(interest, ips).search(prefixRoot, new ContentName(ncc, interest.name().components()), 
+						getter, ncc, false);
 			}
 		}
 		return null;

@@ -10,7 +10,7 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
-import org.ccnx.ccn.profiles.security.access.group.MembershipList;
+import org.ccnx.ccn.profiles.security.access.group.MembershipListObject;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class PrincipalEnumerator {
@@ -38,7 +38,7 @@ public class PrincipalEnumerator {
 		if (groupFriendlyName != null) {
 			try{
 				Group g = gm.getGroup(groupFriendlyName);
-				MembershipList ml = g.membershipList();
+				MembershipListObject ml = g.membershipList();
 				LinkedList<Link> lll = ml.contents();
 				for (Link l: lll) {
 					members.add(l.targetName());

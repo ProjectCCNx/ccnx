@@ -32,7 +32,7 @@ ccn_xmltoccnb -w - <<EOF >unreg.ccnb
 EOF
 
 TNAME=`GenSym _ignored_`
-cat unreg.ccnb | ccnput -x 30 /$TNAME
+cat unreg.ccnb | ccnput -f -x 30 /$TNAME
 
 # Pull it out to use in the unreg request.  Base-64 encode it for the benefit of the shell.
 
@@ -58,7 +58,7 @@ cat <<EOF >unreg-request.xml
 EOF
 ccn_xmltoccnb -w unreg-request.xml || Fail botch constructing unreg-request.ccnb
 
-echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > unreg-pre.html
+CCNDStatus > unreg-pre.html
 
 # Try out the request
 ccndsmoketest -b send unreg-request.ccnb recv > unreg-response.ccnb
@@ -68,7 +68,7 @@ ccn_ccnbtoxml unreg-response.ccnb || Failed to parse unreg response
 
 ccnbx -d unreg-response.ccnb Content | ccn_ccnbtoxml -x -
 
-echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv > unreg-post.html
+CCNDStatus > unreg-post.html
 
 grep 'ccnx:/Junk ' unreg-post.html && Fail prefix is still registered
 rm unreg-request.xml

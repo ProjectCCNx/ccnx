@@ -31,9 +31,9 @@ ALLTESTS = \
   test_long_consumer \
   test_long_consumer2 \
   test_long_producer \
+  test_new_provider \
   test_newface \
   test_prefixreg \
-  test_prefix_registration \
   test_selfreg \
   test_short_stuff \
   test_single_ccnd \
@@ -48,8 +48,7 @@ default all: $(SCRIPTSRC) testdriver
 
 clean:
 	rm -rf log logs depend testdriver STATUS SKIPPED FAILING \
-        *.out ephemeral*.ccnb keyfetch*.ccnb test_coders_*.ccnb  \
-        prefix*.ccnb newface*.ccnb *pre.html *post.html selfreg*.ccnb
+        *.out *.ccnb *pre.html *post.html *status*.html
 
 check test: $(SCRIPTSRC) testdriver stubs
 	mkdir -p log

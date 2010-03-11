@@ -19,15 +19,22 @@ package org.ccnx.ccn.io;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 /**
  * Miscellaneous helper functions to read data. Most clients will
@@ -141,5 +148,144 @@ public class CCNReader {
 		}
 		Log.info("enumerate: retrieved " + result.size() + " objects.");
 		return result;
+	}
+
+	/**
+	 * API to determine whether a piece of content exists in the repository. Currently uses
+	 * name enumeration. Will change to alternative protocol whenever repository supports one.
+	 * @param availableContent
+	 * @param timeout
+	 * @param handle
+	 * @return
+	 * @throws IOException
+	 */
+	public static ContentObject isContentInRepository(ContentObject availableContent, long timeout, CCNHandle handle) throws IOException {
+		
+		// Enumerate the name of the object we got, and see if it is actually in the repository.
+		// If the first segment is in the repository, assume whole thing is there (mostly this will be used
+		// for keys, which only have one segment, typically.)
+		EnumeratedNameList enl = new EnumeratedNameList(availableContent.name(), handle);
+		enl.waitForChildren(timeout); // have to time out, may be nothing there.
+		enl.stopEnumerating();
+		if (enl.hasChild(availableContent.digest())) {
+			// it's in there...
+			return availableContent;
+		}
+		// Not in there, could be all sorts of places it was off. Don't worry about those for now. 
+		Log.info("Repository does not contain expected child of {0}, has {1} children at that point", availableContent.name(), enl.childCount());
+		return null;
+	}
+
+	/**
+	 * API to determine whether a piece of content exists in the repository. Currently uses
+	 * name enumeration. Will change to alternative protocol whenever repository supports one.
+	 * @param contentName
+	 * @param desiredType
+	 * @param desiredContentDigest
+	 * @param verifier
+	 * @param timeout
+	 * @param handle
+	 * @return
+	 * @throws IOException
+	 */
+	public static ContentObject isContentInRepository(ContentName contentName, ContentType desiredType, 
+			byte [] desiredContentDigest, 
+			ContentVerifier verifier, long timeout,
+			CCNHandle handle) throws IOException {
+		// Originally wrote this just for keys, but it is actually general; make it
+		// so for now. Replace by better repo protocols when available.
+		// Repo content is assumed to have a version, contentName may not in which case it
+		// refers to the latest version available. (Note: should we check to see what the
+		// latest version is in the caches before we see what version is in the repo?
+		// Probably best to do that, rather than to then enum the repo and just see what
+		// the latest version there is.
+		
+		// HACK - want to use repo confirmation protocol to make sure data makes it to a repo
+		// even if it doesn't come from us. Problem is, we may have already written it, and don't
+		// want to write a brand new version of identical data. If we try to publish it under
+		// the same (unversioned) name, the repository may get some of the data from the ccnd
+		// cache, which will cause us to think it hasn't been written. So for the moment, we use the
+		// name enumeration protocol to determine whether this key has been written to a repository
+		// already. We can't ask the repo (currently) what the content is of the thing it has written;
+		// we need to see if the digest matches. If we merely wanted to see if the repository has
+		// the exact object we have in our server, it'd be easy. But we might have published it
+		// a week ago, and so the current version in the server might be signed later...
+		// There are several options: contentName has a version, in which case the repo has to have that
+		// version, or contentName doesn't have a version, in which case the repo ought to have something
+		// with a version.
+		
+		// See if we can get the content, or its latest version, somewhere. This is a little sketchy --
+		// doesn't handle keys that are not versioned. TODO should we handle those -- retry in isContentAvailalble
+		// should do it.
+		ContentObject latestAvailableContent = isContentAvailable(contentName, desiredType, desiredContentDigest, 
+																	verifier, timeout, handle);
+		
+		if (null == latestAvailableContent) {
+			return null; // if it's not available, it's not in a repo
+		}
+		return CCNReader.isContentInRepository(latestAvailableContent, timeout, handle);
+	}
+
+	/**
+	 * Checks to see if the named content or its latest version is available on the network; if it
+	 * is, returns its first segment as a ContentObject. Actually should dereference links, as
+	 * actual reads are done via input streams. Could remove our separate pull if we
+	 * plumb content verifiers up through streams.
+	 * @param contentName
+	 * @param desiredType
+	 * @param desiredContentDigest
+	 * @param verifier
+	 * @param timeout
+	 * @return
+	 * @throws IOException 
+	 */
+	public static ContentObject isContentAvailable(ContentName contentName, ContentType desiredType, 
+													byte [] desiredContentDigest, 
+													ContentVerifier verifier, long timeout,
+													CCNHandle handle) throws IOException {
+	
+		// TODO -- add type checking. Cheezy way to add type checking to input streams; put it in 
+		// the verifier and allows verifiers to nest.
+		
+		// Null if no terminal version
+		byte [] contentNameVersionComponent = VersioningProfile.cutTerminalVersion(contentName).second();
+		ContentObject retrievedObject = null;
+	
+		// If we don't have a version, we need to find the latest version out there, and then see if
+		// that is in the repository, rather than seeing what the latest version in a repo is.
+		if (null == contentNameVersionComponent) {
+	
+			// If this isn't the one we want -- i.e. wrong content; no easy way to go
+			// back and check to see if there are more.
+			retrievedObject = VersioningProfile.getFirstBlockOfLatestVersion(contentName, 
+					null, null,
+					timeout, ((null != verifier) ? verifier : handle.keyManager().getDefaultVerifier()), 
+					handle);
+	
+		} else {
+			retrievedObject = SegmentationProfile.getSegment(contentName, null, null, timeout, 
+					((null != verifier) ? verifier : handle.keyManager().getDefaultVerifier()), handle);
+		}
+	
+		if (null == retrievedObject) {
+			// Couldn't find one at all. That means it's definitely not in a repository (or a cache,
+			// or a key server). Done.
+			Log.info("isContentAvailable: no content available corresponding to {0}", contentName);
+			return null;
+		} else {
+			Log.finer("isContentAvailable: found content {0} matching name {1}", retrievedObject.name(), contentName);
+	
+			// Found one. Does it contain what we want, if we know what that is?
+			if (null != desiredContentDigest) {
+				CCNInputStream inputStream = new CCNInputStream(retrievedObject, null, handle);
+				byte [] streamContent = CCNDigestHelper.digest(inputStream);
+				if (!Arrays.equals(streamContent, desiredContentDigest)) {
+					Log.info("Retrieved content {0} matching name {1}, but that stream's content is {2}, not expected {3}.", 
+							retrievedObject.name(), contentName, DataUtils.printBytes(streamContent), DataUtils.printBytes(desiredContentDigest));
+					return null;
+				}
+			}
+			return retrievedObject;
+		}
 	}
 }

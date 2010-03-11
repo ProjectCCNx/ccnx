@@ -140,6 +140,13 @@ public class UserConfiguration {
 	protected static final String CCNX_DEFAULT_KEY_LOCATOR_ENVIRONMENT_VARIABLE = "CCNX_DEFAULT_KEY_LOCATOR";
 
 	/**
+	 * Property and variable to control whether we publish keys or not.
+	 */
+	protected static final String CCNX_PUBLISH_KEYS_PROPERTY = 
+		"org.ccnx.config.PublishKeys";
+	protected static final String CCNX_PUBLISH_KEYS_ENVIRONMENT_VARIABLE = "CCNX_PUBLISH_KEYS";
+
+	/**
 	 * Value of CCN directory.
 	 */
 	protected static String _userConfigurationDir;
@@ -328,6 +335,14 @@ public class UserConfiguration {
 		return SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_DEFAULT_KEY_LOCATOR_PROPERTY, 
 																		 CCNX_DEFAULT_KEY_LOCATOR_ENVIRONMENT_VARIABLE,
 																		 null);
+	}
+
+	public static boolean publishKeys() { 
+		String strPublish =  
+			SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_PUBLISH_KEYS_PROPERTY, 
+																	 CCNX_PUBLISH_KEYS_ENVIRONMENT_VARIABLE,
+																	  "true");
+		return strPublish.equalsIgnoreCase("true");
 	}
 
 	public static String keyRepositoryDirectory() {

@@ -17,6 +17,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.security.crypto.KDFContentKeys;
+import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -27,7 +28,7 @@ import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
-import org.ccnx.ccn.profiles.namespace.NamespaceManager.Root.RootObject;
+import org.ccnx.ccn.profiles.namespace.Root.RootObject;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -47,20 +48,17 @@ public abstract class AccessControlManager {
 	public static final String DEFAULT_DATA_KEY_ALGORITHM = "AES";
 	public static final String DATA_KEY_LABEL = "Data Key";
 	protected ContentName _namespace;
-	protected KeyCache _keyCache;
+	protected SecureKeyCache _keyCache;
 	protected CCNHandle _handle;
 	protected SecureRandom _random = new SecureRandom();
 
 	/**
-	 * Factory method.
-	 * Eventually split between a superclass AccessControlManager that handles many
-	 * access schemes and a subclass GroupBasedAccessControlManager. For now, put
-	 * a factory method here that makes you an ACM based on information in a stored
-	 * root object. Have to trust that object as a function of who signed it.
+	 * Subclasses should implement a default constructor and set themselves up with an 
+	 * initialize method.
 	 */
-	public static AccessControlManager createManager(RootObject policyInformation, CCNHandle handle) {
-		return null; // TODO fill in 
-	}
+	public AccessControlManager() {}
+	
+	public abstract boolean initialize(RootObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException;
 
 	/**
 	 * Labels for deriving various types of keys.
@@ -72,7 +70,7 @@ public abstract class AccessControlManager {
 
 	public CCNHandle handle() { return _handle; }
 
-	protected KeyCache keyCache() { return _keyCache; }
+	protected SecureKeyCache keyCache() { return _keyCache; }
 	
 	public boolean inProtectedNamespace(ContentName content) {
 		return _namespace.isPrefixOf(content);
@@ -281,8 +279,19 @@ public abstract class AccessControlManager {
 		return _keyCache.containsKey(keyID);
 	}
 	
+	public boolean hasKey(ContentName keyName) {
+		return _keyCache.containsKey(keyName);
+	}
+	
 	protected Key getKey(byte [] desiredKeyIdentifier) {
 		return _keyCache.getKey(desiredKeyIdentifier);
+	}
+
+	protected Key getKey(ContentName keyName) {
+		byte [] keyID = _keyCache.getKeyID(keyName);
+		if (null == keyID)
+			return null;
+		return _keyCache.getKey(keyID);
 	}
 
 	/**

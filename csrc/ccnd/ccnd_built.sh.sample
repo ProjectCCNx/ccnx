@@ -1,0 +1,35 @@
+#!/bin/sh
+# ccnd/ccnd_built.sh.sample
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2010 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+
+V=`date +%s`
+S=`which sh`
+test -x ./ccnd || exit 1
+mv ccnd ccnd-$V
+CCND=`pwd`/ccnd-$V
+test -x "$CCND" || exit 1
+cat > ccnd <<EOF
+#!$S
+# generated script
+case ":-\$*" in
+	:-) break;;
+	*) exec "$CCND" "\$@";;
+esac
+
+trap "ccndsmoketest kill 2>/dev/null" 0
+
+CCND_DEBUG=71 "$CCND" 2>>/dev/tty
+
+EOF
+chmod +x ccnd

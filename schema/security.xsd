@@ -21,6 +21,7 @@
 <!-- Top-level objects that can appear in 
      documents, messages, etc. -->
 <xs:element name="WrappedKey" type="WrappedKeyType"/>
+<xs:element name="Root" type="RootType"/>
 <xs:element name="ACL" type="CollectionType"/> <!-- All we're doing is changing the tag... -->
 
 <xs:complexType name="WrappedKeyType">
@@ -60,5 +61,33 @@
                 minOccurs="1" maxOccurs="1"/>
   </xs:sequence>
 </xs:complexType>
+
+<!-- Define a parameterized name algorithm, controlled by a prefix
+     and a suffix, where the algorithm user knows what to put in
+     between them. An optional label explains what this parameter is for. -->
+<xs:complexType name="ParameterizedNameType">
+  <xs:sequence>
+	<xs:element name="Label" type="xs:string"
+                                     minOccurs="0" maxOccurs="1" /> 
+    <xs:element name="Prefix" type="NameType" />
+    <xs:element name="Suffix" type="NameType" minOccurs="0" maxOccurs="1" />
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="RootType">
+<!-- Information parameterizing the root information for an access control
+     profile. Tries to be generic across multiple profiles. -->
+
+  <xs:sequence>
+	<!-- Identify the access control profile to apply to this namespace, via
+         a content name that can either be used for class lookup or actual
+         retrieval of parameters. -->
+    <xs:element name="ProfileName" type="NameType" />
+    <xs:element name="ParameterizedName" type="ParameterizedNameType" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="Parameters" type="KeyValueSetType"
+                minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
 
 </xs:schema>

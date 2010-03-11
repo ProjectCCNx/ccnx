@@ -51,6 +51,7 @@ import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.KeyProfile;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
 import org.ccnx.ccn.protocol.ContentName;
@@ -179,7 +180,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					Log.info("Unexpected " + e.getClass().getName() + " parsing key id " + DataUtils.printHexBytes(wkChildName) + ": " + e.getMessage());
 					// ignore and go on
 				}
-			} else if (GroupAccessControlProfile.isPrincipalNameComponent(wkChildName)) {
+			} else if (PrincipalInfo.isPrincipalNameComponent(wkChildName)) {
 				addPrincipal(wkChildName);
 			} else {
 				try{
@@ -273,7 +274,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @param wkChildName the principal name
 	 */
 	protected void addPrincipal(byte [] wkChildName) {
-		PrincipalInfo pi = GroupAccessControlProfile.parsePrincipalInfoFromNameComponent(wkChildName);
+		PrincipalInfo pi = new PrincipalInfo(wkChildName);
 		try{
 				_principalsLock.writeLock().lock();
 				_principals.put(pi.friendlyName(), pi);
@@ -361,8 +362,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @return the corresponding wrapped key name. 
 	 */
 	public ContentName getWrappedKeyNameForPrincipal(PrincipalInfo pi) {
-		ContentName principalLinkName = new ContentName(_namePrefix, 
-				GroupAccessControlProfile.principalInfoToNameComponent(pi));
+		ContentName principalLinkName = new ContentName(_namePrefix, pi.toNameComponent());
 		return principalLinkName;
 	}
 	
@@ -371,10 +371,10 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @param principalPublicKeyName the name of the public key of the principal.
 	 * @return the corresponding wrapped key name.
 	 * @throws VersionMissingException
+	 * @throws ContentEncodingException 
 	 */
-	public ContentName getWrappedKeyNameForPrincipal(ContentName principalPublicKeyName) throws VersionMissingException {
-		PrincipalInfo info = GroupAccessControlProfile.parsePrincipalInfoFromPublicKeyName(_manager.groupManager().isGroup(principalPublicKeyName),
-																					  principalPublicKeyName);
+	public ContentName getWrappedKeyNameForPrincipal(ContentName principalPublicKeyName) throws VersionMissingException, ContentEncodingException {
+		PrincipalInfo info = new PrincipalInfo(_manager, principalPublicKeyName);
 		return getWrappedKeyNameForPrincipal(info);
 	}
 
@@ -389,7 +389,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		boolean b = false;
 		try{
 			_otherNamesLock.readLock().lock();
-			b = _otherNames.contains(GroupAccessControlProfile.SUPERSEDED_MARKER.getBytes());
+			b = _otherNames.contains(AccessControlProfile.SUPERSEDED_MARKER.getBytes());
 		}finally{
 			_otherNamesLock.readLock().unlock();
 		}
@@ -458,7 +458,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		boolean b;
 		try{
 			_otherNamesLock.readLock().lock();
-			b = _otherNames.contains(GroupAccessControlProfile.PREVIOUS_KEY_NAME.getBytes());
+			b = _otherNames.contains(AccessControlProfile.PREVIOUS_KEY_NAME.getBytes());
 		}finally{
 			_otherNamesLock.readLock().unlock();
 		}
@@ -470,7 +470,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	public static ContentName getPreviousKeyBlockName(ContentName keyDirectoryName) {
-		return ContentName.fromNative(keyDirectoryName, GroupAccessControlProfile.PREVIOUS_KEY_NAME);		
+		return ContentName.fromNative(keyDirectoryName, AccessControlProfile.PREVIOUS_KEY_NAME);		
 	}
 	
 	/**
@@ -516,7 +516,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		boolean b;
 		try{
 			_otherNamesLock.readLock().lock();
-			b = _otherNames.contains(GroupAccessControlProfile.GROUP_PRIVATE_KEY_NAME.getBytes());
+			b = _otherNames.contains(AccessControlProfile.GROUP_PRIVATE_KEY_NAME.getBytes());
 		}finally{
 			_otherNamesLock.readLock().unlock();
 		}
@@ -524,7 +524,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	public ContentName getPrivateKeyBlockName() {
-		return ContentName.fromNative(_namePrefix, GroupAccessControlProfile.GROUP_PRIVATE_KEY_NAME);
+		return ContentName.fromNative(_namePrefix, AccessControlProfile.GROUP_PRIVATE_KEY_NAME);
 	}
 	
 	/**
@@ -647,14 +647,16 @@ public class KeyDirectory extends EnumeratedNameList {
 				// Groups may come in three types: ones I know I am a member of, but don't have this
 				// particular key version for, ones I don't know anything about, and ones I believe
 				// I'm not a member of but someone might have added me.
-				if (_manager.groupManager().haveKnownGroupMemberships()) {
+				if (_manager.haveKnownGroupMemberships()) {
 					try{
 						_principalsLock.readLock().lock();
 						if (Log.isLoggable(Level.INFO)) {
 							Log.info("KeyDirectory getUnwrappedKey: the directory has {0} principals.", _principals.size());
 						}
 						for (String principal : _principals.keySet()) {
-							if ((!_manager.groupManager().isGroup(principal)) || (!_manager.groupManager().amKnownGroupMember(principal))) {
+							PrincipalInfo pInfo = _principals.get(principal);
+							GroupManager pgm = _manager.groupManager(pInfo.distinguishingHash());
+							if ((pgm == null) || (! pgm.isGroup(principal)) || (! pgm.amKnownGroupMember(principal))) {
 								// On this pass, only do groups that I think I'm a member of. Do them
 								// first as it is likely faster.
 								continue;
@@ -662,7 +664,7 @@ public class KeyDirectory extends EnumeratedNameList {
 							// I know I am a member of this group, or at least I was last time I checked.
 							// Attempt to get this version of the group private key as I don't have it in my cache.
 							try {
-								Key principalKey = _manager.groupManager().getVersionedPrivateKeyForGroup(this, principal);
+								Key principalKey = pgm.getVersionedPrivateKeyForGroup(this, principal);
 								unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
 								if (null == unwrappedKey)
 									continue;
@@ -683,19 +685,18 @@ public class KeyDirectory extends EnumeratedNameList {
 							for (String principal : _principals.keySet()) {
 								Log.info("KeyDirectory getUnwrappedKey: the KD secret key is wrapped under the key of principal {0}", 
 										principal);
-								// On this pass, only do groups that I don't think I'm a member of.
-								if (!_manager.groupManager().isGroup(principal)) {
-									Log.finer("KeyDirectory getUnwrappedKey: Principal {0} is not a group.", principal);
+								PrincipalInfo pInfo = _principals.get(principal);
+								GroupManager pgm = _manager.groupManager(pInfo.distinguishingHash());
+								if ((pgm == null) || (! pgm.isGroup(principal)) || (pgm.amKnownGroupMember(principal))) {
+									// On this pass, only do groups that I don't think I'm a member of.
+									Log.finer("KeyDirectory getUnwrappedKey: skipping principal {0}.", principal);
 									continue;
 								}
-								if (_manager.groupManager().amKnownGroupMember(principal)) {
-									Log.finer("KeyDirectory getUnwrappedKey: I am already known to be a member of the group {0} ", principal);
-									continue;
-								}
-								if (_manager.groupManager().amCurrentGroupMember(principal)) {
+
+								if (pgm.amCurrentGroupMember(principal)) {
 									Log.finer("KeyDirectory getUnwrappedKey: I am a member of group {0} ", principal);
 									try {
-										Key principalKey = _manager.groupManager().getVersionedPrivateKeyForGroup(this, principal);
+										Key principalKey = pgm.getVersionedPrivateKeyForGroup(this, principal);
 										unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
 										if (null == unwrappedKey) {
 											Log.warning("Unexpected: we are a member of group {0} but get a null key.", principal);

@@ -35,6 +35,7 @@
 #include <ccn/coding.h>
 #include <ccn/reg_mgmt.h>
 #include <ccn/schedule.h>
+#include <ccn/seqwriter.h>
 
 /*
  * These are defined in other ccn headers, but the incomplete types suffice
@@ -132,6 +133,8 @@ struct ccnd_handle {
     struct ccn *internal_client;    /**< internal client */
     struct ccn_keystore *internal_keys; /**< the internal client's keys */
     struct face *face0;             /**< special face for internal client */
+    struct ccn_seqwriter *facelog;  /**< for notices of face status changes */
+    struct ccn_indexbuf *chface;    /**< faceids w/ recent status chnages */
     struct ccn_scheduled_event *internal_client_refresh;
     unsigned data_pause_microsec;   /**< tunable, see choose_face_delay() */
 };
@@ -196,6 +199,7 @@ struct face {
 #define CCN_FACE_UNDECIDED (1 << 9) /**< Might not be talking ccn */
 #define CCN_FACE_PERMANENT (1 << 10) /**< No timeout for inactivity */
 #define CCN_FACE_CONNECTING (1 << 11) /**< Connect in progress */
+#define CCN_FACE_LOOPBACK (1 << 12) /**< v4 or v6 loopback address */
 
 #define CCN_NOFACEID    (~0U)    /** denotes no face */
 
@@ -236,11 +240,43 @@ struct sparse_straggler_entry {
 };
 
 /**
+ * The propagating interest hash table is keyed by Nonce.
+ *
+ * While the interest is pending, the pe is also kept in a doubly-linked
+ * list off of a nameprefix_entry.
+ *
+ * When the interest is consumed, the pe is removed from the doubly-linked
+ * list and is cleaned up by freeing unnecessary bits (including the interest
+ * message itself).  It remains in the hash table for a time, in order to catch
+ * duplicate nonces.
+ */
+struct propagating_entry {
+    struct propagating_entry *next;
+    struct propagating_entry *prev;
+    unsigned flags;             /**< CCN_PR_xxx */
+    unsigned faceid;            /**< origin of the interest, dest for matches */
+    int usec;                   /**< usec until timeout */
+    int sent;                   /**< leading faceids of outbound processed */
+    struct ccn_indexbuf *outbound; /**< in order of use */
+    unsigned char *interest_msg; /**< pending interest message */
+    unsigned size;              /**< size in bytes of interest_msg */
+    int fgen;                   /**< decide if outbound is stale */
+};
+// XXX - with new outbound/sent repr, some of these flags may not be needed.
+#define CCN_PR_UNSENT   0x01 /**< interest has not been sent anywhere yet */
+#define CCN_PR_WAIT1    0x02 /**< interest has been sent to one place */
+#define CCN_PR_STUFFED1 0x04 /**< was stuffed before sent anywhere else */
+#define CCN_PR________  0x08
+#define CCN_PR_EQV      0x10 /**< a younger similar interest exists */
+#define CCN_PR_SCOPE0   0x20 /**< interest scope is 0 */
+#define CCN_PR_SCOPE1   0x40 /**< interest scope is 1 */
+
+/**
  * The nameprefix hash table is keyed by the Component elements of
  * the Name prefix.
  */
 struct nameprefix_entry {
-    struct propagating_entry *propagating_head;
+    struct propagating_entry pe_head; /**< list head for propagating entries */
     struct ccn_indexbuf *forward_to; /**< faceids to forward to */
     struct ccn_forwarding *forwarding; /**< detailed forwarding info */
     struct nameprefix_entry *parent; /**< link to next-shorter prefix */
@@ -266,33 +302,15 @@ struct ccn_forwarding {
  * @def CCN_FORW_ACTIVE         1
  * @def CCN_FORW_CHILD_INHERIT  2
  * @def CCN_FORW_ADVERTISE      4
+ * @def CCN_FORW_LAST           8
+ * @def CCN_FORW_CAPTURE       16
  */
-#define CCN_FORW_PUBMASK (CCN_FORW_ACTIVE        | \
-                          CCN_FORW_CHILD_INHERIT | \
-                          CCN_FORW_ADVERTISE       )
 #define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */
  
 /**
- * Determines how frequently we age our fowarding entries
+ * Determines how frequently we age our forwarding entries
  */
 #define CCN_FWU_SECS 5
-
-/**
- * The propagating interest hash table is keyed by Nonce.
- */
-struct propagating_entry {
-    struct propagating_entry *next;
-    struct propagating_entry *prev;
-    struct ccn_indexbuf *outbound;
-    unsigned char *interest_msg;
-    unsigned size;              /* size in bytes of interest_msg */
-    unsigned flags;             /* CCN_PR_xxx */
-    unsigned faceid;            /* origin of the interest, dest for matches */
-    int usec;                   /* usec until timeout */
-};
-#define CCN_PR_UNSENT 1  /* interest has not been sent anywhere yet */
-#define CCN_PR_WAIT1  2  /* interest has been sent to one place */
-#define CCN_PR_STUFFED1 4 /* was stuffed before sent anywhere else */
 
 /*
  * Internal client
@@ -352,14 +370,6 @@ struct ccn_charbuf *ccnd_req_selfreg(struct ccnd_handle *h,
 struct ccn_charbuf *ccnd_req_unreg(struct ccnd_handle *h,
                                    const unsigned char *msg, size_t size);
 
-int ccnd_reg_prefix(struct ccnd_handle *h,
-                    const unsigned char *msg,
-                    struct ccn_indexbuf *comps,
-                    int ncomps,
-                    unsigned faceid,
-                    int flags,
-                    int expires);
-
 int ccnd_reg_uri(struct ccnd_handle *h,
                  const char *uri,
                  unsigned faceid,
@@ -380,6 +390,7 @@ void shutdown_client_fd(struct ccnd_handle *h, int fd);
 struct ccnd_handle *ccnd_create(const char *, ccnd_logger, void *);
 void ccnd_run(struct ccnd_handle *h);
 void ccnd_destroy(struct ccnd_handle **);
+void ccnd_face_status_change(struct ccnd_handle *, unsigned);
 extern const char *ccnd_usage_message;
 
 #endif

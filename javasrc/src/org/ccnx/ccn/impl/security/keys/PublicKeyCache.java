@@ -73,7 +73,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * initialized.
  */
 
-public class KeyRepository {
+public class PublicKeyCache {
 
 	// Stop logging to key cache by default.
 	protected static final boolean _DEBUG = false;
@@ -97,7 +97,7 @@ public class KeyRepository {
 	 * doesn't attempt network operations until initializeKeyServer
 	 * is called (usually by publishKey).
 	 */
-	public KeyRepository(KeyManager keyManager) {
+	public PublicKeyCache(KeyManager keyManager) {
 		_keyManager = keyManager;
 	}
 
@@ -105,7 +105,7 @@ public class KeyRepository {
 	 * Constructor; uses existing handle.
 	 * @param handle
 	 */
-	public KeyRepository(CCNHandle handle) {
+	public PublicKeyCache(CCNHandle handle) {
 		_handle = handle;
 		_keyManager = handle.keyManager();
 	}
