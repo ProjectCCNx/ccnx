@@ -56,10 +56,9 @@ public class ACPerformanceTestRepo {
 	static String[] userNames = {"Alice", "Bob", "Carol"};
 	static ContentName baseDirectory, nodeName;
 	static CreateUserData cua;
-	static int blockSize = 8096;
+	static final int blockSize = 8096;
+	static final int contentSizeInBlocks = 100;
 	static Random rnd;
-	static final String fileName = "./src/org/ccnx/ccn/test/profiles/security/access/group/earth.jpg";
-	static final int fileSize = 101783;
 	static CCNHandle _AliceHandle;
 	static GroupAccessControlManager _AliceACM;
 
@@ -99,13 +98,12 @@ public class ACPerformanceTestRepo {
 		NamespaceManager.clearSearchedPathCache();
 		_AliceACM = (GroupAccessControlManager) AccessControlManager.findACM(domainPrefix, _AliceHandle);
 		Assert.assertNotNull(_AliceACM);
-		System.out.println("ns: " + _AliceACM.getNamespaceRoot());
 	}
 	
 	@Test
 	public void performanceTest() {
 		createBaseDirectoryACL();
-		writeFileInDirectory();
+		writeContentInDirectory();
 
 		// Alice and Bob have permission to read the file
 		try {
@@ -140,15 +138,11 @@ public class ACPerformanceTestRepo {
 		long startTime = System.currentTimeMillis();
 
 		try {
-			baseDirectory = domainPrefix.append(ContentName.fromNative("/Alice" + rnd.nextInt(100000) + "/documents/images/"));
-			System.out.println("Base directory: " + baseDirectory);
+			baseDirectory = domainPrefix.append(ContentName.fromNative("/Alice/documents/images/"));
 			ArrayList<Link> ACLcontents = new ArrayList<Link>();
 			ACLcontents.add(new Link(ContentName.fromNative(userNamespace, userNames[0]), ACL.LABEL_MANAGER, null));
 			ACLcontents.add(new Link(ContentName.fromNative(userNamespace, userNames[1]), ACL.LABEL_READER, null));		
 			ACL baseDirACL = new ACL(ACLcontents);
-			if (_AliceACM == null) System.out.println("Alice ACM is null");
-			if (baseDirectory == null) System.out.println("base dir is null");
-			if (baseDirACL == null) System.out.println("basedirACL is null");
 			_AliceACM.setACL(baseDirectory, baseDirACL);
 		}
 		catch (Exception e) {
@@ -162,21 +156,18 @@ public class ACPerformanceTestRepo {
 	/**
 	 * write a file in the baseDirectory
 	 */
-	public void writeFileInDirectory() {
+	public void writeContentInDirectory() {
 		long startTime = System.currentTimeMillis();
 		
 		try {
-			InputStream is = new FileInputStream(fileName);
-			nodeName = ContentName.fromNative(baseDirectory, "earth.jpg");
+			nodeName = ContentName.fromNative(baseDirectory, "randomContent");
 			CCNOutputStream ostream = new RepositoryFileOutputStream(nodeName, _AliceHandle);
 			ostream.setTimeout(SystemConfiguration.MAX_TIMEOUT);
 			
-			int size = blockSize;
-			int readLen = 0;
 			byte [] buffer = new byte[blockSize];
-			Log.finer("do_write: " + is.available() + " bytes left.");
-			while ((readLen = is.read(buffer, 0, size)) != -1){	
-				ostream.write(buffer, 0, readLen);
+			for (int i=0; i<contentSizeInBlocks; i++) {
+				rnd.nextBytes(buffer);
+				ostream.write(buffer, 0, blockSize);
 			}
 			ostream.close();
 		} 
@@ -185,7 +176,7 @@ public class ACPerformanceTestRepo {
 			Assert.fail();
 		}
 		
-		System.out.println("writeFile: " + (System.currentTimeMillis() - startTime));		
+		System.out.println("writeContent: " + (System.currentTimeMillis() - startTime));		
 	}
 	
 	/**
@@ -207,7 +198,7 @@ public class ACPerformanceTestRepo {
 			while ((readcount = input.read(buffer)) != -1){
 				readtotal += readcount;
 			}
-			Assert.assertEquals(fileSize, readtotal);
+			Assert.assertEquals(blockSize * contentSizeInBlocks, readtotal);
 		}
 		// we want to propagate AccessDeniedException, but not IOException.
 		// Since AccessDeniedException is a subclass of IOException, we catch and re-throw it.
