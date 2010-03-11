@@ -284,49 +284,51 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	
 	
 	private void startPipeline() {
-		System.out.println("starting pipelining");
+		synchronized (inOrderSegments) {
+			System.out.println("starting pipelining");
 		
-		_pipelineStartTime = System.currentTimeMillis();
-		System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].1"+ " toProcess "+incoming.size());		
+			_pipelineStartTime = System.currentTimeMillis();
+			System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].1"+ " toProcess "+incoming.size());		
 		
-		long segmentToGet = -1;
-		Interest interest = null;
+			long segmentToGet = -1;
+			Interest interest = null;
 		
-		if(_basePipelineName == null) {
-			_basePipelineName = _baseName.clone();
-		}
-		
-		System.out.println("BaseName for pipeline: "+_basePipelineName +" base name: "+_baseName);
-		
-		if (_currentSegment!=null) {
-			System.out.println("we already have the first segment...  start from there:"+_currentSegment.name());
-			//we already have the starting segment...
-			
-			//is the first segment the last one?
-			if (SegmentationProfile.isLastSegment(_currentSegment)) {
-				//this is the last segment...  don't pipeline
-				System.out.println("we already have the last segment...  don't need to pipeline (returning)");
-				return;
-			} else {
-				//this isn't the last segment, start up pipelining...  only ask for next segment to start
-				System.out.println("this isn't the last segment...  need to start up pipelining");
+			if(_basePipelineName == null) {
+				_basePipelineName = _baseName.clone();
 			}
-		} else {
-			System.out.println("need to get the first segment: startingSegmentNumber="+_startingSegmentNumber);
-		}
 		
-		segmentToGet = nextSegmentNumber();
-		_nextPipelineSegment = segmentToGet;
-		interest = SegmentationProfile.segmentInterest(_basePipelineName, segmentToGet, _publisher);
-		try {
-			interest.userTime = System.currentTimeMillis();
-			_handle.expressInterest(interest, this);
-			_sentInterests.add(interest);
-			_lastRequestedPipelineSegment = segmentToGet;
-			System.out.println("expressed interest for segment "+segmentToGet+" in startPipeline(): "+interest);
-		} catch(IOException e) {
-			//could not express interest for next segment...  logging the error
-			Log.warning("Failed to express interest for pipelining segments in CCNAbstractInputStream:  Interest = {0}", interest.name());
+			System.out.println("BaseName for pipeline: "+_basePipelineName +" base name: "+_baseName);
+		
+			if (_currentSegment!=null) {
+				System.out.println("we already have the first segment...  start from there:"+_currentSegment.name());
+				//we already have the starting segment...
+			
+				//is the first segment the last one?
+				if (SegmentationProfile.isLastSegment(_currentSegment)) {
+					//this is the last segment...  don't pipeline
+					System.out.println("we already have the last segment...  don't need to pipeline (returning)");
+					return;
+				} else {
+					//this isn't the last segment, start up pipelining...  only ask for next segment to start
+					System.out.println("this isn't the last segment...  need to start up pipelining");
+				}
+			} else {
+				System.out.println("need to get the first segment: startingSegmentNumber="+_startingSegmentNumber);
+			}
+		
+			segmentToGet = nextSegmentNumber();
+			_nextPipelineSegment = segmentToGet;
+			interest = SegmentationProfile.segmentInterest(_basePipelineName, segmentToGet, _publisher);
+			try {
+				interest.userTime = System.currentTimeMillis();
+				_handle.expressInterest(interest, this);
+				_sentInterests.add(interest);
+				_lastRequestedPipelineSegment = segmentToGet;
+				System.out.println("expressed interest for segment "+segmentToGet+" in startPipeline(): "+interest);
+			} catch(IOException e) {
+				//could not express interest for next segment...  logging the error
+				Log.warning("Failed to express interest for pipelining segments in CCNAbstractInputStream:  Interest = {0}", interest.name());
+			}
 		}
 	}
 	
