@@ -31,4 +31,9 @@ public class NamespaceProfile implements CCNProfile {
 	public static ContentName policyPostfix() {
 		return POLICY_POSTFIX_NAME;
 	}
+	
+	public static ContentName policyNamespace(ContentName name) {
+		return name.append(POLICY_POSTFIX_NAME);
+	}
+	
 }
