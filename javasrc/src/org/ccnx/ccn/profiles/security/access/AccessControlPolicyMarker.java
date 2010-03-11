@@ -17,6 +17,7 @@
 package org.ccnx.ccn.profiles.security.access;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
@@ -37,6 +38,7 @@ import org.ccnx.ccn.profiles.namespace.NamespaceProfile;
 import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.namespace.PolicyMarker;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
@@ -126,7 +128,7 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 	 * @throws ConfigurationException
 	 */
 	public static void create(ContentName name, ContentName profileName, ACL acl, ArrayList<ParameterizedName> parameterizedNames,
-			KeyValueSet parameters, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException {
+			KeyValueSet parameters, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException, InvalidKeyException {
 		AccessControlPolicyMarker r = new AccessControlPolicyMarker(profileName, parameterizedNames, parameters);
 		
 		ContentName policyPrefix = NamespaceProfile.policyNamespace(name);
@@ -134,8 +136,10 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 		AccessControlPolicyMarkerObject ro = new AccessControlPolicyMarkerObject(policyMarkerName, r, saveType, handle);
 		ro.save();
 
-		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
-		aclo.save();
+		GroupAccessControlManager gacm = new GroupAccessControlManager();
+		gacm.initialize(ro, handle);
+		// create ACL and NK at the root of the namespace under access control
+		gacm.initializeNamespace(acl);
 	}	
 	
 	public AccessControlPolicyMarker(ContentName profileName) {
