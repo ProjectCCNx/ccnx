@@ -177,9 +177,9 @@ public class CCNNetworkManager implements Runnable {
 		protected DatagramChannel _ncDGrmChannel = null; // for use by run thread only!
 		protected SocketChannel _ncSockChannel = null;
 		protected Selector _ncSelector = null;
-		protected Boolean _ncConnected = false;
+		protected Boolean _ncConnected = new Boolean(false);
 		protected boolean _ncInitialized = false;
-		Timer _ncHeartBeatTimer = null;
+		protected Timer _ncHeartBeatTimer = null;
 
 		private NetworkChannel(String host, int port, NetworkProtocol proto) throws IOException {
 			_ncHost = host;
@@ -190,21 +190,25 @@ public class CCNNetworkManager implements Runnable {
 		
 		public void open() throws IOException {
 			if (_ncProto == NetworkProtocol.UDP) {
-				_ncDGrmChannel = DatagramChannel.open();
-				_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
-				_ncDGrmChannel.configureBlocking(false);
-				try {
-					ByteBuffer test = ByteBuffer.allocate(1);
-					_ncDGrmChannel.write(test);
-				} catch (IOException io) {
-					return;
-				}
-				_ncDGrmChannel.register(_ncSelector, SelectionKey.OP_READ);
-				_ncLocalPort = _ncDGrmChannel.socket().getLocalPort();
-				_ncConnected = true;
-				if (!_ncInitialized) {
-					_ncHeartBeatTimer = new Timer(true);
-					_ncHeartBeatTimer.schedule(new HeartBeatTimer(), PERIOD);
+				_ccndId = null;
+				synchronized (_ncConnected) {
+					try {
+						_ncDGrmChannel = DatagramChannel.open();
+						_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
+						_ncDGrmChannel.configureBlocking(false);
+						ByteBuffer test = ByteBuffer.allocate(1);
+						int ret = _ncDGrmChannel.write(test);
+						if (ret < 1)
+							return;
+						wakeup();
+						_ncDGrmChannel.register(_ncSelector, SelectionKey.OP_READ);
+						_ncLocalPort = _ncDGrmChannel.socket().getLocalPort();
+						_ncHeartBeatTimer = new Timer(true);
+						_ncHeartBeatTimer.schedule(new HeartBeatTimer(), 0);
+						_ncConnected = true;
+					} catch (IOException ioe) {
+						return;
+					}
 				}
 			} else if (_ncProto == NetworkProtocol.TCP) {
 				_ncSockChannel = SocketChannel.open();
@@ -217,10 +221,13 @@ public class CCNNetworkManager implements Runnable {
 			}
 			String connecting = (_ncInitialized ? "Reconnecting to" : "Contacting");
 			Log.info(connecting + " CCN agent at " + _ncHost + ":" + _ncPort + " on local port " + _ncLocalPort);
+			_ncInitialized = true;
 		}
 		
 		private void close() throws IOException {
 			if (_ncProto == NetworkProtocol.UDP) {
+				_ncConnected = false;
+				_ncSelector.wakeup();
 				_ncDGrmChannel.close();
 				if (null != _ncHeartBeatTimer)
 					_ncHeartBeatTimer.cancel();
@@ -270,7 +277,8 @@ public class CCNNetworkManager implements Runnable {
 		}
 
 		private int select(long timeout) throws IOException {
-			return (_ncSelector.select(timeout));
+			int selectVal = (_ncSelector.select(timeout));
+			return selectVal;
 		}
 		
 		private Selector wakeup() {
@@ -288,31 +296,25 @@ public class CCNNetworkManager implements Runnable {
 		 * Do scheduled writes of heartbeats on UDP connections.
 		 */
 		private class HeartBeatTimer extends TimerTask {
-			
 			public void run() {
-				long ourTime = System.currentTimeMillis();
-				if ((ourTime - _lastHeartbeat) > HEARTBEAT_PERIOD) {
-					_lastHeartbeat = ourTime;
-					try {
-						ByteBuffer heartbeat = ByteBuffer.allocate(1);
-						if (_ncDGrmChannel.isConnected())
-							_ncDGrmChannel.write(heartbeat);
-					} catch (IOException io) {
-						// We do not see errors on send typically even if 
-						// agent is gone, so log each but do not track
-						Log.warning("Error sending heartbeat packet: {0}", io.getMessage());
+				synchronized (_ncConnected) {
+					if (_ncConnected) {
 						try {
-							if (_ncDGrmChannel.isConnected()) {
-								_ncDGrmChannel.disconnect();
-							}
-						} catch (IOException e) {}
+							ByteBuffer heartbeat = ByteBuffer.allocate(1);
+							_ncDGrmChannel.write(heartbeat);
+							_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
+						} catch (IOException io) {
+							// We do not see errors on send typically even if 
+							// agent is gone, so log each but do not track
+							Log.warning("Error sending heartbeat packet: {0}", io.getMessage());
+							try {
+								close();
+							} catch (IOException e) {}
+						}
 					}
 				}
-				_ncHeartBeatTimer.schedule(new HeartBeatTimer(), PERIOD);
-			} /* run() */
-			
+			} /* run() */	
 		} /* private class HeartBeatTimer extends TimerTask */
-
 	} /* NetworkChannel */
 	
 	
@@ -322,94 +324,113 @@ public class CCNNetworkManager implements Runnable {
 	private class PeriodicWriter extends TimerTask {
 		// TODO Interest refresh time is supposed to "decay" over time but there are currently
 		// unresolved problems with this.
-		public void run() {		
+		public void run() {	
 			long ourTime = System.currentTimeMillis();
 			long minInterestRefreshTime = PERIOD + ourTime;
-			// Library.finest("Refreshing interests (size " + _myInterests.size() + ")");
+			long useMe = PERIOD;
 
 			// Re-express interests that need to be re-expressed
-			try {
-				synchronized (_myInterests) {
-					for (Entry<InterestRegistration> entry : _myInterests.values()) {
-						InterestRegistration reg = entry.value();
-						if (ourTime > reg.nextRefresh) {
-							if( Log.isLoggable(Level.FINER) )
-								Log.finer("Refresh interest: {0}", reg.interest);
-							// Temporarily back out refresh period decay
-							//reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
-							//: reg.nextRefreshPeriod * 2;
-							reg.nextRefresh += reg.nextRefreshPeriod;
-							try {
-								write(reg.interest);
-							} catch (NotYetConnectedException nyce) {}
+			synchronized (_channel._ncConnected) {
+				if (_channel._ncConnected) {
+					try {
+						synchronized (_myInterests) {
+							for (Entry<InterestRegistration> entry : _myInterests.values()) {
+								InterestRegistration reg = entry.value();
+								if (ourTime > reg.nextRefresh) {
+									if( Log.isLoggable(Level.FINER) )
+										Log.finer("Refresh interest: {0}", reg.interest);
+									// Temporarily back out refresh period decay
+									//reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
+									//: reg.nextRefreshPeriod * 2;
+									reg.nextRefresh += reg.nextRefreshPeriod;
+									try {
+										write(reg.interest);
+									} catch (NotYetConnectedException nyce) {}
+								}
+								if (minInterestRefreshTime > reg.nextRefresh)
+									minInterestRefreshTime = reg.nextRefresh;
+							}
 						}
-						if (minInterestRefreshTime > reg.nextRefresh)
-							minInterestRefreshTime = reg.nextRefresh;
+					} catch (ContentEncodingException xmlex) {
+						Log.severe("PeriodicWriter interest refresh thread failure (Malformed datagram): {0}", xmlex.getMessage()); 
+						Log.warningStackTrace(xmlex);
+					}
+					// Re-express prefix registrations that need to be re-expressed
+					// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
+					// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
+					// prefix we use Integer.MAX_VALUE as the requested lifetime.
+					long minFilterRefreshTime = PERIOD + ourTime;
+					if (_usePrefixReg) {
+						synchronized (_registeredPrefixes) {
+							if( Log.isLoggable(Level.FINE) )
+								Log.fine("Refresh registration.  size: " + _registeredPrefixes.size() + " sizeNames: " + _myFilters.sizeNames());
+							for (ContentName prefix : _registeredPrefixes.keySet()) {
+								RegisteredPrefix rp = _registeredPrefixes.get(prefix);
+								if (null != rp._forwarding && rp._lifetime != -1 && rp._nextRefresh != -1) {
+									if (ourTime > rp._nextRefresh) {
+										if( Log.isLoggable(Level.FINER) )
+											Log.finer("Refresh registration: {0}", prefix);
+										rp._nextRefresh = -1;
+										try {
+											ForwardingEntry forwarding = _prefixMgr.selfRegisterPrefix(prefix);
+											if (null != forwarding) {
+												rp._lifetime = forwarding.getLifetime();
+		//										filter.nextRefresh = new Date().getTime() + (filter.lifetime / 2);
+												rp._nextRefresh = System.currentTimeMillis() + (rp._lifetime / 2);
+											}
+											rp._forwarding = forwarding;
+		
+										} catch (CCNDaemonException e) {
+											Log.warning(e.getMessage());
+											// XXX - don't think this is right
+											rp._forwarding = null;
+											rp._lifetime = -1;
+											rp._nextRefresh = -1;
+										}
+									}	
+									if (minFilterRefreshTime > rp._nextRefresh)
+										minFilterRefreshTime = rp._nextRefresh;
+								}
+							} /* for (Entry<Filter> entry : _myFilters.values()) */
+						} /* synchronized (_myFilters) */
+					} /* _usePrefixReg */
+		
+					long currentTime = System.currentTimeMillis();
+					long checkInterestDelay = minInterestRefreshTime - currentTime;
+					if (checkInterestDelay < 0)
+						checkInterestDelay = 0;
+					if (checkInterestDelay > PERIOD)
+						checkInterestDelay = PERIOD;
+		
+					long checkPrefixDelay = minFilterRefreshTime - currentTime;
+					if (checkPrefixDelay < 0)
+						checkPrefixDelay = 0;
+					if (checkPrefixDelay > PERIOD)
+						checkPrefixDelay = PERIOD;
+					
+					if (checkInterestDelay < checkPrefixDelay) {
+						useMe = checkInterestDelay;
+					} else {
+						useMe = checkPrefixDelay;
+					}
+				} else {
+					useMe = 1000;
+					try {
+						_channel.open();
+						if (_channel.isConnected()) {
+							_faceID = null;
+							reregisterPrefixes();
+							return;
+						}
+					} catch (IOException e) {
+						System.out.println("foog1");
+					} 
+					catch (CCNDaemonException e) {
+						try {
+							_channel.close();
+						} catch (IOException e1) {}
 					}
 				}
-			} catch (ContentEncodingException xmlex) {
-				Log.severe("PeriodicWriter interest refresh thread failure (Malformed datagram): {0}", xmlex.getMessage()); 
-				Log.warningStackTrace(xmlex);
-			}
-
-			// Re-express prefix registrations that need to be re-expressed
-			// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
-			// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
-			// prefix we use Integer.MAX_VALUE as the requested lifetime.
-			long minFilterRefreshTime = PERIOD + ourTime;
-			if (_usePrefixReg) {
-				synchronized (_registeredPrefixes) {
-					if( Log.isLoggable(Level.FINEST) )
-						Log.finest("Refresh registration.  size: " + _registeredPrefixes.size());
-					for (ContentName prefix : _registeredPrefixes.keySet()) {
-						RegisteredPrefix rp = _registeredPrefixes.get(prefix);
-						if (null != rp._forwarding && rp._lifetime != -1 && rp._nextRefresh != -1) {
-							if (ourTime > rp._nextRefresh) {
-								if( Log.isLoggable(Level.FINER) )
-									Log.finer("Refresh registration: {0}", prefix);
-								rp._nextRefresh = -1;
-								try {
-									ForwardingEntry forwarding = _prefixMgr.selfRegisterPrefix(prefix);
-									if (null != forwarding) {
-										rp._lifetime = forwarding.getLifetime();
-//										filter.nextRefresh = new Date().getTime() + (filter.lifetime / 2);
-										rp._nextRefresh = System.currentTimeMillis() + (rp._lifetime / 2);
-									}
-									rp._forwarding = forwarding;
-
-								} catch (CCNDaemonException e) {
-									Log.warning(e.getMessage());
-									// XXX - don't think this is right
-									rp._forwarding = null;
-									rp._lifetime = -1;
-									rp._nextRefresh = -1;
-								}
-							}	
-							if (minFilterRefreshTime > rp._nextRefresh)
-								minFilterRefreshTime = rp._nextRefresh;
-						}
-					} /* for (Entry<Filter> entry : _myFilters.values()) */
-				} /* synchronized (_myFilters) */
-			} /* _usePrefixReg */
-
-			long currentTime = System.currentTimeMillis();
-			long checkInterestDelay = minInterestRefreshTime - currentTime;
-			if (checkInterestDelay < 0)
-				checkInterestDelay = 0;
-			if (checkInterestDelay > PERIOD)
-				checkInterestDelay = PERIOD;
-
-			long checkPrefixDelay = minFilterRefreshTime - currentTime;
-			if (checkPrefixDelay < 0)
-				checkPrefixDelay = 0;
-			if (checkPrefixDelay > PERIOD)
-				checkPrefixDelay = PERIOD;
-			
-			long useMe;
-			if (checkInterestDelay < checkPrefixDelay) {
-				useMe = checkInterestDelay;
-			} else {
-				useMe = checkPrefixDelay;
 			}
 			if (_run)
 				_periodicTimer.schedule(new PeriodicWriter(), useMe);
@@ -1311,95 +1332,84 @@ public class CCNNetworkManager implements Runnable {
 		if( Log.isLoggable(Level.INFO) )
 			Log.info("CCNNetworkManager processing thread started for port: " + _localPort);
 		while (_run) {
-			try {
-				
-				//--------------------------------- Read and decode
+			if (_channel.isConnected()) {
 				try {
-					if (_channel.select(SOCKET_TIMEOUT) != 0) {
-						// Note: we're selecting on only one channel to get
-						// the ability to use wakeup, so there is no need to 
-						// inspect the selected-key set
-						datagram.clear(); // make ready for new read
-						synchronized (_channel) {
-							_channel.read(datagram); // queue readers and writers
-						}
-						if( Log.isLoggable(Level.FINEST) )
-							Log.finest("Read datagram (" + datagram.position() + " bytes) for port: " + _localPort);
-						_channel.clearSelectedKeys();
-						if (null != _error) {
-							if( Log.isLoggable(Level.INFO) )
-								Log.info("Receive error cleared for port: " + _localPort);
-							_error = null;
-						}
-						datagram.flip(); // make ready to decode
-						if (null != _tapStreamIn) {
-							byte [] b = new byte[datagram.limit()];
-							datagram.get(b);
-							_tapStreamIn.write(b);
-							datagram.rewind();
-						}
-						packet.clear();
-						packet.decode(datagram);
-					} else {
-						// This was a timeout or wakeup, no data
-						packet.clear();
-						if (!_run) {
-							// exit immediately if wakeup for shutdown
-							break;
-						}
-						if (!_channel.isConnected()) {
-							/*
-							 * This is the case where we noticed that the connect to ccnd went away.  We
-							 * try to reconnect, and if successful, we need to re-register our collection
-							 * of prefix registrations.
-							 */
-							_channel.open();
-							if (_channel.isConnected()) {
-								_faceID = null;
-								reregisterPrefixes();
+					//--------------------------------- Read and decode
+					try {
+						if (_channel.select(SOCKET_TIMEOUT) != 0) {
+							// Note: we're selecting on only one channel to get
+							// the ability to use wakeup, so there is no need to 
+							// inspect the selected-key set
+							datagram.clear(); // make ready for new read
+							synchronized (_channel) {
+								_channel.read(datagram); // queue readers and writers
+							}
+							if( Log.isLoggable(Level.FINEST) )
+								Log.finest("Read datagram (" + datagram.position() + " bytes) for port: " + _localPort);
+							_channel.clearSelectedKeys();
+							if (null != _error) {
+								if( Log.isLoggable(Level.INFO) )
+									Log.info("Receive error cleared for port: " + _localPort);
+								_error = null;
+							}
+							datagram.flip(); // make ready to decode
+							if (null != _tapStreamIn) {
+								byte [] b = new byte[datagram.limit()];
+								datagram.get(b);
+								_tapStreamIn.write(b);
+								datagram.rewind();
+							}
+							packet.clear();
+							packet.decode(datagram);
+						} else {
+							// This was a timeout or wakeup, no data
+							packet.clear();
+							if (!_run) {
+								// exit immediately if wakeup for shutdown
+								break;
 							}
 						}
+					} catch (IOException io) {
+						// We see IOException on receive every time if agent is gone
+						// so track it to log only start and end of outages
+						if (null == _error) {
+							if( Log.isLoggable(Level.INFO) )
+								Log.info("Unable to receive from agent: is it still running? Port: " + _localPort);
+						}
+						_error = io;
+						packet.clear();
 					}
-				} catch (IOException io) {
-					// We see IOException on receive every time if agent is gone
-					// so track it to log only start and end of outages
-					if (null == _error) {
-						if( Log.isLoggable(Level.INFO) )
-							Log.info("Unable to receive from agent: is it still running? Port: " + _localPort);
+	                if (!_run) {
+	                    // exit immediately if wakeup for shutdown
+	                    break;
+	                }
+	                
+	                // If we got a data packet, hand it back to all the interested
+					// parties (registered interests and getters).
+					//--------------------------------- Process data from net (if any) 
+					for (ContentObject co : packet.data()) {
+						if( Log.isLoggable(Level.FINER) )
+							Log.finer("Data from net for port: " + _localPort + " {0}", co.name());
+						//	SystemConfiguration.logObject("Data from net:", co);
+						
+						deliverData(co);
+						// External data never goes back to network, never held onto here
+						// External data never has a thread waiting, so no need to release sema
 					}
-					_error = io;
-					packet.clear();
-				}
-                if (!_run) {
-                    // exit immediately if wakeup for shutdown
-                    break;
-                }
-                
-                // If we got a data packet, hand it back to all the interested
-				// parties (registered interests and getters).
-				//--------------------------------- Process data from net (if any) 
-				for (ContentObject co : packet.data()) {
-					if( Log.isLoggable(Level.FINER) )
-						Log.finer("Data from net for port: " + _localPort + " {0}", co.name());
-					//	SystemConfiguration.logObject("Data from net:", co);
+	
+					//--------------------------------- Process interests from net (if any)
+					for (Interest interest : packet.interests()) {
+						if( Log.isLoggable(Level.FINEST) )
+							Log.finest("Interest from net for port: " + _localPort + " {0}", interest);
+						InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
+						deliverInterest(oInterest);
+						// External interests never go back to network
+					} // for interests
 					
-					deliverData(co);
-					// External data never goes back to network, never held onto here
-					// External data never has a thread waiting, so no need to release sema
+				} catch (Exception ex) {
+					Log.severe("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
+	                Log.warningStackTrace(ex);
 				}
-
-				//--------------------------------- Process interests from net (if any)
-				for (Interest interest : packet.interests()) {
-					if( Log.isLoggable(Level.FINEST) )
-						Log.finest("Interest from net for port: " + _localPort + " {0}", interest);
-					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
-					deliverInterest(oInterest);
-					// External interests never go back to network
-				} // for interests
-				
-			} catch (Exception ex) {
-				Log.severe("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
-                Log.warningStackTrace(ex);
 			}
 		}
 		
