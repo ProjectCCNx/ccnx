@@ -14,6 +14,7 @@ public class AccessControlProfile {
 	public static final byte [] DATA_KEY_NAME_BYTES = ContentName.componentParseNative(DATA_KEY_NAME);
 	public static final String ACCESS_CONTROL_POLICY_NAME = "AccessControl";
 	public static final byte [] ACCESS_CONTROL_POLICY_NAME_BYTES = ACCESS_CONTROL_POLICY_NAME.getBytes();
+	protected static final ContentName ACCESS_CONTROL_POLICY_CONTENTNAME = new ContentName(new byte [][] {ACCESS_CONTROL_POLICY_NAME_BYTES});
 
 	/**
 	 * Used by KeyDirectory
@@ -97,4 +98,9 @@ public class AccessControlProfile {
 		return new ContentName(policyPrefix, ACCESS_CONTROL_POLICY_NAME_BYTES);
 	}
 
+	public static ContentName AccessControlPolicyContentName() {
+		return ACCESS_CONTROL_POLICY_CONTENTNAME;
+	}
+	
+	
 }
