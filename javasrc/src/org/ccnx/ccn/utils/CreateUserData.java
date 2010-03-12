@@ -28,7 +28,6 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.NetworkKeyManager;
 import org.ccnx.ccn.impl.security.keys.RepositoryKeyManager;
@@ -324,32 +323,37 @@ public class CreateUserData {
 	public void publishUserKeysToRepository() throws IOException{
 		for (String friendlyName: _userKeyManagers.keySet()) {
 			System.out.println(friendlyName);
-			KeyManager userKM = _userKeyManagers.get(friendlyName);
+			CCNHandle userHandle = getHandleForUser(friendlyName);
 			try {
-				userKM.publishKeyToRepository();
-				ContentName keyName = userKM.getDefaultKeyNamePrefix();
+				userHandle.keyManager().publishKeyToRepository(userHandle);
+				ContentName keyName = userHandle.keyManager().getDefaultKeyNamePrefix();
 				keyName = keyName.cut(keyName.count()-1);
-				PublicKeyObject pko = new PublicKeyObject(keyName, userKM.getDefaultPublicKey(), SaveType.REPOSITORY, getHandleForUser(friendlyName));
-				pko.save();
+				// Won't publish if it's already there.
+				userHandle.keyManager().publishKeyToRepository(keyName, userHandle.keyManager().getDefaultKeyID(), userHandle);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		} 
 	}
 	
+	/**
+	 * Publishes self-referential key objects under user namespace prefix. Might be
+	 * better to allow automated selection of key locators, in case configuration has
+	 * changed them.
+	 * @param userNamespace
+	 * @return
+	 * @throws IOException
+	 */
 	public PublicKeyObject [] publishUserKeysToRepository(ContentName userNamespace) throws IOException{
 		PublicKeyObject [] results = new PublicKeyObject[_userKeyManagers.size()];
 		int i=0;
 		for (String friendlyName: _userKeyManagers.keySet()) {
-			KeyManager userKM = _userKeyManagers.get(friendlyName);
+			CCNHandle userHandle = getHandleForUser(friendlyName);
 			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
 			KeyLocator ourLocator = new KeyLocator(keyName);
-			PublicKeyObject pko = 
-				new PublicKeyObject(keyName, userKM.getDefaultPublicKey(), 
-									SaveType.REPOSITORY, userKM.getDefaultKeyID(), ourLocator, 
-									getHandleForUser(friendlyName));
-			pko.save(); 
-			results[i++] = pko;
+			results[i++] = KeyManager.publishKeyToRepository(keyName, userHandle.keyManager().getDefaultPublicKey(),
+														   userHandle.keyManager().getDefaultKeyID(),
+														   ourLocator, userHandle);
 		} 
 		return results;
 	}

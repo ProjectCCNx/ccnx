@@ -59,7 +59,6 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
 
 
 /**
@@ -849,29 +848,6 @@ public class BasicKeyManager extends KeyManager {
 		return _publicKeyCache;
 	}
 
-	/**
-	 * Publish my public key to a local key server run in this JVM.
-	 * @param keyName content name of the public key
-	 * @param keyToPublish public key digest
-	 * @param handle handle for ccn
-	 * @throws IOException
-	 * @throws InvalidKeyException
-	 */
-	@Override
-	public PublicKeyObject publishKey(ContentName keyName, 
-						   PublisherPublicKeyDigest keyToPublish,
-						   PublisherPublicKeyDigest signingKeyID,
-						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException {
-		if (null == keyToPublish) {
-			keyToPublish = getDefaultKeyID();
-		} 
-		PublicKey theKey = getPublicKey(keyToPublish);
-		if (null == theKey) {
-			Log.warning("Cannot publish key {0} to name {1}, do not have public key in cache.", keyToPublish, keyName);
-			return null;
-		}
-		return publishKey(keyName, theKey, signingKeyID, signingKeyLocator);
-	}
 
 	@Override
 	public PublicKeyObject publishKey(ContentName keyName, 

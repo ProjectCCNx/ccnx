@@ -61,7 +61,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		handle = td.getHandleForUser(friendlyNames[0]);
 		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
 		acm.publishMyIdentity(ContentName.fromNative(userNamespace, friendlyNames[0]), handle.keyManager().getDefaultPublicKey());
-		handle.keyManager().publishKeyToRepository();
+		handle.keyManager().publishKeyToRepository(handle);
 		
 		// create the root ACL
 		// The root has user0 as a manager

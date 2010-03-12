@@ -264,6 +264,15 @@ public abstract class KeyManager {
 	}
 	
 	/**
+	 * Access our collected store of public keys.
+	 * @return our PublicKeyCache
+	 */
+	public abstract PublicKeyCache getPublicKeyCache();
+
+	public abstract void saveConfigurationState() throws FileNotFoundException,
+			IOException;
+
+	/**
 	 * Get our default private key.
 	 * @return our default private key
 	 */
@@ -440,7 +449,14 @@ public abstract class KeyManager {
 	 * 	one for this environment. If null, take user defaults.
 	 * @throws ConfigurationException 
 	 */
-	public abstract PublicKeyObject publishDefaultKey(ContentName defaultPrefix) throws IOException, InvalidKeyException;
+	public PublicKeyObject publishDefaultKey(ContentName keyName)
+			throws IOException, InvalidKeyException {
+		if (!initialized()) {
+			throw new IOException("KeyServer: cannot publish keys, have not yet initialized KeyManager!");
+		}
+		return publishKey(keyName, getDefaultKeyID(), null, null);
+	}
+
 
 	/**
 	 * Publish a key at a certain name, signed by a specified identity (our
@@ -461,10 +477,28 @@ public abstract class KeyManager {
 	 * @throws InvalidKeyException 
 	 * @throws IOException
 	 */
-	public abstract PublicKeyObject publishKey(ContentName keyName, 
-			   PublisherPublicKeyDigest keyToPublish,
-			   PublisherPublicKeyDigest signingKeyID,
-			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException;
+	/**
+	 * Publish my public key to a local key server run in this JVM.
+	 * @param keyName content name of the public key
+	 * @param keyToPublish public key digest
+	 * @param handle handle for ccn
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 */
+	public PublicKeyObject publishKey(ContentName keyName, 
+						   PublisherPublicKeyDigest keyToPublish,
+						   PublisherPublicKeyDigest signingKeyID,
+						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException {
+		if (null == keyToPublish) {
+			keyToPublish = getDefaultKeyID();
+		} 
+		PublicKey theKey = getPublicKey(keyToPublish);
+		if (null == theKey) {
+			Log.warning("Cannot publish key {0} to name {1}, do not have public key in cache.", keyToPublish, keyName);
+			return null;
+		}
+		return publishKey(keyName, theKey, signingKeyID, signingKeyLocator);
+	}
 
 	/**
 	 * Publish a key at a certain name, signed by our default identity. Usually used to
@@ -501,9 +535,23 @@ public abstract class KeyManager {
 	 * @throws InvalidKeyException
 	 * @throws IOException
 	 */
-	public abstract PublicKeyObject publishKeyToRepository(ContentName keyName, 
-												PublisherPublicKeyDigest keyToPublish) 
-			throws InvalidKeyException, IOException;
+	public PublicKeyObject publishKeyToRepository(ContentName keyName, 
+												PublisherPublicKeyDigest keyToPublish, 
+												CCNHandle handle) 
+			throws InvalidKeyException, IOException {
+		if (null == keyToPublish) {
+			keyToPublish = getDefaultKeyID();
+		}
+		if (null == keyName) {
+			keyName = getKeyLocator(keyToPublish).name().name();
+		}
+		
+		PublicKey theKey = getPublicKeyCache().getPublicKeyFromCache(keyToPublish);
+		if (null == theKey) {
+			throw new InvalidKeyException("Key " + keyToPublish + " unknown, cannot publish.");
+		}
+		return publishKeyToRepository(keyName, theKey, null, null, handle);
+	}
 
 	/**
 	 * Publish our default key to a repository at its default location.
@@ -511,7 +559,9 @@ public abstract class KeyManager {
 	 * @throws InvalidKeyException
 	 * @throws IOException
 	 */
-	public abstract PublicKeyObject publishKeyToRepository() throws InvalidKeyException, IOException;
+	public PublicKeyObject publishKeyToRepository(CCNHandle handle) throws InvalidKeyException, IOException {
+		return publishKeyToRepository(null, null, handle);
+	}
 
 	/**
 	 * Publish a public key to repository, if it isn't already there.
@@ -690,15 +740,6 @@ public abstract class KeyManager {
 		return keyObject;
 	}
 
-	/**
-	 * Access our collected store of public keys.
-	 * @return our PublicKeyCache
-	 */
-	public abstract PublicKeyCache getPublicKeyCache();
-
-	public abstract void saveConfigurationState() throws FileNotFoundException,
-			IOException;
-	
 	/**
 	 * Handle access control manager cache.
 	 * @param contentName
