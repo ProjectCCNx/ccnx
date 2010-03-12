@@ -1412,6 +1412,10 @@ public class CCNNetworkManager implements Runnable {
 					Log.severe("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
 	                Log.warningStackTrace(ex);
 				}
+			} else {
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {}
 			}
 		}
 		
