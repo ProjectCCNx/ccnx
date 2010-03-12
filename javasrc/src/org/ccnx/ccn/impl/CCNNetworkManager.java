@@ -115,7 +115,6 @@ public class CCNNetworkManager implements Runnable {
 	protected ThreadPoolExecutor _threadpool = null; // pool service for callback threads
 
 	protected NetworkChannel _channel = null; // for use by run thread only!
-	protected Throwable _error = null; // Marks error state of socket
 	protected boolean _run = true;
 
 	// protected ContentObject _keepalive; 
@@ -1349,11 +1348,6 @@ public class CCNNetworkManager implements Runnable {
 							if( Log.isLoggable(Level.FINEST) )
 								Log.finest("Read datagram (" + datagram.position() + " bytes) for port: " + _localPort);
 							_channel.clearSelectedKeys();
-							if (null != _error) {
-								if( Log.isLoggable(Level.INFO) )
-									Log.info("Receive error cleared for port: " + _localPort);
-								_error = null;
-							}
 							datagram.flip(); // make ready to decode
 							if (null != _tapStreamIn) {
 								byte [] b = new byte[datagram.limit()];
@@ -1372,13 +1366,9 @@ public class CCNNetworkManager implements Runnable {
 							}
 						}
 					} catch (IOException io) {
-						// We see IOException on receive every time if agent is gone
-						// so track it to log only start and end of outages
-						if (null == _error) {
-							if( Log.isLoggable(Level.INFO) )
-								Log.info("Unable to receive from agent: is it still running? Port: " + _localPort);
-						}
-						_error = io;
+						_channel.close();
+						if( Log.isLoggable(Level.INFO) )
+							Log.info("Unable to receive from agent: is it still running? Port: " + _localPort);
 						packet.clear();
 					}
 	                if (!_run) {
