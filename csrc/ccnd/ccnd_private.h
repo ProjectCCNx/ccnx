@@ -323,15 +323,6 @@ void ccnd_internal_client_stop(struct ccnd_handle *);
 
 /**
  * The internal client calls this with the argument portion ARG of
- * a self-registration request (/ccnx/reg/self/ARG)
- * The result, if not NULL, will be used as the Content of the reply.
- * @deprecated
- */
-struct ccn_charbuf *ccnd_reg_self(struct ccnd_handle *h,
-                                  const unsigned char *msg, size_t size);
-
-/**
- * The internal client calls this with the argument portion ARG of
  * a face-creation request (/ccnx/CCNDID/newface/ARG)
  * The result, if not NULL, will be used as the Content of the reply.
  */
