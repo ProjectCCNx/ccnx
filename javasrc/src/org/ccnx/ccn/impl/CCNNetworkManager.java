@@ -327,31 +327,27 @@ public class CCNNetworkManager implements Runnable {
 			long minInterestRefreshTime = PERIOD + ourTime;
 			long useMe = PERIOD;
 
-			// Re-express interests that need to be re-expressed
-			synchronized (_channel._ncConnected) {
-				if (_channel._ncConnected) {
-					try {
-						synchronized (_myInterests) {
-							for (Entry<InterestRegistration> entry : _myInterests.values()) {
-								InterestRegistration reg = entry.value();
-								if (ourTime > reg.nextRefresh) {
-									if( Log.isLoggable(Level.FINER) )
-										Log.finer("Refresh interest: {0}", reg.interest);
-									// Temporarily back out refresh period decay
-									//reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
-									//: reg.nextRefreshPeriod * 2;
-									reg.nextRefresh += reg.nextRefreshPeriod;
-									try {
-										write(reg.interest);
-									} catch (NotYetConnectedException nyce) {}
-								}
-								if (minInterestRefreshTime > reg.nextRefresh)
-									minInterestRefreshTime = reg.nextRefresh;
+			if (_channel.isConnected()) {
+				
+				// Re-express interests that need to be re-expressed
+				try {
+					synchronized (_myInterests) {
+						for (Entry<InterestRegistration> entry : _myInterests.values()) {
+							InterestRegistration reg = entry.value();
+							if (ourTime > reg.nextRefresh) {
+								if( Log.isLoggable(Level.FINER) )
+									Log.finer("Refresh interest: {0}", reg.interest);
+								// Temporarily back out refresh period decay
+								//reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
+								//: reg.nextRefreshPeriod * 2;
+								reg.nextRefresh += reg.nextRefreshPeriod;
+								try {
+									write(reg.interest);
+								} catch (NotYetConnectedException nyce) {}
 							}
+							if (minInterestRefreshTime > reg.nextRefresh)
+								minInterestRefreshTime = reg.nextRefresh;
 						}
-					} catch (ContentEncodingException xmlex) {
-						Log.severe("PeriodicWriter interest refresh thread failure (Malformed datagram): {0}", xmlex.getMessage()); 
-						Log.warningStackTrace(xmlex);
 					}
 					// Re-express prefix registrations that need to be re-expressed
 					// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
@@ -384,51 +380,58 @@ public class CCNNetworkManager implements Runnable {
 											rp._forwarding = null;
 											rp._lifetime = -1;
 											rp._nextRefresh = -1;
+
 										}
-									}	
-									if (minFilterRefreshTime > rp._nextRefresh)
-										minFilterRefreshTime = rp._nextRefresh;
-								}
-							} /* for (Entry<Filter> entry : _myFilters.values()) */
-						} /* synchronized (_myFilters) */
-					} /* _usePrefixReg */
-		
-					long currentTime = System.currentTimeMillis();
-					long checkInterestDelay = minInterestRefreshTime - currentTime;
-					if (checkInterestDelay < 0)
-						checkInterestDelay = 0;
-					if (checkInterestDelay > PERIOD)
-						checkInterestDelay = PERIOD;
-		
-					long checkPrefixDelay = minFilterRefreshTime - currentTime;
-					if (checkPrefixDelay < 0)
-						checkPrefixDelay = 0;
-					if (checkPrefixDelay > PERIOD)
-						checkPrefixDelay = PERIOD;
-					
-					if (checkInterestDelay < checkPrefixDelay) {
-						useMe = checkInterestDelay;
-					} else {
-						useMe = checkPrefixDelay;
-					}
-				} else {
-					// We have lost our connection to ccnd. See if we can reconnect
-					useMe = 1000;
-					try {
-						_channel.open();
-						synchronized (_channel._ncConnected) {
-							if (_channel.isConnected()) {
-								_faceID = null;
-								reregisterPrefixes();
-								useMe = 0;	// Come right back to refigure registration refresh times
+										rp._forwarding = forwarding;
+	
+									} catch (CCNDaemonException e) {
+										Log.warning(e.getMessage());
+										// XXX - don't think this is right
+										rp._forwarding = null;
+										rp._lifetime = -1;
+										rp._nextRefresh = -1;
+									}
+								}	
+								if (minFilterRefreshTime > rp._nextRefresh)
+									minFilterRefreshTime = rp._nextRefresh;
 							}
-						}
-					} 
-					catch (Exception e) {
-						try {
-							_channel.close();
-						} catch (IOException e1) {}
+						} /* for (Entry<Filter> entry : _myFilters.values()) */
+					} /* synchronized (_myFilters) */
+				} /* _usePrefixReg */
+	
+				long currentTime = System.currentTimeMillis();
+				long checkInterestDelay = minInterestRefreshTime - currentTime;
+				if (checkInterestDelay < 0)
+					checkInterestDelay = 0;
+				if (checkInterestDelay > PERIOD)
+					checkInterestDelay = PERIOD;
+	
+				long checkPrefixDelay = minFilterRefreshTime - currentTime;
+				if (checkPrefixDelay < 0)
+					checkPrefixDelay = 0;
+				if (checkPrefixDelay > PERIOD)
+					checkPrefixDelay = PERIOD;
+				
+				if (checkInterestDelay < checkPrefixDelay) {
+					useMe = checkInterestDelay;
+				} else {
+					useMe = checkPrefixDelay;
+				}
+			} else {
+				// We have lost our connection to ccnd. See if we can reconnect
+				useMe = 1000;
+				try {
+					_channel.open();
+					if (_channel.isConnected()) {
+						_faceID = null;
+						reregisterPrefixes();
+						useMe = 0;	// Come right back to refigure registration refresh times
 					}
+				} 
+				catch (Exception e) {
+					try {
+						_channel.close();
+					} catch (IOException e1) {}
 				}
 			}
 			if (_run)
@@ -1449,7 +1452,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 	
 	protected PublisherPublicKeyDigest fetchCCNDId(CCNNetworkManager mgr, KeyManager keyManager) throws IOException {
-<<<<<<< HEAD
+		try {
 			try {
 				Interest interested = new Interest(new ContentName(CCNDaemonProfile.ping, Interest.generateNonce()));
 				interested.scope(1);
