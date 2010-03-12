@@ -85,7 +85,9 @@ public class SystemConfiguration {
 	
 	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES, DUMP_DAEMONCMD, REPO_EXITDUMP};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
-	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.UDP;
+	
+	protected static final String CCN_PROTOCOL_PROPERTY = "org.ccnx.protocol";
+	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.TCP;
 
 	/**
 	 * Property to set debug flags.
@@ -333,6 +335,19 @@ public class SystemConfiguration {
 		OLD_HEADER_NAMES = Boolean.parseBoolean(
 				retrievePropertyOrEnvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
 
+	}
+	
+	public static NetworkProtocol CCN_PROTOCOL = DEFAULT_PROTOCOL;
+	
+	static {
+		// Allow override of main CCN base protocol
+		String protocol = System.getProperty(CCN_PROTOCOL_PROPERTY);
+		if (null != protocol) {
+			if (protocol.equalsIgnoreCase("TCP"))
+				CCN_PROTOCOL = NetworkProtocol.TCP;
+			if (protocol.equalsIgnoreCase("UDP"))
+				CCN_PROTOCOL = NetworkProtocol.UDP;
+		}		
 	}
 
 	public static String getLocalHost() {

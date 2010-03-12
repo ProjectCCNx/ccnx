@@ -382,40 +382,35 @@ public class CCNNetworkManager implements Runnable {
 											rp._nextRefresh = -1;
 
 										}
-										rp._forwarding = forwarding;
-	
-									} catch (CCNDaemonException e) {
-										Log.warning(e.getMessage());
-										// XXX - don't think this is right
-										rp._forwarding = null;
-										rp._lifetime = -1;
-										rp._nextRefresh = -1;
 									}
 								}	
 								if (minFilterRefreshTime > rp._nextRefresh)
 									minFilterRefreshTime = rp._nextRefresh;
 							}
-						} /* for (Entry<Filter> entry : _myFilters.values()) */
-					} /* synchronized (_myFilters) */
-				} /* _usePrefixReg */
-	
-				long currentTime = System.currentTimeMillis();
-				long checkInterestDelay = minInterestRefreshTime - currentTime;
-				if (checkInterestDelay < 0)
-					checkInterestDelay = 0;
-				if (checkInterestDelay > PERIOD)
-					checkInterestDelay = PERIOD;
-	
-				long checkPrefixDelay = minFilterRefreshTime - currentTime;
-				if (checkPrefixDelay < 0)
-					checkPrefixDelay = 0;
-				if (checkPrefixDelay > PERIOD)
-					checkPrefixDelay = PERIOD;
-				
-				if (checkInterestDelay < checkPrefixDelay) {
-					useMe = checkInterestDelay;
-				} else {
-					useMe = checkPrefixDelay;
+						}
+					}
+					long currentTime = System.currentTimeMillis();
+					long checkInterestDelay = minInterestRefreshTime - currentTime;
+					if (checkInterestDelay < 0)
+						checkInterestDelay = 0;
+					if (checkInterestDelay > PERIOD)
+						checkInterestDelay = PERIOD;
+		
+					long checkPrefixDelay = minFilterRefreshTime - currentTime;
+					if (checkPrefixDelay < 0)
+						checkPrefixDelay = 0;
+					if (checkPrefixDelay > PERIOD)
+						checkPrefixDelay = PERIOD;
+					
+					if (checkInterestDelay < checkPrefixDelay) {
+						useMe = checkInterestDelay;
+					} else {
+						useMe = checkPrefixDelay;
+					}
+				} catch (Exception e) {
+						try {
+							_channel.close();
+						} catch (IOException e1) {}
 				}
 			} else {
 				// We have lost our connection to ccnd. See if we can reconnect
@@ -1457,14 +1452,25 @@ public class CCNNetworkManager implements Runnable {
 					Log.severe(msg);
 					throw new IOException(msg);
 				}
-			} else {
-				Log.severe("fetchCCNDId: do not have a KeyManager. Cannot verify ccndID.");
-				return null;
+				PublisherPublicKeyDigest sentID = contented.signedInfo().getPublisherKeyID();
+				
+					// TODO: This needs to be fixed once the KeyRepository is fixed to provide a KeyManager
+				if (null != keyManager) {
+					ContentVerifier verifyer = new ContentObject.SimpleVerifier(sentID, keyManager);
+					if (!verifyer.verify(contented)) {
+						String msg = ("fetchCCNDId: Fetch of content reply from ping failed to verify.");
+						Log.severe(msg);
+						throw new IOException(msg);
+					}
+				} else {
+					Log.severe("fetchCCNDId: do not have a KeyManager. Cannot verify ccndID.");
+					return null;
+				}
+				return sentID;
+			} catch (InterruptedException e) {
+				Log.warningStackTrace(e);
+				throw new IOException(e.getMessage());
 			}
-			return sentID;
-		} catch (InterruptedException e) {
-			Log.warningStackTrace(e);
-			throw new IOException(e.getMessage());
 		} catch (IOException e) {
 			String reason = e.getMessage();
 			Log.warningStackTrace(e);
