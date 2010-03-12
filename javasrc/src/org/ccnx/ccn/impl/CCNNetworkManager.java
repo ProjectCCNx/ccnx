@@ -297,20 +297,18 @@ public class CCNNetworkManager implements Runnable {
 		 */
 		private class HeartBeatTimer extends TimerTask {
 			public void run() {
-				synchronized (_ncConnected) {
-					if (_ncConnected) {
+				if (_ncConnected) {
+					try {
+						ByteBuffer heartbeat = ByteBuffer.allocate(1);
+						_ncDGrmChannel.write(heartbeat);
+						_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
+					} catch (IOException io) {
+						// We do not see errors on send typically even if 
+						// agent is gone, so log each but do not track
+						Log.warning("Error sending heartbeat packet: {0}", io.getMessage());
 						try {
-							ByteBuffer heartbeat = ByteBuffer.allocate(1);
-							_ncDGrmChannel.write(heartbeat);
-							_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
-						} catch (IOException io) {
-							// We do not see errors on send typically even if 
-							// agent is gone, so log each but do not track
-							Log.warning("Error sending heartbeat packet: {0}", io.getMessage());
-							try {
-								close();
-							} catch (IOException e) {}
-						}
+							close();
+						} catch (IOException e) {}
 					}
 				}
 			} /* run() */	
