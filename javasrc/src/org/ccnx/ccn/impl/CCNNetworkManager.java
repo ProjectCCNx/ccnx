@@ -78,6 +78,7 @@ public class CCNNetworkManager implements Runnable {
 	public static final String PROP_TAP = "ccn.tap";
 	public static final String ENV_TAP = "CCN_TAP"; // match C library
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
+	public static final int DOWN_DELAY = 100;	// Wait period for retry when ccnd is down
 	public static final int SOCKET_TIMEOUT = 1000; // period to wait in ms.
 	public static final int PERIOD = 2000; // period for occasional ops in ms.
 	public static final int HEARTBEAT_PERIOD = 3500;
@@ -1404,7 +1405,7 @@ public class CCNNetworkManager implements Runnable {
 				}
 			} else {
 				try {
-					Thread.sleep(100);
+					Thread.sleep(DOWN_DELAY);
 				} catch (InterruptedException e) {}
 			}
 		}
