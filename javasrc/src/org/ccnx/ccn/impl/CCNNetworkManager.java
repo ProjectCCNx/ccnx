@@ -1340,11 +1340,10 @@ public class CCNNetworkManager implements Runnable {
 				ForwardingEntry entry = _prefixMgr.selfRegisterPrefix(prefix);
 				RegisteredPrefix newPrefixEntry = new RegisteredPrefix(entry);
 				newPrefixEntry._refCount = _registeredPrefixes.get(prefix)._refCount;
-				_registeredPrefixes.put(prefix, newPrefixEntry);
+				newPrefixes.put(prefix, newPrefixEntry);
 			}
 			_registeredPrefixes.clear();
-			for (ContentName prefix : newPrefixes.keySet())
-				_registeredPrefixes.put(prefix, newPrefixes.get(prefix));
+			_registeredPrefixes.putAll(newPrefixes);
 		}
 	}	
 }
