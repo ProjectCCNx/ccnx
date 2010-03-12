@@ -1861,6 +1861,19 @@ seek_forwarding(struct ccnd_handle *h,
     return(f);
 }
 
+/**
+ * Register or update a prefix in the forwarding table (FIB).
+ *
+ * @param h is the ccnd handle.
+ * @param msg is a ccnb-encoded message containing the name prefix somewhere.
+ * @param comps contains the delimiting offsets for the name components in msg.
+ * @param ncomps is the number of relevant components.
+ * @param faceid indicates which face to forward to.
+ * @param flags are the forwarding entry flags (CCN_FORW_...), -1 for defaults.
+ * @param expires tells the remaining lifetime, in seconds.
+ * @returns -1 for error, or new flags upon success; the private flag
+ *        CCN_FORW_REFRESHED indicates a previously existing entry.
+ */
 static int
 ccnd_reg_prefix(struct ccnd_handle *h,
                 const unsigned char *msg,
@@ -1889,6 +1902,7 @@ ccnd_reg_prefix(struct ccnd_handle *h,
     hashtb_start(h->nameprefix_tab, e);
     res = nameprefix_seek(h, e, msg, comps, ncomps);
     if (res >= 0) {
+        res = (res == HT_OLD_ENTRY) ? CCN_FORW_REFRESHED : 0;
         npe = e->data;
         f = seek_forwarding(h, npe, faceid);
         if (f != NULL) {
@@ -1897,7 +1911,7 @@ ccnd_reg_prefix(struct ccnd_handle *h,
             if (flags < 0)
                 flags = f->flags & CCN_FORW_PUBMASK;
             f->flags = (CCN_FORW_REFRESHED | flags);
-            res = flags;
+            res |= flags;
             if (h->debug & 2) {
                 struct ccn_charbuf *prefix = ccn_charbuf_create();
                 struct ccn_charbuf *debugtag = ccn_charbuf_create();
@@ -1923,12 +1937,16 @@ ccnd_reg_prefix(struct ccnd_handle *h,
     return(res);
 }
 
+/**
+ * Register a prefix, expressed in the form of a URI.
+ * @returns negative value for error, or new face flags for success.
+ */
 int
 ccnd_reg_uri(struct ccnd_handle *h,
-                const char *uri,
-                unsigned faceid,
-                int flags,
-                int expires)
+             const char *uri,
+             unsigned faceid,
+             int flags,
+             int expires)
 {
     struct ccn_charbuf *name;
     struct ccn_buf_decoder decoder;
@@ -1940,13 +1958,15 @@ ccnd_reg_uri(struct ccnd_handle *h,
     ccn_name_init(name);
     res = ccn_name_from_uri(name, uri);
     if (res < 0)
-        abort();
+        goto Bail;
     comps = ccn_indexbuf_create();
     d = ccn_buf_decoder_start(&decoder, name->buf, name->length);
-    if (ccn_parse_Name(d, comps) < 0)
-        abort();
+    res = ccn_parse_Name(d, comps);
+    if (res < 0)
+        goto Bail;
     res = ccnd_reg_prefix(h, name->buf, comps, comps->n - 1,
                           faceid, flags, expires);
+Bail:
     ccn_charbuf_destroy(&name);
     ccn_indexbuf_destroy(&comps);
     return(res);
