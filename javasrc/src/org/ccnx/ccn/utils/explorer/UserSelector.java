@@ -31,7 +31,6 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
@@ -191,6 +190,9 @@ public class UserSelector extends JDialog implements ActionListener {
 			
 			_gacm.getEffectiveACLObject(baseNode).acl();
 			
+			// ACM is ready to use
+			handle.keyManager().rememberAccessControlManager(_gacm);
+			
 		} catch (IllegalStateException ise) {
 			System.out.println("The repository has no root ACL.");
 			System.out.println("Attempting to create missing root ACL with user " + userName + " as root manager.");
@@ -207,9 +209,6 @@ public class UserSelector extends JDialog implements ActionListener {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		// ACM is ready to use
-		NamespaceManager.registerACM(_gacm);
-		
 		// Here is where we'd want to drop in the ability to run different programs,
 		// or maybe just have another program run the UserSelector first and then do its own thing.
 		ContentExplorer.setGroupAccessControlManager(_gacm);	

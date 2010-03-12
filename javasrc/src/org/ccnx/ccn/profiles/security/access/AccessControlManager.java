@@ -6,6 +6,8 @@ import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.logging.Level;
 
 import javax.crypto.NoSuchPaddingException;
@@ -20,6 +22,7 @@ import org.ccnx.ccn.impl.security.crypto.KDFContentKeys;
 import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
@@ -28,14 +31,36 @@ import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
-import org.ccnx.ccn.profiles.namespace.Root.RootObject;
+import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker.AccessControlPolicyMarkerObject;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 public abstract class AccessControlManager {
 
+	/**
+	 * Track available access control profiles.
+	 */
+	protected static Map<ContentName, Class<? extends AccessControlManager>> _accessControlManagerTypes = 
+		new TreeMap<ContentName, Class<? extends AccessControlManager>>();
+
+	static {
+		try {
+			registerAccessControlManagerType(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), 
+																GroupAccessControlManager.class);
+		} catch (MalformedContentNameStringException e) {
+			throw new RuntimeException("Cannot parse built-in profile name: " + GroupAccessControlManager.PROFILE_NAME_STRING);
+		}
+	}
+	
+	public static synchronized void registerAccessControlManagerType(ContentName profileName, 
+																	 Class<? extends AccessControlManager> acmClazz) {
+		_accessControlManagerTypes.put(profileName, acmClazz);
+	}
+	
 	/**
 	 * Default data key length in bytes. No real reason this can't be bumped up to 32. It
 	 * acts as the seed for a KDF, not an encryption key.
@@ -52,13 +77,52 @@ public abstract class AccessControlManager {
 	protected CCNHandle _handle;
 	protected SecureRandom _random = new SecureRandom();
 
+
+	/**
+	 * Make an AccessControlManager of a particular type given stored policy information.
+	 * @param policyInformation
+	 * @param handle
+	 * @return
+	 * @throws ContentNotReadyException
+	 * @throws ContentGoneException
+	 * @throws ErrorStateException
+	 * @throws InstantiationException
+	 * @throws IllegalAccessException
+	 * @throws ConfigurationException
+	 * @throws IOException
+	 */
+	public static AccessControlManager 
+			createAccessControlManager(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ContentNotReadyException, ContentGoneException, ErrorStateException, InstantiationException, IllegalAccessException, ConfigurationException, IOException {
+		
+		Class<? extends AccessControlManager> acmClazz = null;
+		synchronized(NamespaceManager.class) {
+			acmClazz = _accessControlManagerTypes.get(policyInformation.policy().profileName());
+		}
+		if (null != acmClazz) {
+			AccessControlManager acm = (AccessControlManager)acmClazz.newInstance();
+			acm.initialize(policyInformation, handle);
+			return acm;
+		}
+		return null;
+	}
+	
+	public static AccessControlManager createAccessControlManager(ContentName accessControlPolicyName,
+				CCNHandle handle) throws ContentNotReadyException, ContentGoneException, ErrorStateException, ConfigurationException, InstantiationException, IllegalAccessException, IOException {
+		AccessControlPolicyMarkerObject policyInformation = new AccessControlPolicyMarkerObject(accessControlPolicyName, handle);
+		if (!policyInformation.available()) {
+			Log.info("Cannot find an access control policy at {0}, returning null manager.", accessControlPolicyName);
+			return null;
+		}
+		return createAccessControlManager(policyInformation, handle);
+	}
+
 	/**
 	 * Subclasses should implement a default constructor and set themselves up with an 
 	 * initialize method.
 	 */
 	public AccessControlManager() {}
 	
-	public abstract boolean initialize(RootObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException;
+	public abstract boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException;
 
 	/**
 	 * Labels for deriving various types of keys.
@@ -73,7 +137,7 @@ public abstract class AccessControlManager {
 	protected SecureKeyCache keyCache() { return _keyCache; }
 	
 	public boolean inProtectedNamespace(ContentName content) {
-		return _namespace.isPrefixOf(content);
+		return NamespaceManager.inProtectedNamespace(_namespace, content);
 	}
 	
 	public ContentName getNamespaceRoot() { return _namespace; }
@@ -348,7 +412,7 @@ public abstract class AccessControlManager {
 	throws IOException {
 		AccessControlManager acm;
 		try {
-			acm = NamespaceManager.findACM(name, handle);
+			acm = findACM(name, handle);
 			if (acm != null) {
 				Log.info("keysForInput: retrieving key for data node {0}", name);
 				return acm.getContentKeys(name, publisher);
@@ -389,7 +453,7 @@ public abstract class AccessControlManager {
 		
 		AccessControlManager acm;
 		try {
-			acm = NamespaceManager.findACM(name, handle);
+			acm = findACM(name, handle);
 			Log.info("keysForOutput: found an acm: {0}", acm);
 			
 			if ((acm != null) && (acm.isProtectedContent(name, publisher, contentType, handle))) {
@@ -423,6 +487,60 @@ public abstract class AccessControlManager {
 			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		}
 		return null;
+	}
+	
+	/**
+	 * Manage the access control information we know about.
+	 * 
+	 * Find an ACM object that covers operations on a specific name. 
+	 * If none exists in memory then this searches up the name tree 
+	 * looking for the root of a namespace under access control,
+	 * and if it finds one creates an ACM. If none is found null is returned.
+	 * @param name
+	 * @param handle
+	 * @return null if namespace is not under access control, or an ACM to perform 
+	 * 	operations on the name if it is.
+	 * @throws IOException
+	 * @throws ConfigurationException 
+	 */
+	public static AccessControlManager findACM(ContentName name, CCNHandle handle)  throws IOException, ConfigurationException {
+		// See if we already have an AccessControlManager covering this namespace
+		AccessControlManager acm = handle.keyManager().getAccessControlManagerForName(name);
+		
+		if (null != acm) {
+			return acm;
+		}
+		
+		// See if we have an access control policy, and if so make an access control manager for it.
+		
+		ContentName policyNamespace = NamespaceManager.findPolicyControlledNamespace(name, handle);
+		if (null == policyNamespace) {
+			Log.finer("No policy controlling name: {0}", name);
+			return null;
+		}
+		
+		// TODO cache nonexistence of access control policy in policy namespace. Here or in NSM?
+		AccessControlPolicyMarkerObject ro = 
+			new AccessControlPolicyMarkerObject(AccessControlProfile.getAccessControlPolicyName(policyNamespace), handle);
+		if (!ro.available()) {
+			Log.finer("No access control policy in policy namespace: {0}", policyNamespace);
+			// TODO add to negative cache
+			return null;
+		}
+		
+		try {
+			acm = AccessControlManager.createAccessControlManager(ro, handle);
+		} catch (InstantiationException e) {
+			Log.severe("InstantiationException attempting to create access control manager: " + e.getMessage());
+			Log.warningStackTrace(e);
+			throw new ConfigurationException("InstantiationException attempting to create access control manager: " + e.getMessage(), e);
+		} catch (IllegalAccessException e) {
+			Log.severe("IllegalAccessException attempting to create access control manager: " + e.getMessage());
+			Log.warningStackTrace(e);
+			throw new ConfigurationException("IllegalAccessException attempting to create access control manager: " + e.getMessage(), e);
+		}
+		handle.keyManager().rememberAccessControlManager(acm);
+		return acm;
 	}
 
 	/**

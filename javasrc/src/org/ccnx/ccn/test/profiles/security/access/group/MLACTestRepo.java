@@ -91,6 +91,7 @@ public class MLACTestRepo {
 
 		firstGroupName = "group-" + rnd.nextInt(10000);
 		Group mixedGroup = _gm0.createGroup(firstGroupName, groupMembers);
+		Assert.assertNotNull(mixedGroup);
 	}
 	
 	/**
@@ -108,6 +109,7 @@ public class MLACTestRepo {
 		groupMembers.add(new Link(ContentName.fromNative(userNamespace[1], userNames[1])));
 		
 		Group mixedGroupOfGroup = _gm1.createGroup("group-" + rnd.nextInt(10000), groupMembers);
+		Assert.assertNotNull(mixedGroupOfGroup);
 	}
 	
 }

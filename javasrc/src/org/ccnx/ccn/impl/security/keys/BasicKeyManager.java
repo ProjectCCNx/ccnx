@@ -37,6 +37,8 @@ import java.security.PublicKey;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.KeyManager;
@@ -49,6 +51,7 @@ import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -112,7 +115,12 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	protected HashMap<PublisherPublicKeyDigest, KeyLocator> _currentKeyLocators = new HashMap<PublisherPublicKeyDigest, KeyLocator>();
 	
-	
+	/**
+	 * Access control managers containing our state.
+	 */
+	protected Set<AccessControlManager> _acmList = new HashSet<AccessControlManager>(); 
+
+
 	/**
 	 * Subclass constructor that sets store-independent parameters.
 	 */
@@ -921,6 +929,26 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public void publishKeyToRepository() throws InvalidKeyException, IOException {
 		publishKeyToRepository(null, null);
+	}
+
+	@Override
+	public AccessControlManager getAccessControlManagerForName(
+			ContentName contentName) {
+		synchronized (_acmList) {
+			for (AccessControlManager acm : _acmList){
+				if (acm.inProtectedNamespace(contentName)) {
+					return acm;
+				}
+			}
+			return null;
+		}
+	}
+
+	@Override
+	public void rememberAccessControlManager(AccessControlManager acm) {
+		synchronized (_acmList) {
+			_acmList.add(acm);
+		}
 	}
 
 }

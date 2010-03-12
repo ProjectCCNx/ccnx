@@ -14,9 +14,10 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
-package org.ccnx.ccn.profiles.namespace;
+package org.ccnx.ccn.profiles.security.access;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
@@ -33,8 +34,11 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.KeyValueSet;
-import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
+import org.ccnx.ccn.profiles.namespace.NamespaceProfile;
+import org.ccnx.ccn.profiles.namespace.ParameterizedName;
+import org.ccnx.ccn.profiles.namespace.PolicyMarker;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
@@ -45,32 +49,32 @@ import org.ccnx.ccn.protocol.ContentObject;
  * This class currently holds no data - it will be extended to hold access control 
  * configuration information for that namespace.
  */
-public class Root extends GenericXMLEncodable {
+public class AccessControlPolicyMarker extends GenericXMLEncodable implements PolicyMarker {
 	
 	ProfileName _profileName;
 	ArrayList<ParameterizedName> _parameterizedNames = new ArrayList<ParameterizedName>();
 	KeyValueSet _parameters;
 	
-	public static class RootObject extends CCNEncodableObject<Root> {
+	public static class AccessControlPolicyMarkerObject extends CCNEncodableObject<AccessControlPolicyMarker> {
 
-		public RootObject(ContentName name, CCNHandle handle) throws IOException {
-			super(Root.class, true, name, handle);
+		public AccessControlPolicyMarkerObject(ContentName name, CCNHandle handle) throws IOException {
+			super(AccessControlPolicyMarker.class, true, name, handle);
 		}
 
-		public RootObject(ContentName name, Root r, SaveType saveType, CCNHandle handle) throws IOException {
-			super(Root.class, true, name, r, saveType, handle);
+		public AccessControlPolicyMarkerObject(ContentName name, AccessControlPolicyMarker r, SaveType saveType, CCNHandle handle) throws IOException {
+			super(AccessControlPolicyMarker.class, true, name, r, saveType, handle);
 		}
 
-		public RootObject(ContentObject firstBlock, CCNHandle handle)
+		public AccessControlPolicyMarkerObject(ContentObject firstBlock, CCNHandle handle)
 				throws ContentDecodingException, IOException {
-			super(Root.class, true, firstBlock, handle);
+			super(AccessControlPolicyMarker.class, true, firstBlock, handle);
 		}
 
 		public ContentName namespace() {
 			return _baseName.copy(_baseName.count()-2);
 		}
 		
-		public Root root() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
+		public AccessControlPolicyMarker policy() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 	}
 
 	public static class ProfileName extends ContentName {
@@ -99,24 +103,56 @@ public class Root extends GenericXMLEncodable {
 	 * @throws ConfigurationException 
 	 */
 	public static void create(ContentName name, ACL acl, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException {
-		Root r = new Root();
-		RootObject ro = new RootObject(AccessControlProfile.accessRoot(name), r, saveType, handle);
+		AccessControlPolicyMarker r = new AccessControlPolicyMarker();
+
+		ContentName policyPrefix = NamespaceProfile.policyNamespace(name);
+		ContentName policyMarkerName = AccessControlProfile.getAccessControlPolicyName(policyPrefix);
+		AccessControlPolicyMarkerObject ro = new AccessControlPolicyMarkerObject(policyMarkerName, r, saveType, handle);
 		ro.save();
+		
 		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
 		aclo.save();
 	}
 	
-	public Root(ContentName profileName) {
+	/**
+	 * Set up a part of the namespace to be under access control.
+	 * This method writes the root block and root ACL to a repository.
+	 * @param name The top of the namespace to be under access control
+	 * @param acl The access control list to be used for the root of the
+	 * namespace under access control.
+	 * @param parameterizedNames
+	 * @param parameters
+	 * @param saveType
+	 * @param handle
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
+	public static void create(ContentName name, ContentName profileName, ACL acl, ArrayList<ParameterizedName> parameterizedNames,
+			KeyValueSet parameters, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException, InvalidKeyException {
+		AccessControlPolicyMarker r = new AccessControlPolicyMarker(profileName, parameterizedNames, parameters);
+		
+		ContentName policyPrefix = NamespaceProfile.policyNamespace(name);
+		ContentName policyMarkerName = AccessControlProfile.getAccessControlPolicyName(policyPrefix);
+		AccessControlPolicyMarkerObject ro = new AccessControlPolicyMarkerObject(policyMarkerName, r, saveType, handle);
+		ro.save();
+
+		GroupAccessControlManager gacm = new GroupAccessControlManager();
+		gacm.initialize(ro, handle);
+		// create ACL and NK at the root of the namespace under access control
+		gacm.initializeNamespace(acl);
+	}	
+	
+	public AccessControlPolicyMarker(ContentName profileName) {
 		_profileName = new ProfileName(profileName);
 	}
 	
-	public Root(ContentName profileName, ArrayList<ParameterizedName> parameterizedNames, KeyValueSet parameters) {
+	public AccessControlPolicyMarker(ContentName profileName, ArrayList<ParameterizedName> parameterizedNames, KeyValueSet parameters) {
 		this(profileName);
 		_parameterizedNames.addAll(parameterizedNames);
 		_parameters = parameters;
 	}
 
-	public Root() {}
+	public AccessControlPolicyMarker() {}
 	
 	public void addParameterizedName(ParameterizedName name) { _parameterizedNames.add(name); }
 	
