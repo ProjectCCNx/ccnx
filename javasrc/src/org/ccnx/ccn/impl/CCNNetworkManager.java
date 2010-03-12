@@ -417,8 +417,8 @@ public class CCNNetworkManager implements Runnable {
 					// We have lost our connection to ccnd. See if we can reconnect
 					useMe = 1000;
 					try {
+						_channel.open();
 						synchronized (_channel._ncConnected) {
-							_channel.open();
 							if (_channel.isConnected()) {
 								_faceID = null;
 								reregisterPrefixes();
@@ -1451,6 +1451,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 	
 	protected PublisherPublicKeyDigest fetchCCNDId(CCNNetworkManager mgr, KeyManager keyManager) throws IOException {
+<<<<<<< HEAD
 			try {
 				Interest interested = new Interest(new ContentName(CCNDaemonProfile.ping, Interest.generateNonce()));
 				interested.scope(1);
@@ -1460,31 +1461,21 @@ public class CCNNetworkManager implements Runnable {
 					Log.severe(msg);
 					throw new IOException(msg);
 				}
-				PublisherPublicKeyDigest sentID = contented.signedInfo().getPublisherKeyID();
-				
-				// TODO: This needs to be fixed once the KeyRepository is fixed to provide a KeyManager
-				if (null != keyManager) {
-					ContentVerifier verifyer = new ContentObject.SimpleVerifier(sentID, keyManager);
-					if (!verifyer.verify(contented)) {
-						String msg = ("fetchCCNDId: Fetch of content reply from ping failed to verify.");
-						Log.severe(msg);
-						throw new IOException(msg);
-					}
-				} else {
-					Log.severe("fetchCCNDId: do not have a KeyManager. Cannot verify ccndID.");
-					return null;
-				}
-				return sentID;
-			} catch (InterruptedException e) {
-				Log.warningStackTrace(e);
-				throw new IOException(e.getMessage());
-			} catch (IOException e) {
-				String reason = e.getMessage();
-				Log.warningStackTrace(e);
-				String msg = ("fetchCCNDId: Unexpected IOException in call getting ping Interest reason: " + reason);
-				Log.severe(msg);
-				throw new IOException(msg);
+			} else {
+				Log.severe("fetchCCNDId: do not have a KeyManager. Cannot verify ccndID.");
+				return null;
 			}
+			return sentID;
+		} catch (InterruptedException e) {
+			Log.warningStackTrace(e);
+			throw new IOException(e.getMessage());
+		} catch (IOException e) {
+			String reason = e.getMessage();
+			Log.warningStackTrace(e);
+			String msg = ("fetchCCNDId: Unexpected IOException in call getting ping Interest reason: " + reason);
+			Log.severe(msg);
+			throw new IOException(msg);
+		}
 	} /* PublisherPublicKeyDigest fetchCCNDId() */
 	
 	/**
