@@ -177,6 +177,9 @@ indexbuf_release(struct ccnd_handle *h, struct ccn_indexbuf *c)
         ccn_indexbuf_destroy(&c);
 }
 
+/**
+ * Looks up a face based on its faceid.
+ */
 static struct face *
 face_from_faceid(struct ccnd_handle *h, unsigned faceid)
 {
@@ -190,6 +193,10 @@ face_from_faceid(struct ccnd_handle *h, unsigned faceid)
     return(face);
 }
 
+/**
+ * Assigns the faceid for a nacent face,
+ * calls register_new_face() if successful.
+ */
 static int
 enroll_face(struct ccnd_handle *h, struct face *face)
 {
@@ -280,6 +287,21 @@ content_queue_destroy(struct ccnd_handle *h, struct content_queue **pq)
     }
 }
 
+/**
+ * Close an open file descriptor quietly.
+ */
+static void
+close_fd(int *pfd)
+{
+    if (*pfd != -1) {
+        close(*pfd);
+        *pfd = -1;
+    }
+}
+
+/**
+ * Close an open file descriptor, and grumble about it.
+ */
 static void
 ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
 {
@@ -313,7 +335,7 @@ finalize_face(struct hashtb_enumerator *e)
         h->faces_by_faceid[i] = NULL;
         if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
               face->faceid == ((h->face_rover - 1) | h->face_gen)) {
-            /* TCP connection with no ccn traffic - safe to reuse */
+            /* stream connection with no ccn traffic - safe to reuse */
             recycle = 1;
             h->face_rover--;
         }
@@ -324,7 +346,7 @@ finalize_face(struct hashtb_enumerator *e)
             face->faceid, face->faceid & MAXFACES);
         if ((face->flags & CCN_FACE_UNDECIDED) == 0)
             ccnd_face_status_change(h, face->faceid);
-        /* If face->addr is not NULL, it is our key so don't free it. XXX - check this - no longer true? */
+        /* Don't free face->addr; storage is managed by hash table */
     }
     else if (face->faceid != CCN_NOFACEID)
         ccnd_msg(h, "orphaned face %u", face->faceid);
@@ -730,8 +752,12 @@ establish_min_recv_bufsize(struct ccnd_handle *h, int fd, int minsize)
     return(rcvbuf);
 }
 
+/**
+ * Initialize the face flags based upon the addr information
+ * and the provided explicit setflags.
+ */
 static void
-set_face_flags(struct ccnd_handle *h, struct face *face)
+init_face_flags(struct ccnd_handle *h, struct face *face, int setflags)
 {
     const struct sockaddr *addr = face->addr;
     const unsigned char *rawaddr = NULL;
@@ -753,11 +779,16 @@ set_face_flags(struct ccnd_handle *h, struct face *face)
     }
     else if (addr->sa_family == AF_UNIX)
         face->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
+    face->flags |= setflags;
 }
 
+/**
+ * Make a new face entered in the faces_by_fd table.
+ */
 static struct face *
 record_connection(struct ccnd_handle *h, int fd,
-                  struct sockaddr *who, socklen_t wholen)
+                  struct sockaddr *who, socklen_t wholen,
+                  int setflags)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -776,9 +807,7 @@ record_connection(struct ccnd_handle *h, int fd,
         addrspace = ((unsigned char *)e->key) + e->keysize;
         face->addr = (struct sockaddr *)addrspace;
         memcpy(addrspace, who, e->extsize);
-        set_face_flags(h, face);
-        if ((face->flags & (CCN_FACE_DGRAM | CCN_FACE_LOCAL)) == 0)
-            face->flags |= CCN_FACE_UNDECIDED;
+        init_face_flags(h, face, setflags);
         res = enroll_face(h, face);
         if (res == -1) {
             hashtb_delete(e);
@@ -789,6 +818,10 @@ record_connection(struct ccnd_handle *h, int fd,
     return(face);
 }
 
+/**
+ * Accept an incoming DGRAM_STREAM connection, creating a new face.
+ * @returns fd of new socket, or -1 for an error.
+ */
 static int
 accept_connection(struct ccnd_handle *h, int listener_fd)
 {
@@ -802,20 +835,28 @@ accept_connection(struct ccnd_handle *h, int listener_fd)
         ccnd_msg(h, "accept: %s", strerror(errno));
         return(-1);
     }
-    face = record_connection(h, fd, (struct sockaddr *)&who, wholen);
-    if (face != NULL)
+    face = record_connection(h, fd,
+                            (struct sockaddr *)&who, wholen,
+                            CCN_FACE_UNDECIDED);
+    if (face == NULL)
+        close_fd(&fd);
+    else
         ccnd_msg(h, "accepted client fd=%d id=%u", fd, face->faceid);
     return(fd);
 }
 
+/**
+ * Make an outbound stream connection.
+ */
 static struct face *
-make_connection(struct ccnd_handle *h, struct sockaddr *who, socklen_t wholen)
+make_connection(struct ccnd_handle *h,
+                struct sockaddr *who, socklen_t wholen,
+                int setflags)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int fd;
     int res;
-    int connecting = 0;
     struct face *face;
     const int checkflags = CCN_FACE_LINK | CCN_FACE_DGRAM | CCN_FACE_LOCAL |
                            CCN_FACE_NOSEND | CCN_FACE_UNDECIDED;
@@ -842,24 +883,24 @@ make_connection(struct ccnd_handle *h, struct sockaddr *who, socklen_t wholen)
     res = fcntl(fd, F_SETFL, O_NONBLOCK);
     if (res == -1)
         ccnd_msg(h, "connect fcntl: %s", strerror(errno));
+    setflags &= ~CCN_FACE_CONNECTING;
     res = connect(fd, who, wholen);
     if (res == -1 && errno == EINPROGRESS) {
         res = 0;
-        connecting = 1;
+        setflags |= CCN_FACE_CONNECTING;
     }
     if (res == -1) {
         ccnd_msg(h, "connect failed: %s (errno = %d)", strerror(errno), errno);
         close(fd);
         return(NULL);
     }
-    face = record_connection(h, fd, who, wholen);
+    face = record_connection(h, fd, who, wholen, setflags);
     if (face == NULL) {
         close(fd);
         return(NULL);
     }
-    if (connecting) {
+    if ((face->flags & CCN_FACE_CONNECTING) != 0) {
         ccnd_msg(h, "connecting to client fd=%d id=%u", fd, face->faceid);
-        face->flags |= CCN_FACE_CONNECTING;
         face->outbufindex = 0;
         face->outbuf = ccn_charbuf_create();
     }
@@ -902,7 +943,8 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
     if (res < 0)
         return(NULL);
     establish_min_recv_bufsize(h, socks.recving, 128*1024);
-    face = record_connection(h, socks.recving, who, wholen);
+    face = record_connection(h, socks.recving, who, wholen,
+                             (CCN_FACE_MCAST | CCN_FACE_DGRAM));
     if (face == NULL) {
         close(socks.recving);
         if (socks.sending != socks.recving)
@@ -910,11 +952,6 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
         return(NULL);
     }
     face->send_fd = socks.sending;
-    face->flags |= (CCN_FACE_MCAST | CCN_FACE_DGRAM);
-    if ((face->flags & CCN_FACE_UNDECIDED) != 0) {
-        ccnd_face_status_change(h, face->faceid);
-        face->flags &= ~CCN_FACE_UNDECIDED;
-    }
     ccnd_msg(h, "multicast on fd=%d,%d id=%u",
              face->recv_fd, face->send_fd, face->faceid);
     return(face);
@@ -1915,6 +1952,10 @@ ccnd_reg_uri(struct ccnd_handle *h,
     return(res);
 }
 
+/**
+ * Called when a face is first created, and (perhaps) a second time in the case
+ * that a face transitions from the undecided state.
+ */
 static void
 register_new_face(struct ccnd_handle *h, struct face *face)
 {
@@ -2036,7 +2077,8 @@ ccnd_req_newface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     else if (addrinfo->ai_socktype == SOCK_STREAM) {
         newface = make_connection(h,
                                   addrinfo->ai_addr,
-                                  addrinfo->ai_addrlen);
+                                  addrinfo->ai_addrlen,
+                                  0);
     }
     if (newface != NULL) {
         newface->flags |= CCN_FACE_PERMANENT;
@@ -3415,8 +3457,7 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
             source->addrlen = e->keysize;
             source->recv_fd = face->recv_fd;
             source->send_fd = face->send_fd;
-            source->flags |= CCN_FACE_DGRAM;
-            set_face_flags(h, source);
+            init_face_flags(h, source, CCN_FACE_DGRAM);
             if (why == 1 && (source->flags & CCN_FACE_LOOPBACK) != 0)
                 source->flags |= CCN_FACE_GG;
             res = enroll_face(h, source);
@@ -3487,7 +3528,7 @@ process_input(struct ccnd_handle *h, int fd)
         face->inbuf->length += res;
         msgstart = 0;
         if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
-              face->inbuf->length >= 4) {
+              face->inbuf->length >= 6) {
             if (0 == memcmp(buf, "GET ", 4)) {
                 ccnd_stats_handle_http_connection(h, face);
                 return;
@@ -3495,7 +3536,7 @@ process_input(struct ccnd_handle *h, int fd)
             face->flags &= ~CCN_FACE_UNDECIDED;
             if ((face->flags & CCN_FACE_LOOPBACK) != 0)
                 face->flags |= CCN_FACE_GG;
-            ccnd_face_status_change(h, face->faceid);
+            register_new_face(h, face);
         }
         dres = ccn_skeleton_decode(d, buf, res);
         while (d->state == 0) {
@@ -3974,15 +4015,6 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     free(sockname);
     sockname = NULL;
     return(h);
-}
-
-static void
-close_fd(int *pfd)
-{
-    if (*pfd != -1) {
-        close(*pfd);
-        *pfd = -1;
-    }
 }
 
 /**
