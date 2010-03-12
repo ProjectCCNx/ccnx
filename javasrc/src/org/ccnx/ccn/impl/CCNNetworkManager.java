@@ -180,6 +180,7 @@ public class CCNNetworkManager implements Runnable {
 		protected Boolean _ncConnected = new Boolean(false);
 		protected boolean _ncInitialized = false;
 		protected Timer _ncHeartBeatTimer = null;
+		protected Boolean _ncStarted = false;
 
 		private NetworkChannel(String host, int port, NetworkProtocol proto) throws IOException {
 			_ncHost = host;
@@ -191,24 +192,22 @@ public class CCNNetworkManager implements Runnable {
 		public void open() throws IOException {
 			if (_ncProto == NetworkProtocol.UDP) {
 				_ccndId = null;
-				synchronized (_ncConnected) {
-					try {
-						_ncDGrmChannel = DatagramChannel.open();
-						_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
-						_ncDGrmChannel.configureBlocking(false);
-						ByteBuffer test = ByteBuffer.allocate(1);
-						int ret = _ncDGrmChannel.write(test);
-						if (ret < 1)
-							return;
-						wakeup();
-						_ncDGrmChannel.register(_ncSelector, SelectionKey.OP_READ);
-						_ncLocalPort = _ncDGrmChannel.socket().getLocalPort();
-						_ncHeartBeatTimer = new Timer(true);
-						_ncHeartBeatTimer.schedule(new HeartBeatTimer(), 0);
-						_ncConnected = true;
-					} catch (IOException ioe) {
+				try {
+					_ncDGrmChannel = DatagramChannel.open();
+					_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
+					_ncDGrmChannel.configureBlocking(false);
+					ByteBuffer test = ByteBuffer.allocate(1);
+					int ret = _ncDGrmChannel.write(test);
+					if (ret < 1)
 						return;
-					}
+					wakeup();
+					_ncDGrmChannel.register(_ncSelector, SelectionKey.OP_READ);
+					_ncLocalPort = _ncDGrmChannel.socket().getLocalPort();
+					if (_ncStarted)
+						_ncHeartBeatTimer.schedule(new HeartBeatTimer(), 0);
+					_ncConnected = true;
+				} catch (IOException ioe) {
+					return;
 				}
 			} else if (_ncProto == NetworkProtocol.TCP) {
 				_ncSockChannel = SocketChannel.open();
@@ -227,10 +226,8 @@ public class CCNNetworkManager implements Runnable {
 		private void close() throws IOException {
 			if (_ncProto == NetworkProtocol.UDP) {
 				_ncConnected = false;
-				_ncSelector.wakeup();
+				wakeup();
 				_ncDGrmChannel.close();
-				if (null != _ncHeartBeatTimer)
-					_ncHeartBeatTimer.cancel();
 			} else if (_ncProto == NetworkProtocol.TCP) {
 				_ncSockChannel.close();
 			} else {
@@ -287,8 +284,11 @@ public class CCNNetworkManager implements Runnable {
 		
 		private void startup() {
 			if (_ncProto == NetworkProtocol.UDP) {
-				_ncHeartBeatTimer = new Timer(true);
-				_ncHeartBeatTimer.schedule(new HeartBeatTimer(), 0L);
+				if (! _ncStarted) {
+					_ncHeartBeatTimer = new Timer(true);
+					_ncHeartBeatTimer.schedule(new HeartBeatTimer(), 0L);
+					_ncStarted = true;
+				}
 			}
 		}
 				
@@ -414,18 +414,19 @@ public class CCNNetworkManager implements Runnable {
 						useMe = checkPrefixDelay;
 					}
 				} else {
+					// We have lost our connection to ccnd. See if we can reconnect
 					useMe = 1000;
 					try {
-						_channel.open();
-						if (_channel.isConnected()) {
-							_faceID = null;
-							reregisterPrefixes();
-							return;
+						synchronized (_channel._ncConnected) {
+							_channel.open();
+							if (_channel.isConnected()) {
+								_faceID = null;
+								reregisterPrefixes();
+								useMe = 0;	// Come right back to refigure registration refresh times
+							}
 						}
-					} catch (IOException e) {
-						System.out.println("foog1");
 					} 
-					catch (CCNDaemonException e) {
+					catch (Exception e) {
 						try {
 							_channel.close();
 						} catch (IOException e1) {}
