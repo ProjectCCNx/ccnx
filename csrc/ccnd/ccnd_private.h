@@ -269,7 +269,8 @@ struct propagating_entry {
 #define CCN_PR________  0x08
 #define CCN_PR_EQV      0x10 /**< a younger similar interest exists */
 #define CCN_PR_SCOPE0   0x20 /**< interest scope is 0 */
-#define CCN_PR_SCOPE1   0x40 /**< interest scope is 1 */
+#define CCN_PR_SCOPE1   0x40 /**< interest scope is 1 (this host) */
+#define CCN_PR_SCOPE2   0x80 /**< interest scope is 2 (immediate neighborhood) */
 
 /**
  * The nameprefix hash table is keyed by the Component elements of

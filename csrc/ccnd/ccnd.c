@@ -2479,6 +2479,8 @@ get_outbound_faces(struct ccnd_handle *h,
         return(x);
     if (pi->scope == 1)
         checkmask = CCN_FACE_GG;
+    else if (pi->scope == 2)
+        checkmask = CCN_FACE_GG & ~(from->flags);
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         faceid = npe->forward_to->buf[i];
         face = face_from_faceid(h, faceid);
@@ -2670,6 +2672,13 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                 otherface = face_from_faceid(h, p->faceid);
                 if (otherface == NULL)
                     continue;
+                /*
+                 * If scope is 2, we can't treat these as similar if
+                 * they did not originate on the same host
+                 */
+                if (pi->scope == 2 &&
+                    ((otherface->flags ^ face->flags) & CCN_FACE_GG) != 0)
+                    continue;
                 n = outbound->n;
                 outbound->n = 0;
                 for (i = 0; i < n; i++) {
@@ -2781,6 +2790,8 @@ propagate_interest(struct ccnd_handle *h,
                 pe->flags |= CCN_PR_SCOPE0;
             else if (pi->scope == 1)
                 pe->flags |= CCN_PR_SCOPE1;
+            else if (pi->scope == 2)
+                pe->flags |= CCN_PR_SCOPE2;
             pe->fgen = h->forward_to_gen;
             link_propagating_interest_to_nameprefix(h, pe, npe);
             reorder_outbound_using_history(h, npe, pe);
@@ -2828,6 +2839,7 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
     struct nameprefix_entry *npe = NULL;
     struct ccn_indexbuf *x = pe->outbound;
     struct face *face = NULL;
+    struct face *from = NULL;
     int i;
     int k;
     int n;
@@ -2836,6 +2848,9 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
     
     pe->fgen = h->forward_to_gen;
     if ((pe->flags & (CCN_PR_SCOPE0 | CCN_PR_EQV)) != 0)
+        return;
+    from = face_from_faceid(h, pe->faceid);
+    if (from == NULL)
         return;
     npe = nameprefix_for_pe(h, pe);
     while (npe->parent != NULL && npe->forwarding == NULL)
@@ -2846,6 +2861,8 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
         return;
     if ((pe->flags & CCN_PR_SCOPE1) != 0)
         checkmask = CCN_FACE_GG;
+    if ((pe->flags & CCN_PR_SCOPE2) != 0)
+        checkmask = CCN_FACE_GG & ~(from->flags);
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         faceid = npe->forward_to->buf[i];
         face = face_from_faceid(h, faceid);
