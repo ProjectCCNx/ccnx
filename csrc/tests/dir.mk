@@ -39,6 +39,7 @@ ALLTESTS = \
   test_single_ccnd \
   test_single_ccnd_teardown \
   test_spur_traffic \
+  test_scope2 \
   test_stale \
   test_twohop_ccnd \
   test_twohop_ccnd_teardown \

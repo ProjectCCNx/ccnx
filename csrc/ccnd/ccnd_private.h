@@ -269,7 +269,8 @@ struct propagating_entry {
 #define CCN_PR________  0x08
 #define CCN_PR_EQV      0x10 /**< a younger similar interest exists */
 #define CCN_PR_SCOPE0   0x20 /**< interest scope is 0 */
-#define CCN_PR_SCOPE1   0x40 /**< interest scope is 1 */
+#define CCN_PR_SCOPE1   0x40 /**< interest scope is 1 (this host) */
+#define CCN_PR_SCOPE2   0x80 /**< interest scope is 2 (immediate neighborhood) */
 
 /**
  * The nameprefix hash table is keyed by the Component elements of
@@ -320,15 +321,6 @@ struct ccn_forwarding {
 int ccnd_init_internal_keystore(struct ccnd_handle *);
 int ccnd_internal_client_start(struct ccnd_handle *);
 void ccnd_internal_client_stop(struct ccnd_handle *);
-
-/**
- * The internal client calls this with the argument portion ARG of
- * a self-registration request (/ccnx/reg/self/ARG)
- * The result, if not NULL, will be used as the Content of the reply.
- * @deprecated
- */
-struct ccn_charbuf *ccnd_reg_self(struct ccnd_handle *h,
-                                  const unsigned char *msg, size_t size);
 
 /**
  * The internal client calls this with the argument portion ARG of
