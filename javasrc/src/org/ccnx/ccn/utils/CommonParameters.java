@@ -21,13 +21,13 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class CommonParameters {
-	protected static Integer timeout = SystemConfiguration.MAX_TIMEOUT;
-	protected static int BLOCK_SIZE = 8096;
-	protected static boolean rawMode = false;
-	protected static boolean unversioned = false;
+	public static Integer timeout = SystemConfiguration.MAX_TIMEOUT;
+	public static int BLOCK_SIZE = 8096;
+	public static boolean rawMode = false;
+	public static boolean unversioned = false;
 	
-	protected static boolean verbose = false;
+	public static boolean verbose = false;
 	
-	protected static ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
-	protected static ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
+	public static ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
+	public static ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
 }
