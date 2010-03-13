@@ -134,6 +134,29 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 
+	/**
+	 * parent is base name, then add components from childComponets starting
+	 * at index "start".
+	 * @param parent used for the base of the name.
+	 * @param start index in childComponents to begin adding from
+	 * @param childComponents the additional name components to add at the end of parent
+	 */
+	public ContentName(ContentName parent, int start, ArrayList<byte []> childComponents) {
+		// shallow copy
+		this(parent.count(), parent.components());
+		
+		if (null != childComponents) {
+			for( int i = start; i < childComponents.size(); i++ ) {
+				byte [] b = childComponents.get(i);
+				if (null == b)
+					continue;
+				
+				// shallow copy
+				_components.add(childComponents.get(i));
+			}
+		}
+	}
+	
 	public ContentName(ContentName parent, byte[] name1, byte[] name2) {
 		this (parent.count() +
 				((null != name1) ? 1 : 0) +
