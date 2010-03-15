@@ -106,6 +106,7 @@ public class CCNTime extends Timestamp {
 	
 	/**
 	 * Creates a CCNTime from the internal long representation of the quantized time.
+	 * Equivalent to setFromBinaryTimeAsLong.
 	 * @param binaryTimeAsLong the time in our internal units
 	 * @param unused a marker parameter to separate this from another constructor
 	 */
@@ -154,6 +155,11 @@ public class CCNTime extends Timestamp {
 		return timeVal;		
 	}
 	
+	protected void setFromBinaryTimeAsLong(long binaryTimeAsLong) {
+		super.setTime((binaryTimeAsLong / 4096L) * 1000L);
+		super.setNanos((int)(((binaryTimeAsLong % 4096L) * 1000000000L) / 4096L));
+	}
+	
 	@Override
 	public void setTime(long msec) {
 		long binaryTimeAsLong = toBinaryTimeAsLong((msec/1000) * 1000, (msec % 1000) * 1000000L);
@@ -173,6 +179,17 @@ public class CCNTime extends Timestamp {
 	 */
 	public void addNanos(int nanos) {
 		setNanos(nanos + getNanos());
+	}
+	
+	/**
+	 * A helper method to increment to avoid collisions. Add a number
+	 * of CCNx quantized time units to the time. Synchronize if modifications can
+	 * be performed from multiple threads.
+	 */
+	public void increment(int timeUnits) {
+		long binaryTimeAsLong = toBinaryTimeAsLong();
+		binaryTimeAsLong += timeUnits;
+		setFromBinaryTimeAsLong(binaryTimeAsLong);
 	}
 	
 	/**

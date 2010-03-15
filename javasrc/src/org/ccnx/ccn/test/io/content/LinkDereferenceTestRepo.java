@@ -56,7 +56,7 @@ public class LinkDereferenceTestRepo {
 											"Value " + i, SaveType.REPOSITORY, writeHandle);
 			System.out.println("Saving as version " + version);
 			data[i].save(version);
-			version.addNanos(1000000); // avoid version collisions
+			version.increment(1); // avoid version collisions
 		}
 		
 		gone = new CCNStringObject(testHelper.getClassChildName(GONE_VALUE_NAME), GONE_VALUE_NAME, SaveType.REPOSITORY, writeHandle);
