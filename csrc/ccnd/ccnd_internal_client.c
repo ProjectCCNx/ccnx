@@ -443,7 +443,7 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
 void
 ccnd_internal_client_stop(struct ccnd_handle *ccnd)
 {
-    ccnd->facelog = NULL; /* ccn_destroy will free */
+    ccnd->notice = NULL; /* ccn_destroy will free */
     ccn_indexbuf_destroy(&ccnd->chface);
     ccn_destroy(&ccnd->internal_client);
     if (ccnd->internal_client_refresh != NULL)

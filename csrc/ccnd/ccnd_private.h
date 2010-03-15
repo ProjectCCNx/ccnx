@@ -69,7 +69,7 @@ struct ccnd_handle {
     unsigned char ccnd_id[32];      /**< sha256 digest of our public key */
     struct hashtb *faces_by_fd;     /**< keyed by fd */
     struct hashtb *dgram_faces;     /**< keyed by sockaddr */
-    struct hashtb *content_tab;     /**< keyed by initial fragment of ContentObject */
+    struct hashtb *content_tab;     /**< keyed by portion of ContentObject */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *propagating_tab; /**< keyed by nonce */
     struct ccn_indexbuf *skiplinks; /**< skiplist for content-ordered ops */
@@ -133,7 +133,7 @@ struct ccnd_handle {
     struct ccn *internal_client;    /**< internal client */
     struct ccn_keystore *internal_keys; /**< the internal client's keys */
     struct face *face0;             /**< special face for internal client */
-    struct ccn_seqwriter *facelog;  /**< for notices of face status changes */
+    struct ccn_seqwriter *notice;   /**< for notices of status changes */
     struct ccn_indexbuf *chface;    /**< faceids w/ recent status chnages */
     struct ccn_scheduled_event *internal_client_refresh;
     unsigned data_pause_microsec;   /**< tunable, see choose_face_delay() */
