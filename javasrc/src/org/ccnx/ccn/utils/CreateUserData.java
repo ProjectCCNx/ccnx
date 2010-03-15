@@ -325,11 +325,11 @@ public class CreateUserData {
 			System.out.println(friendlyName);
 			CCNHandle userHandle = getHandleForUser(friendlyName);
 			try {
-				userHandle.keyManager().publishKeyToRepository(userHandle);
+				userHandle.keyManager().publishKeyToRepository();
 				ContentName keyName = userHandle.keyManager().getDefaultKeyNamePrefix();
 				keyName = keyName.cut(keyName.count()-1);
 				// Won't publish if it's already there.
-				userHandle.keyManager().publishKeyToRepository(keyName, userHandle.keyManager().getDefaultKeyID(), userHandle);
+				userHandle.keyManager().publishKeyToRepository(keyName, null);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
