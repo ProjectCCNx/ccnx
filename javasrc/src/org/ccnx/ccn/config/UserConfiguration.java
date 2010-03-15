@@ -187,6 +187,11 @@ public class UserConfiguration {
 	 */
 	protected static String _configurationFileName;
 	
+	/**
+	 * Do we publish keys by default?
+	 */
+	protected static Boolean _publishKeys;
+	
 	protected static final String USER_DIR = System.getProperty("user.home");
 	protected static String FILE_SEP = System.getProperty("file.separator");
 	
@@ -338,11 +343,19 @@ public class UserConfiguration {
 	}
 
 	public static boolean publishKeys() { 
-		String strPublish =  
-			SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_PUBLISH_KEYS_PROPERTY, 
-																	 CCNX_PUBLISH_KEYS_ENVIRONMENT_VARIABLE,
-																	  "true");
-		return strPublish.equalsIgnoreCase("true");
+		if (null == _publishKeys) {
+
+			String strPublish =  
+				SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_PUBLISH_KEYS_PROPERTY, 
+						CCNX_PUBLISH_KEYS_ENVIRONMENT_VARIABLE,
+						"true");
+			_publishKeys = strPublish.equalsIgnoreCase("true");
+		}
+		return _publishKeys;
+	}
+	
+	public static void setPublishKeys(boolean publish) {
+		_publishKeys = publish;
 	}
 
 	public static String keyRepositoryDirectory() {
