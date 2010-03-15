@@ -100,8 +100,14 @@ public abstract class KeyManager {
 	 */
 	public static synchronized KeyManager getDefaultKeyManager() {
 		// could print a stack trace
-		if( Log.isLoggable(Level.FINER) )
-			Log.finer("NOTICE: retrieving default key manager.");
+		if (Log.isLoggable(Level.INFO)) {
+			Log.info("NOTICE: retrieving default key manager.");
+			try {
+				throw new ConfigurationException("Check stack trace!");
+			} catch (ConfigurationException e) {
+				Log.logStackTrace(Level.INFO, e);
+			}
+		}
 		if (null != _defaultKeyManager) 
 			return _defaultKeyManager;
 		try {
@@ -535,23 +541,9 @@ public abstract class KeyManager {
 	 * @throws InvalidKeyException
 	 * @throws IOException
 	 */
-	public PublicKeyObject publishKeyToRepository(ContentName keyName, 
-												PublisherPublicKeyDigest keyToPublish, 
-												CCNHandle handle) 
-			throws InvalidKeyException, IOException {
-		if (null == keyToPublish) {
-			keyToPublish = getDefaultKeyID();
-		}
-		if (null == keyName) {
-			keyName = getKeyLocator(keyToPublish).name().name();
-		}
-		
-		PublicKey theKey = getPublicKeyCache().getPublicKeyFromCache(keyToPublish);
-		if (null == theKey) {
-			throw new InvalidKeyException("Key " + keyToPublish + " unknown, cannot publish.");
-		}
-		return publishKeyToRepository(keyName, theKey, null, null, handle);
-	}
+	public abstract PublicKeyObject publishKeyToRepository(ContentName keyName, 
+															PublisherPublicKeyDigest keyToPublish)
+			throws InvalidKeyException, IOException;
 
 	/**
 	 * Publish our default key to a repository at its default location.
@@ -559,8 +551,8 @@ public abstract class KeyManager {
 	 * @throws InvalidKeyException
 	 * @throws IOException
 	 */
-	public PublicKeyObject publishKeyToRepository(CCNHandle handle) throws InvalidKeyException, IOException {
-		return publishKeyToRepository(null, null, handle);
+	public PublicKeyObject publishKeyToRepository() throws InvalidKeyException, IOException {
+		return publishKeyToRepository(null, null);
 	}
 
 	/**
@@ -570,10 +562,6 @@ public abstract class KeyManager {
 	 * @param handle the handle to use to publish it with
 	 * @return the published information about this key, whether we published it or someone else had
 	 * @throws IOException 
-	 * @throws IOException
-	 * @throws InvalidKeyException 
-	 * @throws InvalidKeyException
-	 * @throws ConfigurationException
 	 */
 	public static PublicKeyObject publishKeyToRepository(
 			ContentName keyName, 
@@ -581,6 +569,33 @@ public abstract class KeyManager {
 			PublisherPublicKeyDigest signingKeyID, 
 			KeyLocator signingKeyLocator,
 			CCNHandle handle) throws IOException {
+		return publishKeyToRepository(keyName, keyToPublish, signingKeyID, signingKeyLocator, 
+					SystemConfiguration.SHORT_TIMEOUT, false, handle);
+	}
+	
+	/**
+	 * Publish a public key to repository, if it isn't already there.
+	 * @param keyName content name of the public key to publish under (adds a version)
+	 * @param keyToPublish the key to publish
+	 * @param signingKeyID the key to sign with
+	 * @param signingKeyLocator the key locator to use
+	 * @param timeToWaitForPreexisting how long to wait to see if it has already been published
+	 * (avoid re-publishing). If 0, we don't even try to find preexisting content.
+	 * @param requirePublisherMatch check to see if we match the specified publisher. Key locator
+	 * match too complex to check, make caller do that one.
+	 * @param handle the handle to use to publish it with
+	 * @return the published information about this key, whether we published it or someone else had
+	 * @throws IOException 
+	 */
+	public static PublicKeyObject publishKeyToRepository(
+			ContentName keyName, 
+			PublicKey keyToPublish,
+			PublisherPublicKeyDigest signingKeyID, 
+			KeyLocator signingKeyLocator,
+			long timeToWaitForPreexisting,
+			boolean requirePublisherMatch,
+			CCNHandle handle) throws IOException {
+
 
 		// To avoid repeating work, we first see if this content is available on the network, then
 		// if it's in a repository. That's because if it's not in a repository, we need to know if
@@ -588,13 +603,15 @@ public abstract class KeyManager {
 		// also needs to know if it's on the network).
 		PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(keyToPublish);
 		
+		// Returns immediately if timeToWaitForPreexisting is 0.
 		ContentObject availableContent = 
-			CCNReader.isContentAvailable(keyName, ContentType.KEY, keyDigest.digest(), 
-										null, SystemConfiguration.SHORT_TIMEOUT, handle);
-
+			CCNReader.isVersionedContentAvailable(keyName, ContentType.KEY, keyDigest.digest(), 
+					(requirePublisherMatch ? signingKeyID : null), null, timeToWaitForPreexisting, handle);
+		
 		if (null != availableContent) {
+			
 			// See if some repository has this key already
-			if (null != CCNReader.isContentInRepository(availableContent, SystemConfiguration.SHORT_TIMEOUT, handle)) {
+			if (null != CCNReader.isContentInRepository(availableContent, timeToWaitForPreexisting, handle)) {
 				Log.info("publishKeyToRepository: key {0} is already in a repository; not re-publishing.", keyName);
 			} else {
 
