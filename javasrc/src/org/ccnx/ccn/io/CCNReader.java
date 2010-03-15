@@ -159,12 +159,18 @@ public class CCNReader {
 	 * @return
 	 * @throws IOException
 	 */
-	public static ContentObject isContentInRepository(ContentObject availableContent, long timeout, CCNHandle handle) throws IOException {
+	public static ContentObject isContentInRepository(ContentObject availableContent, 
+													 long timeout, CCNHandle handle) throws IOException {
 		
+		if (timeout == 0) {
+			// don't check (don't do < 0, -1 is NO_TIMEOUT)
+			return null;
+		}
 		// Enumerate the name of the object we got, and see if it is actually in the repository.
 		// If the first segment is in the repository, assume whole thing is there (mostly this will be used
 		// for keys, which only have one segment, typically.)
 		EnumeratedNameList enl = new EnumeratedNameList(availableContent.name(), handle);
+		// TODO don't wait for all children, just wait for this one for a maximum time of timeout.
 		enl.waitForChildren(timeout); // have to time out, may be nothing there.
 		enl.stopEnumerating();
 		if (enl.hasChild(availableContent.digest())) {
@@ -190,6 +196,7 @@ public class CCNReader {
 	 */
 	public static ContentObject isContentInRepository(ContentName contentName, ContentType desiredType, 
 			byte [] desiredContentDigest, 
+			PublisherPublicKeyDigest desiredPublisher,
 			ContentVerifier verifier, long timeout,
 			CCNHandle handle) throws IOException {
 		// Originally wrote this just for keys, but it is actually general; make it
@@ -217,8 +224,9 @@ public class CCNReader {
 		// See if we can get the content, or its latest version, somewhere. This is a little sketchy --
 		// doesn't handle keys that are not versioned. TODO should we handle those -- retry in isContentAvailalble
 		// should do it.
-		ContentObject latestAvailableContent = isContentAvailable(contentName, desiredType, desiredContentDigest, 
-																	verifier, timeout, handle);
+		ContentObject latestAvailableContent = 
+			isVersionedContentAvailable(contentName, desiredType, desiredContentDigest, desiredPublisher,
+										verifier, timeout, handle);
 		
 		if (null == latestAvailableContent) {
 			return null; // if it's not available, it's not in a repo
@@ -234,16 +242,22 @@ public class CCNReader {
 	 * @param contentName
 	 * @param desiredType
 	 * @param desiredContentDigest
+	 * @param desiredPublisher 
 	 * @param verifier
 	 * @param timeout
 	 * @return
 	 * @throws IOException 
 	 */
-	public static ContentObject isContentAvailable(ContentName contentName, ContentType desiredType, 
+	public static ContentObject isVersionedContentAvailable(ContentName contentName, ContentType desiredType, 
 													byte [] desiredContentDigest, 
+													PublisherPublicKeyDigest desiredPublisher,
 													ContentVerifier verifier, long timeout,
 													CCNHandle handle) throws IOException {
-	
+		
+		if (timeout == 0) {
+			// don't check (don't do < 0, -1 is NO_TIMEOUT)
+			return null;
+		}
 		// TODO -- add type checking. Cheezy way to add type checking to input streams; put it in 
 		// the verifier and allows verifiers to nest.
 		
@@ -258,12 +272,12 @@ public class CCNReader {
 			// If this isn't the one we want -- i.e. wrong content; no easy way to go
 			// back and check to see if there are more.
 			retrievedObject = VersioningProfile.getFirstBlockOfLatestVersion(contentName, 
-					null, null,
+					null, desiredPublisher,
 					timeout, ((null != verifier) ? verifier : handle.keyManager().getDefaultVerifier()), 
 					handle);
 	
 		} else {
-			retrievedObject = SegmentationProfile.getSegment(contentName, null, null, timeout, 
+			retrievedObject = SegmentationProfile.getSegment(contentName, null, desiredPublisher, timeout, 
 					((null != verifier) ? verifier : handle.keyManager().getDefaultVerifier()), handle);
 		}
 	
@@ -287,5 +301,27 @@ public class CCNReader {
 			}
 			return retrievedObject;
 		}
+	}
+	
+	/**
+	 * Is there anything available below this name that we can find in the available time?
+	 * This really just wraps get, but puts a place for us to hang verification and other
+	 * checks, and makes intent clear.
+	 * @param contentPrefix Prefix content must start with.
+	 * @param requiredPublisher Publisher that must have signed content, null for any.
+	 * @param timeout How long to wait for content. If 0, returns immediately.
+	 * @param handle
+	 */
+	public static ContentObject isAnyContentAvailable(ContentName contentPrefix, 
+													  PublisherPublicKeyDigest requiredPublisher,
+													  long timeout, CCNHandle handle) throws IOException {
+		
+		if (timeout == 0) {
+			// don't check (don't do < 0, -1 is NO_TIMEOUT)
+			return null;
+		}
+		ContentObject object = handle.get(contentPrefix, requiredPublisher, timeout);
+		// put in default verification check?
+		return object;
 	}
 }

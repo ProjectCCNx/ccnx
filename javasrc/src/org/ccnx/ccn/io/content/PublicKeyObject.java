@@ -37,6 +37,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
@@ -223,5 +224,27 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	
 	public boolean equalsKey(PublicKeyObject otherKeyObject) throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 		return this.equalsKey(otherKeyObject.publicKey());
+	}
+	
+	public boolean isSelfSigned() throws ContentNotReadyException, IOException {
+		if (!isSaved()) {
+			throw new ContentNotReadyException("No content retrieved -- cannot check if self-signed!");
+		}
+		if (getPublisherKeyLocator().type() == KeyLocatorType.KEY) {
+			if (!equalsKey(getPublisherKeyLocator().key())) {
+				return false;
+			} else {
+				return true;
+			}
+		}
+		if (getPublisherKeyLocator().type() == KeyLocatorType.NAME) {
+			if (!getPublisherKeyLocator().name().name().isPrefixOf(getVersionedName())) {
+				return false;
+			} else {
+				return true;
+			}
+		}
+		// For now, stop there
+		return false;
 	}
 }
