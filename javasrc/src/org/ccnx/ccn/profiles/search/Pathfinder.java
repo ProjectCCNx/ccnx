@@ -26,7 +26,6 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -182,7 +181,7 @@ public class Pathfinder implements CCNInterestListener {
 	 */
 	public synchronized Set<ContentName> stopSearch() {
 		HashSet<ContentName> outstandingPrefixes = new HashSet<ContentName>();
-		int cutCount = AccessControlProfile.rootPostfix().count();
+		int cutCount = _postfix.count();
 		ContentName prefixName;
 		
 		for (Interest interest : _outstandingInterests) {

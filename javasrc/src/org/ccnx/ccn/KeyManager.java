@@ -35,6 +35,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.security.KeyProfile;
+import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -501,11 +502,19 @@ public abstract class KeyManager {
 
 	/**
 	 * Access our internal key store/key server.
-	 * @return our KeyRepository
+	 * @return our key cache
 	 */
 	public abstract PublicKeyCache getPublicKeyCache();
 
 	public abstract void saveConfigurationState() throws FileNotFoundException,
 			IOException;
-
+	
+	/**
+	 * Handle access control manager cache.
+	 * @param contentName
+	 * @return
+	 */
+	public abstract AccessControlManager getAccessControlManagerForName(ContentName contentName);
+	
+	public abstract void rememberAccessControlManager(AccessControlManager acm);
 }

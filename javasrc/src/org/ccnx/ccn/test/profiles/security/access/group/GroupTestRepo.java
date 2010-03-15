@@ -26,7 +26,6 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
@@ -90,7 +89,8 @@ public class GroupTestRepo {
 			users.publishUserKeysToRepository(userNamespace);
 			
 			_acm = new GroupAccessControlManager(testStorePrefix, groupStore, userNamespace);
-			_acm.publishMyIdentity(ContentName.fromNative(userNamespace, myUserName), KeyManager.getDefaultKeyManager().getDefaultPublicKey());
+			_acm.publishMyIdentity(ContentName.fromNative(userNamespace, myUserName), 
+					KeyManager.getDefaultKeyManager().getDefaultPublicKey());
 			_userList = users.friendlyNames().toArray(new String[0]);
 			
 			// create the root ACL
@@ -101,7 +101,8 @@ public class GroupTestRepo {
 			ACL rootACL = new ACL(rootACLcontents);
 			_acm.initializeNamespace(rootACL);
 			
-			NamespaceManager.registerACM(_acm);
+			// Whose access control manager is this supposed to be?
+			_handle.keyManager().rememberAccessControlManager(_acm);
 			
 			_gm = _acm.groupManager();
 			

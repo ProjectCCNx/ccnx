@@ -1,7 +1,7 @@
 /**
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -91,6 +91,7 @@ public class MLACTestRepo {
 
 		firstGroupName = "group-" + rnd.nextInt(10000);
 		Group mixedGroup = _gm0.createGroup(firstGroupName, groupMembers);
+		Assert.assertNotNull(mixedGroup);
 	}
 	
 	/**
@@ -108,6 +109,7 @@ public class MLACTestRepo {
 		groupMembers.add(new Link(ContentName.fromNative(userNamespace[1], userNames[1])));
 		
 		Group mixedGroupOfGroup = _gm1.createGroup("group-" + rnd.nextInt(10000), groupMembers);
+		Assert.assertNotNull(mixedGroupOfGroup);
 	}
 	
 }

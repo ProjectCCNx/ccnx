@@ -274,6 +274,8 @@ ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
     
     if (face->inbuf->length < 6)
         return(-1);
+    if ((face->flags & CCN_FACE_LOCAL) != 0)
+        return(-1);
     response = collect_stats_html(h);
     /* Set linger to prevent quickly resetting the connection on close.*/
     res = setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
@@ -286,6 +288,7 @@ ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
                           "Content-Length: %d" CRLF CRLF,
                           res);
         (void)write(fd, buf, hdrlen);
+        /* We don't handle short writes, but we don't want to block, either. */
         (void)write(fd, response, res);
     }
     else if (0 == memcmp(buf, "GET ", 4))

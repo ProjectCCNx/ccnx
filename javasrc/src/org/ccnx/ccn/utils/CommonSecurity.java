@@ -21,7 +21,6 @@ import java.io.File;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.protocol.ContentName;
 
@@ -43,9 +42,11 @@ public class CommonSecurity {
 	public static void setAccessControl() {
 		// register a group access control manager with the namespace manager
 		try {
+			// TODO -- broken  -- turns on access control probably before we've done -as for user.
+			CCNHandle ourHandle = CCNHandle.open();
 			GroupAccessControlManager gacm = new GroupAccessControlManager(ContentName.fromNative("/"), 
 					CommonParameters.groupStorage, CommonParameters.userStorage, CCNHandle.open());
-			NamespaceManager.registerACM(gacm);
+			ourHandle.keyManager().rememberAccessControlManager(gacm);
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(1);

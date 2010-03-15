@@ -53,15 +53,16 @@ import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.namespace.NamespaceProfile;
 import org.ccnx.ccn.profiles.namespace.ParameterizedName;
-import org.ccnx.ccn.profiles.namespace.Root;
-import org.ccnx.ccn.profiles.namespace.Root.RootObject;
 import org.ccnx.ccn.profiles.search.LatestVersionPathfinder;
 import org.ccnx.ccn.profiles.search.Pathfinder;
 import org.ccnx.ccn.profiles.search.Pathfinder.SearchResults;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
+import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker;
+import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker.AccessControlPolicyMarkerObject;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile.PrincipalInfo;
@@ -241,13 +242,6 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 	
 	public GroupAccessControlManager(ContentName namespace, ContentName[] groupStorage, ContentName[] userStorage, CCNHandle handle) throws ConfigurationException, IOException, MalformedContentNameStringException {
-		if (null == handle) {
-			_handle = CCNHandle.open();
-		} else {
-			_handle = handle;
-		}
-		_keyCache = new SecureKeyCache(_handle.keyManager());
-		
 		initialize(namespace, groupStorage, userStorage, handle);
 	}
 	
@@ -265,19 +259,32 @@ public class GroupAccessControlManager extends AccessControlManager {
 			ParameterizedName pName = new ParameterizedName("Group", gStorage, null);
 			parameterizedNames.add(pName);
 		}
-		Root r = new Root(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), parameterizedNames, null);
-		RootObject policyInformation = new RootObject(namespace, r, SaveType.REPOSITORY, handle);
+		if (null == handle) handle = CCNHandle.open();
+		AccessControlPolicyMarker r = new AccessControlPolicyMarker(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), parameterizedNames, null);
+		ContentName policyPrefix = NamespaceProfile.policyNamespace(namespace);
+		ContentName policyMarkerName = AccessControlProfile.getAccessControlPolicyName(policyPrefix);
+		AccessControlPolicyMarkerObject policyInformation = new AccessControlPolicyMarkerObject(policyMarkerName, r, SaveType.REPOSITORY, handle);
 		initialize(policyInformation, handle);				
 	}
 	
 	@Override
-	public boolean initialize(RootObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException {
+	public boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException {
+		if (null == handle) {
+			_handle = CCNHandle.open();
+		} else {
+			_handle = handle;
+		}
+		_keyCache = new SecureKeyCache(_handle.keyManager());
+
 		// set up information based on contents of policy
 		// also need a static method/command line program to create a Root with the right types of information
 		// for this access control manager type
-		_namespace = policyInformation.getBaseName();
+		int componentCount = policyInformation.getBaseName().count();
+		componentCount -= NamespaceProfile.policyPostfix().count(); 
+		componentCount -= AccessControlProfile.AccessControlPolicyContentName().count();
+		_namespace = policyInformation.getBaseName().cut(componentCount);
 
-		ArrayList<ParameterizedName> parameterizedNames = policyInformation.root().parameterizedNames();
+		ArrayList<ParameterizedName> parameterizedNames = policyInformation.policy().parameterizedNames();
 		for (ParameterizedName pName: parameterizedNames) {
 			String label = pName.label();
 			if (label.equals("Group")) {
@@ -299,13 +306,13 @@ public class GroupAccessControlManager extends AccessControlManager {
 	
 	public GroupManager groupManager(byte[] distinguishingHash) {
 		GroupManager gm = hashToGroupManagerMap.get(distinguishingHash);
-		if (gm == null) Log.severe("Failed to retrieve a group manager with distinguishing hash " + distinguishingHash);
+		if (gm == null) Log.info("Failed to retrieve a group manager with distinguishing hash " + DataUtils.printHexBytes(distinguishingHash));
 		return gm;
 	}
 	
 	public GroupManager groupManager(ContentName prefixName) {
 		GroupManager gm = prefixToGroupManagerMap.get(prefixName);
-		if (gm == null) Log.severe("GroupAccessControlManager: failed to retrieve a group manager with prefix " + prefixName);
+		if (gm == null) Log.info("GroupAccessControlManager: failed to retrieve a group manager with prefix " + prefixName);
 		return gm;		
 	}
 	
