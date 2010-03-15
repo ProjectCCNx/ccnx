@@ -27,7 +27,6 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
 
 
 /**
@@ -350,7 +349,7 @@ public class CCNHandle implements CCNBase {
 	 * 	semantics about the "trustworthiness" of that content or its publisher
 	 */
 	public ContentVerifier defaultVerifier() {
-		return SimpleVerifier.getDefaultVerifier();
+		return _keyManager.getDefaultVerifier();
 	}
 }
 
