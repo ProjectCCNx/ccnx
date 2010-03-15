@@ -59,6 +59,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
 
 
 /**
@@ -848,6 +849,42 @@ public class BasicKeyManager extends KeyManager {
 		return _publicKeyCache;
 	}
 
+	/**
+	 * Publish a key at a certain name, ensuring that it is stored in a repository. Will throw an
+	 * exception if no repository available. Usually used to publish our own keys, but can specify
+	 * any key known to our key cache.
+	 * @param keyName Name under which to publish the key. Currently added under existing version, or version
+	 * 	included in keyName.
+	 * @param keyToPublish can be null, in which case we publish our own default public key.
+	 * @param handle the handle to use for network requests
+	 * @throws InvalidKeyException
+	 * @throws IOException
+	 */
+	@Override
+	public PublicKeyObject publishKeyToRepository(ContentName keyName, 
+												PublisherPublicKeyDigest keyToPublish) 
+			throws InvalidKeyException, IOException {
+		if (null == keyToPublish) {
+			keyToPublish = getDefaultKeyID();
+		}
+		if (null == keyName) {
+			KeyLocator locator = getKeyLocator(keyToPublish);
+			if (locator.type() != KeyLocatorType.NAME) {
+				keyName = getDefaultKeyName(keyToPublish);
+			} else {
+				keyName = locator.name().name();
+			}
+			if (null == keyName) {
+				throw new IOException("Cannot find name to publish key " + keyToPublish + " under!");
+			}
+		}
+		
+		PublicKey theKey = getPublicKeyCache().getPublicKeyFromCache(keyToPublish);
+		if (null == theKey) {
+			throw new InvalidKeyException("Key " + keyToPublish + " unknown, cannot publish.");
+		}
+		return publishKeyToRepository(keyName, theKey, null, null, handle());
+	}
 
 	@Override
 	public PublicKeyObject publishKey(ContentName keyName, 
