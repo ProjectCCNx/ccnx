@@ -232,11 +232,11 @@ ccnd_uri_listen(struct ccnd_handle *ccnd, const char *uri,
     struct ccn_charbuf *name;
     struct ccn_charbuf *uri_modified = NULL;
     struct ccn_closure *closure;
-    struct ccn_keystore *keystore;
     struct ccn_indexbuf *comps;
     const unsigned char *comp;
     size_t comp_size;
     size_t offset;
+    int reg_wanted = 1;
     
     name = ccn_charbuf_create();
     ccn_name_from_uri(name, uri);
@@ -245,28 +245,57 @@ ccnd_uri_listen(struct ccnd_handle *ccnd, const char *uri,
         abort();
     if (ccn_name_comp_get(name->buf, comps, 1, &comp, &comp_size) >= 0) {
         if (comp_size == 32 && 0 == memcmp(comp, CCND_ID_TEMPL, 32)) {
-            /* Replace placeholder with our ccnd_id*/
-            keystore = ccnd->internal_keys;
+            /* Replace placeholder with our ccnd_id */
             offset = comp - name->buf;
             memcpy(name->buf + offset, ccnd->ccnd_id, 32);
             uri_modified = ccn_charbuf_create();
             ccn_uri_append(uri_modified, name->buf, name->length, 1);
             uri = (char *)uri_modified->buf;
+            reg_wanted = 0;
         }
     }
     closure = calloc(1, sizeof(*closure));
     closure->p = p;
     closure->data = ccnd;
     closure->intdata = intdata;
-    /* To bootstrap, we need to register explicitly */
-    ccnd_reg_uri(ccnd, uri,
-                 0, /* special faceid for internal client */
-                 CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
-                 0x7FFFFFFF);
+    /* Register explicitly if needed or requested */
+    if (reg_wanted || (ccnd->debug & 128) != 0)
+        ccnd_reg_uri(ccnd, uri,
+                     0, /* special faceid for internal client */
+                     CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
+                     0x7FFFFFFF);
     ccn_set_interest_filter(ccnd->internal_client, name, closure);
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&uri_modified);
     ccn_indexbuf_destroy(&comps);
+}
+
+/**
+ * Make a forwarding table entry for ccnx:/ccnx/CCNDID
+ * 
+ * This one entry handles most of the namespace served by the 
+ * ccnd internal client.
+ */
+static void
+ccnd_reg_ccnx_ccndid(struct ccnd_handle *ccnd)
+{
+    struct ccn_charbuf *name;
+    struct ccn_charbuf *uri;
+    
+    name = ccn_charbuf_create();
+    ccn_name_from_uri(name, "ccnx:/ccnx");
+    ccn_name_append(name, ccnd->ccnd_id, 32);
+    uri = ccn_charbuf_create();
+    ccn_uri_append(uri, name->buf, name->length, 1);
+    ccnd_reg_uri(ccnd, ccn_charbuf_as_string(uri),
+                 0, /* special faceid for internal client */
+                 (CCN_FORW_CHILD_INHERIT | 
+                  CCN_FORW_ACTIVE        |
+                  CCN_FORW_CAPTURE       |
+                  CCN_FORW_ADVERTISE     ),
+                 0x7FFFFFFF);
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&uri);
 }
 
 #ifndef CCN_PATH_VAR_TMP
@@ -403,6 +432,7 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                     &ccnd_answer_req, OP_SELFREG + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/unreg",
                     &ccnd_answer_req, OP_UNREG + MUST_VERIFY1);
+    ccnd_reg_ccnx_ccndid(ccnd);
     ccnd->internal_client_refresh =
     ccn_schedule_event(ccnd->sched, 200000,
                        ccnd_internal_client_refresh,
