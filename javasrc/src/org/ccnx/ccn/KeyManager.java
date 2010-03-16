@@ -100,12 +100,12 @@ public abstract class KeyManager {
 	 */
 	public static synchronized KeyManager getDefaultKeyManager() {
 		// could print a stack trace
-		if (Log.isLoggable(Level.INFO)) {
-			Log.info("NOTICE: retrieving default key manager.");
+		if (Log.isLoggable(Level.FINER)) {
+			Log.finer("NOTICE: retrieving default key manager. Do you really want to do this?");
 			try {
-				throw new ConfigurationException("Check stack trace!");
+				throw new ConfigurationException("THIS IS NOT AN ERROR: tracking stack trace to find use of default key manager.");
 			} catch (ConfigurationException e) {
-				Log.logStackTrace(Level.INFO, e);
+				Log.logStackTrace(Level.FINER, e);
 			}
 		}
 		if (null != _defaultKeyManager) 
