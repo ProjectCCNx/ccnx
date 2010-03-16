@@ -39,6 +39,11 @@
 #include <ccn/uri.h>
 #include "ccnd_private.h"
 
+#define CCND_NOTICE_NAME "notice.txt"
+
+static void ccnd_start_notice(struct ccnd_handle *ccnd);
+static void ccnd_internal_client_reschedule(struct ccnd_handle *ccnd);
+
 /**
  * Local interpretation of selfp->intdata
  */
@@ -52,6 +57,7 @@
 #define OP_PREFIXREG   0x0400
 #define OP_SELFREG     0x0500
 #define OP_UNREG       0x0600
+#define OP_NOTICE      0x0700
 /**
  * Common interest handler for ccnd_internal_client
  */
@@ -95,13 +101,13 @@ ccnd_answer_req(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_OK);
     if (info->matched_comps >= info->interest_comps->n)
         goto Bail;
-    if (selfp->intdata != OP_PING &&
+    if (selfp->intdata != OP_PING && selfp->intdata != OP_NOTICE &&
         info->pi->prefix_comps != info->matched_comps + morecomps)
         goto Bail;
     if (morecomps == 1) {
         res = ccn_name_comp_get(info->interest_ccnb, info->interest_comps,
-                                    info->matched_comps,
-                                    &final_comp, &final_size);
+                                info->matched_comps,
+                                &final_comp, &final_size);
         if (res < 0)
             goto Bail;
     }
@@ -141,6 +147,10 @@ ccnd_answer_req(struct ccn_closure *selfp,
             break;
         case OP_UNREG:
             reply_body = ccnd_req_unreg(ccnd, final_comp, final_size);
+            break;
+        case OP_NOTICE:
+            ccnd_start_notice(ccnd);
+            goto Bail;
             break;
         default:
             goto Bail;
@@ -232,11 +242,11 @@ ccnd_uri_listen(struct ccnd_handle *ccnd, const char *uri,
     struct ccn_charbuf *name;
     struct ccn_charbuf *uri_modified = NULL;
     struct ccn_closure *closure;
-    struct ccn_keystore *keystore;
     struct ccn_indexbuf *comps;
     const unsigned char *comp;
     size_t comp_size;
     size_t offset;
+    int reg_wanted = 1;
     
     name = ccn_charbuf_create();
     ccn_name_from_uri(name, uri);
@@ -245,28 +255,57 @@ ccnd_uri_listen(struct ccnd_handle *ccnd, const char *uri,
         abort();
     if (ccn_name_comp_get(name->buf, comps, 1, &comp, &comp_size) >= 0) {
         if (comp_size == 32 && 0 == memcmp(comp, CCND_ID_TEMPL, 32)) {
-            /* Replace placeholder with our ccnd_id*/
-            keystore = ccnd->internal_keys;
+            /* Replace placeholder with our ccnd_id */
             offset = comp - name->buf;
             memcpy(name->buf + offset, ccnd->ccnd_id, 32);
             uri_modified = ccn_charbuf_create();
             ccn_uri_append(uri_modified, name->buf, name->length, 1);
             uri = (char *)uri_modified->buf;
+            reg_wanted = 0;
         }
     }
     closure = calloc(1, sizeof(*closure));
     closure->p = p;
     closure->data = ccnd;
     closure->intdata = intdata;
-    /* To bootstrap, we need to register explicitly */
-    ccnd_reg_uri(ccnd, uri,
-                 0, /* special faceid for internal client */
-                 CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
-                 0x7FFFFFFF);
+    /* Register explicitly if needed or requested */
+    if (reg_wanted || (ccnd->debug & 128) != 0)
+        ccnd_reg_uri(ccnd, uri,
+                     0, /* special faceid for internal client */
+                     CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
+                     0x7FFFFFFF);
     ccn_set_interest_filter(ccnd->internal_client, name, closure);
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&uri_modified);
     ccn_indexbuf_destroy(&comps);
+}
+
+/**
+ * Make a forwarding table entry for ccnx:/ccnx/CCNDID
+ * 
+ * This one entry handles most of the namespace served by the 
+ * ccnd internal client.
+ */
+static void
+ccnd_reg_ccnx_ccndid(struct ccnd_handle *ccnd)
+{
+    struct ccn_charbuf *name;
+    struct ccn_charbuf *uri;
+    
+    name = ccn_charbuf_create();
+    ccn_name_from_uri(name, "ccnx:/ccnx");
+    ccn_name_append(name, ccnd->ccnd_id, 32);
+    uri = ccn_charbuf_create();
+    ccn_uri_append(uri, name->buf, name->length, 1);
+    ccnd_reg_uri(ccnd, ccn_charbuf_as_string(uri),
+                 0, /* special faceid for internal client */
+                 (CCN_FORW_CHILD_INHERIT | 
+                  CCN_FORW_ACTIVE        |
+                  CCN_FORW_CAPTURE       |
+                  CCN_FORW_ADVERTISE     ),
+                 0x7FFFFFFF);
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&uri);
 }
 
 #ifndef CCN_PATH_VAR_TMP
@@ -364,6 +403,55 @@ Finish:
     return(res);
 }
 
+static int
+post_face_notice(struct ccnd_handle *ccnd, unsigned faceid)
+{
+    struct face *face = ccnd_face_from_faceid(ccnd, faceid);
+    struct ccn_charbuf *msg = ccn_charbuf_create();
+    int res = -1;
+    
+    // XXX - text version for trying out stream stuff - replace with ccnb
+    if (face == NULL)
+        ccn_charbuf_putf(msg, "destroyface(%u);\n", faceid);
+    else
+        ccn_charbuf_putf(msg, "newface(%u);\n", faceid);
+    res = ccn_seqw_write(ccnd->notice, msg->buf, msg->length);
+    ccn_charbuf_destroy(&msg);
+    return(res);
+}
+
+static int
+ccnd_notice_push(struct ccn_schedule *sched,
+               void *clienth,
+               struct ccn_scheduled_event *ev,
+               int flags)
+{
+    struct ccnd_handle *ccnd = clienth;
+    struct ccn_indexbuf *chface = NULL;
+    int i = 0;
+    int j = 0;
+    int microsec = 0;
+    int res = 0;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) == 0 &&
+            ccnd->notice != NULL &&
+            ccnd->notice_push == ev &&
+            ccnd->chface != NULL) {
+        chface = ccnd->chface;
+        ccn_seqw_batch_start(ccnd->notice);
+        for (i = 0; i < chface->n && res != -1; i++)
+            post_face_notice(ccnd, chface->buf[i]);
+        ccn_seqw_batch_end(ccnd->notice);
+        for (j = 0; i < chface->n; i++, j++)
+            chface->buf[j] = chface->buf[i];
+        chface->n = j;
+        ccnd_internal_client_reschedule(ccnd);
+    }
+    if (microsec <= 0)
+        ccnd->notice_push = NULL;
+    return(microsec);
+}
+
 /**
  * Called by ccnd when a face undergoes a substantive status change that
  * should be reported to interested parties.
@@ -374,8 +462,44 @@ ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
     struct ccn_indexbuf *chface = ccnd->chface;
     if (chface != NULL) {
         ccn_indexbuf_set_insert(chface, faceid);
+        if (ccnd->notice_push == NULL)
+            ccnd->notice_push = ccn_schedule_event(ccnd->sched, 2000,
+                                                   ccnd_notice_push,
+                                                   NULL, 0);
     }
-    //fprintf(stderr, "ccnd_face_status_change(h, %u)\n", faceid); // XXX - temp
+}
+
+static void
+ccnd_start_notice(struct ccnd_handle *ccnd)
+{
+    struct ccn *h = ccnd->internal_client;
+    struct ccn_charbuf *name = NULL;
+    struct face *face = NULL;
+    int i;
+    
+    if (h == NULL)
+        return;
+    if (ccnd->notice != NULL)
+        return;
+    if (ccnd->chface != NULL) {
+        /* Probably should not happen. */
+        ccnd_msg(ccnd, "ccnd_internal_client.c:%d Huh?");
+        ccn_indexbuf_destroy(&ccnd->chface);
+    }
+    name = ccn_charbuf_create();
+    ccn_name_from_uri(name, "ccnx:/ccnx");
+    ccn_name_append(name, ccnd->ccnd_id, 32);
+    ccn_name_append_str(name, CCND_NOTICE_NAME);
+    ccnd->notice = ccn_seqw_create(h, name);
+    ccnd->chface = ccn_indexbuf_create();
+    for (i = 0; i < ccnd->face_limit; i++) {
+        face = ccnd->faces_by_faceid[i];
+        if (face != NULL)
+            ccn_indexbuf_set_insert(ccnd->chface, face->faceid);
+    }
+    if (ccnd->chface->n > 0)
+        ccn_indexbuf_set_insert(ccnd->chface, ccnd->chface->buf[0]);
+    ccn_charbuf_destroy(&name);
 }
 
 int
@@ -403,17 +527,34 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                     &ccnd_answer_req, OP_SELFREG + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/unreg",
                     &ccnd_answer_req, OP_UNREG + MUST_VERIFY1);
-    ccnd->internal_client_refresh =
-    ccn_schedule_event(ccnd->sched, 200000,
-                       ccnd_internal_client_refresh,
-                       NULL, CCN_INTEREST_LIFETIME_MICROSEC);
+    ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/" CCND_NOTICE_NAME,
+                    &ccnd_answer_req, OP_NOTICE);
+    ccnd_reg_ccnx_ccndid(ccnd);
+    ccnd->internal_client_refresh \
+    = ccn_schedule_event(ccnd->sched, 200000,
+                         ccnd_internal_client_refresh,
+                         NULL, CCN_INTEREST_LIFETIME_MICROSEC);
     return(0);
+}
+
+static void
+ccnd_internal_client_reschedule(struct ccnd_handle *ccnd)
+{
+    if (ccnd->internal_client_refresh == NULL)
+        return;
+    ccn_schedule_cancel(ccnd->sched, ccnd->internal_client_refresh);
+    ccnd->internal_client_refresh \
+    = ccn_schedule_event(ccnd->sched, 0,
+                         ccnd_internal_client_refresh,
+                         NULL, CCN_INTEREST_LIFETIME_MICROSEC);
 }
 
 void
 ccnd_internal_client_stop(struct ccnd_handle *ccnd)
 {
-    ccnd->facelog = NULL; /* ccn_destroy will free */
+    ccnd->notice = NULL; /* ccn_destroy will free */
+    if (ccnd->notice_push != NULL)
+        ccn_schedule_cancel(ccnd->sched, ccnd->notice_push);
     ccn_indexbuf_destroy(&ccnd->chface);
     ccn_destroy(&ccnd->internal_client);
     if (ccnd->internal_client_refresh != NULL)
