@@ -17,9 +17,12 @@
 
 package org.ccnx.ccn.impl;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
@@ -44,6 +47,7 @@ import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonProfile;
@@ -124,7 +128,7 @@ public class CCNNetworkManager implements Runnable {
 	protected long _lastHeartbeat = 0;
 	protected int _port = DEFAULT_AGENT_PORT;
 	protected String _host = DEFAULT_AGENT_HOST;
-	protected NetworkProtocol _protocol = SystemConfiguration.DEFAULT_PROTOCOL;
+	protected NetworkProtocol _protocol = SystemConfiguration.CCN_PROTOCOL;
 
 	
 	// For handling protocol to speak to ccnd, must have keys
@@ -181,6 +185,11 @@ public class CCNNetworkManager implements Runnable {
 		protected boolean _ncInitialized = false;
 		protected Timer _ncHeartBeatTimer = null;
 		protected Boolean _ncStarted = false;
+		
+		// Allocate datagram buffer: want to wrap array to ensure backed by
+		// array to permit decoding
+		protected byte[] _buffer = new byte[MAX_PAYLOAD];
+		ByteBuffer _datagram = ByteBuffer.wrap(_buffer);
 
 		private NetworkChannel(String host, int port, NetworkProtocol proto) throws IOException {
 			_ncHost = host;
@@ -244,6 +253,25 @@ public class CCNNetworkManager implements Runnable {
 				Log.severe("NetworkChannel: invalid protocol specified");
 				return false;
 			}
+		}
+		
+		private InputStream getInputStream() throws IOException {
+			_datagram.clear(); // make ready for new read
+			synchronized (this) {
+				read(_datagram); // queue readers and writers
+			}
+			if( Log.isLoggable(Level.FINEST) )
+				Log.finest("Read datagram (" + _datagram.position() + " bytes) for port: " + _localPort);
+			_channel.clearSelectedKeys();
+			_datagram.flip(); // make ready to decode
+			if (null != _tapStreamIn) {
+				byte [] b = new byte[_datagram.limit()];
+				_datagram.get(b);
+				_tapStreamIn.write(b);
+				_datagram.rewind();
+			}
+			ByteArrayInputStream bais = new ByteArrayInputStream(_buffer, _datagram.position(), _datagram.remaining());
+			return bais;
 		}
 		
 		private int read(ByteBuffer dst) throws IOException {
@@ -1321,10 +1349,6 @@ public class CCNNetworkManager implements Runnable {
 			Log.warning("CCNNetworkManager run() called after shutdown");
 			return;
 		}
-		// Allocate datagram buffer: want to wrap array to ensure backed by
-		// array to permit decoding
-		byte[] buffer = new byte[MAX_PAYLOAD];
-		ByteBuffer datagram = ByteBuffer.wrap(buffer);
 		WirePacket packet = new WirePacket();
 		if( Log.isLoggable(Level.INFO) )
 			Log.info("CCNNetworkManager processing thread started for port: " + _localPort);
@@ -1334,25 +1358,8 @@ public class CCNNetworkManager implements Runnable {
 					//--------------------------------- Read and decode
 					try {
 						if (_channel.select(SOCKET_TIMEOUT) != 0) {
-							// Note: we're selecting on only one channel to get
-							// the ability to use wakeup, so there is no need to 
-							// inspect the selected-key set
-							datagram.clear(); // make ready for new read
-							synchronized (_channel) {
-								_channel.read(datagram); // queue readers and writers
-							}
-							if( Log.isLoggable(Level.FINEST) )
-								Log.finest("Read datagram (" + datagram.position() + " bytes) for port: " + _localPort);
-							_channel.clearSelectedKeys();
-							datagram.flip(); // make ready to decode
-							if (null != _tapStreamIn) {
-								byte [] b = new byte[datagram.limit()];
-								datagram.get(b);
-								_tapStreamIn.write(b);
-								datagram.rewind();
-							}
 							packet.clear();
-							packet.decode(datagram);
+							packet.decode(_channel.getInputStream());
 						} else {
 							// This was a timeout or wakeup, no data
 							packet.clear();
@@ -1361,11 +1368,16 @@ public class CCNNetworkManager implements Runnable {
 								break;
 							}
 						}
-					} catch (IOException io) {
+					} catch (ContentDecodingException cde) {
 						_channel.close();
 						if( Log.isLoggable(Level.INFO) )
-							Log.info("Unable to receive from agent: is it still running? Port: " + _localPort);
+							Log.info("Shutting down channel to ccnd");
 						packet.clear();
+						
+					} catch (IOException ioe) {
+						if( Log.isLoggable(Level.INFO) )
+							Log.info("Error on ccnd channel: " + ioe.getMessage());
+						packet.clear();		
 					}
 	                if (!_run) {
 	                    // exit immediately if wakeup for shutdown
