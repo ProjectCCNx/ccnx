@@ -39,28 +39,39 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	private Interest _interestSent;
 	private String _prefix = "/interestEtoETest/test-" + rand.nextInt(10000);
 	private final static int TIMEOUT = 3000;
+	
+	private int count = 0;
 
 	
 	@Test
 	public void testInterestEndToEnd() throws MalformedContentNameStringException, IOException, InterruptedException {
 		getHandle.registerFilter(ContentName.fromNative(_prefix), this);
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
-		doTest();
+		doTest(1);
+		System.out.println("count: "+count);
+
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
 		_interestSent.maxSuffixComponents(4);
 		_interestSent.minSuffixComponents(3);
-		doTest();
+		doTest(2);
+		System.out.println("count: "+count);
+
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
 		_interestSent.maxSuffixComponents(1);
-		doTest();
+		doTest(3);
+		System.out.println("count: "+count);
+
 		getHandle.unregisterFilter(ContentName.fromNative(_prefix), this);
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
-		doTestFail();
+		doTestFail(3);
+		System.out.println("count: "+count);
+
 	}
 
 	public boolean handleInterest(Interest interest) {
 		Assert.assertTrue(_interestSent.equals(interest));
 		synchronized(this) {
+			count++;
 			notify();
 		}
 		return true;
@@ -72,20 +83,24 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		return null;
 	}	
 	
-	private void doTest() throws IOException, InterruptedException {
+	private void doTest(int c) throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
 		synchronized (this) {
-			wait(TIMEOUT);
+			try {
+				wait(TIMEOUT);
+			} catch (InterruptedException e) {
+				System.out.println("interrupted...  check the count and time");
+			}
 		}
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
-		System.out.println("doTest time: "+duration);
-		
-		Assert.assertTrue(duration < TIMEOUT);
+		System.out.println("doTest time: "+duration+" and count:" +count +" should be "+c);
+		Assert.assertTrue(count == c);
+		Assert.assertTrue(duration < TIMEOUT + (int)(TIMEOUT*0.1));
 	}
 
-	private void doTestFail() throws IOException, InterruptedException {
+	private void doTestFail(int c) throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
 		synchronized (this) {
@@ -93,8 +108,10 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		}
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
-		System.out.println("doTestFail time: "+duration);
-		
+		System.out.println("doTestFail time: "+duration+" and count:" +count +" should be "+c);
+
+		Assert.assertTrue(count == c);
+
 		Assert.assertFalse(duration < TIMEOUT);
 	}
 
