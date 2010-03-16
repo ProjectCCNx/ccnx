@@ -3422,6 +3422,13 @@ process_input_message(struct ccnd_handle *h, struct face *face,
     struct ccn_skeleton_decoder decoder = {0};
     struct ccn_skeleton_decoder *d = &decoder;
     ssize_t dres;
+    
+    if ((face->flags & CCN_FACE_UNDECIDED) != 0) {
+        face->flags &= ~CCN_FACE_UNDECIDED;
+        if ((face->flags & CCN_FACE_LOOPBACK) != 0)
+            face->flags |= CCN_FACE_GG;
+        register_new_face(h, face);
+    }
     d->state |= CCN_DSTATE_PAUSE;
     dres = ccn_skeleton_decode(d, msg, size);
     if (d->state >= 0 && CCN_GET_TT_FROM_DSTATE(d->state) == CCN_DTAG) {
@@ -3573,16 +3580,11 @@ process_input(struct ccnd_handle *h, int fd)
         }
         face->inbuf->length += res;
         msgstart = 0;
-        if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
-              face->inbuf->length >= 6) {
-            if (0 == memcmp(buf, "GET ", 4)) {
-                ccnd_stats_handle_http_connection(h, face);
-                return;
-            }
-            face->flags &= ~CCN_FACE_UNDECIDED;
-            if ((face->flags & CCN_FACE_LOOPBACK) != 0)
-                face->flags |= CCN_FACE_GG;
-            register_new_face(h, face);
+        if (((face->flags & CCN_FACE_UNDECIDED) != 0 &&
+             face->inbuf->length >= 6 &&
+             0 == memcmp(face->inbuf->buf, "GET ", 4))) {
+            ccnd_stats_handle_http_connection(h, face);
+            return;
         }
         dres = ccn_skeleton_decode(d, buf, res);
         while (d->state == 0) {
