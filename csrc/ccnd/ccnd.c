@@ -178,7 +178,7 @@ indexbuf_release(struct ccnd_handle *h, struct ccn_indexbuf *c)
 }
 
 /**
- * Looks up a face based on its faceid.
+ * Looks up a face based on its faceid (private).
  */
 static struct face *
 face_from_faceid(struct ccnd_handle *h, unsigned faceid)
@@ -191,6 +191,15 @@ face_from_faceid(struct ccnd_handle *h, unsigned faceid)
             face = NULL;
     }
     return(face);
+}
+
+/**
+ * Looks up a face based on its faceid.
+ */
+struct face *
+ccnd_face_from_faceid(struct ccnd_handle *h, unsigned faceid)
+{
+    return(face_from_faceid(h, faceid));
 }
 
 /**

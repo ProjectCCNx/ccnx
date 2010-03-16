@@ -134,8 +134,9 @@ struct ccnd_handle {
     struct ccn_keystore *internal_keys; /**< the internal client's keys */
     struct face *face0;             /**< special face for internal client */
     struct ccn_seqwriter *notice;   /**< for notices of status changes */
-    struct ccn_indexbuf *chface;    /**< faceids w/ recent status chnages */
+    struct ccn_indexbuf *chface;    /**< faceids w/ recent status changes */
     struct ccn_scheduled_event *internal_client_refresh;
+    struct ccn_scheduled_event *notice_push;
     unsigned data_pause_microsec;   /**< tunable, see choose_face_delay() */
 };
 
@@ -368,6 +369,9 @@ int ccnd_reg_uri(struct ccnd_handle *h,
                  int flags,
                  int expires);
 
+struct face *ccnd_face_from_faceid(struct ccnd_handle *, unsigned);
+void ccnd_face_status_change(struct ccnd_handle *, unsigned);
+
 /* Consider a separate header for these */
 int ccnd_stats_handle_http_connection(struct ccnd_handle *, struct face *);
 void ccnd_msg(struct ccnd_handle *, const char *, ...);
@@ -382,7 +386,6 @@ void shutdown_client_fd(struct ccnd_handle *h, int fd);
 struct ccnd_handle *ccnd_create(const char *, ccnd_logger, void *);
 void ccnd_run(struct ccnd_handle *h);
 void ccnd_destroy(struct ccnd_handle **);
-void ccnd_face_status_change(struct ccnd_handle *, unsigned);
 extern const char *ccnd_usage_message;
 
 #endif
