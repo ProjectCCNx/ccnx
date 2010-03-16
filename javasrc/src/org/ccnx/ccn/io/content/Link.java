@@ -225,7 +225,8 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		// Don't know if we are referencing a particular object, so don't look for segments.
 		PublisherPublicKeyDigest desiredPublisher = (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null;
 		ContentObject result = VersioningProfile.getLatestVersion(targetName(), 
-				desiredPublisher, timeout, new ContentObject.SimpleVerifier(desiredPublisher), handle);
+				desiredPublisher, timeout, 
+				new ContentObject.SimpleVerifier(desiredPublisher, handle.keyManager()), handle);
 		if (null != result) {
 			return result;
 		}
