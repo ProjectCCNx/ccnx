@@ -21,6 +21,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <ccn/ccn.h>
 #include <ccn/seqwriter.h>
 
@@ -89,6 +90,7 @@ seqw_incoming_interest(
                                                  info->pi->offset[CCN_PI_E],
                                                  info->pi)) {
                     w->interests_possibly_pending = 0;
+fprintf(stderr, "at %d interests_possibly_pending = %d\n", __LINE__, w->interests_possibly_pending);
                     res = ccn_put(info->h, cob->buf, cob->length);
                     if (res >= 0) {
                         w->buffer->length = 0;
@@ -96,8 +98,6 @@ seqw_incoming_interest(
                         return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
                     }
                 }
-                else
-                    w->interests_possibly_pending = 1;
                 ccn_charbuf_destroy(&cob);
             }
             if (w->cob0 != NULL) {
@@ -108,10 +108,13 @@ seqw_incoming_interest(
                                                  info->pi->offset[CCN_PI_E],
                                                  info->pi)) {
                     w->interests_possibly_pending = 0;
+fprintf(stderr, "at %d interests_possibly_pending = %d\n", __LINE__, w->interests_possibly_pending);
                     ccn_put(info->h, cob->buf, cob->length);
                     return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
                 }
             }
+            w->interests_possibly_pending = 1;
+fprintf(stderr, "at %d interests_possibly_pending = %d\n", __LINE__, w->interests_possibly_pending);
             break;
         default:
             break;
@@ -150,6 +153,7 @@ ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name)
     w->h = h;
     w->seqnum = 0;
     w->interests_possibly_pending = 1;
+fprintf(stderr, "at %d interests_possibly_pending = %d\n", __LINE__, w->interests_possibly_pending);
     res = ccn_set_interest_filter(h, nb, &(w->cl));
     if (res < 0) {
         ccn_charbuf_destroy(&w->nb);
@@ -188,6 +192,7 @@ ccn_seqw_write(struct ccn_seqwriter *w, const void *buf, size_t size)
                 w->buffer->length = 0;
                 w->seqnum++;
                 w->interests_possibly_pending = 0;
+fprintf(stderr, "at %d interests_possibly_pending = %d\n", __LINE__, w->interests_possibly_pending);
             }
             ccn_charbuf_destroy(&cob);
         }
@@ -219,6 +224,7 @@ ccn_seqw_possible_interest(struct ccn_seqwriter *w)
     if (w == NULL)
         return(-1);
     w->interests_possibly_pending = 1;
+fprintf(stderr, "at %d interests_possibly_pending = %d\n", __LINE__, w->interests_possibly_pending);
     ccn_seqw_write(w, NULL, 0);
     return(0);
 }
@@ -230,6 +236,7 @@ ccn_seqw_close(struct ccn_seqwriter *w)
         return(-1);
     w->closed = 1;
     w->interests_possibly_pending = 1;
+fprintf(stderr, "at %d interests_possibly_pending = %d\n", __LINE__, w->interests_possibly_pending);
     w->batching = 0;
     ccn_seqw_write(w, NULL, 0);
     ccn_set_interest_filter(w->h, w->nb, NULL);
