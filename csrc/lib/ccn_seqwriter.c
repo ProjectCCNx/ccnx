@@ -24,7 +24,7 @@
 #include <ccn/ccn.h>
 #include <ccn/seqwriter.h>
 
-#define MAX_DATA_SIZE 8192
+#define MAX_DATA_SIZE 4096
 
 struct ccn_seqwriter {
     struct ccn_closure cl;
@@ -32,9 +32,9 @@ struct ccn_seqwriter {
     struct ccn_charbuf *nb;
     struct ccn_charbuf *nv;
     struct ccn_charbuf *buffer;
-    struct ccn_charbuf *cob;
+    struct ccn_charbuf *cob0;
     uintmax_t seqnum;
-    unsigned char cob_sent;
+    int batching;
     unsigned char interests_possibly_pending;
     unsigned char closed;
 };
@@ -74,25 +74,12 @@ seqw_incoming_interest(
         case CCN_UPCALL_FINAL:
             ccn_charbuf_destroy(&w->nb);
             ccn_charbuf_destroy(&w->nv);
-            ccn_charbuf_destroy(&w->cob);
             ccn_charbuf_destroy(&w->buffer);
+            ccn_charbuf_destroy(&w->cob0);
             free(w);
             break;
         case CCN_UPCALL_INTEREST:
-            cob = w->cob;
-            if (cob != NULL &&
-                ccn_content_matches_interest(cob->buf, cob->length,
-                                             1, NULL,
-                                             info->interest_ccnb,
-                                             info->pi->offset[CCN_PI_E],
-                                             info->pi)) {
-                res = ccn_put(info->h, cob->buf, cob->length);
-                if (res >= 0) {
-                    w->cob_sent = 1;
-                    return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
-                }
-            }
-            if (w->buffer->length > 0) {
+            if (w->closed || w->buffer->length > 0) {
                 cob = seqw_next_cob(w);
                 if (cob == NULL)
                     return(CCN_UPCALL_RESULT_OK);
@@ -101,25 +88,29 @@ seqw_incoming_interest(
                                                  info->interest_ccnb,
                                                  info->pi->offset[CCN_PI_E],
                                                  info->pi)) {
+                    w->interests_possibly_pending = 0;
                     res = ccn_put(info->h, cob->buf, cob->length);
                     if (res >= 0) {
                         w->buffer->length = 0;
                         w->seqnum++;
-                        if (w->cob_sent) {
-                            ccn_charbuf_destroy(&w->cob);
-                            w->cob_sent = 0;
-                        }
-                        if (w->cob == NULL) {
-                            w->cob = cob;
-                            w->cob_sent = 1;
-                            cob = NULL;
-                        }
                         return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
                     }
                 }
                 else
                     w->interests_possibly_pending = 1;
                 ccn_charbuf_destroy(&cob);
+            }
+            if (w->cob0 != NULL) {
+                cob = w->cob0;
+                if (ccn_content_matches_interest(cob->buf, cob->length,
+                                                 1, NULL,
+                                                 info->interest_ccnb,
+                                                 info->pi->offset[CCN_PI_E],
+                                                 info->pi)) {
+                    w->interests_possibly_pending = 0;
+                    ccn_put(info->h, cob->buf, cob->length);
+                    return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
+                }
             }
             break;
         default:
@@ -140,8 +131,8 @@ ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name)
     if (w == NULL)
         return(NULL);
     nb = ccn_charbuf_create();
-    nv = ccn_charbuf_create();
     ccn_charbuf_append(nb, name->buf, name->length);
+    nv = ccn_charbuf_create();
     ccn_charbuf_append(nv, name->buf, name->length);
     res = ccn_create_version(h, nv, CCN_V_NOW, 0, 0);
     if (res < 0 || nb == NULL) {
@@ -158,7 +149,7 @@ ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name)
     w->buffer = ccn_charbuf_create();
     w->h = h;
     w->seqnum = 0;
-    w->cob = NULL;
+    w->interests_possibly_pending = 1;
     res = ccn_set_interest_filter(h, nb, &(w->cl));
     if (res < 0) {
         ccn_charbuf_destroy(&w->nb);
@@ -175,31 +166,61 @@ ccn_seqw_write(struct ccn_seqwriter *w, const void *buf, size_t size)
 {
     struct ccn_charbuf *cob = NULL;
     int res;
+    int ans;
     
     if (w == NULL || w->buffer == NULL || size > MAX_DATA_SIZE)
         return(-1);
-    if (size == 0 && !w->closed)
-        return(0);
-    ccn_charbuf_append(w->buffer, buf, size);
-    if (w->interests_possibly_pending && (w->cob == NULL || w->cob_sent)) {
+    ans = size;
+    if (size + w->buffer->length > MAX_DATA_SIZE)
+        ans = -1; /* Caller should treat like EAGAIN */
+    else if (size != 0)
+        ccn_charbuf_append(w->buffer, buf, size);
+    if (w->interests_possibly_pending &&
+        (w->batching == 0 || ans == -1)) {
         cob = seqw_next_cob(w);
-        ccn_charbuf_destroy(&w->cob);
-        w->cob_sent = 0;
         if (cob != NULL) {
             res = ccn_put(w->h, cob->buf, cob->length);
             if (res >= 0) {
+                if (w->seqnum == 0) {
+                    w->cob0 = cob;
+                    cob = NULL;
+                }
                 w->buffer->length = 0;
                 w->seqnum++;
-                w->cob = cob;
-                w->cob_sent = 1;
-                cob = NULL;
                 w->interests_possibly_pending = 0;
             }
-            else
-                ccn_charbuf_destroy(&cob);
+            ccn_charbuf_destroy(&cob);
         }
     }
-    return(size);
+    return(ans);
+}
+
+int
+ccn_seqw_batch_start(struct ccn_seqwriter *w)
+{
+    if (w == NULL || w->closed)
+        return(-1);
+    return(++(w->batching));
+}
+
+int
+ccn_seqw_batch_end(struct ccn_seqwriter *w)
+{
+    if (w == NULL || w->batching == 0)
+        return(-1);
+    if (--(w->batching) == 0)
+        ccn_seqw_write(w, NULL, 0);
+    return(w->batching);
+}
+
+int
+ccn_seqw_possible_interest(struct ccn_seqwriter *w)
+{
+    if (w == NULL)
+        return(-1);
+    w->interests_possibly_pending = 1;
+    ccn_seqw_write(w, NULL, 0);
+    return(0);
 }
 
 int
@@ -208,13 +229,9 @@ ccn_seqw_close(struct ccn_seqwriter *w)
     if (w == NULL || w->cl.data != w)
         return(-1);
     w->closed = 1;
-    if (w->cob != NULL && !w->cob_sent) {
-        ccn_put(w->h, w->cob->buf, w->cob->length);
-        ccn_charbuf_destroy(&w->cob);
-        w->cob_sent = 0;
-    }
     w->interests_possibly_pending = 1;
-    ccn_seqw_write(w, "", 0);
+    w->batching = 0;
+    ccn_seqw_write(w, NULL, 0);
     ccn_set_interest_filter(w->h, w->nb, NULL);
     return(0);
 }
