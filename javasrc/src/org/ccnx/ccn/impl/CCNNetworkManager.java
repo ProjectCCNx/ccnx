@@ -268,7 +268,8 @@ public class CCNNetworkManager implements Runnable {
 			} else {
 				useMe = checkPrefixDelay;
 			}
-			_periodicTimer.schedule(new PeriodicWriter(), useMe);
+			if (_run)
+				_periodicTimer.schedule(new PeriodicWriter(), useMe);
 		} /* run */
 	} /* private class PeriodicWriter extends TimerTask */
 	
