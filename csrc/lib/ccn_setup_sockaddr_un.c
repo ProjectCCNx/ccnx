@@ -36,7 +36,7 @@
  *
  * If portstr is NULL or empty, the environment variable CCN_LOCAL_PORT is
  * checked. If the portstr specifies something other than the ccnx registered
- * port number, the socket name is modified accodingly. 
+ * port number, the socket name is modified accordingly. 
  * @param portstr - numeric port; use NULL for default.
  */
 void
