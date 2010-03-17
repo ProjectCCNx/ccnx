@@ -40,7 +40,7 @@
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
 	<property name="CCND_CMD" value="../../csrc/ccnd/ccnd"/>
-	<property name="CCND_DEBUG" value="71"/>
+	<property name="CCND_DEBUG" value="87"/>
 	<property name="CCND_CAP" value="50000"/>
 	<property name="REPO_ROOT" value="${testout}/repotest"/>
 	<property name="REPO_LOCAL_ROOT" value="repotest"/>
