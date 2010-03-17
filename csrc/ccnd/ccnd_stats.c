@@ -5,7 +5,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -22,7 +22,6 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,17 +30,13 @@
 #include <sys/utsname.h>
 #include <time.h>
 #include <unistd.h>
-
-#if defined(NEED_GETADDRINFO_COMPAT)
-    #include "getaddrinfo.h"
-#endif
-
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
 #include <ccn/schedule.h>
+#include <ccn/sockaddrutil.h>
 #include <ccn/hashtb.h>
 #include <ccn/uri.h>
 
@@ -99,11 +94,10 @@ static void
 collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
 {
     int i;
-    char node[104];
-    char port[8];
-    int res;
-    int niflags = 0;
+    struct ccn_charbuf *nodebuf;
+    int port;
     
+    nodebuf = ccn_charbuf_create();
     ccn_charbuf_putf(b, "<h4>Faces</h4>");
     ccn_charbuf_putf(b, "<ul>");
     for (i = 0; i < h->face_limit; i++) {
@@ -117,34 +111,28 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
             if (face->recvcount != 0)
                 ccn_charbuf_putf(b, " <b>activity:</b> %d",
                                  face->recvcount);
-            if (face->addr != NULL) {
-                niflags = NI_NUMERICHOST | NI_NUMERICSERV;
-                if ((face->flags & CCN_FACE_DGRAM) != 0)
-                    niflags |= NI_DGRAM;
-                res = getnameinfo(face->addr, face->addrlen,
-                    node, sizeof(node),
-                    port, sizeof(port),
-                    niflags
-                    );
-                if (res == 0) {
-                    int chk = CCN_FACE_MCAST | CCN_FACE_INET | CCN_FACE_UNDECIDED | CCN_FACE_NOSEND;
-                    int want = CCN_FACE_INET;
-                    if ((face->flags & chk) == want)
-                        ccn_charbuf_putf(b,
-                                         " <b>remote:</b> "
-                                         "<a href='http://%s:%s/'>"
-                                         "[%s]:%s</a>",
-                                         node, CCN_DEFAULT_UNICAST_PORT,
-                                         node, port);
-                    else
-                        ccn_charbuf_putf(b, " <b>remote:</b> [%s]:%s",
-                                         node, port);
-                }
+            nodebuf->length = 0;
+            port = ccn_charbuf_append_sockaddr(nodebuf, face->addr);
+            if (port > 0) {
+                const char *node = ccn_charbuf_as_string(nodebuf);
+                int chk = CCN_FACE_MCAST | CCN_FACE_UNDECIDED |
+                          CCN_FACE_NOSEND | CCN_FACE_GG;
+                if ((face->flags & chk) == 0)
+                    ccn_charbuf_putf(b,
+                                     " <b>remote:</b> "
+                                     "<a href='http://%s:%s/'>"
+                                     "%s:%d</a>",
+                                     node, CCN_DEFAULT_UNICAST_PORT,
+                                     node, port);
+                else
+                    ccn_charbuf_putf(b, " <b>remote:</b> %s:%d",
+                                     node, port);
             }
             ccn_charbuf_putf(b, "</li>");
         }
     }
     ccn_charbuf_putf(b, "</ul>");
+    ccn_charbuf_destroy(&nodebuf);
 }
 
 static void
