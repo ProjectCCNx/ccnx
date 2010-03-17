@@ -1275,7 +1275,7 @@ public class CCNNetworkManager implements Runnable {
 			try {
 				Interest interested = new Interest(new ContentName(CCNDaemonProfile.ping, Interest.generateNonce()));
 				interested.scope(1);
-				ContentObject contented = mgr.get(interested, 500);
+				ContentObject contented = mgr.get(interested, SystemConfiguration.MEDIUM_TIMEOUT);
 				if (null == contented) {
 					String msg = ("fetchCCNDId: Fetch of content from ping uri failed due to timeout.");
 					Log.severe(msg);
