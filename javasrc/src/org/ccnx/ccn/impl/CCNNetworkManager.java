@@ -217,7 +217,7 @@ public class CCNNetworkManager implements Runnable {
 			if (_usePrefixReg) {
 				synchronized (_registeredPrefixes) {
 					if( Log.isLoggable(Level.FINE) )
-						Log.fine("Refresh registration.  size: " + _registeredPrefixes.size() + " sizeNames: " + _myFilters.sizeNames());
+						Log.fine("Refresh registration.  size: " + _registeredPrefixes.size());
 					for (ContentName prefix : _registeredPrefixes.keySet()) {
 						RegisteredPrefix rp = _registeredPrefixes.get(prefix);
 						if (null != rp._forwarding && rp._lifetime != -1 && rp._nextRefresh != -1) {
