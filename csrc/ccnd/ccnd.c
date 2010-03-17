@@ -336,6 +336,8 @@ finalize_face(struct hashtb_enumerator *e)
     int recycle = 0;
     
     if (i < h->face_limit && h->faces_by_faceid[i] == face) {
+        if ((face->flags & CCN_FACE_UNDECIDED) == 0)
+            ccnd_face_status_change(h, face->faceid);
         if (e->ht == h->faces_by_fd) {
             if (face->send_fd != face->recv_fd)
                 ccnd_close_fd(h, face->faceid, &face->recv_fd);
@@ -353,8 +355,6 @@ finalize_face(struct hashtb_enumerator *e)
         ccnd_msg(h, "%s face id %u (slot %u)",
             recycle ? "recycling" : "releasing",
             face->faceid, face->faceid & MAXFACES);
-        if ((face->flags & CCN_FACE_UNDECIDED) == 0)
-            ccnd_face_status_change(h, face->faceid);
         /* Don't free face->addr; storage is managed by hash table */
     }
     else if (face->faceid != CCN_NOFACEID)

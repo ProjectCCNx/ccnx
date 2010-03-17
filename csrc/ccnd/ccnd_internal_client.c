@@ -35,6 +35,7 @@
 #include <ccn/ccn_private.h>
 #include <ccn/keystore.h>
 #include <ccn/schedule.h>
+#include <ccn/sockaddrutil.h>
 #include <ccn/signing.h>
 #include <ccn/uri.h>
 #include "ccnd_private.h"
@@ -409,12 +410,24 @@ post_face_notice(struct ccnd_handle *ccnd, unsigned faceid)
     struct face *face = ccnd_face_from_faceid(ccnd, faceid);
     struct ccn_charbuf *msg = ccn_charbuf_create();
     int res = -1;
+    int port;
     
     // XXX - text version for trying out stream stuff - replace with ccnb
     if (face == NULL)
         ccn_charbuf_putf(msg, "destroyface(%u);\n", faceid);
-    else
-        ccn_charbuf_putf(msg, "newface(%u);\n", faceid);
+    else {
+        ccn_charbuf_putf(msg, "newface(%u, 0x%x", faceid, face->flags);
+        if (face->addr != NULL &&
+            (face->flags & (CCN_FACE_INET | CCN_FACE_INET6)) != 0) {
+            ccn_charbuf_putf(msg, ", ");
+            port = ccn_charbuf_append_sockaddr(msg, face->addr);
+            if (port < 0)
+                msg->length--;
+            else if (port > 0)
+                ccn_charbuf_putf(msg, ":%d", port);
+        }
+        ccn_charbuf_putf(msg, ");\n", faceid);
+    }
     res = ccn_seqw_write(ccnd->notice, msg->buf, msg->length);
     ccn_charbuf_destroy(&msg);
     return(res);
@@ -440,12 +453,14 @@ ccnd_notice_push(struct ccn_schedule *sched,
         chface = ccnd->chface;
         ccn_seqw_batch_start(ccnd->notice);
         for (i = 0; i < chface->n && res != -1; i++)
-            post_face_notice(ccnd, chface->buf[i]);
+            res = post_face_notice(ccnd, chface->buf[i]);
         ccn_seqw_batch_end(ccnd->notice);
         for (j = 0; i < chface->n; i++, j++)
             chface->buf[j] = chface->buf[i];
         chface->n = j;
-        ccnd_internal_client_reschedule(ccnd);
+        if (res == -1)
+            microsec = 3000;
+        if (0) ccnd_internal_client_reschedule(ccnd);
     }
     if (microsec <= 0)
         ccnd->notice_push = NULL;
@@ -455,6 +470,9 @@ ccnd_notice_push(struct ccn_schedule *sched,
 /**
  * Called by ccnd when a face undergoes a substantive status change that
  * should be reported to interested parties.
+ * 
+ * In the destroy case, this is called frome the a hash table finalizer,
+ * so it shouldn't do much directly.  Inspecting the face is OK, though.
  */
 void
 ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
