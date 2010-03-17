@@ -16,6 +16,8 @@
  */
 package org.ccnx.ccn.impl.encoding;
 
+import java.util.Stack;
+
 /**
  * Encapsulates the mapping from textual XML element and attribute names to the ccnb binary encoding
  * of those elements and attributes.
@@ -29,11 +31,20 @@ package org.ccnx.ccn.impl.encoding;
  */
 public abstract class BinaryXMLDictionary {
 	
+	// Have a static dictionary stack shared by all code running in the same JVM.
+	// This can be added to by programs. Can also add local dictionaries to decoders 
+	// and encoders using methods in GenericXMLHandler.
+	protected static Stack<BinaryXMLDictionary> _globalDictionaries = new Stack<BinaryXMLDictionary>();
+	
 	public static final String UNKNOWN_TAG_MARKER = "UNKNOWN TAG: ";
 
 	public abstract Long stringToTag(String tag);
 	
 	public abstract String tagToString(long tagVal);
+	
+	static {
+		_globalDictionaries.push(getDefaultDictionary());
+	}
 	
 	public static BinaryXMLDictionary getDefaultDictionary() {
 		return CCNProtocolDictionary.getDefaultInstance();
@@ -57,5 +68,30 @@ public abstract class BinaryXMLDictionary {
 	public static String unknownTagMarker(long tag) {
 		return UNKNOWN_TAG_MARKER + tag;
 	}
+
+	/**
+	 * Push an XML dictionary onto stack used by all applications in this JVM.
+	 * This stack is pre-loaded with the default dictionary.
+	 * For local dictionaries, see GenericXMLHandler.pushXMLDictionary.
+	 * @return
+	 */
+	public static void pushGlobalXMLDictionary(BinaryXMLDictionary dictionary) {
+		_globalDictionaries.push(dictionary);
+	}
+
+	/**
+	 * Pop an XML dictionary onto stack used by all applications in this JVM.
+	 * Will not pop the default dictionary off the bottom of the stack.
+	 * For local dictionaries, see GenericXMLHandler.popXMLDictionary.
+	 * @return the dictionary it popped if it popped one, otherwise null.
+	 */
+	public static BinaryXMLDictionary popGlobalXMLDictionary() {
+		if (_globalDictionaries.size() > 1) {
+			return _globalDictionaries.pop();
+		}
+		return null;
+	}
+
+	public static Stack<BinaryXMLDictionary> getGlobalDictionaries() { return _globalDictionaries; }
 
 }
