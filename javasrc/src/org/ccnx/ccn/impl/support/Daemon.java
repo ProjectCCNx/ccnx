@@ -407,7 +407,9 @@ public class Daemon {
 		
 		String outputFile = System.getProperty(PROP_DAEMON_OUTPUT);
 		if (outputFile != null) {
-			new DaemonOutput(child.getInputStream(), outputFile);
+			new DaemonOutput(child.getInputStream(), new FileOutputStream(outputFile, false));
+		} else {
+			new DaemonOutput(child.getInputStream(), System.err);
 		}
 		
 		// Initial RMI file never named with PID to permit
