@@ -22,7 +22,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
@@ -411,7 +410,7 @@ public class CCNNetworkManager implements Runnable {
 
 										}
 									}
-								}	
+								}
 								if (minFilterRefreshTime > rp._nextRefresh)
 									minFilterRefreshTime = rp._nextRefresh;
 							}
@@ -450,8 +449,7 @@ public class CCNNetworkManager implements Runnable {
 						reregisterPrefixes();
 						useMe = 0;	// Come right back to refigure registration refresh times
 					}
-				} 
-				catch (Exception e) {
+				} catch (Exception e) {
 					try {
 						_channel.close();
 					} catch (IOException e1) {}
@@ -1461,6 +1459,7 @@ public class CCNNetworkManager implements Runnable {
 				ContentObject contented = mgr.get(interested, SystemConfiguration.PING_TIMEOUT);
 				if (null == contented) {
 					String msg = ("fetchCCNDId: Fetch of content from ping uri failed due to timeout.");
+
 					Log.severe(msg);
 					throw new IOException(msg);
 				}
