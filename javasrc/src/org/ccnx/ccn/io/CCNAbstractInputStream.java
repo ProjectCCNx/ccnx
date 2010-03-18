@@ -372,7 +372,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					}
 				}
 			}
-		
+			
 		
 		//are we at the last segment?
 		synchronized(inOrderSegments) {
@@ -641,11 +641,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 									Log.info("PIPELINE: we have tried as many times as we can...  break here");
 									return;
 								}
-								break;
 							} else {
 								Log.info("PIPELINE: this isn't a holefilling attempt, must be the base interest");
-								break;
 							}
+							break;
 						} else {
 							//if this is for a segment after ours, break
 							if (tempseg > hole)
@@ -1068,6 +1067,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				//TODO content that fails verification needs to be handled better.  need to express a new interest
 				Log.info("Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
 				_sentInterests.remove(is.interest);
+				
 				is = null;
 	 		}
 			
