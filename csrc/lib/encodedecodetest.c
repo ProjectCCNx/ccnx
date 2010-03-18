@@ -4,7 +4,7 @@
  *
  * A CCNx program.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -479,7 +479,7 @@ main (int argc, char *argv[]) {
         unsigned char r1[42];
         unsigned char r2[42];
         printf("Unit test case %d\n", i++);
-        ccn_add_entropy(&i, sizeof(i), 0); /* Not much entry, really. */
+        ccn_add_entropy(&i, sizeof(i), 0); /* Not much entropy, really. */
         ccn_random_bytes(r1, sizeof(r1));
         memcpy(r2, r1, sizeof(r2));
         ccn_random_bytes(r2, sizeof(r2));
