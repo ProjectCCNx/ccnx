@@ -542,7 +542,8 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 */
 	public abstract PublicKeyObject publishKeyToRepository(ContentName keyName, 
-															PublisherPublicKeyDigest keyToPublish)
+															PublisherPublicKeyDigest keyToPublish,
+															long timeToWaitForPreexisting)
 			throws InvalidKeyException, IOException;
 
 	/**
@@ -552,9 +553,9 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 */
 	public PublicKeyObject publishKeyToRepository() throws InvalidKeyException, IOException {
-		return publishKeyToRepository(null, null);
+		return publishKeyToRepository(null, null, SystemConfiguration.SHORT_TIMEOUT);
 	}
-
+	
 	/**
 	 * Publish a public key to repository, if it isn't already there.
 	 * @param keyName content name of the public key to publish under (adds a version)
