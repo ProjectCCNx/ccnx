@@ -230,6 +230,13 @@ int ccn_name_append_numeric(struct ccn_charbuf *c,
                             enum ccn_marker tag, uintmax_t value);
 
 /*
+ * ccn_name_append_nonce: add nonce Component to ccnb-encoded Name
+ * Uses %C1.N.n marker.
+ * see doc/technical/NameConventions.html
+ */
+int ccn_name_append_nonce(struct ccn_charbuf *c);
+
+/*
  * ccn_name_split: find Component boundaries in a ccnb-encoded Name
  * Thin veneer over ccn_parse_Name().
  * returns -1 for error, otherwise the number of Components

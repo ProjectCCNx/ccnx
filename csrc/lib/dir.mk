@@ -197,14 +197,15 @@ ccn_merkle_path_asn1.o: ccn_merkle_path_asn1.c \
   ../include/ccn/merklepathasn1.h
 ccn_name_util.o: ccn_name_util.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h
+  ../include/ccn/indexbuf.h ../include/ccn/random.h
 ccn_schedule.o: ccn_schedule.c ../include/ccn/schedule.h
 ccn_seqwriter.o: ccn_seqwriter.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/seqwriter.h
 ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/signing.h
+  ../include/ccn/indexbuf.h ../include/ccn/signing.h \
+  ../include/ccn/random.h
 ccn_sockcreate.o: ccn_sockcreate.c ../include/ccn/sockcreate.h
 ccn_traverse.o: ccn_traverse.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
@@ -226,7 +227,7 @@ encodedecodetest.o: encodedecodetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/bloom.h ../include/ccn/uri.h \
   ../include/ccn/digest.h ../include/ccn/keystore.h \
-  ../include/ccn/signing.h
+  ../include/ccn/signing.h ../include/ccn/random.h
 hashtb.o: hashtb.c ../include/ccn/hashtb.h
 hashtbtest.o: hashtbtest.c ../include/ccn/hashtb.h
 matrixtest.o: matrixtest.c ../include/ccn/matrix.h

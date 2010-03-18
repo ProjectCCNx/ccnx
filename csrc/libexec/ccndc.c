@@ -215,7 +215,7 @@ get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_storage_siz
 
 
     ON_ERROR_EXIT(ccn_name_from_uri(name, ping_uri));
-    ON_ERROR_EXIT(ccn_name_append_numeric(name, CCN_MARKER_NONE, getpid()));
+    ON_ERROR_EXIT(ccn_name_append_nonce(name));
     ON_ERROR_EXIT(ccn_get(h, name, local_scope_template, 4500, resultbuf, &pcobuf, NULL, 0));
     res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
                               resultbuf->buf,

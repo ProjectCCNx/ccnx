@@ -1657,7 +1657,7 @@ ccn_initiate_ping(struct ccn *h)
     
     name = ccn_charbuf_create();
     ccn_name_from_uri(name, "ccnx:/ccnx/ping");
-    ccn_name_append(name, &h->now, sizeof(h->now));
+    ccn_name_append_nonce(name);
     action = calloc(1, sizeof(*action));
     action->p = &handle_ping_response;
     ccn_express_interest(h, name, action, NULL);
