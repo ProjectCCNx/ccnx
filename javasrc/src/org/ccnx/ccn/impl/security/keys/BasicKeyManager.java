@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.impl.security.keys;
 
+import static org.ccnx.ccn.impl.support.Serial.readObject;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -41,12 +43,12 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
-import static org.ccnx.ccn.impl.support.Serial.readObject;
 import org.ccnx.ccn.impl.support.DataUtils.Tuple;
 import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.io.content.PublicKeyObject;
@@ -57,6 +59,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
 
 
 /**
@@ -86,7 +89,6 @@ public class BasicKeyManager extends KeyManager {
 	protected PublisherPublicKeyDigest _defaultKeyID;
 	
 	protected boolean _initialized = false;
-	protected boolean _defaultKeysPublished = false;
 	
 	private char [] _password = null;
 	
@@ -101,9 +103,19 @@ public class BasicKeyManager extends KeyManager {
 	protected SecureKeyCache _privateKeyCache = null;
 	
 	/**
+	 * Key server, offering up our keys, if we need one.
+	 */
+	protected KeyServer _keyServer = null;
+	
+	/**
 	 * Configuration data
 	 */
 	protected KeyValueSet _configurationData = null;
+	
+	/**
+	 * Handle used by key server and key retrieval.
+	 */
+	protected CCNHandle _handle = null;
 	
 	/**
 	 * Registry of key locators to use. In essence, these are pointers to our
@@ -178,13 +190,13 @@ public class BasicKeyManager extends KeyManager {
 	 * Could make fake base class constructor, and call loadKeyStore in subclass constructors,
 	 * but this wouldn't work past one level, and this allows subclasses to override initialize behavior.
 	 * @throws ConfigurationException 
-	 * @throws ConfigurationException 
 	 */
 	@Override
-	public synchronized void initialize() throws InvalidKeyException, IOException, ConfigurationException {
+	public synchronized void initialize() throws ConfigurationException, IOException {
 		if (_initialized)
 			return;
-		_publicKeyCache = new PublicKeyCache(this);
+		_handle = CCNHandle.open(this);
+		_publicKeyCache = new PublicKeyCache();
 		_privateKeyCache = new SecureKeyCache();
 		_keyStoreInfo = loadKeyStore();// uses _keyRepository and _privateKeyCache
 		if (!loadValuesFromKeystore(_keyStoreInfo)) {
@@ -194,12 +206,18 @@ public class BasicKeyManager extends KeyManager {
 			Log.warning("Cannot process configuration data!");
 		}
 		_initialized = true;		
-
 		// If we haven't been called off, initialize the key server
 		if (UserConfiguration.publishKeys()) {
-			// Can we publish keys now?
-			publishDefaultKey(null);
+			initializeKeyServer(_handle);
 		}
+	}
+	
+	public synchronized void initializeKeyServer(CCNHandle handle) throws IOException {
+		if (null != _keyServer) {
+			return;
+		}
+		_keyServer = new KeyServer(handle);
+		_keyServer.serveKey(getDefaultKeyName(getDefaultKeyID()), getDefaultPublicKey(), null, null);
 	}
 	
 	@Override
@@ -210,14 +228,10 @@ public class BasicKeyManager extends KeyManager {
 	 * reopen them when they are next needed.
 	 */
 	public synchronized void close() {
-		if (null != _publicKeyCache) {
-			_publicKeyCache.close();
-		}
+		_handle.close();
 	}
 	
-	/**
-	 * Publish our default key at a particular name.
-	 */
+	public CCNHandle handle() { return _handle; }
 	
 	protected void setPassword(char [] password) {
 		_password = password;
@@ -769,14 +783,17 @@ public class BasicKeyManager extends KeyManager {
 	 * @return public key
 	 */
 	@Override
-	public PublicKey getPublicKey(PublisherPublicKeyDigest desiredKeyID, KeyLocator keyLocator, long timeout) throws IOException {		
+	public PublicKey getPublicKey(
+			PublisherPublicKeyDigest desiredKeyID, KeyLocator keyLocator, 
+			long timeout) throws IOException {		
+		
 		if (Log.isLoggable(Level.FINER))
 			Log.finer("getPublicKey: retrieving key: " + desiredKeyID + " located at: " + keyLocator);
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
 		// or not we should trust it for some reason, we have to get fancy.
-		return getPublicKeyCache().getPublicKey(desiredKeyID, keyLocator, timeout);
+		return getPublicKeyCache().getPublicKey(desiredKeyID, keyLocator, timeout, handle());
 	}
 	
 	/**
@@ -791,14 +808,17 @@ public class BasicKeyManager extends KeyManager {
 	 * @throws IOException
 	 */
 	@Override 
-	public PublicKeyObject getPublicKeyObject(PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, long timeout) throws IOException {
+	public PublicKeyObject getPublicKeyObject(
+			PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, 
+			long timeout) throws IOException {
+		
 		if( Log.isLoggable(Level.FINER) )
 			Log.finer("getPublicKey: retrieving key: " + desiredKeyID + " located at: " + locator);
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
 		// or not we should trust it for some reason, we have to get fancy.
-		return getPublicKeyCache().getPublicKeyObject(desiredKeyID, locator, timeout);
+		return getPublicKeyCache().getPublicKeyObject(desiredKeyID, locator, timeout, handle());
 	}	
 	
 	/**
@@ -830,47 +850,6 @@ public class BasicKeyManager extends KeyManager {
 	}
 
 	@Override
-	public synchronized PublicKeyObject publishDefaultKey(ContentName keyName) throws IOException, InvalidKeyException {
-		if (!initialized()) {
-			throw new IOException("Cannot publish keys, have not yet initialized KeyManager!");
-		}
-		// we've put together enough of this KeyManager to let the
-		// KeyRepository use it to make a CCNHandle, even though we're
-		// not done...
-		if (_defaultKeysPublished) {
-			return null;
-		}
-
-		PublicKeyObject keyObject = publishKey(keyName, getDefaultKeyID(), null, null);
-		_defaultKeysPublished = true;
-		return keyObject;
-	}
-	/**
-	 * Publish my public key to a local key server run in this JVM.
-	 * @param keyName content name of the public key
-	 * @param keyToPublish public key digest
-	 * @param handle handle for ccn
-	 * @throws IOException
-	 * @throws InvalidKeyException
-	 * @throws ConfigurationException
-	 */
-	@Override
-	public PublicKeyObject publishKey(ContentName keyName, 
-						   PublisherPublicKeyDigest keyToPublish,
-						   PublisherPublicKeyDigest signingKeyID,
-						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException {
-		if (null == keyToPublish) {
-			keyToPublish = getDefaultKeyID();
-		} 
-		PublicKey theKey = getPublicKey(keyToPublish);
-		if (null == theKey) {
-			Log.warning("Cannot publish key {0} to name {1}, do not have public key in cache.", keyToPublish, keyName);
-			return null;
-		}
-		return publishKey(keyName, theKey, signingKeyID, signingKeyLocator);
-	}
-
-	@Override
 	public PublicKeyObject publishKey(ContentName keyName, 
 						   PublicKey keyToPublish,
 						   PublisherPublicKeyDigest signingKeyID,
@@ -883,9 +862,12 @@ public class BasicKeyManager extends KeyManager {
 		if (null == keyName) {
 			keyName = getDefaultKeyName(keyDigest);
 		}
+
 		if (Log.isLoggable(Level.INFO))
 			Log.info("publishKey: publishing key {0} under specified key name {1}", keyDigest, keyName);
-		PublicKeyObject keyObject =  getPublicKeyCache().publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
+
+		PublicKeyObject keyObject =  
+			_keyServer.serveKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
 		
 		if (!haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
 			// So once we publish self-signed key object, we store a pointer to that
@@ -898,37 +880,49 @@ public class BasicKeyManager extends KeyManager {
 		return keyObject;
 	}
 
+	@Override
+	public PublicKeyObject publishDefaultKey(ContentName keyName)
+			throws IOException, InvalidKeyException {
+		if (!initialized()) {
+			throw new IOException("KeyServer: cannot publish keys, have not yet initialized KeyManager!");
+		}
+		return publishKey(keyName, getDefaultKeyID(), null, null);
+	}
+
 	/**
-	 * Publish my public key to repository
-	 * @param keyName content name of the public key
-	 * @param keyToPublish public key digest
-	 * @param handle handle for ccn
-	 * @throws IOException
+	 * Publish a key at a certain name, ensuring that it is stored in a repository. Will throw an
+	 * exception if no repository available. Usually used to publish our own keys, but can specify
+	 * any key known to our key cache.
+	 * @param keyName Name under which to publish the key. Currently added under existing version, or version
+	 * 	included in keyName.
+	 * @param keyToPublish can be null, in which case we publish our own default public key.
+	 * @param handle the handle to use for network requests
 	 * @throws InvalidKeyException
-	 * @throws ConfigurationException
+	 * @throws IOException
 	 */
 	@Override
-	public void publishKeyToRepository(ContentName keyName, 
-									   PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException {
+	public PublicKeyObject publishKeyToRepository(ContentName keyName,
+			PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException,
+			IOException {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
-		} 
-		if (null == keyName) {
-			keyName = getKeyLocator(keyToPublish).name().name();
 		}
-		getPublicKeyCache().publishKeyToRepository(keyName, keyToPublish);
-	}
-	
-	/**
-	 * Publish my public key to repository
-	 * @param handle handle for ccn
-	 * @throws IOException
-	 * @throws InvalidKeyException
-	 * @throws ConfigurationException
-	 */
-	@Override
-	public void publishKeyToRepository() throws InvalidKeyException, IOException {
-		publishKeyToRepository(null, null);
+		
+		PublicKey theKey = getPublicKeyCache().getPublicKeyFromCache(keyToPublish);
+		if (null == theKey) {
+			throw new InvalidKeyException("Key " + keyToPublish + " not available in cache, cannot publish!");
+		}
+		
+		if (null == keyName) {
+			KeyLocator locator = getKeyLocator(keyToPublish);
+			if (locator.type() != KeyLocatorType.NAME) {
+				// can't get a name from here, pull from the default namespace.
+				keyName = getDefaultKeyName(keyToPublish);
+			} else {
+				keyName = locator.name().name();
+			}
+		}
+		return KeyManager.publishKeyToRepository(keyName, theKey, getDefaultKeyID(), getDefaultKeyLocator(), handle());
 	}
 
 	@Override
@@ -950,5 +944,4 @@ public class BasicKeyManager extends KeyManager {
 			_acmList.add(acm);
 		}
 	}
-
 }

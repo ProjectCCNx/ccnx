@@ -178,7 +178,7 @@ indexbuf_release(struct ccnd_handle *h, struct ccn_indexbuf *c)
 }
 
 /**
- * Looks up a face based on its faceid.
+ * Looks up a face based on its faceid (private).
  */
 static struct face *
 face_from_faceid(struct ccnd_handle *h, unsigned faceid)
@@ -191,6 +191,15 @@ face_from_faceid(struct ccnd_handle *h, unsigned faceid)
             face = NULL;
     }
     return(face);
+}
+
+/**
+ * Looks up a face based on its faceid.
+ */
+struct face *
+ccnd_face_from_faceid(struct ccnd_handle *h, unsigned faceid)
+{
+    return(face_from_faceid(h, faceid));
 }
 
 /**
@@ -327,6 +336,8 @@ finalize_face(struct hashtb_enumerator *e)
     int recycle = 0;
     
     if (i < h->face_limit && h->faces_by_faceid[i] == face) {
+        if ((face->flags & CCN_FACE_UNDECIDED) == 0)
+            ccnd_face_status_change(h, face->faceid);
         if (e->ht == h->faces_by_fd) {
             if (face->send_fd != face->recv_fd)
                 ccnd_close_fd(h, face->faceid, &face->recv_fd);
@@ -344,8 +355,6 @@ finalize_face(struct hashtb_enumerator *e)
         ccnd_msg(h, "%s face id %u (slot %u)",
             recycle ? "recycling" : "releasing",
             face->faceid, face->faceid & MAXFACES);
-        if ((face->flags & CCN_FACE_UNDECIDED) == 0)
-            ccnd_face_status_change(h, face->faceid);
         /* Don't free face->addr; storage is managed by hash table */
     }
     else if (face->faceid != CCN_NOFACEID)
@@ -3413,6 +3422,13 @@ process_input_message(struct ccnd_handle *h, struct face *face,
     struct ccn_skeleton_decoder decoder = {0};
     struct ccn_skeleton_decoder *d = &decoder;
     ssize_t dres;
+    
+    if ((face->flags & CCN_FACE_UNDECIDED) != 0) {
+        face->flags &= ~CCN_FACE_UNDECIDED;
+        if ((face->flags & CCN_FACE_LOOPBACK) != 0)
+            face->flags |= CCN_FACE_GG;
+        register_new_face(h, face);
+    }
     d->state |= CCN_DSTATE_PAUSE;
     dres = ccn_skeleton_decode(d, msg, size);
     if (d->state >= 0 && CCN_GET_TT_FROM_DSTATE(d->state) == CCN_DTAG) {
@@ -3564,16 +3580,11 @@ process_input(struct ccnd_handle *h, int fd)
         }
         face->inbuf->length += res;
         msgstart = 0;
-        if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
-              face->inbuf->length >= 6) {
-            if (0 == memcmp(buf, "GET ", 4)) {
-                ccnd_stats_handle_http_connection(h, face);
-                return;
-            }
-            face->flags &= ~CCN_FACE_UNDECIDED;
-            if ((face->flags & CCN_FACE_LOOPBACK) != 0)
-                face->flags |= CCN_FACE_GG;
-            register_new_face(h, face);
+        if (((face->flags & CCN_FACE_UNDECIDED) != 0 &&
+             face->inbuf->length >= 6 &&
+             0 == memcmp(face->inbuf->buf, "GET ", 4))) {
+            ccnd_stats_handle_http_connection(h, face);
+            return;
         }
         dres = ccn_skeleton_decode(d, buf, res);
         while (d->state == 0) {

@@ -81,7 +81,7 @@ public class SystemConfiguration {
 	 * How long to wait for a ping timeout in CCNNetworkManager
 	 */
 	protected static final String PING_TIMEOUT_PROPERTY = "org.ccnx.ping.timeout";
-	public final static int PING_TIMEOUT_DEFAULT = 500;
+	public final static int PING_TIMEOUT_DEFAULT = 1000;
 	public static int PING_TIMEOUT = PING_TIMEOUT_DEFAULT;
 	
 	/**

@@ -1,6 +1,6 @@
 /**
- * @file ccn/seqwriter.h
- * @brief
+ * @file sockaddrutil.h
+ * @brief sockaddr utilities
  * 
  * Part of the CCNx C Library.
  *
@@ -18,19 +18,13 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
  
-#ifndef CCN_SEQWRITER_DEFINED
-#define CCN_SEQWRITER_DEFINED
+#ifndef CCN_SOCKADDRUTIL_DEFINED
+#define CCN_SOCKADDRUTIL_DEFINED
 
-#include <stddef.h>
-struct ccn_seqwriter;
-struct ccn;
-struct ccn_charbuf;
+#include <sys/socket.h>
+#include <ccn/charbuf.h>
 
-struct ccn_seqwriter *ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name);
-int ccn_seqw_possible_interest(struct ccn_seqwriter *w);
-int ccn_seqw_batch_start(struct ccn_seqwriter *w);
-int ccn_seqw_write(struct ccn_seqwriter *w, const void *buf, size_t size);
-int ccn_seqw_batch_end(struct ccn_seqwriter *w);
-int ccn_seqw_close(struct ccn_seqwriter *w);
+/* Append numeric printable representation, return port. */
+int ccn_charbuf_append_sockaddr(struct ccn_charbuf *, const struct sockaddr *);
 
 #endif
