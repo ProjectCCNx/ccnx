@@ -553,7 +553,12 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 */
 	public PublicKeyObject publishKeyToRepository() throws InvalidKeyException, IOException {
-		return publishKeyToRepository(null, null, SystemConfiguration.SHORT_TIMEOUT);
+		return publishKeyToRepository(null, null);
+	}
+	
+	public PublicKeyObject publishKeyToRepository(ContentName keyName, PublisherPublicKeyDigest keyToPublish) 
+		throws InvalidKeyException, IOException {
+		return publishKeyToRepository(keyName, keyToPublish, SystemConfiguration.SHORT_TIMEOUT);
 	}
 	
 	/**
