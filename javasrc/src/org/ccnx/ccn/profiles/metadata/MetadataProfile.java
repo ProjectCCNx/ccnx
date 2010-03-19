@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.profiles.CCNProfile;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -33,8 +34,9 @@ import org.ccnx.ccn.protocol.ContentObject;
  */
 public class MetadataProfile implements CCNProfile {
 
-	public static final byte [] METADATA_MARKER = ContentName.componentParseNative(MARKER + "meta" + MARKER);
-	
+	public static final CommandMarker METADATA_MARKER = 
+		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "meta");
+
 	/**
 	 * This interface allows getLatestVersion of metadata within one of the supported meta
 	 * namespaces.
@@ -58,7 +60,7 @@ public class MetadataProfile implements CCNProfile {
 	 * @return metadata path for base file
 	 */
 	public static ContentName metadataName(ContentName baseName) {
-		return new ContentName(baseName, METADATA_MARKER);
+		return new ContentName(baseName, METADATA_MARKER.getBytes());
 	}
 	
 	/**

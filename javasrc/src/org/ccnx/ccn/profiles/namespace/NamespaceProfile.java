@@ -17,13 +17,16 @@
 package org.ccnx.ccn.profiles.namespace;
 
 import org.ccnx.ccn.profiles.CCNProfile;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class NamespaceProfile implements CCNProfile {
 
-	public static final String NAMESPACE_POLICY_MARKER = CCNProfile.MARKER + "policy" + CCNProfile.MARKER;
-	public static final byte [] NAMESPACE_POLICY_MARKER_BYTES = ContentName.componentParseNative(NAMESPACE_POLICY_MARKER);
-	protected static final ContentName POLICY_POSTFIX_NAME = new ContentName(new byte [][] {NAMESPACE_POLICY_MARKER_BYTES});
+	public static final CommandMarker NAMESPACE_POLICY_MARKER = 
+		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "policy");
+	public static final byte [] NAMESPACE_POLICY_MARKER_BYTES = NAMESPACE_POLICY_MARKER.getBytes();
+	protected static final ContentName POLICY_POSTFIX_NAME = 
+		new ContentName(new byte [][] {NAMESPACE_POLICY_MARKER_BYTES});
 
 	/**
 	 * Return the set of name components to add to get the policy path

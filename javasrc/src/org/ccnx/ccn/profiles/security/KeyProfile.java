@@ -18,7 +18,6 @@ package org.ccnx.ccn.profiles.security;
 
 import java.io.IOException;
 
-import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.protocol.ContentName;
@@ -32,8 +31,8 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 public class KeyProfile implements CCNProfile {
 	
 	public static final byte [] KEY_NAME_COMPONENT = ContentName.componentParseNative("KEYS");
-	public static final byte [] KEY_ID_PREFIX = 
-		CommandMarker.commandComponent(CommandMarker.MARKER_NAMESPACE, "K", null);
+	public static final CommandMarker KEY_ID_PREFIX = 
+		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "K");
 	
 	/**
 	 * This builds a name component which refers to the digest
@@ -53,23 +52,14 @@ public class KeyProfile implements CCNProfile {
 			throw new IllegalArgumentException("keyID must not be null!");
 		}
 		
-		byte [] encodedKeyIDBytes = keyID;
-		
-		byte [] component = new byte[KEY_ID_PREFIX.length + encodedKeyIDBytes.length];
-		int offset = 0;
-		System.arraycopy(KEY_ID_PREFIX, 0, component, offset, KEY_ID_PREFIX.length);
-		offset += KEY_ID_PREFIX.length;
-		System.arraycopy(encodedKeyIDBytes, 0, component, offset, encodedKeyIDBytes.length);
-		offset += encodedKeyIDBytes.length;
-		
-		return component;
+		return KEY_ID_PREFIX.addData(keyID);
 	}
 	
 	/**
 	 * Helper method to return key ID name component as a string.
 	 */
 	public static String keyIDToNameComponentAsString(PublisherPublicKeyDigest keyID) {
-		return ContentName.componentPrintNative(keyIDToNameComponent(keyID));
+		return ContentName.componentPrintURI(keyIDToNameComponent(keyID));
 	}
 	
 	/**
@@ -129,8 +119,7 @@ public class KeyProfile implements CCNProfile {
 	public static byte[] getKeyIDFromNameComponent(byte[] childName) throws IOException {
 		if (!KeyProfile.isKeyNameComponent(childName))
 			return null;
-		byte [] keyid = new byte[childName.length - KEY_ID_PREFIX.length];
-		System.arraycopy(childName, KEY_ID_PREFIX.length, keyid, 0, keyid.length);
+		byte [] keyid = KEY_ID_PREFIX.extractApplicationData(childName);
 		return keyid;
 	}
 
@@ -140,6 +129,6 @@ public class KeyProfile implements CCNProfile {
 	 * @return
 	 */
 	public static boolean isKeyNameComponent(byte [] wnkNameComponent) {
-		return DataUtils.isBinaryPrefix(KEY_ID_PREFIX, wnkNameComponent);
+		return KEY_ID_PREFIX.isMarker(wnkNameComponent);
 	}
 }

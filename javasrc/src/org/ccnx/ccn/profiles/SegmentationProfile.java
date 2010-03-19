@@ -211,7 +211,8 @@ public class SegmentationProfile implements CCNProfile {
 		if (!Arrays.equals(potentialHeaderName.lastComponent(), HEADER_NAME))
 			return false;
 		
-		if (!Arrays.equals(potentialHeaderName.component(potentialHeaderName.count()-2), MetadataProfile.METADATA_MARKER))
+		if (!Arrays.equals(potentialHeaderName.component(potentialHeaderName.count()-2), 
+				MetadataProfile.METADATA_MARKER.getBytes()))
 			return false;
 		
 		return true;
@@ -234,7 +235,7 @@ public class SegmentationProfile implements CCNProfile {
 		if (isSegment(name)) {
 			name = segmentRoot(name);
 		}
-		return new ContentName(name, MetadataProfile.METADATA_MARKER, HEADER_NAME);
+		return new ContentName(name, MetadataProfile.METADATA_MARKER.getBytes(), HEADER_NAME);
 	}
 
 	/**

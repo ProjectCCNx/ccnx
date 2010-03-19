@@ -388,11 +388,14 @@ public class ContentTree {
 						}
 						ContentName prefix = name.cut(component);
 	
-						prefix = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION);
+						prefix = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 						//prefix = VersioningProfile.addVersion(prefix, new CCNTime(node.timestamp));
 						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
 							Log.info("prefix for FastNEResponse: {0}", prefix);
-							Log.info("response name will be: {0}", VersioningProfile.addVersion(new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION), new CCNTime(node.timestamp)));
+							Log.info("response name will be: {0}",
+									VersioningProfile.addVersion(
+											new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()), 
+											new CCNTime(node.timestamp)));
 						}
 	
 						ArrayList<ContentName> names = new ArrayList<ContentName>();
@@ -625,7 +628,7 @@ public class ContentTree {
 	public final NameEnumerationResponse getNamesWithPrefix(Interest interest, ContentName responseName) {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		//first chop off NE marker
-		ContentName prefix = interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION);
+		ContentName prefix = interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 
 		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
 			Log.fine("checking for content names under: {0}", prefix);
@@ -634,7 +637,8 @@ public class ContentTree {
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
 			//first add the NE marker
-		    ContentName potentialCollectionName = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION);
+		    ContentName potentialCollectionName = 
+		    	new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 		    //now add the response id
 		    potentialCollectionName = new ContentName(potentialCollectionName, responseName.components());
 		    //now finish up with version and segment
@@ -670,7 +674,8 @@ public class ContentTree {
 			}
 			parent.interestFlag = false;
 			
-			return new NameEnumerationResponse(new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION), names, new CCNTime(parent.timestamp));
+			return new NameEnumerationResponse(
+					new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()), names, new CCNTime(parent.timestamp));
 		}
 		return null;
 	}

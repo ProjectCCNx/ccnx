@@ -165,8 +165,8 @@ public class RepositoryServer {
 		}
 		
 		byte[][]markerOmissions = new byte[2][];
-		markerOmissions[0] = CommandMarker.COMMAND_MARKER_REPO_START_WRITE;
-		markerOmissions[1] = CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION;
+		markerOmissions[0] = CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes();
+		markerOmissions[1] = CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes();
 		_markerFilter = new Exclude(markerOmissions);
 		
 		_periodicTimer = new Timer(true);

@@ -410,10 +410,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static byte[] generateNonce() {
 		byte [] nonce = new byte[8];
 		_random.nextBytes(nonce);
-		byte [] wholeNonce = new byte[CommandMarker.COMMAND_MARKER_NONCE.length + nonce.length];
-		System.arraycopy(CommandMarker.COMMAND_MARKER_NONCE, 0, wholeNonce, 0, CommandMarker.COMMAND_MARKER_NONCE.length);
-		System.arraycopy(nonce, 0, wholeNonce, CommandMarker.COMMAND_MARKER_NONCE.length, nonce.length);	
-		return wholeNonce;
+		return CommandMarker.COMMAND_MARKER_NONCE.addData(nonce);
 	}
 
 	/**
