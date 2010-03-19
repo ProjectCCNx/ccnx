@@ -20,6 +20,7 @@ package org.ccnx.ccn.impl;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.NotYetConnectedException;
 import java.util.ArrayList;
@@ -1174,7 +1175,8 @@ public class CCNNetworkManager implements Runnable {
 					try {
 						if (_channel.select(SOCKET_TIMEOUT) != 0) {
 							packet.clear();
-							packet.decode(_channel.getInputStream(_tapStreamIn));
+							InputStream stream = _channel.getInputStream(_tapStreamIn);
+							packet.decode(stream);
 						} else {
 							// This was a timeout or wakeup, no data
 							packet.clear();
