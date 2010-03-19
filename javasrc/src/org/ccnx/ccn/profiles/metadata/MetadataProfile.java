@@ -34,8 +34,9 @@ import org.ccnx.ccn.protocol.ContentObject;
  */
 public class MetadataProfile implements CCNProfile {
 
+	public static final String METADATA_NAMESPACE = "meta";
 	public static final CommandMarker METADATA_MARKER = 
-		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "meta");
+		CommandMarker.commandMarker(METADATA_NAMESPACE, "M");
 
 	/**
 	 * This interface allows getLatestVersion of metadata within one of the supported meta
