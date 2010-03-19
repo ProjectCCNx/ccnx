@@ -59,9 +59,7 @@ public class CCNNetworkChannel {
 	
 	// Allocate datagram buffer: want to wrap array to ensure backed by
 	// array to permit decoding
-	ByteBuffer _datagram1 = ByteBuffer.allocateDirect(MAX_PAYLOAD);
-	ByteBuffer _datagram2 = ByteBuffer.allocateDirect(MAX_PAYLOAD);
-	ByteBuffer _currentDgram = _datagram1;
+	ByteBuffer _datagram = ByteBuffer.allocateDirect(MAX_PAYLOAD);
 
 	public CCNNetworkChannel(String host, int port, NetworkProtocol proto) throws IOException {
 		_ncHost = host;
@@ -69,7 +67,7 @@ public class CCNNetworkChannel {
 		_ncProto = proto;
 		_ncSelector = Selector.open();
 		if (_ncProto == NetworkProtocol.TCP) {
-			_ncStream = new TCPInputStream();
+			_ncStream = new TCPInputStream(this);
 		}
 	}
 	
@@ -131,30 +129,30 @@ public class CCNNetworkChannel {
 	
 	public InputStream getInputStream(FileOutputStream tapStreamIn) throws IOException {
 		clearSelectedKeys();
+		_datagram.clear(); // make ready for new read
 		if (_ncProto == NetworkProtocol.UDP) {
-			_currentDgram.clear(); // make ready for new read
 			synchronized (this) {
-				_ncDGrmChannel.read(_currentDgram); // queue readers and writers
+				_ncDGrmChannel.read(_datagram); // queue readers and writers
 			}
 			if( Log.isLoggable(Level.FINEST) )
-				Log.finest("Read datagram (" + _currentDgram.position() + " bytes) for port: " + _ncPort);
-			_currentDgram.flip(); // make ready to decode
+				Log.finest("Read datagram (" + _datagram.position() + " bytes) for port: " + _ncPort);
+			_datagram.flip(); // make ready to decode
 			if (null != tapStreamIn) {
-				byte [] b = new byte[_currentDgram.limit()];
-				_currentDgram.get(b);
+				byte [] b = new byte[_datagram.limit()];
+				_datagram.get(b);
 				tapStreamIn.write(b);
-				_currentDgram.rewind();
+				_datagram.rewind();
 			}
-			byte[] array = _currentDgram.array();
+			byte[] array = _datagram.array();
 			
 			if (Log.isLoggable(Level.FINEST)) {
 				byte[] tmp = new byte[8];
-				System.arraycopy(array, _currentDgram.position(), tmp, 0, (_currentDgram.remaining() > tmp.length) ? tmp.length : _currentDgram.remaining());
+				System.arraycopy(array, _datagram.position(), tmp, 0, (_datagram.remaining() > tmp.length) ? tmp.length : _datagram.remaining());
 				BigInteger tmpBuf = new BigInteger(1,tmp);
-				Log.finest("decode (buf.pos: " + _currentDgram.position() + " remaining: " + _currentDgram.remaining() + ") start: " + tmpBuf.toString(16));
+				Log.finest("decode (buf.pos: " + _datagram.position() + " remaining: " + _datagram.remaining() + ") start: " + tmpBuf.toString(16));
 			}
 			
-			ByteArrayInputStream bais = new ByteArrayInputStream(array, _currentDgram.position(), _currentDgram.remaining());
+			ByteArrayInputStream bais = new ByteArrayInputStream(array, _datagram.position(), _datagram.remaining());
 			return bais;
 		} else if (_ncProto == NetworkProtocol.TCP) {
 			_ncStream.fill();
@@ -212,16 +210,18 @@ public class CCNNetworkChannel {
 	}
 	
 	private class TCPInputStream extends InputStream {
+		private CCNNetworkChannel _channel;
 		
-		private ByteBuffer _markDgram = _currentDgram;
-		private boolean _previouslyRead = false;
-
+		private TCPInputStream(CCNNetworkChannel channel) {
+			_channel = channel;
+		}
+		
 		@Override
 		public int read() throws IOException {
 			while (true) {
 				try {
-					if (_currentDgram.hasRemaining()) {
-						int ret = (int)_currentDgram.get();
+					if (_datagram.hasRemaining()) {
+						int ret = (int)_datagram.get();
 						return ret & 0xff;
 					}
 				} catch (BufferUnderflowException bfe) {}
@@ -236,37 +236,24 @@ public class CCNNetworkChannel {
 		}
 		
 		public void mark(int readlimit) {
-			_markDgram = _currentDgram;
-			_currentDgram.mark();
+			_datagram.mark();
 		}
 		
 		public void reset() throws IOException {
-			if (_markDgram != _currentDgram) {
-				_previouslyRead = true;
-				_currentDgram = _markDgram;
-			}
-			_currentDgram.reset();
+			_datagram.reset();
 		}
 		
 		private int fill() throws IOException {
-			_currentDgram = _currentDgram == _datagram1 ? _datagram2 : _datagram1;
 			int ret;
-			if (!_previouslyRead) {
-				_currentDgram.clear();
-				synchronized (this) {
-					ret = _ncSockChannel.read(_currentDgram);
-				}
-				Log.finest("fill - did a read of " + ret + " bytes.");
-				_currentDgram.flip();
-			} else {
-				_currentDgram.rewind();
-				ret = _currentDgram.remaining();
+			int oldPos = _datagram.position();
+			synchronized (_channel) {
+				ret = _ncSockChannel.read(_datagram);
 			}
-			_previouslyRead = false;
+			_datagram.position(oldPos);
+			_datagram.limit(oldPos + ret);
 			return ret;
 		}
 	}
-	
 			
 	/**
 	 * Do scheduled writes of heartbeats on UDP connections.
