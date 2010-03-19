@@ -515,27 +515,31 @@ public class DataUtils {
 	/**
 	 * Count how may times a given byte occurs in an array.
 	 */
-	public static int occurcount(byte [] array, byte byteToFind) {
+	public static int occurcount(byte [] array, int startingOffset, byte byteToFind) {
 		int count = 0;
 		if (array == null) 
 			return 0;
 		
-		for (int i=0; i < array.length; ++i) {
+		for (int i=startingOffset; i < array.length; ++i) {
 			if (array[i] == byteToFind) {
 				count++;
 			}
 		}
 		return count;
 	}
+	
+	public static int occurcount(byte [] array, byte byteToFind) {
+		return occurcount(array, 0, byteToFind);
+	}
 
 	/**
 	 * Akin to String.split for binary arrays; splits on a given byte value.
 	 */
-	public static byte [][] binarySplit(byte [] array, byte splitValue) {
+	public static byte [][] binarySplit(byte [] array, int startingOffset, byte splitValue) {
 		int index = 0;
 		int offset = 0;
-		int lastoffset = 0;
-		int count = occurcount(array, splitValue) + 1;
+		int lastoffset = startingOffset;
+		int count = occurcount(array, startingOffset, splitValue) + 1;
 		if (count == 1) {
 			// no split values; just return the original array
 			return new byte [][]{array};
@@ -551,4 +555,13 @@ public class DataUtils {
 		return components;
 	}
 	
+	public static byte [][] binarySplit(byte [] array, byte splitValue) {
+		return binarySplit(array, 0, splitValue);
+	}
+	
+	public static byte [] subarray(byte [] array, int offset, int len) {
+		byte [] newarray = new byte [len];
+		System.arraycopy(array, offset, newarray, 0, len);
+		return newarray;
+	}
 }
