@@ -65,8 +65,6 @@ static void process_input_message(struct ccnd_handle *h, struct face *face,
 static void process_input(struct ccnd_handle *h, int fd);
 static int ccn_stuff_interest(struct ccnd_handle *h,
                               struct face *face, struct ccn_charbuf *c);
-static void do_write(struct ccnd_handle *h, struct face *face,
-                     unsigned char *data, size_t size);
 static void do_deferred_write(struct ccnd_handle *h, int fd);
 static void clean_needed(struct ccnd_handle *h);
 static struct face *get_dgram_source(struct ccnd_handle *h, struct face *face,
@@ -1023,7 +1021,7 @@ send_content(struct ccnd_handle *h, struct face *face, struct content_entry *con
     ccn_stuff_interest(h, face, c);
     if ((face->flags & CCN_FACE_LINK) != 0)
         ccn_charbuf_append_closer(c);
-    do_write(h, face, c->buf, c->length);
+    ccnd_send(h, face, c->buf, c->length);
     h->content_items_sent += 1;
     charbuf_release(h, c);
 }
@@ -1389,10 +1387,10 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
     }
     else {
         /* avoid a copy in this case */
-        do_write(h, face, data, size);
+        ccnd_send(h, face, data, size);
         return;
     }
-    do_write(h, face, c->buf, c->length);
+    ccnd_send(h, face, c->buf, c->length);
     charbuf_release(h, c);
     return;
 }
@@ -3634,13 +3632,18 @@ process_internal_client_buffer(struct ccnd_handle *h)
     }
 }
 
+/**
+ * Handle errors after send() or sendto().
+ * @returns -1 if error has been dealt with, or 0 to defer sending.
+ */
 static int
-handle_send_error(struct ccnd_handle *h, int errnum,
-                  struct face *face, unsigned char *data, size_t size)
+handle_send_error(struct ccnd_handle *h, int errnum, struct face *face,
+                  unsigned char *data, size_t size)
 {
     int res = -1;
-    if (errnum == EAGAIN)
+    if (errnum == EAGAIN) {
         res = 0;
+    }
     else if (errnum == EPIPE) {
         face->flags |= CCN_FACE_NOSEND;
         face->outbufindex = 0;
@@ -3655,9 +3658,16 @@ handle_send_error(struct ccnd_handle *h, int errnum,
     return(res);
 }
 
-static void
-do_write(struct ccnd_handle *h,
-         struct face *face, unsigned char *data, size_t size)
+
+/**
+ * Send data to the face.
+ *
+ * No direct error result is provided; the face state is updated as needed.
+ */
+void
+ccnd_send(struct ccnd_handle *h,
+          struct face *face,
+          unsigned char *data, size_t size)
 {
     ssize_t res;
     if ((face->flags & CCN_FACE_NOSEND) != 0)

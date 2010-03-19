@@ -371,6 +371,8 @@ int ccnd_reg_uri(struct ccnd_handle *h,
 
 struct face *ccnd_face_from_faceid(struct ccnd_handle *, unsigned);
 void ccnd_face_status_change(struct ccnd_handle *, unsigned);
+void ccnd_send(struct ccnd_handle *h, struct face *face,
+               unsigned char *data, size_t size);
 
 /* Consider a separate header for these */
 int ccnd_stats_handle_http_connection(struct ccnd_handle *, struct face *);
