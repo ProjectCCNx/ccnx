@@ -105,6 +105,20 @@ public class CommandMarkers {
 	public static final String NONCE_NAMESPACE = "N";
 	public static final byte [] COMMAND_MARKER_NONCE = commandComponent(NONCE_NAMESPACE, "n", null);
 	
+	/**
+	 * Marker for typed binary name components. These aren't general binary name components, but name
+	 * components with defined semantics. Specific examples are defined in their own profiles, see
+	 * KeyProfile and GuidProfile, as well as markers for access controls. The interpretation of these
+	 * should be a) you shouldn't show them to a user unless you really have to, and b) the content of the
+	 * marker tells you the type and interpretation of the value.
+	 * 
+	 * Save "B" for general binary name components if we need to go there;
+	 * use M for marker. Start by trying to define them in their own profiles; might
+	 * have to centralize here for reference.
+	 */
+	public static final String MARKER_NAMESPACE = "M";
+
+	
 	public static final byte [] commandComponent(String namespace, String command, String [] arguments) {
 		StringBuffer sb = new StringBuffer(namespace);
 		if ((null != namespace) && (namespace.length() > 0)) {
