@@ -28,7 +28,7 @@ import java.util.TreeMap;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.CommandMarkers;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
@@ -388,11 +388,11 @@ public class ContentTree {
 						}
 						ContentName prefix = name.cut(component);
 	
-						prefix = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+						prefix = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION);
 						//prefix = VersioningProfile.addVersion(prefix, new CCNTime(node.timestamp));
 						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
 							Log.info("prefix for FastNEResponse: {0}", prefix);
-							Log.info("response name will be: {0}", VersioningProfile.addVersion(new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), new CCNTime(node.timestamp)));
+							Log.info("response name will be: {0}", VersioningProfile.addVersion(new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION), new CCNTime(node.timestamp)));
 						}
 	
 						ArrayList<ContentName> names = new ArrayList<ContentName>();
@@ -625,7 +625,7 @@ public class ContentTree {
 	public final NameEnumerationResponse getNamesWithPrefix(Interest interest, ContentName responseName) {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		//first chop off NE marker
-		ContentName prefix = interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+		ContentName prefix = interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION);
 
 		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
 			Log.fine("checking for content names under: {0}", prefix);
@@ -634,7 +634,7 @@ public class ContentTree {
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
 			//first add the NE marker
-		    ContentName potentialCollectionName = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+		    ContentName potentialCollectionName = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION);
 		    //now add the response id
 		    potentialCollectionName = new ContentName(potentialCollectionName, responseName.components());
 		    //now finish up with version and segment
@@ -670,7 +670,7 @@ public class ContentTree {
 			}
 			parent.interestFlag = false;
 			
-			return new NameEnumerationResponse(new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), names, new CCNTime(parent.timestamp));
+			return new NameEnumerationResponse(new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION), names, new CCNTime(parent.timestamp));
 		}
 		return null;
 	}

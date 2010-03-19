@@ -20,7 +20,7 @@ import java.io.IOException;
 
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.profiles.CCNProfile;
-import org.ccnx.ccn.profiles.CommandMarkers;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -33,7 +33,7 @@ public class KeyProfile implements CCNProfile {
 	
 	public static final byte [] KEY_NAME_COMPONENT = ContentName.componentParseNative("KEYS");
 	public static final byte [] KEY_ID_PREFIX = 
-		CommandMarkers.commandComponent(CommandMarkers.MARKER_NAMESPACE, "K", null);
+		CommandMarker.commandComponent(CommandMarker.MARKER_NAMESPACE, "K", null);
 	
 	/**
 	 * This builds a name component which refers to the digest

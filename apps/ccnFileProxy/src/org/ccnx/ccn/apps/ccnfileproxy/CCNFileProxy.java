@@ -28,7 +28,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileOutputStream;
-import org.ccnx.ccn.profiles.CommandMarkers;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
@@ -129,7 +129,7 @@ public class CCNFileProxy implements CCNFilterListener {
 		if (SegmentationProfile.isSegment(interest.name()) && !SegmentationProfile.isFirstSegment(interest.name())) {
 			Log.info("Got an interest for something other than a first segment, ignoring {0}.", interest.name());
 			return false;
-		} else if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
+		} else if (interest.name().contains(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION)) {
 			try {
 				Log.info("Got a name enumeration request: {0}", interest);
 				return nameEnumeratorResponse(interest);
@@ -223,7 +223,7 @@ public class CCNFileProxy implements CCNFilterListener {
 	public boolean nameEnumeratorResponse(Interest interest) throws IOException {
 		
 		boolean result = false;
-		ContentName neRequestPrefix = interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+		ContentName neRequestPrefix = interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION);
 		
 		File directoryToEnumerate = ccnNameToFilePath(neRequestPrefix);
 		
@@ -233,7 +233,7 @@ public class CCNFileProxy implements CCNFilterListener {
 		}
 		
 		NameEnumerationResponse ner = new NameEnumerationResponse();
-		ner.setPrefix(new ContentName(neRequestPrefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION));
+		ner.setPrefix(new ContentName(neRequestPrefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION));
 		
 		Log.info("Directory to enumerate: {0}, last modified {1}", directoryToEnumerate.getAbsolutePath(), new CCNTime(directoryToEnumerate.lastModified()));
 		// stat() the directory to see when it last changed -- will change whenever

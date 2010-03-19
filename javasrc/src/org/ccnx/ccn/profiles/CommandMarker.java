@@ -62,7 +62,7 @@ import org.ccnx.ccn.protocol.ContentName;
  * @author rasmusse, smetters
  *
  */
-public class CommandMarkers {
+public class CommandMarker {
 	
 	/**
 	 * Reserved bytes.

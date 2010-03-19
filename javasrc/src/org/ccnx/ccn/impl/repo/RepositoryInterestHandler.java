@@ -24,7 +24,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.CommandMarkers;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -58,11 +58,11 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
 			Log.finer("Saw interest: {0}", interest.name());
 		try {
-			if (interest.name().contains(CommandMarkers.COMMAND_MARKER_REPO_START_WRITE)) {
+			if (interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_START_WRITE)) {
 				if (null != interest.answerOriginKind() && (interest.answerOriginKind() & Interest.ANSWER_GENERATED) == 0)
 					return false;	// Request to not answer
 				startReadProcess(interest);
-			} else if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
+			} else if (interest.name().contains(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION)) {
 				if (null != interest.answerOriginKind() && (interest.answerOriginKind() & Interest.ANSWER_GENERATED) == 0)
 					return false;	// Request to not answer
 				nameEnumeratorResponse(interest);

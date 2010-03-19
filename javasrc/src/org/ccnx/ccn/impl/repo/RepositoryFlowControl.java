@@ -29,7 +29,7 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
-import org.ccnx.ccn.profiles.CommandMarkers;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
@@ -185,7 +185,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		
 		// A nonce is used because if we tried to write data with the same name more than once, we could retrieve the
 		// the previous answer from the cache, and the repo would never be informed of our start write.
-		ContentName repoWriteName = new ContentName(name, CommandMarkers.COMMAND_MARKER_REPO_START_WRITE, Interest.generateNonce());
+		ContentName repoWriteName = new ContentName(name, CommandMarker.COMMAND_MARKER_REPO_START_WRITE, Interest.generateNonce());
 		Interest writeInterest = new Interest(repoWriteName);
 
 		synchronized (this) {

@@ -32,7 +32,7 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
-import org.ccnx.ccn.profiles.CommandMarkers;
+import org.ccnx.ccn.profiles.CommandMarker;
 
 
 /**
@@ -410,9 +410,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static byte[] generateNonce() {
 		byte [] nonce = new byte[8];
 		_random.nextBytes(nonce);
-		byte [] wholeNonce = new byte[CommandMarkers.COMMAND_MARKER_NONCE.length + nonce.length];
-		System.arraycopy(CommandMarkers.COMMAND_MARKER_NONCE, 0, wholeNonce, 0, CommandMarkers.COMMAND_MARKER_NONCE.length);
-		System.arraycopy(nonce, 0, wholeNonce, CommandMarkers.COMMAND_MARKER_NONCE.length, nonce.length);	
+		byte [] wholeNonce = new byte[CommandMarker.COMMAND_MARKER_NONCE.length + nonce.length];
+		System.arraycopy(CommandMarker.COMMAND_MARKER_NONCE, 0, wholeNonce, 0, CommandMarker.COMMAND_MARKER_NONCE.length);
+		System.arraycopy(nonce, 0, wholeNonce, CommandMarker.COMMAND_MARKER_NONCE.length, nonce.length);	
 		return wholeNonce;
 	}
 
