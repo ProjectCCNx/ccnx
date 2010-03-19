@@ -17,18 +17,11 @@
 
 package org.ccnx.ccn.impl;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.DatagramChannel;
 import java.nio.channels.NotYetConnectedException;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -80,11 +73,9 @@ public class CCNNetworkManager implements Runnable {
 	public static final String PROP_AGENT_HOST = "ccn.agent.host";
 	public static final String PROP_TAP = "ccn.tap";
 	public static final String ENV_TAP = "CCN_TAP"; // match C library
-	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
 	public static final int DOWN_DELAY = 100;	// Wait period for retry when ccnd is down
 	public static final int SOCKET_TIMEOUT = 1000; // period to wait in ms.
 	public static final int PERIOD = 2000; // period for occasional ops in ms.
-	public static final int HEARTBEAT_PERIOD = 3500;
 	public static final int MAX_PERIOD = PERIOD * 8;
 	public static final String KEEPALIVE_NAME = "/HereIAm";
 	public static final int THREAD_LIFE = 8;	// in seconds
@@ -118,7 +109,7 @@ public class CCNNetworkManager implements Runnable {
 	protected Thread _thread = null; // the main processing thread
 	protected ThreadPoolExecutor _threadpool = null; // pool service for callback threads
 
-	protected NetworkChannel _channel = null; // for use by run thread only!
+	protected CCNNetworkChannel _channel = null; // for use by run thread only!
 	protected boolean _run = true;
 
 	// protected ContentObject _keepalive; 
@@ -166,182 +157,6 @@ public class CCNNetworkManager implements Runnable {
 			}
 		}
 	}
-	
-	/**
-	 *  This guy manages all of the access to the network connection.
-	 *  We do this as a separate class so we can support both TCP and UDP
-	 *  transports.
-	 */
-	private class NetworkChannel {
-		protected String _ncHost;
-		protected int _ncPort;
-		protected NetworkProtocol _ncProto;
-		protected int _ncLocalPort;
-		protected DatagramChannel _ncDGrmChannel = null; // for use by run thread only!
-		protected SocketChannel _ncSockChannel = null;
-		protected Selector _ncSelector = null;
-		protected Boolean _ncConnected = new Boolean(false);
-		protected boolean _ncInitialized = false;
-		protected Timer _ncHeartBeatTimer = null;
-		protected Boolean _ncStarted = false;
-		
-		// Allocate datagram buffer: want to wrap array to ensure backed by
-		// array to permit decoding
-		protected byte[] _buffer = new byte[MAX_PAYLOAD];
-		ByteBuffer _datagram = ByteBuffer.wrap(_buffer);
-
-		private NetworkChannel(String host, int port, NetworkProtocol proto) throws IOException {
-			_ncHost = host;
-			_ncPort = port;
-			_ncProto = proto;
-			_ncSelector = Selector.open();
-		}
-		
-		public void open() throws IOException {
-			if (_ncProto == NetworkProtocol.UDP) {
-				_ccndId = null;
-				try {
-					_ncDGrmChannel = DatagramChannel.open();
-					_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
-					_ncDGrmChannel.configureBlocking(false);
-					ByteBuffer test = ByteBuffer.allocate(1);
-					int ret = _ncDGrmChannel.write(test);
-					if (ret < 1)
-						return;
-					wakeup();
-					_ncDGrmChannel.register(_ncSelector, SelectionKey.OP_READ);
-					_ncLocalPort = _ncDGrmChannel.socket().getLocalPort();
-					if (_ncStarted)
-						_ncHeartBeatTimer.schedule(new HeartBeatTimer(), 0);
-					_ncConnected = true;
-				} catch (IOException ioe) {
-					return;
-				}
-			} else if (_ncProto == NetworkProtocol.TCP) {
-				_ncSockChannel = SocketChannel.open();
-				_ncSockChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
-				_ncSockChannel.configureBlocking(false);
-				_ncSockChannel.register(_ncSelector, SelectionKey.OP_READ);
-				_ncLocalPort = _ncSockChannel.socket().getLocalPort();
-			} else {
-				throw new IOException("NetworkChannel: invalid protocol specified");
-			}
-			String connecting = (_ncInitialized ? "Reconnecting to" : "Contacting");
-			Log.info(connecting + " CCN agent at " + _ncHost + ":" + _ncPort + " on local port " + _ncLocalPort);
-			_ncInitialized = true;
-		}
-		
-		private void close() throws IOException {
-			if (_ncProto == NetworkProtocol.UDP) {
-				_ncConnected = false;
-				wakeup();
-				_ncDGrmChannel.close();
-			} else if (_ncProto == NetworkProtocol.TCP) {
-				_ncSockChannel.close();
-			} else {
-				throw new IOException("NetworkChannel: invalid protocol specified");
-			}
-		}
-		
-		private boolean isConnected() {
-			if (_ncProto == NetworkProtocol.UDP) {
-				return _ncConnected;
-			} else if (_ncProto == NetworkProtocol.TCP) {
-				return (_ncSockChannel.isConnected());
-			} else {
-				Log.severe("NetworkChannel: invalid protocol specified");
-				return false;
-			}
-		}
-		
-		private InputStream getInputStream() throws IOException {
-			_datagram.clear(); // make ready for new read
-			synchronized (this) {
-				read(_datagram); // queue readers and writers
-			}
-			if( Log.isLoggable(Level.FINEST) )
-				Log.finest("Read datagram (" + _datagram.position() + " bytes) for port: " + _localPort);
-			_channel.clearSelectedKeys();
-			_datagram.flip(); // make ready to decode
-			if (null != _tapStreamIn) {
-				byte [] b = new byte[_datagram.limit()];
-				_datagram.get(b);
-				_tapStreamIn.write(b);
-				_datagram.rewind();
-			}
-			ByteArrayInputStream bais = new ByteArrayInputStream(_buffer, _datagram.position(), _datagram.remaining());
-			return bais;
-		}
-		
-		private int read(ByteBuffer dst) throws IOException {
-			Log.finest("NetworkChannel.read() on port " + _ncLocalPort);
-			if (_ncProto == NetworkProtocol.UDP) {
-				return (_ncDGrmChannel.read(dst));
-			} else if (_ncProto == NetworkProtocol.TCP) {
-				return (_ncSockChannel.read(dst));
-			} else {
-				throw new IOException("NetworkChannel: invalid protocol specified");
-			}
-		}
-        
-		private int write(ByteBuffer src) throws IOException {
-			Log.finest("NetworkChannel.write() on port " + _ncLocalPort);
-			if (_ncProto == NetworkProtocol.UDP) {
-				return (_ncDGrmChannel.write(src));
-			} else if (_ncProto == NetworkProtocol.TCP) {
-				return (_ncSockChannel.write(src));
-			} else {
-				throw new IOException("NetworkChannel: invalid protocol specified");
-			}
-		}
-		
-		
-		private void clearSelectedKeys() {
-			_ncSelector.selectedKeys().clear();
-		}
-
-		private int select(long timeout) throws IOException {
-			int selectVal = (_ncSelector.select(timeout));
-			return selectVal;
-		}
-		
-		private Selector wakeup() {
-			return (_ncSelector.wakeup());
-		}
-		
-		private void startup() {
-			if (_ncProto == NetworkProtocol.UDP) {
-				if (! _ncStarted) {
-					_ncHeartBeatTimer = new Timer(true);
-					_ncHeartBeatTimer.schedule(new HeartBeatTimer(), 0L);
-					_ncStarted = true;
-				}
-			}
-		}
-				
-		/**
-		 * Do scheduled writes of heartbeats on UDP connections.
-		 */
-		private class HeartBeatTimer extends TimerTask {
-			public void run() {
-				if (_ncConnected) {
-					try {
-						ByteBuffer heartbeat = ByteBuffer.allocate(1);
-						_ncDGrmChannel.write(heartbeat);
-						_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
-					} catch (IOException io) {
-						// We do not see errors on send typically even if 
-						// agent is gone, so log each but do not track
-						Log.warning("Error sending heartbeat packet: {0}", io.getMessage());
-						try {
-							close();
-						} catch (IOException e) {}
-					}
-				}
-			} /* run() */	
-		} /* private class HeartBeatTimer extends TimerTask */
-	} /* NetworkChannel */
-	
 	
 	/**
 	 * Do scheduled writes of heartbeats and interest refreshes
@@ -443,6 +258,7 @@ public class CCNNetworkManager implements Runnable {
 				// We have lost our connection to ccnd. See if we can reconnect
 				useMe = 1000;
 				try {
+					_ccndId = null;
 					_channel.open();
 					if (_channel.isConnected()) {
 						_faceID = null;
@@ -906,7 +722,8 @@ public class CCNNetworkManager implements Runnable {
 			setTap(unique_tapname);
 		}
 		
-		_channel = new NetworkChannel(_host, _port, _protocol);
+		_channel = new CCNNetworkChannel(_host, _port, _protocol);
+		_ccndId = null;
 		_channel.open();
 		
 		// Create callback threadpool and main processing thread
@@ -1357,7 +1174,7 @@ public class CCNNetworkManager implements Runnable {
 					try {
 						if (_channel.select(SOCKET_TIMEOUT) != 0) {
 							packet.clear();
-							packet.decode(_channel.getInputStream());
+							packet.decode(_channel.getInputStream(_tapStreamIn));
 						} else {
 							// This was a timeout or wakeup, no data
 							packet.clear();
