@@ -663,7 +663,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						} else {
 							elapsed2 = System.currentTimeMillis() - expressed.userTime;
 							Log.info("PIPELINE: elapsed2 time {0}", elapsed2);
-							if(elapsed2 > avgResponseTime*2 * attempt && avgResponseTime > -1) {
+							if(elapsed2 > avgResponseTime * 2 && avgResponseTime > -1) {
 								Log.info("PIPELINE: expressing the next interest! {0}", i);
 								i.userTime = System.currentTimeMillis();
 								_handle.expressInterest(i, this);
@@ -671,6 +671,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 								_handle.cancelInterest(toDelete, this);
 								_sentInterests.remove(toDelete);
+								
+								adjustAvgResponseTimeForHole();
 								
 								if (Log.isLoggable(Level.INFO)) {
 									Log.info("PIPELINE: expressed: {0} deleted: {1}", i, toDelete);
@@ -708,8 +710,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						_sentInterests.add(i);
 					// remove the first instance after we express and insert the new
 					// interest
-					if (index != -1)
+					if (index != -1) {
 						_handle.cancelInterest(_sentInterests.remove(index+1), this);
+						adjustAvgResponseTimeForHole();
+					}
 					
 					Log.info("PIPELINE: requested segment {0} to fill hole: {1} with Interest: {2}", hole, i.name(), i);
 					return;
@@ -720,6 +724,12 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			//}
 		} catch (IOException e) {
 			Log.warning("failed to express interest for CCNAbstractInputStream pipeline");
+		}
+	}
+	
+	private void adjustAvgResponseTimeForHole() {
+		synchronized(incoming) {
+			avgResponseTime = 0.9 * avgResponseTime + 0.1 * (2.0*avgResponseTime);
 		}
 	}
 	
@@ -984,8 +994,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				avgResponseTime = starttime - interest.userTime;
 			} else {
 				//do not include hole filling responses, they will be extra fast
-				if (interest.exclude()==null)
-					avgResponseTime = 0.9 * avgResponseTime + 0.1 * (starttime - interest.userTime);
+				//if (interest.exclude()==null)
+				avgResponseTime = 0.9 * avgResponseTime + 0.1 * (starttime - interest.userTime);
 			}
 			
 			interest.userTime = -1;
