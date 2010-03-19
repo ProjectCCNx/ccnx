@@ -3634,6 +3634,27 @@ process_internal_client_buffer(struct ccnd_handle *h)
     }
 }
 
+static int
+handle_send_error(struct ccnd_handle *h, int errnum,
+                  struct face *face, unsigned char *data, size_t size)
+{
+    int res = -1;
+    if (errnum == EAGAIN)
+        res = 0;
+    else if (errnum == EPIPE) {
+        face->flags |= CCN_FACE_NOSEND;
+        face->outbufindex = 0;
+        ccn_charbuf_destroy(&face->outbuf);
+    }
+    else {
+        ccnd_msg(h, "send to face %u failed: %s (errno = %d)",
+                 face->faceid, strerror(errnum), errnum);
+        if (errnum == EISCONN)
+            res = 0;
+    }
+    return(res);
+}
+
 static void
 do_write(struct ccnd_handle *h,
          struct face *face, unsigned char *data, size_t size)
@@ -3658,22 +3679,9 @@ do_write(struct ccnd_handle *h,
     if (res == size)
         return;
     if (res == -1) {
-        if (errno == EAGAIN)
-            res = 0;
-        else if (errno == EPIPE) {
-            face->flags |= CCN_FACE_NOSEND;
-            face->outbufindex = 0;
-            ccn_charbuf_destroy(&face->outbuf);
+        res = handle_send_error(h, errno, face, data, size);
+        if (res == -1)
             return;
-        }
-        else {
-            ccnd_msg(h, "send to face %u failed: %s (errno = %d)",
-                     face->faceid, strerror(errno), errno);
-            if (errno == EISCONN)
-                res = 0;
-            else
-                return;
-        }
     }
     if ((face->flags & CCN_FACE_DGRAM) != 0) {
         ccnd_msg(h, "sendto short");
