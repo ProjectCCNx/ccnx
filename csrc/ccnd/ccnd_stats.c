@@ -22,6 +22,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -179,10 +180,9 @@ collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
     ccn_charbuf_putf(b, "</ul>");
 }
 
-static char *
+struct ccn_charbuf *
 collect_stats_html(struct ccnd_handle *h)
 {
-    char *ans;
     struct ccnd_stats stats = {0};
     struct ccn_charbuf *b = ccn_charbuf_create();
     int pid;
@@ -237,10 +237,8 @@ collect_stats_html(struct ccnd_handle *h)
     collect_forwarding_html(h, b);
     ccn_charbuf_putf(b,
         "</body>"
-        "</html>");
-    ans = strdup((char *)b->buf);
-    ccn_charbuf_destroy(&b);
-    return(ans);
+        "</html>" NL);
+    return(b);
 }
 
 static const char *resp404 =
@@ -254,37 +252,37 @@ static const char *resp405 =
 int
 ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
 {
-    int res;
     int hdrlen;
-    char *response = NULL;
+    struct ccn_charbuf *response = NULL;
     struct linger linger = { .l_onoff = 1, .l_linger = 1 };
-    int fd = face->send_fd;
     char buf[128];
     
     if (face->inbuf->length < 6)
         return(-1);
-    if ((face->flags & CCN_FACE_LOCAL) != 0)
+
+    if ((face->flags & CCN_FACE_NOSEND) != 0) {
+        ccnd_destroy_face(h, face->faceid);
         return(-1);
-    response = collect_stats_html(h);
+    }
     /* Set linger to prevent quickly resetting the connection on close.*/
-    res = setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+    // XXX - not clear this is needed any more, since we don't close quickly.
+    setsockopt(face->send_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
     if (0 == memcmp(face->inbuf->buf, "GET / ", 6)) {
-        res = strlen(response);
+        response = collect_stats_html(h);
         hdrlen = snprintf(buf, sizeof(buf),
                           "HTTP/1.1 200 OK" CRLF
                           "Content-Type: text/html; charset=utf-8" CRLF
                           "Connection: close" CRLF
-                          "Content-Length: %d" CRLF CRLF,
-                          res);
-        (void)write(fd, buf, hdrlen);
-        /* We don't handle short writes, but we don't want to block, either. */
-        (void)write(fd, response, res);
+                          "Content-Length: %jd" CRLF CRLF,
+                          (intmax_t)response->length);
+        ccnd_send(h, face, buf, hdrlen);
+        ccnd_send(h, face, response->buf, response->length);
     }
     else if (0 == memcmp(buf, "GET ", 4))
-        (void)write(fd, resp404, strlen(resp404));
+        ccnd_send(h, face, resp404, strlen(resp404));
     else
-        (void)write(fd, resp405, strlen(resp405));
-    shutdown_client_fd(h, fd);
-    free(response);
+        ccnd_send(h, face, resp405, strlen(resp405));
+    face->flags |= CCN_FACE_NOSEND;
+    ccn_charbuf_destroy(&response);
     return(0);
 }

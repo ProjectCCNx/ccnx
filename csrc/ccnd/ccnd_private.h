@@ -371,8 +371,9 @@ int ccnd_reg_uri(struct ccnd_handle *h,
 
 struct face *ccnd_face_from_faceid(struct ccnd_handle *, unsigned);
 void ccnd_face_status_change(struct ccnd_handle *, unsigned);
+int ccnd_destroy_face(struct ccnd_handle *h, unsigned faceid);
 void ccnd_send(struct ccnd_handle *h, struct face *face,
-               unsigned char *data, size_t size);
+               const void *data, size_t size);
 
 /* Consider a separate header for these */
 int ccnd_stats_handle_http_connection(struct ccnd_handle *, struct face *);
@@ -383,7 +384,6 @@ void ccnd_debug_ccnb(struct ccnd_handle *h,
                      struct face *face,
                      const unsigned char *ccnb,
                      size_t ccnb_size);
-void shutdown_client_fd(struct ccnd_handle *h, int fd);
 
 struct ccnd_handle *ccnd_create(const char *, ccnd_logger, void *);
 void ccnd_run(struct ccnd_handle *h);

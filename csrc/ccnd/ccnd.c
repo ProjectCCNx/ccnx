@@ -964,7 +964,7 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
     return(face);
 }
 
-void
+static void
 shutdown_client_fd(struct ccnd_handle *h, int fd)
 {
     struct hashtb_enumerator ee;
@@ -1484,7 +1484,7 @@ check_dgram_faces(struct ccnd_handle *h)
  * @returns 0 for success, -1 for failure.
  */
 int
-destroy_face(struct ccnd_handle *h, unsigned faceid)
+ccnd_destroy_face(struct ccnd_handle *h, unsigned faceid)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -2170,7 +2170,7 @@ ccnd_req_destroyface(struct ccnd_handle *h, const unsigned char *msg, size_t siz
     reqface = face_from_faceid(h, h->interest_faceid);
     if (reqface == NULL) { at = __LINE__; goto Finish; }
     if ((reqface->flags & CCN_FACE_GG) == 0) { at = __LINE__; goto Finish; }
-    res = destroy_face(h, face_instance->faceid);
+    res = ccnd_destroy_face(h, face_instance->faceid);
     if (res < 0) { at = __LINE__; goto Finish; }
     result = ccn_charbuf_create();
     face_instance->action = NULL;
@@ -3638,7 +3638,7 @@ process_internal_client_buffer(struct ccnd_handle *h)
  */
 static int
 handle_send_error(struct ccnd_handle *h, int errnum, struct face *face,
-                  unsigned char *data, size_t size)
+                  const void *data, size_t size)
 {
     int res = -1;
     if (errnum == EAGAIN) {
@@ -3667,7 +3667,7 @@ handle_send_error(struct ccnd_handle *h, int errnum, struct face *face,
 void
 ccnd_send(struct ccnd_handle *h,
           struct face *face,
-          unsigned char *data, size_t size)
+          const void *data, size_t size)
 {
     ssize_t res;
     if ((face->flags & CCN_FACE_NOSEND) != 0)
@@ -3678,7 +3678,7 @@ ccnd_send(struct ccnd_handle *h,
         return;
     }
     if (face == h->face0) {
-        ccn_dispatch_message(h->internal_client, data, size);
+        ccn_dispatch_message(h->internal_client, (void *)data, size);
         process_internal_client_buffer(h);
         return;
     }
@@ -3703,7 +3703,8 @@ ccnd_send(struct ccnd_handle *h,
         ccnd_msg(h, "do_write: %s", strerror(errno));
         return;
     }
-    ccn_charbuf_append(face->outbuf, data + res, size - res);
+    ccn_charbuf_append(face->outbuf,
+                       ((const unsigned char *)data) + res, size - res);
 }
 
 static void
