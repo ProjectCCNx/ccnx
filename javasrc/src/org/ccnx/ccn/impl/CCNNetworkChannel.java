@@ -56,21 +56,29 @@ public class CCNNetworkChannel {
 	protected Timer _ncHeartBeatTimer = null;
 	protected Boolean _ncStarted = false;
 	protected TCPInputStream _ncStream = null;	//TCP only
+	protected FileOutputStream _ncTapStreamIn = null;
 	
 	// Allocate datagram buffer: want to wrap array to ensure backed by
 	// array to permit decoding
 	ByteBuffer _datagram = ByteBuffer.allocateDirect(MAX_PAYLOAD);
 
-	public CCNNetworkChannel(String host, int port, NetworkProtocol proto) throws IOException {
+	public CCNNetworkChannel(String host, int port, NetworkProtocol proto, FileOutputStream tapStreamIn) throws IOException {
 		_ncHost = host;
 		_ncPort = port;
 		_ncProto = proto;
+		_ncTapStreamIn = tapStreamIn;
 		_ncSelector = Selector.open();
 		if (_ncProto == NetworkProtocol.TCP) {
 			_ncStream = new TCPInputStream(this);
 		}
 	}
 	
+	/**
+	 * Open the channel to ccnd depending on the protocol, connect on the ccnd port and
+	 * set up the selector
+	 * 
+	 * @throws IOException
+	 */
 	public void open() throws IOException {
 		if (_ncProto == NetworkProtocol.UDP) {
 			try {
@@ -104,6 +112,10 @@ public class CCNNetworkChannel {
 		_ncInitialized = true;
 	}
 	
+	/**
+	 * Close the channel depending on the protocol
+	 * @throws IOException
+	 */
 	public void close() throws IOException {
 		if (_ncProto == NetworkProtocol.UDP) {
 			_ncConnected = false;
@@ -116,6 +128,11 @@ public class CCNNetworkChannel {
 		}
 	}
 	
+	/**
+	 * Check whether the channel is currently connected.  This is really a test
+	 * to see whether ccnd is running. If it isn't the channel is not connected.
+	 * @return true if connected
+	 */
 	public boolean isConnected() {
 		if (_ncProto == NetworkProtocol.UDP) {
 			return _ncConnected;
@@ -127,7 +144,16 @@ public class CCNNetworkChannel {
 		}
 	}
 	
-	public InputStream getInputStream(FileOutputStream tapStreamIn) throws IOException {
+	/**
+	 * Return an InputStream to read data from the ccnd channel depending on the protocol.
+	 * The stream is directly passed to the decoder. For UDP we just convert the data into
+	 * a ByteArrayInputStream which is what we always have done. For TCP, we may need to do
+	 * multiple reads from the channel so we handle that by creating a custom input stream.
+	 * 
+	 * @return
+	 * @throws IOException
+	 */
+	public InputStream getInputStream() throws IOException {
 		clearSelectedKeys();
 		_datagram.clear(); // make ready for new read
 		if (_ncProto == NetworkProtocol.UDP) {
@@ -137,10 +163,10 @@ public class CCNNetworkChannel {
 			if( Log.isLoggable(Level.FINEST) )
 				Log.finest("Read datagram (" + _datagram.position() + " bytes) for port: " + _ncPort);
 			_datagram.flip(); // make ready to decode
-			if (null != tapStreamIn) {
+			if (null != _ncTapStreamIn) {
 				byte [] b = new byte[_datagram.limit()];
 				_datagram.get(b);
-				tapStreamIn.write(b);
+				_ncTapStreamIn.write(b);
 				_datagram.rewind();
 			}
 			byte[] array = _datagram.array();
@@ -163,18 +189,13 @@ public class CCNNetworkChannel {
 			return null;
 		}
 	}
-	
-	public int read(ByteBuffer dst) throws IOException {
-		Log.finest("NetworkChannel.read() on port " + _ncLocalPort);
-		if (_ncProto == NetworkProtocol.UDP) {
-			return (_ncDGrmChannel.read(dst));
-		} else if (_ncProto == NetworkProtocol.TCP) {
-			return (_ncSockChannel.read(dst));
-		} else {
-			throw new IOException("NetworkChannel: invalid protocol specified");
-		}
-	}
     
+	/**
+	 * Write to ccnd using methods based on the protocol type
+	 * @param src - ByteBuffer to write
+	 * @return - number of bytes written
+	 * @throws IOException
+	 */
 	public int write(ByteBuffer src) throws IOException {
 		Log.finest("NetworkChannel.write() on port " + _ncLocalPort);
 		if (_ncProto == NetworkProtocol.UDP) {
@@ -186,21 +207,34 @@ public class CCNNetworkChannel {
 		}
 	}
 	
-	
 	private void clearSelectedKeys() {
 		_ncSelector.selectedKeys().clear();
 	}
 
+	/**
+	 * Perform a select based on incoming ccnd data
+	 * @param timeout in ms
+	 * @return number of channels selected - in practice this will always be 0 or 1
+	 * @throws IOException
+	 */
 	public int select(long timeout) throws IOException {
 		int selectVal = (_ncSelector.select(timeout));
 		return selectVal;
 	}
 	
+	/**
+	 * Force wakeup from a select
+	 * @return the selector
+	 */
 	public Selector wakeup() {
 		return (_ncSelector.wakeup());
 	}
 	
-	public void startup() {
+	/**
+	 * Initialize the channel at the point when we are actually ready to create faces
+	 * with ccnd
+	 */
+	public void init() {
 		if (_ncProto == NetworkProtocol.UDP) {
 			if (! _ncStarted) {
 				_ncHeartBeatTimer = new Timer(true);
@@ -210,6 +244,11 @@ public class CCNNetworkChannel {
 		}
 	}
 	
+	/**
+	 * Create an input stream to allow multiple reads from the TCP channel
+	 * when necessary. The algorithm tries to use only the single current buffer called _datagram
+	 * which is also used to implement the UDP algorithm.
+	 */
 	private class TCPInputStream extends InputStream {
 		private CCNNetworkChannel _channel;
 		private int _mark = 0;
@@ -239,25 +278,47 @@ public class CCNNetworkChannel {
 			}
 		}
 		
+		@Override
 		public boolean markSupported() {
 			return true;
 		}
 		
+		@Override
 		public void mark(int readlimit) {
 			_readLimit = readlimit;
 			_mark = _datagram.position();
 			_datagram.mark();
 		}
 		
+		@Override
 		public void reset() throws IOException {
 			_datagram.reset();
 		}
 		
+		/**
+		 * Refill the buffer. We don't reset the start of it unless necessary (i.e. we have
+		 * reached the end of the buffer). If the start is reset and a mark has been set within
+		 * "readLimit" bytes of the end, we need to copy the end of the previous buffer out
+		 * to the start so that a reset is possible.
+		 * 
+		 * @return
+		 * @throws IOException
+		 */
 		private int fill() throws IOException {
 			int ret;
 			int position = _datagram.position();
-			if (position > _mark + _readLimit || position >= _datagram.capacity()) {
+			if (position >= _datagram.capacity()) {
+				byte[] b = new byte[position - _mark];
+				if (_mark + _readLimit > position && _mark < position) {
+					_datagram.reset();
+					_datagram.get(b);
+				}
 				_datagram.clear();
+				if (_mark + _readLimit > position && _mark < position) {
+					_datagram.put(b);
+					_datagram.flip();
+					_datagram.mark();
+				}
 				_mark = 0;
 				_readLimit = 0;
 				position = 0;
@@ -267,6 +328,13 @@ public class CCNNetworkChannel {
 			}
 			_datagram.position(position);
 			_datagram.limit(position + ret);
+			if (null != _ncTapStreamIn) {
+				byte [] b = new byte[ret];
+				_datagram.get(b);
+				_ncTapStreamIn.write(b);
+				_datagram.position(position);
+				_datagram.limit(position + ret);
+			}
 			return ret;
 		}
 	}

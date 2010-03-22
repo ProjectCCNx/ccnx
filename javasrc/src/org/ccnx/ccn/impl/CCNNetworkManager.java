@@ -284,7 +284,7 @@ public class CCNNetworkManager implements Runnable {
 	private void setupTimers() {
 		if (!_timersSetup) {
 			_timersSetup = true;
-			_channel.startup();		// Starts UDP heartbeat (if using UDP)
+			_channel.init();		// Starts UDP heartbeat (if using UDP)
 			
 			// Create timer for periodic behavior
 			_periodicTimer = new Timer(true);
@@ -723,7 +723,7 @@ public class CCNNetworkManager implements Runnable {
 			setTap(unique_tapname);
 		}
 		
-		_channel = new CCNNetworkChannel(_host, _port, _protocol);
+		_channel = new CCNNetworkChannel(_host, _port, _protocol, _tapStreamIn);
 		_ccndId = null;
 		_channel.open();
 		
@@ -1175,7 +1175,7 @@ public class CCNNetworkManager implements Runnable {
 					try {
 						if (_channel.select(SOCKET_TIMEOUT) != 0) {
 							packet.clear();
-							InputStream stream = _channel.getInputStream(_tapStreamIn);
+							InputStream stream = _channel.getInputStream();
 							packet.decode(stream);
 						} else {
 							// This was a timeout or wakeup, no data
