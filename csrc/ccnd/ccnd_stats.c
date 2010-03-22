@@ -5,7 +5,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -22,7 +22,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <netdb.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,23 +31,20 @@
 #include <sys/utsname.h>
 #include <time.h>
 #include <unistd.h>
-
-#if defined(NEED_GETADDRINFO_COMPAT)
-    #include "getaddrinfo.h"
-#endif
-
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
 #include <ccn/schedule.h>
+#include <ccn/sockaddrutil.h>
 #include <ccn/hashtb.h>
 #include <ccn/uri.h>
 
 #include "ccnd_private.h"
 
 #define CRLF "\r\n"
+#define NL   "\n"
 
 struct ccnd_stats {
     long total_interest_counts;
@@ -99,52 +96,45 @@ static void
 collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
 {
     int i;
-    char node[104];
-    char port[8];
-    int res;
-    int niflags = 0;
+    struct ccn_charbuf *nodebuf;
+    int port;
     
-    ccn_charbuf_putf(b, "<h4>Faces</h4>");
+    nodebuf = ccn_charbuf_create();
+    ccn_charbuf_putf(b, "<h4>Faces</h4>" NL);
     ccn_charbuf_putf(b, "<ul>");
     for (i = 0; i < h->face_limit; i++) {
         struct face *face = h->faces_by_faceid[i];
         if (face != NULL && (face->flags & CCN_FACE_UNDECIDED) == 0) {
-            ccn_charbuf_putf(b, "<li>");
-            ccn_charbuf_putf(b, " <b>face:</b> %u <b>flags:</b> 0x%x",
+            ccn_charbuf_putf(b, " <li>");
+            ccn_charbuf_putf(b, "<b>face:</b> %u <b>flags:</b> 0x%x",
                              face->faceid, face->flags);
             ccn_charbuf_putf(b, " <b>pending:</b> %d",
                              face->pending_interests);
             if (face->recvcount != 0)
                 ccn_charbuf_putf(b, " <b>activity:</b> %d",
                                  face->recvcount);
-            if (face->addr != NULL) {
-                niflags = NI_NUMERICHOST | NI_NUMERICSERV;
-                if ((face->flags & CCN_FACE_DGRAM) != 0)
-                    niflags |= NI_DGRAM;
-                res = getnameinfo(face->addr, face->addrlen,
-                    node, sizeof(node),
-                    port, sizeof(port),
-                    niflags
-                    );
-                if (res == 0) {
-                    int chk = CCN_FACE_MCAST | CCN_FACE_INET | CCN_FACE_UNDECIDED | CCN_FACE_NOSEND;
-                    int want = CCN_FACE_INET;
-                    if ((face->flags & chk) == want)
-                        ccn_charbuf_putf(b,
-                                         " <b>remote:</b> "
-                                         "<a href='http://%s:%s/'>"
-                                         "[%s]:%s</a>",
-                                         node, CCN_DEFAULT_UNICAST_PORT,
-                                         node, port);
-                    else
-                        ccn_charbuf_putf(b, " <b>remote:</b> [%s]:%s",
-                                         node, port);
-                }
+            nodebuf->length = 0;
+            port = ccn_charbuf_append_sockaddr(nodebuf, face->addr);
+            if (port > 0) {
+                const char *node = ccn_charbuf_as_string(nodebuf);
+                int chk = CCN_FACE_MCAST | CCN_FACE_UNDECIDED |
+                          CCN_FACE_NOSEND | CCN_FACE_GG;
+                if ((face->flags & chk) == 0)
+                    ccn_charbuf_putf(b,
+                                     " <b>remote:</b> "
+                                     "<a href='http://%s:%s/'>"
+                                     "%s:%d</a>",
+                                     node, CCN_DEFAULT_UNICAST_PORT,
+                                     node, port);
+                else
+                    ccn_charbuf_putf(b, " <b>remote:</b> %s:%d",
+                                     node, port);
             }
-            ccn_charbuf_putf(b, "</li>");
+            ccn_charbuf_putf(b, "</li>" NL);
         }
     }
     ccn_charbuf_putf(b, "</ul>");
+    ccn_charbuf_destroy(&nodebuf);
 }
 
 static void
@@ -156,7 +146,7 @@ collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
     int res;
     struct ccn_charbuf *name = ccn_charbuf_create();
     
-    ccn_charbuf_putf(b, "<h4>Forwarding</h4>");
+    ccn_charbuf_putf(b, "<h4>Forwarding</h4>" NL);
     ccn_charbuf_putf(b, "<ul>");
     hashtb_start(h->nameprefix_tab, e);
     for (; e->data != NULL; hashtb_next(e)) {
@@ -166,22 +156,22 @@ collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
         if (res < 0)
             abort();
         if (0) {
-            ccn_charbuf_putf(b, "<li>");
+            ccn_charbuf_putf(b, " <li>");
             ccn_uri_append(b, name->buf, name->length, 1);
-            ccn_charbuf_putf(b, "</li>");
+            ccn_charbuf_putf(b, "</li>" NL);
         }
         for (f = ipe->forwarding; f != NULL; f = f->next) {
             if ((f->flags & CCN_FORW_ACTIVE) != 0) {
                 ccn_name_init(name);
                 res = ccn_name_append_components(name, e->key, 0, e->keysize);
-                ccn_charbuf_putf(b, "<li>");
+                ccn_charbuf_putf(b, " <li>");
                 ccn_uri_append(b, name->buf, name->length, 1);
                 ccn_charbuf_putf(b,
                                  " <b>face:</b> %u"
                                  " <b>flags:</b> 0x%x"
                                  " <b>expires:</b> %d",
                                  f->faceid, f->flags, f->expires);
-                ccn_charbuf_putf(b, "</li>");
+                ccn_charbuf_putf(b, "</li>" NL);
             }
         }
     }
@@ -190,10 +180,9 @@ collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
     ccn_charbuf_putf(b, "</ul>");
 }
 
-static char *
+struct ccn_charbuf *
 collect_stats_html(struct ccnd_handle *h)
 {
-    char *ans;
     struct ccnd_stats stats = {0};
     struct ccn_charbuf *b = ccn_charbuf_create();
     int pid;
@@ -215,15 +204,15 @@ collect_stats_html(struct ccnd_handle *h)
         "<style type='text/css'>"
         " p.header {color: white; background-color: blue} "
         "</style>"
-        "</head>"
+        "</head>" NL
         "<body>"
-        "<p class='header' width='100%%'>%s ccnd[%d] local port %s</p>"
+        "<p class='header' width='100%%'>%s ccnd[%d] local port %s</p>" NL
         "<div><b>Content items:</b> %llu accessioned,"
-        " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>"
+        " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
         "<div><b>Interests:</b> %d names,"
-        " %ld pending, %ld propagating, %ld noted</div>"
+        " %ld pending, %ld propagating, %ld noted</div>" NL
         "<div><b>Interest totals:</b> %lu accepted,"
-        " %lu dropped, %lu sent, %lu stuffed</div>",
+        " %lu dropped, %lu sent, %lu stuffed</div>" NL,
         un.nodename,
         pid,
         un.nodename,
@@ -242,16 +231,14 @@ collect_stats_html(struct ccnd_handle *h)
         h->interests_sent, h->interests_stuffed);
     if (0)
         ccn_charbuf_putf(b,
-                         "<div><b>Active faces and listeners:</b> %d</div>",
+                         "<div><b>Active faces and listeners:</b> %d</div>" NL,
                          hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
     collect_faces_html(h, b);
     collect_forwarding_html(h, b);
     ccn_charbuf_putf(b,
         "</body>"
-        "</html>");
-    ans = strdup((char *)b->buf);
-    ccn_charbuf_destroy(&b);
-    return(ans);
+        "</html>" NL);
+    return(b);
 }
 
 static const char *resp404 =
@@ -265,37 +252,37 @@ static const char *resp405 =
 int
 ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
 {
-    int res;
     int hdrlen;
-    char *response = NULL;
+    struct ccn_charbuf *response = NULL;
     struct linger linger = { .l_onoff = 1, .l_linger = 1 };
-    int fd = face->send_fd;
     char buf[128];
     
     if (face->inbuf->length < 6)
         return(-1);
-    if ((face->flags & CCN_FACE_LOCAL) != 0)
+
+    if ((face->flags & CCN_FACE_NOSEND) != 0) {
+        ccnd_destroy_face(h, face->faceid);
         return(-1);
-    response = collect_stats_html(h);
+    }
     /* Set linger to prevent quickly resetting the connection on close.*/
-    res = setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+    // XXX - not clear this is needed any more, since we don't close quickly.
+    setsockopt(face->send_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
     if (0 == memcmp(face->inbuf->buf, "GET / ", 6)) {
-        res = strlen(response);
+        response = collect_stats_html(h);
         hdrlen = snprintf(buf, sizeof(buf),
                           "HTTP/1.1 200 OK" CRLF
                           "Content-Type: text/html; charset=utf-8" CRLF
                           "Connection: close" CRLF
-                          "Content-Length: %d" CRLF CRLF,
-                          res);
-        (void)write(fd, buf, hdrlen);
-        /* We don't handle short writes, but we don't want to block, either. */
-        (void)write(fd, response, res);
+                          "Content-Length: %jd" CRLF CRLF,
+                          (intmax_t)response->length);
+        ccnd_send(h, face, buf, hdrlen);
+        ccnd_send(h, face, response->buf, response->length);
     }
     else if (0 == memcmp(buf, "GET ", 4))
-        (void)write(fd, resp404, strlen(resp404));
+        ccnd_send(h, face, resp404, strlen(resp404));
     else
-        (void)write(fd, resp405, strlen(resp405));
-    shutdown_client_fd(h, fd);
-    free(response);
+        ccnd_send(h, face, resp405, strlen(resp405));
+    face->flags |= CCN_FACE_NOSEND;
+    ccn_charbuf_destroy(&response);
     return(0);
 }

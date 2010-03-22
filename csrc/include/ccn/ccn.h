@@ -5,7 +5,7 @@
  *
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 2002
+#define CCN_API_VERSION 2003
 
 /**
  * Global interest lifetime.
@@ -228,6 +228,13 @@ enum ccn_marker {
  */
 int ccn_name_append_numeric(struct ccn_charbuf *c,
                             enum ccn_marker tag, uintmax_t value);
+
+/*
+ * ccn_name_append_nonce: add nonce Component to ccnb-encoded Name
+ * Uses %C1.N.n marker.
+ * see doc/technical/NameConventions.html
+ */
+int ccn_name_append_nonce(struct ccn_charbuf *c);
 
 /*
  * ccn_name_split: find Component boundaries in a ccnb-encoded Name

@@ -902,7 +902,8 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PublicKeyObject publishKeyToRepository(ContentName keyName,
-			PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException,
+			PublisherPublicKeyDigest keyToPublish,
+			long timeToWaitForPreexisting) throws InvalidKeyException,
 			IOException {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
@@ -922,7 +923,9 @@ public class BasicKeyManager extends KeyManager {
 				keyName = locator.name().name();
 			}
 		}
-		return KeyManager.publishKeyToRepository(keyName, theKey, getDefaultKeyID(), getDefaultKeyLocator(), handle());
+		return KeyManager.publishKeyToRepository(keyName, theKey, getDefaultKeyID(), 
+												 getDefaultKeyLocator(), timeToWaitForPreexisting, 
+												 false, handle());
 	}
 
 	@Override

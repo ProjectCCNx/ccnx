@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -23,6 +23,7 @@
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
+#include <ccn/random.h>
 
 /**
  * Reset charbuf to represent an empty Name in binary format.
@@ -75,7 +76,7 @@ ccn_name_append(struct ccn_charbuf *c, const void *component, size_t n)
 int 
 ccn_name_append_str(struct ccn_charbuf *c, const char *s)
 {
-    return (ccn_name_append(c, s, strlen(s)));
+    return(ccn_name_append(c, s, strlen(s)));
 }
 
 /**
@@ -99,7 +100,25 @@ ccn_name_append_numeric(struct ccn_charbuf *c,
         return(-1);
     if (marker >= 0)
         b[--i] = marker;
-    return (ccn_name_append(c, b + i, sizeof(b) - i));
+    return(ccn_name_append(c, b + i, sizeof(b) - i));
+}
+
+/**
+ * Add nonce Component to ccnb-encoded Name
+ *
+ * Uses %C1.N.n marker.
+ * @returns 0, or -1 for error
+ * see doc/technical/NameConventions.html
+ */
+int
+ccn_name_append_nonce(struct ccn_charbuf *c)
+{
+    const unsigned char pre[5] = { CCN_MARKER_CONTROL, '.', 'N', '.', 'n' };
+    unsigned char b[15];
+    
+    memcpy(b, pre, sizeof(pre));
+    ccn_random_bytes(b + sizeof(pre), sizeof(b) - sizeof(pre));
+    return(ccn_name_append(c, b, sizeof(b)));
 }
 
 /**

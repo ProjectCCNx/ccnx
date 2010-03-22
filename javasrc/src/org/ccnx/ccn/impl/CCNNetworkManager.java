@@ -217,7 +217,7 @@ public class CCNNetworkManager implements Runnable {
 			if (_usePrefixReg) {
 				synchronized (_registeredPrefixes) {
 					if( Log.isLoggable(Level.FINE) )
-						Log.fine("Refresh registration.  size: " + _registeredPrefixes.size() + " sizeNames: " + _myFilters.sizeNames());
+						Log.fine("Refresh registration.  size: " + _registeredPrefixes.size());
 					for (ContentName prefix : _registeredPrefixes.keySet()) {
 						RegisteredPrefix rp = _registeredPrefixes.get(prefix);
 						if (null != rp._forwarding && rp._lifetime != -1 && rp._nextRefresh != -1) {
@@ -268,7 +268,8 @@ public class CCNNetworkManager implements Runnable {
 			} else {
 				useMe = checkPrefixDelay;
 			}
-			_periodicTimer.schedule(new PeriodicWriter(), useMe);
+			if (_run)
+				_periodicTimer.schedule(new PeriodicWriter(), useMe);
 		} /* run */
 	} /* private class PeriodicWriter extends TimerTask */
 	
@@ -1275,7 +1276,7 @@ public class CCNNetworkManager implements Runnable {
 			try {
 				Interest interested = new Interest(new ContentName(CCNDaemonProfile.ping, Interest.generateNonce()));
 				interested.scope(1);
-				ContentObject contented = mgr.get(interested, 500);
+				ContentObject contented = mgr.get(interested, SystemConfiguration.PING_TIMEOUT);
 				if (null == contented) {
 					String msg = ("fetchCCNDId: Fetch of content from ping uri failed due to timeout.");
 					Log.severe(msg);

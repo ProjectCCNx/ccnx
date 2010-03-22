@@ -74,8 +74,15 @@ public class SystemConfiguration {
 	 * Default is 1000ms
 	 */
 	protected static final String CHILD_WAIT_INTERVAL_PROPERTY = "org.ccnx.EnumList.WaitInterval";
-	public static int CHILD_WAIT_INTERVAL = 10000;
+	public final static int CHILD_WAIT_INTERVAL_DEFAULT = 10000;
+	public static int CHILD_WAIT_INTERVAL = CHILD_WAIT_INTERVAL_DEFAULT;
 	
+	/**
+	 * How long to wait for a ping timeout in CCNNetworkManager
+	 */
+	protected static final String PING_TIMEOUT_PROPERTY = "org.ccnx.ping.timeout";
+	public final static int PING_TIMEOUT_DEFAULT = 1000;
+	public static int PING_TIMEOUT = PING_TIMEOUT_DEFAULT;
 	
 	/**
 	 * Pipeline size for pipeline in CCNAbstractInputStream
@@ -130,7 +137,9 @@ public class SystemConfiguration {
 	 * Timeout used for communication with local 'ccnd' for control operations.
 	 * An example is Face Creation and Prefix Registration.
 	 */
-	public static final int CCND_OP_TIMEOUT = 1000;
+	protected static final String CCND_OP_TIMEOUT_PROPERTY = "org.ccnx.ccnop.timeout";
+	public final static int CCND_OP_TIMEOUT_DEFAULT = 1000;
+	public static int CCND_OP_TIMEOUT = CCND_OP_TIMEOUT_DEFAULT;
 	
 	/**
 	 * Settable system default timeout.
@@ -228,14 +237,13 @@ public class SystemConfiguration {
 	static {
 		// Allow override of default enumerated name list child wait timeout.
 		try {
-			CHILD_WAIT_INTERVAL = Integer.parseInt(System.getProperty(CHILD_WAIT_INTERVAL_PROPERTY, "1000"));
+			CHILD_WAIT_INTERVAL = Integer.parseInt(System.getProperty(CHILD_WAIT_INTERVAL_PROPERTY, Integer.toString(CHILD_WAIT_INTERVAL_DEFAULT)));
+			Log.info("CHILD_WAIT_INTERVAL = " + CHILD_WAIT_INTERVAL);
 		} catch (NumberFormatException e) {
 			System.err.println("The ChildWaitInterval must be an integer.");
 			throw e;
 		}
-	}
 
-	static {
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
 			PIPELINE_SIZE = Integer.parseInt(retrievePropertyOrEvironmentVariable(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
@@ -244,15 +252,31 @@ public class SystemConfiguration {
 			System.err.println("The PipelineSize must be an integer.");
 			throw e;
 		}
-	}
 	
-	static {
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
 			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(retrievePropertyOrEvironmentVariable(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineAttempts must be an integer.");
+
+		}
+		
+			// Allow override of default ping timeout.
+		try {
+			PING_TIMEOUT = Integer.parseInt(System.getProperty(PING_TIMEOUT_PROPERTY, Integer.toString(PING_TIMEOUT_DEFAULT)));
+			Log.info("PING_TIMEOUT = " + PING_TIMEOUT);
+		} catch (NumberFormatException e) {
+			System.err.println("The ping timeout must be an integer.");
+			throw e;
+		}
+
+		// Allow override of ccn op timeout.
+		try {
+			CCND_OP_TIMEOUT = Integer.parseInt(System.getProperty(CCND_OP_TIMEOUT_PROPERTY, Integer.toString(CCND_OP_TIMEOUT_DEFAULT)));
+			Log.info("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
+		} catch (NumberFormatException e) {
+			System.err.println("The ccnd op timeout must be an integer.");
 			throw e;
 		}
 	}

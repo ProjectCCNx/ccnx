@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -1657,7 +1657,7 @@ ccn_initiate_ping(struct ccn *h)
     
     name = ccn_charbuf_create();
     ccn_name_from_uri(name, "ccnx:/ccnx/ping");
-    ccn_name_append(name, &h->now, sizeof(h->now));
+    ccn_name_append_nonce(name);
     action = calloc(1, sizeof(*action));
     action->p = &handle_ping_response;
     ccn_express_interest(h, name, action, NULL);

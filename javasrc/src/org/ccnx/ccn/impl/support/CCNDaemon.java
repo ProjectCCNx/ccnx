@@ -18,6 +18,7 @@
 package org.ccnx.ccn.impl.support;
 
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Map;
 import java.util.logging.Level;
@@ -102,7 +103,7 @@ public class CCNDaemon extends Daemon {
 			String outputFile = System.getProperty(PROP_DAEMON_OUTPUT);
 			if (outputFile != null) {
 				try {
-					new DaemonOutput(_ccndProcess.getInputStream(), outputFile, true);
+					new DaemonOutput(_ccndProcess.getInputStream(), new FileOutputStream(outputFile, true));
 				} catch (FileNotFoundException e) {
 					Log.logStackTrace(Level.WARNING, e);
 					e.printStackTrace();

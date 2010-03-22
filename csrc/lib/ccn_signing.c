@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -18,12 +18,15 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 #include <openssl/evp.h>
+#include <openssl/rand.h>
 #include <openssl/x509.h>
 #include <ccn/merklepathasn1.h>
 #include <ccn/ccn.h>
 #include <ccn/signing.h>
+#include <ccn/random.h>
 
 struct ccn_sigc {
     EVP_MD_CTX context;
@@ -330,4 +333,42 @@ ccn_append_pubkey_blob(struct ccn_charbuf *c, const struct ccn_pkey *i_pubkey)
         return(-1);
     c->length += bytes;
     return(bytes);
+}
+
+/* PRNG */
+
+/**
+ * Generate pseudo-random bytes.
+ *
+ * @param buf is the destination buffer
+ * @param size is in bytes
+ */
+void
+ccn_random_bytes(unsigned char *buf, size_t size)
+{
+    int num = size;
+    
+    if (num < 0 || num != size)
+        abort();
+    RAND_bytes(buf, num);
+}
+
+/**
+ * Feed some entropy to the random number generator.
+ * 
+ * @param buf is the source buffer
+ * @param size is in bytes
+ * @param bits_of_entropy is an estimate; use 0 to make me guess
+ */
+void
+ccn_add_entropy(const void *buf, size_t size, int bits_of_entropy)
+{
+    int num = size;
+    
+    if (num < 0 || num != size)
+        abort();
+    /* Supply a hopefully conservative estimate of entropy. */
+    if (bits_of_entropy <= 0)
+        bits_of_entropy = (num < 32) ? 1 : num / 32;
+    RAND_add((unsigned char *)buf, num, bits_of_entropy * 0.125);
 }

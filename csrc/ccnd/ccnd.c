@@ -65,8 +65,6 @@ static void process_input_message(struct ccnd_handle *h, struct face *face,
 static void process_input(struct ccnd_handle *h, int fd);
 static int ccn_stuff_interest(struct ccnd_handle *h,
                               struct face *face, struct ccn_charbuf *c);
-static void do_write(struct ccnd_handle *h, struct face *face,
-                     unsigned char *data, size_t size);
 static void do_deferred_write(struct ccnd_handle *h, int fd);
 static void clean_needed(struct ccnd_handle *h);
 static struct face *get_dgram_source(struct ccnd_handle *h, struct face *face,
@@ -178,7 +176,7 @@ indexbuf_release(struct ccnd_handle *h, struct ccn_indexbuf *c)
 }
 
 /**
- * Looks up a face based on its faceid.
+ * Looks up a face based on its faceid (private).
  */
 static struct face *
 face_from_faceid(struct ccnd_handle *h, unsigned faceid)
@@ -191,6 +189,15 @@ face_from_faceid(struct ccnd_handle *h, unsigned faceid)
             face = NULL;
     }
     return(face);
+}
+
+/**
+ * Looks up a face based on its faceid.
+ */
+struct face *
+ccnd_face_from_faceid(struct ccnd_handle *h, unsigned faceid)
+{
+    return(face_from_faceid(h, faceid));
 }
 
 /**
@@ -327,6 +334,8 @@ finalize_face(struct hashtb_enumerator *e)
     int recycle = 0;
     
     if (i < h->face_limit && h->faces_by_faceid[i] == face) {
+        if ((face->flags & CCN_FACE_UNDECIDED) == 0)
+            ccnd_face_status_change(h, face->faceid);
         if (e->ht == h->faces_by_fd) {
             if (face->send_fd != face->recv_fd)
                 ccnd_close_fd(h, face->faceid, &face->recv_fd);
@@ -344,8 +353,6 @@ finalize_face(struct hashtb_enumerator *e)
         ccnd_msg(h, "%s face id %u (slot %u)",
             recycle ? "recycling" : "releasing",
             face->faceid, face->faceid & MAXFACES);
-        if ((face->flags & CCN_FACE_UNDECIDED) == 0)
-            ccnd_face_status_change(h, face->faceid);
         /* Don't free face->addr; storage is managed by hash table */
     }
     else if (face->faceid != CCN_NOFACEID)
@@ -957,7 +964,7 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
     return(face);
 }
 
-void
+static void
 shutdown_client_fd(struct ccnd_handle *h, int fd)
 {
     struct hashtb_enumerator ee;
@@ -1014,7 +1021,7 @@ send_content(struct ccnd_handle *h, struct face *face, struct content_entry *con
     ccn_stuff_interest(h, face, c);
     if ((face->flags & CCN_FACE_LINK) != 0)
         ccn_charbuf_append_closer(c);
-    do_write(h, face, c->buf, c->length);
+    ccnd_send(h, face, c->buf, c->length);
     h->content_items_sent += 1;
     charbuf_release(h, c);
 }
@@ -1380,10 +1387,10 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
     }
     else {
         /* avoid a copy in this case */
-        do_write(h, face, data, size);
+        ccnd_send(h, face, data, size);
         return;
     }
-    do_write(h, face, c->buf, c->length);
+    ccnd_send(h, face, c->buf, c->length);
     charbuf_release(h, c);
     return;
 }
@@ -1477,7 +1484,7 @@ check_dgram_faces(struct ccnd_handle *h)
  * @returns 0 for success, -1 for failure.
  */
 int
-destroy_face(struct ccnd_handle *h, unsigned faceid)
+ccnd_destroy_face(struct ccnd_handle *h, unsigned faceid)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -2163,7 +2170,7 @@ ccnd_req_destroyface(struct ccnd_handle *h, const unsigned char *msg, size_t siz
     reqface = face_from_faceid(h, h->interest_faceid);
     if (reqface == NULL) { at = __LINE__; goto Finish; }
     if ((reqface->flags & CCN_FACE_GG) == 0) { at = __LINE__; goto Finish; }
-    res = destroy_face(h, face_instance->faceid);
+    res = ccnd_destroy_face(h, face_instance->faceid);
     if (res < 0) { at = __LINE__; goto Finish; }
     result = ccn_charbuf_create();
     face_instance->action = NULL;
@@ -3413,6 +3420,13 @@ process_input_message(struct ccnd_handle *h, struct face *face,
     struct ccn_skeleton_decoder decoder = {0};
     struct ccn_skeleton_decoder *d = &decoder;
     ssize_t dres;
+    
+    if ((face->flags & CCN_FACE_UNDECIDED) != 0) {
+        face->flags &= ~CCN_FACE_UNDECIDED;
+        if ((face->flags & CCN_FACE_LOOPBACK) != 0)
+            face->flags |= CCN_FACE_GG;
+        register_new_face(h, face);
+    }
     d->state |= CCN_DSTATE_PAUSE;
     dres = ccn_skeleton_decode(d, msg, size);
     if (d->state >= 0 && CCN_GET_TT_FROM_DSTATE(d->state) == CCN_DTAG) {
@@ -3564,16 +3578,11 @@ process_input(struct ccnd_handle *h, int fd)
         }
         face->inbuf->length += res;
         msgstart = 0;
-        if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
-              face->inbuf->length >= 6) {
-            if (0 == memcmp(buf, "GET ", 4)) {
-                ccnd_stats_handle_http_connection(h, face);
-                return;
-            }
-            face->flags &= ~CCN_FACE_UNDECIDED;
-            if ((face->flags & CCN_FACE_LOOPBACK) != 0)
-                face->flags |= CCN_FACE_GG;
-            register_new_face(h, face);
+        if (((face->flags & CCN_FACE_UNDECIDED) != 0 &&
+             face->inbuf->length >= 6 &&
+             0 == memcmp(face->inbuf->buf, "GET ", 4))) {
+            ccnd_stats_handle_http_connection(h, face);
+            return;
         }
         dres = ccn_skeleton_decode(d, buf, res);
         while (d->state == 0) {
@@ -3623,9 +3632,42 @@ process_internal_client_buffer(struct ccnd_handle *h)
     }
 }
 
-static void
-do_write(struct ccnd_handle *h,
-         struct face *face, unsigned char *data, size_t size)
+/**
+ * Handle errors after send() or sendto().
+ * @returns -1 if error has been dealt with, or 0 to defer sending.
+ */
+static int
+handle_send_error(struct ccnd_handle *h, int errnum, struct face *face,
+                  const void *data, size_t size)
+{
+    int res = -1;
+    if (errnum == EAGAIN) {
+        res = 0;
+    }
+    else if (errnum == EPIPE) {
+        face->flags |= CCN_FACE_NOSEND;
+        face->outbufindex = 0;
+        ccn_charbuf_destroy(&face->outbuf);
+    }
+    else {
+        ccnd_msg(h, "send to face %u failed: %s (errno = %d)",
+                 face->faceid, strerror(errnum), errnum);
+        if (errnum == EISCONN)
+            res = 0;
+    }
+    return(res);
+}
+
+
+/**
+ * Send data to the face.
+ *
+ * No direct error result is provided; the face state is updated as needed.
+ */
+void
+ccnd_send(struct ccnd_handle *h,
+          struct face *face,
+          const void *data, size_t size)
 {
     ssize_t res;
     if ((face->flags & CCN_FACE_NOSEND) != 0)
@@ -3636,7 +3678,7 @@ do_write(struct ccnd_handle *h,
         return;
     }
     if (face == h->face0) {
-        ccn_dispatch_message(h->internal_client, data, size);
+        ccn_dispatch_message(h->internal_client, (void *)data, size);
         process_internal_client_buffer(h);
         return;
     }
@@ -3647,22 +3689,9 @@ do_write(struct ccnd_handle *h,
     if (res == size)
         return;
     if (res == -1) {
-        if (errno == EAGAIN)
-            res = 0;
-        else if (errno == EPIPE) {
-            face->flags |= CCN_FACE_NOSEND;
-            face->outbufindex = 0;
-            ccn_charbuf_destroy(&face->outbuf);
+        res = handle_send_error(h, errno, face, data, size);
+        if (res == -1)
             return;
-        }
-        else {
-            ccnd_msg(h, "send to face %u failed: %s (errno = %d)",
-                     face->faceid, strerror(errno), errno);
-            if (errno == EISCONN)
-                res = 0;
-            else
-                return;
-        }
     }
     if ((face->flags & CCN_FACE_DGRAM) != 0) {
         ccnd_msg(h, "sendto short");
@@ -3674,7 +3703,8 @@ do_write(struct ccnd_handle *h,
         ccnd_msg(h, "do_write: %s", strerror(errno));
         return;
     }
-    ccn_charbuf_append(face->outbuf, data + res, size - res);
+    ccn_charbuf_append(face->outbuf,
+                       ((const unsigned char *)data) + res, size - res);
 }
 
 static void

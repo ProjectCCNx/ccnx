@@ -100,12 +100,12 @@ public abstract class KeyManager {
 	 */
 	public static synchronized KeyManager getDefaultKeyManager() {
 		// could print a stack trace
-		if (Log.isLoggable(Level.INFO)) {
-			Log.info("NOTICE: retrieving default key manager.");
+		if (Log.isLoggable(Level.FINER)) {
+			Log.finer("NOTICE: retrieving default key manager. Do you really want to do this?");
 			try {
-				throw new ConfigurationException("Check stack trace!");
+				throw new ConfigurationException("THIS IS NOT AN ERROR: tracking stack trace to find use of default key manager.");
 			} catch (ConfigurationException e) {
-				Log.logStackTrace(Level.INFO, e);
+				Log.logStackTrace(Level.FINER, e);
 			}
 		}
 		if (null != _defaultKeyManager) 
@@ -542,7 +542,8 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 */
 	public abstract PublicKeyObject publishKeyToRepository(ContentName keyName, 
-															PublisherPublicKeyDigest keyToPublish)
+															PublisherPublicKeyDigest keyToPublish,
+															long timeToWaitForPreexisting)
 			throws InvalidKeyException, IOException;
 
 	/**
@@ -554,7 +555,12 @@ public abstract class KeyManager {
 	public PublicKeyObject publishKeyToRepository() throws InvalidKeyException, IOException {
 		return publishKeyToRepository(null, null);
 	}
-
+	
+	public PublicKeyObject publishKeyToRepository(ContentName keyName, PublisherPublicKeyDigest keyToPublish) 
+		throws InvalidKeyException, IOException {
+		return publishKeyToRepository(keyName, keyToPublish, SystemConfiguration.SHORT_TIMEOUT);
+	}
+	
 	/**
 	 * Publish a public key to repository, if it isn't already there.
 	 * @param keyName content name of the public key to publish under (adds a version)

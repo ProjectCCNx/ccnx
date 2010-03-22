@@ -18,7 +18,6 @@
 package org.ccnx.ccn.impl.support;
 
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -30,13 +29,9 @@ public class DaemonOutput extends Thread {
 	private InputStream _is;
 	private OutputStream _os;
 	
-	public DaemonOutput(InputStream is, String outputFile) throws FileNotFoundException {
-		this(is, outputFile, false);
-	}
-	
-	public DaemonOutput(InputStream is, String outputFile, boolean append) throws FileNotFoundException {
+	public DaemonOutput(InputStream is, OutputStream os) throws FileNotFoundException {
 		_is = is;
-		_os = new FileOutputStream(outputFile, append);
+		_os = os;
 		this.start();
 	}
 	

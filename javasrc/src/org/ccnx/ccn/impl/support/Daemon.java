@@ -76,6 +76,8 @@ public class Daemon {
 	public static final String PROP_DAEMON_DEBUG_SUSPEND = "ccn.daemon.debug.suspend";
 	public static final String PROP_DAEMON_DEBUG_NOSHARE = "ccn.daemon.debug.noshare";
 	
+	public static final String DEFAULT_OUTPUT_STREAM = "/dev/null";
+	
 	/**
 	 * Interface describing the RMI server object sitting inside
 	 * the daemon 
@@ -407,7 +409,9 @@ public class Daemon {
 		
 		String outputFile = System.getProperty(PROP_DAEMON_OUTPUT);
 		if (outputFile != null) {
-			new DaemonOutput(child.getInputStream(), outputFile);
+			new DaemonOutput(child.getInputStream(), new FileOutputStream(outputFile, false));
+		} else {
+			new DaemonOutput(child.getInputStream(), new FileOutputStream(DEFAULT_OUTPUT_STREAM));
 		}
 		
 		// Initial RMI file never named with PID to permit

@@ -5,7 +5,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -126,7 +126,8 @@ main(int argc, char **argv)
         length = resultbuf->length;
         if (content_only)
             ccn_content_get_value(ptr, length, &pcobuf, &ptr, &length);
-        res = fwrite(ptr, length, 1, stdout) - 1;
+        if (length > 0)
+            res = fwrite(ptr, length, 1, stdout) - 1;
     }
     ccn_charbuf_destroy(&resultbuf);
     ccn_charbuf_destroy(&templ);

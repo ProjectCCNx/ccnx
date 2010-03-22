@@ -4,7 +4,7 @@
  *
  * A CCNx program.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -32,6 +32,7 @@
 #include <ccn/digest.h>
 #include <ccn/keystore.h>
 #include <ccn/signing.h>
+#include <ccn/random.h>
 
 struct path {
     int count;
@@ -469,6 +470,21 @@ main (int argc, char *argv[]) {
             printf("Warning: check res %d\n", (int)res);
         if (0 != memcmp(actual_digest, expected_digest, sizeof(expected_digest))) {
             printf("Failed: wrong digest\n");
+            result = 1;
+            break;
+        }
+    } while (0);
+    printf("Really basic PRNG test\n");
+    do {
+        unsigned char r1[42];
+        unsigned char r2[42];
+        printf("Unit test case %d\n", i++);
+        ccn_add_entropy(&i, sizeof(i), 0); /* Not much entropy, really. */
+        ccn_random_bytes(r1, sizeof(r1));
+        memcpy(r2, r1, sizeof(r2));
+        ccn_random_bytes(r2, sizeof(r2));
+        if (0 == memcmp(r1, r2, sizeof(r2))) {
+            printf("Failed: badly broken PRNG\n");
             result = 1;
             break;
         }

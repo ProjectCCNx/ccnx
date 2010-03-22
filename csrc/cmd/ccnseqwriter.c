@@ -31,7 +31,8 @@ usage(const char *progname)
 {
         fprintf(stderr,
                 "%s [-h] [-b blocksize] ccnx:/some/uri\n"
-                " Reads stdin, sending data under the given URI using ccn versioning and segmentation.\n", progname);
+                " Reads stdin, sending data under the given URI"
+                " using ccn versioning and segmentation.\n", progname);
         exit(1);
 }
 
@@ -52,7 +53,7 @@ main(int argc, char **argv)
         switch (res) {
 	    case 'b':
 	        blocksize = atol(optarg);
-                if (blocksize <= 0 || blocksize > 8192)
+                if (blocksize <= 0 || blocksize > 4096)
                     usage(progname);
                 break;
             default:
@@ -106,6 +107,8 @@ main(int argc, char **argv)
             ccn_run(ccn, 100);
             res = ccn_seqw_write(w, buf, read_res);
         }
+        if (res != read_res)
+            abort(); /* hmm, ccn_seqw_write did a short write or something */
     }
     ccn_run(ccn, 1);
     free(buf);
