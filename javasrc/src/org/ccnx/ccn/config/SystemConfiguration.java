@@ -100,6 +100,14 @@ public class SystemConfiguration {
 	protected static final String PIPELINE_ATTEMPTS_ENV_VAR = "JAVA_PIPELINE_ATTEMPTS";
 	public static int PIPELINE_SEGMENTATTEMPTS = 5;
 	
+	/**
+	 * Pipeline stat printouts in CCNAbstractInputStream
+	 * Default is off
+	 */
+	protected static final String PIPELINE_STATS_PROPERTY = "org.ccnx.PipelineStats";
+	protected static final String PIPELINE_STATS_ENV_VAR = "JAVA_PIPELINE_STATS";
+	public static boolean PIPELINE_STATS = false;
+	
 	
 	/**
 	 * System operation timeout. Very long timeout used to wait for system events
@@ -261,6 +269,10 @@ public class SystemConfiguration {
 			System.err.println("The PipelineAttempts must be an integer.");
 
 		}
+		
+		// Allow printing of pipeline stats in CCNAbstractInputStream
+		PIPELINE_STATS = Boolean.parseBoolean(retrievePropertyOrEvironmentVariable(PIPELINE_STATS_PROPERTY, PIPELINE_STATS_ENV_VAR, "false"));
+		
 		
 			// Allow override of default ping timeout.
 		try {

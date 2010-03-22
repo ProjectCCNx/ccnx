@@ -289,7 +289,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			Log.info("PIPELINE: starting pipelining");
 		
 			_pipelineStartTime = System.currentTimeMillis();
-			System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].1"+ " toProcess "+incoming.size());		
+			if (SystemConfiguration.PIPELINE_STATS)
+				System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].1"+ " toProcess "+incoming.size());		
 		
 			long segmentToGet = -1;
 			Interest interest = null;
@@ -1041,30 +1042,31 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			//was this a content object we were looking for?
 			//synchronized(inOrderSegments) {
 				
+			if (SystemConfiguration.PIPELINE_STATS)
 				System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].2"+ " toProcess "+incoming.size());
 				
-				if (_sentInterests.remove(is.interest)) {
-					//we had this interest outstanding...
-					Log.info("PIPELINE: we were expecting this data! we had outstanding interests: {0}", is.interest);
-				} else {
-					//we must have canceled the interest...  drop content object
-					Log.info("PIPELINE: we must have canceled the interest, dropping ContentObject(s).  old interest: {0}", is.interest);
-
-					//does this match one of our other interests?
-					Interest checkInterest;
-					is.interest = null;
-					for (int i = 0; i < _sentInterests.size(); i++) {
-						checkInterest = _sentInterests.get(i);
-						if (checkInterest.matches(result)) {
-							//we found a match!
-							Log.info("PIPELINE: the incoming packet's interest is gone, but it matches another interest, using that");
-							is.interest = checkInterest;
-							break;
-						}
+			if (_sentInterests.remove(is.interest)) {
+				//we had this interest outstanding...
+				Log.info("PIPELINE: we were expecting this data! we had outstanding interests: {0}", is.interest);
+			} else {
+				//we must have canceled the interest...  drop content object
+				Log.info("PIPELINE: we must have canceled the interest, dropping ContentObject(s).  old interest: {0}", is.interest);
+				
+				//does this match one of our other interests?
+				Interest checkInterest;
+				is.interest = null;
+				for (int i = 0; i < _sentInterests.size(); i++) {
+					checkInterest = _sentInterests.get(i);
+					if (checkInterest.matches(result)) {
+						//we found a match!
+						Log.info("PIPELINE: the incoming packet's interest is gone, but it matches another interest, using that");
+						is.interest = checkInterest;
+						break;
 					}
-					if (is.interest == null)
-						is = null;
 				}
+				if (is.interest == null)
+					is = null;
+			}
 				
 				
 			//}
@@ -1432,7 +1434,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			
 			if (_baseName.equals(_basePipelineName)) {
 				// we already have the base name...
-				System.out.println("plot " + (System.currentTimeMillis() - _pipelineStartTime) + " inOrder: " + inOrderSegments.size() + " outOfOrder: " + outOfOrderSegments.size() + " interests: " + _sentInterests.size() + " holes: " + _holes + " received: " + _totalReceived + " [" + _baseName + "].3"+ " toProcess "+incoming.size());
+				if (SystemConfiguration.PIPELINE_STATS)
+					System.out.println("plot " + (System.currentTimeMillis() - _pipelineStartTime) + " inOrder: " + inOrderSegments.size() + " outOfOrder: " + outOfOrderSegments.size() + " interests: " + _sentInterests.size() + " holes: " + _holes + " received: " + _totalReceived + " [" + _baseName + "].3"+ " toProcess "+incoming.size());
 			} else {
 				// we don't have the base name... set for pipelining.
 				setPipelineName(_baseName);
