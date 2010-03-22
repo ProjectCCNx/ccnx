@@ -155,6 +155,7 @@ public class CCNNetworkChannel {
 			ByteArrayInputStream bais = new ByteArrayInputStream(array, _datagram.position(), _datagram.remaining());
 			return bais;
 		} else if (_ncProto == NetworkProtocol.TCP) {
+			_ncStream.init();
 			_ncStream.fill();
 			return _ncStream;
 		} else {
@@ -211,9 +212,16 @@ public class CCNNetworkChannel {
 	
 	private class TCPInputStream extends InputStream {
 		private CCNNetworkChannel _channel;
+		private int _mark = 0;
+		private int _readLimit = 0;
 		
 		private TCPInputStream(CCNNetworkChannel channel) {
 			_channel = channel;
+		}
+		
+		public void init() {
+			_mark = 0;
+			_readLimit = 0;
 		}
 		
 		@Override
@@ -236,6 +244,8 @@ public class CCNNetworkChannel {
 		}
 		
 		public void mark(int readlimit) {
+			_readLimit = readlimit;
+			_mark = _datagram.position();
 			_datagram.mark();
 		}
 		
@@ -245,12 +255,18 @@ public class CCNNetworkChannel {
 		
 		private int fill() throws IOException {
 			int ret;
-			int oldPos = _datagram.position();
+			int position = _datagram.position();
+			if (position > _mark + _readLimit || position >= _datagram.capacity()) {
+				_datagram.clear();
+				_mark = 0;
+				_readLimit = 0;
+				position = 0;
+			}
 			synchronized (_channel) {
 				ret = _ncSockChannel.read(_datagram);
 			}
-			_datagram.position(oldPos);
-			_datagram.limit(oldPos + ret);
+			_datagram.position(position);
+			_datagram.limit(position + ret);
 			return ret;
 		}
 	}
