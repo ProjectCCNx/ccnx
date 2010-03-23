@@ -18,7 +18,10 @@
 package org.ccnx.ccn.config;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -92,6 +95,9 @@ public class SystemConfiguration {
 	public static final String CCN_CONFIG_FILE = "ccnx.config";
 	public static final String CCN_IGNORE_CONFIG_FILE_PROPERTY = "org.ccnx.ignoreconfig";
 	public static final String CCN_IGNORE_CONFIG_FILE_ENVIRONMENT_VARIABLE = "CCN_IGNORE_CONFIG_FILE";
+	
+	public static final String CCN_CONFIG_FILE = "ccnx.config";
+	public static final String CCN_IGNORE_CONFIG_PROPERTY = "org.ccnx.ignoreconfig";
 	
 	protected static final String CCN_PROTOCOL_PROPERTY = "org.ccnx.protocol";
 	
@@ -251,20 +257,6 @@ public class SystemConfiguration {
 	 * Property to allow/disallow logging for individual modules
 	 */
 	protected static TreeMap<String, Boolean> loggingInfo = new TreeMap<String, Boolean>();
-	
-	protected static Properties _ccnxConfigProperties = null;
-	protected static boolean _ignoreCCNXProperties = false;
-	
-	static {
-		// Allow ignoring of ccn config file
-		String ignoreConfig = System.getProperty(CCN_IGNORE_CONFIG_FILE_PROPERTY);
-		if (null != ignoreConfig) {
-			if (ignoreConfig.equalsIgnoreCase("true"))
-				_ignoreCCNXProperties = true;
-			if (ignoreConfig.equalsIgnoreCase("yes"))
-				_ignoreCCNXProperties = true;
-		}		
-	}
 
 	/**
 	 * Obtain the management bean for this runtime if it is available.
@@ -405,13 +397,22 @@ public class SystemConfiguration {
 	
 	static {
 		// Allow override of main CCN base protocol
-		String protocol = System.getProperty(CCN_PROTOCOL_PROPERTY);
+		String protocol = getGradedValue(CCN_PROTOCOL_PROPERTY);
 		if (null != protocol) {
 			if (protocol.equalsIgnoreCase("TCP"))
 				CCN_PROTOCOL = NetworkProtocol.TCP;
 			if (protocol.equalsIgnoreCase("UDP"))
 				CCN_PROTOCOL = NetworkProtocol.UDP;
 		}		
+	}
+	
+	protected static String getGradedValue(String property) {
+		Properties props = getConfigProperties();
+		String value = props.getProperty(property);
+		String envValue = System.getProperty(property);
+		if (null != envValue)
+			value = envValue;
+		return value;
 	}
 
 	public static String getLocalHost() {
