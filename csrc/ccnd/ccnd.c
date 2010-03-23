@@ -3788,9 +3788,9 @@ ccnd_run(struct ccnd_handle *h)
         }
         hashtb_end(e);
         h->nfds = i;
-        ccnd_msg(h, "at ccnd.c:%d poll(h->fds, %d, %d)", __LINE__, h->nfds, timeout_ms);
+        if (0) ccnd_msg(h, "at ccnd.c:%d poll(h->fds, %d, %d)", __LINE__, h->nfds, timeout_ms);
         res = poll(h->fds, h->nfds, timeout_ms);
-GOT_HERE        prev_timeout_ms = ((res == 0) ? timeout_ms : 1);
+        prev_timeout_ms = ((res == 0) ? timeout_ms : 1);
         if (-1 == res) {
             ccnd_msg(h, "poll: %s (errno = %d)", strerror(errno), errno);
             sleep(1);
