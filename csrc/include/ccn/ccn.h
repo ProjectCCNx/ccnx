@@ -708,6 +708,12 @@ int ccn_load_default_key(struct ccn *h,
                          const char *keystore_path,
                          const char *keystore_passphrase);
 
+int ccn_chk_signing_params(struct ccn *h,
+                           const struct ccn_signing_params *params,
+                           struct ccn_signing_params *result,
+                           struct ccn_charbuf **ptimestamp,
+                           struct ccn_charbuf **pfinalblockid,
+                           struct ccn_charbuf **pkeylocator);
 /* low-level content-object signing */
 int ccn_signed_info_create(
     struct ccn_charbuf *c,              /* filled with result */
