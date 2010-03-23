@@ -250,10 +250,9 @@ public class CCNNetworkManager implements Runnable {
 					} else {
 						useMe = checkPrefixDelay;
 					}
-				} catch (Exception e) {
-						try {
-							_channel.close();
-						} catch (IOException e1) {}
+				} catch (ContentEncodingException xmlex) {
+					Log.severe("PeriodicWriter interest refresh thread failure (Malformed datagram): {0}", xmlex.getMessage()); 
+					Log.warningStackTrace(xmlex);
 				}
 			} else {
 				// We have lost our connection to ccnd. See if we can reconnect
