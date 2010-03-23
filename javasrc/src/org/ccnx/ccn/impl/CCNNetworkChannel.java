@@ -58,8 +58,7 @@ public class CCNNetworkChannel {
 	protected TCPInputStream _ncStream = null;	//TCP only
 	protected FileOutputStream _ncTapStreamIn = null;
 	
-	// Allocate datagram buffer: want to wrap array to ensure backed by
-	// array to permit decoding
+	// Allocate datagram buffer
 	ByteBuffer _datagram = ByteBuffer.allocateDirect(MAX_PAYLOAD);
 
 	public CCNNetworkChannel(String host, int port, NetworkProtocol proto, FileOutputStream tapStreamIn) throws IOException {

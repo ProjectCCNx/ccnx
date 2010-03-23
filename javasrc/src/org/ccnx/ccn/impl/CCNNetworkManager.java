@@ -160,7 +160,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 	
 	/**
-	 * Do scheduled writes of heartbeats and interest refreshes
+	 * Do scheduled interest and registration refreshes
 	 */
 	private class PeriodicWriter extends TimerTask {
 		// TODO Interest refresh time is supposed to "decay" over time but there are currently
