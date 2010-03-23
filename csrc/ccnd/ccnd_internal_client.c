@@ -43,7 +43,6 @@
 #else
 #define GOT_HERE
 #endif
-
 #define CCND_NOTICE_NAME "notice.txt"
 
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
@@ -485,7 +484,7 @@ GOT_HERE
             ccn_indexbuf_set_insert(ccnd->chface, face->faceid);
     }
     if (ccnd->chface->n > 0)
-        ccn_indexbuf_set_insert(ccnd->chface, ccnd->chface->buf[0]);
+        ccnd_face_status_change(ccnd, ccnd->chface->buf[0]);
     ccn_charbuf_destroy(&name);
 }
 
