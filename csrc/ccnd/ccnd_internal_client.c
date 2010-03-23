@@ -33,13 +33,16 @@
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/ccn_private.h>
-#include <ccn/keystore.h>
 #include <ccn/schedule.h>
 #include <ccn/sockaddrutil.h>
-#include <ccn/signing.h>
 #include <ccn/uri.h>
 #include "ccnd_private.h"
 
+#if 0
+#define GOT_HERE ccnd_msg(ccnd, "at ccnd_internal_client.c:%d", __LINE__);
+#else
+#define GOT_HERE
+#endif
 #define CCND_NOTICE_NAME "notice.txt"
 
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
@@ -73,14 +76,13 @@ ccnd_answer_req(struct ccn_closure *selfp,
     struct ccn_charbuf *signed_info = NULL;
     struct ccn_charbuf *reply_body = NULL;
     struct ccnd_handle *ccnd = NULL;
-    struct ccn_keystore *keystore = NULL;
     int res = 0;
     int start = 0;
     int end = 0;
     int morecomps = 0;
     const unsigned char *final_comp = NULL;
     size_t final_size = 0;
-    int freshness = 10;
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
     switch (kind) {
         case CCN_UPCALL_FINAL:
@@ -112,7 +114,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
         if (res < 0)
             goto Bail;
     }
-    
+GOT_HERE    
     if ((selfp->intdata & MUST_VERIFY) != 0) {
         struct ccn_parsed_ContentObject pco = {0};
         // XXX - probably should check for message origin BEFORE verify
@@ -129,10 +131,11 @@ ccnd_answer_req(struct ccn_closure *selfp,
             goto Bail;
         }
     }
+    sp.freshness = 10;
     switch (selfp->intdata & OPER_MASK) {
         case OP_PING:
             reply_body = ccn_charbuf_create();
-            freshness = (info->pi->prefix_comps == info->matched_comps) ? 60 : 5;
+            sp.freshness = (info->pi->prefix_comps == info->matched_comps) ? 60 : 5;
             break;
         case OP_NEWFACE:
             reply_body = ccnd_req_newface(ccnd, final_comp, final_size);
@@ -159,40 +162,14 @@ ccnd_answer_req(struct ccn_closure *selfp,
     if (reply_body == NULL)
         goto Bail;
     
-    keystore = ccnd->internal_keys;
-    if (keystore == NULL)
-        goto Bail;
     msg = ccn_charbuf_create();
     name = ccn_charbuf_create();
     start = info->pi->offset[CCN_PI_B_Name];
     end = info->interest_comps->buf[info->pi->prefix_comps];
     ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
     ccn_charbuf_append_closer(name);
-    
-    /* Construct a key locator containing the key itself */
-    keylocator = ccn_charbuf_create();
-    ccnb_element_begin(keylocator, CCN_DTAG_KeyLocator);
-    ccnb_element_begin(keylocator, CCN_DTAG_Key);
-    res = ccn_append_pubkey_blob(keylocator, ccn_keystore_public_key(keystore));
-    ccnb_element_end(keylocator); /* </Key> */
-    ccnb_element_end(keylocator); /* </KeyLocator> */
-    if (res < 0)
-        goto Bail;
-    signed_info = ccn_charbuf_create();
-    res = ccn_signed_info_create(signed_info,
-                                 ccn_keystore_public_key_digest(keystore),
-                                 ccn_keystore_public_key_digest_length(keystore),
-                                 /*datetime*/NULL,
-                                 /*type*/CCN_CONTENT_DATA,
-                                 /*freshness*/ freshness,
-                                 /*finalblockid*/NULL,
-                                 keylocator);
-    if (res < 0)
-        goto Bail;
-    res = ccn_encode_ContentObject(msg, name, signed_info,
-                                   reply_body->buf,
-                                   reply_body->length, NULL,
-                                   ccn_keystore_private_key(keystore));
+    res = ccn_sign_content(info->h, msg, name, &sp,
+                           reply_body->buf, reply_body->length);
     if (res < 0)
         goto Bail;
     if ((ccnd->debug & 128) != 0)
@@ -327,7 +304,6 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
 {
     struct ccn_charbuf *temp = NULL;
     struct ccn_charbuf *cmd = NULL;
-    struct ccn_keystore *keystore = NULL;
     struct ccn_charbuf *culprit = NULL;
     struct stat statbuf;
     const char *dir = NULL;
@@ -335,10 +311,10 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
     size_t save;
     char *keystore_path = NULL;
     FILE *passfile;
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
-    if (ccnd->internal_keys != NULL)
-        return(0);
-    keystore = ccn_keystore_create();
+    if (ccnd->internal_client == NULL)
+        return(-1);
     temp = ccn_charbuf_create();
     cmd = ccn_charbuf_create();
     dir = getenv("CCND_KEYSTORE_DIRECTORY");
@@ -358,12 +334,11 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
     save = temp->length;
     ccn_charbuf_putf(temp, ".ccnd_keystore_%s", ccnd->portstr);
     keystore_path = strdup(ccn_charbuf_as_string(temp));
-    res = ccn_keystore_init(keystore, keystore_path, CCND_KEYSTORE_PASS);
-    if (res == 0) {
-        ccnd->internal_keys = keystore;
-        keystore = NULL;
+    res = stat(keystore_path, &statbuf);
+    if (res == 0)
+        res = ccn_load_default_key(ccnd->internal_client, keystore_path, CCND_KEYSTORE_PASS);
+    if (res >= 0)
         goto Finish;
-    }
     /* No stored keystore that we can access; create one. */
     temp->length = save;
     ccn_charbuf_putf(temp, "p");
@@ -377,30 +352,20 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
         culprit = cmd;
         goto Finish;
     }
-    res = ccn_keystore_init(keystore, keystore_path, CCND_KEYSTORE_PASS);
-    if (res == 0) {
-        ccnd->internal_keys = keystore;
-        keystore = NULL;
-    }
+    res = ccn_load_default_key(ccnd->internal_client, keystore_path, CCND_KEYSTORE_PASS);
 Finish:
     if (culprit != NULL) {
         ccnd_msg(ccnd, "%s: %s:\n", ccn_charbuf_as_string(culprit), strerror(errno));
         culprit = NULL;
     }
-    if (ccnd->internal_keys != NULL) {
-        if (ccn_keystore_public_key_digest_length(ccnd->internal_keys) !=
-            sizeof(ccnd->ccnd_id))
-            abort();
-        memcpy(ccnd->ccnd_id,
-               ccn_keystore_public_key_digest(ccnd->internal_keys),
-               sizeof(ccnd->ccnd_id));
-    }
+    res = ccn_chk_signing_params(ccnd->internal_client, NULL, &sp, NULL, NULL, NULL);
+    if (res != 0)
+        abort();
+    memcpy(ccnd->ccnd_id, sp.pubid, sizeof(ccnd->ccnd_id));
     ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&cmd);
     if (keystore_path != NULL)
         free(keystore_path);
-    if (keystore != NULL)
-        ccn_keystore_destroy(&keystore);
     return(res);
 }
 
@@ -428,8 +393,8 @@ post_face_notice(struct ccnd_handle *ccnd, unsigned faceid)
         }
         ccn_charbuf_putf(msg, ");\n", faceid);
     }
-    res = ccn_seqw_write(ccnd->notice, msg->buf, msg->length);
-    ccn_charbuf_destroy(&msg);
+    GOT_HERE res = ccn_seqw_write(ccnd->notice, msg->buf, msg->length);
+    GOT_HERE ccn_charbuf_destroy(&msg);
     return(res);
 }
 
@@ -450,17 +415,18 @@ ccnd_notice_push(struct ccn_schedule *sched,
             ccnd->notice != NULL &&
             ccnd->notice_push == ev &&
             ccnd->chface != NULL) {
-        chface = ccnd->chface;
+        GOT_HERE chface = ccnd->chface;
         ccn_seqw_batch_start(ccnd->notice);
         for (i = 0; i < chface->n && res != -1; i++)
             res = post_face_notice(ccnd, chface->buf[i]);
         ccn_seqw_batch_end(ccnd->notice);
+GOT_HERE
         for (j = 0; i < chface->n; i++, j++)
             chface->buf[j] = chface->buf[i];
         chface->n = j;
         if (res == -1)
             microsec = 3000;
-        if (0) ccnd_internal_client_reschedule(ccnd);
+        GOT_HERE if (0) ccnd_internal_client_reschedule(ccnd);
     }
     if (microsec <= 0)
         ccnd->notice_push = NULL;
@@ -479,6 +445,7 @@ ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
 {
     struct ccn_indexbuf *chface = ccnd->chface;
     if (chface != NULL) {
+GOT_HERE
         ccn_indexbuf_set_insert(chface, faceid);
         if (ccnd->notice_push == NULL)
             ccnd->notice_push = ccn_schedule_event(ccnd->sched, 2000,
@@ -501,9 +468,10 @@ ccnd_start_notice(struct ccnd_handle *ccnd)
         return;
     if (ccnd->chface != NULL) {
         /* Probably should not happen. */
-        ccnd_msg(ccnd, "ccnd_internal_client.c:%d Huh?");
+        ccnd_msg(ccnd, "ccnd_internal_client.c:%d Huh?", __LINE__);
         ccn_indexbuf_destroy(&ccnd->chface);
     }
+GOT_HERE
     name = ccn_charbuf_create();
     ccn_name_from_uri(name, "ccnx:/ccnx");
     ccn_name_append(name, ccnd->ccnd_id, 32);
@@ -516,7 +484,7 @@ ccnd_start_notice(struct ccnd_handle *ccnd)
             ccn_indexbuf_set_insert(ccnd->chface, face->faceid);
     }
     if (ccnd->chface->n > 0)
-        ccn_indexbuf_set_insert(ccnd->chface, ccnd->chface->buf[0]);
+        ccnd_face_status_change(ccnd, ccnd->chface->buf[0]);
     ccn_charbuf_destroy(&name);
 }
 
@@ -528,9 +496,11 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
         return(-1);
     if (ccnd->face0 == NULL)
         abort();
-    if (ccnd_init_internal_keystore(ccnd) < 0)
-        return(-1);
     ccnd->internal_client = h = ccn_create();
+    if (ccnd_init_internal_keystore(ccnd) < 0) {
+        ccn_destroy(&ccnd->internal_client);
+        return(-1);
+    }
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/ping",
                     &ccnd_answer_req, OP_PING);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/ping",
@@ -549,7 +519,7 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                     &ccnd_answer_req, OP_NOTICE);
     ccnd_reg_ccnx_ccndid(ccnd);
     ccnd->internal_client_refresh \
-    = ccn_schedule_event(ccnd->sched, 200000,
+    = ccn_schedule_event(ccnd->sched, 50000,
                          ccnd_internal_client_refresh,
                          NULL, CCN_INTEREST_LIFETIME_MICROSEC);
     return(0);
@@ -577,5 +547,4 @@ ccnd_internal_client_stop(struct ccnd_handle *ccnd)
     ccn_destroy(&ccnd->internal_client);
     if (ccnd->internal_client_refresh != NULL)
         ccn_schedule_cancel(ccnd->sched, ccnd->internal_client_refresh);
-    ccn_keystore_destroy(&ccnd->internal_keys);
 }

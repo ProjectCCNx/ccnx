@@ -3762,7 +3762,7 @@ ccnd_run(struct ccnd_handle *h)
     for (h->running = 1; h->running;) {
         process_internal_client_buffer(h);
         usec = ccn_schedule_run(h->sched);
-        timeout_ms = (usec < 0) ? -1 : (usec / 1000);
+        timeout_ms = (usec < 0) ? -1 : ((usec + 960) / 1000);
         if (timeout_ms == 0 && prev_timeout_ms == 0)
             timeout_ms = 1;
         process_internal_client_buffer(h);
@@ -3788,6 +3788,7 @@ ccnd_run(struct ccnd_handle *h)
         }
         hashtb_end(e);
         h->nfds = i;
+        if (0) ccnd_msg(h, "at ccnd.c:%d poll(h->fds, %d, %d)", __LINE__, h->nfds, timeout_ms);
         res = poll(h->fds, h->nfds, timeout_ms);
         prev_timeout_ms = ((res == 0) ? timeout_ms : 1);
         if (-1 == res) {

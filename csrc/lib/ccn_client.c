@@ -1813,6 +1813,17 @@ ccn_verify_content(struct ccn *h,
     return(res);
 }
 
+/**
+ * Load a private key from a keystore file.
+ *
+ * This call is only required for applications that use something other
+ * than the user's default signing key.
+ * @param h is the ccn handle
+ * @param keystore_path is the pathname of the keystore file
+ * @param keystore_passphrase is the passphase needed to unlock the keystore
+ * @param pubid_out, if not NULL, is loaded with the digest of the public key
+ * @result is 0 for success, negative for error.
+ */
 int
 ccn_load_private_key(struct ccn *h,
                      const char *keystore_path,
@@ -1867,6 +1878,39 @@ Cleanup:
     return(res);
 }
 
+/**
+ * Load the handle's default signing key from a keystore.
+ *
+ * This call is only required for applications that use something other
+ * than the user's default signing key as the handle's default.  It should
+ * be called early and at most once.
+ * @param h is the ccn handle
+ * @param keystore_path is the pathname of the keystore file
+ * @param keystore_passphrase is the passphase needed to unlock the keystore
+ * @result is 0 for success, negative for error.
+ */
+int
+ccn_load_default_key(struct ccn *h,
+                     const char *keystore_path,
+                     const char *keystore_passphrase)
+{
+    struct ccn_charbuf *default_pubid = NULL;
+    int res;
+    
+    if (h->default_pubid != NULL)
+        return(NOTE_ERR(h, EINVAL));
+    default_pubid = ccn_charbuf_create();
+    res = ccn_load_private_key(h,
+                               keystore_path,
+                               keystore_passphrase,
+                               default_pubid);
+    if (res == 0)
+        h->default_pubid = default_pubid;
+    else
+        ccn_charbuf_destroy(&default_pubid);
+    return(res);
+}
+
 static void
 finalize_keystore(struct hashtb_enumerator *e)
 {
@@ -1874,13 +1918,17 @@ finalize_keystore(struct hashtb_enumerator *e)
     ccn_keystore_destroy(p);
 }
 
-static int
-chk_signing_params(struct ccn *h,
-                   const struct ccn_signing_params *params,
-                   struct ccn_signing_params *result,
-                   struct ccn_charbuf **ptimestamp,
-                   struct ccn_charbuf **pfinalblockid,
-                   struct ccn_charbuf **pkeylocator)
+/**
+ * This is mostly for use within the library,
+ * but may be useful for some clients.
+ */
+int
+ccn_chk_signing_params(struct ccn *h,
+                       const struct ccn_signing_params *params,
+                       struct ccn_signing_params *result,
+                       struct ccn_charbuf **ptimestamp,
+                       struct ccn_charbuf **pfinalblockid,
+                       struct ccn_charbuf **pkeylocator)
 {
     struct ccn_charbuf *default_pubid = NULL;
     struct ccn_charbuf *temp = NULL;
@@ -1957,15 +2005,17 @@ chk_signing_params(struct ccn *h,
             ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Timestamp, 1, -1);
             stop = d->decoder.token_index;
             if ((needed & CCN_SP_TEMPL_TIMESTAMP) != 0) {
-                *ptimestamp = ccn_charbuf_create();
-                i = ccn_ref_tagged_BLOB(CCN_DTAG_Timestamp,
-                                        d->buf,
-                                        start, stop,
-                                        &ptr, &size);
-                if (i == 0) {
+                if (ptimestamp != NULL) {
                     *ptimestamp = ccn_charbuf_create();
-                    ccn_charbuf_append(*ptimestamp, ptr, size);
-                    needed &= ~CCN_SP_TEMPL_TIMESTAMP;
+                    i = ccn_ref_tagged_BLOB(CCN_DTAG_Timestamp,
+                                            d->buf,
+                                            start, stop,
+                                            &ptr, &size);
+                    if (i == 0) {
+                        *ptimestamp = ccn_charbuf_create();
+                        ccn_charbuf_append(*ptimestamp, ptr, size);
+                        needed &= ~CCN_SP_TEMPL_TIMESTAMP;
+                    }
                 }
             }
             ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Type, 1, -1);
@@ -1984,10 +2034,12 @@ chk_signing_params(struct ccn *h,
                 ccn_buf_check_close(d);
                 if ((needed & CCN_SP_TEMPL_FINAL_BLOCK_ID) != 0 && 
                     d->decoder.state >= 0 && stop > start) {
-                    *pfinalblockid = ccn_charbuf_create();
-                    ccn_charbuf_append(*pfinalblockid,
-                                       d->buf + start, stop - start);
-                    needed &= ~CCN_SP_TEMPL_FINAL_BLOCK_ID;
+                    if (pfinalblockid != NULL) {
+                        *pfinalblockid = ccn_charbuf_create();
+                        ccn_charbuf_append(*pfinalblockid,
+                                           d->buf + start, stop - start);
+                        needed &= ~CCN_SP_TEMPL_FINAL_BLOCK_ID;
+                    };
                 }
             }
             start = d->decoder.token_index;
@@ -1996,10 +2048,12 @@ chk_signing_params(struct ccn *h,
             stop = d->decoder.token_index;
             if ((needed & CCN_SP_TEMPL_KEY_LOCATOR) != 0 && 
                 d->decoder.state >= 0 && stop > start) {
-                *pkeylocator = ccn_charbuf_create();
-                ccn_charbuf_append(*pkeylocator,
-                                   d->buf + start, stop - start);
-                needed &= ~CCN_SP_TEMPL_KEY_LOCATOR;
+                if (pfinalblockid != NULL) {
+                    *pkeylocator = ccn_charbuf_create();
+                    ccn_charbuf_append(*pkeylocator,
+                                       d->buf + start, stop - start);
+                    needed &= ~CCN_SP_TEMPL_KEY_LOCATOR;
+                }
             }
             ccn_buf_check_close(d);
         }
@@ -2039,8 +2093,8 @@ ccn_sign_content(struct ccn *h,
     struct ccn_charbuf *keylocator = NULL;
     int res;
     
-    res = chk_signing_params(h, params, &p,
-                             &timestamp, &finalblockid, &keylocator);
+    res = ccn_chk_signing_params(h, params, &p,
+                                 &timestamp, &finalblockid, &keylocator);
     if (res < 0)
         return(res);
     hashtb_start(h->keystores, e);
