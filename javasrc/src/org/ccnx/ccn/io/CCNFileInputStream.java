@@ -29,7 +29,7 @@ import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Header;
 import org.ccnx.ccn.io.content.Header.HeaderObject;
-import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -289,7 +289,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 		if (headerRequested())
 			return; // done already
 		// Ask for the header, but update it in the background, as it may not be there yet.
-		_header = new HeaderObject(SegmentationProfile.headerName(baseName), null, null, publisher, null, _handle);
+		_header = new HeaderObject(MetadataProfile.headerName(baseName), null, null, publisher, null, _handle);
 		if( Log.isLoggable(Level.INFO ))
 			Log.info("Retrieving header : " + _header.getBaseName() + " in background.");
 		_header.updateInBackground();

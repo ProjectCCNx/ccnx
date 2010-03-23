@@ -30,6 +30,7 @@ import org.ccnx.ccn.io.CCNFileOutputStream;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
@@ -136,7 +137,7 @@ public class CCNFileProxy implements CCNFilterListener {
 				Log.warning("IOException generating name enumeration response to {0}: {1}: {2}", interest.name(), e.getClass().getName(), e.getMessage());
 				return false;
 			}
-		} else if (SegmentationProfile.isHeader(interest.name())) {
+		} else if (MetadataProfile.isHeader(interest.name())) {
 			Log.info("Got an interest for the first segment of the header, ignoring {0}.", interest.name());
 			return false;
 		} 

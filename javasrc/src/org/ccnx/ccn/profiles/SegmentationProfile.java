@@ -20,13 +20,11 @@ package org.ccnx.ccn.profiles;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
@@ -63,8 +61,6 @@ public class SegmentationProfile implements CCNProfile {
 	public static final byte NO_SEGMENT_POSTFIX = 0x00;
 	public static final byte [] FIRST_SEGMENT_MARKER = new byte[]{SEGMENT_MARKER};
 	public static final byte [] NO_SEGMENT_MARKER = new byte[]{SEGMENT_MARKER, NO_SEGMENT_POSTFIX};
-
-	public static final byte [] HEADER_NAME = ContentName.componentParseNative(".header"); 
 
 	/**
 	 * What does its fragment number mean?
@@ -173,69 +169,6 @@ public class SegmentationProfile implements CCNProfile {
 	 */
 	public static long getSegmentNumber(ContentName name) {
 		return getSegmentNumber(name.lastComponent());
-	}
-
-	/**
-	 * Check to see if we have (a block of) the header. Headers are also versioned.
-	 * @param baseName The name of the object whose header we are looking for (including version, but
-	 * 			not including segmentation information).
-	 * @param headerName The name of the object we think might be a header block (can include
-	 * 			segmentation).
-	 * @return
-	 */
-	public static boolean isHeader(ContentName baseName, ContentName headerName) {
-		if (!baseName.isPrefixOf(headerName)) {
-			return false;
-		}
-		return isHeader(headerName);
-	}
-	
-	/**
-	 * Slightly more heuristic isHeader; looks to see if this is a segment of something that
-	 * ends in the header name (and version), without knowing the prefix..
-	 */
-	public static boolean isHeader(ContentName potentialHeaderName) {
-		
-		if (isSegment(potentialHeaderName)) {
-			potentialHeaderName = segmentRoot(potentialHeaderName);
-		}
-		
-		// Header itself is likely versioned.
-		if (VersioningProfile.isVersionComponent(potentialHeaderName.lastComponent())) {
-			potentialHeaderName = potentialHeaderName.parent();
-		}
-		
-		if (potentialHeaderName.count() < 2)
-			return false;
-		
-		if (!Arrays.equals(potentialHeaderName.lastComponent(), HEADER_NAME))
-			return false;
-		
-		if (!Arrays.equals(potentialHeaderName.component(potentialHeaderName.count()-2), 
-				MetadataProfile.METADATA_MARKER.getBytes()))
-			return false;
-		
-		return true;
-	}
-	
-	/**
-	 * Move header from <content>/<version> as its name to
-	 * <content>/<version>/_metadata_marker_/HEADER/<version>
-	 * where the second version is imposed by the use of versioning
-	 * network objects (i.e. this function should return up through HEADER above)
-	 * Header name generation may want to move to a MetadataProfile.
-	 * 
-	 * @param name
-	 * @return
-	 */
-	public static ContentName headerName(ContentName name) {
-		// Want to make sure we don't add a header name
-		// to a fragment. Go back up to the fragment root.
-		// Currently no header name added.
-		if (isSegment(name)) {
-			name = segmentRoot(name);
-		}
-		return new ContentName(name, MetadataProfile.METADATA_MARKER.getBytes(), HEADER_NAME);
 	}
 
 	/**
