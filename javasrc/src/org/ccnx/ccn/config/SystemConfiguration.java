@@ -392,28 +392,6 @@ public class SystemConfiguration {
 				retrievePropertyOrEnvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
 
 	}
-	
-	public static NetworkProtocol CCN_PROTOCOL = DEFAULT_PROTOCOL;
-	
-	static {
-		// Allow override of main CCN base protocol
-		String protocol = getGradedValue(CCN_PROTOCOL_PROPERTY);
-		if (null != protocol) {
-			if (protocol.equalsIgnoreCase("TCP"))
-				CCN_PROTOCOL = NetworkProtocol.TCP;
-			if (protocol.equalsIgnoreCase("UDP"))
-				CCN_PROTOCOL = NetworkProtocol.UDP;
-		}		
-	}
-	
-	protected static String getGradedValue(String property) {
-		Properties props = getConfigProperties();
-		String value = props.getProperty(property);
-		String envValue = System.getProperty(property);
-		if (null != envValue)
-			value = envValue;
-		return value;
-	}
 
 	public static String getLocalHost() {
 //		InetAddress.getLocalHost().toString(),

@@ -30,7 +30,6 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -79,6 +78,10 @@ public class CCNNetworkChannel extends InputStream {
 		_ncProto = proto;
 		_ncTapStreamIn = tapStreamIn;
 		_ncSelector = Selector.open();
+<<<<<<< HEAD
+=======
+		_ncStream = new CCNInputStream(this);
+>>>>>>> 080edea... Fix get of protocol to use already established methods and values as well as
 		Log.info("Starting up CCNNetworkChannel using {0}.", proto);
 	}
 	

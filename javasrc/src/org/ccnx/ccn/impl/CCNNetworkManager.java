@@ -118,7 +118,6 @@ public class CCNNetworkManager implements Runnable {
 	protected String _host = DEFAULT_AGENT_HOST;
 	protected NetworkProtocol _protocol;
 
-	
 	// For handling protocol to speak to ccnd, must have keys
 	protected KeyManager _keyManager;
 	protected int _localPort = -1;
@@ -690,13 +689,13 @@ public class CCNNetworkManager implements Runnable {
 			Log.warning("Non-standard CCN agent host " + _host + " per property " + PROP_AGENT_HOST);
 		}
 		
-		String proto = System.getProperty(PROP_AGENT_PROTOCOL_KEY);
+		String proto = SystemConfiguration.getGradedValue(PROP_AGENT_PROTOCOL_KEY);
 		if (null != proto) {
 			boolean found = false;
 			for (NetworkProtocol p : NetworkProtocol.values()) {
 				String pAsString = p.toString();
 				if (proto.equalsIgnoreCase(pAsString)) {
-					Log.warning("CCN agent protocol changed to " + pAsString + "per property");
+					Log.warning("CCN agent protocol changed to " + pAsString + " per property");
 					_protocol = p;
 					found = true;
 					break;
