@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 2003
+#define CCN_API_VERSION 2004
 
 /**
  * Global interest lifetime.
@@ -703,6 +703,10 @@ int ccn_load_private_key(struct ccn *h,
                          const char *keystore_path,
                          const char *keystore_passphrase,
                          struct ccn_charbuf *pubid_out);
+
+int ccn_load_default_key(struct ccn *h,
+                         const char *keystore_path,
+                         const char *keystore_passphrase);
 
 /* low-level content-object signing */
 int ccn_signed_info_create(

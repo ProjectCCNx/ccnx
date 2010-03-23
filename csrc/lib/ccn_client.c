@@ -1813,6 +1813,17 @@ ccn_verify_content(struct ccn *h,
     return(res);
 }
 
+/**
+ * Load a private key from a keystore file.
+ *
+ * This call is only required for applications that use something other
+ * than the user's default signing key.
+ * @param h is the ccn handle
+ * @param keystore_path is the pathname of the keystore file
+ * @param keystore_passphrase is the passphase needed to unlock the keystore
+ * @param pubid_out, if not NULL, is loaded with the digest of the public key
+ * @result is 0 for success, negative for error.
+ */
 int
 ccn_load_private_key(struct ccn *h,
                      const char *keystore_path,
@@ -1864,6 +1875,39 @@ ccn_load_private_key(struct ccn *h,
 Cleanup:
     ccn_charbuf_destroy(&pubid_store);
     ccn_keystore_destroy(&keystore);
+    return(res);
+}
+
+/**
+ * Load the handle's default signing key form a keystore.
+ *
+ * This call is only required for applications that use something other
+ * than the user's default signing key as the handle's default.  It should
+ * be called early and at most once.
+ * @param h is the ccn handle
+ * @param keystore_path is the pathname of the keystore file
+ * @param keystore_passphrase is the passphase needed to unlock the keystore
+ * @result is 0 for success, negative for error.
+ */
+int
+ccn_load_default_key(struct ccn *h,
+                     const char *keystore_path,
+                     const char *keystore_passphrase)
+{
+    struct ccn_charbuf *default_pubid = NULL;
+    int res;
+    
+    if (h->default_pubid != NULL)
+        return(NOTE_ERR(h, EINVAL));
+    default_pubid = ccn_charbuf_create();
+    res = ccn_load_private_key(h,
+                               keystore_path,
+                               keystore_passphrase,
+                               default_pubid);
+    if (res == 0)
+        h->default_pubid = default_pubid;
+    else
+        ccn_charbuf_destroy(&default_pubid);
     return(res);
 }
 
