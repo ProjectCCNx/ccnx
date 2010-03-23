@@ -43,7 +43,6 @@
  */
 struct ccn_charbuf;
 struct ccn_indexbuf;
-struct ccn_keystore;
 struct hashtb;
 
 /*
@@ -131,7 +130,6 @@ struct ccnd_handle {
     unsigned interest_faceid;       /**< for self_reg internal client */
     const char *progname;           /**< our name, for locating helpers */
     struct ccn *internal_client;    /**< internal client */
-    struct ccn_keystore *internal_keys; /**< the internal client's keys */
     struct face *face0;             /**< special face for internal client */
     struct ccn_seqwriter *notice;   /**< for notices of status changes */
     struct ccn_indexbuf *chface;    /**< faceids w/ recent status changes */
