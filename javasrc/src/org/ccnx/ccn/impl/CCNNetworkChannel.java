@@ -48,14 +48,14 @@ public class CCNNetworkChannel {
 	protected int _ncPort;
 	protected NetworkProtocol _ncProto;
 	protected int _ncLocalPort;
-	protected DatagramChannel _ncDGrmChannel = null; // for use by run thread only!
+	protected DatagramChannel _ncDGrmChannel = null;
 	protected SocketChannel _ncSockChannel = null;
 	protected Selector _ncSelector = null;
 	protected Boolean _ncConnected = new Boolean(false);
 	protected boolean _ncInitialized = false;
 	protected Timer _ncHeartBeatTimer = null;
 	protected Boolean _ncStarted = false;
-	protected TCPInputStream _ncStream = null;	//TCP only
+	protected CCNInputStream _ncStream = null;
 	protected FileOutputStream _ncTapStreamIn = null;
 	
 	// Allocate datagram buffer
@@ -67,9 +67,7 @@ public class CCNNetworkChannel {
 		_ncProto = proto;
 		_ncTapStreamIn = tapStreamIn;
 		_ncSelector = Selector.open();
-		if (_ncProto == NetworkProtocol.TCP) {
-			_ncStream = new TCPInputStream(this);
-		}
+		_ncStream = new CCNInputStream(this);
 	}
 	
 	/**
@@ -155,38 +153,9 @@ public class CCNNetworkChannel {
 	public InputStream getInputStream() throws IOException {
 		clearSelectedKeys();
 		_datagram.clear(); // make ready for new read
-		if (_ncProto == NetworkProtocol.UDP) {
-			synchronized (this) {
-				_ncDGrmChannel.read(_datagram); // queue readers and writers
-			}
-			if( Log.isLoggable(Level.FINEST) )
-				Log.finest("Read datagram (" + _datagram.position() + " bytes) for port: " + _ncPort);
-			_datagram.flip(); // make ready to decode
-			if (null != _ncTapStreamIn) {
-				byte [] b = new byte[_datagram.limit()];
-				_datagram.get(b);
-				_ncTapStreamIn.write(b);
-				_datagram.rewind();
-			}
-			byte[] array = _datagram.array();
-			
-			if (Log.isLoggable(Level.FINEST)) {
-				byte[] tmp = new byte[8];
-				System.arraycopy(array, _datagram.position(), tmp, 0, (_datagram.remaining() > tmp.length) ? tmp.length : _datagram.remaining());
-				BigInteger tmpBuf = new BigInteger(1,tmp);
-				Log.finest("decode (buf.pos: " + _datagram.position() + " remaining: " + _datagram.remaining() + ") start: " + tmpBuf.toString(16));
-			}
-			
-			ByteArrayInputStream bais = new ByteArrayInputStream(array, _datagram.position(), _datagram.remaining());
-			return bais;
-		} else if (_ncProto == NetworkProtocol.TCP) {
-			_ncStream.init();
-			_ncStream.fill();
-			return _ncStream;
-		} else {
-			Log.severe("CCNNetworkChannel: invalid protocol specified");
-			return null;
-		}
+		_ncStream.init();
+		_ncStream.fill();
+		return _ncStream;
 	}
     
 	/**
@@ -248,12 +217,12 @@ public class CCNNetworkChannel {
 	 * when necessary. The algorithm tries to use only the single current buffer called _datagram
 	 * which is also used to implement the UDP algorithm.
 	 */
-	private class TCPInputStream extends InputStream {
+	private class CCNInputStream extends InputStream {
 		private CCNNetworkChannel _channel;
 		private int _mark = 0;
 		private int _readLimit = 0;
 		
-		private TCPInputStream(CCNNetworkChannel channel) {
+		private CCNInputStream(CCNNetworkChannel channel) {
 			_channel = channel;
 		}
 		
@@ -323,7 +292,10 @@ public class CCNNetworkChannel {
 				position = 0;
 			}
 			synchronized (_channel) {
-				ret = _ncSockChannel.read(_datagram);
+				if (_ncProto == NetworkProtocol.UDP)
+					ret = _ncDGrmChannel.read(_datagram);
+				else
+					ret = _ncSockChannel.read(_datagram);
 			}
 			_datagram.position(position);
 			_datagram.limit(position + ret);

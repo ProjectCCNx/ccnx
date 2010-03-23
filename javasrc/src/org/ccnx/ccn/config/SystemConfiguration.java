@@ -87,7 +87,7 @@ public class SystemConfiguration {
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
 	
 	protected static final String CCN_PROTOCOL_PROPERTY = "org.ccnx.protocol";
-	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.TCP;
+	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.UDP;
 
 	/**
 	 * Property to set debug flags.
