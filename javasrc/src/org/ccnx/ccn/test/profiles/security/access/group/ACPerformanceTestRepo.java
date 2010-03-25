@@ -94,6 +94,8 @@ public class ACPerformanceTestRepo {
 		_AliceHandle = cua.getHandleForUser(userNames[0]);
 		Assert.assertNotNull(_AliceHandle);
 		NamespaceManager.clearSearchedPathCache();
+		AccessControlManager.loadAccessControlManagerForNamespace(domainPrefix, _AliceHandle);
+		
 		_AliceACM = (GroupAccessControlManager) AccessControlManager.findACM(domainPrefix, _AliceHandle);
 		Assert.assertNotNull(_AliceACM);
 	}
