@@ -52,7 +52,7 @@ public class KeyProfile implements CCNProfile {
 			throw new IllegalArgumentException("keyID must not be null!");
 		}
 		
-		return KEY_ID_PREFIX.addData(keyID);
+		return KEY_ID_PREFIX.addBinaryData(keyID);
 	}
 	
 	/**
@@ -119,7 +119,7 @@ public class KeyProfile implements CCNProfile {
 	public static byte[] getKeyIDFromNameComponent(byte[] childName) throws IOException {
 		if (!KeyProfile.isKeyNameComponent(childName))
 			return null;
-		byte [] keyid = KEY_ID_PREFIX.extractApplicationData(childName);
+		byte [] keyid = CommandMarker.extractApplicationData(childName);
 		return keyid;
 	}
 

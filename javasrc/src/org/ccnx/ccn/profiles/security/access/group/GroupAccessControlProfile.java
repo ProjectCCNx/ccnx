@@ -117,7 +117,8 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 			
 			// First time we see COMPONENT_SEPARATOR is the separation point.
 			// Could jump back based on fixed width of timestamp.
-			byte [][] pieces = DataUtils.binarySplit(principalInfoNameComponent, CCNProfile.COMPONENT_SEPARATOR[0]);
+			byte [][] pieces = 
+				DataUtils.binarySplit(principalInfoNameComponent, CCNProfile.COMPONENT_SEPARATOR[0]);
 			if (pieces.length < PI_COMPONENT_COUNT) {
 				Log.warning("Unexpected principal name format - insufficient number of components: " + 
 						ContentName.componentPrintURI(principalInfoNameComponent, USER_PRINCIPAL_PREFIX.length, principalInfoNameComponent.length-USER_PRINCIPAL_PREFIX.length));

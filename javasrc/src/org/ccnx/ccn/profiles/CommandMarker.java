@@ -30,26 +30,29 @@ import org.ccnx.ccn.protocol.ContentName;
  * 
  * Commands are separated into namespaces, which are UTF-8 strings,
  * followed by an operation, which is a UTF-8 string component following
- * the last "." in the namespace designation. The remainder of the
+ * the last "." in the namespace designation. (The "operation" can also
+ * just be considered the last component of the namespace.) The remainder of the
  * command name component is interpreted by the namespace owner in whatever
- * manner they choose, with an optional convention to separate arguments
- * and commands with the tilde character (~).
+ * manner they choose, with an optional convention to separate (optional) 
+ * text arguments from the namespace and operation (and each other) with 
+ * the tilde character (~), and a single binary argument
+ * (which must come last) which must be prefixed with %00 for a raw binary
+ * argument, or %C1 for an argument which is CCNB-encoded data. (Multiple
+ * binary arguments can be provided using CCNB-encoding.)
  * 
- * Applications can append their own data to the command marker prefix, by
- * separating it from the arguments with an application postfix byte.
- * Therefore the convention is: prefix, namespace, command (separated by
- * "."s, followed by an optional ~-delimted set of UTF-8 arguments,
- * followed by an optional argument postfix delimiter and then application data.
- * The application data can be stored in an instance of this class, or can
- * be tacked on/parsed statically.
- * 
- * There is an additional "." separating the prefix marker and the namespace.
- * The namespace designation can contain "." (and so can be broken down by
+  * The namespace designation can contain "." (and so can be broken down by
  * reverse DNS name, as with Java), " ", and other legal UTF-8 characters. It
  * ends either with the last ., or at the end of the name component, whichever
  * comes last. 
  * Namespaces containing only capital letters are reserved for CCN itself,
  * and are listed here.
+ * 
+ * We consider the initial marker byte/namespace/operation component as the "command
+ * marker" and the remainder as arguments (the former refers to a fixed operation,
+ * while the latter may vary across calls to that operation). Methods to parse a name
+ * component encountered in processing either hand back a CommandMarker representing the
+ * namespace/operation, or the arguments; we don't put the arguments into a CommandMarker
+ * object.
  * 
  * Examples:
  * 
@@ -65,6 +68,12 @@ import org.ccnx.ccn.protocol.ContentName;
  * The nonce protocol has only one operation, generating a nonce, with an optional argument
  * of a nonce length.
  * %C1.N.n[~<length>]~<nonce>
+ * 
+ * A namespace org.ccnx.foo could have an operation bar, that took a single ccnb-encoded argument:
+ * %C1.org.ccnx.foo.bar%C1<argument>
+ * 
+ * or 2 UTF-8 arguments and a binary argument
+ * %C1.org.ccnx.foo.bar~arg1~arg1%00<binary argument>
  * 
  * For now put the built-in commands here as well, though as we get ones that take
  * arguments we should start to break them out to profile-specific locations. But
@@ -90,9 +99,11 @@ public class CommandMarker {
 	public static final byte [] COMMAND_PREFIX = {COMMAND_PREFIX_BYTE, (byte)0x2E};
 	
 	public static final String COMMAND_SEPARATOR = ".";
-	public static final String ARGUMENT_SEPARATOR = "~";
-	public static final byte ARGUMENT_TERMINATOR = "!".getBytes()[0];
-	public static final int ARGUMENT_TERMINATOR_LENGTH = 1;
+	public static final byte COMMAND_SEPARATOR_BYTE = COMMAND_SEPARATOR.getBytes()[0];
+	public static final String UTF8_ARGUMENT_SEPARATOR = "~";
+	public static final byte UTF8_ARGUMENT_SEPARATOR_BYTE = UTF8_ARGUMENT_SEPARATOR.getBytes()[0];
+	public static final byte BINARY_ARGUMENT_SEPARATOR = 0x00;
+	public static final byte CCNB_ARGUMENT_SEPARATOR = (byte)0xC1;
 
 	/**
 	 * (Name) enumeration "marker"
@@ -168,45 +179,68 @@ public class CommandMarker {
 		System.arraycopy(csb, 0, bc, COMMAND_PREFIX.length, csb.length);
 		_byteCommandMarker = bc;
 	}
+	
+	protected CommandMarker(byte [] nameComponent) {
+		if (!isCommandComponent(nameComponent)) {
+			throw new IllegalArgumentException("Not a command marker!");
+		}
+		_byteCommandMarker = nameComponent;
+	}
 		
 	protected CommandMarker() {}
 
-	public String getNamespace() {
-		String cs = extractCommandString(_byteCommandMarker);
-		int lastDot = cs.lastIndexOf(COMMAND_SEPARATOR);
-		if (lastDot < 0) {
-			return null;
-		}
-		return cs.substring(0, lastDot);
-	}
-
-	public String getCommand() {
-		String cs = extractCommandString(_byteCommandMarker);
-		int lastDot = cs.lastIndexOf(COMMAND_SEPARATOR);
-		int firstTilde = cs.indexOf(ARGUMENT_SEPARATOR);
-		// if lastDot not there, lastDot = 0 and namespace is null, 0 correct starting point.
-		if (firstTilde < 0)
-			return cs.substring(lastDot+1);
-		return cs.substring(lastDot + 1, firstTilde);
-	}
-
+	/**
+	 * Return binary representation of command marker.
+	 * @return
+	 */
 	public byte [] getBytes() { return _byteCommandMarker; }
 	
 	public int length() { return _byteCommandMarker.length; }
+	
+	/**
+	 * Returns the initial name components after the first marker of this command marker, 
+	 * up to the operation (if any). Terminating "." is stripped. If there is only one initial 
+	 * string component, the operation is interpreted as empty, and that component is returned 
+	 * as the namespace. We assume we don't have any arguments in our byte array.
+	 * @return
+	 */
+	public String getNamespace() {
+		int occurcount = DataUtils.occurcount(_byteCommandMarker, COMMAND_PREFIX.length, COMMAND_SEPARATOR_BYTE);
+		if (occurcount == 0) {
+			// only one component
+			return new String(_byteCommandMarker, COMMAND_PREFIX.length, _byteCommandMarker.length-COMMAND_PREFIX.length);
+		}
+		int lastDot = DataUtils.byterindex(_byteCommandMarker, COMMAND_PREFIX.length, COMMAND_SEPARATOR_BYTE);
+		return new String(_byteCommandMarker, COMMAND_PREFIX.length, lastDot-1-COMMAND_PREFIX.length);
+	}
+	
+	/**
+	 * Returns the final string component operation of the prefix of this command marker, 
+	 * if any (see getNamespace).
+	 */
+	public String getOperation() {
+		int occurcount = DataUtils.occurcount(_byteCommandMarker, COMMAND_PREFIX.length, COMMAND_SEPARATOR_BYTE);
+		if (occurcount == 0) {
+			// only one component
+			return null;
+		}
+		int lastDot = DataUtils.byterindex(_byteCommandMarker, COMMAND_PREFIX.length, COMMAND_SEPARATOR_BYTE);
+		return new String(_byteCommandMarker, lastDot+1, _byteCommandMarker.length - lastDot - 1);
+	}
 	
 	/**
 	 * Generate a name component that adds arguments and data to this command marker.
 	 * See addArguments and addData if you only need to add one and not the other.
 	 * @param arguments
 	 * @param applicationData
-	 * @return
+	 * @return the name component to use containing the command marker and arguments
 	 */
-	public byte [] addArgumentsAndData(String [] arguments, byte [] applicationData) {
+	protected byte [] addArgumentsAndData(String [] arguments, byte [] applicationData, byte dataMarker) {
 		byte [] csb = null;
 		if ((null != arguments) && (arguments.length > 0)) {
 			StringBuffer sb = new StringBuffer();
 			for (int i=0; i < arguments.length; ++i) {
-				sb.append(CommandMarker.ARGUMENT_SEPARATOR);
+				sb.append(CommandMarker.UTF8_ARGUMENT_SEPARATOR);
 				sb.append(arguments[i]);
 			}
 			csb = ContentName.componentParseNative(sb.toString());
@@ -214,7 +248,7 @@ public class CommandMarker {
 		int csblen = ((null != csb) ? csb.length : 0);
 		
 		int addlComponentLength = csblen + ((applicationData != null) ? 
-				applicationData.length + CommandMarker.ARGUMENT_TERMINATOR_LENGTH : 0);
+				applicationData.length + 1 : 0);
 		
 		int offset = 0;
 		byte [] component = new byte[length() + addlComponentLength];
@@ -227,8 +261,8 @@ public class CommandMarker {
 		}
 	
 		if ((null != applicationData) && (applicationData.length > 0)) {
-			component[length()] = CommandMarker.ARGUMENT_TERMINATOR;
-			offset += CommandMarker.ARGUMENT_TERMINATOR_LENGTH;
+			component[length()] = dataMarker;
+			offset += 1;
 			System.arraycopy(applicationData, 0, component, offset, applicationData.length);
 		}
 		return component;
@@ -240,36 +274,30 @@ public class CommandMarker {
 	 * @return
 	 */
 	public byte [] addArguments(String [] arguments) {
-		return addArgumentsAndData(arguments,  null);
+		return addArgumentsAndData(arguments,  null, (byte)0x00);
 	}
 	
 	/**
 	 * Helper method if you just need to add data.
-	 * @param applicationData
+	 * @param applicationData -- raw binary
 	 * @return
 	 */
-	public byte [] addData(byte [] applicationData) {
-		return addArgumentsAndData(null, applicationData);
+	public byte [] addBinaryData(byte [] applicationData) {
+		return addArgumentsAndData(null, applicationData, BINARY_ARGUMENT_SEPARATOR);
+	}
+	
+	/**
+	 * Helper method if you just need to add data.
+	 * @param applicationData -- ccnb encoded
+	 * @return
+	 */
+	public byte [] addCCNBEncodedData(byte [] applicationData) {
+		return addArgumentsAndData(null, applicationData, CCNB_ARGUMENT_SEPARATOR);
 	}
 
 	public static boolean isCommandComponent(byte [] commandComponent) {
 		return DataUtils.isBinaryPrefix(COMMAND_PREFIX, commandComponent);
 	}
-	
-	protected static String extractCommandString(byte [] commandComponent) {
-		if (!isCommandComponent(commandComponent)) {
-			throw new IllegalArgumentException("Not a command sequence!");
-		}
-		return new String(commandComponent, COMMAND_PREFIX.length, commandComponent.length - COMMAND_PREFIX.length);
-	}
-	
-	
-	/**
-	 * Processing application data coming in over the wire according to generic
-	 * conventions. Particular markers can instantiate subclasses of CommandMarker
-	 * to do more specific processing, or can put that processing in their profiles.
-	 */
-	
 	
 	/**
 	 * Does the prefix of this component match the command bytes of this marker?
@@ -278,29 +306,93 @@ public class CommandMarker {
 	public boolean isMarker(byte [] nameComponent) {
 		return (0 == DataUtils.bytencmp(getBytes(), nameComponent, length()));
 	}
+	
+	public static CommandMarker getMarker(byte [] nameComponent) {
+		int argumentStart = argumentStart(nameComponent);
+		if (argumentStart < 0) {
+			return new CommandMarker(nameComponent);
+		}
+		return new CommandMarker(DataUtils.subarray(nameComponent, 0, argumentStart));
+	}
+
+	public static int argumentStart(byte [] nameComponent) {
+		// Find the point where arguments (text or binary) start after the namespace/op.
+		// Start searching after the command component prefix.
+		int idx = textArgumentStart(nameComponent);
+		if (idx < 0) {
+			idx = binaryArgumentStart(nameComponent);
+		}
+		return idx;
+	}
+	
+	public static int textArgumentStart(byte [] nameComponent) {	
+		int idx = DataUtils.byteindex(nameComponent, COMMAND_PREFIX.length, UTF8_ARGUMENT_SEPARATOR_BYTE);
+		return idx;
+	}
+
+	public static int binaryArgumentStart(byte [] nameComponent) {
+		
+		int idx = DataUtils.byteindex(nameComponent, COMMAND_PREFIX.length, BINARY_ARGUMENT_SEPARATOR);			
+		if (idx < 0) {
+			idx = DataUtils.byteindex(nameComponent, COMMAND_PREFIX.length, BINARY_ARGUMENT_SEPARATOR);
+		}
+		return idx;
+	}
+	
+	/**
+	 * Processing application data coming in over the wire according to generic
+	 * conventions. Particular markers can instantiate subclasses of CommandMarker
+	 * to do more specific processing, or can put that processing in their profiles.
+	 * 
+	 * Here we put generic argument processing and command marker parsing capabilities for 
+	 * CMs that follow conventions.
+	 */
+
 
 	/**
 	 * Extract any arguments associated with this prefix. 
 	 * @param nameComponent
-	 * @return
+	 * @return null if no arguments, otherwise String [] of text arguments.
 	 */
-	public String [] getArguments(byte [] nameComponent) {
-		String cs = extractCommandString(_byteCommandMarker);
-		int firstTilde = cs.indexOf(ARGUMENT_SEPARATOR);
-		if (firstTilde < 0)
-			return new String[0];
-		int argTerminator = cs.indexOf(ARGUMENT_TERMINATOR, firstTilde+1);
-		String argString = cs.substring(firstTilde + 1, (argTerminator < 0) ? cs.length() : argTerminator + 1);
-		return argString.split(ARGUMENT_SEPARATOR);
+	public static String [] getArguments(byte [] nameComponent) {
+		
+		if (!isCommandComponent(nameComponent)) {
+			throw new IllegalArgumentException("Not a command marker!");
+		}
+
+		int argumentStart = textArgumentStart(nameComponent);
+		if (argumentStart < 0) {
+			return null;
+		}
+		
+		int argumentEnd = binaryArgumentStart(nameComponent);
+		
+		String argString = new String(nameComponent, argumentStart+1, argumentEnd-argumentStart-1);
+		return argString.split(UTF8_ARGUMENT_SEPARATOR);
 	}
 	
-	public byte [] extractApplicationData(byte [] nameComponent) {
-		if (!isMarker(nameComponent)) {
-			throw new IllegalArgumentException("Not a command marker of type " + toString() + "!");
+	public static boolean isCCNBApplicationData(byte [] nameComponent) {
+		if (!isCommandComponent(nameComponent)) {
+			throw new IllegalArgumentException("Not a command marker!");
 		}
-		// What's the most efficient way to do this? State machine says, start
-		// hopping through .s, after each . look for a ~ or an argument terminator
-		int idx = DataUtils.byteindex(nameComponent, ARGUMENT_TERMINATOR);
-		return DataUtils.subarray(nameComponent, idx+ARGUMENT_TERMINATOR_LENGTH, nameComponent.length - idx - 1);
+
+		int argumentStart = binaryArgumentStart(nameComponent);
+		if (argumentStart < 0) {
+			return false;
+		}		
+		return nameComponent[argumentStart] == CCNB_ARGUMENT_SEPARATOR;
+	}
+	
+	public static byte [] extractApplicationData(byte [] nameComponent) {
+		if (!isCommandComponent(nameComponent)) {
+			throw new IllegalArgumentException("Not a command marker!");
+		}
+
+		int argumentStart = binaryArgumentStart(nameComponent);
+		if (argumentStart < 0) {
+			return null;
+		}
+		
+		return DataUtils.subarray(nameComponent, argumentStart+1, nameComponent.length - argumentStart - 1);
 	}
 }
