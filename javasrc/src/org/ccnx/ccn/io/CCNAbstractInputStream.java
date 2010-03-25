@@ -25,7 +25,6 @@ import java.security.InvalidKeyException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.SortedSet;
 import java.util.logging.Level;
 
 import javax.crypto.BadPaddingException;
@@ -664,7 +663,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						} else {
 							elapsed2 = System.currentTimeMillis() - expressed.userTime;
 							Log.info("PIPELINE: elapsed2 time {0}", elapsed2);
-							if(elapsed2 > avgResponseTime * 2 && avgResponseTime > -1) {
+							if(elapsed2 > avgResponseTime * SystemConfiguration.PIPELINE_RTTFACTOR && avgResponseTime > -1) {
 								Log.info("PIPELINE: expressing the next interest! {0}", i);
 								i.userTime = System.currentTimeMillis();
 								_handle.expressInterest(i, this);
@@ -730,7 +729,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	
 	private void adjustAvgResponseTimeForHole() {
 		synchronized(incoming) {
-			avgResponseTime = 0.9 * avgResponseTime + 0.1 * (2.0*avgResponseTime);
+			avgResponseTime = 0.9 * avgResponseTime + 0.1 * (SystemConfiguration.PIPELINE_RTTFACTOR * avgResponseTime);
 		}
 	}
 	

@@ -101,6 +101,14 @@ public class SystemConfiguration {
 	public static int PIPELINE_SEGMENTATTEMPTS = 5;
 	
 	/**
+	 * Pipeline round trip time factor for pipeline in CCNAbstractInputStream
+	 * Default is 2
+	 */
+	protected static final String PIPELINE_RTT_PROPERTY = "org.ccnx.PipelineRTTFactor";
+	protected static final String PIPELINE_RTT_ENV_VAR = "JAVA_PIPELINE_RTTFACTOR";
+	public static int PIPELINE_RTTFACTOR = 2;
+	
+	/**
 	 * Pipeline stat printouts in CCNAbstractInputStream
 	 * Default is off
 	 */
@@ -267,6 +275,14 @@ public class SystemConfiguration {
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineAttempts must be an integer.");
+
+		}
+		
+		// Allow override of default pipeline rtt multiplication factor for CCNAbstractInputStream
+		try {
+			PIPELINE_RTTFACTOR = Integer.parseInt(retrievePropertyOrEvironmentVariable(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
+		} catch (NumberFormatException e) {
+			System.err.println("The PipelineRTTFactor must be an integer.");
 
 		}
 		
