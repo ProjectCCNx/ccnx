@@ -259,6 +259,9 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
+		if (Log.isLoggable(Level.WARNING)){
+			Log.warning("Starting repository; repository root is: {0}", _repositoryFile.getAbsolutePath());
+		}
 		
 		// DKS -- we probably don't want to encrypt startWrites and other messages, 
 		// as the repository doesn't likely have write privileges (or read privileges)
