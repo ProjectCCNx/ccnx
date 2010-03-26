@@ -46,6 +46,11 @@ import org.ccnx.ccn.impl.support.DataUtils;
 public class CCNTime extends Timestamp {
 
 	private static final long serialVersionUID = -1537142893653443100L;
+	
+	/**
+	 * This is the highest nanos value that doesn't quantize to over the ns limit for Timestamp of 999999999.
+	 */
+	public static final int NANOS_MAX = 999877929;
 
 	/**
 	 * Create a CCNTime.
@@ -169,7 +174,11 @@ public class CCNTime extends Timestamp {
 
 	@Override
 	public void setNanos(int nanos) {
-	   	super.setNanos((int)(((((nanos * 4096L + 500000000L) / 1000000000L)) * 1000000000L) / 4096L));
+		int quantizedNanos = (int)(((((nanos * 4096L + 500000000L) / 1000000000L)) * 1000000000L) / 4096L);
+		if ((quantizedNanos < 0) || (quantizedNanos > 999999999)) {
+			System.out.println("Quantizing nanos " + nanos + " resulted in out of range value " + quantizedNanos + "!");
+		}
+	   	super.setNanos(quantizedNanos);
 	}
 	
 	/**

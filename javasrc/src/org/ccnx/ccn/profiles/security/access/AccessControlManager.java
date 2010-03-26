@@ -510,26 +510,48 @@ public abstract class AccessControlManager {
 		if (null != acm) {
 			return acm;
 		}
-		
+		return null;
+	}
+	
+	/**
+	 * Given a name prefix, search for policy markers along that name path and load corresponding
+	 * access control managers. 
+	 * TODO handle multiple policy points
+	 * TODO maybe handle policies overlapping in namespace
+	 * TODO check to make sure we haven't already loaded the ACM
+	 * @param namespace
+	 * @param handle
+	 * @return
+	 * @throws ConfigurationException
+	 * @throws ContentNotReadyException
+	 * @throws ContentGoneException
+	 * @throws ErrorStateException
+	 * @throws IOException
+	 */
+	public static boolean loadAccessControlManagerForNamespace(ContentName namespace, CCNHandle handle) throws ConfigurationException, ContentNotReadyException, ContentGoneException, ErrorStateException, IOException {
+
 		// See if we have an access control policy, and if so make an access control manager for it.
-		
-		ContentName policyNamespace = NamespaceManager.findPolicyControlledNamespace(name, handle);
+
+		ContentName policyNamespace = NamespaceManager.findPolicyControlledNamespace(namespace, handle);
 		if (null == policyNamespace) {
-			Log.finer("No policy controlling name: {0}", name);
-			return null;
+			Log.finer("No policy controlling name: {0}", namespace);
+			return false;
 		}
-		
+
 		// TODO cache nonexistence of access control policy in policy namespace. Here or in NSM?
 		AccessControlPolicyMarkerObject ro = 
 			new AccessControlPolicyMarkerObject(AccessControlProfile.getAccessControlPolicyName(policyNamespace), handle);
 		if (!ro.available()) {
 			Log.finer("No access control policy in policy namespace: {0}", policyNamespace);
 			// TODO add to negative cache
-			return null;
+			return false;
 		}
-		
+
 		try {
-			acm = AccessControlManager.createAccessControlManager(ro, handle);
+			AccessControlManager acm = AccessControlManager.createAccessControlManager(ro, handle);
+			handle.keyManager().rememberAccessControlManager(acm);
+			return true;
+			
 		} catch (InstantiationException e) {
 			Log.severe("InstantiationException attempting to create access control manager: " + e.getMessage());
 			Log.warningStackTrace(e);
@@ -539,8 +561,6 @@ public abstract class AccessControlManager {
 			Log.warningStackTrace(e);
 			throw new ConfigurationException("IllegalAccessException attempting to create access control manager: " + e.getMessage(), e);
 		}
-		handle.keyManager().rememberAccessControlManager(acm);
-		return acm;
 	}
 
 	/**

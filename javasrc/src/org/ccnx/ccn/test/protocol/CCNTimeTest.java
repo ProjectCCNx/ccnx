@@ -91,10 +91,9 @@ public class CCNTimeTest {
 
 			CCNTime c2 = new CCNTime(e2);
 			Assert.assertTrue(timestampEquals(e2, c2));
-			Assert.assertTrue(c2.equals(e2));			
-
-			int newNanos = random.nextInt(999999999);
-
+			Assert.assertTrue(c2.equals(e2));
+			// 999877929 is the highest value that doesn't quantize over the Timestamp limit of 999999999
+			int newNanos = random.nextInt(CCNTime.NANOS_MAX);
 			e2.setNanos(newNanos);
 			c2.setNanos(newNanos);
 
