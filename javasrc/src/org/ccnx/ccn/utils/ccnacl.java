@@ -23,8 +23,11 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.profiles.namespace.ParameterizedName;
+import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
@@ -79,12 +82,24 @@ public class ccnacl {
 			}
 			editACL(nodeName, principalName, role);
 		}
+		else if (args[pos].equals("-init")) {
+			if (args.length < pos + 5) {
+				usage();
+				System.exit(1);
+			}
+			String domain = args[pos + 1];
+			String userNamespace = args[pos + 2];
+			String groupNamespace = args[pos + 3];
+			String principalName = args[pos + 4];
+			initACL(domain, userNamespace, groupNamespace, principalName);
+		}
 	}
 
 	public static void usage() {
 		System.out.println("usage:");
 		System.out.println("ccnacl [-as pathToKeystore] -show nodeName");
 		System.out.println("ccnacl [-as pathToKeystore] -edit nodeName principalName [none|r|rw|rw+]");
+		System.out.println("ccnacl [-as pathToKeystore] -init domain userNamespace groupNamespace principalName");		
 		System.exit(1);
 	}
 	
@@ -190,6 +205,37 @@ public class ccnacl {
 			System.exit(1);
 		}
 		System.exit(0);
+	}
+	
+	// creates initial ACL at nodeName for principalName with permission rw+
+	public static void initACL(String domain, String userNamespace, String groupNamespace, String principalName) {
+
+		try{
+			ContentName domainPrefix = ContentName.fromNative(domain);
+			ContentName userNamespaceCN = ContentName.fromNative(userNamespace);
+			ContentName groupNamespaceCN = ContentName.fromNative(groupNamespace);
+			
+			// Create the ACL for nodeName with principalName as a manager
+			ArrayList<Link> ACLcontents = new ArrayList<Link>();
+			Link lk = new Link(ContentName.fromNative(userNamespaceCN, principalName), ACL.LABEL_MANAGER, null);
+			ACLcontents.add(lk);
+			ACL domainRootACL = new ACL(ACLcontents);
+			
+			// Set user and group storage locations as parameterized names
+			ArrayList<ParameterizedName> parameterizedNames = new ArrayList<ParameterizedName>();
+			ParameterizedName uName = new ParameterizedName("User", userNamespaceCN, null);
+			parameterizedNames.add(uName);
+			ParameterizedName gName = new ParameterizedName("Group", groupNamespaceCN, null);
+			parameterizedNames.add(gName);
+			
+			// Set access control policy marker	
+			ContentName profileName = ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING);
+			AccessControlPolicyMarker.create(domainPrefix, profileName, domainRootACL, parameterizedNames, null, SaveType.REPOSITORY, CCNHandle.open());
+		
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 	}
 	
 }
