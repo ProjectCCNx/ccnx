@@ -247,7 +247,7 @@ ccnd_uri_listen(struct ccnd_handle *ccnd, const char *uri,
     closure->data = ccnd;
     closure->intdata = intdata;
     /* Register explicitly if needed or requested */
-    if (reg_wanted || (ccnd->debug & 128) != 0)
+    if (reg_wanted)
         ccnd_reg_uri(ccnd, uri,
                      0, /* special faceid for internal client */
                      CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
