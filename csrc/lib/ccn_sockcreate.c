@@ -92,6 +92,17 @@ set_multicast_socket_options(int socket_r, int socket_w, struct addrinfo *ai, st
             }
         }
 #endif
+#ifdef IP_MULTICAST_IF
+        if (localif_for_mcast_addrinfo != NULL) {
+            struct in_addr ifaddr = { 0 };
+            ifaddr = ((struct sockaddr_in *)localif_for_mcast_addrinfo->ai_addr)->sin_addr;
+            res = setsockopt(socket_w, IPPROTO_IP, IP_MULTICAST_IF, &ifaddr, sizeof(ifaddr));
+            if (res == -1) {
+                LOGGIT(logdat, "setsockopt(..., IP_MULTICAST_IF, ...): %s", strerror(errno));
+                return(-1);
+            }
+        }
+#endif
     } else if (ai->ai_family == PF_INET6 && IN6_IS_ADDR_MULTICAST((&((struct sockaddr_in6 *)ai->ai_addr)->sin6_addr))) {
         LOGGIT(logdat, "IPv6 multicast");
 #ifdef IPV6_JOIN_GROUP
