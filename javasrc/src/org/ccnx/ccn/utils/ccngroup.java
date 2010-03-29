@@ -173,8 +173,7 @@ public class ccngroup {
 	
 	public static void createGroup(String groupName, ArrayList<Link> membersToAdd) {
 		try {
-			GroupAccessControlManager acm = new GroupAccessControlManager(null, groupStorage, userStorage, CCNHandle.open());
-			GroupManager gm = acm.groupManager();
+			GroupManager gm = new GroupManager(groupStorage, CCNHandle.open());
 			gm.createGroup(groupName, membersToAdd);
 		} catch (Exception e) {
 			e.printStackTrace();
