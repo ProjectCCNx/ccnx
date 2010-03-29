@@ -33,7 +33,10 @@ import java.util.TimerTask;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
+import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.protocol.WirePacket;
 
 /**
  *  This guy manages all of the access to the network connection.
@@ -43,6 +46,7 @@ import org.ccnx.ccn.impl.support.Log;
 public class CCNNetworkChannel {
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
 	public static final int HEARTBEAT_PERIOD = 3500;
+	public static final int SOCKET_TIMEOUT = 1000; // period to wait in ms.
 
 	protected String _ncHost;
 	protected int _ncPort;
@@ -55,19 +59,24 @@ public class CCNNetworkChannel {
 	protected boolean _ncInitialized = false;
 	protected Timer _ncHeartBeatTimer = null;
 	protected Boolean _ncStarted = false;
-	protected CCNInputStream _ncStream = null;
+	protected InputStream _ncStream = null;
 	protected FileOutputStream _ncTapStreamIn = null;
+	protected boolean _run = true;
 	
 	// Allocate datagram buffer
-	ByteBuffer _datagram = ByteBuffer.allocateDirect(MAX_PAYLOAD);
-
+	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(MAX_PAYLOAD);
+	
 	public CCNNetworkChannel(String host, int port, NetworkProtocol proto, FileOutputStream tapStreamIn) throws IOException {
 		_ncHost = host;
 		_ncPort = port;
 		_ncProto = proto;
 		_ncTapStreamIn = tapStreamIn;
 		_ncSelector = Selector.open();
+<<<<<<< HEAD
 		_ncStream = new CCNInputStream(this);
+=======
+		Log.info("Starting up CCNNetworkChannel using {0}.", proto);
+>>>>>>> 9410d45... New TCP basically works
 	}
 	
 	/**
@@ -81,7 +90,7 @@ public class CCNNetworkChannel {
 			try {
 				_ncDGrmChannel = DatagramChannel.open();
 				_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
-				_ncDGrmChannel.configureBlocking(false);
+				_ncDGrmChannel.configureBlocking(true);
 				ByteBuffer test = ByteBuffer.allocate(1);
 				int ret = _ncDGrmChannel.write(test);
 				if (ret < 1)
@@ -99,14 +108,21 @@ public class CCNNetworkChannel {
 			_ncSockChannel = SocketChannel.open();
 			_ncSockChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
 			_ncSockChannel.configureBlocking(false);
-			_ncSockChannel.register(_ncSelector, SelectionKey.OP_READ);
-			_ncLocalPort = _ncSockChannel.socket().getLocalPort();
+			_ncSockChannel.register(_ncSelector, SelectionKey.OP_READ);			
 		} else {
 			throw new IOException("NetworkChannel: invalid protocol specified");
 		}
 		String connecting = (_ncInitialized ? "Reconnecting to" : "Contacting");
 		Log.info(connecting + " CCN agent at " + _ncHost + ":" + _ncPort + " on local port " + _ncLocalPort);
+		_ncStream = new CCNInputStream(this);
+		clearSelectedKeys();
 		_ncInitialized = true;
+	}
+	
+	public XMLEncodable getPacket() throws ContentDecodingException {
+		WirePacket packet = new WirePacket();
+		packet.decode(_ncStream);
+		return packet.getPacket();
 	}
 	
 	/**
@@ -153,8 +169,8 @@ public class CCNNetworkChannel {
 	public InputStream getInputStream() throws IOException {
 		clearSelectedKeys();
 		_datagram.clear(); // make ready for new read
-		_ncStream.init();
-		_ncStream.fill();
+		//_ncStream.init();
+		//_ncStream.fill();
 		return _ncStream;
 	}
     
@@ -212,6 +228,10 @@ public class CCNNetworkChannel {
 		}
 	}
 	
+	public void shutdown() {
+		_run = false;
+	}
+	
 	/**
 	 * Create an input stream to allow multiple reads from the TCP channel
 	 * when necessary. The algorithm tries to use only the single current buffer called _datagram
@@ -224,9 +244,8 @@ public class CCNNetworkChannel {
 		
 		private CCNInputStream(CCNNetworkChannel channel) {
 			_channel = channel;
-		}
-		
-		public void init() {
+			_datagram.clear(); // make ready for new read
+			_datagram.limit(0);
 			_mark = 0;
 			_readLimit = 0;
 		}
@@ -255,12 +274,11 @@ public class CCNNetworkChannel {
 		public void mark(int readlimit) {
 			_readLimit = readlimit;
 			_mark = _datagram.position();
-			_datagram.mark();
 		}
 		
 		@Override
 		public void reset() throws IOException {
-			_datagram.reset();
+			_datagram.position(_mark);
 		}
 		
 		/**
@@ -276,26 +294,34 @@ public class CCNNetworkChannel {
 			int ret;
 			int position = _datagram.position();
 			if (position >= _datagram.capacity()) {
-				byte[] b = new byte[position - _mark];
-				if (_mark + _readLimit > position && _mark < position) {
-					_datagram.reset();
+				byte[] b = null;
+				boolean doCopy = false;
+				int checkPosition = position - 1;
+				doCopy = _mark + _readLimit >= checkPosition && _mark <= checkPosition;
+				if (doCopy) {
+					b = new byte[checkPosition - (_mark - 1)];
+					_datagram.position(_mark);
 					_datagram.get(b);
 				}
 				_datagram.clear();
-				if (_mark + _readLimit > position && _mark < position) {
+				if (doCopy) {
+					Log.info("Copy of " + b.length + " bytes");
 					_datagram.put(b);
-					_datagram.flip();
-					_datagram.mark();
 				}
 				_mark = 0;
-				_readLimit = 0;
-				position = 0;
+				position = _datagram.position();
 			}
-			synchronized (_channel) {
-				if (_ncProto == NetworkProtocol.UDP)
+			_datagram.limit(_datagram.capacity());
+			if (_ncProto == NetworkProtocol.UDP) {
+				synchronized (_channel) {
 					ret = _ncDGrmChannel.read(_datagram);
-				else
+				}
+			} else {
+				ret = 0;
+				if (select(SOCKET_TIMEOUT) != 0) {
 					ret = _ncSockChannel.read(_datagram);
+				}
+				clearSelectedKeys();
 			}
 			_datagram.position(position);
 			_datagram.limit(position + ret);

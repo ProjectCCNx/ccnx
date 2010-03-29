@@ -20,7 +20,6 @@ package org.ccnx.ccn.impl;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.NotYetConnectedException;
 import java.util.ArrayList;
@@ -39,8 +38,8 @@ import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
+import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonProfile;
@@ -75,7 +74,6 @@ public class CCNNetworkManager implements Runnable {
 	public static final String PROP_TAP = "ccn.tap";
 	public static final String ENV_TAP = "CCN_TAP"; // match C library
 	public static final int DOWN_DELAY = 100;	// Wait period for retry when ccnd is down
-	public static final int SOCKET_TIMEOUT = 1000; // period to wait in ms.
 	public static final int PERIOD = 2000; // period for occasional ops in ms.
 	public static final int MAX_PERIOD = PERIOD * 8;
 	public static final String KEEPALIVE_NAME = "/HereIAm";
@@ -1164,17 +1162,23 @@ public class CCNNetworkManager implements Runnable {
 			Log.warning("CCNNetworkManager run() called after shutdown");
 			return;
 		}
-		WirePacket packet = new WirePacket();
+		//WirePacket packet = new WirePacket();
 		if( Log.isLoggable(Level.INFO) )
 			Log.info("CCNNetworkManager processing thread started for port: " + _localPort);
 		while (_run) {
+			try {
+				XMLEncodable packet = _channel.getPacket();
+				if (null == packet)
+					continue;
+			
+			/*
 			if (_channel.isConnected()) {
 				try {
 					//--------------------------------- Read and decode
 					try {
 						if (_channel.select(SOCKET_TIMEOUT) != 0) {
 							packet.clear();
-							InputStream stream = _channel.getInputStream();
+							InputStream stream = _channel.getInputStream(); 
 							packet.decode(stream);
 						} else {
 							// This was a timeout or wakeup, no data
@@ -1199,11 +1203,13 @@ public class CCNNetworkManager implements Runnable {
 	                    // exit immediately if wakeup for shutdown
 	                    break;
 	                }
+	                */
 	                
 	                // If we got a data packet, hand it back to all the interested
 					// parties (registered interests and getters).
 					//--------------------------------- Process data from net (if any) 
-					for (ContentObject co : packet.data()) {
+					if (packet instanceof ContentObject) {
+						ContentObject co = (ContentObject)packet;
 						if( Log.isLoggable(Level.FINER) )
 							Log.finer("Data from net for port: " + _localPort + " {0}", co.name());
 						//	SystemConfiguration.logObject("Data from net:", co);
@@ -1211,10 +1217,8 @@ public class CCNNetworkManager implements Runnable {
 						deliverData(co);
 						// External data never goes back to network, never held onto here
 						// External data never has a thread waiting, so no need to release sema
-					}
-	
-					//--------------------------------- Process interests from net (if any)
-					for (Interest interest : packet.interests()) {
+					} else if (packet instanceof Interest) {
+						Interest interest = (Interest)	packet;
 						if( Log.isLoggable(Level.FINEST) )
 							Log.finest("Interest from net for port: " + _localPort + " {0}", interest);
 						InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
@@ -1222,15 +1226,17 @@ public class CCNNetworkManager implements Runnable {
 						// External interests never go back to network
 					} // for interests
 					
+				
 				} catch (Exception ex) {
 					Log.severe("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
 	                Log.warningStackTrace(ex);
 				}
+				/*
 			} else {
 				try {
 					Thread.sleep(DOWN_DELAY);
 				} catch (InterruptedException e) {}
-			}
+			} */
 		}
 		
 		_threadpool.shutdown();

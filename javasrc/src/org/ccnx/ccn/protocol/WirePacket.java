@@ -59,23 +59,16 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 		boolean done = false;
 		_contents = new ArrayList<GenericXMLEncodable>();
 		
-		while (!done) {
-			if (decoder.peekStartElement(CCNProtocolDTags.Interest)) {
-				Interest interest = new Interest();
-				interest.decode(decoder);
-				_contents.add(interest);
-			} else if (decoder.peekStartElement(CCNProtocolDTags.ContentObject)) {
-				ContentObject data = new ContentObject();
-				data.decode(decoder);
-				if( Log.isLoggable(Level.FINEST) )
-					SystemConfiguration.logObject(Level.FINEST, "packetDecode", data);
-				_contents.add(data);
-			} else {
-				done = true;
-				if (_contents.size() == 0) {
-					throw new ContentDecodingException("Unrecognized packet content");
-				}
-			}
+		if (decoder.peekStartElement(CCNProtocolDTags.Interest.getTag())) {
+			Interest interest = new Interest();
+			interest.decode(decoder);
+			_contents.add(interest);
+		} else if (decoder.peekStartElement(CCNProtocolDTags.ContentObject.getTag())) {
+			ContentObject data = new ContentObject();
+			data.decode(decoder);
+			if( Log.isLoggable(Level.FINEST) )
+				SystemConfiguration.logObject(Level.FINEST, "packetDecode", data);
+			_contents.add(data);
 		}
 		Log.finest("Finished decoding wire packet.");
 	}
@@ -118,6 +111,12 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 		_contents.add(interest);
 	}
 	
+	public XMLEncodable getPacket() {
+		if (_contents.size() > 0) {
+			return _contents.get(0);
+		}
+		return null;
+	}
 	public List<Interest> interests() {
 		List<Interest> result = new ArrayList<Interest>(_contents.size());
 		for (Iterator<GenericXMLEncodable> iterator = _contents.iterator(); iterator.hasNext();) {
