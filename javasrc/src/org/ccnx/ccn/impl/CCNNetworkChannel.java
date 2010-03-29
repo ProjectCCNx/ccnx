@@ -64,6 +64,7 @@ public class CCNNetworkChannel extends InputStream {
 	protected Timer _ncHeartBeatTimer = null;
 	protected Boolean _ncStarted = false;
 	protected FileOutputStream _ncTapStreamIn = null;
+	protected boolean _run = true;
 	
 	// Allocate datagram buffer
 	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(MAX_PAYLOAD);
@@ -78,10 +79,6 @@ public class CCNNetworkChannel extends InputStream {
 		_ncProto = proto;
 		_ncTapStreamIn = tapStreamIn;
 		_ncSelector = Selector.open();
-<<<<<<< HEAD
-=======
-		_ncStream = new CCNInputStream(this);
->>>>>>> 080edea... Fix get of protocol to use already established methods and values as well as
 		Log.info("Starting up CCNNetworkChannel using {0}.", proto);
 	}
 	
@@ -96,11 +93,7 @@ public class CCNNetworkChannel extends InputStream {
 			try {
 				_ncDGrmChannel = DatagramChannel.open();
 				_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
-				_ncDGrmChannel.configureBlocking(false);
-				
-				// For some weird reason we seem to have to test writing twice when ccnd is down
-				// before the channel actually notices. There might be some kind of timing/locking
-				// problem responsible for this but I can't figure out what it is.
+				_ncDGrmChannel.configureBlocking(true);
 				ByteBuffer test = ByteBuffer.allocate(1);
 				if (_ncInitialized)
 					_ncDGrmChannel.write(test);
@@ -163,6 +156,12 @@ public class CCNNetworkChannel extends InputStream {
 			} catch (InterruptedException e) {}
 		}
 		return null;
+	}
+	
+	public XMLEncodable getPacket() throws ContentDecodingException {
+		WirePacket packet = new WirePacket();
+		packet.decode(_ncStream);
+		return packet.getPacket();
 	}
 	
 	/**
