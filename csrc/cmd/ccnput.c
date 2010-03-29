@@ -109,6 +109,7 @@ main(int argc, char **argv)
     const char *progname = argv[0];
     struct ccn *ccn = NULL;
     struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *pname = NULL;
     struct ccn_charbuf *temp = NULL;
     long expire = -1;
     int versioned = 0;
@@ -199,7 +200,12 @@ main(int argc, char **argv)
     }
     if (argv[1] != NULL)
         fprintf(stderr, "%s warning: extra arguments ignored\n", progname);
+    
+    /* Preserve the original prefix, in case we add versioning. */
+    pname = ccn_charbuf_create();
+    ccn_charbuf_append(pname, name->buf, name->length);
 
+    /* Connect to ccnd */
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
         perror("Could not connect to ccnd");
@@ -266,7 +272,7 @@ main(int argc, char **argv)
     else {
         in_interest.data = temp;
         /* Set up a handler for interests */
-        res = ccn_set_interest_filter(ccn, name, &in_interest);
+        res = ccn_set_interest_filter(ccn, pname, &in_interest);
         if (res < 0) {
             fprintf(stderr, "Failed to register interest (res == %d)\n", res);
             exit(1);
@@ -288,6 +294,7 @@ main(int argc, char **argv)
     }
     ccn_destroy(&ccn);
     ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&pname);
     ccn_charbuf_destroy(&temp);
     exit(status);
 }
