@@ -110,7 +110,11 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp, int size)
  * @param name is a ccnb-encoded Name prefix. It gets extended in-place with
  *        one additional Component such that it names highest extant
  *        version that can be found, subject to the supplied timeout.
- * @param versioning_flags presently must be CCN_V_HIGHEST
+ * @param versioning_flags presently must be CCN_V_HIGHEST, possibly
+ *        combined with CCN_V_NESTOK.  If CCN_V_NESTOK is not present
+ *        and the ending component appears to be a version, the routine
+ *        returns 0 immediately, on the assumption that an explicit
+ *        version has already been provided.
  * @param timeout_ms is a time value in milliseconds. This is applied per
  *        fetch attempt, so the total time may be longer by a factor that
  *        depends on the number of (ccn) hops to the source(s).
@@ -130,18 +134,25 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
     struct ccn_indexbuf *ndx = ccn_indexbuf_create();
     const unsigned char *vers = NULL;
     size_t vers_size = 0;
-    int n = ccn_name_split(name, NULL);
+    int n;
     struct ccn_indexbuf *nix = ccn_indexbuf_create();
     unsigned char lowtime[7] = {CCN_MARKER_VERSION, 0, FF, FF, FF, FF, FF};
     
-    if (versioning_flags != CCN_V_HIGHEST) {
+    if ((versioning_flags & ~CCN_V_NESTOK) != CCN_V_HIGHEST) {
         ccn_seterror(h, EINVAL);
         ccn_perror(h, "ccn_resolve_version is only implemented for versioning_flags = CCN_V_HIGHEST");
         goto Finish;
     }
-    n = ccn_name_split(name, nix); /* Do this just to validate name */
+    n = ccn_name_split(name, nix);
     if (n < 0)
         goto Finish;
+    if ((versioning_flags & CCN_V_NESTOK) == 0) {
+        res = ccn_name_comp_get(name->buf, nix, n - 1, &vers, &vers_size);
+        if (res >= 0 && vers_size == 7 && vers[0] == CCN_MARKER_VERSION) {
+            myres = 0;
+            goto Finish;
+        }    
+    }
     templ = resolve_templ(templ, lowtime, sizeof(lowtime));
     ccn_charbuf_append(prefix, name->buf, name->length); /* our copy */
     cobj->length = 0;

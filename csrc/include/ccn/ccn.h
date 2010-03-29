@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 2004
+#define CCN_API_VERSION 2005
 
 /**
  * Global interest lifetime.
@@ -840,15 +840,16 @@ int ccnb_tagged_putf(struct ccn_charbuf *c, enum ccn_dtag dtag,
  */
 
 /* Not all of these flags make sense with all of the operations */
-#define CCN_V_REPLACE  1 /* if last component is version, replace it */
-#define CCN_V_LOW      2 /* look for early version */
-#define CCN_V_HIGH     4 /* look for newer version */
-#define CCN_V_EST      8 /* look for extreme */
+#define CCN_V_REPLACE  1 /**< if last component is version, replace it */
+#define CCN_V_LOW      2 /**< look for early version */
+#define CCN_V_HIGH     4 /**< look for newer version */
+#define CCN_V_EST      8 /**< look for extreme */
 #define CCN_V_LOWEST   (2|8)
 #define CCN_V_HIGHEST  (4|8)
 #define CCN_V_NEXT     (4|1)
 #define CCN_V_PREV     (2|1)
-#define CCN_V_NOW      16 /* use current time */
+#define CCN_V_NOW      16 /**< use current time */
+#define CCN_V_NESTOK   32 /**< version within version is ok */ 
 
 int ccn_resolve_version(struct ccn *h,
                         struct ccn_charbuf *name, /* ccnb encoded */
