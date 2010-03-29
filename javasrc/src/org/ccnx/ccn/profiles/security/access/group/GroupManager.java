@@ -75,18 +75,6 @@ public class GroupManager {
 	}
 	
 	/**
-	 * A constructor for managing groups without specifying _accessManager.
-	 * Used by the utility ccngroup to create groups.
-	 * @param groupStorage
-	 * @param handle
-	 */
-	public GroupManager(ContentName groupStorage, CCNHandle handle) {
-		_accessManager = null;
-		_groupStorage = new ParameterizedName("Group", groupStorage, null);
-		_handle = handle;
-	}
-	
-	/**
 	 * A "quiet" constructor that doesn't enumerate anything, and in fact does 
 	 * little to be used for non-group based uses of KeyDirectory, really
 	 * a temporary hack till we refactor KD.
@@ -209,10 +197,7 @@ public class GroupManager {
 						new Collection(newMembers), SaveType.REPOSITORY, _handle);
 			Group newGroup =  new Group(_groupStorage.prefix(), groupFriendlyName, ml, _handle, this);
 			cacheGroup(newGroup);
-			// _accessManager may be null if the GroupManager was instantiated with
-			// the simple constructor that does not specify an _accessManager
-			// If so, we cannot and do not check for current group membership.
-			if ((null != _accessManager) && (amCurrentGroupMember(newGroup))) {
+			if (amCurrentGroupMember(newGroup)) {
 				_myGroupMemberships.add(groupFriendlyName);
 			}
 			return newGroup;
