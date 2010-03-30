@@ -158,24 +158,6 @@ public class CCNNetworkChannel extends InputStream {
 		return null;
 	}
 	
-	public XMLEncodable getPacket() throws IOException {
-		if (isConnected()) {
-			_mark = 0;
-			_readLimit = 0;
-			doReadIn(0);
-			if (!_run)
-				return null;
-			WirePacket packet = new WirePacket();
-			packet.decode(this);
-			return packet.getPacket();
-		} else {
-			try {
-				Thread.sleep(DOWN_DELAY);
-			} catch (InterruptedException e) {}
-		}
-		return null;
-	}
-	
 	/**
 	 * Close the channel depending on the protocol
 	 * @throws IOException
