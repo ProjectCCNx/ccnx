@@ -216,8 +216,8 @@ public class CCNNetworkManager implements Runnable {
 			long minFilterRefreshTime = PERIOD + ourTime;
 			if (_usePrefixReg) {
 				synchronized (_registeredPrefixes) {
-					if( Log.isLoggable(Level.FINE) )
-						Log.fine("Refresh registration.  size: " + _registeredPrefixes.size());
+					if( Log.isLoggable(Level.FINEST) )
+						Log.finest("Refresh registration.  size: " + _registeredPrefixes.size());
 					for (ContentName prefix : _registeredPrefixes.keySet()) {
 						RegisteredPrefix rp = _registeredPrefixes.get(prefix);
 						if (null != rp._forwarding && rp._lifetime != -1 && rp._nextRefresh != -1) {
