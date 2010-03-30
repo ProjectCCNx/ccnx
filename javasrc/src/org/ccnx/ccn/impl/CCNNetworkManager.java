@@ -740,8 +740,6 @@ public class CCNNetworkManager implements Runnable {
 		if (_periodicTimer != null)
 			_periodicTimer.cancel();
 		if (null != _channel) {
-			_channel.shutdown();
-			_channel.wakeup();
 			try {
 				setTap(null);
 				_channel.close();
