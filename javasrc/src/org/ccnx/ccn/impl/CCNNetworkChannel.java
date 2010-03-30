@@ -42,7 +42,7 @@ import org.ccnx.ccn.protocol.WirePacket;
  *  We do this as a separate class so we can support both TCP and UDP
  *  transports.
  */
-public class CCNNetworkChannel {
+public class CCNNetworkChannel extends InputStream {
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
 	public static final int HEARTBEAT_PERIOD = 3500;
 	public static final int SOCKET_TIMEOUT = 1000; // period to wait in ms.
@@ -58,12 +58,13 @@ public class CCNNetworkChannel {
 	protected boolean _ncInitialized = false;
 	protected Timer _ncHeartBeatTimer = null;
 	protected Boolean _ncStarted = false;
-	protected InputStream _ncStream = null;
 	protected FileOutputStream _ncTapStreamIn = null;
 	protected boolean _run = true;
 	
 	// Allocate datagram buffer
 	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(MAX_PAYLOAD);
+	private int _mark = 0;
+	private int _readLimit = 0;
 	
 	public CCNNetworkChannel(String host, int port, NetworkProtocol proto, FileOutputStream tapStreamIn) throws IOException {
 		_ncHost = host;
@@ -113,17 +114,17 @@ public class CCNNetworkChannel {
 		}
 		String connecting = (_ncInitialized ? "Reconnecting to" : "Contacting");
 		Log.info(connecting + " CCN agent at " + _ncHost + ":" + _ncPort + " on local port " + _ncLocalPort);
-		_ncStream = new CCNInputStream();
-		clearSelectedKeys();
 		_ncInitialized = true;
 	}
 	
 	public XMLEncodable getPacket() throws IOException {
+		_mark = 0;
+		_readLimit = 0;
 		doReadIn(0);
 		if (!_run)
 			return null;
 		WirePacket packet = new WirePacket();
-		packet.decode(_ncStream);
+		packet.decode(this);
 		return packet.getPacket();
 	}
 	
@@ -160,23 +161,6 @@ public class CCNNetworkChannel {
 		}
 	}
 	
-	/**
-	 * Return an InputStream to read data from the ccnd channel depending on the protocol.
-	 * The stream is directly passed to the decoder. For UDP we just convert the data into
-	 * a ByteArrayInputStream which is what we always have done. For TCP, we may need to do
-	 * multiple reads from the channel so we handle that by creating a custom input stream.
-	 * 
-	 * @return
-	 * @throws IOException
-	 */
-	public InputStream getInputStream() throws IOException {
-		clearSelectedKeys();
-		_datagram.clear(); // make ready for new read
-		//_ncStream.init();
-		//_ncStream.fill();
-		return _ncStream;
-	}
-    
 	/**
 	 * Write to ccnd using methods based on the protocol type
 	 * @param src - ByteBuffer to write
@@ -235,86 +219,68 @@ public class CCNNetworkChannel {
 		_run = false;
 	}
 	
+		
+	@Override
+	public int read() throws IOException {
+		while (true) {
+			try {
+				if (_datagram.hasRemaining()) {
+					int ret = (int)_datagram.get();
+					return ret & 0xff;
+				}
+			} catch (BufferUnderflowException bfe) {}
+			int ret = fill();
+			if (ret < 0) {
+				return ret;
+			}
+		}
+	}
+	
+	@Override
+	public boolean markSupported() {
+		return true;
+	}
+	
+	@Override
+	public void mark(int readlimit) {
+		_readLimit = readlimit;
+		_mark = _datagram.position();
+	}
+	
+	@Override
+	public void reset() throws IOException {
+		_datagram.position(_mark);
+	}
+	
 	/**
-	 * Create an input stream to allow multiple reads from the TCP channel
-	 * when necessary. The algorithm tries to use only the single current buffer called _datagram
-	 * which is also used to implement the UDP algorithm.
+	 * Refill the buffer. We don't reset the start of it unless necessary (i.e. we have
+	 * reached the end of the buffer). If the start is reset and a mark has been set within
+	 * "readLimit" bytes of the end, we need to copy the end of the previous buffer out
+	 * to the start so that a reset is possible.
+	 * 
+	 * @return
+	 * @throws IOException
 	 */
-	private class CCNInputStream extends InputStream {
-		private int _mark = 0;
-		private int _readLimit = 0;
-		
-		private CCNInputStream() {
-			_datagram.clear(); // make ready for new read
-			_datagram.limit(0);
+	private int fill() throws IOException {
+		int position = _datagram.position();
+		if (position >= _datagram.capacity()) {
+			byte[] b = null;
+			boolean doCopy = false;
+			int checkPosition = position - 1;
+			doCopy = _mark + _readLimit >= checkPosition && _mark <= checkPosition;
+			if (doCopy) {
+				b = new byte[checkPosition - (_mark - 1)];
+				_datagram.position(_mark);
+				_datagram.get(b);
+			}
+			_datagram.clear();
+			if (doCopy) {
+				_datagram.put(b);
+			}
 			_mark = 0;
-			_readLimit = 0;
+			position = _datagram.position();
 		}
-		
-		@Override
-		public int read() throws IOException {
-			while (true) {
-				try {
-					if (_datagram.hasRemaining()) {
-						int ret = (int)_datagram.get();
-						return ret & 0xff;
-					}
-				} catch (BufferUnderflowException bfe) {}
-				int ret = fill();
-				if (ret < 0) {
-					Log.info("Stream returned -1!");
-					return ret;
-				}
-			}
-		}
-		
-		@Override
-		public boolean markSupported() {
-			return true;
-		}
-		
-		@Override
-		public void mark(int readlimit) {
-			_readLimit = readlimit;
-			_mark = _datagram.position();
-		}
-		
-		@Override
-		public void reset() throws IOException {
-			_datagram.position(_mark);
-		}
-		
-		/**
-		 * Refill the buffer. We don't reset the start of it unless necessary (i.e. we have
-		 * reached the end of the buffer). If the start is reset and a mark has been set within
-		 * "readLimit" bytes of the end, we need to copy the end of the previous buffer out
-		 * to the start so that a reset is possible.
-		 * 
-		 * @return
-		 * @throws IOException
-		 */
-		private int fill() throws IOException {
-			int position = _datagram.position();
-			if (position >= _datagram.capacity()) {
-				byte[] b = null;
-				boolean doCopy = false;
-				int checkPosition = position - 1;
-				doCopy = _mark + _readLimit >= checkPosition && _mark <= checkPosition;
-				if (doCopy) {
-					b = new byte[checkPosition - (_mark - 1)];
-					Log.finer("Copy of ", + b.length + " bytes");
-					_datagram.position(_mark);
-					_datagram.get(b);
-				}
-				_datagram.clear();
-				if (doCopy) {
-					_datagram.put(b);
-				}
-				_mark = 0;
-				position = _datagram.position();
-			}
-			return doReadIn(position);
-		}
+		return doReadIn(position);
 	}
 	
 	private int doReadIn(int position) throws IOException {
