@@ -159,11 +159,13 @@ public class CCNNetworkChannel extends InputStream {
 	}
 	
 	public XMLEncodable getPacket() throws IOException {
+		_mark = 0;
+		_readLimit = 0;
 		doReadIn(0);
 		if (!_run)
 			return null;
 		WirePacket packet = new WirePacket();
-		packet.decode(_ncStream);
+		packet.decode(this);
 		return packet.getPacket();
 	}
 	
@@ -264,7 +266,7 @@ public class CCNNetworkChannel extends InputStream {
 		_datagram.clear();
 		_datagram.limit(0);
 	}
-		
+
 	@Override
 	public int read() throws IOException {
 		while (true) {
@@ -277,7 +279,6 @@ public class CCNNetworkChannel extends InputStream {
 			int ret = fill();
 			if (ret < 0) {
 				return ret;
-
 			}
 		}
 	}
