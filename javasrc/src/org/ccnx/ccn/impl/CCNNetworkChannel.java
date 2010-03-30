@@ -39,8 +39,13 @@ import org.ccnx.ccn.protocol.WirePacket;
 
 /**
  *  This guy manages all of the access to the network connection.
- *  We do this as a separate class so we can support both TCP and UDP
- *  transports.
+ *  It is capable of supporting both UDP and TCP transport protocols
+ *  
+ *  It also creates a stream interface for input to the decoders. It is necessary to
+ *  create our own input stream for TCP because the stream that can be obtained via the
+ *  socket interface is not markable. Originally the UDP code used to translate the UDP
+ *  input data into a ByteArrayInputStream after reading it in, but we now an use the
+ *  same input stream for both transports.
  */
 public class CCNNetworkChannel extends InputStream {
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
@@ -236,6 +241,38 @@ public class CCNNetworkChannel extends InputStream {
 				return ret;
 			}
 		}
+	}
+	
+	@Override
+	public int read(byte[] b) throws IOException {
+		return read(b, 0, b.length);
+	}
+	
+	@Override
+	public int read(byte[] b, int off, int len) throws IOException {
+		int ret = 0;
+		while (len > 0) {
+			if (off + len >= b.length) {
+				if (off >= b.length)
+					break;
+				len = b.length - off;
+			}
+			if (_datagram.hasRemaining()) {
+				int size = _datagram.remaining() > len ? len : _datagram.remaining();
+				_datagram.get(b, off, size);
+				ret += len;
+				off += size;
+				len -= size;
+			} else {
+				int tmpRet = fill();
+				if (tmpRet <= 0) {
+					if (ret == 0)
+						ret = tmpRet;
+					break;
+				}
+			}
+		}
+		return ret;
 	}
 	
 	@Override
