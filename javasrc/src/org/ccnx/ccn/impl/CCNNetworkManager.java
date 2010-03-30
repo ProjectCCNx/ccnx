@@ -739,12 +739,15 @@ public class CCNNetworkManager implements Runnable {
 		_run = false;
 		if (_periodicTimer != null)
 			_periodicTimer.cancel();
-		_channel.wakeup();
-		try {
-			setTap(null);
-			_channel.close();
-		} catch (IOException io) {
-			// Ignore since we're shutting down
+		if (null != _channel) {
+			_channel.shutdown();
+			_channel.wakeup();
+			try {
+				setTap(null);
+				_channel.close();
+			} catch (IOException io) {
+				// Ignore since we're shutting down
+			}
 		}
 	}
 
@@ -1170,73 +1173,28 @@ public class CCNNetworkManager implements Runnable {
 				XMLEncodable packet = _channel.getPacket();
 				if (null == packet)
 					continue;
-			
-			/*
-			if (_channel.isConnected()) {
-				try {
-					//--------------------------------- Read and decode
-					try {
-						if (_channel.select(SOCKET_TIMEOUT) != 0) {
-							packet.clear();
-							InputStream stream = _channel.getInputStream(); 
-							packet.decode(stream);
-						} else {
-							// This was a timeout or wakeup, no data
-							packet.clear();
-							if (!_run) {
-								// exit immediately if wakeup for shutdown
-								break;
-							}
-						}
-					} catch (ContentDecodingException cde) {
-						_channel.close();
-						if( Log.isLoggable(Level.INFO) )
-							Log.info("Shutting down channel to ccnd");
-						packet.clear();
-						
-					} catch (IOException ioe) {
-						if( Log.isLoggable(Level.INFO) )
-							Log.info("Error on ccnd channel: " + ioe.getMessage());
-						packet.clear();		
-					}
-	                if (!_run) {
-	                    // exit immediately if wakeup for shutdown
-	                    break;
-	                }
-	                */
-	                
-	                // If we got a data packet, hand it back to all the interested
-					// parties (registered interests and getters).
-					//--------------------------------- Process data from net (if any) 
-					if (packet instanceof ContentObject) {
-						ContentObject co = (ContentObject)packet;
-						if( Log.isLoggable(Level.FINER) )
-							Log.finer("Data from net for port: " + _localPort + " {0}", co.name());
-						//	SystemConfiguration.logObject("Data from net:", co);
-						
-						deliverData(co);
-						// External data never goes back to network, never held onto here
-						// External data never has a thread waiting, so no need to release sema
-					} else if (packet instanceof Interest) {
-						Interest interest = (Interest)	packet;
-						if( Log.isLoggable(Level.FINEST) )
-							Log.finest("Interest from net for port: " + _localPort + " {0}", interest);
-						InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
-						deliverInterest(oInterest);
-						// External interests never go back to network
-					} // for interests
-					
 				
-				} catch (Exception ex) {
-					Log.severe("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
-	                Log.warningStackTrace(ex);
-				}
-				/*
-			} else {
-				try {
-					Thread.sleep(DOWN_DELAY);
-				} catch (InterruptedException e) {}
-			} */
+				if (packet instanceof ContentObject) {
+					ContentObject co = (ContentObject)packet;
+					if( Log.isLoggable(Level.FINER) )
+						Log.finer("Data from net for port: " + _localPort + " {0}", co.name());
+					//	SystemConfiguration.logObject("Data from net:", co);
+					
+					deliverData(co);
+					// External data never goes back to network, never held onto here
+					// External data never has a thread waiting, so no need to release sema
+				} else if (packet instanceof Interest) {
+					Interest interest = (Interest)	packet;
+					if( Log.isLoggable(Level.FINEST) )
+						Log.finest("Interest from net for port: " + _localPort + " {0}", interest);
+					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
+					deliverInterest(oInterest);
+					// External interests never go back to network
+				} // for interests
+			} catch (Exception ex) {
+				Log.severe("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
+                Log.warningStackTrace(ex);
+			}
 		}
 		
 		_threadpool.shutdown();

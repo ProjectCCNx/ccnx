@@ -35,7 +35,6 @@ import java.util.logging.Level;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.WirePacket;
 
 /**
@@ -90,7 +89,7 @@ public class CCNNetworkChannel {
 			try {
 				_ncDGrmChannel = DatagramChannel.open();
 				_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
-				_ncDGrmChannel.configureBlocking(true);
+				_ncDGrmChannel.configureBlocking(false);
 				ByteBuffer test = ByteBuffer.allocate(1);
 				int ret = _ncDGrmChannel.write(test);
 				if (ret < 1)
@@ -98,9 +97,9 @@ public class CCNNetworkChannel {
 				wakeup();
 				_ncDGrmChannel.register(_ncSelector, SelectionKey.OP_READ);
 				_ncLocalPort = _ncDGrmChannel.socket().getLocalPort();
+				_ncConnected = true;
 				if (_ncStarted)
 					_ncHeartBeatTimer.schedule(new HeartBeatTimer(), 0);
-				_ncConnected = true;
 			} catch (IOException ioe) {
 				return;
 			}
@@ -114,12 +113,15 @@ public class CCNNetworkChannel {
 		}
 		String connecting = (_ncInitialized ? "Reconnecting to" : "Contacting");
 		Log.info(connecting + " CCN agent at " + _ncHost + ":" + _ncPort + " on local port " + _ncLocalPort);
-		_ncStream = new CCNInputStream(this);
+		_ncStream = new CCNInputStream();
 		clearSelectedKeys();
 		_ncInitialized = true;
 	}
 	
-	public XMLEncodable getPacket() throws ContentDecodingException {
+	public XMLEncodable getPacket() throws IOException {
+		doReadIn(0);
+		if (!_run)
+			return null;
 		WirePacket packet = new WirePacket();
 		packet.decode(_ncStream);
 		return packet.getPacket();
@@ -130,6 +132,7 @@ public class CCNNetworkChannel {
 	 * @throws IOException
 	 */
 	public void close() throws IOException {
+		Log.info("Close called");
 		if (_ncProto == NetworkProtocol.UDP) {
 			_ncConnected = false;
 			wakeup();
@@ -238,12 +241,10 @@ public class CCNNetworkChannel {
 	 * which is also used to implement the UDP algorithm.
 	 */
 	private class CCNInputStream extends InputStream {
-		private CCNNetworkChannel _channel;
 		private int _mark = 0;
 		private int _readLimit = 0;
 		
-		private CCNInputStream(CCNNetworkChannel channel) {
-			_channel = channel;
+		private CCNInputStream() {
 			_datagram.clear(); // make ready for new read
 			_datagram.limit(0);
 			_mark = 0;
@@ -260,8 +261,10 @@ public class CCNNetworkChannel {
 					}
 				} catch (BufferUnderflowException bfe) {}
 				int ret = fill();
-				if (ret <= 0)
+				if (ret < 0) {
+					Log.info("Stream returned -1!");
 					return ret;
+				}
 			}
 		}
 		
@@ -291,7 +294,6 @@ public class CCNNetworkChannel {
 		 * @throws IOException
 		 */
 		private int fill() throws IOException {
-			int ret;
 			int position = _datagram.position();
 			if (position >= _datagram.capacity()) {
 				byte[] b = null;
@@ -300,28 +302,31 @@ public class CCNNetworkChannel {
 				doCopy = _mark + _readLimit >= checkPosition && _mark <= checkPosition;
 				if (doCopy) {
 					b = new byte[checkPosition - (_mark - 1)];
+					Log.finer("Copy of ", + b.length + " bytes");
 					_datagram.position(_mark);
 					_datagram.get(b);
 				}
 				_datagram.clear();
 				if (doCopy) {
-					Log.info("Copy of " + b.length + " bytes");
 					_datagram.put(b);
 				}
 				_mark = 0;
 				position = _datagram.position();
 			}
-			_datagram.limit(_datagram.capacity());
+			return doReadIn(position);
+		}
+	}
+	
+	private int doReadIn(int position) throws IOException {
+		int ret = 0;
+		clearSelectedKeys();
+		if (select(SOCKET_TIMEOUT) != 0) {
+			_datagram.position(position);
+			_datagram.limit(_datagram.capacity() - position);
 			if (_ncProto == NetworkProtocol.UDP) {
-				synchronized (_channel) {
-					ret = _ncDGrmChannel.read(_datagram);
-				}
+				ret = _ncDGrmChannel.read(_datagram);
 			} else {
-				ret = 0;
-				if (select(SOCKET_TIMEOUT) != 0) {
-					ret = _ncSockChannel.read(_datagram);
-				}
-				clearSelectedKeys();
+				ret = _ncSockChannel.read(_datagram);
 			}
 			_datagram.position(position);
 			_datagram.limit(position + ret);
@@ -332,8 +337,8 @@ public class CCNNetworkChannel {
 				_datagram.position(position);
 				_datagram.limit(position + ret);
 			}
-			return ret;
 		}
+		return ret;
 	}
 			
 	/**
