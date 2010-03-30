@@ -64,7 +64,6 @@ public class CCNNetworkChannel extends InputStream {
 	protected Timer _ncHeartBeatTimer = null;
 	protected Boolean _ncStarted = false;
 	protected FileOutputStream _ncTapStreamIn = null;
-	protected boolean _run = true;
 	
 	// Allocate datagram buffer
 	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(MAX_PAYLOAD);
@@ -146,7 +145,7 @@ public class CCNNetworkChannel extends InputStream {
 				int ret = doReadIn(0);
 				if (ret <= 0 || !isConnected())
 					return null;
-			} 
+			}
 			WirePacket packet = new WirePacket();
 			packet.decode(this);
 			return packet.getPacket();
