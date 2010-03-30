@@ -88,7 +88,7 @@ public class SystemConfiguration {
 	
 	protected static final String CCN_PROTOCOL_PROPERTY = "org.ccnx.protocol";
 	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.UDP;
-
+	
 	/**
 	 * Property to set debug flags.
 	 */

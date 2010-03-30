@@ -73,7 +73,6 @@ public class CCNNetworkManager implements Runnable {
 	public static final String PROP_AGENT_HOST = "ccn.agent.host";
 	public static final String PROP_TAP = "ccn.tap";
 	public static final String ENV_TAP = "CCN_TAP"; // match C library
-	public static final int DOWN_DELAY = 100;	// Wait period for retry when ccnd is down
 	public static final int PERIOD = 2000; // period for occasional ops in ms.
 	public static final int MAX_PERIOD = PERIOD * 8;
 	public static final String KEEPALIVE_NAME = "/HereIAm";
@@ -253,7 +252,13 @@ public class CCNNetworkManager implements Runnable {
 					Log.warningStackTrace(xmlex);
 				}
 			} else {
-				// We have lost our connection to ccnd. See if we can reconnect
+				// We have lost our connection to ccnd.
+				//
+				// The attempt to reconnect is done from here rather than in the main run loop
+				// because the prefix reregistration requires data passing through the main run loop
+				// to get processed.  Also reregisterPrefixes will delay to do gets (thus in theory
+				// throwing off our timing here) but that's OK because we are restarting so the timing
+				// code doesn't matter until the reconnect is completed.
 				useMe = 1000;
 				try {
 					_ccndId = null;
@@ -261,13 +266,8 @@ public class CCNNetworkManager implements Runnable {
 					if (_channel.isConnected()) {
 						_faceID = null;
 						reregisterPrefixes();
-						useMe = 0;	// Come right back to refigure registration refresh times
 					}
-				} catch (Exception e) {
-					try {
-						_channel.close();
-					} catch (IOException e1) {}
-				}
+				} catch (Exception e) {}	// ccnd is still not available
 			}
 			if (_run)
 				_periodicTimer.schedule(new PeriodicWriter(), useMe);
@@ -1171,8 +1171,9 @@ public class CCNNetworkManager implements Runnable {
 		while (_run) {
 			try {
 				XMLEncodable packet = _channel.getPacket();
-				if (null == packet)
+				if (null == packet) {
 					continue;
+				}
 				
 				if (packet instanceof ContentObject) {
 					ContentObject co = (ContentObject)packet;

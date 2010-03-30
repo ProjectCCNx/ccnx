@@ -46,6 +46,7 @@ public class CCNNetworkChannel extends InputStream {
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
 	public static final int HEARTBEAT_PERIOD = 3500;
 	public static final int SOCKET_TIMEOUT = 1000; // period to wait in ms.
+	public static final int DOWN_DELAY = 100;	// Wait period for retry when ccnd is down
 
 	protected String _ncHost;
 	protected int _ncPort;
@@ -72,11 +73,6 @@ public class CCNNetworkChannel extends InputStream {
 		_ncProto = proto;
 		_ncTapStreamIn = tapStreamIn;
 		_ncSelector = Selector.open();
-<<<<<<< HEAD
-		_ncStream = new CCNInputStream(this);
-=======
-		Log.info("Starting up CCNNetworkChannel using {0}.", proto);
->>>>>>> 9410d45... New TCP basically works
 	}
 	
 	/**
@@ -118,14 +114,21 @@ public class CCNNetworkChannel extends InputStream {
 	}
 	
 	public XMLEncodable getPacket() throws IOException {
-		_mark = 0;
-		_readLimit = 0;
-		doReadIn(0);
-		if (!_run)
-			return null;
-		WirePacket packet = new WirePacket();
-		packet.decode(this);
-		return packet.getPacket();
+		if (isConnected()) {
+			_mark = 0;
+			_readLimit = 0;
+			doReadIn(0);
+			if (!_run)
+				return null;
+			WirePacket packet = new WirePacket();
+			packet.decode(this);
+			return packet.getPacket();
+		} else {
+			try {
+				Thread.sleep(DOWN_DELAY);
+			} catch (InterruptedException e) {}
+		}
+		return null;
 	}
 	
 	/**
@@ -133,7 +136,6 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public void close() throws IOException {
-		Log.info("Close called");
 		if (_ncProto == NetworkProtocol.UDP) {
 			_ncConnected = false;
 			wakeup();
@@ -294,15 +296,18 @@ public class CCNNetworkChannel extends InputStream {
 			} else {
 				ret = _ncSockChannel.read(_datagram);
 			}
-			_datagram.position(position);
-			_datagram.limit(position + ret);
-			if (null != _ncTapStreamIn) {
-				byte [] b = new byte[ret];
-				_datagram.get(b);
-				_ncTapStreamIn.write(b);
+			if (ret >= 0) {
 				_datagram.position(position);
 				_datagram.limit(position + ret);
-			}
+				if (null != _ncTapStreamIn) {
+					byte [] b = new byte[ret];
+					_datagram.get(b);
+					_ncTapStreamIn.write(b);
+					_datagram.position(position);
+					_datagram.limit(position + ret);
+				}
+			} else
+				close();
 		}
 		return ret;
 	}
