@@ -93,7 +93,7 @@ public class CCNNetworkChannel extends InputStream {
 			try {
 				_ncDGrmChannel = DatagramChannel.open();
 				_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
-				_ncDGrmChannel.configureBlocking(true);
+				_ncDGrmChannel.configureBlocking(false);
 				ByteBuffer test = ByteBuffer.allocate(1);
 				if (_ncInitialized)
 					_ncDGrmChannel.write(test);
@@ -158,7 +158,10 @@ public class CCNNetworkChannel extends InputStream {
 		return null;
 	}
 	
-	public XMLEncodable getPacket() throws ContentDecodingException {
+	public XMLEncodable getPacket() throws IOException {
+		doReadIn(0);
+		if (!_run)
+			return null;
 		WirePacket packet = new WirePacket();
 		packet.decode(_ncStream);
 		return packet.getPacket();
@@ -274,6 +277,7 @@ public class CCNNetworkChannel extends InputStream {
 			int ret = fill();
 			if (ret < 0) {
 				return ret;
+
 			}
 		}
 	}

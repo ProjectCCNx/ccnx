@@ -73,10 +73,6 @@ public class CCNNetworkManager implements Runnable {
 	public static final String PROP_AGENT_HOST = "ccn.agent.host";
 	public static final String PROP_TAP = "ccn.tap";
 	public static final String ENV_TAP = "CCN_TAP"; // match C library
-<<<<<<< HEAD
-=======
-	public static final int DOWN_DELAY = 100;	// Wait period for retry when ccnd is down
->>>>>>> 9410d45... New TCP basically works
 	public static final int PERIOD = 2000; // period for occasional ops in ms.
 	public static final int MAX_PERIOD = PERIOD * 8;
 	public static final String KEEPALIVE_NAME = "/HereIAm";
@@ -1178,7 +1174,6 @@ public class CCNNetworkManager implements Runnable {
 		while (_run) {
 			try {
 				XMLEncodable packet = _channel.getPacket();
-<<<<<<< HEAD
 				if (null == packet) {
 					continue;
 				}
@@ -1204,77 +1199,6 @@ public class CCNNetworkManager implements Runnable {
 				Log.severe("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
                 Log.warningStackTrace(ex);
 			}
-=======
-				if (null == packet)
-					continue;
-			
-			/*
-			if (_channel.isConnected()) {
-				try {
-					//--------------------------------- Read and decode
-					try {
-						if (_channel.select(SOCKET_TIMEOUT) != 0) {
-							packet.clear();
-							InputStream stream = _channel.getInputStream(); 
-							packet.decode(stream);
-						} else {
-							// This was a timeout or wakeup, no data
-							packet.clear();
-							if (!_run) {
-								// exit immediately if wakeup for shutdown
-								break;
-							}
-						}
-					} catch (ContentDecodingException cde) {
-						_channel.close();
-						if( Log.isLoggable(Level.INFO) )
-							Log.info("Shutting down channel to ccnd");
-						packet.clear();
-						
-					} catch (IOException ioe) {
-						if( Log.isLoggable(Level.INFO) )
-							Log.info("Error on ccnd channel: " + ioe.getMessage());
-						packet.clear();		
-					}
-	                if (!_run) {
-	                    // exit immediately if wakeup for shutdown
-	                    break;
-	                }
-	                */
-	                
-	                // If we got a data packet, hand it back to all the interested
-					// parties (registered interests and getters).
-					//--------------------------------- Process data from net (if any) 
-					if (packet instanceof ContentObject) {
-						ContentObject co = (ContentObject)packet;
-						if( Log.isLoggable(Level.FINER) )
-							Log.finer("Data from net for port: " + _localPort + " {0}", co.name());
-						//	SystemConfiguration.logObject("Data from net:", co);
-						
-						deliverData(co);
-						// External data never goes back to network, never held onto here
-						// External data never has a thread waiting, so no need to release sema
-					} else if (packet instanceof Interest) {
-						Interest interest = (Interest)	packet;
-						if( Log.isLoggable(Level.FINEST) )
-							Log.finest("Interest from net for port: " + _localPort + " {0}", interest);
-						InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
-						deliverInterest(oInterest);
-						// External interests never go back to network
-					} // for interests
-					
-				
-				} catch (Exception ex) {
-					Log.severe("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
-	                Log.warningStackTrace(ex);
-				}
-				/*
-			} else {
-				try {
-					Thread.sleep(DOWN_DELAY);
-				} catch (InterruptedException e) {}
-			} */
->>>>>>> 9410d45... New TCP basically works
 		}
 		
 		_threadpool.shutdown();
