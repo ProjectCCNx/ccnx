@@ -115,7 +115,14 @@ public class SystemConfiguration {
 	protected static final String PIPELINE_STATS_PROPERTY = "org.ccnx.PipelineStats";
 	protected static final String PIPELINE_STATS_ENV_VAR = "JAVA_PIPELINE_STATS";
 	public static boolean PIPELINE_STATS = false;
-	
+		
+	/**
+	 * Backwards-compatible handling of old header names. 
+	 * Current default is true; eventually will be false.
+	 */
+	protected static final String OLD_HEADER_NAMES_PROPERTY = "org.ccnx.OldHeaderNames";
+	protected static final String OLD_HEADER_NAMES_ENV_VAR = "CCNX_OLD_HEADER_NAMES";
+	public static boolean OLD_HEADER_NAMES = true;
 	
 	/**
 	 * System operation timeout. Very long timeout used to wait for system events
@@ -307,6 +314,11 @@ public class SystemConfiguration {
 			System.err.println("The ccnd op timeout must be an integer.");
 			throw e;
 		}
+		
+		// Handle old-style header names
+		OLD_HEADER_NAMES = Boolean.parseBoolean(
+				retrievePropertyOrEvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
+
 	}
 
 	public static String getLocalHost() {

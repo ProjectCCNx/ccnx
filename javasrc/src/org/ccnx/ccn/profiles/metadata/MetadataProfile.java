@@ -39,7 +39,8 @@ public class MetadataProfile implements CCNProfile {
 	public static final CommandMarker METADATA_MARKER = 
 		CommandMarker.commandMarker(METADATA_NAMESPACE, "M");
 
-	public static final String OLD_METADATA_NAMESPACE = CCNProfile.MARKER + METADATA_NAMESPACE + CCNProfile.MARKER;
+	public static final byte [] OLD_METADATA_NAMESPACE = 
+		(CCNProfile.MARKER + METADATA_NAMESPACE + CCNProfile.MARKER).getBytes();
 	
 	public static final byte [] HEADER_NAME = ContentName.componentParseNative(".header");
 
@@ -178,5 +179,12 @@ public class MetadataProfile implements CCNProfile {
 			name = SegmentationProfile.segmentRoot(name);
 		}
 		return new ContentName(name, METADATA_MARKER.getBytes(), MetadataProfile.HEADER_NAME);
+	}
+	
+	public static ContentName oldHeaderName(ContentName name) {
+		if (SegmentationProfile.isSegment(name)) {
+			name = SegmentationProfile.segmentRoot(name);
+		}
+		return new ContentName(name, OLD_METADATA_NAMESPACE, MetadataProfile.HEADER_NAME);
 	}
 }
