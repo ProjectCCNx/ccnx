@@ -159,14 +159,21 @@ public class CCNNetworkChannel extends InputStream {
 	}
 	
 	public XMLEncodable getPacket() throws IOException {
-		_mark = 0;
-		_readLimit = 0;
-		doReadIn(0);
-		if (!_run)
-			return null;
-		WirePacket packet = new WirePacket();
-		packet.decode(this);
-		return packet.getPacket();
+		if (isConnected()) {
+			_mark = 0;
+			_readLimit = 0;
+			doReadIn(0);
+			if (!_run)
+				return null;
+			WirePacket packet = new WirePacket();
+			packet.decode(this);
+			return packet.getPacket();
+		} else {
+			try {
+				Thread.sleep(DOWN_DELAY);
+			} catch (InterruptedException e) {}
+		}
+		return null;
 	}
 	
 	/**

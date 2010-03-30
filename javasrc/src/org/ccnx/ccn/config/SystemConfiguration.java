@@ -96,9 +96,6 @@ public class SystemConfiguration {
 	public static final String CCN_IGNORE_CONFIG_FILE_PROPERTY = "org.ccnx.ignoreconfig";
 	public static final String CCN_IGNORE_CONFIG_FILE_ENVIRONMENT_VARIABLE = "CCN_IGNORE_CONFIG_FILE";
 	
-	public static final String CCN_CONFIG_FILE = "ccnx.config";
-	public static final String CCN_IGNORE_CONFIG_PROPERTY = "org.ccnx.ignoreconfig";
-	
 	protected static final String CCN_PROTOCOL_PROPERTY = "org.ccnx.protocol";
 	
 	public static final String DEFAULT_PROTOCOL = "TCP";  // UDP or TCP allowed
