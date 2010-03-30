@@ -313,7 +313,11 @@ static void
 ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
 {
     int res;
+    
     if (*pfd != -1) {
+        int linger = 0;
+        setsockopt(*pfd, SOL_SOCKET, SO_LINGER,
+                   &linger, sizeof(linger));
         res = close(*pfd);
         if (res == -1)
             ccnd_msg(h, "close failed for face %u fd=%d: %s (errno=%d)",
@@ -3713,7 +3717,9 @@ do_deferred_write(struct ccnd_handle *h, int fd)
     /* This only happens on connected sockets */
     ssize_t res;
     struct face *face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
-    if (face != NULL && face->outbuf != NULL) {
+    if (face == NULL)
+        return;
+    if (face->outbuf != NULL) {
         ssize_t sendlen = face->outbuf->length - face->outbufindex;
         if (sendlen > 0) {
             res = send(fd, face->outbuf->buf + face->outbufindex, sendlen, 0);
@@ -3731,6 +3737,8 @@ do_deferred_write(struct ccnd_handle *h, int fd)
             if (res == sendlen) {
                 face->outbufindex = 0;
                 ccn_charbuf_destroy(&face->outbuf);
+                if ((face->flags & CCN_FACE_CLOSING) != 0)
+                    shutdown_client_fd(h, fd);
                 return;
             }
             face->outbufindex += res;
@@ -3739,7 +3747,9 @@ do_deferred_write(struct ccnd_handle *h, int fd)
         face->outbufindex = 0;
         ccn_charbuf_destroy(&face->outbuf);
     }
-    if ((face->flags & CCN_FACE_CONNECTING) != 0)
+    if ((face->flags & CCN_FACE_CLOSING) != 0)
+        shutdown_client_fd(h, fd);
+    else if ((face->flags & CCN_FACE_CONNECTING) != 0)
         face->flags &= ~CCN_FACE_CONNECTING;
     else
         ccnd_msg(h, "ccnd:do_deferred_write: something fishy on %d", fd);
@@ -3783,7 +3793,8 @@ ccnd_run(struct ccnd_handle *h)
             struct face *face = e->data;
             h->fds[i].fd = face->recv_fd;
             h->fds[i].events = POLLIN;
-            if (face->outbuf != NULL && face->send_fd == face->recv_fd)
+            if ((face->outbuf != NULL || (face->flags & CCN_FACE_CLOSING) != 0)
+                && face->send_fd == face->recv_fd)
                 h->fds[i].events |= POLLOUT;
         }
         hashtb_end(e);
