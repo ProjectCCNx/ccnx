@@ -20,6 +20,7 @@ Interest ::= Name
              ChildSelector?
              AnswerOriginKind?
              Scope?
+             InterestLifetime?
              Nonce?
 .......................................................
 
@@ -115,6 +116,18 @@ Scope ::= nonNegativeInteger
 This limits where the Interest may propagate. Scope 0 prevents propagation beyond the local ccnd (even to other applications on the same host).  Scope 1 limits propagation to the appications on the originating host. Scope 2 limits propagation to no further than the next host. Other values are not currently defined, and will cause the Interest message to be dropped.
 
 Note that this is not a hop count - the value is not decremented as the interest is forwarded.
+
+== InterestLifetime
+...........................................................
+InterestLifetime ::= BLOB
+...........................................................
+InterestLifetime indicates the (approximate) time remaining before the interest times out.  The value is encoded as an unsigned big-endian binary number, and is allowed to have leading zero bytes. The time unit is the same as used for the Timestamp in ContentObject, 1/4096 second.
+
+Although this format allows for high precision, the values that appear on the wire should be quantized to a small set of possibilities so that the suppression of similar interests from various sources can be done effectively.  It is recommended that the value be either a positive integral number of seconds (low order 12 bits all 0), or a power of two (1/2 sec, 1/4 sec, etc.).
+
+Nodes that forward interests may decrease the lifetime to account for time spent in the node before forwarding, but are not required to do so.  It is recommended that these adjustments be done only for relatively large delays (measured in seconds).
+
+If the InterestLifetime element is omitted, the value of 4 seconds is used (0x4000).  The missing element may be added before forwarding.
 
 == Nonce
 ...........................................................
