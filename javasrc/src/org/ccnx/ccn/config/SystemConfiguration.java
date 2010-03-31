@@ -261,7 +261,7 @@ public class SystemConfiguration {
 		// Allow override of default enumerated name list child wait timeout.
 		try {
 			CHILD_WAIT_INTERVAL = Integer.parseInt(System.getProperty(CHILD_WAIT_INTERVAL_PROPERTY, Integer.toString(CHILD_WAIT_INTERVAL_DEFAULT)));
-			Log.info("CHILD_WAIT_INTERVAL = " + CHILD_WAIT_INTERVAL);
+//			Log.fine("CHILD_WAIT_INTERVAL = " + CHILD_WAIT_INTERVAL);
 		} catch (NumberFormatException e) {
 			System.err.println("The ChildWaitInterval must be an integer.");
 			throw e;
@@ -300,7 +300,7 @@ public class SystemConfiguration {
 			// Allow override of default ping timeout.
 		try {
 			PING_TIMEOUT = Integer.parseInt(System.getProperty(PING_TIMEOUT_PROPERTY, Integer.toString(PING_TIMEOUT_DEFAULT)));
-			Log.info("PING_TIMEOUT = " + PING_TIMEOUT);
+//			Log.fine("PING_TIMEOUT = " + PING_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The ping timeout must be an integer.");
 			throw e;
@@ -309,7 +309,7 @@ public class SystemConfiguration {
 		// Allow override of ccn op timeout.
 		try {
 			CCND_OP_TIMEOUT = Integer.parseInt(System.getProperty(CCND_OP_TIMEOUT_PROPERTY, Integer.toString(CCND_OP_TIMEOUT_DEFAULT)));
-			Log.info("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
+//			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The ccnd op timeout must be an integer.");
 			throw e;
