@@ -79,6 +79,9 @@ public class CCNNetworkChannel extends InputStream {
 		_ncProto = proto;
 		_ncTapStreamIn = tapStreamIn;
 		_ncSelector = Selector.open();
+		_datagram.clear();
+		_datagram.limit(0);
+		Log.info("Starting up CCNNetworkChannel using {0}.", proto);
 	}
 	
 	/**
@@ -133,11 +136,15 @@ public class CCNNetworkChannel extends InputStream {
 		if (isConnected()) {
 			_mark = 0;
 			_readLimit = 0;
-			doReadIn(0);
-			if (!isConnected())
-				return null;
+			if (! _datagram.hasRemaining()) {
+				doReadIn(0);
+				if (!isConnected())
+					return null;
+			}
 			WirePacket packet = new WirePacket();
+			Log.fine("Starting packet decode");
 			packet.decode(this);
+			Log.fine("Ending packet decode");
 			return packet.getPacket();
 		} else {
 			try {
@@ -338,7 +345,9 @@ public class CCNNetworkChannel extends InputStream {
 			if (_ncProto == NetworkProtocol.UDP) {
 				ret = _ncDGrmChannel.read(_datagram);
 			} else {
+				Log.fine("Reading from position " + position + ", " + (_datagram.limit() - position) + " bytes");
 				ret = _ncSockChannel.read(_datagram);
+				Log.fine("Read " + ret + " bytes");
 			}
 			if (ret >= 0) {
 				// The following is the equivalent of doing a flip except we don't
