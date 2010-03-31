@@ -4,6 +4,6 @@
   <Count>21</Count>
   <BlockSize>4096</BlockSize>
   <Length>83545</Length>
-  <RootDigest ccnbencoding="base64Binary">AQIDBAUGBwgJAAkIBwYFBAMCAQ==</RootDigest>
   <ContentDigest ccnbencoding="base64Binary">AQIDBAUGBwgJAAkIBwYFBAMCAQ==</ContentDigest>
+  <RootDigest ccnbencoding="base64Binary">AQIDBAUGBwgJAAkIBwYFBAMCAQ==</RootDigest>
 </Header>
