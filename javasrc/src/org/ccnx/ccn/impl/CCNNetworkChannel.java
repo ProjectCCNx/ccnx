@@ -68,6 +68,8 @@ public class CCNNetworkChannel extends InputStream {
 	
 	// Allocate datagram buffer
 	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(MAX_PAYLOAD);
+	//private byte[] buffer = new byte[MAX_PAYLOAD];
+	//protected ByteBuffer _datagram = ByteBuffer.wrap(buffer);
 	private int _mark = 0;
 	private int _readLimit = 0;
 	
@@ -117,6 +119,16 @@ public class CCNNetworkChannel extends InputStream {
 		_ncInitialized = true;
 	}
 	
+	/**
+	 * Get the next packet from the network. It could be either an interest or data. If ccnd is
+	 * down this is where we do a sleep to avoid a busy wait. Also since this is supposed to happen
+	 * on packet boundaries, we reset the data buffer to its start here. We go ahead and try to read in
+	 * the initial data here also because if there isn't any we want to find out here, not in the middle
+	 * of thinking we might be able to decode something.
+	 * 
+	 * @return a ContentObject, an Interest, or null if there's no data waiting
+	 * @throws IOException
+	 */
 	public XMLEncodable getPacket() throws IOException {
 		if (isConnected()) {
 			_mark = 0;
@@ -184,6 +196,9 @@ public class CCNNetworkChannel extends InputStream {
 		}
 	}
 	
+	/**
+	 * Need to do this after a successful select to allow the next select to happen
+	 */
 	private void clearSelectedKeys() {
 		_ncSelector.selectedKeys().clear();
 	}
@@ -245,27 +260,17 @@ public class CCNNetworkChannel extends InputStream {
 	@Override
 	public int read(byte[] b, int off, int len) throws IOException {
 		int ret = 0;
-		while (len > 0) {
-			if (off + len >= b.length) {
-				if (off >= b.length)
-					break;
-				len = b.length - off;
-			}
-			if (_datagram.hasRemaining()) {
-				int size = _datagram.remaining() > len ? len : _datagram.remaining();
-				_datagram.get(b, off, size);
-				ret += len;
-				off += size;
-				len -= size;
-			} else {
-				int tmpRet = fill();
-				if (tmpRet <= 0) {
-					if (ret == 0)
-						ret = tmpRet;
-					break;
-				}
+		if (len > b.length - off) {
+			throw new IndexOutOfBoundsException();
+		}
+		if (! _datagram.hasRemaining()) {
+			int tmpRet = fill();
+			if (tmpRet <= 0) {
+				return tmpRet;
 			}
 		}
+		ret = _datagram.remaining() > len ? len : _datagram.remaining();
+		_datagram.get(b, off, ret);
 		return ret;
 	}
 	
@@ -316,26 +321,41 @@ public class CCNNetworkChannel extends InputStream {
 		return doReadIn(position);
 	}
 	
+	/**
+	 * Read in data to the buffer starting at the specified position.
+	 * @param position
+	 * @return
+	 * @throws IOException
+	 */
 	private int doReadIn(int position) throws IOException {
 		int ret = 0;
 		clearSelectedKeys();
 		if (select(SOCKET_TIMEOUT) != 0) {
+			// Note that we must set limit first before setting position because setting
+			// position larger than limit causes an exception.
+			_datagram.limit(_datagram.capacity());
 			_datagram.position(position);
-			_datagram.limit(_datagram.capacity() - position);
 			if (_ncProto == NetworkProtocol.UDP) {
 				ret = _ncDGrmChannel.read(_datagram);
 			} else {
 				ret = _ncSockChannel.read(_datagram);
 			}
 			if (ret >= 0) {
-				_datagram.position(position);
+				// The following is the equivalent of doing a flip except we don't
+				// want to reset the position to 0 as flip would do (because we
+				// potentially want to preserve a mark). But the read positions
+				// the buffer to end of the read and we want to position to the start
+				// of the data just read in.
 				_datagram.limit(position + ret);
+				_datagram.position(position);
 				if (null != _ncTapStreamIn) {
 					byte [] b = new byte[ret];
 					_datagram.get(b);
 					_ncTapStreamIn.write(b);
-					_datagram.position(position);
+					// Got the data so we have to redo the "hand flip" to read from the
+					// correct position.
 					_datagram.limit(position + ret);
+					_datagram.position(position);
 				}
 			} else
 				close();
