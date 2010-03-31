@@ -35,12 +35,12 @@ import org.ccnx.ccn.protocol.ContentObject;
  */
 public class MetadataProfile implements CCNProfile {
 
-	public static final String METADATA_NAMESPACE = "meta";
+	public static final String METADATA_NAMESPACE = "META";
 	public static final CommandMarker METADATA_MARKER = 
 		CommandMarker.commandMarker(METADATA_NAMESPACE, "M");
 
 	public static final byte [] OLD_METADATA_NAMESPACE = 
-		(CCNProfile.MARKER + METADATA_NAMESPACE + CCNProfile.MARKER).getBytes();
+		(CCNProfile.MARKER + "meta" + CCNProfile.MARKER).getBytes();
 	
 	public static final byte [] HEADER_NAME = ContentName.componentParseNative(".header");
 
