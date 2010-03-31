@@ -479,6 +479,8 @@ enum ccn_parsed_interest_offsetid {
     CCN_PI_E_AnswerOriginKind,
     CCN_PI_B_Scope,
     CCN_PI_E_Scope,
+    CCN_PI_B_InterestLifetime,
+    CCN_PI_E_InterestLifetime,
     CCN_PI_B_Nonce,
     CCN_PI_E_Nonce,
     CCN_PI_B_OTHER,
