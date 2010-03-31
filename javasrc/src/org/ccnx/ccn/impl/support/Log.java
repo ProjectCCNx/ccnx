@@ -75,8 +75,8 @@ public class Log {
 	// To add a new facility:
 	//    1) Add a public final static int for it
 	//    2) Add a facility name to FAC_LOG_LEVEL_PROPERTY array
-	//    2) Add a facility name to FAC_LOG_LEVEL_ENV array
-	//    3) Set the default log level in FAC_DEFAULT_LOG_LEVEL array
+	//    3) Add a facility name to FAC_LOG_LEVEL_ENV array
+	//    4) Set the default log level in FAC_DEFAULT_LOG_LEVEL array
 
 	// Definition of logging facilities
 	public static final int FAC_DEFAULT		= 0;
