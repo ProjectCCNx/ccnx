@@ -82,12 +82,21 @@ public class Log {
 	public static final int FAC_DEFAULT		= 0;
 	public static final int FAC_PIPELINE	= 1;
 	public static final int FAC_NETMANAGER	= 2;
+	public static final int FAC_USER0		= 3;
+	public static final int FAC_USER1		= 4;
+	public static final int FAC_USER2		= 5;
+	public static final int FAC_USER3		= 6;
+	
 
 	// The System property name for each Facility
 	public static final String [] FAC_LOG_LEVEL_PROPERTY = {
 		DEFAULT_LOG_LEVEL_PROPERTY,
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Pipeline",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".NetManager",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User0",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User1",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User2",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User3",
 	};
 
 	// The environment variable for each facility
@@ -95,6 +104,10 @@ public class Log {
 		DEFAULT_LOG_LEVEL_ENV,
 		DEFAULT_LOG_LEVEL_ENV + "_PIPELINE",
 		DEFAULT_LOG_LEVEL_ENV + "_NETMANAGER",
+		DEFAULT_LOG_LEVEL_ENV + "_USER0",
+		DEFAULT_LOG_LEVEL_ENV + "_USER1",
+		DEFAULT_LOG_LEVEL_ENV + "_USER2",
+		DEFAULT_LOG_LEVEL_ENV + "_USER3",
 	};
 
 	public static final Level [] FAC_DEFAULT_LOG_LEVEL = {
