@@ -88,9 +88,7 @@ public class CCNNetworkManager implements Runnable {
 		private final Integer _i;
 		public Integer value() { return _i; }
 	}
-		
-	public static final String PROP_AGENT_PROTOCOL_KEY = "ccn.agent.protocol";
-	
+			
 	/*
 	 *  This ccndId is set on the first connection with 'ccnd' and is the
 	 *  'device name' that all of our control communications will use to
@@ -116,7 +114,7 @@ public class CCNNetworkManager implements Runnable {
 	protected long _lastHeartbeat = 0;
 	protected int _port = DEFAULT_AGENT_PORT;
 	protected String _host = DEFAULT_AGENT_HOST;
-	protected NetworkProtocol _protocol;
+	protected NetworkProtocol _protocol = SystemConfiguration.AGENT_PROTOCOL;
 
 	// For handling protocol to speak to ccnd, must have keys
 	protected KeyManager _keyManager;
@@ -258,7 +256,7 @@ public class CCNNetworkManager implements Runnable {
 				// to get processed.  Also reregisterPrefixes will delay to do gets (thus in theory
 				// throwing off our timing here) but that's OK because we are restarting so the timing
 				// code doesn't matter until the reconnect is completed.
-				useMe = 1000;
+				useMe = SystemConfiguration.MEDIUM_TIMEOUT;
 				try {
 					_ccndId = null;
 					_channel.open();

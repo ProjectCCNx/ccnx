@@ -294,6 +294,7 @@ public class SystemConfiguration {
 	static {
 		// Allow override of basic protocol
 		String proto = SystemConfiguration.retrievePropertyOrEnvironmentVariable(AGENT_PROTOCOL_PROPERTY, AGENT_PROTOCOL_ENVIRONMENT_VARIABLE, DEFAULT_PROTOCOL);
+
 		boolean found = false;
 		for (NetworkProtocol p : NetworkProtocol.values()) {
 			String pAsString = p.toString();
@@ -330,7 +331,7 @@ public class SystemConfiguration {
 
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
-			PIPELINE_SIZE = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
+			PIPELINE_SIZE = Integer.parseInt(getGradedValue(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineSize must be an integer.");
@@ -339,7 +340,7 @@ public class SystemConfiguration {
 	
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
-			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
+			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(getGradedValue(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineAttempts must be an integer.");
@@ -348,7 +349,7 @@ public class SystemConfiguration {
 		
 		// Allow override of default pipeline rtt multiplication factor for CCNAbstractInputStream
 		try {
-			PIPELINE_RTTFACTOR = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
+			PIPELINE_RTTFACTOR = Integer.parseInt(getGradedValue(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineRTTFactor must be an integer.");
 
@@ -648,7 +649,7 @@ public class SystemConfiguration {
 	 * Retrieve a string that might be stored as an environment variable, or
 	 * overridden on the command line. If the command line variable is set, return
 	 * its (String) value; if not, return the environment variable value if available;
-	 * if neither is set return the default value. Caller should synchronize as appropriate.
+	 * Caller should synchronize as appropriate.
 	 * @return The value in force for this variable, or null if unset.
 	 */
 	public static String retrievePropertyOrEnvironmentVariable(String javaPropertyName, String environmentVariableName, String defaultValue) { 
@@ -660,6 +661,25 @@ public class SystemConfiguration {
 		if ((null == value) && (null != environmentVariableName)) {
 			// Try for an environment variable.
 			value = System.getenv(environmentVariableName);
+		}
+		return value;
+	}
+	
+	/**
+	 * Retrieve a value for a variable, in this order - set as a java property on the command line, set as
+	 * an environment variable, set in the properties file. Return default if not set in any of these ways
+	 * @param javaPropertyName Name of java property for command line or properties file
+	 * @param environmentVariableName Name of environment variable
+	 * @param defaultValue default value for the variable.
+	 * @return some value for this variable
+	 */
+	public static String getGradedValue(String javaPropertyName, String environmentVariableName, String defaultValue) {
+		String value = retrievePropertyOrEnvironmentVariable(javaPropertyName, environmentVariableName);
+		if (null == value && null != javaPropertyName) {
+			// Try for variable from properties file
+			Properties props = getConfigProperties();
+			if (null != props)
+				value = props.getProperty(javaPropertyName);
 		}
 		if (null == value) {
 			return defaultValue;

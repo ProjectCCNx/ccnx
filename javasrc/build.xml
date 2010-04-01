@@ -56,6 +56,7 @@
         -->
 	<property name="TEST_PORT" value="61999"/>
 	<property name="PROTOCOL_KEY" value="ccn.agent.protocol"/>
+	<property name="EXIT_ON_ERROR" value="org.ccnx.ExitOnNetworkError"/>
 
         <!-- Classpaths are actually defined in a separate file so 
              that it can be included by ant files of apps so they 
@@ -218,6 +219,7 @@
 					<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
 					<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 					<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+					<sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 
 					<!-- allow debugger attachment if repo loops <jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" /> -->
 					<arg value="-interactive" />

@@ -397,7 +397,7 @@ public class Log {
 		Level logLevel;
 
 		// First get the FAC_ALL value, and if set use it to set the default log level for all facilities
-		logLevelName = SystemConfiguration.retrievePropertyOrEnvironmentVariable(
+		logLevelName = SystemConfiguration.getGradedValue(
 				FAC_LOG_LEVEL_PROPERTY[FAC_ALL], 
 				FAC_LOG_LEVEL_ENV[FAC_ALL], 
 				null);
@@ -413,19 +413,8 @@ public class Log {
 				e.printStackTrace();
 			}
 		}
-		// Then get the individual facility's log level from property/environment, or the default
-		for (int i = FAC_DEFAULT; i < FAC_LOG_LEVEL_PROPERTY.length; i++ ) {
-			logLevelName = SystemConfiguration.retrievePropertyOrEnvironmentVariable(
-					FAC_LOG_LEVEL_PROPERTY[i], 
-					FAC_LOG_LEVEL_ENV[i], 
-					FAC_LOG_LEVEL_DEFAULT[i].getName());
-			try {
-				logLevel = Level.parse(logLevelName);	
-			} catch(IllegalArgumentException e) {
-				doLog(FAC_DEFAULT, Level.SEVERE, String.format("Error parsing property %s=%s", FAC_LOG_LEVEL_PROPERTY[i], logLevelName));
-				e.printStackTrace();
-				logLevel = FAC_LOG_LEVEL_DEFAULT[i];
-			}
+		
+		for(int i = 0; i < FAC_LOG_LEVEL_PROPERTY.length; i++ ) {
 
 			if (logLevel.intValue() != FAC_LOG_LEVEL_DEFAULT[i].intValue())
 				doLog(FAC_DEFAULT, Level.INFO, String.format("Set log level for facility %s to %s", 
