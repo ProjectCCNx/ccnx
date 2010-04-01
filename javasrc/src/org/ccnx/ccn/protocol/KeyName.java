@@ -125,7 +125,7 @@ public class KeyName extends GenericXMLEncodable implements XMLEncodable, Serial
 	}
 	
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.KeyName.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.KeyName; }
 
 	@Override
 	public boolean validate() {

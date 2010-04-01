@@ -347,7 +347,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		_signedInfo = new SignedInfo();
 		_signedInfo.decode(decoder);
 
-		_content = decoder.readBinaryElement(CCNProtocolDTags.Content.getTag());
+		_content = decoder.readBinaryElement(CCNProtocolDTags.Content);
 
 		decoder.readEndElement();
 	}
@@ -366,13 +366,13 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		name().encode(encoder);
 		signedInfo().encode(encoder);
 
-		encoder.writeElement(CCNProtocolDTags.Content.getTag(), _content);
+		encoder.writeElement(CCNProtocolDTags.Content, _content);
 
 		encoder.writeEndElement();   		
 	}
 
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.ContentObject.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.ContentObject; }
 
 	@Override
 	public boolean validate() { 
@@ -738,7 +738,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		// sign the same thing, plus it's really hard to do the automated codec
 		// stuff without doing a whole document, unless we do some serious
 		// rearranging.
-		encoder.writeElement(CCNProtocolDTags.Content.getTag(), content, offset, length);
+		encoder.writeElement(CCNProtocolDTags.Content, content, offset, length);
 
 		encoder.endEncoding();	
 

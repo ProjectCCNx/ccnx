@@ -61,35 +61,35 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
     	ISSUER_KEY	(CCNProtocolDTags.PublisherIssuerKeyDigest), 
     	ISSUER_CERTIFICATE	(CCNProtocolDTags.PublisherIssuerCertificateDigest);
     
-    	final CCNProtocolDTags _tag;
+    	final int _tag;
     	
-    	PublisherType(CCNProtocolDTags tag) {
+    	PublisherType(int tag) {
     		this._tag = tag;
     	}
     	
-    	public CCNProtocolDTags getTag() { return _tag; }
+    	public int getTag() { return _tag; }
     	
     	public static boolean isTypeTagVal(long tagVal) {
-    		if ((tagVal == CCNProtocolDTags.PublisherPublicKeyDigest.getTag()) ||
-    			(tagVal == CCNProtocolDTags.PublisherCertificateDigest.getTag()) ||
-    			(tagVal == CCNProtocolDTags.PublisherIssuerKeyDigest.getTag()) ||
-    			(tagVal == CCNProtocolDTags.PublisherIssuerCertificateDigest.getTag())) {
+    		if ((tagVal == CCNProtocolDTags.PublisherPublicKeyDigest) ||
+    			(tagVal == CCNProtocolDTags.PublisherCertificateDigest) ||
+    			(tagVal == CCNProtocolDTags.PublisherIssuerKeyDigest) ||
+    			(tagVal == CCNProtocolDTags.PublisherIssuerCertificateDigest)) {
     			return true;
     		}
     		return false;
      	}
     	
     	public static PublisherType tagValToType(long tagVal) {
-       		if (tagVal == CCNProtocolDTags.PublisherPublicKeyDigest.getTag()) {
+       		if (tagVal == CCNProtocolDTags.PublisherPublicKeyDigest) {
        			return KEY;
        		}
-        	if (tagVal == CCNProtocolDTags.PublisherCertificateDigest.getTag()) {
+        	if (tagVal == CCNProtocolDTags.PublisherCertificateDigest) {
         		return CERTIFICATE;
         	}
-        	if (tagVal == CCNProtocolDTags.PublisherIssuerKeyDigest.getTag()) {
+        	if (tagVal == CCNProtocolDTags.PublisherIssuerKeyDigest) {
         		return ISSUER_KEY;
         	}
-        	if (tagVal == CCNProtocolDTags.PublisherIssuerCertificateDigest.getTag()) {
+        	if (tagVal == CCNProtocolDTags.PublisherIssuerCertificateDigest) {
         		return ISSUER_CERTIFICATE;
         	}
         	return null;
@@ -272,7 +272,7 @@ public class PublisherID extends GenericXMLEncodable implements XMLEncodable, Co
 	
 	@Override
 	public long getElementLabel() { 
-		return type().getTag().getTag();
+		return type().getTag();
 	}
 
 	@Override

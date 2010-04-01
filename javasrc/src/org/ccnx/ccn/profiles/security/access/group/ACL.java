@@ -534,6 +534,6 @@ public class ACL extends Collection {
 	
 	@Override
 	public long getElementLabel() { 
-		return CCNProtocolDTags.ACL.getTag();
+		return CCNProtocolDTags.ACL;
 	}
 }

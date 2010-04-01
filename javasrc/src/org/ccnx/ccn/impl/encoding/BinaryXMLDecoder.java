@@ -362,7 +362,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 		return timestamp;
 	}
 	
-	public CCNTime readDateTime(Long startTag) throws ContentDecodingException {
+	public CCNTime readDateTime(long startTag) throws ContentDecodingException {
 		byte [] byteTimestamp = readBinaryElement(startTag);
 		CCNTime timestamp = new CCNTime(byteTimestamp);
 		if (null == timestamp) {

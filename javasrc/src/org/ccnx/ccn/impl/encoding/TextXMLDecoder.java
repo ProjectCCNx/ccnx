@@ -228,7 +228,7 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 		return timestamp;
 	}
 
-	public CCNTime readDateTime(Long startTag) throws ContentDecodingException {
+	public CCNTime readDateTime(long startTag) throws ContentDecodingException {
 		String strTimestamp = readUTF8Element(startTag);
 		CCNTime timestamp;
 		try {

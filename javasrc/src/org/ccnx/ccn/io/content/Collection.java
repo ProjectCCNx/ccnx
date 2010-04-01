@@ -260,7 +260,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		decoder.readStartElement(getElementLabel());
 
 		Link link = null;
-		while (decoder.peekStartElement(CCNProtocolDTags.Link.getTag())) {
+		while (decoder.peekStartElement(CCNProtocolDTags.Link)) {
 			link = new Link();
 			link.decode(decoder);
 			add(link);
@@ -288,7 +288,7 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 	}
 	
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.Collection.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Collection; }
 
 	@Override
 	public int hashCode() {

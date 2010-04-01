@@ -205,9 +205,9 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Ser
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
-		if (decoder.peekStartElement(CCNProtocolDTags.Key.getTag())) {
+		if (decoder.peekStartElement(CCNProtocolDTags.Key)) {
 			try {
-				byte [] encodedKey = decoder.readBinaryElement(CCNProtocolDTags.Key.getTag());
+				byte [] encodedKey = decoder.readBinaryElement(CCNProtocolDTags.Key);
 				// This is a DER-encoded SubjectPublicKeyInfo.
 				_key = CryptoUtil.getPublicKey(encodedKey);
 			} catch (CertificateEncodingException e) {
@@ -220,9 +220,9 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Ser
 			if (null == _key) {
 				throw new ContentDecodingException("Cannot parse key: ");
 			}
-		} else if (decoder.peekStartElement(CCNProtocolDTags.Certificate.getTag())) {
+		} else if (decoder.peekStartElement(CCNProtocolDTags.Certificate)) {
 			try {
-				byte [] encodedCert = decoder.readBinaryElement(CCNProtocolDTags.Certificate.getTag());
+				byte [] encodedCert = decoder.readBinaryElement(CCNProtocolDTags.Certificate);
 				CertificateFactory factory = CertificateFactory.getInstance("X.509");
 				_certificate = (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(encodedCert));
 			} catch (CertificateException e) {
@@ -257,10 +257,10 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Ser
 		}
 		encoder.writeStartElement(getElementLabel());
 		if (type() == KeyLocatorType.KEY) {
-			encoder.writeElement(CCNProtocolDTags.Key.getTag(), key().getEncoded());
+			encoder.writeElement(CCNProtocolDTags.Key, key().getEncoded());
 		} else if (type() == KeyLocatorType.CERTIFICATE) {
 			try {
-				encoder.writeElement(CCNProtocolDTags.Certificate.getTag(), certificate().getEncoded());
+				encoder.writeElement(CCNProtocolDTags.Certificate, certificate().getEncoded());
 			} catch (CertificateEncodingException e) {
 				Log.warning("CertificateEncodingException attempting to write key locator: " + e.getMessage());
 				throw new ContentEncodingException("CertificateEncodingException attempting to write key locator: " + e.getMessage(), e);
@@ -272,7 +272,7 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Ser
 	}
 	
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.KeyLocator.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.KeyLocator; }
 	
 	@Override
 	public boolean validate() {
