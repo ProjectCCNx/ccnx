@@ -1156,7 +1156,7 @@ public class CCNNetworkManager implements Runnable {
 
 	/**
 	 * Thread method: this thread will handle reading datagrams and 
-	 * the periodic re-expressing of standing interests
+	 * starts threads to dispatch data to handlers registered for it.
 	 */
 	public void run() {
 		if (! _run) {

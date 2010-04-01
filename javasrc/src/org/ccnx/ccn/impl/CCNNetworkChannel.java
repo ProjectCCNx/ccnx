@@ -124,10 +124,13 @@ public class CCNNetworkChannel extends InputStream {
 	
 	/**
 	 * Get the next packet from the network. It could be either an interest or data. If ccnd is
-	 * down this is where we do a sleep to avoid a busy wait. Also since this is supposed to happen
-	 * on packet boundaries, we reset the data buffer to its start here. We go ahead and try to read in
+	 * down this is where we do a sleep to avoid a busy wait.  We go ahead and try to read in
 	 * the initial data here also because if there isn't any we want to find out here, not in the middle
-	 * of thinking we might be able to decode something.
+	 * of thinking we might be able to decode something. Also since this is supposed to happen
+	 * on packet boundaries, we reset the data buffer to its start during the initial read. We only do 
+	 * the initial read if there's nothing already in the buffer though because in TCP we could have 
+	 * read in some or all of a proceeding packet
+	 * during the last reading. 
 	 * 
 	 * @return a ContentObject, an Interest, or null if there's no data waiting
 	 * @throws IOException
