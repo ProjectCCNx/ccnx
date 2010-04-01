@@ -66,9 +66,9 @@ public class CCNNetworkChannel extends InputStream {
 	protected FileOutputStream _ncTapStreamIn = null;
 	
 	// Allocate datagram buffer
-	//protected ByteBuffer _datagram = ByteBuffer.allocateDirect(MAX_PAYLOAD);
-	private byte[] buffer = new byte[MAX_PAYLOAD];
-	protected ByteBuffer _datagram = ByteBuffer.wrap(buffer);
+	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(MAX_PAYLOAD);
+	//private byte[] buffer = new byte[MAX_PAYLOAD];
+	//protected ByteBuffer _datagram = ByteBuffer.wrap(buffer);
 	private int _mark = 0;
 	private int _readLimit = 0;
 	
