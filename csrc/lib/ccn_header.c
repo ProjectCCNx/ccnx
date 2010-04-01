@@ -28,6 +28,8 @@
 
 #include <ccn/header.h>
 
+const unsigned char meta[8] = {CCN_MARKER_CONTROL, '.', 'M', 'E', 'T', 'A', '.', 'M'};
+
 int
 ccn_parse_tagged_required_uintmax(struct ccn_buf_decoder *d, enum ccn_dtag dtag, uintmax_t *result)
 {
@@ -128,9 +130,22 @@ ccn_get_header(struct ccn *h, struct ccn_charbuf *name, int timeout)
 
     hn = ccn_charbuf_create();
     ccn_charbuf_append_charbuf(hn, name);
-    ccn_name_append_str(hn, "_meta_");
+    /*
+     * Requires consistency with metadata profile in
+     * javasrc/src/org/ccnx/ccn/profiles/metadata/MetadataProfile.java
+     */
+    ccn_name_append(hn, meta, sizeof(meta));
     ccn_name_append_str(hn, ".header");
     res = ccn_resolve_version(h, hn, CCN_V_HIGHEST, timeout);
+    if (res != 0) {
+        /* Failed: try old header name from prior to 04/2010 */
+        ccn_charbuf_reset(hn);
+        ccn_charbuf_append_charbuf(hn, name);
+        ccn_name_append_str(hn, "_meta_");
+        ccn_name_append_str(hn, ".header");
+        res = ccn_resolve_version(h, hn, CCN_V_HIGHEST, timeout);
+    }
+    
     if (res == 0) {
         struct ccn_charbuf *ho = ccn_charbuf_create();
         struct ccn_parsed_ContentObject pcobuf = { 0 };
