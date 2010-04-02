@@ -1241,7 +1241,7 @@ public class CCNNetworkManager implements Runnable {
 				if (null == contented) {
 					String msg = ("fetchCCNDId: Fetch of content from ping uri failed due to timeout.");
 
-					Log.severe(msg);
+					Log.warning(msg);
 					throw new IOException(msg);
 				}
 				PublisherPublicKeyDigest sentID = contented.signedInfo().getPublisherKeyID();
@@ -1251,32 +1251,32 @@ public class CCNNetworkManager implements Runnable {
 					ContentVerifier verifyer = new ContentObject.SimpleVerifier(sentID, keyManager);
 					if (!verifyer.verify(contented)) {
 						String msg = ("fetchCCNDId: Fetch of content reply from ping failed to verify.");
-						Log.severe(msg);
+						Log.warning(msg);
 						throw new IOException(msg);
 					}
 				} else {
-					Log.severe("fetchCCNDId: do not have a KeyManager. Cannot verify ccndID.");
+					Log.warning("fetchCCNDId: do not have a KeyManager. Cannot verify ccndID.");
 					return null;
 				}
 				return sentID;
 			} catch (InterruptedException e) {
-				Log.warningStackTrace(e);
 				throw new IOException(e.getMessage());
 			}
 		} catch (IOException e) {
 			String reason = e.getMessage();
-			Log.warningStackTrace(e);
 			String msg = ("fetchCCNDId: Unexpected IOException in call getting ping Interest reason: " + reason);
-			Log.severe(msg);
+			Log.warning(msg);
 			throw new IOException(msg);
 		}
 	} /* PublisherPublicKeyDigest fetchCCNDId() */
 	
 	/**
 	 * Reregister all current prefixes with ccnd after ccnd goes down and then comes back up
+	 * @throws IOException 
 	 */
-	private void reregisterPrefixes() throws CCNDaemonException {
+	private void reregisterPrefixes() throws IOException {
 		TreeMap<ContentName, RegisteredPrefix> newPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
+		try {
 		synchronized (_registeredPrefixes) {
 			for (ContentName prefix : _registeredPrefixes.keySet()) {
 				ForwardingEntry entry = _prefixMgr.selfRegisterPrefix(prefix);
@@ -1286,6 +1286,9 @@ public class CCNNetworkManager implements Runnable {
 			}
 			_registeredPrefixes.clear();
 			_registeredPrefixes.putAll(newPrefixes);
+		}
+		} catch (CCNDaemonException cde) {
+			_channel.close();
 		}
 	}	
 }

@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
+import java.net.PortUnreachableException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
@@ -187,13 +188,21 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public int write(ByteBuffer src) throws IOException {
-		Log.finest("NetworkChannel.write() on port " + _ncLocalPort);
-		if (_ncProto == NetworkProtocol.UDP) {
-			return (_ncDGrmChannel.write(src));
-		} else if (_ncProto == NetworkProtocol.TCP) {
-			return (_ncSockChannel.write(src));
-		} else {
-			throw new IOException("NetworkChannel: invalid protocol specified");
+		if (! _ncConnected)
+			return -1;
+		if (Log.isLoggable(Level.FINEST))
+			Log.finest("NetworkChannel.write() on port " + _ncLocalPort);
+		try {
+			if (_ncProto == NetworkProtocol.UDP) {
+				return (_ncDGrmChannel.write(src));
+			} else if (_ncProto == NetworkProtocol.TCP) {
+				return (_ncSockChannel.write(src));
+			} else {
+				throw new IOException("NetworkChannel: invalid protocol specified");
+			}
+		} catch (PortUnreachableException pue) {
+			close();
+			return -1;
 		}
 	}
 	
