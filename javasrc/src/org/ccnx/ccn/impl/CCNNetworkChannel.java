@@ -142,7 +142,7 @@ public class CCNNetworkChannel extends InputStream {
 			_readLimit = 0;
 			if (! _datagram.hasRemaining()) {
 				int ret = doReadIn(0);
-				if (ret == 0 || !isConnected())
+				if (ret <= 0 || !isConnected())
 					return null;
 			} 
 			WirePacket packet = new WirePacket();
@@ -373,7 +373,8 @@ public class CCNNetworkChannel extends InputStream {
 					_datagram.position(position);
 				}
 			} else
-				close();
+				if (ret < 0)
+					close();
 		}
 		return ret;
 	}

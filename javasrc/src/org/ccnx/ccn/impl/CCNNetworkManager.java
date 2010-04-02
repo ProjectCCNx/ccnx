@@ -267,7 +267,11 @@ public class CCNNetworkManager implements Runnable {
 						_faceID = null;
 						reregisterPrefixes();
 					}
-				} catch (Exception e) {}	// ccnd is still not available
+				} catch (Exception e) { // ccnd is still not available
+					try {
+						_channel.close();
+					} catch (Exception e1) {}
+				}
 			}
 			if (_run)
 				_periodicTimer.schedule(new PeriodicWriter(), useMe);
