@@ -60,11 +60,11 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 		_contents = new ArrayList<GenericXMLEncodable>();
 		
 		while (!done) {
-			if (decoder.peekStartElement(CCNProtocolDTags.Interest.getTag())) {
+			if (decoder.peekStartElement(CCNProtocolDTags.Interest)) {
 				Interest interest = new Interest();
 				interest.decode(decoder);
 				_contents.add(interest);
-			} else if (decoder.peekStartElement(CCNProtocolDTags.ContentObject.getTag())) {
+			} else if (decoder.peekStartElement(CCNProtocolDTags.ContentObject)) {
 				ContentObject data = new ContentObject();
 				data.decode(decoder);
 				if( Log.isLoggable(Level.FINEST) )

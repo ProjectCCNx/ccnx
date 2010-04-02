@@ -303,9 +303,9 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 		synchronized (_values) {
 			boolean component;
 			boolean any = false;
-			while ((component = decoder.peekStartElement(CCNProtocolDTags.Component.getTag())) || 
-					(any = decoder.peekStartElement(CCNProtocolDTags.Any.getTag())) ||
-						decoder.peekStartElement(CCNProtocolDTags.Bloom.getTag())) {
+			while ((component = decoder.peekStartElement(CCNProtocolDTags.Component)) || 
+					(any = decoder.peekStartElement(CCNProtocolDTags.Any)) ||
+						decoder.peekStartElement(CCNProtocolDTags.Bloom)) {
 				Element ee = component?new ExcludeComponent(): any ? new ExcludeAny() : new BloomFilter();
 				ee.decode(decoder);
 				_values.add(ee);
@@ -333,7 +333,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 	}
 
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.Exclude.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Exclude; }
 
 	@Override
 	public boolean validate() {

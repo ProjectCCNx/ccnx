@@ -29,11 +29,11 @@ public class CCNProtocolDictionary extends BinaryXMLDictionary {
 
 	@Override
 	public Long stringToTag(String tag) {
-		CCNProtocolDTags tagVal = null;
+		Long tagVal = null;
 		try {
-			tagVal = CCNProtocolDTags.valueOf(tag);
+			tagVal = CCNProtocolDTags.stringToTag(tag);
 			if (null != tagVal) {
-				return tagVal.getTag();
+				return tagVal;
 			}
 		} catch (IllegalArgumentException e) {
 			// do nothing
@@ -47,10 +47,6 @@ public class CCNProtocolDictionary extends BinaryXMLDictionary {
 	 */
 	@Override
 	public String tagToString(long tagVal) {
-		CCNProtocolDTags tag = CCNProtocolDTags.valueForTag(tagVal);
-		if (null != tag) {
-			return tag.name();
-		}
-		return null;
+		return CCNProtocolDTags.tagToString(tagVal);
 	}
 }

@@ -18,6 +18,8 @@
 package org.ccnx.ccn.profiles.security.access.group;
 
 
+import java.util.logging.Level;
+
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -120,8 +122,10 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 			byte [][] pieces = 
 				DataUtils.binarySplit(principalInfoNameComponent, CCNProfile.COMPONENT_SEPARATOR[0]);
 			if (pieces.length < PI_COMPONENT_COUNT) {
-				Log.warning("Unexpected principal name format - insufficient number of components: " + 
-						ContentName.componentPrintURI(principalInfoNameComponent, USER_PRINCIPAL_PREFIX.length, principalInfoNameComponent.length-USER_PRINCIPAL_PREFIX.length));
+				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
+					Log.warning("Unexpected principal name format - insufficient number of components: " + 
+							ContentName.componentPrintURI(principalInfoNameComponent, USER_PRINCIPAL_PREFIX.length, principalInfoNameComponent.length-USER_PRINCIPAL_PREFIX.length));
+				}
 				throw new IllegalArgumentException("Not a valid principal name component -- insufficient number of components!");				
 			}
 			

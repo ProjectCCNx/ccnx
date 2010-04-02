@@ -60,7 +60,7 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 	@Override
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
-		_key = decoder.readUTF8Element(CCNProtocolDTags.Key.getTag());
+		_key = decoder.readUTF8Element(CCNProtocolDTags.Key);
 		
 		Long valueTag = decoder.peekStartElementAsLong();
 		if (null == valueTag) {
@@ -69,20 +69,20 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 		
 		long valueTagVal = valueTag.longValue();
 		
-		if (valueTagVal == CCNProtocolDTags.IntegerValue.getTag()) {
-			_value = decoder.readIntegerElement(CCNProtocolDTags.IntegerValue.getTag());
-		} else if (valueTagVal == CCNProtocolDTags.DecimalValue.getTag()) {
+		if (valueTagVal == CCNProtocolDTags.IntegerValue) {
+			_value = decoder.readIntegerElement(CCNProtocolDTags.IntegerValue);
+		} else if (valueTagVal == CCNProtocolDTags.DecimalValue) {
 			try {
-				_value = new Float(decoder.readUTF8Element(CCNProtocolDTags.DecimalValue.getTag())); 
+				_value = new Float(decoder.readUTF8Element(CCNProtocolDTags.DecimalValue)); 
 			} catch (NumberFormatException nfe) {
 				throw new ContentDecodingException(nfe.getMessage());
 			}
-		} else if (valueTagVal == CCNProtocolDTags.StringValue.getTag()) {
-			_value = decoder.readUTF8Element(CCNProtocolDTags.StringValue.getTag());
-		} else if (valueTagVal == CCNProtocolDTags.BinaryValue.getTag()) {
-			_value = decoder.readBinaryElement(CCNProtocolDTags.BinaryValue.getTag());
-		} else if (valueTagVal == CCNProtocolDTags.NameValue.getTag()) {
-			decoder.readStartElement(CCNProtocolDTags.NameValue.getTag());
+		} else if (valueTagVal == CCNProtocolDTags.StringValue) {
+			_value = decoder.readUTF8Element(CCNProtocolDTags.StringValue);
+		} else if (valueTagVal == CCNProtocolDTags.BinaryValue) {
+			_value = decoder.readBinaryElement(CCNProtocolDTags.BinaryValue);
+		} else if (valueTagVal == CCNProtocolDTags.NameValue) {
+			decoder.readStartElement(CCNProtocolDTags.NameValue);
 			_value = new ContentName();
 			((ContentName)_value).decode(decoder);
 			decoder.readEndElement();
@@ -97,19 +97,19 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
-		encoder.writeElement(CCNProtocolDTags.Key.getTag(), _key);
+		encoder.writeElement(CCNProtocolDTags.Key, _key);
 		if (_value instanceof Long) {
-			encoder.writeElement(CCNProtocolDTags.IntegerValue.getTag(), (Long)_value);
+			encoder.writeElement(CCNProtocolDTags.IntegerValue, (Long)_value);
 		}  else if (_value instanceof Integer) {
-			encoder.writeElement(CCNProtocolDTags.IntegerValue.getTag(), (Integer)_value);
+			encoder.writeElement(CCNProtocolDTags.IntegerValue, (Integer)_value);
 		} else if (_value instanceof Float) {
-			encoder.writeElement(CCNProtocolDTags.DecimalValue.getTag(), ((Float)_value).toString());
+			encoder.writeElement(CCNProtocolDTags.DecimalValue, ((Float)_value).toString());
 		} else if (_value instanceof String) {
-			encoder.writeElement(CCNProtocolDTags.StringValue.getTag(), (String)_value);
+			encoder.writeElement(CCNProtocolDTags.StringValue, (String)_value);
 		} else if (_value instanceof byte[]) {
-			encoder.writeElement(CCNProtocolDTags.BinaryValue.getTag(), (byte[])_value);
+			encoder.writeElement(CCNProtocolDTags.BinaryValue, (byte[])_value);
 		} else if (_value instanceof ContentName) {
-			encoder.writeStartElement(CCNProtocolDTags.NameValue.getTag());
+			encoder.writeStartElement(CCNProtocolDTags.NameValue);
 			((ContentName)_value).encode(encoder);
 			encoder.writeEndElement();
 		}
@@ -117,7 +117,7 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 	}
 
 	@Override
-	public long getElementLabel() {return CCNProtocolDTags.Entry.getTag();}
+	public long getElementLabel() {return CCNProtocolDTags.Entry;}
 
 	@Override
 	public boolean validate() {

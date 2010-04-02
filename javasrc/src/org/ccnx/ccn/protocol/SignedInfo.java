@@ -405,17 +405,17 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.PublisherPublicKeyDigest.getTag())) {
+		if (decoder.peekStartElement(CCNProtocolDTags.PublisherPublicKeyDigest)) {
 			_publisher = new PublisherPublicKeyDigest();
 			_publisher.decode(decoder);
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.Timestamp.getTag())) {
-			_timestamp = decoder.readDateTime(CCNProtocolDTags.Timestamp.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.Timestamp)) {
+			_timestamp = decoder.readDateTime(CCNProtocolDTags.Timestamp);
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.Type.getTag())) {
-			byte [] binType = decoder.readBinaryElement(CCNProtocolDTags.Type.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.Type)) {
+			byte [] binType = decoder.readBinaryElement(CCNProtocolDTags.Type);
 			_type = valueToType(binType);
 			if (null == _type) {
 				throw new ContentDecodingException("Cannot parse signedInfo type: " + DataUtils.printHexBytes(binType) + " " + binType.length + " bytes.");
@@ -424,15 +424,15 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			_type = ContentType.DATA; // default
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.FreshnessSeconds.getTag())) {
-			_freshnessSeconds = decoder.readIntegerElement(CCNProtocolDTags.FreshnessSeconds.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.FreshnessSeconds)) {
+			_freshnessSeconds = decoder.readIntegerElement(CCNProtocolDTags.FreshnessSeconds);
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.FinalBlockID.getTag())) {
-			_finalBlockID = decoder.readBinaryElement(CCNProtocolDTags.FinalBlockID.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.FinalBlockID)) {
+			_finalBlockID = decoder.readBinaryElement(CCNProtocolDTags.FinalBlockID);
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.KeyLocator.getTag())) {
+		if (decoder.peekStartElement(CCNProtocolDTags.KeyLocator)) {
 			_locator = new KeyLocator();
 			_locator.decode(decoder);
 		}
@@ -452,20 +452,20 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		}
 
 		if (!emptyTimestamp()) {
-			encoder.writeDateTime(CCNProtocolDTags.Timestamp.getTag(), getTimestamp());
+			encoder.writeDateTime(CCNProtocolDTags.Timestamp, getTimestamp());
 		}
 		
 		if (!defaultContentType()) {
 			// DATA is default, element is optional, so omit if DATA
-			encoder.writeElement(CCNProtocolDTags.Type.getTag(), getTypeValue());
+			encoder.writeElement(CCNProtocolDTags.Type, getTypeValue());
 		}
 		
 		if (!emptyFreshnessSeconds()) {
-			encoder.writeElement(CCNProtocolDTags.FreshnessSeconds.getTag(), getFreshnessSeconds());
+			encoder.writeElement(CCNProtocolDTags.FreshnessSeconds, getFreshnessSeconds());
 		}
 
 		if (!emptyFinalBlockID()) {
-			encoder.writeElement(CCNProtocolDTags.FinalBlockID.getTag(), getFinalBlockID());
+			encoder.writeElement(CCNProtocolDTags.FinalBlockID, getFinalBlockID());
 		}
 
 		if (!emptyKeyLocator()) {
@@ -476,7 +476,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 	}
 	
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.SignedInfo.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.SignedInfo; }
 
 	@Override
 	public boolean validate() {

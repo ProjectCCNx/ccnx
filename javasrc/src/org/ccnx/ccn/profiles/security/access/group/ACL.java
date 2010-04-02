@@ -24,6 +24,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -313,7 +314,9 @@ public class ACL extends Collection {
 			_readers.remove(reader);
 			return true;
 		}
-		Log.info("trying to remove a non-existent reader, ignoring this operation...");  
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info("trying to remove a non-existent reader, ignoring this operation...");  
+		}
 		return false;
 	}
 
@@ -353,7 +356,9 @@ public class ACL extends Collection {
 			_writers.remove(writer);
 			return true;
 		}
-		Log.info("trying to remove a non-existent writer, ignoring this operation...");  
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info("trying to remove a non-existent writer, ignoring this operation...");  
+		}
 		return false;
 	}
 	
@@ -399,7 +404,9 @@ public class ACL extends Collection {
 			_managers.remove(manager);
 			return true;
 		}
-		Log.info("trying to remove a non-existent manager, ignoring this operation...");  
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info("trying to remove a non-existent manager, ignoring this operation...");  
+		}
 		return false;
 	}
 	
@@ -527,6 +534,6 @@ public class ACL extends Collection {
 	
 	@Override
 	public long getElementLabel() { 
-		return CCNProtocolDTags.ACL.getTag();
+		return CCNProtocolDTags.ACL;
 	}
 }

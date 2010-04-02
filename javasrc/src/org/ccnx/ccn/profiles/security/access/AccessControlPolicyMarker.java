@@ -89,7 +89,7 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 		
 		@Override
 		public long getElementLabel() {
-			return CCNProtocolDTags.ProfileName.getTag();
+			return CCNProtocolDTags.ProfileName;
 		}
 	}
 
@@ -171,13 +171,13 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 		_profileName = new ProfileName();
 		_profileName.decode(decoder);
 
-		while (decoder.peekStartElement(CCNProtocolDTags.ParameterizedName.getTag())) {
+		while (decoder.peekStartElement(CCNProtocolDTags.ParameterizedName)) {
 			ParameterizedName pn = new ParameterizedName();
 			pn.decode(decoder);
 			_parameterizedNames.add(pn);
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.Parameters.getTag())) {
+		if (decoder.peekStartElement(CCNProtocolDTags.Parameters)) {
 			_parameters = new KeyValueSet();
 			_parameters.decode(decoder);
 		}
@@ -213,7 +213,7 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 
 	@Override
 	public long getElementLabel() {
-		return CCNProtocolDTags.Root.getTag();
+		return CCNProtocolDTags.Root;
 	}
 }
 

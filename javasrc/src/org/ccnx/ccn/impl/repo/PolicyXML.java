@@ -98,15 +98,15 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 		LOCALNAME (CCNProtocolDTags.LocalName, new LocalNamePutter()),
 		GLOBALPREFIX (CCNProtocolDTags.GlobalPrefix, new GlobalPrefixPutter());
 		
-		private CCNProtocolDTags _tagValue;
+		private final int _tagValue;
 		private ElementPutter _putter;
 		
-		PolicyElement(CCNProtocolDTags tagValue, ElementPutter putter) {
+		PolicyElement(int tagValue, ElementPutter putter) {
 			_tagValue = tagValue;
 			_putter = putter;
 		}
 		
-		public long getTagValue() { return _tagValue.getTag(); }
+		public long getTagValue() { return _tagValue; }
 	}
 	
 	private static class VersionPutter implements ElementPutter {
@@ -183,14 +183,14 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
-		encoder.writeElement(CCNProtocolDTags.PolicyVersion.getTag(), _version);	
-		encoder.writeElement(CCNProtocolDTags.LocalName.getTag(), _localName);
-		encoder.writeElement(CCNProtocolDTags.GlobalPrefix.getTag(), _globalPrefix.toString());
+		encoder.writeElement(CCNProtocolDTags.PolicyVersion, _version);	
+		encoder.writeElement(CCNProtocolDTags.LocalName, _localName);
+		encoder.writeElement(CCNProtocolDTags.GlobalPrefix, _globalPrefix.toString());
 		
 		if (null != _namespace) {
 			synchronized (_namespace) {
 				for (ContentName name : _namespace)
-					encoder.writeElement(CCNProtocolDTags.Namespace.getTag(), name.toString());
+					encoder.writeElement(CCNProtocolDTags.Namespace, name.toString());
 			}
 		}
 		encoder.writeEndElement();   			
@@ -198,7 +198,7 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 
 	@Override
 	public long getElementLabel() {
-		return CCNProtocolDTags.Policy.getTag();
+		return CCNProtocolDTags.Policy;
 	}
 
 	@Override

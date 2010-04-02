@@ -168,18 +168,18 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 	 */
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
-		if (decoder.peekStartElement(CCNProtocolDTags.Action.getTag())) {
-			_action = decoder.readUTF8Element(CCNProtocolDTags.Action.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.Action)) {
+			_action = decoder.readUTF8Element(CCNProtocolDTags.Action); 
 		}
-		if (decoder.peekStartElement(CCNProtocolDTags.PublisherPublicKeyDigest.getTag())) {
+		if (decoder.peekStartElement(CCNProtocolDTags.PublisherPublicKeyDigest)) {
 			_ccndID = new PublisherPublicKeyDigest();
 			_ccndID.decode(decoder);
 		}
-		if (decoder.peekStartElement(CCNProtocolDTags.FaceID.getTag())) {
-			_faceID = decoder.readIntegerElement(CCNProtocolDTags.FaceID.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.FaceID)) {
+			_faceID = decoder.readIntegerElement(CCNProtocolDTags.FaceID); 
 		}
-		if (decoder.peekStartElement(CCNProtocolDTags.IPProto.getTag())) {
-			int pI = decoder.readIntegerElement(CCNProtocolDTags.IPProto.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.IPProto)) {
+			int pI = decoder.readIntegerElement(CCNProtocolDTags.IPProto);
 			_ipProto = null;
 			if (NetworkProtocol.TCP.value().intValue() == pI) {
 				_ipProto = NetworkProtocol.TCP;
@@ -187,23 +187,23 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 				_ipProto = NetworkProtocol.UDP;
 			} else {
 				throw new ContentDecodingException("FaceInstance.decoder.  Invalid " + 
-						CCNProtocolDTags.IPProto.name() + " field: " + pI);
+						CCNProtocolDTags.tagToString(CCNProtocolDTags.IPProto) + " field: " + pI);
 			}
 		}
-		if (decoder.peekStartElement(CCNProtocolDTags.Host.getTag())) {
-			_host = decoder.readUTF8Element(CCNProtocolDTags.Host.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.Host)) {
+			_host = decoder.readUTF8Element(CCNProtocolDTags.Host); 
 		}
-		if (decoder.peekStartElement(CCNProtocolDTags.Port.getTag())) {
-			 _port = decoder.readIntegerElement(CCNProtocolDTags.Port.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.Port)) {
+			 _port = decoder.readIntegerElement(CCNProtocolDTags.Port); 
 		}
-		if (decoder.peekStartElement(CCNProtocolDTags.MulticastInterface.getTag())) {
-			_multicastInterface = decoder.readUTF8Element(CCNProtocolDTags.MulticastInterface.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.MulticastInterface)) {
+			_multicastInterface = decoder.readUTF8Element(CCNProtocolDTags.MulticastInterface); 
 		}
-		if (decoder.peekStartElement(CCNProtocolDTags.MulticastTTL.getTag())) {
-			_multicastTTL = decoder.readIntegerElement(CCNProtocolDTags.MulticastTTL.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.MulticastTTL)) {
+			_multicastTTL = decoder.readIntegerElement(CCNProtocolDTags.MulticastTTL); 
 		}
-		if (decoder.peekStartElement(CCNProtocolDTags.FreshnessSeconds.getTag())) {
-			_lifetime = decoder.readIntegerElement(CCNProtocolDTags.FreshnessSeconds.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.FreshnessSeconds)) {
+			_lifetime = decoder.readIntegerElement(CCNProtocolDTags.FreshnessSeconds); 
 		}
 		decoder.readEndElement();
 	}
@@ -218,36 +218,36 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 		}
 		encoder.writeStartElement(getElementLabel());
 		if (null != _action && _action.length() != 0)
-			encoder.writeElement(CCNProtocolDTags.Action.getTag(), _action);	
+			encoder.writeElement(CCNProtocolDTags.Action, _action);	
 		if (null != _ccndID) {
 			_ccndID.encode(encoder);
 		}
 		if (null != _faceID) {
-			encoder.writeElement(CCNProtocolDTags.FaceID.getTag(), _faceID);
+			encoder.writeElement(CCNProtocolDTags.FaceID, _faceID);
 		}
 		if (null != _ipProto) {
-			encoder.writeElement(CCNProtocolDTags.IPProto.getTag(), _ipProto.value());
+			encoder.writeElement(CCNProtocolDTags.IPProto, _ipProto.value());
 		}
 		if (null != _host && _host.length() != 0) {
-			encoder.writeElement(CCNProtocolDTags.Host.getTag(), _host);	
+			encoder.writeElement(CCNProtocolDTags.Host, _host);	
 		}
 		if (null != _port) {
-			encoder.writeElement(CCNProtocolDTags.Port.getTag(), _port);
+			encoder.writeElement(CCNProtocolDTags.Port, _port);
 		}
 		if (null != _multicastInterface && _multicastInterface.length() != 0) {
-			encoder.writeElement(CCNProtocolDTags.MulticastInterface.getTag(), _multicastInterface);
+			encoder.writeElement(CCNProtocolDTags.MulticastInterface, _multicastInterface);
 		}
 		if (null != _multicastTTL) {
-			encoder.writeElement(CCNProtocolDTags.MulticastTTL.getTag(), _multicastTTL);
+			encoder.writeElement(CCNProtocolDTags.MulticastTTL, _multicastTTL);
 		}
 		if (null != _lifetime) {
-			encoder.writeElement(CCNProtocolDTags.FreshnessSeconds.getTag(), _lifetime);
+			encoder.writeElement(CCNProtocolDTags.FreshnessSeconds, _lifetime);
 		}
 		encoder.writeEndElement();   			
 	}
 
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.FaceInstance.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.FaceInstance; }
 
 	@Override
 	public boolean validate() {
