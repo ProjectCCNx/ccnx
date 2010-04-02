@@ -25,6 +25,7 @@ import java.net.InetSocketAddress;
 import java.net.PortUnreachableException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -200,10 +201,10 @@ public class CCNNetworkChannel extends InputStream {
 			} else {
 				throw new IOException("NetworkChannel: invalid protocol specified");
 			}
-		} catch (PortUnreachableException pue) {
-			close();
-			return -1;
-		}
+		} catch (PortUnreachableException pue) {}
+		  catch (ClosedChannelException cce) {}
+		close();
+		return -1;
 	}
 	
 	/**
@@ -384,19 +385,17 @@ public class CCNNetworkChannel extends InputStream {
 	 */
 	private class HeartBeatTimer extends TimerTask {
 		public void run() {
-			if (_ncConnected) {
+			try {
+				ByteBuffer heartbeat = ByteBuffer.allocate(1);
+				_ncDGrmChannel.write(heartbeat);
+				_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
+			} catch (IOException io) {
+				// We do not see errors on send typically even if 
+				// agent is gone, so log each but do not track
+				Log.warning("Error sending heartbeat packet: {0}", io.getMessage());
 				try {
-					ByteBuffer heartbeat = ByteBuffer.allocate(1);
-					_ncDGrmChannel.write(heartbeat);
-					_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
-				} catch (IOException io) {
-					// We do not see errors on send typically even if 
-					// agent is gone, so log each but do not track
-					Log.warning("Error sending heartbeat packet: {0}", io.getMessage());
-					try {
-						close();
-					} catch (IOException e) {}
-				}
+					close();
+				} catch (IOException e) {}
 			}
 		} /* run() */	
 	} /* private class HeartBeatTimer extends TimerTask */
