@@ -60,7 +60,7 @@ public class CCNNetworkChannel extends InputStream {
 	protected DatagramChannel _ncDGrmChannel = null;
 	protected SocketChannel _ncSockChannel = null;
 	protected Selector _ncSelector = null;
-	protected Boolean _ncConnected = new Boolean(false);
+	protected Boolean _ncConnected = new Boolean(false); // Actually asking the channel if its connected doesn't appear to be reliable
 	protected boolean _ncInitialized = false;
 	protected Timer _ncHeartBeatTimer = null;
 	protected Boolean _ncStarted = false;
@@ -79,8 +79,6 @@ public class CCNNetworkChannel extends InputStream {
 		_ncProto = proto;
 		_ncTapStreamIn = tapStreamIn;
 		_ncSelector = Selector.open();
-		_datagram.clear();
-		_datagram.limit(0);
 		Log.info("Starting up CCNNetworkChannel using {0}.", proto);
 	}
 	
@@ -103,7 +101,6 @@ public class CCNNetworkChannel extends InputStream {
 				wakeup();
 				_ncDGrmChannel.register(_ncSelector, SelectionKey.OP_READ);
 				_ncLocalPort = _ncDGrmChannel.socket().getLocalPort();
-				_ncConnected = true;
 				if (_ncStarted)
 					_ncHeartBeatTimer.schedule(new HeartBeatTimer(), 0);
 			} catch (IOException ioe) {
@@ -119,7 +116,10 @@ public class CCNNetworkChannel extends InputStream {
 		}
 		String connecting = (_ncInitialized ? "Reconnecting to" : "Contacting");
 		Log.info(connecting + " CCN agent at " + _ncHost + ":" + _ncPort + " on local port " + _ncLocalPort);
+		clearSelectedKeys();
+		initStream();
 		_ncInitialized = true;
+		_ncConnected = true;
 	}
 	
 	/**
@@ -160,8 +160,8 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public void close() throws IOException {
+		_ncConnected = false;
 		if (_ncProto == NetworkProtocol.UDP) {
-			_ncConnected = false;
 			wakeup();
 			_ncDGrmChannel.close();
 		} else if (_ncProto == NetworkProtocol.TCP) {
@@ -177,14 +177,7 @@ public class CCNNetworkChannel extends InputStream {
 	 * @return true if connected
 	 */
 	public boolean isConnected() {
-		if (_ncProto == NetworkProtocol.UDP) {
-			return _ncConnected;
-		} else if (_ncProto == NetworkProtocol.TCP) {
-			return (_ncSockChannel.isConnected());
-		} else {
-			Log.severe("NetworkChannel: invalid protocol specified");
-			return false;
-		}
+		return _ncConnected;
 	}
 	
 	/**
@@ -242,6 +235,11 @@ public class CCNNetworkChannel extends InputStream {
 				_ncStarted = true;
 			}
 		}
+	}
+	
+	private void initStream() {
+		_datagram.clear();
+		_datagram.limit(0);
 	}
 		
 	@Override
