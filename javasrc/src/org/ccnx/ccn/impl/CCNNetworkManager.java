@@ -458,7 +458,7 @@ public class CCNNetworkManager implements Runnable {
 						}
 					}
 					// Call into client code without holding any library locks
-					if (null != pending) {
+					if (null != pending && null != listener) {
 						if( Log.isLoggable(Level.FINER) )
 							Log.finer("Interest callback (" + pending + " data) for: {0}", this.interest.name());
 						
