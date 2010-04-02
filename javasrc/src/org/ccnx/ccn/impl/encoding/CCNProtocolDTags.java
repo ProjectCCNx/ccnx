@@ -140,6 +140,7 @@ public class CCNProtocolDTags {
 		"Policy", "Namespace", "GlobalPrefixName", "PolicyVersion", "KeyValueSet", "KeyValuePair",
 		"IntegerValue", "DecimalValue", "StringValue", "BinaryValue", "NameValue", "Entry",
 		"ACL", "ParameterizedName", "Prefix", "Suffix", "Root", "ProfileName", "Parameters"};
+	protected static final int TAG_MAP_LENGTH = _tagToStringMap.length;
 
 	
 	/**
@@ -153,7 +154,7 @@ public class CCNProtocolDTags {
 	 */
 	
 	public static String tagToString(long tagVal) {
-		if (tagVal < _tagToStringMap.length) {
+		if ((tagVal >= 0) && (tagVal < TAG_MAP_LENGTH)) {
 			return _tagToStringMap[(int)tagVal];
 		} else if (tagVal == CCNProtocolDataUnit) {
 			return CCNPROTOCOL_DATA_UNIT;
@@ -163,7 +164,7 @@ public class CCNProtocolDTags {
 	
 	public static Long stringToTag(String tagName) {
 		// the slow way, but right now we don't care.... want a static lookup for the forward direction
-		for (int i=0; i < _tagToStringMap.length; ++i) {
+		for (int i=0; i < TAG_MAP_LENGTH; ++i) {
 			if ((null != _tagToStringMap[i]) && (_tagToStringMap[i].equals(tagName))) {
 				return (long)i;
 			}
