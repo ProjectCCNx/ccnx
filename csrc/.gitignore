@@ -39,6 +39,7 @@ cmd/ccntimestamps
 cmd/dataresponsetest
 lib/Makefile
 lib/basicparsetest
+lib/ccn_verifysig
 lib/encodedecodetest
 lib/hashtbtest
 lib/libccn.a
