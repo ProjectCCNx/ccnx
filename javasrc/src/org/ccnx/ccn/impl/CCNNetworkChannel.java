@@ -415,7 +415,6 @@ public class CCNNetworkChannel extends InputStream {
 		public void run() {
 			if (heartbeat())
 			_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
-
 		} /* run() */	
 	} /* private class HeartBeatTimer extends TimerTask */
 } /* NetworkChannel */
