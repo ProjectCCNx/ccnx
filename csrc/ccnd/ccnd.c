@@ -1256,7 +1256,7 @@ consume_matching_interests(struct ccnd_handle *h,
             if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
                                              p->interest_msg, p->size, NULL)) {
                 face_send_queue_insert(h, f, content);
-                if (h->debug & (16 | 8))
+                if (h->debug & (32 | 8))
                     ccnd_debug_ccnb(h, __LINE__, "consume", f,
                                     p->interest_msg, p->size);
                 matches += 1;
@@ -2512,7 +2512,7 @@ pe_next_usec(struct ccnd_handle *h,
     if (next_delay > pe->usec)
         next_delay = pe->usec;
     pe->usec -= next_delay;
-    if (h->debug & 16) {
+    if (h->debug & 32) {
         struct ccn_charbuf *c = ccn_charbuf_create();
         ccn_charbuf_putf(c, "%p.%dof%d,usec=%d+%d",
                          (void *)pe,
@@ -3158,7 +3158,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 if (k == -1) {
                     k = face_send_queue_insert(h, face, content);
                     if (k >= 0) {
-                        if (h->debug & (16 | 8))
+                        if (h->debug & (32 | 8))
                             ccnd_debug_ccnb(h, __LINE__, "consume", face, msg, size);
                     }
                     /* Any other matched interests need to be consumed, too. */
