@@ -265,7 +265,6 @@ ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
         return(-1);
     }
     /* Set linger to prevent quickly resetting the connection on close.*/
-    // XXX - not clear this is needed any more, since we don't close quickly.
     setsockopt(face->send_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
     if (0 == memcmp(face->inbuf->buf, "GET / ", 6)) {
         response = collect_stats_html(h);
@@ -282,7 +281,7 @@ ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
         ccnd_send(h, face, resp404, strlen(resp404));
     else
         ccnd_send(h, face, resp405, strlen(resp405));
-    face->flags |= CCN_FACE_NOSEND;
+    face->flags |= (CCN_FACE_NOSEND | CCN_FACE_CLOSING);
     ccn_charbuf_destroy(&response);
     return(0);
 }

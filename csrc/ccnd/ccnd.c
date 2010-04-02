@@ -313,7 +313,11 @@ static void
 ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
 {
     int res;
+    
     if (*pfd != -1) {
+        int linger = 0;
+        setsockopt(*pfd, SOL_SOCKET, SO_LINGER,
+                   &linger, sizeof(linger));
         res = close(*pfd);
         if (res == -1)
             ccnd_msg(h, "close failed for face %u fd=%d: %s (errno=%d)",
@@ -1252,7 +1256,7 @@ consume_matching_interests(struct ccnd_handle *h,
             if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
                                              p->interest_msg, p->size, NULL)) {
                 face_send_queue_insert(h, f, content);
-                if (h->debug & (16 | 8))
+                if (h->debug & (32 | 8))
                     ccnd_debug_ccnb(h, __LINE__, "consume", f,
                                     p->interest_msg, p->size);
                 matches += 1;
@@ -2508,7 +2512,7 @@ pe_next_usec(struct ccnd_handle *h,
     if (next_delay > pe->usec)
         next_delay = pe->usec;
     pe->usec -= next_delay;
-    if (h->debug & 16) {
+    if (h->debug & 32) {
         struct ccn_charbuf *c = ccn_charbuf_create();
         ccn_charbuf_putf(c, "%p.%dof%d,usec=%d+%d",
                          (void *)pe,
@@ -3154,7 +3158,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 if (k == -1) {
                     k = face_send_queue_insert(h, face, content);
                     if (k >= 0) {
-                        if (h->debug & (16 | 8))
+                        if (h->debug & (32 | 8))
                             ccnd_debug_ccnb(h, __LINE__, "consume", face, msg, size);
                     }
                     /* Any other matched interests need to be consumed, too. */
@@ -3713,7 +3717,9 @@ do_deferred_write(struct ccnd_handle *h, int fd)
     /* This only happens on connected sockets */
     ssize_t res;
     struct face *face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
-    if (face != NULL && face->outbuf != NULL) {
+    if (face == NULL)
+        return;
+    if (face->outbuf != NULL) {
         ssize_t sendlen = face->outbuf->length - face->outbufindex;
         if (sendlen > 0) {
             res = send(fd, face->outbuf->buf + face->outbufindex, sendlen, 0);
@@ -3731,6 +3737,8 @@ do_deferred_write(struct ccnd_handle *h, int fd)
             if (res == sendlen) {
                 face->outbufindex = 0;
                 ccn_charbuf_destroy(&face->outbuf);
+                if ((face->flags & CCN_FACE_CLOSING) != 0)
+                    shutdown_client_fd(h, fd);
                 return;
             }
             face->outbufindex += res;
@@ -3739,7 +3747,9 @@ do_deferred_write(struct ccnd_handle *h, int fd)
         face->outbufindex = 0;
         ccn_charbuf_destroy(&face->outbuf);
     }
-    if ((face->flags & CCN_FACE_CONNECTING) != 0)
+    if ((face->flags & CCN_FACE_CLOSING) != 0)
+        shutdown_client_fd(h, fd);
+    else if ((face->flags & CCN_FACE_CONNECTING) != 0)
         face->flags &= ~CCN_FACE_CONNECTING;
     else
         ccnd_msg(h, "ccnd:do_deferred_write: something fishy on %d", fd);
@@ -3783,7 +3793,8 @@ ccnd_run(struct ccnd_handle *h)
             struct face *face = e->data;
             h->fds[i].fd = face->recv_fd;
             h->fds[i].events = POLLIN;
-            if (face->outbuf != NULL && face->send_fd == face->recv_fd)
+            if ((face->outbuf != NULL || (face->flags & CCN_FACE_CLOSING) != 0)
+                && face->send_fd == face->recv_fd)
                 h->fds[i].events |= POLLOUT;
         }
         hashtb_end(e);
