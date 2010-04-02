@@ -71,21 +71,29 @@ ccn_header_parse(const unsigned char *p, size_t size)
         }
         if (ccn_buf_match_dtag(d, CCN_DTAG_ContentDigest)) {
             ccn_buf_advance(d);
-            if (0 == ccn_buf_match_blob(d, &blob, &blobsize)) {
-                result->root_digest = ccn_charbuf_create();
+            if (ccn_buf_match_blob(d, &blob, &blobsize)) {
+                result->content_digest = ccn_charbuf_create();
                 ccn_charbuf_append(result->content_digest, blob, blobsize);
+                ccn_buf_advance(d);
             }
             ccn_buf_check_close(d);
         }
         if (ccn_buf_match_dtag(d, CCN_DTAG_RootDigest)) {
             ccn_buf_advance(d);
-            if (0 == ccn_buf_match_blob(d, &blob, &blobsize)) {
+            if (ccn_buf_match_blob(d, &blob, &blobsize)) {
                 result->root_digest = ccn_charbuf_create();
                 ccn_charbuf_append(result->root_digest, blob, blobsize);
+                ccn_buf_advance(d);
             }
             ccn_buf_check_close(d);
         }
         ccn_buf_check_close(d);
+    } 
+    else
+        d->decoder.state = -__LINE__;
+    
+    if (d->decoder.index != size || !CCN_FINAL_DSTATE(d->decoder.state)) {
+        ccn_header_destroy(&result);
     }
     return (result);
 }
@@ -110,13 +118,17 @@ ccnb_append_header(struct ccn_charbuf *c,
     int res;
     res = ccnb_element_begin(c, CCN_DTAG_Header);
     res |= ccnb_tagged_putf(c, CCN_DTAG_Start, "%u", h->start);
-    res |= ccnb_tagged_putf(c, CCN_DTAG_Start, "%u", h->count);
-    res |= ccnb_tagged_putf(c, CCN_DTAG_Start, "%u", h->block_size);
-    res |= ccnb_tagged_putf(c, CCN_DTAG_Start, "%u", h->length);
-    if (h->content_digest != NULL)
-        res |= ccn_charbuf_append_charbuf(c, h->content_digest);
-    if (h->root_digest != NULL)
-        res |= ccn_charbuf_append_charbuf(c, h->root_digest);
+    res |= ccnb_tagged_putf(c, CCN_DTAG_Count, "%u", h->count);
+    res |= ccnb_tagged_putf(c, CCN_DTAG_BlockSize, "%u", h->block_size);
+    res |= ccnb_tagged_putf(c, CCN_DTAG_Length, "%u", h->length);
+    if (h->content_digest != NULL) {
+        res |= ccnb_append_tagged_blob(c, CCN_DTAG_ContentDigest,
+                                       h->content_digest->buf, h->content_digest->length);
+    }
+    if (h->root_digest != NULL) {
+        res |= ccnb_append_tagged_blob(c, CCN_DTAG_RootDigest,
+                                       h->root_digest->buf, h->root_digest->length);
+    }
     res |= ccnb_element_end(c);
     return (res);
 }

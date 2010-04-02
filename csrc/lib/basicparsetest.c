@@ -29,6 +29,7 @@
 #include <ccn/face_mgmt.h>
 #include <ccn/sockcreate.h>
 #include <ccn/reg_mgmt.h>
+#include <ccn/header.h>
 
 /**
  * This is for testing.
@@ -45,6 +46,7 @@ main (int argc, char **argv)
     ssize_t size;
     struct ccn_face_instance *face_instance;
     struct ccn_forwarding_entry *forwarding_entry;
+    struct ccn_header *header;
     int res = 1;
     struct ccn_charbuf *c = ccn_charbuf_create();
     
@@ -88,6 +90,24 @@ main (int argc, char **argv)
     }
     ccn_forwarding_entry_destroy(&forwarding_entry);
     
+    header = ccn_header_parse(buf, size);
+    if (header != NULL) {
+        printf("header OK\n");
+        c->length = 0;
+        res = ccnb_append_header(c, header);
+        if (res != 0)
+            printf("header append failed\n");
+        if (memcmp(buf, c->buf, c->length) != 0)
+            printf("header mismatch\n");
+        ccn_header_destroy(&header);
+        header = ccn_header_parse(c->buf, c->length);
+        if (header == NULL) {
+            printf("header reparse failed\n");
+            res = 1;
+        }
+    }
+    ccn_header_destroy(&header);
+
     if (res != 0) {
         printf("URP\n");
     }
