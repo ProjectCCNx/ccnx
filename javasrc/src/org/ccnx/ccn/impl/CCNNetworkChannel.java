@@ -83,8 +83,6 @@ public class CCNNetworkChannel extends InputStream {
 		_ncProto = proto;
 		_ncTapStreamIn = tapStreamIn;
 		_ncSelector = Selector.open();
-		_datagram.clear();
-		_datagram.limit(0);
 		Log.info("Starting up CCNNetworkChannel using {0}.", proto);
 	}
 	
