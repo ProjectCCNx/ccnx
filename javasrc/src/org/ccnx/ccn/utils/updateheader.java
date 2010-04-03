@@ -96,7 +96,7 @@ public class updateheader {
 		
 		CCNHandle handle = CCNHandle.getHandle();
 		
-		for (int i=arg; i <= args.length; ++i) {
+		for (int i=arg; i < args.length; ++i) {
 			try {
 				moveHeader(args[i], handle);
 			} catch (Exception e) {
