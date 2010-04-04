@@ -96,6 +96,10 @@ public class CCNNetworkChannel extends InputStream {
 				_ncDGrmChannel = DatagramChannel.open();
 				_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
 				_ncDGrmChannel.configureBlocking(false);
+				
+				// For some weird reason we seem to have to test writing twice when ccnd is down
+				// before the channel actually notices. There might be some kind of timing/locking
+				// problem responsible for this but I can't figure out what it is.
 				ByteBuffer test = ByteBuffer.allocate(1);
 				_ncDGrmChannel.write(test);
 				wakeup();
