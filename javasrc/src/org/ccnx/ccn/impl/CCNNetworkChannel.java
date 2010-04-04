@@ -97,14 +97,14 @@ public class CCNNetworkChannel extends InputStream {
 				_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
 				_ncDGrmChannel.configureBlocking(false);
 				ByteBuffer test = ByteBuffer.allocate(1);
-				int ret = _ncDGrmChannel.write(test);
-				if (ret < 1)
-					return;
+				_ncDGrmChannel.write(test);
 				wakeup();
 				_ncDGrmChannel.register(_ncSelector, SelectionKey.OP_READ);
 				_ncLocalPort = _ncDGrmChannel.socket().getLocalPort();
+				test.flip();
+				_ncDGrmChannel.write(test);
 				if (_ncStarted)
-					_ncHeartBeatTimer.schedule(new HeartBeatTimer(), 0);
+					_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
 			} catch (IOException ioe) {
 				return;
 			}
