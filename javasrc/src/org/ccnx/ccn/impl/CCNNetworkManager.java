@@ -281,8 +281,9 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * First time startup of timing stuff after first registration
 	 * We don't bother to "unstartup" if everything is deregistered
+	 * @throws IOException 
 	 */
-	private void setupTimers() {
+	private void setupTimers() throws IOException {
 		if (!_timersSetup) {
 			_timersSetup = true;
 			_channel.init();		// Starts UDP heartbeat (if using UDP)
@@ -1126,8 +1127,9 @@ public class CCNNetworkManager implements Runnable {
 
 	/**
 	 * Pass things on to the network stack.
+	 * @throws IOException 
 	 */
-	private InterestRegistration registerInterest(InterestRegistration reg) {
+	private InterestRegistration registerInterest(InterestRegistration reg) throws IOException {
 		// Add to standing interests table
 		setupTimers();
 		if( Log.isLoggable(Level.FINEST) )

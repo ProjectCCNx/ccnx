@@ -101,12 +101,15 @@ public class CCNNetworkChannel extends InputStream {
 				// before the channel actually notices. There might be some kind of timing/locking
 				// problem responsible for this but I can't figure out what it is.
 				ByteBuffer test = ByteBuffer.allocate(1);
-				_ncDGrmChannel.write(test);
+				if (_ncInitialized)
+					_ncDGrmChannel.write(test);
 				wakeup();
 				_ncDGrmChannel.register(_ncSelector, SelectionKey.OP_READ);
 				_ncLocalPort = _ncDGrmChannel.socket().getLocalPort();
-				test.flip();
-				_ncDGrmChannel.write(test);
+				if (_ncInitialized) {
+					test.flip();
+					_ncDGrmChannel.write(test);
+				}
 				if (_ncStarted)
 					_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
 			} catch (IOException ioe) {
@@ -240,12 +243,15 @@ public class CCNNetworkChannel extends InputStream {
 	/**
 	 * Initialize the channel at the point when we are actually ready to create faces
 	 * with ccnd
+	 * @throws IOException 
 	 */
-	public void init() {
+	public void init() throws IOException {
 		if (_ncProto == NetworkProtocol.UDP) {
 			if (! _ncStarted) {
-				_ncHeartBeatTimer = new Timer(true);
-				_ncHeartBeatTimer.schedule(new HeartBeatTimer(), 0L);
+				if (heartbeat()) {
+					_ncHeartBeatTimer = new Timer(true);
+					_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
+				}
 				_ncStarted = true;
 			}
 		}
@@ -383,24 +389,34 @@ public class CCNNetworkChannel extends InputStream {
 		}
 		return ret;
 	}
+	
+	/**
+	 * @return true if heartbeat sent
+	 */
+	private boolean heartbeat() {
+		try {
+			ByteBuffer heartbeat = ByteBuffer.allocate(1);
+			_ncDGrmChannel.write(heartbeat);
+			return true;
+		} catch (IOException io) {
+			// We do not see errors on send typically even if 
+			// agent is gone, so log each but do not track
+			Log.warning("Error sending heartbeat packet: {0}", io.getMessage());
+			try {
+				close();
+			} catch (IOException e) {}
+		}
+		return false;
+	}
 			
 	/**
 	 * Do scheduled writes of heartbeats on UDP connections.
 	 */
 	private class HeartBeatTimer extends TimerTask {
 		public void run() {
-			try {
-				ByteBuffer heartbeat = ByteBuffer.allocate(1);
-				_ncDGrmChannel.write(heartbeat);
-				_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
-			} catch (IOException io) {
-				// We do not see errors on send typically even if 
-				// agent is gone, so log each but do not track
-				Log.warning("Error sending heartbeat packet: {0}", io.getMessage());
-				try {
-					close();
-				} catch (IOException e) {}
-			}
+			if (heartbeat())
+			_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
+
 		} /* run() */	
 	} /* private class HeartBeatTimer extends TimerTask */
 } /* NetworkChannel */
