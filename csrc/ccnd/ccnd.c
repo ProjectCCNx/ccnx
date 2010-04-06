@@ -4016,6 +4016,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
 		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
                     rcvbuf_sz = sizeof(rcvbuf);
                     getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
+                    if (a->ai_family == AF_INET6)
+                        ccnd_setsockopt_v6only(h, fd);
 		    res = bind(fd, a->ai_addr, a->ai_addrlen);
                     if (res != 0) {
                         close(fd);
