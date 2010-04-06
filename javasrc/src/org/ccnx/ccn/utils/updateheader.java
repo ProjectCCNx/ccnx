@@ -35,7 +35,6 @@ public class updateheader {
 
 	public static void usage() {
 		System.out.println("usage: updateheader [-log level] <ccnname> [<ccnname>*>]\n Assumes content is in a repository.");
-		System.exit(1);
 	}
 
 	public static void moveHeader(String ccnxName, CCNHandle handle) throws MalformedContentNameStringException, IOException {
@@ -89,8 +88,12 @@ public class updateheader {
 	 */
 	public static void main(String[] args) {
 		int arg = 0;
-        if (args.length == 0)
-            usage();
+		
+		if ((args.length == 0) || ((args.length >= 1) && ((args[0].equals("--help")) || (args[0].equals("-h"))))) {
+			usage();
+			System.exit(1);
+		}
+		
 		if ((args.length > 2) && (args[0].equals("-log"))) {
 			Log.setDefaultLevel(Level.parse(args[1]));
 			arg += 2;
