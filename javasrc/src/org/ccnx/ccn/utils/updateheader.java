@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
@@ -72,15 +73,16 @@ public class updateheader {
 			newHeader.cancelInterest();
 			return;
 		}
+		// if we get here, the initial background update should have completed for oldHeader
 		
 		if (newHeader.available()) {
 			System.out.println("Already have a new header: " + newHeader.getVersionedName() + ", skipping file " + ccnxName);
+		} else {
+			newHeader.cancelInterest();
+			newHeader.setupSave(SaveType.REPOSITORY);
+			newHeader.save(oldHeader.header());
+			newHeader.close();
 		}
-		newHeader.cancelInterest();
-		
-		newHeader.setupSave(SaveType.REPOSITORY);
-		newHeader.save(oldHeader.header());
-		newHeader.close();
 	}
 	/**
 	 * @param args
@@ -104,5 +106,7 @@ public class updateheader {
 				e.printStackTrace();
 			}
 		}
+		handle.close();
+		KeyManager.closeDefaultKeyManager();
 	}
 }
