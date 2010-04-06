@@ -20,9 +20,9 @@ package org.ccnx.ccn.impl.repo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
@@ -284,7 +284,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	public synchronized ContentName getPolicyName() {
 		if (null == _policyName) {
 			_policyName = BasicPolicy.getPolicyName(_globalPrefix, _localName);
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+			if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
 				Log.info("REPO: Policy name for repository: {0}", _policyName);
 			}
 		}

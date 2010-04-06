@@ -1,8 +1,8 @@
 package org.ccnx.ccn.impl.repo;
 
 import java.io.IOException;
+import java.util.logging.Level;
 
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -43,7 +43,7 @@ public class RepositoryPolicyHandler {
 		policy.update(pxml, true);
 		ContentName policyName = VersioningProfile.addVersion(
 				ContentName.fromNative(RepositoryStore.REPO_NAMESPACE + "/" + pxml._localName + "/" + RepositoryStore.REPO_POLICY));
-		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+		if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 			Log.info("REPO: got policy update, global name {0} local name {1}, saving to {2}", policy.getGlobalPrefix(), policy.getLocalName(), policyName);
 		server.resetNameSpaceFromHandler();
 		

@@ -21,7 +21,6 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarkers;
@@ -55,7 +54,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 * the repository and the request is sent to the RepositoryStore to be processed.
 	 */
 	public boolean handleInterest(Interest interest) {
-		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 			Log.finer("Saw interest: {0}", interest.name());
 		try {
 			if (interest.name().contains(CommandMarkers.COMMAND_MARKER_REPO_START_WRITE)) {
@@ -69,11 +68,11 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			} else {
 				ContentObject content = _server.getRepository().getContent(interest);
 				if (content != null) {
-					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+					if (Log.isLoggable(Log.FAC_REPO, Level.FINEST))
 						Log.finest("Satisfying interest: {0} with content {1}", interest, content.name());
 					_handle.put(content);
 				} else {
-					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+					if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
 						Log.fine("Unsatisfied interest: {0}", interest);
 				}
 			}
@@ -93,7 +92,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		synchronized (_server.getDataListeners()) {
 			for (RepositoryDataListener listener : _server.getDataListeners()) {
 				if (listener.getOrigInterest().equals(interest)) {
-					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+					if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 						Log.info("Write request {0} is a duplicate, ignoring", interest.name());
 					return;
 				}
@@ -107,7 +106,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		 // to allow new sessions that are within the new namespace to start but figuring out all
 		 // the locking/startup issues surrounding this is complex so for now we just don't allow it.
 		if (_server.getPendingNameSpaceState()) {
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 				Log.info("Discarding write request {0} due to pending namespace change", interest.name());
 			return;
 		}
@@ -117,7 +116,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		// and the nonce component to get the prefix for the content to be written.
 		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
 		try {
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 				Log.info("Processing write request for {0}", listeningName);
 			// Create the initial read interest.  Set maxSuffixComponents = 2 to get only content with one 
 			// component past the prefix, plus the implicit digest.  This is designed to retrieve segments
@@ -159,10 +158,10 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 
 		if (ner!=null && ner.hasNames()) {
 			_server.sendEnumerationResponse(ner);
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
 				Log.fine("sending back name enumeration response {0}", ner.getPrefix());
 		} else {
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
 				Log.fine("we are not sending back a response to the name enumeration interest (interest.name() = {0})", interest.name());
 		}
 	}
