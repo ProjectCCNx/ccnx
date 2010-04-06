@@ -267,7 +267,7 @@ main(int argc, char **argv)
             fprintf(stderr, "ccn_put failed (res == %d)\n", res);
             exit(1);
         }
-        if (read_res < blocksize)
+        if (read_res == 0)
             break;
         if (mydata.outstanding > 0)
             mydata.outstanding--;
