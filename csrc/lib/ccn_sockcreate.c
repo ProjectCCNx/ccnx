@@ -43,8 +43,13 @@
 
 
 static int
-set_multicast_socket_options(int socket_r, int socket_w, struct addrinfo *ai, struct addrinfo *localif_for_mcast_addrinfo, int multicastttl, int remoteifindex, void (*logger)(void *, const char *, ...),
-                 void *logdat)
+set_multicast_socket_options(int socket_r, int socket_w,
+                             struct addrinfo *ai,
+                             struct addrinfo *localif_for_mcast_addrinfo,
+                             int multicastttl,
+                             int ifindex,
+                             void (*logger)(void *, const char *, ...),
+                             void *logdat)
 {
     struct addrinfo hints;
     struct ip_mreq mreq;
@@ -107,8 +112,8 @@ set_multicast_socket_options(int socket_r, int socket_w, struct addrinfo *ai, st
         LOGGIT(logdat, "IPv6 multicast");
 #ifdef IPV6_JOIN_GROUP
         memcpy((void *)&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6 *)ai->ai_addr)->sin6_addr, sizeof(mreq6.ipv6mr_multiaddr));
-        if (remoteifindex > 0) {
-            mreq6.ipv6mr_interface = remoteifindex;
+        if (ifindex > 0) {
+            mreq6.ipv6mr_interface = ifindex;
         }
         res = setsockopt(socket_r, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq6, sizeof(mreq6));
         if (res == -1) {
@@ -195,6 +200,7 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
     GOT_HERE;
     if (descr->mcast_ttl >= 0) {
         if (descr->mcast_ttl < 1 || descr->mcast_ttl > 255) {
+            // XXX - It could make sense to use ttl 0 if we're talking on a loopback interface and we leave IP_MULTICAST_LOOP on.
             LOGGIT(logdat, "mcast_ttl(%d) out of range", descr->mcast_ttl);
             goto Finish;
         }
@@ -239,7 +245,7 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
     if (mcast_source_addrinfo != NULL) {
         /*
          * We have a specific interface to bind to for sending.
-         * mcast_source_addrinfo is  the unicast address of this interface.
+         * mcast_source_addrinfo is the unicast address of this interface.
          * Since we need to bind the recving side to the multicast address,
          * we need two sockets in this case.
          */
@@ -261,8 +267,13 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
         }
     }
     GOT_HERE;
-    res = set_multicast_socket_options(socks->recving, socks->sending, addrinfo, mcast_source_addrinfo, descr->mcast_ttl, if_index, logger,
-                 logdat);
+    res = set_multicast_socket_options(socks->recving, socks->sending,
+                                       addrinfo,
+                                       mcast_source_addrinfo,
+                                       descr->mcast_ttl,
+                                       if_index,
+                                       logger,
+                                       logdat);
     if (res < 0)
         goto Finish;
     if (mcast_source_addrinfo != NULL) {
@@ -270,6 +281,7 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
         res = bind(socks->sending, mcast_source_addrinfo->ai_addr, mcast_source_addrinfo->ai_addrlen);
         if (res == -1) {
             LOGGIT(logdat, "bind(sending, ...): %s", strerror(errno));
+            goto Finish;
         }
     }
     else {
