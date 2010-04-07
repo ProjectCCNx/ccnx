@@ -239,6 +239,14 @@ public class VersioningProfile implements CCNProfile {
 		return getVersionComponentAsLong(name.component(i));
 	}
 	
+	public static byte [] getLastVersionComponent(ContentName name) throws VersionMissingException {
+		int i = findLastVersionComponent(name);
+		if (i == -1)
+			throw new VersionMissingException();
+		
+		return name.component(i);
+	}
+	
 	public static long getVersionComponentAsLong(byte [] versionComponent) {
 		byte [] versionData = new byte[versionComponent.length - 1];
 		System.arraycopy(versionComponent, 1, versionData, 0, versionComponent.length - 1);
@@ -625,8 +633,8 @@ public class VersioningProfile implements CCNProfile {
 					Interest retry = new Interest(result.name(), publisher);
 					
 					boolean verifyDone = false;
-					while(!verifyDone) {
-						if(retry.exclude() == null)
+					while (!verifyDone) {
+						if (retry.exclude() == null)
 							retry.exclude(new Exclude());
 						retry.exclude().add(new byte[][] {result.digest()});
 						if (Log.isLoggable(Level.FINE)) {
@@ -835,7 +843,7 @@ public class VersioningProfile implements CCNProfile {
 	
 	private static ArrayList<byte[]> addVersionToExcludes(ArrayList<byte[]> excludeList, ContentName name) {
 		try {
-			excludeList.add(VersioningProfile.addVersion(new ContentName(),VersioningProfile.getLastVersionAsLong(name)).component(0));
+			excludeList.add(VersioningProfile.getLastVersionComponent(name));
 			
 		} catch (VersionMissingException e) {
 			Log.warning("failed to exclude content object version that did not verify: {0}",name);
