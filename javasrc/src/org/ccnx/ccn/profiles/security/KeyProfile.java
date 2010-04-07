@@ -30,7 +30,9 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class KeyProfile implements CCNProfile {
 	
-	public static final byte [] KEY_NAME_COMPONENT = ContentName.componentParseNative("KEYS");
+	public static final byte [] KEY_NAME_COMPONENT = ContentName.componentParseNative("KEY");
+	public static final byte [] KEYS_NAME_COMPONENT = ContentName.componentParseNative("KEYS");
+	
 	public static final CommandMarker KEY_NAME_COMPONENT_MARKER = 
 		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "K");
 	
