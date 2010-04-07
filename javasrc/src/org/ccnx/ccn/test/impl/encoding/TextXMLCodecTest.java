@@ -82,8 +82,7 @@ public class TextXMLCodecTest {
 
 		name = CCNProtocolDTags.tagToString(CCNProtocolDTags.Parameters);
 		Assert.assertEquals("Parameters", name);
-
-}
+	}
 	
 	@Test
 	public void testParseDateTime() {

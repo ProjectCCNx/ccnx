@@ -86,6 +86,7 @@ public class Log {
 	public static final int FAC_USER2		= 5;
 	public static final int FAC_USER3		= 6;
 	public static final int FAC_ACCESSCONTROL = 7;
+	public static final int FAC_REPO = 8;
 	
 
 	// The System property name for each Facility
@@ -98,6 +99,7 @@ public class Log {
 		DEFAULT_LOG_LEVEL_PROPERTY + ".User2",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".User3",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".AccessControl",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Repo",
 	};
 
 	// The environment variable for each facility
@@ -110,6 +112,7 @@ public class Log {
 		DEFAULT_LOG_LEVEL_ENV + "_USER2",
 		DEFAULT_LOG_LEVEL_ENV + "_USER3",
 		DEFAULT_LOG_LEVEL_ENV + "_ACCESSCONTROL",
+		DEFAULT_LOG_LEVEL_ENV + "_REPO",
 	};
 
 	public static final Level [] FAC_DEFAULT_LOG_LEVEL = {
@@ -121,6 +124,7 @@ public class Log {
 		Level.INFO,		// User2
 		Level.INFO,		// User3
 		Level.INFO,		// Access control
+		Level.INFO,		// Repo
 	};
 
 	protected static Level [] _fac_level = new Level[FAC_LOG_LEVEL_PROPERTY.length];
