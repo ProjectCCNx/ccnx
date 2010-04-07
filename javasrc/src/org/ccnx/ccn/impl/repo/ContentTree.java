@@ -24,8 +24,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarker;
@@ -192,7 +192,7 @@ public class ContentTree {
 		 */
 		protected ContentObject search(TreeNode node, ContentName nodeName, ContentGetter getter, 
 						int depth, boolean leftSearch) {
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+			if( Log.isLoggable(Log.FAC_REPO, Level.FINE) )
 				Log.fine("Searching for: {0}", nodeName);
 			int res = _ips.preScreen(node, depth);
 			if (res < 0)
@@ -346,7 +346,7 @@ public class ContentTree {
 	 */
 	public boolean insert(ContentObject content, ContentRef ref, long ts, ContentGetter getter, NameEnumerationResponse ner) {
 		final ContentName name = content.fullName();
-		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+		if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
 			Log.fine("inserting content: {0}", name);
 		}
 		TreeNode node = _root; // starting point
@@ -358,7 +358,7 @@ public class ContentTree {
 				//Library.finest("getting node for component: "+new String(component));
 				TreeNode child = node.getChild(component);
 				if (null == child) {
-					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+					if (Log.isLoggable(Log.FAC_REPO, Level.FINEST)) {
 						Log.finest("child was null: adding here");
 					}
 					// add it
@@ -383,14 +383,14 @@ public class ContentTree {
 					if (node.interestFlag && (ner==null || ner.getPrefix()==null)){
 						//we have added something to this node and someone was interested
 						//we need to get the child names and the prefix to send back
-						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+						if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
 							Log.info("we added at least one child, need to send a name enumeration response");
 						}
 						ContentName prefix = name.cut(component);
 	
 						prefix = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 						//prefix = VersioningProfile.addVersion(prefix, new CCNTime(node.timestamp));
-						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+						if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
 							Log.info("prefix for FastNEResponse: {0}", prefix);
 							Log.info("response name will be: {0}",
 									VersioningProfile.addVersion(
@@ -413,7 +413,7 @@ public class ContentTree {
 						ner.setPrefix(prefix);
 						ner.setNameList(names);
 						ner.setTimestamp(new CCNTime(node.timestamp));
-						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+						if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
 							Log.info("resetting interestFlag to false");
 						}
 						node.interestFlag = false;
@@ -455,7 +455,7 @@ public class ContentTree {
 			node.content.add(ref);
 			node.oneContent = null;
 		}
-		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+		if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
 			Log.fine("Inserted: {0}", content.name());
 		}
 		return true;
@@ -630,7 +630,7 @@ public class ContentTree {
 		//first chop off NE marker
 		ContentName prefix = interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 
-		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+		if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
 			Log.fine("checking for content names under: {0}", prefix);
 		}
 		
@@ -646,11 +646,11 @@ public class ContentTree {
 		    potentialCollectionName = SegmentationProfile.segmentName(potentialCollectionName, SegmentationProfile.baseSegment());
 			//check if we should respond...
 			if (interest.matches(potentialCollectionName, null)) {
-				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+				if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
 					Log.info("the new version is a match with the interest!  we should respond: interest = {0} potentialCollectionName = {1}", interest, potentialCollectionName);
 				}
 			} else {
-				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
 					Log.finer("the new version doesn't match, no response needed: interest = {0} would be collection name: {1}", interest, potentialCollectionName);
 				}
 				parent.interestFlag = true;
@@ -668,7 +668,7 @@ public class ContentTree {
 			}
 			
 			if (names.size()>0) {
-				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
 					Log.finer("sending back {0} names in the enumeration response for prefix {1}", names.size(), prefix);
 				}
 			}

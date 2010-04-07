@@ -11,9 +11,10 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-libdir = $(shell pkg-config --variable=libdir vlc-plugin )
-vlclibdir = $(libdir)/vlc
-VLCPLUGINVERDEF = `pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER\1/;s/\.//g;'`
+libdir := $(shell pkg-config --variable=libdir vlc-plugin )
+vlclibdir := $(libdir)/vlc
+vlcplugindir := $(shell pkg-config --atleast-version=1.1.0 vlc-plugin && echo /modules)
+VLCPLUGINVERDEF := $(shell pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER\1/;s/\.//g;')
 
 all: libaccess_ccn_plugin.so
 
@@ -27,8 +28,8 @@ clean:
 	rm -f libaccess_ccn_plugin.o libaccess_ccn_plugin.so
 
 install: all
-	mkdir -p $(DESTDIR)$(vlclibdir)/access/
-	install -m 0755 libaccess_ccn_plugin.so $(DESTDIR)$(vlclibdir)/access/
+	mkdir -p $(DESTDIR)$(vlclibdir)$(vlcplugindir)/access/
+	install -m 0755 libaccess_ccn_plugin.so $(DESTDIR)$(vlclibdir)$(vlcplugindir)/access/
 
 install-strip: all
 	mkdir -p $(DESTDIR)$(vlclibdir)/access/

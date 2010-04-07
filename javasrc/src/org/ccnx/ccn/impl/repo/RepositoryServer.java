@@ -109,7 +109,7 @@ public class RepositoryServer {
 				}
 			
 				if (_currentListeners.size() == 0 && _pendingNameSpaceChange) {
-					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+					if( Log.isLoggable(Log.FAC_REPO, Level.FINER) )
 						Log.finer("InterestTimer - resetting nameSpace");
 					try {
 						resetNameSpace();
@@ -223,7 +223,7 @@ public class RepositoryServer {
 				resetNameSpace();
 			else
 				_pendingNameSpaceChange = true;
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+			if( Log.isLoggable(Log.FAC_REPO, Level.FINER) )
 				Log.finer("ResetNameSpaceFromHandler: pendingNameSpaceChange is {0}", _pendingNameSpaceChange);
 		}	
 	}
@@ -240,13 +240,13 @@ public class RepositoryServer {
 				getUnMatched(_repoFilters, newNameSpace, unMatchedOld, unMatchedNew);
 				for (NameAndListener oldName : unMatchedOld) {
 					_handle.unregisterFilter(oldName.name, oldName.listener);
-					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+					if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
 						Log.info("Dropping namespace {0}", oldName.name);
 				}
 				for (ContentName newName : unMatchedNew) {
 					RepositoryInterestHandler iHandler = new RepositoryInterestHandler(this);
 					_handle.registerFilter(newName, iHandler);
-					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+					if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
 						Log.info("Adding namespace {0}", newName);
 					newIL.add(new NameAndListener(newName, iHandler));
 				}
@@ -363,16 +363,16 @@ public class RepositoryServer {
 		if(ner!=null && ner.getPrefix()!=null && ner.hasNames()){
 			NameEnumerationResponseMessageObject neResponseObject = null;
 			try{
-				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 					Log.finer("returning names for prefix: {0}", ner.getPrefix());
 
-				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
 					for (int x = 0; x < ner.getNames().size(); x++) {
 						Log.finer("name: {0}", ner.getNames().get(x));
 					}
 				}
 				if (ner.getTimestamp()==null)
-					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+					if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 						Log.info("node.timestamp was null!!!");
 				NameEnumerationResponseMessage nem = ner.getNamesForResponse();
 				neResponseObject = new NameEnumerationResponseMessageObject(new ContentName(ner.getPrefix(), _responseName.components()), nem, _handle);
@@ -380,7 +380,7 @@ public class RepositoryServer {
 				// be worked out here
 				neResponseObject.disableFlowControl();
 				neResponseObject.save(ner.getTimestamp());
-				if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 					Log.finer("saved collection object: {0}", neResponseObject.getVersionedName());
 				return;
 

@@ -19,7 +19,6 @@ package org.ccnx.ccn.impl.repo;
 
 import java.util.logging.Level;
 
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -34,7 +33,7 @@ public class RepositoryDataHandler implements Runnable {
 	private RepositoryServer _server;
 	
 	public RepositoryDataHandler(ContentObject co, RepositoryServer server) {
-		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+		if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 			Log.info("Saw data: {0}", co.name());
 		_content = co;
 		_server = server;
@@ -50,7 +49,7 @@ public class RepositoryDataHandler implements Runnable {
 	 */
 	public void run() {
 		try {
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
 				Log.finer("Saving content in: " + _content.name().toString());
 			}
 			

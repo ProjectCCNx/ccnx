@@ -172,9 +172,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 						rfile.openFile = new RandomAccessFile(rfile.file, "r");
 						InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8196);
 						
-						if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-							if( Log.isLoggable(Level.FINE))
-								Log.fine("Creating index for {0}", filenames[i]);
+						if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
+							Log.fine("Creating index for {0}", filenames[i]);
 						}
 						while (true) {
 							FileRef ref = new FileRef();
@@ -189,9 +188,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 									tmp.decode(is);
 								}
 								else{
-									if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-										if( Log.isLoggable(Level.INFO))
-											Log.info("at the end of the file");
+									if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
+										Log.info("at the end of the file");
 									}
 									rfile.openFile.close();
 									rfile.openFile = null;
@@ -354,15 +352,13 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		
 		checkName = checkFile(LogStructRepoStoreProfile.REPO_GLOBALPREFIX, globalPrefix, globalFromArgs);
 		globalPrefix = checkName != null ? checkName : globalPrefix;
-		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-			if( Log.isLoggable(Level.INFO))
-				Log.info("REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
+		if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
+			Log.info("REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
 		}
 		try {
 			_policy.setGlobalPrefix(globalPrefix);
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-				if( Log.isLoggable(Level.INFO))
-					Log.info("REPO: initializing policy location: {0} for global prefix {1} and local name {2}", localName, globalPrefix,  localName);
+			if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
+				Log.info("REPO: initializing policy location: {0} for global prefix {1} and local name {2}", localName, globalPrefix,  localName);
 			}
 		} catch (MalformedContentNameStringException e2) {
 			throw new RepositoryException(e2.getMessage());
@@ -413,7 +409,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			}
 		}
 		if (!nameSpaceOK) {
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+			if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
 				if( Log.isLoggable(Level.INFO))
 					Log.info("Repo rejecting content: {0}, not in registered namespace.", content.name());
 			}
@@ -432,14 +428,12 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				_activeWriteFile.nextWritePos = _activeWriteFile.openFile.getFilePointer();
 				_index.insert(content, ref, System.currentTimeMillis(), this, ner);
 				if (ner==null || ner.getPrefix()==null) {
-					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-						if( Log.isLoggable(Level.FINE))
-							Log.fine("new content did not trigger an interest flag");
+					if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
+						Log.fine("new content did not trigger an interest flag");
 					}
 				} else {
-					if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-						if( Log.isLoggable(Level.FINE))
-							Log.fine("new content was added where there was a name enumeration response interest flag");
+					if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
+						Log.fine("new content was added where there was a name enumeration response interest flag");
 					}
 				}
 				return ner;
@@ -524,9 +518,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		// Debug: dump names tree to file
 		File namesFile = new File(_repositoryFile, LogStructRepoStoreProfile.DEBUG_TREEDUMP_FILE);
 		try {
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
-				if( Log.isLoggable(Level.INFO))
-					Log.info("Dumping names to " + namesFile.getAbsolutePath() + " (len " + nodelen + ")");
+			if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
+				Log.info("Dumping names to " + namesFile.getAbsolutePath() + " (len " + nodelen + ")");
 			}
 			PrintStream namesOut = new PrintStream(namesFile);
 			if (null != _index) {

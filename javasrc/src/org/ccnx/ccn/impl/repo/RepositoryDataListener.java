@@ -24,7 +24,6 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
@@ -65,7 +64,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_server = server;
 		_handle = server.getHandle();
 		_timer = System.currentTimeMillis();
-		if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+		if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
 			Log.info("Starting up repository listener on original interest: {0} interest {1}", origInterest, interest);
 		}
 	}
@@ -141,7 +140,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 				}
 			}
 
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINEST)) {
 				Log.finest("REPO: Got block: {0} expressing {1} more interests, current block {2} final block {3} last block? {4}", co.name(), nOutput, _currentBlock, _finalBlockID, isFinalBlock);
 			}
 			for (int i = 0; i < nOutput; i++) {

@@ -21,7 +21,6 @@ import java.io.File;
 import java.security.InvalidParameterException;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Daemon;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.test.BitBucketRepository;
@@ -103,9 +102,8 @@ public class RepositoryDaemon extends Daemon {
 	public void initialize(String[] args, Daemon daemon) {
 		Log.info("Starting " + _daemonName + "...");				
 		Log.setLevel(Level.INFO);
-		boolean useLogging = false;
 		try {
-			SystemConfiguration.setLogging(RepositoryStore.REPO_LOGGING, false);
+			Log.setDefaultLevel(Level.SEVERE);	// turn off all but severe errors
 			String repositoryRoot = null;
 			File policyFile = null;
 			String localName = null;
@@ -118,10 +116,8 @@ public class RepositoryDaemon extends Daemon {
 						return;
 					}
 					try {
-						SystemConfiguration.setLogging("repo", true);
 						Level level = Level.parse(args[i + 1]);
 						Log.setLevel(level);
-						useLogging = level.intValue() < Level.INFO.intValue();
 					} catch (IllegalArgumentException iae) {
 						usage();
 						return;
@@ -166,9 +162,6 @@ public class RepositoryDaemon extends Daemon {
 				}
 			}
 
-			if (!useLogging)
-				SystemConfiguration.setLogging(RepositoryStore.REPO_LOGGING, false);
-			
 			if (_repo == null)	// default lower half
 				_repo = new LogStructRepoStore();
 			

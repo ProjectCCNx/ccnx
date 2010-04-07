@@ -22,7 +22,6 @@ import java.io.FileOutputStream;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.util.HashMap;
-import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -215,11 +214,6 @@ public class SystemConfiguration {
 	
 	public static final int DEBUG_RADIX = 34;
 	
-	/**
-	 * Property to allow/disallow logging for individual modules
-	 */
-	protected static TreeMap<String, Boolean> loggingInfo = new TreeMap<String, Boolean>();
-
 	/**
 	 * Obtain the management bean for this runtime if it is available.
 	 * The class of the management bean is discovered at runtime and there
@@ -466,29 +460,6 @@ public class SystemConfiguration {
 			Log.log(level, "Cannot encode object for logging: {0}.", co.name());
 		}
 		
-	}
-	
-	/**
-	 * Turn on logging for a particular module. This could (should?) be
-	 * modified to allow use of a properties file to statically set a
-	 * logging configuration.
-	 * 
-	 * @param name name of module to turn on logging for
-	 * @param value true to turn on logging, false to turn it off
-	 */
-	public static void setLogging(String name, Boolean value) {
-		loggingInfo.put(name, value);
-	}
-	
-	/**
-	 * Determine whether logging is turned on for a particular module. To maintain the "status quo"
-	 * we say to go ahead with the logging if logging was never setup.
-	 * @param name name of module to check logging state for
-	 * @return true if that module is to be logged, false if not
-	 */
-	public static boolean getLogging(String name) {
-		Boolean value = loggingInfo.get(name);
-		return value == null ? true : value;
 	}
 	
 	protected static String _loggingConfiguration;

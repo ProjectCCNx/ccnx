@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -105,7 +105,10 @@ incoming_content(
     if (res < 0) abort();
     if (data_size > CHUNK_SIZE) {
         /* For us this is spam. Give up now. */
-        fprintf(stderr, "*** spammed at block %d\n", (int)selfp->intdata);
+        fprintf(stderr, "*** Segment %d found with a data size of %d."
+                        " This program only works with segments of 1024 bytes."
+                        " Try ccncatchunks2 instead.\n",
+                        (int)selfp->intdata, (int)data_size);
         exit(1);
     }
     
