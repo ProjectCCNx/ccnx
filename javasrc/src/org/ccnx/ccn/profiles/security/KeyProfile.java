@@ -31,7 +31,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 public class KeyProfile implements CCNProfile {
 	
 	public static final byte [] KEY_NAME_COMPONENT = ContentName.componentParseNative("KEYS");
-	public static final CommandMarker KEY_ID_PREFIX = 
+	public static final CommandMarker KEY_NAME_COMPONENT_MARKER = 
 		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "K");
 	
 	/**
@@ -52,7 +52,7 @@ public class KeyProfile implements CCNProfile {
 			throw new IllegalArgumentException("keyID must not be null!");
 		}
 		
-		return KEY_ID_PREFIX.addBinaryData(keyID);
+		return KEY_NAME_COMPONENT_MARKER.addBinaryData(keyID);
 	}
 	
 	/**
@@ -129,6 +129,6 @@ public class KeyProfile implements CCNProfile {
 	 * @return
 	 */
 	public static boolean isKeyNameComponent(byte [] wnkNameComponent) {
-		return KEY_ID_PREFIX.isMarker(wnkNameComponent);
+		return KEY_NAME_COMPONENT_MARKER.isMarker(wnkNameComponent);
 	}
 }
