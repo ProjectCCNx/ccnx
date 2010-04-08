@@ -2738,7 +2738,8 @@ propagate_interest(struct ccnd_handle *h,
         if (extra_delay < 0) {
             /*
              * Completely subsumed by other interests.
-             * We do not have to worry about keeping track of the nonce.
+             * We do not have to worry about generating a nonce if it
+             * does not have one yet.
              */ 
             if (h->debug & 16)
                 ccnd_debug_ccnb(h, __LINE__, "interest_subsumed", face,
@@ -2778,7 +2779,7 @@ propagate_interest(struct ccnd_handle *h,
     hashtb_start(h->propagating_tab, e);
     res = hashtb_seek(e, nonce, noncesize, 0);
     pe = e->data;
-    if (res == HT_NEW_ENTRY) {
+    if (pe != NULL && pe->interest_msg == NULL) {
         unsigned char *m;
         m = calloc(1, msg_out_size);
         if (m == NULL) {
@@ -2819,9 +2820,9 @@ propagate_interest(struct ccnd_handle *h,
             ccn_schedule_event(h->sched, usec, do_propagate, pe, npe->usec);
         }
     }
-    else if (res == HT_OLD_ENTRY) {
+    else {
         ccnd_msg(h, "Interesting - this shouldn't happen much - ccnd.c:%d", __LINE__);
-        /* If we get here, we must have duplicated an existing nonce. */
+        /* We must have duplicated an existing nonce, or ENOMEM. */
         res = -1;
     }
     hashtb_end(e);
@@ -2889,26 +2890,32 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
 }
 
 /**
- * Checks whether this Interest message has been seen before.  Also, if it
- * has been seen and the original is still propagating, remove the face that
+ * Checks whether this Interest message has been seen before by using
+ * its Nonce, recording it in the process.  Also, if it has been
+ * seen and the original is still propagating, remove the face that
  * the duplicate arrived on from the outbound set of the original.
  */
 static int
 is_duplicate_flooded(struct ccnd_handle *h, unsigned char *msg,
                      struct ccn_parsed_interest *pi, unsigned faceid)
 {
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
     struct propagating_entry *pe = NULL;
+    int res;
     size_t nonce_start = pi->offset[CCN_PI_B_Nonce];
     size_t nonce_size = pi->offset[CCN_PI_E_Nonce] - nonce_start;
     if (nonce_size == 0)
         return(0);
-    pe = hashtb_lookup(h->propagating_tab, msg + nonce_start, nonce_size);
-    if (pe != NULL) {
+    hashtb_start(h->propagating_tab, e);
+    res = hashtb_seek(e, msg + nonce_start, nonce_size, 0);
+    if (res == HT_OLD_ENTRY) {
+        pe = e->data;
         if (promote_outbound(pe, faceid) != -1)
             pe->sent++;
-        return(1);
     }
-    return(0);
+    hashtb_end(e);
+    return(res == HT_OLD_ENTRY);
 }
 
 /**
