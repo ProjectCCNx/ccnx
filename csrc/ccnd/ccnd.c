@@ -3526,7 +3526,8 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
         if (source->addr == NULL) {
             source->addr = e->key;
             source->addrlen = e->keysize;
-            source->recv_fd = face->send_fd = face->recv_fd;
+            source->recv_fd = face->recv_fd;
+            source->send_fd = face->recv_fd; // note - face->sendid is -1
             init_face_flags(h, source, CCN_FACE_DGRAM);
             if (why == 1 && (source->flags & CCN_FACE_LOOPBACK) != 0)
                 source->flags |= CCN_FACE_GG;
@@ -3977,6 +3978,15 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->portstr = portstr;
     /* Do keystore setup early, it takes a while the first time */
     ccnd_init_internal_keystore(h);
+    ccnd_reseed(h);
+    if (h->face0 == NULL) {
+        struct face *face;
+        face = calloc(1, sizeof(*face));
+        face->recv_fd = face->send_fd = -1;
+        face->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
+        h->face0 = face;
+    }
+    enroll_face(h, h->face0);
     fd = create_local_listener(h, sockname, 42);
     if (fd == -1)
         ccnd_msg(h, "%s: %s", sockname, strerror(errno));
@@ -4070,17 +4080,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
             freeaddrinfo(addrinfo);
         }
     }
-    if (h->face0 == NULL) {
-        struct face *face;
-        face = calloc(1, sizeof(*face));
-        face->recv_fd = face->send_fd = -1;
-        face->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
-        h->face0 = face;
-    }
-    ccnd_reseed(h);
     clean_needed(h);
     age_forwarding_needed(h);
-    enroll_face(h, h->face0);
     ccnd_internal_client_start(h);
     free(sockname);
     sockname = NULL;
