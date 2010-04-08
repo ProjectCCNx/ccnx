@@ -96,7 +96,7 @@ struct ccn_decoder {
 
 
 struct ccn_decoder *
-ccn_decoder_create(int formatting_flags)
+ccn_decoder_create(int formatting_flags, const struct ccn_dict *dict)
 {
     struct ccn_decoder *d;
     d = calloc(1, sizeof(*d));
@@ -106,8 +106,8 @@ ccn_decoder_create(int formatting_flags)
         d = NULL;
     }
     d->schema = CCN_NO_SCHEMA;
-    d->tagdict = ccn_dtag_dict.dict;
-    d->tagdict_count = ccn_dtag_dict.count;
+    d->tagdict = dict->dict;
+    d->tagdict_count = dict->count;
     d->formatting_flags = formatting_flags;
     return(d);
 }
@@ -598,7 +598,7 @@ process_fd(struct ccn_decoder *d, int fd)
 
 
 static int
-process_file(char *path, int formatting_flags)
+process_file(char *path, int formatting_flags, const struct ccn_dict *dict)
 {
     int fd = 0;
     int res = 0;
@@ -612,7 +612,7 @@ process_file(char *path, int formatting_flags)
         }
     }
 
-    d = ccn_decoder_create(formatting_flags);
+    d = ccn_decoder_create(formatting_flags, dict);
     res = process_fd(d, fd);
     ccn_decoder_destroy(&d);
 
@@ -650,7 +650,8 @@ set_stdout(struct ccn_decoder *d, enum callback_kind kind, void *data)
 }
 
 static int
-process_split_file(char *base, char *path, int formatting_flags, int *suffix)
+process_split_file(char *base, char *path, int formatting_flags,
+                   const struct ccn_dict *dict, int *suffix)
 {
     int fd = 0;
     int res = 0;
@@ -668,7 +669,7 @@ process_split_file(char *base, char *path, int formatting_flags, int *suffix)
     cs = calloc(1, sizeof(*cs));
     cs->fileprefix = base;
     cs->fragment = *suffix;
-    d = ccn_decoder_create(formatting_flags);
+    d = ccn_decoder_create(formatting_flags, dict);
     ccn_decoder_set_callback(d, set_stdout, cs);
     res = process_fd(d, fd);
     *suffix = cs->fragment;
@@ -717,27 +718,34 @@ main(int argc, char **argv)
     int res = 0;
     int suffix = 0;
     struct ccn_decoder *d;
+    struct ccn_dict *dict = &ccn_dtag_dict;
 
-    while ((c = getopt(argc, argv, ":htbqs:x")) != -1) {
+    while ((c = getopt(argc, argv, ":htbqs:xd:")) != -1) {
         switch (c) {
-        case 'h':
-            usage(argv[0]);
-            break;
-        case 't':
-            tflag = 1;
-            break;
-        case 'b':
-            formatting_flags |= FORCE_BINARY;
-            break;
-        case 's':
-            sarg = optarg;
-            break;
-        case 'x':
-            formatting_flags |= PREFER_HEX;
-            break;
-        case '?':
-            fprintf(stderr, "Unrecognized option: -%c\n", optopt);
-            errflag = 1;
+            case 'h':
+                usage(argv[0]);
+                break;
+            case 't':
+                tflag = 1;
+                break;
+            case 'b':
+                formatting_flags |= FORCE_BINARY;
+                break;
+            case 's':
+                sarg = optarg;
+                break;
+            case 'x':
+                formatting_flags |= PREFER_HEX;
+                break;
+            case 'd':
+                if (0 != ccn_extend_dict(optarg, dict, &dict)) {
+                    fprintf(stderr, "Unable to load dtag dictionary %s\n", optarg);
+                    errflag = 1;
+                }
+                break;
+            case '?':
+                fprintf(stderr, "Unrecognized option: -%c\n", optopt);
+                errflag = 1;
         }
     }
     if (tflag && (sarg != NULL || formatting_flags != 0))
@@ -747,7 +755,7 @@ main(int argc, char **argv)
         usage(argv[0]);
     
     if (tflag) {
-            d = ccn_decoder_create(1);
+            d = ccn_decoder_create(1, &ccn_dtag_dict);
             res |= process_data(d, test1, sizeof(test1));
             ccn_decoder_destroy(&d);
             return (res);
@@ -756,11 +764,12 @@ main(int argc, char **argv)
     for (suffix = 0; optind < argc; optind++) {
         if (sarg) {
             fprintf(stderr, "<!-- Processing %s into %s -->\n", argv[optind], sarg);
-            res |= process_split_file(sarg, argv[optind], formatting_flags, &suffix);
+            res |= process_split_file(sarg, argv[optind], formatting_flags,
+                                      &ccn_dtag_dict, &suffix);
         }
         else {
             fprintf(stderr, "<!-- Processing %s -->\n", argv[optind]);
-            res |= process_file(argv[optind], formatting_flags);
+            res |= process_file(argv[optind], formatting_flags, &ccn_dtag_dict);
         }
     }
     return(res);
