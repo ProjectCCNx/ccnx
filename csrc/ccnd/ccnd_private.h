@@ -82,9 +82,6 @@ struct ccnd_handle {
     struct ccn_scheduled_event *clean;
     struct ccn_scheduled_event *age_forwarding;
     const char *portstr;            /**< "main" port number */
-    int local_listener_fd;          /**< listener for unix-domain connections */
-    int tcp4_fd;                    /**< listener for IPv4 tcp connections */
-    int tcp6_fd;                    /**< listener for IPv6 tcp connections */
     int udp4_fd;                    /**< common fd for IPv4 unicast */
     int udp6_fd;                    /**< common fd for IPv6 unicast */
     nfds_t nfds;                    /**< number of entries in fds array */
@@ -200,6 +197,8 @@ struct face {
 #define CCN_FACE_CONNECTING (1 << 11) /**< Connect in progress */
 #define CCN_FACE_LOOPBACK (1 << 12) /**< v4 or v6 loopback address */
 #define CCN_FACE_CLOSING (1 << 13) /**< close stream when output is done */
+#define CCN_FACE_PASSIVE (1 << 14) /**< a listener or a bound dgram socket */
+
 #define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 /**

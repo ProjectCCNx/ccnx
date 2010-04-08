@@ -59,7 +59,12 @@
 
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
-static int create_local_listener(const char *sockname, int backlog);
+static int create_local_listener(struct ccnd_handle *h, const char *sockname, int backlog);
+static struct face *record_connection(struct ccnd_handle *h,
+                                      int fd,
+                                      struct sockaddr *who,
+                                      socklen_t wholen,
+                                      int setflags);
 static void process_input_message(struct ccnd_handle *h, struct face *face,
                                   unsigned char *msg, size_t size, int pdu_ok);
 static void process_input(struct ccnd_handle *h, int fd);
@@ -708,7 +713,7 @@ finalize_propagating(struct hashtb_enumerator *e)
 }
 
 static int
-create_local_listener(const char *sockname, int backlog)
+create_local_listener(struct ccnd_handle *h, const char *sockname, int backlog)
 {
     int res;
     int savedmask;
@@ -739,6 +744,8 @@ create_local_listener(const char *sockname, int backlog)
         close(sock);
         return(-1);
     }
+    record_connection(h, sock, (struct sockaddr *)&a, sizeof(a),
+                      (CCN_FACE_LOCAL | CCN_FACE_PASSIVE));
     return(sock);
 }
 
@@ -814,6 +821,8 @@ record_connection(struct ccnd_handle *h, int fd,
     if (hashtb_seek(e, &fd, sizeof(fd), wholen) == HT_NEW_ENTRY) {
         face = e->data;
         face->recv_fd = face->send_fd = fd;
+        if ((setflags & CCN_FACE_PASSIVE) != 0)
+            face->send_fd = -1;
         face->addrlen = e->extsize;
         addrspace = ((unsigned char *)e->key) + e->keysize;
         face->addr = (struct sockaddr *)addrspace;
@@ -1990,7 +1999,7 @@ Bail:
 static void
 register_new_face(struct ccnd_handle *h, struct face *face)
 {
-    if (face->faceid != 0 && (face->flags & CCN_FACE_UNDECIDED) == 0) {
+    if (face->faceid != 0 && (face->flags & (CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE)) == 0) {
         ccnd_face_status_change(h, face->faceid);
         if (h->flood)
             ccnd_reg_uri(h, "ccnx:/", face->faceid,
@@ -3517,8 +3526,7 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
         if (source->addr == NULL) {
             source->addr = e->key;
             source->addrlen = e->keysize;
-            source->recv_fd = face->recv_fd;
-            source->send_fd = face->send_fd;
+            source->recv_fd = face->send_fd = face->recv_fd;
             init_face_flags(h, source, CCN_FACE_DGRAM);
             if (why == 1 && (source->flags & CCN_FACE_LOOPBACK) != 0)
                 source->flags |= CCN_FACE_GG;
@@ -3556,6 +3564,11 @@ process_input(struct ccnd_handle *h, int fd)
     face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
     if (face == NULL)
         return;
+    if ((face->flags & (CCN_FACE_DGRAM | CCN_FACE_PASSIVE)) == CCN_FACE_PASSIVE) {
+        accept_connection(h, fd);
+        check_comm_file(h);
+        return;
+    }
     err_sz = sizeof(err);
     res = getsockopt(face->recv_fd, SOL_SOCKET, SO_ERROR, &err, &err_sz);
     if (res >= 0 && err != 0) {
@@ -3775,7 +3788,6 @@ ccnd_run(struct ccnd_handle *h)
     int timeout_ms = -1;
     int prev_timeout_ms = -1;
     int usec;
-    int specials = 3; /* local_listener_fd, tcp4_fd, tcp6_fd */
     for (h->running = 1; h->running;) {
         process_internal_client_buffer(h);
         usec = ccn_schedule_run(h->sched);
@@ -3783,18 +3795,12 @@ ccnd_run(struct ccnd_handle *h)
         if (timeout_ms == 0 && prev_timeout_ms == 0)
             timeout_ms = 1;
         process_internal_client_buffer(h);
-        if (hashtb_n(h->faces_by_fd) + specials != h->nfds) {
-            h->nfds = hashtb_n(h->faces_by_fd) + specials;
+        if (hashtb_n(h->faces_by_fd) != h->nfds) {
+            h->nfds = hashtb_n(h->faces_by_fd);
             h->fds = realloc(h->fds, h->nfds * sizeof(h->fds[0]));
             memset(h->fds, 0, h->nfds * sizeof(h->fds[0]));
         }
-        h->fds[0].fd = h->local_listener_fd;
-        h->fds[0].events = POLLIN;
-        h->fds[1].fd = h->tcp4_fd;
-        h->fds[1].events = (h->tcp4_fd == -1) ? 0 : POLLIN;
-        h->fds[2].fd = h->tcp6_fd;
-        h->fds[2].events = (h->tcp6_fd == -1) ? 0 : POLLIN;
-        for (i = specials, hashtb_start(h->faces_by_fd, e);
+        for (i = 0, hashtb_start(h->faces_by_fd, e);
              i < h->nfds && e->data != NULL;
              i++, hashtb_next(e)) {
             struct face *face = e->data;
@@ -3814,18 +3820,7 @@ ccnd_run(struct ccnd_handle *h)
             sleep(1);
             continue;
         }
-        /* Check for new connections first */
-        for (i = 0; i < specials && res > 0; i++) {
-            if (h->fds[i].revents != 0) {
-                if (h->fds[i].revents & (POLLERR | POLLNVAL | POLLHUP))
-                    return;
-                if (h->fds[i].revents & (POLLIN))
-                    accept_connection(h, h->fds[i].fd);
-                check_comm_file(h);
-                res--;
-            }
-        }
-        for (i = specials; res > 0 && i < h->nfds; i++) {
+        for (i = 0; res > 0 && i < h->nfds; i++) {
             if (h->fds[i].revents != 0) {
                 res--;
                 if (h->fds[i].revents & (POLLERR | POLLNVAL | POLLHUP)) {
@@ -3897,6 +3892,19 @@ ccnd_setsockopt_v6only(struct ccnd_handle *h, int fd)
                  fd, strerror(errno));
 }
 
+static const char *
+af_name(int family)
+{
+    switch (family) {
+        case AF_INET:
+            return("ipv4");
+        case AF_INET6:
+            return("ipv6");
+        default:
+            return("");
+    }
+}
+
 /**
  * Start a new ccnd instance
  * @param progname - name of program binary, used for locating helpers
@@ -3906,8 +3914,6 @@ ccnd_setsockopt_v6only(struct ccnd_handle *h, int fd)
 struct ccnd_handle *
 ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
 {
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
     char *sockname;
     const char *portstr;
     const char *debugstr;
@@ -3971,12 +3977,11 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->portstr = portstr;
     /* Do keystore setup early, it takes a while the first time */
     ccnd_init_internal_keystore(h);
-    fd = create_local_listener(sockname, 42);
+    fd = create_local_listener(h, sockname, 42);
     if (fd == -1)
         ccnd_msg(h, "%s: %s", sockname, strerror(errno));
     else
         ccnd_msg(h, "listening on %s", sockname);
-    h->local_listener_fd = fd;
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE;
     entrylimit = getenv("CCND_CAP");
@@ -4007,7 +4012,6 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     }
     h->flood = 0;
     h->udp4_fd = h->udp6_fd = -1;
-    h->tcp4_fd = h->tcp6_fd = -1;
     for (whichpf = 0; whichpf < 2; whichpf++) {
         hints.ai_family = whichpf ? PF_INET6 : PF_INET;
         res = getaddrinfo(NULL, portstr, &hints, &addrinfo);
@@ -4015,9 +4019,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
             for (a = addrinfo; a != NULL; a = a->ai_next) {
                 fd = socket(a->ai_family, SOCK_DGRAM, 0);
                 if (fd != -1) {
-                    const char *af = "";
                     int yes = 1;
-                    struct face *face;
                     int rcvbuf = 0;
                     socklen_t rcvbuf_sz;
 		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
@@ -4030,36 +4032,20 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
                         close(fd);
                         continue;
                     }
-                    res = fcntl(fd, F_SETFL, O_NONBLOCK);
-                    if (res == -1)
-                        ccnd_msg(h, "fcntl: %s", strerror(errno));
-                    hashtb_start(h->faces_by_fd, e);
-                    if (hashtb_seek(e, &fd, sizeof(fd), 0) != HT_NEW_ENTRY)
-                        close(fd);
-                    else {
-                        face = e->data;
-                        face->faceid = CCN_NOFACEID;
-                        face->recv_fd = face->send_fd = fd;
-                        face->flags |= CCN_FACE_DGRAM;
-                        if (a->ai_family == AF_INET) {
-                            face->flags |= CCN_FACE_INET;
-                            h->udp4_fd = fd;
-                            af = "ipv4";
-                        }
-                        else if (a->ai_family == AF_INET6) {
-                            face->flags |= CCN_FACE_INET6;
-                            h->udp6_fd = fd;
-                            af = "ipv6";
-                        }
-                        ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d", af, fd, rcvbuf);
-                    }
-                    hashtb_end(e);
+                    record_connection(h, fd,
+                                      a->ai_addr, a->ai_addrlen,
+                                      (CCN_FACE_DGRAM | CCN_FACE_PASSIVE));
+                    if (a->ai_family == AF_INET6)
+                        h->udp6_fd = fd;
+                    else
+                        h->udp4_fd = fd;
+                    ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
+                                 af_name(a->ai_family), fd, rcvbuf);
                 }
             }
             for (a = addrinfo; a != NULL; a = a->ai_next) {
                 fd = socket(a->ai_family, SOCK_STREAM, 0);
                 if (fd != -1) {
-                    const char *af = "";
                     int yes = 1;
 		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
                     if (a->ai_family == AF_INET6)
@@ -4074,15 +4060,11 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
                         close(fd);
                         continue;
                     }
-                    if (a->ai_family == AF_INET) {
-                        h->tcp4_fd = fd;
-                        af = "ipv4";
-                    }
-                    else if (a->ai_family == AF_INET6) {
-                        h->tcp6_fd = fd;
-                        af = "ipv6";
-                    }
-                    ccnd_msg(h, "accepting %s connections on fd %d", af, fd);
+                    record_connection(h, fd,
+                                      a->ai_addr, a->ai_addrlen,
+                                      CCN_FACE_PASSIVE);
+                    ccnd_msg(h, "accepting %s connections on fd %d",
+                             af_name(a->ai_family), fd);
                 }
             }
             freeaddrinfo(addrinfo);
@@ -4127,11 +4109,6 @@ ccnd_destroy(struct ccnd_handle **pccnd)
         h->fds = NULL;
         h->nfds = 0;
     }
-    close_fd(&h->tcp4_fd);
-    close_fd(&h->tcp6_fd);
-    close_fd(&h->udp4_fd);
-    close_fd(&h->udp6_fd);
-    close_fd(&h->local_listener_fd);
     if (h->faces_by_faceid != NULL) {
         free(h->faces_by_faceid);
         h->faces_by_faceid = NULL;
