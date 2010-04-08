@@ -34,10 +34,11 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "usage: %s [-h] [-w] file ...\n"
+            "usage: %s [-h] [-w] [-d dict]* file ...\n"
             " Utility to convert XML into ccn binary encoded data (ccnb)\n"
-            "  -h   print usage and exit\n"
-            "  -w   toss UDATA content consisting of only whitespace\n"
+            "  -h       print usage and exit\n"
+            "  -w       toss UDATA content consisting of only whitespace\n"
+            "  -d dict  additional csv format dictionary file(s)\n"
             " use - for file to specify filter mode (stdin, stdout)\n"
             " otherwise output files get .ccnb extension\n",
             progname);
