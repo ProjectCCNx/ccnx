@@ -132,6 +132,9 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
                 else
                     ccn_charbuf_putf(b, " <b>local:</b> %s:%d",
                                      node, port);
+                if (face->sendface != face->faceid &&
+                    face->sendface != CCN_NOFACEID)
+                    ccn_charbuf_putf(b, " <b>via:</b> %u", face->sendface);
             }
             ccn_charbuf_putf(b, "</li>" NL);
         }
@@ -268,7 +271,7 @@ ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
         return(-1);
     }
     /* Set linger to prevent quickly resetting the connection on close.*/
-    setsockopt(face->send_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+    setsockopt(face->recv_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
     if (0 == memcmp(face->inbuf->buf, "GET / ", 6)) {
         response = collect_stats_html(h);
         hdrlen = snprintf(buf, sizeof(buf),

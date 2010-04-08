@@ -82,8 +82,8 @@ struct ccnd_handle {
     struct ccn_scheduled_event *clean;
     struct ccn_scheduled_event *age_forwarding;
     const char *portstr;            /**< "main" port number */
-    int udp4_fd;                    /**< common fd for IPv4 unicast */
-    int udp6_fd;                    /**< common fd for IPv6 unicast */
+    unsigned ipv4_faceid;           /**< wildcard IPv4, bound to port */
+    unsigned ipv6_faceid;           /**< wildcard IPv6, bound to port */
     nfds_t nfds;                    /**< number of entries in fds array */
     struct pollfd *fds;             /**< used for poll system call */
     struct ccn_gettime ticktock;    /**< our time generator */
@@ -167,7 +167,7 @@ enum cq_delay_class {
  */
 struct face {
     int recv_fd;                /**< socket for receiving */
-    int send_fd;                /**< socket for sending (maybe == recv_fd) */
+    unsigned sendface;          /**< faceid for sending (maybe == faceid) */
     int flags;                  /**< CCN_FACE_* face flags */
     int surplus;                /**< sends since last successful recv */
     unsigned faceid;            /**< internal face id */
