@@ -155,10 +155,10 @@ clean:
 # but must be updated manually.
 ###############################
 ccn_ccnbtoxml.o: ccn_ccnbtoxml.c ../include/ccn/charbuf.h \
-  ../include/ccn/coding.h
+  ../include/ccn/coding.h ../include/ccn/extend_dict.h
 ccn_splitccnb.o: ccn_splitccnb.c ../include/ccn/coding.h
 ccn_xmltoccnb.o: ccn_xmltoccnb.c ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h
+  ../include/ccn/charbuf.h ../include/ccn/extend_dict.h
 ccnbasicconfig.o: ccnbasicconfig.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccnd.h ../include/ccn/uri.h \
