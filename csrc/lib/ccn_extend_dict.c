@@ -75,7 +75,7 @@ ccn_destroy_dict(struct ccn_dict **dp)
  * @result 0 if the new dictionary was created successfully, otherwise -1.
  */
 int
-ccn_extend_dict(const char *dict_file, const struct ccn_dict *d, struct ccn_dict **rdp)
+ccn_extend_dict(const char *dict_file, struct ccn_dict *d, struct ccn_dict **rdp)
 {
     FILE *df = NULL;
     int i, c;

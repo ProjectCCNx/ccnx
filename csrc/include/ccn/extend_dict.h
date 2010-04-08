@@ -34,7 +34,7 @@ void ccn_destroy_dict(struct ccn_dict **dp);
  * Create a dictionary that is a copy of the one passed in, extended with the
  * index and name pairs loaded from the file passed in.
  */
-int ccn_extend_dict(const char *dict_file, const struct ccn_dict *d,
+int ccn_extend_dict(const char *dict_file, struct ccn_dict *d,
                     struct ccn_dict **rdp);
 
 #endif
