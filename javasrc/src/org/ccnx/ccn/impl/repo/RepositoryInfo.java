@@ -20,9 +20,9 @@ package org.ccnx.ccn.impl.repo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
@@ -102,7 +102,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		}
 		
 		@Override
-		public long getElementLabel() { return CCNProtocolDTags.GlobalPrefixName.getTag(); }
+		public long getElementLabel() { return CCNProtocolDTags.GlobalPrefixName; }
 	}
 	
 	protected static final HashMap<RepoInfoType, String> _InfoTypeNames = new HashMap<RepoInfoType, String>();
@@ -284,7 +284,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	public synchronized ContentName getPolicyName() {
 		if (null == _policyName) {
 			_policyName = BasicPolicy.getPolicyName(_globalPrefix, _localName);
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING)) {
+			if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
 				Log.info("REPO: Policy name for repository: {0}", _policyName);
 			}
 		}
@@ -318,15 +318,15 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	@Override
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
-		_version = Double.valueOf(decoder.readUTF8Element(CCNProtocolDTags.Version.getTag()));
-		_type = RepoInfoType.valueFromString(decoder.readUTF8Element(CCNProtocolDTags.Type.getTag()));
-		_repoVersion = decoder.readUTF8Element(CCNProtocolDTags.RepositoryVersion.getTag());
+		_version = Double.valueOf(decoder.readUTF8Element(CCNProtocolDTags.Version));
+		_type = RepoInfoType.valueFromString(decoder.readUTF8Element(CCNProtocolDTags.Type));
+		_repoVersion = decoder.readUTF8Element(CCNProtocolDTags.RepositoryVersion);
 		
 		_globalPrefix = new GlobalPrefix();
 		_globalPrefix.decode(decoder);
 		
-		_localName = decoder.readUTF8Element(CCNProtocolDTags.LocalName.getTag());
-		while (decoder.peekStartElement(CCNProtocolDTags.Name.getTag())) {
+		_localName = decoder.readUTF8Element(CCNProtocolDTags.LocalName);
+		while (decoder.peekStartElement(CCNProtocolDTags.Name)) {
 			ContentName name = new ContentName();
 			name.decode(decoder);
 			_names.add(name);
@@ -340,11 +340,11 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
-		encoder.writeElement(CCNProtocolDTags.Version.getTag(), Double.toString(_version));
-		encoder.writeElement(CCNProtocolDTags.Type.getTag(), getType().toString());
-		encoder.writeElement(CCNProtocolDTags.RepositoryVersion.getTag(), _repoVersion);
+		encoder.writeElement(CCNProtocolDTags.Version, Double.toString(_version));
+		encoder.writeElement(CCNProtocolDTags.Type, getType().toString());
+		encoder.writeElement(CCNProtocolDTags.RepositoryVersion, _repoVersion);
 		_globalPrefix.encode(encoder);
-		encoder.writeElement(CCNProtocolDTags.LocalName.getTag(), _localName);
+		encoder.writeElement(CCNProtocolDTags.LocalName, _localName);
 		if (_names.size() > 0) {
 			for (ContentName name : _names)
 				name.encode(encoder);
@@ -353,7 +353,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	}
 
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.RepositoryInfo.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.RepositoryInfo; }
 
 	@Override
 	public boolean validate() {

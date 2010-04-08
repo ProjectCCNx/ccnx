@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -30,7 +30,6 @@
 #include <ccn/schedule.h>
 #include <ccn/uri.h>
 
-#define CHUNK_SIZE 1024
 #define PIPELIMIT (1U << 7)
 //#define GOT_HERE() fprintf(stderr, "LINE %d\n", __LINE__)
 #define GOT_HERE() ((void)(__LINE__))
@@ -469,7 +468,7 @@ GOT_HERE();
         if (written != 1)
             exit(1);
         /* Check for EOF */
-        if (slot == md->finalslot || data_size < CHUNK_SIZE) {
+        if (slot == md->finalslot) {
             GOT_HERE();
             ccn_schedule_destroy(&md->sched);
             print_summary(md);
@@ -487,7 +486,7 @@ GOT_HERE();
             if (written != 1)
                 exit(1);
             /* Check for EOF */
-            if (slot == md->finalslot || ooo->raw_data_size - 1 < CHUNK_SIZE) {
+            if (slot == md->finalslot) {
                 GOT_HERE();
                 ccn_schedule_destroy(&md->sched);
                 exit(0);

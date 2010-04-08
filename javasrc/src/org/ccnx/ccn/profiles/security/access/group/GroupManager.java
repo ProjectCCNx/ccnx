@@ -109,7 +109,9 @@ public class GroupManager {
 	 */
 	public Group getGroup(String groupFriendlyName) throws ContentDecodingException, IOException {
 		if ((null == groupFriendlyName) || (groupFriendlyName.length() == 0)) {
-			Log.info("Asked to retrieve group with empty name.");
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+				Log.info("Asked to retrieve group with empty name.");
+			}
 			return null;
 		}
 		Group theGroup = _groupCache.get(groupFriendlyName);
@@ -151,7 +153,9 @@ public class GroupManager {
 	 */
 	public Group getGroup(Link theGroup) throws ContentDecodingException, IOException {
 		if (null == theGroup) {
-			Log.info("Asked to retrieve group with empty link.");
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+				Log.info("Asked to retrieve group with empty link.");
+			}
 			return null;
 		}
 		if (!isGroup(theGroup))
@@ -214,10 +218,14 @@ public class GroupManager {
 		Group existingGroup = getGroup(friendlyName);		
 		// We really want to be sure we get the group if it's out there...
 		if (null != existingGroup) {
-			Log.info("Got existing group to delete: {0}", existingGroup);
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+				Log.info("Got existing group to delete: {0}", existingGroup);
+			}
 			existingGroup.delete();
 		} else {
-			Log.warning("No existing group: {0}, ignoring delete request.", friendlyName);
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
+				Log.warning("No existing group: {0}, ignoring delete request.", friendlyName);
+			}
 		}
 	}
 	
@@ -262,15 +270,15 @@ public class GroupManager {
 	 */
 	public boolean amCurrentGroupMember(Group group) throws ContentDecodingException, IOException {
 		MembershipListObject ml = group.membershipList(); // will update
-		if (Log.isLoggable(Level.FINER)) {
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 			Log.finer("amCurrentGroupMember: group {0} has {1} member(s).", group.groupName(), ml.membershipList().size());
 		}
 		for (Link lr : ml.membershipList().contents()) {
-			if (Log.isLoggable(Level.FINER)) {
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 				Log.finer("amCurrentGroupMember: {0} is a member of group {1}", lr.targetName(), group.groupName());
 			}
 			if (isGroup(lr)) {
-				if (Log.isLoggable(Level.FINER)) {
+				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 					Log.finer("amCurrentGroupMember: {0} is itself a group.", lr.targetName());
 				}
 				String groupFriendlyName = GroupAccessControlProfile.groupNameToFriendlyName(lr.targetName());
@@ -284,14 +292,14 @@ public class GroupManager {
 			} else {
 				// Not a group. Is it me?
 				if (_accessManager.haveIdentity(lr.targetName())) {
-					if (Log.isLoggable(Level.FINER)) {
+					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 						Log.finer("amCurrentGroupMember: {0} is me!", lr.targetName());
 					}
 					_myGroupMemberships.add(group.friendlyName());
 					return true;
 				}
 				else {
-					if (Log.isLoggable(Level.FINER)) {
+					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 						Log.finer("amCurrentGroupMember: {0} is not me.", lr.targetName());
 					}
 				}
@@ -315,7 +323,9 @@ public class GroupManager {
 			throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 		// Heuristic check
 		if (!amKnownGroupMember(groupFriendlyName)) {
-			Log.info("Unexpected: we don't think we're a group member of group " + groupFriendlyName);
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+				Log.info("Unexpected: we don't think we're a group member of group " + groupFriendlyName);
+			}
 		}
 		// Need to get the KeyDirectory for this version of the private key, or the 
 		// latest if no version given.
@@ -342,7 +352,7 @@ public class GroupManager {
 			theGroupPublicKey = thisPublicKey.publicKey();
 		}
 		if (null == privateKeyDirectory) {
-			if (Log.isLoggable(Level.INFO)) {
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info("Unexpected: null private key directory for group {0} version {1} as stamp {2}",
 						groupFriendlyName, privateKeyVersion, DataUtils.printHexBytes(privateKeyVersion.toBinaryTime()));
 			}
@@ -400,14 +410,14 @@ public class GroupManager {
 		PrincipalInfo pi = null;
 		pi = keyDirectory.getPrincipalInfo(principal);
 		if (null == pi) {
-			if (Log.isLoggable(Level.INFO)) {
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info("No key available for principal {0} on node {1}", principal, keyDirectory.getName());
 			}
 			return null;
 		}
 		Key privateKey = getGroupPrivateKey(principal, pi.versionTimestamp());
 		if (null == privateKey) {
-			if (Log.isLoggable(Level.INFO)) {
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info("Unexpected: we believe we are a member of group {0} but cannot retrieve private key version {1} our membership revoked?",
 						principal, keyDirectory.getPrincipalInfo(principal));			
 			}

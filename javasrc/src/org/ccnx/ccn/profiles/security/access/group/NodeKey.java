@@ -20,6 +20,7 @@ package org.ccnx.ccn.profiles.security.access.group;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.util.Arrays;
+import java.util.logging.Level;
 
 import javax.crypto.spec.SecretKeySpec;
 
@@ -142,7 +143,9 @@ public class NodeKey {
 	public NodeKey computeDescendantNodeKey(ContentName descendantNodeName, String keyLabel) 
 			throws InvalidKeyException, ContentEncodingException {
 		if (nodeName().equals(descendantNodeName)) {
-			Log.info("Asked to compute ourselves as our own descendant (node key " + nodeName() +"), returning this.");
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+				Log.info("Asked to compute ourselves as our own descendant (node key " + nodeName() +"), returning this.");
+			}
 			return this;
 		}
 		if (!nodeName().isPrefixOf(descendantNodeName)) {
@@ -210,7 +213,9 @@ public class NodeKey {
 		try {
 			return VersioningProfile.getLastVersionAsTimestamp(storedNodeKeyName());
 		} catch (VersionMissingException e) {
-			Log.warning("Unexpected: name that was confirmed to have a version on construction throws a VersionMissingException: " + storedNodeKeyName());
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
+				Log.warning("Unexpected: name that was confirmed to have a version on construction throws a VersionMissingException: " + storedNodeKeyName());
+			}
 			throw new IllegalStateException("Unexpected: name that was confirmed to have a version on construction throws a VersionMissingException: " + storedNodeKeyName());
 		}
 	}

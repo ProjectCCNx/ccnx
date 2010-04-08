@@ -25,7 +25,6 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
@@ -164,7 +163,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	public void readPolicy(String localName, KeyManager km) throws RepositoryException, ContentDecodingException {
 		if (null != localName) {
 			RepositoryInternalInputHandler riih = null;
-			if (SystemConfiguration.getLogging(RepositoryStore.REPO_LOGGING))
+			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 				Log.info("REPO: reading policy from network: {0}/{1}/{2}", REPO_NAMESPACE, localName, REPO_POLICY);
 			try {
 				riih = new RepositoryInternalInputHandler(this, km);

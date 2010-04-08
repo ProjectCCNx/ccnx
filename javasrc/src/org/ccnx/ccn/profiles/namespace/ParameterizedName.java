@@ -39,7 +39,7 @@ public class ParameterizedName extends GenericXMLEncodable {
 		
 		@Override
 		public long getElementLabel() {
-			return CCNProtocolDTags.Prefix.getTag();
+			return CCNProtocolDTags.Prefix;
 		}
 	}
 
@@ -55,7 +55,7 @@ public class ParameterizedName extends GenericXMLEncodable {
 		
 		@Override
 		public long getElementLabel() {
-			return CCNProtocolDTags.Suffix.getTag();
+			return CCNProtocolDTags.Suffix;
 		}
 	}
 
@@ -86,14 +86,14 @@ public class ParameterizedName extends GenericXMLEncodable {
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.Label.getTag())) {
-			_label = decoder.readUTF8Element(CCNProtocolDTags.Label.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.Label)) {
+			_label = decoder.readUTF8Element(CCNProtocolDTags.Label);
 		}
 		
 		_prefix = new PrefixName();
 		_prefix.decode(decoder);
 
-		if (decoder.peekStartElement(CCNProtocolDTags.Suffix.getTag())) {
+		if (decoder.peekStartElement(CCNProtocolDTags.Suffix)) {
 			_suffix = new SuffixName();
 			_suffix.decode(decoder);
 		}
@@ -108,7 +108,7 @@ public class ParameterizedName extends GenericXMLEncodable {
 		encoder.writeStartElement(getElementLabel());
 		
 		if (!emptyLabel()) {
-			encoder.writeElement(CCNProtocolDTags.Label.getTag(), label());
+			encoder.writeElement(CCNProtocolDTags.Label, label());
 		}
 		
 		prefix().encode(encoder);
@@ -122,7 +122,7 @@ public class ParameterizedName extends GenericXMLEncodable {
 
 	@Override
 	public long getElementLabel() {
-		return CCNProtocolDTags.ParameterizedName.getTag();
+		return CCNProtocolDTags.ParameterizedName;
 	}
 
 	@Override

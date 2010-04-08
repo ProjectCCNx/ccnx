@@ -119,15 +119,15 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
-		if (decoder.peekStartElement(CCNProtocolDTags.DigestAlgorithm.getTag())) {
-			_digestAlgorithm = decoder.readUTF8Element(CCNProtocolDTags.DigestAlgorithm.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.DigestAlgorithm)) {
+			_digestAlgorithm = decoder.readUTF8Element(CCNProtocolDTags.DigestAlgorithm); 
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.Witness.getTag())) {
-			_witness = decoder.readBinaryElement(CCNProtocolDTags.Witness.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.Witness)) {
+			_witness = decoder.readBinaryElement(CCNProtocolDTags.Witness); 
 		}
 
-		_signature = decoder.readBinaryElement(CCNProtocolDTags.SignatureBits.getTag());
+		_signature = decoder.readBinaryElement(CCNProtocolDTags.SignatureBits);
 		
 		decoder.readEndElement();
 	}
@@ -142,21 +142,21 @@ public class Signature extends GenericXMLEncodable implements XMLEncodable,
 		encoder.writeStartElement(getElementLabel());
 		
 		if ((null != digestAlgorithm()) && (!digestAlgorithm().equals(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM))) {
-			encoder.writeElement(CCNProtocolDTags.DigestAlgorithm.getTag(), OIDLookup.getDigestOID(digestAlgorithm()));
+			encoder.writeElement(CCNProtocolDTags.DigestAlgorithm, OIDLookup.getDigestOID(digestAlgorithm()));
 		}
 		
 		if (null != witness()) {
 			// needs to handle null witness
-			encoder.writeElement(CCNProtocolDTags.Witness.getTag(), _witness);
+			encoder.writeElement(CCNProtocolDTags.Witness, _witness);
 		}
 
-		encoder.writeElement(CCNProtocolDTags.SignatureBits.getTag(), _signature);
+		encoder.writeElement(CCNProtocolDTags.SignatureBits, _signature);
 
 		encoder.writeEndElement();   		
 	}
 
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.Signature.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Signature; }
 
 	@Override
 	public boolean validate() {

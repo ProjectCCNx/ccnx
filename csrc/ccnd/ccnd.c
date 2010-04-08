@@ -313,7 +313,11 @@ static void
 ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
 {
     int res;
+    
     if (*pfd != -1) {
+        int linger = 0;
+        setsockopt(*pfd, SOL_SOCKET, SO_LINGER,
+                   &linger, sizeof(linger));
         res = close(*pfd);
         if (res == -1)
             ccnd_msg(h, "close failed for face %u fd=%d: %s (errno=%d)",
@@ -1252,7 +1256,7 @@ consume_matching_interests(struct ccnd_handle *h,
             if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
                                              p->interest_msg, p->size, NULL)) {
                 face_send_queue_insert(h, f, content);
-                if (h->debug & (16 | 8))
+                if (h->debug & (32 | 8))
                     ccnd_debug_ccnb(h, __LINE__, "consume", f,
                                     p->interest_msg, p->size);
                 matches += 1;
@@ -2508,7 +2512,7 @@ pe_next_usec(struct ccnd_handle *h,
     if (next_delay > pe->usec)
         next_delay = pe->usec;
     pe->usec -= next_delay;
-    if (h->debug & 16) {
+    if (h->debug & 32) {
         struct ccn_charbuf *c = ccn_charbuf_create();
         ccn_charbuf_putf(c, "%p.%dof%d,usec=%d+%d",
                          (void *)pe,
@@ -2734,7 +2738,8 @@ propagate_interest(struct ccnd_handle *h,
         if (extra_delay < 0) {
             /*
              * Completely subsumed by other interests.
-             * We do not have to worry about keeping track of the nonce.
+             * We do not have to worry about generating a nonce if it
+             * does not have one yet.
              */ 
             if (h->debug & 16)
                 ccnd_debug_ccnb(h, __LINE__, "interest_subsumed", face,
@@ -2774,7 +2779,7 @@ propagate_interest(struct ccnd_handle *h,
     hashtb_start(h->propagating_tab, e);
     res = hashtb_seek(e, nonce, noncesize, 0);
     pe = e->data;
-    if (res == HT_NEW_ENTRY) {
+    if (pe != NULL && pe->interest_msg == NULL) {
         unsigned char *m;
         m = calloc(1, msg_out_size);
         if (m == NULL) {
@@ -2815,9 +2820,9 @@ propagate_interest(struct ccnd_handle *h,
             ccn_schedule_event(h->sched, usec, do_propagate, pe, npe->usec);
         }
     }
-    else if (res == HT_OLD_ENTRY) {
+    else {
         ccnd_msg(h, "Interesting - this shouldn't happen much - ccnd.c:%d", __LINE__);
-        /* If we get here, we must have duplicated an existing nonce. */
+        /* We must have duplicated an existing nonce, or ENOMEM. */
         res = -1;
     }
     hashtb_end(e);
@@ -2885,26 +2890,32 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
 }
 
 /**
- * Checks whether this Interest message has been seen before.  Also, if it
- * has been seen and the original is still propagating, remove the face that
+ * Checks whether this Interest message has been seen before by using
+ * its Nonce, recording it in the process.  Also, if it has been
+ * seen and the original is still propagating, remove the face that
  * the duplicate arrived on from the outbound set of the original.
  */
 static int
 is_duplicate_flooded(struct ccnd_handle *h, unsigned char *msg,
                      struct ccn_parsed_interest *pi, unsigned faceid)
 {
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
     struct propagating_entry *pe = NULL;
+    int res;
     size_t nonce_start = pi->offset[CCN_PI_B_Nonce];
     size_t nonce_size = pi->offset[CCN_PI_E_Nonce] - nonce_start;
     if (nonce_size == 0)
         return(0);
-    pe = hashtb_lookup(h->propagating_tab, msg + nonce_start, nonce_size);
-    if (pe != NULL) {
+    hashtb_start(h->propagating_tab, e);
+    res = hashtb_seek(e, msg + nonce_start, nonce_size, 0);
+    if (res == HT_OLD_ENTRY) {
+        pe = e->data;
         if (promote_outbound(pe, faceid) != -1)
             pe->sent++;
-        return(1);
     }
-    return(0);
+    hashtb_end(e);
+    return(res == HT_OLD_ENTRY);
 }
 
 /**
@@ -3154,7 +3165,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 if (k == -1) {
                     k = face_send_queue_insert(h, face, content);
                     if (k >= 0) {
-                        if (h->debug & (16 | 8))
+                        if (h->debug & (32 | 8))
                             ccnd_debug_ccnb(h, __LINE__, "consume", face, msg, size);
                     }
                     /* Any other matched interests need to be consumed, too. */
@@ -3713,7 +3724,9 @@ do_deferred_write(struct ccnd_handle *h, int fd)
     /* This only happens on connected sockets */
     ssize_t res;
     struct face *face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
-    if (face != NULL && face->outbuf != NULL) {
+    if (face == NULL)
+        return;
+    if (face->outbuf != NULL) {
         ssize_t sendlen = face->outbuf->length - face->outbufindex;
         if (sendlen > 0) {
             res = send(fd, face->outbuf->buf + face->outbufindex, sendlen, 0);
@@ -3731,6 +3744,8 @@ do_deferred_write(struct ccnd_handle *h, int fd)
             if (res == sendlen) {
                 face->outbufindex = 0;
                 ccn_charbuf_destroy(&face->outbuf);
+                if ((face->flags & CCN_FACE_CLOSING) != 0)
+                    shutdown_client_fd(h, fd);
                 return;
             }
             face->outbufindex += res;
@@ -3739,7 +3754,9 @@ do_deferred_write(struct ccnd_handle *h, int fd)
         face->outbufindex = 0;
         ccn_charbuf_destroy(&face->outbuf);
     }
-    if ((face->flags & CCN_FACE_CONNECTING) != 0)
+    if ((face->flags & CCN_FACE_CLOSING) != 0)
+        shutdown_client_fd(h, fd);
+    else if ((face->flags & CCN_FACE_CONNECTING) != 0)
         face->flags &= ~CCN_FACE_CONNECTING;
     else
         ccnd_msg(h, "ccnd:do_deferred_write: something fishy on %d", fd);
@@ -3783,7 +3800,8 @@ ccnd_run(struct ccnd_handle *h)
             struct face *face = e->data;
             h->fds[i].fd = face->recv_fd;
             h->fds[i].events = POLLIN;
-            if (face->outbuf != NULL && face->send_fd == face->recv_fd)
+            if ((face->outbuf != NULL || (face->flags & CCN_FACE_CLOSING) != 0)
+                && face->send_fd == face->recv_fd)
                 h->fds[i].events |= POLLOUT;
         }
         hashtb_end(e);
@@ -4005,6 +4023,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
 		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
                     rcvbuf_sz = sizeof(rcvbuf);
                     getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
+                    if (a->ai_family == AF_INET6)
+                        ccnd_setsockopt_v6only(h, fd);
 		    res = bind(fd, a->ai_addr, a->ai_addrlen);
                     if (res != 0) {
                         close(fd);

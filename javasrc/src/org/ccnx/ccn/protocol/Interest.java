@@ -471,12 +471,12 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		_name = new ContentName();
 		_name.decode(decoder);
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.MinSuffixComponents.getTag())) {
-			_minSuffixComponents = decoder.readIntegerElement(CCNProtocolDTags.MinSuffixComponents.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.MinSuffixComponents)) {
+			_minSuffixComponents = decoder.readIntegerElement(CCNProtocolDTags.MinSuffixComponents);
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.MaxSuffixComponents.getTag())) {
-			_maxSuffixComponents = decoder.readIntegerElement(CCNProtocolDTags.MaxSuffixComponents.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.MaxSuffixComponents)) {
+			_maxSuffixComponents = decoder.readIntegerElement(CCNProtocolDTags.MaxSuffixComponents);
 		}
 				
 		if (PublisherID.peek(decoder)) {
@@ -484,26 +484,26 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			_publisher.decode(decoder);
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.Exclude.getTag())) {
+		if (decoder.peekStartElement(CCNProtocolDTags.Exclude)) {
 			_exclude = new Exclude();
 			_exclude.decode(decoder);
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.ChildSelector.getTag())) {
-			_childSelector = decoder.readIntegerElement(CCNProtocolDTags.ChildSelector.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.ChildSelector)) {
+			_childSelector = decoder.readIntegerElement(CCNProtocolDTags.ChildSelector);
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.AnswerOriginKind.getTag())) {
+		if (decoder.peekStartElement(CCNProtocolDTags.AnswerOriginKind)) {
 			// call setter to handle defaulting
-			_answerOriginKind = decoder.readIntegerElement(CCNProtocolDTags.AnswerOriginKind.getTag());
+			_answerOriginKind = decoder.readIntegerElement(CCNProtocolDTags.AnswerOriginKind);
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.Scope.getTag())) {
-			_scope = decoder.readIntegerElement(CCNProtocolDTags.Scope.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.Scope)) {
+			_scope = decoder.readIntegerElement(CCNProtocolDTags.Scope);
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.Nonce.getTag())) {
-			_nonce = decoder.readBinaryElement(CCNProtocolDTags.Nonce.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.Nonce)) {
+			_nonce = decoder.readBinaryElement(CCNProtocolDTags.Nonce);
 		}
 		
 		try {
@@ -522,10 +522,10 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		name().encode(encoder);
 	
 		if (null != minSuffixComponents()) 
-			encoder.writeElement(CCNProtocolDTags.MinSuffixComponents.getTag(), minSuffixComponents());	
+			encoder.writeElement(CCNProtocolDTags.MinSuffixComponents, minSuffixComponents());	
 
 		if (null != maxSuffixComponents()) 
-			encoder.writeElement(CCNProtocolDTags.MaxSuffixComponents.getTag(), maxSuffixComponents());
+			encoder.writeElement(CCNProtocolDTags.MaxSuffixComponents, maxSuffixComponents());
 
 		if (null != publisherID())
 			publisherID().encode(encoder);
@@ -534,22 +534,22 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			exclude().encode(encoder);
 
 		if (null != childSelector()) 
-			encoder.writeElement(CCNProtocolDTags.ChildSelector.getTag(), childSelector());
+			encoder.writeElement(CCNProtocolDTags.ChildSelector, childSelector());
 
 		if (DEFAULT_ANSWER_ORIGIN_KIND != answerOriginKind()) 
-			encoder.writeElement(CCNProtocolDTags.AnswerOriginKind.getTag(), answerOriginKind());
+			encoder.writeElement(CCNProtocolDTags.AnswerOriginKind, answerOriginKind());
 
 		if (null != scope()) 
-			encoder.writeElement(CCNProtocolDTags.Scope.getTag(), scope());
+			encoder.writeElement(CCNProtocolDTags.Scope, scope());
 		
 		if (null != nonce())
-			encoder.writeElement(CCNProtocolDTags.Nonce.getTag(), nonce());
+			encoder.writeElement(CCNProtocolDTags.Nonce, nonce());
 		
 		encoder.writeEndElement();   		
 	}
 	
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.Interest.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Interest; }
 
 	@Override
 	public boolean validate() {

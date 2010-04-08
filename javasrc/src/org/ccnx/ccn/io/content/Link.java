@@ -241,11 +241,11 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		_targetName = new ContentName();
 		_targetName.decode(decoder);
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.Label.getTag())) {
-			_targetLabel = decoder.readUTF8Element(CCNProtocolDTags.Label.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.Label)) {
+			_targetLabel = decoder.readUTF8Element(CCNProtocolDTags.Label); 
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.LinkAuthenticator.getTag())) {
+		if (decoder.peekStartElement(CCNProtocolDTags.LinkAuthenticator)) {
 			_targetAuthenticator = new LinkAuthenticator();
 			_targetAuthenticator.decode(decoder);
 		}
@@ -262,7 +262,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		encoder.writeStartElement(getElementLabel());
 		_targetName.encode(encoder);
 		if (null != targetLabel()) {
-			encoder.writeElement(CCNProtocolDTags.Label.getTag(), targetLabel());
+			encoder.writeElement(CCNProtocolDTags.Label, targetLabel());
 		}
 		if (null != _targetAuthenticator)
 			_targetAuthenticator.encode(encoder);
@@ -270,7 +270,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	}
 	
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.Link.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Link; }
 
 	@Override
 	public boolean validate() {

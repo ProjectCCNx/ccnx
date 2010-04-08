@@ -150,24 +150,24 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 			_publisher.decode(decoder);
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.NameComponentCount.getTag())) {
-			_nameComponentCount = decoder.readIntegerElement(CCNProtocolDTags.NameComponentCount.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.NameComponentCount)) {
+			_nameComponentCount = decoder.readIntegerElement(CCNProtocolDTags.NameComponentCount);
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.Timestamp.getTag())) {
-			_timestamp = decoder.readDateTime(CCNProtocolDTags.Timestamp.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.Timestamp)) {
+			_timestamp = decoder.readDateTime(CCNProtocolDTags.Timestamp);
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.Type.getTag())) {
-			String strType = decoder.readUTF8Element(CCNProtocolDTags.Type.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.Type)) {
+			String strType = decoder.readUTF8Element(CCNProtocolDTags.Type);
 			_type = SignedInfo.nameToType(strType);
 			if (null == _type) {
 				throw new ContentDecodingException("Cannot parse authenticator type: " + strType);
 			}
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.ContentDigest.getTag())) {
-			_contentDigest = decoder.readBinaryElement(CCNProtocolDTags.ContentDigest.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.ContentDigest)) {
+			_contentDigest = decoder.readBinaryElement(CCNProtocolDTags.ContentDigest);
 			if (null == _contentDigest) {
 				throw new ContentDecodingException("Cannot parse content hash.");
 			}
@@ -188,25 +188,25 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 		}
 
 		if (!emptyNameComponentCount()) {
-			encoder.writeElement(CCNProtocolDTags.NameComponentCount.getTag(), nameComponentCount());
+			encoder.writeElement(CCNProtocolDTags.NameComponentCount, nameComponentCount());
 		}
 
 		if (!emptyTimestamp()) {
-			encoder.writeDateTime(CCNProtocolDTags.Timestamp.getTag(), timestamp());
+			encoder.writeDateTime(CCNProtocolDTags.Timestamp, timestamp());
 		}
 		
 		if (!emptyContentType()) {
-			encoder.writeElement(CCNProtocolDTags.Type.getTag(), SignedInfo.typeToName(type()));
+			encoder.writeElement(CCNProtocolDTags.Type, SignedInfo.typeToName(type()));
 		}
 		
 		if (!emptyContentDigest()) {
-			encoder.writeElement(CCNProtocolDTags.ContentDigest.getTag(), contentDigest());
+			encoder.writeElement(CCNProtocolDTags.ContentDigest, contentDigest());
 		}
 		encoder.writeEndElement();   		
 	}
 	
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.LinkAuthenticator.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.LinkAuthenticator; }
 
 	@Override
 	public boolean validate() {

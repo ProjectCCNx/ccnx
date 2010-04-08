@@ -200,7 +200,7 @@ public class KeyValueSet extends GenericXMLEncodable implements XMLEncodable, Ma
 		decoder.readStartElement(getElementLabel());
 		
 		synchronized (_set) {
-			while (decoder.peekStartElement(CCNProtocolDTags.Entry.getTag())) {
+			while (decoder.peekStartElement(CCNProtocolDTags.Entry)) {
 				KeyValuePair kvp = new KeyValuePair();
 				kvp.decode(decoder);
 				_set.put(kvp.getKey(), kvp);
@@ -240,7 +240,7 @@ public class KeyValueSet extends GenericXMLEncodable implements XMLEncodable, Ma
 	}
 
 	@Override
-	public long getElementLabel() {return CCNProtocolDTags.KeyValueSet.getTag();}
+	public long getElementLabel() {return CCNProtocolDTags.KeyValueSet;}
 
 	@Override
 	public boolean validate() {

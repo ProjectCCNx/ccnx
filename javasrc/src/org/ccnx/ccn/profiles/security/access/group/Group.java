@@ -27,6 +27,7 @@ import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.SortedSet;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -197,7 +198,9 @@ public class Group {
 					GroupAccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()), _handle);
 			return _privKeyDirectory;
 		}
-		Log.info("Public key not ready for group: " + friendlyName());
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info("Public key not ready for group: " + friendlyName());
+		}
 		return null;
 	}
 	
@@ -276,7 +279,9 @@ public class Group {
 			try {
 				return VersioningProfile.getLastVersionAsTimestamp(name);
 			} catch (VersionMissingException e) {
-				Log.warning("Should not happen: VersionMissingException on name where isVersioned is true: " + name + ": " + e.getMessage());
+				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
+					Log.warning("Should not happen: VersionMissingException on name where isVersioned is true: " + name + ": " + e.getMessage());
+				}
 			}
 		}
 		return null;
@@ -464,7 +469,9 @@ public class Group {
 			kpg = KeyPairGenerator.getInstance(_groupManager.getGroupKeyAlgorithm());
 		} catch (NoSuchAlgorithmException e) {
 			if (_groupManager.getGroupKeyAlgorithm().equals(GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM)) {
-				Log.severe("Cannot find default group public key algorithm: " + GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
+				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.SEVERE)) {
+					Log.severe("Cannot find default group public key algorithm: " + GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
+				}
 				throw new RuntimeException("Cannot find default group public key algorithm: " + GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
 			}
 			throw new ConfigurationException("Specified group public key algorithm " + _groupManager.getGroupKeyAlgorithm() + " not found. " + e.getMessage());
@@ -491,7 +498,9 @@ public class Group {
 			// write the private key
 			newPrivateKeyDirectory.addPrivateKeyBlock(pair.getPrivate(), privateKeyWrappingKey);
 		} catch (InvalidKeyException e) {
-			Log.warning("Unexpected -- InvalidKeyException wrapping key with keys we just generated! " + e.getMessage());
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
+				Log.warning("Unexpected -- InvalidKeyException wrapping key with keys we just generated! " + e.getMessage());
+			}
 			throw e;
 		}
 		
@@ -539,7 +548,9 @@ public class Group {
 
 				latestPublicKey = new PublicKeyObject(pkName, _handle);
 				if (!latestPublicKey.available()) {
-					Log.warning("Could not retrieve public key for " + pkName);
+					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
+						Log.warning("Could not retrieve public key for " + pkName);
+					}
 					continue;
 				}
 				// Need to write wrapped key block and linking principal name.
@@ -548,9 +559,13 @@ public class Group {
 						latestPublicKey.getVersionedName(), 
 						latestPublicKey.publicKey());
 			} catch (IOException e) {
-				Log.warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
+				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
+					Log.warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
+				}
 			} catch (VersionMissingException e) {
-				Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getVersionedName() + ", unable to retrieve principal's public key. Skipping.");
+				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
+					Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getVersionedName() + ", unable to retrieve principal's public key. Skipping.");
+				}
 			}
 		}
 	}
@@ -577,7 +592,9 @@ public class Group {
 			try {
 				sb.append(membershipListName());
 			} catch (Exception e) {
-				Log.warning("Unexpected " + e.getClass().getName() + " exception in getMembershipListName(): " + e.getMessage());
+				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
+					Log.warning("Unexpected " + e.getClass().getName() + " exception in getMembershipListName(): " + e.getMessage());
+				}
 				sb.append("Membership list name unavailable!");
 			} 
 		}

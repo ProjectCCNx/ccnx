@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -113,6 +113,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *templ = NULL;
     struct ccn_charbuf *signed_info = NULL;
     struct ccn_charbuf *keylocator = NULL;
+    struct ccn_charbuf *finalblockid = NULL;
     struct ccn_keystore *keystore = NULL;
     long expire = -1;
     long blocksize = 1024;
@@ -219,13 +220,21 @@ main(int argc, char **argv)
             status = 1;
         }
         signed_info->length = 0;
+        if (read_res < blocksize) {
+            temp->length = 0;
+            ccn_charbuf_putf(temp, "%d", i);
+            ccn_name_append(name, temp->buf, temp->length);
+            finalblockid = ccn_charbuf_create();
+            ccn_charbuf_append_tt(finalblockid, temp->length, CCN_BLOB);
+            ccn_charbuf_append(finalblockid, temp->buf, temp->length);
+        }
         res = ccn_signed_info_create(signed_info,
                                      /*pubkeyid*/ccn_keystore_public_key_digest(keystore),
                                      /*publisher_key_id_size*/ccn_keystore_public_key_digest_length(keystore),
                                      /*datetime*/NULL,
                                      /*type*/CCN_CONTENT_DATA,
                                      /*freshness*/ expire,
-                                     /*finalblockid*/NULL,
+                                     finalblockid,
                                      keylocator);
         /* Put the keylocator in the first block only. */
         ccn_charbuf_destroy(&keylocator);
@@ -286,6 +295,7 @@ main(int argc, char **argv)
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&signed_info);
+    ccn_charbuf_destroy(&finalblockid);
     ccn_keystore_destroy(&keystore);
     ccn_destroy(&ccn);
     exit(status);

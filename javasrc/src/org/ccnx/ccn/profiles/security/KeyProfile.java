@@ -65,7 +65,7 @@ public class KeyProfile implements CCNProfile {
 		offset += encodedKeyIDBytes.length;
 		System.arraycopy(KEY_ID_POSTFIX, 0, component, offset, KEY_ID_POSTFIX.length);
 		
-		if (Log.isLoggable(Level.INFO)) {
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 			Log.info("keyIDToNameComponent key id {0}, base64 {1}, result {2} as uri {3}", 
 					DataUtils.printHexBytes(keyID), 
 					new String(encodedKeyIDBytes),

@@ -92,7 +92,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		
 		@Override
 		public long getElementLabel() { 
-			return CCNProtocolDTags.WrappingKeyName.getTag();
+			return CCNProtocolDTags.WrappingKeyName;
 		}
 	}
 
@@ -497,32 +497,32 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
-		if (decoder.peekStartElement(CCNProtocolDTags.WrappingKeyIdentifier.getTag())) {
-			_wrappingKeyIdentifier = decoder.readBinaryElement(CCNProtocolDTags.WrappingKeyIdentifier.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.WrappingKeyIdentifier)) {
+			_wrappingKeyIdentifier = decoder.readBinaryElement(CCNProtocolDTags.WrappingKeyIdentifier); 
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.WrappingKeyName.getTag())) {
+		if (decoder.peekStartElement(CCNProtocolDTags.WrappingKeyName)) {
 			_wrappingKeyName = new WrappingKeyName();
 			_wrappingKeyName.decode(decoder);
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.WrapAlgorithm.getTag())) {
-			_wrapAlgorithm = decoder.readUTF8Element(CCNProtocolDTags.WrapAlgorithm.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.WrapAlgorithm)) {
+			_wrapAlgorithm = decoder.readUTF8Element(CCNProtocolDTags.WrapAlgorithm); 
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.KeyAlgorithm.getTag())) {
-			_keyAlgorithm = decoder.readUTF8Element(CCNProtocolDTags.KeyAlgorithm.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.KeyAlgorithm)) {
+			_keyAlgorithm = decoder.readUTF8Element(CCNProtocolDTags.KeyAlgorithm); 
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.Label.getTag())) {
-			_label = decoder.readUTF8Element(CCNProtocolDTags.Label.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.Label)) {
+			_label = decoder.readUTF8Element(CCNProtocolDTags.Label); 
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.EncryptedNonceKey.getTag())) {
-			_encryptedNonceKey = decoder.readBinaryElement(CCNProtocolDTags.EncryptedNonceKey.getTag()); 
+		if (decoder.peekStartElement(CCNProtocolDTags.EncryptedNonceKey)) {
+			_encryptedNonceKey = decoder.readBinaryElement(CCNProtocolDTags.EncryptedNonceKey); 
 		}
 		
-		_encryptedKey = decoder.readBinaryElement(CCNProtocolDTags.EncryptedKey.getTag());
+		_encryptedKey = decoder.readBinaryElement(CCNProtocolDTags.EncryptedKey);
 		
 		decoder.readEndElement();
 	}
@@ -538,7 +538,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 		
 		if (null != wrappingKeyIdentifier()) {
 			// needs to handle null WKI
-			encoder.writeElement(CCNProtocolDTags.WrappingKeyIdentifier.getTag(), wrappingKeyIdentifier());
+			encoder.writeElement(CCNProtocolDTags.WrappingKeyIdentifier, wrappingKeyIdentifier());
 		}
 		
 		if (null != wrappingKeyName()) {
@@ -547,30 +547,30 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
 		if (null != wrapAlgorithm()) {
 			//String wrapOID = OIDLookup.getCipherOID(wrapAlgorithm());
-			encoder.writeElement(CCNProtocolDTags.WrapAlgorithm.getTag(), wrapAlgorithm());
+			encoder.writeElement(CCNProtocolDTags.WrapAlgorithm, wrapAlgorithm());
 		}
 		
 		if (null != keyAlgorithm()) {
 			//String keyOID = OIDLookup.getCipherOID(keyAlgorithm());
-			encoder.writeElement(CCNProtocolDTags.KeyAlgorithm.getTag(), keyAlgorithm());
+			encoder.writeElement(CCNProtocolDTags.KeyAlgorithm, keyAlgorithm());
 		}		
 
 		if (null != label()) {
-			encoder.writeElement(CCNProtocolDTags.Label.getTag(), label());
+			encoder.writeElement(CCNProtocolDTags.Label, label());
 		}
 
 		if (null != encryptedNonceKey()) {
-			encoder.writeElement(CCNProtocolDTags.EncryptedNonceKey.getTag(), encryptedNonceKey());
+			encoder.writeElement(CCNProtocolDTags.EncryptedNonceKey, encryptedNonceKey());
 		}
 
-		encoder.writeElement(CCNProtocolDTags.EncryptedKey.getTag(), encryptedKey());
+		encoder.writeElement(CCNProtocolDTags.EncryptedKey, encryptedKey());
 
 		encoder.writeEndElement();   		
 	}
 
 	@Override
 	public long getElementLabel() { 
-		return CCNProtocolDTags.WrappedKey.getTag();
+		return CCNProtocolDTags.WrappedKey;
 	}
 
 	@Override

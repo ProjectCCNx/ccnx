@@ -146,7 +146,7 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 	}
 	
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.PublisherPublicKeyDigest.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.PublisherPublicKeyDigest; }
 
 	@Override
 	public boolean validate() {

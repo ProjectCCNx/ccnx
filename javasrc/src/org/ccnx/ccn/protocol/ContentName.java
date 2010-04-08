@@ -904,8 +904,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		
 		_components = new ArrayList<byte []>();
 		
-		while (decoder.peekStartElement(CCNProtocolDTags.Component.getTag())) {
-			_components.add(decoder.readBinaryElement(CCNProtocolDTags.Component.getTag()));
+		while (decoder.peekStartElement(CCNProtocolDTags.Component)) {
+			_components.add(decoder.readBinaryElement(CCNProtocolDTags.Component));
 		}
 		
 		decoder.readEndElement();
@@ -1191,7 +1191,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		encoder.writeStartElement(getElementLabel());
 		
 		for (int i=0; i < count(); ++i) {
-			encoder.writeElement(CCNProtocolDTags.Component.getTag(), _components.get(i));
+			encoder.writeElement(CCNProtocolDTags.Component, _components.get(i));
 		}
 		encoder.writeEndElement();
 	}
@@ -1203,7 +1203,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	
 	@Override
 	public long getElementLabel() { 
-		return CCNProtocolDTags.Name.getTag();
+		return CCNProtocolDTags.Name;
 	}
 
 	public ContentName copy(int nameComponentCount) {

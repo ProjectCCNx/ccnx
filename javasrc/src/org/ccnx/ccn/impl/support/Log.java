@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
 import java.util.logging.ConsoleHandler;
@@ -82,12 +81,25 @@ public class Log {
 	public static final int FAC_DEFAULT		= 0;
 	public static final int FAC_PIPELINE	= 1;
 	public static final int FAC_NETMANAGER	= 2;
+	public static final int FAC_USER0		= 3;
+	public static final int FAC_USER1		= 4;
+	public static final int FAC_USER2		= 5;
+	public static final int FAC_USER3		= 6;
+	public static final int FAC_ACCESSCONTROL = 7;
+	public static final int FAC_REPO = 8;
+	
 
 	// The System property name for each Facility
 	public static final String [] FAC_LOG_LEVEL_PROPERTY = {
 		DEFAULT_LOG_LEVEL_PROPERTY,
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Pipeline",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".NetManager",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User0",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User1",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User2",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User3",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".AccessControl",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Repo",
 	};
 
 	// The environment variable for each facility
@@ -95,12 +107,24 @@ public class Log {
 		DEFAULT_LOG_LEVEL_ENV,
 		DEFAULT_LOG_LEVEL_ENV + "_PIPELINE",
 		DEFAULT_LOG_LEVEL_ENV + "_NETMANAGER",
+		DEFAULT_LOG_LEVEL_ENV + "_USER0",
+		DEFAULT_LOG_LEVEL_ENV + "_USER1",
+		DEFAULT_LOG_LEVEL_ENV + "_USER2",
+		DEFAULT_LOG_LEVEL_ENV + "_USER3",
+		DEFAULT_LOG_LEVEL_ENV + "_ACCESSCONTROL",
+		DEFAULT_LOG_LEVEL_ENV + "_REPO",
 	};
 
 	public static final Level [] FAC_DEFAULT_LOG_LEVEL = {
 		Level.INFO,		// Default
 		Level.WARNING,	// Pipelining
 		Level.INFO,		// NetManager
+		Level.INFO,		// User0
+		Level.INFO,		// User1
+		Level.INFO,		// User2
+		Level.INFO,		// User3
+		Level.INFO,		// Access control
+		Level.INFO,		// Repo
 	};
 
 	protected static Level [] _fac_level = new Level[FAC_LOG_LEVEL_PROPERTY.length];

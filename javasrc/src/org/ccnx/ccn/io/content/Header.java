@@ -265,17 +265,17 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	@Override
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
-		_start = decoder.readLongElement(CCNProtocolDTags.Start.getTag());
-		_count = decoder.readLongElement(CCNProtocolDTags.Count.getTag());
-		_blockSize = decoder.readLongElement(CCNProtocolDTags.BlockSize.getTag());
-		_length = decoder.readLongElement(CCNProtocolDTags.Length.getTag());
-		_contentDigest = decoder.readBinaryElement(CCNProtocolDTags.ContentDigest.getTag());
+		_start = decoder.readLongElement(CCNProtocolDTags.Start);
+		_count = decoder.readLongElement(CCNProtocolDTags.Count);
+		_blockSize = decoder.readLongElement(CCNProtocolDTags.BlockSize);
+		_length = decoder.readLongElement(CCNProtocolDTags.Length);
+		_contentDigest = decoder.readBinaryElement(CCNProtocolDTags.ContentDigest);
 		if (null == _contentDigest) {
 			throw new ContentDecodingException("Cannot parse content digest.");
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.RootDigest.getTag())) {
-			_rootDigest = decoder.readBinaryElement(CCNProtocolDTags.RootDigest.getTag());
+		if (decoder.peekStartElement(CCNProtocolDTags.RootDigest)) {
+			_rootDigest = decoder.readBinaryElement(CCNProtocolDTags.RootDigest);
 			if (null == _rootDigest) {
 				throw new ContentDecodingException("Cannot parse root digest.");
 			}
@@ -293,20 +293,20 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
 		encoder.writeStartElement(getElementLabel());
-		encoder.writeElement(CCNProtocolDTags.Start.getTag(), _start);
-		encoder.writeElement(CCNProtocolDTags.Count.getTag(), _count);
-		encoder.writeElement(CCNProtocolDTags.BlockSize.getTag(), _blockSize);
-		encoder.writeElement(CCNProtocolDTags.Length.getTag(), _length);
-		encoder.writeElement(CCNProtocolDTags.ContentDigest.getTag(), contentDigest());
+		encoder.writeElement(CCNProtocolDTags.Start, _start);
+		encoder.writeElement(CCNProtocolDTags.Count, _count);
+		encoder.writeElement(CCNProtocolDTags.BlockSize, _blockSize);
+		encoder.writeElement(CCNProtocolDTags.Length, _length);
+		encoder.writeElement(CCNProtocolDTags.ContentDigest, contentDigest());
 		if (null != rootDigest())
-			encoder.writeElement(CCNProtocolDTags.RootDigest.getTag(), rootDigest());
+			encoder.writeElement(CCNProtocolDTags.RootDigest, rootDigest());
 		encoder.writeEndElement();
 		
 		// DKS -- currently not putting _type on the wire, not sure why it's here...
 	}
 
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.Header.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Header; }
 
 	@Override
 	public boolean validate() {

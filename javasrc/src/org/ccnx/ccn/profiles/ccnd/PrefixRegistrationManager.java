@@ -183,25 +183,25 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		 */
 		public void decode(XMLDecoder decoder) throws ContentDecodingException {
 			decoder.readStartElement(getElementLabel());
-			if (decoder.peekStartElement(CCNProtocolDTags.Action.getTag())) {
-				_action = decoder.readUTF8Element(CCNProtocolDTags.Action.getTag()); 
+			if (decoder.peekStartElement(CCNProtocolDTags.Action)) {
+				_action = decoder.readUTF8Element(CCNProtocolDTags.Action); 
 			}
-			if (decoder.peekStartElement(CCNProtocolDTags.Name.getTag())) {
+			if (decoder.peekStartElement(CCNProtocolDTags.Name)) {
 				_prefixName = new ContentName();
 				_prefixName.decode(decoder) ;
 			}
-			if (decoder.peekStartElement(CCNProtocolDTags.PublisherPublicKeyDigest.getTag())) {
+			if (decoder.peekStartElement(CCNProtocolDTags.PublisherPublicKeyDigest)) {
 				_ccndId = new PublisherPublicKeyDigest();
 				_ccndId.decode(decoder);
 			}
-			if (decoder.peekStartElement(CCNProtocolDTags.FaceID.getTag())) {
-				_faceID = decoder.readIntegerElement(CCNProtocolDTags.FaceID.getTag()); 
+			if (decoder.peekStartElement(CCNProtocolDTags.FaceID)) {
+				_faceID = decoder.readIntegerElement(CCNProtocolDTags.FaceID); 
 			}
-			if (decoder.peekStartElement(CCNProtocolDTags.ForwardingFlags.getTag())) {
-				_flags = decoder.readIntegerElement(CCNProtocolDTags.ForwardingFlags.getTag()); 
+			if (decoder.peekStartElement(CCNProtocolDTags.ForwardingFlags)) {
+				_flags = decoder.readIntegerElement(CCNProtocolDTags.ForwardingFlags); 
 			}
-			if (decoder.peekStartElement(CCNProtocolDTags.FreshnessSeconds.getTag())) {
-				_lifetime = decoder.readIntegerElement(CCNProtocolDTags.FreshnessSeconds.getTag()); 
+			if (decoder.peekStartElement(CCNProtocolDTags.FreshnessSeconds)) {
+				_lifetime = decoder.readIntegerElement(CCNProtocolDTags.FreshnessSeconds); 
 			}
 			decoder.readEndElement();
 		}
@@ -216,7 +216,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			}
 			encoder.writeStartElement(getElementLabel());
 			if (null != _action && _action.length() != 0)
-				encoder.writeElement(CCNProtocolDTags.Action.getTag(), _action);	
+				encoder.writeElement(CCNProtocolDTags.Action, _action);	
 			if (null != _prefixName) {
 				_prefixName.encode(encoder);
 			}
@@ -224,19 +224,19 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 				_ccndId.encode(encoder);
 			}
 			if (null != _faceID) {
-				encoder.writeElement(CCNProtocolDTags.FaceID.getTag(), _faceID);
+				encoder.writeElement(CCNProtocolDTags.FaceID, _faceID);
 			}
 			if (null != _flags) {
-				encoder.writeElement(CCNProtocolDTags.ForwardingFlags.getTag(), _flags);
+				encoder.writeElement(CCNProtocolDTags.ForwardingFlags, _flags);
 			}
 			if (null != _lifetime) {
-				encoder.writeElement(CCNProtocolDTags.FreshnessSeconds.getTag(), _lifetime);
+				encoder.writeElement(CCNProtocolDTags.FreshnessSeconds, _lifetime);
 			}
 			encoder.writeEndElement();   			
 		}
 
 		@Override
-		public long getElementLabel() { return CCNProtocolDTags.ForwardingEntry.getTag(); }
+		public long getElementLabel() { return CCNProtocolDTags.ForwardingEntry; }
 
 		@Override
 		public boolean validate() {

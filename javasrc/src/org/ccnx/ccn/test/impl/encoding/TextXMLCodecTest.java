@@ -22,6 +22,7 @@ import java.util.logging.Level;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.TextXMLCodec;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -39,6 +40,48 @@ public class TextXMLCodecTest {
 	
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		Log.setLevel(Level.INFO);
+	}
+	
+	@Test
+	public void testTagMap() {
+		String name;
+		Long tag;
+		for (int i=1; i <= CCNProtocolDTags.Parameters; ++i) {
+			name = CCNProtocolDTags.tagToString(i);
+			if (name != null) {
+				tag = CCNProtocolDTags.stringToTag(name);
+				Assert.assertEquals(tag.longValue(), i);
+			}
+		}
+		name = CCNProtocolDTags.tagToString(CCNProtocolDTags.Interest);
+		Assert.assertEquals("Interest", name);
+		
+		name = CCNProtocolDTags.tagToString(CCNProtocolDTags.RootDigest);
+		Assert.assertEquals("RootDigest", name);
+
+		name = CCNProtocolDTags.tagToString(CCNProtocolDTags.Nonce);
+		Assert.assertEquals("Nonce", name);
+
+		name = CCNProtocolDTags.tagToString(CCNProtocolDTags.AnswerOriginKind);
+		Assert.assertEquals("AnswerOriginKind", name);
+		
+		name = CCNProtocolDTags.tagToString(CCNProtocolDTags.Witness);
+		Assert.assertEquals("Witness", name);
+
+		name = CCNProtocolDTags.tagToString(CCNProtocolDTags.FinalBlockID);
+		Assert.assertEquals("FinalBlockID", name);
+		
+		name = CCNProtocolDTags.tagToString(CCNProtocolDTags.EncryptedKey);
+		Assert.assertEquals("EncryptedKey", name);
+		
+		name = CCNProtocolDTags.tagToString(CCNProtocolDTags.BinaryValue);
+		Assert.assertEquals("BinaryValue", name);
+		
+		name = CCNProtocolDTags.tagToString(CCNProtocolDTags.ProfileName);
+		Assert.assertEquals("ProfileName", name);
+
+		name = CCNProtocolDTags.tagToString(CCNProtocolDTags.Parameters);
+		Assert.assertEquals("Parameters", name);
 	}
 	
 	@Test

@@ -169,7 +169,7 @@ public class BloomFilter extends Exclude.Filler implements Comparable<BloomFilte
 	 * Gets the type of element this is within an exclude filter
 	 */
 	@Override
-	public long getElementLabel() { return CCNProtocolDTags.Bloom.getTag(); }
+	public long getElementLabel() { return CCNProtocolDTags.Bloom; }
 	
 	@Override
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {

@@ -267,7 +267,7 @@ public interface XMLDecoder {
 	 * @throws ContentDecodingException if startTag is not the next tag in the stream, or there is an error
 	 * 		decoding the element or parsing the integer
 	 */
-	public CCNTime readDateTime(Long startTag) throws ContentDecodingException;
+	public CCNTime readDateTime(long startTag) throws ContentDecodingException;
 	
 	/**
 	 * Read UTF-8 string data starting from beginning of element (text element
