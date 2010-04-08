@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+
 #include <ccn/charbuf.h>
 #include <ccn/extend_dict.h>
 
@@ -73,7 +75,7 @@ ccn_destroy_dict(struct ccn_dict **dp)
  * @result 0 if the new dictionary was created successfully, otherwise -1.
  */
 int
-ccn_extend_dict(unsigned char *dict_file, const struct ccn_dict *d, struct ccn_dict **rdp)
+ccn_extend_dict(const char *dict_file, const struct ccn_dict *d, struct ccn_dict **rdp)
 {
     FILE *df = NULL;
     int i, c;
@@ -150,6 +152,8 @@ ccn_extend_dict(unsigned char *dict_file, const struct ccn_dict *d, struct ccn_d
             case S_FLUSH:
                 if (c == '\n')
                     s = S_INITIAL;
+                break;
+            default:
                 break;
         }
     }
