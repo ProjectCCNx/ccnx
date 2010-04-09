@@ -1053,9 +1053,16 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 	
-	protected RegisteredPrefix getRegisteredPrefix(ContentName filter) {
+	/**
+	 * Merge prefixes so we only add a new one when it doesn't have a
+	 * common ancestor already registered.
+	 * 
+	 * @param prefix
+	 * @return prefix that incorporates or matches this one or null if none found
+	 */
+	protected RegisteredPrefix getRegisteredPrefix(ContentName prefix) {
 		for (ContentName name: _registeredPrefixes.keySet()) {
-			if (name.equals(filter) || name.isPrefixOf(filter))
+			if (name.equals(prefix) || name.isPrefixOf(prefix))
 				return _registeredPrefixes.get(name);		
 		}
 		return null;
