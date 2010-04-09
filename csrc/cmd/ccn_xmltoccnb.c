@@ -493,6 +493,7 @@ main(int argc, char **argv)
 {
     int i;
     int res = 0;
+    int dictres = 0;
     int flags = 0;
     struct ccn_dict *dtags = (struct ccn_dict *)&ccn_dtag_dict;
     
@@ -508,14 +509,18 @@ main(int argc, char **argv)
         }
         if (0 == strcmp(argv[i], "-d")) {
             if (argv[i+1] != 0) {
-                ccn_extend_dict(argv[i+1], dtags, &dtags);
+                if (0 > ccn_extend_dict(argv[i+1], dtags, &dtags)) {
+                    fprintf(stderr, "Unable to load dtag dictionary %s\n", argv[i+1]);
+                    dictres = -1;
+                }
                 i++;
             }
             continue;
         }
+        if (dictres < 0)
+            exit(1);
         fprintf(stderr, "<!-- Processing %s -->\n", argv[i]);
         res |= process_file(argv[i], flags, dtags);
     }
     return(res);
 }
-
