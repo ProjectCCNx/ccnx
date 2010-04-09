@@ -127,6 +127,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			RepositoryDataListener listener;
 			
 			RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null);
+			if (null == rio)
+				return;		// Should have logged an error in getRepoInfo
 			// Hand the object the outstanding interest, so it can put its first block immediately.
 			rio.save(interest);
 			
