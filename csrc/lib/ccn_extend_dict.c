@@ -44,7 +44,7 @@ qsort_compare_dict_indices(const void *x, const void *y)
     const struct ccn_dict_entry *ex = x;
     const struct ccn_dict_entry *ey = y;
     if (ex->name == NULL)
-        return (ey->name == NULL) ? 0 : 1;
+        return ((ey->name == NULL) ? 0 : 1);
     if (ey->name == NULL) return (-1);
     if (ex->index == ey->index) return (0);
     return ((ex->index < ey->index) ? -1 : 1);
