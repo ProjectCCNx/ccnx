@@ -134,7 +134,7 @@ public class CommandMarker {
 	 * Nonce marker
 	 */
 	public static final String NONCE_NAMESPACE = "N";
-	public static final CommandMarker COMMAND_MARKER_NONCE = commandMarker(NONCE_NAMESPACE, "n");
+	public static final CommandMarker COMMAND_MARKER_NONCE = commandMarker(NONCE_NAMESPACE, null);
 	
 	/**
 	 * GUID marker
