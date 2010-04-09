@@ -28,15 +28,17 @@
 
 #include <ccn/coding.h>
 #include <ccn/charbuf.h>
+#include <ccn/extend_dict.h>
 
 static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "usage: %s [-h] [-w] file ...\n"
+            "usage: %s [-h] [-w] [-d dict]* file ...\n"
             " Utility to convert XML into ccn binary encoded data (ccnb)\n"
-            "  -h   print usage and exit\n"
-            "  -w   toss UDATA content consisting of only whitespace\n"
+            "  -h       print usage and exit\n"
+            "  -w       toss UDATA content consisting of only whitespace\n"
+            "  -d dict  additional csv format dictionary file(s)\n"
             " use - for file to specify filter mode (stdin, stdout)\n"
             " otherwise output files get .ccnb extension\n",
             progname);
@@ -143,7 +145,7 @@ dict_lookup(const char *key, const struct ccn_dict_entry *dict, int n)
 }
 
 struct ccn_encoder *
-ccn_encoder_create(FILE *outfile)
+ccn_encoder_create(FILE *outfile, const struct ccn_dict *dtags)
 {
     struct ccn_encoder *c;
     c = calloc(1, sizeof(*c));
@@ -152,8 +154,8 @@ ccn_encoder_create(FILE *outfile)
         if (c->openudata != NULL)
             ccn_charbuf_reserve(c->openudata, 128);
         c->outfile = outfile;
-        c->tagdict = ccn_dtag_dict.dict;
-        c->tagdict_count = ccn_dtag_dict.count;
+        c->tagdict = dtags->dict;
+        c->tagdict_count = dtags->count;
     }
     return(c);
 }
@@ -388,14 +390,14 @@ do_processing_instructions(void *ud, const XML_Char *target, const XML_Char *dat
 
 #define TOSS_WHITE 1
 static int
-process_fd(int fd, FILE *outfile, int flags)
+process_fd(int fd, FILE *outfile, int flags, const struct ccn_dict *dtags)
 {
     char buf[17];
     ssize_t len;
     int res = 0;
     struct ccn_encoder *u;
     XML_Parser p;
-    u = ccn_encoder_create(outfile);
+    u = ccn_encoder_create(outfile, dtags);
     if (u == NULL) return(1);
     if (flags & TOSS_WHITE) {
         u->toss_white = 1;
@@ -427,7 +429,7 @@ process_fd(int fd, FILE *outfile, int flags)
 }
 
 static int
-process_file(char *path, int flags)
+process_file(char *path, int flags, const struct ccn_dict *dtags)
 {
     int fd = 0;
     int res = 0;
@@ -463,7 +465,7 @@ process_file(char *path, int flags)
         }
     }
     if (res == 0) {
-        res = process_fd(fd, outfile, flags);
+        res = process_fd(fd, outfile, flags, dtags);
         fflush(outfile);
     }
     if (outfile != NULL && outfile != stdout) {
@@ -491,7 +493,10 @@ main(int argc, char **argv)
 {
     int i;
     int res = 0;
+    int dictres = 0;
     int flags = 0;
+    struct ccn_dict *dtags = (struct ccn_dict *)&ccn_dtag_dict;
+    
     if (argv[1] == NULL)
         usage(argv[0]);
     for (i = 1; argv[i] != 0; i++) {
@@ -502,9 +507,20 @@ main(int argc, char **argv)
             flags |= TOSS_WHITE;
             continue;
         }
+        if (0 == strcmp(argv[i], "-d")) {
+            if (argv[i+1] != 0) {
+                if (0 > ccn_extend_dict(argv[i+1], dtags, &dtags)) {
+                    fprintf(stderr, "Unable to load dtag dictionary %s\n", argv[i+1]);
+                    dictres = -1;
+                }
+                i++;
+            }
+            continue;
+        }
+        if (dictres < 0)
+            exit(1);
         fprintf(stderr, "<!-- Processing %s -->\n", argv[i]);
-        res |= process_file(argv[i], flags);
+        res |= process_file(argv[i], flags, dtags);
     }
     return(res);
 }
-

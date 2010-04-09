@@ -40,10 +40,10 @@ import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.CCNProfile;
-import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -51,7 +51,6 @@ import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.SignedInfo;
 
 
 /**
@@ -486,30 +485,46 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	/**
 	 * Check data "file" - create new one if none exists or "forceWrite" is set.
 	 * Files are always versioned so we can find the latest one.
-	 * TODO - Need to handle data that can take up more than 1 co.
-	 * TODO - Co Should be signed with the "repository's" signature.
 	 * @throws RepositoryException
+	 * @throws IOException 
+	 * @throws ConfigurationException 
 	 */
 	private String checkFile(String fileName, String contents, boolean forceWrite) throws RepositoryException {
 		ContentName name = getPrivateContentName(fileName);
-		ContentObject co = getContent(Interest.last(name, 3, null));
-		
-		if (!forceWrite && co != null) {
-			return new String(co.content());
-		}
-		
-		ContentName versionedName = VersioningProfile.addVersion(name);
-		PublisherPublicKeyDigest publisher = getHandle().keyManager().getDefaultKeyID();
-		PrivateKey signingKey = getHandle().keyManager().getSigningKey(publisher);
-		KeyLocator locator = getHandle().keyManager().getKeyLocator(signingKey);
+		RepositoryInternalInputHandler riih = null;
+		RepositoryInternalFlowControl rifc = null;
+		CCNStringObject so = null;
 		try {
-			co = new ContentObject(versionedName, new SignedInfo(publisher, locator), contents.getBytes(), signingKey);
+			riih = new RepositoryInternalInputHandler(this, _km);
+			rifc = new RepositoryInternalFlowControl(this, riih);	
+			if (!forceWrite) {
+				try {
+					so = new CCNStringObject(name, riih);
+					if (null != so) {
+						String ret = so.string();
+						so.close();
+						return ret;
+					}
+				} catch (Exception ioe) {}
+				if (null != so)
+					so.close();
+			}
+			
+			PublisherPublicKeyDigest publisher = _km.getDefaultKeyID();
+			PrivateKey signingKey = _km.getSigningKey(publisher);
+			KeyLocator locator = _km.getKeyLocator(signingKey);
+			so = new CCNStringObject(name, contents, publisher, locator, rifc);
+			so.update();
 		} catch (Exception e) {
 			Log.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
-			return null;
 		}
-		saveContent(co);
+		if (null != so)
+			so.close();
+		if (null != rifc)
+			rifc.close();
+		if (null != riih)
+			riih.close();
 		return null;
 	}
 

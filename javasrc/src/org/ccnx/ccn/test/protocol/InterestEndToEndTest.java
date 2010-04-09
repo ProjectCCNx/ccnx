@@ -111,8 +111,8 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		System.out.println("doTestFail time: "+duration+" and count:" +count +" should be "+c);
 
 		Assert.assertTrue(count == c);
-
-		Assert.assertFalse(duration < TIMEOUT);
+		//could be slightly less, no guarantees.  API says "more or less" after timeout
+		Assert.assertFalse(duration < TIMEOUT - (int)(TIMEOUT*0.01));
 	}
 
 }

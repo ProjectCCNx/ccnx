@@ -982,7 +982,7 @@ public class CCNNetworkManager implements Runnable {
 					_prefixMgr = new PrefixRegistrationManager(this);
 				}
 				synchronized(_registeredPrefixes) {
-					RegisteredPrefix oldPrefix = _registeredPrefixes.get(filter);
+					RegisteredPrefix oldPrefix = getRegisteredPrefix(filter);
 					if (null != oldPrefix)
 						oldPrefix._refCount++;
 					else {
@@ -1031,7 +1031,7 @@ public class CCNNetworkManager implements Runnable {
 			if (_usePrefixReg) {
 				// Deregister it with ccnd only if the refCount would go to 0
 				synchronized (_registeredPrefixes) {
-					RegisteredPrefix prefix = _registeredPrefixes.get(filter);
+					RegisteredPrefix prefix = getRegisteredPrefix(filter);
 					if (null == prefix || prefix._refCount <= 1) {
 						_registeredPrefixes.remove(filter);
 						ForwardingEntry entry = prefix._forwarding;
@@ -1051,6 +1051,21 @@ public class CCNNetworkManager implements Runnable {
 				}
 			}
 		}
+	}
+	
+	/**
+	 * Merge prefixes so we only add a new one when it doesn't have a
+	 * common ancestor already registered.
+	 * 
+	 * @param prefix
+	 * @return prefix that incorporates or matches this one or null if none found
+	 */
+	protected RegisteredPrefix getRegisteredPrefix(ContentName prefix) {
+		for (ContentName name: _registeredPrefixes.keySet()) {
+			if (name.equals(prefix) || name.isPrefixOf(prefix))
+				return _registeredPrefixes.get(name);		
+		}
+		return null;
 	}
 	
 	protected void write(ContentObject data) throws ContentEncodingException {
