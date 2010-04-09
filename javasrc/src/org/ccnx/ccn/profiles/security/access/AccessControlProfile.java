@@ -8,7 +8,7 @@ import org.ccnx.ccn.protocol.ContentName;
 public class AccessControlProfile implements CCNProfile {
 
 	public static final CommandMarker ACCESS_CONTROL_MARKER = 
-		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "access");
+		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "ACCESS");
 	public static final byte [] ACCESS_CONTROL_MARKER_BYTES = ACCESS_CONTROL_MARKER.getBytes();
 
 	public static final String ROOT_NAME = "ROOT";
