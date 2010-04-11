@@ -861,7 +861,7 @@ public class CCNNetworkManager implements Runnable {
 		try {
 			write(co);
 		} catch (ContentEncodingException e) {
-			Log.warning("Exception in lowest-level put for object {1}! {1}", co.name(), e);
+			Log.warning("Exception in lowest-level put for object {0}! {1}", co.name(), e);
 		}
 		return co;
 	}
