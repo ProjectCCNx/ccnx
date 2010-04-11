@@ -246,6 +246,11 @@ main(int argc, char **argv)
         fprintf(stderr, "Failed to create signed_info (res == %d)\n", res);
         exit(1);
     }
+    
+    /* Set content type */
+    sp.type = content_type;
+    
+    /* Create the signed content object, ready to go */
     temp->length = 0;
     res = ccn_sign_content(ccn, temp, name, &sp, buf, read_res);
     if (res != 0) {
