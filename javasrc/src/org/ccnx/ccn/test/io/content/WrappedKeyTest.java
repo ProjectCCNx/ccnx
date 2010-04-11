@@ -33,6 +33,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.test.CCNTestHelper;
@@ -110,8 +111,10 @@ public class WrappedKeyTest {
 		sr.nextBytes(key);
 		wrappedAESKey = new SecretKeySpec(key, "AES");
 		
-		storedKeyName = new ContentName(testHelper.getClassNamespace(), 
-										ContentName.fromNative("/test/content/File1.txt/_access_/NK").components());
+		ContentName nodeName = testHelper.getClassNamespace().append(
+				ContentName.fromNative("/test/content/File1.txt"));
+		
+		storedKeyName = GroupAccessControlProfile.nodeKeyName(nodeName);
 		setupDone = true;
 		Log.info("Initialized keys for WrappedKeyTest");		
 	}

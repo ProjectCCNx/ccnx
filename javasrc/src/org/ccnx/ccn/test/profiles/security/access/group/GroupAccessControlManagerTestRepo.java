@@ -10,6 +10,7 @@ import junit.framework.Assert;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
@@ -46,7 +47,7 @@ public class GroupAccessControlManagerTestRepo {
 				
 		// create user identities with TestUserData
 		ContentName testPrefix = UserConfiguration.defaultNamespace();
-		userKeyStorePrefix = ContentName.fromNative(testPrefix, "_access_");
+		userKeyStorePrefix = ContentName.fromNative(testPrefix, AccessControlProfile.ACCESS_CONTROL_MARKER_BYTES);
 		userNamespace = ContentName.fromNative(testPrefix, "home");
 		groupNamespace = ContentName.fromNative(testPrefix, "groups");
 		td = new CreateUserData(userKeyStorePrefix, userCount, true, "password".toCharArray(), CCNHandle.open());
