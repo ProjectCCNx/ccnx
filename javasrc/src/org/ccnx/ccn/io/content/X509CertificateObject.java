@@ -175,7 +175,7 @@ public class X509CertificateObject extends CCNNetworkObject<X509Certificate> {
 
 				
 	@Override
-	public ContentType contentType() { return ContentType.KEY; }
+	public ContentType contentType() { return ContentType.DATA; }
 
 	public X509Certificate certificate() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 	

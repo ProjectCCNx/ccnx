@@ -119,7 +119,8 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 			
 			// First time we see COMPONENT_SEPARATOR is the separation point.
 			// Could jump back based on fixed width of timestamp.
-			byte [][] pieces = DataUtils.binarySplit(principalInfoNameComponent, CCNProfile.COMPONENT_SEPARATOR[0]);
+			byte [][] pieces = 
+				DataUtils.binarySplit(principalInfoNameComponent, CCNProfile.COMPONENT_SEPARATOR[0]);
 			if (pieces.length < PI_COMPONENT_COUNT) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
 					Log.warning("Unexpected principal name format - insufficient number of components: " + 
@@ -242,7 +243,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 
 	/**
 	 * Get the name of the node key for a given content node, if there is one.
-	 * This is nodeName/_access_/NK, with a version then added for a specific node key.
+	 * This is nodeName/<access marker>/NK, with a version then added for a specific node key.
 	 * @param nodeName the name of the content node
 	 * @return the name of the corresponding node key
 	 */
@@ -254,7 +255,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	
 	/**
 	 * Get the name of the access control list (ACL) for a given content node.
-	 * This is nodeName/_access_/ACL.
+	 * This is nodeName/<access marker>/ACL.
 	 * @param nodeName the name of the content node
 	 * @return the name of the corresponding ACL
 	 */

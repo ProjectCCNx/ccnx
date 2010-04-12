@@ -14,6 +14,7 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
@@ -47,7 +48,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		Log.setDefaultLevel(Level.WARNING);
 		directoryBase = UserConfiguration.defaultNamespace();
 		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
-		userKeyStorePrefix = ContentName.fromNative(directoryBase, "_access_");
+		userKeyStorePrefix = new ContentName(directoryBase, AccessControlProfile.ACCESS_CONTROL_MARKER_BYTES);
 		userNamespace = ContentName.fromNative(directoryBase, "Users");
 
 		// create user identities with TestUserData		

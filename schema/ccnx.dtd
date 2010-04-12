@@ -47,7 +47,7 @@
 <!ATTLIST BinaryValue   ccnbencoding CDATA #FIXED 'base64Binary'>
 <!ATTLIST BinaryValue	%commonattrs;>
 
-<!ELEMENT Header	(Start, Count, BlockSize, Length, RootDigest, ContentDigest?)>
+<!ELEMENT Header	(Start, Count, BlockSize, Length, ContentDigest?, RootDigest?)>
 <!ATTLIST Header	%commonattrs;>
 
 <!ELEMENT Start		(#PCDATA)>	<!-- nonNegativeInteger -->

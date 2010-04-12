@@ -22,6 +22,7 @@ import java.util.EnumSet;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -29,7 +30,7 @@ import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Header;
 import org.ccnx.ccn.io.content.Header.HeaderObject;
-import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -60,6 +61,11 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * we've read it. 
 	 */
 	protected HeaderObject _header = null;
+	
+	/**
+	 * Temporary backwards-compatibility move...
+	 */
+	protected HeaderObject _oldHeader = null;
 
 	
 	/**
@@ -250,7 +256,8 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * @return true if we have retrieved the header.
 	 */
 	public boolean hasHeader() {
-		return (headerRequested() && _header.available() && !_header.isGone());
+		return (headerRequested() && (_header.available() && !_header.isGone()) || 
+				((null != _oldHeader) && (_oldHeader.available() && !_oldHeader.isGone())));
 	}
 	
 	/**
@@ -258,10 +265,15 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	 * has been successfully retrieved (if the retrieval has started). 
 	 * @throws ContentNotReadyException if we have not requested the header yet.
 	 */
-	public void waitForHeader() throws ContentNotReadyException {
+	public void waitForHeader(Long timeout) throws ContentNotReadyException {
 		if (!headerRequested())
 			throw new ContentNotReadyException("Not enough information available to request header!");
-		_header.waitForData(); // should take timeout
+		_header.waitForData((null != timeout) ? timeout : SystemConfiguration.getDefaultTimeout()); // should take timeout
+		// wait for old header implicitly; probably too long.
+	}
+	
+	public void waitForHeader() throws ContentNotReadyException {
+		waitForHeader(null);
 	}
 	
 	/**
@@ -274,7 +286,10 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 	public Header header() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 		if (!headerRequested())
 			throw new ContentNotReadyException("Not enough information available to request header!");
-		return _header.header();
+		if (_header.available() || (null == _oldHeader)) {
+			return _header.header();
+		}
+		return _oldHeader.header();
 	}
 	
 	/**
@@ -289,10 +304,17 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 		if (headerRequested())
 			return; // done already
 		// Ask for the header, but update it in the background, as it may not be there yet.
-		_header = new HeaderObject(SegmentationProfile.headerName(baseName), null, null, publisher, null, _handle);
+		_header = new HeaderObject(MetadataProfile.headerName(baseName), null, null, publisher, null, _handle);
 		if( Log.isLoggable(Level.INFO ))
 			Log.info("Retrieving header : " + _header.getBaseName() + " in background.");
 		_header.updateInBackground();
+		
+		if (SystemConfiguration.OLD_HEADER_NAMES) {
+			_oldHeader = new HeaderObject(MetadataProfile.oldHeaderName(baseName), null, null, publisher, null, _handle);
+			if( Log.isLoggable(Level.INFO ))
+				Log.info("Retrieving header under old name: " + _oldHeader.getBaseName() + " in background.");
+			_oldHeader.updateInBackground();
+		}
 	}
 
 	/**

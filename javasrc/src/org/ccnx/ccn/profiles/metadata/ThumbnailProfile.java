@@ -22,13 +22,16 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.profiles.CCNProfile;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
  * Access metadata files in the thumbnail namespace
  */
 public class ThumbnailProfile implements CCNProfile {
-	public static final byte [] THUMBNAIL_MARKER = ContentName.componentParseNative(MARKER + "thumbnail" + MARKER);
+	
+	public static final CommandMarker THUMBNAIL_MARKER = 
+		CommandMarker.commandMarker(MetadataProfile.METADATA_NAMESPACE, "thumbnail");
 	
 	private static class ThumbnailNamer implements MetadataProfile.MetaNamer {
 		public ContentName getMetaName(ContentName baseName,ArrayList<byte[]> metaName) {
@@ -42,7 +45,7 @@ public class ThumbnailProfile implements CCNProfile {
 	 * @return the thumbnail meta directory as a ContentName
 	 */
 	public static ContentName thumbnailName(ContentName baseName) {
-		return new ContentName(MetadataProfile.metadataName(baseName), THUMBNAIL_MARKER);
+		return new ContentName(MetadataProfile.metadataName(baseName), THUMBNAIL_MARKER.getBytes());
 	}
 	
 	/**

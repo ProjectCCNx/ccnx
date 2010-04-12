@@ -14,7 +14,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-for i in 14 15; do
+for i in 14 15 18; do
   test -f ../../schema/validation/ccn-test$i.xml || SkipTest missing source
   ccn_xmltoccnb -w - <../../schema/validation/ccn-test$i.xml > test_coders_$i.ccnb
   basicparsetest < test_coders_$i.ccnb || Fail test_coders_$i.ccnb

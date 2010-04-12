@@ -1,13 +1,16 @@
 package org.ccnx.ccn.profiles.security.access;
 
 import org.ccnx.ccn.profiles.CCNProfile;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 
-public class AccessControlProfile {
+public class AccessControlProfile implements CCNProfile {
 
-	public static final String ACCESS_CONTROL_MARKER = CCNProfile.MARKER + "access" + CCNProfile.MARKER;
-	public static final byte [] ACCESS_CONTROL_MARKER_BYTES = ContentName.componentParseNative(ACCESS_CONTROL_MARKER);
+	public static final CommandMarker ACCESS_CONTROL_MARKER = 
+		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "ACCESS");
+	public static final byte [] ACCESS_CONTROL_MARKER_BYTES = ACCESS_CONTROL_MARKER.getBytes();
+
 	public static final String ROOT_NAME = "ROOT";
 	public static final byte [] ROOT_NAME_BYTES = ContentName.componentParseNative(ROOT_NAME);
 	public static final String DATA_KEY_NAME = "DK";

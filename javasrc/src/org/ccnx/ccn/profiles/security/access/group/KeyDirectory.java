@@ -112,7 +112,8 @@ public class KeyDirectory extends EnumeratedNameList {
 	private final ReadWriteLock _otherNamesLock = new ReentrantReadWriteLock();
 
 	/**
-	 * Directory name should be versioned, else we pull the latest version.
+	 * Directory name should be versioned, else we pull the latest version; start
+	 * enumeration.
 	 * @param manager the access control manager.
 	 * @param directoryName the root of the KeyDirectory.
 	 * @param handle
@@ -120,20 +121,32 @@ public class KeyDirectory extends EnumeratedNameList {
 	 */
 	public KeyDirectory(GroupAccessControlManager manager, ContentName directoryName, CCNHandle handle) 
 					throws IOException {
+		this(manager, directoryName, true, handle);
+	}
+	
+	/**
+	 * Directory name should be versioned, else we pull the latest version.
+	 * @param manager the access control manager.
+	 * @param directoryName the root of the KeyDirectory.
+	 * @param handle
+	 * @throws IOException
+	 */
+	public KeyDirectory(GroupAccessControlManager manager, ContentName directoryName, boolean enumerate, CCNHandle handle) 
+					throws IOException {
 		super(directoryName, false, handle);
 		if (null == manager) {
 			stopEnumerating();
 			throw new IllegalArgumentException("Manager cannot be null.");
 		}	
 		_manager = manager;
-		initialize();
+		initialize(enumerate);
 	}
 
 	/**
 	 * We don't start enumerating until we get here.
 	 * @throws IOException
 	 */
-	protected void initialize() throws IOException {
+	protected void initialize(boolean startEnumerating) throws IOException {
 		if (!VersioningProfile.hasTerminalVersion(_namePrefix)) {
 			ContentObject latestVersionObject = 
 					VersioningProfile.getLatestVersion(_namePrefix, 
@@ -154,8 +167,10 @@ public class KeyDirectory extends EnumeratedNameList {
 		
 		// We don't register prefix in constructor anymore; don't start enumerating till we finish
 		// initialize. Note that if you subclass KeyDirectory, will need to override initialize().
-		synchronized(_childLock) {
-			_enumerator.registerPrefix(_namePrefix);
+		if (startEnumerating) {
+			synchronized(_childLock) {
+				_enumerator.registerPrefix(_namePrefix);
+			}
 		}
 	}
 	

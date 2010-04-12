@@ -19,10 +19,12 @@ package org.ccnx.ccn.profiles.metadata;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.profiles.CCNProfile;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -33,8 +35,15 @@ import org.ccnx.ccn.protocol.ContentObject;
  */
 public class MetadataProfile implements CCNProfile {
 
-	public static final byte [] METADATA_MARKER = ContentName.componentParseNative(MARKER + "meta" + MARKER);
+	public static final String METADATA_NAMESPACE = "META";
+	public static final CommandMarker METADATA_MARKER = 
+		CommandMarker.commandMarker(METADATA_NAMESPACE, "M");
+
+	public static final byte [] OLD_METADATA_NAMESPACE = 
+		(CCNProfile.MARKER + "meta" + CCNProfile.MARKER).getBytes();
 	
+	public static final byte [] HEADER_NAME = ContentName.componentParseNative(".header");
+
 	/**
 	 * This interface allows getLatestVersion of metadata within one of the supported meta
 	 * namespaces.
@@ -58,7 +67,7 @@ public class MetadataProfile implements CCNProfile {
 	 * @return metadata path for base file
 	 */
 	public static ContentName metadataName(ContentName baseName) {
-		return new ContentName(baseName, METADATA_MARKER);
+		return new ContentName(baseName, METADATA_MARKER.getBytes());
 	}
 	
 	/**
@@ -107,5 +116,75 @@ public class MetadataProfile implements CCNProfile {
 		if (null == meta)
 			return VersioningProfile.addVersion(unversionedName);
 		return meta.name();
+	}
+
+	/**
+	 * Check to see if we have (a block of) the header. Headers are also versioned.
+	 * @param baseName The name of the object whose header we are looking for (including version, but
+	 * 			not including segmentation information).
+	 * @param headerName The name of the object we think might be a header block (can include
+	 * 			segmentation).
+	 * @return
+	 */
+	public static boolean isHeader(ContentName baseName, ContentName headerName) {
+		if (!baseName.isPrefixOf(headerName)) {
+			return false;
+		}
+		return MetadataProfile.isHeader(headerName);
+	}
+
+	/**
+	 * Slightly more heuristic isHeader; looks to see if this is a segment of something that
+	 * ends in the header name (and version), without knowing the prefix..
+	 */
+	public static boolean isHeader(ContentName potentialHeaderName) {
+		
+		if (SegmentationProfile.isSegment(potentialHeaderName)) {
+			potentialHeaderName = SegmentationProfile.segmentRoot(potentialHeaderName);
+		}
+		
+		// Header itself is likely versioned.
+		if (VersioningProfile.isVersionComponent(potentialHeaderName.lastComponent())) {
+			potentialHeaderName = potentialHeaderName.parent();
+		}
+		
+		if (potentialHeaderName.count() < 2)
+			return false;
+		
+		if (!Arrays.equals(potentialHeaderName.lastComponent(), MetadataProfile.HEADER_NAME))
+			return false;
+		
+		if (!Arrays.equals(potentialHeaderName.component(potentialHeaderName.count()-2), 
+				METADATA_MARKER.getBytes()))
+			return false;
+		
+		return true;
+	}
+
+	/**
+	 * Move header from <content>/<version> as its name to
+	 * <content>/<version>/_metadata_marker_/HEADER/<version>
+	 * where the second version is imposed by the use of versioning
+	 * network objects (i.e. this function should return up through HEADER above)
+	 * Header name generation may want to move to a MetadataProfile.
+	 * 
+	 * @param name
+	 * @return
+	 */
+	public static ContentName headerName(ContentName name) {
+		// Want to make sure we don't add a header name
+		// to a fragment. Go back up to the fragment root.
+		// Currently no header name added.
+		if (SegmentationProfile.isSegment(name)) {
+			name = SegmentationProfile.segmentRoot(name);
+		}
+		return new ContentName(name, METADATA_MARKER.getBytes(), MetadataProfile.HEADER_NAME);
+	}
+	
+	public static ContentName oldHeaderName(ContentName name) {
+		if (SegmentationProfile.isSegment(name)) {
+			name = SegmentationProfile.segmentRoot(name);
+		}
+		return new ContentName(name, OLD_METADATA_NAMESPACE, MetadataProfile.HEADER_NAME);
 	}
 }

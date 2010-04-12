@@ -487,7 +487,7 @@ public class DataUtils {
 	
 	/**
 	 * Finds the index of the first occurrence of byteToFind in array starting at given
-	 * offset, returns array.length if not found.
+	 * offset, returns 01 if not found.
 	 * @param array array to search
 	 * @param startingOffset offset into array to start at
 	 * @param byteToFind byte to seek
@@ -499,11 +499,11 @@ public class DataUtils {
 			if (array[byteindex] == byteToFind)
 				break;
 		}
-		return byteindex;
+		return (byteindex == array.length) ? -1 : byteindex;
 	}
 	
 	/**
-	 * Finds the index of the first occurrence of byteToFind in array, returns array.length if not found.
+	 * Finds the index of the first occurrence of byteToFind in array, returns -1 if not found.
 	 * @param array array to search
 	 * @param byteToFind byte to seek
 	 * @return position in array containing first occurrence of byteToFind, or array.length if not found
@@ -513,29 +513,65 @@ public class DataUtils {
 	}
 	
 	/**
+	 * Finds the index of the last occurrence of byteToFind in array starting at given
+	 * offset, returns -1 if not found.
+	 * @param array array to search
+	 * @param startingOffset offset into array to start at
+	 * @param byteToFind byte to seek
+	 * @return position in array containing first occurrence of byteToFind, or array.length if not found
+	 */
+	public static int byterindex(byte [] array, int startingOffset, byte byteToFind) {
+		int byteindex;
+		for (byteindex = startingOffset; byteindex >= 0; byteindex--) {
+			if (array[byteindex] == byteToFind)
+				break;
+		}
+		return byteindex;
+	}
+	
+	/**
+	 * Finds the last of the first occurrence of byteToFind in array, returns -1 if not found.
+	 * @param array array to search
+	 * @param byteToFind byte to seek
+	 * @return position in array containing first occurrence of byteToFind, or array.length if not found
+	 */
+	public static int byterindex(byte [] array, byte byteToFind) {
+		return byterindex(array, (array != null) ? array.length : 0, byteToFind);
+	}
+	
+
+	/**
 	 * Count how may times a given byte occurs in an array.
 	 */
-	public static int occurcount(byte [] array, byte byteToFind) {
+	public static int occurcount(byte [] array, int startingOffset, int length, byte byteToFind) {
 		int count = 0;
 		if (array == null) 
 			return 0;
 		
-		for (int i=0; i < array.length; ++i) {
+		for (int i=startingOffset; i < length; ++i) {
 			if (array[i] == byteToFind) {
 				count++;
 			}
 		}
 		return count;
 	}
+	
+	public static int occurcount(byte [] array, int length, byte byteToFind) {
+		return occurcount(array, 0, (null != array) ? array.length : -1, byteToFind);
+	}
+
+	public static int occurcount(byte [] array, byte byteToFind) {
+		return occurcount(array, 0, byteToFind);
+	}
 
 	/**
 	 * Akin to String.split for binary arrays; splits on a given byte value.
 	 */
-	public static byte [][] binarySplit(byte [] array, byte splitValue) {
+	public static byte [][] binarySplit(byte [] array, int startingOffset, byte splitValue) {
 		int index = 0;
 		int offset = 0;
-		int lastoffset = 0;
-		int count = occurcount(array, splitValue) + 1;
+		int lastoffset = startingOffset;
+		int count = occurcount(array, startingOffset, splitValue) + 1;
 		if (count == 1) {
 			// no split values; just return the original array
 			return new byte [][]{array};
@@ -543,6 +579,10 @@ public class DataUtils {
 		byte [][] components = new byte[count][];
 		while (index < count) {
 			offset = byteindex(array, lastoffset, splitValue);
+			if (offset < 0) {
+				// last one
+				offset = array.length;
+			}
 			components[index] = new byte[offset - lastoffset];
 			System.arraycopy(array, lastoffset, components[index], 0, components[index].length);
 			lastoffset = offset + 1;
@@ -551,4 +591,13 @@ public class DataUtils {
 		return components;
 	}
 	
+	public static byte [][] binarySplit(byte [] array, byte splitValue) {
+		return binarySplit(array, 0, splitValue);
+	}
+	
+	public static byte [] subarray(byte [] array, int offset, int len) {
+		byte [] newarray = new byte [len];
+		System.arraycopy(array, offset, newarray, 0, len);
+		return newarray;
+	}
 }

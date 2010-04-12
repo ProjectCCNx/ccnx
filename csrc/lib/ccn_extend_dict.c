@@ -34,13 +34,19 @@ qsort_compare_dict_names(const void *x, const void *y)
     return (strcmp(ex->name, ey->name));
 }
 
+/* compare entries based on index, except that an entry with a NULL name
+ * field is always greater than a non-NULL name field, which allows us
+ * to bubble exact duplicates eliminated after the name sort to the end
+ */
 static int
 qsort_compare_dict_indices(const void *x, const void *y)
 {
     const struct ccn_dict_entry *ex = x;
     const struct ccn_dict_entry *ey = y;
-    if (ex->index == ey->index)
-        return (0);
+    if (ex->name == NULL)
+        return ((ey->name == NULL) ? 0 : 1);
+    if (ey->name == NULL) return (-1);
+    if (ex->index == ey->index) return (0);
     return ((ex->index < ey->index) ? -1 : 1);
 }
 
@@ -171,14 +177,27 @@ ccn_extend_dict(const char *dict_file, struct ccn_dict *d, struct ccn_dict **rdp
     }
     ccn_charbuf_destroy(&enamebuf);
     
-    /* check for duplicate names then duplicate index values */
+    /* check for inconsistent duplicate names, mark exact duplicates for removal */
     qsort(ndd, ndc, sizeof(*ndd), qsort_compare_dict_names);
     for (i = 1; i < ndc; i++) {
         if (strcmp(ndd[i-1].name, ndd[i].name) == 0)
-            goto err;
+            if (ndd[i-1].index == ndd[i].index) {
+                free(ndd[i-1].name);
+                ndd[i-1].name = NULL;
+            } else
+                goto err;
     }
+    /* check for inconsistent duplicate index values,
+     * trim the array when we reach the duplicates, marked above,
+     * which sorted to the end.
+     */
     qsort(ndd, ndc, sizeof(*ndd), qsort_compare_dict_indices);
     for (i = 1; i < ndc; i++) {
+        if (ndd[i].name == NULL) {
+            ndc = i;
+            ndd = realloc(ndd, sizeof(*ndd) * ndc);
+            break;
+        }
         if (ndd[i-1].index == ndd[i].index)
             goto err;
     }
