@@ -1511,92 +1511,85 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 		// Now, wrap it under the keys listed in its ACL.
 
-		// Make a key directory. If we give it a versioned name, it will start enumerating it, but won't block.
-		KeyDirectory nodeKeyDirectory = null;
-		NodeKey theNodeKey = null;
-		try {
-			nodeKeyDirectory = new KeyDirectory(this, nodeKeyDirectoryName, handle());
-			theNodeKey = new NodeKey(nodeKeyDirectoryName, nodeKey);
-			// Add a key block for every reader on the ACL. As managers and writers can read, they are all readers.
-			// TODO -- pulling public keys here; could be slow; might want to manage concurrency over acl.
-			for (Link aclEntry : effectiveACL.contents()) {
-				PublicKeyObject entryPublicKey = null;
+		// Make a key directory. If we give it a versioned name. Don't start enumerating; we don't need to.
+		KeyDirectory nodeKeyDirectory = new KeyDirectory(this, nodeKeyDirectoryName, false, handle());
+		NodeKey theNodeKey = new NodeKey(nodeKeyDirectoryName, nodeKey);
 
-				boolean isInGroupManager = false;
-				for (GroupManager gm: _groupManager) {
-					if (gm.isGroup(aclEntry)) {
-						entryPublicKey = gm.getLatestPublicKeyForGroup(aclEntry);
-						isInGroupManager = true;
-						break;
-					}
-				}
-				if (! isInGroupManager) {
-					// Calls update. Will get latest version if name unversioned.
-					if (aclEntry.targetAuthenticator() != null) {
-						entryPublicKey = new PublicKeyObject(aclEntry.targetName(), aclEntry.targetAuthenticator().publisher(), handle());
-					} else {
-						entryPublicKey = new PublicKeyObject(aclEntry.targetName(), handle());
-					}
-				}
-				entryPublicKey.waitForData(SystemConfiguration.getDefaultTimeout());
-				try {
-					nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getVersionedName(), entryPublicKey.publicKey());
-				} catch (VersionMissingException ve) {
-					Log.logException("Unexpected version missing exception for public key " + entryPublicKey.getVersionedName(), ve);
-					throw new IOException("Unexpected version missing exception for public key " + entryPublicKey.getVersionedName() + ": " + ve);
+		// Add a key block for every reader on the ACL. As managers and writers can read, they are all readers.
+		// TODO -- pulling public keys here; could be slow; might want to manage concurrency over acl.
+		for (Link aclEntry : effectiveACL.contents()) {
+			PublicKeyObject entryPublicKey = null;
+
+			boolean isInGroupManager = false;
+			for (GroupManager gm: _groupManager) {
+				if (gm.isGroup(aclEntry)) {
+					entryPublicKey = gm.getLatestPublicKeyForGroup(aclEntry);
+					isInGroupManager = true;
+					break;
 				}
 			}
-
-			// Add a superseded by block to the previous key. Two cases: old effective node key is at the same level
-			// as us (we are superseding it entirely), or we are interposing a key (old key is above or below us).
-			// OK, here are the options:
-			// Replaced node key is a derived node key -- we are interposing an ACL
-			// Replaced node key is a stored node key 
-			//	 -- we are updating that node key to a new version
-			// 			NK/vn replaced by NK/vn+k -- new node key will be later version of previous node key
-			//   -- we don't get called if we are deleting an ACL here -- no new node key is added.
-			if (oldEffectiveNodeKey != null) {
-				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-					Log.finer("GenerateNewNodeKey: old effective node key is not null.");
-				}
-				if (oldEffectiveNodeKey.isDerivedNodeKey()) {
-					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-						Log.finer("GenerateNewNodeKey: old effective node key is derived node key.");
-					}
-					// Interposing an ACL. 
-					// Add a previous key block wrapping the previous key. There is nothing to link to.
-					nodeKeyDirectory.addPreviousKeyBlock(oldEffectiveNodeKey.nodeKey(), nodeKeyDirectoryName, nodeKey);
+			if (! isInGroupManager) {
+				// Calls update. Will get latest version if name unversioned.
+				if (aclEntry.targetAuthenticator() != null) {
+					entryPublicKey = new PublicKeyObject(aclEntry.targetName(), aclEntry.targetAuthenticator().publisher(), handle());
 				} else {
-					// We're replacing a previous version of this key. New version should have a previous key
-					// entry 
-					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-						Log.finer("GenerateNewNodeKey: old effective node key is not a derived node key.");					
-					}
-					try {
-						if (!VersioningProfile.isLaterVersionOf(nodeKeyDirectoryName, oldEffectiveNodeKey.storedNodeKeyName())) {
-							if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-								Log.warning("GenerateNewNodeKey: Unexpected: replacing node key stored at {0} with new node key {1}" + 
-										" but latter is not later version of the former.", oldEffectiveNodeKey.storedNodeKeyName(), nodeKeyDirectoryName);
-							}
-						}
-					} catch (VersionMissingException vex) {
-						if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-							Log.warning("Very unexpected version missing exception when replacing node key : {0}", vex);
-						}
-						// Add a previous key link to the old version of the key.
-						// TODO do we need to add publisher?
-						nodeKeyDirectory.waitForChildren();
-						nodeKeyDirectory.addPreviousKeyLink(oldEffectiveNodeKey.storedNodeKeyName(), null);
-						// OK, just add superseded-by block to the old directory.
-						KeyDirectory.addSupersededByBlock(
-								oldEffectiveNodeKey.storedNodeKeyName(), oldEffectiveNodeKey.nodeKey(), 
-								theNodeKey.storedNodeKeyName(), theNodeKey.storedNodeKeyID(), theNodeKey.nodeKey(), handle());
-					}
+					entryPublicKey = new PublicKeyObject(aclEntry.targetName(), handle());
 				}
 			}
-		} finally {
-			if (null != nodeKeyDirectory) {
-				nodeKeyDirectory.stopEnumerating();
+			entryPublicKey.waitForData(SystemConfiguration.getDefaultTimeout());
+			try {
+				nodeKeyDirectory.addWrappedKeyBlock(nodeKey, entryPublicKey.getVersionedName(), entryPublicKey.publicKey());
+			} catch (VersionMissingException ve) {
+				Log.logException("Unexpected version missing exception for public key " + entryPublicKey.getVersionedName(), ve);
+				throw new IOException("Unexpected version missing exception for public key " + entryPublicKey.getVersionedName() + ": " + ve);
+			}
+		}
+
+		// Add a superseded by block to the previous key. Two cases: old effective node key is at the same level
+		// as us (we are superseding it entirely), or we are interposing a key (old key is above or below us).
+		// OK, here are the options:
+		// Replaced node key is a derived node key -- we are interposing an ACL
+		// Replaced node key is a stored node key 
+		//	 -- we are updating that node key to a new version
+		// 			NK/vn replaced by NK/vn+k -- new node key will be later version of previous node key
+		//   -- we don't get called if we are deleting an ACL here -- no new node key is added.
+		if (oldEffectiveNodeKey != null) {
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
+				Log.finer("GenerateNewNodeKey: old effective node key is not null.");
+			}
+			if (oldEffectiveNodeKey.isDerivedNodeKey()) {
+				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
+					Log.finer("GenerateNewNodeKey: old effective node key is derived node key.");
+				}
+				// Interposing an ACL. 
+				// Add a previous key block wrapping the previous key. There is nothing to link to.
+				nodeKeyDirectory.addPreviousKeyBlock(oldEffectiveNodeKey.nodeKey(), nodeKeyDirectoryName, nodeKey);
+			} else {
+				// We're replacing a previous version of this key. New version should have a previous key
+				// entry 
+				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
+					Log.finer("GenerateNewNodeKey: old effective node key is not a derived node key.");					
+				}
+				try {
+					if (!VersioningProfile.isLaterVersionOf(nodeKeyDirectoryName, oldEffectiveNodeKey.storedNodeKeyName())) {
+						if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
+							Log.warning("GenerateNewNodeKey: Unexpected: replacing node key stored at {0} with new node key {1}" + 
+									" but latter is not later version of the former.", oldEffectiveNodeKey.storedNodeKeyName(), nodeKeyDirectoryName);
+						}
+					}
+				} catch (VersionMissingException vex) {
+					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
+						Log.warning("Very unexpected version missing exception when replacing node key : {0}", vex);
+					}
+					// Add a previous key link to the old version of the key.
+					// TODO do we need to add publisher?
+					nodeKeyDirectory.waitForChildren();
+					nodeKeyDirectory.addPreviousKeyLink(oldEffectiveNodeKey.storedNodeKeyName(), null);
+					// OK, just add superseded-by block to the old directory.
+					KeyDirectory.addSupersededByBlock(
+							oldEffectiveNodeKey.storedNodeKeyName(), oldEffectiveNodeKey.nodeKey(), 
+							theNodeKey.storedNodeKeyName(), theNodeKey.storedNodeKeyID(), theNodeKey.nodeKey(), handle());
+				}
 			}
 		}
 		// Return the key for use, along with its name.
