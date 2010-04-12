@@ -49,6 +49,39 @@ import org.ccnx.ccn.protocol.ContentObject;
  */
 public class SystemConfiguration {
 	
+	/**
+	 * System operation timeout. Very long timeout used to wait for system events
+	 * such as stopping Daemons.
+	 */
+	public final static int SYSTEM_STOP_TIMEOUT = 30000;
+	
+	/**
+	 * Very long timeout for network operations, in msec..
+	 */
+	public final static int MAX_TIMEOUT = 10000;
+	
+	/**
+	 * Extra-long timeout, e.g. to get around reexpression timing issues.
+	 */
+	public final static int EXTRA_LONG_TIMEOUT = 6000;
+	
+	/**
+	 * Longer timeout, for e.g. waiting for a latest version and being sure you
+	 * have anything available locally in msec.
+	 */
+	public final static int LONG_TIMEOUT = 3000;
+	
+	/**
+	 * Medium timeout, used as system default.
+	 */
+	public static final int MEDIUM_TIMEOUT = 1000;
+	
+	/**
+	 * Short timeout; for things you expect to exist or not exist locally.
+	 */
+	public static final int SHORT_TIMEOUT = 300;
+	
+	
 	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES, DUMP_DAEMONCMD, REPO_EXITDUMP};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
 
@@ -75,6 +108,13 @@ public class SystemConfiguration {
 	protected static final String CHILD_WAIT_INTERVAL_PROPERTY = "org.ccnx.EnumList.WaitInterval";
 	public final static int CHILD_WAIT_INTERVAL_DEFAULT = 10000;
 	public static int CHILD_WAIT_INTERVAL = CHILD_WAIT_INTERVAL_DEFAULT;
+	
+	/**
+	 * Default timeout for the flow controller
+	 */
+	protected static final String FC_TIMEOUT_PROPERTY = "org.ccnx.fc.timeout";
+	public final static int FC_TIMEOUT_DEFAULT = MAX_TIMEOUT;
+	public static int FC_TIMEOUT = FC_TIMEOUT_DEFAULT;
 	
 	/**
 	 * How long to wait for a ping timeout in CCNNetworkManager
@@ -123,37 +163,6 @@ public class SystemConfiguration {
 	protected static final String OLD_HEADER_NAMES_ENV_VAR = "CCNX_OLD_HEADER_NAMES";
 	public static boolean OLD_HEADER_NAMES = true;
 	
-	/**
-	 * System operation timeout. Very long timeout used to wait for system events
-	 * such as stopping Daemons.
-	 */
-	public final static int SYSTEM_STOP_TIMEOUT = 30000;
-	
-	/**
-	 * Very long timeout for network operations, in msec..
-	 */
-	public final static int MAX_TIMEOUT = 10000;
-	
-	/**
-	 * Extra-long timeout, e.g. to get around reexpression timing issues.
-	 */
-	public final static int EXTRA_LONG_TIMEOUT = 6000;
-	
-	/**
-	 * Longer timeout, for e.g. waiting for a latest version and being sure you
-	 * have anything available locally in msec.
-	 */
-	public final static int LONG_TIMEOUT = 3000;
-	
-	/**
-	 * Medium timeout, used as system default.
-	 */
-	public static final int MEDIUM_TIMEOUT = 1000;
-	
-	/**
-	 * Short timeout; for things you expect to exist or not exist locally.
-	 */
-	public static final int SHORT_TIMEOUT = 300;
 	
 	/**
 	 * Timeout used for communication with local 'ccnd' for control operations.
@@ -294,6 +303,15 @@ public class SystemConfiguration {
 			// Allow override of default ping timeout.
 		try {
 			PING_TIMEOUT = Integer.parseInt(System.getProperty(PING_TIMEOUT_PROPERTY, Integer.toString(PING_TIMEOUT_DEFAULT)));
+//			Log.fine("PING_TIMEOUT = " + PING_TIMEOUT);
+		} catch (NumberFormatException e) {
+			System.err.println("The ping timeout must be an integer.");
+			throw e;
+		}
+		
+		// Allow override of default flow controller timeout.
+		try {
+			FC_TIMEOUT = Integer.parseInt(System.getProperty(FC_TIMEOUT_PROPERTY, Integer.toString(FC_TIMEOUT_DEFAULT)));
 //			Log.fine("PING_TIMEOUT = " + PING_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The ping timeout must be an integer.");
