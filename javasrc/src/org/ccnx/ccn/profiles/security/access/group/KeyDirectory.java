@@ -133,7 +133,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 */
 	public KeyDirectory(GroupAccessControlManager manager, ContentName directoryName, boolean enumerate, CCNHandle handle) 
 					throws IOException {
-		super(directoryName, enumerate, handle);
+		super(directoryName, false, handle);
 		if (null == manager) {
 			stopEnumerating();
 			throw new IllegalArgumentException("Manager cannot be null.");
