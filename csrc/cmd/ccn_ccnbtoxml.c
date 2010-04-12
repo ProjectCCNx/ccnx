@@ -30,18 +30,21 @@
 
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
+#include <ccn/extend_dict.h>
 
 static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "usage: %s [-h] [-t] [-b] [-s prefix] file ...\n"
+            "usage: %s [-h] [-t] [-b] [-s prefix] [-d dict]* file ...\n"
             " Utility to convert ccn binary encoded data into XML form.\n"
             "  -t      test, when specified, should be only switch\n"
             "  -b      force (base64 or hex) Binary output instead of text\n"
             "  -x      prefer hex output to base64\n"
             "  -s pat  provide a single pattern to be used when "
             "splitting one or more input files\n"
+            "  -d dict use this option one or more times to specify additional\n"
+            "          csv format dictionary files that extend the builtin dtag table\n"
             " switches may not be mixed with file name arguments\n"
             " use - for file to specify stdin\n"
             " in absence of -s option, result is on stdout\n",
@@ -96,7 +99,7 @@ struct ccn_decoder {
 
 
 struct ccn_decoder *
-ccn_decoder_create(int formatting_flags)
+ccn_decoder_create(int formatting_flags, const struct ccn_dict *dtags)
 {
     struct ccn_decoder *d;
     d = calloc(1, sizeof(*d));
@@ -106,8 +109,8 @@ ccn_decoder_create(int formatting_flags)
         d = NULL;
     }
     d->schema = CCN_NO_SCHEMA;
-    d->tagdict = ccn_dtag_dict.dict;
-    d->tagdict_count = ccn_dtag_dict.count;
+    d->tagdict = dtags->dict;
+    d->tagdict_count = dtags->count;
     d->formatting_flags = formatting_flags;
     return(d);
 }
@@ -598,7 +601,7 @@ process_fd(struct ccn_decoder *d, int fd)
 
 
 static int
-process_file(char *path, int formatting_flags)
+process_file(char *path, int formatting_flags, const struct ccn_dict *dtags)
 {
     int fd = 0;
     int res = 0;
@@ -612,7 +615,7 @@ process_file(char *path, int formatting_flags)
         }
     }
 
-    d = ccn_decoder_create(formatting_flags);
+    d = ccn_decoder_create(formatting_flags, dtags);
     res = process_fd(d, fd);
     ccn_decoder_destroy(&d);
 
@@ -650,7 +653,8 @@ set_stdout(struct ccn_decoder *d, enum callback_kind kind, void *data)
 }
 
 static int
-process_split_file(char *base, char *path, int formatting_flags, int *suffix)
+process_split_file(char *base, char *path, int formatting_flags,
+                   const struct ccn_dict *dtags, int *suffix)
 {
     int fd = 0;
     int res = 0;
@@ -668,7 +672,7 @@ process_split_file(char *base, char *path, int formatting_flags, int *suffix)
     cs = calloc(1, sizeof(*cs));
     cs->fileprefix = base;
     cs->fragment = *suffix;
-    d = ccn_decoder_create(formatting_flags);
+    d = ccn_decoder_create(formatting_flags, dtags);
     ccn_decoder_set_callback(d, set_stdout, cs);
     res = process_fd(d, fd);
     *suffix = cs->fragment;
@@ -717,27 +721,34 @@ main(int argc, char **argv)
     int res = 0;
     int suffix = 0;
     struct ccn_decoder *d;
+    struct ccn_dict *dtags = (struct ccn_dict *)&ccn_dtag_dict;
 
-    while ((c = getopt(argc, argv, ":htbqs:x")) != -1) {
+    while ((c = getopt(argc, argv, ":htbqs:xd:")) != -1) {
         switch (c) {
-        case 'h':
-            usage(argv[0]);
-            break;
-        case 't':
-            tflag = 1;
-            break;
-        case 'b':
-            formatting_flags |= FORCE_BINARY;
-            break;
-        case 's':
-            sarg = optarg;
-            break;
-        case 'x':
-            formatting_flags |= PREFER_HEX;
-            break;
-        case '?':
-            fprintf(stderr, "Unrecognized option: -%c\n", optopt);
-            errflag = 1;
+            case 'h':
+                usage(argv[0]);
+                break;
+            case 't':
+                tflag = 1;
+                break;
+            case 'b':
+                formatting_flags |= FORCE_BINARY;
+                break;
+            case 's':
+                sarg = optarg;
+                break;
+            case 'x':
+                formatting_flags |= PREFER_HEX;
+                break;
+            case 'd':
+                if (0 != ccn_extend_dict(optarg, dtags, &dtags)) {
+                    fprintf(stderr, "Unable to load dtag dictionary %s\n", optarg);
+                    errflag = 1;
+                }
+                break;
+            case '?':
+                fprintf(stderr, "Unrecognized option: -%c\n", optopt);
+                errflag = 1;
         }
     }
     if (tflag && (sarg != NULL || formatting_flags != 0))
@@ -747,7 +758,7 @@ main(int argc, char **argv)
         usage(argv[0]);
     
     if (tflag) {
-            d = ccn_decoder_create(1);
+            d = ccn_decoder_create(1, &ccn_dtag_dict);
             res |= process_data(d, test1, sizeof(test1));
             ccn_decoder_destroy(&d);
             return (res);
@@ -756,11 +767,12 @@ main(int argc, char **argv)
     for (suffix = 0; optind < argc; optind++) {
         if (sarg) {
             fprintf(stderr, "<!-- Processing %s into %s -->\n", argv[optind], sarg);
-            res |= process_split_file(sarg, argv[optind], formatting_flags, &suffix);
+            res |= process_split_file(sarg, argv[optind], formatting_flags,
+                                      dtags, &suffix);
         }
         else {
             fprintf(stderr, "<!-- Processing %s -->\n", argv[optind]);
-            res |= process_file(argv[optind], formatting_flags);
+            res |= process_file(argv[optind], formatting_flags, dtags);
         }
     }
     return(res);

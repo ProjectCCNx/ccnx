@@ -9,6 +9,7 @@ import junit.framework.Assert;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.Group;
@@ -39,7 +40,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		Log.setLevel(java.util.logging.Level.INFO);
 		directoryBase = ContentName.fromNative("/test/GroupRecursiveKeyUpdateTestRepo");
 		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
-		userKeyStorePrefix = ContentName.fromNative(directoryBase, "_access_");
+		userKeyStorePrefix = new ContentName(directoryBase, AccessControlProfile.ACCESS_CONTROL_MARKER_BYTES);
 		userNamespace = ContentName.fromNative(directoryBase, "home");
 
 		// create user identities with TestUserData		

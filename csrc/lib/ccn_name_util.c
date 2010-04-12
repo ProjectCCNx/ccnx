@@ -106,14 +106,14 @@ ccn_name_append_numeric(struct ccn_charbuf *c,
 /**
  * Add nonce Component to ccnb-encoded Name
  *
- * Uses %C1.N.n marker.
+ * Uses %C1.N namespace.
  * @returns 0, or -1 for error
  * see doc/technical/NameConventions.html
  */
 int
 ccn_name_append_nonce(struct ccn_charbuf *c)
 {
-    const unsigned char pre[5] = { CCN_MARKER_CONTROL, '.', 'N', '.', 'n' };
+    const unsigned char pre[4] = { CCN_MARKER_CONTROL, '.', 'N', 0 };
     unsigned char b[15];
     
     memcpy(b, pre, sizeof(pre));

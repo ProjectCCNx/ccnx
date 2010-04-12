@@ -272,7 +272,6 @@ public class UserConfiguration {
 		}
 		return ContentName.fromNative(userNamespacePrefix(), userName);
 	}
-
 	
 	public static void setUserNamespacePrefix(String userNamespacePrefix) throws MalformedContentNameStringException {
 		_userNamespacePrefix = (null == userNamespacePrefix) ? null : ContentName.fromNative(userNamespacePrefix);

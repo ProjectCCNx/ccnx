@@ -21,16 +21,16 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileOutputStream;
-import org.ccnx.ccn.profiles.CommandMarkers;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
@@ -129,7 +129,7 @@ public class CCNFileProxy implements CCNFilterListener {
 		if (SegmentationProfile.isSegment(interest.name()) && !SegmentationProfile.isFirstSegment(interest.name())) {
 			Log.info("Got an interest for something other than a first segment, ignoring {0}.", interest.name());
 			return false;
-		} else if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
+		} else if (interest.name().contains(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes())) {
 			try {
 				Log.info("Got a name enumeration request: {0}", interest);
 				return nameEnumeratorResponse(interest);
@@ -137,7 +137,7 @@ public class CCNFileProxy implements CCNFilterListener {
 				Log.warning("IOException generating name enumeration response to {0}: {1}: {2}", interest.name(), e.getClass().getName(), e.getMessage());
 				return false;
 			}
-		} else if (SegmentationProfile.isHeader(interest.name())) {
+		} else if (MetadataProfile.isHeader(interest.name())) {
 			Log.info("Got an interest for the first segment of the header, ignoring {0}.", interest.name());
 			return false;
 		} 
@@ -223,7 +223,7 @@ public class CCNFileProxy implements CCNFilterListener {
 	public boolean nameEnumeratorResponse(Interest interest) throws IOException {
 		
 		boolean result = false;
-		ContentName neRequestPrefix = interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+		ContentName neRequestPrefix = interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 		
 		File directoryToEnumerate = ccnNameToFilePath(neRequestPrefix);
 		
@@ -233,7 +233,7 @@ public class CCNFileProxy implements CCNFilterListener {
 		}
 		
 		NameEnumerationResponse ner = new NameEnumerationResponse();
-		ner.setPrefix(new ContentName(neRequestPrefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION));
+		ner.setPrefix(new ContentName(neRequestPrefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()));
 		
 		Log.info("Directory to enumerate: {0}, last modified {1}", directoryToEnumerate.getAbsolutePath(), new CCNTime(directoryToEnumerate.lastModified()));
 		// stat() the directory to see when it last changed -- will change whenever

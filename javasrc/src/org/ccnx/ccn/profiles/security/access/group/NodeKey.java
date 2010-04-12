@@ -65,7 +65,7 @@ public class NodeKey {
 	public static final byte [] NULL_NODE_KEY_ID = "NULL_KEY".getBytes();
 	
 	/**
-	 * The node this key is associated with, with _access_ information stripped.
+	 * The node this key is associated with, with <access marker> information stripped.
 	 */
 	private ContentName _nodeName;
 	/**

@@ -28,6 +28,8 @@
 
 #include <ccn/header.h>
 
+const unsigned char meta[8] = {CCN_MARKER_CONTROL, '.', 'M', 'E', 'T', 'A', '.', 'M'};
+
 int
 ccn_parse_tagged_required_uintmax(struct ccn_buf_decoder *d, enum ccn_dtag dtag, uintmax_t *result)
 {
@@ -67,23 +69,31 @@ ccn_header_parse(const unsigned char *p, size_t size)
             free(result);
             return (NULL);
         }
-        if (ccn_buf_match_dtag(d, CCN_DTAG_RootDigest)) {
+        if (ccn_buf_match_dtag(d, CCN_DTAG_ContentDigest)) {
             ccn_buf_advance(d);
-            if (0 == ccn_buf_match_blob(d, &blob, &blobsize)) {
-                result->root_digest = ccn_charbuf_create();
-                ccn_charbuf_append(result->root_digest, blob, blobsize);
+            if (ccn_buf_match_blob(d, &blob, &blobsize)) {
+                result->content_digest = ccn_charbuf_create();
+                ccn_charbuf_append(result->content_digest, blob, blobsize);
+                ccn_buf_advance(d);
             }
             ccn_buf_check_close(d);
         }
-        if (ccn_buf_match_dtag(d, CCN_DTAG_ContentDigest)) {
+        if (ccn_buf_match_dtag(d, CCN_DTAG_RootDigest)) {
             ccn_buf_advance(d);
-            if (0 == ccn_buf_match_blob(d, &blob, &blobsize)) {
+            if (ccn_buf_match_blob(d, &blob, &blobsize)) {
                 result->root_digest = ccn_charbuf_create();
-                ccn_charbuf_append(result->content_digest, blob, blobsize);
+                ccn_charbuf_append(result->root_digest, blob, blobsize);
+                ccn_buf_advance(d);
             }
             ccn_buf_check_close(d);
         }
         ccn_buf_check_close(d);
+    } 
+    else
+        d->decoder.state = -__LINE__;
+    
+    if (d->decoder.index != size || !CCN_FINAL_DSTATE(d->decoder.state)) {
+        ccn_header_destroy(&result);
     }
     return (result);
 }
@@ -108,13 +118,17 @@ ccnb_append_header(struct ccn_charbuf *c,
     int res;
     res = ccnb_element_begin(c, CCN_DTAG_Header);
     res |= ccnb_tagged_putf(c, CCN_DTAG_Start, "%u", h->start);
-    res |= ccnb_tagged_putf(c, CCN_DTAG_Start, "%u", h->count);
-    res |= ccnb_tagged_putf(c, CCN_DTAG_Start, "%u", h->block_size);
-    res |= ccnb_tagged_putf(c, CCN_DTAG_Start, "%u", h->length);
-    if (h->root_digest != NULL)
-        res |= ccn_charbuf_append_charbuf(c, h->root_digest);
-    if (h->content_digest != NULL)
-        res |= ccn_charbuf_append_charbuf(c, h->content_digest);
+    res |= ccnb_tagged_putf(c, CCN_DTAG_Count, "%u", h->count);
+    res |= ccnb_tagged_putf(c, CCN_DTAG_BlockSize, "%u", h->block_size);
+    res |= ccnb_tagged_putf(c, CCN_DTAG_Length, "%u", h->length);
+    if (h->content_digest != NULL) {
+        res |= ccnb_append_tagged_blob(c, CCN_DTAG_ContentDigest,
+                                       h->content_digest->buf, h->content_digest->length);
+    }
+    if (h->root_digest != NULL) {
+        res |= ccnb_append_tagged_blob(c, CCN_DTAG_RootDigest,
+                                       h->root_digest->buf, h->root_digest->length);
+    }
     res |= ccnb_element_end(c);
     return (res);
 }
@@ -128,9 +142,22 @@ ccn_get_header(struct ccn *h, struct ccn_charbuf *name, int timeout)
 
     hn = ccn_charbuf_create();
     ccn_charbuf_append_charbuf(hn, name);
-    ccn_name_append_str(hn, "_meta_");
+    /*
+     * Requires consistency with metadata profile in
+     * javasrc/src/org/ccnx/ccn/profiles/metadata/MetadataProfile.java
+     */
+    ccn_name_append(hn, meta, sizeof(meta));
     ccn_name_append_str(hn, ".header");
     res = ccn_resolve_version(h, hn, CCN_V_HIGHEST, timeout);
+    if (res != 0) {
+        /* Failed: try old header name from prior to 04/2010 */
+        ccn_charbuf_reset(hn);
+        ccn_charbuf_append_charbuf(hn, name);
+        ccn_name_append_str(hn, "_meta_");
+        ccn_name_append_str(hn, ".header");
+        res = ccn_resolve_version(h, hn, CCN_V_HIGHEST, timeout);
+    }
+    
     if (res == 0) {
         struct ccn_charbuf *ho = ccn_charbuf_create();
         struct ccn_parsed_ContentObject pcobuf = { 0 };

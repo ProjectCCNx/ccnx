@@ -14,29 +14,29 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
-package org.ccnx.ccn.profiles.namespace;
+package org.ccnx.ccn.profiles.context;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CCNProfile;
-import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
-public class NamespaceProfile implements CCNProfile {
+/**
+ * This is the very tiniest beginning of naming and scoping for things like
+ *  /localhost, /thisroom, etc...
+ */
+public class ContextualNamesProfile implements CCNProfile {
 
-	public static final CommandMarker NAMESPACE_POLICY_MARKER = 
-		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "policy");
-	public static final byte [] NAMESPACE_POLICY_MARKER_BYTES = NAMESPACE_POLICY_MARKER.getBytes();
-	protected static final ContentName POLICY_POSTFIX_NAME = 
-		new ContentName(new byte [][] {NAMESPACE_POLICY_MARKER_BYTES});
-
-	/**
-	 * Return the set of name components to add to get the policy path
-	 */
-	public static ContentName policyPostfix() {
-		return POLICY_POSTFIX_NAME;
-	}
+	public static final ContentName LOCALHOST;
 	
-	public static ContentName policyNamespace(ContentName name) {
-		return name.append(POLICY_POSTFIX_NAME);
+	static {
+		ContentName tmpLH;
+		try {
+			tmpLH = ContentName.fromURI("ccnx:/localhost");
+		} catch (MalformedContentNameStringException e) {
+			tmpLH = null;
+			Log.warning("Serious configuration error: cannot parse built-in name for localhost!");
+		}	
+		LOCALHOST = tmpLH;
 	}
-	
 }

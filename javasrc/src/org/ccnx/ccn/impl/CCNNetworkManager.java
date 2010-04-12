@@ -216,8 +216,8 @@ public class CCNNetworkManager implements Runnable {
 			long minFilterRefreshTime = PERIOD + ourTime;
 			if (_usePrefixReg) {
 				synchronized (_registeredPrefixes) {
-					if( Log.isLoggable(Level.FINE) )
-						Log.fine("Refresh registration.  size: " + _registeredPrefixes.size());
+					if( Log.isLoggable(Level.FINEST) )
+						Log.finest("Refresh registration.  size: " + _registeredPrefixes.size());
 					for (ContentName prefix : _registeredPrefixes.keySet()) {
 						RegisteredPrefix rp = _registeredPrefixes.get(prefix);
 						if (null != rp._forwarding && rp._lifetime != -1 && rp._nextRefresh != -1) {
@@ -861,7 +861,7 @@ public class CCNNetworkManager implements Runnable {
 		try {
 			write(co);
 		} catch (ContentEncodingException e) {
-			Log.warning("Exception in lowest-level put for object {1}! {1}", co.name(), e);
+			Log.warning("Exception in lowest-level put for object {0}! {1}", co.name(), e);
 		}
 		return co;
 	}
@@ -982,7 +982,7 @@ public class CCNNetworkManager implements Runnable {
 					_prefixMgr = new PrefixRegistrationManager(this);
 				}
 				synchronized(_registeredPrefixes) {
-					RegisteredPrefix oldPrefix = _registeredPrefixes.get(filter);
+					RegisteredPrefix oldPrefix = getRegisteredPrefix(filter);
 					if (null != oldPrefix)
 						oldPrefix._refCount++;
 					else {
@@ -1031,7 +1031,7 @@ public class CCNNetworkManager implements Runnable {
 			if (_usePrefixReg) {
 				// Deregister it with ccnd only if the refCount would go to 0
 				synchronized (_registeredPrefixes) {
-					RegisteredPrefix prefix = _registeredPrefixes.get(filter);
+					RegisteredPrefix prefix = getRegisteredPrefix(filter);
 					if (null == prefix || prefix._refCount <= 1) {
 						_registeredPrefixes.remove(filter);
 						ForwardingEntry entry = prefix._forwarding;
@@ -1051,6 +1051,21 @@ public class CCNNetworkManager implements Runnable {
 				}
 			}
 		}
+	}
+	
+	/**
+	 * Merge prefixes so we only add a new one when it doesn't have a
+	 * common ancestor already registered.
+	 * 
+	 * @param prefix
+	 * @return prefix that incorporates or matches this one or null if none found
+	 */
+	protected RegisteredPrefix getRegisteredPrefix(ContentName prefix) {
+		for (ContentName name: _registeredPrefixes.keySet()) {
+			if (name.equals(prefix) || name.isPrefixOf(prefix))
+				return _registeredPrefixes.get(name);		
+		}
+		return null;
 	}
 	
 	protected void write(ContentObject data) throws ContentEncodingException {

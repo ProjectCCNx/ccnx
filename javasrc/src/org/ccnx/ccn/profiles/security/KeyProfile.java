@@ -17,11 +17,9 @@
 package org.ccnx.ccn.profiles.security;
 
 import java.io.IOException;
-import java.util.logging.Level;
 
-import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CCNProfile;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -32,9 +30,11 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class KeyProfile implements CCNProfile {
 	
-	public static final byte [] KEY_NAME_COMPONENT = ContentName.componentParseNative("KEYS");
-	public static final byte [] KEY_ID_PREFIX = ContentName.componentParseNative("keyid" + CCNProfile.COMPONENT_SEPARATOR_STRING);
-	public static byte [] KEY_ID_POSTFIX = {}; // probably empty
+	public static final byte [] KEY_NAME_COMPONENT = ContentName.componentParseNative("KEY");
+	public static final byte [] KEYS_NAME_COMPONENT = ContentName.componentParseNative("KEYS");
+	
+	public static final CommandMarker KEY_NAME_COMPONENT_MARKER = 
+		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "K");
 	
 	/**
 	 * This builds a name component which refers to the digest
@@ -54,33 +54,14 @@ public class KeyProfile implements CCNProfile {
 			throw new IllegalArgumentException("keyID must not be null!");
 		}
 		
-		byte [] encodedKeyIDBytes = DataUtils.base64Encode(keyID);
-		
-		byte [] component = new byte[KEY_ID_PREFIX.length + KEY_ID_POSTFIX.length + 
-		                             encodedKeyIDBytes.length];
-		int offset = 0;
-		System.arraycopy(KEY_ID_PREFIX, 0, component, offset, KEY_ID_PREFIX.length);
-		offset += KEY_ID_PREFIX.length;
-		System.arraycopy(encodedKeyIDBytes, 0, component, offset, encodedKeyIDBytes.length);
-		offset += encodedKeyIDBytes.length;
-		System.arraycopy(KEY_ID_POSTFIX, 0, component, offset, KEY_ID_POSTFIX.length);
-		
-		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-			Log.info("keyIDToNameComponent key id {0}, base64 {1}, result {2} as uri {3}", 
-					DataUtils.printHexBytes(keyID), 
-					new String(encodedKeyIDBytes),
-					ContentName.componentPrintNative(component),
-					ContentName.componentPrintURI(component));
-		}
-		
-		return component;
+		return KEY_NAME_COMPONENT_MARKER.addBinaryData(keyID);
 	}
 	
 	/**
 	 * Helper method to return key ID name component as a string.
 	 */
 	public static String keyIDToNameComponentAsString(PublisherPublicKeyDigest keyID) {
-		return ContentName.componentPrintNative(keyIDToNameComponent(keyID));
+		return ContentName.componentPrintURI(keyIDToNameComponent(keyID));
 	}
 	
 	/**
@@ -140,9 +121,7 @@ public class KeyProfile implements CCNProfile {
 	public static byte[] getKeyIDFromNameComponent(byte[] childName) throws IOException {
 		if (!KeyProfile.isKeyNameComponent(childName))
 			return null;
-		byte [] base64keyid = new byte[childName.length - KEY_ID_PREFIX.length];
-		System.arraycopy(childName, KEY_ID_PREFIX.length, base64keyid, 0, base64keyid.length);
-		byte [] keyid = DataUtils.base64Decode(base64keyid);
+		byte [] keyid = CommandMarker.extractApplicationData(childName);
 		return keyid;
 	}
 
@@ -152,6 +131,6 @@ public class KeyProfile implements CCNProfile {
 	 * @return
 	 */
 	public static boolean isKeyNameComponent(byte [] wnkNameComponent) {
-		return DataUtils.isBinaryPrefix(KEY_ID_PREFIX, wnkNameComponent);
+		return KEY_NAME_COMPONENT_MARKER.isMarker(wnkNameComponent);
 	}
 }

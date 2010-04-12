@@ -86,8 +86,8 @@
     <xs:element name="Count" type="xs:nonNegativeInteger"/>
     <xs:element name="BlockSize" type="xs:nonNegativeInteger"/>
     <xs:element name="Length" type="xs:nonNegativeInteger"/>
-    <xs:element name="RootDigest" type="Base64BinaryType" minOccurs="0"/>
     <xs:element name="ContentDigest" type="Base64BinaryType" minOccurs="0"/>
+    <xs:element name="RootDigest" type="Base64BinaryType" minOccurs="0"/>
   </xs:sequence>
 </xs:complexType>
 

@@ -29,7 +29,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
-import org.ccnx.ccn.profiles.CommandMarkers;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
@@ -203,7 +203,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 
 			Log.info("Registered Prefix: {0}", prefix);
 
-			ContentName prefixMarked = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+			ContentName prefixMarked = 
+				new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 			
 			//we have minSuffixComponents to account for sig, version, seg and digest
 			Interest pi = Interest.constructInterest(prefixMarked, null, null, null, 4, null);
@@ -266,7 +267,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 	
 	public Interest handleContent(ContentObject c, Interest interest) {
 		
-		if (interest.name().contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
+		if (interest.name().contains(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes())) {
 			//the NEMarker is in the name...  good!
 		} else {
 			//COMMAND_MARKER_BASIC_ENUMERATION missing...  we have a problem
@@ -275,7 +276,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		}
 		
 		synchronized(_currentRequests) {
-			ContentName prefix = interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+			ContentName prefix = interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 			NERequest ner = getCurrentRequest(prefix);
 		
 			//need to make sure the prefix is still registered
@@ -324,7 +325,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						//the interest has a response ID in it already...  skip making new base interest
 					} else {
 						//also need to add this responder to the exclude list to find more responders
-						ContentName prefixWithMarker = new ContentName(prefix, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+						ContentName prefixWithMarker = 
+							new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 						Exclude excludes = interest.exclude();
 						if(excludes==null)
 							excludes = new Exclude();
@@ -359,7 +361,8 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 						names.add(l.targetName());
 					}
 					//strip off NEMarker before passing through callback
-					callback.handleNameEnumerator(interest.name().cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION), names);
+					callback.handleNameEnumerator(
+							interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()), names);
 				} catch(ContentDecodingException e) {
 					Log.warning("Error parsing Collection from ContentObject in CCNNameEnumerator");
 					Log.warningStackTrace(e);
@@ -400,11 +403,11 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		name = interest.name().clone();
 		nem = new NameEnumerationResponseMessage();
 		//Verify NameEnumeration Marker is in the name
-		if (!name.contains(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION)) {
+		if (!name.contains(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes())) {
 			//Skip...  we don't handle these
 		} else {
-			name = name.cut(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
-			responseName = new ContentName(name, CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+			name = name.cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
+			responseName = new ContentName(name, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 
 			boolean skip = false;
 
@@ -619,7 +622,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 		ContentName responseName = null;
 
 		try {
-			int index = name.containsWhere(CommandMarkers.COMMAND_MARKER_BASIC_ENUMERATION);
+			int index = name.containsWhere(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 			ContentName prefix = name.subname(index+1, name.count());
 			if(VersioningProfile.hasTerminalVersion(prefix))
 				responseName = VersioningProfile.cutLastVersion(prefix);

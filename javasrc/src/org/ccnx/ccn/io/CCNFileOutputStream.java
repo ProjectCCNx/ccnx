@@ -31,6 +31,7 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.Header;
 import org.ccnx.ccn.io.content.Header.HeaderObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -127,7 +128,7 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 			byte [] contentTreeAuthenticator) throws ContentEncodingException, IOException  {
 
 
-		ContentName headerName = SegmentationProfile.headerName(name);
+		ContentName headerName = MetadataProfile.headerName(name);
 		
 		// Really want to query the segmenter about the last block we wrote.
 		Header headerData = new Header(SegmentationProfile.baseSegment(), this._baseNameIndex, blockSize, contentLength, contentDigest, contentTreeAuthenticator);
