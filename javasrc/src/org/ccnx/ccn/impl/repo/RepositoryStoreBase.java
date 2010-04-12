@@ -164,7 +164,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 		if (null != localName) {
 			RepositoryInternalInputHandler riih = null;
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
-				Log.info("REPO: reading policy from network: {0}/{1}/{2}", REPO_NAMESPACE, localName, REPO_POLICY);
+				Log.info(Log.FAC_REPO, "REPO: reading policy from network: {0}/{1}/{2}", REPO_NAMESPACE, localName, REPO_POLICY);
 			try {
 				riih = new RepositoryInternalInputHandler(this, km);
 				ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), localName);

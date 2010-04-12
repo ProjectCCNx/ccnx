@@ -286,7 +286,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	private void startPipeline() {
 		synchronized (inOrderSegments) {
 			if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: starting pipelining");
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: starting pipelining");
 
 			_pipelineStartTime = System.currentTimeMillis();
 			if (SystemConfiguration.PIPELINE_STATS)
@@ -300,27 +300,27 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			}
 
 			if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: BaseName for pipeline: {0} base name: {1}", _basePipelineName, _baseName);
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: BaseName for pipeline: {0} base name: {1}", _basePipelineName, _baseName);
 
 			if (_currentSegment!=null) {
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: we already have the first segment...  start from there: {0}", _currentSegment.name());
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we already have the first segment...  start from there: {0}", _currentSegment.name());
 				//we already have the starting segment...
 
 				//is the first segment the last one?
 				if (SegmentationProfile.isLastSegment(_currentSegment)) {
 					//this is the last segment...  don't pipeline
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: we already have the last segment...  don't need to pipeline (returning)");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we already have the last segment...  don't need to pipeline (returning)");
 					return;
 				} else {
 					//this isn't the last segment, start up pipelining...  only ask for next segment to start
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: this isn't the last segment...  need to start up pipelining");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: this isn't the last segment...  need to start up pipelining");
 				}
 			} else {
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: need to get the first segment: startingSegmentNumber={0}",_startingSegmentNumber);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: need to get the first segment: startingSegmentNumber={0}",_startingSegmentNumber);
 			}
 
 			segmentToGet = nextSegmentNumber();
@@ -332,11 +332,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				_sentInterests.add(interest);
 				_lastRequestedPipelineSegment = segmentToGet;
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: expressed interest for segment {0} in startPipeline(): {1}", segmentToGet, interest);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: expressed interest for segment {0} in startPipeline(): {1}", segmentToGet, interest);
 			} catch(IOException e) {
 				//could not express interest for next segment...  logging the error
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING) )
-					Log.warning("Failed to express interest for pipelining segments in CCNAbstractInputStream:  Interest = {0}", interest.name());
+					Log.warning(Log.FAC_PIPELINE, "Failed to express interest for pipelining segments in CCNAbstractInputStream:  Interest = {0}", interest.name());
 			}
 		}
 	}
@@ -354,18 +354,18 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		if(rr > -1) {
 			//there is a reader waiting
 			if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: there is a reader waiting, we should wait unless we have their segment");
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: there is a reader waiting, we should wait unless we have their segment");
 			if(returnedSegment == rr) {
 				//this is the segment they want, we should just finish
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: we are working on their segment...  we should finish!");
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we are working on their segment...  we should finish!");
 				//break;
 			} else {
 				if (haveSegmentBuffered(rr)) {
 					//we have their segment
 					//this isn't their segment, but the one they want is here. we should defer
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: we are deferring until they are done");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we are deferring until they are done");
 					try {
 						inOrderSegments.wait();
 						//readerReady.wait();
@@ -374,13 +374,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						}
 					} catch (InterruptedException e) {
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-							Log.info("PIPELINE: we can go back to processing");
+							Log.info(Log.FAC_PIPELINE, "PIPELINE: we can go back to processing");
 						//break;
 					}
 				} else {
 					//we don't have their segment, we should keep going
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: we don't have their segment, keep processing this one.");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we don't have their segment, keep processing this one.");
 
 				}
 			}
@@ -391,7 +391,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		synchronized(inOrderSegments) {
 			if (SegmentationProfile.isLastSegment(co)) {
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: we just got the last segment...");
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we just got the last segment...");
 				_lastSegmentNumber = returnedSegment;
 			}
 			//}
@@ -401,7 +401,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				segNum = SegmentationProfile.getSegmentNumber(i.name());
 				if(segNum == returnedSegment || (_lastSegmentNumber > -1 && segNum > _lastSegmentNumber)) {
 					if(Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
-						Log.info("PIPELINE: cancelling interest for segment "+SegmentationProfile.getSegmentNumber(i.name())+" Interest: "+i);
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: cancelling interest for segment "+SegmentationProfile.getSegmentNumber(i.name())+" Interest: "+i);
 					}
 					_handle.cancelInterest(i, this);
 					toRemove.add(i);
@@ -414,7 +414,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 		synchronized(inOrderSegments) {
 			if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: received pipeline segment: {0}", co.name());
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: received pipeline segment: {0}", co.name());
 
 			/*
 			synchronized(readySegment) {
@@ -430,21 +430,21 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			if (returnedSegment == _nextPipelineSegment) {
 				_totalReceived++;
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: we got the segment ({0}) we were expecting!", returnedSegment);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we got the segment ({0}) we were expecting!", returnedSegment);
 				if(waitingSegment!=-1)
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: someone is waiting for segment: {0}", waitingSegment);
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: someone is waiting for segment: {0}", waitingSegment);
 				//this is the next segment in order
 				inOrderSegments.add(co);
 				_lastInOrderSegment = returnedSegment;
 				//do we have any out of order segments to move over?
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
-					Log.info("PIPELINE: before checking ooos:" );
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: before checking ooos:" );
 					printSegments();
 				}
 				if (outOfOrderSegments.size() > 0 ) {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: we have out of order segments to check");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we have out of order segments to check");
 
 					//this was a hole..  cancel its other interests
 
@@ -455,14 +455,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						} else {
 							//the first one isn't what we wanted..
 							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
-								Log.info("PIPELINE: we have "+SegmentationProfile.getSegmentNumber(outOfOrderSegments.get(0).name())+" but need "+nextInOrderSegmentNeeded()+" breaking from loop, we don't have the one we need");
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: we have "+SegmentationProfile.getSegmentNumber(outOfOrderSegments.get(0).name())+" but need "+nextInOrderSegmentNeeded()+" breaking from loop, we don't have the one we need");
 							}
 							break;
 						}
 					}
 				}
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
-					Log.info("PIPELINE: after checking ooos: ");
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: after checking ooos: ");
 					printSegments();
 				}
 
@@ -471,15 +471,15 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 			} else {
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: we got segment {0} an Out of Order segment...  we were expecting segment {1}", returnedSegment, _nextPipelineSegment);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we got segment {0} an Out of Order segment...  we were expecting segment {1}", returnedSegment, _nextPipelineSegment);
 				//this segment is out of order
 				//make sure it wasn't a previous segment that we don't need any more...
 				if (_nextPipelineSegment > returnedSegment) {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: this is a previous segment...  drop");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: this is a previous segment...  drop");
 				} else {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: this is a pipeline segment, add to outOfOrderSegment queue");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: this is a pipeline segment, add to outOfOrderSegment queue");
 					_totalReceived++;
 					_holes++;
 					int i = 0;
@@ -492,7 +492,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 					//now we have a hole to fill
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-						Log.info("PIPELINE: we got a segment out of order, need to fill a hole at "+nextInOrderSegmentNeeded());
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we got a segment out of order, need to fill a hole at "+nextInOrderSegmentNeeded());
 					attemptHoleFilling(_nextPipelineSegment);
 				}
 			}
@@ -500,7 +500,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 			_nextPipelineSegment = nextInOrderSegmentNeeded();
 			if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: the next segment needed is {0}", _nextPipelineSegment);
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: the next segment needed is {0}", _nextPipelineSegment);
 			synchronized(incoming) {
 				processingSegment = -1;
 			}
@@ -508,7 +508,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			if(waitingThread!=null && returnedSegment == waitingSegment) {
 				inOrderSegments.notifyAll();
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-					Log.info("PIPELINE: notifyAll: min sleep {0}", (System.currentTimeMillis()-waitSleep));
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: notifyAll: min sleep {0}", (System.currentTimeMillis()-waitSleep));
 				try {
 					inOrderSegments.wait();
 				} catch (InterruptedException e) {
@@ -531,10 +531,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					s = s + " "+SegmentationProfile.getSegmentNumber(i.name());
 				s = s + " ]";
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: "+s);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: "+s);
 				for(Interest i: _sentInterests)
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: {0}", i.name());
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: {0}", i.name());
 			}
 
 			Interest i = null;
@@ -544,7 +544,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				i = null;
 
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: _lastSegmentNumber = {0}", _lastSegmentNumber);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: _lastSegmentNumber = {0}", _lastSegmentNumber);
 				if (_lastSegmentNumber == -1) {
 					//we don't have the last segment already...
 					i = SegmentationProfile.segmentInterest(_basePipelineName, _lastRequestedPipelineSegment + 1, _publisher);
@@ -554,14 +554,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						_sentInterests.add(i);
 						_lastRequestedPipelineSegment++;
 						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-							Log.info("PIPELINE: requested segment "+_lastRequestedPipelineSegment +" ("+(SystemConfiguration.PIPELINE_SIZE - _sentInterests.size())+" tokens)");
+							Log.info(Log.FAC_PIPELINE, "PIPELINE: requested segment "+_lastRequestedPipelineSegment +" ("+(SystemConfiguration.PIPELINE_SIZE - _sentInterests.size())+" tokens)");
 					} catch (IOException e) {
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING) )
-							Log.warning("failed to express interest for CCNAbstractInputStream pipeline");
+							Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline");
 					}
 				} else {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: setting doneAdvancing to true");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: setting doneAdvancing to true");
 					doneAdvancing = true;
 				}
 			}
@@ -586,20 +586,20 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		//holes...  just ask for the next segment we are expecting if we haven't already
 
 		if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-			Log.info("PIPELINE: checking for a hole at segment: {0}", hole);
+			Log.info(Log.FAC_PIPELINE, "PIPELINE: checking for a hole at segment: {0}", hole);
 
 		//first check the incoming segments to see if it is here already
 		synchronized (incoming) {
 			for (IncomingSegment i: incoming)
 				if(i.segmentNumber == hole) {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: segment {0} is already here, just needs to be processed", hole);
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: segment {0} is already here, just needs to be processed", hole);
 					return;
 				}
 
 			if(processingSegment != -1 && hole == processingSegment) {
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: the segment is being processed... not a hole.");
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: the segment is being processed... not a hole.");
 				return;
 			}
 
@@ -625,12 +625,12 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 					if(elapsed1 == -1) {
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-							Log.info("PIPELINE: base segment is there, but the express time is -1, it must be getting processed");
+							Log.info(Log.FAC_PIPELINE, "PIPELINE: base segment is there, but the express time is -1, it must be getting processed");
 						return;
 					}
 
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: base interest is already there, try adding excludes elapsed time = {0} interest: {1}", elapsed1, expressed);					
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: base interest is already there, try adding excludes elapsed time = {0} interest: {1}", elapsed1, expressed);					
 				} else {
 					// base interest isn't there, the the exclude could be.
 				}
@@ -651,38 +651,38 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				for(Interest expInt: _sentInterests) {
 					tempseg = SegmentationProfile.getSegmentNumber(expInt.name());
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: checking if this interest {0} is for our hole at {1}", tempseg, hole);
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: checking if this interest {0} is for our hole at {1}", tempseg, hole);
 					if (tempseg == hole) {
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-							Log.info("PIPELINE: this is a match!  does it have excludes?");
+							Log.info(Log.FAC_PIPELINE, "PIPELINE: this is a match!  does it have excludes?");
 						//this is the interest we want to look at
 						if(expInt.exclude()!=null) {
 							if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-								Log.info("PIPELINE: yep! it is a holefilling attempt");
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: yep! it is a holefilling attempt");
 							ec = (ExcludeComponent)expInt.exclude().value(0);
 
 							excludedSegment = SegmentationProfile.getSegmentNumber(ec.getBytes());
 							attempt = (int) (excludedSegment - hole);
 							if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-								Log.info("PIPELINE: this is attempt: {0}", attempt);
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: this is attempt: {0}", attempt);
 
 							if (attempt < SystemConfiguration.PIPELINE_SEGMENTATTEMPTS) {
 								if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-									Log.info("PIPELINE: we have more attempts that we can try... ");
+									Log.info(Log.FAC_PIPELINE, "PIPELINE: we have more attempts that we can try... ");
 								toDelete = expInt;
 								ex = new Exclude();
 								ex.add(new byte[][]{SegmentationProfile.getSegmentNumberNameComponent(hole+attempt+1)});
 								i.exclude(ex);
 								if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-									Log.info("PIPELINE: going to express the next attempt: {0}", i);
+									Log.info(Log.FAC_PIPELINE, "PIPELINE: going to express the next attempt: {0}", i);
 							} else {
 								if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-									Log.info("PIPELINE: we have tried as many times as we can...  break here");
+									Log.info(Log.FAC_PIPELINE, "PIPELINE: we have tried as many times as we can...  break here");
 								return;
 							}
 						} else {
 							if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-								Log.info("PIPELINE: this isn't a holefilling attempt, must be the base interest");
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: this isn't a holefilling attempt, must be the base interest");
 						}
 						break;
 					} else {
@@ -696,19 +696,19 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 				if(toDelete!=null) {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: we can try again to fill the hole!");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we can try again to fill the hole!");
 					expressed = toDelete;
 					if(expressed.userTime == -1) {
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-							Log.info("PIPELINE: hole filling segment is there, but the express time is -1, it must be getting processed");
+							Log.info(Log.FAC_PIPELINE, "PIPELINE: hole filling segment is there, but the express time is -1, it must be getting processed");
 						return;
 					} else {
 						elapsed2 = System.currentTimeMillis() - expressed.userTime;
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-							Log.info("PIPELINE: elapsed2 time {0}", elapsed2);
+							Log.info(Log.FAC_PIPELINE, "PIPELINE: elapsed2 time {0}", elapsed2);
 						if(elapsed2 > avgResponseTime * SystemConfiguration.PIPELINE_RTTFACTOR && avgResponseTime > -1) {
 							if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-								Log.info("PIPELINE: expressing the next interest! {0}", i);
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: expressing the next interest! {0}", i);
 							i.userTime = System.currentTimeMillis();
 							_handle.expressInterest(i, this);
 							_sentInterests.add(index2, i);
@@ -719,23 +719,23 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 							adjustAvgResponseTimeForHole();
 
 							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
-								Log.info("PIPELINE: expressed: {0} deleted: {1}", i, toDelete);
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: expressed: {0} deleted: {1}", i, toDelete);
 
 								Log.info("PIPELINE: current expressed interests: ");
 								for(Interest p: _sentInterests)
-									Log.info("PIPELINE: {0}", p);
+									Log.info(Log.FAC_PIPELINE, "PIPELINE: {0}", p);
 							}
 							return;
 						} else {
 							if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-								Log.info("PIPELINE: need to give the earlier attempt a chance to work");
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: need to give the earlier attempt a chance to work");
 							return;
 						}
 					}
 
 				} else {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: we don't have any holefilling attempts... for {0}", hole);
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we don't have any holefilling attempts... for {0}", hole);
 					if (index == -1) {
 						// the base interest wasn't even there (neither was the
 						// hole filling one)
@@ -763,17 +763,17 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					}
 
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: requested segment {0} to fill hole: {1} with Interest: {2}", hole, i.name(), i);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: requested segment {0} to fill hole: {1} with Interest: {2}", hole, i.name(), i);
 					return;
 				} else {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: we need to wait longer to see if the original interest will return the segment");
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we need to wait longer to see if the original interest will return the segment");
 				}
 			}
 			//}
 		} catch (IOException e) {
 			if( Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING) )
-			Log.warning("failed to express interest for CCNAbstractInputStream pipeline");
+			Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline");
 		}
 	}
 
@@ -808,7 +808,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 				if(outOfOrderSegments.size() > 0) {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: we have out of order segments...");
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we have out of order segments...");
 					printSegments();
 				}
 			}
@@ -827,7 +827,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				co = inOrderSegments.get(i);
 				if (SegmentationProfile.getSegmentNumber(co.name()) == segmentNumber) {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: have segment {0} in iOS, return true.", segmentNumber);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: have segment {0} in iOS, return true.", segmentNumber);
 					return true;
 				}
 			}
@@ -837,14 +837,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				if (SegmentationProfile.getSegmentNumber(co.name()) == segmentNumber) {
 					//this is the segment we wanted
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: segment {0} is in our oOOS queue, return true", segmentNumber);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: segment {0} is in our oOOS queue, return true", segmentNumber);
 					return true;
 
 				} else {
 					if(SegmentationProfile.getSegmentNumber(co.name()) > segmentNumber) {
 						//we have a hole to fill...
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: our out of order segments are past the requested segment...  we have a hole");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: our out of order segments are past the requested segment...  we have a hole");
 						//attemptHoleFilling();
 						attemptHoleFilling(segmentNumber);
 						break;
@@ -862,7 +862,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				co = inOrderSegments.remove(0);
 				if (SegmentationProfile.getSegmentNumber(co.name()) == segmentNumber) {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: had segment {0} in iOS, setting current.", segmentNumber);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: had segment {0} in iOS, setting current.", segmentNumber);
 					_currentSegment = co;
 					if (inOrderSegments.size() > 0 || segmentNumber == 1)
 						advancePipeline(false);
@@ -877,7 +877,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				if (SegmentationProfile.getSegmentNumber(co.name()) == segmentNumber) {
 					//this is the segment we wanted
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: segment {0} was in our oOOS queue", segmentNumber);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: segment {0} was in our oOOS queue", segmentNumber);
 					outOfOrderSegments.remove(0);
 					_currentSegment = co;
 					return co;
@@ -885,21 +885,21 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					if(SegmentationProfile.getSegmentNumber(co.name()) > segmentNumber) {
 						//we have a hole to fill...
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: our out of order segments are past the requested segment...  we have a hole");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: our out of order segments are past the requested segment...  we have a hole");
 						break;
 					}
 				}
 			}
 
 			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
-				Log.info("PIPELINE: we do not have the segment yet...  was it requested?");
-				Log.info("PIPELINE: need segment: {0} _lastRequestedPipelineSegment: {1}", segmentNumber, _lastRequestedPipelineSegment);
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: we do not have the segment yet...  was it requested?");
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: need segment: {0} _lastRequestedPipelineSegment: {1}", segmentNumber, _lastRequestedPipelineSegment);
 
 				String s = "current interests out for segments: [";
 				for(Interest i: _sentInterests)
 					s += " "+SegmentationProfile.getSegmentNumber(i.name());
 				s += "]";
-				Log.info("PIPELINE: "+s);
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: "+s);
 			}
 
 			//need to actually get the requested segment if it hasn't been asked for
@@ -921,10 +921,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					_lastRequestedPipelineSegment = segmentNumber;
 					_nextPipelineSegment = segmentNumber;
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: we hadn't asked for segment {0} asking now... {1}", segmentNumber, interest);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we hadn't asked for segment {0} asking now... {1}", segmentNumber, interest);
 				} catch (IOException e) {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING) )
-					Log.warning("failed to express interest for CCNAbstractInputStream pipeline");
+					Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline");
 				}
 			}
 
@@ -934,7 +934,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				for(Interest i: _sentInterests)
 					s += " "+SegmentationProfile.getSegmentNumber(i.name());
 				s += "]";
-				Log.info("PIPELINE: "+s);
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: "+s);
 			}
 		}
 
@@ -946,7 +946,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			for (Interest i: _sentInterests) {
 				_handle.cancelInterest(i, this);
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: canceling interest: {0}", i);
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: canceling interest: {0}", i);
 			}
 			_sentInterests.clear();
 		}
@@ -970,13 +970,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			for(IncomingSegment i: incoming)
 				if (i.segmentNumber == number) {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: we already asked for it and it is just waiting to be processed");
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we already asked for it and it is just waiting to be processed");
 					return true;
 				}
 
 			if (processingSegment!=-1 && processingSegment == number) {
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: someone is processing it right now!");
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: someone is processing it right now!");
 				return true;
 			}
 		}
@@ -992,7 +992,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		//we need to set the base name for pipelining...  we might not have had the version (or the full name)
 		_basePipelineName = n.clone();
 		if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-		Log.info("PIPELINE: setting _basePipelineName {0}", _basePipelineName);
+		Log.info(Log.FAC_PIPELINE, "PIPELINE: setting _basePipelineName {0}", _basePipelineName);
 
 		synchronized(inOrderSegments) {
 			//need to remove interest for first segment of old name
@@ -1024,11 +1024,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			if(rr > -1) {
 				//there is a reader waiting
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: there is a reader waiting, we should wait unless we have their segment");
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: there is a reader waiting, we should wait unless we have their segment");
 				if(nextSegment == rr) {
 					//this is the segment they want, we should just finish
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: we are working on their segment...  we should finish!");
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we are working on their segment...  we should finish!");
 					return false;
 					//break;
 				} else {
@@ -1036,12 +1036,12 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						//we have their segment
 						//this isn't their segment, but the one they want is here. we should defer
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: we are deferring until they are done");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we are deferring until they are done");
 						return true;
 					} else {
 						//we don't have their segment, we should keep going
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: we don't have their segment, keep processing this one.");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we don't have their segment, keep processing this one.");
 						return false;
 					}
 				}
@@ -1053,7 +1053,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	public Interest handleContent(ContentObject result, Interest interest) {
 		if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-		Log.info("PIPELINE: in handleContent for {0} at {1}", result.name(), System.currentTimeMillis());
+		Log.info(Log.FAC_PIPELINE, "PIPELINE: in handleContent for {0} at {1}", result.name(), System.currentTimeMillis());
 
 		long starttime = System.currentTimeMillis();
 		IncomingSegment is;
@@ -1070,7 +1070,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			interest.userTime = -1;
 
 			if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-			Log.info("PIPELINE: in handleContent after reading {0} avgResponseTime {1}", result.name(), avgResponseTime);
+			Log.info(Log.FAC_PIPELINE, "PIPELINE: in handleContent after reading {0} avgResponseTime {1}", result.name(), avgResponseTime);
 			is = new IncomingSegment(result, interest);
 			int index = 0;
 			for (IncomingSegment i: incoming) {
@@ -1090,7 +1090,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 			if (processor == null) {
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: processor was null, setting it to me.");
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: processor was null, setting it to me.");
 				//no threads are actively processing content...  this one will
 				processor = Thread.currentThread();
 				//synchronized(inOrderSegments) {
@@ -1100,9 +1100,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				//}
 			} else {
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) ) {
-					Log.info("PIPELINE: processor not null, returning");
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: processor not null, returning");
 					//another thread is already processing...  just dump my content object and return
-					Log.info("PIPELINE: {0} done with handleContent after reading {1}", (System.currentTimeMillis() - starttime), result.name());
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: {0} done with handleContent after reading {1}", (System.currentTimeMillis() - starttime), result.name());
 				}
 				return null;
 			}
@@ -1120,11 +1120,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				if (_sentInterests.remove(is.interest)) {
 					//we had this interest outstanding...
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: we were expecting this data! we had outstanding interests: {0}", is.interest);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we were expecting this data! we had outstanding interests: {0}", is.interest);
 				} else {
 					//we must have canceled the interest...  drop content object
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: we must have canceled the interest, dropping ContentObject(s).  old interest: {0}", is.interest);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we must have canceled the interest, dropping ContentObject(s).  old interest: {0}", is.interest);
 
 					//does this match one of our other interests?
 					Interest checkInterest;
@@ -1134,7 +1134,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						if (checkInterest.matches(result)) {
 							//we found a match!
 							if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-							Log.info("PIPELINE: the incoming packet's interest is gone, but it matches another interest, using that");
+							Log.info(Log.FAC_PIPELINE, "PIPELINE: the incoming packet's interest is gone, but it matches another interest, using that");
 							is.interest = checkInterest;
 							break;
 						}
@@ -1153,7 +1153,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					//content didn't verify, don't hand it up...
 					//TODO content that fails verification needs to be handled better.  need to express a new interest
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
+					Log.info(Log.FAC_PIPELINE, "Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
 					_sentInterests.remove(is.interest);
 
 					is = null;
@@ -1167,13 +1167,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						processor = null;
 						is = null;
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: that was the last one, resetting processor to null");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: that was the last one, resetting processor to null");
 					} else {
 						is = incoming.remove(0);
 						//_sentInterests.add(is.interest);
 						processingSegment = SegmentationProfile.getSegmentNumber(is.content.name());
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: processing first segment in incoming arraylist, segment {0}", is.segmentNumber);
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: processing first segment in incoming arraylist, segment {0}", is.segmentNumber);
 					}
 
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
@@ -1192,7 +1192,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		attemptHoleFilling();
 
 		if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-		Log.info("PIPELINE: {0} done with handleContent after reading {1}", (System.currentTimeMillis() - starttime),  result.name());
+		Log.info(Log.FAC_PIPELINE, "PIPELINE: {0} done with handleContent after reading {1}", (System.currentTimeMillis() - starttime),  result.name());
 
 		return null;
 	}
@@ -1509,7 +1509,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 		synchronized (inOrderSegments) {
 			if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-			Log.info("PIPELINE: time to get lock in getSegment (number) "+(System.currentTimeMillis() - ttgl));
+			Log.info(Log.FAC_PIPELINE, "PIPELINE: time to get lock in getSegment (number) "+(System.currentTimeMillis() - ttgl));
 			// check if the base name was updated (in case we didn't have the version) for pipelining
 
 			if (_baseName.equals(_basePipelineName)) {
@@ -1533,7 +1533,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			ContentObject co = getPipelineSegment(number);
 			if (co != null) {
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: we had segment {0} already!!", number);
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: we had segment {0} already!!", number);
 				advancePipeline(false);
 				synchronized(readerReady) {
 					//readerReady.notifyAll();
@@ -1543,7 +1543,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				return co;
 			} else {
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: we don't have segment {0} pipelined... blocking", number);
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: we don't have segment {0} pipelined... blocking", number);
 			}
 
 			// the segment was not available... we need to wait until the
@@ -1574,12 +1574,12 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						}
 					} catch(InterruptedException e1) {
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-						Log.info("PIPELINE: awake: interrupted! {0}", sleep);
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: awake: interrupted! {0}", sleep);
 						//break;
 					}
 					sleep += System.currentTimeMillis() - start;
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info("PIPELINE: slept for {0} ms total", sleep);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: slept for {0} ms total", sleep);
 					if(haveSegmentBuffered(number))
 						break;
 					else {
@@ -1588,7 +1588,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				}
 
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: awake: done sleeping {0}", sleep);
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: awake: done sleeping {0}", sleep);
 
 				waitingThread = null;
 				waitingSegment = -1;
@@ -1604,15 +1604,15 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 			if (co != null) {
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: we had segment {0} already!!", number);
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: we had segment {0} already!!", number);
 				return co;
 			} else {
 				if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-				Log.info("PIPELINE: we don't have segment {0} pipelined... what happened?", number);
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: we don't have segment {0} pipelined... what happened?", number);
 			}
 
 			if(Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-				Log.info("PIPELINE: Cannot get segment " + number + " of file {0} expected segment: {1}.", _baseName, SegmentationProfile.segmentName(_baseName, number));
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: Cannot get segment " + number + " of file {0} expected segment: {1}.", _baseName, SegmentationProfile.segmentName(_baseName, number));
 
 			throw new IOException("Cannot get segment " + number + " of file "+ _baseName + " expected segment: "+ SegmentationProfile.segmentName(_baseName, number));
 		}

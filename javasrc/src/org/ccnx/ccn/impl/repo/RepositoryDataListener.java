@@ -65,7 +65,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_handle = server.getHandle();
 		_timer = System.currentTimeMillis();
 		if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-			Log.info("Starting up repository listener on original interest: {0} interest {1}", origInterest, interest);
+			Log.info(Log.FAC_REPO, "Starting up repository listener on original interest: {0} interest {1}", origInterest, interest);
 		}
 	}
 	
@@ -141,7 +141,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 			}
 
 			if (Log.isLoggable(Log.FAC_REPO, Level.FINEST)) {
-				Log.finest("REPO: Got block: {0} expressing {1} more interests, current block {2} final block {3} last block? {4}", co.name(), nOutput, _currentBlock, _finalBlockID, isFinalBlock);
+				Log.finest(Log.FAC_REPO, "REPO: Got block: {0} expressing {1} more interests, current block {2} final block {3} last block? {4}", co.name(), nOutput, _currentBlock, _finalBlockID, isFinalBlock);
 			}
 			for (int i = 0; i < nOutput; i++) {
 				ContentName name = SegmentationProfile.segmentName(co.name(), firstInterestToRequest + 1 + i);
