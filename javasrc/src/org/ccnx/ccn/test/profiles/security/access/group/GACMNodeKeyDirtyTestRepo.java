@@ -45,7 +45,7 @@ public class GACMNodeKeyDirtyTestRepo {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setDefaultLevel(Level.WARNING);
+		Log.setLevel(Log.FAC_ACCESSCONTROL, Level.FINE);
 		directoryBase = UserConfiguration.defaultNamespace();
 		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
 		userKeyStorePrefix = new ContentName(directoryBase, AccessControlProfile.ACCESS_CONTROL_MARKER_BYTES);
