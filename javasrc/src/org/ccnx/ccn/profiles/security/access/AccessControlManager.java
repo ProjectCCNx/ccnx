@@ -111,7 +111,7 @@ public abstract class AccessControlManager {
 		AccessControlPolicyMarkerObject policyInformation = new AccessControlPolicyMarkerObject(accessControlPolicyName, handle);
 		if (!policyInformation.available()) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-				Log.info("Cannot find an access control policy at {0}, returning null manager.", accessControlPolicyName);
+				Log.info(Log.FAC_ACCESSCONTROL, "Cannot find an access control policy at {0}, returning null manager.", accessControlPolicyName);
 			}
 			return null;
 		}
@@ -169,7 +169,7 @@ public abstract class AccessControlManager {
 			return null;
 		}
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-			Log.finer("getDataKey: data key is wrapped by key {0} stored at {1}, attempting to retrieve.", 
+			Log.finer(Log.FAC_ACCESSCONTROL, "getDataKey: data key is wrapped by key {0} stored at {1}, attempting to retrieve.", 
 					DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()), wdko.wrappedKey().wrappingKeyName());
 		}
 		Key dataKey = null;
@@ -179,14 +179,14 @@ public abstract class AccessControlManager {
 			Key cachedKey = getKey(wdko.wrappedKey().wrappingKeyIdentifier());
 			if (null == cachedKey) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-					Log.warning("Thought we had key {0} in cache, but cannot retrieve it! Data node: {1}.", 
+					Log.warning(Log.FAC_ACCESSCONTROL, "Thought we had key {0} in cache, but cannot retrieve it! Data node: {1}.", 
 							DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()),
 							dataNodeName);
 				}
 				// fall through, try subclass retrieval
 			} else {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINE)) {
-					Log.fine("Unwrapping key for data node {0} with cached key whose id is {1}.", dataNodeName,
+					Log.fine(Log.FAC_ACCESSCONTROL, "Unwrapping key for data node {0} with cached key whose id is {1}.", dataNodeName,
 							DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()));
 				}
 				// The cached key is not actually the key we want. We need to hand it to our access
@@ -198,7 +198,7 @@ public abstract class AccessControlManager {
 		if (null == wrappingKey) {
 			// No dice. Try subclass-specific retrieval.
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-				Log.info("getDataKey: key {0} not in cache, getting data key wrapping key for data node {1} with wrapped key {2}", 
+				Log.info(Log.FAC_ACCESSCONTROL, "getDataKey: key {0} not in cache, getting data key wrapping key for data node {1} with wrapped key {2}", 
 						DataUtils.printHexBytes(wdko.wrappedKey().wrappingKeyIdentifier()), dataNodeName, wdko);
 			}
 			wrappingKey = getDataKeyWrappingKey(dataNodeName, wdko);
@@ -220,7 +220,7 @@ public abstract class AccessControlManager {
 		WrappedKeyObject wdko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), handle());
 		if (null == wdko.wrappedKey()) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-				Log.warning("Could not retrieve data key for node {0}", dataNodeName);
+				Log.warning(Log.FAC_ACCESSCONTROL, "Could not retrieve data key for node {0}", dataNodeName);
 			}
 			return null;
 		}
@@ -271,14 +271,14 @@ public abstract class AccessControlManager {
 	 */
 	public void storeDataKey(ContentName dataNodeName, Key dataKey, NodeKey wrappingKey) throws InvalidKeyException, ContentEncodingException, IOException {
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-			Log.info("storeDataKey: Wrapping data key {0} for node {1} with wrappingKey for node {2} " 
+			Log.info(Log.FAC_ACCESSCONTROL, "storeDataKey: Wrapping data key {0} for node {1} with wrappingKey for node {2} " 
 					+ " derived from stored node key for node {3}",
 					DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(dataKey)), 
 					dataNodeName, 
 					wrappingKey.nodeName(), 
 					wrappingKey.storedNodeKeyName()		
 			);
-			Log.info("storeDataKey: stored node key has key id {0}, derived key has id {1}",
+			Log.info(Log.FAC_ACCESSCONTROL, "storeDataKey: stored node key has key id {0}, derived key has id {1}",
 					DataUtils.printHexBytes(wrappingKey.storedNodeKeyID()),
 					DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(wrappingKey.nodeKey())));
 		}
@@ -421,7 +421,7 @@ public abstract class AccessControlManager {
 			acm = findACM(name, handle);
 			if (acm != null) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-					Log.info("keysForInput: retrieving key for data node {0}", name);
+					Log.info(Log.FAC_ACCESSCONTROL, "keysForInput: retrieving key for data node {0}", name);
 				}
 				return acm.getContentKeys(name, publisher);
 			}
@@ -456,7 +456,7 @@ public abstract class AccessControlManager {
 		
 		if (SystemConfiguration.disableAccessControl()) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINEST)) {
-				Log.finest("Access control disabled, not searching for keys for {0}.", name);
+				Log.finest(Log.FAC_ACCESSCONTROL, "Access control disabled, not searching for keys for {0}.", name);
 			}
 			return null;
 		}
@@ -465,13 +465,13 @@ public abstract class AccessControlManager {
 		try {
 			acm = findACM(name, handle);
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-				Log.info("keysForOutput: found an acm: {0}", acm);
+				Log.info(Log.FAC_ACCESSCONTROL, "keysForOutput: found an acm: {0}", acm);
 			}
 			
 			if ((acm != null) && (acm.isProtectedContent(name, publisher, contentType, handle))) {
 				// First we need to figure out whether this content is public or unprotected...
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-					Log.info("keysForOutput: found ACM, protected content, generating new data key for data node {0}", name);
+					Log.info(Log.FAC_ACCESSCONTROL, "keysForOutput: found ACM, protected content, generating new data key for data node {0}", name);
 				}
 				NodeKey dataKeyWrappingKey = acm.getDataKeyWrappingKey(name, publisher);
 				if (null == dataKeyWrappingKey) {
@@ -480,7 +480,7 @@ public abstract class AccessControlManager {
 				}
 				Key dataKey = acm.generateDataKey(name);
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-					Log.finer("keysForOutput: content {0} publisher {1} data key {2} wrapping key {3}", name, publisher, 
+					Log.finer(Log.FAC_ACCESSCONTROL, "keysForOutput: content {0} publisher {1} data key {2} wrapping key {3}", name, publisher, 
 							DataUtils.printHexBytes(dataKey.getEncoded()), dataKeyWrappingKey);
 				}
 				acm.storeDataKey(name, dataKey, dataKeyWrappingKey);
@@ -549,7 +549,7 @@ public abstract class AccessControlManager {
 		ContentName policyNamespace = NamespaceManager.findPolicyControlledNamespace(namespace, handle);
 		if (null == policyNamespace) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-				Log.finer("No policy controlling name: {0}", namespace);
+				Log.finer(Log.FAC_ACCESSCONTROL, "No policy controlling name: {0}", namespace);
 			}
 			return false;
 		}
@@ -559,7 +559,7 @@ public abstract class AccessControlManager {
 			new AccessControlPolicyMarkerObject(AccessControlProfile.getAccessControlPolicyName(policyNamespace), handle);
 		if (!ro.available()) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-				Log.finer("No access control policy in policy namespace: {0}", policyNamespace);
+				Log.finer(Log.FAC_ACCESSCONTROL, "No access control policy in policy namespace: {0}", policyNamespace);
 			}
 			// TODO add to negative cache
 			return false;
