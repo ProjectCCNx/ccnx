@@ -315,7 +315,7 @@ public class ACL extends Collection {
 			return true;
 		}
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-			Log.info("trying to remove a non-existent reader, ignoring this operation...");  
+			Log.info(Log.FAC_ACCESSCONTROL, "trying to remove a non-existent reader, ignoring this operation...");  
 		}
 		return false;
 	}
@@ -357,7 +357,7 @@ public class ACL extends Collection {
 			return true;
 		}
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-			Log.info("trying to remove a non-existent writer, ignoring this operation...");  
+			Log.info(Log.FAC_ACCESSCONTROL, "trying to remove a non-existent writer, ignoring this operation...");  
 		}
 		return false;
 	}
@@ -405,7 +405,7 @@ public class ACL extends Collection {
 			return true;
 		}
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-			Log.info("trying to remove a non-existent manager, ignoring this operation...");  
+			Log.info(Log.FAC_ACCESSCONTROL, "trying to remove a non-existent manager, ignoring this operation...");  
 		}
 		return false;
 	}
