@@ -201,7 +201,7 @@ public class UserConfiguration {
 	
 	public static String userName() { 
 		if (null == _userName) {
-			_userName = SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_USER_NAME_PROPERTY, CCNX_USER_NAME_ENVIRONMENT_VARIABLE,
+			_userName = SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_USER_NAME_PROPERTY, CCNX_USER_NAME_ENVIRONMENT_VARIABLE,
 															 System.getProperty("user.name"));
 		}
 		return _userName; 
@@ -213,7 +213,7 @@ public class UserConfiguration {
 	
 	public static String userConfigurationDirectory() { 
 		if (null == _userConfigurationDir) {
-			_userConfigurationDir = SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_USER_CONFIG_DIR_PROPERTY, 
+			_userConfigurationDir = SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_USER_CONFIG_DIR_PROPERTY, 
 																		 CCNX_USER_CONFIG_DIR_ENVIRONMENT_VARIABLE,
 															USER_DIR + FILE_SEP + CCNX_DEFAULT_USER_CONFIG_DIR_NAME);
 		}
@@ -227,7 +227,7 @@ public class UserConfiguration {
 	public static ContentName defaultNamespace() { 
 		if (null == _defaultNamespace) {
 			String defaultNamespaceString = 
-				SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_DEFAULT_NAMESPACE_PROPERTY, CCNX_DEFAULT_NAMESPACE_ENVIRONMENT_VARIABLE, 
+				SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_DEFAULT_NAMESPACE_PROPERTY, CCNX_DEFAULT_NAMESPACE_ENVIRONMENT_VARIABLE, 
 													CCNX_DEFAULT_NAMESPACE);
 			try {
 				_defaultNamespace = ContentName.fromNative(defaultNamespaceString);
@@ -245,7 +245,7 @@ public class UserConfiguration {
 	
 	public static ContentName userNamespace() { 
 		if (null == _userNamespace) {
-			String userNamespaceString = SystemConfiguration.retrievePropertyOrEvironmentVariable(
+			String userNamespaceString = SystemConfiguration.retrievePropertyOrEnvironmentVariable(
 					CCNX_USER_NAMESPACE_PROPERTY, CCNX_USER_NAMESPACE_ENVIRONMENT_VARIABLE, null);
 			if (null != userNamespaceString) {
 				try {
@@ -279,7 +279,7 @@ public class UserConfiguration {
 	
 	public static ContentName userNamespacePrefix() { 
 		if (null == _userNamespacePrefix) {
-			String userNamespacePrefixString = SystemConfiguration.retrievePropertyOrEvironmentVariable(
+			String userNamespacePrefixString = SystemConfiguration.retrievePropertyOrEnvironmentVariable(
 					CCNX_USER_NAMESPACE_PREFIX_PROPERTY, CCNX_USER_NAMESPACE_PREFIX_ENVIRONMENT_VARIABLE, null);
 			if (null != userNamespacePrefixString) {
 				try {
@@ -301,7 +301,7 @@ public class UserConfiguration {
 	
 	public static String keystoreFileName() { 
 		if (null == _keystoreFileName) {
-			_keystoreFileName = SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_KEYSTORE_FILENAME_PROPERTY, 
+			_keystoreFileName = SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_KEYSTORE_FILENAME_PROPERTY, 
 																		 CCNX_KEYSTORE_FILENAME_ENVIRONMENT_VARIABLE,
 															DEFAULT_KEYSTORE_FILE_NAME);
 		}
@@ -310,7 +310,7 @@ public class UserConfiguration {
 	
 	public static String configurationFileName() { 
 		if (null == _configurationFileName) {
-			_configurationFileName = SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_CONFIGURATION_FILENAME_PROPERTY, 
+			_configurationFileName = SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_CONFIGURATION_FILENAME_PROPERTY, 
 																		 CCNX_CONFIGURATION_FILENAME_ENVIRONMENT_VARIABLE,
 															DEFAULT_CONFIGURATION_FILE_NAME);
 		}
@@ -323,7 +323,7 @@ public class UserConfiguration {
 	
 	public static String keystorePassword() { 
 		if (null == _keystorePassword) {
-			_keystorePassword = SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_KEYSTORE_PASSWORD_PROPERTY, 
+			_keystorePassword = SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_KEYSTORE_PASSWORD_PROPERTY, 
 																		 CCNX_KEYSTORE_PASSWORD_ENVIRONMENT_VARIABLE,
 																		 DEFAULT_KEYSTORE_PASSWORD);
 		}
@@ -336,7 +336,7 @@ public class UserConfiguration {
 	 * @return
 	 */
 	public static String defaultKeyLocator() { 
-		return SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_DEFAULT_KEY_LOCATOR_PROPERTY, 
+		return SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_DEFAULT_KEY_LOCATOR_PROPERTY, 
 																		 CCNX_DEFAULT_KEY_LOCATOR_ENVIRONMENT_VARIABLE,
 																		 null);
 	}
@@ -345,7 +345,7 @@ public class UserConfiguration {
 		if (null == _publishKeys) {
 
 			String strPublish =  
-				SystemConfiguration.retrievePropertyOrEvironmentVariable(CCNX_PUBLISH_KEYS_PROPERTY, 
+				SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_PUBLISH_KEYS_PROPERTY, 
 						CCNX_PUBLISH_KEYS_ENVIRONMENT_VARIABLE,
 						"true");
 			_publishKeys = strPublish.equalsIgnoreCase("true");
