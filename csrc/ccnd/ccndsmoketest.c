@@ -291,7 +291,9 @@ int main(int argc, char **argv)
                 printraw(rawbuf, rawlen);
         }
         else if (0 == strcmp(argv[argp], "kill")) {
-            unlink((char *)addr.sun_path);
+            res = unlink((char *)addr.sun_path);
+            if (res == 0)
+                res = poll(fds, 1, msec);
             break;
         }
         else if (0 == strcmp(argv[argp], "timeo")) {
