@@ -208,7 +208,7 @@ int main(int argc, char **argv)
     int binout = 0;
     int udp = 0;
     int tcp = 0;
-    const char *host = NULL;
+    const char *host = "localhost";
     while ((c = getopt(argc, argv, "bht:T:u:")) != -1) {
         switch (c) {
             case 'b':
@@ -291,9 +291,16 @@ int main(int argc, char **argv)
                 printraw(rawbuf, rawlen);
         }
         else if (0 == strcmp(argv[argp], "kill")) {
+            poll(fds, 1, 1);
             res = unlink((char *)addr.sun_path);
-            if (res == 0)
-                res = poll(fds, 1, msec);
+            if (res == 0) {
+                res = open_socket(host, portstr, SOCK_STREAM);
+                if (res < 0)
+                    break;
+                write(res, " ", 1);
+                close(res);
+                poll(fds, 1, msec);
+            }
             break;
         }
         else if (0 == strcmp(argv[argp], "timeo")) {
