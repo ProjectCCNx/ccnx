@@ -285,7 +285,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		if (null == _policyName) {
 			_policyName = BasicPolicy.getPolicyName(_globalPrefix, _localName);
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-				Log.info("REPO: Policy name for repository: {0}", _policyName);
+				Log.info(Log.FAC_REPO, "REPO: Policy name for repository: {0}", _policyName);
 			}
 		}
 		return _policyName;

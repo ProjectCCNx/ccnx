@@ -34,7 +34,7 @@ public class RepositoryDataHandler implements Runnable {
 	
 	public RepositoryDataHandler(ContentObject co, RepositoryServer server) {
 		if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
-			Log.info("Saw data: {0}", co.name());
+			Log.info(Log.FAC_REPO, "Saw data: {0}", co.name());
 		_content = co;
 		_server = server;
 	}
@@ -50,7 +50,7 @@ public class RepositoryDataHandler implements Runnable {
 	public void run() {
 		try {
 			if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
-				Log.finer("Saving content in: " + _content.name().toString());
+				Log.finer(Log.FAC_REPO, "Saving content in: " + _content.name().toString());
 			}
 			
 			NameEnumerationResponse ner = _server.getRepository().saveContent(_content);
