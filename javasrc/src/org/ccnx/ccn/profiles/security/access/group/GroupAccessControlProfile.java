@@ -123,7 +123,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 				DataUtils.binarySplit(principalInfoNameComponent, CCNProfile.COMPONENT_SEPARATOR[0]);
 			if (pieces.length < PI_COMPONENT_COUNT) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-					Log.warning("Unexpected principal name format - insufficient number of components: " + 
+					Log.warning(Log.FAC_ACCESSCONTROL, "Unexpected principal name format - insufficient number of components: " + 
 							ContentName.componentPrintURI(principalInfoNameComponent, USER_PRINCIPAL_PREFIX.length, principalInfoNameComponent.length-USER_PRINCIPAL_PREFIX.length));
 				}
 				throw new IllegalArgumentException("Not a valid principal name component -- insufficient number of components!");				

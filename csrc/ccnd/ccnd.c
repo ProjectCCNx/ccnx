@@ -1614,6 +1614,7 @@ check_comm_file(struct ccnd_handle *h)
 {
     if (!comm_file_ok()) {
         ccnd_msg(h, "stopping (%s gone)", unlink_this_at_exit);
+        unlink_this_at_exit = NULL;
         h->running = 0;
     }
 }

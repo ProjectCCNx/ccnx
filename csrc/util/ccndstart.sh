@@ -3,7 +3,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -22,28 +22,29 @@ export PATH="$D:$PATH"
 # To learn about things that you can set, use this command: ccnd -h
 test -f $HOME/.ccnx/ccndrc && . $HOME/.ccnx/ccndrc
 
+StuffPreload () {
+    # Stuff preloaded content objects into ccnd
+    # To use this feature, set CCND_PRELOAD in ~/.ccnx/ccndrc
+    ccndsmoketest -b `echo $CCND_PRELOAD | xargs -n 1 echo send` >/dev/null
+}
+
 # Provide defaults
 : ${CCND_CAP:=50000}
 : ${CCND_DEBUG:=''}
 export CCN_LOCAL_PORT CCND_CAP CCND_DEBUG
 
 # If a ccnd is already running, try to shut it down cleanly.
-ccndsmoketest -t 55 kill recv 2>/dev/null
-
-StuffCachedInfo () {
-    # Stuff cached info about public keys, etc. into ccnd
-    ccndsmoketest -b `find "$HOME/.ccnx/keyCache" -type f -name \*.ccnb` >/dev/null
-}
+ccndsmoketest kill 2>/dev/null
 
 # Fork ccnd, with a log file if requested.
 if [ "$CCND_LOG" = "" ]
 then
 	ccnd &
-        StuffCachedInfo
+        StuffPreload
 else
 	: >"$CCND_LOG" || exit 1
 	ccnd 2>"$CCND_LOG" &
-        StuffCachedInfo 2> /dev/null
+        StuffPreload 2> /dev/null
 fi
 
 # Run ccndc if a static config file is present.

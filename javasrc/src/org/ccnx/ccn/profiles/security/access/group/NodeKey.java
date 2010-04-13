@@ -144,7 +144,7 @@ public class NodeKey {
 			throws InvalidKeyException, ContentEncodingException {
 		if (nodeName().equals(descendantNodeName)) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-				Log.info("Asked to compute ourselves as our own descendant (node key " + nodeName() +"), returning this.");
+				Log.info(Log.FAC_ACCESSCONTROL,"Asked to compute ourselves as our own descendant (node key " + nodeName() +"), returning this.");
 			}
 			return this;
 		}
@@ -214,7 +214,7 @@ public class NodeKey {
 			return VersioningProfile.getLastVersionAsTimestamp(storedNodeKeyName());
 		} catch (VersionMissingException e) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-				Log.warning("Unexpected: name that was confirmed to have a version on construction throws a VersionMissingException: " + storedNodeKeyName());
+				Log.warning(Log.FAC_ACCESSCONTROL, "Unexpected: name that was confirmed to have a version on construction throws a VersionMissingException: " + storedNodeKeyName());
 			}
 			throw new IllegalStateException("Unexpected: name that was confirmed to have a version on construction throws a VersionMissingException: " + storedNodeKeyName());
 		}

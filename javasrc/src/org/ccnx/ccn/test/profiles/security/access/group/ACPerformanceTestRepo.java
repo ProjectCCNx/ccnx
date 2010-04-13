@@ -194,8 +194,9 @@ public class ACPerformanceTestRepo {
 	public void readFileAs(String userName) throws AccessDeniedException {
 		long startTime = System.currentTimeMillis();
 		
+		CCNHandle handle = null;
 		try {
-			CCNHandle handle = cua.getHandleForUser(userName);
+			handle = cua.getHandleForUser(userName);
 			CCNInputStream input = new CCNFileInputStream(nodeName, handle);
 			input.setTimeout(SystemConfiguration.MAX_TIMEOUT);
 			int readsize = 1024;
@@ -216,6 +217,9 @@ public class ACPerformanceTestRepo {
 		catch (IOException ioe) {
 			ioe.printStackTrace();
 			Assert.fail();
+		}
+		finally {
+			handle.close();
 		}
 
 		System.out.println("read file as " + userName + ": " + (System.currentTimeMillis() - startTime));		

@@ -55,7 +55,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 */
 	public boolean handleInterest(Interest interest) {
 		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
-			Log.finer("Saw interest: {0}", interest.name());
+			Log.finer(Log.FAC_REPO, "Saw interest: {0}", interest.name());
 		try {
 			if (interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes())) {
 				if (null != interest.answerOriginKind() && (interest.answerOriginKind() & Interest.ANSWER_GENERATED) == 0)
@@ -69,11 +69,11 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				ContentObject content = _server.getRepository().getContent(interest);
 				if (content != null) {
 					if (Log.isLoggable(Log.FAC_REPO, Level.FINEST))
-						Log.finest("Satisfying interest: {0} with content {1}", interest, content.name());
+						Log.finest(Log.FAC_REPO, "Satisfying interest: {0} with content {1}", interest, content.name());
 					_handle.put(content);
 				} else {
 					if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
-						Log.fine("Unsatisfied interest: {0}", interest);
+						Log.fine(Log.FAC_REPO, "Unsatisfied interest: {0}", interest);
 				}
 			}
 		} catch (Exception e) {
@@ -93,7 +93,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			for (RepositoryDataListener listener : _server.getDataListeners()) {
 				if (listener.getOrigInterest().equals(interest)) {
 					if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
-						Log.info("Write request {0} is a duplicate, ignoring", interest.name());
+						Log.info(Log.FAC_REPO, "Write request {0} is a duplicate, ignoring", interest.name());
 					return;
 				}
 			}
@@ -107,7 +107,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		 // the locking/startup issues surrounding this is complex so for now we just don't allow it.
 		if (_server.getPendingNameSpaceState()) {
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
-				Log.info("Discarding write request {0} due to pending namespace change", interest.name());
+				Log.info(Log.FAC_REPO, "Discarding write request {0} due to pending namespace change", interest.name());
 			return;
 		}
 		
@@ -117,7 +117,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
 		try {
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
-				Log.info("Processing write request for {0}", listeningName);
+				Log.info(Log.FAC_REPO, "Processing write request for {0}", listeningName);
 			// Create the initial read interest.  Set maxSuffixComponents = 2 to get only content with one 
 			// component past the prefix, plus the implicit digest.  This is designed to retrieve segments
 			// of a stream and avoid other content more levels below in the name space.  We do not ask for 
@@ -127,6 +127,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			RepositoryDataListener listener;
 			
 			RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null);
+			if (null == rio)
+				return;		// Should have logged an error in getRepoInfo
 			// Hand the object the outstanding interest, so it can put its first block immediately.
 			rio.save(interest);
 			
@@ -159,10 +161,10 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		if (ner!=null && ner.hasNames()) {
 			_server.sendEnumerationResponse(ner);
 			if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
-				Log.fine("sending back name enumeration response {0}", ner.getPrefix());
+				Log.fine(Log.FAC_REPO, "sending back name enumeration response {0}", ner.getPrefix());
 		} else {
 			if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
-				Log.fine("we are not sending back a response to the name enumeration interest (interest.name() = {0})", interest.name());
+				Log.fine(Log.FAC_REPO, "we are not sending back a response to the name enumeration interest (interest.name() = {0})", interest.name());
 		}
 	}
 }

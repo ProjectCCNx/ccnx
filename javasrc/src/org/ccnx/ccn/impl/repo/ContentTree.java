@@ -193,7 +193,7 @@ public class ContentTree {
 		protected ContentObject search(TreeNode node, ContentName nodeName, ContentGetter getter, 
 						int depth, boolean leftSearch) {
 			if( Log.isLoggable(Log.FAC_REPO, Level.FINE) )
-				Log.fine("Searching for: {0}", nodeName);
+				Log.fine(Log.FAC_REPO, "Searching for: {0}", nodeName);
 			int res = _ips.preScreen(node, depth);
 			if (res < 0)
 				return null;
@@ -347,7 +347,7 @@ public class ContentTree {
 	public boolean insert(ContentObject content, ContentRef ref, long ts, ContentGetter getter, NameEnumerationResponse ner) {
 		final ContentName name = content.fullName();
 		if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
-			Log.fine("inserting content: {0}", name);
+			Log.fine(Log.FAC_REPO, "inserting content: {0}", name);
 		}
 		TreeNode node = _root; // starting point
 		assert(null != _root);
@@ -359,7 +359,7 @@ public class ContentTree {
 				TreeNode child = node.getChild(component);
 				if (null == child) {
 					if (Log.isLoggable(Log.FAC_REPO, Level.FINEST)) {
-						Log.finest("child was null: adding here");
+						Log.finest(Log.FAC_REPO, "child was null: adding here");
 					}
 					// add it
 					added = true;
@@ -384,15 +384,15 @@ public class ContentTree {
 						//we have added something to this node and someone was interested
 						//we need to get the child names and the prefix to send back
 						if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-							Log.info("we added at least one child, need to send a name enumeration response");
+							Log.info(Log.FAC_REPO, "we added at least one child, need to send a name enumeration response");
 						}
 						ContentName prefix = name.cut(component);
 	
 						prefix = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 						//prefix = VersioningProfile.addVersion(prefix, new CCNTime(node.timestamp));
 						if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-							Log.info("prefix for FastNEResponse: {0}", prefix);
-							Log.info("response name will be: {0}",
+							Log.info(Log.FAC_REPO, "prefix for FastNEResponse: {0}", prefix);
+							Log.info(Log.FAC_REPO, "response name will be: {0}",
 									VersioningProfile.addVersion(
 											new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()), 
 											new CCNTime(node.timestamp)));
@@ -414,7 +414,7 @@ public class ContentTree {
 						ner.setNameList(names);
 						ner.setTimestamp(new CCNTime(node.timestamp));
 						if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-							Log.info("resetting interestFlag to false");
+							Log.info(Log.FAC_REPO, "resetting interestFlag to false");
 						}
 						node.interestFlag = false;
 					}
@@ -456,7 +456,7 @@ public class ContentTree {
 			node.oneContent = null;
 		}
 		if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
-			Log.fine("Inserted: {0}", content.name());
+			Log.fine(Log.FAC_REPO, "Inserted: {0}", content.name());
 		}
 		return true;
 	}
@@ -631,7 +631,7 @@ public class ContentTree {
 		ContentName prefix = interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 
 		if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
-			Log.fine("checking for content names under: {0}", prefix);
+			Log.fine(Log.FAC_REPO, "checking for content names under: {0}", prefix);
 		}
 		
 		TreeNode parent = lookupNode(prefix, prefix.count());
@@ -647,11 +647,11 @@ public class ContentTree {
 			//check if we should respond...
 			if (interest.matches(potentialCollectionName, null)) {
 				if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-					Log.info("the new version is a match with the interest!  we should respond: interest = {0} potentialCollectionName = {1}", interest, potentialCollectionName);
+					Log.info(Log.FAC_REPO, "the new version is a match with the interest!  we should respond: interest = {0} potentialCollectionName = {1}", interest, potentialCollectionName);
 				}
 			} else {
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
-					Log.finer("the new version doesn't match, no response needed: interest = {0} would be collection name: {1}", interest, potentialCollectionName);
+					Log.finer(Log.FAC_REPO, "the new version doesn't match, no response needed: interest = {0} would be collection name: {1}", interest, potentialCollectionName);
 				}
 				parent.interestFlag = true;
 				return null;
@@ -669,7 +669,7 @@ public class ContentTree {
 			
 			if (names.size()>0) {
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
-					Log.finer("sending back {0} names in the enumeration response for prefix {1}", names.size(), prefix);
+					Log.finer(Log.FAC_REPO, "sending back {0} names in the enumeration response for prefix {1}", names.size(), prefix);
 				}
 			}
 			parent.interestFlag = false;
