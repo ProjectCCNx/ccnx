@@ -34,7 +34,7 @@ StuffPreload () {
 export CCN_LOCAL_PORT CCND_CAP CCND_DEBUG
 
 # If a ccnd is already running, try to shut it down cleanly.
-ccndsmoketest -t 55 kill recv 2>/dev/null
+ccndsmoketest kill 2>/dev/null
 
 # Fork ccnd, with a log file if requested.
 if [ "$CCND_LOG" = "" ]
