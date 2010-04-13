@@ -1,3 +1,4 @@
+/* -*- mode: java; tab-width: 4 -*- */
 /**
  * Part of the CCNx Java Library.
  *
@@ -14,6 +15,7 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
+
 
 package org.ccnx.ccn.impl.support;
 
@@ -40,7 +42,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
  * compute their parameters.
  * 
  * To send log entries to file, specify the log output directory using either the system property
- * org.ccnx.ccn.LogDir or the environment variable CCN_LOG_DIR.  To override the default 
+ * org.ccnx.ccn.LogDir or the environment variable CCN_LOG_DIR.	 To override the default 
  * log level for whatever program you are running, set the system property org.ccnx.ccn.LogLevel.
  */
 public class Log {
@@ -72,12 +74,13 @@ public class Log {
 	// ==========================================================
 	// Facility based logging.
 	// To add a new facility:
-	//    1) Add a public final static int for it
-	//    2) Add a facility name to FAC_LOG_LEVEL_PROPERTY array
-	//    3) Add a facility name to FAC_LOG_LEVEL_ENV array
-	//    4) Set the default log level in FAC_DEFAULT_LOG_LEVEL array
+	//	  1) Add a public final static int for it
+	//	  2) Add a facility name to FAC_LOG_LEVEL_PROPERTY array
+	//	  3) Add a facility name to FAC_LOG_LEVEL_ENV array
+	//	  4) Set the default log level in FAC_DEFAULT_LOG_LEVEL array
 
 	// Definition of logging facilities
+	public static final int FAC_ALL			= -1;
 	public static final int FAC_DEFAULT		= 0;
 	public static final int FAC_PIPELINE	= 1;
 	public static final int FAC_NETMANAGER	= 2;
@@ -86,7 +89,7 @@ public class Log {
 	public static final int FAC_USER2		= 5;
 	public static final int FAC_USER3		= 6;
 	public static final int FAC_ACCESSCONTROL = 7;
-	public static final int FAC_REPO = 8;
+	public static final int FAC_REPO 		= 8;
 	
 
 	// The System property name for each Facility
@@ -155,9 +158,9 @@ public class Log {
 				if (!dir.exists() || !dir.isDirectory()) {
 					if (!dir.mkdir()) {
 						System.err.println("Cannot open log directory "
-								+ logdir);
+										   + logdir);
 						throw new IOException("Cannot open log directory "
-								+ logdir);
+											  + logdir);
 					}
 				}
 				String sep = System.getProperty("file.separator");
@@ -193,7 +196,7 @@ public class Log {
 		// Could just do a console handler if the file won't open.
 		// Do that eventually, for debugging put in both.
 		// Actually, right now, seem to get a console handler by default.
-		// This move is anti-social, but a starting point.  We don't want 
+		// This move is anti-social, but a starting point.	We don't want 
 		// any handlers to be more restrictive then the level set for 
 		// our _systemLevel
 		Handler[] handlers = Logger.getLogger( "" ).getHandlers();
@@ -321,16 +324,21 @@ public class Log {
 		if( 0 <= facility && facility < _fac_level.length) {
 			_fac_level[facility] = l;
 			_fac_value[facility] = l.intValue();
+		} else if (facility == FAC_ALL) {
+			for (int i=0; i < _fac_level.length; i++) {
+				_fac_level[i] = l;
+				_fac_value[i] = l.intValue();
+			}
 		}
 	}
 
 	/**
 	 * Set the default log level that will be in effect unless overridden by
-	 * the system property.  Use of this method allows a program to change the 
+	 * the system property.	 Use of this method allows a program to change the 
 	 * default logging level while still allowing external override by the user
-	 * at runtime.  
+	 * at runtime.	
 	 * 
-	 * This must be called before using setLevel().  Calling this method will
+	 * This must be called before using setLevel().	 Calling this method will
 	 * reset all log levels to the default or to the system property level.
 	 * @param l the new default level
 	 */
@@ -340,19 +348,25 @@ public class Log {
 	}
 
 	public static void setDefaultLevel(int facility, Level l) {
-		FAC_DEFAULT_LOG_LEVEL[facility] = l;
+		if( 0 <= facility && facility < FAC_DEFAULT_LOG_LEVEL.length) {
+			FAC_DEFAULT_LOG_LEVEL[facility] = l;
+		} else if (facility == FAC_ALL) {
+			for (int i = 0; i < FAC_DEFAULT_LOG_LEVEL.length; i++ ) {
+				FAC_DEFAULT_LOG_LEVEL[i] = l;
+			}
+		}
 		setLogLevels();
 	}
-
+				   
 	/**
 	 * Set the facility log levels based on the defaults and system overrides
 	 */
 	protected static void setLogLevels() {
 		for(int i = 0; i < FAC_LOG_LEVEL_PROPERTY.length; i++ ) {
 			String logLevelName = SystemConfiguration.retrievePropertyOrEvironmentVariable(
-					FAC_LOG_LEVEL_PROPERTY[i], 
-					FAC_LOG_LEVEL_ENV[i], 
-					FAC_DEFAULT_LOG_LEVEL[i].getName());
+																						   FAC_LOG_LEVEL_PROPERTY[i], 
+																						   FAC_LOG_LEVEL_ENV[i], 
+																						   FAC_DEFAULT_LOG_LEVEL[i].getName());
 
 			Level logLevel;
 
@@ -366,11 +380,9 @@ public class Log {
 
 			if( logLevel.intValue() != FAC_DEFAULT_LOG_LEVEL[i].intValue())
 				doLog(FAC_DEFAULT, logLevel, String.format("Set log level for faciliity %s to %s", 
-						FAC_LOG_LEVEL_PROPERTY[i], logLevel));				
+														   FAC_LOG_LEVEL_PROPERTY[i], logLevel));				
 
 			setLevel(i, logLevel);
-			//			doLog(FAC_DEFAULT, logLevel, String.format("Set log level for faciliity %s to %s", 
-			//					FAC_LOG_LEVEL_PROPERTY[i], logLevel));				
 		}
 	}
 
@@ -399,7 +411,7 @@ public class Log {
 	 * @return true means would write log
 	 */
 	public static boolean isLoggable(Level level) {
-		if (level.intValue() <  _fac_value[FAC_DEFAULT]  || _fac_value[FAC_DEFAULT] == offValue) {
+		if (level.intValue() <	_fac_value[FAC_DEFAULT]	 || _fac_value[FAC_DEFAULT] == offValue) {
 			return false;
 		}
 		return true;
@@ -412,7 +424,7 @@ public class Log {
 	 */
 	public static boolean isLoggable(int facility, Level level) {
 		if( 0 <= facility && facility < _fac_level.length) {
-			if (level.intValue() <  _fac_value[facility]  || _fac_value[facility] == offValue) {
+			if (level.intValue() <	_fac_value[facility]  || _fac_value[facility] == offValue) {
 				return false;
 			}
 			return true;
@@ -428,7 +440,7 @@ public class Log {
 	 * logged).
 	 * @param l Log level.
 	 * @param msg Message or format string. Note that to improve performance, only 
-	 * 			the simplest form of of MessageFormat, i.e. {0}, {1}, {2}... is supported
+	 *			the simplest form of of MessageFormat, i.e. {0}, {1}, {2}... is supported
 	 * @see java.text.MessageFormat
 	 * @param params
 	 */
@@ -497,7 +509,7 @@ public class Log {
 	}
 
 	public static void logException(String message, 
-			Exception e) {
+									Exception e) {
 		_systemLogger.warning(message);
 		Log.warningStackTrace(e);
 	}
