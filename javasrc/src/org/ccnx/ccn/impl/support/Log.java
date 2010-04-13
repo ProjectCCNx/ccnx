@@ -363,7 +363,7 @@ public class Log {
 	 */
 	protected static void setLogLevels() {
 		for(int i = 0; i < FAC_LOG_LEVEL_PROPERTY.length; i++ ) {
-			String logLevelName = SystemConfiguration.retrievePropertyOrEvironmentVariable(
+			String logLevelName = SystemConfiguration.retrievePropertyOrEnvironmentVariable(
 																						   FAC_LOG_LEVEL_PROPERTY[i], 
 																						   FAC_LOG_LEVEL_ENV[i], 
 																						   FAC_DEFAULT_LOG_LEVEL[i].getName());
