@@ -95,7 +95,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	// Temporarily default to very high timeout so that puts have a good
 	// chance of going through.  We actually may want to keep this.
-	protected int _timeout = SystemConfiguration.FC_TIMEOUT_DEFAULT;
+	protected int _timeout = SystemConfiguration.FC_TIMEOUT;
 	
 	protected int _capacity = DEFAULT_CAPACITY;
 	

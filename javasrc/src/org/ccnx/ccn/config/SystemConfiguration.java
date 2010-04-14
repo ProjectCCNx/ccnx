@@ -314,7 +314,7 @@ public class SystemConfiguration {
 			FC_TIMEOUT = Integer.parseInt(System.getProperty(FC_TIMEOUT_PROPERTY, Integer.toString(FC_TIMEOUT_DEFAULT)));
 //			Log.fine("PING_TIMEOUT = " + PING_TIMEOUT);
 		} catch (NumberFormatException e) {
-			System.err.println("The ping timeout must be an integer.");
+			System.err.println("The default flow controller timeout must be an integer.");
 			throw e;
 		}
 
