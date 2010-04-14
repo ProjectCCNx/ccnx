@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -152,13 +152,18 @@ set_multicast_socket_options(int socket_r, int socket_w,
  * @param descr hold the information needed to create the socket(s).
  * @param logger should be used for reporting errors, printf-style.
  * @param logdat must be passed as first argument to logger().
- * @param socks should be filled in with the pair of socket file descriptors.
+ * @param getbound is callback for getting already-bound sender socket,
+ *          should return -1 if none.
+ * @param getbounddat is passed as first argument to getbound
+ * @param socks will be filled in with the pair of socket file descriptors.
  * @returns 0 for success, -1 for error.
  */
 int
 ccn_setup_socket(const struct ccn_sockdescr *descr,
                  void (*logger)(void *, const char *, ...),
                  void *logdat,
+                 int (*getbound)(void *, struct sockaddr *, socklen_t),
+                 void *getbounddat,
                  struct ccn_sockets *socks)
 {
     int result = -1;
@@ -171,6 +176,7 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
     unsigned int if_index = 0;
     const int one = 1;
     int sock = -1;
+    int close_protect = -1;
     
     GOT_HERE;
     socks->sending = socks->recving = -1;
@@ -248,9 +254,23 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
          * mcast_source_addrinfo is the unicast address of this interface.
          * Since we need to bind the recving side to the multicast address,
          * we need two sockets in this case.
+         *
+         * Our caller may choose to provide the sending side.
          */
-        socks->recving = socket(addrinfo->ai_family, addrinfo->ai_socktype, addrinfo->ai_protocol);
-        if (socks->recving == -1) {
+        socks->sending = -1;
+        if (getbound) {
+            GOT_HERE;
+            socks->sending = getbound(getbounddat,
+                                      mcast_source_addrinfo->ai_addr,
+                                      mcast_source_addrinfo->ai_addrlen);
+            if (socks->sending >= 0) {
+                GOT_HERE;
+                close_protect = socks->sending;
+            }
+        }
+        if (socks->sending == -1)
+            socks->sending = socket(addrinfo->ai_family, addrinfo->ai_socktype, addrinfo->ai_protocol);
+        if (socks->sending == -1) {
             LOGGIT(logdat, "socket: %s", strerror(errno));
             goto Finish;
         }
@@ -278,10 +298,14 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
         goto Finish;
     if (mcast_source_addrinfo != NULL) {
         GOT_HERE;
-        res = bind(socks->sending, mcast_source_addrinfo->ai_addr, mcast_source_addrinfo->ai_addrlen);
-        if (res == -1) {
-            LOGGIT(logdat, "bind(sending, ...): %s", strerror(errno));
-            goto Finish;
+        if (socks->sending != close_protect) {
+            res = bind(socks->sending,
+                       mcast_source_addrinfo->ai_addr,
+                       mcast_source_addrinfo->ai_addrlen);
+            if (res == -1) {
+                LOGGIT(logdat, "bind(sending, ...): %s", strerror(errno));
+                goto Finish;
+            }
         }
     }
     else {
@@ -311,7 +335,7 @@ Finish:
         freeaddrinfo(mcast_source_addrinfo);
     if (result != 0) {
         close(socks->recving);
-        if (socks->sending != socks->recving)
+        if (socks->sending != socks->recving && socks->sending != close_protect)
             close(socks->sending);
         socks->sending = socks->recving = -1;
     }

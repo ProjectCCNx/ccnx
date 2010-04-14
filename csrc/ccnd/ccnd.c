@@ -925,6 +925,52 @@ make_connection(struct ccnd_handle *h,
     return(face);
 }
 
+static int
+ccnd_getboundsocket(void *dat, struct sockaddr *who, socklen_t wholen)
+{
+    struct ccnd_handle *h = dat;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    int yes = 1;
+    int res;
+    int ans = -1;
+    int wantflags = (CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
+    for (hashtb_start(h->faces_by_fd, e); e->data != NULL; hashtb_next(e)) {
+        struct face *face = e->data;
+        if ((face->flags & wantflags) == wantflags &&
+              wholen == face->addrlen &&
+              0 == memcmp(who, face->addr, wholen)) {
+            ans = face->recv_fd;
+            break;
+        }
+    }
+    hashtb_end(e);
+    if (ans != -1)
+        return(ans);
+    ans = socket(who->sa_family, SOCK_DGRAM, 0);
+    if (ans == -1)
+        return(ans);
+    setsockopt(ans, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+    res = bind(ans, who, wholen);
+    if (res == -1) {
+        ccnd_msg(h, "bind failed: %s (errno = %d)", strerror(errno), errno);
+        close(ans);
+        return(-1);
+    }
+    record_connection(h, ans, who, wholen,
+                      CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
+    return(ans);
+}
+
+static unsigned
+faceid_from_fd(struct ccnd_handle *h, int fd)
+{
+    struct face *face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
+    if (face != NULL)
+        return(face->faceid);
+    return(CCN_NOFACEID);
+}
+
 typedef void (*loggerproc)(void *, const char *, ...);
 static struct face *
 setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
@@ -954,8 +1000,9 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
     hashtb_end(e);
     
     res = ccn_setup_socket(&face_instance->descr,
-                           (loggerproc)&ccnd_msg,
-                           (void *)h, &socks);
+                           (loggerproc)&ccnd_msg, (void *)h,
+                           &ccnd_getboundsocket, (void *)h,
+                           &socks);
     if (res < 0)
         return(NULL);
     establish_min_recv_bufsize(h, socks.recving, 128*1024);
@@ -964,12 +1011,12 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
     if (face == NULL) {
         close(socks.recving);
         if (socks.sending != socks.recving)
-            close(socks.sending);
+            close(socks.sending); // XXX - could be problematic, but record_connection is unlikely to fail for other than ENOMEM
         return(NULL);
     }
-    // XXX // face->send_fd = socks.sending;
-    ccnd_msg(h, "multicast on fd=%d,%d id=%u",
-             face->recv_fd, socks.sending, face->faceid);
+    face->sendface = faceid_from_fd(h, socks.sending);
+    ccnd_msg(h, "multicast on fd=%d id=%u, sending on face %u",
+             face->recv_fd, face->faceid, face->sendface);
     return(face);
 }
 
