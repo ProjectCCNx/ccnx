@@ -272,7 +272,7 @@ public class SystemConfiguration {
 
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
-			PIPELINE_SIZE = Integer.parseInt(retrievePropertyOrEvironmentVariable(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
+			PIPELINE_SIZE = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineSize must be an integer.");
@@ -281,7 +281,7 @@ public class SystemConfiguration {
 	
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
-			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(retrievePropertyOrEvironmentVariable(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
+			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineAttempts must be an integer.");
@@ -290,14 +290,14 @@ public class SystemConfiguration {
 		
 		// Allow override of default pipeline rtt multiplication factor for CCNAbstractInputStream
 		try {
-			PIPELINE_RTTFACTOR = Integer.parseInt(retrievePropertyOrEvironmentVariable(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
+			PIPELINE_RTTFACTOR = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineRTTFactor must be an integer.");
 
 		}
 		
 		// Allow printing of pipeline stats in CCNAbstractInputStream
-		PIPELINE_STATS = Boolean.parseBoolean(retrievePropertyOrEvironmentVariable(PIPELINE_STATS_PROPERTY, PIPELINE_STATS_ENV_VAR, "false"));
+		PIPELINE_STATS = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(PIPELINE_STATS_PROPERTY, PIPELINE_STATS_ENV_VAR, "false"));
 		
 		
 			// Allow override of default ping timeout.
@@ -314,7 +314,7 @@ public class SystemConfiguration {
 			FC_TIMEOUT = Integer.parseInt(System.getProperty(FC_TIMEOUT_PROPERTY, Integer.toString(FC_TIMEOUT_DEFAULT)));
 //			Log.fine("PING_TIMEOUT = " + PING_TIMEOUT);
 		} catch (NumberFormatException e) {
-			System.err.println("The ping timeout must be an integer.");
+			System.err.println("The default flow controller timeout must be an integer.");
 			throw e;
 		}
 
@@ -329,7 +329,7 @@ public class SystemConfiguration {
 		
 		// Handle old-style header names
 		OLD_HEADER_NAMES = Boolean.parseBoolean(
-				retrievePropertyOrEvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
+				retrievePropertyOrEnvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
 
 	}
 
@@ -594,7 +594,7 @@ public class SystemConfiguration {
 	 * if neither is set return the default value. Caller should synchronize as appropriate.
 	 * @return The value in force for this variable, or null if unset.
 	 */
-	public static String retrievePropertyOrEvironmentVariable(String javaPropertyName, String environmentVariableName, String defaultValue) { 
+	public static String retrievePropertyOrEnvironmentVariable(String javaPropertyName, String environmentVariableName, String defaultValue) { 
 		// First try the command line property.
 		String value = null;
 		if (null != javaPropertyName) {

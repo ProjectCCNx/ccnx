@@ -351,7 +351,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			e.printStackTrace();
 			throw new CCNDaemonException(e.getMessage());
 		}
-		super.sendIt(interestName, forward);
+		super.sendIt(interestName, forward, true);
 	}
 
 	
@@ -405,7 +405,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		}
 		ForwardingEntry forward = new ForwardingEntry(ActionType.SelfRegister, prefixToRegister, ccndId, faceID, flags, lifetime);
 
-		byte[] payloadBack = super.sendIt(interestName, forward);
+		byte[] payloadBack = super.sendIt(interestName, forward, true);
 		ForwardingEntry entryBack = new ForwardingEntry(payloadBack);
 		Log.finest("registerPrefix: returned {0}", entryBack);
 		return entryBack; 
@@ -436,10 +436,6 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		ForwardingEntry forward = new ForwardingEntry(ActionType.UnRegister, prefixToRegister, ccndId, faceID, null, null);
 		// byte[] entryBits = super.getBinaryEncoding(forward);
 
-		byte[] payloadBack = super.sendIt(interestName, forward);
-		ForwardingEntry entryBack = new ForwardingEntry(payloadBack);
-		Log.finest("unRegisterPrefix: returned {0}", entryBack);
-
+		super.sendIt(interestName, forward, false);
 	}
-	
 }

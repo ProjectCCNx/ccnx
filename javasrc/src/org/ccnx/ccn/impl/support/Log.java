@@ -78,22 +78,24 @@ public class Log {
 	//	  2) Add a facility name to FAC_LOG_LEVEL_PROPERTY array
 	//	  3) Add a facility name to FAC_LOG_LEVEL_ENV array
 	//	  4) Set the default log level in FAC_DEFAULT_LOG_LEVEL array
+	// The facilities FAC_ALL and FAC_DEFAULT must be the values 0 and 1 respectively
 
 	// Definition of logging facilities
-	public static final int FAC_ALL			= -1;
-	public static final int FAC_DEFAULT		= 0;
-	public static final int FAC_PIPELINE	= 1;
-	public static final int FAC_NETMANAGER	= 2;
-	public static final int FAC_USER0		= 3;
-	public static final int FAC_USER1		= 4;
-	public static final int FAC_USER2		= 5;
-	public static final int FAC_USER3		= 6;
-	public static final int FAC_ACCESSCONTROL = 7;
-	public static final int FAC_REPO 		= 8;
-	
+	public static final int FAC_ALL			= 0;
+	public static final int FAC_DEFAULT		= 1;
+	public static final int FAC_PIPELINE	= 2;
+	public static final int FAC_NETMANAGER	= 3;
+	public static final int FAC_USER0		= 4;
+	public static final int FAC_USER1		= 5;
+	public static final int FAC_USER2		= 6;
+	public static final int FAC_USER3		= 7;
+	public static final int FAC_ACCESSCONTROL = 8;
+	public static final int FAC_REPO 		= 9;
+
 
 	// The System property name for each Facility
 	public static final String [] FAC_LOG_LEVEL_PROPERTY = {
+		DEFAULT_LOG_LEVEL_PROPERTY + ".All",
 		DEFAULT_LOG_LEVEL_PROPERTY,
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Pipeline",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".NetManager",
@@ -107,6 +109,7 @@ public class Log {
 
 	// The environment variable for each facility
 	public static final String [] FAC_LOG_LEVEL_ENV = {
+		DEFAULT_LOG_LEVEL_ENV + "_ALL",
 		DEFAULT_LOG_LEVEL_ENV,
 		DEFAULT_LOG_LEVEL_ENV + "_PIPELINE",
 		DEFAULT_LOG_LEVEL_ENV + "_NETMANAGER",
@@ -118,7 +121,8 @@ public class Log {
 		DEFAULT_LOG_LEVEL_ENV + "_REPO",
 	};
 
-	public static final Level [] FAC_DEFAULT_LOG_LEVEL = {
+	public static final Level [] FAC_LOG_LEVEL_DEFAULT = {
+		Level.OFF,		// value has no meaning for All
 		Level.INFO,		// Default
 		Level.WARNING,	// Pipelining
 		Level.INFO,		// NetManager
@@ -158,9 +162,9 @@ public class Log {
 				if (!dir.exists() || !dir.isDirectory()) {
 					if (!dir.mkdir()) {
 						System.err.println("Cannot open log directory "
-										   + logdir);
+								+ logdir);
 						throw new IOException("Cannot open log directory "
-											  + logdir);
+								+ logdir);
 					}
 				}
 				String sep = System.getProperty("file.separator");
@@ -200,8 +204,8 @@ public class Log {
 		// any handlers to be more restrictive then the level set for 
 		// our _systemLevel
 		Handler[] handlers = Logger.getLogger( "" ).getHandlers();
-		for ( int index = 0; index < handlers.length; index++ ) {
-			handlers[index].setLevel( Level.ALL );
+		for (int index = 0; index < handlers.length; index++) {
+			handlers[index].setLevel(Level.ALL);
 
 			// TODO Enabling the following by default seems to cause ccn_repo to 
 			// hang when run from the command line, at least on Leopard.
@@ -244,7 +248,7 @@ public class Log {
 	}
 
 	public static void info(int facility, String msg, Object... params) {
-		if( 0 <= facility && facility < _fac_level.length) 
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length) 
 			doLog(facility, Level.INFO, msg, params);
 	}
 
@@ -257,7 +261,7 @@ public class Log {
 	}
 
 	public static void warning(int facility, String msg, Object... params) {
-		if( 0 <= facility && facility < _fac_level.length) 
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length) 
 			doLog(facility, Level.WARNING, msg, params);
 	}
 
@@ -270,7 +274,7 @@ public class Log {
 	}
 
 	public static void severe(int facility, String msg, Object... params) {
-		if( 0 <= facility && facility < _fac_level.length) 
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length) 
 			doLog(facility, Level.SEVERE, msg, params);
 	}
 
@@ -283,7 +287,7 @@ public class Log {
 	}
 
 	public static void fine(int facility, String msg, Object... params) {
-		if( 0 <= facility && facility < _fac_level.length) 
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length) 
 			doLog(facility, Level.FINE, msg, params);
 	}
 
@@ -296,7 +300,7 @@ public class Log {
 	}
 
 	public static void finer(int facility, String msg, Object... params) {
-		if( 0 <= facility && facility < _fac_level.length) 
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length) 
 			doLog(facility, Level.FINER, msg, params);
 	}
 
@@ -309,7 +313,7 @@ public class Log {
 	}
 
 	public static void finest(int facility, String msg, Object... params) {
-		if( 0 <= facility && facility < _fac_level.length) 
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length) 
 			doLog(facility, Level.FINEST, msg, params);
 	}
 
@@ -321,11 +325,11 @@ public class Log {
 
 	// pass these methods on to the java.util.Logger for convenience
 	public static void setLevel(int facility, Level l) {
-		if( 0 <= facility && facility < _fac_level.length) {
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length) {
 			_fac_level[facility] = l;
 			_fac_value[facility] = l.intValue();
 		} else if (facility == FAC_ALL) {
-			for (int i=0; i < _fac_level.length; i++) {
+			for (int i=FAC_DEFAULT; i < _fac_level.length; i++) {
 				_fac_level[i] = l;
 				_fac_value[i] = l.intValue();
 			}
@@ -343,44 +347,62 @@ public class Log {
 	 * @param l the new default level
 	 */
 	public static void setDefaultLevel(Level l) {
-		FAC_DEFAULT_LOG_LEVEL[FAC_DEFAULT] = l;
+		FAC_LOG_LEVEL_DEFAULT[FAC_DEFAULT] = l;
 		setLogLevels();
 	}
 
 	public static void setDefaultLevel(int facility, Level l) {
-		if( 0 <= facility && facility < FAC_DEFAULT_LOG_LEVEL.length) {
-			FAC_DEFAULT_LOG_LEVEL[facility] = l;
+		if (0 <= facility && facility < FAC_LOG_LEVEL_DEFAULT.length) {
+			FAC_LOG_LEVEL_DEFAULT[facility] = l;
 		} else if (facility == FAC_ALL) {
-			for (int i = 0; i < FAC_DEFAULT_LOG_LEVEL.length; i++ ) {
-				FAC_DEFAULT_LOG_LEVEL[i] = l;
+			for (int i = FAC_DEFAULT; i < FAC_LOG_LEVEL_DEFAULT.length; i++ ) {
+				FAC_LOG_LEVEL_DEFAULT[i] = l;
 			}
 		}
 		setLogLevels();
 	}
-				   
+
 	/**
 	 * Set the facility log levels based on the defaults and system overrides
 	 */
 	protected static void setLogLevels() {
-		for(int i = 0; i < FAC_LOG_LEVEL_PROPERTY.length; i++ ) {
-			String logLevelName = SystemConfiguration.retrievePropertyOrEvironmentVariable(
-																						   FAC_LOG_LEVEL_PROPERTY[i], 
-																						   FAC_LOG_LEVEL_ENV[i], 
-																						   FAC_DEFAULT_LOG_LEVEL[i].getName());
+		String logLevelName;
+		Level logLevel;
 
-			Level logLevel;
-
+		// First get the FAC_ALL value, and if set use it to set the default log level for all facilities
+		logLevelName = SystemConfiguration.retrievePropertyOrEnvironmentVariable(
+				FAC_LOG_LEVEL_PROPERTY[FAC_ALL], 
+				FAC_LOG_LEVEL_ENV[FAC_ALL], 
+				null);
+		if (logLevelName != null) {
+			try {
+				logLevel = Level.parse(logLevelName);
+				for (int i = FAC_DEFAULT; i < FAC_LOG_LEVEL_DEFAULT.length; i++ ) {
+					FAC_LOG_LEVEL_DEFAULT[i] = logLevel;
+				}
+			} catch (IllegalArgumentException e) {
+				doLog(FAC_DEFAULT, Level.SEVERE, String.format("Error parsing property %s=%s",
+						FAC_LOG_LEVEL_PROPERTY[FAC_ALL], logLevelName));
+				e.printStackTrace();
+			}
+		}
+		// Then get the individual facility's log level from property/environment, or the default
+		for (int i = FAC_DEFAULT; i < FAC_LOG_LEVEL_PROPERTY.length; i++ ) {
+			logLevelName = SystemConfiguration.retrievePropertyOrEnvironmentVariable(
+					FAC_LOG_LEVEL_PROPERTY[i], 
+					FAC_LOG_LEVEL_ENV[i], 
+					FAC_LOG_LEVEL_DEFAULT[i].getName());
 			try {
 				logLevel = Level.parse(logLevelName);	
 			} catch(IllegalArgumentException e) {
 				doLog(FAC_DEFAULT, Level.SEVERE, String.format("Error parsing property %s=%s", FAC_LOG_LEVEL_PROPERTY[i], logLevelName));
 				e.printStackTrace();
-				logLevel = FAC_DEFAULT_LOG_LEVEL[i];
+				logLevel = FAC_LOG_LEVEL_DEFAULT[i];
 			}
 
-			if( logLevel.intValue() != FAC_DEFAULT_LOG_LEVEL[i].intValue())
-				doLog(FAC_DEFAULT, logLevel, String.format("Set log level for faciliity %s to %s", 
-														   FAC_LOG_LEVEL_PROPERTY[i], logLevel));				
+			if (logLevel.intValue() != FAC_LOG_LEVEL_DEFAULT[i].intValue())
+				doLog(FAC_DEFAULT, Level.INFO, String.format("Set log level for facility %s to %s", 
+						FAC_LOG_LEVEL_PROPERTY[i], logLevel));				
 
 			setLevel(i, logLevel);
 		}
@@ -399,7 +421,7 @@ public class Log {
 	 * @return may be null if invalid facility number
 	 */
 	public static Level getLevel(int facility) {
-		if( 0 <= facility && facility < _fac_level.length)
+		if (0 <= facility && facility < _fac_level.length)
 			return _fac_level[facility];
 		else
 			return null;
@@ -423,7 +445,7 @@ public class Log {
 	 * @return true means would write log
 	 */
 	public static boolean isLoggable(int facility, Level level) {
-		if( 0 <= facility && facility < _fac_level.length) {
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length) {
 			if (level.intValue() <	_fac_value[facility]  || _fac_value[facility] == offValue) {
 				return false;
 			}
@@ -451,13 +473,13 @@ public class Log {
 
 	public static void log(int facility, Level l, String msg, Object... params) {
 		// we must call doLog() to ensure caller is in right place on stack
-		if( 0 <= facility && facility < _fac_level.length)
+		if (0 <= facility && facility < _fac_level.length)
 			doLog(facility, l, msg, params);
 	}
 
 	@SuppressWarnings("unchecked")
 	protected static void doLog(int facility, Level l, String msg, Object... params) {
-		if( ! isLoggable(facility, l) )
+		if (!isLoggable(facility, l))
 			return;
 
 		StackTraceElement ste = Thread.currentThread().getStackTrace()[3];
@@ -509,7 +531,7 @@ public class Log {
 	}
 
 	public static void logException(String message, 
-									Exception e) {
+			Exception e) {
 		_systemLogger.warning(message);
 		Log.warningStackTrace(e);
 	}

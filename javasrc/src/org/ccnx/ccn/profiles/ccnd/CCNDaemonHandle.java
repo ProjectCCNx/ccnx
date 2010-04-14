@@ -59,7 +59,7 @@ public class CCNDaemonHandle {
 		return ContentName.componentPrintURI(digested);
 	}
 	
-	protected byte[] sendIt(ContentName interestNamePrefix, GenericXMLEncodable encodeMe) throws CCNDaemonException {
+	protected byte[] sendIt(ContentName interestNamePrefix, GenericXMLEncodable encodeMe, boolean wait) throws CCNDaemonException {
 		byte[] encoded;
 		try {
 			encoded = encodeMe.encode(BinaryXMLCodec.CODEC_NAME);
@@ -89,10 +89,13 @@ public class CCNDaemonHandle {
 		interestNamePrefix = ContentName.fromNative(interestNamePrefix, contentOutBits);
 		Interest interested = new Interest(interestNamePrefix);
 		interested.scope(1);
-		ContentObject contentIn;
+		ContentObject contentIn = null;
 
 		try {
-			contentIn = _manager.get(interested, SystemConfiguration.CCND_OP_TIMEOUT);
+			if (wait)
+				contentIn = _manager.get(interested, SystemConfiguration.CCND_OP_TIMEOUT);
+			else
+				_manager.write(interested);
 		} catch (IOException e) {
 			String msg = ("Unexpected IOException in call getting CCNDaemonHandle.sendIt return value, reason: " + e.getMessage());
 			Log.info(msg);
@@ -102,22 +105,26 @@ public class CCNDaemonHandle {
 			Log.info(msg);
 			throw new CCNDaemonException(msg);
 		}
-		if (null == contentIn) {
-			String msg = ("Fetch of content from face or prefix registration call failed due to timeout.");
-			Log.info(msg);
-			throw new CCNDaemonException(msg);
-		}
 		
-		PublisherPublicKeyDigest sentID = contentIn.signedInfo().getPublisherKeyID();
-		ContentVerifier verifyer = new ContentObject.SimpleVerifier(sentID, _manager.getKeyManager());
-		if (!verifyer.verify(contentIn)) {
-			String msg = ("CCNDIdGetter: Fetch of content reply failed to verify.");
-			Log.severe(msg);
-			throw new CCNDaemonException(msg);
+		if (wait) {
+			if (null == contentIn) {
+				String msg = ("Fetch of content from face or prefix registration call failed due to timeout.");
+				Log.info(msg);
+				throw new CCNDaemonException(msg);
+			}
+			
+			PublisherPublicKeyDigest sentID = contentIn.signedInfo().getPublisherKeyID();
+			ContentVerifier verifyer = new ContentObject.SimpleVerifier(sentID, _manager.getKeyManager());
+			if (!verifyer.verify(contentIn)) {
+				String msg = ("CCNDIdGetter: Fetch of content reply failed to verify.");
+				Log.severe(msg);
+				throw new CCNDaemonException(msg);
+			}
+	
+			byte[] payloadOut = contentIn.content();
+			return payloadOut;
 		}
-
-		byte[] payloadOut = contentIn.content();
-		return payloadOut; 
+		return null;
 	} /* protected byte[] sendIt(ContentName interestNamePrefix, byte[] payloadIn) throws CCNDaemonException */
 
 }
