@@ -1075,7 +1075,12 @@ public class CCNNetworkManager implements Runnable {
 			Log.finest("Wrote content object: {0}", data.name());
 	}
 
-	protected void write(Interest interest) throws ContentEncodingException {
+	/**
+	 * Don't do this unless you know what you are doing!
+	 * @param interest
+	 * @throws ContentEncodingException
+	 */
+	public void write(Interest interest) throws ContentEncodingException {
 		WirePacket packet = new WirePacket(interest);
 		writeInner(packet);
 	}
