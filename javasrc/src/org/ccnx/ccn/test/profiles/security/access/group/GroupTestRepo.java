@@ -33,6 +33,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.utils.CreateUserData;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -65,6 +66,13 @@ public class GroupTestRepo {
 	static Random _random;
 	static String _randomGroupName;
 
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		users.closeAll();
+		_handle.close();
+		userHandle.close();
+	}
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception { 
 		try {

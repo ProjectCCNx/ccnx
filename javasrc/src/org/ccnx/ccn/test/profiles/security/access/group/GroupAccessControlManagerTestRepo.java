@@ -16,6 +16,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.utils.CreateUserData;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -35,6 +36,11 @@ public class GroupAccessControlManagerTestRepo {
 	static String[] friendlyNames;
 	static ContentName user0, user1, user2;
 	static ACL baseACL, childACL;
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		td.closeAll();
+	}
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {

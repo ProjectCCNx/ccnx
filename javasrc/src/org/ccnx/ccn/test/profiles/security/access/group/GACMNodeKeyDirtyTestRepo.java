@@ -21,6 +21,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.utils.CreateUserData;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -79,6 +80,12 @@ public class GACMNodeKeyDirtyTestRepo {
 		
 		// Register ACM so it can be found
 		handle.keyManager().rememberAccessControlManager(acm);
+	}
+
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		td.closeAll();
+		handle.close();
 	}
 	
 	/**
@@ -156,7 +163,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		// write some content in nodes
 		for (int i=0; i<numberOfGroups; i++) {
 			RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(node[i], handle);
-			rvos.setTimeout(5000);
+			rvos.setTimeout(SystemConfiguration.MAX_TIMEOUT);
 			byte [] data = "content".getBytes();
 			rvos.write(data, 0, data.length);
 			rvos.close();			
@@ -187,7 +194,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		// write some content in nodes
 		for (int i=0; i<numberOfGroups; i++) {
 			RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(node[i], handle);
-			rvos.setTimeout(5000);
+			rvos.setTimeout(SystemConfiguration.MAX_TIMEOUT);
 			byte [] data = "more content".getBytes();
 			rvos.write(data, 0, data.length);
 			rvos.close();			
@@ -219,7 +226,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		// write some content in nodes
 		for (int i=0; i<numberOfGroups; i++) {
 			RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(node[i], handle);
-			rvos.setTimeout(5000);
+			rvos.setTimeout(SystemConfiguration.MAX_TIMEOUT);
 			byte [] data = "content".getBytes();
 			rvos.write(data, 0, data.length);
 			rvos.close();			

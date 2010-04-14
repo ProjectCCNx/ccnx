@@ -45,6 +45,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.utils.CreateUserData;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -60,6 +61,8 @@ public class ACPerformanceTestRepo {
 	static CCNHandle _AliceHandle;
 	static GroupAccessControlManager _AliceACM;
 
+	int readsize = 1024;
+	byte [] buffer = new byte[readsize];
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -105,6 +108,11 @@ public class ACPerformanceTestRepo {
 			userHandle = cua.getHandleForUser(userNames[i]);
 			AccessControlManager.loadAccessControlManagerForNamespace(domainPrefix, userHandle);
 		}
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		cua.closeAll();
 	}
 	
 	@Test
@@ -199,8 +207,6 @@ public class ACPerformanceTestRepo {
 			handle = cua.getHandleForUser(userName);
 			CCNInputStream input = new CCNFileInputStream(nodeName, handle);
 			input.setTimeout(SystemConfiguration.MAX_TIMEOUT);
-			int readsize = 1024;
-			byte [] buffer = new byte[readsize];
 			int readcount = 0;
 			int readtotal = 0;
 			while ((readcount = input.read(buffer)) != -1){

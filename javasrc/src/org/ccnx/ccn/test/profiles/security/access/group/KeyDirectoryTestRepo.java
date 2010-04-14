@@ -69,7 +69,7 @@ public class KeyDirectoryTestRepo {
 	static int testCount = 0;
 	
 	static CCNHandle handle;
-		
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		// randomize names to minimize stateful effects of ccnd/repo caches.
@@ -106,8 +106,8 @@ public class KeyDirectoryTestRepo {
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		kd.stopEnumerating();
+		handle.close();
 	}
-	
 	
 	/*	
 	 * Create a new versioned KeyDirectory
