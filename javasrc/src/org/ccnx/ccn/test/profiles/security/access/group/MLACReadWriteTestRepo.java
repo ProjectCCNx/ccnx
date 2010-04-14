@@ -28,6 +28,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.utils.CreateUserData;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -45,7 +46,9 @@ public class MLACReadWriteTestRepo {
 	static CCNHandle _AliceHandle;
 	static GroupAccessControlManager _AliceACM;
 
-	
+	int _readsize = 1024;
+	byte [] _read_buffer = new byte[_readsize];
+
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		
@@ -114,6 +117,15 @@ public class MLACReadWriteTestRepo {
 			AccessControlManager.loadAccessControlManagerForNamespace(domainPrefix[0], userHandle);			
 		}
 		
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		_handle.close();
+		
+		for( CreateUserData x : cua ) {
+				x.closeAll();
+		}
 	}
 	
 	@Test
@@ -191,16 +203,16 @@ public class MLACReadWriteTestRepo {
 	 */
 	public void writeContentInDirectory() {
 		long startTime = System.currentTimeMillis();
+		byte [] _write_buffer = new byte[blockSize];
 		
 		try {
 			nodeName = ContentName.fromNative(baseDirectory, "randomContent");
 			CCNOutputStream ostream = new RepositoryFileOutputStream(nodeName, _AliceHandle);
 			ostream.setTimeout(SystemConfiguration.MAX_TIMEOUT);
 			
-			byte [] buffer = new byte[blockSize];
+			rnd.nextBytes(_write_buffer);
 			for (int i=0; i<contentSizeInBlocks; i++) {
-				rnd.nextBytes(buffer);
-				ostream.write(buffer, 0, blockSize);
+				ostream.write(_write_buffer, 0, blockSize);
 			}
 			ostream.close();
 		} 
@@ -225,11 +237,9 @@ public class MLACReadWriteTestRepo {
 			handle = cua[domain].getHandleForUser(userName);
 			CCNInputStream input = new CCNFileInputStream(nodeName, handle);
 			input.setTimeout(SystemConfiguration.MAX_TIMEOUT);
-			int readsize = 1024;
-			byte [] buffer = new byte[readsize];
 			int readcount = 0;
 			int readtotal = 0;
-			while ((readcount = input.read(buffer)) != -1){
+			while ((readcount = input.read(_read_buffer)) != -1){
 				readtotal += readcount;
 			}
 			Assert.assertEquals(blockSize * contentSizeInBlocks, readtotal);
