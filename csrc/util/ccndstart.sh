@@ -25,7 +25,8 @@ test -f $HOME/.ccnx/ccndrc && . $HOME/.ccnx/ccndrc
 StuffPreload () {
     # Stuff preloaded content objects into ccnd
     # To use this feature, set CCND_PRELOAD in ~/.ccnx/ccndrc
-    ccndsmoketest -b `echo $CCND_PRELOAD | xargs -n 1 echo send` >/dev/null
+    test "$CCND_PRELOAD" = "" && return 0
+    ccndsmoketest -b `for i in $CCND_PRELOAD; do echo send $i; done` >/dev/null
 }
 
 # Provide defaults
