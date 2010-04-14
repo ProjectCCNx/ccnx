@@ -3842,14 +3842,36 @@ do_deferred_write(struct ccnd_handle *h, int fd)
         ccnd_msg(h, "ccnd:do_deferred_write: something fishy on %d", fd);
 }
 
+static void
+prepare_poll_fds(struct ccnd_handle *h)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    int i;
+    if (hashtb_n(h->faces_by_fd) != h->nfds) {
+        h->nfds = hashtb_n(h->faces_by_fd);
+        h->fds = realloc(h->fds, h->nfds * sizeof(h->fds[0]));
+        memset(h->fds, 0, h->nfds * sizeof(h->fds[0]));
+    }
+    for (i = 0, hashtb_start(h->faces_by_fd, e);
+         i < h->nfds && e->data != NULL;
+         i++, hashtb_next(e)) {
+        struct face *face = e->data;
+        h->fds[i].fd = face->recv_fd;
+        h->fds[i].events = POLLIN;
+        if ((face->outbuf != NULL || (face->flags & CCN_FACE_CLOSING) != 0))
+            h->fds[i].events |= POLLOUT;
+    }
+    hashtb_end(e);
+    h->nfds = i;
+}
+
 /**
  * Run the main loop of the ccnd
  */
 void
 ccnd_run(struct ccnd_handle *h)
 {
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
     int i;
     int res;
     int timeout_ms = -1;
@@ -3862,22 +3884,7 @@ ccnd_run(struct ccnd_handle *h)
         if (timeout_ms == 0 && prev_timeout_ms == 0)
             timeout_ms = 1;
         process_internal_client_buffer(h);
-        if (hashtb_n(h->faces_by_fd) != h->nfds) {
-            h->nfds = hashtb_n(h->faces_by_fd);
-            h->fds = realloc(h->fds, h->nfds * sizeof(h->fds[0]));
-            memset(h->fds, 0, h->nfds * sizeof(h->fds[0]));
-        }
-        for (i = 0, hashtb_start(h->faces_by_fd, e);
-             i < h->nfds && e->data != NULL;
-             i++, hashtb_next(e)) {
-            struct face *face = e->data;
-            h->fds[i].fd = face->recv_fd;
-            h->fds[i].events = POLLIN;
-            if ((face->outbuf != NULL || (face->flags & CCN_FACE_CLOSING) != 0))
-                h->fds[i].events |= POLLOUT;
-        }
-        hashtb_end(e);
-        h->nfds = i;
+        prepare_poll_fds(h);
         if (0) ccnd_msg(h, "at ccnd.c:%d poll(h->fds, %d, %d)", __LINE__, h->nfds, timeout_ms);
         res = poll(h->fds, h->nfds, timeout_ms);
         prev_timeout_ms = ((res == 0) ? timeout_ms : 1);
