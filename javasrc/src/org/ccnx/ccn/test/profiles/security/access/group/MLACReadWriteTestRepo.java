@@ -199,7 +199,8 @@ public class MLACReadWriteTestRepo {
 			Assert.fail();
 		}
 
-		System.out.println("createACL: " + (System.currentTimeMillis() - startTime));
+		Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: create ACL completed in {0} ms.", 
+				(System.currentTimeMillis() - startTime));
 	}
 	
 	/**
@@ -225,7 +226,8 @@ public class MLACReadWriteTestRepo {
 			Assert.fail();
 		}
 		
-		System.out.println("writeContent: " + (System.currentTimeMillis() - startTime));		
+		Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: writing content completed in {0} ms.",
+				(System.currentTimeMillis() - startTime));
 	}
 	
 	/**
@@ -253,8 +255,9 @@ public class MLACReadWriteTestRepo {
 		// we want to propagate AccessDeniedException, but not IOException.
 		// Since AccessDeniedException is a subclass of IOException, we catch and re-throw it.
 		catch (AccessDeniedException ade) {
-			System.out.println("Failed to read file as " + userName + " in domain " + domain 
-					+ " : " + (System.currentTimeMillis() - startTime));		
+			Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: determined that user {0} in domain {1} " +
+					" does not read access to the content, in {2} ms.",
+					userName, domain, (System.currentTimeMillis() - startTime));
 			throw ade;
 		}
 		catch (IOException ioe) {
@@ -265,7 +268,8 @@ public class MLACReadWriteTestRepo {
 			handle.close();
 		}
 
-		System.out.println("read file as " + userName + ": " + (System.currentTimeMillis() - startTime));		
+		Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: reading content as {0} succeeded in {1} ms.",
+				userName, (System.currentTimeMillis() - startTime));
 	}
 	
 	/**
@@ -285,7 +289,8 @@ public class MLACReadWriteTestRepo {
 			Assert.fail();
 		}
 
-		System.out.println("updateACL: " + (System.currentTimeMillis() - startTime));		
+		Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: updated ACL in {1} ms.",
+				(System.currentTimeMillis() - startTime));
 	}
 
 	
