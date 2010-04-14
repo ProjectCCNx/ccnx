@@ -3842,28 +3842,39 @@ do_deferred_write(struct ccnd_handle *h, int fd)
         ccnd_msg(h, "ccnd:do_deferred_write: something fishy on %d", fd);
 }
 
+/**
+ * Set up the array of fd descriptors for the poll(2) call.
+ *
+ * Arrange the array so that multicast receivers are early, so that
+ * if the same packet arrives on both a multicast socket and a 
+ * normal socket, we will count is as multicast.
+ */
 static void
 prepare_poll_fds(struct ccnd_handle *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    int i;
+    int i, j, k;
     if (hashtb_n(h->faces_by_fd) != h->nfds) {
         h->nfds = hashtb_n(h->faces_by_fd);
         h->fds = realloc(h->fds, h->nfds * sizeof(h->fds[0]));
         memset(h->fds, 0, h->nfds * sizeof(h->fds[0]));
     }
-    for (i = 0, hashtb_start(h->faces_by_fd, e);
-         i < h->nfds && e->data != NULL;
-         i++, hashtb_next(e)) {
+    for (i = 0, k = h->nfds, hashtb_start(h->faces_by_fd, e);
+         i < k && e->data != NULL; hashtb_next(e)) {
         struct face *face = e->data;
-        h->fds[i].fd = face->recv_fd;
-        h->fds[i].events = POLLIN;
+        if (face->flags & CCN_FACE_MCAST)
+            j = i++;
+        else
+            j = --k;
+        h->fds[j].fd = face->recv_fd;
+        h->fds[j].events = POLLIN;
         if ((face->outbuf != NULL || (face->flags & CCN_FACE_CLOSING) != 0))
-            h->fds[i].events |= POLLOUT;
+            h->fds[j].events |= POLLOUT;
     }
     hashtb_end(e);
-    h->nfds = i;
+    if (i < k)
+        abort();
 }
 
 /**
