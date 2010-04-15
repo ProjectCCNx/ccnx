@@ -292,7 +292,7 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
         GOT_HERE;
         setsockopt(socks->sending, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
         res = bind(socks->sending, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
-        if (res == -1 && getbound && errno == EADDRINUSE)
+        if (res == -1 && getbound)
             getaddrinfo(NULL, descr->port, &hints, &mcast_source_addrinfo);
         else
             bind(socks->sending, NULL, 0);
