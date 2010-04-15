@@ -290,10 +290,11 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
         if (res != 0)
             goto Finish;
         GOT_HERE;
-        setsockopt(socks->sending, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
         res = bind(socks->sending, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
-        if (res == -1 && getbound)
-            getaddrinfo(NULL, descr->port, &hints, &mcast_source_addrinfo);
+        if (res == -1 && getbound) {
+            mcast_source_addrinfo = laddrinfo;
+            laddrinfo = NULL;
+        }
         else
             bind(socks->sending, NULL, 0);
     }
