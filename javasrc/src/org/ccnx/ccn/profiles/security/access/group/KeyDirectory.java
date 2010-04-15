@@ -369,7 +369,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		ContentName principalLinkName = getWrappedKeyNameForPrincipal(pi);
 		// This should be a link to the actual key block
 		// TODO DKS should wait on link data...
-		LinkObject principalLink = new LinkObject(principalLinkName, _manager.handle());
+		LinkObject principalLink = new LinkObject(principalLinkName, _handle);
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 			Log.info(Log.FAC_ACCESSCONTROL, "Retrieving wrapped key for principal {0} at {1}", principalName, principalLink.getTargetName());
 		}
@@ -465,7 +465,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws ContentDecodingException 
 	 */
 	public WrappedKeyObject getWrappedKey(ContentName wrappedKeyName) throws ContentDecodingException, IOException {
-		WrappedKeyObject wrappedKey = new WrappedKeyObject(wrappedKeyName, _manager.handle());
+		WrappedKeyObject wrappedKey = new WrappedKeyObject(wrappedKeyName, _handle);
 		wrappedKey.update();
 		return wrappedKey;		
 	}
@@ -512,7 +512,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		if (!hasPreviousKeyBlock())
 			return null;
-		LinkObject previousKey = new LinkObject(getPreviousKeyBlockName(), _manager.handle());
+		LinkObject previousKey = new LinkObject(getPreviousKeyBlockName(), _handle);
 		previousKey.waitForData(timeout); 
 		if (!previousKey.available()) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
@@ -561,7 +561,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		if (!hasPrivateKeyBlock()) // checks hasChildren
 			return null;
 		
-		return new WrappedKey.WrappedKeyObject(getPrivateKeyBlockName(), _manager.handle());
+		return new WrappedKey.WrappedKeyObject(getPrivateKeyBlockName(), _handle);
 	}
 	
 	/**
@@ -642,7 +642,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					Key unwrappedSupersedingKey = null;
 					KeyDirectory supersedingKeyDirectory = null;
 					try {
-						supersedingKeyDirectory = new KeyDirectory(_manager, supersededKeyBlock.wrappedKey().wrappingKeyName(), _manager.handle());
+						supersedingKeyDirectory = new KeyDirectory(_manager, supersededKeyBlock.wrappedKey().wrappingKeyName(), _handle);
 						supersedingKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
 						// This wraps the key we actually want.
 						unwrappedSupersedingKey = supersedingKeyDirectory.getUnwrappedKey(supersededKeyBlock.wrappedKey().wrappingKeyIdentifier());
@@ -887,9 +887,9 @@ public class KeyDirectory extends EnumeratedNameList {
 		wrappedKey.setWrappingKeyName(publicKeyName);
 		WrappedKeyObject wko = 
 			new WrappedKeyObject(getWrappedKeyNameForKeyID(WrappedKey.wrappingKeyIdentifier(publicKey)),
-								 wrappedKey,SaveType.REPOSITORY, _manager.handle());
+								 wrappedKey,SaveType.REPOSITORY, _handle);
 		wko.save();
-		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new Link(wko.getVersionedName()), SaveType.REPOSITORY, _manager.handle());
+		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new Link(wko.getVersionedName()), SaveType.REPOSITORY, _handle);
 		lo.save();
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 			Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory addWrappedKeyBlock: wrapped secret key {0} under public key named {1} whose id is {2} for key directory {3}", 
@@ -910,7 +910,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		
 		WrappedKey wrappedKey = WrappedKey.wrapKey(privateKey, null, null, privateKeyWrappingKey);	
 		wrappedKey.setWrappingKeyIdentifier(privateKeyWrappingKey);
-		WrappedKeyObject wko = new WrappedKeyObject(getPrivateKeyBlockName(), wrappedKey, SaveType.REPOSITORY, _manager.handle());
+		WrappedKeyObject wko = new WrappedKeyObject(getPrivateKeyBlockName(), wrappedKey, SaveType.REPOSITORY, _handle);
 		wko.save();
 	}
 
@@ -928,7 +928,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			throws InvalidKeyException, ContentEncodingException, IOException {
 		
 		addSupersededByBlock(_namePrefix, oldPrivateKeyWrappingKey,
-				storedSupersedingKeyName, storedSupersedingKeyID, newPrivateKeyWrappingKey, _manager.handle());
+				storedSupersedingKeyName, storedSupersedingKeyID, newPrivateKeyWrappingKey, _handle);
 	}
 	
 	/**
@@ -969,7 +969,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			}
 		}
 		LinkAuthenticator la = (null != previousKeyPublisher) ? new LinkAuthenticator(previousKeyPublisher) : null;
-		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new Link(previousKey,la), SaveType.REPOSITORY, _manager.handle());
+		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new Link(previousKey,la), SaveType.REPOSITORY, _handle);
 		pklo.save();
 	}
 	
@@ -990,7 +990,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		WrappedKey wrappedKey = WrappedKey.wrapKey(oldPrivateKeyWrappingKey, null, null, newPrivateKeyWrappingKey);
 		wrappedKey.setWrappingKeyIdentifier(newPrivateKeyWrappingKey);
 		wrappedKey.setWrappingKeyName(supersedingKeyName);
-		WrappedKeyObject wko = new WrappedKeyObject(getPreviousKeyBlockName(), wrappedKey,SaveType.REPOSITORY,  _manager.handle());
+		WrappedKeyObject wko = new WrappedKeyObject(getPreviousKeyBlockName(), wrappedKey,SaveType.REPOSITORY,  _handle);
 		wko.save();
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 			Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory addPreviousKeyBlock: old wrapping key is {0} and superseding key name is {1} and new wrapping key is {2}.", 
