@@ -43,10 +43,13 @@ public class GACMNodeKeyDirtyTestRepo {
 	static Group[] group = new Group[numberOfGroups];
 	static ContentName[] node = new ContentName[numberOfGroups];
 	static CCNHandle handle;
+	static Level [] logLevels;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setLevel(Log.FAC_ACCESSCONTROL, Level.FINE);
+		logLevels = Log.getLevels();
+		Log.setLevel(Log.FAC_ALL, Level.WARNING);
+		
 		directoryBase = UserConfiguration.defaultNamespace();
 		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
 		userKeyStorePrefix = new ContentName(directoryBase, AccessControlProfile.ACCESS_CONTROL_MARKER_BYTES);
@@ -86,6 +89,7 @@ public class GACMNodeKeyDirtyTestRepo {
 	public static void tearDownAfterClass() throws Exception {
 		td.closeAll();
 		handle.close();
+		Log.setLevels(logLevels);
 	}
 	
 	/**

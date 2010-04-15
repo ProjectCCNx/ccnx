@@ -69,6 +69,13 @@ public class KeyDirectoryTestRepo {
 	static int testCount = 0;
 	
 	static CCNHandle handle;
+
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		kd.stopEnumerating();
+		handle.close();
+	}
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -101,12 +108,6 @@ public class KeyDirectoryTestRepo {
 		testGetPrivateKey();
 		testGetUnwrappedKeySuperseded();
 		testAddPreviousKeyBlock();
-	}
-	
-	@AfterClass
-	public static void tearDownAfterClass() throws Exception {
-		kd.stopEnumerating();
-		handle.close();
 	}
 	
 	/*	
