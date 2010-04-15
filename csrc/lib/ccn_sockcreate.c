@@ -143,38 +143,6 @@ set_multicast_socket_options(int socket_r, int socket_w,
     return(0);
 }
 
-static void
-set_ttl_and_loop(int af, int socket_w, int multicastttl)
-{
-    unsigned char csockopt = 0;
-    unsigned int isockopt = 0;
-    
-    if (af == AF_INET) {
-#ifdef IP_MULTICAST_LOOP
-        csockopt = 0;
-        setsockopt(socket_w, IPPROTO_IP, IP_MULTICAST_LOOP, &csockopt, sizeof(csockopt));
-#endif
-#ifdef IP_MULTICAST_TTL
-        if (multicastttl > 0) {
-            csockopt = multicastttl;
-            setsockopt(socket_w, IPPROTO_IP, IP_MULTICAST_TTL, &csockopt, sizeof(csockopt));
-        }
-#endif
-    }
-    else if (af == AF_INET6) {
-#ifdef IPV6_MULTICAST_LOOP
-        isockopt = 0;
-        setsockopt(socket_w, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &isockopt, sizeof(isockopt));
-#endif
-#ifdef IPV6_MULTICAST_HOPS
-        if (multicastttl > 0) {
-            isockopt = multicastttl;
-            setsockopt(socket_w, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &isockopt, sizeof(isockopt));
-        }
-#endif
-    }
-}
-
 /**
  * Utility for setting up a socket (or pair of sockets) from a text-based
  * description.
