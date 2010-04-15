@@ -143,6 +143,38 @@ set_multicast_socket_options(int socket_r, int socket_w,
     return(0);
 }
 
+static void
+set_ttl_and_loop(int af, int socket_w, int multicastttl)
+{
+    unsigned char csockopt = 0;
+    unsigned int isockopt = 0;
+    
+    if (af == AF_INET) {
+#ifdef IP_MULTICAST_LOOP
+        csockopt = 0;
+        setsockopt(socket_w, IPPROTO_IP, IP_MULTICAST_LOOP, &csockopt, sizeof(csockopt));
+#endif
+#ifdef IP_MULTICAST_TTL
+        if (multicastttl > 0) {
+            csockopt = multicastttl;
+            setsockopt(socket_w, IPPROTO_IP, IP_MULTICAST_TTL, &csockopt, sizeof(csockopt));
+        }
+#endif
+    }
+    else if (af == AF_INET6) {
+#ifdef IPV6_MULTICAST_LOOP
+        isockopt = 0;
+        setsockopt(socket_w, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &isockopt, sizeof(isockopt));
+#endif
+#ifdef IPV6_MULTICAST_HOPS
+        if (multicastttl > 0) {
+            isockopt = multicastttl;
+            setsockopt(socket_w, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &isockopt, sizeof(isockopt));
+        }
+#endif
+    }
+}
+
 /**
  * Utility for setting up a socket (or pair of sockets) from a text-based
  * description.
@@ -316,7 +348,23 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
         if (res != 0)
             goto Finish;
         GOT_HERE;
+        setsockopt(socks->sending, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
         res = bind(socks->sending, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
+        if (res == -1 && getbound && errno == EADDRINUSE) {
+            GOT_HERE;
+            socks->sending = getbound(getbounddat,
+                                      laddrinfo->ai_addr,
+                                      laddrinfo->ai_addrlen);
+            if (socks->sending >= 0) {
+                GOT_HERE;
+                close_protect = socks->sending;
+                res = 0;
+                set_ttl_and_loop(laddrinfo->ai_addr->sa_family,
+                                 socks->sending, descr->mcast_ttl);
+            }
+            else
+                errno = EADDRINUSE;
+        }
         if (res == -1) {
             LOGGIT(logdat, "bind(sending, *.%s, ...): %s", descr->port, strerror(errno));
             goto Finish;
