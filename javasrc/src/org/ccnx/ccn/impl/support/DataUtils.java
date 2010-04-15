@@ -471,7 +471,7 @@ public class DataUtils {
 		for (int i=0; i < cmpcount; ++i) {
 			if (arr1[i] < arr2[i])
 				return -1;
-			if (arr2[i] > arr1[i])
+			if (arr1[i] > arr2[i])
 				return 1;
 		}
 		if (cmpcount == count)
