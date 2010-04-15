@@ -78,21 +78,6 @@ set_multicast_socket_options(int socket_r, int socket_w,
             LOGGIT(logdat, "setsockopt(..., IP_ADD_MEMBERSHIP, ...): %s", strerror(errno));
             return(-1);
         }
-        if (mreq.imr_interface.s_addr == 0) {
-            /* Attempt to join on all interfaces */
-            int i;
-            int highest = 0;
-            for (i = 1; i < highest + 5; i++) {
-                mreq.imr_interface.s_addr = htonl(i);
-                res = setsockopt(socket_r, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
-                if (res == -1) {
-                    LOGGIT(logdat, "setsockopt(..., IP_ADD_MEMBERSHIP, 0.0.0.%d): %s (%d)", i, strerror(errno), errno);
-                }
-                else {
-                    highest = i;
-                }
-            }
-        }
 #endif
 #ifdef IP_MULTICAST_LOOP
         csockopt = 0;
