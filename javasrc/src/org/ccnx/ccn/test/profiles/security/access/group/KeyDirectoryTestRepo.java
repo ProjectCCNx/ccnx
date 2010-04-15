@@ -194,7 +194,7 @@ public class KeyDirectoryTestRepo {
 	public void addWrappingKeyToACM() throws Exception {
 		PrivateKey privKey = wrappingKeyPair.getPrivate();
 		byte[] publicKeyIdentifier = CCNDigestHelper.digest(wrappingKeyPair.getPublic().getEncoded());
-		acm.addMyPrivateKey(publicKeyIdentifier, privKey);
+		handle.keyManager().getSecureKeyCache().addMyPrivateKey(publicKeyIdentifier, privKey);
 	}
 	
 	

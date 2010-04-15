@@ -848,6 +848,11 @@ public class BasicKeyManager extends KeyManager {
 	public PublicKeyCache getPublicKeyCache() {
 		return _publicKeyCache;
 	}
+	
+	@Override
+	public SecureKeyCache getSecureKeyCache() {
+		return _privateKeyCache;
+	}
 
 	@Override
 	public PublicKeyObject publishKey(ContentName keyName, 

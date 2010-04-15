@@ -89,6 +89,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 		
+	CCNHandle _handle;
 	GroupAccessControlManager _manager; // to get at key cache, GroupManager
 	
 	/**
@@ -134,6 +135,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	public KeyDirectory(GroupAccessControlManager manager, ContentName directoryName, boolean enumerate, CCNHandle handle) 
 					throws IOException {
 		super(directoryName, false, handle);
+		_handle = handle;
 		if (null == manager) {
 			stopEnumerating();
 			throw new IllegalArgumentException("Manager cannot be null.");
@@ -609,11 +611,11 @@ public class KeyDirectory extends EnumeratedNameList {
 					Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: the KD secret key is wrapped under a key whose id is {0}", 
 							DataUtils.printHexBytes(keyid) );
 				}
-				if (_manager.hasKey(keyid)) {
+				if (_handle.keyManager().getSecureKeyCache().containsKey(keyid)) {
 					// We have it, pull the block, unwrap the node key.
 					wko = getWrappedKeyForKeyID(keyid);
 					if (null != wko.wrappedKey()) {
-						unwrappedKey = wko.wrappedKey().unwrapKey(_manager.getKey(keyid));
+						unwrappedKey = wko.wrappedKey().unwrapKey(_handle.keyManager().getSecureKeyCache().getKey(keyid));
 					}
 				}
 			}
@@ -648,7 +650,7 @@ public class KeyDirectory extends EnumeratedNameList {
 						supersedingKeyDirectory.stopEnumerating();
 					}
 					if (null != unwrappedSupersedingKey) {
-						_manager.addKey(supersedingKeyDirectory.getName(), unwrappedSupersedingKey);
+						_handle.keyManager().getSecureKeyCache().addKey(supersedingKeyDirectory.getName(), unwrappedSupersedingKey);
 						unwrappedKey = supersededKeyBlock.wrappedKey().unwrapKey(unwrappedSupersedingKey);
 					} else {
 						if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
@@ -752,7 +754,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		
 		if (null != unwrappedKey) {
-			_manager.addKey(getName(), unwrappedKey);
+			_handle.keyManager().getSecureKeyCache().addKey(getName(), unwrappedKey);
 
 			if (null != expectedKeyID) {
 				retrievedKeyID = NodeKey.generateKeyID(unwrappedKey);
