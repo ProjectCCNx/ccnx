@@ -64,9 +64,12 @@ public class ACPerformanceTestRepo {
 	int readsize = 1024;
 	byte [] buffer = new byte[readsize];
 	
+	static Level [] logLevels;
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setDefaultLevel(Level.WARNING);
+		logLevels = Log.getLevels();
+		Log.setDefaultLevel(Log.FAC_ALL, Level.WARNING);
 		rnd = new Random();
 		
 		domainPrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "" + rnd.nextInt(10000));
@@ -113,6 +116,7 @@ public class ACPerformanceTestRepo {
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		cua.closeAll();
+		Log.setLevels(logLevels);
 	}
 	
 	@Test

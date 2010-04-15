@@ -66,10 +66,12 @@ public class MLACReadWriteTestRepo {
 	int _readsize = 1024;
 	byte [] _read_buffer = new byte[_readsize];
 
+	static Level [] logLevels;
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		
-		Log.setDefaultLevel(Log.FAC_ACCESSCONTROL, Level.FINE);
+		logLevels = Log.getLevels();
+		Log.setDefaultLevel(Log.FAC_ALL, Level.WARNING);
 		
 		rnd = new Random();
 		_handle = CCNHandle.open();
@@ -142,6 +144,8 @@ public class MLACReadWriteTestRepo {
 		for( CreateUserData x : cua ) {
 				x.closeAll();
 		}
+		
+		Log.setLevels(logLevels);
 	}
 	
 	@Test
