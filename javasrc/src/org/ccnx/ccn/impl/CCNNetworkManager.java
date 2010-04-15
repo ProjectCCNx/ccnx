@@ -881,7 +881,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
 		if( Log.isLoggable(Level.FINE) )
-			Log.fine("get: {0}", interest);
+			Log.fine("get: {0} with timeout: {1}", interest, timeout);
 		InterestRegistration reg = new InterestRegistration(this, interest, null, null);
 		expressInterest(reg);
 		if( Log.isLoggable(Level.FINEST) )
