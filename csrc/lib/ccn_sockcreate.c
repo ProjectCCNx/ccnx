@@ -280,6 +280,23 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
     }
     GOT_HERE;
     socks->recving = socks->sending = sock;
+    if (mcast_source_addrinfo == NULL) {
+        /* Try binding the port now to see if we need 2 sockets. */
+        hints.ai_family = addrinfo->ai_family;
+        hints.ai_socktype = addrinfo->ai_socktype;
+        hints.ai_flags = AI_PASSIVE;
+        GOT_HERE;
+        res = getaddrinfo(NULL, descr->port, &hints, &laddrinfo);
+        if (res != 0)
+            goto Finish;
+        GOT_HERE;
+        setsockopt(socks->sending, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+        res = bind(socks->sending, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
+        if (res == -1 && getbound && errno == EADDRINUSE)
+            getaddrinfo(NULL, descr->port, &hints, &mcast_source_addrinfo);
+        else
+            bind(socks->sending, NULL, 0);
+    }
     if (mcast_source_addrinfo != NULL) {
         /*
          * We have a specific interface to bind to for sending.
@@ -341,30 +358,8 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
         }
     }
     else {
-        hints.ai_family = addrinfo->ai_family;
-        hints.ai_socktype = addrinfo->ai_socktype;
-        hints.ai_flags = AI_PASSIVE;
-        res = getaddrinfo(NULL, descr->port, &hints, &laddrinfo);
-        if (res != 0)
-            goto Finish;
         GOT_HERE;
-        setsockopt(socks->sending, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
         res = bind(socks->sending, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
-        if (res == -1 && getbound && errno == EADDRINUSE) {
-            GOT_HERE;
-            socks->sending = getbound(getbounddat,
-                                      laddrinfo->ai_addr,
-                                      laddrinfo->ai_addrlen);
-            if (socks->sending >= 0) {
-                GOT_HERE;
-                close_protect = socks->sending;
-                res = 0;
-                set_ttl_and_loop(laddrinfo->ai_addr->sa_family,
-                                 socks->sending, descr->mcast_ttl);
-            }
-            else
-                errno = EADDRINUSE;
-        }
         if (res == -1) {
             LOGGIT(logdat, "bind(sending, *.%s, ...): %s", descr->port, strerror(errno));
             goto Finish;
