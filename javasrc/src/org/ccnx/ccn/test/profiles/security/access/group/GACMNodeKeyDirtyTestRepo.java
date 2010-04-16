@@ -21,6 +21,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.utils.CreateUserData;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -42,10 +43,13 @@ public class GACMNodeKeyDirtyTestRepo {
 	static Group[] group = new Group[numberOfGroups];
 	static ContentName[] node = new ContentName[numberOfGroups];
 	static CCNHandle handle;
+	static Level [] logLevels;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setLevel(Log.FAC_ACCESSCONTROL, Level.FINE);
+		logLevels = Log.getLevels();
+		Log.setLevel(Log.FAC_ALL, Level.WARNING);
+		
 		directoryBase = UserConfiguration.defaultNamespace();
 		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
 		userKeyStorePrefix = new ContentName(directoryBase, AccessControlProfile.ACCESS_CONTROL_MARKER_BYTES);
@@ -79,6 +83,13 @@ public class GACMNodeKeyDirtyTestRepo {
 		
 		// Register ACM so it can be found
 		handle.keyManager().rememberAccessControlManager(acm);
+	}
+
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		td.closeAll();
+		handle.close();
+		Log.setLevels(logLevels);
 	}
 	
 	/**
@@ -156,7 +167,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		// write some content in nodes
 		for (int i=0; i<numberOfGroups; i++) {
 			RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(node[i], handle);
-			rvos.setTimeout(5000);
+			rvos.setTimeout(SystemConfiguration.MAX_TIMEOUT);
 			byte [] data = "content".getBytes();
 			rvos.write(data, 0, data.length);
 			rvos.close();			
@@ -187,7 +198,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		// write some content in nodes
 		for (int i=0; i<numberOfGroups; i++) {
 			RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(node[i], handle);
-			rvos.setTimeout(5000);
+			rvos.setTimeout(SystemConfiguration.MAX_TIMEOUT);
 			byte [] data = "more content".getBytes();
 			rvos.write(data, 0, data.length);
 			rvos.close();			
@@ -219,7 +230,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		// write some content in nodes
 		for (int i=0; i<numberOfGroups; i++) {
 			RepositoryVersionedOutputStream rvos = new RepositoryVersionedOutputStream(node[i], handle);
-			rvos.setTimeout(5000);
+			rvos.setTimeout(SystemConfiguration.MAX_TIMEOUT);
 			byte [] data = "content".getBytes();
 			rvos.write(data, 0, data.length);
 			rvos.close();			

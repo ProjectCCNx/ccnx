@@ -274,7 +274,6 @@ public class GroupAccessControlManager extends AccessControlManager {
 		} else {
 			_handle = handle;
 		}
-		_keyCache = new SecureKeyCache(_handle.keyManager());
 
 		// set up information based on contents of policy
 		// also need a static method/command line program to create a Root with the right types of information
@@ -417,13 +416,6 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 	public boolean haveIdentity(ContentName userName) {
 		return _myIdentities.contains(userName);
-	}
-
-	/**
-	 * Expose this to members of this package.
-	 */
-	protected Key getKey(byte [] desiredKeyIdentifier) {
-		return super.getKey(desiredKeyIdentifier);
 	}
 
 	public String nodeKeyLabel() {

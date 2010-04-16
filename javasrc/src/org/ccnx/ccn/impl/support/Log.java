@@ -335,6 +335,16 @@ public class Log {
 			}
 		}
 	}
+	
+	public static void setLevels(Level [] levels) {
+		if( levels.length != _fac_level.length ) {
+			doLog(FAC_DEFAULT, Level.SEVERE, "setLevels array incorrect size");
+			return;
+		}
+		
+		for( int i = 0; i < levels.length; i++ )
+			_fac_level[i] = levels[i];
+	}
 
 	/**
 	 * Set the default log level that will be in effect unless overridden by
@@ -425,6 +435,13 @@ public class Log {
 			return _fac_level[facility];
 		else
 			return null;
+	}
+	
+	/**
+	 * Return array of all log levels
+	 */
+	public static final Level [] getLevels() {
+		return _fac_level;
 	}
 
 	/**

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.util.Map;
 import java.util.TreeMap;
@@ -19,7 +18,6 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.security.crypto.KDFContentKeys;
-import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.ErrorStateException;
@@ -73,7 +71,6 @@ public abstract class AccessControlManager {
 	public static final String DEFAULT_DATA_KEY_ALGORITHM = "AES";
 	public static final String DATA_KEY_LABEL = "Data Key";
 	protected ContentName _namespace;
-	protected SecureKeyCache _keyCache;
 	protected CCNHandle _handle;
 	protected SecureRandom _random = new SecureRandom();
 
@@ -135,8 +132,6 @@ public abstract class AccessControlManager {
 	}
 
 	public CCNHandle handle() { return _handle; }
-
-	protected SecureKeyCache keyCache() { return _keyCache; }
 	
 	public boolean inProtectedNamespace(ContentName content) {
 		return NamespaceManager.inProtectedNamespace(_namespace, content);
@@ -175,8 +170,8 @@ public abstract class AccessControlManager {
 		Key dataKey = null;
 		Key wrappingKey = null;
 		
-		if (hasKey(wdko.wrappedKey().wrappingKeyIdentifier())) {
-			Key cachedKey = getKey(wdko.wrappedKey().wrappingKeyIdentifier());
+		if (_handle.keyManager().getSecureKeyCache().containsKey(wdko.wrappedKey().wrappingKeyIdentifier())) {
+			Key cachedKey = _handle.keyManager().getSecureKeyCache().getKey(wdko.wrappedKey().wrappingKeyIdentifier());
 			if (null == cachedKey) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
 					Log.warning(Log.FAC_ACCESSCONTROL, "Thought we had key {0} in cache, but cannot retrieve it! Data node: {1}.", 
@@ -316,54 +311,7 @@ public abstract class AccessControlManager {
 		WrappedKeyObject wko = new WrappedKeyObject(AccessControlProfile.dataKeyName(dataNodeName), wrappedKey, SaveType.REPOSITORY, handle());
 		wko.save();
 	}
-
-	/**
-	 * Add a private key to our cache
-	 * @param keyName
-	 * @param publicKeyIdentifier
-	 * @param pk
-	 */
-	public void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
-		_keyCache.addPrivateKey(keyName, publicKeyIdentifier, pk);
-	}
-
-	/**
-	 * Add my private key to our cache
-	 * @param publicKeyIdentifier
-	 * @param pk
-	 */
-	public void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
-		_keyCache.addMyPrivateKey(publicKeyIdentifier, pk);
-	}
-
-	/**
-	 * Add a key to our cache
-	 * @param name
-	 * @param key
-	 */
-	public void addKey(ContentName name, Key key) {
-		_keyCache.addKey(name, key);
-	}
 	
-	public boolean hasKey(byte [] keyID) {
-		return _keyCache.containsKey(keyID);
-	}
-	
-	public boolean hasKey(ContentName keyName) {
-		return _keyCache.containsKey(keyName);
-	}
-	
-	protected Key getKey(byte [] desiredKeyIdentifier) {
-		return _keyCache.getKey(desiredKeyIdentifier);
-	}
-
-	protected Key getKey(ContentName keyName) {
-		byte [] keyID = _keyCache.getKeyID(keyName);
-		if (null == keyID)
-			return null;
-		return _keyCache.getKey(keyID);
-	}
-
 	/**
 	 * Given the name of a content stream, this function verifies that access is allowed and returns the
 	 * keys required to decrypt the stream.

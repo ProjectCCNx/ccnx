@@ -3,6 +3,7 @@ package org.ccnx.ccn.test.profiles.security.access.group;
 
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.logging.Level;
 
 import junit.framework.Assert;
 
@@ -16,6 +17,7 @@ import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.utils.CreateUserData;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -35,9 +37,13 @@ public class GroupRecursiveKeyUpdateTestRepo {
 
 	static CCNHandle handle;
 	
+	static Level [] logLevels;
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setLevel(java.util.logging.Level.INFO);
+		logLevels = Log.getLevels();		
+		Log.setLevel(Log.FAC_ALL, Level.WARNING);
+		
 		directoryBase = ContentName.fromNative("/test/GroupRecursiveKeyUpdateTestRepo");
 		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
 		userKeyStorePrefix = new ContentName(directoryBase, AccessControlProfile.ACCESS_CONTROL_MARKER_BYTES);
@@ -52,6 +58,14 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		handle = td.getHandleForUser(friendlyNames[1]);
 		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
 		acm.publishMyIdentity(ContentName.fromNative(userNamespace, friendlyNames[1]), handle.keyManager().getDefaultPublicKey());
+	}
+	
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		td.closeAll();
+		handle.close();
+		Log.setLevels(logLevels);
 	}
 	
 	/**

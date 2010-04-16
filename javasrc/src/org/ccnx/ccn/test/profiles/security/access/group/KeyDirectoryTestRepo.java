@@ -69,7 +69,14 @@ public class KeyDirectoryTestRepo {
 	static int testCount = 0;
 	
 	static CCNHandle handle;
-		
+
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		kd.stopEnumerating();
+		handle.close();
+	}
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		// randomize names to minimize stateful effects of ccnd/repo caches.
@@ -102,12 +109,6 @@ public class KeyDirectoryTestRepo {
 		testGetUnwrappedKeySuperseded();
 		testAddPreviousKeyBlock();
 	}
-	
-	@AfterClass
-	public static void tearDownAfterClass() throws Exception {
-		kd.stopEnumerating();
-	}
-	
 	
 	/*	
 	 * Create a new versioned KeyDirectory
@@ -194,7 +195,7 @@ public class KeyDirectoryTestRepo {
 	public void addWrappingKeyToACM() throws Exception {
 		PrivateKey privKey = wrappingKeyPair.getPrivate();
 		byte[] publicKeyIdentifier = CCNDigestHelper.digest(wrappingKeyPair.getPublic().getEncoded());
-		acm.addMyPrivateKey(publicKeyIdentifier, privKey);
+		handle.keyManager().getSecureKeyCache().addMyPrivateKey(publicKeyIdentifier, privKey);
 	}
 	
 	

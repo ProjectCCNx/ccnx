@@ -46,9 +46,11 @@ public class GroupAccessControlTestRepo {
 
 		// create a file in the namespace under access control
 		fileName = ContentName.fromNative(acName, "/test.txt");
-		RepositoryFileOutputStream os = new RepositoryFileOutputStream(fileName, CCNHandle.getHandle());
+		CCNHandle h = CCNHandle.getHandle();
+		RepositoryFileOutputStream os = new RepositoryFileOutputStream(fileName, h);
 		os.write(content);
 		os.close();
+		h.close();
 	}
 
 	@Test

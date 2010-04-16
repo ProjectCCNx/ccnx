@@ -669,8 +669,8 @@ public class VersioningProfile implements CCNProfile {
 						//yes, we need to have the first segment....
 						// Now we know the version. Did we luck out and get first block?
 						if (VersioningProfile.isVersionedFirstSegment(prefix, result, startingSegmentNumber)) {
-							if (Log.isLoggable(Level.INFO))
-								Log.info("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
+							if (Log.isLoggable(Level.FINE))
+								Log.fine("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
 						} else {
 							//not the first segment...
 							
