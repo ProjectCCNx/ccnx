@@ -263,8 +263,6 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
             mcast_source_addrinfo = laddrinfo;
             laddrinfo = NULL;
         }
-        else
-            bind(socks->sending, NULL, 0);
     }
     if (mcast_source_addrinfo != NULL) {
         /*
@@ -326,15 +324,6 @@ ccn_setup_socket(const struct ccn_sockdescr *descr,
             }
         }
     }
-    else {
-        GOT_HERE;
-        res = bind(socks->sending, laddrinfo->ai_addr, laddrinfo->ai_addrlen);
-        if (res == -1) {
-            LOGGIT(logdat, "bind(sending, *.%s, ...): %s", descr->port, strerror(errno));
-            goto Finish;
-        }
-        GOT_HERE;
-        }
     GOT_HERE;
     result = 0;
     
