@@ -3539,6 +3539,34 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
 }
 
 static void
+process_input_buffer(struct ccnd_handle *h, struct face *face)
+{
+    unsigned char *msg;
+    size_t size;
+    ssize_t dres;
+    struct ccn_skeleton_decoder *d;
+
+    if (face == NULL || face->inbuf == NULL)
+        return;
+    d = &face->decoder;
+    msg = face->inbuf->buf;
+    size = face->inbuf->length;
+    while (d->index < size) {
+        dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
+        if (d->state != 0)
+            break;
+        process_input_message(h, face, msg + d->index - dres, dres, 0);
+    }
+    if (d->index != size) {
+        ccnd_msg(h, "protocol error on face %u (state %d), discarding %d bytes",
+                     face->faceid, d->state, (int)(size - d->index));
+        
+    }
+    face->inbuf->length = 0;
+    memset(d, 0, sizeof(*d));
+}
+
+static void
 process_input(struct ccnd_handle *h, int fd)
 {
     struct face *face = NULL;
@@ -3637,11 +3665,14 @@ process_input(struct ccnd_handle *h, int fd)
 static void
 process_internal_client_buffer(struct ccnd_handle *h)
 {
-    struct ccn_charbuf *buf = ccn_grab_buffered_output(h->internal_client);
-    if (buf != NULL) {
-        process_input_message(h, h->face0, buf->buf, buf->length, 0);
-        ccn_charbuf_destroy(&buf);
-    }
+    struct face *face = h->face0;
+    if (face == NULL)
+        return;
+    face->inbuf = ccn_grab_buffered_output(h->internal_client);
+    if (face->inbuf == NULL)
+        return;
+    process_input_buffer(h, face);
+    ccn_charbuf_destroy(&(face->inbuf));
 }
 
 /**
