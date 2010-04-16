@@ -247,7 +247,8 @@ smoketestclientlib.o: smoketestclientlib.c ../include/ccn/ccn.h \
 basicparsetest.o: basicparsetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/face_mgmt.h \
-  ../include/ccn/sockcreate.h ../include/ccn/reg_mgmt.h
+  ../include/ccn/sockcreate.h ../include/ccn/reg_mgmt.h \
+  ../include/ccn/header.h
 ccn_sockaddrutil.o: ccn_sockaddrutil.c ../include/ccn/charbuf.h \
   ../include/ccn/sockaddrutil.h
 ccn_setup_sockaddr_un.o: ccn_setup_sockaddr_un.c ../include/ccn/ccnd.h \
