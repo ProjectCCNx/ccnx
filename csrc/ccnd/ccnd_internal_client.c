@@ -45,6 +45,10 @@
 #endif
 #define CCND_NOTICE_NAME "notice.txt"
 
+#ifndef CCND_TEST_100137
+#define CCND_TEST_100137 0
+#endif
+
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
 static void ccnd_internal_client_reschedule(struct ccnd_handle *ccnd);
 
@@ -178,6 +182,8 @@ GOT_HERE
     res = ccn_put(info->h, msg->buf, msg->length);
     if (res < 0)
         goto Bail;
+    if (CCND_TEST_100137)
+        ccn_put(info->h, msg->buf, msg->length);
     res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
     goto Finish;
 Bail:
@@ -437,7 +443,7 @@ GOT_HERE
  * Called by ccnd when a face undergoes a substantive status change that
  * should be reported to interested parties.
  * 
- * In the destroy case, this is called frome the a hash table finalizer,
+ * In the destroy case, this is called frome the hash table finalizer,
  * so it shouldn't do much directly.  Inspecting the face is OK, though.
  */
 void
