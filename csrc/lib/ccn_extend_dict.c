@@ -88,7 +88,7 @@ ccn_extend_dict(const char *dict_file, struct ccn_dict *d, struct ccn_dict **rdp
     struct ccn_dict_entry *ndd = NULL;
     int ndc = 0;
     struct ccn_charbuf *enamebuf = NULL;
-    unsigned int eindex;
+    unsigned int eindex = 0;;
     struct ccn_dict *nd = NULL;
     enum scanner_state {
         S_OVERFLOW = -2,
