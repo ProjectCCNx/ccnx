@@ -4209,6 +4209,24 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
 }
 
 /**
+ * Shutdown listeners and bound datagram sockets, leaving connected streams.
+ */
+static void
+ccnd_shutdown_listeners(struct ccnd_handle *h)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    for (hashtb_start(h->faces_by_fd, e); e->data != NULL;) {
+        struct face *face = e->data;
+        if ((face->flags & (CCN_FACE_MCAST | CCN_FACE_PASSIVE)) != 0)
+            hashtb_delete(e);
+        else
+            hashtb_next(e);
+    }
+    hashtb_end(e);
+}
+
+/**
  * Destroy the ccnd instance, releasing all associated resources.
  */
 void
@@ -4217,6 +4235,7 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     struct ccnd_handle *h = *pccnd;
     if (h == NULL)
         return;
+    ccnd_shutdown_listeners(h);
     ccnd_internal_client_stop(h);
     ccn_schedule_destroy(&h->sched);
     hashtb_destroy(&h->dgram_faces);
