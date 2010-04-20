@@ -75,7 +75,7 @@ public class CCNNetworkChannel extends InputStream {
 	// TODO - this should be under the control of a debugging flag instead
 	//private byte[] buffer = new byte[MAX_PAYLOAD];
 	//protected ByteBuffer _datagram = ByteBuffer.wrap(buffer);
-	private int _mark = 0;
+	private int _mark = -1;
 	private int _readLimit = 0;
 	
 	public CCNNetworkChannel(String host, int port, NetworkProtocol proto, FileOutputStream tapStreamIn) throws IOException {
@@ -141,15 +141,18 @@ public class CCNNetworkChannel extends InputStream {
 	 * of thinking we might be able to decode something. Also since this is supposed to happen
 	 * on packet boundaries, we reset the data buffer to its start during the initial read. We only do 
 	 * the initial read if there's nothing already in the buffer though because in TCP we could have 
-	 * read in some or all of a proceeding packet
-	 * during the last reading. 
+	 * read in some or all of a preceding packet during the last reading.
+	 * 
+	 * Also it should be noted that we are relying on ccnd to guarantee that all packets sent
+	 * to us are complete ccn packets. This code does not have the ability to recover from
+	 * receiving a partial ccn packet followed by correctly formed ones.
 	 * 
 	 * @return a ContentObject, an Interest, or null if there's no data waiting
 	 * @throws IOException
 	 */
 	public XMLEncodable getPacket() throws IOException {
 		if (isConnected()) {
-			_mark = 0;
+			_mark = -1;
 			_readLimit = 0;
 			if (! _datagram.hasRemaining()) {
 				int ret = doReadIn(0);
@@ -316,6 +319,8 @@ public class CCNNetworkChannel extends InputStream {
 	
 	@Override
 	public void reset() throws IOException {
+		if (_mark < 0)
+			throw new IOException("Reset called with no mark set");
 		_datagram.position(_mark);
 	}
 	
@@ -334,7 +339,7 @@ public class CCNNetworkChannel extends InputStream {
 			byte[] b = null;
 			boolean doCopy = false;
 			int checkPosition = position - 1;
-			doCopy = _mark + _readLimit >= checkPosition && _mark <= checkPosition;
+			doCopy = _mark >= 0 && _mark + _readLimit >= checkPosition && _mark <= checkPosition;
 			if (doCopy) {
 				b = new byte[checkPosition - (_mark - 1)];
 				_datagram.position(_mark);
@@ -343,8 +348,9 @@ public class CCNNetworkChannel extends InputStream {
 			_datagram.clear();
 			if (doCopy) {
 				_datagram.put(b);
-			}
-			_mark = 0;
+				_mark = 0;
+			} else
+				_mark = -1;
 			position = _datagram.position();
 		}
 		return doReadIn(position);
@@ -370,10 +376,10 @@ public class CCNNetworkChannel extends InputStream {
 				ret = _ncSockChannel.read(_datagram);
 			}
 			if (ret >= 0) {
-				// The following is the equivalent of doing a flip except we don't
+				// The following is the equivalent to doing a flip except we don't
 				// want to reset the position to 0 as flip would do (because we
 				// potentially want to preserve a mark). But the read positions
-				// the buffer to end of the read and we want to position to the start
+				// the buffer to end of the read and we want to reposition to the start
 				// of the data just read in.
 				_datagram.limit(position + ret);
 				_datagram.position(position);
@@ -387,8 +393,7 @@ public class CCNNetworkChannel extends InputStream {
 					_datagram.position(position);
 				}
 			} else
-				if (ret < 0)
-					close();
+				close();
 		}
 		return ret;
 	}
