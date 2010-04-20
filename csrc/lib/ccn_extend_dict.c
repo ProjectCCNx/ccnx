@@ -180,12 +180,13 @@ ccn_extend_dict(const char *dict_file, struct ccn_dict *d, struct ccn_dict **rdp
     /* check for inconsistent duplicate names, mark exact duplicates for removal */
     qsort(ndd, ndc, sizeof(*ndd), qsort_compare_dict_names);
     for (i = 1; i < ndc; i++) {
-        if (strcmp(ndd[i-1].name, ndd[i].name) == 0)
+        if (strcmp(ndd[i-1].name, ndd[i].name) == 0) {
             if (ndd[i-1].index == ndd[i].index) {
-                free(ndd[i-1].name);
+                free((void *)ndd[i-1].name);
                 ndd[i-1].name = NULL;
             } else
                 goto err;
+        }
     }
     /* check for inconsistent duplicate index values,
      * trim the array when we reach the duplicates, marked above,
