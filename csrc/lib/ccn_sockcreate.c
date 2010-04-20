@@ -139,6 +139,16 @@ set_multicast_socket_options(int socket_r, int socket_w,
             }
         }
 #endif
+#ifdef IP6_MULTICAST_IF
+        if (ifindex > 0) {
+            isockopt = ifindex;
+            res = setsockopt(socket_w, IPPROTO_IPV6, IP6_MULTICAST_IF, &isockopt, sizeof(isockopt));
+            if (res == -1) {
+                LOGGIT(logdat, "setsockopt(..., IP6_MULTICAST_IF, ...): %s", strerror(errno));
+                return(-1);
+            }
+        }
+#endif
     }
     return(0);
 }
