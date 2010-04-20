@@ -387,7 +387,7 @@ public class SystemConfiguration {
 		
 		// Handle old-style header names
 		OLD_HEADER_NAMES = Boolean.parseBoolean(
-				retrievePropertyOrEnvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
+				getGradedValue(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
 
 	}
 
