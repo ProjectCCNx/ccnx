@@ -550,6 +550,12 @@ public abstract class AccessControlManager {
 			// keys to decrypt the other stuff.
 			return false;
 		}
+		
+		if (AccessControlProfile.isAccessControlPolicyName(name)) {
+			// don't encrypt the access control policy metadata.
+			return false;
+		}
+		
 		return true;
 	}
 
