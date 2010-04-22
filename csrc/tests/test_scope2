@@ -28,6 +28,7 @@ WithCCND 2 ccndsmoketest -t 500 -b scope2interest.ccnb recv > scope2reply.ccnb
 cmp scope2reply.ccnb /dev/null || Fail interest was sent too far
 WithCCND 1 ccndsmoketest -t 500 -b scope2interest.ccnb recv > scope2reply.ccnb
 cmp scope2reply.ccnb /dev/null && Fail interest was not sent to neighbor
-WithCCND 2 ccndumpnames /test/scope2/stuff | grep /test/scope2/stuff || \
-   Fail original interest was not answered
-rm scope2interest.xml scope2interest.ccnb scope2reply.ccnb
+WithCCND 0 ccndsmoketest -t 333 recv  # just a bit of delay
+WithCCND 2 ccndumpnames /test/scope2/stuff > scope2stuff.out
+grep /test/scope2/stuff scope2stuff.out || Fail original interest was not answered
+rm scope2interest.xml scope2interest.ccnb scope2reply.ccnb scope2stuff.out
