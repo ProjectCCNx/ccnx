@@ -362,7 +362,7 @@ public class Log {
 	}
 
 	public static void setDefaultLevel(int facility, Level l) {
-		if (0 <= facility && facility < FAC_LOG_LEVEL_DEFAULT.length) {
+		if (FAC_DEFAULT <= facility && facility < FAC_LOG_LEVEL_DEFAULT.length) {
 			FAC_LOG_LEVEL_DEFAULT[facility] = l;
 		} else if (facility == FAC_ALL) {
 			for (int i = FAC_DEFAULT; i < FAC_LOG_LEVEL_DEFAULT.length; i++ ) {
