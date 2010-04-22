@@ -164,7 +164,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	 * @param co
 	 */
 	public void handleData(ContentObject co) {
-		_server.getThreadPool().execute(new RepositoryDataHandler(co, _server));
+		_server.getDataHandler().add(co);
 	}
 	
 	/**
