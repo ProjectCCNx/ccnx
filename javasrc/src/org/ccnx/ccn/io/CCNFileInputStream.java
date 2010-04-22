@@ -25,10 +25,12 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.CCNNetworkObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.io.content.Header;
+import org.ccnx.ccn.io.content.UpdateListener;
 import org.ccnx.ccn.io.content.Header.HeaderObject;
 import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -54,7 +56,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * Headers are named according to definitions in the SegmentationProfile.
  *
  */
-public class CCNFileInputStream extends CCNVersionedInputStream  {
+public class CCNFileInputStream extends CCNVersionedInputStream implements UpdateListener {
 
 	/**
 	 * The header information for that object, once
@@ -307,13 +309,13 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 		_header = new HeaderObject(MetadataProfile.headerName(baseName), null, null, publisher, null, _handle);
 		if( Log.isLoggable(Level.INFO ))
 			Log.info("Retrieving header : " + _header.getBaseName() + " in background.");
-		_header.updateInBackground();
+		_header.updateInBackground(false, this);
 		
 		if (SystemConfiguration.OLD_HEADER_NAMES) {
 			_oldHeader = new HeaderObject(MetadataProfile.oldHeaderName(baseName), null, null, publisher, null, _handle);
 			if( Log.isLoggable(Level.INFO ))
 				Log.info("Retrieving header under old name: " + _oldHeader.getBaseName() + " in background.");
-			_oldHeader.updateInBackground();
+			_oldHeader.updateInBackground(false, this);
 		}
 	}
 
@@ -493,5 +495,34 @@ public class CCNFileInputStream extends CCNVersionedInputStream  {
 			return _header.length();
 		}
 		return super.length();
+	}
+
+	@Override
+	public void newVersionAvailable(CCNNetworkObject<?> newVersion) {
+		if (!headerRequested()) {
+			if (Log.isLoggable(Level.WARNING)) {
+				Log.warning("CCNFileInputStream: got a notification of a new header version {0} when none requested!", 
+						newVersion.getVersionedName());
+			}
+			return;
+		}
+		// One of our headers has come back. Cancel the other one. 
+		if (MetadataProfile.isHeader(newVersion.getBaseName())) {
+			// cancel the old one
+			if (null != _oldHeader) {
+				if (Log.isLoggable(Level.FINE)) {
+					Log.fine("CCNFileInputStream: retrieved new header {0}, canceling request for old one.", 
+							newVersion.getVersionedName());
+				}
+				_oldHeader.cancelInterest();
+			}
+		} else if (null != _header) {
+			if (Log.isLoggable(Level.FINE)) {
+				Log.fine("CCNFileInputStream: retrieved old header {0}, canceling request for new one.", 
+						newVersion.getVersionedName());
+			}
+			_header.cancelInterest();			
+		}
+		
 	}
 }

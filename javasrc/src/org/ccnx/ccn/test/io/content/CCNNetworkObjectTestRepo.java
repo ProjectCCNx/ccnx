@@ -407,6 +407,10 @@ public class CCNNetworkObjectTestRepo {
 		CCNStringObject so = new CCNStringObject(testName, handle);
 		// so should catch exception thrown by underlying stream when it times out.
 		Assert.assertFalse(so.available());
+		
+		// ask for it in background
+		so.updateInBackground();
+		
 		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", SaveType.REPOSITORY, CCNHandle.open());
 		setupNamespace(testName);
 		saveAndLog("Delayed write", sowrite, null, "Now we write something.");
