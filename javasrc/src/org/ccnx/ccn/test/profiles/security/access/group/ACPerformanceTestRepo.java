@@ -26,7 +26,6 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
@@ -44,6 +43,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -72,7 +72,8 @@ public class ACPerformanceTestRepo {
 		Log.setDefaultLevel(Log.FAC_ALL, Level.WARNING);
 		rnd = new Random();
 		
-		domainPrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "" + rnd.nextInt(10000));
+		CCNTestHelper testHelper = new CCNTestHelper(ACPerformanceTestRepo.class);
+		domainPrefix = testHelper.getTestNamespace("testInOrder");
 		userNamespace = GroupAccessControlProfile.userNamespaceName(domainPrefix);
 		userKeystore = ContentName.fromNative(userNamespace, "_keystore_");
 		groupNamespace = GroupAccessControlProfile.groupNamespaceName(domainPrefix);
