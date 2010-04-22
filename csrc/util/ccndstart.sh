@@ -25,7 +25,9 @@ test -f $HOME/.ccnx/ccndrc && . $HOME/.ccnx/ccndrc
 StuffPreload () {
     # Stuff preloaded content objects into ccnd
     # To use this feature, set CCND_PRELOAD in ~/.ccnx/ccndrc
-    test "$CCND_PRELOAD" = "" && return 0
+    # Also has side effect of waiting until ccnd is up, even if no preload
+    # First a brief delay to give forked ccnd a chance to start
+    ccndsmoketest -u localhost -t 50 recv >/dev/null
     ccndsmoketest -b `for i in $CCND_PRELOAD; do echo send $i; done` >/dev/null
 }
 

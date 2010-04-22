@@ -61,7 +61,7 @@ printraw(char *p, int n)
 }
 
 static int
-open_local(struct sockaddr_un *sa)
+open_local(struct sockaddr_un *sa, const char *verb)
 {
     int sock;
     int res;
@@ -73,6 +73,9 @@ open_local(struct sockaddr_un *sa)
     }
     res = connect(sock, (struct sockaddr *)sa, sizeof(*sa));
     if (res == -1 && errno == ENOENT) {
+        /* Don't wait for startup just to shut it down */
+        if (verb != NULL && 0 == strcmp(verb, "kill"))
+            exit(0);
         /* Retry after a delay in case ccnd was just starting up. */
         sleep(1);
         res = connect(sock, (struct sockaddr *)sa, sizeof(*sa));
@@ -250,7 +253,7 @@ int main(int argc, char **argv)
     else if (tcp)
         sock = open_socket(host, portstr, SOCK_STREAM);
     else
-        sock = open_local(&addr);
+        sock = open_local(&addr, argv[optind]);
     fds[0].fd = sock;
     fds[0].events = POLLIN;
     fds[0].revents = 0;
@@ -295,11 +298,12 @@ int main(int argc, char **argv)
             res = unlink((char *)addr.sun_path);
             if (res == 0) {
                 res = open_socket(host, portstr, SOCK_STREAM);
-                if (res < 0)
-                    break;
-                write(res, " ", 1);
-                close(res);
+                if (res != -1) {
+                    write(res, " ", 1);
+                    close(res);
+                }
                 poll(fds, 1, msec);
+                write(3, "", 0);
             }
             break;
         }
