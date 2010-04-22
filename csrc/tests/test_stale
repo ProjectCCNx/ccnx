@@ -18,7 +18,7 @@ export CCND_DEBUG=-1
 export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE + 6))
 echo '<Interest><Name><Component ccnbencoding="text">Dummy</Component></Name></Interest>' | ccn_xmltoccnb - > dummy.ccnb
 ccnd &
-trap "ccndsmoketest -t 55 recv kill recv" 0
+trap "ccndsmoketest kill" 0
 until CheckForCCND 6; do :; done
 uptime
 date | ccnsendchunks -x 4 /test/ephemeral$$

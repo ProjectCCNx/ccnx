@@ -118,7 +118,7 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
             if (port > 0) {
                 const char *node = ccn_charbuf_as_string(nodebuf);
                 int chk = CCN_FACE_MCAST | CCN_FACE_UNDECIDED |
-                          CCN_FACE_NOSEND | CCN_FACE_GG;
+                CCN_FACE_NOSEND | CCN_FACE_GG | CCN_FACE_PASSIVE;
                 if ((face->flags & chk) == 0)
                     ccn_charbuf_putf(b,
                                      " <b>remote:</b> "
@@ -126,9 +126,15 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
                                      "%s:%d</a>",
                                      node, CCN_DEFAULT_UNICAST_PORT,
                                      node, port);
-                else
+                else if ((face->flags & CCN_FACE_PASSIVE) == 0)
                     ccn_charbuf_putf(b, " <b>remote:</b> %s:%d",
                                      node, port);
+                else
+                    ccn_charbuf_putf(b, " <b>local:</b> %s:%d",
+                                     node, port);
+                if (face->sendface != face->faceid &&
+                    face->sendface != CCN_NOFACEID)
+                    ccn_charbuf_putf(b, " <b>via:</b> %u", face->sendface);
             }
             ccn_charbuf_putf(b, "</li>" NL);
         }
@@ -265,7 +271,7 @@ ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
         return(-1);
     }
     /* Set linger to prevent quickly resetting the connection on close.*/
-    setsockopt(face->send_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+    setsockopt(face->recv_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
     if (0 == memcmp(face->inbuf->buf, "GET / ", 6)) {
         response = collect_stats_html(h);
         hdrlen = snprintf(buf, sizeof(buf),
