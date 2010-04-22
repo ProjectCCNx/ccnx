@@ -53,6 +53,12 @@ uninstall:
 jar clean test: _always
 	@type $(ANT) > /dev/null && $(ANT) -k $@ || $(WHINE)
 
+test: test-alone
+test-alone: _always
+	netstat -a > test-alone
+	grep '^..p.*[.]61999' test-alone || rm test-alone
+	test \! -f test-alone        # Fail here if conflicting tests are running
+
 documentation: _always
 	doxygen
 
