@@ -75,7 +75,7 @@ open_local(struct sockaddr_un *sa, const char *verb)
     if (res == -1 && errno == ENOENT) {
         /* Don't wait for startup just to shut it down */
         if (verb != NULL && 0 == strcmp(verb, "kill"))
-            exit(0);
+            exit(1);
         /* Retry after a delay in case ccnd was just starting up. */
         sleep(1);
         res = connect(sock, (struct sockaddr *)sa, sizeof(*sa));
@@ -302,10 +302,16 @@ int main(int argc, char **argv)
                     write(res, " ", 1);
                     close(res);
                 }
-                poll(fds, 1, msec);
-                write(3, "", 0);
+                poll(fds, 1, 5000);
+                rawlen = recv(sock, rawbuf, sizeof(rawbuf), 0);
+                if (rawlen == 0)
+                    exit(0);
+                if (rawlen > 0)
+                    exit(2);
             }
-            break;
+            fprintf(stderr, "%s kill (%s) ", argv[0], (char *)addr.sun_path);
+            perror("failed");
+            exit(1);
         }
         else if (0 == strcmp(argv[argp], "timeo")) {
             if (argv[argp + 1] != NULL)
