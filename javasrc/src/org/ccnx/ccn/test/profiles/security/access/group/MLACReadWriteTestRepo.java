@@ -44,6 +44,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -55,7 +56,7 @@ public class MLACReadWriteTestRepo {
 	static int domainCount = 2;
 	static ContentName[] domainPrefix, userKeystore, userNamespace, groupNamespace;
 	static String[] userNames = {"Alice", "Bob", "Carol"};
-	static ContentName baseDirectory, nodeName;
+	static ContentName baseDirectory, subdirectory, nodeName;
 	static CreateUserData[] cua;
 	static final int blockSize = 8096;
 	static final int contentSizeInBlocks = 100;
@@ -93,6 +94,10 @@ public class MLACReadWriteTestRepo {
 			cua[d].publishUserKeysToRepository(userNamespace[d]);			
 		}
 		
+		// create base directory
+		CCNTestHelper testHelper = new CCNTestHelper(MLACReadWriteTestRepo.class);
+		baseDirectory = testHelper.getTestNamespace("PerformanceTest");
+		
 		// The root ACL at domainPrefix has Alice from domain 0 as a manager
 		ArrayList<Link> ACLcontents = new ArrayList<Link>();
 		Link lk = new Link(ContentName.fromNative(userNamespace[0], userNames[0]), ACL.LABEL_MANAGER, null);
@@ -108,32 +113,30 @@ public class MLACReadWriteTestRepo {
 			parameterizedNames.add(gName);
 		}
 		
-		// Set access control policy marker	for domain 0
+		// Set access control policy marker	for base directory
 		ContentName profileName = ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING);
-		AccessControlPolicyMarker.create(domainPrefix[0], profileName, rootACL, parameterizedNames, null, SaveType.REPOSITORY, CCNHandle.open());
+		AccessControlPolicyMarker.create(baseDirectory, profileName, rootACL, parameterizedNames, null, SaveType.REPOSITORY, CCNHandle.open());
 		
 		// get handle and ACM for Alice in domain 0
 		_AliceHandle = cua[0].getHandleForUser(userNames[0]);
 		Assert.assertNotNull(_AliceHandle);
 		NamespaceManager.clearSearchedPathCache();
-		AccessControlManager.loadAccessControlManagerForNamespace(domainPrefix[0], _AliceHandle);
+		AccessControlManager.loadAccessControlManagerForNamespace(baseDirectory, _AliceHandle);
 		
-		_AliceACM = (GroupAccessControlManager) AccessControlManager.findACM(domainPrefix[0], _AliceHandle);
+		_AliceACM = (GroupAccessControlManager) AccessControlManager.findACM(baseDirectory, _AliceHandle);
 		Assert.assertNotNull(_AliceACM);
 		
 		// load an ACM for the other users in domain 0
 		CCNHandle userHandle = null;
 		for (int i=1; i < userNames.length; ++i) {
 			userHandle = cua[0].getHandleForUser(userNames[i]);
-			AccessControlManager.loadAccessControlManagerForNamespace(domainPrefix[0], userHandle);
-			userHandle = cua[1].getHandleForUser(userNames[i]);
-			AccessControlManager.loadAccessControlManagerForNamespace(domainPrefix[0], userHandle);			
+			AccessControlManager.loadAccessControlManagerForNamespace(baseDirectory, userHandle);
 		}
 		
 		// Load an ACM for all users in domain 1.
 		for (int i=0; i < userNames.length; ++i) {
 			userHandle = cua[1].getHandleForUser(userNames[i]);
-			AccessControlManager.loadAccessControlManagerForNamespace(domainPrefix[0], userHandle);			
+			AccessControlManager.loadAccessControlManagerForNamespace(baseDirectory, userHandle);			
 		}
 	}
 	
@@ -150,10 +153,10 @@ public class MLACReadWriteTestRepo {
 	
 	@Test
 	public void performanceTest() {
-		// Create a new ACL at baseDirectory of domain 0.
+		// Create a new ACL for a subdirectory of baseDirectory.
 		// Set Alice (domain 0) as a manager and Bob and Carol (both domain 1) as readers
-		createBaseDirectoryACL();
-		writeContentInDirectory();
+		createSubDirectoryACL();
+		writeContentInSubdirectory();
 
 		try {
 			// Alice (domain 0) has permission to read the file
@@ -192,14 +195,14 @@ public class MLACReadWriteTestRepo {
 	}
 	
 	/**
-	 * Create a new ACL at baseDirectory of domain 0.
+	 * Create a new ACL for a subdirectory of baseDirectory.
 	 * Set Alice (domain 0) as a manager and Bob and Carol (both domain 1) as readers
 	 */
-	public void createBaseDirectoryACL() {
+	public void createSubDirectoryACL() {
 		long startTime = System.currentTimeMillis();
 
 		try {
-			baseDirectory = domainPrefix[0].append(ContentName.fromNative("/Alice/documents/images/"));
+			subdirectory = baseDirectory.append(ContentName.fromNative("/Alice/documents/images/"));
 			ArrayList<Link> ACLcontents = new ArrayList<Link>();
 			// Alice from domain 0 is a manager
 			ACLcontents.add(new Link(ContentName.fromNative(userNamespace[0], userNames[0]), ACL.LABEL_MANAGER, null));
@@ -208,7 +211,7 @@ public class MLACReadWriteTestRepo {
 			// Carol from domain 1 is a reader
 			ACLcontents.add(new Link(ContentName.fromNative(userNamespace[1], userNames[2]), ACL.LABEL_READER, null));
 			ACL baseDirACL = new ACL(ACLcontents);
-			_AliceACM.setACL(baseDirectory, baseDirACL);
+			_AliceACM.setACL(subdirectory, baseDirACL);
 		}
 		catch (Exception e) {
 			e.printStackTrace();
@@ -222,12 +225,12 @@ public class MLACReadWriteTestRepo {
 	/**
 	 * write a file in the baseDirectory
 	 */
-	public void writeContentInDirectory() {
+	public void writeContentInSubdirectory() {
 		long startTime = System.currentTimeMillis();
 		byte [] _write_buffer = new byte[blockSize];
 		
 		try {
-			nodeName = ContentName.fromNative(baseDirectory, "randomContent");
+			nodeName = ContentName.fromNative(subdirectory, "randomContent");
 			CCNOutputStream ostream = new RepositoryFileOutputStream(nodeName, _AliceHandle);
 			ostream.setTimeout(SystemConfiguration.MAX_TIMEOUT);
 			
@@ -296,7 +299,7 @@ public class MLACReadWriteTestRepo {
 		Link lk = new Link(ContentName.fromNative(userNamespace[1], userNames[0]));
 		ACLUpdates.add(ACLOperation.addReaderOperation(lk));
 		try {
-			_AliceACM.updateACL(baseDirectory, ACLUpdates);
+			_AliceACM.updateACL(subdirectory, ACLUpdates);
 		} 
 		catch (Exception e) {
 			e.printStackTrace();
