@@ -8,6 +8,7 @@ import java.util.logging.Level;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
@@ -16,6 +17,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -24,7 +26,7 @@ import org.junit.Test;
 public class GroupRecursiveKeyUpdateTestRepo {
 
 	static GroupAccessControlManager acm;
-	static ContentName directoryBase, userKeyStorePrefix, userNamespace, groupStore;
+	static ContentName directoryBase, userKeyStorePrefix, userNamespace, groupNamespace;
 
 	static final int numberOfusers = 2;
 	static CreateUserData td;
@@ -44,11 +46,12 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		logLevels = Log.getLevels();		
 		Log.setLevel(Log.FAC_ALL, Level.WARNING);
 		
-		directoryBase = ContentName.fromNative("/test/GroupRecursiveKeyUpdateTestRepo");
-		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
-		userKeyStorePrefix = new ContentName(directoryBase, AccessControlProfile.ACCESS_CONTROL_MARKER_BYTES);
-		userNamespace = ContentName.fromNative(directoryBase, "home");
-
+		CCNTestHelper testHelper = new CCNTestHelper(GroupRecursiveKeyUpdateTestRepo.class);
+		directoryBase = testHelper.getTestNamespace("testInOrder");
+		userNamespace = GroupAccessControlProfile.userNamespaceName(UserConfiguration.defaultNamespace());
+		groupNamespace = GroupAccessControlProfile.groupNamespaceName(UserConfiguration.defaultNamespace());
+		userKeyStorePrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_keystore_"); 
+		
 		// create user identities with TestUserData		
 		td = new CreateUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
 		td.publishUserKeysToRepository(userNamespace);
@@ -56,7 +59,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		
 		// create ACM
 		handle = td.getHandleForUser(friendlyNames[1]);
-		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
+		acm = new GroupAccessControlManager(directoryBase, groupNamespace, userNamespace, handle);
 		acm.publishMyIdentity(ContentName.fromNative(userNamespace, friendlyNames[1]), handle.keyManager().getDefaultPublicKey());
 	}
 	
@@ -111,7 +114,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		
 		// create group1 and group2 containing group0
 		ArrayList<Link> G1G2Members = new ArrayList<Link>();
-		G1G2Members.add(new Link(ContentName.fromNative(groupStore, groupName[0])));
+		G1G2Members.add(new Link(ContentName.fromNative(groupNamespace, groupName[0])));
 		groupName[1] = "group1-" + rand.nextInt(10000);
 		group[1] = acm.groupManager().createGroup(groupName[1], G1G2Members);
 		groupName[2] = "group2-" + rand.nextInt(10000);
@@ -119,8 +122,8 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		
 		// create group3 containing group1 and group2
 		ArrayList<Link> G3Members = new ArrayList<Link>();
-		G3Members.add(new Link(ContentName.fromNative(groupStore, groupName[1])));
-		G3Members.add(new Link(ContentName.fromNative(groupStore, groupName[2])));
+		G3Members.add(new Link(ContentName.fromNative(groupNamespace, groupName[1])));
+		G3Members.add(new Link(ContentName.fromNative(groupNamespace, groupName[2])));
 		groupName[3] = "group3-" + rand.nextInt(10000);
 		group[3] = acm.groupManager().createGroup(groupName[3], G3Members);
 		
