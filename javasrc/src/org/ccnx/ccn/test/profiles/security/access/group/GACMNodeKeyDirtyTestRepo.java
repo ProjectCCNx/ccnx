@@ -14,12 +14,12 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -34,7 +34,7 @@ import org.junit.Test;
 public class GACMNodeKeyDirtyTestRepo {
 
 	static GroupAccessControlManager acm;
-	static ContentName directoryBase, userKeyStorePrefix, userNamespace, groupStore;
+	static ContentName directoryBase, userKeyStorePrefix, userNamespace, groupNamespace;
 	static final int numberOfusers = 3;
 	static CreateUserData td;
 	static String[] friendlyNames;
@@ -49,11 +49,12 @@ public class GACMNodeKeyDirtyTestRepo {
 	public static void setUpBeforeClass() throws Exception {
 		logLevels = Log.getLevels();
 		Log.setLevel(Log.FAC_ALL, Level.WARNING);
-		
-		directoryBase = UserConfiguration.defaultNamespace();
-		groupStore = GroupAccessControlProfile.groupNamespaceName(directoryBase);
-		userKeyStorePrefix = new ContentName(directoryBase, AccessControlProfile.ACCESS_CONTROL_MARKER_BYTES);
-		userNamespace = ContentName.fromNative(directoryBase, "Users");
+
+		CCNTestHelper testHelper = new CCNTestHelper(GACMNodeKeyDirtyTestRepo.class);
+		directoryBase = testHelper.getTestNamespace("testInOrder");
+		userNamespace = GroupAccessControlProfile.userNamespaceName(UserConfiguration.defaultNamespace());
+		groupNamespace = GroupAccessControlProfile.groupNamespaceName(UserConfiguration.defaultNamespace());
+		userKeyStorePrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_keystore_"); 
 
 		// create user identities with TestUserData		
 		Log.info("Creating {0} test users, if they do not already exist.", numberOfusers);
@@ -64,7 +65,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		
 		// create and register ACM
 		handle = td.getHandleForUser(friendlyNames[0]);
-		acm = new GroupAccessControlManager(directoryBase, groupStore, userNamespace, handle);
+		acm = new GroupAccessControlManager(directoryBase, groupNamespace, userNamespace, handle);
 		acm.publishMyIdentity(ContentName.fromNative(userNamespace, friendlyNames[0]), handle.keyManager().getDefaultPublicKey());
 		handle.keyManager().publishKeyToRepository();
 		
@@ -130,7 +131,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		
 		// create group1 containing group0
 		ArrayList<Link> G1Members = new ArrayList<Link>();
-		G1Members.add(new Link(ContentName.fromNative(groupStore, groupName[0])));
+		G1Members.add(new Link(ContentName.fromNative(groupNamespace, groupName[0])));
 		groupName[1] = "usergroup1-" + rand.nextInt(10000);
 		group[1] = acm.groupManager().createGroup(groupName[1], G1Members);
 		
@@ -154,7 +155,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		for (int i=0; i<numberOfGroups; i++) {
 			String nodeName = "node" + i + "-" + rand.nextInt(10000) + ".txt";
 			node[i] = ContentName.fromNative(directoryBase, nodeName);
-			ContentName groupCN = ContentName.fromNative(groupStore, groupName[i]);
+			ContentName groupCN = ContentName.fromNative(groupNamespace, groupName[i]);
 			Link lk = new Link(groupCN, ACL.LABEL_MANAGER, null);
 			ArrayList<Link> ACLcontents = new ArrayList<Link>();
 			ACLcontents.add(lk);
