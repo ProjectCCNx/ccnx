@@ -621,7 +621,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available. Updating once in background.", inputStream.getBaseName());
 			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
 			_baseName = nameAndVersion.first();
-			updateInBackground();
+
+			// used to fire off an updateInBackground here, to hopefully get a second
+			// chance on scooping up the content. But that seemed likely to confuse
+			// people and leave the object in an undetermined state. So allow caller
+			// to manage that themselves.
+				
 			// not an error state, merely a not ready state.
 			return false;
 		} catch (LinkCycleException lce) {
@@ -669,7 +674,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
 		}
 		// Look for latest version.
-		updateInBackground(getVersionedName(), continuousUpdates);
+		updateInBackground(getVersionedName(), continuousUpdates, null);
+	}
+	
+	public void updateInBackground(ContentName latestVersionKnown, boolean continuousUpdates) throws IOException {
+		updateInBackground(latestVersionKnown, continuousUpdates, null);
+	}
+
+	public void updateInBackground(boolean continuousUpdates, UpdateListener listener) throws IOException {
+		updateInBackground(getVersionedName(), continuousUpdates, listener);
 	}
 
 	/**
@@ -694,10 +707,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_currentInterest = VersioningProfile.firstBlockLatestVersionInterest(latestVersionKnown, null);
 		Log.info("updateInBackground: initial interest: {0}", _currentInterest);
 		_handle.expressInterest(_currentInterest, this);
-	}
-	
-	public void updateInBackground(ContentName latestVersionKnown, boolean continuousUpdates) throws IOException {
-		updateInBackground(latestVersionKnown, continuousUpdates, null);
 	}
 	
 	/**
@@ -1033,6 +1042,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Used to signal waiters and listeners that a new version is available.
 	 */
 	protected void newVersionAvailable() {
+		if (Log.isLoggable(Level.INFO)) {
+			Log.info("newVersionAvailable: New version of object available: {0}", getVersionedName());
+		}
 		// by default signal all waiters
 		this.notifyAll();
 		
