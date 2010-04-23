@@ -91,6 +91,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		
 	CCNHandle _handle;
 	GroupAccessControlManager _manager; // to get at key cache, GroupManager
+	boolean cacheHit; // true if one of the unwrapping keys is in our cache
 	
 	/**
 	 * Maps the friendly names of principals (typically groups) to their information.
@@ -141,6 +142,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			throw new IllegalArgumentException("Manager cannot be null.");
 		}	
 		_manager = manager;
+		cacheHit = false;
 		initialize(enumerate);
 	}
 
@@ -195,6 +197,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					}finally{
 						_keyIDLock.writeLock().unlock();
 					}
+					if (_handle.keyManager().getSecureKeyCache().containsKey(keyid)) cacheHit = true;
 				} catch (IOException e) {
 					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 						Log.info(Log.FAC_ACCESSCONTROL, "Unexpected " + e.getClass().getName() + " parsing key id " + DataUtils.printHexBytes(wkChildName) + ": " + e.getMessage());
@@ -212,6 +215,14 @@ public class KeyDirectory extends EnumeratedNameList {
 				}
 			}
 		}
+	}
+	
+	/**
+	 * Returns the cacheHit variable, which is true if one of the unwrapping keys is in our key cache.
+	 * @return
+	 */
+	public boolean getCacheHit() {
+		return cacheHit;
 	}
 	
 	/**

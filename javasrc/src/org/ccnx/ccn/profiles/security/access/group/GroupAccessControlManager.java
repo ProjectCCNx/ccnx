@@ -1148,6 +1148,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 			boolean continueWaitingForChildren = true;
 			while (continueWaitingForChildren) {
 				continueWaitingForChildren = keyDirectory.waitForNewChildren(SystemConfiguration.LONG_TIMEOUT);
+				if (keyDirectory.getCacheHit()) break;
 			}
 
 			// this will handle the caching.
