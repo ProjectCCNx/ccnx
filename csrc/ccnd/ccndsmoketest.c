@@ -195,27 +195,45 @@ is_ccnb_name(const char *s)
     return (len > 5 && 0 == strcasecmp(s + len - 5, ".ccnb"));
 }
 
-int main(int argc, char **argv)
+void
+write_to_stream(FILE *outstream, const void *rawbuf, size_t rawlen)
+{
+    size_t wlen;
+    wlen = fwrite(rawbuf, 1, rawlen, outstream);
+    if (wlen != rawlen)
+        fprintf(stderr, "short write (%ld of %ld)\n",
+                (long)wlen, (long)rawlen);
+    if (fflush(outstream) != 0)
+        perror("fflush");
+}
+
+int
+main(int argc, char **argv)
 {
     struct sockaddr_un addr = {0};
     int c;
     struct pollfd fds[1];
     int res;
     ssize_t rawlen;
+    ssize_t wlen;
     int sock;
     char *filename = NULL;
     const char *portstr;
     int msec = 1000;
     int argp;
     FILE *msgs = stdout;
-    int binout = 0;
+    FILE *outstream = NULL;
     int udp = 0;
     int tcp = 0;
+    int recvloop = 0;
+    int do_pclose = 0;
     const char *host = "localhost";
+    const char *cmd = NULL;
+    
     while ((c = getopt(argc, argv, "bht:T:u:")) != -1) {
         switch (c) {
             case 'b':
-                binout = 1;
+                outstream = stdout;
                 msgs = stderr;
                 break;
             case 't':
@@ -240,6 +258,7 @@ int main(int argc, char **argv)
                         " | <sendfilename>.ccnb"
                         " | recv"
                         " | kill"
+                        " | status"
                         " | timeo <millisconds>"
                         " ) ...");
                 exit(1);
@@ -270,7 +289,7 @@ int main(int argc, char **argv)
             filename = argv[argp];
             send_ccnb_file(sock, msgs, filename, udp);
         }
-        else if (0 == strcmp(argv[argp], "recv")) {
+        else if (recvloop || 0 == strcmp(argv[argp], "recv")) {
             res = poll(fds, 1, msec);
             if (res == -1) {
                 perror("poll");
@@ -278,6 +297,7 @@ int main(int argc, char **argv)
             }
             if (res == 0) {
                 fprintf(msgs, "recv timed out after %d ms\n", msec);
+                recvloop = 0;
                 continue;
             }
             rawlen = recv(sock, rawbuf, sizeof(rawbuf), 0);
@@ -287,9 +307,11 @@ int main(int argc, char **argv)
             }
             if (rawlen == 0)
                 break;
+            if (recvloop)
+                argp--;
             fprintf(msgs, "recv of %lu bytes\n", (unsigned long)rawlen);
-            if (binout)
-                write(1, rawbuf, rawlen);
+            if (outstream != NULL)
+                write_to_stream(outstream, rawbuf, rawlen);
             else
                 printraw(rawbuf, rawlen);
         }
@@ -317,11 +339,22 @@ int main(int argc, char **argv)
             if (argv[argp + 1] != NULL)
                 msec = atoi(argv[++argp]);
         }
+        else if (udp == 0 && 0 == strcmp(argv[argp], "status")) {
+            msgs = stderr;
+            cmd = "sed -e 's=[<]style .*/style[>]==g' -e 's=[<][^>]*[>]==g'";
+            outstream = popen(cmd, "w");
+            wlen = send(sock, "GET / \r\l", 8, 0);
+            recvloop = 1;
+            do_pclose = 1;
+            argp--;
+        }
         else {
             fprintf(stderr, "%s: unknown verb %s, try -h switch for usage\n",
                     argv[0], argv[argp]);
             exit(1);
         }
     }
+    if (do_pclose)
+        pclose(outstream);
     exit(0);
 }
