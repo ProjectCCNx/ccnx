@@ -356,7 +356,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		if (Log.isLoggable(Level.INFO)) {
 			if (!_enumerating) {
 				// Right now, just log if we get data out of enumeration, don't drop it on the floor;
-				// don't want to miss results in case we are started again.�
+				// don't want to miss results in case we are started again.
 				Log.info("ENUMERATION STOPPED: but {0} new name enumeration results: our prefix: {1} returned prefix: {2}", names.size(), _namePrefix, prefix);
 			} else {
 				Log.info("{0} new name enumeration results: our prefix: {1} returned prefix: {2}", names.size(), _namePrefix, prefix);
