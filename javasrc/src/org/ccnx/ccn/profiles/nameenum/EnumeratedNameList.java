@@ -356,7 +356,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		if (Log.isLoggable(Level.INFO)) {
 			if (!_enumerating) {
 				// Right now, just log if we get data out of enumeration, don't drop it on the floor;
-				// don't want to miss results in case we are started again.Œ
+				// don't want to miss results in case we are started again.ï¿½
 				Log.info("ENUMERATION STOPPED: but {0} new name enumeration results: our prefix: {1} returned prefix: {2}", names.size(), _namePrefix, prefix);
 			} else {
 				Log.info("{0} new name enumeration results: our prefix: {1} returned prefix: {2}", names.size(), _namePrefix, prefix);
@@ -506,7 +506,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 */
 	public static ContentName getLatestVersionName(ContentName name, CCNHandle handle) throws IOException {
 		EnumeratedNameList enl = new EnumeratedNameList(name, handle);
-		enl.waitForUpdates(SystemConfiguration.CHILD_WAIT_INTERVAL);
+		enl.waitForUpdates(SystemConfiguration.MAX_TIMEOUT);
 		ContentName childLatestVersion = enl.getLatestVersionChildName();
 		enl.stopEnumerating();
 		if (null != childLatestVersion) {
@@ -558,9 +558,9 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			byte[] childNameComponent = childName.component(childIndex);
 			parentEnumerator = new EnumeratedNameList(parentName, handle);
 			Log.info("EnumeratedNameList.exists: enumerating the parent name {0}", parentName);
-			parentEnumerator.waitForChildren(SystemConfiguration.CHILD_WAIT_INTERVAL);
+			parentEnumerator.waitForChildren(SystemConfiguration.MAX_TIMEOUT);
 			while (! parentEnumerator.hasChild(childNameComponent)) {
-				if (! parentEnumerator.waitForNewChildren(SystemConfiguration.CHILD_WAIT_INTERVAL)) break;
+				if (! parentEnumerator.waitForNewChildren(SystemConfiguration.MAX_TIMEOUT)) break;
 			}
 			if (parentEnumerator.hasChild(childNameComponent)) {
 				if (Log.isLoggable(Level.INFO)) {
