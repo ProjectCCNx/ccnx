@@ -19,7 +19,6 @@ package org.ccnx.ccn.profiles.nameenum;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -54,8 +53,6 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	protected SortedSet<ContentName> _newChildren = null;
 	protected Object _childLock = new Object();
 	protected CCNTime _lastUpdate = null;
-	protected HashSet<EnumerationControlListener> _controlListeners = null;
-	protected EnumerationControlListener _terminatingListener = null;
 	protected boolean _enumerating = false;
 	
 	/**
@@ -114,32 +111,11 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @throws IOException
 	 */
 	public synchronized void startEnumerating() throws IOException {
-		_terminatingListener = null;
-		if (null != _controlListeners) {
-			for (EnumerationControlListener listener : _controlListeners) {
-				listener.clear();
-			}
-		}
 		_enumerating = true;
 		_enumerator.registerPrefix(_namePrefix);
 	}
 	
 	public boolean isEnumerating() { return _enumerating; }
-	
-	public synchronized void addControlListener(EnumerationControlListener listener) {
-		if (null == _controlListeners) {
-			_controlListeners = new HashSet<EnumerationControlListener>();
-		}
-		_controlListeners.add(listener);
-	}
-	
-	public synchronized void removeControlListener(EnumerationControlListener listener) {
-		if (null == _controlListeners) {
-			return;
-		}
-		_controlListeners.remove(listener);
-	}
-	
 	
 	/**
 	 * First-come first-served interface to retrieve only new data from
@@ -392,35 +368,9 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @return void
 	 */
 	protected void processNewChildren(SortedSet<ContentName> newChildren) {
-		// default -- ask listeners whether we should stop yet.
-		if (null != _controlListeners) {
-			for (EnumerationControlListener listener : _controlListeners) {
-				if (listener.terminateEnumeration(newChildren)) {
-					_terminatingListener = listener;
-					stopEnumerating();
-					break;
-				}
-			}
-		}
+		// default -- do nothing
 	}
 	
-	/**
-	 * Did one of our listeners decide we were done?
-	 * @return
-	 */
-	public boolean enumerationCompleted() {
-		return (null != _terminatingListener);
-	}
-	
-	/**
-	 * Get the control listener that terminated enumeration, it might remember
-	 * state.
-	 * @return
-	 */
-	public EnumerationControlListener getTerminatingListener() {
-		return _terminatingListener;
-	}
-
 	/**
 	 * If some or all of the children of this name are versions, returns the latest version
 	 * among them.
