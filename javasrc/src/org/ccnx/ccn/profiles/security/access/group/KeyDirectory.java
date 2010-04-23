@@ -687,7 +687,7 @@ public class KeyDirectory extends EnumeratedNameList {
 							// I know I am a member of this group, or at least I was last time I checked.
 							// Attempt to get this version of the group private key as I don't have it in my cache.
 							try {
-								Key principalKey = pgm.getVersionedPrivateKeyForGroup(this, principal);
+								Key principalKey = pgm.getVersionedPrivateKeyForGroup(pInfo);
 								unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
 								if (null == unwrappedKey)
 									continue;
@@ -725,7 +725,7 @@ public class KeyDirectory extends EnumeratedNameList {
 										Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: I am a member of group {0} ", principal);
 									}
 									try {
-										Key principalKey = pgm.getVersionedPrivateKeyForGroup(this, principal);
+										Key principalKey = pgm.getVersionedPrivateKeyForGroup(pInfo);
 										unwrappedKey = unwrapKeyForPrincipal(principal, principalKey);
 										if (null == unwrappedKey) {
 											if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
