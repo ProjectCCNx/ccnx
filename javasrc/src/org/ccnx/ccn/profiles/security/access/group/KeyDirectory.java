@@ -188,22 +188,14 @@ public class KeyDirectory extends EnumeratedNameList {
 			// currently encapsulated in single-component ContentNames
 			byte [] wkChildName = childName.lastComponent();
 			if (KeyProfile.isKeyNameComponent(wkChildName)) {
-				byte[] keyid;
-				try {
-					keyid = KeyProfile.getKeyIDFromNameComponent(wkChildName);
-					try{
-						_keyIDLock.writeLock().lock();
-						_keyIDs.add(keyid);
-					}finally{
-						_keyIDLock.writeLock().unlock();
-					}
-					if (_handle.keyManager().getSecureKeyCache().containsKey(keyid)) cacheHit = true;
-				} catch (IOException e) {
-					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-						Log.info(Log.FAC_ACCESSCONTROL, "Unexpected " + e.getClass().getName() + " parsing key id " + DataUtils.printHexBytes(wkChildName) + ": " + e.getMessage());
-					}
-					// ignore and go on
+				byte[] keyid = KeyProfile.getKeyIDFromNameComponent(wkChildName);
+				try{
+					_keyIDLock.writeLock().lock();
+					_keyIDs.add(keyid);
+				} finally {
+					_keyIDLock.writeLock().unlock();
 				}
+				if (_handle.keyManager().getSecureKeyCache().containsKey(keyid)) cacheHit = true;
 			} else if (PrincipalInfo.isPrincipalNameComponent(wkChildName)) {
 				addPrincipal(wkChildName);
 			} else {
