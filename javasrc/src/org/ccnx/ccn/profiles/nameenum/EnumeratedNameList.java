@@ -338,64 +338,49 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		Log.info("Quit waiting for updates on prefix {0} after waiting in total {1} ms.", 
 				_namePrefix, (System.currentTimeMillis() - startTime));
 	}
-
+	
 	/**
-	 * Handle responses from CCNNameEnumerator that give us a list of single-component child
-	 * names. Filter out the names new to us, add them to our list of known children, postprocess
-	 * them with processNewChildren(SortedSet<ContentName>), and signal waiters if we
-	 * have new data.
-	 * 
-	 * @param prefix Prefix used for name enumeration.
-	 * @param names The list of names returned in this name enumeration response.
-	 * 
-	 * @return int 
+	 * Wait for new children to arrive until there is a period of length timeout during which
+	 * no new child arrives, or the method hasResult() returns true. The expectation
+	 * is that a subclass will monitor incoming updates in its processNewChildren() override
+	 * method, and in that method, set some sort of flag that will be tested by hasResult().
+	 * Note that this method does not currently stop enumeration -- enumeration results will
+	 * continue to accumulate in the background (and request interests will continue to be sent);
+	 * callers must call stopEnumerating() to actually terminate enumeration.
 	 */
-	public int handleNameEnumerator(ContentName prefix,
-								    ArrayList<ContentName> names) {
-		
-		if (Log.isLoggable(Level.INFO)) {
-			if (!_enumerating) {
-				// Right now, just log if we get data out of enumeration, don't drop it on the floor;
-				// don't want to miss results in case we are started again.
-				Log.info("ENUMERATION STOPPED: but {0} new name enumeration results: our prefix: {1} returned prefix: {2}", names.size(), _namePrefix, prefix);
-			} else {
-				Log.info("{0} new name enumeration results: our prefix: {1} returned prefix: {2}", names.size(), _namePrefix, prefix);
-			}
+	public void waitForNoUpdatesOrResult(long timeout) {
+
+		Log.info("Waiting for updates on prefix {0} with max timeout of {1} ms between consecutive children arrivals.", 
+				_namePrefix, timeout);
+		long startTime = System.currentTimeMillis();
+		if (hasResult()) {
+			return;
 		}
-		if (!prefix.equals(_namePrefix)) {
-			Log.warning("Returned data doesn't match requested prefix!");
+		while (waitForNewChildren(timeout)) {
+			Log.info("Child or children found on prefix {0}. Have result? {1}", _namePrefix, hasResult());
+			if (hasResult()) break;
 		}
-		Log.info("Handling Name Iteration {0}", prefix);
-		// the name enumerator hands off names to us, we own it now
-		// DKS -- want to keep listed as new children we previously had
-		synchronized (_childLock) {
-			TreeSet<ContentName> thisRoundNew = new TreeSet<ContentName>();
-			thisRoundNew.addAll(names);
-			Iterator<ContentName> it = thisRoundNew.iterator();
-			while (it.hasNext()) {
-				ContentName name = it.next();
-				if (_children.contains(name)) {
-					it.remove();
-				}
-			}
-			if (!thisRoundNew.isEmpty()) {
-				if (null != _newChildren) {
-					_newChildren.addAll(thisRoundNew);
-				} else {
-					_newChildren = thisRoundNew;
-				}
-				_children.addAll(thisRoundNew);
-				_lastUpdate = new CCNTime();
-				if (Log.isLoggable(Level.INFO)) {
-					Log.info("New children found: at {0} " + thisRoundNew.size() + " total children " + _children.size(), _lastUpdate);
-				}
-				processNewChildren(thisRoundNew);
-				_childLock.notifyAll();
-			}
-		}
-		return 0;
+		Log.info("Quit waiting for updates on prefix {0} after waiting in total {1} ms. Have desired result? {2}", 
+				_namePrefix, (System.currentTimeMillis() - startTime), hasResult());
 	}
 	
+	/**
+	 * Subclasses should override this test to answer true if waiters should break out of a
+	 * waitForNoUpdatesOrResult loop. Note that results must be cleared manually using clearResult.
+	 * Default behavior always returns false. Subclasses probably want to set a variable in processNewChildren
+	 * that will be read here.
+	 */
+	public boolean hasResult() { 
+		return false;
+	}
+	
+	/**
+	 * Reset whatever state hasResult tests. Overridden by subclasses, default does nothing.
+	 */
+	public void clearResult() {
+		return;
+	}
+
 	/**
 	 * Method to allow subclasses to do post-processing on incoming names
 	 * before handing them to customers.
@@ -470,6 +455,63 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			}
 		}
 		return latestName;
+	}
+	
+	/**
+	 * Handle responses from CCNNameEnumerator that give us a list of single-component child
+	 * names. Filter out the names new to us, add them to our list of known children, postprocess
+	 * them with processNewChildren(SortedSet<ContentName>), and signal waiters if we
+	 * have new data.
+	 * 
+	 * @param prefix Prefix used for name enumeration.
+	 * @param names The list of names returned in this name enumeration response.
+	 * 
+	 * @return int 
+	 */
+	public int handleNameEnumerator(ContentName prefix,
+								    ArrayList<ContentName> names) {
+		
+		if (Log.isLoggable(Level.INFO)) {
+			if (!_enumerating) {
+				// Right now, just log if we get data out of enumeration, don't drop it on the floor;
+				// don't want to miss results in case we are started again.
+				Log.info("ENUMERATION STOPPED: but {0} new name enumeration results: our prefix: {1} returned prefix: {2}", names.size(), _namePrefix, prefix);
+			} else {
+				Log.info("{0} new name enumeration results: our prefix: {1} returned prefix: {2}", names.size(), _namePrefix, prefix);
+			}
+		}
+		if (!prefix.equals(_namePrefix)) {
+			Log.warning("Returned data doesn't match requested prefix!");
+		}
+		Log.info("Handling Name Iteration {0}", prefix);
+		// the name enumerator hands off names to us, we own it now
+		// DKS -- want to keep listed as new children we previously had
+		synchronized (_childLock) {
+			TreeSet<ContentName> thisRoundNew = new TreeSet<ContentName>();
+			thisRoundNew.addAll(names);
+			Iterator<ContentName> it = thisRoundNew.iterator();
+			while (it.hasNext()) {
+				ContentName name = it.next();
+				if (_children.contains(name)) {
+					it.remove();
+				}
+			}
+			if (!thisRoundNew.isEmpty()) {
+				if (null != _newChildren) {
+					_newChildren.addAll(thisRoundNew);
+				} else {
+					_newChildren = thisRoundNew;
+				}
+				_children.addAll(thisRoundNew);
+				_lastUpdate = new CCNTime();
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("New children found: at {0} " + thisRoundNew.size() + " total children " + _children.size(), _lastUpdate);
+				}
+				processNewChildren(thisRoundNew);
+				_childLock.notifyAll();
+			}
+		}
+		return 0;
 	}
 	
 	public byte [] getLatestVersionChildNameComponent() {
