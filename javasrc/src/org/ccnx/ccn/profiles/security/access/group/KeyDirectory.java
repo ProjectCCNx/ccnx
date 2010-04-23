@@ -699,7 +699,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			KeyDirectory supersedingKeyDirectory = null;
 			try {
 				supersedingKeyDirectory = new KeyDirectory(_manager, supersededKeyBlock.wrappedKey().wrappingKeyName(), _handle);
-				supersedingKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
+				supersedingKeyDirectory.waitForNoUpdates(SystemConfiguration.SHORT_TIMEOUT);
 				// This wraps the key we actually want.
 				unwrappedSupersedingKey = supersedingKeyDirectory.getUnwrappedKey(supersededKeyBlock.wrappedKey().wrappingKeyIdentifier());
 			} finally {

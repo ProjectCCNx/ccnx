@@ -304,7 +304,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * no new child arrives. 
 	 * @param timeout The maximum amount of time to wait between consecutive children arrivals.
 	 */
-	public void waitForUpdates(long timeout) {
+	public void waitForNoUpdates(long timeout) {
 		Log.info("Waiting for updates on prefix {0} with max timeout of {1} ms between consecutive children arrivals.", 
 				_namePrefix, timeout);
 		long startTime = System.currentTimeMillis();
@@ -498,7 +498,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 */
 	public static ContentName getLatestVersionName(ContentName name, CCNHandle handle) throws IOException {
 		EnumeratedNameList enl = new EnumeratedNameList(name, handle);
-		enl.waitForUpdates(SystemConfiguration.MAX_TIMEOUT);
+		enl.waitForNoUpdates(SystemConfiguration.MAX_TIMEOUT);
 		ContentName childLatestVersion = enl.getLatestVersionChildName();
 		enl.stopEnumerating();
 		if (null != childLatestVersion) {
