@@ -209,13 +209,13 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 	}
 	
-	/**
-	 * Returns the cacheHit variable, which is true if one of the unwrapping keys is in our key cache.
-	 * @return
-	 */
-	public boolean getCacheHit() {
+	@Override
+	public boolean hasResult() { 
+		// For now, we only report a result if we have an unwrapping key that is in our key cache.
+		// TODO: also consider reporting results if we have an unwrapping key for a group that we know we're a member of.
 		return cacheHit;
 	}
+	
 	
 	/**
 	 * Return a copy to avoid synchronization problems.
