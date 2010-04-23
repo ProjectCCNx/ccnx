@@ -477,7 +477,6 @@ public class KeyDirectory extends EnumeratedNameList {
 	 */
 	public WrappedKeyObject getWrappedKey(ContentName wrappedKeyName) throws ContentDecodingException, IOException {
 		WrappedKeyObject wrappedKey = new WrappedKeyObject(wrappedKeyName, _handle);
-		wrappedKey.update();
 		return wrappedKey;		
 	}
 	
