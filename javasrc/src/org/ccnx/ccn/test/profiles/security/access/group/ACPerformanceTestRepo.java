@@ -26,6 +26,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
@@ -74,9 +75,11 @@ public class ACPerformanceTestRepo {
 		
 		CCNTestHelper testHelper = new CCNTestHelper(ACPerformanceTestRepo.class);
 		domainPrefix = testHelper.getTestNamespace("testInOrder");
-		userNamespace = GroupAccessControlProfile.userNamespaceName(domainPrefix);
-		userKeystore = ContentName.fromNative(userNamespace, "_keystore_");
-		groupNamespace = GroupAccessControlProfile.groupNamespaceName(domainPrefix);
+		
+		userNamespace = GroupAccessControlProfile.userNamespaceName(UserConfiguration.defaultNamespace());
+		groupNamespace = GroupAccessControlProfile.groupNamespaceName(UserConfiguration.defaultNamespace());
+		userKeystore = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_keystore_"); 
+	
 		cua = new CreateUserData(userKeystore, userNames, userNames.length, true, "password".toCharArray(), CCNHandle.open());
 		cua.publishUserKeysToRepository(userNamespace);
 

@@ -334,7 +334,7 @@ public class GroupManager {
 		if (null == privateKeyVersion) {
 			Group theGroup = getGroup(groupFriendlyName); // will pull latest public key
 			privateKeyDirectory = theGroup.privateKeyDirectory(_accessManager);
-			privateKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
+			privateKeyDirectory.waitForNoUpdates(SystemConfiguration.SHORT_TIMEOUT);
 			theGroupPublicKey = theGroup.publicKey();
 		} else {
 			// Assume one is there...
@@ -345,7 +345,7 @@ public class GroupManager {
 			privateKeyDirectory =
 				new KeyDirectory(_accessManager, 
 					GroupAccessControlProfile.groupPrivateKeyDirectory(versionedPublicKeyName), _handle);
-			privateKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
+			privateKeyDirectory.waitForNoUpdates(SystemConfiguration.SHORT_TIMEOUT);
 			
 			PublicKeyObject thisPublicKey = new PublicKeyObject(versionedPublicKeyName, _handle);
 			thisPublicKey.waitForData();
@@ -404,22 +404,16 @@ public class GroupManager {
 	 * @throws InvalidKeyException 
 	 * @throws NoSuchAlgorithmException 
 	 */
-	protected Key getVersionedPrivateKeyForGroup(KeyDirectory keyDirectory, String principal) 
+	protected Key getVersionedPrivateKeyForGroup(PrincipalInfo pi) 
 			throws InvalidKeyException, ContentNotReadyException, ContentDecodingException, 
 					IOException, NoSuchAlgorithmException {
-		PrincipalInfo pi = null;
-		pi = keyDirectory.getPrincipalInfo(principal);
-		if (null == pi) {
-			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-				Log.info(Log.FAC_ACCESSCONTROL, "No key available for principal {0} on node {1}", principal, keyDirectory.getName());
-			}
-			return null;
-		}
+		String principal = pi.friendlyName();
+		if (null == pi) return null;
 		Key privateKey = getGroupPrivateKey(principal, pi.versionTimestamp());
 		if (null == privateKey) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info(Log.FAC_ACCESSCONTROL, "Unexpected: we believe we are a member of group {0} but cannot retrieve private key version {1} our membership revoked?",
-						principal, keyDirectory.getPrincipalInfo(principal));			
+						principal, pi);			
 			}
 			// Check to see if we are a current member.
 			if (!amCurrentGroupMember(principal)) {

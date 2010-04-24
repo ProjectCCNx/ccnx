@@ -106,19 +106,11 @@ public class KeyProfile implements CCNProfile {
 
 	/**
 	 * Get the target keyID from a name component.
-	 * Wrapped key blocks are stored under a name whose last (pre content digest) component
-	 * identifies the key used to wrap them, as 
-	 * WRAPPING_KEY_PREFIX COMPONENT_SEPARATOR base64Encode(keyID)
-	 * or 
-	 * keyid:<base 64 encoding of binary key id>
-	 * The reason for the prefix is to allow unique separation from the principal name
-	 * links, the reason for the base 64 encoding is to allow unique separation from the
-	 * prefix.
 	 * @param childName the name component
 	 * @return the keyID
 	 * @throws IOException
 	 */
-	public static byte[] getKeyIDFromNameComponent(byte[] childName) throws IOException {
+	public static byte[] getKeyIDFromNameComponent(byte[] childName) {
 		if (!KeyProfile.isKeyNameComponent(childName))
 			return null;
 		byte [] keyid = CommandMarker.extractApplicationData(childName);

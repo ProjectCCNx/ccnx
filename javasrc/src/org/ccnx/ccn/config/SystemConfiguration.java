@@ -103,10 +103,10 @@ public class SystemConfiguration {
 	
 	/**
 	 * Enumerated Name List looping timeout in ms.
-	 * Default is 1000ms
+	 * Default is 300ms
 	 */
 	protected static final String CHILD_WAIT_INTERVAL_PROPERTY = "org.ccnx.EnumList.WaitInterval";
-	public final static int CHILD_WAIT_INTERVAL_DEFAULT = 10000;
+	public final static int CHILD_WAIT_INTERVAL_DEFAULT = 300;
 	public static int CHILD_WAIT_INTERVAL = CHILD_WAIT_INTERVAL_DEFAULT;
 	
 	/**
