@@ -185,6 +185,16 @@ collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
     ccn_charbuf_putf(b, "</ul>");
 }
 
+static unsigned
+ccnd_colorhash(struct ccnd_handle *h)
+{
+    unsigned const char *a = h->ccnd_id;
+    unsigned v;
+    
+    v = (a[0] << 16) + (a[1] << 8) + a[2];
+    return (v | 0xC0C0C0);
+}
+
 struct ccn_charbuf *
 collect_stats_html(struct ccnd_handle *h)
 {
@@ -212,7 +222,7 @@ collect_stats_html(struct ccnd_handle *h)
         "/*]]>*/"
         "</style>"
         "</head>" NL
-        "<body>"
+        "<body bgcolor='#%06X'>"
         "<p class='header'>%s ccnd[%d] local port %s</p>" NL
         "<div><b>Content items:</b> %llu accessioned,"
         " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
@@ -222,6 +232,7 @@ collect_stats_html(struct ccnd_handle *h)
         " %lu dropped, %lu sent, %lu stuffed</div>" NL,
         un.nodename,
         pid,
+        ccnd_colorhash(h),
         un.nodename,
         pid,
         portstr,
