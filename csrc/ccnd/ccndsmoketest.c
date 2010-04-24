@@ -41,6 +41,8 @@
 #include <ccn/ccnd.h>
 #include <ccn/ccn_private.h>
 
+#define CRLF "\r\n"
+
 char rawbuf[1024*1024];
 
 static void
@@ -343,7 +345,7 @@ main(int argc, char **argv)
             msgs = stderr;
             cmd = "sed -e 's=[<]style .*/style[>]==g' -e 's=[<][^>]*[>]==g'";
             outstream = popen(cmd, "w");
-            wlen = send(sock, "GET / \r\l", 8, 0);
+            wlen = send(sock, "GET / " CRLF , 8, 0);
             recvloop = 1;
             do_pclose = 1;
             argp--;
