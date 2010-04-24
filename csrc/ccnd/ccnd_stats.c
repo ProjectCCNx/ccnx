@@ -203,16 +203,18 @@ collect_stats_html(struct ccnd_handle *h)
     
     ccnd_collect_stats(h, &stats);
     ccn_charbuf_putf(b,
-        "<html>"
+        "<html xmlns='http://www.w3.org/1999/xhtml'>"
         "<head>"
         "<title>%s ccnd[%d]</title>"
         //"<meta http-equiv='refresh' content='3'>"
         "<style type='text/css'>"
-        " p.header {color: white; background-color: blue} "
+        "/*<![CDATA[*/"
+        "p.header {color: white; background-color: blue; width: 100%%}"
+        "/*]]>*/"
         "</style>"
         "</head>" NL
         "<body>"
-        "<p class='header' width='100%%'>%s ccnd[%d] local port %s</p>" NL
+        "<p class='header'>%s ccnd[%d] local port %s</p>" NL
         "<div><b>Content items:</b> %llu accessioned,"
         " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
         "<div><b>Interests:</b> %d names,"
