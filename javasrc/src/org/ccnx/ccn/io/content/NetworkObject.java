@@ -358,6 +358,17 @@ public abstract class NetworkObject<E> {
 			_isPotentiallyDirty = false; // just read or written
 		}
 	}
+	
+	/**
+	 * Extract the content digest (made with the default digest algorithm).
+	 * @throws IOException 
+	 */
+	public byte [] getContentDigest() throws IOException {
+		if (!isSaved()) {
+			throw new ErrorStateException("Content has not been saved!");
+		}
+		return _lastSaved;
+	}
 
 	/**
 	 * Save the object and update the internal tracking digest of its last-saved content.
