@@ -37,7 +37,7 @@ import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.PublicKeyCache;
 import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.impl.support.DataUtils.Tuple;
+import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.PublicKeyObject;
