@@ -30,6 +30,7 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.utils.CreateUserData;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -64,6 +65,11 @@ public class MLACTestRepo {
 			td = new CreateUserData(userKeystore[d], userNames, userNames.length, true, "password".toCharArray(), _handle);
 			td.publishUserKeysToRepository(userNamespace[d]);			
 		}
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		_handle.close();
 	}
 
 	@Test

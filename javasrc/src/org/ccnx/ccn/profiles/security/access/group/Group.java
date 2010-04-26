@@ -199,7 +199,7 @@ public class Group {
 			return _privKeyDirectory;
 		}
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-			Log.info("Public key not ready for group: " + friendlyName());
+			Log.info(Log.FAC_ACCESSCONTROL, "Public key not ready for group: " + friendlyName());
 		}
 		return null;
 	}
@@ -280,7 +280,7 @@ public class Group {
 				return VersioningProfile.getLastVersionAsTimestamp(name);
 			} catch (VersionMissingException e) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-					Log.warning("Should not happen: VersionMissingException on name where isVersioned is true: " + name + ": " + e.getMessage());
+					Log.warning(Log.FAC_ACCESSCONTROL, "Should not happen: VersionMissingException on name where isVersioned is true: " + name + ": " + e.getMessage());
 				}
 			}
 		}
@@ -378,7 +378,7 @@ public class Group {
 	private void newGroupPublicKeyNonRecursive(MembershipListObject ml) 
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, NoSuchAlgorithmException{
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		oldPrivateKeyDirectory.waitForUpdates(SystemConfiguration.MEDIUM_TIMEOUT);
+		oldPrivateKeyDirectory.waitForNoUpdates(SystemConfiguration.MEDIUM_TIMEOUT);
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have access rights to private key for group " + friendlyName());
@@ -470,7 +470,7 @@ public class Group {
 		} catch (NoSuchAlgorithmException e) {
 			if (_groupManager.getGroupKeyAlgorithm().equals(GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM)) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.SEVERE)) {
-					Log.severe("Cannot find default group public key algorithm: " + GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
+					Log.severe(Log.FAC_ACCESSCONTROL, "Cannot find default group public key algorithm: " + GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
 				}
 				throw new RuntimeException("Cannot find default group public key algorithm: " + GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
 			}
@@ -499,7 +499,7 @@ public class Group {
 			newPrivateKeyDirectory.addPrivateKeyBlock(pair.getPrivate(), privateKeyWrappingKey);
 		} catch (InvalidKeyException e) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-				Log.warning("Unexpected -- InvalidKeyException wrapping key with keys we just generated! " + e.getMessage());
+				Log.warning(Log.FAC_ACCESSCONTROL, "Unexpected -- InvalidKeyException wrapping key with keys we just generated! " + e.getMessage());
 			}
 			throw e;
 		}
@@ -549,7 +549,7 @@ public class Group {
 				latestPublicKey = new PublicKeyObject(pkName, _handle);
 				if (!latestPublicKey.available()) {
 					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-						Log.warning("Could not retrieve public key for " + pkName);
+						Log.warning(Log.FAC_ACCESSCONTROL, "Could not retrieve public key for " + pkName);
 					}
 					continue;
 				}
@@ -560,11 +560,11 @@ public class Group {
 						latestPublicKey.publicKey());
 			} catch (IOException e) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-					Log.warning("Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
+					Log.warning(Log.FAC_ACCESSCONTROL, "Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
 				}
 			} catch (VersionMissingException e) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-					Log.warning("Unexpected: public key name not versioned! " + latestPublicKey.getVersionedName() + ", unable to retrieve principal's public key. Skipping.");
+					Log.warning(Log.FAC_ACCESSCONTROL, "Unexpected: public key name not versioned! " + latestPublicKey.getVersionedName() + ", unable to retrieve principal's public key. Skipping.");
 				}
 			}
 		}
@@ -593,7 +593,7 @@ public class Group {
 				sb.append(membershipListName());
 			} catch (Exception e) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-					Log.warning("Unexpected " + e.getClass().getName() + " exception in getMembershipListName(): " + e.getMessage());
+					Log.warning(Log.FAC_ACCESSCONTROL, "Unexpected " + e.getClass().getName() + " exception in getMembershipListName(): " + e.getMessage());
 				}
 				sb.append("Membership list name unavailable!");
 			} 
@@ -631,7 +631,7 @@ public class Group {
 		// Assume no concurrent writer.  
 		
 		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		privateKeyDirectory.waitForUpdates(SystemConfiguration.SHORT_TIMEOUT);
+		privateKeyDirectory.waitForNoUpdates(SystemConfiguration.SHORT_TIMEOUT);
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());

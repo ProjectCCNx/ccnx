@@ -302,8 +302,16 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		if (null != _targetName) {
 			if (null == linkToMatch._targetName)
 				return false;
-			if (!linkToMatch._targetName.equals(_targetName))
-				return false;
+			if (!linkToMatch._targetName.equals(_targetName)) {
+				if (VersioningProfile.hasTerminalVersion(linkToMatch._targetName) && 
+						!VersioningProfile.hasTerminalVersion(_targetName)) {
+					if (!_targetName.isPrefixOf(linkToMatch._targetName)) {
+						return false;
+					}
+				} else {
+					return false;
+				}
+			}
 		}
 		if (null != _targetLabel) {
 			if (null == linkToMatch._targetLabel)

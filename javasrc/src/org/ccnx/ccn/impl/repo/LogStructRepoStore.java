@@ -172,7 +172,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 						InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8196);
 						
 						if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
-							Log.fine("Creating index for {0}", filenames[i]);
+							Log.fine(Log.FAC_REPO, "Creating index for {0}", filenames[i]);
 						}
 						while (true) {
 							FileRef ref = new FileRef();
@@ -188,7 +188,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 								}
 								else{
 									if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-										Log.info("at the end of the file");
+										Log.info(Log.FAC_REPO, "at the end of the file");
 									}
 									rfile.openFile.close();
 									rfile.openFile = null;
@@ -352,12 +352,12 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		checkName = checkFile(LogStructRepoStoreProfile.REPO_GLOBALPREFIX, globalPrefix, globalFromArgs);
 		globalPrefix = checkName != null ? checkName : globalPrefix;
 		if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-			Log.info("REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
+			Log.info(Log.FAC_REPO, "REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
 		}
 		try {
 			_policy.setGlobalPrefix(globalPrefix);
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-				Log.info("REPO: initializing policy location: {0} for global prefix {1} and local name {2}", localName, globalPrefix,  localName);
+				Log.info(Log.FAC_REPO, "REPO: initializing policy location: {0} for global prefix {1} and local name {2}", localName, globalPrefix,  localName);
 			}
 		} catch (MalformedContentNameStringException e2) {
 			throw new RepositoryException(e2.getMessage());
@@ -428,11 +428,11 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				_index.insert(content, ref, System.currentTimeMillis(), this, ner);
 				if (ner==null || ner.getPrefix()==null) {
 					if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
-						Log.fine("new content did not trigger an interest flag");
+						Log.fine(Log.FAC_REPO, "new content did not trigger an interest flag");
 					}
 				} else {
 					if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
-						Log.fine("new content was added where there was a name enumeration response interest flag");
+						Log.fine(Log.FAC_REPO, "new content was added where there was a name enumeration response interest flag");
 					}
 				}
 				return ner;
@@ -534,7 +534,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		File namesFile = new File(_repositoryFile, LogStructRepoStoreProfile.DEBUG_TREEDUMP_FILE);
 		try {
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-				Log.info("Dumping names to " + namesFile.getAbsolutePath() + " (len " + nodelen + ")");
+				Log.info(Log.FAC_REPO, "Dumping names to " + namesFile.getAbsolutePath() + " (len " + nodelen + ")");
 			}
 			PrintStream namesOut = new PrintStream(namesFile);
 			if (null != _index) {

@@ -44,7 +44,9 @@ import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.utils.CreateUserData;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -60,16 +62,24 @@ public class ACPerformanceTestRepo {
 	static CCNHandle _AliceHandle;
 	static GroupAccessControlManager _AliceACM;
 
+	int readsize = 1024;
+	byte [] buffer = new byte[readsize];
+	
+	static Level [] logLevels;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setDefaultLevel(Level.WARNING);
+		logLevels = Log.getLevels();
+		Log.setDefaultLevel(Log.FAC_ALL, Level.WARNING);
 		rnd = new Random();
 		
-		domainPrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "" + rnd.nextInt(10000));
-		userNamespace = GroupAccessControlProfile.userNamespaceName(domainPrefix);
-		userKeystore = ContentName.fromNative(userNamespace, "_keystore_");
-		groupNamespace = GroupAccessControlProfile.groupNamespaceName(domainPrefix);
+		CCNTestHelper testHelper = new CCNTestHelper(ACPerformanceTestRepo.class);
+		domainPrefix = testHelper.getTestNamespace("testInOrder");
+		
+		userNamespace = GroupAccessControlProfile.userNamespaceName(UserConfiguration.defaultNamespace());
+		groupNamespace = GroupAccessControlProfile.groupNamespaceName(UserConfiguration.defaultNamespace());
+		userKeystore = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_keystore_"); 
+	
 		cua = new CreateUserData(userKeystore, userNames, userNames.length, true, "password".toCharArray(), CCNHandle.open());
 		cua.publishUserKeysToRepository(userNamespace);
 
@@ -105,6 +115,12 @@ public class ACPerformanceTestRepo {
 			userHandle = cua.getHandleForUser(userNames[i]);
 			AccessControlManager.loadAccessControlManagerForNamespace(domainPrefix, userHandle);
 		}
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		cua.closeAll();
+		Log.setLevels(logLevels);
 	}
 	
 	@Test
@@ -194,12 +210,11 @@ public class ACPerformanceTestRepo {
 	public void readFileAs(String userName) throws AccessDeniedException {
 		long startTime = System.currentTimeMillis();
 		
+		CCNHandle handle = null;
 		try {
-			CCNHandle handle = cua.getHandleForUser(userName);
+			handle = cua.getHandleForUser(userName);
 			CCNInputStream input = new CCNFileInputStream(nodeName, handle);
 			input.setTimeout(SystemConfiguration.MAX_TIMEOUT);
-			int readsize = 1024;
-			byte [] buffer = new byte[readsize];
 			int readcount = 0;
 			int readtotal = 0;
 			while ((readcount = input.read(buffer)) != -1){
@@ -216,6 +231,9 @@ public class ACPerformanceTestRepo {
 		catch (IOException ioe) {
 			ioe.printStackTrace();
 			Assert.fail();
+		}
+		finally {
+			handle.close();
 		}
 
 		System.out.println("read file as " + userName + ": " + (System.currentTimeMillis() - startTime));		

@@ -40,15 +40,17 @@ public class GroupAccessControlTestRepo {
 	@BeforeClass
 	public static void createAC() throws Exception {
 		// mark the namespace as under access control
-		ACL acl = new ACL();
+    //  ACL acl = new ACL();
 		acName = ContentName.fromNative("/parc.com/ac_repo");
 	//	NamespaceManager.Root.create(acName, acl, SaveType.REPOSITORY, CCNHandle.getHandle());
 
 		// create a file in the namespace under access control
 		fileName = ContentName.fromNative(acName, "/test.txt");
-		RepositoryFileOutputStream os = new RepositoryFileOutputStream(fileName, CCNHandle.getHandle());
+		CCNHandle h = CCNHandle.getHandle();
+		RepositoryFileOutputStream os = new RepositoryFileOutputStream(fileName, h);
 		os.write(content);
 		os.close();
+		h.close();
 	}
 
 	@Test

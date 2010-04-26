@@ -105,5 +105,13 @@ public class AccessControlProfile implements CCNProfile {
 		return ACCESS_CONTROL_POLICY_CONTENTNAME;
 	}
 	
+	/**
+	 * Returns whether the specified name contains the access control policy marker
+	 * @param name the name
+	 * @return
+	 */
+	public static boolean isAccessControlPolicyName(ContentName name) {
+		return name.contains(ACCESS_CONTROL_POLICY_NAME_BYTES);
+	}
 	
 }

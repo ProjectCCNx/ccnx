@@ -22,9 +22,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
@@ -70,8 +67,7 @@ public class RepositoryServer {
 	private boolean _pendingNameSpaceChange = false;
 	private int _windowSize = WINDOW_SIZE;
 	private int _ephemeralFreshness = FRESHNESS;
-	protected ThreadPoolExecutor _threadpool = null; // pool service
-	
+	private RepositoryDataHandler _dataHandler;
 	private ContentName _responseName = null;
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
@@ -110,7 +106,7 @@ public class RepositoryServer {
 			
 				if (_currentListeners.size() == 0 && _pendingNameSpaceChange) {
 					if( Log.isLoggable(Log.FAC_REPO, Level.FINER) )
-						Log.finer("InterestTimer - resetting nameSpace");
+						Log.finer(Log.FAC_REPO, "InterestTimer - resetting nameSpace");
 					try {
 						resetNameSpace();
 					} catch (IOException e) {
@@ -147,9 +143,9 @@ public class RepositoryServer {
 			 // disable flow control
 			_writer.disableFlowControl();
 
-			// Create callback threadpool
-			_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
-			_threadpool.setKeepAliveTime(THREAD_LIFE, TimeUnit.SECONDS);
+			_dataHandler = new RepositoryDataHandler(this);
+			Thread dataHandlerThread = new Thread(_dataHandler, "RepositoryDataHandler");
+			dataHandlerThread.start();
 	}
 
 	/**
@@ -198,7 +194,7 @@ public class RepositoryServer {
 			}
 		}
 		
-		_threadpool.shutdownNow();
+		_dataHandler.shutdown();
 		
 		try {
 			_writer.close();
@@ -224,7 +220,7 @@ public class RepositoryServer {
 			else
 				_pendingNameSpaceChange = true;
 			if( Log.isLoggable(Log.FAC_REPO, Level.FINER) )
-				Log.finer("ResetNameSpaceFromHandler: pendingNameSpaceChange is {0}", _pendingNameSpaceChange);
+				Log.finer(Log.FAC_REPO, "ResetNameSpaceFromHandler: pendingNameSpaceChange is {0}", _pendingNameSpaceChange);
 		}	
 	}
 	
@@ -241,13 +237,13 @@ public class RepositoryServer {
 				for (NameAndListener oldName : unMatchedOld) {
 					_handle.unregisterFilter(oldName.name, oldName.listener);
 					if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
-						Log.info("Dropping namespace {0}", oldName.name);
+						Log.info(Log.FAC_REPO, "Dropping namespace {0}", oldName.name);
 				}
 				for (ContentName newName : unMatchedNew) {
 					RepositoryInterestHandler iHandler = new RepositoryInterestHandler(this);
 					_handle.registerFilter(newName, iHandler);
 					if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
-						Log.info("Adding namespace {0}", newName);
+						Log.info(Log.FAC_REPO, "Adding namespace {0}", newName);
 					newIL.add(new NameAndListener(newName, iHandler));
 				}
 				_repoFilters = newIL;
@@ -331,8 +327,8 @@ public class RepositoryServer {
 		return _pendingNameSpaceChange;
 	}
 	
-	public ThreadPoolExecutor getThreadPool() {
-		return _threadpool;
+	public RepositoryDataHandler getDataHandler() {
+		return _dataHandler;
 	}
 	
 	public int getWindowSize() {
@@ -364,7 +360,7 @@ public class RepositoryServer {
 			NameEnumerationResponseMessageObject neResponseObject = null;
 			try{
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
-					Log.finer("returning names for prefix: {0}", ner.getPrefix());
+					Log.finer(Log.FAC_REPO, "returning names for prefix: {0}", ner.getPrefix());
 
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
 					for (int x = 0; x < ner.getNames().size(); x++) {
@@ -373,7 +369,7 @@ public class RepositoryServer {
 				}
 				if (ner.getTimestamp()==null)
 					if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
-						Log.info("node.timestamp was null!!!");
+						Log.info(Log.FAC_REPO, "node.timestamp was null!!!");
 				NameEnumerationResponseMessage nem = ner.getNamesForResponse();
 				neResponseObject = new NameEnumerationResponseMessageObject(new ContentName(ner.getPrefix(), _responseName.components()), nem, _handle);
 				// TODO this is only temporary until flow control issues can
@@ -381,7 +377,7 @@ public class RepositoryServer {
 				neResponseObject.disableFlowControl();
 				neResponseObject.save(ner.getTimestamp());
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
-					Log.finer("saved collection object: {0}", neResponseObject.getVersionedName());
+					Log.finer(Log.FAC_REPO, "saved collection object: {0}", neResponseObject.getVersionedName());
 				return;
 
 			} catch(IOException e){

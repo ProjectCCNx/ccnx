@@ -373,7 +373,7 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 			throw new CCNDaemonException(msg);
 		}
 
-		byte[] payloadBack = super.sendIt(interestName, face);
+		byte[] payloadBack = super.sendIt(interestName, face, true);
 		FaceInstance faceBack = new FaceInstance(payloadBack);
 
 		String formattedFace = faceBack.toFormattedString();

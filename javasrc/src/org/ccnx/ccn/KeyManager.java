@@ -35,8 +35,9 @@ import org.ccnx.ccn.impl.CCNFlowControl.Shape;
 import org.ccnx.ccn.impl.repo.RepositoryFlowControl;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.PublicKeyCache;
+import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.impl.support.DataUtils.Tuple;
+import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.PublicKeyObject;
@@ -274,6 +275,13 @@ public abstract class KeyManager {
 	 * @return our PublicKeyCache
 	 */
 	public abstract PublicKeyCache getPublicKeyCache();
+	
+	/**
+	 * Access our store of private keys and other secret key 
+	 * material that we have retrieved.
+	 * @return our SecureKeyCache
+	 */
+	public abstract SecureKeyCache getSecureKeyCache();
 
 	public abstract void saveConfigurationState() throws FileNotFoundException,
 			IOException;

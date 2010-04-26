@@ -58,22 +58,6 @@ public class DataUtils {
 		}
 	}
 		
-	public static class Tuple<A, B> {
-		
-		A _first;
-		B _second;
-		
-		public Tuple(A first, B second) {
-			_first = first;
-			_second = second;
-		}
-		
-		public A first() { return _first; }
-		public B second() { return _second; }
-		public void setFirst(A first) { _first = first; }
-		public void setSecond(B second) { _second = second; }
-	}
-
 	public static <T extends Comparable<T>> int compare(T left, T right) {
 		int result = 0;
 		if (null != left) {
@@ -458,7 +442,7 @@ public class DataUtils {
 	 * @param count Maximum number of bytes to inspect.
 	 * @return < 0 if left comes before right, 0 if they are equal, > 0 if left comes after right
 	 */
-	public static int bytencmp(byte[] arr1, byte[] arr2, int count) {
+	public static int bytencmp(byte[] arr1, int offset1, byte[] arr2, int offset2, int count) {
 		if (null == arr1) {
 			if (null == arr2)
 				return 0;
@@ -467,11 +451,11 @@ public class DataUtils {
 		if (null == arr2)
 			return -1;
 		
-		int cmpcount = Math.min(Math.min(count, arr1.length), arr2.length);
-		for (int i=0; i < cmpcount; ++i) {
-			if (arr1[i] < arr2[i])
+		int cmpcount = Math.min(Math.min(count, (arr1.length-offset1)), (arr2.length-offset2));
+		for (int i=offset1, j=offset2; i < cmpcount; ++i, ++j) {
+			if (arr1[i] < arr2[j])
 				return -1;
-			if (arr2[i] > arr1[i])
+			if (arr1[i] > arr2[j])
 				return 1;
 		}
 		if (cmpcount == count)
@@ -483,6 +467,10 @@ public class DataUtils {
 		if (arr1.length < arr2.length)
 			return -1;
 		return 0;
+	}
+	
+	public static int bytencmp(byte [] arr1, byte [] arr2, int count) {
+		return bytencmp(arr1, 0, arr2, 0, count);
 	}
 	
 	/**

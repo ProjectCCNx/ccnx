@@ -49,6 +49,39 @@ import org.ccnx.ccn.protocol.ContentObject;
  */
 public class SystemConfiguration {
 	
+	/**
+	 * System operation timeout. Very long timeout used to wait for system events
+	 * such as stopping Daemons.
+	 */
+	public final static int SYSTEM_STOP_TIMEOUT = 30000;
+	
+	/**
+	 * Very long timeout for network operations, in msec..
+	 */
+	public final static int MAX_TIMEOUT = 10000;
+	
+	/**
+	 * Extra-long timeout, e.g. to get around reexpression timing issues.
+	 */
+	public final static int EXTRA_LONG_TIMEOUT = 6000;
+	
+	/**
+	 * Longer timeout, for e.g. waiting for a latest version and being sure you
+	 * have anything available locally in msec.
+	 */
+	public final static int LONG_TIMEOUT = 3000;
+	
+	/**
+	 * Medium timeout, used as system default.
+	 */
+	public static final int MEDIUM_TIMEOUT = 1000;
+	
+	/**
+	 * Short timeout; for things you expect to exist or not exist locally.
+	 */
+	public static final int SHORT_TIMEOUT = 300;
+	
+	
 	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES, DUMP_DAEMONCMD, REPO_EXITDUMP};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
 
@@ -70,11 +103,18 @@ public class SystemConfiguration {
 	
 	/**
 	 * Enumerated Name List looping timeout in ms.
-	 * Default is 1000ms
+	 * Default is 300ms
 	 */
 	protected static final String CHILD_WAIT_INTERVAL_PROPERTY = "org.ccnx.EnumList.WaitInterval";
-	public final static int CHILD_WAIT_INTERVAL_DEFAULT = 10000;
+	public final static int CHILD_WAIT_INTERVAL_DEFAULT = 300;
 	public static int CHILD_WAIT_INTERVAL = CHILD_WAIT_INTERVAL_DEFAULT;
+	
+	/**
+	 * Default timeout for the flow controller
+	 */
+	protected static final String FC_TIMEOUT_PROPERTY = "org.ccnx.fc.timeout";
+	public final static int FC_TIMEOUT_DEFAULT = MAX_TIMEOUT;
+	public static int FC_TIMEOUT = FC_TIMEOUT_DEFAULT;
 	
 	/**
 	 * How long to wait for a ping timeout in CCNNetworkManager
@@ -123,37 +163,6 @@ public class SystemConfiguration {
 	protected static final String OLD_HEADER_NAMES_ENV_VAR = "CCNX_OLD_HEADER_NAMES";
 	public static boolean OLD_HEADER_NAMES = true;
 	
-	/**
-	 * System operation timeout. Very long timeout used to wait for system events
-	 * such as stopping Daemons.
-	 */
-	public final static int SYSTEM_STOP_TIMEOUT = 30000;
-	
-	/**
-	 * Very long timeout for network operations, in msec..
-	 */
-	public final static int MAX_TIMEOUT = 10000;
-	
-	/**
-	 * Extra-long timeout, e.g. to get around reexpression timing issues.
-	 */
-	public final static int EXTRA_LONG_TIMEOUT = 6000;
-	
-	/**
-	 * Longer timeout, for e.g. waiting for a latest version and being sure you
-	 * have anything available locally in msec.
-	 */
-	public final static int LONG_TIMEOUT = 3000;
-	
-	/**
-	 * Medium timeout, used as system default.
-	 */
-	public static final int MEDIUM_TIMEOUT = 1000;
-	
-	/**
-	 * Short timeout; for things you expect to exist or not exist locally.
-	 */
-	public static final int SHORT_TIMEOUT = 300;
 	
 	/**
 	 * Timeout used for communication with local 'ccnd' for control operations.
@@ -263,7 +272,7 @@ public class SystemConfiguration {
 
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
-			PIPELINE_SIZE = Integer.parseInt(retrievePropertyOrEvironmentVariable(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
+			PIPELINE_SIZE = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineSize must be an integer.");
@@ -272,7 +281,7 @@ public class SystemConfiguration {
 	
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
-			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(retrievePropertyOrEvironmentVariable(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
+			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineAttempts must be an integer.");
@@ -281,14 +290,14 @@ public class SystemConfiguration {
 		
 		// Allow override of default pipeline rtt multiplication factor for CCNAbstractInputStream
 		try {
-			PIPELINE_RTTFACTOR = Integer.parseInt(retrievePropertyOrEvironmentVariable(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
+			PIPELINE_RTTFACTOR = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineRTTFactor must be an integer.");
 
 		}
 		
 		// Allow printing of pipeline stats in CCNAbstractInputStream
-		PIPELINE_STATS = Boolean.parseBoolean(retrievePropertyOrEvironmentVariable(PIPELINE_STATS_PROPERTY, PIPELINE_STATS_ENV_VAR, "false"));
+		PIPELINE_STATS = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(PIPELINE_STATS_PROPERTY, PIPELINE_STATS_ENV_VAR, "false"));
 		
 		
 			// Allow override of default ping timeout.
@@ -297,6 +306,15 @@ public class SystemConfiguration {
 //			Log.fine("PING_TIMEOUT = " + PING_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The ping timeout must be an integer.");
+			throw e;
+		}
+		
+		// Allow override of default flow controller timeout.
+		try {
+			FC_TIMEOUT = Integer.parseInt(System.getProperty(FC_TIMEOUT_PROPERTY, Integer.toString(FC_TIMEOUT_DEFAULT)));
+//			Log.fine("PING_TIMEOUT = " + PING_TIMEOUT);
+		} catch (NumberFormatException e) {
+			System.err.println("The default flow controller timeout must be an integer.");
 			throw e;
 		}
 
@@ -311,7 +329,7 @@ public class SystemConfiguration {
 		
 		// Handle old-style header names
 		OLD_HEADER_NAMES = Boolean.parseBoolean(
-				retrievePropertyOrEvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
+				retrievePropertyOrEnvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
 
 	}
 
@@ -576,7 +594,7 @@ public class SystemConfiguration {
 	 * if neither is set return the default value. Caller should synchronize as appropriate.
 	 * @return The value in force for this variable, or null if unset.
 	 */
-	public static String retrievePropertyOrEvironmentVariable(String javaPropertyName, String environmentVariableName, String defaultValue) { 
+	public static String retrievePropertyOrEnvironmentVariable(String javaPropertyName, String environmentVariableName, String defaultValue) { 
 		// First try the command line property.
 		String value = null;
 		if (null != javaPropertyName) {

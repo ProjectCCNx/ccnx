@@ -41,6 +41,8 @@
 #include <ccn/ccnd.h>
 #include <ccn/ccn_private.h>
 
+#define CRLF "\r\n"
+
 char rawbuf[1024*1024];
 
 static void
@@ -61,7 +63,7 @@ printraw(char *p, int n)
 }
 
 static int
-open_local(struct sockaddr_un *sa)
+open_local(struct sockaddr_un *sa, const char *verb)
 {
     int sock;
     int res;
@@ -73,6 +75,9 @@ open_local(struct sockaddr_un *sa)
     }
     res = connect(sock, (struct sockaddr *)sa, sizeof(*sa));
     if (res == -1 && errno == ENOENT) {
+        /* Don't wait for startup just to shut it down */
+        if (verb != NULL && 0 == strcmp(verb, "kill"))
+            exit(1);
         /* Retry after a delay in case ccnd was just starting up. */
         sleep(1);
         res = connect(sock, (struct sockaddr *)sa, sizeof(*sa));
@@ -192,27 +197,45 @@ is_ccnb_name(const char *s)
     return (len > 5 && 0 == strcasecmp(s + len - 5, ".ccnb"));
 }
 
-int main(int argc, char **argv)
+void
+write_to_stream(FILE *outstream, const void *rawbuf, size_t rawlen)
+{
+    size_t wlen;
+    wlen = fwrite(rawbuf, 1, rawlen, outstream);
+    if (wlen != rawlen)
+        fprintf(stderr, "short write (%ld of %ld)\n",
+                (long)wlen, (long)rawlen);
+    if (fflush(outstream) != 0)
+        perror("fflush");
+}
+
+int
+main(int argc, char **argv)
 {
     struct sockaddr_un addr = {0};
     int c;
     struct pollfd fds[1];
     int res;
     ssize_t rawlen;
+    ssize_t wlen;
     int sock;
     char *filename = NULL;
     const char *portstr;
     int msec = 1000;
     int argp;
     FILE *msgs = stdout;
-    int binout = 0;
+    FILE *outstream = NULL;
     int udp = 0;
     int tcp = 0;
-    const char *host = NULL;
+    int recvloop = 0;
+    int do_pclose = 0;
+    const char *host = "localhost";
+    const char *cmd = NULL;
+    
     while ((c = getopt(argc, argv, "bht:T:u:")) != -1) {
         switch (c) {
             case 'b':
-                binout = 1;
+                outstream = stdout;
                 msgs = stderr;
                 break;
             case 't':
@@ -237,6 +260,7 @@ int main(int argc, char **argv)
                         " | <sendfilename>.ccnb"
                         " | recv"
                         " | kill"
+                        " | status"
                         " | timeo <millisconds>"
                         " ) ...");
                 exit(1);
@@ -250,7 +274,7 @@ int main(int argc, char **argv)
     else if (tcp)
         sock = open_socket(host, portstr, SOCK_STREAM);
     else
-        sock = open_local(&addr);
+        sock = open_local(&addr, argv[optind]);
     fds[0].fd = sock;
     fds[0].events = POLLIN;
     fds[0].revents = 0;
@@ -267,7 +291,7 @@ int main(int argc, char **argv)
             filename = argv[argp];
             send_ccnb_file(sock, msgs, filename, udp);
         }
-        else if (0 == strcmp(argv[argp], "recv")) {
+        else if (recvloop || 0 == strcmp(argv[argp], "recv")) {
             res = poll(fds, 1, msec);
             if (res == -1) {
                 perror("poll");
@@ -275,6 +299,7 @@ int main(int argc, char **argv)
             }
             if (res == 0) {
                 fprintf(msgs, "recv timed out after %d ms\n", msec);
+                recvloop = 0;
                 continue;
             }
             rawlen = recv(sock, rawbuf, sizeof(rawbuf), 0);
@@ -284,19 +309,46 @@ int main(int argc, char **argv)
             }
             if (rawlen == 0)
                 break;
+            if (recvloop)
+                argp--;
             fprintf(msgs, "recv of %lu bytes\n", (unsigned long)rawlen);
-            if (binout)
-                write(1, rawbuf, rawlen);
+            if (outstream != NULL)
+                write_to_stream(outstream, rawbuf, rawlen);
             else
                 printraw(rawbuf, rawlen);
         }
         else if (0 == strcmp(argv[argp], "kill")) {
-            unlink((char *)addr.sun_path);
-            break;
+            poll(fds, 1, 1);
+            res = unlink((char *)addr.sun_path);
+            if (res == 0) {
+                res = open_socket(host, portstr, SOCK_STREAM);
+                if (res != -1) {
+                    write(res, " ", 1);
+                    close(res);
+                }
+                poll(fds, 1, 5000);
+                rawlen = recv(sock, rawbuf, sizeof(rawbuf), 0);
+                if (rawlen == 0)
+                    exit(0);
+                if (rawlen > 0)
+                    exit(2);
+            }
+            fprintf(stderr, "%s kill (%s) ", argv[0], (char *)addr.sun_path);
+            perror("failed");
+            exit(1);
         }
         else if (0 == strcmp(argv[argp], "timeo")) {
             if (argv[argp + 1] != NULL)
                 msec = atoi(argv[++argp]);
+        }
+        else if (udp == 0 && 0 == strcmp(argv[argp], "status")) {
+            msgs = stderr;
+            cmd = "sed -e 's=[<]style .*/style[>]==g' -e 's=[<][^>]*[>]==g'";
+            outstream = popen(cmd, "w");
+            wlen = send(sock, "GET / " CRLF , 8, 0);
+            recvloop = 1;
+            do_pclose = 1;
+            argp--;
         }
         else {
             fprintf(stderr, "%s: unknown verb %s, try -h switch for usage\n",
@@ -304,5 +356,7 @@ int main(int argc, char **argv)
             exit(1);
         }
     }
+    if (do_pclose)
+        pclose(outstream);
     exit(0);
 }

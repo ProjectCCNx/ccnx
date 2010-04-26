@@ -51,7 +51,86 @@ struct ccnd_stats {
     long total_flood_control;      /* done propagating, still recorded */
 };
 
+static int ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans);
+static struct ccn_charbuf *collect_stats_html(struct ccnd_handle *h);
+static void send_http_response(struct ccnd_handle *h, struct face *face,
+                               const char *mime_type,
+                               struct ccn_charbuf *response);
+static struct ccn_charbuf *collect_stats_html(struct ccnd_handle *h);
+static struct ccn_charbuf *collect_stats_xml(struct ccnd_handle *h);
+
+/* HTTP */
+
+static const char *resp404 =
+    "HTTP/1.1 404 Not Found" CRLF
+    "Connection: close" CRLF CRLF;
+
+static const char *resp405 =
+    "HTTP/1.1 405 Method Not Allowed" CRLF
+    "Connection: close" CRLF CRLF;
+
 int
+ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
+{
+    struct ccn_charbuf *response = NULL;
+    int i;
+    int nspace;
+    char rbuf[16];
+    
+    if (face->inbuf->length < 4)
+        return(-1);
+    if ((face->flags & CCN_FACE_NOSEND) != 0) {
+        ccnd_destroy_face(h, face->faceid);
+        return(-1);
+    }
+    for (i = 0, nspace = 0; nspace < 2 && i < sizeof(rbuf) - 1; i++) {
+        rbuf[i] = face->inbuf->buf[i];
+        if (rbuf[i] == ' ')
+            nspace++;
+    }
+    rbuf[i] = 0;
+    if (0 == strcmp(rbuf, "GET / ") ||
+        0 == strcmp(rbuf, "GET /? ")) {
+        response = collect_stats_html(h);
+        send_http_response(h, face, "text/html", response);
+    }
+    else if (0 == strcmp(rbuf, "GET /?f=xml ")) {
+        response = collect_stats_xml(h);
+        send_http_response(h, face, "text/xml", response);
+    }
+    else if (0 == strcmp(rbuf, "GET "))
+        ccnd_send(h, face, resp404, strlen(resp404));
+    else
+        ccnd_send(h, face, resp405, strlen(resp405));
+    face->flags |= (CCN_FACE_NOSEND | CCN_FACE_CLOSING);
+    ccn_charbuf_destroy(&response);
+    return(0);
+}
+
+static void
+send_http_response(struct ccnd_handle *h, struct face *face,
+                   const char *mime_type, struct ccn_charbuf *response)
+{
+    struct linger linger = { .l_onoff = 1, .l_linger = 1 };
+    char buf[128];
+    int hdrlen;
+
+    /* Set linger to prevent quickly resetting the connection on close.*/
+    setsockopt(face->recv_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+    hdrlen = snprintf(buf, sizeof(buf),
+                      "HTTP/1.1 200 OK" CRLF
+                      "Content-Type: %s; charset=utf-8" CRLF
+                      "Connection: close" CRLF
+                      "Content-Length: %jd" CRLF CRLF,
+                      mime_type,
+                      (intmax_t)response->length);
+    ccnd_send(h, face, buf, hdrlen);
+    ccnd_send(h, face, response->buf, response->length);
+}
+
+/* Common statistics collection */
+
+static int
 ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
 {
     struct hashtb_enumerator ee;
@@ -64,9 +143,8 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
         struct propagating_entry *head = &npe->pe_head;
         struct propagating_entry *p;
         for (p = head->next; p != head; p = p->next) {
-            // XXX - This should check p->faceid before counting p
-            // ... but face_from_faceid() is private.
-            sum += 1;
+            if (ccnd_face_from_faceid(h, p->faceid) != NULL)
+                sum += 1;
         }
     }
     ans->total_interest_counts = sum;
@@ -85,12 +163,14 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
         if (face != NULL)
             sum += face->pending_interests;
     }
-    if ((h->debug & 32) != 0 && sum != ans->total_interest_counts)
+    if (sum != ans->total_interest_counts)
         ccnd_msg(h, "ccnd_collect_stats found inconsistency %ld != %ld\n",
                  (long)sum, (long)ans->total_interest_counts);
     ans->total_interest_counts = sum;
     return(0);
 }
+
+/* HTML formatting */
 
 static void
 collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
@@ -118,7 +198,7 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
             if (port > 0) {
                 const char *node = ccn_charbuf_as_string(nodebuf);
                 int chk = CCN_FACE_MCAST | CCN_FACE_UNDECIDED |
-                          CCN_FACE_NOSEND | CCN_FACE_GG;
+                CCN_FACE_NOSEND | CCN_FACE_GG | CCN_FACE_PASSIVE;
                 if ((face->flags & chk) == 0)
                     ccn_charbuf_putf(b,
                                      " <b>remote:</b> "
@@ -126,9 +206,15 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
                                      "%s:%d</a>",
                                      node, CCN_DEFAULT_UNICAST_PORT,
                                      node, port);
-                else
+                else if ((face->flags & CCN_FACE_PASSIVE) == 0)
                     ccn_charbuf_putf(b, " <b>remote:</b> %s:%d",
                                      node, port);
+                else
+                    ccn_charbuf_putf(b, " <b>local:</b> %s:%d",
+                                     node, port);
+                if (face->sendface != face->faceid &&
+                    face->sendface != CCN_NOFACEID)
+                    ccn_charbuf_putf(b, " <b>via:</b> %u", face->sendface);
             }
             ccn_charbuf_putf(b, "</li>" NL);
         }
@@ -180,7 +266,17 @@ collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
     ccn_charbuf_putf(b, "</ul>");
 }
 
-struct ccn_charbuf *
+static unsigned
+ccnd_colorhash(struct ccnd_handle *h)
+{
+    unsigned const char *a = h->ccnd_id;
+    unsigned v;
+    
+    v = (a[0] << 16) + (a[1] << 8) + a[2];
+    return (v | 0xC0C0C0);
+}
+
+static struct ccn_charbuf *
 collect_stats_html(struct ccnd_handle *h)
 {
     struct ccnd_stats stats = {0};
@@ -197,16 +293,18 @@ collect_stats_html(struct ccnd_handle *h)
     
     ccnd_collect_stats(h, &stats);
     ccn_charbuf_putf(b,
-        "<html>"
+        "<html xmlns='http://www.w3.org/1999/xhtml'>"
         "<head>"
         "<title>%s ccnd[%d]</title>"
         //"<meta http-equiv='refresh' content='3'>"
         "<style type='text/css'>"
-        " p.header {color: white; background-color: blue} "
+        "/*<![CDATA[*/"
+        "p.header {color: white; background-color: blue; width: 100%%}"
+        "/*]]>*/"
         "</style>"
         "</head>" NL
-        "<body>"
-        "<p class='header' width='100%%'>%s ccnd[%d] local port %s</p>" NL
+        "<body bgcolor='#%06X'>"
+        "<p class='header'>%s ccnd[%d] local port %s</p>" NL
         "<div><b>Content items:</b> %llu accessioned,"
         " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
         "<div><b>Interests:</b> %d names,"
@@ -215,6 +313,7 @@ collect_stats_html(struct ccnd_handle *h)
         " %lu dropped, %lu sent, %lu stuffed</div>" NL,
         un.nodename,
         pid,
+        ccnd_colorhash(h),
         un.nodename,
         pid,
         portstr,
@@ -241,47 +340,128 @@ collect_stats_html(struct ccnd_handle *h)
     return(b);
 }
 
-static const char *resp404 =
-    "HTTP/1.1 404 Not Found" CRLF
-    "Connection: close" CRLF CRLF;
+/* XML formatting */
 
-static const char *resp405 =
-    "HTTP/1.1 405 Method Not Allowed" CRLF
-    "Connection: close" CRLF CRLF;
-
-int
-ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
+static void
+collect_faces_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
 {
-    int hdrlen;
-    struct ccn_charbuf *response = NULL;
-    struct linger linger = { .l_onoff = 1, .l_linger = 1 };
-    char buf[128];
+    int i;
+    struct ccn_charbuf *nodebuf;
+    int port;
     
-    if (face->inbuf->length < 6)
-        return(-1);
+    nodebuf = ccn_charbuf_create();
+    ccn_charbuf_putf(b, "<faces>");
+    for (i = 0; i < h->face_limit; i++) {
+        struct face *face = h->faces_by_faceid[i];
+        if (face != NULL && (face->flags & CCN_FACE_UNDECIDED) == 0) {
+            ccn_charbuf_putf(b, "<face>");
+            ccn_charbuf_putf(b,
+                             "<faceid>%u</faceid>"
+                             "<faceflags>%04x</faceflags>",
+                             face->faceid, face->flags);
+            ccn_charbuf_putf(b, "<pending>%d</pending>",
+                             face->pending_interests);
+            ccn_charbuf_putf(b, "<recvcount>%d</recvcount>",
+                             face->recvcount);
+            nodebuf->length = 0;
+            port = ccn_charbuf_append_sockaddr(nodebuf, face->addr);
+            if (port > 0) {
+                const char *node = ccn_charbuf_as_string(nodebuf);
+                ccn_charbuf_putf(b, "<ip>%s:%d</ip>", node, port);
+            }
+            if (face->sendface != face->faceid &&
+                face->sendface != CCN_NOFACEID)
+                ccn_charbuf_putf(b, "<via>%u</via>", face->sendface);
+            ccn_charbuf_putf(b, "</face>" NL);
+        }
+    }
+    ccn_charbuf_putf(b, "</faces>");
+    ccn_charbuf_destroy(&nodebuf);
+}
 
-    if ((face->flags & CCN_FACE_NOSEND) != 0) {
-        ccnd_destroy_face(h, face->faceid);
-        return(-1);
+static void
+collect_forwarding_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_forwarding *f;
+    int res;
+    struct ccn_charbuf *name = ccn_charbuf_create();
+    
+    ccn_charbuf_putf(b, "<forwarding>");
+    hashtb_start(h->nameprefix_tab, e);
+    for (; e->data != NULL; hashtb_next(e)) {
+        struct nameprefix_entry *ipe = e->data;
+        for (f = ipe->forwarding, res = 0; f != NULL && !res; f = f->next) {
+            if ((f->flags & CCN_FORW_ACTIVE) != 0)
+                res = 1;
+        }
+        if (res) {
+            ccn_name_init(name);
+            res = ccn_name_append_components(name, e->key, 0, e->keysize);
+            ccn_charbuf_putf(b, "<fentry>");
+            ccn_charbuf_putf(b, "<prefix>");
+            ccn_uri_append(b, name->buf, name->length, 1);
+            ccn_charbuf_putf(b, "</prefix>");
+            for (f = ipe->forwarding; f != NULL; f = f->next) {
+                if ((f->flags & CCN_FORW_ACTIVE) != 0) {
+                    ccn_charbuf_putf(b,
+                                     "<dest>"
+                                     "<faceid>%u</faceid>"
+                                     "<flags>%x</flags>"
+                                     "<expires>%d</expires>"
+                                     "</dest>",
+                                     f->faceid, f->flags, f->expires);
+                }
+            }
+            ccn_charbuf_putf(b, "</fentry>");
+        }
     }
-    /* Set linger to prevent quickly resetting the connection on close.*/
-    setsockopt(face->send_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
-    if (0 == memcmp(face->inbuf->buf, "GET / ", 6)) {
-        response = collect_stats_html(h);
-        hdrlen = snprintf(buf, sizeof(buf),
-                          "HTTP/1.1 200 OK" CRLF
-                          "Content-Type: text/html; charset=utf-8" CRLF
-                          "Connection: close" CRLF
-                          "Content-Length: %jd" CRLF CRLF,
-                          (intmax_t)response->length);
-        ccnd_send(h, face, buf, hdrlen);
-        ccnd_send(h, face, response->buf, response->length);
-    }
-    else if (0 == memcmp(buf, "GET ", 4))
-        ccnd_send(h, face, resp404, strlen(resp404));
-    else
-        ccnd_send(h, face, resp405, strlen(resp405));
-    face->flags |= (CCN_FACE_NOSEND | CCN_FACE_CLOSING);
-    ccn_charbuf_destroy(&response);
-    return(0);
+    hashtb_end(e);
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_putf(b, "</forwarding>");
+}
+
+static struct ccn_charbuf *
+collect_stats_xml(struct ccnd_handle *h)
+{
+    struct ccnd_stats stats = {0};
+    struct ccn_charbuf *b = ccn_charbuf_create();
+        
+    ccnd_collect_stats(h, &stats);
+    ccn_charbuf_putf(b,
+        "<ccnd>"
+        "<cobs>"
+        "<accessioned>%llu</accessioned>"
+        "<stored>%d</stored>"
+        "<stale>%lu</stale>"
+        "<sparse>%d</sparse>"
+        "<duplicate>%lu</duplicate>"
+        "<sent>%lu</sent>"
+        "</cobs>"
+        "<interests>"
+        "<names>%d</names>"
+        "<pending>%ld</pending>"
+        "<propagating>%ld</propagating>"
+        "<noted>%ld</noted>"
+        "<accepted>%lu</accepted>"
+        "<dropped>%lu</dropped>"
+        "<sent>%lu</sent>"
+        "<stuffed>%lu</stuffed>"
+        "</interests>",
+        (unsigned long long)h->accession,
+        hashtb_n(h->content_tab),
+        h->n_stale,
+        hashtb_n(h->sparse_straggler_tab),
+        h->content_dups_recvd,
+        h->content_items_sent,
+        hashtb_n(h->nameprefix_tab), stats.total_interest_counts,
+        hashtb_n(h->propagating_tab) - stats.total_flood_control,
+        stats.total_flood_control,
+        h->interests_accepted, h->interests_dropped,
+        h->interests_sent, h->interests_stuffed);
+    collect_faces_xml(h, b);
+    collect_forwarding_xml(h, b);
+    ccn_charbuf_putf(b, "</ccnd>" NL);
+    return(b);
 }

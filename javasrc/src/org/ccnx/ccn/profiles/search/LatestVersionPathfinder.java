@@ -26,7 +26,20 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
-public class LatestVersionPathfinder extends Pathfinder {
+/**
+ * Like ObjectPathfinder, this subclass searches for a content object with a specific postfix
+ * along the path from a starting point to a stopping point.
+ * We can search for matching content that is either closest or furthest from the starting point. 
+ * 
+ * When the closest (or furthest) matching content object is found,
+ * LatestVersionPathfinder retrieves the latest version of that object.
+ * If the latest version is not GONE (or if goneOK is True), the latest version is returned.
+ * Otherwise, we update the starting point or stopping point (depending on _closestOnPath)
+ * and start a new search if the new range is non empty.
+ *
+ */
+
+public class LatestVersionPathfinder extends ObjectPathfinder {
 
 	public LatestVersionPathfinder(ContentName startingPoint, ContentName stoppingPoint, ContentName desiredPostfix, 
 			  boolean closestOnPath, boolean goneOK,
@@ -36,6 +49,7 @@ public class LatestVersionPathfinder extends Pathfinder {
 		super(startingPoint, stoppingPoint, desiredPostfix, closestOnPath, goneOK, timeout, searchedPathCache, handle);
 	}
 
+	@Override
 	public synchronized SearchResults waitForResults() {
 		boolean searchSpaceEmpty = false;
 		while (! searchSpaceEmpty) {

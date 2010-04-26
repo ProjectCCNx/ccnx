@@ -23,7 +23,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.impl.support.DataUtils.Tuple;
+import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.protocol.ContentName;

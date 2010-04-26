@@ -49,7 +49,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.impl.support.DataUtils.Tuple;
+import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -700,11 +700,17 @@ public class BasicKeyManager extends KeyManager {
 	
 	@Override 
 	public KeyLocator getStoredKeyLocator(PublisherPublicKeyDigest keyID) {
+		if (null == keyID) {
+			keyID = getDefaultKeyID();
+		}
 		return _currentKeyLocators.get(keyID);
 	}
 
 	@Override 
 	public boolean haveStoredKeyLocator(PublisherPublicKeyDigest keyID) {
+		if (null == keyID) {
+			keyID = getDefaultKeyID();
+		}
 		return _currentKeyLocators.containsKey(keyID);
 	}
 
@@ -847,6 +853,11 @@ public class BasicKeyManager extends KeyManager {
 	@Override
 	public PublicKeyCache getPublicKeyCache() {
 		return _publicKeyCache;
+	}
+	
+	@Override
+	public SecureKeyCache getSecureKeyCache() {
+		return _privateKeyCache;
 	}
 
 	@Override

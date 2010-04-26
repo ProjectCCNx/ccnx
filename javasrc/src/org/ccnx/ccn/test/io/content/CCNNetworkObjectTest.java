@@ -485,6 +485,9 @@ public class CCNNetworkObjectTest {
 			CCNStringObject so = new CCNStringObject(testName, handle);
 			// so should catch exception thrown by underlying stream when it times out.
 			Assert.assertFalse(so.available());
+			// try to pick up anything that happens to appear
+			so.updateInBackground();
+			
 			CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", SaveType.RAW, CCNHandle.open());
 			setupNamespace(testName);
 			saveAndLog("testUpdateDoesNotExist: Delayed write", sowrite, null, "Now we write something.");

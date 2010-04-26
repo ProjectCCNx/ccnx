@@ -129,5 +129,10 @@ public class ParameterizedName extends GenericXMLEncodable {
 	public boolean validate() {
 		return (null != _prefix);
 	}
+	
+	@Override
+	public String toString() {
+		return label() + ": prefix: " + prefix() + ", suffix: " + suffix();
+	}
 
 }
