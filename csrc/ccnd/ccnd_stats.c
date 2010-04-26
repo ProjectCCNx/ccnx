@@ -51,7 +51,73 @@ struct ccnd_stats {
     long total_flood_control;      /* done propagating, still recorded */
 };
 
+static int ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans);
+static struct ccn_charbuf *collect_stats_html(struct ccnd_handle *h);
+static void send_http_response(struct ccnd_handle *h, struct face *face,
+                               const char *mime_type,
+                               struct ccn_charbuf *response);
+static struct ccn_charbuf *collect_stats_html(struct ccnd_handle *h);
+
+/* HTTP */
+
+static const char *resp404 =
+    "HTTP/1.1 404 Not Found" CRLF
+    "Connection: close" CRLF CRLF;
+
+static const char *resp405 =
+    "HTTP/1.1 405 Method Not Allowed" CRLF
+    "Connection: close" CRLF CRLF;
+
 int
+ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
+{
+    struct ccn_charbuf *response = NULL;
+    struct linger linger = { .l_onoff = 1, .l_linger = 1 };
+    
+    if (face->inbuf->length < 6)
+        return(-1);
+    if ((face->flags & CCN_FACE_NOSEND) != 0) {
+        ccnd_destroy_face(h, face->faceid);
+        return(-1);
+    }
+    ccn_charbuf_as_string(face->inbuf); /* ensure NUL termination */
+    /* Set linger to prevent quickly resetting the connection on close.*/
+    setsockopt(face->recv_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+    if (0 == memcmp(face->inbuf->buf, "GET / ", 6) ||
+        0 == memcmp(face->inbuf->buf, "GET /? ", 7)) {
+        response = collect_stats_html(h);
+        send_http_response(h, face, "text/html", response);
+    }
+    else if (0 == memcmp(face->inbuf->buf, "GET ", 4))
+        ccnd_send(h, face, resp404, strlen(resp404));
+    else
+        ccnd_send(h, face, resp405, strlen(resp405));
+    face->flags |= (CCN_FACE_NOSEND | CCN_FACE_CLOSING);
+    ccn_charbuf_destroy(&response);
+    return(0);
+}
+
+static void
+send_http_response(struct ccnd_handle *h, struct face *face,
+                   const char *mime_type, struct ccn_charbuf *response)
+{
+    char buf[128];
+    int hdrlen;
+
+    hdrlen = snprintf(buf, sizeof(buf),
+                      "HTTP/1.1 200 OK" CRLF
+                      "Content-Type: %s; charset=utf-8" CRLF
+                      "Connection: close" CRLF
+                      "Content-Length: %jd" CRLF CRLF,
+                      mime_type,
+                      (intmax_t)response->length);
+    ccnd_send(h, face, buf, hdrlen);
+    ccnd_send(h, face, response->buf, response->length);
+}
+
+/* Common statistics collection */
+
+static int
 ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
 {
     struct hashtb_enumerator ee;
@@ -90,6 +156,8 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
     ans->total_interest_counts = sum;
     return(0);
 }
+
+/* HTML formatting */
 
 static void
 collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
@@ -195,7 +263,7 @@ ccnd_colorhash(struct ccnd_handle *h)
     return (v | 0xC0C0C0);
 }
 
-struct ccn_charbuf *
+static struct ccn_charbuf *
 collect_stats_html(struct ccnd_handle *h)
 {
     struct ccnd_stats stats = {0};
@@ -257,59 +325,4 @@ collect_stats_html(struct ccnd_handle *h)
         "</body>"
         "</html>" NL);
     return(b);
-}
-
-static void
-send_http_response(struct ccnd_handle *h, struct face *face,
-                   const char *mime_type, struct ccn_charbuf *response)
-{
-    char buf[128];
-    int hdrlen;
-
-    hdrlen = snprintf(buf, sizeof(buf),
-                      "HTTP/1.1 200 OK" CRLF
-                      "Content-Type: %s; charset=utf-8" CRLF
-                      "Connection: close" CRLF
-                      "Content-Length: %jd" CRLF CRLF,
-                      mime_type,
-                      (intmax_t)response->length);
-    ccnd_send(h, face, buf, hdrlen);
-    ccnd_send(h, face, response->buf, response->length);
-}
-
-static const char *resp404 =
-    "HTTP/1.1 404 Not Found" CRLF
-    "Connection: close" CRLF CRLF;
-
-static const char *resp405 =
-    "HTTP/1.1 405 Method Not Allowed" CRLF
-    "Connection: close" CRLF CRLF;
-
-int
-ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
-{
-    struct ccn_charbuf *response = NULL;
-    struct linger linger = { .l_onoff = 1, .l_linger = 1 };
-    
-    if (face->inbuf->length < 6)
-        return(-1);
-    if ((face->flags & CCN_FACE_NOSEND) != 0) {
-        ccnd_destroy_face(h, face->faceid);
-        return(-1);
-    }
-    ccn_charbuf_as_string(face->inbuf); /* ensure NUL termination */
-    /* Set linger to prevent quickly resetting the connection on close.*/
-    setsockopt(face->recv_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
-    if (0 == memcmp(face->inbuf->buf, "GET / ", 6) ||
-        0 == memcmp(face->inbuf->buf, "GET /? ", 7)) {
-        response = collect_stats_html(h);
-        send_http_response(h, face, "text/html", response);
-    }
-    else if (0 == memcmp(face->inbuf->buf, "GET ", 4))
-        ccnd_send(h, face, resp404, strlen(resp404));
-    else
-        ccnd_send(h, face, resp405, strlen(resp405));
-    face->flags |= (CCN_FACE_NOSEND | CCN_FACE_CLOSING);
-    ccn_charbuf_destroy(&response);
-    return(0);
 }
