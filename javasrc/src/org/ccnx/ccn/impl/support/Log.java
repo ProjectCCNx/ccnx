@@ -91,6 +91,8 @@ public class Log {
 	public static final int FAC_USER3		= 7;
 	public static final int FAC_ACCESSCONTROL = 8;
 	public static final int FAC_REPO 		= 9;
+	public static final int FAC_TIMING		= 10;  // includes a timestamp
+	
 
 
 	// The System property name for each Facility
@@ -105,6 +107,7 @@ public class Log {
 		DEFAULT_LOG_LEVEL_PROPERTY + ".User3",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".AccessControl",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Repo",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Timing",
 	};
 
 	// The environment variable for each facility
@@ -119,6 +122,7 @@ public class Log {
 		DEFAULT_LOG_LEVEL_ENV + "_USER3",
 		DEFAULT_LOG_LEVEL_ENV + "_ACCESSCONTROL",
 		DEFAULT_LOG_LEVEL_ENV + "_REPO",
+		DEFAULT_LOG_LEVEL_ENV + "_TIMING",
 	};
 
 	public static final Level [] FAC_LOG_LEVEL_DEFAULT = {
@@ -132,6 +136,7 @@ public class Log {
 		Level.INFO,		// User3
 		Level.INFO,		// Access control
 		Level.INFO,		// Repo
+		Level.INFO,		// Timing
 	};
 
 	protected static Level [] _fac_level = new Level[FAC_LOG_LEVEL_PROPERTY.length];
@@ -499,6 +504,15 @@ public class Log {
 		if (!isLoggable(facility, l))
 			return;
 
+		// Do this at the top of doLog to get timestamp closest to event
+		// Use %.6f to get format same as ccnd, even though we only have
+		// msec precision.
+		if( facility == FAC_TIMING ) {
+			long now = System.currentTimeMillis();
+			double d = (double) now / 1000.0;
+			msg = String.format("%.6f %s", d, msg);
+		}
+		
 		StackTraceElement ste = Thread.currentThread().getStackTrace()[3];
 		Class c;
 		try {
@@ -523,6 +537,7 @@ public class Log {
 				msg = sb.toString();
 			}
 		}
+		
 		_systemLogger.logp(l, c.getCanonicalName(), ste.getMethodName(), msg);
 	}
 
