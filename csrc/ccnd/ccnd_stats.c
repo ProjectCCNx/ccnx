@@ -259,6 +259,24 @@ collect_stats_html(struct ccnd_handle *h)
     return(b);
 }
 
+static void
+send_http_response(struct ccnd_handle *h, struct face *face,
+                   const char *mime_type, struct ccn_charbuf *response)
+{
+    char buf[128];
+    int hdrlen;
+
+    hdrlen = snprintf(buf, sizeof(buf),
+                      "HTTP/1.1 200 OK" CRLF
+                      "Content-Type: %s; charset=utf-8" CRLF
+                      "Connection: close" CRLF
+                      "Content-Length: %jd" CRLF CRLF,
+                      mime_type,
+                      (intmax_t)response->length);
+    ccnd_send(h, face, buf, hdrlen);
+    ccnd_send(h, face, response->buf, response->length);
+}
+
 static const char *resp404 =
     "HTTP/1.1 404 Not Found" CRLF
     "Connection: close" CRLF CRLF;
@@ -270,32 +288,24 @@ static const char *resp405 =
 int
 ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
 {
-    int hdrlen;
     struct ccn_charbuf *response = NULL;
     struct linger linger = { .l_onoff = 1, .l_linger = 1 };
-    char buf[128];
     
     if (face->inbuf->length < 6)
         return(-1);
-
     if ((face->flags & CCN_FACE_NOSEND) != 0) {
         ccnd_destroy_face(h, face->faceid);
         return(-1);
     }
+    ccn_charbuf_as_string(face->inbuf); /* ensure NUL termination */
     /* Set linger to prevent quickly resetting the connection on close.*/
     setsockopt(face->recv_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
-    if (0 == memcmp(face->inbuf->buf, "GET / ", 6)) {
+    if (0 == memcmp(face->inbuf->buf, "GET / ", 6) ||
+        0 == memcmp(face->inbuf->buf, "GET /? ", 7)) {
         response = collect_stats_html(h);
-        hdrlen = snprintf(buf, sizeof(buf),
-                          "HTTP/1.1 200 OK" CRLF
-                          "Content-Type: text/html; charset=utf-8" CRLF
-                          "Connection: close" CRLF
-                          "Content-Length: %jd" CRLF CRLF,
-                          (intmax_t)response->length);
-        ccnd_send(h, face, buf, hdrlen);
-        ccnd_send(h, face, response->buf, response->length);
+        send_http_response(h, face, "text/html", response);
     }
-    else if (0 == memcmp(buf, "GET ", 4))
+    else if (0 == memcmp(face->inbuf->buf, "GET ", 4))
         ccnd_send(h, face, resp404, strlen(resp404));
     else
         ccnd_send(h, face, resp405, strlen(resp405));
