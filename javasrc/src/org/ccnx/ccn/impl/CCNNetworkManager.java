@@ -966,6 +966,25 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws IOException 
 	 */
 	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) throws IOException {
+		setInterestFilter(caller, filter, callbackListener, null);
+	}
+		
+		
+	/**
+	 * Register a standing interest filter with callback to receive any 
+	 * matching interests seen. Any interests whose prefix completely matches "filter" will
+	 * be delivered to the listener. Also if this filter matches no currently registered
+	 * prefixes, register its prefix with ccnd.
+	 *
+	 * @param caller 	must not be null
+	 * @param filter	ContentName containing prefix of interests to match
+	 * @param callbackListener a CCNFilterListener
+	 * @param registrationFlags to use for this registration.
+	 * @throws IOException 
+	 */
+	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener,
+								Integer registrationFlags) throws IOException {
+
 		if( Log.isLoggable(Level.FINE) )
 			Log.fine("setInterestFilter: {0}", filter);
 		if ((null == _keyManager) || (!_keyManager.initialized() || (null == _keyManager.getDefaultKeyID()))) {
@@ -986,7 +1005,11 @@ public class CCNNetworkManager implements Runnable {
 					if (null != oldPrefix)
 						oldPrefix._refCount++;
 					else {
-						entry = _prefixMgr.selfRegisterPrefix(filter);
+						if (null == registrationFlags) {
+							entry = _prefixMgr.selfRegisterPrefix(filter);
+						} else {
+							entry = _prefixMgr.selfRegisterPrefix(filter, null, registrationFlags, Integer.MAX_VALUE);
+						}
 						RegisteredPrefix newPrefix = new RegisteredPrefix(entry);
 						_registeredPrefixes.put(filter, newPrefix);
 						// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
