@@ -700,11 +700,17 @@ public class BasicKeyManager extends KeyManager {
 	
 	@Override 
 	public KeyLocator getStoredKeyLocator(PublisherPublicKeyDigest keyID) {
+		if (null == keyID) {
+			keyID = getDefaultKeyID();
+		}
 		return _currentKeyLocators.get(keyID);
 	}
 
 	@Override 
 	public boolean haveStoredKeyLocator(PublisherPublicKeyDigest keyID) {
+		if (null == keyID) {
+			keyID = getDefaultKeyID();
+		}
 		return _currentKeyLocators.containsKey(keyID);
 	}
 
