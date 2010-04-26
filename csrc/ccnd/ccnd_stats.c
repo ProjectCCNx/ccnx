@@ -64,9 +64,8 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
         struct propagating_entry *head = &npe->pe_head;
         struct propagating_entry *p;
         for (p = head->next; p != head; p = p->next) {
-            // XXX - This should check p->faceid before counting p
-            // ... but face_from_faceid() is private.
-            sum += 1;
+            if (ccnd_face_from_faceid(h, p->faceid) != NULL)
+                sum += 1;
         }
     }
     ans->total_interest_counts = sum;
@@ -85,7 +84,7 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
         if (face != NULL)
             sum += face->pending_interests;
     }
-    if ((h->debug & 32) != 0 && sum != ans->total_interest_counts)
+    if (sum != ans->total_interest_counts)
         ccnd_msg(h, "ccnd_collect_stats found inconsistency %ld != %ld\n",
                  (long)sum, (long)ans->total_interest_counts);
     ans->total_interest_counts = sum;
@@ -186,6 +185,16 @@ collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
     ccn_charbuf_putf(b, "</ul>");
 }
 
+static unsigned
+ccnd_colorhash(struct ccnd_handle *h)
+{
+    unsigned const char *a = h->ccnd_id;
+    unsigned v;
+    
+    v = (a[0] << 16) + (a[1] << 8) + a[2];
+    return (v | 0xC0C0C0);
+}
+
 struct ccn_charbuf *
 collect_stats_html(struct ccnd_handle *h)
 {
@@ -203,16 +212,18 @@ collect_stats_html(struct ccnd_handle *h)
     
     ccnd_collect_stats(h, &stats);
     ccn_charbuf_putf(b,
-        "<html>"
+        "<html xmlns='http://www.w3.org/1999/xhtml'>"
         "<head>"
         "<title>%s ccnd[%d]</title>"
         //"<meta http-equiv='refresh' content='3'>"
         "<style type='text/css'>"
-        " p.header {color: white; background-color: blue} "
+        "/*<![CDATA[*/"
+        "p.header {color: white; background-color: blue; width: 100%%}"
+        "/*]]>*/"
         "</style>"
         "</head>" NL
-        "<body>"
-        "<p class='header' width='100%%'>%s ccnd[%d] local port %s</p>" NL
+        "<body bgcolor='#%06X'>"
+        "<p class='header'>%s ccnd[%d] local port %s</p>" NL
         "<div><b>Content items:</b> %llu accessioned,"
         " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
         "<div><b>Interests:</b> %d names,"
@@ -221,6 +232,7 @@ collect_stats_html(struct ccnd_handle *h)
         " %lu dropped, %lu sent, %lu stuffed</div>" NL,
         un.nodename,
         pid,
+        ccnd_colorhash(h),
         un.nodename,
         pid,
         portstr,
