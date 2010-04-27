@@ -280,6 +280,7 @@ struct nameprefix_entry {
     struct ccn_forwarding *forwarding; /**< detailed forwarding info */
     struct nameprefix_entry *parent; /**< link to next-shorter prefix */
     int children;                /**< number of children */
+    unsigned flags;              /**< CCN_FORW_* flags about namespace */
     int fgen;                    /**< used to decide when forward_to is stale */
     unsigned src;                /**< faceid of recent content source */
     unsigned osrc;               /**< and of older matching content */
@@ -303,6 +304,7 @@ struct ccn_forwarding {
  * @def CCN_FORW_ADVERTISE      4
  * @def CCN_FORW_LAST           8
  * @def CCN_FORW_CAPTURE       16
+ * @def CCN_FORW_LOCAL         32
  */
 #define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */
  
