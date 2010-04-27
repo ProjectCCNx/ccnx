@@ -73,9 +73,10 @@ int
 ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
 {
     struct ccn_charbuf *response = NULL;
+    char rbuf[16];
     int i;
     int nspace;
-    char rbuf[16];
+    int n;
     
     if (face->inbuf->length < 4)
         return(-1);
@@ -83,12 +84,17 @@ ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
         ccnd_destroy_face(h, face->faceid);
         return(-1);
     }
-    for (i = 0, nspace = 0; nspace < 2 && i < sizeof(rbuf) - 1; i++) {
+    n = sizeof(rbuf) - 1;
+    if (face->inbuf->length < n)
+        n = face->inbuf->length;
+    for (i = 0, nspace = 0; i < n && nspace < 2; i++) {
         rbuf[i] = face->inbuf->buf[i];
         if (rbuf[i] == ' ')
             nspace++;
     }
     rbuf[i] = 0;
+    if (nspace < 2 && i < sizeof(rbuf) - 1)
+        return(-1);
     if (0 == strcmp(rbuf, "GET / ") ||
         0 == strcmp(rbuf, "GET /? ")) {
         response = collect_stats_html(h);
