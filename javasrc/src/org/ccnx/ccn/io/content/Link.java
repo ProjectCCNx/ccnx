@@ -195,7 +195,19 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	public ContentName targetName() { return _targetName; }
 	public String targetLabel() { return _targetLabel; }
 	public LinkAuthenticator targetAuthenticator() { return _targetAuthenticator; }
-		
+	
+	public void setTargetLabel(String label) {
+		_targetLabel = label;
+	}
+	
+	public void setTargetName(ContentName name) {
+		_targetName = name;
+	}
+	
+	public void setTargetAuthenticator(LinkAuthenticator authenticator) {
+		_targetAuthenticator = authenticator;
+	}
+	
 	/**
 	 * A stab at a dereference() method. Dereferencing is not well-defined in this
 	 * general setting -- we don't know what we'll find down below this name. A link may
