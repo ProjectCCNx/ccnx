@@ -22,6 +22,7 @@ import java.io.IOException;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.CCNAbstractInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
@@ -51,6 +52,7 @@ public class PipelineTest {
 	private static long segments = 20;
 	
 	private static long bytesWritten;
+	private static byte[] firstDigest = null;
 	
 	//need a stream to test with
 	
@@ -92,6 +94,9 @@ public class PipelineTest {
 			toWrite = ("this is segment "+i+" of "+segments).getBytes();
 			bytesWritten = bytesWritten + toWrite.length;
 			object = ContentObject.buildContentObject(segment, toWrite, null, null, SegmentationProfile.getSegmentNumberNameComponent(lastMarkerTest));
+			if (i == 0) {
+				firstDigest = object.digest();
+			}
 			writeHandle.put(object);
 		}
 		System.out.println("wrote "+bytesWritten+" bytes");
@@ -255,4 +260,44 @@ public class PipelineTest {
 		
 	}
 	
+	@Test
+	public void testGetFirstDigest() {		
+		long received = 0;
+		byte[] bytes = new byte[1024];
+
+		try {
+			istream = new CCNInputStream(testName, readHandle);
+		} catch (IOException e1) {
+			System.err.println("failed to open stream for pipeline test: "+e1.getMessage());
+			Assert.fail();
+		}
+		
+		Assert.assertTrue(DataUtils.arrayEquals(firstDigest, istream.getFirstDigest()));
+		try {
+			istream.close();
+		} catch (IOException e2) {
+			System.err.println("failed to close stream for pipeline test: "+e2.getMessage());
+			Assert.fail();
+		}		
+		System.out.println("start first segment digest "+firstDigest);
+		
+		try {
+			istream = new CCNInputStream(testName, readHandle);
+		} catch (IOException e1) {
+			System.err.println("failed to open stream for pipeline test: "+e1.getMessage());
+			Assert.fail();
+		}		
+		
+		while (!istream.eof()) {
+			try {
+				received += istream.read(bytes);
+			} catch (IOException e) {
+				System.err.println("failed to read segments: "+e.getMessage());
+				Assert.fail();
+			}
+		}
+		Assert.assertTrue(received == bytesWritten);
+		Assert.assertTrue(DataUtils.arrayEquals(firstDigest, istream.getFirstDigest()));
+		System.out.println("end first segment digest "+firstDigest);
+	}
 }
