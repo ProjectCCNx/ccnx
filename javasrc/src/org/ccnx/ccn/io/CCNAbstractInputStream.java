@@ -113,6 +113,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected Long _startingSegmentNumber = null;
 
 	/**
+	 * The first segment digest.
+	 */
+	protected byte[] _firstDigest = null;
+	
+	/**
 	 * The timeout to use for segment retrieval. 
 	 */
 	protected int _timeout = SystemConfiguration.getDefaultTimeout();
@@ -1269,7 +1274,25 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			return null;
 		return VersioningProfile.getTerminalVersionAsTimestampIfVersioned(_baseName);
 	}
-
+	
+	/**
+	 * Returns the digest of the first segment of this stream. 
+	 * Together with firstSegmentNumber() and getBaseName() this method may be used to
+	 * identify the stream content unambiguously.
+	 * 
+	 * @return The digest of the first segment of this stream, if not GONE
+	 */
+	public byte[] getFirstDigest() {
+		if (null == _firstDigest) {
+			try {
+				isGone(); // force retrieval of first segment
+			} catch (Exception ex) {
+				// no-op: if can't find any content then we can't have digest, allow null return
+			}
+		}
+		return _firstDigest;
+	}
+	
 	@Override
 	public int read() throws IOException {
 		byte [] b = new byte[1];
@@ -1361,6 +1384,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			// go around again, 
 		}
 
+		_firstDigest = newSegment.digest();
+		
 		if (newSegment.isType(ContentType.GONE)) {
 			_goneSegment = newSegment;
 			if (Log.isLoggable(Level.INFO))
@@ -1824,6 +1849,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return true;
 	}
 
+	/**
+	 * Returns the first segment number for this stream.
+	 * @return The index of the first segment of stream data.
+	 */
+	public long firstSegmentNumber() {
+		return _startingSegmentNumber.longValue();
+	}
+	
 	/**
 	 * Returns the segment number for the next segment.
 	 * Default segmentation generates sequentially-numbered stream
