@@ -56,8 +56,6 @@ public class SecureKeyCache {
 	private TreeMap<byte [], PrivateKey> _privateKeyMap = new TreeMap<byte [], PrivateKey>(byteArrayComparator);
 	/** Map the digest of a private key to the digest of the corresponding public key. */
 	private TreeMap<byte [], byte []> _privateKeyIdentifierMap = new TreeMap<byte [], byte[]>(byteArrayComparator);
-	/** Map the digest of a key to its name */
-	private TreeMap<byte [], ContentName> _keyNameMap = new TreeMap<byte [], ContentName>(byteArrayComparator);
 	/** Map the name of a key to its digest */
 	private TreeMap<ContentName, byte []> _nameKeyMap = new TreeMap<ContentName, byte []>();
 	
@@ -165,24 +163,6 @@ public class SecureKeyCache {
 			return true;
 		return false;
 	}
-
-	/**
-	 * Returns the name of a key specified by its digest
-	 * @param keyIdentifier the digest of the key.
-	 * @return the name of the key.
-	 */
-	public ContentName getNameForKey(byte [] keyIdentifier) {
-		return _keyNameMap.get(keyIdentifier);
-	}
-	
-	/**
-	 * Get the name of a specified key
-	 * @param key the key
-	 * @return the name
-	 */
-	public ContentName getNameForKey(Key key) {
-		return getNameForKey(getKeyIdentifier(key));
-	}
 	
 	/**
 	 * Get the key ID associated with a name, if we have one. Currently store
@@ -226,7 +206,6 @@ public class SecureKeyCache {
 		_privateKeyMap.put(publicKeyIdentifier, pk);
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		if (null != keyName) {
-			_keyNameMap.put(publicKeyIdentifier, keyName);
 			_nameKeyMap.put(keyName, publicKeyIdentifier);
 		}
 	}
@@ -250,7 +229,6 @@ public class SecureKeyCache {
 		byte [] id = getKeyIdentifier(key);
 		_keyMap.put(id, key);
 		if (null != name) {
-			_keyNameMap.put(id, name);
 			_nameKeyMap.put(name, id);
 		}
 	}
