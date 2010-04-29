@@ -14,6 +14,7 @@ import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.CCNAbstractOutputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -37,17 +38,24 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 	public static class Writer extends Thread {
 		protected static Random random = new Random();
 		
-		protected OutputStream _stream;
+		protected CCNAbstractOutputStream _stream;
 		protected int _fileLength;
 		protected boolean _done = false;
 		
-		public Writer(OutputStream stream, int fileLength) {
+		public Writer(CCNAbstractOutputStream stream, int fileLength) {
 			_stream = stream;
 			_fileLength = fileLength;
 		}
 
 		public boolean isDone() { return _done; }
-		
+
+		/**
+		 * @return The digest of the first segment of this stream
+		 */
+		public byte[] getFirstDigest() {
+			return _stream.getFirstDigest();
+		}
+
 		@Override
 		public void run() {
 			try {
@@ -97,6 +105,7 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		}
 		Log.info("Finished writing, read result {0}, write result {1}", DataUtils.printHexBytes(resultDigest), DataUtils.printHexBytes(writeDigest));
 		Assert.assertArrayEquals(resultDigest, writeDigest);
+		Assert.assertArrayEquals(writer.getFirstDigest(), vis.getFirstDigest());
 		
 		readHandle.close();
 		writeHandle.close();

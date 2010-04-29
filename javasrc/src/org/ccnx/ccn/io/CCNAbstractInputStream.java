@@ -1280,7 +1280,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * Together with firstSegmentNumber() and getBaseName() this method may be used to
 	 * identify the stream content unambiguously.
 	 * 
-	 * @return The digest of the first segment of this stream, if not GONE
+	 * @return The digest of the first segment of this stream
 	 */
 	public byte[] getFirstDigest() {
 		if (null == _firstDigest) {
