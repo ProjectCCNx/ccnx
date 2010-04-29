@@ -873,6 +873,14 @@ public class KeyDirectory extends EnumeratedNameList {
 			throws AccessDeniedException, InvalidKeyException, 
 					ContentNotReadyException, ContentGoneException, ContentDecodingException, 
 					IOException, NoSuchAlgorithmException {
+		
+		// is the private key already in the cache?
+		SecureKeyCache skc = _handle.keyManager().getSecureKeyCache();
+		if (skc.containsKey(getPrivateKeyBlockName())) {
+			Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getPrivateKey: found private key in cache.");
+			return (PrivateKey) skc.getKey(skc.getKeyID(getPrivateKeyBlockName()));
+		}
+		
 		if (!hasPrivateKeyBlock()) { // checks hasChildren
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info(Log.FAC_ACCESSCONTROL, "No private key block exists with name {0}", getPrivateKeyBlockName());
