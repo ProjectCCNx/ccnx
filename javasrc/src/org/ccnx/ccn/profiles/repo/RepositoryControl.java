@@ -152,6 +152,7 @@ public class RepositoryControl {
 		if (null == co) {
 			throw new IOException("No response from a repository for checked write of " + baseName + " segment " + startingSegmentNumber 
 									+ " digest " + DataUtils.printHexBytes(firstDigest));
+
 		}
 		
 		// TODO verify object as published by local repository rather than just signed by anybody
@@ -168,6 +169,7 @@ public class RepositoryControl {
 			if (repoInfo.getType() == RepoInfoType.DATA) {
 				// This type from checked write is confirmation that content already held
 				return true;
+
 			}
 		} catch (ContentDecodingException e) {
 			Log.info("ContentDecodingException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());

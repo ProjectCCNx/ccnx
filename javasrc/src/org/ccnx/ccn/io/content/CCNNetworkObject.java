@@ -889,6 +889,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			save(cos); // superclass stream save. calls flush but not close on a wrapping
 			// digest stream; want to make sure we end up with a single non-MHT signed
 			// segment and no header on small objects
+			_firstDigest = cos.getFirstDigest();
 			cos.close();
 			// Grab digest and segment number after close because for short objects there may not be 
 			// a segment generated until the close

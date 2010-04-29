@@ -187,7 +187,6 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 		}
 	}
 
-
 	/**
 	 * @return The CCNSegmenter responsible for segmenting and signing stream content. 
 	 */
