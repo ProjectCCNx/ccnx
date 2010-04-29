@@ -361,7 +361,7 @@ public class GroupManager {
 		
 		PrivateKey privateKey = privateKeyDirectory.getPrivateKey();
 		if (null != privateKey) {
-			_handle.keyManager().getSecureKeyCache().addPrivateKey(privateKeyDirectory.getName(), 
+			_handle.keyManager().getSecureKeyCache().addPrivateKey(privateKeyDirectory.getPrivateKeyBlockName(), 
 					PublisherID.generatePublicKeyDigest(theGroupPublicKey), privateKey);
 		}
 		return privateKey;
