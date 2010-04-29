@@ -35,6 +35,7 @@ import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -586,7 +587,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 			if (expectedKeyID == null) {
-				Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at {0} unwrapping key wihtout expectedKeyID", this._namePrefix);
+				Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at {0} unwrapping key without expectedKeyID", this._namePrefix);
 			}
 			else {
 				Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at {0} unwrapping key with expectedKeyID {1} ",
@@ -601,9 +602,24 @@ public class KeyDirectory extends EnumeratedNameList {
 		if (!hasChildren()) {
 			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
 		}
+		
+		// Do we have the unwrapped key in our cache?
+		// First, look up the desired keyID in the cache. 
+		// If it's not in the cache, look up the desired key by name
+		SecureKeyCache skc = _handle.keyManager().getSecureKeyCache();
+		if ((null != expectedKeyID) && (skc.containsKey(expectedKeyID))) {
+			unwrappedKey = skc.getKey(expectedKeyID);
+			Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: found desired unwrapped keyID in our cache.");
+		}
+		if ((null == unwrappedKey) && (skc.containsKey(getName()))) {
+			unwrappedKey = skc.getKey(skc.getKeyID(getName()));
+			Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: found desired unwrapped key name in our cache.");			
+		}
 
 		// Do we have one of the wrapping keys already in our cache?
-		unwrappedKey = unwrapKeyViaCache();
+		if (null == unwrappedKey) {
+			unwrappedKey = unwrapKeyViaCache();
+		}
 		
 		if (null == unwrappedKey) {
 			// Not in cache. Is it superseded?
