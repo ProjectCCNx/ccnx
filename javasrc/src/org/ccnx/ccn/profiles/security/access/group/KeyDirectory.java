@@ -571,6 +571,17 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
+	 * @param expectedKeyID
+	 * @return True if the unwrapped key specified by expectedKeyID (if not null)
+	 * or by the KeyDirectory name, is in the secure key cache.
+	 */
+	public boolean isUnwrappedKeyInCache(byte [] expectedKeyID) {
+		SecureKeyCache skc = _handle.keyManager().getSecureKeyCache();
+		if (null != expectedKeyID) return skc.containsKey(expectedKeyID);
+		return skc.containsKey(getName());
+	}
+	
+	/**
 	 * Unwrap and return the key wrapped in a wrapping key specified by its digest.
 	 * Find a copy of the key block in this directory that we can unwrap (either the private
 	 * key wrapping key block or a wrapped raw symmetric key). Chase superseding keys if
@@ -851,7 +862,14 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		return unwrappedKey;
 	}
-		
+	
+	/**
+	 * @return true if the private key is in the secure key cache.
+	 */
+	public boolean isPrivateKeyInCache() {
+		return _handle.keyManager().getSecureKeyCache().containsKey(getPrivateKeyBlockName());
+	}
+	
 	/**
 	 * Returns the private key stored in the KeyDirectory. 
 	 * The private key is wrapped in a wrapping key, which is itself wrapped.
