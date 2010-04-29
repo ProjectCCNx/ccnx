@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -15,7 +15,8 @@ echo "# FreeBSD.sh $@ was here" >> conf.mk
 set -x
 mkdir -p include
 find include lib -type l -name \*expat\* -exec rm '{}' ';'
-# XXX fix this - should check for version installed by ports and use that
+test -f /usr/local/include/expat.h && exit 0
+echo "# Using bsdxml.h for expat - recommend installing expat package and repeat ./configure" >> conf.mk
 # Make some symlinks so that we can use the native expat.
 ln -s /usr/include/bsdxml.h include/expat.h
 ln -s /usr/lib/libbsdxml.a lib/libexpat.a
