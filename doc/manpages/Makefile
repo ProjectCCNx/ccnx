@@ -16,14 +16,12 @@ PAGE_NAMES = 			\
 	ccnrm			\
 	ccn_repo		\
 
-# Yes, this is gmake specific
-DERIVED_HTML =	$(foreach name,$(PAGE_NAMES),$(name).1.html)
-DERIVED_PDF = $(foreach name,$(PAGE_NAMES),$(name).1.pdf)
-DERIVED_MAN = $(foreach name,$(PAGE_NAMES),$(name).1)
+DERIVED_HTML =$(PAGE_NAMES:=.1.html)
+DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)
+DERIVED_MAN = $(PAGE_NAMES:=.1)
 
 DERIVED_INDEX = index.html index.txt
-#DEBRIS = .tagname.csv
-DEBRIS = $(foreach name,$(PAGE_NAMES),$(name).1.fo) $(foreach name,$(PAGE_NAMES),$(name).1.xml)
+DEBRIS = $(PAGE_NAMES:=.1.fo) $(PAGE_NAMES:=.1.xml)
 SRC_HTML = # any checked-in html files should go here
 INDEXED_HTML = $(DERIVED_HTML) $(SRC_HTML)
 
