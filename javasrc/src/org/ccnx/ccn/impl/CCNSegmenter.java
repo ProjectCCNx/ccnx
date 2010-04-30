@@ -137,6 +137,11 @@ public class CCNSegmenter {
 	protected byte[] _firstDigest = null;
 
 	/**
+	 * The segment number that the stream starts with.
+	 */
+	protected Long _startingSegmentNumber = null;
+
+	/**
 	 * Create a segmenter with default (Merkle hash tree) bulk signing
 	 * behavior, making a new handle for it to use.
 	 * @throws ConfigurationException if there is a problem creating the handle
@@ -257,6 +262,15 @@ public class CCNSegmenter {
 	 */
 	public byte[] getFirstDigest() {
 		return _firstDigest;
+	}
+
+	/**
+	 * Return the digest of the first segment. 
+	 * 
+	 * @return The digest of the first segment or null if no segments generated yet
+	 */
+	public Long firstSegmentNumber() {
+		return _startingSegmentNumber;
 	}
 
 	/**
@@ -523,6 +537,7 @@ public class CCNSegmenter {
 		_bulkSigner.signBlocks(contentObjects, signingKey);
 		if (null == _firstDigest) {
 			_firstDigest = contentObjects[0].digest();
+			_startingSegmentNumber = baseSegmentNumber;
 		}
 		getFlowControl().put(contentObjects);
 
@@ -625,6 +640,7 @@ public class CCNSegmenter {
 		_bulkSigner.signBlocks(contentObjects, signingKey);
 		if (null == _firstDigest) {
 			_firstDigest = contentObjects[0].digest();
+			_startingSegmentNumber = baseSegmentNumber;
 		}
 		getFlowControl().put(contentObjects);
 
@@ -724,6 +740,7 @@ public class CCNSegmenter {
 							content, offset, length, signingKey);
 		if (null == _firstDigest) {
 			_firstDigest = co.digest();
+			_startingSegmentNumber = segmentNumber;
 		}
 		if( Log.isLoggable(Level.FINER))
 			Log.finer("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");

@@ -174,6 +174,19 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 			return null;
 		}
 	}
+	
+	/**
+	 * Returns the first segment number for this stream.
+	 * @return The index of the first segment of stream data.
+	 */
+	public Long firstSegmentNumber() {
+		if (null != _segmenter) {
+			return _segmenter.firstSegmentNumber();
+		} else {
+			return null;
+		}
+	}
+
 
 	/**
 	 * @return The CCNSegmenter responsible for segmenting and signing stream content. 
