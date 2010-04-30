@@ -16,7 +16,8 @@ PAGE_NAMES = 			\
 	ccnrm			\
 	ccn_repo		\
 
-DERIVED_HTML =$(PAGE_NAMES:=.1.html)
+SRC_TXT     = $(PAGE_NAMES:=.1.txt)
+DERIVED_HTML= $(PAGE_NAMES:=.1.html)
 DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)
 DERIVED_MAN = $(PAGE_NAMES:=.1)
 
@@ -25,9 +26,9 @@ DEBRIS = $(PAGE_NAMES:=.1.fo) $(PAGE_NAMES:=.1.xml)
 SRC_HTML = # any checked-in html files should go here
 INDEXED_HTML = $(DERIVED_HTML) $(SRC_HTML)
 
-all documentation dist-docs: html $(DERIVED_MAN) $(DERIVED_INDEX)
+all documentation dist-docs: html $(DERIVED_MAN)
 
-html: $(DERIVED_HTML)
+html: $(DERIVED_HTML) $(DERIVED_INDEX)
 
 pdf: $(DERIVED_PDF)
 
@@ -41,14 +42,14 @@ index.txt: $(INDEXED_HTML) .genindex.sh
 	rm -f index.html
 	sh .genindex.sh $(INDEXED_HTML) > index.txt
 
-%.html : %.txt
-	asciidoc -d manpage $<
+$(DERIVED_HTML): $(@:.html=.txt) 
+	asciidoc -a revnumber="$(CCNX_RELEASE_VERSION)" -d manpage $(@:.html=.txt)
 
-%.pdf : %.txt 
-	a2x -f pdf -d manpage $<
+$(DERIVED_PDF): $(@:=.txt)
+	a2x -f pdf -d manpage $(@:=.txt)
 
-%.1 : %.1.txt
-	a2x -f manpage -d manpage $<
+$(DERIVED_MAN): $(@:=.txt)
+	a2x -a revnumber="$(CCNX_RELEASE_VERSION)" -f manpage -d manpage $(@:=.txt)
 
 default all clean depend test check shared documentation dist-docs testinstall install uninstall: _always
 
