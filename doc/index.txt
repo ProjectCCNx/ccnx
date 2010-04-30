@@ -1,6 +1,9 @@
 CCNx Documentation Index
 =========================
 
+== Commands
+ - link:manpages/index.html[Command/Utility docs]
+
 == Technical Documentation
  - link:technical/CCNxProtocol.html[Protocol overview]
  - link:technical/index.html[All technical docs]

@@ -29,6 +29,7 @@ PAGE_NAMES = 			\
 	ccnrm			\
 	ccn_repo		\
 
+PROJECT_NUMBER = 0.3.0-prebeta
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
 DERIVED_HTML= $(PAGE_NAMES:=.1.html)
 DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)
@@ -44,13 +45,19 @@ INDEXED_HTML = $(DERIVED_HTML) $(SRC_HTML)
 default:
 	: To build the documentation: $(MAKE) documentation
 
-all documentation dist-docs: html $(DERIVED_MAN)
+documentation: html
+
+all dist-docs: html $(DERIVED_MAN)
 
 html: $(DERIVED_HTML) $(DERIVED_INDEX)
 
 pdf: $(DERIVED_PDF)
 
 clean:
+	@rm -f $(DEBRIS)
+	: To clean the documentation: $(MAKE) clean-documentation
+
+clean-documentation:
 	rm -f $(NONSOURCE)
 
 .gitignore: Makefile
@@ -64,15 +71,15 @@ index.txt: $(INDEXED_HTML) .genindex.sh
 	sh .genindex.sh $(INDEXED_HTML) > index.txt
 
 $(DERIVED_HTML): $(@:.html=.txt) 
-	asciidoc -a revnumber="$(CCNX_RELEASE_VERSION)" -d manpage $(@:.html=.txt)
+	asciidoc -a revnumber="$(PROJECT_NUMBER)" -d manpage $(@:.html=.txt)
 
 $(DERIVED_PDF): $(@:=.txt)
 	a2x -f pdf -d manpage $(@:=.txt)
 
 $(DERIVED_MAN): $(@:=.txt)
-	a2x -a revnumber="$(CCNX_RELEASE_VERSION)" -f manpage -d manpage $(@:=.txt)
+	a2x -a revnumber="$(PROJECT_NUMBER)" -f manpage -d manpage $(@:=.txt)
 
-default all clean depend test check shared documentation dist-docs testinstall install uninstall: _always
+default all clean clean-documentation depend test check shared documentation dist-docs testinstall install uninstall: _always
 
 _always:
 
