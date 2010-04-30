@@ -3,7 +3,7 @@ Command/Utility Documentation
 =============================
 
 EOF
-grep '<title>.*</title>' "$@"   | \
+grep '<title>.*</title>' "$@"   | tr A-Z a-z |\
     sed -e 's/^/ - link:/' -e 's/:[ 	]*<title>/\[/' -e 's/<.title>/\]/'
 cat <<EOF
 
