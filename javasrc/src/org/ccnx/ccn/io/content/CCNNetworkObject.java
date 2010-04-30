@@ -127,6 +127,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected byte[] _firstDigest = null;
 	
 	/**
+	 * The first segment number
+	 */
+	protected Long _startingSegmentNumber = null;
+	
+	/**
 	 * If the name we started with was actually a link, detect that, store the link,
 	 * and dereference it to get the content. Call updateLink() to update the link
 	 * itself, and if updated, to update the dereferenced value.
@@ -411,6 +416,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_keyLocator = other._keyLocator;
 		_saveType = other._saveType;
 		_keys = (null != other._keys) ? other._keys.clone() : null;
+		_firstDigest = other._firstDigest;
+		_startingSegmentNumber = other._startingSegmentNumber;
 		// Do not copy update behavior. Even if other one is updating, we won't
 		// pick that up. Have to kick off manually.
 		
@@ -622,6 +629,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				_isGone = false;
 			}
 			_firstDigest = inputStream.getFirstDigest();  // preserve digest of first segment
+			_startingSegmentNumber = inputStream.firstSegmentNumber();
 		} catch (NoMatchingContentFoundException nme) {
 			if (Log.isLoggable(Level.INFO))
 				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available.", inputStream.getBaseName());
@@ -881,8 +889,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			save(cos); // superclass stream save. calls flush but not close on a wrapping
 			// digest stream; want to make sure we end up with a single non-MHT signed
 			// segment and no header on small objects
-			_firstDigest = cos.getFirstDigest();
 			cos.close();
+			// Grab digest and segment number after close because for short objects there may not be 
+			// a segment generated until the close
+			_firstDigest = cos.getFirstDigest();
+			_startingSegmentNumber = cos.firstSegmentNumber();
 			_currentPublisher = (_publisher == null) ? _flowControl.getHandle().getDefaultPublisher() : _publisher; // TODO DKS -- is this always correct?
 			// must match algorithm stream uses to get key locator if null; could have time of access problem
 			_currentPublisherKeyLocator = (_keyLocator == null) ? 
@@ -901,6 +912,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_flowControl.startWrite(name, Shape.STREAM); // Streams take care of this for the non-gone case.
 			_flowControl.put(goneObject);
 			_firstDigest = goneObject.digest();
+			_startingSegmentNumber = SegmentationProfile.BASE_SEGMENT;
 			_flowControl.beforeClose();
 			_flowControl.afterClose();
 			_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
@@ -1153,19 +1165,23 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	/**
+	 * Returns the first segment number for this object.
+	 * @return The index of the first segment of stream data.
+	 */
+	public Long firstSegmentNumber() {
+		return _startingSegmentNumber;
+	}
+
+	/**
 	 * Returns the digest of the first segment of this object which may be used
 	 * to help identify object instance unambiguously. 
 	 * 
-	 * @return The digest of the first segment of this object
+	 * @return The digest of the first segment of this object if available, null otherwise
 	 */
-	public byte[] getFirstDigest() {
-		if (null == _firstDigest) {
-			try {
-				update(); // force retrieval of first segment
-			} catch (Exception ex) {
-				// no-op: if can't find any content then we can't have digest, allow null return
-			}
-		}
+	public byte[] getFirstDigest() {	
+		// Do not attempt to force update here to leave control over whether reading
+		// or writing with the object creator.  The return value may be null if the
+		// object is not in a state of having a first segment
 		return _firstDigest;
 	}
 

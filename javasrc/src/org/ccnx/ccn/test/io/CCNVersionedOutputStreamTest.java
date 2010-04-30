@@ -54,6 +54,14 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		public byte[] getFirstDigest() {
 			return _stream.getFirstDigest();
 		}
+		
+		/**
+		 * @return The index of the first segment of stream data.
+		 */
+		public Long firstSegmentNumber() {
+			return _stream.firstSegmentNumber();
+		}
+
 
 		@Override
 		public void run() {
@@ -105,6 +113,7 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		Log.info("Finished writing, read result {0}, write result {1}", DataUtils.printHexBytes(resultDigest), DataUtils.printHexBytes(writeDigest));
 		Assert.assertArrayEquals(resultDigest, writeDigest);
 		Assert.assertArrayEquals(writer.getFirstDigest(), vis.getFirstDigest());
+		Assert.assertEquals(writer.firstSegmentNumber(), vis.firstSegmentNumber());
 		
 		readHandle.close();
 		writeHandle.close();

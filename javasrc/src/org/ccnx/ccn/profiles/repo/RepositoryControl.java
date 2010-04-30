@@ -70,27 +70,48 @@ public class RepositoryControl {
 	 * @throws IOException
 	 */
 	public static boolean localRepoSync(CCNHandle handle, CCNAbstractInputStream stream, boolean wait) throws IOException {
+		boolean result;
 		
-		ContentName name = stream.getBaseName();
 		byte[] digest = stream.getFirstDigest(); // This forces reading if not done already
-		LinkObject link = stream.getDereferencedLink();
-		if (null != link) {
-			LinkObject next;
-			while (null != (next = link.getDereferencedLink())) {
-				link = next;
-			}
-			name = link.getBaseName();
-		}
-		long firstSegmentNumber = stream.firstSegmentNumber();
-	
+		ContentName name = stream.getBaseName();
+		long segment = stream.firstSegmentNumber();
 		Log.fine("RepositoryControl.localRepoSync called for name {0}", name);
 
+		// Request preserving the dereferenced content of the stream first
+		result = internalRepoSync(handle, wait, name, segment, digest);
+		
+		// Now also deal with each of the links dereferenced to get to the ultimate content
+		LinkObject link = stream.getDereferencedLink();
+		while (null != link) {
+			// Request preserving current link: note that all of these links have 
+			// been dereferenced already to get to the content, and so have been read
+			digest = link.getFirstDigest();
+			name = link.getVersionedName(); // we need versioned name; link basename may or may not be
+			segment = link.firstSegmentNumber();
+
+			if (!internalRepoSync(handle, wait, name, segment, digest)) {
+				result = false;
+			}
+			link = link.getDereferencedLink();
+		}	
+		return result;
+	}
+	
+	/*
+	 * Internal method to generate request for local repository to preserve content stream
+	 * @param handle the CCNHandle to use
+	 * @param wait Set true to wait for positive response from repository
+	 * @param baseName The name of the content up to but not including segment number
+	 * @param startingSegmentNumber Initial segment number of the stream
+	 * @param firstDigest Digest of the first segment
+	 */
+	static boolean internalRepoSync(CCNHandle handle, boolean wait, ContentName baseName, long startingSegmentNumber, byte[] firstDigest) throws IOException {
 		// We do not use a nonce in this protocol, because a cached confirmation is satisfactory,
 		// assuming verification of the repository that published it.
 		
 		// TODO This is temporarily just a START_WRITE, to be replaced by appropriate new command
 		ContentName repoCommandName = 
-			new ContentName(name, CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes());
+			new ContentName(baseName, CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes());
 		Interest syncInterest = new Interest(repoCommandName);
 		syncInterest.scope(0); // local repositories only
 		

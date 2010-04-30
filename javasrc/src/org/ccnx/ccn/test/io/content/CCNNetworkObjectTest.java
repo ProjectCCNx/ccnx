@@ -504,6 +504,32 @@ public class CCNNetworkObjectTest {
 	}
 	
 	@Test
+	public void testFirstSegmentInfo() throws Exception {
+		// Testing for matching info about first segment.
+		CCNHandle lput = CCNHandle.open();
+		CCNHandle lget = CCNHandle.open();
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testFirstSegmentInfo"), stringObjName);
+		try {
+
+			CCNTime desiredVersion = CCNTime.now();
+
+			CCNStringObject so = new CCNStringObject(testName, "First value", SaveType.RAW, lput);
+			setupNamespace(testName);
+			saveAndLog("SpecifiedVersion", so, desiredVersion, "Time: " + desiredVersion);
+			Assert.assertEquals("Didn't write correct version", desiredVersion, so.getVersion());
+
+			CCNStringObject ro = new CCNStringObject(testName, lget);
+			ro.waitForData(); 
+			Assert.assertEquals("Didn't read correct version", desiredVersion, ro.getVersion());
+
+			Assert.assertEquals("Didn't match first segment number", so.firstSegmentNumber(), ro.firstSegmentNumber());
+			Assert.assertArrayEquals("Didn't match first segment digest", so.getFirstDigest(), ro.getFirstDigest());
+		} finally {
+			removeNamespace(testName);
+		}
+	}
+
+	@Test
 	public void testVeryLast() throws Exception {
 		Log.info("CCNNetworkObjectTest: Entering testVeryLast -- dummy test to help track down blowup. Prefix {0}", testHelper.getClassNamespace());
 		Thread.sleep(1000);
