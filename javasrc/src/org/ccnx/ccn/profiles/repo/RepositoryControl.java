@@ -14,6 +14,7 @@ import org.ccnx.ccn.io.NoMatchingContentFoundException;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.CommandMarker;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -74,7 +75,7 @@ public class RepositoryControl {
 		
 		byte[] digest = stream.getFirstDigest(); // This forces reading if not done already
 		ContentName name = stream.getBaseName();
-		long segment = stream.firstSegmentNumber();
+		Long segment = stream.firstSegmentNumber();
 		Log.fine("RepositoryControl.localRepoSync called for name {0}", name);
 
 		// Request preserving the dereferenced content of the stream first
@@ -105,13 +106,14 @@ public class RepositoryControl {
 	 * @param startingSegmentNumber Initial segment number of the stream
 	 * @param firstDigest Digest of the first segment
 	 */
-	static boolean internalRepoSync(CCNHandle handle, boolean wait, ContentName baseName, long startingSegmentNumber, byte[] firstDigest) throws IOException {
+	static boolean internalRepoSync(CCNHandle handle, boolean wait, ContentName baseName, Long startingSegmentNumber, byte[] firstDigest) throws IOException {
 		// We do not use a nonce in this protocol, because a cached confirmation is satisfactory,
 		// assuming verification of the repository that published it.
 		
-		// TODO This is temporarily just a START_WRITE, to be replaced by appropriate new command
 		ContentName repoCommandName = 
-			new ContentName(baseName, CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes());
+			new ContentName(baseName, new byte[][]{ CommandMarker.COMMAND_MARKER_REPO_SYNC_STREAM.getBytes(),
+													SegmentationProfile.getSegmentNumberNameComponent(startingSegmentNumber), 
+													firstDigest});
 		Interest syncInterest = new Interest(repoCommandName);
 		syncInterest.scope(0); // local repositories only
 		
