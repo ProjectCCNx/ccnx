@@ -136,7 +136,6 @@ public class CommandMarker {
 	public static final CommandMarker COMMAND_MARKER_REPO_CHECKED_START_WRITE = 
 		commandMarker(REPOSITORY_NAMESPACE, "sw-c");
 
-	
 	/**
 	 * Some very simple markers that need no other support. See KeyProfile and
 	 * MetadataProfile for related core markers that use the Marker namespace.
