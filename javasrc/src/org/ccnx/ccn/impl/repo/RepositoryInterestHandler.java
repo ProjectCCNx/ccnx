@@ -65,6 +65,25 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				if (null != interest.answerOriginKind() && (interest.answerOriginKind() & Interest.ANSWER_GENERATED) == 0)
 					return false;	// Request to not answer
 				nameEnumeratorResponse(interest);
+			} else if (interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_SYNC_STREAM.getBytes())) {
+				Log.finer(Log.FAC_REPO, "Repo sync stream request: {0}", interest.name());
+				return true;
+				// TODO: add processing of this command
+				// Construct internal interest in exact first segment by taking out the command marker from input name
+				// Call getContent() on new internal interest (really want index search only, don't need obj)
+				// if (content found) {
+				// 		find highest segment in the store (probably a new internal interest seeking rightmost)
+				//      getContent(): need full object in this case, verify that last segment matches segment name => verified = true
+				// }
+				// if (!verified) {
+				// 		launch input stream read of stream
+				//      at end of successful read set verified = true
+				// }
+				// if (verified) {
+				//		write back standard repoinfo data to satisfy trigger interest
+				// } else {
+				//		leave interest unsatisfied: we don't have data
+				// }
 			} else {
 				ContentObject content = _server.getRepository().getContent(interest);
 				if (content != null) {
