@@ -445,6 +445,25 @@
 			</batchtest>
 		</junit>
 	</target>
+
+	<target name="test-benchmark" depends="jar, ccnd">
+
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+
+			<batchtest todir="${testout}">
+				<fileset dir="${build}">
+					<include name="org/ccnx/ccn/test/BenchmarkTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
 	
 	<!-- IMPORTANT: test-repo-structure must be the *first* test in this list because subsequent test require
 	     that the repo must not have been running when test-repo-structure is run -->
