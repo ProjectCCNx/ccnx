@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -12,18 +12,17 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-SCRIPTSRC = ccndstart.sh shebang
+SCRIPTSRC = ccndstart.sh ccndstop.sh ccndstatus.sh shebang
 PROGRAMS = $(INSTALLED_PROGRAMS)
-INSTALLED_PROGRAMS = ccndstart
+INSTALLED_PROGRAMS = ccndstart ccndstop ccndstatus
 
 default all: $(SCRIPTSRC) $(PROGRAMS)
 
-ccndstart: ccndstart.sh
-	./shebang $(SH) ccndstart.sh > ccndstart
-	chmod +x ccndstart
+$(INSTALLED_PROGRAMS): $(@:=.sh) shebang
+	./shebang $(SH) $(@:=.sh) > $@
 
 clean:
 	rm -f $(PROGRAMS)
 
 test:
-	@echo "Sorry, no libexec unit tests at this time"
+	@echo "Sorry, no util unit tests at this time"
