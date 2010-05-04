@@ -443,6 +443,7 @@ ccn_destroy(struct ccn **hp)
     hashtb_destroy(&(h->keystores));
     ccn_charbuf_destroy(&h->interestbuf);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
+    ccn_charbuf_destroy(&h->default_pubid);
     if (h->tap != -1) {
 	close(h->tap);
     }
@@ -2157,5 +2158,6 @@ ccn_sign_content(struct ccn *h,
     ccn_charbuf_destroy(&timestamp);
     ccn_charbuf_destroy(&keylocator);
     ccn_charbuf_destroy(&finalblockid);
+    ccn_charbuf_destroy(&signed_info);
     return(res);
 }

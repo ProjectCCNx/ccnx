@@ -81,6 +81,10 @@ public class DigestHelper {
 		_md.update(content, offset, len);
 	}
 	
+	public void update(byte [] content) {
+		_md.update(content);
+	}
+	
 	/**
 	 * Completes the hash computation by performing final operations such as padding. 
 	 * The digest is reset after this call is made. 

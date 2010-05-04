@@ -231,6 +231,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		
 		// getLatestVersion will return the latest version of an unversioned name, or the
 		// latest version after a given version. So if given a specific version, get that one.
+		// TODO -- verify, use non-default verifier.
 		if (VersioningProfile.hasTerminalVersion(targetName())) {
 			return handle.get(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
 		}

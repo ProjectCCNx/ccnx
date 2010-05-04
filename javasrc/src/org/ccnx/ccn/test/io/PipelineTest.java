@@ -22,15 +22,12 @@ import java.io.IOException;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.io.CCNAbstractInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.junit.After;
 import org.junit.BeforeClass;

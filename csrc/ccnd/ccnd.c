@@ -1354,7 +1354,8 @@ adjust_predicted_response(struct ccnd_handle *h,
 static void
 note_content_from(struct ccnd_handle *h,
                   struct nameprefix_entry *npe,
-                  unsigned from_faceid)
+                  unsigned from_faceid,
+                  int prefix_comps)
 {
     if (npe->src == from_faceid)
         adjust_npe_predicted_response(h, npe, 0);
@@ -1364,6 +1365,9 @@ note_content_from(struct ccnd_handle *h,
         npe->osrc = npe->src;
         npe->src = from_faceid;
     }
+    if (h->debug & 8)
+        ccnd_msg(h, "sl.%d %u ci=%d osrc=%u src=%u usec=%d", __LINE__,
+                 from_faceid, prefix_comps, npe->osrc, npe->src, npe->usec);
 }
 
 /**
@@ -1417,12 +1421,11 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
             return(-1);
         new_matches = consume_matching_interests(h, npe, content, pc, face);
         if (from_face != NULL && (new_matches != 0 || ci + 1 == cm))
-            note_content_from(h, npe, from_face->faceid);
+            note_content_from(h, npe, from_face->faceid, ci);
         if (new_matches != 0) {
             cm = ci; /* update stats for this prefix and one shorter */
             n_matched += new_matches;
         }
-        ci--;
     }
     return(n_matched);
 }

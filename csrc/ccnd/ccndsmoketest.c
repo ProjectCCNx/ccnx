@@ -311,7 +311,8 @@ main(int argc, char **argv)
                 break;
             if (recvloop)
                 argp--;
-            fprintf(msgs, "recv of %lu bytes\n", (unsigned long)rawlen);
+            else
+                fprintf(msgs, "recv of %lu bytes\n", (unsigned long)rawlen);
             if (outstream != NULL)
                 write_to_stream(outstream, rawbuf, rawlen);
             else
@@ -343,7 +344,8 @@ main(int argc, char **argv)
         }
         else if (udp == 0 && 0 == strcmp(argv[argp], "status")) {
             msgs = stderr;
-            cmd = "sed -e 's=[<]style .*/style[>]==g' -e 's=[<][^>]*[>]==g'";
+            cmd = ("sed -e 's=[<]style .*/style[>]==g' -e 's=[<][^>]*[>]==g'|"
+                   "tail -n +7");
             outstream = popen(cmd, "w");
             wlen = send(sock, "GET / " CRLF , 8, 0);
             recvloop = 1;

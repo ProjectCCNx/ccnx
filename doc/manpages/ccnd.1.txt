@@ -1,0 +1,85 @@
+CCND(1)
+=======
+
+NAME
+----
+ccnd - CCNx Daemon
+
+SYNOPSIS
+--------
+*ccnd* [-h]
+
+DESCRIPTION
+-----------
+*ccnd* is not normally executed directly. Use *ccndstart(1)* to run an
+instance of ccnd. *ccnd* normally runs indefinitely.  Use
+*ccndsmoketest(1)* to terminate a *ccnd* (or use *kill(1)*).
+
+*ccnd* is the software forwarder/router for CCNx and is required for
+normal CCNx protocol communication.  The typical configuration is to
+run one *ccnd* on each host; applications running on the host will
+communicate through the local *ccnd*, and it will communicate over
+attached networks (directly or through a link adapter process).
+
+*ccnd* takes no options on the command-line. Basic options are controlled
+by environment variables. The forwarding table (FIB) is populated with
+registration protocols over CCNx.  Use *ccndc(1)* for configuring the
+FIB.
+
+*ccnd* communicates via the CCNx protocol running over UDP, TCP, or
+Unix domain sockets (the latter for local processes only). It also
+provides a simple web status view over HTTP, on the `CCN_LOCAL_PORT`.
+
+
+OPTIONS
+-------
+*-h*::
+	Print a usage message describing environment variables.
+
+ENVIRONMENT
+-----------
+
+Options for *ccnd* are set via environment variables. 
+
+    CCND_DEBUG=
+      0 - no messages
+      1 - basic messages (any non-zero value gets these)
+      2 - interest messages
+      4 - content messages
+      8 - matching details
+      16 - interest details
+      32 - gory interest details
+      64 - log occasional human-readable timestamps
+      128 - face registration debugging
+      bitwise OR these together for combinations; -1 gets everything
+    CCN_LOCAL_PORT=
+      UDP port for unicast clients (default 9695).
+      Also listens on this TCP port for stream connections.
+      Also affects name of unix-domain socket.
+    CCN_LOCAL_SOCKNAME=
+      Name stem of unix-domain socket (default /tmp/.ccnd.sock).
+    CCND_CAP=
+      Capacity limit, in count of ContentObjects.
+      Not an absolute limit.
+    CCND_MTU=
+      Packet size in bytes.
+      If set, interest stuffing is allowed within this budget.
+      Single items larger than this are not precluded.
+    CCND_DATA_PAUSE_MICROSEC=
+      Adjusts content-send delay time for multicast and udplink faces
+    CCND_KEYSTORE_DIRECTORY=
+      Directory readable only by ccnd where its keystores are kept
+      Defaults to a private subdirectory of /var/tmp
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; retrieval error)
+
+AUTHOR
+------
+Michael Plass <plass@parc.com>
+

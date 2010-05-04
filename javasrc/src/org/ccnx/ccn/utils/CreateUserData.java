@@ -410,6 +410,9 @@ public class CreateUserData {
 		String keystoreFileOrDirectoryPath = null;
 		int argsUsed = 0;
 		
+		if (args.length < offset + 2)
+			return null; // no as
+		
 		if (args.length >= offset+2) {
 			if (!args[offset].equals("-as")) {
 				return null; // caller must print usage()

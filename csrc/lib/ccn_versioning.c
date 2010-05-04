@@ -110,8 +110,8 @@ resolve_templ(struct ccn_charbuf *templ, unsigned const char *vcomp, int size)
  * @param name is a ccnb-encoded Name prefix. It gets extended in-place with
  *        one additional Component such that it names highest extant
  *        version that can be found, subject to the supplied timeout.
- * @param versioning_flags presently must be CCN_V_HIGHEST, possibly
- *        combined with CCN_V_NESTOK.  If CCN_V_NESTOK is not present
+ * @param versioning_flags presently must be CCN_V_HIGH or CCN_V_HIGHEST,
+ *        possibly combined with CCN_V_NESTOK.  If CCN_V_NESTOK is not present
  *        and the ending component appears to be a version, the routine
  *        returns 0 immediately, on the assumption that an explicit
  *        version has already been provided.
@@ -138,9 +138,9 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
     struct ccn_indexbuf *nix = ccn_indexbuf_create();
     unsigned char lowtime[7] = {CCN_MARKER_VERSION, 0, FF, FF, FF, FF, FF};
     
-    if ((versioning_flags & ~CCN_V_NESTOK) != CCN_V_HIGHEST) {
+    if ((versioning_flags & ~CCN_V_NESTOK & ~CCN_V_EST) != CCN_V_HIGH) {
         ccn_seterror(h, EINVAL);
-        ccn_perror(h, "ccn_resolve_version is only implemented for versioning_flags = CCN_V_HIGHEST");
+        ccn_perror(h, "ccn_resolve_version is only implemented for versioning_flags = CCN_V_HIGH(EST)");
         goto Finish;
     }
     n = ccn_name_split(name, nix);
@@ -169,6 +169,8 @@ ccn_resolve_version(struct ccn *h, struct ccn_charbuf *name,
             ccn_charbuf_append(name, prefix->buf, prefix->length);
             ccn_name_append(name, vers, vers_size);
             myres = 0;
+            if ((versioning_flags & CCN_V_EST) == 0)
+                break;
             templ = resolve_templ(templ, vers, vers_size);
             if (templ == NULL) break;
             cobj->length = 0;

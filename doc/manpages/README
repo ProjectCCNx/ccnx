@@ -1,0 +1,18 @@
+This directory contains man page documentation for tools.  
+
+The source is asciidoc. The derived formats are HTML, PDF, and man
+page.
+
+Note that even with asciidoc you may be missing the required xmlto
+program because of poor asciidoc package dependencies and the
+diagnostics in this case are not very helpful.
+
+Source Authoring notes:
+- You will get an error if the underlining segments (=== or ---) don't match 
+  line above in length
+- The manpage document type requires content in sections so don't leave one
+  blank.  This includes something after the "-" in the NAME section
+- When copying the template, change the first word under NAME immediately 
+  to the name of the manpage because that is what will be used in the filename
+  of (at least some) derived files.
+
