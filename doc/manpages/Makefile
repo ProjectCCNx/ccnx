@@ -63,6 +63,10 @@ clean-documentation:
 .gitignore: Makefile
 	for i in $(NONSOURCE); do echo $$i; done > $@
 
+depend: Makefile
+	@for i in $(PAGE_NAMES); do echo $$i.1.html: $$i.1.txt; done > depend
+	@for i in $(PAGE_NAMES); do echo $$i.1: $$i.1.txt; done >> depend
+
 index.html: index.txt
 	asciidoc index.txt
 
@@ -79,8 +83,10 @@ $(DERIVED_PDF): $(@:=.txt)
 $(DERIVED_MAN): $(@:=.txt)
 	a2x -a revnumber="$(PROJECT_NUMBER)" -f manpage -d manpage $(@:=.txt)
 
-default all clean clean-documentation depend test check shared documentation dist-docs testinstall install uninstall: _always
+default all clean clean-documentation test check shared documentation dist-docs testinstall install uninstall: _always
 
 _always:
 
 .PHONY: _always
+
+include depend
