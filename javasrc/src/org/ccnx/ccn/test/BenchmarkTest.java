@@ -20,11 +20,13 @@ package org.ccnx.ccn.test;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Random;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.util.SignatureHelper;
+import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.NullOutputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -55,7 +57,7 @@ public class BenchmarkTest {
 	public static byte[] longPayload;
 
 	public abstract class Operation<T> {
-		abstract void execute(T input) throws Exception;
+		abstract Object execute(T input) throws Exception;
 		
 		int size(T input) {
 			if (input instanceof byte[]) {
@@ -97,12 +99,12 @@ public class BenchmarkTest {
 	}
 	@Test
 	public void testDigest() throws Exception {
-		System.out.println("==== Digest Benchmarks");
+		System.out.println("==== Digests");
 		Operation<byte[]> digest = new Operation<byte[]>() {
-			void execute(byte[] input) throws Exception {
+			Object execute(byte[] input) throws Exception {
 				MessageDigest md = MessageDigest.getInstance(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
 				md.update(input);
-				md.digest();
+				return md.digest();
 			}
 		};
 		System.out.println("--- Raw = digest only of byte[]");
@@ -111,11 +113,11 @@ public class BenchmarkTest {
 		ContentName segment = SegmentationProfile.segmentName(testName, 0);
 		
 		Operation<ContentObject> digestObj = new Operation<ContentObject>() {
-			void execute(ContentObject input) throws Exception {
+			Object execute(ContentObject input) throws Exception {
 				MessageDigest md = MessageDigest.getInstance(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
 				DigestOutputStream dos = new DigestOutputStream(new NullOutputStream(), md);
 				input.encode(dos);
-				md.digest();
+				return md.digest();
 			}
 		};
 		System.out.println("--- Object = digest of ContentObject");
@@ -132,12 +134,33 @@ public class BenchmarkTest {
 			KeyManager keyManager = KeyManager.getDefaultKeyManager();
 			PrivateKey signingKey = keyManager.getDefaultSigningKey();
 
-			void execute(byte[] input) throws Exception {
-				SignatureHelper.sign(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, input, signingKey);
+			Object execute(byte[] input) throws Exception {
+				return SignatureHelper.sign(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, input, signingKey);
 			}
 		};
-		System.out.println("==== PK Signing Benchmarks");
+		System.out.println("==== PK Signing");
 		runBenchmark("sign short", sign, shortPayload);
-		runBenchmark("sign long", sign, longPayload);		
+		runBenchmark("sign long", sign, longPayload);	
+		
+		byte[] sigShort = (byte[])sign.execute(shortPayload);
+		byte[] sigLong = (byte[])sign.execute(longPayload);
+		
+		Operation<Tuple<byte[],byte[]>> verify = new Operation<Tuple<byte[],byte[]>>() {
+			KeyManager keyManager = KeyManager.getDefaultKeyManager();
+			PublicKey pubKey = keyManager.getDefaultPublicKey();
+			
+			Object execute(Tuple<byte[],byte[]> input) throws Exception {
+				return SignatureHelper.verify(input.first(), input.second(), CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, pubKey);
+			}
+			
+			int size(Tuple<byte[], byte[]> input) {
+				return input.first().length;
+			}
+		};
+		
+		System.out.println("==== PK Verifying");
+		runBenchmark("verify short", verify, new Tuple<byte[],byte[]>(shortPayload, sigShort));
+		runBenchmark("verify long", verify, new Tuple<byte[],byte[]>(longPayload, sigLong));
+
 	}
 }
