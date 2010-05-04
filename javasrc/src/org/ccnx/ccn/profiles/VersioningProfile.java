@@ -850,5 +850,25 @@ public class VersioningProfile implements CCNProfile {
 		}
 		return excludeList;
 	}
+
+	public static byte[] versionComponentFromStripped(byte[] bs) {
+		if (null == bs) 
+			return null;
+		byte [] versionComponent = new byte[bs.length + 1];
+		versionComponent[0] = VERSION_MARKER;
+		System.arraycopy(bs, 0, versionComponent, 1, bs.length);
+		return versionComponent;
+	}
+
+	public static byte[] stripVersionMarker(byte[] version) throws VersionMissingException {
+		if (null == version) 
+			return null;
+		if (VERSION_MARKER != version[0]) {
+			throw new VersionMissingException("This is not a version component!");
+		}
+		byte [] stripped = new byte[version.length - 1];
+		System.arraycopy(version, 1, stripped, 0, stripped.length);
+		return stripped;
+	}
 	
 }
