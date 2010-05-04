@@ -19,6 +19,8 @@ PAGE_NAMES = 			\
 	ccnd			\
 	ccndc			\
 	ccndstart		\
+        ccndstatus		\
+	ccndstop		\
 	ccnexplore		\
 	ccnls			\
 	ccnlsrepo		\
