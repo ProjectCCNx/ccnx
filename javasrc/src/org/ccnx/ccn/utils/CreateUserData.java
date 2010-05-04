@@ -404,6 +404,14 @@ public class CreateUserData {
 	 * at offset was not -as.
 	 */
 	public static Tuple<Integer, CCNHandle> handleAs(String [] args, int offset) throws ConfigurationException, 
+			IOException, InvalidKeyException {
+		
+		Tuple<Integer, KeyManager> t = keyManagerAs(args, offset);
+		
+		return new Tuple<Integer, CCNHandle>(t.first(), CCNHandle.open(t.second()));
+	}
+	
+	public static Tuple<Integer, KeyManager> keyManagerAs(String [] args, int offset) throws ConfigurationException, 
 					IOException, InvalidKeyException {
 
 		String friendlyName = null;
@@ -443,7 +451,7 @@ public class CreateUserData {
 		KeyManager manager = CreateUserData.loadKeystoreFile(keystoreFileOrDirectory, friendlyName,
 				UserConfiguration.keystorePassword().toCharArray());
 		
-		return new Tuple<Integer, CCNHandle>(argsUsed, CCNHandle.open(manager));
+		return new Tuple<Integer, KeyManager>(argsUsed, manager);
 	}
 	
 	public static KeyManager keyManagerAs(String keystoreFileOrDirectoryPath, String friendlyName) throws InvalidKeyException, ConfigurationException, IOException {
@@ -456,7 +464,7 @@ public class CreateUserData {
 			friendlyName = keystoreFileOrDirectory.getName();
 		}
 		
-		Log.info("handleAs: loading data for user {0} from location {1}", friendlyName, keystoreFileOrDirectory);
+		Log.info("keyManagerAs: loading data for user {0} from location {1}", friendlyName, keystoreFileOrDirectory);
 		
 		KeyManager manager = CreateUserData.loadKeystoreFile(keystoreFileOrDirectory, friendlyName,
 				UserConfiguration.keystorePassword().toCharArray());
