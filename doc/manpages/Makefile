@@ -65,7 +65,8 @@ clean-documentation:
 
 depend: Makefile
 	@for i in $(PAGE_NAMES); do echo $$i.1.html: $$i.1.txt; done > depend
-	@for i in $(PAGE_NAMES); do echo $$i.1: $$i.1.txt; done >> depend
+	@for i in $(PAGE_NAMES); do echo $$i.1.pdf: $$i.1.txt; done >> depend
+	@for i in $(PAGE_NAMES); do echo $$i.1: $$i.1.txt;     done >> depend
 
 index.html: index.txt
 	asciidoc index.txt
@@ -77,8 +78,8 @@ index.txt: $(INDEXED_HTML) .genindex.sh
 $(DERIVED_HTML): $(@:.html=.txt) 
 	asciidoc -a revnumber="$(PROJECT_NUMBER)" -d manpage $(@:.html=.txt)
 
-$(DERIVED_PDF): $(@:=.txt)
-	a2x -f pdf -d manpage $(@:=.txt)
+$(DERIVED_PDF): $(@:.pdf=.txt)
+	a2x -a revnumber="$(PROJECT_NUMBER)" -f pdf -d manpage $(@:.pdf=.txt)
 
 $(DERIVED_MAN): $(@:=.txt)
 	a2x -a revnumber="$(PROJECT_NUMBER)" -f manpage -d manpage $(@:=.txt)
