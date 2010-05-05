@@ -18,12 +18,14 @@
 package org.ccnx.ccn.test;
 
 import java.security.DigestOutputStream;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Random;
-
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.util.SignatureHelper;
 import org.ccnx.ccn.impl.support.Tuple;
@@ -44,9 +46,8 @@ import org.junit.Test;
  */
 public class BenchmarkTest {
 
-	public static final int NUM_DIGESTS = 1000;
-	public static final int NUM_SIGNATURES = 1000;
 	public static final int NUM_ITER = 1000;
+	public static final int NUM_KEYGEN = 100; // Key generation is really slow
 	
 	public static final double NanoToMilli = 1000000.0d;
 	
@@ -60,7 +61,9 @@ public class BenchmarkTest {
 		abstract Object execute(T input) throws Exception;
 		
 		int size(T input) {
-			if (input instanceof byte[]) {
+			if (null == input) {
+				return -1;
+			} else if (input instanceof byte[]) {
 				return ((byte[])input).length;
 			} else if (input instanceof ContentObject) {
 				return ((ContentObject)input).content().length;
@@ -84,18 +87,24 @@ public class BenchmarkTest {
 
 	@SuppressWarnings("unchecked")
 	public void runBenchmark(String desc, Operation op, Object input) throws Exception {
+		runBenchmark(NUM_ITER, desc, op, input);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void runBenchmark(int count, String desc, Operation op, Object input) throws Exception {
 		long start = System.nanoTime();
 		op.execute(input);
 		long dur = System.nanoTime() - start;
 		//System.out.println("Start " + start + " dur " + dur);
-		System.out.println("Initial time to " + desc + " (payload " + op.size(input) + " bytes) = " + dur/NanoToMilli + " ms.");
+		int size = op.size(input);
+		System.out.println("Initial time to " + desc + (size >= 0 ? " (payload " + op.size(input) + " bytes)" : "") + " = " + dur/NanoToMilli + " ms.");
 		
 		start = System.nanoTime();
-		for (int i=0; i<NUM_ITER; i++) {
+		for (int i=0; i<count; i++) {
 			op.execute(input);
 		}
 		dur = System.nanoTime() - start;
-		System.out.println("Avg. to " + desc + " (" + NUM_ITER + " iterations) = " + dur/NUM_ITER/NanoToMilli + " ms.");		
+		System.out.println("Avg. to " + desc + " (" + count + " iterations) = " + dur/count/NanoToMilli + " ms.");		
 	}
 	@Test
 	public void testDigest() throws Exception {
@@ -162,5 +171,21 @@ public class BenchmarkTest {
 		runBenchmark("verify short", verify, new Tuple<byte[],byte[]>(shortPayload, sigShort));
 		runBenchmark("verify long", verify, new Tuple<byte[],byte[]>(longPayload, sigLong));
 
+	}
+	
+	@Test
+	public void testKeyGen() throws Exception {
+		final KeyPairGenerator kpg = KeyPairGenerator.getInstance(UserConfiguration.defaultKeyAlgorithm());
+		kpg.initialize(UserConfiguration.defaultKeyLength());
+
+		Operation<Object> genpair = new Operation<Object>() {
+			Object execute(Object input) throws Exception {
+				KeyPair userKeyPair = kpg.generateKeyPair();
+				return userKeyPair;
+			}		
+		};	
+		
+		System.out.println("==== Key Generation: " + UserConfiguration.defaultKeyLength() + "-bit " + UserConfiguration.defaultKeyAlgorithm() + " key.");
+		runBenchmark(NUM_KEYGEN, "generate keypair", genpair, null);
 	}
 }
