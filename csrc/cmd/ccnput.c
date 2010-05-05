@@ -250,6 +250,20 @@ main(int argc, char **argv)
     /* Set content type */
     sp.type = content_type;
     
+    /* Set freshness */
+    if (expire >= 0) {
+        if (sp.template_ccnb == NULL) {
+            sp.template_ccnb = ccn_charbuf_create();
+            ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
+        }
+        else if (sp.template_ccnb->length > 0) {
+            sp.template_ccnb->length--;
+        }
+        ccnb_tagged_putf(sp.template_ccnb, CCN_DTAG_FreshnessSeconds, "%ld", expire);
+        sp.sp_flags |= CCN_SP_TEMPL_FRESHNESS;
+        ccn_charbuf_append_closer(sp.template_ccnb);
+    }
+    
     /* Create the signed content object, ready to go */
     temp->length = 0;
     res = ccn_sign_content(ccn, temp, name, &sp, buf, read_res);
@@ -301,5 +315,6 @@ main(int argc, char **argv)
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&pname);
     ccn_charbuf_destroy(&temp);
+    ccn_charbuf_destroy(&sp.template_ccnb);
     exit(status);
 }
