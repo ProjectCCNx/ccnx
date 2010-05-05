@@ -75,10 +75,6 @@ FILES
 -----
         $HOME/.ccnx/.ccnx_keystore - default keystore
 
-EXAMPLES
---------
-    
-
 AUTHOR
 ------
 Philippe Golle <pgolle@parc.com>
