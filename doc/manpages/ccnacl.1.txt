@@ -8,9 +8,11 @@ access control of a CCNx content namespace.
 
 SYNOPSIS
 --------
-*ccnacl* -show 'nodeName'
+*ccnacl* [-as 'pathToKeystore'] -show 'nodeName'
 
-*ccnacl* -edit 'nodeName' 'principalName' [null | r | rw | rw+]
+*ccnacl* [-as 'pathToKeystore'] -edit 'nodeName' 'principalName' [null | r | rw | rw+]
+
+*ccnacl* [-as 'pathToKeystore'] -init 'domain' 'userNamespace' 'groupNamespace' 'principalName'
 
 DESCRIPTION
 -----------
@@ -37,6 +39,11 @@ performed, new versions of the ACL and related keys are published.
 
 OPTIONS
 -------
+*-as* 'pathToKeystore'::
+	Specifies a file path to a keystore; this is used for sigining any
+        newly-reated content.  Applicable to all operations.  The default
+        keystore is used if this is not specified.
+
 *-show* 'nodeName'::
 	Print the contents of the ACL for the given 'nodeName'.
 
@@ -50,6 +57,12 @@ OPTIONS
 	* *rw* = Writer, can also read
 	* *rw+* = Manager, can read, write, and edit ACLs
 
+*-init* 'domain' 'userNamespace' 'groupNamespace' 'principalName'::
+	Initialises the authentication domain.
+///////////////////////////////////////////////////////////////////////////////
+FIXME - better descr. needed for -init
+///////////////////////////////////////////////////////////////////////////////
+
 EXIT STATUS
 -----------
 *0*::
@@ -57,6 +70,14 @@ EXIT STATUS
 
 *1*::
      Failure (syntax or usage error; retrieval error, failure to write)
+
+FILES
+-----
+        $HOME/.ccnx/.ccnx_keystore - default keystore
+
+EXAMPLES
+--------
+    
 
 AUTHOR
 ------
