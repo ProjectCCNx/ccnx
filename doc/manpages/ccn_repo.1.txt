@@ -44,7 +44,8 @@ OPTIONS
 -------
 
 *-memory* 'memory'::
-     This option adjusts the amount of memory used by the repository.
+     This option adjusts the maximum amount of heap memory used by the repository.
+     Units are bytes; optionally with a letter suffix (K, M, G, ...). 
 
 *-debug* 'portno'::
      Allows attachment of an eclipse remote debugger to the repo at the specified port number.
