@@ -92,6 +92,9 @@ public class Log {
 	public static final int FAC_ACCESSCONTROL = 8;
 	public static final int FAC_REPO 		= 9;
 	public static final int FAC_TIMING		= 10;  // includes a timestamp
+	public static final int FAC_TRUST		= 11; // trust enforcement
+	public static final int FAC_KEYS		= 12; // key publishing/retrieval
+	public static final int FAC_ENCODING	= 13;
 	
 
 
@@ -108,6 +111,9 @@ public class Log {
 		DEFAULT_LOG_LEVEL_PROPERTY + ".AccessControl",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Repo",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Timing",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Trust",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Keys",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Encoding",
 	};
 
 	// The environment variable for each facility
@@ -123,6 +129,9 @@ public class Log {
 		DEFAULT_LOG_LEVEL_ENV + "_ACCESSCONTROL",
 		DEFAULT_LOG_LEVEL_ENV + "_REPO",
 		DEFAULT_LOG_LEVEL_ENV + "_TIMING",
+		DEFAULT_LOG_LEVEL_ENV + "_TRUST",
+		DEFAULT_LOG_LEVEL_ENV + "_KEYS",
+		DEFAULT_LOG_LEVEL_ENV + "_ENCODING",
 	};
 
 	public static final Level [] FAC_LOG_LEVEL_DEFAULT = {
@@ -137,6 +146,9 @@ public class Log {
 		Level.INFO,		// Access control
 		Level.INFO,		// Repo
 		Level.INFO,		// Timing
+		Level.INFO,		// Trust
+		Level.INFO,		// Keys
+		Level.INFO,		// Encoding
 	};
 
 	protected static Level [] _fac_level = new Level[FAC_LOG_LEVEL_PROPERTY.length];
