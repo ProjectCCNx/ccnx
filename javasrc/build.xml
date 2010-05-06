@@ -361,6 +361,7 @@
 					<!-- should be profiles/**/*TestRepo.class, but don't want to include access control yet -->
 				    <include name="org/ccnx/ccn/test/profiles/metadata/*TestRepo.class"/>
 				    <include name="org/ccnx/ccn/test/profiles/search/*TestRepo.class"/>
+                    <include name="org/ccnx/ccn/test/profiles/context/*TestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
