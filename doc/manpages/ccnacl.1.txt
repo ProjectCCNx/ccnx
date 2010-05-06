@@ -8,11 +8,11 @@ access control of a CCNx content namespace.
 
 SYNOPSIS
 --------
-*ccnacl* [-as 'pathToKeystore'] -show 'nodeName'
+*ccnacl* [-as 'keystore'] -show 'nodeName'
 
-*ccnacl* [-as 'pathToKeystore'] -edit 'nodeName' 'principalName' [null | r | rw | rw+]
+*ccnacl* [-as 'keystore'] -edit 'nodeName' 'principalName' [null | r | rw | rw+]
 
-*ccnacl* [-as 'pathToKeystore'] -init 'domain' 'userNamespace' 'groupNamespace' 'principalName'
+*ccnacl* [-as 'keystore'] -init 'domain' 'userNamespace' 'groupNamespace' 'principalName'
 
 DESCRIPTION
 -----------
@@ -40,8 +40,8 @@ performed, new versions of the ACL and related keys are published.
 OPTIONS
 -------
 *-as* 'pathToKeystore'::
-	Specifies a file path to a keystore; this is used for sigining any
-        newly-reated content.  Applicable to all operations.  The default
+	Specifies a file path to a keystore; this is used for signing any
+        newly-created content.  Applicable to all operations.  The default
         keystore is used if this is not specified.
 
 *-show* 'nodeName'::

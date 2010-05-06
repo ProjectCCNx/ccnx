@@ -22,11 +22,11 @@
 ccnacl \- show and modify access control lists (ACLs) for access control of a CCNx content namespace\&.
 .SH "SYNOPSIS"
 .sp
-\fBccnacl\fR [\-as \fIpathToKeystore\fR] \-show \fInodeName\fR
+\fBccnacl\fR [\-as \fIkeystore\fR] \-show \fInodeName\fR
 .sp
-\fBccnacl\fR [\-as \fIpathToKeystore\fR] \-edit \fInodeName\fR \fIprincipalName\fR [null | r | rw | rw+]
+\fBccnacl\fR [\-as \fIkeystore\fR] \-edit \fInodeName\fR \fIprincipalName\fR [null | r | rw | rw+]
 .sp
-\fBccnacl\fR [\-as \fIpathToKeystore\fR] \-init \fIdomain\fR \fIuserNamespace\fR \fIgroupNamespace\fR \fIprincipalName\fR
+\fBccnacl\fR [\-as \fIkeystore\fR] \-init \fIdomain\fR \fIuserNamespace\fR \fIgroupNamespace\fR \fIprincipalName\fR
 .SH "DESCRIPTION"
 .sp
 The \fBccnacl\fR utility prints or modifies an access control list (ACL) published with CCNx\&. An ACL specifies who should have access to a particular collection, identified by the given \fInodeName\fR\&. Entities that are supporting the CCNx access control profile will respect any ACL specification that applies to namespaces they are using\&. Read control is achieved through encryption, so as long as the writers support access control the readers must support it and be authorized in order to read content\&. Write control is achieved by consumers rejecting content that is not published by an authorized party\&.
@@ -38,7 +38,7 @@ An ACL is published as immutable CCNx content\&. When an ACL edit is performed, 
 .PP
 \fB\-as\fR \fIpathToKeystore\fR
 .RS 4
-Specifies a file path to a keystore; this is used for sigining any newly\-reated content\&. Applicable to all operations\&. The default keystore is used if this is not specified\&.
+Specifies a file path to a keystore; this is used for signing any newly\-created content\&. Applicable to all operations\&. The default keystore is used if this is not specified\&.
 .RE
 .PP
 \fB\-show\fR \fInodeName\fR
