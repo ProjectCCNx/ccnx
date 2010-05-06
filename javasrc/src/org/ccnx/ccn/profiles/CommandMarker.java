@@ -171,6 +171,27 @@ public class CommandMarker {
 		return new CommandMarker(namespace, command);
 	}
 	
+	public static final CommandMarker commandMarker(CommandMarker namespace, String command) {
+		return new CommandMarker(namespace, command);
+	}
+
+	protected CommandMarker(CommandMarker parent, String operation) {
+		
+		if (null == operation) {
+			_byteCommandMarker = parent.getBytes();
+		} else {
+			byte [] prefix = parent.getBytes();
+
+			StringBuffer sb = new StringBuffer(COMMAND_SEPARATOR);
+			sb.append(operation);
+			byte [] csb = ContentName.componentParseNative(sb.toString());
+			byte [] bc = new byte[csb.length + prefix.length];
+			System.arraycopy(prefix, 0, bc, 0, prefix.length);
+			System.arraycopy(csb, 0, bc, prefix.length, csb.length);
+			_byteCommandMarker = bc;
+		}
+	}
+	
 	protected CommandMarker(String namespace, String command) {
 		StringBuffer sb = new StringBuffer(namespace);
 		if ((null != namespace) && (namespace.length() > 0)) {
@@ -217,7 +238,7 @@ public class CommandMarker {
 			// only one component
 			return new String(_byteCommandMarker, COMMAND_PREFIX.length, _byteCommandMarker.length-COMMAND_PREFIX.length);
 		}
-		int lastDot = DataUtils.byterindex(_byteCommandMarker, COMMAND_PREFIX.length, COMMAND_SEPARATOR_BYTE);
+		int lastDot = DataUtils.byterindex(_byteCommandMarker, _byteCommandMarker.length-1, COMMAND_SEPARATOR_BYTE);
 		return new String(_byteCommandMarker, COMMAND_PREFIX.length, lastDot-1-COMMAND_PREFIX.length);
 	}
 	
