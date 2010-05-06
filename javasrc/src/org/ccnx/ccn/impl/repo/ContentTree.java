@@ -722,4 +722,14 @@ public class ContentTree {
 		}
 		return null;
 	}
+	
+	/**
+	 * Determine if there is data with exactly the given name.
+	 * @param name to match, including explicit digest as final component
+	 * @return true if there is data with the given complete name, false otherwise
+	 */
+	public boolean matchContent(ContentName name) {
+		// Query is for exact match to full name with digest, no additional components
+		return (lookup(name) != null);
+	}
 }
