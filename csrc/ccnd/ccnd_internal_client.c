@@ -55,7 +55,7 @@ static void ccnd_internal_client_reschedule(struct ccnd_handle *ccnd);
 static void
 ccnd_init_service_ccnb(struct ccnd_handle *ccnd)
 {
-    const char *baseuri = "ccnx:/%C1.S.localhost/%C1.M.SRV/ccnd/KEY";
+    const char *baseuri = "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY";
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     struct ccn *h = ccnd->internal_client;
     struct ccn_charbuf *name = ccn_charbuf_create();
@@ -594,10 +594,10 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                     &ccnd_answer_req, OP_UNREG + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/" CCND_NOTICE_NAME,
                     &ccnd_answer_req, OP_NOTICE);
-    ccnd_uri_listen(ccnd, "ccnx:/%C1.S.localhost/%C1.M.SRV/ccnd",
+    ccnd_uri_listen(ccnd, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd",
                     &ccnd_answer_req, OP_SERVICE);
     ccnd_reg_ccnx_ccndid(ccnd);
-    ccnd_reg_uri(ccnd, "ccnx:/%C1.S.localhost",
+    ccnd_reg_uri(ccnd, "ccnx:/%C1.M.S.localhost",
                  0, /* special faceid for internal client */
                  (CCN_FORW_CHILD_INHERIT | 
                   CCN_FORW_ACTIVE        |
