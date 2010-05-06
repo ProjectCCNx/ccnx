@@ -17,10 +17,14 @@
 package org.ccnx.ccn.profiles.context;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.util.ArrayList;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.security.KeyProfile;
@@ -28,6 +32,8 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 /**
  * The ServiceDiscovery protocol aids in finding data about local (same-machine)
@@ -42,7 +48,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "SVC");
 		
 	public static ContentName localServiceName(String service) {
-		return new ContentName(ContextualNamesProfile.LOCALHOST, SERVICE_NAME_COMPONENT_MARKER.getBytes(), 
+		return new ContentName(ContextualNamesProfile.LOCALHOST_SCOPE, SERVICE_NAME_COMPONENT_MARKER.getBytes(), 
 				ContentName.componentParseNative(service));
 	}
 	
@@ -67,13 +73,16 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 		// for the key id, and then a version and segments. Might be more expensive to apply the filters than
 		// to throw things away and go around again...
 		
-		Interest theInterest = new Interest();
+		Interest theInterest = Interest.lower(serviceKeyName, 4, null);
 		
 		ArrayList<ContentObject> results = null;
 		ContentObject theResult = null;
 		int keyidComponent = serviceKeyName.count();
 		
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
+		
+		// We need a verifier that checks the match between publisher and public key.
+		ContentVerifier verifier = new SimpleVerifier(null, handle.keyManager());
 		
 		do {
 			
@@ -85,17 +94,25 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 			}
 			theResult = handle.get(theInterest, timeout);
 			
-			// Verify theResult
-			
-			
-			// Check to see if theResult matches criteria
-			
 			if (null != theResult) {
-				if (null == results) {
-					results = new ArrayList<ContentObject>();
+				// Verify theResult (should go into handle.get)
+				// Check to see if theResult matches criteria
+				if (verifier.verify(theResult) && (ContentType.KEY == theResult.signedInfo().getType())) {
+					// it's a key, remember it, and see if we can find any others.
+					if (null == results) {
+						results = new ArrayList<ContentObject>();
+					}
+					results.add(theResult);
+					excludeList.add(theResult.name().component(keyidComponent));
+					
+					if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+						Log.info(Log.FAC_KEYS, "Got key for service {0}: {1}", service, theResult.name());
+					}
+					
+				} else {
+					// we don't want to exclude other things with this next component, but
+					// do want to exclude this one; need digest exclude
 				}
-				results.add(theResult);
-				excludeList.add(theResult.name().component(keyidComponent));
 			}
 
 		} while (null != theResult);
@@ -103,8 +120,11 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 		return results;
 	}
 	
-	public static void publishLocalServiceKey(String service, PublisherPublicKeyDigest serviceKey, KeyManager keyManager) {
+	public static void publishLocalServiceKey(String service, PublisherPublicKeyDigest serviceKey, KeyManager keyManager) throws InvalidKeyException, IOException {
+		ContentName serviceKeyName = new ContentName(localServiceName(service), KeyProfile.KEY_NAME_COMPONENT);
 		
+		// Need a way to override any stored key locator.
+		keyManager.publishSelfSignedKey(serviceKeyName, serviceKey, null);
 	}
 
 }
