@@ -35,6 +35,7 @@ import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -570,6 +571,17 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
+	 * @param expectedKeyID
+	 * @return True if the unwrapped key specified by expectedKeyID (if not null)
+	 * or by the KeyDirectory name, is in the secure key cache.
+	 */
+	public boolean isUnwrappedKeyInCache(byte [] expectedKeyID) {
+		SecureKeyCache skc = _handle.keyManager().getSecureKeyCache();
+		if (null != expectedKeyID) return skc.containsKey(expectedKeyID);
+		return skc.containsKey(getName());
+	}
+	
+	/**
 	 * Unwrap and return the key wrapped in a wrapping key specified by its digest.
 	 * Find a copy of the key block in this directory that we can unwrap (either the private
 	 * key wrapping key block or a wrapped raw symmetric key). Chase superseding keys if
@@ -586,7 +598,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 			if (expectedKeyID == null) {
-				Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at {0} unwrapping key wihtout expectedKeyID", this._namePrefix);
+				Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at {0} unwrapping key without expectedKeyID", this._namePrefix);
 			}
 			else {
 				Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at {0} unwrapping key with expectedKeyID {1} ",
@@ -601,9 +613,24 @@ public class KeyDirectory extends EnumeratedNameList {
 		if (!hasChildren()) {
 			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
 		}
+		
+		// Do we have the unwrapped key in our cache?
+		// First, look up the desired keyID in the cache. 
+		// If it's not in the cache, look up the desired key by name
+		SecureKeyCache skc = _handle.keyManager().getSecureKeyCache();
+		if ((null != expectedKeyID) && (skc.containsKey(expectedKeyID))) {
+			unwrappedKey = skc.getKey(expectedKeyID);
+			Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: found desired unwrapped keyID in our cache.");
+		}
+		if ((null == unwrappedKey) && (skc.containsKey(getName()))) {
+			unwrappedKey = skc.getKey(skc.getKeyID(getName()));
+			Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: found desired unwrapped key name in our cache.");			
+		}
 
 		// Do we have one of the wrapping keys already in our cache?
-		unwrappedKey = unwrapKeyViaCache();
+		if (null == unwrappedKey) {
+			unwrappedKey = unwrapKeyViaCache();
+		}
 		
 		if (null == unwrappedKey) {
 			// Not in cache. Is it superseded?
@@ -835,7 +862,14 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		return unwrappedKey;
 	}
-		
+	
+	/**
+	 * @return true if the private key is in the secure key cache.
+	 */
+	public boolean isPrivateKeyInCache() {
+		return _handle.keyManager().getSecureKeyCache().containsKey(getPrivateKeyBlockName());
+	}
+	
 	/**
 	 * Returns the private key stored in the KeyDirectory. 
 	 * The private key is wrapped in a wrapping key, which is itself wrapped.
@@ -857,6 +891,14 @@ public class KeyDirectory extends EnumeratedNameList {
 			throws AccessDeniedException, InvalidKeyException, 
 					ContentNotReadyException, ContentGoneException, ContentDecodingException, 
 					IOException, NoSuchAlgorithmException {
+		
+		// is the private key already in the cache?
+		SecureKeyCache skc = _handle.keyManager().getSecureKeyCache();
+		if (skc.containsKey(getPrivateKeyBlockName())) {
+			Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getPrivateKey: found private key in cache.");
+			return (PrivateKey) skc.getKey(skc.getKeyID(getPrivateKeyBlockName()));
+		}
+		
 		if (!hasPrivateKeyBlock()) { // checks hasChildren
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info(Log.FAC_ACCESSCONTROL, "No private key block exists with name {0}", getPrivateKeyBlockName());
