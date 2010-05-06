@@ -1920,6 +1920,63 @@ finalize_keystore(struct hashtb_enumerator *e)
 }
 
 /**
+ * Place the public key associated with the params into result
+ * buffer, and its digest into digest_result.
+ *
+ * This is for one of our signing keys, not just any key.
+ * Result buffers may be NULL if the corresponding result is not wanted.
+ *
+ * @returns 0 for success, negative for error
+ */
+int
+ccn_get_public_key(struct ccn *h,
+                   const struct ccn_signing_params *params,
+                   struct ccn_charbuf *digest_result,
+                   struct ccn_charbuf *result)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_keystore *keystore = NULL;
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    int res;
+    res = ccn_chk_signing_params(h, params, &sp, NULL, NULL, NULL);
+    if (res < 0)
+        return(res);
+    hashtb_start(h->keystores, e);
+    if (hashtb_seek(e, sp.pubid, sizeof(sp.pubid), 0) == HT_OLD_ENTRY) {
+        struct ccn_keystore **pk = e->data;
+        keystore = *pk;
+        if (digest_result != NULL) {
+            digest_result->length = 0;
+            ccn_charbuf_append(digest_result,
+                               ccn_keystore_public_key_digest(keystore),
+                               ccn_keystore_public_key_digest_length(keystore));
+        }
+        if (result != NULL) {
+            struct ccn_buf_decoder decoder;
+            struct ccn_buf_decoder *d;
+            const unsigned char *p;
+            size_t size;
+            result->length = 0;
+            ccn_append_pubkey_blob(result, ccn_keystore_public_key(keystore));
+            d = ccn_buf_decoder_start(&decoder, result->buf, result->length);
+            res = ccn_buf_match_blob(d, &p, &size);
+            if (res >= 0) {
+                memmove(result->buf, p, size);
+                result->length = size;
+                res = 0;
+            }
+        }
+    }
+    else {
+        res = NOTE_ERR(h, -1);
+        hashtb_delete(e);
+    }
+    hashtb_end(e);
+    return(res);
+}
+
+/**
  * This is mostly for use within the library,
  * but may be useful for some clients.
  */
@@ -2006,17 +2063,16 @@ ccn_chk_signing_params(struct ccn *h,
             ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Timestamp, 1, -1);
             stop = d->decoder.token_index;
             if ((needed & CCN_SP_TEMPL_TIMESTAMP) != 0) {
-                if (ptimestamp != NULL) {
-                    *ptimestamp = ccn_charbuf_create();
-                    i = ccn_ref_tagged_BLOB(CCN_DTAG_Timestamp,
-                                            d->buf,
-                                            start, stop,
-                                            &ptr, &size);
-                    if (i == 0) {
+                i = ccn_ref_tagged_BLOB(CCN_DTAG_Timestamp,
+                                        d->buf,
+                                        start, stop,
+                                        &ptr, &size);
+                if (i == 0) {
+                    if (ptimestamp != NULL) {
                         *ptimestamp = ccn_charbuf_create();
                         ccn_charbuf_append(*ptimestamp, ptr, size);
-                        needed &= ~CCN_SP_TEMPL_TIMESTAMP;
                     }
+                    needed &= ~CCN_SP_TEMPL_TIMESTAMP;
                 }
             }
             ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Type, 1, -1);
@@ -2039,8 +2095,8 @@ ccn_chk_signing_params(struct ccn *h,
                         *pfinalblockid = ccn_charbuf_create();
                         ccn_charbuf_append(*pfinalblockid,
                                            d->buf + start, stop - start);
-                        needed &= ~CCN_SP_TEMPL_FINAL_BLOCK_ID;
-                    };
+                    }
+                    needed &= ~CCN_SP_TEMPL_FINAL_BLOCK_ID;
                 }
             }
             start = d->decoder.token_index;
@@ -2049,12 +2105,12 @@ ccn_chk_signing_params(struct ccn *h,
             stop = d->decoder.token_index;
             if ((needed & CCN_SP_TEMPL_KEY_LOCATOR) != 0 && 
                 d->decoder.state >= 0 && stop > start) {
-                if (pfinalblockid != NULL) {
+                if (pkeylocator != NULL) {
                     *pkeylocator = ccn_charbuf_create();
                     ccn_charbuf_append(*pkeylocator,
                                        d->buf + start, stop - start);
-                    needed &= ~CCN_SP_TEMPL_KEY_LOCATOR;
                 }
+                needed &= ~CCN_SP_TEMPL_KEY_LOCATOR;
             }
             ccn_buf_check_close(d);
         }

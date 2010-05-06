@@ -52,6 +52,55 @@
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
 static void ccnd_internal_client_reschedule(struct ccnd_handle *ccnd);
 
+static void
+ccnd_init_service_ccnb(struct ccnd_handle *ccnd)
+{
+    const char *baseuri = "ccnx:/%C1.S.localhost/%C1.M.SRV/ccnd/KEY";
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    struct ccn *h = ccnd->internal_client;
+    struct ccn_charbuf *name = ccn_charbuf_create();
+    struct ccn_charbuf *pubid = ccn_charbuf_create();
+    struct ccn_charbuf *pubkey = ccn_charbuf_create();
+    struct ccn_charbuf *keyid = ccn_charbuf_create();
+    struct ccn_charbuf *cob = ccn_charbuf_create();
+    int res;
+    
+    res = ccn_get_public_key(h, NULL, pubid, pubkey);
+    if (res < 0) abort();
+    ccn_name_from_uri(name, baseuri);
+    ccn_charbuf_append_value(keyid, CCN_MARKER_CONTROL, 1);
+    ccn_charbuf_append_string(keyid, ".M.K");
+    ccn_charbuf_append_value(keyid, 0, 1);
+    ccn_charbuf_append_charbuf(keyid, pubid);
+    ccn_name_append(name, keyid->buf, keyid->length);
+    ccn_create_version(h, name, CCN_V_NOW, 0, 0);
+    sp.template_ccnb = ccn_charbuf_create();
+    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
+    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyLocator, CCN_DTAG);
+    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyName, CCN_DTAG);
+    ccn_charbuf_append_charbuf(sp.template_ccnb, name);
+    ccn_charbuf_append_closer(sp.template_ccnb);
+//    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_PublisherPublicKeyDigest,
+//                          CCN_DTAG);
+//    ccn_charbuf_append_charbuf(sp.template_ccnb, pubid);
+//    ccn_charbuf_append_closer(sp.template_ccnb);
+    ccn_charbuf_append_closer(sp.template_ccnb);
+    ccn_charbuf_append_closer(sp.template_ccnb);
+    sp.sp_flags |= CCN_SP_TEMPL_KEY_LOCATOR;
+    ccn_name_from_uri(name, "%00");
+    sp.sp_flags |= CCN_SP_FINAL_BLOCK;
+    sp.type = CCN_CONTENT_KEY;
+    sp.freshness = 300;
+    res = ccn_sign_content(h, cob, name, &sp, pubkey->buf, pubkey->length);
+    if (res != 0) abort();
+    ccnd->service_ccnb = cob;
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&pubid);
+    ccn_charbuf_destroy(&pubkey);
+    ccn_charbuf_destroy(&keyid);
+    ccn_charbuf_destroy(&sp.template_ccnb);
+}
+
 /**
  * Local interpretation of selfp->intdata
  */
@@ -66,6 +115,7 @@ static void ccnd_internal_client_reschedule(struct ccnd_handle *ccnd);
 #define OP_SELFREG     0x0500
 #define OP_UNREG       0x0600
 #define OP_NOTICE      0x0700
+#define OP_SERVICE     0x0800
 /**
  * Common interest handler for ccnd_internal_client
  */
@@ -109,7 +159,9 @@ ccnd_answer_req(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_OK);
     if (info->matched_comps >= info->interest_comps->n)
         goto Bail;
-    if (selfp->intdata != OP_PING && selfp->intdata != OP_NOTICE &&
+    if (selfp->intdata != OP_PING &&
+        selfp->intdata != OP_NOTICE &&
+        selfp->intdata != OP_SERVICE &&
         info->pi->prefix_comps != info->matched_comps + morecomps)
         goto Bail;
     if (morecomps == 1) {
@@ -159,6 +211,25 @@ GOT_HERE
             break;
         case OP_NOTICE:
             ccnd_start_notice(ccnd);
+            goto Bail;
+            break;
+        case OP_SERVICE:
+            if (ccnd->service_ccnb == NULL)
+                ccnd_init_service_ccnb(ccnd);
+            if (ccn_content_matches_interest(
+                    ccnd->service_ccnb->buf,
+                    ccnd->service_ccnb->length,
+                    1,
+                    NULL,
+                    info->interest_ccnb,
+                    info->pi->offset[CCN_PI_E],
+                    info->pi
+                )) {
+                ccn_put(info->h, ccnd->service_ccnb->buf,
+                                 ccnd->service_ccnb->length);
+                res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
+                goto Finish;
+            }
             goto Bail;
             break;
         default:
@@ -524,6 +595,8 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                     &ccnd_answer_req, OP_UNREG + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/" CCND_NOTICE_NAME,
                     &ccnd_answer_req, OP_NOTICE);
+    ccnd_uri_listen(ccnd, "ccnx:/%C1.S.localhost/%C1.M.SRV/ccnd",
+                    &ccnd_answer_req, OP_SERVICE);
     ccnd_reg_ccnx_ccndid(ccnd);
     ccnd_reg_uri(ccnd, "ccnx:/%C1.M.S.localhost",
                  0, /* special faceid for internal client */
@@ -558,6 +631,7 @@ ccnd_internal_client_stop(struct ccnd_handle *ccnd)
         ccn_schedule_cancel(ccnd->sched, ccnd->notice_push);
     ccn_indexbuf_destroy(&ccnd->chface);
     ccn_destroy(&ccnd->internal_client);
+    ccn_charbuf_destroy(&ccnd->service_ccnb);
     if (ccnd->internal_client_refresh != NULL)
         ccn_schedule_cancel(ccnd->sched, ccnd->internal_client_refresh);
 }
