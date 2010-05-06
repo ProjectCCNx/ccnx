@@ -70,11 +70,25 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	protected byte [] _digest = null;
 	protected Signature _signature; 
 	
+	/**
+	 * We don't specify a required publisher, and right now we don't enforce
+	 * that publisherID is the digest of the key used to sign (which could actually
+	 * be handy to preserve privacy); we just use the key locator and publisherID
+	 * combined to look up keys in caches (though for right now we only put keys in
+	 * caches by straight digest; would have to offer option to put keys in caches
+	 * using some privacy-preserving function as well..
+	 * 
+	 * TODO evaluate when the gap between checking verifier and checking
+	 * publisherID matters. Probably does; could have bogus publisherID, and
+	 * then real key locator and content that uses key locator would then verify
+	 * content and user might rely on publisher ID. Make that an option, though,
+	 * even if it costs more time to check.
+	 */
 	public static class SimpleVerifier implements ContentVerifier {
 		
 		public static SimpleVerifier _defaultVerifier = null;
 
-		PublisherPublicKeyDigest _publisher; 
+		PublisherPublicKeyDigest _requiredPublisher; 
 		KeyManager _keyManager;
 		
 		public static ContentVerifier getDefaultVerifier() { 
@@ -88,13 +102,13 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			return _defaultVerifier; 
 		}
 		
-		public SimpleVerifier(PublisherPublicKeyDigest publisher) {
-			_publisher = publisher;
+		public SimpleVerifier(PublisherPublicKeyDigest requiredPublisher) {
+			_requiredPublisher = requiredPublisher;
 			_keyManager = KeyManager.getDefaultKeyManager();
 		}
 		
 		public SimpleVerifier(PublisherPublicKeyDigest publisher, KeyManager keyManager) {
-			_publisher = publisher;
+			_requiredPublisher = publisher;
 			_keyManager = (null != keyManager) ? keyManager : KeyManager.getDefaultKeyManager();
 		}
 		
@@ -104,8 +118,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		public boolean verify(ContentObject object) {
 			if (null == object)
 				return false;
-			if (null != _publisher) {
-				if (!_publisher.equals(object.signedInfo().getPublisherKeyID()))
+			if (null != _requiredPublisher) {
+				if (!_requiredPublisher.equals(object.signedInfo().getPublisherKeyID()))
 					return false;
 			}
 			try {

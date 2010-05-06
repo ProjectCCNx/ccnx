@@ -99,4 +99,17 @@ public class KeyServer {
 		return KeyManager.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator, 
 				_keyServer, null, null, _handle.keyManager());
 	}
+
+	/**
+	 * Handle cases where people query us with short prefixes. The flow controller
+	 * will suppress duplicate or unnecessary registrations.
+	 * @param keyPrefix
+	 * @throws IOException 
+	 */
+	public void respondToKeyRequests(ContentName keyPrefix) throws IOException {
+		// Set up key server if it hasn't been set up already
+		initialize();
+		
+		_keyServer.addNameSpace(keyPrefix);
+	}
 }

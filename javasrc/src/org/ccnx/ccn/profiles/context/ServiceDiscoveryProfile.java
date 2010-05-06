@@ -17,17 +17,24 @@
 package org.ccnx.ccn.profiles.context;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.util.ArrayList;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+import org.ccnx.ccn.protocol.ContentObject.SimpleVerifier;
+import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 /**
  * The ServiceDiscovery protocol aids in finding data about local (same-machine)
@@ -40,10 +47,44 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 
 	public static final CommandMarker SERVICE_NAME_COMPONENT_MARKER = 
 		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "SVC");
+	
+	// Where should these go?
+	public static final String CCND_SERVICE_NAME = "ccnd";
+	public static final String REPOSITORY_SERVICE_NAME = "repository";
 		
 	public static ContentName localServiceName(String service) {
-		return new ContentName(ContextualNamesProfile.LOCALHOST, SERVICE_NAME_COMPONENT_MARKER.getBytes(), 
+		return new ContentName(ContextualNamesProfile.LOCALHOST_SCOPE, SERVICE_NAME_COMPONENT_MARKER.getBytes(), 
 				ContentName.componentParseNative(service));
+	}
+	
+	public static String getLocalServiceName(ContentName nameWithServicePrefix) {
+		
+		// /localhost/SVC/<servicename>
+		if (nameWithServicePrefix.count() < 3) {
+			if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
+				Log.finer(Log.FAC_KEYS, "Cannot get local service name, {0} does not have enough components.",
+						nameWithServicePrefix);
+			}
+		}
+		
+		if (!ContextualNamesProfile.LOCALHOST_SCOPE.isPrefixOf(nameWithServicePrefix)) {
+			if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
+				Log.finer(Log.FAC_KEYS, "Cannot get local service name, {0} does not begin with local service prefix {1}.",
+						nameWithServicePrefix, ContextualNamesProfile.LOCALHOST_SCOPE);
+			}
+			return null;
+		}
+		
+		if (!SERVICE_NAME_COMPONENT_MARKER.isMarker(nameWithServicePrefix.component(ContextualNamesProfile.LOCALHOST_SCOPE.count()))) {
+			if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
+				Log.finer(Log.FAC_KEYS, "Cannot get local service name, {0} does not contain a service name component {1}.",
+						nameWithServicePrefix, ContentName.componentPrintURI(nameWithServicePrefix.component(ContextualNamesProfile.LOCALHOST_SCOPE.count())));
+			}
+			return null;			
+		}
+		
+		byte [] serviceNameComponent = nameWithServicePrefix.component(ContextualNamesProfile.LOCALHOST_SCOPE.count() + 1);
+		return ContentName.componentPrintNative(serviceNameComponent);
 	}
 	
 	/**
@@ -59,7 +100,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 	 * @param keyManager
 	 * @throws IOException 
 	 */
-	public ArrayList<ContentObject> getLocalServiceKeys(String service, long timeout, CCNHandle handle) throws IOException {
+	public static ArrayList<ContentObject> getLocalServiceKeys(String service, long timeout, CCNHandle handle) throws IOException {
 		
 		ContentName serviceKeyName = new ContentName(localServiceName(service), KeyProfile.KEY_NAME_COMPONENT);
 		
@@ -67,13 +108,17 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 		// for the key id, and then a version and segments. Might be more expensive to apply the filters than
 		// to throw things away and go around again...
 		
-		Interest theInterest = new Interest();
+		Interest theInterest = Interest.lower(serviceKeyName, 4, null);
+		theInterest.answerOriginKind(0); // bypass the cache
 		
-		ArrayList<ContentObject> results = null;
+		ArrayList<ContentObject> results = new ArrayList<ContentObject>();
 		ContentObject theResult = null;
 		int keyidComponent = serviceKeyName.count();
 		
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
+		
+		// We need a verifier that checks the match between publisher and public key.
+		ContentVerifier verifier = new SimpleVerifier(null, handle.keyManager());
 		
 		do {
 			
@@ -81,21 +126,35 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 				//we have explicit excludes, add them to this interest
 				byte [][] e = new byte[excludeList.size()][];
 				excludeList.toArray(e);
-				theInterest.exclude().add(e);
+				if (null != theInterest.exclude()) {
+					theInterest.exclude().add(e);
+				} else {
+					Exclude theExclude = new Exclude(e);
+					theInterest.exclude(theExclude);
+				}
 			}
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "getLocalServiceKeys, interest: {0}", theInterest);
+			}
+			
 			theResult = handle.get(theInterest, timeout);
 			
-			// Verify theResult
-			
-			
-			// Check to see if theResult matches criteria
-			
 			if (null != theResult) {
-				if (null == results) {
-					results = new ArrayList<ContentObject>();
+				// Verify theResult (should go into handle.get)
+				// Check to see if theResult matches criteria
+				if (verifier.verify(theResult) && (ContentType.KEY == theResult.signedInfo().getType())) {
+					// it's a key, remember it, and see if we can find any others.
+					results.add(theResult);
+					excludeList.add(theResult.name().component(keyidComponent));
+					
+					if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+						Log.info(Log.FAC_KEYS, "Got key for service {0}: {1}", service, theResult.name());
+					}
+					
+				} else {
+					// we don't want to exclude other things with this next component, but
+					// do want to exclude this one; need digest exclude
 				}
-				results.add(theResult);
-				excludeList.add(theResult.name().component(keyidComponent));
 			}
 
 		} while (null != theResult);
@@ -103,8 +162,20 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 		return results;
 	}
 	
-	public static void publishLocalServiceKey(String service, PublisherPublicKeyDigest serviceKey, KeyManager keyManager) {
+	public static void publishLocalServiceKey(String service, PublisherPublicKeyDigest serviceKey, KeyManager keyManager) throws InvalidKeyException, IOException {
+		if (null == serviceKey) {
+			serviceKey = keyManager.getDefaultKeyID();
+		}
 		
+		ContentName serviceKeyPrefix = new ContentName(localServiceName(service), KeyProfile.KEY_NAME_COMPONENT);
+		ContentName serviceKeyName = 
+			KeyProfile.keyName(serviceKeyPrefix, serviceKey);
+		
+		// Register a filter for the interest we are likely to actually get. 
+		keyManager.respondToKeyRequests(serviceKeyPrefix);
+		
+		// Need a way to override any stored key locator.
+		keyManager.publishSelfSignedKey(serviceKeyName, serviceKey);
 	}
 
 }
