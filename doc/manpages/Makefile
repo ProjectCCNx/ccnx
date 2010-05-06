@@ -19,6 +19,8 @@ PAGE_NAMES = 			\
 	ccnd			\
 	ccndc			\
 	ccndstart		\
+        ccndstatus		\
+	ccndstop		\
 	ccnexplore		\
 	ccnls			\
 	ccnlsrepo		\
@@ -37,7 +39,7 @@ DERIVED_MAN = $(PAGE_NAMES:=.1)
 
 DERIVED_INDEX = index.html index.txt
 DEBRIS = $(PAGE_NAMES:=.1.fo) $(PAGE_NAMES:=.1.xml)
-NONSOURCE = $(DERIVED_HTML) $(DERIVED_PDF) $(DERIVED_MAN) $(DERIVED_INDEX) \
+NONSOURCE = $(DERIVED_HTML) $(DERIVED_PDF) $(DERIVED_INDEX) \
 	$(DEBRIS)
 SRC_HTML = # any checked-in html files should go here
 INDEXED_HTML = $(DERIVED_HTML) $(SRC_HTML)
@@ -63,6 +65,11 @@ clean-documentation:
 .gitignore: Makefile
 	for i in $(NONSOURCE); do echo $$i; done > $@
 
+depend: Makefile
+	@for i in $(PAGE_NAMES); do echo $$i.1.html: $$i.1.txt; done > depend
+	@for i in $(PAGE_NAMES); do echo $$i.1.pdf: $$i.1.txt; done >> depend
+	@for i in $(PAGE_NAMES); do echo $$i.1: $$i.1.txt;     done >> depend
+
 index.html: index.txt
 	asciidoc index.txt
 
@@ -73,14 +80,16 @@ index.txt: $(INDEXED_HTML) .genindex.sh
 $(DERIVED_HTML): $(@:.html=.txt) 
 	asciidoc -a revnumber="$(PROJECT_NUMBER)" -d manpage $(@:.html=.txt)
 
-$(DERIVED_PDF): $(@:=.txt)
-	a2x -f pdf -d manpage $(@:=.txt)
+$(DERIVED_PDF): $(@:.pdf=.txt)
+	a2x -a revnumber="$(PROJECT_NUMBER)" -f pdf -d manpage $(@:.pdf=.txt)
 
 $(DERIVED_MAN): $(@:=.txt)
 	a2x -a revnumber="$(PROJECT_NUMBER)" -f manpage -d manpage $(@:=.txt)
 
-default all clean clean-documentation depend test check shared documentation dist-docs testinstall install uninstall: _always
+default all clean clean-documentation test check shared documentation dist-docs testinstall install uninstall: _always
 
 _always:
 
 .PHONY: _always
+
+include depend

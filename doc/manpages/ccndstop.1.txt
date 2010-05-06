@@ -1,0 +1,35 @@
+CCNDSTOP(1)
+===========
+
+NAME
+----
+ccndstop - Stop ccnd
+
+SYNOPSIS
+--------
+*ccndstop*
+
+DESCRIPTION
+-----------
+The *ccndstop* utility shuts down *ccnd* cleanly.
+
+OPTIONS
+-------
+
+This utility does have have flags or arguments.
+
+The 'CCN_LOCAL_PORT' environment variable may be used to identify
+the port that the *ccnd* instance is using; if unset, the default
+port number (9695) is used.
+
+EXIT STATUS
+-----------
+*0*::
+     Success - the *ccnd* was running and was shut down successfully.
+
+*1*::
+     Failure - probably means that  *ccnd* was not running.
+
+AUTHOR
+------
+Michael Plass <plass@parc.com>
