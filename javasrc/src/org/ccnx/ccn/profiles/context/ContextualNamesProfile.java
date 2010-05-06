@@ -16,10 +16,9 @@
  */
 package org.ccnx.ccn.profiles.context;
 
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CCNProfile;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
  * This is the very tiniest beginning of naming and scoping for things like
@@ -27,16 +26,9 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  */
 public class ContextualNamesProfile implements CCNProfile {
 
-	public static final ContentName LOCALHOST;
+	public static final String STRING_LOCALHOST = "localhost";
+
+	public static final ContentName LOCALHOST_SCOPE =
+		new ContentName(new byte [][]{CommandMarker.COMMAND_MARKER_SCOPE.addArgument(STRING_LOCALHOST)});
 	
-	static {
-		ContentName tmpLH;
-		try {
-			tmpLH = ContentName.fromURI("ccnx:/localhost");
-		} catch (MalformedContentNameStringException e) {
-			tmpLH = null;
-			Log.warning("Serious configuration error: cannot parse built-in name for localhost!");
-		}	
-		LOCALHOST = tmpLH;
-	}
 }
