@@ -524,7 +524,7 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/" CCND_NOTICE_NAME,
                     &ccnd_answer_req, OP_NOTICE);
     ccnd_reg_ccnx_ccndid(ccnd);
-    ccnd_reg_uri(ccnd, "ccnx:/%C1.S.localhost",
+    ccnd_reg_uri(ccnd, "ccnx:/%C1.M.S.localhost",
                  0, /* special faceid for internal client */
                  (CCN_FORW_CHILD_INHERIT | 
                   CCN_FORW_ACTIVE        |
