@@ -74,6 +74,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 		// to throw things away and go around again...
 		
 		Interest theInterest = Interest.lower(serviceKeyName, 4, null);
+		theInterest.answerOriginKind(0); // bypass the cache
 		
 		ArrayList<ContentObject> results = null;
 		ContentObject theResult = null;
@@ -124,7 +125,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 		ContentName serviceKeyName = new ContentName(localServiceName(service), KeyProfile.KEY_NAME_COMPONENT);
 		
 		// Need a way to override any stored key locator.
-		keyManager.publishSelfSignedKey(serviceKeyName, serviceKey, null);
+		keyManager.publishSelfSignedKey(serviceKeyName, serviceKey);
 	}
 
 }
