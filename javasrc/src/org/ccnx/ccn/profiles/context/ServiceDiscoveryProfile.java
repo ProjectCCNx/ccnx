@@ -45,16 +45,27 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  */
 public class ServiceDiscoveryProfile implements CCNProfile {
 
+	public static final String STRING_LOCALHOST = "localhost";
+
+	public static final CommandMarker LOCALHOST_SCOPE =
+		CommandMarker.commandMarker(CommandMarker.COMMAND_MARKER_SCOPE, STRING_LOCALHOST);
+
 	public static final CommandMarker SERVICE_NAME_COMPONENT_MARKER = 
 		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "SVC");
+	
+	public static final int SCOPE_COMPONENT = 0;
+	public static final int SERVICE_MARKER_COMPONENT = 1;
+	public static final int SERVICE_NAME_COMPONENT = 3;
 	
 	// Where should these go?
 	public static final String CCND_SERVICE_NAME = "ccnd";
 	public static final String REPOSITORY_SERVICE_NAME = "repository";
 		
 	public static ContentName localServiceName(String service) {
-		return new ContentName(ContextualNamesProfile.LOCALHOST_SCOPE, SERVICE_NAME_COMPONENT_MARKER.getBytes(), 
-				ContentName.componentParseNative(service));
+		return new ContentName(
+			new byte [][]{ServiceDiscoveryProfile.LOCALHOST_SCOPE.getBytes(), 
+						  SERVICE_NAME_COMPONENT_MARKER.getBytes(), 
+						  ContentName.componentParseNative(service)});
 	}
 	
 	public static String getLocalServiceName(ContentName nameWithServicePrefix) {
@@ -67,23 +78,26 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 			}
 		}
 		
-		if (!ContextualNamesProfile.LOCALHOST_SCOPE.isPrefixOf(nameWithServicePrefix)) {
+		if (!ServiceDiscoveryProfile.LOCALHOST_SCOPE.isMarker(nameWithServicePrefix.component(SCOPE_COMPONENT))) {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
 				Log.finer(Log.FAC_KEYS, "Cannot get local service name, {0} does not begin with local service prefix {1}.",
-						nameWithServicePrefix, ContextualNamesProfile.LOCALHOST_SCOPE);
+						nameWithServicePrefix, ServiceDiscoveryProfile.LOCALHOST_SCOPE);
 			}
 			return null;
 		}
 		
-		if (!SERVICE_NAME_COMPONENT_MARKER.isMarker(nameWithServicePrefix.component(ContextualNamesProfile.LOCALHOST_SCOPE.count()))) {
+		if (!SERVICE_NAME_COMPONENT_MARKER.isMarker(
+					nameWithServicePrefix.component(SERVICE_MARKER_COMPONENT))) {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
 				Log.finer(Log.FAC_KEYS, "Cannot get local service name, {0} does not contain a service name component {1}.",
-						nameWithServicePrefix, ContentName.componentPrintURI(nameWithServicePrefix.component(ContextualNamesProfile.LOCALHOST_SCOPE.count())));
+						nameWithServicePrefix, 
+						ContentName.componentPrintURI(nameWithServicePrefix.component(SERVICE_MARKER_COMPONENT)));
 			}
 			return null;			
 		}
 		
-		byte [] serviceNameComponent = nameWithServicePrefix.component(ContextualNamesProfile.LOCALHOST_SCOPE.count() + 1);
+		byte [] serviceNameComponent = 
+			nameWithServicePrefix.component(SERVICE_NAME_COMPONENT);
 		return ContentName.componentPrintNative(serviceNameComponent);
 	}
 	
@@ -177,5 +191,4 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 		// Need a way to override any stored key locator.
 		keyManager.publishSelfSignedKey(serviceKeyName, serviceKey);
 	}
-
 }
