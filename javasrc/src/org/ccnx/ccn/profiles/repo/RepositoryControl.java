@@ -169,7 +169,6 @@ public class RepositoryControl {
 			if (repoInfo.getType() == RepoInfoType.DATA) {
 				// This type from checked write is confirmation that content already held
 				return true;
-
 			}
 		} catch (ContentDecodingException e) {
 			Log.info("ContentDecodingException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());
