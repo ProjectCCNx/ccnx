@@ -216,29 +216,48 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 	public boolean equalsKey(PublicKey otherKey) throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 		if (!available())
 			throw new ContentNotReadyException("No data available to compare!");
-		if (publicKey().equals(otherKey))
-			return true;
-		// might be that the provider doesn't implement equals()
-		return Arrays.equals(publicKey().getEncoded(), otherKey.getEncoded());
+		
+		return equalsKey(publicKey(), otherKey);
 	}
 	
 	public boolean equalsKey(PublicKeyObject otherKeyObject) throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 		return this.equalsKey(otherKeyObject.publicKey());
 	}
 	
+	public static boolean equalsKey(PublicKey thisKey, PublicKey thatKey) {
+		if (null == thisKey) {
+			if (null == thatKey) {
+				return true;
+			}
+			return false;
+		} else if (null == thatKey) {
+			return false;
+		}
+		if (thisKey.equals(thatKey))
+			return true;
+		// might be that the provider doesn't implement equals()
+		return Arrays.equals(thisKey.getEncoded(), thatKey.getEncoded());
+		
+	}
+	
 	public boolean isSelfSigned() throws ContentNotReadyException, IOException {
 		if (!isSaved()) {
 			throw new ContentNotReadyException("No content retrieved -- cannot check if self-signed!");
 		}
-		if (getPublisherKeyLocator().type() == KeyLocatorType.KEY) {
-			if (!equalsKey(getPublisherKeyLocator().key())) {
+		return isSelfSigned(getVersionedName(), publicKey(), getPublisherKeyLocator());
+	}
+	
+	public static boolean isSelfSigned(ContentName versionedKeyName, PublicKey theKey, KeyLocator publisherKeyLocator) {
+		
+		if (publisherKeyLocator.type() == KeyLocatorType.KEY) {
+			if (!equalsKey(theKey, publisherKeyLocator.key())) {
 				return false;
 			} else {
 				return true;
 			}
 		}
-		if (getPublisherKeyLocator().type() == KeyLocatorType.NAME) {
-			if (!getPublisherKeyLocator().name().name().isPrefixOf(getVersionedName())) {
+		if (publisherKeyLocator.type() == KeyLocatorType.NAME) {
+			if (!publisherKeyLocator.name().name().isPrefixOf(versionedKeyName)) {
 				return false;
 			} else {
 				return true;
@@ -247,4 +266,25 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 		// For now, stop there
 		return false;
 	}
+	
+	public static boolean isSelfSigned(ContentName versionedKeyName, PublisherPublicKeyDigest keyDigest, KeyLocator publisherKeyLocator) {
+		
+		if (publisherKeyLocator.type() == KeyLocatorType.KEY) {
+			if (!keyDigest.equals(new PublisherPublicKeyDigest(publisherKeyLocator.key()))) {
+				return false;
+			} else {
+				return true;
+			}
+		}
+		if (publisherKeyLocator.type() == KeyLocatorType.NAME) {
+			if (!publisherKeyLocator.name().name().isPrefixOf(versionedKeyName)) {
+				return false;
+			} else {
+				return true;
+			}
+		}
+		// For now, stop there
+		return false;
+	}
+
 }

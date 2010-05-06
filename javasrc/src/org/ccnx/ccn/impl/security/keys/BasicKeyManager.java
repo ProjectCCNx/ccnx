@@ -938,6 +938,38 @@ public class BasicKeyManager extends KeyManager {
 												 getDefaultKeyLocator(), timeToWaitForPreexisting, 
 												 false, handle());
 	}
+	
+	/**
+	 * Publish a key at a certain name, ensuring that it is stored in a repository. Require
+	 * that the key be self-signed. Will throw an
+	 * exception if no repository available. Usually used to publish our own keys, but can specify
+	 * any key known to our key cache.
+	 * @param keyName Name under which to publish the key. Currently added under existing version, or version
+	 * 	included in keyName.
+	 * @param keyToPublish can be null, in which case we publish our own default public key.
+	 * @param handle the handle to use for network requests
+	 * @throws InvalidKeyException
+	 * @throws IOException
+	 */
+	@Override
+	public PublicKeyObject publishSelfSignedKeyToRepository(ContentName keyName,
+			PublisherPublicKeyDigest keyToPublish,
+			long timeToWaitForPreexisting) throws InvalidKeyException,
+			IOException {
+		if (null == keyToPublish) {
+			keyToPublish = getDefaultKeyID();
+		}
+		
+		PublicKey theKey = getPublicKeyCache().getPublicKeyFromCache(keyToPublish);
+		if (null == theKey) {
+			throw new InvalidKeyException("Key " + keyToPublish + " not available in cache, cannot publish!");
+		}
+		
+		return KeyManager.publishKeyToRepository(keyName, theKey, keyToPublish, 
+												 KeyManager.SELF_SIGNED_KEY_LOCATOR, 
+												 timeToWaitForPreexisting, 
+												 false, handle());
+	}
 
 	@Override
 	public AccessControlManager getAccessControlManagerForName(

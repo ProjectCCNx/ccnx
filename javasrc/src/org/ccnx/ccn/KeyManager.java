@@ -70,6 +70,11 @@ public abstract class KeyManager {
 	}
 	
 	/**
+	 * Canary value, indicates we want to override any other key locator available.
+	 */
+	protected static final KeyLocator SELF_SIGNED_KEY_LOCATOR = new KeyLocator();
+	
+	/**
 	 * Currently default to SHA-256. Only thing that associates a specific digest algorithm
 	 * with a version of the CCN protocol is the calculation of the vestigial content digest component
 	 * of ContentName used in Interest matching, and publisher digests. Changing the latter
@@ -485,16 +490,8 @@ public abstract class KeyManager {
 	 * a circular dependency. The code is very low-level and should only be modified with
 	 * great caution.
 	 * 
-	 * @param keyName the name under which the key should be published. For the moment, keys are
-	 * 		  unversioned.
-	 * @param keyToPublish can be null, in which case we publish our own default public key
-	 * @throws InvalidKeyException 
-	 * @throws IOException
-	 */
-	/**
-	 * Publish my public key to a local key server run in this JVM.
 	 * @param keyName content name of the public key
-	 * @param keyToPublish public key digest
+	 * @param keyToPublish public key digest of key to publish, if null publish our default key
 	 * @param handle handle for ccn
 	 * @throws IOException
 	 * @throws InvalidKeyException
@@ -513,6 +510,31 @@ public abstract class KeyManager {
 		}
 		return publishKey(keyName, theKey, signingKeyID, signingKeyLocator);
 	}
+	
+	/**
+	 * Publish my public key to a local key server run in this JVM, as a self-signed key
+	 * record. We do this by default if we don't have any credentials for this key; this
+	 * just allows the caller to explicitly request this behavior even if we do have
+	 * credentials.
+	 * @param keyName content name of the public key
+	 * @param keyToPublish public key digest of key to publish and to sign with
+	 * @param handle handle for ccn
+	 * @throws IOException
+	 * @throws InvalidKeyException
+	 */
+	public PublicKeyObject publishSelfSignedKey(ContentName keyName, 
+						   PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException {
+		if (null == keyToPublish) {
+			keyToPublish = getDefaultKeyID();
+		} 
+		PublicKey theKey = getPublicKey(keyToPublish);
+		if (null == theKey) {
+			Log.warning("Cannot publish key {0} to name {1}, do not have public key in cache.", keyToPublish, keyName);
+			return null;
+		}
+		return publishKey(keyName, theKey, keyToPublish, SELF_SIGNED_KEY_LOCATOR);
+	}
+
 
 	/**
 	 * Publish a key at a certain name, signed by our default identity. Usually used to
@@ -550,6 +572,24 @@ public abstract class KeyManager {
 	 * @throws IOException
 	 */
 	public abstract PublicKeyObject publishKeyToRepository(ContentName keyName, 
+															PublisherPublicKeyDigest keyToPublish,
+															long timeToWaitForPreexisting)
+			throws InvalidKeyException, IOException;
+
+
+	/**
+	 * Publish one of our keys to a repository, if it isn't already there, and ensure
+	 * that it's self-signed regardless of what credentials we have for it (this
+	 * is the default behavior if we have no credentials for the key. Throws an exception
+	 * if no repository is available
+	 * @param keyName Name under which to publish the key. Currently added under existing version, or version
+	 * 	included in keyName.
+	 * @param keyToPublish can be null, in which case we publish our own default public key.
+	 * @param handle the handle to use for network requests
+	 * @throws InvalidKeyException
+	 * @throws IOException
+	 */
+	public abstract PublicKeyObject publishSelfSignedKeyToRepository(ContentName keyName, 
 															PublisherPublicKeyDigest keyToPublish,
 															long timeToWaitForPreexisting)
 			throws InvalidKeyException, IOException;
@@ -621,6 +661,21 @@ public abstract class KeyManager {
 		ContentObject availableContent = 
 			CCNReader.isVersionedContentAvailable(keyName, ContentType.KEY, keyDigest.digest(), 
 					(requirePublisherMatch ? signingKeyID : null), null, timeToWaitForPreexisting, handle);
+		
+		// If we want it self-signed...
+		if (SELF_SIGNED_KEY_LOCATOR == signingKeyLocator) {
+			// do mean == here....
+			// have already verified that keyDigest is the digest of the content of availableContent
+			if (!PublicKeyObject.isSelfSigned(SegmentationProfile.segmentRoot(availableContent.name()), 
+					keyDigest, availableContent.signedInfo().getKeyLocator())) {
+				// it would be perfect, but it's not self-signed
+				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+					Log.info(Log.FAC_KEYS, "Found our key published under desired name {0}, but not self-signed as required - key locator is {1}.",
+							availableContent.name(), availableContent.signedInfo().getKeyLocator());
+				}
+				availableContent = null;
+			}
+		}
 		
 		if (null != availableContent) {
 			
@@ -713,9 +768,15 @@ public abstract class KeyManager {
 			signingKeyID = keyManager.getDefaultKeyID();
 		}
 
-		if (null == signingKeyLocator) {
+		// Reallly do want == here
+		if ((null == signingKeyLocator) || (SELF_SIGNED_KEY_LOCATOR == signingKeyLocator)) {
+			
 			KeyLocator existingLocator = keyManager.getKeyLocator(signingKeyID);
-			if (existingLocator.type() == KeyLocatorType.KEY) {
+			
+			// If we've asked for this to be self-signed, or we have made the default KEY
+			// type key locator, make this a self-signed key.
+			if ((SELF_SIGNED_KEY_LOCATOR == signingKeyLocator) || 
+					(existingLocator.type() == KeyLocatorType.KEY)) {
 				PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(keyToPublish);
 				if (signingKeyID.equals(keyDigest)) {
 					// Make a self-referential key locator. For now do not include the
