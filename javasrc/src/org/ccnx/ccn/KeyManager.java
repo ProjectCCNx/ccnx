@@ -855,6 +855,14 @@ public abstract class KeyManager {
 	}
 
 	/**
+	 * Right now KeyServers are hidden in our subclasses.... this makes it hard to expose
+	 * control of filter registration. This is a bad attempt at an API for that, it should
+	 * change. Don't make it abstract as subclasses may not need it.
+	 * @throws IOException 
+	 */
+	public void respondToKeyRequests(ContentName keyPrefix) throws IOException {}
+	
+	/**
 	 * Handle access control manager cache.
 	 * @param contentName
 	 * @return

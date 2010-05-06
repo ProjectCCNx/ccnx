@@ -217,9 +217,26 @@ public class BasicKeyManager extends KeyManager {
 			return;
 		}
 		_keyServer = new KeyServer(handle);
-		_keyServer.serveKey(getDefaultKeyName(getDefaultKeyID()), getDefaultPublicKey(), null, null);
+		if (UserConfiguration.publishKeys()) {
+			_keyServer.serveKey(getDefaultKeyName(getDefaultKeyID()), getDefaultPublicKey(), null, null);
+		}
 	}
-	
+
+	public PublicKeyObject serveKey(ContentName keyName, PublicKey keyToPublish,
+   			PublisherPublicKeyDigest signingKeyID, 
+   			KeyLocator signingKeyLocator) throws IOException {
+		// TODO -- make use default handle, just pass in KM to do signing and have KS use separate
+		// handle for publishing
+		initializeKeyServer(handle());
+		return _keyServer.serveKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
+	}
+
+	@Override
+	public void respondToKeyRequests(ContentName keyPrefix) throws IOException {
+		initializeKeyServer(handle());
+		_keyServer.respondToKeyRequests(keyPrefix);
+	}
+
 	@Override
 	public boolean initialized() { return _initialized; }
 	
@@ -878,7 +895,7 @@ public class BasicKeyManager extends KeyManager {
 			Log.info(Log.FAC_KEYS, "publishKey: publishing key {0} under specified key name {1}", keyDigest, keyName);
 
 		PublicKeyObject keyObject =  
-			_keyServer.serveKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
+			serveKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
 		
 		if (!haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
 			// So once we publish self-signed key object, we store a pointer to that
