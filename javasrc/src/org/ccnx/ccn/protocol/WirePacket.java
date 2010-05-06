@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -42,10 +42,10 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 	}
 	
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
-		if (decoder.peekStartElement(CCNProtocolDTags.Interest.getTag())) {
+		if (decoder.peekStartElement(CCNProtocolDTags.Interest)) {
 			_content = new Interest();
 			_content.decode(decoder);
-		} else if (decoder.peekStartElement(CCNProtocolDTags.ContentObject.getTag())) {
+		} else if (decoder.peekStartElement(CCNProtocolDTags.ContentObject)) {
 			_content = new ContentObject();
 			_content.decode(decoder);
 			if( Log.isLoggable(Level.FINEST) )
