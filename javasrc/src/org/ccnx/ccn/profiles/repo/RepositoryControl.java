@@ -13,6 +13,7 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNAbstractInputStream;
 import org.ccnx.ccn.io.NoMatchingContentFoundException;
+import org.ccnx.ccn.io.content.CCNNetworkObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.CommandMarker;
@@ -99,6 +100,34 @@ public class RepositoryControl {
 		return result;
 	}
 	
+	public static boolean localRepoSync(CCNHandle handle, CCNNetworkObject<?> obj) throws IOException {
+		boolean result;
+		
+		byte[] digest = obj.getFirstDigest(); // This forces reading if not done already
+		ContentName name = obj.getVersionedName();
+		Long segment = obj.firstSegmentNumber();
+		Log.fine("RepositoryControl.localRepoSync called for net obj name {0}", name);
+
+		// Request preserving the dereferenced content of the stream first
+		result = internalRepoSync(handle, name, segment, digest);
+		
+		// Now also deal with each of the links dereferenced to get to the ultimate content
+		LinkObject link = obj.getDereferencedLink();
+		while (null != link) {
+			// Request preserving current link: note that all of these links have 
+			// been dereferenced already to get to the content, and so have been read
+			digest = link.getFirstDigest();
+			name = link.getVersionedName(); // we need versioned name; link basename may or may not be
+			segment = link.firstSegmentNumber();
+
+			if (!internalRepoSync(handle, name, segment, digest)) {
+				result = false;
+			}
+			link = link.getDereferencedLink();
+		}	
+		return result;
+	}
+
 	/*
 	 * Internal method to generate request for local repository to preserve content stream
 	 * @param handle the CCNHandle to use
