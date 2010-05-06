@@ -137,11 +137,6 @@ public class CommandMarker {
 	public static final CommandMarker COMMAND_MARKER_NONCE = commandMarker(NONCE_NAMESPACE, null);
 	
 	/**
-	 * GUID marker
-	 */
-	public static final CommandMarker COMMAND_MARKER_GUID = commandMarker(CommandMarker.MARKER_NAMESPACE, "G");
-	
-	/**
 	 * Marker for typed binary name components. These aren't general binary name components, but name
 	 * components with defined semantics. Specific examples are defined in their own profiles, see
 	 * KeyProfile and GuidProfile, as well as markers for access controls. The interpretation of these
@@ -153,6 +148,18 @@ public class CommandMarker {
 	 * have to centralize here for reference.
 	 */
 	public static final String MARKER_NAMESPACE = "M";
+	
+	/**
+	 * GUID marker
+	 */
+	public static final CommandMarker COMMAND_MARKER_GUID = commandMarker(CommandMarker.MARKER_NAMESPACE, "G");
+	
+	/**
+	 * Marker for a name component that is supposed to indicate a scope
+	 */
+	public static final CommandMarker COMMAND_MARKER_SCOPE = 
+		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "S");
+
 
 	/**
 	 * This in practice might be only the prefix, with additional variable arguments added
@@ -275,6 +282,13 @@ public class CommandMarker {
 	 */
 	public byte [] addArguments(String [] arguments) {
 		return addArgumentsAndData(arguments,  null, (byte)0x00);
+	}
+	
+	/**
+	 * Helper method if you just need to add one argument
+	 */
+	public byte [] addArgument(String argument) {
+		return addArguments(new String[]{argument});
 	}
 	
 	/**
