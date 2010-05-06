@@ -218,7 +218,15 @@ public class BasicKeyManager extends KeyManager {
 		}
 		_keyServer = new KeyServer(handle);
 		if (UserConfiguration.publishKeys()) {
-			_keyServer.serveKey(getDefaultKeyName(getDefaultKeyID()), getDefaultPublicKey(), null, null);
+			try {
+				this.publishKey(getDefaultKeyName(getDefaultKeyID()), 
+						getDefaultPublicKey(),
+						null,
+						null);
+			} catch (InvalidKeyException e) {
+				// in java 1.6 move to handing exception to constructor
+				throw new IOException("Default key is invalid! " + e);
+			}
 		}
 	}
 
