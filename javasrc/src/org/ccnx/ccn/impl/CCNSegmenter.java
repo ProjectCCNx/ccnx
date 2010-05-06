@@ -129,6 +129,17 @@ public class CCNSegmenter {
 	 * Handle multi-block amortized signing. If null, default to single-block signing.
 	 */
 	protected CCNAggregatedSigner _bulkSigner;
+	
+	/**
+	 * The first segment digest, useful for characterizing the
+	 * particular instance
+	 */
+	protected byte[] _firstDigest = null;
+
+	/**
+	 * The segment number that the stream starts with.
+	 */
+	protected Long _startingSegmentNumber = null;
 
 	/**
 	 * Create a segmenter with default (Merkle hash tree) bulk signing
@@ -243,6 +254,24 @@ public class CCNSegmenter {
 	public CCNHandle getLibrary() { return _handle; }
 
 	public CCNFlowControl getFlowControl() { return _flowControl; }
+
+	/**
+	 * Return the digest of the first segment. 
+	 * 
+	 * @return The digest of the first segment or null if no segments generated yet
+	 */
+	public byte[] getFirstDigest() {
+		return _firstDigest;
+	}
+
+	/**
+	 * Return the digest of the first segment. 
+	 * 
+	 * @return The digest of the first segment or null if no segments generated yet
+	 */
+	public Long firstSegmentNumber() {
+		return _startingSegmentNumber;
+	}
 
 	/**
 	 * Sets the segmentation block size to use
@@ -506,6 +535,10 @@ public class CCNSegmenter {
 		// For now, this generates the root signature too, so can
 		// ask for the signature for each block.
 		_bulkSigner.signBlocks(contentObjects, signingKey);
+		if (null == _firstDigest) {
+			_firstDigest = contentObjects[0].digest();
+			_startingSegmentNumber = baseSegmentNumber;
+		}
 		getFlowControl().put(contentObjects);
 
 		return nextSegmentIndex(
@@ -605,6 +638,10 @@ public class CCNSegmenter {
 		// For now, this generates the root signature too, so can
 		// ask for the signature for each block.
 		_bulkSigner.signBlocks(contentObjects, signingKey);
+		if (null == _firstDigest) {
+			_firstDigest = contentObjects[0].digest();
+			_startingSegmentNumber = baseSegmentNumber;
+		}
 		getFlowControl().put(contentObjects);
 
 		return nextSegmentIndex(
@@ -701,6 +738,10 @@ public class CCNSegmenter {
 							freshnessSeconds, 
 							finalBlockID), 
 							content, offset, length, signingKey);
+		if (null == _firstDigest) {
+			_firstDigest = co.digest();
+			_startingSegmentNumber = segmentNumber;
+		}
 		if( Log.isLoggable(Level.FINER))
 			Log.finer("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
 		_flowControl.put(co);
@@ -759,7 +800,6 @@ public class CCNSegmenter {
 						SegmentationProfile.segmentName(rootName, nextSegmentIndex),
 						signedInfo,
 						dataStream, blockWidth);
-
 			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, 
 					blocks[i].contentLength());
 			offset += blockWidth;

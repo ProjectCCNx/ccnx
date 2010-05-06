@@ -101,6 +101,13 @@ public interface RepositoryStore {
 	public ContentObject getContent(Interest interest) throws RepositoryException;
 	
 	/**
+	 * Check for content matching the given name, without retrieving the content itself.
+	 * @param name ContentName to match exactly, including digest as final explicit component
+	 * @return true if there is a ContentObject with exactly the given name, false otherwise
+	 */
+	public boolean hasContent(ContentName name) throws RepositoryException;
+	
+	/**
 	 * Get namespace interest
 	 * @return
 	 */

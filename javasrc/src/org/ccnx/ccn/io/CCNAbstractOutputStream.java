@@ -163,6 +163,32 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	public ContentType getType() { return _type; }
 
 	/**
+	 * Return the digest of the first segment of this stream. 
+	 * 
+	 * @return The digest of the first segment of this stream
+	 */
+	public byte[] getFirstDigest() {
+		if (null != _segmenter) {	
+			return _segmenter.getFirstDigest();
+		} else {
+			return null;
+		}
+	}
+	
+	/**
+	 * Returns the first segment number for this stream.
+	 * @return The index of the first segment of stream data.
+	 */
+	public Long firstSegmentNumber() {
+		if (null != _segmenter) {
+			return _segmenter.firstSegmentNumber();
+		} else {
+			return null;
+		}
+	}
+
+
+	/**
 	 * @return The CCNSegmenter responsible for segmenting and signing stream content. 
 	 */
 	protected CCNSegmenter getSegmenter() {

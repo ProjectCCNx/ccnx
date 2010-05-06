@@ -115,6 +115,10 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
 		return _index.get(interest, this);
 	}
 		
+	public boolean hasContent(ContentName name) throws RepositoryException {
+		return _index.matchContent(name);
+	}
+
 	public NameEnumerationResponse getNamesWithPrefix(Interest i, ContentName responseName) {
 		return _index.getNamesWithPrefix(i, responseName);
 	}
