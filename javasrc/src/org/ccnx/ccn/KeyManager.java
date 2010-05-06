@@ -106,8 +106,8 @@ public abstract class KeyManager {
 	 */
 	public static synchronized KeyManager getDefaultKeyManager() {
 		// could print a stack trace
-		if (Log.isLoggable(Level.FINER)) {
-			Log.finer("NOTICE: retrieving default key manager. Do you really want to do this?");
+		if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
+			Log.finer(Log.FAC_KEYS, "NOTICE: retrieving default key manager. Do you really want to do this?");
 			try {
 				throw new ConfigurationException("THIS IS NOT AN ERROR: tracking stack trace to find use of default key manager.");
 			} catch (ConfigurationException e) {
@@ -169,7 +169,9 @@ public abstract class KeyManager {
 			Log.warning("Setting default key manager to NULL. Default user key manager will be loaded on next request for default key manager.");
 		}
 		closeDefaultKeyManager();
-		Log.info("Setting default key manager: new KeyManager {0}", keyManager.getClass().getName());
+		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
+			Log.info(Log.FAC_KEYS, "Setting default key manager: new KeyManager {0}", keyManager.getClass().getName());
+		}
 		_defaultKeyManager = keyManager;
 	}
 	
@@ -187,15 +189,21 @@ public abstract class KeyManager {
 					BC_PROVIDER = bc;
 					if (null != BC_PROVIDER) {
 						if (result > 0) {
-							Log.info("KeyManager: Successfully initialized BouncyCastle provider at position " + result);
+							if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
+								Log.info(Log.FAC_KEYS, "KeyManager: Successfully initialized BouncyCastle provider at position " + result);
+							}
 						} else {
-							Log.info("KeyManager: BouncyCastle provider already installed.");
+							if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
+								Log.info(Log.FAC_KEYS, "KeyManager: BouncyCastle provider already installed.");
+							}
 						}
 					} else {
 						Log.severe("ERROR: NULL default provider! Cannot load BouncyCastle! Result of addProvider: " + result);
 					}
 				} else {
-					Log.info("KeyManager: BouncyCastle provider installed by default.");
+					if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
+						Log.info(Log.FAC_KEYS, "KeyManager: BouncyCastle provider installed by default.");
+					}
 				}
 				Provider checkProvider = Security.getProvider("BC");
 				if (null == checkProvider) {
@@ -314,7 +322,9 @@ public abstract class KeyManager {
 	public ContentName getDefaultKeyName(ContentName keyPrefix, PublisherPublicKeyDigest keyID, CCNTime keyVersion) {
 		if (null == keyPrefix) {
 			keyPrefix = getDefaultKeyNamePrefix();
-			Log.info("Got default key name prefix: {0}", keyPrefix);
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
+				Log.info(Log.FAC_KEYS, "Got default key name prefix: {0}", keyPrefix);
+			}
 		}
 		ContentName keyName = KeyProfile.keyName(keyPrefix, keyID);
 		if (null != keyVersion) {
@@ -681,7 +691,9 @@ public abstract class KeyManager {
 			
 			// See if some repository has this key already
 			if (null != CCNReader.isContentInRepository(availableContent, timeToWaitForPreexisting, handle)) {
-				Log.info("publishKeyToRepository: key {0} is already in a repository; not re-publishing.", keyName);
+				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
+					Log.info(Log.FAC_KEYS, "publishKeyToRepository: key {0} is already in a repository; not re-publishing.", keyName);
+				}
 			} else {
 
 				// Otherwise, we just need to trick the repo into pulling it.
@@ -690,7 +702,9 @@ public abstract class KeyManager {
 				// This will throw an IOException if there is no repository there to read it.
 				rfc.startWrite(streamName, Shape.STREAM);
 				// OK, once we've emitted the interest, we don't actually need that flow controller anymore.
-				Log.info("Key {0} published to repository.", keyName);
+				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
+					Log.info(Log.FAC_KEYS, "Key {0} published to repository.", keyName);
+				}
 				rfc.close();
 			}
 			return new PublicKeyObject(availableContent, handle);
@@ -782,7 +796,9 @@ public abstract class KeyManager {
 					// Make a self-referential key locator. For now do not include the
 					// version.
 					existingLocator = new KeyLocator(new KeyName(keyName, signingKeyID));
-					Log.finer("Overriding constructed key locator of type KEY, making self-referential locator {0}", existingLocator);
+					if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
+						Log.finer(Log.FAC_KEYS, "Overriding constructed key locator of type KEY, making self-referential locator {0}", existingLocator);
+					}
 				}
 			}
 			signingKeyLocator = existingLocator;
@@ -816,17 +832,23 @@ public abstract class KeyManager {
 		if (null != nameAndVersion.second()) {
 			keyVersion = VersioningProfile.getVersionComponentAsTimestamp(nameAndVersion.second());
 		}
-		Log.info("publishKey: key not previously published, making new key object {0} with version {1} displayed as {2}", 
+		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
+			Log.info(Log.FAC_KEYS, "publishKey: key not previously published, making new key object {0} with version {1} displayed as {2}", 
 				keyObject.getVersionedName(), keyVersion, 
 				((null != nameAndVersion.second()) ? ContentName.componentPrintURI(nameAndVersion.second()) : "<no version>"));
-
+		}
+		
 		// Eventually may want to find something already published and link to it, but be simple here.
 
 		if (!keyObject.save(keyVersion)) {
-			Log.info("Not saving key when we thought we needed to: desired key value {0}, have key value {1}, " +
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
+				Log.info(Log.FAC_KEYS, "Not saving key when we thought we needed to: desired key value {0}, have key value {1}, " +
 					keyToPublish, new PublisherPublicKeyDigest(keyObject.publicKey()));
+			}
 		} else {
-			Log.info("Published key {0} to name {1} with key locator {2}.", keyToPublish, keyObject.getVersionedName(), signingKeyLocator);
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
+				Log.info(Log.FAC_KEYS, "Published key {0} to name {1} with key locator {2}.", keyToPublish, keyObject.getVersionedName(), signingKeyLocator);
+			}
 		}
 		keyManager.getPublicKeyCache().remember(keyObject);
 		return keyObject;

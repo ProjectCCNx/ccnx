@@ -252,9 +252,9 @@ public class BasicKeyManager extends KeyManager {
 		if (!keyStoreFile.exists() || (0 == keyStoreFile.length())) {
 			// If the BC configuration is screwed up, sometimes a 0-length keystore
 			// gets created. If so, blow it away and make a new one.
-			Log.info("Creating new CCN key store..." + keyStoreFile.getAbsolutePath());
+			Log.info(Log.FAC_KEYS, "Creating new CCN key store..." + keyStoreFile.getAbsolutePath());
 			keyStoreInfo = createKeyStore();
-			Log.info("...created key store. Version: {0} ({1} ms) Last modified: {2}. Will now load normally.", 
+			Log.info(Log.FAC_KEYS, "...created key store. Version: {0} ({1} ms) Last modified: {2}. Will now load normally.", 
 					keyStoreInfo.getVersion(), keyStoreInfo.getVersion().getTime(), keyStoreFile.lastModified());
 			
 			// For some reason, if we just go from here, sometimes we end up with very slightly
@@ -265,14 +265,14 @@ public class BasicKeyManager extends KeyManager {
 		if (null == keyStoreInfo) {
 			FileInputStream in = null;
 			KeyStore keyStore = null;
-			if (Log.isLoggable(Level.INFO))
-				Log.info("Loading CCN key store from " + keyStoreFile.getAbsolutePath() + "...last modified " + keyStoreFile.lastModified() + "(ms).");
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
+				Log.info(Log.FAC_KEYS, "Loading CCN key store from " + keyStoreFile.getAbsolutePath() + "...last modified " + keyStoreFile.lastModified() + "(ms).");
 			try {
 				in = new FileInputStream(keyStoreFile);
 				keyStore = readKeyStore(in);
 				keyStoreInfo = new KeyStoreInfo(keyStoreFile.toURI().toString(), keyStore, new CCNTime(keyStoreFile.lastModified()));
-				if (Log.isLoggable(Level.INFO))
-					Log.info("Loaded CCN key store from " + keyStoreFile.getAbsolutePath() + "...version " + keyStoreInfo.getVersion() + " ms: " + keyStoreInfo.getVersion().getTime());
+				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
+					Log.info(Log.FAC_KEYS, "Loaded CCN key store from " + keyStoreFile.getAbsolutePath() + "...version " + keyStoreInfo.getVersion() + " ms: " + keyStoreInfo.getVersion().getTime());
 			} catch (FileNotFoundException e) {
 				Log.warning("Cannot open existing key store file: " + _keyStoreFileName);
 				throw e;
@@ -290,8 +290,8 @@ public class BasicKeyManager extends KeyManager {
 	protected KeyStore readKeyStore(InputStream in) throws ConfigurationException {
 		KeyStore keyStore = null;
 		try {
-			if (Log.isLoggable(Level.INFO))
-				Log.info("Loading CCN key store...");
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
+				Log.info(Log.FAC_KEYS, "Loading CCN key store...");
 			keyStore = KeyStore.getInstance(_keyStoreType);
 			keyStore.load(in, _password);
 		} catch (NoSuchAlgorithmException e) {
@@ -314,7 +314,7 @@ public class BasicKeyManager extends KeyManager {
 				bais.flush();
 				bais.close();
 			} catch (IOException e1) {
-				Log.info("Another exception: " + e1);
+				Log.info(Log.FAC_KEYS, "Another exception: " + e1);
 			}
 			throw new ConfigurationException(e);
 		} catch (KeyStoreException e) {
@@ -341,8 +341,8 @@ public class BasicKeyManager extends KeyManager {
 	protected boolean loadValuesFromKeystore(KeyStoreInfo keyStoreInfo) throws ConfigurationException {
 		KeyStore.PrivateKeyEntry entry = null;
 		try {
-			if (Log.isLoggable(Level.INFO))
-				Log.info("Loading key store {0} version {1} version component {2} millis {3}", keyStoreInfo.getKeyStoreURI(), keyStoreInfo.getVersion().toString(), 
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
+				Log.info(Log.FAC_KEYS, "Loading key store {0} version {1} version component {2} millis {3}", keyStoreInfo.getKeyStoreURI(), keyStoreInfo.getVersion().toString(), 
 						VersioningProfile.printAsVersionComponent(keyStoreInfo.getVersion()), keyStoreInfo.getVersion().getTime());
 			// Default alias should be a PrivateKeyEntry
 			entry = (KeyStore.PrivateKeyEntry)keyStoreInfo.getKeyStore().getEntry(_defaultAlias, new KeyStore.PasswordProtection(_password));
@@ -356,8 +356,8 @@ public class BasicKeyManager extends KeyManager {
 				generateConfigurationException("Cannot retrieve certificate for default user keystore entry.", null);		    	
 		    }
 		    _defaultKeyID = new PublisherPublicKeyDigest(certificate.getPublicKey());
-			if (Log.isLoggable(Level.INFO))
-				Log.info("Default key ID for user " + _userName + ": " + _defaultKeyID);
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
+				Log.info(Log.FAC_KEYS, "Default key ID for user " + _userName + ": " + _defaultKeyID);
 			
 			_privateKeyCache.loadKeyStore(keyStoreInfo, _password, _publicKeyCache);
 
@@ -397,14 +397,14 @@ public class BasicKeyManager extends KeyManager {
 		// also use that to preconfigure things like keystores and such
 		// for right now, just as a super-fast trick, use java serialization to get out minmal data necessary
 		if ((null == _keyStoreDirectory) || (null == _configurationFileName))  {
-			if (Log.isLoggable(Level.INFO)) {
-				Log.info("loadValuesFromConfiguration: No configuration directory/file set, not loading.");
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "loadValuesFromConfiguration: No configuration directory/file set, not loading.");
 			}
 			return true;
 		}
 		File configurationFile = new File(_keyStoreDirectory, _configurationFileName);
-		if (Log.isLoggable(Level.INFO)) {
-			Log.info("loadValuesFromConfiguration: attempting to load configuration from {0}", configurationFile.getAbsolutePath());
+		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+			Log.info(Log.FAC_KEYS, "loadValuesFromConfiguration: attempting to load configuration from {0}", configurationFile.getAbsolutePath());
 		}
 		if (configurationFile.exists()) {
 			try {
@@ -415,8 +415,8 @@ public class BasicKeyManager extends KeyManager {
 				
 				keyStoreInfo.setConfigurationFileURI(configurationFile.toURI().toString());
 				
-				if (Log.isLoggable(Level.INFO)) {
-					Log.info("Loaded configuration data from file {0}, got {1} key locator values.", 
+				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+					Log.info(Log.FAC_KEYS, "Loaded configuration data from file {0}, got {1} key locator values.", 
 							configurationFile.getAbsolutePath(), savedKeyLocators.size());
 				}
 
@@ -428,8 +428,8 @@ public class BasicKeyManager extends KeyManager {
 				throw new ConfigurationException("ClassNotFoundException deserializing configuration file: " + configurationFile.getAbsolutePath(), e);
 			}
 		} else {
-			if (Log.isLoggable(Level.INFO)) {
-				Log.info("loadValuesFromConfiguration: configuration file {0} does not exist.", configurationFile.getAbsolutePath());
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "loadValuesFromConfiguration: configuration file {0} does not exist.", configurationFile.getAbsolutePath());
 			}
 		}
 		
@@ -459,8 +459,8 @@ public class BasicKeyManager extends KeyManager {
 	public void clearSavedConfigurationState() throws FileNotFoundException, IOException {
 		File configurationFile = new File(_keyStoreDirectory, _configurationFileName); 
 		if (configurationFile.exists()) {
-			if (Log.isLoggable(Level.INFO)) {
-				Log.info("Deleting configuration state file {0}.", configurationFile.getAbsolutePath());
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "Deleting configuration state file {0}.", configurationFile.getAbsolutePath());
 			}
 			if (!configurationFile.delete()) {
 				Log.warning("Unable to delete configuration state file {0}.", configurationFile.getAbsolutePath());
@@ -519,8 +519,8 @@ public class BasicKeyManager extends KeyManager {
 
 	    FileOutputStream out = null;
 		try {
-			if (Log.isLoggable(Level.FINEST))
-				Log.finest("Creating FileOutputStream to write keystore to file " + keyStoreFile.getAbsolutePath());
+			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
+				Log.finest(Log.FAC_KEYS, "Creating FileOutputStream to write keystore to file " + keyStoreFile.getAbsolutePath());
 			out = new FileOutputStream(keyStoreFile);
 		} catch (FileNotFoundException e) {
 			generateConfigurationException("Cannot create keystore file: " + keyStoreFile.getAbsolutePath(), e);
@@ -538,14 +538,14 @@ public class BasicKeyManager extends KeyManager {
 
 		KeyStore ks = null;
 	    try {
-			if (Log.isLoggable(Level.FINEST))
-				Log.finest("createKeyStore: getting instance of keystore type " + _keyStoreType);
+			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
+				Log.finest(Log.FAC_KEYS, "createKeyStore: getting instance of keystore type " + _keyStoreType);
 			ks = KeyStore.getInstance(_keyStoreType);
-			if (Log.isLoggable(Level.FINEST))
-				Log.finest("createKeyStore: loading key store.");
+			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
+				Log.finest(Log.FAC_KEYS, "createKeyStore: loading key store.");
 			ks.load(null, _password);
-			if (Log.isLoggable(Level.FINEST))
-				Log.finest("createKeyStore: key store loaded.");
+			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
+				Log.finest(Log.FAC_KEYS, "createKeyStore: key store loaded.");
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot load empty default keystore.", e);
 		} catch (CertificateException e) {
@@ -564,11 +564,11 @@ public class BasicKeyManager extends KeyManager {
 		}
 		kpg.initialize(UserConfiguration.defaultKeyLength());
 		
-		if (Log.isLoggable(Level.FINEST))
-			Log.finest("createKeyStore: generating " + UserConfiguration.defaultKeyLength() + "-bit " + UserConfiguration.defaultKeyAlgorithm() + " key.");
+		if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
+			Log.finest(Log.FAC_KEYS, "createKeyStore: generating " + UserConfiguration.defaultKeyLength() + "-bit " + UserConfiguration.defaultKeyAlgorithm() + " key.");
 		KeyPair userKeyPair = kpg.generateKeyPair();
-		if (Log.isLoggable(Level.FINEST))
-			Log.finest("createKeyStore: key generated, generating certificate for user " + _userName);
+		if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
+			Log.finest(Log.FAC_KEYS, "createKeyStore: key generated, generating certificate for user " + _userName);
 		
 		// Generate a self-signed certificate.
 		String subjectDN = "CN=" + _userName;
@@ -577,8 +577,8 @@ public class BasicKeyManager extends KeyManager {
 			 ssCert = 
 				 MinimalCertificateGenerator.GenerateUserCertificate(userKeyPair, subjectDN, 
 						 											 MinimalCertificateGenerator.MSEC_IN_YEAR);
-			if (Log.isLoggable(Level.FINEST))
-				Log.finest("createKeyStore: certificate generated.");
+			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
+				Log.finest(Log.FAC_KEYS, "createKeyStore: certificate generated.");
 			 
 		} catch (Exception e) {
 			generateConfigurationException("InvalidKeyException generating user internal certificate.", e);
@@ -588,16 +588,16 @@ public class BasicKeyManager extends KeyManager {
 	        new KeyStore.PrivateKeyEntry(userKeyPair.getPrivate(), new X509Certificate[]{ssCert});
 
 	    try {
-			if (Log.isLoggable(Level.FINEST))
-				Log.finest("createKeyStore: setting private key entry.");
+			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
+				Log.finest(Log.FAC_KEYS, "createKeyStore: setting private key entry.");
 		    ks.setEntry(_defaultAlias, entry, 
 			        new KeyStore.PasswordProtection(_password));
 		    
-			if (Log.isLoggable(Level.FINEST))
-				Log.finest("createKeyStore: storing key store.");
+			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
+				Log.finest(Log.FAC_KEYS, "createKeyStore: storing key store.");
 	        ks.store(out, _password);
-			if (Log.isLoggable(Level.FINEST))
-				Log.finest("createKeyStore: wrote key store.");
+			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
+				Log.finest(Log.FAC_KEYS, "createKeyStore: wrote key store.");
 
 		} catch (NoSuchAlgorithmException e) {
 			generateConfigurationException("Cannot save default keystore.", e);
@@ -693,8 +693,8 @@ public class BasicKeyManager extends KeyManager {
 		if (null == keyLocator) {
 			keyLocator = getKeyTypeKeyLocator(keyID);
 		}
-		if (Log.isLoggable(Level.INFO))
-			Log.info("getKeyLocator: returning locator {0} for key {1}", keyLocator, keyID);
+		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
+			Log.info(Log.FAC_KEYS, "getKeyLocator: returning locator {0} for key {1}", keyLocator, keyID);
 		return keyLocator;
 	}
 	
@@ -773,8 +773,8 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PrivateKey getSigningKey(PublisherPublicKeyDigest publisher) {
-		if( Log.isLoggable(Level.FINER) )
-			Log.finer("getSigningKey: retrieving key: " + publisher);
+		if( Log.isLoggable(Log.FAC_KEYS, Level.FINER) )
+			Log.finer(Log.FAC_KEYS, "getSigningKey: retrieving key: " + publisher);
 		if (null == publisher)
 			return null;
 		return _privateKeyCache.getPrivateKey(publisher.digest());
@@ -793,8 +793,8 @@ public class BasicKeyManager extends KeyManager {
 			PublisherPublicKeyDigest desiredKeyID, KeyLocator keyLocator, 
 			long timeout) throws IOException {		
 		
-		if (Log.isLoggable(Level.FINER))
-			Log.finer("getPublicKey: retrieving key: " + desiredKeyID + " located at: " + keyLocator);
+		if (Log.isLoggable(Log.FAC_KEYS, Level.FINER))
+			Log.finer(Log.FAC_KEYS, "getPublicKey: retrieving key: " + desiredKeyID + " located at: " + keyLocator);
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
@@ -818,8 +818,8 @@ public class BasicKeyManager extends KeyManager {
 			PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, 
 			long timeout) throws IOException {
 		
-		if( Log.isLoggable(Level.FINER) )
-			Log.finer("getPublicKey: retrieving key: " + desiredKeyID + " located at: " + locator);
+		if( Log.isLoggable(Log.FAC_KEYS, Level.FINER) )
+			Log.finer(Log.FAC_KEYS, "getPublicKey: retrieving key: " + desiredKeyID + " located at: " + locator);
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
@@ -874,8 +874,8 @@ public class BasicKeyManager extends KeyManager {
 			keyName = getDefaultKeyName(keyDigest);
 		}
 
-		if (Log.isLoggable(Level.INFO))
-			Log.info("publishKey: publishing key {0} under specified key name {1}", keyDigest, keyName);
+		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
+			Log.info(Log.FAC_KEYS, "publishKey: publishing key {0} under specified key name {1}", keyDigest, keyName);
 
 		PublicKeyObject keyObject =  
 			_keyServer.serveKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
@@ -885,8 +885,8 @@ public class BasicKeyManager extends KeyManager {
 			// to use. Don't override any manually specified values.
 			KeyLocator newKeyLocator = new KeyLocator(keyObject.getVersionedName(), keyObject.getContentPublisher());
 			setKeyLocator(keyDigest, newKeyLocator);
-			if (Log.isLoggable(Level.INFO))
-				Log.info("publishKey: storing key locator {0} for key {1}", keyDigest, newKeyLocator);
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
+				Log.info(Log.FAC_KEYS, "publishKey: storing key locator {0} for key {1}", keyDigest, newKeyLocator);
 		}
 		return keyObject;
 	}
