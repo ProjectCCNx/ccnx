@@ -8,17 +8,17 @@ a CCNx content namespace.
 
 SYNOPSIS
 --------
-*ccnGroup* -list
+*ccngroup* [-as 'keystore'] -list
 
-*ccnGroup* -listmembers 'groupFriendlyName'
+*ccngroup* [-as 'keystore'] -listmembers 'groupFriendlyName'
 
-*ccnGroup* -create 'groupFriendlyName' 'groupMember'...
+*ccngroup* [-as 'keystore'] -create 'groupFriendlyName' 'groupMember'...
 
-*ccnGroup* -delete 'groupFriendlyName'
+*ccngroup* [-as 'keystore'] -delete 'groupFriendlyName'
 
-*ccnGroup* -add 'groupFriendlyName' 'groupMemberToAdd'...
+*ccngroup* [-as 'keystore'] -add 'groupFriendlyName' 'groupMemberToAdd'...
 
-*ccnGroup* -remove 'groupFriendlyName' 'groupMemberToRemove'...
+*ccngroup* [-as 'keystore'] -remove 'groupFriendlyName' 'groupMemberToRemove'...
 
 DESCRIPTION
 -----------
@@ -27,11 +27,16 @@ published with CCNx. Groups may be referenced in access control lists
 (ACLs) under the CCNx access control profile.
 
 Groups have short, human-readable "friendly" names by which they are identified
-with this tool although the internal identifier for a group
+with this tool, although the internal identifier for a group
 is a digest of a public key.
 
 OPTIONS
 -------
+*-as* 'pathToKeystore'::
+	Specifies a file path to a keystore; this is used for signing any
+        newly-created content.  Applicable to all operations.  The default
+        keystore is used if this is not specified.
+
 *-list*::
 	List the groups that exist.
 
