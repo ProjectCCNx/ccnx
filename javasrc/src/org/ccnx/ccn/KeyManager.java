@@ -526,6 +526,7 @@ public abstract class KeyManager {
 	 * record. We do this by default if we don't have any credentials for this key; this
 	 * just allows the caller to explicitly request this behavior even if we do have
 	 * credentials.
+	 * TODO need mechanism for controlling whether this ends up in the key locator...
 	 * @param keyName content name of the public key
 	 * @param keyToPublish public key digest of key to publish and to sign with
 	 * @param handle handle for ccn
