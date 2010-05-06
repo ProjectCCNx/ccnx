@@ -8,6 +8,8 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.RepositoryInfo;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepoInfoType;
+import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNAbstractInputStream;
 import org.ccnx.ccn.io.NoMatchingContentFoundException;
@@ -33,7 +35,10 @@ public class RepositoryControl {
 	/**
 	 * Request that a local repository preserve a copy
 	 * of the exact contents of a given stream opened for reading
-	 * with a given handle. A local repository is one connected
+	 * with a given handle, and all links that were dereferenced
+	 * to read the stream.
+	 * 
+	 * A local repository is one connected
 	 * directly to the same ccnd as the given handle; such a repository
 	 * is likely to be special in the sense that it may be available to local
 	 * applications even when there is no connectivity beyond the local 
@@ -46,7 +51,7 @@ public class RepositoryControl {
 	 * This method is experimental and the way of addressing this problem 
 	 * is likely to change in the future.
 	 * 
-	 * This method may have no effect if the local repository is not already
+	 * This method may fail (IOException) if the local repository is not already
 	 * configured to support holding the data in question. For example, the 
 	 * repository policy might not admit the namespace in question
 	 * and this method does not override such overall policy.
@@ -57,20 +62,16 @@ public class RepositoryControl {
 	 * the request. This method should verify that a confirmation is from an acceptable
 	 * local repository.
 	 * 
-	 * A repository should not generate Interests for copies of stream content that it already
-	 * holds in response to this request, so this operation should be inexpensive in the 
-	 * case when the repository already holds the content.
-	 * 
-	 * It is possible to block waiting for confirmation from the repository that it 
-	 * has the content or to make the request without waiting for "best effort" service.
+	 * If the repository already holds the content it may confirm immediately, otherwise the repository
+	 * will begin to retrieve and store the content but there is no guarantee that this is complete
+	 * upon return from this method. The return value indicates whether data is already confirmed.
 	 * 
 	 * @param handle the handle
 	 * @param stream The stream for which the content should be preserved
-	 * @param wait Set true to wait for positive response from repository.
 	 * @return boolean true iff confirmation received from repository
-	 * @throws IOException
+	 * @throws IOException if no repository responds or another communication error occurs
 	 */
-	public static boolean localRepoSync(CCNHandle handle, CCNAbstractInputStream stream, boolean wait) throws IOException {
+	public static boolean localRepoSync(CCNHandle handle, CCNAbstractInputStream stream) throws IOException {
 		boolean result;
 		
 		byte[] digest = stream.getFirstDigest(); // This forces reading if not done already
@@ -79,7 +80,7 @@ public class RepositoryControl {
 		Log.fine("RepositoryControl.localRepoSync called for name {0}", name);
 
 		// Request preserving the dereferenced content of the stream first
-		result = internalRepoSync(handle, wait, name, segment, digest);
+		result = internalRepoSync(handle, name, segment, digest);
 		
 		// Now also deal with each of the links dereferenced to get to the ultimate content
 		LinkObject link = stream.getDereferencedLink();
@@ -90,7 +91,7 @@ public class RepositoryControl {
 			name = link.getVersionedName(); // we need versioned name; link basename may or may not be
 			segment = link.firstSegmentNumber();
 
-			if (!internalRepoSync(handle, wait, name, segment, digest)) {
+			if (!internalRepoSync(handle, name, segment, digest)) {
 				result = false;
 			}
 			link = link.getDereferencedLink();
@@ -101,31 +102,27 @@ public class RepositoryControl {
 	/*
 	 * Internal method to generate request for local repository to preserve content stream
 	 * @param handle the CCNHandle to use
-	 * @param wait Set true to wait for positive response from repository
 	 * @param baseName The name of the content up to but not including segment number
 	 * @param startingSegmentNumber Initial segment number of the stream
 	 * @param firstDigest Digest of the first segment
 	 */
-	static boolean internalRepoSync(CCNHandle handle, boolean wait, ContentName baseName, Long startingSegmentNumber, byte[] firstDigest) throws IOException {
+	static boolean internalRepoSync(CCNHandle handle, ContentName baseName, Long startingSegmentNumber, byte[] firstDigest) throws IOException {
 		// We do not use a nonce in this protocol, because a cached confirmation is satisfactory,
 		// assuming verification of the repository that published it.
 		
 		ContentName repoCommandName = 
-			new ContentName(baseName, new byte[][]{ CommandMarker.COMMAND_MARKER_REPO_SYNC_STREAM.getBytes(),
+			new ContentName(baseName, new byte[][]{ CommandMarker.COMMAND_MARKER_REPO_CHECKED_START_WRITE.getBytes(),
+													Interest.generateNonce(),
 													SegmentationProfile.getSegmentNumberNameComponent(startingSegmentNumber), 
 													firstDigest});
 		Interest syncInterest = new Interest(repoCommandName);
-		syncInterest.scope(0); // local repositories only
+		syncInterest.scope(1); // local repositories only
 		
-		// Pick timeout based on whether we are blocking or not
-		long timeout = SystemConfiguration.NO_TIMEOUT;
-		if (!wait) {
-			timeout = 0;
-		}
 		// Send out Interest
-		ContentObject co = handle.get(syncInterest, timeout);
+		ContentObject co = handle.get(syncInterest, SystemConfiguration.FC_TIMEOUT);
 		if (null == co) {
-			return false;
+			throw new IOException("No response from a repository for checked write of " + baseName + " segment " + startingSegmentNumber 
+									+ " digest " + DataUtils.printHexBytes(firstDigest));
 		}
 		
 		// TODO verify object as published by local repository rather than just signed by anybody
@@ -135,18 +132,18 @@ public class RepositoryControl {
 		}
 		
 		if (co.signedInfo().getType() != ContentType.DATA)
-			return false;  // if verified response is not DATA then we don't have confirmation
+			throw new IOException("Invalid repository response for checked write, type " + co.signedInfo().getType());
 		RepositoryInfo repoInfo = new RepositoryInfo();
-		// Extra check that we can decode and get right type, the data really doesn't matter.
 		try {
 			repoInfo.decode(co.content());
-			if (repoInfo.getType() != RepoInfoType.INFO) {
-				return false;
+			if (repoInfo.getType() == RepoInfoType.DATA) {
+				// This type from checked write is confirmation that content already held
+				return true;
 			}
 		} catch (ContentDecodingException e) {
 			Log.info("ContentDecodingException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());
 		}
 
-		return true;
+		return false;
 	}
 }

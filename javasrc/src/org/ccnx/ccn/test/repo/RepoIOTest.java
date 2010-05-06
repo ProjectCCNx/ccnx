@@ -29,6 +29,7 @@ import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
@@ -115,6 +116,17 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertEquals(-1, reader.read());
 	}
 	
+	@Test
+	public void testLocalSyncInputStream() throws Exception {
+		System.out.println("Testing local repo sync request for input stream");
+		CCNInputStream input = new CCNInputStream(ContentName.fromNative(_testPrefix), getHandle);
+		// Ignore data in this case, just trigger repo confirmation
+		// Setup of this test writes the stream into repo, so we know it is already there --
+		// should get immediate confirmation from repo, which means no new repo read starts
+		boolean confirm = RepositoryControl.localRepoSync(putHandle, input);
+		Assert.assertTrue(confirm);
+	}
+
 	private void changePolicy(String policyFile) throws Exception {
 		FileInputStream fis = new FileInputStream(_topdir + policyFile);
 		PolicyXML pxml = BasicPolicy.createPolicyXML(fis);

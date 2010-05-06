@@ -119,6 +119,15 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	}
 
 	/**
+	 * Check for content matching the given name, without retrieving the content itself.
+	 * @param name ContentName to match exactly, including digest as final explicit component
+	 * @return true if there is a ContentObject with exactly the given name, false otherwise
+	 */
+	public boolean hasContent(ContentName name) throws RepositoryException {
+		return _index.matchContent(name);
+	}
+
+	/**
 	 * Gets all names matching the given NameEnumeration interest
 	 * 
 	 * @param i the interest
@@ -585,4 +594,5 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		return type.equals(RepositoryStore.REPO_SIMPLE_STATUS_REQUEST) 
 				? ((null == _activeWriteFile.openFile) ? null : "running") : null;
 	}
+
 }
