@@ -41,7 +41,7 @@ import org.ccnx.ccn.protocol.Interest;
  * @see RepositoryDataListener
  */
 
-public class RepositoryInterestHandler implements CCNFilterListener, allowGenerated {
+public class RepositoryInterestHandler implements CCNFilterListener {
 	private RepositoryServer _server;
 	private CCNHandle _handle;
 	
