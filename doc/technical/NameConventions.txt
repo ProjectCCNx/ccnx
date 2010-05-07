@@ -175,7 +175,13 @@ which are stores of CCNx content, usually persistent stores.
 Start Write Command::
    `%C1.R.sw` - request repository to retrieve and store content.  The
    prefix of the name before this start write command component must
-   be the prefix of the content to be written.
+   be the prefix of the content to be written.  Following this there
+   should be a nonce component.
+
+Checked Start Write Command::
+   `%C1.R.sw-c` - similar to above, but the repository firsts checks
+   for the presence of the stream and does not store it if it is already
+   present.  The repository responds in either case.
 
 === Nonce (Namespace `N`)
 
