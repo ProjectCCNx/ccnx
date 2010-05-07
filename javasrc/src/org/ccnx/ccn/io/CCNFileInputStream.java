@@ -324,7 +324,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements Updat
 	 * initiate header retrieval.
 	 */
 	@Override
-	protected ContentObject getFirstSegment() throws IOException {
+	public ContentObject getFirstSegment() throws IOException {
 		// Give up efficiency where we try to detect auto-caught header, and just
 		// use superclass method to really get us a first content block, then
 		// go after the header. Later on we can worry about re-adding the optimization.
