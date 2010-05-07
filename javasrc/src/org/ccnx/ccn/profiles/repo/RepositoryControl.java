@@ -2,17 +2,13 @@ package org.ccnx.ccn.profiles.repo;
 
 import java.io.IOException;
 
-import javax.media.j3d.Link;
-
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.RepositoryInfo;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepoInfoType;
-import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNAbstractInputStream;
-import org.ccnx.ccn.io.NoMatchingContentFoundException;
 import org.ccnx.ccn.io.content.CCNNetworkObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link.LinkObject;
