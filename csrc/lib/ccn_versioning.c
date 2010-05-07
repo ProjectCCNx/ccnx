@@ -192,9 +192,10 @@ Finish:
  * Extend a Name with a new version stamp
  * @param h is the the ccn handle.
  *        May be NULL.  This procedure does not use the connection.
- * @param name is a ccnb-encoded Name prefix. By default it gets extended in-place with
- *        one additional Component that conforms the the versioning profile
- *        and is based on the supplied time.
+ * @param name is a ccnb-encoded Name prefix. By default it gets extended
+ *        in-place with one additional Component that conforms to the
+ *        versioning profile and is based on the supplied time, unless a
+ *        version component is already present.
  * @param versioning_flags modifies the default behavior:
  *        CCN_V_REPLACE causes the last component to be replaced if it
  *        appears to be a version stamp.  If CCN_V_HIGH is set as well, an
@@ -202,6 +203,9 @@ Finish:
  *        later than the existing one, or to return an error.
  *        CCN_V_NOW bases the version on the current time rather than the
  *        supplied time.
+ *        CCN_V_NESTOK will allow the new version component to be appended
+ *        even if there is one there (this makes no difference if CCN_V_REPLACE
+ *        is also set).
  * @param secs is the desired time, in seconds since epoch
  *        (ignored if CCN_V_NOW is set).
  * @param nsecs is the number of nanoseconds.
@@ -211,22 +215,36 @@ int
 ccn_create_version(struct ccn *h, struct ccn_charbuf *name,
                    int versioning_flags, intmax_t secs, int nsecs)
 {
-    struct ccn_indexbuf *nix = ccn_indexbuf_create();
-    int n = ccn_name_split(name, nix);
-    int myres = -1;
     size_t i;
     size_t j;
-    size_t lc;
-    size_t oc;
+    size_t lc = 0;
+    size_t oc = 0;
+    int n;
+    struct ccn_indexbuf *nix = NULL;
+    int myres = -1;
+    int already_versioned = 0;
+    int ok_flags = (CCN_V_REPLACE | CCN_V_HIGH | CCN_V_NOW | CCN_V_NESTOK);
     // XXX - right now we ignore h, but in the future we may use it to try to avoid non-monotonicies in the versions.
     
+    nix = ccn_indexbuf_create();
+    n = ccn_name_split(name, nix);
     if (n < 0)
         goto Finish;
-    if ((versioning_flags & ~(CCN_V_REPLACE | CCN_V_HIGH | CCN_V_NOW)) != 0)
+    if ((versioning_flags & ~ok_flags) != 0)
         goto Finish;        
+    /* Check for existing version component */
+    if (n >= 1) {
+        oc = nix->buf[n-1];
+        lc = nix->buf[n] - oc;
+        if (lc <= 11 && lc >= 6 && name->buf[oc + 2] == CCN_MARKER_VERSION)
+            already_versioned = 1;
+    }
+    myres = 0;
+    if (already_versioned &&
+        (versioning_flags & (CCN_V_REPLACE | CCN_V_NESTOK)) == 0)
+        goto Finish;
     name->length -= 1; /* Strip name closer */
     i = name->length;
-    myres = 0;
     myres |= ccn_charbuf_append_tt(name, CCN_DTAG_Component, CCN_DTAG);
     if ((versioning_flags & CCN_V_NOW) != 0)
         myres |= ccnb_append_now_blob(name, CCN_MARKER_VERSION);
@@ -239,20 +257,19 @@ ccn_create_version(struct ccn *h, struct ccn_charbuf *name,
         goto CloseName;
     }
     j = name->length;
-    if (n >= 1 && (versioning_flags & CCN_V_REPLACE) != 0) {
+    if (already_versioned && (versioning_flags & CCN_V_REPLACE) != 0) {
         oc = nix->buf[n-1];
         lc = nix->buf[n] - oc;
-        if (lc <= 11 && lc >= 6 && name->buf[oc + 2] == CCN_MARKER_VERSION) {
-            if ((versioning_flags & CCN_V_HIGH) != 0 && memcmp(name->buf + oc, name->buf + i, j - i) > 0) {
-                /* Supplied version is in the future. */
-                name->length = i;
-                // XXX - we could try harder to make this work, for now just error out
-                myres = -1;
-                goto CloseName;
-            }
-            memmove(name->buf + oc, name->buf + i, j - i);
-            name->length -= lc;
+        if ((versioning_flags & CCN_V_HIGH) != 0 &&
+            memcmp(name->buf + oc, name->buf + i, j - i) > 0) {
+            /* Supplied version is in the future. */
+            name->length = i;
+            // XXX - we could try harder to make this work, for now just error out
+            myres = -1;
+            goto CloseName;
         }
+        memmove(name->buf + oc, name->buf + i, j - i);
+        name->length -= lc;
     }
 CloseName:
     myres |= ccn_charbuf_append_closer(name); /* </Name> */
