@@ -234,7 +234,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 	 *   an error retrieving the block.
 	 */
 	@Override
-	protected ContentObject getFirstSegment() throws IOException {
+	public ContentObject getFirstSegment() throws IOException {
 		if (VersioningProfile.hasTerminalVersion(_baseName)) {
 			// Get exactly this version
 			return super.getFirstSegment();

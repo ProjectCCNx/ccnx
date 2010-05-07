@@ -17,12 +17,15 @@
 
 package org.ccnx.ccn.impl.repo;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
@@ -57,14 +60,16 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 			Log.finer(Log.FAC_REPO, "Saw interest: {0}", interest.name());
 		try {
+			int pos = -1;
 			if (interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes())) {
-				if (null != interest.answerOriginKind() && (interest.answerOriginKind() & Interest.ANSWER_GENERATED) == 0)
-					return false;	// Request to not answer
-				startReadProcess(interest);
+				if (!allowGenerated(interest)) return true;
+				startWrite(interest);
 			} else if (interest.name().contains(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes())) {
-				if (null != interest.answerOriginKind() && (interest.answerOriginKind() & Interest.ANSWER_GENERATED) == 0)
-					return false;	// Request to not answer
+				if (!allowGenerated(interest)) return true;
 				nameEnumeratorResponse(interest);
+			} else if ((pos = interest.name().whereLast(CommandMarker.COMMAND_MARKER_REPO_CHECKED_START_WRITE.getBytes())) >= 0) {
+				if (!allowGenerated(interest)) return true;
+				startWriteChecked(interest, pos);				
 			} else {
 				ContentObject content = _server.getRepository().getContent(interest);
 				if (content != null) {
@@ -82,24 +87,41 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		}
 		return true;
 	}
-	
+
+	protected boolean allowGenerated(Interest interest) {
+		if (null != interest.answerOriginKind() && (interest.answerOriginKind() & Interest.ANSWER_GENERATED) == 0)
+			return false;	// Request to not answer
+		else
+			return true;
+	}
+
 	/**
-	 * Handle start write requests
-	 * 
-	 * @param interest
+	 * Check for duplicate request, i.e. request already in process
+	 * Logs the request if found to be a duplicate.
+	 * @param interest the incoming interest containing the request command
+	 * @return true if request is duplicate
 	 */
-	private void startReadProcess(Interest interest) {
+	protected boolean isDuplicateRequest(Interest interest) {
 		synchronized (_server.getDataListeners()) {
 			for (RepositoryDataListener listener : _server.getDataListeners()) {
 				if (listener.getOrigInterest().equals(interest)) {
 					if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
-						Log.info(Log.FAC_REPO, "Write request {0} is a duplicate, ignoring", interest.name());
-					return;
+						Log.info(Log.FAC_REPO, "Request {0} is a duplicate, ignoring", interest.name());
+					return true;
 				}
 			}
 		}
-			
-		 // For now we need to wait until all current sessions are complete before a namespace
+		return false;
+	}
+
+	/**
+	 * Check whether new writes are allowed now
+	 * Logs the discarded request if it cannot be processed
+	 * @param interest the incoming interest containing the command
+	 * @return true if writes are presently suspended
+	 */
+	protected boolean isWriteSuspended(Interest interest) {
+		// For now we need to wait until all current sessions are complete before a namespace
 		 // change which will reset the filters is allowed. So for now, we just don't allow any
 		 // new sessions to start until a pending namespace change is complete to allow there to
 		 // be space for this to actually happen. In theory we should probably figure out a way
@@ -108,8 +130,20 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		if (_server.getPendingNameSpaceState()) {
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 				Log.info(Log.FAC_REPO, "Discarding write request {0} due to pending namespace change", interest.name());
-			return;
+			return true;
 		}
+		return false;
+	}
+
+	/**
+	 * Handle start write requests
+	 * 
+	 * @param interest
+	 */
+	private void startWrite(Interest interest) {
+		if (isDuplicateRequest(interest)) return;
+			
+		if (isWriteSuspended(interest)) return;
 		
 		// Create the name for the initial interest to retrieve content from the client that it desires to 
 		// write.  Strip from the write request name (in the incoming Interest) the start write command component
@@ -149,6 +183,81 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			e.printStackTrace();
 		}
 	}
+
+	/**
+	 * Handle requests to check for specific stream content and read and store it if not
+	 * already present.
+	 * @param interest the interest containing the request
+	 * @param pos index of the command marker in the interest name
+	 * @throws RepositoryException
+	 * @throws ContentEncodingException
+	 * @throws IOException
+	 */
+	private void startWriteChecked(Interest interest, int pos) {
+		if (isDuplicateRequest(interest)) return;
+		
+		if (isWriteSuspended(interest)) return;
+
+		try {
+			Log.finer(Log.FAC_REPO, "Repo checked write request: {0}", interest.name());
+			ContentName orig = interest.name();
+			if (pos+3 >= orig.count()) {
+				Log.warning(Log.FAC_REPO, "Repo checked write malformed request {0}", interest.name());
+			}
+			// Strip out the command marker and nonce so we get name with those components removed from middle
+			ContentName head = orig.subname(0, pos);
+			ContentName tail = orig.subname(pos+2, orig.count()-pos-2);
+			ContentName target = head.append(tail);
+
+			boolean verified = false;
+			RepositoryInfoObject rio = null;
+			if (_server.getRepository().hasContent(target)) {
+				// First impl, no further checks, if we have first segment, assume we have (or are fetching) 
+				// the whole thing
+				// TODO: add better verification:
+				// 		find highest segment in the store (probably a new internal interest seeking rightmost)
+				//      getContent(): need full object in this case, verify that last segment matches segment name => verified = true
+				verified = true;
+				// Send back a RepositoryInfoObject that contains a confirmation that content is already in repo
+				ArrayList<ContentName> target_names = new ArrayList<ContentName>();
+				target_names.add(target);
+				rio = _server.getRepository().getRepoInfo(interest.name(), target_names);
+			} else {
+				// Send back response that does not confirm content
+				rio = _server.getRepository().getRepoInfo(interest.name(), null);
+			}
+			if (null == rio)
+				return;		// Should have logged an error in getRepoInfo					
+			// Hand the object the outstanding interest, so it can put its first block immediately.
+			rio.save(interest);
+
+
+			if (!verified) {
+				Log.finer(Log.FAC_REPO, "Repo checked write no content for {0}, starting read", interest.name());
+				// Create the initial read interest.  Set maxSuffixComponents = minSuffixComponents = 0 
+				// because in this SPECIAL CASE we have the complete name of the first segment.
+				Interest readInterest = Interest.constructInterest(target, _server.getExcludes(), null, 0, 0, null);
+				RepositoryDataListener listener;
+				// SPECIAL CASE: this initial interest is more specific than the standard reading interests, so 
+				// it will not be recognized as requesting a specific segment (segment is not final component).
+				// However, until this initial interest is satisfied, there is no processing requiring standard
+				// segment format, and when the first (satisfying) data arrives this interest will be immediately 
+				// discarded.  The returned data (ContentObject) explicit name will never include the implicit 
+				// digest and so is processed correctly regardless of the interest that retrieved it.
+				listener = new RepositoryDataListener(interest, readInterest, _server);
+				_server.addListener(listener);
+				listener.getInterests().add(readInterest, null);
+				_handle.expressInterest(readInterest, listener);
+			} else {
+				Log.finer(Log.FAC_REPO, "Repo checked write content verified for {0}", interest.name());
+			}
+		} catch (Exception e) {
+			Log.logStackTrace(Level.WARNING, e);
+			e.printStackTrace();
+		}
+	}
+
+
 	
 	/**
 	 * Handle name enumeration requests

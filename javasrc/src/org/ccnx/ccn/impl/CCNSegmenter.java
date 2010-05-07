@@ -129,6 +129,12 @@ public class CCNSegmenter {
 	 * Handle multi-block amortized signing. If null, default to single-block signing.
 	 */
 	protected CCNAggregatedSigner _bulkSigner;
+	
+	/**
+	 * The first segment, useful for obtaining starting segment number and digest to characterize
+	 * set of segmented content.
+	 */
+	protected ContentObject _firstSegment = null;
 
 	/**
 	 * Create a segmenter with default (Merkle hash tree) bulk signing
@@ -244,6 +250,14 @@ public class CCNSegmenter {
 
 	public CCNFlowControl getFlowControl() { return _flowControl; }
 
+	/**
+	 * Return the first segment.
+	 * @return The first segment or null if no segments generated yet
+	 */
+	public ContentObject getFirstSegment() {
+		return _firstSegment;
+	}
+	
 	/**
 	 * Sets the segmentation block size to use
 	 * @param blockSize block size in bytes
@@ -506,6 +520,9 @@ public class CCNSegmenter {
 		// For now, this generates the root signature too, so can
 		// ask for the signature for each block.
 		_bulkSigner.signBlocks(contentObjects, signingKey);
+		if (null == _firstSegment) {
+			_firstSegment = contentObjects[0];
+		}
 		getFlowControl().put(contentObjects);
 
 		return nextSegmentIndex(
@@ -605,6 +622,9 @@ public class CCNSegmenter {
 		// For now, this generates the root signature too, so can
 		// ask for the signature for each block.
 		_bulkSigner.signBlocks(contentObjects, signingKey);
+		if (null == _firstSegment) {
+			_firstSegment = contentObjects[0];
+		}
 		getFlowControl().put(contentObjects);
 
 		return nextSegmentIndex(
@@ -701,6 +721,9 @@ public class CCNSegmenter {
 							freshnessSeconds, 
 							finalBlockID), 
 							content, offset, length, signingKey);
+		if (null == _firstSegment) {
+			_firstSegment = co;
+		}
 		if( Log.isLoggable(Level.FINER))
 			Log.finer("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
 		_flowControl.put(co);
@@ -759,7 +782,6 @@ public class CCNSegmenter {
 						SegmentationProfile.segmentName(rootName, nextSegmentIndex),
 						signedInfo,
 						dataStream, blockWidth);
-
 			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, 
 					blocks[i].contentLength());
 			offset += blockWidth;

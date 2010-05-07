@@ -85,9 +85,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected ContentObject _currentSegment = null;
 
 	/**
-	 *  information if the stream we are reading is marked GONE (see ContentType).
+	 *  first segment of the stream we are reading, which is the GONE segment (see ContentType) if content is deleted.
+	 *  this cached first segment is used to supply certain information it contains, such as for computing digest only 
+	 *  when required
 	 */
-	protected ContentObject _goneSegment = null;
+	private ContentObject _firstSegment = null;
 
 	/**
 	 * Internal stream used for buffering reads. May include filters.
@@ -111,7 +113,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * The segment number to start with. If not specified, is SegmentationProfile#baseSegment().
 	 */
 	protected Long _startingSegmentNumber = null;
-
+	
 	/**
 	 * The timeout to use for segment retrieval. 
 	 */
@@ -131,13 +133,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * to the same root, if so don't reverify signature. If not, assume it's part of
 	 * a new tree and change the root.
 	 */
-	protected byte [] _verifiedRootSignature = null;
-	protected byte [] _verifiedProxy = null;
-
-	/**
-	 * The key locator of the content publisher as we read it.
-	 */
-	protected KeyLocator _publisherKeyLocator; 
+	protected byte [] _verifiedRootSignature = null; 
+	protected byte [] _verifiedProxy = null; 
 
 	protected boolean _atEOF = false;
 
@@ -1269,7 +1266,24 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			return null;
 		return VersioningProfile.getTerminalVersionAsTimestampIfVersioned(_baseName);
 	}
-
+	
+	/**
+	 * Returns the digest of the first segment of this stream. 
+	 * Together with firstSegmentNumber() and getBaseName() this method may be used to
+	 * identify the stream content unambiguously.
+	 * 
+	 * @return The digest of the first segment of this stream
+	 * @throws NoMatchingContentException if no content available
+	 * @throws IOException on communication error
+	 */
+	public byte[] getFirstDigest() throws NoMatchingContentFoundException, IOException {
+		if (null == _firstSegment) {
+			ContentObject firstSegment = getFirstSegment();
+			setFirstSegment(firstSegment); // sets _firstSegment, does link dereferencing
+		}
+		return _firstSegment.digest();
+	}
+	
 	@Override
 	public int read() throws IOException {
 		byte [] b = new byte[1];
@@ -1361,10 +1375,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			// go around again, 
 		}
 
+		_firstSegment = newSegment;
+	
 		if (newSegment.isType(ContentType.GONE)) {
-			_goneSegment = newSegment;
 			if (Log.isLoggable(Level.INFO))
-				Log.info("getFirstSegment: got gone segment: {0}", _goneSegment.name());
+				Log.info("setFirstSegment: got gone segment: {0}", newSegment.name());
 		} else if (newSegment.isType(ContentType.ENCR) && (null == _keys)) {
 			// The block is encrypted and we don't have keys
 			// Get the content name without the segment parent
@@ -1396,9 +1411,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		// getSegment will ensure we get a requested publisher (if we have one) for the
 		// first segment; once we have a publisher, it will ensure that future segments match it.
 		_publisher = newSegment.signedInfo().getPublisherKeyID();
-		_publisherKeyLocator = newSegment.signedInfo().getKeyLocator();
 
-		if (_goneSegment != newSegment) { // want pointer ==, not equals() here
+		if (deletionInformation() != newSegment) { // want pointer ==, not equals() here
 			// if we're decrypting, then set it up now
 			if (_keys != null) {
 				// We only do automated lookup of keys on first segment. Otherwise
@@ -1627,9 +1641,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected boolean hasNextSegment() throws IOException {
 
 		// We're looking at content marked GONE
-		if (null != _goneSegment) {
+		if (isGone()) {
 			if (Log.isLoggable(Level.INFO))
-				Log.info("getNextSegment: We have a gone segment, no next segment. Gone segment: {0}", _goneSegment.name());
+				Log.info("getNextSegment: We have a gone segment, no next segment. Gone segment: {0}", _firstSegment.name());
 			return false;
 		}
 
@@ -1671,27 +1685,35 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		if (null == _currentSegment) {
 			if (Log.isLoggable(Level.INFO))
 				Log.info("getNextSegment: no current segment, getting first segment.");
-			return getFirstSegment();
+			ContentObject firstSegment = getFirstSegment();
+			setFirstSegment(firstSegment);
+			return firstSegment;
 		}
 		if (Log.isLoggable(Level.INFO))
 			Log.info("getNextSegment: getting segment after {0}", _currentSegment.name());
+		// TODO: This should call setCurrentSegment, no?
 		return getSegment(nextSegmentNumber());
 	}
 
 	/**
 	 * Retrieves the first segment of the stream, based on specified startingSegmentNumber 
 	 * (see #CCNAbstractInputStream(ContentName, Long, PublisherPublicKeyDigest, ContentKeys, CCNHandle)).
-	 * Convenience method, uses #getSegment(long).
 	 * @return the first segment, if found.
 	 * @throws IOException If can't get a valid starting segment number
 	 */
-	protected ContentObject getFirstSegment() throws IOException {
-		if (null != _startingSegmentNumber) {
+	public ContentObject getFirstSegment() throws IOException {
+		if (null != _firstSegment) {
+			return _firstSegment;
+		} else if (null != _startingSegmentNumber) {
 			ContentObject firstSegment = getSegment(_startingSegmentNumber);
 			if (Log.isLoggable(Level.INFO)) {
 				Log.info("getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " + 
 						((null == firstSegment) ? "no " : firstSegment.name()));
 			}
+			// Do not call setFirstSegment() here because that should only be done when 
+			// we are initializing since it does one-time processing including changing the 
+			// current segment.  Callers to this method may be simply needing the first segment
+			// without changing current.
 			return firstSegment;
 		} else {
 			throw new IOException("Stream does not have a valid starting segment number.");
@@ -1825,6 +1847,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	}
 
 	/**
+	 * Returns the first segment number for this stream.
+	 * @return The index of the first segment of stream data.
+	 */
+	public long firstSegmentNumber() {
+		return _startingSegmentNumber.longValue();
+	}
+	
+	/**
 	 * Returns the segment number for the next segment.
 	 * Default segmentation generates sequentially-numbered stream
 	 * segments but this method may be overridden in subclasses to 
@@ -1875,28 +1905,33 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	public boolean isGone() throws NoMatchingContentFoundException, IOException {
 
 		// TODO: once first segment is always read in constructor this code will change
-		if (null == _currentSegment) {
+		if (null == _firstSegment) {
 			ContentObject firstSegment = getFirstSegment();
-			setFirstSegment(firstSegment); // sets _goneSegment, does link dereferencing,
+			setFirstSegment(firstSegment); // sets _firstSegment, does link dereferencing,
 			// throws NoMatchingContentFoundException if firstSegment is null.
 			// this way all retry behavior is localized in the various versions of getFirstSegment.
 			// Previously what would happen is getFirstSegment would be called by isGone, return null,
 			// and we'd have a second chance to catch it on the call to update if things were slow. But
 			// that means we would get a more general update on a gone object.  
 		}
-		// We might have set first segment in constructor, in which case we will also have set _goneSegment
-		if (null != _goneSegment) {
+		if (_firstSegment.isType(ContentType.GONE)) {
 			return true;
+		} else {
+			return false;
 		}
-		return false;
 	}
 
 	/**
-	 * 
-	 * @return Return the single segment of a stream marked as GONE.
+	 * Return the single segment of a stream marked as GONE.  This method 
+	 * should be called only after checking isGone() == true otherwise it 
+	 * may return the wrong result.
+	 * @return the GONE segment or null if state unknown or stream is not marked GONE
 	 */
 	public ContentObject deletionInformation() {
-		return _goneSegment;
+		if (null != _firstSegment && _firstSegment.isType(ContentType.GONE))
+			return _firstSegment;
+		else
+			return null;
 	}
 
 	/**
@@ -1915,9 +1950,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	/**
 	 * @return the key locator for this stream's publisher.
+	 * @throw IOException if unable to obtain content (NoMatchingContentFoundException)
 	 */
-	public KeyLocator publisherKeyLocator() {
-		return _publisherKeyLocator;		
+	public KeyLocator publisherKeyLocator() throws IOException {
+		if (null == _firstSegment) {
+			ContentObject firstSegment = getFirstSegment();
+			setFirstSegment(firstSegment);
+		}
+		return _firstSegment.signedInfo().getKeyLocator();		
 	}
 
 	/**
@@ -1984,7 +2024,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 		// TODO: when first block is read in constructor this check can be removed
 		if (_currentSegment == null) {
-			setFirstSegment(getSegment(_markBlock));
+			setFirstSegment(getFirstSegment());
+			setCurrentSegment(getSegment(_markBlock));
 		} else if (currentSegmentNumber() == _markBlock) {
 			//already have the correct segment
 			if (tell() == _markOffset){

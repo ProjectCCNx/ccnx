@@ -107,4 +107,8 @@ public class BitBucketRepository extends RepositoryStoreBase {
 	public Object getStatus(String type) {
 		return null;
 	}
+
+	public boolean hasContent(ContentName name) throws RepositoryException {
+		return false;
+	}
 }

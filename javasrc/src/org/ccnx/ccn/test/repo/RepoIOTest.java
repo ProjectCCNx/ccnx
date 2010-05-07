@@ -28,10 +28,14 @@ import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.RepositoryOutputStream;
+import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.test.CCNTestHelper;
+import org.ccnx.ccn.test.io.content.CCNNetworkObjectTest;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -49,11 +53,13 @@ public class RepoIOTest extends RepoTestBase {
 	protected static String _repoTestDir = "repotest";
 	protected static byte [] data = new byte[4000];
 	protected static String _testPrefix = "/testNameSpace/stream";
+	protected static String _testPrefixObj = "/testNameSpace/obj";
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		//Library.setLevel(Level.FINEST);
 		_testPrefix += "-" + rand.nextInt(10000);
+		_testPrefixObj += "-" + rand.nextInt(10000);
 		RepoTestBase.setUpBeforeClass();
 		byte value = 1;
 		for (int i = 0; i < data.length; i++)
@@ -63,6 +69,9 @@ public class RepoIOTest extends RepoTestBase {
 		ros.setTimeout(4000);
 		ros.write(data, 0, data.length);
 		ros.close();
+		CCNStringObject so = new CCNStringObject(ContentName.fromNative(_testPrefixObj), "Initial string value", SaveType.REPOSITORY, putHandle);
+		so.save();
+		so.close();
 	}
 	
 	@AfterClass
@@ -115,6 +124,28 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertEquals(-1, reader.read());
 	}
 	
+	@Test
+	public void testLocalSyncInputStream() throws Exception {
+		System.out.println("Testing local repo sync request for input stream");
+		CCNInputStream input = new CCNInputStream(ContentName.fromNative(_testPrefix), getHandle);
+		// Ignore data in this case, just trigger repo confirmation
+		// Setup of this test writes the stream into repo, so we know it is already there --
+		// should get immediate confirmation from repo, which means no new repo read starts
+		boolean confirm = RepositoryControl.localRepoSync(putHandle, input);
+		Assert.assertTrue(confirm);
+	}
+	
+	@Test
+	public void testLocalSyncNetObj() throws Exception {
+		System.out.println("Testing local repo sync request for network object");	
+		CCNStringObject so = new CCNStringObject(ContentName.fromNative(_testPrefixObj), getHandle);
+		// Ignore data in this case, just trigger repo confirmation
+		// Setup of this test writes the object into repo, so we know it is already there --
+		// should get immediate confirmation from repo, which means no new repo read starts
+		boolean confirm = RepositoryControl.localRepoSync(putHandle, so);
+		Assert.assertTrue(confirm);
+	}
+
 	private void changePolicy(String policyFile) throws Exception {
 		FileInputStream fis = new FileInputStream(_topdir + policyFile);
 		PolicyXML pxml = BasicPolicy.createPolicyXML(fis);

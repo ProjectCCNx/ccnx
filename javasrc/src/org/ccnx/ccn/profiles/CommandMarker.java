@@ -124,6 +124,18 @@ public class CommandMarker {
 	 */
 	public static final CommandMarker COMMAND_MARKER_REPO_START_WRITE = 
 		commandMarker(REPOSITORY_NAMESPACE, "sw");
+	/**
+	 * Checked Start Write: request storage of particular stream if not already held
+	 * The name prefix before the command marker component is the base name
+	 * The component after the command marker is a nonce
+	 * The next component is the starting segment component
+	 * The next and final component is the starting segment digest component explicitly
+	 * The command marker is in the middle so that the response from repo is not a data
+	 * object having another data object full name (digest included) as prefix of its name
+	 */
+	public static final CommandMarker COMMAND_MARKER_REPO_CHECKED_START_WRITE = 
+		commandMarker(REPOSITORY_NAMESPACE, "sw-c");
+
 	
 	/**
 	 * Some very simple markers that need no other support. See KeyProfile and
