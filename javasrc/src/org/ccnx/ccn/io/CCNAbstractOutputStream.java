@@ -29,6 +29,7 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -163,13 +164,28 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	public ContentType getType() { return _type; }
 
 	/**
-	 * Return the digest of the first segment of this stream. 
+	 * Return the first segment of this stream. 
 	 * 
-	 * @return The digest of the first segment of this stream
+	 * @return The first segment of this stream or null if no segments generated yet
+	 */
+	public ContentObject getFirstSegment() {
+		if (null != _segmenter) {	
+			return _segmenter.getFirstSegment();
+		} else {
+			return null;
+		}
+	}
+	
+	/**
+	 *
+	 * Returns the digest of the first segment of this stream. 
+	 * 
+	 * @return The digest of the first segment of this stream or null if no segments generated yet.
 	 */
 	public byte[] getFirstDigest() {
-		if (null != _segmenter) {	
-			return _segmenter.getFirstDigest();
+		ContentObject firstSegment = _segmenter.getFirstSegment();
+		if (null != firstSegment) {
+			return firstSegment.digest();
 		} else {
 			return null;
 		}
@@ -177,11 +193,12 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	
 	/**
 	 * Returns the first segment number for this stream.
-	 * @return The index of the first segment of stream data.
+	 * @return The index of the first segment of stream data or null if no segments generated yet.
 	 */
 	public Long firstSegmentNumber() {
-		if (null != _segmenter) {
-			return _segmenter.firstSegmentNumber();
+		ContentObject firstSegment = _segmenter.getFirstSegment();
+		if (null != firstSegment) {
+			return SegmentationProfile.getSegmentNumber(firstSegment.name());
 		} else {
 			return null;
 		}

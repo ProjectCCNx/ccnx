@@ -1698,11 +1698,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	/**
 	 * Retrieves the first segment of the stream, based on specified startingSegmentNumber 
 	 * (see #CCNAbstractInputStream(ContentName, Long, PublisherPublicKeyDigest, ContentKeys, CCNHandle)).
-	 * Convenience method, uses #getSegment(long).
 	 * @return the first segment, if found.
 	 * @throws IOException If can't get a valid starting segment number
 	 */
-	protected ContentObject getFirstSegment() throws IOException {
+	public ContentObject getFirstSegment() throws IOException {
 		if (null != _firstSegment) {
 			return _firstSegment;
 		} else if (null != _startingSegmentNumber) {
@@ -1713,7 +1712,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			}
 			// Do not call setFirstSegment() here because that should only be done when 
 			// we are initializing since it does one-time processing including changing the 
-			// current segment.
+			// current segment.  Callers to this method may be simply needing the first segment
+			// without changing current.
 			return firstSegment;
 		} else {
 			throw new IOException("Stream does not have a valid starting segment number.");

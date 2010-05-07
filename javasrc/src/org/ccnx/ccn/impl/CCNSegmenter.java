@@ -131,15 +131,10 @@ public class CCNSegmenter {
 	protected CCNAggregatedSigner _bulkSigner;
 	
 	/**
-	 * The first segment digest, useful for characterizing the
-	 * particular instance
+	 * The first segment, useful for obtaining starting segment number and digest to characterize
+	 * set of segmented content.
 	 */
-	protected byte[] _firstDigest = null;
-
-	/**
-	 * The segment number that the stream starts with.
-	 */
-	protected Long _startingSegmentNumber = null;
+	protected ContentObject _firstSegment = null;
 
 	/**
 	 * Create a segmenter with default (Merkle hash tree) bulk signing
@@ -256,23 +251,13 @@ public class CCNSegmenter {
 	public CCNFlowControl getFlowControl() { return _flowControl; }
 
 	/**
-	 * Return the digest of the first segment. 
-	 * 
-	 * @return The digest of the first segment or null if no segments generated yet
+	 * Return the first segment.
+	 * @return The first segment or null if no segments generated yet
 	 */
-	public byte[] getFirstDigest() {
-		return _firstDigest;
+	public ContentObject getFirstSegment() {
+		return _firstSegment;
 	}
-
-	/**
-	 * Return the digest of the first segment. 
-	 * 
-	 * @return The digest of the first segment or null if no segments generated yet
-	 */
-	public Long firstSegmentNumber() {
-		return _startingSegmentNumber;
-	}
-
+	
 	/**
 	 * Sets the segmentation block size to use
 	 * @param blockSize block size in bytes
@@ -535,9 +520,8 @@ public class CCNSegmenter {
 		// For now, this generates the root signature too, so can
 		// ask for the signature for each block.
 		_bulkSigner.signBlocks(contentObjects, signingKey);
-		if (null == _firstDigest) {
-			_firstDigest = contentObjects[0].digest();
-			_startingSegmentNumber = baseSegmentNumber;
+		if (null == _firstSegment) {
+			_firstSegment = contentObjects[0];
 		}
 		getFlowControl().put(contentObjects);
 
@@ -638,9 +622,8 @@ public class CCNSegmenter {
 		// For now, this generates the root signature too, so can
 		// ask for the signature for each block.
 		_bulkSigner.signBlocks(contentObjects, signingKey);
-		if (null == _firstDigest) {
-			_firstDigest = contentObjects[0].digest();
-			_startingSegmentNumber = baseSegmentNumber;
+		if (null == _firstSegment) {
+			_firstSegment = contentObjects[0];
 		}
 		getFlowControl().put(contentObjects);
 
@@ -738,9 +721,8 @@ public class CCNSegmenter {
 							freshnessSeconds, 
 							finalBlockID), 
 							content, offset, length, signingKey);
-		if (null == _firstDigest) {
-			_firstDigest = co.digest();
-			_startingSegmentNumber = segmentNumber;
+		if (null == _firstSegment) {
+			_firstSegment = co;
 		}
 		if( Log.isLoggable(Level.FINER))
 			Log.finer("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
