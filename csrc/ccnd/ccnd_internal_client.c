@@ -154,7 +154,8 @@ ccnd_answer_req(struct ccn_closure *selfp,
         ccnd_debug_ccnb(ccnd, __LINE__, "ccnd_answer_req", NULL,
                         info->interest_ccnb, info->pi->offset[CCN_PI_E]);
     morecomps = selfp->intdata & MORECOMPS_MASK;
-    if ((info->pi->answerfrom & CCN_AOK_NEW) == 0)
+    if (selfp->intdata != OP_SERVICE &&
+          (info->pi->answerfrom & CCN_AOK_NEW) == 0)
         return(CCN_UPCALL_RESULT_OK);
     if (info->matched_comps >= info->interest_comps->n)
         goto Bail;
