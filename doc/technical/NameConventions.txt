@@ -211,27 +211,44 @@ accidental collisions with application names.
 
 Marker namespaces in common use:
 
-Guid name components: to specify fixed random binary name components, which are used
+=== Guid name components:
+Thes are used to specify fixed random binary name components, which are used
 repeatedly over time, rather than nonces.
 ............................
 %C1.M.G%00<guid value>
 ............................
 
-Key ID name components: refer to a particular public key by its digest (currently
-SHA256). Equivalent to PublisherPublicKeyDigest, and the PublisherID included in the
-SignedInfo of each packet.
+=== Key ID name components:
+These refer to a particular public key by its digest (currently SHA256).
+Equivalent to PublisherPublicKeyDigest, and the PublisherID included in the
+SignedInfo of each ContentObject.
 ............................
 %C1.M.K%00<key id value>
 ............................
 
-Early versions of key ID name components took the form keyid<key id value>.
-
-Access control marker:
+=== Access control marker:
+Content relating to access control for a given namespace node is stored below
+this marker component.
 ............................
 %C1.M.ACCESS
 ............................
-content relating to access control for a given namespace node is stored below
-this marker component.
+
+=== Scoped name:
+This is used as the first component of a namespace that is restricted to the
+local machine.
+............................
+%C1.M.S.localhost
+............................
+
+=== Service discovery:
+This is used to denote a portion of the name tree used for service discovery.
+............................
+%C1.M.SRV
+............................
+For example
+`/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY`
+will get the local ccnd's public key.
+Similarly for other services.
 
 == Metadata 
 
