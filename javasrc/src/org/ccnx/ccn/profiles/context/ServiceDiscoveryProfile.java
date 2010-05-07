@@ -39,7 +39,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 /**
  * The ServiceDiscovery protocol aids in finding data about local (same-machine)
  * and nearby (network neighborhood) services. We start by retrieving service keys, using:
- *  /localhost/%C1.M.SVC/<servicename>/KEY/
+ *  /%C1.M.S.localhost/%C1.M.SRV/<servicename>/KEY/
  *  and getting as an answer an encoded, self-signed key published under the 
  *  KeyProfile.keyName() of that service's key under that prefix. 
  */
@@ -51,7 +51,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 		CommandMarker.commandMarker(CommandMarker.COMMAND_MARKER_SCOPE, STRING_LOCALHOST);
 
 	public static final CommandMarker SERVICE_NAME_COMPONENT_MARKER = 
-		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "SVC");
+		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "SRV");
 	
 	public static final int SCOPE_COMPONENT = 0;
 	public static final int SERVICE_MARKER_COMPONENT = 1;
@@ -70,7 +70,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 	
 	public static String getLocalServiceName(ContentName nameWithServicePrefix) {
 		
-		// /localhost/SVC/<servicename>
+		// /%C1.M.S.localhost/%C1.M.SRV/<servicename>
 		if (nameWithServicePrefix.count() < 3) {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
 				Log.finer(Log.FAC_KEYS, "Cannot get local service name, {0} does not have enough components.",
