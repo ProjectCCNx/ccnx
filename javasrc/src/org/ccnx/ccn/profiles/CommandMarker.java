@@ -65,9 +65,9 @@ import org.ccnx.ccn.protocol.ContentName;
  * would be a command in the namespace "org.ccnx", where the command is "frobnicate",
  * which takes two arguments, in this case 1 and 37
  * 
- * The nonce protocol has only one operation, generating a nonce, with an optional argument
- * of a nonce length.
- * %C1.N.n[~<length>]~<nonce>
+ * The nonce protocol has only one operation, generating a nonce, with a
+ * random binary argument.
+ * %C1.N%00<binary argument>
  * 
  * A namespace org.ccnx.foo could have an operation bar, that took a single ccnb-encoded argument:
  * %C1.org.ccnx.foo.bar%C1<argument>
@@ -194,12 +194,12 @@ public class CommandMarker {
 	
 	protected CommandMarker(String namespace, String command) {
 		StringBuffer sb = new StringBuffer(namespace);
-		if ((null != namespace) && (namespace.length() > 0)) {
-			// otherwise use leading . and empty namespace
-			sb.append(COMMAND_SEPARATOR);
-		}
 		if ((null != command) && (command.length() > 0)) {
-			sb.append(command);
+			if ((null != namespace) && (namespace.length() > 0)) {
+				// otherwise use leading . and empty namespace
+				sb.append(COMMAND_SEPARATOR);
+			}			
+                        sb.append(command);
 		}
 		byte [] csb = ContentName.componentParseNative(sb.toString());
 		byte [] bc = new byte[csb.length + COMMAND_PREFIX.length];
