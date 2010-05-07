@@ -25,6 +25,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
+import org.ccnx.ccn.io.NoMatchingContentFoundException;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -269,7 +270,12 @@ public class PipelineTest {
 			Assert.fail();
 		}
 		
-		Assert.assertTrue(DataUtils.arrayEquals(firstDigest, istream.getFirstDigest()));
+		try {
+			Assert.assertTrue(DataUtils.arrayEquals(firstDigest, istream.getFirstDigest()));
+		} catch (IOException e3) {
+			System.err.println("failed to get first digest for pipeline test:");
+			Assert.fail();
+		}
 		try {
 			istream.close();
 		} catch (IOException e2) {
@@ -294,7 +300,12 @@ public class PipelineTest {
 			}
 		}
 		Assert.assertTrue(received == bytesWritten);
-		Assert.assertTrue(DataUtils.arrayEquals(firstDigest, istream.getFirstDigest()));
+		try {
+			Assert.assertTrue(DataUtils.arrayEquals(firstDigest, istream.getFirstDigest()));
+		} catch (IOException e) {
+			System.err.println("failed to get first digest after reading in pipeline test:");
+			Assert.fail();
+		}
 		System.out.println("end first segment digest "+firstDigest);
 	}
 }
