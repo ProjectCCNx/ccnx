@@ -67,7 +67,7 @@ public class KeyLocatorTest {
 			MinimalCertificateGenerator mg = new MinimalCertificateGenerator(
 					endDN, pair.getPublic(), 
 					new X500Principal(rootDN), 
-					MinimalCertificateGenerator.MSEC_IN_YEAR, false, false);
+					MinimalCertificateGenerator.MSEC_IN_YEAR, false, null, false);
 			cert = mg.sign(null, pair.getPrivate());
 			pubID = new PublisherID(pair.getPublic(), false);
 		} catch (Exception ex) {
