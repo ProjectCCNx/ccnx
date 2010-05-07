@@ -117,8 +117,7 @@ public class ServiceKeyDiscoveryTestRepo {
 					TEST_TIMEOUT, readerHandle);
 		
 		printResults(results);
-		// CCND isn't doing this yet
-		//Assert.assertTrue(results.size() == 1);		
+		Assert.assertTrue(results.size() == 1);		
 		
 	}
 
