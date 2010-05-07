@@ -408,6 +408,9 @@ public class CreateUserData {
 		
 		Tuple<Integer, KeyManager> t = keyManagerAs(args, offset);
 		
+		if (null == t)
+			return null;
+		
 		return new Tuple<Integer, CCNHandle>(t.first(), CCNHandle.open(t.second()));
 	}
 	
