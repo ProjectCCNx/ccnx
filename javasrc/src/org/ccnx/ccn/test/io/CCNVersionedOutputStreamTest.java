@@ -113,7 +113,7 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		Log.info("Finished writing, read result {0}, write result {1}", DataUtils.printHexBytes(resultDigest), DataUtils.printHexBytes(writeDigest));
 		Assert.assertArrayEquals(resultDigest, writeDigest);
 		Assert.assertArrayEquals(writer.getFirstDigest(), vis.getFirstDigest());
-		Assert.assertEquals(writer.firstSegmentNumber(), vis.firstSegmentNumber());
+		Assert.assertEquals(writer.firstSegmentNumber(), (Long)vis.firstSegmentNumber());
 		
 		readHandle.close();
 		writeHandle.close();
