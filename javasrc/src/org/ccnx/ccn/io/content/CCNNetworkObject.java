@@ -270,8 +270,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	/**
 	 * Read constructor. Will try to pull latest version of this object, or a specific
 	 * named version if specified in the name. If read times out, will leave object in
-	 * its uninitialized state, and continue attempting to update it (one time) in the
-	 * background.
+	 * its uninitialized state.
 	 * @param type Wrapped class type.
 	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
@@ -290,8 +289,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	/**
 	 * Read constructor. Will try to pull latest version of this object, or a specific
 	 * named version if specified in the name. If read times out, will leave object in
-	 * its uninitialized state, and continue attempting to update it (one time) in the
-	 * background.
+	 * its uninitialized state.
+	 * 
 	 * @param type Wrapped class type.
 	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
@@ -321,8 +320,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	/**
 	 * Read constructor. Will try to pull latest version of this object, or a specific
 	 * named version if specified in the name. If read times out, will leave object in
-	 * its uninitialized state, and continue attempting to update it (one time) in the
-	 * background.
+	 * its uninitialized state.
+	 * 
 	 * @param type Wrapped class type.
 	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
@@ -633,7 +632,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_startingSegmentNumber = inputStream.firstSegmentNumber();
 		} catch (NoMatchingContentFoundException nme) {
 			if (Log.isLoggable(Level.INFO))
-				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available. Updating once in background.", inputStream.getBaseName());
+				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available.", inputStream.getBaseName());
 			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
 			_baseName = nameAndVersion.first();
 

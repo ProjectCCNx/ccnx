@@ -149,11 +149,6 @@ public class CommandMarker {
 	public static final CommandMarker COMMAND_MARKER_NONCE = commandMarker(NONCE_NAMESPACE, null);
 	
 	/**
-	 * GUID marker
-	 */
-	public static final CommandMarker COMMAND_MARKER_GUID = commandMarker(CommandMarker.MARKER_NAMESPACE, "G");
-	
-	/**
 	 * Marker for typed binary name components. These aren't general binary name components, but name
 	 * components with defined semantics. Specific examples are defined in their own profiles, see
 	 * KeyProfile and GuidProfile, as well as markers for access controls. The interpretation of these
@@ -165,6 +160,18 @@ public class CommandMarker {
 	 * have to centralize here for reference.
 	 */
 	public static final String MARKER_NAMESPACE = "M";
+	
+	/**
+	 * GUID marker
+	 */
+	public static final CommandMarker COMMAND_MARKER_GUID = commandMarker(CommandMarker.MARKER_NAMESPACE, "G");
+	
+	/**
+	 * Marker for a name component that is supposed to indicate a scope
+	 */
+	public static final CommandMarker COMMAND_MARKER_SCOPE = 
+		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "S");
+
 
 	/**
 	 * This in practice might be only the prefix, with additional variable arguments added
@@ -174,6 +181,27 @@ public class CommandMarker {
 	
 	public static final CommandMarker commandMarker(String namespace, String command) {
 		return new CommandMarker(namespace, command);
+	}
+	
+	public static final CommandMarker commandMarker(CommandMarker namespace, String command) {
+		return new CommandMarker(namespace, command);
+	}
+
+	protected CommandMarker(CommandMarker parent, String operation) {
+		
+		if (null == operation) {
+			_byteCommandMarker = parent.getBytes();
+		} else {
+			byte [] prefix = parent.getBytes();
+
+			StringBuffer sb = new StringBuffer(COMMAND_SEPARATOR);
+			sb.append(operation);
+			byte [] csb = ContentName.componentParseNative(sb.toString());
+			byte [] bc = new byte[csb.length + prefix.length];
+			System.arraycopy(prefix, 0, bc, 0, prefix.length);
+			System.arraycopy(csb, 0, bc, prefix.length, csb.length);
+			_byteCommandMarker = bc;
+		}
 	}
 	
 	protected CommandMarker(String namespace, String command) {
@@ -222,7 +250,7 @@ public class CommandMarker {
 			// only one component
 			return new String(_byteCommandMarker, COMMAND_PREFIX.length, _byteCommandMarker.length-COMMAND_PREFIX.length);
 		}
-		int lastDot = DataUtils.byterindex(_byteCommandMarker, COMMAND_PREFIX.length, COMMAND_SEPARATOR_BYTE);
+		int lastDot = DataUtils.byterindex(_byteCommandMarker, _byteCommandMarker.length-1, COMMAND_SEPARATOR_BYTE);
 		return new String(_byteCommandMarker, COMMAND_PREFIX.length, lastDot-1-COMMAND_PREFIX.length);
 	}
 	
@@ -287,6 +315,13 @@ public class CommandMarker {
 	 */
 	public byte [] addArguments(String [] arguments) {
 		return addArgumentsAndData(arguments,  null, (byte)0x00);
+	}
+	
+	/**
+	 * Helper method if you just need to add one argument
+	 */
+	public byte [] addArgument(String argument) {
+		return addArguments(new String[]{argument});
 	}
 	
 	/**

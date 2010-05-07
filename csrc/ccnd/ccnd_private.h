@@ -128,6 +128,7 @@ struct ccnd_handle {
     const char *progname;           /**< our name, for locating helpers */
     struct ccn *internal_client;    /**< internal client */
     struct face *face0;             /**< special face for internal client */
+    struct ccn_charbuf *service_ccnb; /**< for local service discovery */
     struct ccn_seqwriter *notice;   /**< for notices of status changes */
     struct ccn_indexbuf *chface;    /**< faceids w/ recent status changes */
     struct ccn_scheduled_event *internal_client_refresh;

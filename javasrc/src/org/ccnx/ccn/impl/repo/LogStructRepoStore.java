@@ -44,6 +44,7 @@ import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.CCNProfile;
+import org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -300,6 +301,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				// prone to accidentally loading the user's key manager. If we close it more than
 				// once, that's ok.
 				KeyManager.setDefaultKeyManager(_km);
+				
+				// Serve our key using the localhost key discovery protocol
+				ServiceDiscoveryProfile.publishLocalServiceKey(ServiceDiscoveryProfile.REPOSITORY_SERVICE_NAME,
+						null, _km);
 
 			} catch (ConfigurationException e) {
 				Log.warning("ConfigurationException loading repository key store: " + e.getMessage());
