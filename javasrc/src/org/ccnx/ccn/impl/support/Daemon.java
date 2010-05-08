@@ -420,7 +420,7 @@ public class Daemon {
 		// will be renamed with PID if possible
 		while (!getRMIFile(daemonName, null).exists()) {
 			try {
-				Thread.sleep(200);
+				Thread.sleep(1000);
 				
 				// this should throw an exception
 				try {
