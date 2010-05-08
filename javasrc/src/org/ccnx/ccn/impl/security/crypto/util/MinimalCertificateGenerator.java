@@ -146,7 +146,7 @@ public class MinimalCertificateGenerator {
 	         throws CertificateEncodingException, InvalidKeyException, IllegalStateException, NoSuchAlgorithmException, 
 	         						SignatureException, IOException {
 		MinimalCertificateGenerator mg = 
-			new MinimalCertificateGenerator(subjectDN, userPublicKey, issuerCertificate, duration, false, false);
+			new MinimalCertificateGenerator(subjectDN, userPublicKey, issuerCertificate, duration, false, null, false);
 		mg.setClientAuthenticationUsage();
 		return mg.sign(null, signingKey);
 	}
@@ -198,9 +198,10 @@ public class MinimalCertificateGenerator {
 	 * @throws IOException
 	 */
 	public MinimalCertificateGenerator(String subjectDN, PublicKey subjectPublicKey,  
-									   X509Certificate issuerCertificate, long duration, boolean isCA, boolean allUsage) throws CertificateEncodingException, IOException {
+									   X509Certificate issuerCertificate, long duration, 
+									   boolean isCA, Integer chainLength, boolean allUsage) throws CertificateEncodingException, IOException {
 
-		this(subjectDN, subjectPublicKey, issuerCertificate.getSubjectX500Principal(), duration, isCA, allUsage);
+		this(subjectDN, subjectPublicKey, issuerCertificate.getSubjectX500Principal(), duration, isCA, chainLength, allUsage);
 		// Pull the existing subject identifier out of the issuer cert. 
 		byte [] subjectKeyID = issuerCertificate.getExtensionValue(X509Extensions.SubjectKeyIdentifier.toString());
 		if (null == subjectKeyID) {
@@ -227,7 +228,7 @@ public class MinimalCertificateGenerator {
 	public MinimalCertificateGenerator(String subjectDN, PublicKey subjectPublicKey,  
 									   long duration, boolean isCA, boolean allUsage) {
 
-		this(subjectDN, subjectPublicKey, new X500Principal(subjectDN), duration, isCA, allUsage);
+		this(subjectDN, subjectPublicKey, new X500Principal(subjectDN), duration, isCA, null, allUsage);
 		// This needs to match what we are using for a subject key identifier.
 		_aki = new AuthorityKeyIdentifier(CryptoUtil.generateKeyID(subjectPublicKey));
 	}
@@ -242,7 +243,9 @@ public class MinimalCertificateGenerator {
 	 * @param allUsage if isCA is true, add "regular" KeyUsage flags, for dual-use cert
 	 */
 	public MinimalCertificateGenerator(String subjectDN, PublicKey subjectPublicKey, 
-									   X500Principal issuerDN, long duration, boolean isCA, boolean allUsage) {
+									   X500Principal issuerDN, long duration, boolean isCA, 
+									   Integer chainLength,
+									   boolean allUsage) {
 		
 		_generator.setSubjectDN(new X509Name(subjectDN));
 		_generator.setIssuerDN(issuerDN);
@@ -271,7 +274,9 @@ public class MinimalCertificateGenerator {
 		}
 		_generator.addExtension(X509Extensions.KeyUsage, false, new KeyUsage(ourUsage));			
 		
-		BasicConstraints bc = new BasicConstraints(isCA);
+		BasicConstraints bc = 
+			((isCA == false) || (null == chainLength)) ? new BasicConstraints(isCA) :
+														 new BasicConstraints(chainLength.intValue());
 		_generator.addExtension(X509Extensions.BasicConstraints, true, bc);
 
 	    SubjectKeyIdentifier ski = new SubjectKeyIdentifier(CryptoUtil.generateKeyID(subjectPublicKey));

@@ -21,6 +21,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <ccn/ccn.h>
 #include <ccn/seqwriter.h>
 
@@ -118,6 +119,13 @@ seqw_incoming_interest(
     return(CCN_UPCALL_RESULT_OK);
 }
 
+/**
+ * Create a seqwriter for writing data to a versioned, segmented stream.
+ *
+ * @param name is a ccnb-encoded Name.  It will be provided with a version
+ *        based on the current time unless it already ends in a version
+ *        component.
+ */
 struct ccn_seqwriter *
 ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name)
 {
@@ -160,6 +168,22 @@ ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name)
     return(w);
 }
 
+/**
+ * Write some data to a seqwriter.
+ *
+ * This is roughly analogous to a write(2) call in non-blocking mode.
+ *
+ * The current implementation returns an error and refuses the new data if
+ * it does not fit in the current buffer.
+ * That is, there are no partial writes.
+ * In this case, the caller should ccn_run() for a little while and retry.
+ * 
+ * It is also an error to attempt to write more than 4096 bytes.
+ *
+ * @returns the size written, or -1 for an error.  In case of an error,
+ *          the caller may test ccn_geterror() for values of EAGAIN or
+ *          EINVAL from errno.h.
+ */
 int
 ccn_seqw_write(struct ccn_seqwriter *w, const void *buf, size_t size)
 {
@@ -167,11 +191,13 @@ ccn_seqw_write(struct ccn_seqwriter *w, const void *buf, size_t size)
     int res;
     int ans;
     
-    if (w == NULL || w->buffer == NULL || size > MAX_DATA_SIZE)
+    if (w == NULL || w->cl.data != w)
         return(-1);
+    if (w->buffer == NULL || size > MAX_DATA_SIZE)
+        return(ccn_seterror(w->h, EINVAL));
     ans = size;
     if (size + w->buffer->length > MAX_DATA_SIZE)
-        ans = -1; /* Caller should treat like EAGAIN */
+        ans = ccn_seterror(w->h, EAGAIN);
     else if (size != 0)
         ccn_charbuf_append(w->buffer, buf, size);
     if (w->interests_possibly_pending &&
@@ -194,34 +220,53 @@ ccn_seqw_write(struct ccn_seqwriter *w, const void *buf, size_t size)
     return(ans);
 }
 
+/**
+ * Start a batch of writes.
+ *
+ * This will delay the signing of content objects until the batch ends,
+ * producing a more efficient result.
+ * Must have a matching ccn_seqw_batch_end() call.
+ * Batching may be nested.
+ */
 int
 ccn_seqw_batch_start(struct ccn_seqwriter *w)
 {
-    if (w == NULL || w->closed)
+    if (w == NULL || w->cl.data != w || w->closed)
         return(-1);
     return(++(w->batching));
 }
 
+/**
+ * End a batch of writes.
+ */
 int
 ccn_seqw_batch_end(struct ccn_seqwriter *w)
 {
-    if (w == NULL || w->batching == 0)
+    if (w == NULL || w->cl.data != w || w->batching == 0)
         return(-1);
     if (--(w->batching) == 0)
         ccn_seqw_write(w, NULL, 0);
     return(w->batching);
 }
 
+/**
+ * Assert that an interest has possibly been expressed that matches
+ * the seqwriter's data.  This is useful, for example, if the seqwriter
+ * was created in response to an interest.
+ */
 int
 ccn_seqw_possible_interest(struct ccn_seqwriter *w)
 {
-    if (w == NULL)
+    if (w == NULL || w->cl.data != w)
         return(-1);
     w->interests_possibly_pending = 1;
     ccn_seqw_write(w, NULL, 0);
     return(0);
 }
 
+/**
+ * Close the seqwriter, which will be freed.
+ */
 int
 ccn_seqw_close(struct ccn_seqwriter *w)
 {

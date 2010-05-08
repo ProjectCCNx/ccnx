@@ -89,7 +89,8 @@ public class SignedInfoTest {
 			MinimalCertificateGenerator mg = new MinimalCertificateGenerator(
 																endDN, pair.getPublic(), 
 																new X500Principal(rootDN), 
-																MinimalCertificateGenerator.MSEC_IN_YEAR, false, false);
+																MinimalCertificateGenerator.MSEC_IN_YEAR, 
+																false, null, false);
 			cert = mg.sign(null, pair.getPrivate());
 			nameLoc = new KeyLocator(keyname);
 			keyLoc = new KeyLocator(pair.getPublic());

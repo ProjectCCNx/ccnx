@@ -84,7 +84,10 @@ based (primarily) on time.  The remaining bytes are a big-endian
 binary encoding of the time in link:Timestamp.html[CCNx Timestamp
 format]. 
 
-The publisher generating the version stamp should try to avoid using a stamp earlier than (or the same as) any version of the file, to the extent that it knows about it.  It should also avoid generating stamps that are unreasonably far in the future.
+The publisher generating the version stamp should try to avoid
+using a stamp earlier than (or the same as) any version of the file,
+to the extent that it knows about it.
+It should also avoid generating stamps that are unreasonably far in the future.
 
 .Example:
 .........
@@ -192,7 +195,7 @@ Nonce Command::
    `%C1.N%00<noncevalue>` - where <noncevalue> is the random (binary)
    nonce value. 
 
-   Early verisions of this profile used an operation of 'n', and predated
+   Early versions of this profile used an operation of 'n', and predated
    the binary argument separator, resulting in nonce commands of 
    %C1.N.n<noncevalue>.
 
