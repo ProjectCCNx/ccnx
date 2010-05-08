@@ -203,6 +203,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			ContentName orig = interest.name();
 			if (pos+3 >= orig.count()) {
 				Log.warning(Log.FAC_REPO, "Repo checked write malformed request {0}", interest.name());
+				return;
 			}
 			// Strip out the command marker and nonce so we get name with those components removed from middle
 			ContentName head = orig.subname(0, pos);
