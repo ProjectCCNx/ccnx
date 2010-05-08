@@ -26,6 +26,7 @@ import org.ccnx.ccn.impl.repo.BasicPolicy;
 import org.ccnx.ccn.impl.repo.PolicyXML;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.io.CCNInputStream;
+import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.io.content.CCNStringObject;
@@ -34,8 +35,7 @@ import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.test.CCNTestHelper;
-import org.ccnx.ccn.test.io.content.CCNNetworkObjectTest;
+import org.ccnx.ccn.test.Flosser;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -52,8 +52,14 @@ public class RepoIOTest extends RepoTestBase {
 	
 	protected static String _repoTestDir = "repotest";
 	protected static byte [] data = new byte[4000];
+	// Test stream and net object names for content written into repo before all test cases
+	// Note these have random numbers added in initialization
 	protected static String _testPrefix = "/testNameSpace/stream";
 	protected static String _testPrefixObj = "/testNameSpace/obj";
+	// Test stream and net object names for content not in repo before test cases
+	protected static String _testNonRepo = "/testNameSpace/stream-nr";
+	protected static String _testNonRepoObj = "/testNameSpace/obj-nr";
+
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -72,6 +78,26 @@ public class RepoIOTest extends RepoTestBase {
 		CCNStringObject so = new CCNStringObject(ContentName.fromNative(_testPrefixObj), "Initial string value", SaveType.REPOSITORY, putHandle);
 		so.save();
 		so.close();
+		
+		// Floss content into ccnd for tests involving content not already in repo when we start
+		Flosser floss = new Flosser();
+
+		_testNonRepo += "-" + rand.nextInt(10000);
+		_testNonRepoObj += "-" + rand.nextInt(10000);
+		ContentName name = ContentName.fromNative(_testNonRepo);
+		floss.handleNamespace(name);
+		CCNOutputStream cos = new CCNOutputStream(name, putHandle);
+		cos.setBlockSize(100);
+		cos.setTimeout(4000);
+		cos.write(data, 0, data.length);
+		cos.close();
+		
+		name = ContentName.fromNative(_testNonRepoObj);
+		floss.handleNamespace(name);
+		so = new CCNStringObject(name, "String value for non-repo obj", SaveType.RAW, putHandle);
+		so.save();
+		so.close();
+		floss.stop();
 	}
 	
 	@AfterClass
@@ -126,24 +152,45 @@ public class RepoIOTest extends RepoTestBase {
 	
 	@Test
 	public void testLocalSyncInputStream() throws Exception {
+		// This test should run all on single handle, just as client would do
 		System.out.println("Testing local repo sync request for input stream");
 		CCNInputStream input = new CCNInputStream(ContentName.fromNative(_testPrefix), getHandle);
 		// Ignore data in this case, just trigger repo confirmation
 		// Setup of this test writes the stream into repo, so we know it is already there --
 		// should get immediate confirmation from repo, which means no new repo read starts
-		boolean confirm = RepositoryControl.localRepoSync(putHandle, input);
+		boolean confirm = RepositoryControl.localRepoSync(getHandle, input);
 		Assert.assertTrue(confirm);
+		input.close();
+		
+		// Test case of content not already in repo
+		input = new CCNInputStream(ContentName.fromNative(_testNonRepo), getHandle);
+		Assert.assertFalse(RepositoryControl.localRepoSync(getHandle, input));
+		
+		Thread.sleep(2000);  // Give repo time to fetch TODO: replace with confirmation protocol
+		Assert.assertTrue(RepositoryControl.localRepoSync(getHandle, input));
+		
+		input.close();
 	}
 	
 	@Test
 	public void testLocalSyncNetObj() throws Exception {
+		// This test should run all on single handle, just as client would do
 		System.out.println("Testing local repo sync request for network object");	
 		CCNStringObject so = new CCNStringObject(ContentName.fromNative(_testPrefixObj), getHandle);
 		// Ignore data in this case, just trigger repo confirmation
 		// Setup of this test writes the object into repo, so we know it is already there --
 		// should get immediate confirmation from repo, which means no new repo read starts
-		boolean confirm = RepositoryControl.localRepoSync(putHandle, so);
+		boolean confirm = RepositoryControl.localRepoSync(getHandle, so);
 		Assert.assertTrue(confirm);
+		so.close();
+		
+		// Test case of content not already in repo
+		so = new CCNStringObject(ContentName.fromNative(_testNonRepoObj), getHandle);
+		Assert.assertFalse(RepositoryControl.localRepoSync(getHandle, so));
+
+		Thread.sleep(2000);  // Give repo time to fetch TODO: replace with confirmation protocol
+		Assert.assertTrue(RepositoryControl.localRepoSync(getHandle, so));
+		so.close();
 	}
 
 	private void changePolicy(String policyFile) throws Exception {
