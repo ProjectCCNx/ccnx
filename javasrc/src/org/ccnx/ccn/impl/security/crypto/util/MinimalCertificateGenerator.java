@@ -330,6 +330,11 @@ public class MinimalCertificateGenerator {
 		_ekus.add(id_kp_ipsec);
 	}
 	
+	public void setExtendedKeyUsage(String usageOID) {
+		DERObjectIdentifier oid = new DERObjectIdentifier(usageOID);
+		_ekus.add(oid);
+	}
+	
 	public void addSubjectAltName(URI subjectURI) {
 		GeneralName name = new GeneralName(GeneralName.uniformResourceIdentifier, subjectURI.toString());
 		_subjectAltNames.add(name);
