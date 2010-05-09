@@ -24,16 +24,24 @@ import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Random;
+
+import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.impl.CCNNetworkManager;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.util.SignatureHelper;
 import org.ccnx.ccn.impl.support.Tuple;
+import org.ccnx.ccn.io.NoMatchingContentFoundException;
 import org.ccnx.ccn.io.NullOutputStream;
+import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -52,6 +60,7 @@ public class BenchmarkTest {
 	public static final double NanoToMilli = 1000000.0d;
 	
 	public static CCNTestHelper testHelper = new CCNTestHelper(BenchmarkTest.class);
+	public static CCNHandle handle;
 
 	public static ContentName testName;
 	public static byte[] shortPayload;
@@ -82,6 +91,7 @@ public class BenchmarkTest {
 		longPayload = new byte[1000];
 		Random rnd = new Random();
 		rnd.nextBytes(longPayload);
+		handle = CCNHandle.open();
 		System.out.println("Benchmark Test starting on " + System.getProperty("os.name"));
 	}
 
@@ -187,5 +197,40 @@ public class BenchmarkTest {
 		
 		System.out.println("==== Key Generation: " + UserConfiguration.defaultKeyLength() + "-bit " + UserConfiguration.defaultKeyAlgorithm() + " key.");
 		runBenchmark(NUM_KEYGEN, "generate keypair", genpair, null);
+	}
+	
+	@Test
+	public void testCcndRetrieve() throws Exception {
+		// Floss some content into ccnd
+		ContentName dataPrefix = testHelper.getTestNamespace("TestCcndRetrieve");
+
+		Flosser floss = new Flosser(dataPrefix);
+		CCNStringObject so = new CCNStringObject(dataPrefix, "This is the value", SaveType.RAW, handle);
+		so.save();
+		ContentName name = so.getVersionedName();
+		so.close();
+		floss.stop();
+		
+		// Now that content is in local ccnd, we can benchmark retrieval of one content item
+		Operation<Interest> getcontent = new Operation<Interest>() {
+			Object execute(Interest interest) throws Exception {
+				// Note as of this writing, interest refresh was PERIOD*2 with no constant in net mgr
+				// We will use PERIOD for now, as we want to be sure to avoid refreshes and this should be fast.
+				ContentObject result = handle.get(interest, CCNNetworkManager.PERIOD);
+				// Make sure to throw exception if we get nothing back so this doesn't just 
+				// look like a long successful run.
+				if (null == result) {
+					throw new NoMatchingContentFoundException("timeout on get for " + interest.name());
+				}
+				return null;
+			}
+			
+			int size(Interest interest) {
+				return -1;
+			}
+		};
+		Interest interest = new Interest(name);
+		System.out.println("==== Single data retrieval from ccnd: " + name);
+		runBenchmark("retrieve data", getcontent, interest);
 	}
 }
