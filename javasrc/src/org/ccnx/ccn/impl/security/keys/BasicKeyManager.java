@@ -141,7 +141,7 @@ public class BasicKeyManager extends KeyManager {
 		
 		_password = (null != password) ? password : UserConfiguration.keystorePassword().toCharArray();
 		_keyStoreType = (null != keyStoreType) ? keyStoreType : UserConfiguration.defaultKeystoreType();
-	    _defaultAlias = (null != defaultAlias) ? defaultAlias : UserConfiguration.defaultKeyAlias();
+	    _defaultAlias = ((null != defaultAlias) ? defaultAlias : UserConfiguration.defaultKeyAlias()).toLowerCase();
 	    
 	    String defaultUserName = UserConfiguration.userName();
 	    if ((null == userName) || (userName.equals(defaultUserName))) {
@@ -492,16 +492,18 @@ public class BasicKeyManager extends KeyManager {
 			}
 		}
 	}
-		
+			
 	/**
 	 * Generate our key store if we don't have one. Use createKeyStoreWriteStream to determine where
 	 * to put it.
 	 * @throws ConfigurationException
 	 */
-	synchronized protected KeyStoreInfo createKeyStore() throws ConfigurationException, IOException {
+	synchronized protected KeyStoreInfo createKeyStore() 
+				throws ConfigurationException, IOException {
 		
-		Tuple<KeyStoreInfo, OutputStream>streamInfo = createKeyStoreWriteStream();
+		Tuple<KeyStoreInfo, OutputStream> streamInfo = createKeyStoreWriteStream();
 	    KeyStore keyStore = createKeyStore(streamInfo.second());
+	    
 	    KeyStoreInfo storeInfo = streamInfo.first();
 	    storeInfo.setKeyStore(keyStore);
 	    if (null == storeInfo.getVersion()) {
@@ -526,9 +528,19 @@ public class BasicKeyManager extends KeyManager {
 	 * Creates a key store file
 	 * @throws ConfigurationException
 	 */
-	protected Tuple<KeyStoreInfo, OutputStream> createKeyStoreWriteStream() throws ConfigurationException, IOException {
+	protected Tuple<KeyStoreInfo, OutputStream> createKeyStoreWriteStream() throws ConfigurationException,
+		IOException {
+		return createKeyStoreWriteStream(_keyStoreDirectory, _keyStoreFileName);
+	}
+	
+	/**
+	 * Creates a key store file
+	 * @throws ConfigurationException
+	 */
+	protected static Tuple<KeyStoreInfo, OutputStream> createKeyStoreWriteStream(
+			String keyStoreDirectory, String keyStoreFileName) throws ConfigurationException, IOException {
 		
-		File keyStoreDir = new File(_keyStoreDirectory);
+		File keyStoreDir = new File(keyStoreDirectory);
 		if (!keyStoreDir.exists()) {
 			if (!keyStoreDir.mkdirs()) {
 				throw new ConfigurationException("Cannot create keystore directory: " + keyStoreDir.getAbsolutePath(), null);
@@ -537,7 +549,7 @@ public class BasicKeyManager extends KeyManager {
 		
 		// Alas, until 1.6, we can't set permissions on the file or directory...
 		// TODO DKS when switch to 1.6, add permission settings.
-		File keyStoreFile  = new File(keyStoreDir, _keyStoreFileName);
+		File keyStoreFile  = new File(keyStoreDir, keyStoreFileName);
 		if (keyStoreFile.exists()) {
 			Log.warning("Key store file {0} already exists (length {1}), overrwriting.", keyStoreFile.getAbsolutePath(), keyStoreFile.length());
 		}
@@ -555,20 +567,56 @@ public class BasicKeyManager extends KeyManager {
 	    return new Tuple<KeyStoreInfo, OutputStream>(storeInfo, out);   
 	}
 	
+	protected KeyStore createKeyStore(OutputStream keystoreWriteStream) 
+			throws ConfigurationException, IOException {
+		return createKeyStore(keystoreWriteStream, _keyStoreType, _defaultAlias, _password, _userName);
+	}
+	
 	/**
-	 * Generates a key pair and a certificate, and stores them to the key store
+	 * Generates a key pair and a certificate, and stores them to the key store using the specified
+	 * alias, password, and other information.
+	 * @param keystoreWriteStream The output stream to write the keystore to (file stream, ccn stream, ...)
+	 * @param keyStoreType The keystore type to use. If null, uses UserConfiguration.defaultKeyStoreType()
+	 * @param keyAlias The key alias to use. If null, uses UserConfiguration.defaultKeyAlias(). Note
+	 * 	 that toLower is called on the alias before it is used, as OSes vary in their handling of
+	 * 		case in keystore aliases (some treat it as significant, some don't).
+	 * @param password The password to use for the key and keystore, if null uses 
+	 * 		UserConfiguration.keystorePassword()
+	 * @param userName The user name to use. If null, uses UserConfiguration.userName().
+	 * @return
 	 * @throws ConfigurationException
+	 * @throws IOException
 	 */
-	synchronized protected KeyStore createKeyStore(OutputStream out) throws ConfigurationException {
+	public static KeyStore createKeyStore(OutputStream keystoreWriteStream, 
+											 String keyStoreType, String keyAlias,
+											 char [] password,
+											 String userName) throws ConfigurationException, IOException {
+
+		if (null == keyStoreType) {
+			keyStoreType = UserConfiguration.defaultKeystoreType();
+		}
+		
+		if (null == keyAlias) {
+			keyAlias = UserConfiguration.defaultKeyAlias();
+		}
+		keyAlias = keyAlias.toLowerCase();
+		
+		if (null == password) {
+			password = UserConfiguration.keystorePassword().toCharArray();
+		}
+
+		if (null == userName) {
+			userName = UserConfiguration.userName();
+		}
 
 		KeyStore ks = null;
 	    try {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
-				Log.finest(Log.FAC_KEYS, "createKeyStore: getting instance of keystore type " + _keyStoreType);
-			ks = KeyStore.getInstance(_keyStoreType);
+				Log.finest(Log.FAC_KEYS, "createKeyStore: getting instance of keystore type " + keyStoreType);
+			ks = KeyStore.getInstance(keyStoreType);
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
 				Log.finest(Log.FAC_KEYS, "createKeyStore: loading key store.");
-			ks.load(null, _password);
+			ks.load(null, password);
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
 				Log.finest(Log.FAC_KEYS, "createKeyStore: key store loaded.");
 		} catch (NoSuchAlgorithmException e) {
@@ -580,7 +628,7 @@ public class BasicKeyManager extends KeyManager {
 		} catch (IOException e) {
 			generateConfigurationException("Cannot initialize instance of default key store type.", e);
 		}
-
+		
 		KeyPairGenerator kpg = null;
 		try {
 			kpg = KeyPairGenerator.getInstance(UserConfiguration.defaultKeyAlgorithm());
@@ -593,10 +641,10 @@ public class BasicKeyManager extends KeyManager {
 			Log.finest(Log.FAC_KEYS, "createKeyStore: generating " + UserConfiguration.defaultKeyLength() + "-bit " + UserConfiguration.defaultKeyAlgorithm() + " key.");
 		KeyPair userKeyPair = kpg.generateKeyPair();
 		if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
-			Log.finest(Log.FAC_KEYS, "createKeyStore: key generated, generating certificate for user " + _userName);
+			Log.finest(Log.FAC_KEYS, "createKeyStore: key generated, generating certificate for user " + userName);
 		
 		// Generate a self-signed certificate.
-		String subjectDN = "CN=" + _userName;
+		String subjectDN = "CN=" + userName;
 		X509Certificate ssCert = null;
 		try {
 			 ssCert = 
@@ -615,12 +663,12 @@ public class BasicKeyManager extends KeyManager {
 	    try {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
 				Log.finest(Log.FAC_KEYS, "createKeyStore: setting private key entry.");
-		    ks.setEntry(_defaultAlias, entry, 
-			        new KeyStore.PasswordProtection(_password));
+		    ks.setEntry(keyAlias, entry, 
+			        new KeyStore.PasswordProtection(password));
 		    
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
 				Log.finest(Log.FAC_KEYS, "createKeyStore: storing key store.");
-	        ks.store(out, _password);
+	        ks.store(keystoreWriteStream, password);
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINEST))
 				Log.finest(Log.FAC_KEYS, "createKeyStore: wrote key store.");
 
@@ -630,12 +678,10 @@ public class BasicKeyManager extends KeyManager {
 			generateConfigurationException("Cannot save default keystore with no certificates.", e);
 	    } catch (KeyStoreException e) {
 	    	generateConfigurationException("Cannot set private key entry for user default key", e);
-		} catch (IOException e) {
-			generateConfigurationException("Cannot write keystore file: " + _keyStoreFileName, e);
 		} finally {
-	        if (out != null) {
+	        if (keystoreWriteStream != null) {
 	            try {
-					out.close();
+					keystoreWriteStream.close();
 				} catch (IOException e) {
 					Log.warning("IOException closing key store file after load.");
 					Log.warningStackTrace(e);
