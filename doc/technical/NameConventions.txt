@@ -184,7 +184,10 @@ Start Write Command::
 Checked Start Write Command::
    `%C1.R.sw-c` - similar to above, but the repository firsts checks
    for the presence of the stream and does not store it if it is already
-   present.  The repository responds in either case.
+   present.  The repository responds in either case.  Following the 
+   command component is a nonce component, a segment name component,
+   and an explicit digest component, the last two identifying precisely
+   the first segment of the stream to be stored.
 
 === Nonce (Namespace `N`)
 
