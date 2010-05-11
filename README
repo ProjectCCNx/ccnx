@@ -177,7 +177,7 @@ library file independently:
    Bouncy Castle Provider for JDK1.5: bcprov-jdk15-143.jar
    (http://www.bouncycastle.org/download/bcprov-jdk15-143.jar)
 
-Copy the extra JAR file into lib/ AND javasrc/lib, again ONLY IF you 
+Copy the extra JAR file into javasrc/lib, again ONLY IF you 
 are running on JDK1.5.
 
 SPECIAL PLATFORM NOTES
