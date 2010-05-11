@@ -32,8 +32,11 @@ import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
+import org.ccnx.ccn.io.content.LocalCopyWrapper;
+import org.ccnx.ccn.io.content.UpdateListener;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
@@ -77,7 +80,7 @@ public class CCNNetworkObjectTestRepo {
 	static Collection big;
 	static CCNHandle handle;
 	static String [] numbers = new String[]{"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"};
-		
+	
 	static void setupNamespace(ContentName name) throws IOException {
 	}
 	
@@ -418,6 +421,50 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertTrue(so.available());
 		Assert.assertEquals(so.string(), sowrite.string());
 		Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
+	}
+	
+	@Test
+	public void testLocalCopyWrapper() throws Exception {
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testLocalCopyWrapper"), collectionObjName);
+		CCNStringObject so = new CCNStringObject(testName, handle);
+		LocalCopyWrapper wo = new LocalCopyWrapper(so);
+		Assert.assertFalse(wo.available());
+		class Record { boolean callback = false; }
+		Record record = new Record();
+		
+		class Listener implements UpdateListener {
+			Record _rec;
+			
+			public Listener(Record r) {
+				_rec = r;
+			}
+			public void newVersionAvailable(CCNNetworkObject<?> newVersion) {
+				synchronized (_rec) {
+					_rec.callback = true;
+					_rec.notifyAll();
+				}
+			}
+		};
+		
+		// ask for it in background
+		wo.updateInBackground(false, new Listener(record));
+		
+		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write", SaveType.RAW, CCNHandle.open());
+		setupNamespace(testName);
+		saveAndLog("Delayed write", sowrite, null, "Now we write");
+		wo.waitForData();
+		Assert.assertTrue(wo.available());
+		Assert.assertEquals(((CCNStringObject)wo.object()).string(), sowrite.string());
+		Assert.assertEquals(wo.getVersionedName(), sowrite.getVersionedName());
+		
+		synchronized (record) {
+			if (!record.callback) {
+				record.wait(5000);
+			}
+			Assert.assertEquals(true, record.callback);
+		}
+		// Should be in the repo by now
+		Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
 	}
 
 	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws IOException {
