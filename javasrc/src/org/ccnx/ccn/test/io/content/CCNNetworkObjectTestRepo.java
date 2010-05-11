@@ -43,6 +43,7 @@ import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.PublisherID.PublisherType;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.ccnx.ccn.test.io.content.CCNNetworkObjectTest.CounterListener;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -423,6 +424,39 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
 	}
 	
+	@Test
+	public void testUpdateListener() throws Exception {
+		
+		SaveType saveType = SaveType.REPOSITORY;
+		CCNHandle writeHandle = CCNHandle.open();
+		CCNHandle readHandle = CCNHandle.open();
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateListener"), 
+										stringObjName);
+		
+		CCNStringObject writeObject = 
+			new CCNStringObject(testName, "Something to listen to.", saveType, writeHandle);
+		writeObject.save();
+		
+		CounterListener ourListener = new CounterListener();
+		CCNStringObject readObject = 
+			new CCNStringObject(testName, null, null, readHandle);
+		readObject.addListener(ourListener);
+		boolean result = readObject.update();
+		
+		Assert.assertTrue(result);
+		Assert.assertTrue(ourListener.getCounter() == 1);
+		
+		readObject.updateInBackground();
+		
+		writeObject.save("New stuff! New stuff!");
+		synchronized(readObject) {
+			if (ourListener.getCounter() == 1)
+				readObject.wait();
+		}
+		// For some reason, we're getting two updates on our updateInBackground...
+		Assert.assertTrue(ourListener.getCounter() > 1);
+	}
+
 	@Test
 	public void testLocalCopyWrapper() throws Exception {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testLocalCopyWrapper"), collectionObjName);

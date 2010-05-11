@@ -33,6 +33,7 @@ import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
+import org.ccnx.ccn.io.content.UpdateListener;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -527,6 +528,58 @@ public class CCNNetworkObjectTest {
 		} finally {
 			removeNamespace(testName);
 		}
+	}
+		
+	static class CounterListener implements UpdateListener {
+
+		protected Integer _callbackCounter = 0;
+		
+		public int getCounter() { return _callbackCounter; }
+
+		@Override
+		public void newVersionAvailable(CCNNetworkObject<?> newVersion) {
+			synchronized (_callbackCounter) {
+				_callbackCounter++;
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("UPDATE CALLBACK: counter is " + _callbackCounter);
+				}
+			}
+		}		
+	}
+	
+	@Test
+	public void testUpdateListener() throws Exception {
+		
+		SaveType saveType = SaveType.RAW;
+		CCNHandle writeHandle = CCNHandle.open();
+		CCNHandle readHandle = CCNHandle.open();
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateListener"), 
+										stringObjName);
+		
+		CounterListener ourListener = new CounterListener();
+		
+		CCNStringObject readObject = 
+			new CCNStringObject(testName, null, null, readHandle);
+		readObject.addListener(ourListener);
+		setupNamespace(testName);
+
+		CCNStringObject writeObject = 
+			new CCNStringObject(testName, "Something to listen to.", saveType, writeHandle);
+		writeObject.save();
+		
+		boolean result = readObject.update();
+		Assert.assertTrue(result);
+		Assert.assertTrue(ourListener.getCounter() == 1);
+		
+		readObject.updateInBackground();
+		
+		writeObject.save("New stuff! New stuff!");
+		synchronized(readObject) {
+			if (ourListener.getCounter() == 1)
+				readObject.wait();
+		}
+		// For some reason, we're getting two updates on our updateInBackground...
+		Assert.assertTrue(ourListener.getCounter() > 1);
 	}
 
 	@Test
