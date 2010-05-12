@@ -198,7 +198,7 @@ public class SecureKeyCache {
 	
 	/**
 	 * Records a private key and the name and digest of the corresponding public key.
-	 * @param keyName the name of the public key
+	 * @param keyName a name under which to look up the private key
 	 * @param publicKeyIdentifier the digest of the public key
 	 * @param pk the private key
 	 */
