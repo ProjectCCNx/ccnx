@@ -536,7 +536,6 @@ public class CCNNetworkObjectTest {
 		
 		public int getCounter() { return _callbackCounter; }
 
-		@Override
 		public void newVersionAvailable(CCNNetworkObject<?> newVersion) {
 			synchronized (_callbackCounter) {
 				_callbackCounter++;
