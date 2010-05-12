@@ -1017,6 +1017,8 @@ public class BasicKeyManager extends KeyManager {
 	 * any key known to our key cache.
 	 * @param keyName Name under which to publish the key. Currently added under existing version, or version
 	 * 	included in keyName.
+	 * @param theKey the public key to publish. Provide both this and keyToPublish to avoid recomputing them
+	 * 	if the caller has them already; otherwise they'll be retrieved from cache.
 	 * @param keyToPublish can be null, in which case we publish our own default public key.
 	 * @param handle the handle to use for network requests
 	 * @throws InvalidKeyException
@@ -1024,6 +1026,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PublicKeyObject publishSelfSignedKeyToRepository(ContentName keyName,
+			PublicKey theKey,
 			PublisherPublicKeyDigest keyToPublish,
 			long timeToWaitForPreexisting) throws InvalidKeyException,
 			IOException {
@@ -1031,9 +1034,11 @@ public class BasicKeyManager extends KeyManager {
 			keyToPublish = getDefaultKeyID();
 		}
 		
-		PublicKey theKey = getPublicKeyCache().getPublicKeyFromCache(keyToPublish);
 		if (null == theKey) {
-			throw new InvalidKeyException("Key " + keyToPublish + " not available in cache, cannot publish!");
+			theKey = getPublicKeyCache().getPublicKeyFromCache(keyToPublish);
+			if (null == theKey) {
+				throw new InvalidKeyException("Key " + keyToPublish + " not available in cache, cannot publish!");
+			}
 		}
 		
 		return KeyManager.publishKeyToRepository(keyName, theKey, keyToPublish, 
