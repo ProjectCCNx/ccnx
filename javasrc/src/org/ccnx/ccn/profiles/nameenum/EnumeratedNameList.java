@@ -253,9 +253,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 				} catch (InterruptedException e) {
 				}
 				if (Log.isLoggable(Level.INFO)) {
-					Log.info("Waiting for new data on prefix: {0}, updated {1}, our update {2}, now have " + 
-							((null == _children) ? 0 : _children.size()), _namePrefix + " new " + 
-							((null == _newChildren) ? 0 : _newChildren.size()) + ".", _lastUpdate, lastUpdate);
+					Log.info("Waiting for new data on prefix: {0}, updated {1}, our update {2}, have {3} children {4} new.", 
+							_namePrefix, _lastUpdate, lastUpdate,
+							((null == _children) ? 0 : _children.size()), 
+							((null == _newChildren) ? 0 : _newChildren.size()));
 				}
 			}
 			if ((null != _lastUpdate) && ((null == lastUpdate) || (_lastUpdate.after(lastUpdate)))) foundNewData = true;
