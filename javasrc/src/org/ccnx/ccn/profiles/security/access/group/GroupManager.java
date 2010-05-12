@@ -127,6 +127,11 @@ public class GroupManager {
 			}
 		}*/
 		
+		if (null == theGroup) {
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+				Log.info(Log.FAC_ACCESSCONTROL, "The group {0} was not found in the group cache.", groupFriendlyName);
+			}
+		}
 		
 		if ((null == theGroup) && (groupList().hasChild(groupFriendlyName))) {
 			// Only go hunting for it if we think it exists, otherwise we'll block.
