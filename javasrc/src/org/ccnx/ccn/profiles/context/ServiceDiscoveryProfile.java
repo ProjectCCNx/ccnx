@@ -61,6 +61,11 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 	// Where should these go?
 	public static final String CCND_SERVICE_NAME = "ccnd";
 	public static final String REPOSITORY_SERVICE_NAME = "repository";
+	
+	public static final ContentName localhostScopeName() {
+		// could make a static variable if we expect this to get called.
+		return new ContentName(new byte [][]{LOCALHOST_SCOPE.getBytes()});
+	}
 
 	public static ContentName localServiceName(String service) {
 		return new ContentName(

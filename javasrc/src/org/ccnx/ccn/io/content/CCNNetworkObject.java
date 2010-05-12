@@ -1148,6 +1148,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return _baseName;
 	}
 	
+	public CCNHandle getHandle() {
+		return _handle;
+	}
+	
 	public synchronized byte [] getVersionComponent() throws IOException {
 		if (isSaved())
 			return _currentVersionComponent;
