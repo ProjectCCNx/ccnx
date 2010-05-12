@@ -939,19 +939,54 @@ ccn_locate_key(struct ccn *h,
 }
 
 /**
+ * Get the name out of a Link.
+ *
+ * XXX - this needs a better home.
+ */
+static int
+ccn_append_link_name(struct ccn_charbuf *name, const unsigned char *data, size_t data_size)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    size_t start = 0;
+    size_t end = 0;
+    
+    d = ccn_buf_decoder_start(&decoder, data, data_size);
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Link)) {
+        ccn_buf_advance(d);
+        start = d->decoder.token_index;
+        ccn_parse_Name(d, NULL);
+        end = d->decoder.token_index;
+        ccn_buf_check_close(d);
+        if (d->decoder.state < 0)
+            return (d->decoder.state);
+        ccn_charbuf_append(name, data + start, end - start);
+        return(0);
+        }
+    return(-1);
+}
+
+/**
  * Called when we get an answer to a KeyLocator fetch issued by
  * ccn_initiate_key_fetch.  This does not really have to do much,
  * since the main content handling logic picks up the keys as they
  * go by.
  */
 static enum ccn_upcall_res
-handle_key(
-           struct ccn_closure *selfp,
+handle_key(struct ccn_closure *selfp,
            enum ccn_upcall_kind kind,
            struct ccn_upcall_info *info)
 {
     struct ccn *h = info->h;
     (void)h;
+    int type = 0;
+    const unsigned char *msg = NULL;
+    const unsigned char *data = NULL;
+    size_t size;
+    size_t data_size;
+    int res;
+    struct ccn_charbuf *name = NULL;
+    
     switch(kind) {
         case CCN_UPCALL_FINAL:
             free(selfp);
@@ -960,8 +995,32 @@ handle_key(
             /* Don't keep trying */
             return(CCN_UPCALL_RESULT_OK);
         case CCN_UPCALL_CONTENT:
+            type = ccn_get_content_type(msg, info->pco);
+            if (type == CCN_CONTENT_KEY)
+                return(CCN_UPCALL_RESULT_OK);
+            if (type == CCN_CONTENT_LINK) {
+                /* resolve the link */
+                /* XXX - should limit how much we work at this */
+                msg = info->content_ccnb;
+                size = info->pco->offset[CCN_PCO_E];
+                res = ccn_content_get_value(info->content_ccnb, size, info->pco,
+                                            &data, &data_size);
+                if (res < 0)
+                    return (CCN_UPCALL_RESULT_ERR);
+                name = ccn_charbuf_create();
+                res = ccn_append_link_name(name, data, data_size);
+                if (res < 0)
+                    return (CCN_UPCALL_RESULT_ERR);
+                res = ccn_express_interest(h, name, selfp, NULL);
+                ccn_charbuf_destroy(name);
+                return(res);
+            }
+            return (CCN_UPCALL_RESULT_ERR);
         case CCN_UPCALL_CONTENT_UNVERIFIED:
-            return(CCN_UPCALL_RESULT_OK);
+            type = ccn_get_content_type(msg, info->pco);
+            if (type == CCN_CONTENT_KEY)
+                return(CCN_UPCALL_RESULT_OK);
+            return(CCN_UPCALL_RESULT_VERIFY);
         default:
             return (CCN_UPCALL_RESULT_ERR);
     }
