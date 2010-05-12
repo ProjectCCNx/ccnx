@@ -595,12 +595,15 @@ public abstract class KeyManager {
 	 * if no repository is available
 	 * @param keyName Name under which to publish the key. Currently added under existing version, or version
 	 * 	included in keyName.
+	 * @param theKey the public key to publish, if we happen to have it; otherwise it will be retrieved
+	 *    from cache based on keyToPublish.
 	 * @param keyToPublish can be null, in which case we publish our own default public key.
 	 * @param handle the handle to use for network requests
 	 * @throws InvalidKeyException
 	 * @throws IOException
 	 */
 	public abstract PublicKeyObject publishSelfSignedKeyToRepository(ContentName keyName, 
+															PublicKey theKey,
 															PublisherPublicKeyDigest keyToPublish,
 															long timeToWaitForPreexisting)
 			throws InvalidKeyException, IOException;
@@ -674,7 +677,7 @@ public abstract class KeyManager {
 					(requirePublisherMatch ? signingKeyID : null), null, timeToWaitForPreexisting, handle);
 		
 		// If we want it self-signed...
-		if (SELF_SIGNED_KEY_LOCATOR == signingKeyLocator) {
+		if ((SELF_SIGNED_KEY_LOCATOR == signingKeyLocator) && (null != availableContent)) {
 			// do mean == here....
 			// have already verified that keyDigest is the digest of the content of availableContent
 			if (!PublicKeyObject.isSelfSigned(SegmentationProfile.segmentRoot(availableContent.name()), 
