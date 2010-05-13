@@ -1012,7 +1012,7 @@ handle_key(struct ccn_closure *selfp,
                 if (res < 0)
                     return (CCN_UPCALL_RESULT_ERR);
                 res = ccn_express_interest(h, name, selfp, NULL);
-                ccn_charbuf_destroy(name);
+                ccn_charbuf_destroy(&name);
                 return(res);
             }
             return (CCN_UPCALL_RESULT_ERR);
