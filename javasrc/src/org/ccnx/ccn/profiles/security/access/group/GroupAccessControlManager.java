@@ -302,6 +302,15 @@ public class GroupAccessControlManager extends AccessControlManager {
 		return _groupManager.get(0); 	
 	}
 
+	public void registerGroupStorage(ContentName groupStorage) throws IOException {
+		ParameterizedName pName = new ParameterizedName("Group", groupStorage, null);
+		GroupManager gm = new GroupManager(this, pName, _handle);
+		_groupManager.add(gm);
+		byte[] distinguishingHash = GroupAccessControlProfile.PrincipalInfo.contentPrefixToDistinguishingHash(pName.prefix());
+		hashToGroupManagerMap.put(distinguishingHash, gm);
+		prefixToGroupManagerMap.put(pName.prefix(), gm);			
+	}
+	
 	public GroupManager groupManager(byte[] distinguishingHash) {
 		GroupManager gm = hashToGroupManagerMap.get(distinguishingHash);
 		if (gm == null) {
