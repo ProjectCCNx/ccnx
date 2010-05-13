@@ -546,6 +546,43 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		return false;
 	}
+	
+	/**
+	 * The regular update does a call to do multi-hop get latest version -- i.e. it will try
+	 * multiple times to find the latest version of a piece of content, even if interposed caches
+	 * have something older. While that's great when you really need the latest, sometimes you are
+	 * happy with the latest available version available in your local ccnd cache; or you really
+	 * know there is only one version available and you don't want to try multiple times (and incur
+	 * a timeout) in an attempt to get a later version that does not exist. This call, updateAny,
+	 * claims to get "any" version available. In reality, it will do a single-hop latest version;
+	 * i.e. if there are two versions say in your local ccnd cache (or repo with nothing in the ccnd
+	 * cache), it will pull the later one. But
+	 * it won't move beyond those to find a newer version available at a writer, or to find a later
+	 * version in the repo than one in the ccnd cache. Use this if you know there is only one version
+	 * of something, or you want a fast path to the latest version where it really doesn't have to
+	 * be the "absolute" latest. 
+	 * 
+	 * Like all update methods, it will start from the version you've got -- so it is guaranteed to find
+	 * something after the current version this object knows about (if it has already found something),
+	 * and to time out and return false if there isn't anything later.
+	 */
+	public boolean updateAny(long timeout) throws ContentDecodingException, IOException {
+		if (null == _baseName) {
+			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
+		}
+		// Look for first segment of version after ours, or first version if we have none.
+		ContentObject firstSegment = 
+			VersioningProfile.getFirstBlockOfAnyLaterVersion(getVersionedName(), null, null, timeout, 
+					_handle.defaultVerifier(), _handle);
+		if (null != firstSegment) {
+			return update(firstSegment);
+		}
+		return false;
+	}
+	
+	public boolean updateAny() throws ContentDecodingException, IOException {
+		return updateAny(SystemConfiguration.getDefaultTimeout());
+	}
 
 	/**
 	 * Calls update(long) with the default timeout SystemConfiguration.getDefaultTimeout().
