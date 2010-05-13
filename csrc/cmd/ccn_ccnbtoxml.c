@@ -728,23 +728,23 @@ main(int argc, char **argv)
             case 'h':
                 usage(argv[0]);
                 break;
-            case 't':
-                tflag = 1;
-                break;
             case 'b':
                 formatting_flags |= FORCE_BINARY;
-                break;
-            case 's':
-                sarg = optarg;
-                break;
-            case 'x':
-                formatting_flags |= PREFER_HEX;
                 break;
             case 'd':
                 if (0 != ccn_extend_dict(optarg, dtags, &dtags)) {
                     fprintf(stderr, "Unable to load dtag dictionary %s\n", optarg);
                     errflag = 1;
                 }
+                break;
+            case 's':
+                sarg = optarg;
+                break;
+            case 't':
+                tflag = 1;
+                break;
+            case 'x':
+                formatting_flags |= PREFER_HEX;
                 break;
             case '?':
                 fprintf(stderr, "Unrecognized option: -%c\n", optopt);
