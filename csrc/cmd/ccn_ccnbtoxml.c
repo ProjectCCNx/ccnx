@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -36,10 +36,11 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "usage: %s [-h] [-t] [-b] [-s prefix] [-d dict]* file ...\n"
+            "usage: %s [-h] [-b] [-t] [-v] [-x] [-s prefix] [-d dict]* file ...\n"
             " Utility to convert ccn binary encoded data into XML form.\n"
-            "  -t      test, when specified, should be only switch\n"
             "  -b      force (base64 or hex) Binary output instead of text\n"
+            "  -t      test, when specified, should be only switch\n"
+            "  -v      verbose - do extra decoding as comments\n"
             "  -x      prefer hex output to base64\n"
             "  -s pat  provide a single pattern to be used when "
             "splitting one or more input files\n"
@@ -92,11 +93,12 @@ struct ccn_decoder {
     void *callbackdata;
     int formatting_flags;
     int base64_char_count;
+    struct ccn_charbuf *annotation;
 };
 /* formatting_flags */
-#define FORCE_BINARY (1 << 0)
-#define PREFER_HEX (1 << 1)
-
+#define FORCE_BINARY   (1 << 0)
+#define PREFER_HEX     (1 << 1)
+#define VERBOSE_DECODE (1 << 2)
 
 struct ccn_decoder *
 ccn_decoder_create(int formatting_flags, const struct ccn_dict *dtags)
@@ -112,6 +114,7 @@ ccn_decoder_create(int formatting_flags, const struct ccn_dict *dtags)
     d->tagdict = dtags->dict;
     d->tagdict_count = dtags->count;
     d->formatting_flags = formatting_flags;
+    d->annotation = NULL;
     return(d);
 }
 
@@ -199,6 +202,33 @@ is_text_encodable(unsigned char p[], size_t start, size_t length)
     return (1);
 }
 
+/* c.f. ccn_uri_append_percentescaped */
+static void
+print_percent_escaped(const unsigned char *data, size_t size)
+{
+    size_t i;
+    unsigned char ch;
+    for (i = 0; i < size && data[i] == '.'; i++)
+        continue;
+    /* For a component that consists solely of zero or more dots, add 3 more */
+    if (i == size)
+        printf("...");
+    for (i = 0; i < size; i++) {
+        ch = data[i];
+        /*
+         * Leave unescaped only the generic URI unreserved characters.
+         * See RFC 3986. Here we assume the compiler uses ASCII.
+         */
+        if (('a' <= ch && ch <= 'z') ||
+            ('A' <= ch && ch <= 'Z') ||
+            ('0' <= ch && ch <= '9') ||
+            ch == '-' || ch == '.' || ch == '_' || ch == '~')
+            printf("%c", ch);
+        else
+            printf("%%%02X", (unsigned)ch);
+    }
+}
+
 ssize_t
 ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
 {
@@ -237,6 +267,14 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                     }
                     else {
                         printf("</%s>", d->stringstack->buf + s->nameindex);
+                    }
+                    if (d->annotation != NULL) {
+                        if (d->annotation->length > 0) {
+                            printf("<!--       ");
+                            print_percent_escaped(d->annotation->buf, d->annotation->length);
+                            printf(" -->");
+                        }
+                        ccn_charbuf_destroy(&d->annotation);
                     }
                     ccn_decoder_pop(d);
                     if (d->stack == NULL) {
@@ -315,6 +353,12 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                             else {
                                 ccn_charbuf_append(d->stringstack, tagname, strlen(tagname)+1);
                                 printf("<%s", tagname);
+                            }
+                            if ((d->formatting_flags & VERBOSE_DECODE) != 0) {
+                                if (d->annotation != NULL)
+                                    abort();
+                                if (numval == 15 /* Component */)
+                                    d->annotation = ccn_charbuf_create();
                             }
                             tagstate = 1;
                             state = 0;
@@ -397,8 +441,10 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                     }
                 }
                 break;
-            case 2: /* hex BLOB - this case currently unused */
+            case 2: /* hex BLOB */
                 c = p[i++];
+                if (d->annotation != NULL)
+                    ccn_charbuf_append_value(d->annotation, c, 1);
                 printf("%02X", c);
                 if (--numval == 0) {
                     state = 0;
@@ -495,6 +541,8 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                 break;
             case 10: /* base 64 BLOB - phase 0 */
                 c = p[i++];
+                if (d->annotation != NULL)
+                    ccn_charbuf_append_value(d->annotation, c, 1);
                 printf("%c", Base64[c >> 2]);
                 d->base64_char_count++;
                 if (--numval == 0) {
@@ -513,6 +561,8 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                 break;
             case 11: /* base 64 BLOB - phase 1 */
                 c = p[i++];
+                if (d->annotation != NULL)
+                    ccn_charbuf_append_value(d->annotation, c, 1);
                 printf("%c", Base64[((d->bits & 3) << 4) + (c >> 4)]);
                 d->base64_char_count++;
                 if (--numval == 0) {
@@ -531,6 +581,8 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                 break;
             case 12: /* base 64 BLOB - phase 2 */
                 c = p[i++];
+                if (d->annotation != NULL)
+                    ccn_charbuf_append_value(d->annotation, c, 1);
                 printf("%c%c", Base64[((d->bits & 0xF) << 2) + (c >> 6)],
                                Base64[c & 0x3F]);
                 d->base64_char_count += 2;
@@ -723,7 +775,7 @@ main(int argc, char **argv)
     struct ccn_decoder *d;
     struct ccn_dict *dtags = (struct ccn_dict *)&ccn_dtag_dict;
 
-    while ((c = getopt(argc, argv, ":htbqs:xd:")) != -1) {
+    while ((c = getopt(argc, argv, ":hbd:s:tvx")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
@@ -742,6 +794,9 @@ main(int argc, char **argv)
                 break;
             case 't':
                 tflag = 1;
+                break;
+            case 'v':
+                formatting_flags |= VERBOSE_DECODE;
                 break;
             case 'x':
                 formatting_flags |= PREFER_HEX;
