@@ -19,6 +19,7 @@ package org.ccnx.ccn.profiles;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
@@ -30,9 +31,9 @@ import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.ExcludeAny;
 import org.ccnx.ccn.protocol.ExcludeComponent;
-import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -795,7 +796,231 @@ public class VersioningProfile implements CCNProfile {
 		return getLatestVersion(startingVersion, publisher, timeout, verifier, handle, startingSegmentNumber, true);
 		
 	}
+	
+	/**
+	 * Single-attempt function to get the first version found; and if there are multiple
+	 * versions at the network point where that version is found, it will retrieve
+	 * the latest of them. So if your ccnd cache has multiple versions, it will return
+	 * the latest of those, but won't move past them to get a later one in the repository
+	 * or one hop away. This should be used if you believe there is only a single version
+	 * of a piece of content available, or if you care more about fast answers than ensuring
+	 * you have the latest version available.
+	 * if you ask again passing in the version found, you will find a version later than that
+	 * if one is available (i.e. each response will be the latest version
+	 * a given responder knows about. Further queries will move past that responder to other responders,
+	 * who may have newer information.)
+	 *  
+	 * @param name If the name ends in a version then this method explicitly looks for a newer version
+	 * than that, and will time out if no such later version exists. If the name does not end in a 
+	 * version then this call just looks for the latest version.
+	 * @param publisher Currently unused, will limit query to a specific publisher.
+	 * @param timeout  This is the time to wait until you get any response.  If nothing is returned, this method will return null.
+	 * @param verifier Used to verify the returned content objects
+	 * @param handle CCNHandle used to get the latest version
+	 * @return A ContentObject with the latest version, or null if the query timed out. 
+	 * @result Returns a matching ContentObject, verified.
+	 * @throws IOException
+	 */
+	public static ContentObject getAnyLaterVersion(ContentName startingVersion, 
+											     PublisherPublicKeyDigest publisher, 
+												 long timeout, 
+ 												 ContentVerifier verifier,
+												 CCNHandle handle) throws IOException {
+		
+		return getLocalLatestVersion(startingVersion, publisher, timeout, verifier, handle, null, false);
+		
+	}
 
+	/**
+	 * Find a particular segment of the closest version available of this object later than
+	 * the version given. If there are multiple versions available at that point, will get
+	 * the latest among them. See getAnyLaterVersion.
+	 * 		- if no version given, gets the desired segment of the latest version
+	 * 		- if a starting version given, gets the latest version available *after* that version or times out
+	 *    Will ensure that what it returns is a segment of a version of that object.
+	 *    Also makes sure to return the latest version with a SegmentationProfile.baseSegment() marker.
+	 *	 * @param desiredName The name of the object we are looking for the first segment of.
+	 * 					  If (VersioningProfile.hasTerminalVersion(desiredName) == false), will get latest version it can
+	 * 							find of desiredName.
+	 * 					  If desiredName has a terminal version, will try to find the first block of content whose
+	 * 						    version is *after* desiredName (i.e. getLatestVersion starting from desiredName).
+	 * @param startingSegmentNumber The desired block number, or SegmentationProfile.baseSegment() if null.
+	 * @param publisher, if one is specified.
+	 * @param timeout
+	 * @return The first block of a stream with a version later than desiredName, or null if timeout is reached.
+	 *   		This block is verified.
+	 * @throws IOException
+	 */
+	public static ContentObject getFirstBlockOfAnyLaterVersion(ContentName startingVersion, 
+			Long startingSegmentNumber, 
+			PublisherPublicKeyDigest publisher, 
+			long timeout, 
+			ContentVerifier verifier,
+			CCNHandle handle) throws IOException {
+
+		return getLocalLatestVersion(startingVersion, publisher, timeout, verifier, handle, startingSegmentNumber, true);
+
+	}
+
+	protected static ContentObject getLocalLatestVersion(ContentName startingVersion, 
+			  PublisherPublicKeyDigest publisher,
+			  long timeout,
+			  ContentVerifier verifier,
+			  CCNHandle handle,
+			  Long startingSegmentNumber,
+			  boolean findASegment) throws IOException {
+
+		Log.info("getLocalLatestVersion: getting version later than {0} called with timeout: {1}", startingVersion, timeout);
+		
+		if (null == verifier) {
+			// TODO DKS normalize default behavior
+			verifier = handle.keyManager().getDefaultVerifier();
+		}
+		
+		//TODO  This timeout is set to SystemConfiguration.MEDIUM_TIMEOUT to work around the problem
+		//in ccnd where some interests take >300ms (and sometimes longer, have seen periodic delays >800ms)
+		//when that bug is found and fixed, this can be reduced back to the SHORT_TIMEOUT.
+		//long attemptTimeout = SystemConfiguration.SHORT_TIMEOUT;
+		long attemptTimeout = SystemConfiguration.MEDIUM_TIMEOUT;
+		if (timeout == SystemConfiguration.NO_TIMEOUT) {
+			//the timeout sent in is equivalent to null...  try till we don't hear something back
+			//we will reset the remaining time after each return...
+		} else if (timeout > 0 && timeout < attemptTimeout) {
+			attemptTimeout = timeout;
+		}
+
+		long stopTime = System.currentTimeMillis() + timeout;
+		
+		ContentName prefix = startingVersion;
+		if (hasTerminalVersion(prefix)) {
+			prefix = startingVersion.parent();
+		}
+		int versionedLength = prefix.count() + 1;
+		
+		ContentObject result = null;
+		
+		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
+		
+		while ((null == result) && 
+			   ((timeout == SystemConfiguration.NO_TIMEOUT) || (System.currentTimeMillis() < stopTime))) {
+
+			Interest getLatestInterest = null;
+			
+			if (findASegment) {
+				getLatestInterest = firstBlockLatestVersionInterest(startingVersion, publisher);
+			} else {
+				getLatestInterest = latestVersionInterest(startingVersion, null, publisher);
+			}
+			
+			if (excludeList.size() > 0) {
+				//we have explicit excludes, add them to this interest
+				byte [][] e = new byte[excludeList.size()][];
+				excludeList.toArray(e);
+				getLatestInterest.exclude().add(e);
+			}
+
+			result = handle.get(getLatestInterest, timeout);
+
+			if (null != result) {
+				if (Log.isLoggable(Level.INFO))
+					Log.info("gLLV getLocalLatestVersion: retrieved latest version object {0} type: {1}", result.name(), result.signedInfo().getTypeName());
+			
+				//did it verify?
+				//if it doesn't verify, we need to try harder to get a different content object (exclude this digest)
+				//make this a loop?
+				if (!verifier.verify(result)) {
+					// DKS TODO FIX -- this is incorrect; even if this one fails to verify it doesn't
+					// mean that the version is bad, if you do this attacker can shadow good versions with bad
+					//excludes = addVersionToExcludes(excludes, result.name());
+					Log.fine("gLLV result did not verify, trying to find a verifiable answer");
+					excludeList = addVersionToExcludes(excludeList, result.name());
+					//note:  need to use the full name, but want to exclude this particular digest.  This means we can't cut off the segment marker.
+					//Interest retry = new Interest(SegmentationProfile.segmentRoot(result.name()), publisher);
+					//retry.maxSuffixComponents(1);
+					Interest retry = new Interest(result.name(), publisher);
+					
+					boolean verifyDone = false;
+					while (!verifyDone) {
+						if (retry.exclude() == null)
+							retry.exclude(new Exclude());
+						
+						retry.exclude().add(new byte[][] {result.digest()});
+						if (Log.isLoggable(Level.FINE)) {
+							Log.fine("gLLV result did not verify!  doing retry!! {0}", retry);
+							Log.fine("gLLVTime sending retry interest at {0}", System.currentTimeMillis());
+						}
+						
+						result = handle.get(retry, attemptTimeout);
+						
+						if (result!=null) {
+							if (Log.isLoggable(Level.FINE))
+								Log.fine("gLLV we got something back: {0}", result.name());
+							if(verifier.verify(result)) {
+								Log.fine("gLLV the returned answer verifies");
+								verifyDone = true;
+							} else {
+								Log.fine("gLLV this answer did not verify either...  try again");
+							}
+						} else {
+							//result is null, we didn't find a verifiable answer
+							Log.fine("gLLV did not get a verifiable answer back");
+							verifyDone = true;
+						}
+					}	
+					//TODO  if this is the latest version and we exclude it, we might not have anything to send back...  we should reset the starting version
+				} 
+				if (result != null) {
+					//else {
+					//it verified!  are we done?
+					
+					//first check if we need to get the first segment...
+					if (findASegment) {
+						//yes, we need to have the first segment....
+						// Now we know the version. Did we luck out and get first block?
+						if (VersioningProfile.isVersionedFirstSegment(prefix, result, startingSegmentNumber)) {
+							if (Log.isLoggable(Level.FINE))
+								Log.fine("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
+						} else {
+							//not the first segment...
+							
+							// This isn't the first block. Might be simply a later (cached) segment, or might be something
+							// crazy like a repo_start_write. So what we want is to get the version of this new block -- if getLatestVersion
+							// is doing its job, we now know the version we want (if we already knew that, we called super.getFirstBlock
+							// above. If we get here, _baseName isn't versioned yet. So instead of taking segmentRoot of what we got,
+							// which works fine only if we have the wrong segment rather than some other beast entirely (like metadata).
+							// So chop off the new name just after the (first) version, and use that. If getLatestVersion is working
+							// right, that should be the right thing.
+							ContentName notFirstBlockVersion = result.name().cut(versionedLength);
+							Log.info("CHILD SELECTOR FAILURE: getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
+							// this will verify
+							
+							//don't count this against the gLV timeout.
+							
+							result = SegmentationProfile.getSegment(notFirstBlockVersion, startingSegmentNumber, null, timeout, verifier, handle); // now that we have the latest version, go back for the first block.
+							//if this isn't the first segment...  then we should exclude it.  otherwise, we can use it!
+							if(result == null) {
+								//we couldn't get a new segment...
+								Log.fine("gLV could not get the first segment of the version we just found...  should exclude the version");
+								//excludes = addVersionToExcludes(excludes, startingVersion);
+								excludeList = addVersionToExcludes(excludeList, notFirstBlockVersion);
+							}
+						}
+						
+						
+					} else {
+						//no need to get the first segment!
+						//this is already verified!
+					}
+				} //the result verified
+			} //we got something back
+		}
+		
+		if (result != null) {
+			if (Log.isLoggable(Level.FINE))
+				Log.fine("gLLV returning: {0}", result.name());
+		}
+		return result;
+	}
 	/**
 	 * Version of isFirstSegment that expects names to be versioned, and allows that desiredName
 	 * won't know what version it wants but will want some version.
