@@ -372,4 +372,8 @@ public class PublicKeyCache {
 		}
 		return null;
 	}
+	
+	public ArrayList<Certificate> retrieveCertificates(PublisherPublicKeyDigest keyID) {
+		return _rawCertificateMap.get(keyID);
+	}
 }
