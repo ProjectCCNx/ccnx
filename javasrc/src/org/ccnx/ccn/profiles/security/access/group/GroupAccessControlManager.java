@@ -311,6 +311,11 @@ public class GroupAccessControlManager extends AccessControlManager {
 		prefixToGroupManagerMap.put(pName.prefix(), gm);			
 	}
 	
+	public void registerUserStorage(ContentName userStorage) {
+		ParameterizedName pName = new ParameterizedName("User", userStorage, null);
+		_userStorage.add(pName);
+	}
+	
 	public GroupManager groupManager(byte[] distinguishingHash) {
 		GroupManager gm = hashToGroupManagerMap.get(distinguishingHash);
 		if (gm == null) {
