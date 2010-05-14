@@ -132,7 +132,17 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 			_typeMarker = pieces[0];
 			_distinguishingHash = pieces[1];
 			_friendlyName = ContentName.componentPrintNative(pieces[2]);
-			_versionTimestamp = new CCNTime(pieces[3]);
+			try {
+				_versionTimestamp = new CCNTime(pieces[3]);
+			} catch (IllegalArgumentException e) {
+				// we've been having some trouble here...
+				Log.severe(Log.FAC_ACCESSCONTROL, "PrincipalInfo: error in parsing component {0}", 
+						ContentName.componentPrintURI(principalInfoNameComponent));
+				Log.severe(Log.FAC_ACCESSCONTROL, "PrincpialInfo: typeMarker {0}, distinguishing hash {1}, friendly name {2}, part to parse into timestamp {3}",
+						ContentName.componentPrintURI(_typeMarker), ContentName.componentPrintURI(_distinguishingHash),
+						_friendlyName, ContentName.componentPrintURI(pieces[3]));
+				throw e;
+			}
 		}
 		
 		/**
