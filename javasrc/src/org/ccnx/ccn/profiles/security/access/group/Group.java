@@ -536,7 +536,7 @@ public class Group {
 				// DKS TODO verify target public key against publisher, etc in link
 				
 				ContentName pkName = lr.targetName();
-				if (_groupManager.isGroup(lr)){
+				if (_groupManager.getAccessManager().isGroupName(pkName)){
 					pkName = GroupAccessControlProfile.groupPublicKeyName(pkName);
 					// write a back pointer from child group to parent group
 					// PG TODO check for existence of back pointer to avoid writing multiple copies of the same pointer
