@@ -19,6 +19,8 @@ package org.ccnx.ccn.impl.security.keys;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.KeyStore;
 
 import org.ccnx.ccn.CCNHandle;
@@ -130,5 +132,15 @@ public class NetworkKeyManager extends BasicKeyManager {
 		// Pull the version after we write
 		return new Tuple<KeyStoreInfo, OutputStream>(new KeyStoreInfo(_keystoreName.toURIString(), null, null),
 											  new CCNVersionedOutputStream(_keystoreName, _handle));
+	}
+	
+	@Override
+	public URI getConfigurationDataURI() {
+		try {
+			return new URI(_keystoreName.toURIString());
+		} catch (URISyntaxException e) {
+			Log.warning(Log.FAC_ENCODING, "Cannot parse CCN URI {0} as Java URI!", _keystoreName.toURIString());
+			return null;
+		}
 	}
 }

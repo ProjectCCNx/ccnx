@@ -28,6 +28,7 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -475,6 +476,15 @@ public class BasicKeyManager extends KeyManager {
 		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(configurationFile));
 		oos.writeObject(_currentKeyLocators);
 		oos.close();
+	}
+	
+	/**
+	 * Return a file URI pointing at our configuration data directory.
+	 */
+	@Override
+	public URI getConfigurationDataURI() {
+		File configurationFile = new File(_keyStoreDirectory, _configurationFileName); 
+		return configurationFile.toURI();
 	}
 	
 	/**

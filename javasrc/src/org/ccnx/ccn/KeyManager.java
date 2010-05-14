@@ -19,6 +19,7 @@ package org.ccnx.ccn;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URI;
 import java.security.InvalidKeyException;
 import java.security.PrivateKey;
 import java.security.Provider;
@@ -298,6 +299,13 @@ public abstract class KeyManager {
 
 	public abstract void saveConfigurationState() throws FileNotFoundException,
 			IOException;
+	
+	/**
+	 * Not sure that this is the best idea, but others want to bootstrap on
+	 * our configuration data store to stash their own config data. Return 
+	 * location as a URI as it might be a namespace rather than a directory.
+	 */
+	public abstract URI getConfigurationDataURI();
 
 	/**
 	 * Get our default private key.
