@@ -213,7 +213,7 @@ public class BenchmarkTest {
 		};
 
 		for (int j=0; j<contentObjects.length; ++j) {
-			runBenchmark("ContentObject digest (content " + contentObjects[j].contentLength() + " bytes) ", 
+			runBenchmark("ContentObject encode (content " + contentObjects[j].contentLength() + " bytes) ", 
 					encodeObj, 
 					contentObjects[j], null);
 		}
