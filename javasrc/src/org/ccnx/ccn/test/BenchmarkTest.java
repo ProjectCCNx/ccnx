@@ -23,11 +23,11 @@ import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.Random;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.KeyManager;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
@@ -42,6 +42,7 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.Signature;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -58,6 +59,7 @@ public class BenchmarkTest {
 	public static final int NUM_KEYGEN = 100; // Key generation is really slow
 	
 	public static final double NanoToMilli = 1000000.0d;
+	public static final double NanoToSec = 1000000000000.0d;
 	
 	public static CCNTestHelper testHelper = new CCNTestHelper(BenchmarkTest.class);
 	public static CCNHandle handle;
@@ -65,9 +67,29 @@ public class BenchmarkTest {
 	public static ContentName testName;
 	public static byte[] shortPayload;
 	public static byte[] longPayload;
+	public static byte[] veryLongPayload;
+	public static byte [][] payloads;
+	
+	// Need to benchmark multiple key lengths
+	public static final int [] keyLengths = new int[]{512, 1024, 2048};
+	
+	// Need to benchmark multiple digest algorithms. MD5 not used for signing,
+	// but is used for non-security critical applications.
+	public static final String [] digestAlgorithms = new String[]{"MD5", "SHA1", CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM};
 
-	public abstract class Operation<T> {
-		abstract Object execute(T input) throws Exception;
+	public static final int LONG_LENGTH = 1000;
+	public static final int VERY_LONG_LENGTH = 4096; // our actual packet length
+	
+	public static ContentObject [] contentObjects;
+	public static ContentObject [] unsignedContentObjects;
+	
+	// Default algorithm, add ECC later
+	public static KeyPair[] keyPairs = new KeyPair[keyLengths.length];
+	
+	public static NumberFormat format = DecimalFormat.getNumberInstance();
+	
+	public abstract class Operation<T,U> {
+		abstract Object execute(T input, U parameter) throws Exception;
 		
 		int size(T input) {
 			if (null == input) {
@@ -88,115 +110,256 @@ public class BenchmarkTest {
 		testName = ContentName.fromNative(namespace, "BenchmarkObject");
 		testName = VersioningProfile.addVersion(testName);
 		shortPayload = ("this is sample segment content").getBytes();
-		longPayload = new byte[1000];
+		longPayload = new byte[LONG_LENGTH];
 		Random rnd = new Random();
 		rnd.nextBytes(longPayload);
+		veryLongPayload = new byte[VERY_LONG_LENGTH];
+		rnd.nextBytes(veryLongPayload);
+		payloads = new byte [][]{shortPayload, longPayload, veryLongPayload};
+		
+		contentObjects = new ContentObject[payloads.length];
+		unsignedContentObjects = new ContentObject[payloads.length];
+		// Should have content objects signed by multiple key types...
+		ContentName segmentName = SegmentationProfile.segmentName(testName, 0);
+		for (int i=0; i < payloads.length; ++i) {
+			contentObjects[i] = ContentObject.buildContentObject(segmentName, payloads[i], null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
+			unsignedContentObjects[i] = new ContentObject(contentObjects[i].name(), contentObjects[i].signedInfo(), contentObjects[i].content(), (Signature) null);
+		}
+		
+		final KeyPairGenerator kpg = KeyPairGenerator.getInstance(UserConfiguration.defaultKeyAlgorithm());
+		for (int i=0; i < keyLengths.length; ++i) {
+			kpg.initialize(keyLengths[i]);
+			keyPairs[i] = kpg.generateKeyPair();
+		}
+		format.setMaximumFractionDigits(3);
+		
 		handle = CCNHandle.open();
 		System.out.println("Benchmark Test starting on " + System.getProperty("os.name"));
 	}
 
 	@SuppressWarnings("unchecked")
-	public void runBenchmark(String desc, Operation op, Object input) throws Exception {
-		runBenchmark(NUM_ITER, desc, op, input);
+	public void runBenchmark(String desc, Operation op, Object input, Object parameter) throws Exception {
+		runBenchmark(NUM_ITER, desc, op, input, parameter);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public void runBenchmark(int count, String desc, Operation op, Object input) throws Exception {
+	public void runBenchmark(int count, String desc, Operation op, Object input, Object parameter) throws Exception {
 		long start = System.nanoTime();
-		op.execute(input);
+		op.execute(input, parameter);
 		long dur = System.nanoTime() - start;
 		//System.out.println("Start " + start + " dur " + dur);
 		int size = op.size(input);
-		System.out.println("Initial time to " + desc + (size >= 0 ? " (payload " + op.size(input) + " bytes)" : "") + " = " + dur/NanoToMilli + " ms.");
+		System.out.println("Initial time to " + desc + (size >= 0 ? " (payload " + op.size(input) + " bytes)" : "") +
+				" = " + dur/NanoToMilli + " ms.");
 		
 		start = System.nanoTime();
 		for (int i=0; i<count; i++) {
-			op.execute(input);
+			op.execute(input, parameter);
 		}
 		dur = System.nanoTime() - start;
-		System.out.println("Avg. to " + desc + " (" + count + " iterations) = " + dur/count/NanoToMilli + " ms.");		
+		System.out.println("Avg. to " + desc + " (" + count + " iterations) = " + 
+				dur/count/NanoToMilli + " ms. (" + 
+				format.format(NanoToSec/dur) + " operations/sec)");		
 	}
+	
 	@Test
 	public void testDigest() throws Exception {
 		System.out.println("==== Digests");
-		Operation<byte[]> digest = new Operation<byte[]>() {
-			Object execute(byte[] input) throws Exception {
-				MessageDigest md = MessageDigest.getInstance(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+		Operation<byte[],String> digest = new Operation<byte[],String>() {
+			Object execute(byte[] input, String algorithm) throws Exception {
+				MessageDigest md = MessageDigest.getInstance(algorithm);
 				md.update(input);
 				return md.digest();
 			}
 		};
-		System.out.println("--- Raw = digest only of byte[]");
-		runBenchmark("raw digest short", digest, shortPayload);
-		runBenchmark("raw digest long", digest, longPayload);
-		ContentName segment = SegmentationProfile.segmentName(testName, 0);
+		for (int i=0; i < digestAlgorithms.length; ++i) {
+			System.out.println("--- Raw = digest only of byte[] using " + digestAlgorithms[i]);
+			for (int j=0; j<payloads.length; ++j) {
+				runBenchmark("raw digest (" + payloads[j].length + " bytes)", digest, 
+						payloads[j], digestAlgorithms[i]);
+			}
+			System.out.println("");
+		}
+
 		
-		Operation<ContentObject> digestObj = new Operation<ContentObject>() {
-			Object execute(ContentObject input) throws Exception {
-				MessageDigest md = MessageDigest.getInstance(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
+		Operation<ContentObject, String> digestObj = new Operation<ContentObject, String>() {
+			Object execute(ContentObject input, String algorithm) throws Exception {
+				MessageDigest md = MessageDigest.getInstance(algorithm);
 				DigestOutputStream dos = new DigestOutputStream(new NullOutputStream(), md);
 				input.encode(dos);
 				return md.digest();
 			}
 		};
-		System.out.println("--- Object = digest of ContentObject");
-		ContentObject shortObj = ContentObject.buildContentObject(segment, shortPayload, null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
-		ContentObject longObj = ContentObject.buildContentObject(segment, longPayload, null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
-		runBenchmark("obj digest short", digestObj, shortObj);
-		runBenchmark("obj digest long", digestObj, longObj);
+
+		for (int i=0; i < digestAlgorithms.length; ++i) {
+			System.out.println("--- Raw = digest of contentObject using " + digestAlgorithms[i]);
+			for (int j=0; j<contentObjects.length; ++j) {
+				runBenchmark("ContentObject digest (content " + contentObjects[j].contentLength() + " bytes) ", 
+						digestObj, 
+						contentObjects[j], digestAlgorithms[i]);
+			}
+			System.out.println("");
+		}
 	}
 		
 	@Test
-	public void testRawSigning() throws Exception {
+	public void testEncode() throws Exception {
+		System.out.println("==== Encoding");
 		
-		Operation<byte[]> sign = new Operation<byte[]>() {
-			KeyManager keyManager = KeyManager.getDefaultKeyManager();
-			PrivateKey signingKey = keyManager.getDefaultSigningKey();
-
-			Object execute(byte[] input) throws Exception {
-				return SignatureHelper.sign(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, input, signingKey);
+		Operation<ContentObject, String> encodeObj = new Operation<ContentObject, String>() {
+			Object execute(ContentObject input, String codec) throws Exception {
+				return input.encode(codec);
 			}
 		};
-		System.out.println("==== PK Signing");
-		runBenchmark("sign short", sign, shortPayload);
-		runBenchmark("sign long", sign, longPayload);	
+
+		for (int j=0; j<contentObjects.length; ++j) {
+			runBenchmark("ContentObject digest (content " + contentObjects[j].contentLength() + " bytes) ", 
+					encodeObj, 
+					contentObjects[j], null);
+		}
+		System.out.println("");
+
+		Operation<ContentObject, Object> prepareObj = new Operation<ContentObject, Object>() {
+			Object execute(ContentObject input, Object ignored) throws Exception {
+				return ContentObject.prepareContent(input.name(), input.signedInfo(), input.content());
+			}
+		};
+
+		System.out.println("Prepare content: perform the encoding steps necessary for signing:");
+		for (int j=0; j<contentObjects.length; ++j) {
+			runBenchmark("ContentObject prepareDigest (content " + contentObjects[j].contentLength() + " bytes) ", 
+					prepareObj, 
+					contentObjects[j], null);
+		}
+		System.out.println("");
+
+	}
+
+	@Test
+	public void testRawSigning() throws Exception {
 		
-		byte[] sigShort = (byte[])sign.execute(shortPayload);
-		byte[] sigLong = (byte[])sign.execute(longPayload);
+		// We need to be able to benchmark signing using multiple algorithms;
+		// probably should make this depend on digest algorithm as well. 
+		// For right now, just parameterize on key size.
+		// Add ECC once we can test for its presence
+		Operation<byte[], Tuple<String,PrivateKey>> sign = new Operation<byte[], Tuple<String,PrivateKey>>() {
+
+			Object execute(byte[] input, Tuple<String,PrivateKey> signingParams) throws Exception {
+				return SignatureHelper.sign(signingParams.first(), input, signingParams.second());
+			}
+		};
 		
-		Operation<Tuple<byte[],byte[]>> verify = new Operation<Tuple<byte[],byte[]>>() {
-			KeyManager keyManager = KeyManager.getDefaultKeyManager();
-			PublicKey pubKey = keyManager.getDefaultPublicKey();
+		// Need to handle multiple length of key, and at least SHA1 and SHA256
+		for (int i = 1; i < digestAlgorithms.length; ++i) {
+			// skip MD-5
+			System.out.println("==== PK Signing: Digest: " + digestAlgorithms[i]);
+			for (int j=0; j < keyPairs.length; ++j) {
+				System.out.println("======= " + keyLengths[j] + "-bit " + keyPairs[j].getPublic().getAlgorithm() + " Key with " + digestAlgorithms[i] + ":");
+				for (int k=0; k < payloads.length; ++k) {
+					runBenchmark("sign " + payloads[k].length + " bytes ", sign, 
+							payloads[k], new Tuple<String,PrivateKey>(digestAlgorithms[i],keyPairs[j].getPrivate()));
+				}
+				System.out.println("");
+			}
+		}
+		System.out.println("");
+		
+		Operation<Tuple<byte[],byte[]>, Tuple<String,PublicKey>> verify = 
+			new Operation<Tuple<byte[],byte[]>, Tuple<String,PublicKey>>() {
 			
-			Object execute(Tuple<byte[],byte[]> input) throws Exception {
-				return SignatureHelper.verify(input.first(), input.second(), CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, pubKey);
+			Object execute(Tuple<byte[],byte[]> input, Tuple<String,PublicKey> verifyParams) throws Exception {
+				return SignatureHelper.verify(input.first(), input.second(), 
+						verifyParams.first(), verifyParams.second());
 			}
 			
 			int size(Tuple<byte[], byte[]> input) {
 				return input.first().length;
 			}
 		};
-		
-		System.out.println("==== PK Verifying");
-		runBenchmark("verify short", verify, new Tuple<byte[],byte[]>(shortPayload, sigShort));
-		runBenchmark("verify long", verify, new Tuple<byte[],byte[]>(longPayload, sigLong));
 
+		for (int i = 1; i < digestAlgorithms.length; ++i) {
+			// skip MD-5
+			System.out.println("==== PK Verifying: Digest: " + digestAlgorithms[i]);
+			for (int j=0; j < keyPairs.length; ++j) {
+				System.out.println("======= " + keyLengths[j] + "-bit " + keyPairs[j].getPublic().getAlgorithm() + " Key with " + digestAlgorithms[i] + ":");
+				for (int k=0; k < payloads.length; ++k) {
+					byte [] signature = (byte[])sign.execute(payloads[k], new Tuple<String,PrivateKey>(digestAlgorithms[i],keyPairs[j].getPrivate()));
+					runBenchmark("verify " + payloads[k].length + " bytes ", verify, 
+							new Tuple<byte [], byte[]>(payloads[k],signature), 
+							new Tuple<String,PublicKey>(digestAlgorithms[i],keyPairs[j].getPublic()));
+				}
+				System.out.println("");
+			}
+		}
+		System.out.println("");
+		
 	}
 	
 	@Test
-	public void testKeyGen() throws Exception {
-		final KeyPairGenerator kpg = KeyPairGenerator.getInstance(UserConfiguration.defaultKeyAlgorithm());
-		kpg.initialize(UserConfiguration.defaultKeyLength());
+	public void testObjectSigning() throws Exception {
+		
+		// We need to be able to benchmark signing using multiple algorithms;
+		// probably should make this depend on digest algorithm as well. 
+		// For right now, just parameterize on key size.
+		// Add ECC once we can test for its presence
+		Operation<ContentObject, Tuple<String,PrivateKey>> objSign = new Operation<ContentObject, Tuple<String,PrivateKey>>() {
 
-		Operation<Object> genpair = new Operation<Object>() {
-			Object execute(Object input) throws Exception {
+			Object execute(ContentObject input, Tuple<String,PrivateKey> signingParams) throws Exception {
+				input.setSignature(null); // avoid warning
+				input.sign(signingParams.first(), signingParams.second());
+				return null;
+			}
+		};
+		
+		Operation<ContentObject, PublicKey> objVerify = 
+			new Operation<ContentObject, PublicKey>() {
+			
+			Object execute(ContentObject input, PublicKey publicKey) throws Exception {
+				return input.verify(publicKey);
+			}
+			
+			int size(ContentObject input) {
+				return input.contentLength();
+			}
+		};
+
+		// Need to handle multiple length of key, and at least SHA1 and SHA256
+		for (int i = 1; i < digestAlgorithms.length; ++i) {
+			// skip MD-5
+			System.out.println("==== PK Object Signing/Verifying: Digest: " + digestAlgorithms[i]);
+			for (int j=0; j < keyPairs.length; ++j) {
+				System.out.println("======= " + keyLengths[j] + "-bit " + keyPairs[j].getPublic().getAlgorithm() + " Key:");
+				for (int k=0; k < unsignedContentObjects.length; ++k) {
+					runBenchmark("sign " + unsignedContentObjects[k].contentLength() + " bytes ", objSign, 
+							unsignedContentObjects[k], 
+							new Tuple<String,PrivateKey>(digestAlgorithms[i],keyPairs[j].getPrivate()));
+					runBenchmark("verify " + unsignedContentObjects[k].contentLength() + " bytes ", objVerify, 
+							unsignedContentObjects[k], keyPairs[j].getPublic());
+				}
+				System.out.println("");
+			}
+		}
+		System.out.println("");
+	}
+
+	@Test
+	public void testKeyGen() throws Exception {
+		Operation<Object, Tuple<KeyPairGenerator, Integer>> genpair = new Operation<Object, Tuple<KeyPairGenerator, Integer>>() {
+			Object execute(Object input, Tuple<KeyPairGenerator,Integer> keyGenParams) throws Exception {
+				KeyPairGenerator kpg = keyGenParams.first();
+				kpg.initialize(keyGenParams.second());
 				KeyPair userKeyPair = kpg.generateKeyPair();
 				return userKeyPair;
 			}		
 		};	
 		
-		System.out.println("==== Key Generation: " + UserConfiguration.defaultKeyLength() + "-bit " + UserConfiguration.defaultKeyAlgorithm() + " key.");
-		runBenchmark(NUM_KEYGEN, "generate keypair", genpair, null);
+		// Do ECC as well, once we can test for presence of ECC.
+		final KeyPairGenerator kpg = KeyPairGenerator.getInstance(UserConfiguration.defaultKeyAlgorithm());
+		
+		for (int i = 0; i < keyLengths.length; ++i) {
+			System.out.println("==== Key Generation: " + keyLengths[i] + "-bit " + UserConfiguration.defaultKeyAlgorithm() + " key.");
+			runBenchmark(NUM_KEYGEN, "generate keypair", genpair, null, new Tuple<KeyPairGenerator, Integer>(kpg, keyLengths[i]));
+		}
 	}
 	
 	@Test
@@ -212,8 +375,8 @@ public class BenchmarkTest {
 		floss.stop();
 		
 		// Now that content is in local ccnd, we can benchmark retrieval of one content item
-		Operation<Interest> getcontent = new Operation<Interest>() {
-			Object execute(Interest interest) throws Exception {
+		Operation<Interest, Object> getcontent = new Operation<Interest, Object>() {
+			Object execute(Interest interest, Object ignored) throws Exception {
 				// Note as of this writing, interest refresh was PERIOD*2 with no constant in net mgr
 				// We will use PERIOD for now, as we want to be sure to avoid refreshes and this should be fast.
 				ContentObject result = handle.get(interest, CCNNetworkManager.PERIOD);
@@ -231,6 +394,6 @@ public class BenchmarkTest {
 		};
 		Interest interest = new Interest(name);
 		System.out.println("==== Single data retrieval from ccnd: " + name);
-		runBenchmark("retrieve data", getcontent, interest);
+		runBenchmark("retrieve data", getcontent, interest, null);
 	}
 }
