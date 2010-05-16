@@ -442,12 +442,13 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 */
 	public void setSignature(Signature signature) {
 		if (null != _signature) {
-			if (Log.isLoggable(Level.WARNING))
-				Log.warning("Setting signature on content object: " + name() + " after signature already set!");
+			// Only do this if FAC_SIGNING is on, as we use it in tests.
+			if (Log.isLoggable(Log.FAC_SIGNING, Level.FINE))
+				Log.fine(Log.FAC_SIGNING, "Setting signature on content object: " + name() + " after signature already set!");
 		}
 		if (null == signature) {
-			if (Log.isLoggable(Level.WARNING))
-				Log.warning("Setting signature to null on content object: " + name());
+			if (Log.isLoggable(Log.FAC_SIGNING, Level.FINE))
+				Log.fine(Log.FAC_SIGNING, "Setting signature to null on content object: " + name());
 		}
 		_signature = signature;
 	}
@@ -712,6 +713,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			return null;
 		}
 		// Have to eventually handle various forms of witnesses...
+		// Need to take an algorithm to control the digest used.
 		byte[] blockDigest = CCNDigestHelper.digest(
 					prepareContent(name(), signedInfo(), content()));
 		return signature().computeProxy(blockDigest, true);
