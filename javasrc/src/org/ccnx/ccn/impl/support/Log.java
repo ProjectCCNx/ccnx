@@ -96,6 +96,7 @@ public class Log {
 	public static final int FAC_KEYS		= 12; // key publishing/retrieval
 	public static final int FAC_ENCODING	= 13;
 	public static final int FAC_IO			= 14;
+	public static final int FAC_SIGNING		= 15;
 
 
 	// The System property name for each Facility
@@ -115,6 +116,7 @@ public class Log {
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Keys",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Encoding",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".IO",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Signing",
 	};
 
 	// The environment variable for each facility
@@ -134,6 +136,7 @@ public class Log {
 		DEFAULT_LOG_LEVEL_ENV + "_KEYS",
 		DEFAULT_LOG_LEVEL_ENV + "_ENCODING",
 		DEFAULT_LOG_LEVEL_ENV + "_IO",
+		DEFAULT_LOG_LEVEL_ENV + "_SIGNING",
 	};
 
 	public static final Level [] FAC_LOG_LEVEL_DEFAULT = {
@@ -152,6 +155,7 @@ public class Log {
 		Level.INFO,		// Keys
 		Level.INFO,		// Encoding
 		Level.INFO,		// IO
+		Level.INFO,		// Signing
 	};
 
 	protected static Level [] _fac_level = new Level[FAC_LOG_LEVEL_PROPERTY.length];
