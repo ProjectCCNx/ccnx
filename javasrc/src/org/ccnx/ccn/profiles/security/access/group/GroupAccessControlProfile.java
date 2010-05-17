@@ -83,14 +83,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		private byte[] _distinguishingHash;
 		private String _friendlyName;
 		private CCNTime _versionTimestamp;
-		
-		public PrincipalInfo(byte [] type, byte[] distinguishingHash, String friendlyName, CCNTime versionTimestamp) {
-			_typeMarker = type;
-			_distinguishingHash = distinguishingHash;
-			_friendlyName = friendlyName;
-			_versionTimestamp = versionTimestamp;
-		}
-		
+				
 		/**
 		 * Parse the principal info for a specified public key name
 		 * @param isGroup whether the principal is a group
