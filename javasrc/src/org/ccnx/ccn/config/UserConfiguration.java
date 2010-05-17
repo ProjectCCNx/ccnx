@@ -152,7 +152,7 @@ public class UserConfiguration {
 	 * 
 	 */
 	protected static final String CCNX_USE_KEY_CONFIGURATION_PROPERTY = "org.ccnx.config.UseKeyConfiguration";
-	protected static final String CCNX_USE_KEY_CONFIGURATION_ENVIRONMENT_VARIABLE = "CCNX_USE_KEY_CONFIGURATION_KEYS";
+	protected static final String CCNX_USE_KEY_CONFIGURATION_ENVIRONMENT_VARIABLE = "CCNX_USE_KEY_CONFIGURATION";
 
 	/**
 	 * Value of CCN directory.
