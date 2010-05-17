@@ -145,6 +145,14 @@ public class UserConfiguration {
 	protected static final String CCNX_PUBLISH_KEYS_PROPERTY = 
 		"org.ccnx.config.PublishKeys";
 	protected static final String CCNX_PUBLISH_KEYS_ENVIRONMENT_VARIABLE = "CCNX_PUBLISH_KEYS";
+	
+	/**
+	 * Property and variable to control whether we load/can set user's personal key cache and
+	 * configuration.
+	 * 
+	 */
+	protected static final String CCNX_USE_KEY_CONFIGURATION_PROPERTY = "org.ccnx.config.UseKeyConfiguration";
+	protected static final String CCNX_USE_KEY_CONFIGURATION_ENVIRONMENT_VARIABLE = "CCNX_USE_KEY_CONFIGURATION_KEYS";
 
 	/**
 	 * Value of CCN directory.
@@ -191,6 +199,14 @@ public class UserConfiguration {
 	 * Do we publish keys by default?
 	 */
 	protected static Boolean _publishKeys;
+	
+	/**
+	 * Do we load stored state about cached secret keys, key locators (credentials) to
+	 * use, and so on? Setting this to false can prevent interactions between unit tests
+	 * and the user's internal configuration data. If false, we also prevent writing
+	 * to configuration state.
+	 */
+	protected static Boolean _useKeyConfiguration;
 	
 	protected static final String USER_DIR = System.getProperty("user.home");
 	protected static String FILE_SEP = System.getProperty("file.separator");
@@ -339,6 +355,18 @@ public class UserConfiguration {
 		return SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_DEFAULT_KEY_LOCATOR_PROPERTY, 
 																		 CCNX_DEFAULT_KEY_LOCATOR_ENVIRONMENT_VARIABLE,
 																		 null);
+	}
+	
+	public static boolean useKeyConfiguration() {
+		if (null == _useKeyConfiguration) {
+
+			String strPublish =  
+				SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_USE_KEY_CONFIGURATION_PROPERTY, 
+						CCNX_USE_KEY_CONFIGURATION_ENVIRONMENT_VARIABLE,
+						"true");
+			_useKeyConfiguration = strPublish.equalsIgnoreCase("true");
+		}
+		return _useKeyConfiguration;
 	}
 
 	public static boolean publishKeys() { 
