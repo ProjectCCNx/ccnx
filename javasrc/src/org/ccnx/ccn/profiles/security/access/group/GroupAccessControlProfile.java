@@ -109,32 +109,44 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 			
 			if (!PrincipalInfo.isPrincipalNameComponent(principalInfoNameComponent) || (principalInfoNameComponent.length <= USER_PRINCIPAL_PREFIX.length))
 				throw new IllegalArgumentException("Not a valid principal name component!");
+			int pos = 0;
 			
-			// First time we see COMPONENT_SEPARATOR is the separation point.
-			// Could jump back based on fixed width of timestamp.
-			byte [][] pieces = 
-				DataUtils.binarySplit(principalInfoNameComponent, CCNProfile.COMPONENT_SEPARATOR[0]);
-			if (pieces.length < PI_COMPONENT_COUNT) {
-				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-					Log.warning(Log.FAC_ACCESSCONTROL, "Unexpected principal name format - insufficient number of components: " + 
-							ContentName.componentPrintURI(principalInfoNameComponent, USER_PRINCIPAL_PREFIX.length, principalInfoNameComponent.length-USER_PRINCIPAL_PREFIX.length));
-				}
-				throw new IllegalArgumentException("Not a valid principal name component -- insufficient number of components!");				
-			}
-			
-			_typeMarker = pieces[0];
-			_distinguishingHash = pieces[1];
-			_friendlyName = ContentName.componentPrintNative(pieces[2]);
 			try {
-				_versionTimestamp = new CCNTime(pieces[3]);
-			} catch (IllegalArgumentException e) {
-				// we've been having some trouble here...
+				// The group and user principal prefixes are of the same length
+				_typeMarker = new byte[GROUP_PRINCIPAL_PREFIX.length];
+				System.arraycopy(principalInfoNameComponent, pos, _typeMarker, 0, _typeMarker.length);
+				pos += _typeMarker.length;
+				pos += CCNProfile.COMPONENT_SEPARATOR.length;
+				
+				// The distinguishing hash is of length DISTINGUISHING_HASH_LENGTH
+				_distinguishingHash = new byte[DISTINGUISHING_HASH_LENGTH];
+				System.arraycopy(principalInfoNameComponent, pos, _distinguishingHash, 0, _distinguishingHash.length);
+				pos += _distinguishingHash.length;
+				pos += CCNProfile.COMPONENT_SEPARATOR.length;
+				
+				// friendly name until the next COMPONENT_SEPARATOR
+				// We only check for the first byte of COMPONENT_SEPARATOR 
+				// since that byte is known to not appear in a friendly name
+				int fnLength = 0;
+				while (principalInfoNameComponent[pos + fnLength] != CCNProfile.COMPONENT_SEPARATOR[0]) fnLength++;
+				byte[] friendlyNameBytes = new byte[fnLength];
+				System.arraycopy(principalInfoNameComponent, pos, friendlyNameBytes, 0, fnLength);
+				_friendlyName = ContentName.componentPrintNative(friendlyNameBytes);
+				pos += fnLength;
+				pos += CCNProfile.COMPONENT_SEPARATOR.length;
+	
+				// the rest is the timestamp
+				byte[] timestampBytes = new byte[principalInfoNameComponent.length - pos];
+				System.arraycopy(principalInfoNameComponent, pos, timestampBytes, 0, timestampBytes.length);
+				_versionTimestamp = new CCNTime(timestampBytes);
+			} catch (Exception e) {
+				// we're having some trouble here...
 				Log.severe(Log.FAC_ACCESSCONTROL, "PrincipalInfo: error in parsing component {0}", 
 						ContentName.componentPrintURI(principalInfoNameComponent));
-				Log.severe(Log.FAC_ACCESSCONTROL, "PrincipalInfo: typeMarker {0}, distinguishing hash {1}, friendly name {2}, part to parse into timestamp {3}",
+				Log.severe(Log.FAC_ACCESSCONTROL, "PrincipalInfo: typeMarker {0}, distinguishing hash {1}, friendly name {2}, timestamp {3}",
 						ContentName.componentPrintURI(_typeMarker), ContentName.componentPrintURI(_distinguishingHash),
-						_friendlyName, ContentName.componentPrintURI(pieces[3]));
-				throw e;
+						_friendlyName, _versionTimestamp);
+				System.exit(1);
 			}
 		}
 		
