@@ -219,9 +219,15 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		 */
 		public static byte [] contentPrefixToDistinguishingHash(ContentName name) throws ContentEncodingException {
 			byte [] fullDigest = CCNDigestHelper.digest(name.encode());
+			// Ensure that the distinguishing hash is always exactly of length DISTINGUISHING_HASH_LENGTH
+			// to enable correct parsing of a byte[] representing a PrincipalInfo
 			if (fullDigest.length > DISTINGUISHING_HASH_LENGTH) {
 				byte [] returnedDigest = new byte[DISTINGUISHING_HASH_LENGTH];
 				System.arraycopy(fullDigest, 0, returnedDigest, 0, DISTINGUISHING_HASH_LENGTH);
+				return returnedDigest;
+			} else if (fullDigest.length < DISTINGUISHING_HASH_LENGTH) {
+				byte [] returnedDigest = new byte[DISTINGUISHING_HASH_LENGTH];
+				System.arraycopy(fullDigest, 0, returnedDigest, 0, fullDigest.length);
 				return returnedDigest;
 			}
 			return fullDigest;
