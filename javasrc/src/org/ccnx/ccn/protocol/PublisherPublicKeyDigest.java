@@ -19,6 +19,7 @@ package org.ccnx.ccn.protocol;
 
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.net.URISyntaxException;
 import java.security.PublicKey;
 import java.util.Arrays;
 
@@ -31,6 +32,8 @@ import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.profiles.security.KeyProfile;
+import org.ccnx.ccn.protocol.ContentName.DotDotComponent;
 
 
 /**
@@ -79,6 +82,21 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 	 */
 	public PublisherPublicKeyDigest(String publisherPublicKeyDigest) {
 		this(CCNDigestHelper.scanBytes(publisherPublicKeyDigest, 32));
+	}
+	
+	/**
+	 * Parses a URI-encoded key ID, with an optional keyid: command marker.
+	 * @throws URISyntaxException 
+	 * @throws DotDotComponent 
+	 */
+	public static PublisherPublicKeyDigest fromURIEncoded(String uriEncoded) throws DotDotComponent, URISyntaxException {
+		byte [] encodedBytes = ContentName.componentParseURI(uriEncoded);
+		
+		if (KeyProfile.KEY_NAME_COMPONENT_MARKER.isMarker(encodedBytes)) {
+			return new PublisherPublicKeyDigest(KeyProfile.getKeyIDFromNameComponent(encodedBytes));
+		}
+		// No marker
+		return new PublisherPublicKeyDigest(encodedBytes);
 	}
 	
 	/**
