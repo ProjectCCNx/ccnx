@@ -18,10 +18,15 @@
 package org.ccnx.ccn.config;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.Properties;
+import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -85,13 +90,14 @@ public class SystemConfiguration {
 	
 	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES, DUMP_DAEMONCMD, REPO_EXITDUMP};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
+	protected static String FILE_SEP = System.getProperty("file.separator");
 	
-<<<<<<< HEAD
+	public static final String CCN_CONFIG_FILE = "ccnx.config";
+	public static final String CCN_IGNORE_CONFIG_FILE_PROPERTY = "org.ccnx.ignoreconfig";
+	public static final String CCN_IGNORE_CONFIG_FILE_ENVIRONMENT_VARIABLE = "CCN_IGNORE_CONFIG_FILE";
+	
 	protected static final String CCN_PROTOCOL_PROPERTY = "org.ccnx.protocol";
-	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.UDP;
 	
-=======
-	protected static final String CCN_PROTOCOL_PROPERTY = "org.ccnx.protocol";	
 	public static final String DEFAULT_PROTOCOL = "TCP";  // UDP or TCP allowed
 	public static NetworkProtocol AGENT_PROTOCOL = null; // Set up below
 	public static final String AGENT_PROTOCOL_PROPERTY = "org.ccnx.agent.protocol";
@@ -106,7 +112,6 @@ public class SystemConfiguration {
 	public static final String CCN_EXIT_ON_NETWORK_ERROR_PROPERTY = "org.ccnx.ExitOnNetworkError";
 	public static final String CCN_EXIT_ON_NETWORK_ERROR_ENVIRONMENT_VARIABLE = "CCN_EXIT_ON_NETERROR";
 
->>>>>>> e3427d8... Fix some merge problems
 	/**
 	 * Property to set debug flags.
 	 */
@@ -246,6 +251,42 @@ public class SystemConfiguration {
 	public static final int DEBUG_RADIX = 34;
 	
 	/**
+	 * Property to allow/disallow logging for individual modules
+	 */
+	protected static TreeMap<String, Boolean> loggingInfo = new TreeMap<String, Boolean>();
+	
+	protected static Properties _ccnxConfigProperties = null;
+	protected static boolean _ignoreCCNXProperties = false;
+	
+	static {
+		// Allow ignoring of ccn config file
+		String ignoreConfig = System.getProperty(CCN_IGNORE_CONFIG_FILE_PROPERTY);
+		if (null != ignoreConfig) {
+			if (ignoreConfig.equalsIgnoreCase("true"))
+				_ignoreCCNXProperties = true;
+			if (ignoreConfig.equalsIgnoreCase("yes"))
+				_ignoreCCNXProperties = true;
+		}		
+	}
+	
+	public static Properties getConfigProperties() {
+		if (! _ignoreCCNXProperties) {
+			if (null == _ccnxConfigProperties) {
+				try {
+					Properties tmpProperties = new Properties();
+					File f = new File(UserConfiguration.userConfigurationDirectory() 
+								+ FILE_SEP + CCN_CONFIG_FILE);
+					FileInputStream fis = new FileInputStream(f);
+					tmpProperties.load(fis);
+					_ccnxConfigProperties = tmpProperties;
+				} catch (FileNotFoundException e) {} 
+				  catch (IOException e) {}
+			}
+		}
+		return _ccnxConfigProperties;
+	}
+
+	/**
 	 * Obtain the management bean for this runtime if it is available.
 	 * The class of the management bean is discovered at runtime and there
 	 * should be no static dependency on any particular bean class.
@@ -279,10 +320,36 @@ public class SystemConfiguration {
 		}
 			
 		DEBUG_DATA_DIRECTORY = System.getProperty(DEBUG_DATA_DIRECTORY_PROPERTY, DEFAULT_DEBUG_DATA_DIRECTORY);
-		
 	}
 	
 	static {
+		// Allow override of basic protocol
+		String proto = SystemConfiguration.getGradedValue(AGENT_PROTOCOL_PROPERTY, AGENT_PROTOCOL_ENVIRONMENT_VARIABLE, DEFAULT_PROTOCOL);
+		boolean found = false;
+		for (NetworkProtocol p : NetworkProtocol.values()) {
+			String pAsString = p.toString();
+			if (proto.equalsIgnoreCase(pAsString)) {
+				Log.warning("CCN agent protocol changed to " + pAsString + " per property");
+				AGENT_PROTOCOL = p;
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			System.err.println("The protocol must be UDP(17) or TCP (6)");
+			throw new IllegalArgumentException("Invalid protocol '" + proto + "' specified in " + AGENT_PROTOCOL_PROPERTY);
+		}
+		
+		// Allow override of exit on network error
+		try {
+			EXIT_ON_NETWORK_ERROR = Boolean.parseBoolean(getGradedValue(CCN_EXIT_ON_NETWORK_ERROR_PROPERTY, CCN_EXIT_ON_NETWORK_ERROR_ENVIRONMENT_VARIABLE,
+					Boolean.toString(DEFAULT_EXIT_ON_NETWORK_ERROR)));
+//			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
+		} catch (NumberFormatException e) {
+			System.err.println("The exit on network error must be an boolean.");
+			throw e;
+		}
+		
 		// Allow override of default enumerated name list child wait timeout.
 		try {
 			CHILD_WAIT_INTERVAL = Integer.parseInt(System.getProperty(CHILD_WAIT_INTERVAL_PROPERTY, Integer.toString(CHILD_WAIT_INTERVAL_DEFAULT)));
@@ -294,7 +361,7 @@ public class SystemConfiguration {
 
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
-			PIPELINE_SIZE = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
+			PIPELINE_SIZE = Integer.parseInt(getGradedValue(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineSize must be an integer.");
@@ -303,7 +370,7 @@ public class SystemConfiguration {
 	
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
-			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
+			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(getGradedValue(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineAttempts must be an integer.");
@@ -312,15 +379,14 @@ public class SystemConfiguration {
 		
 		// Allow override of default pipeline rtt multiplication factor for CCNAbstractInputStream
 		try {
-			PIPELINE_RTTFACTOR = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
+			PIPELINE_RTTFACTOR = Integer.parseInt(getGradedValue(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineRTTFactor must be an integer.");
 
 		}
 		
 		// Allow printing of pipeline stats in CCNAbstractInputStream
-		PIPELINE_STATS = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(PIPELINE_STATS_PROPERTY, PIPELINE_STATS_ENV_VAR, "false"));
-		
+		PIPELINE_STATS = Boolean.parseBoolean(getGradedValue(PIPELINE_STATS_PROPERTY, PIPELINE_STATS_ENV_VAR, "false"));		
 		
 			// Allow override of default ping timeout.
 		try {
@@ -351,10 +417,9 @@ public class SystemConfiguration {
 		
 		// Handle old-style header names
 		OLD_HEADER_NAMES = Boolean.parseBoolean(
-				retrievePropertyOrEnvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
+				getGradedValue(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
 
 	}
-<<<<<<< HEAD
 	
 	public static NetworkProtocol CCN_PROTOCOL = DEFAULT_PROTOCOL;
 	
@@ -368,8 +433,6 @@ public class SystemConfiguration {
 				CCN_PROTOCOL = NetworkProtocol.UDP;
 		}		
 	}
-=======
->>>>>>> e3427d8... Fix some merge problems
 
 	public static String getLocalHost() {
 //		InetAddress.getLocalHost().toString(),
@@ -629,10 +692,10 @@ public class SystemConfiguration {
 	 * Retrieve a string that might be stored as an environment variable, or
 	 * overridden on the command line. If the command line variable is set, return
 	 * its (String) value; if not, return the environment variable value if available;
-	 * if neither is set return the default value. Caller should synchronize as appropriate.
+	 * Caller should synchronize as appropriate.
 	 * @return The value in force for this variable, or null if unset.
 	 */
-	public static String retrievePropertyOrEnvironmentVariable(String javaPropertyName, String environmentVariableName, String defaultValue) { 
+	public static String retrievePropertyOrEnvironmentVariable(String javaPropertyName, String environmentVariableName) { 
 		// First try the command line property.
 		String value = null;
 		if (null != javaPropertyName) {
@@ -641,6 +704,25 @@ public class SystemConfiguration {
 		if ((null == value) && (null != environmentVariableName)) {
 			// Try for an environment variable.
 			value = System.getenv(environmentVariableName);
+		}
+		return value;
+	}
+	
+	/**
+	 * Retrieve a value for a variable, in this order - set as a java property on the command line, set as
+	 * an environment variable, set in the properties file. Return default if not set in any of these ways
+	 * @param javaPropertyName Name of java property for command line or properties file
+	 * @param environmentVariableName Name of environment variable
+	 * @param defaultValue default value for the variable.
+	 * @return some value for this variable
+	 */
+	public static String getGradedValue(String javaPropertyName, String environmentVariableName, String defaultValue) {
+		String value = retrievePropertyOrEnvironmentVariable(javaPropertyName, environmentVariableName);
+		if (null == value && null != javaPropertyName) {
+			// Try for variable from properties file
+			Properties props = getConfigProperties();
+			if (null != props)
+				value = props.getProperty(javaPropertyName);
 		}
 		if (null == value) {
 			return defaultValue;
