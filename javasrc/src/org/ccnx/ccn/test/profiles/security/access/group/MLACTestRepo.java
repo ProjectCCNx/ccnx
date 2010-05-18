@@ -63,7 +63,7 @@ public class MLACTestRepo {
 			userKeystore[d] = ContentName.fromNative(userNamespace[d], "_keystore_");
 			groupNamespace[d] = GroupAccessControlProfile.groupNamespaceName(domainPrefix[d]);
 			td = new CreateUserData(userKeystore[d], userNames, userNames.length, true, "password".toCharArray(), _handle);
-			td.publishUserKeysToRepository(userNamespace[d]);			
+			td.publishUserKeysToRepositorySetLocators(userNamespace[d]);			
 		}
 	}
 	

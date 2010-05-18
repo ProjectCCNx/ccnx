@@ -81,7 +81,7 @@ public class ACPerformanceTestRepo {
 		userKeystore = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_keystore_"); 
 	
 		cua = new CreateUserData(userKeystore, userNames, userNames.length, true, "password".toCharArray(), CCNHandle.open());
-		cua.publishUserKeysToRepository(userNamespace);
+		cua.publishUserKeysToRepositorySetLocators(userNamespace);
 
 		// The root ACL at domainPrefix has Alice as a manager
 		ArrayList<Link> ACLcontents = new ArrayList<Link>();
