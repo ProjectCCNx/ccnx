@@ -248,13 +248,13 @@ public class GroupAccessControlManager extends AccessControlManager {
 		for (ContentName uStorage: userStorage) {
 			if (null == uStorage)
 				continue;
-			ParameterizedName pName = new ParameterizedName("User", uStorage, null);
+			ParameterizedName pName = new ParameterizedName(GroupAccessControlProfile.USER_LABEL, uStorage, null);
 			parameterizedNames.add(pName);
 		}
 		for (ContentName gStorage: groupStorage) {
 			if (null == gStorage)
 				continue;
-			ParameterizedName pName = new ParameterizedName("Group", gStorage, null);
+			ParameterizedName pName = new ParameterizedName(GroupAccessControlProfile.GROUP_LABEL, gStorage, null);
 			parameterizedNames.add(pName);
 		}
 		if (null == handle) handle = CCNHandle.open();
@@ -284,14 +284,15 @@ public class GroupAccessControlManager extends AccessControlManager {
 		ArrayList<ParameterizedName> parameterizedNames = policyInformation.policy().parameterizedNames();
 		for (ParameterizedName pName: parameterizedNames) {
 			String label = pName.label();
-			if (label.equals("Group")) {
+			if (label.equals(GroupAccessControlProfile.GROUP_LABEL)) {
 				GroupManager gm = new GroupManager(this, pName, _handle);
 				_groupManager.add(gm);
 				byte[] distinguishingHash = GroupAccessControlProfile.PrincipalInfo.contentPrefixToDistinguishingHash(pName.prefix());
 				hashToGroupManagerMap.put(distinguishingHash, gm);
 				prefixToGroupManagerMap.put(pName.prefix(), gm);
+			} else if (label.equals(GroupAccessControlProfile.USER_LABEL)) {
+				_userStorage.add(pName);
 			}
-			else if (label.equals("User")) _userStorage.add(pName);
 		}
 		return true;
 	}
@@ -302,7 +303,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 
 	public void registerGroupStorage(ContentName groupStorage) throws IOException {
-		ParameterizedName pName = new ParameterizedName("Group", groupStorage, null);
+		ParameterizedName pName = new ParameterizedName(GroupAccessControlProfile.GROUP_LABEL, groupStorage, null);
 		GroupManager gm = new GroupManager(this, pName, _handle);
 		_groupManager.add(gm);
 		byte[] distinguishingHash = GroupAccessControlProfile.PrincipalInfo.contentPrefixToDistinguishingHash(pName.prefix());
@@ -311,7 +312,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 	
 	public void registerUserStorage(ContentName userStorage) {
-		ParameterizedName pName = new ParameterizedName("User", userStorage, null);
+		ParameterizedName pName = new ParameterizedName(GroupAccessControlProfile.USER_LABEL, userStorage, null);
 		_userStorage.add(pName);
 	}
 	
