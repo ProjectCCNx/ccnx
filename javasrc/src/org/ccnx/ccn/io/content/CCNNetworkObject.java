@@ -482,10 +482,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	/**
-	 * Close flow controller. Have to call setupSave to save with this object again.
+	 * Close flow controller, remove listeners. Have to call setupSave to save with this object again,
+	 * re-add listeners.
 	 * @return
 	 */
 	public synchronized void close() {
+		clearListeners();
 		if (null != _flowControl) {
 			_flowControl.close();
 		}
