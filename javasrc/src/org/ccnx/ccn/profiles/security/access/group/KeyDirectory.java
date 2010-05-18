@@ -610,10 +610,6 @@ public class KeyDirectory extends EnumeratedNameList {
 		Key unwrappedKey = null;
 		byte [] retrievedKeyID = null;
 		
-		if (!hasChildren()) {
-			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
-		}
-		
 		// Do we have the unwrapped key in our cache?
 		// First, look up the desired keyID in the cache. 
 		// If it's not in the cache, look up the desired key by name
@@ -630,6 +626,12 @@ public class KeyDirectory extends EnumeratedNameList {
 		// Do we have one of the wrapping keys already in our cache?
 		if (null == unwrappedKey) {
 			unwrappedKey = unwrapKeyViaCache();
+		}
+		
+		// Move this test down; if we can get it via the cache, we don't care.
+		// Maybe we should put the wait here, and just set a flag if we've already waited...
+		if (!hasChildren()) {
+			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
 		}
 		
 		if (null == unwrappedKey) {
