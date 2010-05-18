@@ -971,12 +971,13 @@ public class BasicKeyManager extends KeyManager {
 			keyName = getDefaultKeyName(keyDigest);
 		}
 
-		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
-			Log.info(Log.FAC_KEYS, "publishKey: publishing key {0} under specified key name {1}", keyDigest, keyName);
-
 		PublicKeyObject keyObject =  
 			serveKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
 		
+		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
+			Log.info(Log.FAC_KEYS, "publishKey: published key {0}\n under specified key name {1}\n key locator: {2}", 
+					keyDigest, keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
+
 		if (!haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
 			// So once we publish self-signed key object, we store a pointer to that
 			// to use. Don't override any manually specified values.
