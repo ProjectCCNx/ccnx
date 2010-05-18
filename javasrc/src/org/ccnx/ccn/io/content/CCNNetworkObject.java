@@ -924,10 +924,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// Grab digest and segment number after close because for short objects there may not be 
 			// a segment generated until the close
 			_firstSegment = cos.getFirstSegment();
-			_currentPublisher = (_publisher == null) ? _flowControl.getHandle().getDefaultPublisher() : _publisher; // TODO DKS -- is this always correct?
-			// must match algorithm stream uses to get key locator if null; could have time of access problem
-			_currentPublisherKeyLocator = (_keyLocator == null) ? 
-					_flowControl.getHandle().keyManager().getKeyLocator(_publisher) : _keyLocator;
 		} else {
 			// saving object as gone, currently this is always one empty segment so we don't use an OutputStream
 			ContentName segmentedName = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
@@ -944,10 +940,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_firstSegment = goneObject;
 			_flowControl.beforeClose();
 			_flowControl.afterClose();
-			_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
-			_currentPublisherKeyLocator = goneObject.signedInfo().getKeyLocator();
 			_lastSaved = GONE_OUTPUT;
 		}
+		_currentPublisher = _firstSegment.signedInfo().getPublisherKeyID(); 
+		_currentPublisherKeyLocator = _firstSegment.signedInfo().getKeyLocator();
 		_currentVersionComponent = name.lastComponent();
 		_currentVersionName = name;
 		setDirty(false);
