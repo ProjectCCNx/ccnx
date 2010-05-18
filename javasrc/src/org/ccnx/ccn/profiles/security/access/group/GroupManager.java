@@ -34,6 +34,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -71,7 +72,6 @@ public class GroupManager {
 		_handle = handle;
 		_accessManager = accessManager;
 		_groupStorage = groupStorage;
-		groupList();
 	}
 	
 	/**
@@ -131,16 +131,17 @@ public class GroupManager {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info(Log.FAC_ACCESSCONTROL, "The group {0} was not found in the group cache.", groupFriendlyName);
 			}
-		}
-		
-		if ((null == theGroup) && (groupList().hasChild(groupFriendlyName))) {
-			// Only go hunting for it if we think it exists, otherwise we'll block.
+
 			synchronized(_groupCache) {
 				theGroup = _groupCache.get(groupFriendlyName);
 				if (null == theGroup) {
-					theGroup = new Group(_groupStorage.prefix(), groupFriendlyName, _handle, this);
-					// wait for group to be ready?
-					_groupCache.put(groupFriendlyName, theGroup);
+					// Only go hunting for it if we think it exists, otherwise we'll block.
+					if (groupExists(groupFriendlyName)) {
+
+						theGroup = new Group(_groupStorage.prefix(), groupFriendlyName, _handle, this);
+						// wait for group to be ready?
+						_groupCache.put(groupFriendlyName, theGroup);
+					}
 				}
 			}
 		}
@@ -167,6 +168,20 @@ public class GroupManager {
 			return null;
 		String friendlyName = GroupAccessControlProfile.groupNameToFriendlyName(theGroup.targetName());
 		return getGroup(friendlyName);
+	}
+	
+	/**
+	 * Replace enumeration-based test of existence with direct test.
+	 * @throws IOException 
+	 */
+	public boolean groupExists(String groupFriendlyName) throws IOException {
+		ContentName publicKeyName = 
+			GroupAccessControlProfile.groupPublicKeyName(_groupStorage.prefix(), groupFriendlyName);
+		
+		// Take any content below the public key name -- key fragments, keys, whatever's fastest.
+		// This will take a long time if the group doesn't exist, but should be fast if it does,
+		// with no pre-enumeration required.
+		return (null != CCNReader.isAnyContentAvailable(publicKeyName, null, SystemConfiguration.EXTRA_LONG_TIMEOUT, _handle));
 	}
 	
 	/**
@@ -244,8 +259,8 @@ public class GroupManager {
 		return _groupStorage.prefix().isPrefixOf(member.targetName());
 	}
 	
-	public boolean isGroup(String principal) {
-		return _groupList.hasChild(principal);
+	public boolean isGroup(String principal) throws IOException {
+		return (null != getGroup(principal));
 	}
 	
 	public boolean isGroup(ContentName publicKeyName) {
