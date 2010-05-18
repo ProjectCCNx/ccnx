@@ -18,10 +18,7 @@
 package org.ccnx.ccn.config;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -268,23 +265,6 @@ public class SystemConfiguration {
 				_ignoreCCNXProperties = true;
 		}		
 	}
-	
-	public static Properties getConfigProperties() {
-		if (! _ignoreCCNXProperties) {
-			if (null == _ccnxConfigProperties) {
-				try {
-					Properties tmpProperties = new Properties();
-					File f = new File(UserConfiguration.userConfigurationDirectory() 
-								+ FILE_SEP + CCN_CONFIG_FILE);
-					FileInputStream fis = new FileInputStream(f);
-					tmpProperties.load(fis);
-					_ccnxConfigProperties = tmpProperties;
-				} catch (FileNotFoundException e) {} 
-				  catch (IOException e) {}
-			}
-		}
-		return _ccnxConfigProperties;
-	}
 
 	/**
 	 * Obtain the management bean for this runtime if it is available.
@@ -324,7 +304,7 @@ public class SystemConfiguration {
 	
 	static {
 		// Allow override of basic protocol
-		String proto = SystemConfiguration.getGradedValue(AGENT_PROTOCOL_PROPERTY, AGENT_PROTOCOL_ENVIRONMENT_VARIABLE, DEFAULT_PROTOCOL);
+		String proto = SystemConfiguration.retrievePropertyOrEnvironmentVariable(AGENT_PROTOCOL_PROPERTY, AGENT_PROTOCOL_ENVIRONMENT_VARIABLE, DEFAULT_PROTOCOL);
 		boolean found = false;
 		for (NetworkProtocol p : NetworkProtocol.values()) {
 			String pAsString = p.toString();
@@ -342,7 +322,7 @@ public class SystemConfiguration {
 		
 		// Allow override of exit on network error
 		try {
-			EXIT_ON_NETWORK_ERROR = Boolean.parseBoolean(getGradedValue(CCN_EXIT_ON_NETWORK_ERROR_PROPERTY, CCN_EXIT_ON_NETWORK_ERROR_ENVIRONMENT_VARIABLE,
+			EXIT_ON_NETWORK_ERROR = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(CCN_EXIT_ON_NETWORK_ERROR_PROPERTY, CCN_EXIT_ON_NETWORK_ERROR_ENVIRONMENT_VARIABLE,
 					Boolean.toString(DEFAULT_EXIT_ON_NETWORK_ERROR)));
 //			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
 		} catch (NumberFormatException e) {
@@ -361,7 +341,7 @@ public class SystemConfiguration {
 
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
-			PIPELINE_SIZE = Integer.parseInt(getGradedValue(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
+			PIPELINE_SIZE = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineSize must be an integer.");
@@ -370,7 +350,7 @@ public class SystemConfiguration {
 	
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
-			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(getGradedValue(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
+			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineAttempts must be an integer.");
@@ -379,14 +359,14 @@ public class SystemConfiguration {
 		
 		// Allow override of default pipeline rtt multiplication factor for CCNAbstractInputStream
 		try {
-			PIPELINE_RTTFACTOR = Integer.parseInt(getGradedValue(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
+			PIPELINE_RTTFACTOR = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineRTTFactor must be an integer.");
 
 		}
 		
 		// Allow printing of pipeline stats in CCNAbstractInputStream
-		PIPELINE_STATS = Boolean.parseBoolean(getGradedValue(PIPELINE_STATS_PROPERTY, PIPELINE_STATS_ENV_VAR, "false"));		
+		PIPELINE_STATS = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(PIPELINE_STATS_PROPERTY, PIPELINE_STATS_ENV_VAR, "false"));		
 		
 			// Allow override of default ping timeout.
 		try {
@@ -417,7 +397,7 @@ public class SystemConfiguration {
 		
 		// Handle old-style header names
 		OLD_HEADER_NAMES = Boolean.parseBoolean(
-				getGradedValue(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
+				retrievePropertyOrEnvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
 
 	}
 	
@@ -692,10 +672,10 @@ public class SystemConfiguration {
 	 * Retrieve a string that might be stored as an environment variable, or
 	 * overridden on the command line. If the command line variable is set, return
 	 * its (String) value; if not, return the environment variable value if available;
-	 * Caller should synchronize as appropriate.
+	 * if neither is set return the default value. Caller should synchronize as appropriate.
 	 * @return The value in force for this variable, or null if unset.
 	 */
-	public static String retrievePropertyOrEnvironmentVariable(String javaPropertyName, String environmentVariableName) { 
+	public static String retrievePropertyOrEnvironmentVariable(String javaPropertyName, String environmentVariableName, String defaultValue) { 
 		// First try the command line property.
 		String value = null;
 		if (null != javaPropertyName) {
@@ -705,29 +685,9 @@ public class SystemConfiguration {
 			// Try for an environment variable.
 			value = System.getenv(environmentVariableName);
 		}
-		return value;
-	}
-	
-	/**
-	 * Retrieve a value for a variable, in this order - set as a java property on the command line, set as
-	 * an environment variable, set in the properties file. Return default if not set in any of these ways
-	 * @param javaPropertyName Name of java property for command line or properties file
-	 * @param environmentVariableName Name of environment variable
-	 * @param defaultValue default value for the variable.
-	 * @return some value for this variable
-	 */
-	public static String getGradedValue(String javaPropertyName, String environmentVariableName, String defaultValue) {
-		String value = retrievePropertyOrEnvironmentVariable(javaPropertyName, environmentVariableName);
-		if (null == value && null != javaPropertyName) {
-			// Try for variable from properties file
-			Properties props = getConfigProperties();
-			if (null != props)
-				value = props.getProperty(javaPropertyName);
-		}
 		if (null == value) {
 			return defaultValue;
 		}
 		return value;
 	}
-
 }

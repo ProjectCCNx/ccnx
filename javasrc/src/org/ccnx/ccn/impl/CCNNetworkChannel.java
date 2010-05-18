@@ -16,11 +16,9 @@
  */
 package org.ccnx.ccn.impl;
 
-import java.io.ByteArrayInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.net.PortUnreachableException;
 import java.nio.BufferUnderflowException;

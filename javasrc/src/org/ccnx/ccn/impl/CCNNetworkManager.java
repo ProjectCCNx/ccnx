@@ -706,7 +706,7 @@ public class CCNNetworkManager implements Runnable {
 				throw new IOException("Invalid protocol '" + proto + "' specified in " + PROP_AGENT_PROTOCOL_KEY);
 			}
 		} else {
-			_protocol = SystemConfiguration.DEFAULT_PROTOCOL;
+			_protocol = SystemConfiguration.AGENT_PROTOCOL;
 		}
 
 		if( Log.isLoggable(Level.INFO) )
