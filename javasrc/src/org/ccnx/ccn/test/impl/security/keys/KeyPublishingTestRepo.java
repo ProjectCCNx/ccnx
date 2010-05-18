@@ -64,7 +64,7 @@ public class KeyPublishingTestRepo {
 		for (int i=0; i < NUM_USERS; ++i) {
 			userHandles[i] = testUsers.getHandleForUser(userNames[i]);
 		}
-		userKeyObjects = testUsers.publishUserKeysToRepository(testHelper.getClassChildName(USER_NAMESPACE));
+		userKeyObjects = testUsers.publishUserKeysToRepositorySetLocators(testHelper.getClassChildName(USER_NAMESPACE));
 	}
 	
 	@Test

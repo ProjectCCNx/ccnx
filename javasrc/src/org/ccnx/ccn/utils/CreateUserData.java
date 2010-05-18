@@ -356,7 +356,7 @@ public class CreateUserData {
 		return results;
 	}
 	
-	public void publishUserKeysToRepositorySetLocators(ContentName userNamespace) throws InvalidKeyException, IOException {
+	public PublicKeyObject [] publishUserKeysToRepositorySetLocators(ContentName userNamespace) throws InvalidKeyException, IOException {
 		PublicKeyObject [] results = publishUserKeysToRepository(userNamespace);
 		
 		int i=0;
@@ -365,6 +365,7 @@ public class CreateUserData {
 			userHandle.keyManager().setKeyLocator(null, results[i].getPublisherKeyLocator());
 			i++;
 		}
+		return results;
 	}
 	
 	public boolean hasUser(String friendlyName) {
