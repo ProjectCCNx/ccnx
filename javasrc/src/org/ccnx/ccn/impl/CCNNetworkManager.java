@@ -116,7 +116,7 @@ public class CCNNetworkManager implements Runnable {
 	protected long _lastHeartbeat = 0;
 	protected int _port = DEFAULT_AGENT_PORT;
 	protected String _host = DEFAULT_AGENT_HOST;
-	protected NetworkProtocol _protocol = SystemConfiguration.CCN_PROTOCOL;
+	protected NetworkProtocol _protocol;
 
 	
 	// For handling protocol to speak to ccnd, must have keys

@@ -86,9 +86,27 @@ public class SystemConfiguration {
 	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES, DUMP_DAEMONCMD, REPO_EXITDUMP};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
 	
+<<<<<<< HEAD
 	protected static final String CCN_PROTOCOL_PROPERTY = "org.ccnx.protocol";
 	public static final NetworkProtocol DEFAULT_PROTOCOL = NetworkProtocol.UDP;
 	
+=======
+	protected static final String CCN_PROTOCOL_PROPERTY = "org.ccnx.protocol";	
+	public static final String DEFAULT_PROTOCOL = "TCP";  // UDP or TCP allowed
+	public static NetworkProtocol AGENT_PROTOCOL = null; // Set up below
+	public static final String AGENT_PROTOCOL_PROPERTY = "org.ccnx.agent.protocol";
+	public static final String AGENT_PROTOCOL_ENVIRONMENT_VARIABLE = "CCN_AGENT_PROTOCOL";
+	
+	/**
+	 * Controls whether we should exit on severe errors in the network manager. This should only be
+	 * set true in automated tests. In live running code, we hope to be able to recover instead.
+	 */
+	public static final boolean DEFAULT_EXIT_ON_NETWORK_ERROR = false;
+	public static boolean EXIT_ON_NETWORK_ERROR = DEFAULT_EXIT_ON_NETWORK_ERROR;
+	public static final String CCN_EXIT_ON_NETWORK_ERROR_PROPERTY = "org.ccnx.ExitOnNetworkError";
+	public static final String CCN_EXIT_ON_NETWORK_ERROR_ENVIRONMENT_VARIABLE = "CCN_EXIT_ON_NETERROR";
+
+>>>>>>> e3427d8... Fix some merge problems
 	/**
 	 * Property to set debug flags.
 	 */
@@ -336,6 +354,7 @@ public class SystemConfiguration {
 				retrievePropertyOrEnvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
 
 	}
+<<<<<<< HEAD
 	
 	public static NetworkProtocol CCN_PROTOCOL = DEFAULT_PROTOCOL;
 	
@@ -349,6 +368,8 @@ public class SystemConfiguration {
 				CCN_PROTOCOL = NetworkProtocol.UDP;
 		}		
 	}
+=======
+>>>>>>> e3427d8... Fix some merge problems
 
 	public static String getLocalHost() {
 //		InetAddress.getLocalHost().toString(),
