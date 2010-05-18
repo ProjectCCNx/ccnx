@@ -49,6 +49,10 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	public static final String USER_PREFIX = "Users";
 	public static final byte [] USER_PREFIX_BYTES = ContentName.componentParseNative(USER_PREFIX);
 	
+	// The labels used to tag group or user storage information in AccessControlPolicyMarkerObjects
+	public static final String GROUP_LABEL = "Group";		
+	public static final String USER_LABEL = "User";
+	
 	public static final String GROUP_MEMBERSHIP_LIST_NAME = "MembershipList";
 	public static final String GROUP_POINTER_TO_PARENT_GROUP_NAME = "PointerToParentGroup";
 	public static final String ACL_NAME = "ACL";
