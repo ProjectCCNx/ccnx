@@ -213,7 +213,8 @@ public class UserConfiguration {
 	public static String userConfigurationDirectory() { 
 		if (null == _userConfigurationDir) {
 			_userConfigurationDir = SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_USER_CONFIG_DIR_PROPERTY, 
-																		 CCNX_USER_CONFIG_DIR_ENVIRONMENT_VARIABLE);
+																		 CCNX_USER_CONFIG_DIR_ENVIRONMENT_VARIABLE,
+																		 USER_DIR + FILE_SEP + CCNX_DEFAULT_USER_CONFIG_DIR_NAME);
 			if (null == _userConfigurationDir)
 				_userConfigurationDir = USER_DIR + SystemConfiguration.FILE_SEP + CCNX_DEFAULT_USER_CONFIG_DIR_NAME;
 		}
