@@ -417,6 +417,7 @@ public class Group {
 	 */
 	public void newGroupPublicKey(MembershipListObject ml) 
 			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, NoSuchAlgorithmException {
+
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		oldPrivateKeyDirectory.waitForChildren();
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
@@ -631,7 +632,7 @@ public class Group {
 		// Assume no concurrent writer.  
 		
 		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		privateKeyDirectory.waitForNoUpdates(SystemConfiguration.SHORT_TIMEOUT);
+		privateKeyDirectory.waitForNoUpdates(SystemConfiguration.getDefaultTimeout());
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
