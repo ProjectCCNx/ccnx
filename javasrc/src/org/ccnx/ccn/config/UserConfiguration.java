@@ -193,6 +193,7 @@ public class UserConfiguration {
 	protected static Boolean _publishKeys;
 	
 	protected static final String USER_DIR = System.getProperty("user.home");
+	protected static String FILE_SEP = System.getProperty("file.separator");
 	
 	public static void setUserName(String name) {
 		_userName = name;
