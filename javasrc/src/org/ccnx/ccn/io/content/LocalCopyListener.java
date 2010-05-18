@@ -18,6 +18,15 @@ import org.ccnx.ccn.profiles.repo.RepositoryControl;
  * class as a listener on the object. 
  */
 public class LocalCopyListener implements UpdateListener {
+	
+	protected static LocalCopyListener backupListener = new LocalCopyListener();
+	
+	public static void startBackup(CCNNetworkObject<?> objectToSyncToRepository) throws IOException {
+		if (objectToSyncToRepository.isSaved()) {
+			backupListener.localCopy(objectToSyncToRepository);
+		}
+		objectToSyncToRepository.addListener(backupListener);
+	}
 
 	@Override
 	public void newVersionAvailable(CCNNetworkObject<?> newVersion) {
