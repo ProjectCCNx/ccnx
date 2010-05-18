@@ -127,6 +127,7 @@ main(int argc, char **argv)
     int force = 0;
     int verbose = 0;
     int timeout = -1;
+    int setfinal = 0;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
     while ((res = getopt(argc, argv, "fhk:lvV:t:w:x:")) != -1) {
@@ -135,7 +136,7 @@ main(int argc, char **argv)
                 force = 1;
                 break;
             case 'l':
-                // NYI - set FinalBlockID to last comp of name
+                setfinal = 1; // set FinalBlockID to last comp of name
                 break;
             case 'k':
                 key_uri = optarg;
@@ -151,6 +152,8 @@ main(int argc, char **argv)
             case 'V':
                 versioned = 1;
                 postver = optarg;
+                if (0 == memcmp(postver, "%00", 3))
+                    setfinal = 1;
                 break;
 	    case 'w':
                 timeout = atol(optarg);
@@ -245,7 +248,7 @@ main(int argc, char **argv)
     temp = ccn_charbuf_create();
     
     /* Ask for a FinalBlockID if appropriate. */
-    if (postver != NULL && 0 == memcmp(postver, "%00", 3))
+    if (setfinal)
         sp.sp_flags |= CCN_SP_FINAL_BLOCK;
     
     if (res < 0) {
