@@ -32,6 +32,7 @@ import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
+import org.ccnx.ccn.io.content.LocalCopyListener;
 import org.ccnx.ccn.io.content.LocalCopyWrapper;
 import org.ccnx.ccn.io.content.UpdateListener;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
@@ -500,6 +501,61 @@ public class CCNNetworkObjectTestRepo {
 		// Should be in the repo by now
 		Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
 	}
+	
+	@Test
+	public void testLocalCopyListener() throws Exception {
+		
+		// The local copy wrapper API isn't applicable in very many situations. Try this instead.
+		
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testLocalCopyListener"), collectionObjName);
+		
+		LocalCopyListener copyListener = new LocalCopyListener();
+		
+		// Would like to test functionality that arranges for existing version to get written
+		// to the repo, but can't do that without a flosser or using a flow server.
+		CCNStringObject so = new CCNStringObject(testName, handle);
+		so.addListener(copyListener);
+		
+		Assert.assertFalse(so.available());
+		
+		class Record { boolean callback = false; }
+		Record record = new Record();
+		
+		class Listener implements UpdateListener {
+			Record _rec;
+			
+			public Listener(Record r) {
+				_rec = r;
+			}
+			public void newVersionAvailable(CCNNetworkObject<?> newVersion) {
+				synchronized (_rec) {
+					_rec.callback = true;
+					_rec.notifyAll();
+				}
+			}
+		};
+		
+		// ask for it in background
+		so.updateInBackground(false, new Listener(record));
+		
+		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write", SaveType.RAW, CCNHandle.open());
+		setupNamespace(testName);
+		saveAndLog("Delayed write", sowrite, null, "Now we write");
+		so.waitForData();
+		Assert.assertTrue(so.available());
+		Assert.assertEquals(so.string(), sowrite.string());
+		Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
+		
+		synchronized (record) {
+			if (!record.callback) {
+				record.wait(5000);
+			}
+			Assert.assertEquals(true, record.callback);
+		}
+		// Should be in the repo by now
+		Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
+	}
+
 
 	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws IOException {
 		CCNTime oldVersion = ecd.getVersion();
