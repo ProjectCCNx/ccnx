@@ -28,7 +28,6 @@ public class LocalCopyListener implements UpdateListener {
 		objectToSyncToRepository.addListener(backupListener);
 	}
 
-	@Override
 	public void newVersionAvailable(CCNNetworkObject<?> newVersion) {
 		localCopy(newVersion);
 	}
