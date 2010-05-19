@@ -4188,6 +4188,7 @@ ccnd_listen_on_address(struct ccnd_handle *h, const char *addr)
     struct addrinfo *a;
     int ok = 0;
     
+    ccnd_msg(h, "listen_on %s", addr);
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE;
     res = getaddrinfo(addr, h->portstr, &hints, &addrinfo);
@@ -4259,6 +4260,7 @@ static int
 ccnd_listen_on(struct ccnd_handle *h, const char *addrs)
 {
     unsigned char ch;
+    unsigned char dlm;
     int res = 0;
     int i;
     struct ccn_charbuf *addr = NULL;
@@ -4268,8 +4270,15 @@ ccnd_listen_on(struct ccnd_handle *h, const char *addrs)
     addr = ccn_charbuf_create();
     for (i = 0, ch = addrs[i]; addrs[i] != 0;) {
         addr->length = 0;
-        for (; ch > ' ' && ch != ',' && ch != ';'; ch = addrs[++i])
+        dlm = 0;
+        if (ch == '[') {
+            dlm = ']';
+            ch = addrs[++i];
+        }
+        for (; ch > ' ' && ch != ',' && ch != ';' && ch != dlm; ch = addrs[++i])
             ccn_charbuf_append_value(addr, ch, 1);
+        if (ch && ch == dlm)
+            ch = addrs[++i];
         if (addr->length > 0) {
             res |= ccnd_listen_on_address(h, ccn_charbuf_as_string(addr));
         }
@@ -4390,7 +4399,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     }
     h->flood = 0;
     h->ipv4_faceid = h->ipv6_faceid = CCN_NOFACEID;
-    ccnd_listen_on(h, "*");
+    ccnd_listen_on(h, "0.0.0.0,[::]");
     clean_needed(h);
     age_forwarding_needed(h);
     ccnd_internal_client_start(h);
