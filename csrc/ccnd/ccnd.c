@@ -4304,6 +4304,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     const char *entrylimit;
     const char *mtu;
     const char *data_pause;
+    const char *listen_on;
     int fd;
     struct ccnd_handle *h;
     struct hashtb_param param = {0};
@@ -4397,9 +4398,10 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         if (h->data_pause_microsec > 1000000)
             h->data_pause_microsec = 1000000;
     }
+    listen_on = getenv("CCND_LISTEN_ON");
     h->flood = 0;
     h->ipv4_faceid = h->ipv6_faceid = CCN_NOFACEID;
-    ccnd_listen_on(h, "0.0.0.0,[::]");
+    ccnd_listen_on(h, listen_on);
     clean_needed(h);
     age_forwarding_needed(h);
     ccnd_internal_client_start(h);
