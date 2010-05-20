@@ -319,10 +319,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			
 			//check here if it is an instance of a versioned stream.  if so, and the basename doesn't have a version in it, do not send the interest
 			
-			if (this instanceof CCNVersionedInputStream) {
-				Log.info(Log.FAC_PIPELINE, "this is a versioned stream, skip sending non-versioned interest");
+			if (this instanceof CCNVersionedInputStream && !VersioningProfile.hasTerminalVersion(_basePipelineName)) {
+				Log.info(Log.FAC_PIPELINE, "this is a versioned stream without a terminal version, skip sending non-versioned interest");
 			} else {
-				Log.info(Log.FAC_PIPELINE, "this is not a versioned stream, go ahead and get the first segment");
+				Log.info(Log.FAC_PIPELINE, "this is not a versioned stream or it is a versioned stream without the version set in the base name, go ahead and get the first segment");
 
 				interest = SegmentationProfile.segmentInterest(_basePipelineName, segmentToGet, _publisher);
 				try {
