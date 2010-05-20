@@ -354,6 +354,19 @@ public class CommandMarker {
 		return (0 == DataUtils.bytencmp(getBytes(), nameComponent, length()));
 	}
 	
+	/**
+	 * Find component that contains the marker
+	 * @param name
+	 * @return
+	 */
+	public int findMarker(ContentName name) {
+		for (int i = 0; i < name.count(); i++) {
+			if (isMarker(name.component(i)))
+				return i;
+		}
+		return -1;
+	}
+	
 	public static CommandMarker getMarker(byte [] nameComponent) {
 		int argumentStart = argumentStart(nameComponent);
 		if (argumentStart < 0) {
