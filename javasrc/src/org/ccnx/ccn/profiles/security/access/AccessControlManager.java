@@ -492,6 +492,10 @@ public abstract class AccessControlManager {
 	 */
 	public static boolean loadAccessControlManagerForNamespace(ContentName namespace, CCNHandle handle) throws ConfigurationException, ContentNotReadyException, ContentGoneException, ErrorStateException, IOException {
 
+		// Make sure we haven't already loaded it.
+		if (null != findACM(namespace, handle)) {
+			return true;
+		}
 		// See if we have an access control policy, and if so make an access control manager for it.
 
 		ContentName policyNamespace = NamespaceManager.findPolicyControlledNamespace(namespace, handle);
@@ -558,5 +562,12 @@ public abstract class AccessControlManager {
 		
 		return true;
 	}
+	
+	/**
+	 * Each access control manager subclass should shut down any ongoing network operations.
+	 * We don't own our handle, so can't close that. But any outstanding interests should be
+	 * canceled; filters should be unregistered, and so on.
+	 */
+	public void shutdown() {}
 
 }
