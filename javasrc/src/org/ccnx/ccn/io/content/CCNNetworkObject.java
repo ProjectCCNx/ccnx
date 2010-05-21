@@ -861,7 +861,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws ContentEncodingException if there is an error encoding the content
 	 * @throws IOException if there is an error reading the content from the network
 	 */
-	protected boolean saveInternal(CCNTime version, boolean gone, Interest outstandingInterest) 
+	protected synchronized boolean saveInternal(CCNTime version, boolean gone, Interest outstandingInterest) 
 				throws ContentEncodingException, IOException {
 
 		if (null == _baseName) {
@@ -953,6 +953,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		setDirty(false);
 		_available = true;
 
+		newVersionAvailable();
 		Log.finest("Saved object {0} publisher {1} key locator {2}", name, _currentPublisher, _currentPublisherKeyLocator);
 		return true;
 	}
@@ -1341,7 +1342,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 			if (hasNewVersion) {
 				if (_continuousUpdates) {
-					// DKS TODO -- order with respect to newVersionAvailable and locking...
 					if (Log.isLoggable(Level.INFO)) 
 						Log.info("updateInBackground: handleContent: got a new version, continuous updates, calling updateInBackground recursively then returning null.");
 					updateInBackground(true);
@@ -1350,7 +1350,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 						Log.info("updateInBackground: handleContent: got a new version, not continuous updates, returning null.");
 					_continuousUpdates = false;
 				}
-				newVersionAvailable();
+				// the updates above call newVersionAvailable
 				return null; // implicit cancel of interest
 			} else {
 				if (null != excludeList) {
