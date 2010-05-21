@@ -473,7 +473,7 @@ public class CCNNetworkObjectTestRepo {
 			public Listener(Record r) {
 				_rec = r;
 			}
-			public void newVersionAvailable(CCNNetworkObject<?> newVersion) {
+			public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
 				synchronized (_rec) {
 					_rec.callback = true;
 					_rec.notifyAll();
@@ -527,7 +527,7 @@ public class CCNNetworkObjectTestRepo {
 			public Listener(Record r) {
 				_rec = r;
 			}
-			public void newVersionAvailable(CCNNetworkObject<?> newVersion) {
+			public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
 				synchronized (_rec) {
 					_rec.callback = true;
 					_rec.notifyAll();

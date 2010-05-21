@@ -536,11 +536,11 @@ public class CCNNetworkObjectTest {
 		
 		public int getCounter() { return _callbackCounter; }
 
-		public void newVersionAvailable(CCNNetworkObject<?> newVersion) {
+		public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
 			synchronized (_callbackCounter) {
 				_callbackCounter++;
 				if (Log.isLoggable(Level.INFO)) {
-					Log.info("UPDATE CALLBACK: counter is " + _callbackCounter);
+					Log.info("UPDATE CALLBACK: counter is " + _callbackCounter + " was save? " + wasSave);
 				}
 			}
 		}		

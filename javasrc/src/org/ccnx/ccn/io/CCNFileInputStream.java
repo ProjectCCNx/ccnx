@@ -497,7 +497,7 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements Updat
 		return super.length();
 	}
 
-	public void newVersionAvailable(CCNNetworkObject<?> newVersion) {
+	public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
 		if (!headerRequested()) {
 			if (Log.isLoggable(Level.WARNING)) {
 				Log.warning("CCNFileInputStream: got a notification of a new header version {0} when none requested!", 

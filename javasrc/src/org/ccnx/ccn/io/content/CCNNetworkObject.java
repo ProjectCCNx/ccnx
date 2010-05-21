@@ -688,7 +688,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		clearError();
 
 		// Signal readers.
-		newVersionAvailable();
+		newVersionAvailable(false);
 		return true;
 	}
 	
@@ -953,7 +953,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		setDirty(false);
 		_available = true;
 
-		newVersionAvailable();
+		newVersionAvailable(true);
 		Log.finest("Saved object {0} publisher {1} key locator {2}", name, _currentPublisher, _currentPublisherKeyLocator);
 		return true;
 	}
@@ -1090,8 +1090,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	/**
 	 * Used to signal waiters and listeners that a new version is available.
+	 * @param wasSave is a new version available because we were saved, or because
+	 *   we found a new version on the network?
 	 */
-	protected void newVersionAvailable() {
+	protected void newVersionAvailable(boolean wasSave) {
 		if (Log.isLoggable(Level.INFO)) {
 			Log.info("newVersionAvailable: New version of object available: {0}", getVersionedName());
 		}
@@ -1101,7 +1103,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// and any registered listeners
 		if (null != _updateListeners) {
 			for (UpdateListener listener : _updateListeners) {
-				listener.newVersionAvailable(this);
+				listener.newVersionAvailable(this, wasSave);
 			}
 		}
 	}

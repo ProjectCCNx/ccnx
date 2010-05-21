@@ -28,7 +28,9 @@ public class LocalCopyListener implements UpdateListener {
 		objectToSyncToRepository.addListener(backupListener);
 	}
 
-	public void newVersionAvailable(CCNNetworkObject<?> newVersion) {
+	public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
+		// We probably want to make a local copy regardless, as the save might have been raw,
+		// or not hit our local repository.
 		localCopy(newVersion);
 	}
 	
