@@ -73,6 +73,7 @@ public abstract class AccessControlManager {
 	protected ContentName _namespace;
 	protected CCNHandle _handle;
 	protected SecureRandom _random = new SecureRandom();
+	protected AccessControlPolicyMarkerObject _policy;
 
 
 	/**
@@ -135,6 +136,8 @@ public abstract class AccessControlManager {
 	}
 
 	public CCNHandle handle() { return _handle; }
+	
+	public AccessControlPolicyMarkerObject policy() { return _policy; } // if subclass set it in initialize()
 	
 	public boolean inProtectedNamespace(ContentName content) {
 		return NamespaceManager.inProtectedNamespace(_namespace, content);
