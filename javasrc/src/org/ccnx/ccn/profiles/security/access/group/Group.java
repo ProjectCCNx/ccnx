@@ -23,6 +23,7 @@ import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -569,6 +570,24 @@ public class Group {
 				}
 			}
 		}
+	}
+	
+	/**
+	 * You won't actually get the PrivateKey unles you have the rights to decrypt it;
+	 * otherwise you'll get an AccessDeniedException.
+	 * @throws IOException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
+	 */
+	public PrivateKey getPrivateKey() throws IOException, InvalidKeyException, NoSuchAlgorithmException {
+		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
+		privateKeyDirectory.waitForNoUpdatesOrResult(SystemConfiguration.SHORT_TIMEOUT);
+		PrivateKey privateKey = privateKeyDirectory.getPrivateKey();
+		if (null != privateKey) {
+			_handle.keyManager().getSecureKeyCache().addPrivateKey(privateKeyDirectory.getPrivateKeyBlockName(), 
+					publicKeyObject().publicKeyDigest().digest(), privateKey);
+		}
+		return privateKey;
 	}
 	
 	/**
