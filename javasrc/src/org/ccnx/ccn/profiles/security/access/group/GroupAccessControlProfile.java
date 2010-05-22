@@ -18,8 +18,6 @@
 package org.ccnx.ccn.profiles.security.access.group;
 
 
-import java.util.logging.Level;
-
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
