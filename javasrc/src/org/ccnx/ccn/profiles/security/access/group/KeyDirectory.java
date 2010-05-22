@@ -113,7 +113,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 */
 	TreeSet<byte []> _otherNames = new TreeSet<byte []>(byteArrayComparator);
 	private final ReadWriteLock _otherNamesLock = new ReentrantReadWriteLock();
-
+	
 	/**
 	 * Directory name should be versioned, else we pull the latest version; start
 	 * enumeration.
@@ -216,7 +216,6 @@ public class KeyDirectory extends EnumeratedNameList {
 		// TODO: also consider reporting results if we have an unwrapping key for a group that we know we're a member of.
 		return cacheHit;
 	}
-	
 	
 	/**
 	 * Return a copy to avoid synchronization problems.
@@ -417,7 +416,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		try{
 			_otherNamesLock.readLock().lock();
 			b = _otherNames.contains(AccessControlProfile.SUPERSEDED_MARKER.getBytes());
-		}finally{
+		} finally {
 			_otherNamesLock.readLock().unlock();
 		}
 		return b;
@@ -557,15 +556,18 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
-	 * Returns the private key object as a wrapped key object.
+	 * Returns the private key object, if one exists as a wrapped key object. Does
+	 * not check to see if we have a private key block; simply sends a request for it
+	 * (saves the requirement to do enumeration). Callers should check available() on the
+	 * result to see if we actually got one. In general, callers will know whether
+	 * one should exist or not. hasPrivateKeyBlock can be used to test (after enumeration)
+	 * whether one exists if you don't know.
 	 * @return
 	 * @throws IOException 
 	 * @throws ContentGoneException 
 	 * @throws ContentDecodingException 
 	 */
 	public WrappedKeyObject getPrivateKeyObject() throws ContentGoneException, IOException {
-		if (!hasPrivateKeyBlock()) // checks hasChildren
-			return null;
 		
 		return new WrappedKey.WrappedKeyObject(getPrivateKeyBlockName(), _handle);
 	}
@@ -628,13 +630,18 @@ public class KeyDirectory extends EnumeratedNameList {
 			unwrappedKey = unwrapKeyViaCache();
 		}
 		
-		// Move this test down; if we can get it via the cache, we don't care.
-		// Maybe we should put the wait here, and just set a flag if we've already waited...
-		if (!hasChildren()) {
-			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
-		}
-		
 		if (null == unwrappedKey) {
+			// If we've never enumerated, now might be the time.
+			if (!hasEnumerated()) {
+				startEnumerating();
+				waitForNoUpdatesOrResult(SystemConfiguration.getDefaultTimeout());
+			}
+			
+			// Only test here if we didn't get it via the cache.
+			if (!hasChildren()) {
+				throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+			}
+
 			// Not in cache. Is it superseded?
 			if (hasSupersededBlock()) {
 				unwrappedKey = this.unwrapKeyViaSupersededKey();
@@ -673,7 +680,6 @@ public class KeyDirectory extends EnumeratedNameList {
 				}
 			}
 		}
-		// DKS TODO -- throw AccessDeniedException?
 		return unwrappedKey;
 	}
 		
@@ -900,21 +906,21 @@ public class KeyDirectory extends EnumeratedNameList {
 			Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getPrivateKey: found private key in cache.");
 			return (PrivateKey) skc.getKey(skc.getKeyID(getPrivateKeyBlockName()));
 		}
-		
-		if (!hasPrivateKeyBlock()) { // checks hasChildren
-			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-				Log.info(Log.FAC_ACCESSCONTROL, "No private key block exists with name {0}", getPrivateKeyBlockName());
-			}
-			return null;
-		}
+
+		// Skip checking enumeration results. Assume we know we have one or not. Just
+		// as fast to do the get as to enumerate and then do the get.
 		WrappedKeyObject wko = getPrivateKeyObject();
-		if ((null == wko) || (null == wko.wrappedKey())) {
+		if ((null == wko) || (!wko.available()) || (null == wko.wrappedKey())) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info(Log.FAC_ACCESSCONTROL, "Cannot retrieve wrapped private key for {0}", getPrivateKeyBlockName());
 			}
 			return null;
 		}
-		// This should throw AccessDeniedException...
+		
+		// TODO this will only work if we've done enumeration or the key is in our cache.
+		// Need to make it do enumeration itself if key isn't in cache and we haven't done
+		// enumeration -- KD can keep track of whether we've enumerated or not.
+		// This throws AccessDeniedException...
 		Key wrappingKey = getUnwrappedKey(wko.wrappedKey().wrappingKeyIdentifier());
 		if (null == wrappingKey) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
