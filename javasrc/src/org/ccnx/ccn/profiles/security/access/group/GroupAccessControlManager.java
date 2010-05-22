@@ -1349,7 +1349,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 					Log.fine(Log.FAC_ACCESSCONTROL, "NodeKeyIsDirty: found principal called {0}", principal.friendlyName());
 				}
 				if (principal.isGroup()) {
-					Group theGroup = groupManager(principal.distinguishingHash()).getGroup(principal.friendlyName());
+					Group theGroup = groupManager(principal.distinguishingHash()).getGroup(principal.friendlyName(), SystemConfiguration.EXTRA_LONG_TIMEOUT);
 					if (theGroup.publicKeyVersion().after(principal.versionTimestamp())) {
 						if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINE)) {
 							Log.fine(Log.FAC_ACCESSCONTROL, "NodeKeyIsDirty: the key of principal {0} is out of date", principal.friendlyName());

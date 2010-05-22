@@ -107,7 +107,7 @@ public class GroupManager {
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
 	 */
-	public Group getGroup(String groupFriendlyName) throws ContentDecodingException, IOException {
+	public Group getGroup(String groupFriendlyName, long timeout) throws ContentDecodingException, IOException {
 		if ((null == groupFriendlyName) || (groupFriendlyName.length() == 0)) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info(Log.FAC_ACCESSCONTROL, "Asked to retrieve group with empty name.");
@@ -136,7 +136,7 @@ public class GroupManager {
 				theGroup = _groupCache.get(groupFriendlyName);
 				if (null == theGroup) {
 					// Only go hunting for it if we think it exists, otherwise we'll block.
-					if (groupExists(groupFriendlyName)) {
+					if (groupExists(groupFriendlyName, timeout)) {
 
 						theGroup = new Group(_groupStorage.prefix(), groupFriendlyName, _handle, this);
 						// wait for group to be ready?
@@ -157,7 +157,7 @@ public class GroupManager {
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
 	 */
-	public Group getGroup(Link theGroup) throws ContentDecodingException, IOException {
+	public Group getGroup(Link theGroup, long timeout) throws ContentDecodingException, IOException {
 		if (null == theGroup) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info(Log.FAC_ACCESSCONTROL, "Asked to retrieve group with empty link.");
@@ -167,21 +167,21 @@ public class GroupManager {
 		if (!isGroup(theGroup))
 			return null;
 		String friendlyName = GroupAccessControlProfile.groupNameToFriendlyName(theGroup.targetName());
-		return getGroup(friendlyName);
+		return getGroup(friendlyName, timeout);
 	}
 	
 	/**
 	 * Replace enumeration-based test of existence with direct test.
 	 * @throws IOException 
 	 */
-	public boolean groupExists(String groupFriendlyName) throws IOException {
+	public boolean groupExists(String groupFriendlyName, long timeout) throws IOException {
 		ContentName publicKeyName = 
 			GroupAccessControlProfile.groupPublicKeyName(_groupStorage.prefix(), groupFriendlyName);
 		
 		// Take any content below the public key name -- key fragments, keys, whatever's fastest.
 		// This will take a long time if the group doesn't exist, but should be fast if it does,
 		// with no pre-enumeration required.
-		return (null != CCNReader.isAnyContentAvailable(publicKeyName, null, SystemConfiguration.EXTRA_LONG_TIMEOUT, _handle));
+		return (null != CCNReader.isAnyContentAvailable(publicKeyName, null, timeout, _handle));
 	}
 	
 	/**
@@ -207,9 +207,9 @@ public class GroupManager {
 	 * @throws InvalidKeyException 
 	 * @throws NoSuchAlgorithmException 
 	 */
-	public Group createGroup(String groupFriendlyName, ArrayList<Link> newMembers) 
+	public Group createGroup(String groupFriendlyName, ArrayList<Link> newMembers, long timeToWaitForPreexisting) 
 			throws InvalidKeyException, ContentEncodingException, IOException, NoSuchAlgorithmException {
-		Group existingGroup = getGroup(groupFriendlyName);
+		Group existingGroup = getGroup(groupFriendlyName, timeToWaitForPreexisting);
 		if (null != existingGroup) {
 			existingGroup.setMembershipList(this, newMembers);
 			return existingGroup;
@@ -235,7 +235,7 @@ public class GroupManager {
 	 * @throws ContentDecodingException 
 	 */
 	public void deleteGroup(String friendlyName) throws ContentDecodingException, IOException {
-		Group existingGroup = getGroup(friendlyName);		
+		Group existingGroup = getGroup(friendlyName, SystemConfiguration.EXTRA_LONG_TIMEOUT);		
 		// We really want to be sure we get the group if it's out there...
 		if (null != existingGroup) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
@@ -259,8 +259,8 @@ public class GroupManager {
 		return _groupStorage.prefix().isPrefixOf(member.targetName());
 	}
 	
-	public boolean isGroup(String principal) throws IOException {
-		return (null != getGroup(principal));
+	public boolean isGroup(String principal, long timeout) throws IOException {
+		return (null != getGroup(principal, timeout));
 	}
 	
 	public boolean isGroup(ContentName publicKeyName) {
@@ -276,7 +276,7 @@ public class GroupManager {
 	}
 
 	public boolean amCurrentGroupMember(String principal) throws ContentDecodingException, IOException {
-		return amCurrentGroupMember(getGroup(principal));
+		return amCurrentGroupMember(getGroup(principal, SystemConfiguration.EXTRA_LONG_TIMEOUT));
 	}
 	
 	/**
@@ -352,7 +352,7 @@ public class GroupManager {
 		KeyDirectory privateKeyDirectory = null;
 		PublicKey theGroupPublicKey = null;
 		if (null == privateKeyVersion) {
-			Group theGroup = getGroup(groupFriendlyName); // will pull latest public key
+			Group theGroup = getGroup(groupFriendlyName, SystemConfiguration.EXTRA_LONG_TIMEOUT); // will pull latest public key
 			privateKeyDirectory = theGroup.privateKeyDirectory(_accessManager);
 			privateKeyDirectory.waitForNoUpdatesOrResult(SystemConfiguration.SHORT_TIMEOUT);
 			theGroupPublicKey = theGroup.publicKey();
@@ -453,7 +453,7 @@ public class GroupManager {
 	 * @throws ContentDecodingException 
 	 */
 	public PublicKeyObject getLatestPublicKeyForGroup(Link principal) throws ContentDecodingException, IOException {
-		Group theGroup = getGroup(principal);
+		Group theGroup = getGroup(principal, SystemConfiguration.EXTRA_LONG_TIMEOUT);
 		if (null == theGroup) 
 			return null;
 		return theGroup.publicKeyObject();
