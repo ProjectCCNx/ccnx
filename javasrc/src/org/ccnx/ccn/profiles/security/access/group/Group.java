@@ -304,7 +304,7 @@ public class Group {
 	 * Get the public key of the group
 	 * @return the group public key
 	 */
-	PublicKeyObject publicKeyObject() { return _groupPublicKey; }
+	public PublicKeyObject publicKeyObject() { return _groupPublicKey; }
 	
 	/**
 	 * Get the group public key
