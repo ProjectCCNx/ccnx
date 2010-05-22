@@ -129,7 +129,7 @@ public class Group {
 	 */
 	Group(ContentName namespace, String groupFriendlyName, MembershipListObject members, 
 					CCNHandle handle, GroupManager manager) 
-			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException {	
+			throws ContentEncodingException, IOException, InvalidKeyException {	
 		_handle = handle;
 		_groupNamespace = namespace;
 		_groupFriendlyName = groupFriendlyName;
@@ -346,7 +346,7 @@ public class Group {
 	 */
 	public void setMembershipList(GroupManager groupManager, java.util.Collection<Link> newMembers) 
 			throws ContentDecodingException, IOException, InvalidKeyException, 
-					ConfigurationException, NoSuchAlgorithmException {
+					NoSuchAlgorithmException {
 		// need to figure out if we need to know private key; if we do and we don't, throw access denied.
 		// We're deleting anyone that exists
 		this._groupManager = groupManager;

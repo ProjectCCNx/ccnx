@@ -208,7 +208,7 @@ public class GroupManager {
 	 * @throws NoSuchAlgorithmException 
 	 */
 	public Group createGroup(String groupFriendlyName, ArrayList<Link> newMembers) 
-			throws InvalidKeyException, ContentEncodingException, ConfigurationException, IOException, NoSuchAlgorithmException {
+			throws InvalidKeyException, ContentEncodingException, IOException, NoSuchAlgorithmException {
 		Group existingGroup = getGroup(groupFriendlyName);
 		if (null != existingGroup) {
 			existingGroup.setMembershipList(this, newMembers);
