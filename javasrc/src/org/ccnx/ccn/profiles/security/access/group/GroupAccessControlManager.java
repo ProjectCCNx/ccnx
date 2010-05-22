@@ -276,7 +276,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 
 	@Override
-	public boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws IOException {
+	public boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) 
+				throws IOException {
 		if (null == handle) {
 			_handle = CCNHandle.getHandle();
 		} else {

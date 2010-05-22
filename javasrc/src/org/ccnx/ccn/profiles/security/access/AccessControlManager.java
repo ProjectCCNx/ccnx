@@ -89,7 +89,9 @@ public abstract class AccessControlManager {
 	 * @throws IOException
 	 */
 	public static AccessControlManager 
-			createAccessControlManager(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ContentNotReadyException, ContentGoneException, ErrorStateException, InstantiationException, IllegalAccessException, ConfigurationException, IOException {
+			createAccessControlManager(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) 
+				throws ContentNotReadyException, ContentGoneException, ErrorStateException, 
+							InstantiationException, IllegalAccessException, IOException {
 		
 		Class<? extends AccessControlManager> acmClazz = null;
 		synchronized(NamespaceManager.class) {
@@ -121,7 +123,8 @@ public abstract class AccessControlManager {
 	 */
 	public AccessControlManager() {}
 	
-	public abstract boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException;
+	public abstract boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) 
+				throws IOException;
 
 	/**
 	 * Labels for deriving various types of keys.
@@ -373,10 +376,6 @@ public abstract class AccessControlManager {
 				}
 				return acm.getContentKeys(name, publisher);
 			}
-		} catch (ConfigurationException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			Log.logException("ConfigurationException in keysForInput", e);
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidKeyException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
 			Log.logException("InvalidKeyException in keysForInput", e);
@@ -435,10 +434,6 @@ public abstract class AccessControlManager {
 				
 				return getDefaultAlgorithmContentKeys(dataKey);
 			}
-		} catch (ConfigurationException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			Log.logException("ConfigurationException in keysForInput", e);
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidKeyException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
 			Log.logException("InvalidKeyException in keysForInput", e);
@@ -463,9 +458,9 @@ public abstract class AccessControlManager {
 	 * @return null if namespace is not under access control, or an ACM to perform 
 	 * 	operations on the name if it is.
 	 * @throws IOException
-	 * @throws ConfigurationException 
 	 */
-	public static AccessControlManager findACM(ContentName name, CCNHandle handle)  throws IOException, ConfigurationException {
+	public static AccessControlManager findACM(ContentName name, CCNHandle handle)  
+					throws IOException {
 		// See if we already have an AccessControlManager covering this namespace
 		AccessControlManager acm = handle.keyManager().getAccessControlManagerForName(name);
 		
@@ -490,7 +485,8 @@ public abstract class AccessControlManager {
 	 * @throws ErrorStateException
 	 * @throws IOException
 	 */
-	public static boolean loadAccessControlManagerForNamespace(ContentName namespace, CCNHandle handle) throws ConfigurationException, ContentNotReadyException, ContentGoneException, ErrorStateException, IOException {
+	public static boolean loadAccessControlManagerForNamespace(ContentName namespace, CCNHandle handle) 
+			throws ContentNotReadyException, ContentGoneException, ErrorStateException, IOException {
 
 		// Make sure we haven't already loaded it.
 		if (null != findACM(namespace, handle)) {
@@ -525,11 +521,11 @@ public abstract class AccessControlManager {
 		} catch (InstantiationException e) {
 			Log.severe("InstantiationException attempting to create access control manager: " + e.getMessage());
 			Log.warningStackTrace(e);
-			throw new ConfigurationException("InstantiationException attempting to create access control manager: " + e.getMessage(), e);
+			throw new ErrorStateException("InstantiationException attempting to create access control manager: " + e.getMessage(), e);
 		} catch (IllegalAccessException e) {
 			Log.severe("IllegalAccessException attempting to create access control manager: " + e.getMessage());
 			Log.warningStackTrace(e);
-			throw new ConfigurationException("IllegalAccessException attempting to create access control manager: " + e.getMessage(), e);
+			throw new ErrorStateException("IllegalAccessException attempting to create access control manager: " + e.getMessage(), e);
 		}
 	}
 
