@@ -150,7 +150,7 @@ public class Group {
 	 * @throws NoSuchAlgorithmException 
 	 */
 	public void addMembers(ArrayList<Link> newUsers) 
-			throws InvalidKeyException, ContentDecodingException, ConfigurationException, IOException, NoSuchAlgorithmException {
+			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		modify(newUsers, null);						
 	}
 
@@ -165,7 +165,7 @@ public class Group {
 	 */
 	public void removeMembers( ArrayList<Link> removedUsers) 
 			throws InvalidKeyException, ContentDecodingException, 
-					ConfigurationException, IOException, NoSuchAlgorithmException {
+					IOException, NoSuchAlgorithmException {
 		modify(null, removedUsers);
 	}
 	
@@ -376,7 +376,7 @@ public class Group {
 	 * @throws NoSuchAlgorithmException 
 	 */
 	private void newGroupPublicKeyNonRecursive(MembershipListObject ml) 
-			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, NoSuchAlgorithmException{
+			throws ContentEncodingException, IOException, InvalidKeyException, NoSuchAlgorithmException{
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		oldPrivateKeyDirectory.waitForNoUpdates(SystemConfiguration.MEDIUM_TIMEOUT);
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
@@ -416,7 +416,7 @@ public class Group {
 	 * @throws NoSuchAlgorithmException 
 	 */
 	public void newGroupPublicKey(MembershipListObject ml) 
-			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, NoSuchAlgorithmException {
+			throws ContentEncodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		oldPrivateKeyDirectory.waitForChildren();
@@ -463,7 +463,7 @@ public class Group {
 	 * @throws InvalidKeyException
 	 */	
 	public Key createGroupPublicKey(MembershipListObject ml) 
-			throws ContentEncodingException, IOException, ConfigurationException, InvalidKeyException {
+			throws ContentEncodingException, IOException, InvalidKeyException {
 		
 		KeyPairGenerator kpg = null;
 		try {
@@ -475,7 +475,7 @@ public class Group {
 				}
 				throw new RuntimeException("Cannot find default group public key algorithm: " + GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
 			}
-			throw new ConfigurationException("Specified group public key algorithm " + _groupManager.getGroupKeyAlgorithm() + " not found. " + e.getMessage());
+			throw new InvalidKeyException("Specified group public key algorithm " + _groupManager.getGroupKeyAlgorithm() + " not found. " + e.getMessage());
 		}
 		kpg.initialize(GroupAccessControlManager.DEFAULT_GROUP_KEY_LENGTH);
 		KeyPair pair = kpg.generateKeyPair();
@@ -619,7 +619,7 @@ public class Group {
 	 */
 	public void modify(java.util.Collection<Link> membersToAdd,
 					   java.util.Collection<Link> membersToRemove) 
-			throws InvalidKeyException, ContentDecodingException, IOException, ConfigurationException, NoSuchAlgorithmException {
+			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		
 		boolean addedMembers = false;
 		boolean removedMembers = false;
