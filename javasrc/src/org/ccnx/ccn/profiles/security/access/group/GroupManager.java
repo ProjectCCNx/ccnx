@@ -354,7 +354,7 @@ public class GroupManager {
 		if (null == privateKeyVersion) {
 			Group theGroup = getGroup(groupFriendlyName); // will pull latest public key
 			privateKeyDirectory = theGroup.privateKeyDirectory(_accessManager);
-			privateKeyDirectory.waitForNoUpdates(SystemConfiguration.SHORT_TIMEOUT);
+			privateKeyDirectory.waitForNoUpdatesOrResult(SystemConfiguration.SHORT_TIMEOUT);
 			theGroupPublicKey = theGroup.publicKey();
 		} else {
 			// Assume one is there...
@@ -365,7 +365,7 @@ public class GroupManager {
 			privateKeyDirectory =
 				new KeyDirectory(_accessManager, 
 					GroupAccessControlProfile.groupPrivateKeyDirectory(versionedPublicKeyName), _handle);
-			privateKeyDirectory.waitForNoUpdates(SystemConfiguration.SHORT_TIMEOUT);
+			privateKeyDirectory.waitForNoUpdatesOrResult(SystemConfiguration.SHORT_TIMEOUT);
 			
 			PublicKeyObject thisPublicKey = new PublicKeyObject(versionedPublicKeyName, _handle);
 			thisPublicKey.waitForData();
