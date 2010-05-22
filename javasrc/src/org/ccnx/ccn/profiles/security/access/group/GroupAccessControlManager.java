@@ -284,6 +284,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 			_handle = handle;
 		}
 
+		_policy = policyInformation;
+		
 		// set up information based on contents of policy
 		// also need a static method/command line program to create a Root with the right types of information
 		// for this access control manager type
