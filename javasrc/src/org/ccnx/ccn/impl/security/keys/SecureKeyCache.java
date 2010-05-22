@@ -138,6 +138,33 @@ public class SecureKeyCache {
 		}
 		return theKey;
 	}
+	
+	/**
+	 * Retrieve a key specified by its name.
+	 */
+	public Key getKey(ContentName desiredKeyName) {
+		byte [] keyID = _nameKeyMap.get(desiredKeyName);
+		if (null != keyID) {
+			return getKey(keyID);
+		}
+		return null;
+	}
+	
+	/**
+	 * Try both in one call.
+	 */
+	public Key getKey(ContentName desiredKeyName, byte [] desiredKeyID) {
+		Key targetKey = null;
+		
+		if (null != desiredKeyID) {
+			targetKey = getKey(desiredKeyID);
+		}
+		
+		if ((null == targetKey) && (null != desiredKeyName)) {
+			targetKey = getKey(desiredKeyName);
+		}
+		return targetKey;
+	}
 
 	/**
 	 * Checks whether we have a record of a key specified by its digest.
@@ -187,6 +214,14 @@ public class SecureKeyCache {
 			key = _privateKeyMap.get(desiredPublicKeyIdentifier);
 		}
 		return key;
+	}
+	
+	public PrivateKey getPrivateKey(ContentName desiredKeyName) {
+		byte [] keyID = _nameKeyMap.get(desiredKeyName);
+		if (null != keyID) {
+			return getPrivateKey(keyID);
+		}
+		return null;
 	}
 	
 	public PrivateKey [] getPrivateKeys() {
