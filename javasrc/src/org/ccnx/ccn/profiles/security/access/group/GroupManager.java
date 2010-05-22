@@ -209,7 +209,12 @@ public class GroupManager {
 	 */
 	public Group createGroup(String groupFriendlyName, ArrayList<Link> newMembers, long timeToWaitForPreexisting) 
 			throws InvalidKeyException, ContentEncodingException, IOException, NoSuchAlgorithmException {
-		Group existingGroup = getGroup(groupFriendlyName, timeToWaitForPreexisting);
+		
+		Group existingGroup = null;
+		
+		if (timeToWaitForPreexisting > 0) {
+			existingGroup = getGroup(groupFriendlyName, timeToWaitForPreexisting);
+		}
 		if (null != existingGroup) {
 			existingGroup.setMembershipList(this, newMembers);
 			return existingGroup;
