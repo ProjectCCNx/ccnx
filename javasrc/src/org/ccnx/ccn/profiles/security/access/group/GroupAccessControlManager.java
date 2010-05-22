@@ -1192,14 +1192,20 @@ public class GroupAccessControlManager extends AccessControlManager {
 		NodeKey nk = null;
 		KeyDirectory keyDirectory = null;
 		try {
+			
+			// First thing to do -- try cache directly before we even consider enumerating.
+			Key targetKey = handle().keyManager().getSecureKeyCache().getKey(nodeKeyName, nodeKeyIdentifier);
 
-			keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
-			keyDirectory.waitForNoUpdatesOrResult(SystemConfiguration.LONG_TIMEOUT);
+			if (null == targetKey) {
+				keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
+				keyDirectory.waitForNoUpdatesOrResult(SystemConfiguration.LONG_TIMEOUT);
 
-			// this will handle the caching.
-			Key unwrappedKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
-			if (null != unwrappedKey) {
-				nk = new NodeKey(nodeKeyName, unwrappedKey);
+				// this will handle the caching.
+				targetKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
+			}
+
+			if (null != targetKey) {
+				nk = new NodeKey(nodeKeyName, targetKey);
 			} else {
 				throw new AccessDeniedException("Access denied: cannot retrieve key " + DataUtils.printBytes(nodeKeyIdentifier) + " at name " + nodeKeyName);
 			}
