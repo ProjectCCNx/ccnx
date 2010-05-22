@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.SortedSet;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
@@ -37,7 +38,7 @@ public class PrincipalEnumerator {
 		ArrayList<ContentName> members = new ArrayList<ContentName>();
 		if (groupFriendlyName != null) {
 			try{
-				Group g = gm.getGroup(groupFriendlyName);
+				Group g = gm.getGroup(groupFriendlyName, SystemConfiguration.getDefaultTimeout());
 				MembershipListObject ml = g.membershipList();
 				LinkedList<Link> lll = ml.contents();
 				for (Link l: lll) {
