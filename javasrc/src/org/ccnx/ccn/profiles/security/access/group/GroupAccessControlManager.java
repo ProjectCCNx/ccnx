@@ -34,7 +34,6 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
-import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
@@ -222,28 +221,34 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// must call initialize
 	}
 
-	public GroupAccessControlManager(ContentName namespace) throws ConfigurationException, IOException, MalformedContentNameStringException {
+	public GroupAccessControlManager(ContentName namespace) throws IOException {
 		this(namespace, null);	
 	}
 
-	public GroupAccessControlManager(ContentName namespace, CCNHandle handle) throws ConfigurationException, IOException, MalformedContentNameStringException {
+	public GroupAccessControlManager(ContentName namespace, CCNHandle handle) throws IOException {
 		this(namespace, GroupAccessControlProfile.groupNamespaceName(namespace), 
 				GroupAccessControlProfile.userNamespaceName(namespace), handle);
 	}
 
-	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws ConfigurationException, IOException, MalformedContentNameStringException {
+	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage) throws IOException {
 		this(namespace, groupStorage, userStorage, null);
 	}
 
-	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, ContentName userStorage, CCNHandle handle) throws ConfigurationException, IOException, MalformedContentNameStringException {		
+	public GroupAccessControlManager(ContentName namespace, ContentName groupStorage, 
+									 ContentName userStorage, CCNHandle handle) 
+			throws IOException {		
 		this(namespace, new ContentName[]{groupStorage}, new ContentName[]{userStorage}, handle);
 	}
 
-	public GroupAccessControlManager(ContentName namespace, ContentName[] groupStorage, ContentName[] userStorage, CCNHandle handle) throws ConfigurationException, IOException, MalformedContentNameStringException {
+	public GroupAccessControlManager(ContentName namespace, ContentName[] groupStorage, 
+									  ContentName[] userStorage, CCNHandle handle) 
+				throws IOException {
 		initialize(namespace, groupStorage, userStorage, handle);
 	}
 
-	private void initialize(ContentName namespace, ContentName[] groupStorage, ContentName[] userStorage, CCNHandle handle) throws ConfigurationException, IOException, MalformedContentNameStringException {
+	private void initialize(ContentName namespace, ContentName[] groupStorage, 
+							ContentName[] userStorage, CCNHandle handle) 
+				throws IOException {
 		ArrayList<ParameterizedName> parameterizedNames = new ArrayList<ParameterizedName>();
 		for (ContentName uStorage: userStorage) {
 			if (null == uStorage)
@@ -257,8 +262,13 @@ public class GroupAccessControlManager extends AccessControlManager {
 			ParameterizedName pName = new ParameterizedName(GroupAccessControlProfile.GROUP_LABEL, gStorage, null);
 			parameterizedNames.add(pName);
 		}
-		if (null == handle) handle = CCNHandle.open();
-		AccessControlPolicyMarker r = new AccessControlPolicyMarker(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), parameterizedNames, null);
+		if (null == handle) handle = CCNHandle.getHandle();
+		AccessControlPolicyMarker r;
+		try {
+			r = new AccessControlPolicyMarker(ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING), parameterizedNames, null);
+		} catch (MalformedContentNameStringException e) {
+			throw new IOException("MalformedContentNameStringException parsing built-in profile name: " + GroupAccessControlManager.PROFILE_NAME_STRING + ": " + e);
+		}
 		ContentName policyPrefix = NamespaceProfile.policyNamespace(namespace);
 		ContentName policyMarkerName = AccessControlProfile.getAccessControlPolicyName(policyPrefix);
 		AccessControlPolicyMarkerObject policyInformation = new AccessControlPolicyMarkerObject(policyMarkerName, r, SaveType.REPOSITORY, handle);
@@ -266,9 +276,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 	}
 
 	@Override
-	public boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException {
+	public boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws IOException {
 		if (null == handle) {
-			_handle = CCNHandle.open();
+			_handle = CCNHandle.getHandle();
 		} else {
 			_handle = handle;
 		}
@@ -391,10 +401,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws InvalidKeyException
 	 * @throws ContentEncodingException
 	 * @throws IOException
-	 * @throws ConfigurationException
 	 */
 	public void publishMyIdentity(ContentName identity, PublicKey myPublicKey) 
-	throws InvalidKeyException, ContentEncodingException, IOException, ConfigurationException {
+	throws InvalidKeyException, ContentEncodingException, IOException {
 		KeyManager km = _handle.keyManager();
 		if (null == myPublicKey) {
 			myPublicKey = km.getDefaultPublicKey();
@@ -416,12 +425,11 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * Publish the specified identity (i.e. the public key) of a specified user
 	 * @param userName the name of the user
 	 * @param userPublicKey the public key of the user
-	 * @throws ConfigurationException
 	 * @throws IOException
 	 * @throws MalformedContentNameStringException
 	 */
 	public void publishUserIdentity(String userName, PublicKey userPublicKey) 
-	throws ConfigurationException, IOException, MalformedContentNameStringException {
+	throws IOException, MalformedContentNameStringException {
 		PublicKeyObject pko = new PublicKeyObject(ContentName.fromNative(userName), userPublicKey, SaveType.REPOSITORY, handle());
 		System.out.println("saving user pubkey to repo:" + userName);
 		pko.save();
