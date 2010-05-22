@@ -32,6 +32,7 @@ import java.util.logging.Level;
 
 import javax.crypto.spec.SecretKeySpec;
 
+import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -44,6 +45,7 @@ import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
+import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.io.content.PublicKeyObject;
@@ -245,7 +247,33 @@ public class GroupAccessControlManager extends AccessControlManager {
 				throws IOException {
 		initialize(namespace, groupStorage, userStorage, handle);
 	}
-
+	
+	/**
+	 * Type-specific method to initialize group-based access control for a namespace.
+	 * Other subclasses of AccessControlManager, including subtypes of this one, should
+	 * roll their own if necessary.
+	 * This creates the type of access control manager specified in the policy; as long
+  	 * as it is a subtype of GroupAccessControlManager it will work fine. The subtype
+	 * can specialize initializeNamespace to do additional setup if necessary.
+	 * @param namespace
+	 * @param groupStorage
+	 * @param userStorage
+	 * @param handle
+	 * @throws IOException
+	 */
+	public static AccessControlManager create(ContentName name, ContentName profileName, 
+			ACL acl, ArrayList<ParameterizedName> parameterizedNames,
+			KeyValueSet parameters, SaveType saveType, CCNHandle handle) throws IOException, InvalidKeyException {
+		
+		GroupAccessControlManager gacm = (GroupAccessControlManager)AccessControlPolicyMarker.create(
+				name, profileName, parameterizedNames, parameters, saveType, handle);
+		
+		// create ACL and NK at the root of the namespace under access control
+		gacm.initializeNamespace(acl);
+		return gacm;
+	}
+	
+	
 	private void initialize(ContentName namespace, ContentName[] groupStorage, 
 							ContentName[] userStorage, CCNHandle handle) 
 				throws IOException {

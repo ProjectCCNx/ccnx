@@ -37,7 +37,6 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
-import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
@@ -113,9 +112,9 @@ public class MLACReadWriteTestRepo {
 			parameterizedNames.add(gName);
 		}
 		
-		// Set access control policy marker	for base directory
+		// Set access control policy marker	for base directory written as default user.
 		ContentName profileName = ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING);
-		AccessControlPolicyMarker.create(baseDirectory, profileName, rootACL, parameterizedNames, null, SaveType.REPOSITORY, CCNHandle.open());
+		GroupAccessControlManager.create(baseDirectory, profileName, rootACL, parameterizedNames, null, SaveType.REPOSITORY, CCNHandle.getHandle());
 		
 		// get handle and ACM for Alice in domain 0
 		_AliceHandle = cua[0].getHandleForUser(userNames[0]);
