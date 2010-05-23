@@ -309,23 +309,14 @@ public class KeyDirectory extends EnumeratedNameList {
 	
 	/**
 	 * Returns the wrapped key object corresponding to a public key specified by its digest.
+	 * Up to caller to decide when this is reasonable to call; should call available() on result.
 	 * @param keyID the digest of the specified public key. 
 	 * @return the corresponding wrapped key object.
 	 * @throws ContentDecodingException 
 	 * @throws IOException 
 	 */
 	public WrappedKeyObject getWrappedKeyForKeyID(byte [] keyID) throws ContentDecodingException, IOException {
-		if (!hasChildren()) {
-			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
-		}
-		try{
-			_keyIDLock.readLock().lock();
-			if (!_keyIDs.contains(keyID)) {
-				return null;
-			}
-		}finally{
-			_keyIDLock.readLock().unlock();
-		}
+
 		ContentName wrappedKeyName = getWrappedKeyNameForKeyID(keyID);
 		return getWrappedKey(wrappedKeyName);
 	}
@@ -469,7 +460,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 */
 	public WrappedKeyObject getWrappedKey(ContentName wrappedKeyName) throws ContentDecodingException, IOException {
 		WrappedKeyObject wrappedKey = new WrappedKeyObject(wrappedKeyName, _handle);
-		if (! wrappedKey.available()) {
+		if (!wrappedKey.available()) { // for some reason we timed out, try again.
 			wrappedKey.update();
 		}
 		return wrappedKey;		
@@ -684,6 +675,25 @@ public class KeyDirectory extends EnumeratedNameList {
 		return unwrappedKey;
 	}
 		
+	/**
+	 * Fast path -- once we have an idea which of our keys will unwrap this key,
+	 * get it. Can be called after enumeration, or if we have a guess of what key to
+	 * use.
+	 * @param keyIDOfCachedKeytoUse
+	 * @return
+	 * @throws IOException 
+	 * @throws ContentDecodingException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
+	 */
+	public Key unwrapKeyViaCache(byte [] keyIDOfCachedKeytoUse) throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
+		
+		WrappedKeyObject wko = getWrappedKeyForKeyID(keyIDOfCachedKeytoUse);
+		if ((null == wko) || (!wko.available()) || (null == wko.wrappedKey())) {
+			return null;
+		}
+		return wko.wrappedKey().unwrapKey(_handle.keyManager().getSecureKeyCache().getKey(keyIDOfCachedKeytoUse));
+	}
 	
 	public Key unwrapKeyViaCache() throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		Key unwrappedKey = null;
@@ -699,10 +709,7 @@ public class KeyDirectory extends EnumeratedNameList {
 				}
 				if (_handle.keyManager().getSecureKeyCache().containsKey(keyid)) {
 					// We have it, pull the block, unwrap the node key.
-					WrappedKeyObject wko = getWrappedKeyForKeyID(keyid);
-					if (null != wko.wrappedKey()) {
-						unwrappedKey = wko.wrappedKey().unwrapKey(_handle.keyManager().getSecureKeyCache().getKey(keyid));
-					}
+					unwrappedKey = unwrapKeyViaCache(keyid);
 				}
 			}
 		} finally {
@@ -907,7 +914,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		SecureKeyCache skc = _handle.keyManager().getSecureKeyCache();
 		if (skc.containsKey(getPrivateKeyBlockName())) {
 			Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getPrivateKey: found private key in cache.");
-			return (PrivateKey) skc.getKey(skc.getKeyID(getPrivateKeyBlockName()));
+			return skc.getPrivateKey(getPrivateKeyBlockName());
 		}
 
 		// Skip checking enumeration results. Assume we know we have one or not. Just
