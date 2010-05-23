@@ -481,19 +481,22 @@ public abstract class AccessControlManager {
 	 * TODO check to make sure we haven't already loaded the ACM
 	 * @param namespace
 	 * @param handle
-	 * @return
+	 * @return The ACM we find if one already existed, or the new one we created, if configured;
+	 * if no AC configured for this namespace, return null;
 	 * @throws ConfigurationException
 	 * @throws ContentNotReadyException
 	 * @throws ContentGoneException
 	 * @throws ErrorStateException
 	 * @throws IOException
 	 */
-	public static boolean loadAccessControlManagerForNamespace(ContentName namespace, CCNHandle handle) 
+	public static AccessControlManager loadAccessControlManagerForNamespace(ContentName namespace, CCNHandle handle) 
 			throws ContentNotReadyException, ContentGoneException, ErrorStateException, IOException {
 
 		// Make sure we haven't already loaded it.
-		if (null != findACM(namespace, handle)) {
-			return true;
+		AccessControlManager acm = findACM(namespace, handle);
+		
+		if (null != acm) {
+			return acm;
 		}
 		// See if we have an access control policy, and if so make an access control manager for it.
 
@@ -502,7 +505,7 @@ public abstract class AccessControlManager {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 				Log.finer(Log.FAC_ACCESSCONTROL, "No policy controlling name: {0}", namespace);
 			}
-			return false;
+			return null;
 		}
 
 		// TODO cache nonexistence of access control policy in policy namespace. Here or in NSM?
@@ -513,13 +516,13 @@ public abstract class AccessControlManager {
 				Log.finer(Log.FAC_ACCESSCONTROL, "No access control policy in policy namespace: {0}", policyNamespace);
 			}
 			// TODO add to negative cache
-			return false;
+			return null;
 		}
 
 		try {
-			AccessControlManager acm = AccessControlManager.createAccessControlManager(ro, handle);
+			acm = AccessControlManager.createAccessControlManager(ro, handle);
 			handle.keyManager().rememberAccessControlManager(acm);
-			return true;
+			return acm;
 			
 		} catch (InstantiationException e) {
 			Log.severe("InstantiationException attempting to create access control manager: " + e.getMessage());
