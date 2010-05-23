@@ -625,44 +625,45 @@ public class KeyDirectory extends EnumeratedNameList {
 			Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: found desired unwrapped key name in our cache.");			
 		}
 
-		// Do we have one of the wrapping keys already in our cache?
-		if (null == unwrappedKey) {
-			unwrappedKey = unwrapKeyViaCache();
-		}
-		
 		if (null == unwrappedKey) {
 			// If we've never enumerated, now might be the time.
 			if (!hasEnumerated()) {
 				startEnumerating();
-				waitForNoUpdatesOrResult(SystemConfiguration.getDefaultTimeout());
 			}
+			waitForNoUpdatesOrResult(SystemConfiguration.getDefaultTimeout());
 			
 			// Only test here if we didn't get it via the cache.
 			if (!hasChildren()) {
 				throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
 			}
 
-			// Not in cache. Is it superseded?
-			if (hasSupersededBlock()) {
-				unwrappedKey = this.unwrapKeyViaSupersededKey();
-			} else {
-				// This is the current key. Enumerate principals and see if we can get a key to unwrap.
-				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-					Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at latest version of key {0}, attempting to unwrap.", getName());
-				}
-				// Assumption: if this key was encrypted directly for me, I would have had a cache
-				// hit already. The assumption is that I pre-load my cache with my own private key(s).
-				// So I don't care about principal entries if I get here, I only care about groups.
-				// Groups may come in three types: ones I know I am a member of, but don't have this
-				// particular key version for, ones I don't know anything about, and ones I believe
-				// I'm not a member of but someone might have added me.
-				if (_manager.haveKnownGroupMemberships()) {
-					unwrappedKey = unwrapKeyViaKnownGroupMembership();
-				}
-				if (null == unwrappedKey) {
-					// OK, we don't have any groups we know we are a member of. Do the other ones.
-					// Slower, as we crawl the groups tree.
-					unwrappedKey = this.unwrapKeyViaNotKnownGroupMembership();
+			// Do we have one of the wrapping keys already in our cache?
+			unwrappedKey = unwrapKeyViaCache();
+			
+			if (null == unwrappedKey) {
+
+				// Not in cache. Is it superseded?
+				if (hasSupersededBlock()) {
+					unwrappedKey = this.unwrapKeyViaSupersededKey();
+				} else {
+					// This is the current key. Enumerate principals and see if we can get a key to unwrap.
+					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+						Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at latest version of key {0}, attempting to unwrap.", getName());
+					}
+					// Assumption: if this key was encrypted directly for me, I would have had a cache
+					// hit already. The assumption is that I pre-load my cache with my own private key(s).
+					// So I don't care about principal entries if I get here, I only care about groups.
+					// Groups may come in three types: ones I know I am a member of, but don't have this
+					// particular key version for, ones I don't know anything about, and ones I believe
+					// I'm not a member of but someone might have added me.
+					if (_manager.haveKnownGroupMemberships()) {
+						unwrappedKey = unwrapKeyViaKnownGroupMembership();
+					}
+					if (null == unwrappedKey) {
+						// OK, we don't have any groups we know we are a member of. Do the other ones.
+						// Slower, as we crawl the groups tree.
+						unwrappedKey = this.unwrapKeyViaNotKnownGroupMembership();
+					}
 				}
 			}
 		}
