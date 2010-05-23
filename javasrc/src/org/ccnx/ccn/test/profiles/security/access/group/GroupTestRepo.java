@@ -206,8 +206,7 @@ public class GroupTestRepo {
 		GroupManager ourGM = ourACM.groupManager();
 		Thread.sleep(1000);
 		
-		Group aSeparateGroupCopy = ourGM.getGroup(_randomGroupName, 0);
-		Assert.assertNotNull("Unexpected cache miss!", aSeparateGroupCopy);
+		Group aSeparateGroupCopy = ourGM.getGroup(_randomGroupName, SystemConfiguration.EXTRA_LONG_TIMEOUT);
 
 		Assert.assertEquals(ourExistingGroup.publicKeyName(), aSeparateGroupCopy.publicKeyName());
 		Log.info("Original key name {0}, copy key name {1}", ourExistingGroup.publicKeyName(), aSeparateGroupCopy.publicKeyName());
