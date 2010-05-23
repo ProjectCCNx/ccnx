@@ -1197,8 +1197,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 			Key targetKey = handle().keyManager().getSecureKeyCache().getKey(nodeKeyName, nodeKeyIdentifier);
 
 			if (null == targetKey) {
+				// start enumerating; if we get a cache hit don't need it, but just in case.
 				keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
-				keyDirectory.waitForNoUpdatesOrResult(SystemConfiguration.LONG_TIMEOUT);
 
 				// this will handle the caching.
 				targetKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
