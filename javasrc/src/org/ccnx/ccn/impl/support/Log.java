@@ -352,10 +352,12 @@ public class Log {
 		if (FAC_DEFAULT <= facility && facility < _fac_level.length) {
 			_fac_level[facility] = l;
 			_fac_value[facility] = l.intValue();
+			System.out.println(String.format("Log.setLevel(%d, %s)", facility, l));
 		} else if (facility == FAC_ALL) {
 			for (int i=FAC_DEFAULT; i < _fac_level.length; i++) {
 				_fac_level[i] = l;
 				_fac_value[i] = l.intValue();
+				System.out.println(String.format("Log.setLevel(%d, %s)", facility, l));
 			}
 		}
 	}
@@ -399,7 +401,7 @@ public class Log {
 	/**
 	 * Set the facility log levels based on the defaults and system overrides
 	 */
-	protected static void setLogLevels() {
+	public static void setLogLevels() {
 		String logLevelName;
 		Level logLevel;
 
