@@ -36,7 +36,12 @@ public class LocalCopyListener implements UpdateListener {
 	
 	protected void localCopy(CCNNetworkObject<?> newVersion) {
 		try {
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("Synchronizing object to repository: {0}", newVersion.getVersionedName());
+			}
+			
 			RepositoryControl.localRepoSync(newVersion.getHandle(), newVersion);
+			
 		} catch (IOException e) {
 			if (Log.isLoggable(Level.INFO)) {
 				Log.info("Local repo sync failed for network object: " + e.getMessage());
