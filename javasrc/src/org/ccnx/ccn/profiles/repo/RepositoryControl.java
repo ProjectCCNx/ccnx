@@ -17,6 +17,7 @@
 package org.ccnx.ccn.profiles.repo;
 
 import java.io.IOException;
+
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.RepositoryInfo;
@@ -26,6 +27,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNAbstractInputStream;
 import org.ccnx.ccn.io.content.CCNNetworkObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.SegmentationProfile;
@@ -136,6 +138,21 @@ public class RepositoryControl {
 			}
 			link = link.getDereferencedLink();
 		}	
+		
+		// Finally, we need to ask repository to preserve the signer key (and any links
+		// we need to dereference to get to that (credentials)). We had to retrieve the
+		// key to verify it; it should likely still be in our cache.
+		PublicKeyObject signerKey = 
+			handle.keyManager().getPublicKeyObject(obj.getContentPublisher(), obj.getPublisherKeyLocator(), 
+													SystemConfiguration.FC_TIMEOUT);
+		
+		if (null != signerKey) {
+			// This will traverse any links, and the signer credentials for the lot.
+			if (!internalRepoSync(handle, signerKey.getVersionedName(), signerKey.firstSegmentNumber(), signerKey.getFirstDigest())) {
+				result = false;
+			}
+		}
+
 		return result;
 	}
 
