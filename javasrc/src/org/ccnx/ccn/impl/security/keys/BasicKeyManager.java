@@ -517,6 +517,7 @@ public class BasicKeyManager extends KeyManager {
 				Log.warning("Unable to delete configuration state file {0}.", configurationFile.getAbsolutePath());
 			}
 		}
+		clearStoredKeyLocator(null);
 	}
 			
 	/**
@@ -809,6 +810,14 @@ public class BasicKeyManager extends KeyManager {
 			keyID = getDefaultKeyID();
 		}
 		return _currentKeyLocators.containsKey(keyID);
+	}
+	
+	@Override 
+	public void clearStoredKeyLocator(PublisherPublicKeyDigest keyID) {
+		if (null == keyID) {
+			keyID = getDefaultKeyID();
+		}
+		_currentKeyLocators.remove(keyID);
 	}
 
 	/**

@@ -378,6 +378,8 @@ public abstract class KeyManager {
 
 	public abstract KeyLocator getStoredKeyLocator(PublisherPublicKeyDigest keyID);
 
+	public abstract void clearStoredKeyLocator(PublisherPublicKeyDigest keyID);
+		
 	/**
 	 * Remember the key locator to use for a given key. Use
 	 * this to publish this key in the future if not overridden by method
