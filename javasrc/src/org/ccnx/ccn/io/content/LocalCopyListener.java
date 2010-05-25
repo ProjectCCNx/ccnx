@@ -23,6 +23,9 @@ public class LocalCopyListener implements UpdateListener {
 	
 	public static void startBackup(CCNNetworkObject<?> objectToSyncToRepository) throws IOException {
 		if (objectToSyncToRepository.isSaved()) {
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
+				Log.info(Log.FAC_IO, "startBackup: backing up previously-retrieved object version {0}", objectToSyncToRepository.getVersionedName());
+			}
 			backupListener.localCopy(objectToSyncToRepository);
 		}
 		objectToSyncToRepository.addListener(backupListener);
@@ -36,15 +39,15 @@ public class LocalCopyListener implements UpdateListener {
 	
 	protected void localCopy(CCNNetworkObject<?> newVersion) {
 		try {
-			if (Log.isLoggable(Level.INFO)) {
-				Log.info("Synchronizing object to repository: {0}", newVersion.getVersionedName());
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
+				Log.info(Log.FAC_IO, "Synchronizing object to repository: {0}", newVersion.getVersionedName());
 			}
 			
 			RepositoryControl.localRepoSync(newVersion.getHandle(), newVersion);
 			
 		} catch (IOException e) {
-			if (Log.isLoggable(Level.INFO)) {
-				Log.info("Local repo sync failed for network object: " + e.getMessage());
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
+				Log.info(Log.FAC_IO, "Local repo sync failed for network object: " + e.getMessage());
 			}
 		}
 	}

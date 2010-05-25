@@ -17,6 +17,7 @@
 package org.ccnx.ccn.profiles.repo;
 
 import java.io.IOException;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -86,12 +87,25 @@ public class RepositoryControl {
 	 * @throws IOException if no repository responds or another communication error occurs
 	 */
 	public static boolean localRepoSync(CCNHandle handle, CCNAbstractInputStream stream) throws IOException {
+		return localRepoSync(handle, stream, true);
+	}
+	
+	/**
+	 * Internal method that allows us to prevent looping on self-signed signer keys.
+	 * @param handle
+	 * @param stream
+	 * @param syncSigner
+	 * @return
+	 * @throws IOException
+	 */
+	protected static boolean localRepoSync(CCNHandle handle, CCNAbstractInputStream stream, boolean syncSigner) throws IOException {
 		boolean result;
 		
 		byte[] digest = stream.getFirstDigest(); // This forces reading if not done already
 		ContentName name = stream.getBaseName();
 		Long segment = stream.firstSegmentNumber();
-		Log.fine("RepositoryControl.localRepoSync called for name {0}", name);
+
+		Log.info("RepositoryControl.localRepoSync called for name {0}", name);
 
 		// Request preserving the dereferenced content of the stream first
 		result = internalRepoSync(handle, name, segment, digest);
@@ -104,22 +118,73 @@ public class RepositoryControl {
 			digest = link.getFirstDigest();
 			name = link.getVersionedName(); // we need versioned name; link basename may or may not be
 			segment = link.firstSegmentNumber();
+			
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("localRepoSync synchronizing link: {0}", link);
+			}
 
 			if (!internalRepoSync(handle, name, segment, digest)) {
 				result = false;
 			}
 			link = link.getDereferencedLink();
-		}	
+		}
+
+		if (syncSigner) {
+			// Finally, we need to ask repository to preserve the signer key (and any links
+			// we need to dereference to get to that (credentials)). We had to retrieve the
+			// key to verify it; it should likely still be in our cache.
+			PublicKeyObject signerKey = 
+				handle.keyManager().getPublicKeyObject(stream.publisher(), stream.publisherKeyLocator(), 
+						SystemConfiguration.FC_TIMEOUT);
+
+			if (null != signerKey) {
+				if (!signerKey.available()) {
+					if (Log.isLoggable(Level.INFO)) {
+						Log.info("Signer key {0} not available for syncing.", signerKey.getBaseName());
+					}
+				} else {
+					if (Log.isLoggable(Level.INFO)) {
+						Log.info("localRepoSync: synchronizing signer key {0}.", signerKey.getVersionedName());
+						Log.info("localRepoSync: is signer key self-signed? " + signerKey.isSelfSigned());
+					}
+
+					// This will traverse any links, and the signer credentials for the lot.
+					// If self-signed, don't sync it's signer or we'll loop
+					if (!localRepoSync(handle, signerKey, !signerKey.isSelfSigned())) {
+						result = false;
+					}
+				}
+			} else {
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("Cannot retrieve signer key from locator {0}!", stream.publisherKeyLocator());
+				}
+			}
+		}
 		return result;
 	}
 	
 	public static boolean localRepoSync(CCNHandle handle, CCNNetworkObject<?> obj) throws IOException {
+		return localRepoSync(handle, obj, true);
+	}
+	
+	/**
+	 * Internal method that allows us to prevent looping on self-signed signer keys.
+	 * @param handle
+	 * @param stream
+	 * @param syncSigner
+	 * @return
+	 * @throws IOException
+	 */
+	protected static boolean localRepoSync(CCNHandle handle, CCNNetworkObject<?> obj, boolean syncSigner) throws IOException {
 		boolean result;
 		
 		byte[] digest = obj.getFirstDigest(); // This forces reading if not done already
 		ContentName name = obj.getVersionedName();
 		Long segment = obj.firstSegmentNumber();
-		Log.fine("RepositoryControl.localRepoSync called for net obj name {0}", name);
+		
+		if (Log.isLoggable(Level.INFO)) {
+			Log.info("RepositoryControl.localRepoSync called for net obj name {0}", name);
+		}
 
 		// Request preserving the dereferenced content of the stream first
 		result = internalRepoSync(handle, name, segment, digest);
@@ -139,17 +204,35 @@ public class RepositoryControl {
 			link = link.getDereferencedLink();
 		}	
 		
-		// Finally, we need to ask repository to preserve the signer key (and any links
-		// we need to dereference to get to that (credentials)). We had to retrieve the
-		// key to verify it; it should likely still be in our cache.
-		PublicKeyObject signerKey = 
-			handle.keyManager().getPublicKeyObject(obj.getContentPublisher(), obj.getPublisherKeyLocator(), 
-													SystemConfiguration.FC_TIMEOUT);
-		
-		if (null != signerKey) {
-			// This will traverse any links, and the signer credentials for the lot.
-			if (!internalRepoSync(handle, signerKey.getVersionedName(), signerKey.firstSegmentNumber(), signerKey.getFirstDigest())) {
-				result = false;
+		if (syncSigner) {
+			// Finally, we need to ask repository to preserve the signer key (and any links
+			// we need to dereference to get to that (credentials)). We had to retrieve the
+			// key to verify it; it should likely still be in our cache.
+			PublicKeyObject signerKey = 
+				handle.keyManager().getPublicKeyObject(obj.getContentPublisher(), obj.getPublisherKeyLocator(), 
+						SystemConfiguration.FC_TIMEOUT);
+
+			if (null != signerKey) {
+				if (!signerKey.available()) {
+					if (Log.isLoggable(Level.INFO)) {
+						Log.info("Signer key {0} not available for syncing.", signerKey.getBaseName());
+					}
+				} else {
+					if (Log.isLoggable(Level.INFO)) {
+						Log.info("localRepoSync: synchronizing signer key {0}.", signerKey.getVersionedName());
+						Log.info("localRepoSync: is signer key self-signed? " + signerKey.isSelfSigned());
+					}
+
+					// This will traverse any links, and the signer credentials for the lot.
+					// If self-signed, don't sync it's signer or we'll loop
+					if (!localRepoSync(handle, signerKey, !signerKey.isSelfSigned())) {
+						result = false;
+					}
+				}
+			} else {
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("Cannot retrieve signer key from locator {0}!", obj.getPublisherKeyLocator());
+				}
 			}
 		}
 
@@ -175,9 +258,18 @@ public class RepositoryControl {
 		Interest syncInterest = new Interest(repoCommandName);
 		syncInterest.scope(1); // local repositories only
 		
+		if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
+			Log.info(Log.FAC_IO, "Syncing to repository, interest: {0}", syncInterest);
+		}
+		
 		// Send out Interest
 		ContentObject co = handle.get(syncInterest, SystemConfiguration.FC_TIMEOUT);
+		
 		if (null == co) {
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO)){
+				Log.info(Log.FAC_IO, "No response from a repository for checked write of " + baseName + " segment " + startingSegmentNumber 
+									+ " digest " + DataUtils.printHexBytes(firstDigest));
+			}
 			throw new IOException("No response from a repository for checked write of " + baseName + " segment " + startingSegmentNumber 
 									+ " digest " + DataUtils.printHexBytes(firstDigest));
 		}

@@ -30,9 +30,11 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.CCNAbstractInputStream.FlagTypes;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
@@ -244,7 +246,14 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 			return result;
 		}
 		// Alright, last shot -- resolve link to unversioned data.
-		return handle.get(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
+		Interest unversionedInterest = SegmentationProfile.anySegmentInterest(targetName(),
+				(null != targetAuthenticator()) ? targetAuthenticator().publisher() : null);
+
+		result = handle.get(unversionedInterest, timeout);
+		if (!SegmentationProfile.isSegment(result.name())) {
+			return null;
+		}
+		return result;
 	}
 	
 	@Override
