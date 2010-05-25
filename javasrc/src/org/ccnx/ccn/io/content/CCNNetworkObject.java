@@ -1090,8 +1090,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 *   we found a new version on the network?
 	 */
 	protected void newVersionAvailable(boolean wasSave) {
-		if (Log.isLoggable(Level.INFO)) {
-			Log.info("newVersionAvailable: New version of object available: {0}", getVersionedName());
+		if (Log.isLoggable(Level.FINER)) {
+			Log.finer("newVersionAvailable: New version of object available: {0}", getVersionedName());
 		}
 		// by default signal all waiters
 		this.notifyAll();

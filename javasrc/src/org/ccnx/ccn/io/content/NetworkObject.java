@@ -25,6 +25,7 @@ import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.ErrorStateException;
@@ -159,7 +160,9 @@ public abstract class NetworkObject<E> {
 
 		synchronized(this) {
 			if (!_available) {
-				Log.info("Update -- first initialization.");
+				if (Log.isLoggable(Log.FAC_IO, Level.FINEST)) {
+					Log.finest(Log.FAC_IO, "Update -- first initialization.");
+				}
 			}
 
 			_data = newData;

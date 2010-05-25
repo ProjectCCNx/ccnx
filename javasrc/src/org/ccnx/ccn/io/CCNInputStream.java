@@ -216,16 +216,16 @@ public class CCNInputStream extends CCNAbstractInputStream {
 			return -1;
 		}
 		
-		if( Log.isLoggable(Level.FINEST ))
-			Log.finest(getBaseName() + ": reading " + len + " bytes into buffer of length " + 
+		if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
+			Log.finest(Log.FAC_IO, getBaseName() + ": reading " + len + " bytes into buffer of length " + 
 				((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentSegment) {
 			// This will throw an exception if no block found, which is what we want.
 			setFirstSegment(getFirstSegment());
 		} 
-		if( Log.isLoggable(Level.FINEST ))
-			Log.finest("reading from block: {0}, length: {1}", _currentSegment.name(),  
+		if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
+			Log.finest(Log.FAC_IO, "reading from block: {0}, length: {1}", _currentSegment.name(),  
 				_currentSegment.contentLength());
 		
 		// Now we have a block in place. Read from it. If we run out of block before
@@ -238,8 +238,8 @@ public class CCNInputStream extends CCNAbstractInputStream {
 				Log.severe("Unexpected null block read stream!");
 			}
 			if (null != buf) {  // use for skip
-				if( Log.isLoggable(Level.FINEST ))
-					Log.finest("before block read: content length "+_currentSegment.contentLength()+" position "+ tell() +" available: " + _segmentReadStream.available() + " dst length "+buf.length+" dst index "+offset+" len to read "+lenToRead);
+				if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
+					Log.finest(Log.FAC_IO, "before block read: content length "+_currentSegment.contentLength()+" position "+ tell() +" available: " + _segmentReadStream.available() + " dst length "+buf.length+" dst index "+offset+" len to read "+lenToRead);
 				// Read as many bytes as we can
 				readCount = _segmentReadStream.read(buf, offset, lenToRead);
 			} else {
@@ -247,11 +247,11 @@ public class CCNInputStream extends CCNAbstractInputStream {
 			}
 
 			if (readCount <= 0) {
-				if( Log.isLoggable(Level.INFO ))
-					Log.info("Tried to read at end of block, go get next block.");
+				if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+					Log.fine(Log.FAC_IO, "Tried to read at end of block, go get next block.");
 				if (!hasNextSegment()) {
-					if( Log.isLoggable(Level.INFO ))
-						Log.info("No next block expected, setting _atEOF, returning " + ((lenRead > 0) ? lenRead : -1));
+					if (Log.isLoggable(Level.FINE))
+						Log.fine("No next block expected, setting _atEOF, returning " + ((lenRead > 0) ? lenRead : -1));
 					_atEOF = true;
 					if (lenRead > 0) {
 						return lenRead;
@@ -260,8 +260,8 @@ public class CCNInputStream extends CCNAbstractInputStream {
 				}
 				ContentObject nextSegment = getNextSegment();
 				if (null == nextSegment) {
-					if( Log.isLoggable(Level.INFO ))
-						Log.info("Next block is null, setting _atEOF, returning " + ((lenRead > 0) ? lenRead : -1));
+					if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+						Log.fine(Log.FAC_IO, "Next block is null, setting _atEOF, returning " + ((lenRead > 0) ? lenRead : -1));
 					_atEOF = true;
 					if (lenRead > 0) {
 						return lenRead;
@@ -270,15 +270,15 @@ public class CCNInputStream extends CCNAbstractInputStream {
 				}
 				setCurrentSegment(nextSegment);
 
-				if( Log.isLoggable(Level.INFO ))
-				Log.info("now reading from block: " + _currentSegment.name() + " length: " + 
+				if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+				Log.fine(Log.FAC_IO, "now reading from block: " + _currentSegment.name() + " length: " + 
 						_currentSegment.contentLength());
 			} else {
 				offset += readCount;
 				lenToRead -= readCount;
 				lenRead += readCount;
-				if( Log.isLoggable(Level.FINEST ))
-					Log.finest("     read " + readCount + " bytes for " + lenRead + " total, " + lenToRead + " remaining.");
+				if( Log.isLoggable(Log.FAC_IO, Level.FINEST ))
+					Log.finest(Log.FAC_IO, "     read " + readCount + " bytes for " + lenRead + " total, " + lenToRead + " remaining.");
 			}
 		}
 		return lenRead;

@@ -545,7 +545,9 @@ public class VersioningProfile implements CCNProfile {
 												  Long startingSegmentNumber,
 												  boolean findASegment) throws IOException {
 		
-		Log.info("getFirstBlockOfLatestVersion: getting version later than {0} called with timeout: {1}", startingVersion, timeout);
+		if (Log.isLoggable(Level.FINE)){ 
+			Log.fine("getFirstBlockOfLatestVersion: getting version later than {0} called with timeout: {1}", startingVersion, timeout);
+		}
 		
 		if (null == verifier) {
 			// TODO DKS normalize default behavior
@@ -1027,28 +1029,28 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static boolean isVersionedFirstSegment(ContentName desiredName, ContentObject potentialFirstSegment, Long startingSegmentNumber) {
 		if ((null != potentialFirstSegment) && (SegmentationProfile.isSegment(potentialFirstSegment.name()))) {
-			if (Log.isLoggable(Level.INFO))
-				Log.info("is " + potentialFirstSegment.name() + " a first segment of " + desiredName);
+			if (Log.isLoggable(Level.FINER))
+				Log.finer("is " + potentialFirstSegment.name() + " a first segment of " + desiredName);
 			// In theory, the segment should be at most a versioning component different from desiredName.
 			// In the case of complex segmented objects (e.g. a KeyDirectory), where there is a version,
 			// then some name components, then a segment, desiredName should contain all of those other
 			// name components -- you can't use the usual versioning mechanisms to pull first segment anyway.
 			if (!desiredName.isPrefixOf(potentialFirstSegment.name())) {
-				if (Log.isLoggable(Level.INFO))
-					Log.info("Desired name :" + desiredName + " is not a prefix of segment: " + potentialFirstSegment.name());
+				if (Log.isLoggable(Level.FINE))
+					Log.fine("Desired name :" + desiredName + " is not a prefix of segment: " + potentialFirstSegment.name());
 				return false;
 			}
 			int difflen = potentialFirstSegment.name().count() - desiredName.count();
 			if (difflen > 2) {
-				if (Log.isLoggable(Level.INFO))
-					Log.info("Have " + difflen + " extra components between " + potentialFirstSegment.name() + " and desired " + desiredName);
+				if (Log.isLoggable(Level.FINE))
+					Log.fine("Have " + difflen + " extra components between " + potentialFirstSegment.name() + " and desired " + desiredName);
 				return false;
 			}
 			// Now need to make sure that if the difference is more than 1, that difference is
 			// a version component.
 			if ((difflen == 2) && (!isVersionComponent(potentialFirstSegment.name().component(potentialFirstSegment.name().count()-2)))) {
-				if (Log.isLoggable(Level.INFO))
-					Log.info("The " + difflen + " extra component between " + potentialFirstSegment.name() + " and desired " + desiredName + " is not a version.");
+				if (Log.isLoggable(Level.FINE))
+					Log.fine("The " + difflen + " extra component between " + potentialFirstSegment.name() + " and desired " + desiredName + " is not a version.");
 			}
 			if ((null != startingSegmentNumber) && (SegmentationProfile.baseSegment() != startingSegmentNumber)) {
 				return (startingSegmentNumber.longValue() == SegmentationProfile.getSegmentNumber(potentialFirstSegment.name()));
