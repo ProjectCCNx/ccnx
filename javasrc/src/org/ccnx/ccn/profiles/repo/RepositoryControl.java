@@ -92,7 +92,8 @@ public class RepositoryControl {
 		byte[] digest = stream.getFirstDigest(); // This forces reading if not done already
 		ContentName name = stream.getBaseName();
 		Long segment = stream.firstSegmentNumber();
-		Log.fine("RepositoryControl.localRepoSync called for name {0}", name);
+
+		Log.info("RepositoryControl.localRepoSync called for name {0}", name);
 
 		// Request preserving the dereferenced content of the stream first
 		result = internalRepoSync(handle, name, segment, digest);
@@ -120,12 +121,26 @@ public class RepositoryControl {
 					SystemConfiguration.FC_TIMEOUT);
 
 		if (null != signerKey) {
-			// This will traverse any links, and the signer credentials for the lot.
-			if (!internalRepoSync(handle, signerKey.getVersionedName(), signerKey.firstSegmentNumber(), signerKey.getFirstDigest())) {
-				result = false;
+			if (!signerKey.available()) {
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("Signer key {0} not available for syncing.", signerKey.getBaseName());
+				}
+			} else {
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("localRepoSync: synchronizing signer key {0}.", signerKey.getVersionedName());
+					Log.info("localRepoSync: is signer key self-signed? " + signerKey.isSelfSigned());
+				}
+			
+				// This will traverse any links, and the signer credentials for the lot.
+				if (!localRepoSync(handle, signerKey)) {
+					result = false;
+				}
+			}
+		} else {
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("Cannot retrieve signer key from locator {0}!", stream.publisherKeyLocator());
 			}
 		}
-
 
 		return result;
 	}
@@ -167,9 +182,24 @@ public class RepositoryControl {
 													SystemConfiguration.FC_TIMEOUT);
 		
 		if (null != signerKey) {
-			// This will traverse any links, and the signer credentials for the lot.
-			if (!internalRepoSync(handle, signerKey.getVersionedName(), signerKey.firstSegmentNumber(), signerKey.getFirstDigest())) {
-				result = false;
+			if (!signerKey.available()) {
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("Signer key {0} not available for syncing.", signerKey.getBaseName());
+				}
+			} else {
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("localRepoSync: synchronizing signer key {0}.", signerKey.getVersionedName());
+					Log.info("localRepoSync: is signer key self-signed? " + signerKey.isSelfSigned());
+				}
+			
+				// This will traverse any links, and the signer credentials for the lot.
+				if (!localRepoSync(handle, signerKey)) {
+					result = false;
+				}
+			}
+		} else {
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("Cannot retrieve signer key from locator {0}!", obj.getPublisherKeyLocator());
 			}
 		}
 
