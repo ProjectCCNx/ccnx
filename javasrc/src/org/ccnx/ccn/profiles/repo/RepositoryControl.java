@@ -110,7 +110,23 @@ public class RepositoryControl {
 				result = false;
 			}
 			link = link.getDereferencedLink();
-		}	
+		}
+		
+		// Finally, we need to ask repository to preserve the signer key (and any links
+		// we need to dereference to get to that (credentials)). We had to retrieve the
+		// key to verify it; it should likely still be in our cache.
+		PublicKeyObject signerKey = 
+			handle.keyManager().getPublicKeyObject(stream.publisher(), stream.publisherKeyLocator(), 
+					SystemConfiguration.FC_TIMEOUT);
+
+		if (null != signerKey) {
+			// This will traverse any links, and the signer credentials for the lot.
+			if (!internalRepoSync(handle, signerKey.getVersionedName(), signerKey.firstSegmentNumber(), signerKey.getFirstDigest())) {
+				result = false;
+			}
+		}
+
+
 		return result;
 	}
 	
@@ -120,7 +136,10 @@ public class RepositoryControl {
 		byte[] digest = obj.getFirstDigest(); // This forces reading if not done already
 		ContentName name = obj.getVersionedName();
 		Long segment = obj.firstSegmentNumber();
-		Log.fine("RepositoryControl.localRepoSync called for net obj name {0}", name);
+		
+		if (Log.isLoggable(Level.INFO)) {
+			Log.info("RepositoryControl.localRepoSync called for net obj name {0}", name);
+		}
 
 		// Request preserving the dereferenced content of the stream first
 		result = internalRepoSync(handle, name, segment, digest);
