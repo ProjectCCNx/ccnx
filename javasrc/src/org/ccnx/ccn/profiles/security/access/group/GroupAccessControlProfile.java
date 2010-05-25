@@ -322,8 +322,8 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the name of the group public key
 	 */
 	public static ContentName groupPublicKeyName(ParameterizedName groupStorage, String groupFriendlyName) {
-		// TODO MLAC
-		return ContentName.fromNative(ContentName.fromNative(groupStorage.prefix(), groupFriendlyName),  AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+		ContentName groupFullName = ContentName.fromNative(groupStorage.prefix(), groupFriendlyName);
+		return groupPublicKeyName(groupStorage, groupFullName);
 	}
 	
 	/**
@@ -332,12 +332,16 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the name of the group public key
 	 */
 	public static ContentName groupPublicKeyName(ParameterizedName groupStorage, ContentName groupFullName) {
-		// TODO MLAC
-		return ContentName.fromNative(groupFullName,  AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+		if (null != groupStorage.suffix()) {
+			return ContentName.fromNative(groupFullName.append(groupStorage.suffix()), AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+		}
+		return ContentName.fromNative(groupFullName, AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
 	}
 	
 	public static ContentName userPublicKeyName(ParameterizedName userStorage, ContentName userName) {
-		// TODO MLAC
+		if (null != userStorage.suffix()) {
+			return userName.append(userStorage.suffix());
+		}
 		return userName;
 	}
 	
