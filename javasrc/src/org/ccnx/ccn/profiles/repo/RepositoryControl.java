@@ -17,6 +17,7 @@
 package org.ccnx.ccn.profiles.repo;
 
 import java.io.IOException;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -175,9 +176,18 @@ public class RepositoryControl {
 		Interest syncInterest = new Interest(repoCommandName);
 		syncInterest.scope(1); // local repositories only
 		
+		if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
+			Log.info(Log.FAC_IO, "Syncing to repository, interest: {0}", syncInterest);
+		}
+		
 		// Send out Interest
 		ContentObject co = handle.get(syncInterest, SystemConfiguration.FC_TIMEOUT);
+		
 		if (null == co) {
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO)){
+				Log.info(Log.FAC_IO, "No response from a repository for checked write of " + baseName + " segment " + startingSegmentNumber 
+									+ " digest " + DataUtils.printHexBytes(firstDigest));
+			}
 			throw new IOException("No response from a repository for checked write of " + baseName + " segment " + startingSegmentNumber 
 									+ " digest " + DataUtils.printHexBytes(firstDigest));
 		}
