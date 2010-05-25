@@ -87,6 +87,18 @@ public class RepositoryControl {
 	 * @throws IOException if no repository responds or another communication error occurs
 	 */
 	public static boolean localRepoSync(CCNHandle handle, CCNAbstractInputStream stream) throws IOException {
+		return localRepoSync(handle, stream, true);
+	}
+	
+	/**
+	 * Internal method that allows us to prevent looping on self-signed signer keys.
+	 * @param handle
+	 * @param stream
+	 * @param syncSigner
+	 * @return
+	 * @throws IOException
+	 */
+	protected static boolean localRepoSync(CCNHandle handle, CCNAbstractInputStream stream, boolean syncSigner) throws IOException {
 		boolean result;
 		
 		byte[] digest = stream.getFirstDigest(); // This forces reading if not done already
@@ -112,40 +124,54 @@ public class RepositoryControl {
 			}
 			link = link.getDereferencedLink();
 		}
-		
-		// Finally, we need to ask repository to preserve the signer key (and any links
-		// we need to dereference to get to that (credentials)). We had to retrieve the
-		// key to verify it; it should likely still be in our cache.
-		PublicKeyObject signerKey = 
-			handle.keyManager().getPublicKeyObject(stream.publisher(), stream.publisherKeyLocator(), 
-					SystemConfiguration.FC_TIMEOUT);
 
-		if (null != signerKey) {
-			if (!signerKey.available()) {
-				if (Log.isLoggable(Level.INFO)) {
-					Log.info("Signer key {0} not available for syncing.", signerKey.getBaseName());
+		if (syncSigner) {
+			// Finally, we need to ask repository to preserve the signer key (and any links
+			// we need to dereference to get to that (credentials)). We had to retrieve the
+			// key to verify it; it should likely still be in our cache.
+			PublicKeyObject signerKey = 
+				handle.keyManager().getPublicKeyObject(stream.publisher(), stream.publisherKeyLocator(), 
+						SystemConfiguration.FC_TIMEOUT);
+
+			if (null != signerKey) {
+				if (!signerKey.available()) {
+					if (Log.isLoggable(Level.INFO)) {
+						Log.info("Signer key {0} not available for syncing.", signerKey.getBaseName());
+					}
+				} else {
+					if (Log.isLoggable(Level.INFO)) {
+						Log.info("localRepoSync: synchronizing signer key {0}.", signerKey.getVersionedName());
+						Log.info("localRepoSync: is signer key self-signed? " + signerKey.isSelfSigned());
+					}
+
+					// This will traverse any links, and the signer credentials for the lot.
+					// If self-signed, don't sync it's signer or we'll loop
+					if (!localRepoSync(handle, signerKey, !signerKey.isSelfSigned())) {
+						result = false;
+					}
 				}
 			} else {
 				if (Log.isLoggable(Level.INFO)) {
-					Log.info("localRepoSync: synchronizing signer key {0}.", signerKey.getVersionedName());
-					Log.info("localRepoSync: is signer key self-signed? " + signerKey.isSelfSigned());
+					Log.info("Cannot retrieve signer key from locator {0}!", stream.publisherKeyLocator());
 				}
-			
-				// This will traverse any links, and the signer credentials for the lot.
-				if (!localRepoSync(handle, signerKey)) {
-					result = false;
-				}
-			}
-		} else {
-			if (Log.isLoggable(Level.INFO)) {
-				Log.info("Cannot retrieve signer key from locator {0}!", stream.publisherKeyLocator());
 			}
 		}
-
 		return result;
 	}
 	
 	public static boolean localRepoSync(CCNHandle handle, CCNNetworkObject<?> obj) throws IOException {
+		return localRepoSync(handle, obj, true);
+	}
+	
+	/**
+	 * Internal method that allows us to prevent looping on self-signed signer keys.
+	 * @param handle
+	 * @param stream
+	 * @param syncSigner
+	 * @return
+	 * @throws IOException
+	 */
+	protected static boolean localRepoSync(CCNHandle handle, CCNNetworkObject<?> obj, boolean syncSigner) throws IOException {
 		boolean result;
 		
 		byte[] digest = obj.getFirstDigest(); // This forces reading if not done already
@@ -174,32 +200,35 @@ public class RepositoryControl {
 			link = link.getDereferencedLink();
 		}	
 		
-		// Finally, we need to ask repository to preserve the signer key (and any links
-		// we need to dereference to get to that (credentials)). We had to retrieve the
-		// key to verify it; it should likely still be in our cache.
-		PublicKeyObject signerKey = 
-			handle.keyManager().getPublicKeyObject(obj.getContentPublisher(), obj.getPublisherKeyLocator(), 
-													SystemConfiguration.FC_TIMEOUT);
-		
-		if (null != signerKey) {
-			if (!signerKey.available()) {
-				if (Log.isLoggable(Level.INFO)) {
-					Log.info("Signer key {0} not available for syncing.", signerKey.getBaseName());
+		if (syncSigner) {
+			// Finally, we need to ask repository to preserve the signer key (and any links
+			// we need to dereference to get to that (credentials)). We had to retrieve the
+			// key to verify it; it should likely still be in our cache.
+			PublicKeyObject signerKey = 
+				handle.keyManager().getPublicKeyObject(obj.getContentPublisher(), obj.getPublisherKeyLocator(), 
+						SystemConfiguration.FC_TIMEOUT);
+
+			if (null != signerKey) {
+				if (!signerKey.available()) {
+					if (Log.isLoggable(Level.INFO)) {
+						Log.info("Signer key {0} not available for syncing.", signerKey.getBaseName());
+					}
+				} else {
+					if (Log.isLoggable(Level.INFO)) {
+						Log.info("localRepoSync: synchronizing signer key {0}.", signerKey.getVersionedName());
+						Log.info("localRepoSync: is signer key self-signed? " + signerKey.isSelfSigned());
+					}
+
+					// This will traverse any links, and the signer credentials for the lot.
+					// If self-signed, don't sync it's signer or we'll loop
+					if (!localRepoSync(handle, signerKey, !signerKey.isSelfSigned())) {
+						result = false;
+					}
 				}
 			} else {
 				if (Log.isLoggable(Level.INFO)) {
-					Log.info("localRepoSync: synchronizing signer key {0}.", signerKey.getVersionedName());
-					Log.info("localRepoSync: is signer key self-signed? " + signerKey.isSelfSigned());
+					Log.info("Cannot retrieve signer key from locator {0}!", obj.getPublisherKeyLocator());
 				}
-			
-				// This will traverse any links, and the signer credentials for the lot.
-				if (!localRepoSync(handle, signerKey)) {
-					result = false;
-				}
-			}
-		} else {
-			if (Log.isLoggable(Level.INFO)) {
-				Log.info("Cannot retrieve signer key from locator {0}!", obj.getPublisherKeyLocator());
 			}
 		}
 
