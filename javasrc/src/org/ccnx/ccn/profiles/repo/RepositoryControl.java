@@ -118,6 +118,10 @@ public class RepositoryControl {
 			digest = link.getFirstDigest();
 			name = link.getVersionedName(); // we need versioned name; link basename may or may not be
 			segment = link.firstSegmentNumber();
+			
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("localRepoSync synchronizing link: {0}", link);
+			}
 
 			if (!internalRepoSync(handle, name, segment, digest)) {
 				result = false;
