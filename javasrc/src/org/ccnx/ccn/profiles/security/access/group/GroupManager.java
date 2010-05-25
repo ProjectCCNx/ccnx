@@ -138,7 +138,7 @@ public class GroupManager {
 					// Only go hunting for it if we think it exists, otherwise we'll block.
 					if (groupExists(groupFriendlyName, timeout)) {
 
-						theGroup = new Group(_groupStorage.prefix(), groupFriendlyName, _handle, this);
+						theGroup = new Group(_groupStorage, groupFriendlyName, _handle, this);
 						// wait for group to be ready?
 						_groupCache.put(groupFriendlyName, theGroup);
 					}
@@ -176,7 +176,7 @@ public class GroupManager {
 	 */
 	public boolean groupExists(String groupFriendlyName, long timeout) throws IOException {
 		ContentName publicKeyName = 
-			GroupAccessControlProfile.groupPublicKeyName(_groupStorage.prefix(), groupFriendlyName);
+			GroupAccessControlProfile.groupPublicKeyName(_groupStorage, groupFriendlyName);
 		
 		// Take any content below the public key name -- key fragments, keys, whatever's fastest.
 		// This will take a long time if the group doesn't exist, but should be fast if it does,
@@ -222,9 +222,9 @@ public class GroupManager {
 			// Need to make key pair, directory, and store membership list.
 			MembershipListObject ml = 
 				new MembershipListObject(
-						GroupAccessControlProfile.groupMembershipListName(_groupStorage.prefix(), groupFriendlyName), 
+						GroupAccessControlProfile.groupMembershipListName(_groupStorage, groupFriendlyName), 
 						new Collection(newMembers), SaveType.REPOSITORY, _handle);
-			Group newGroup =  new Group(_groupStorage.prefix(), groupFriendlyName, ml, _handle, this);
+			Group newGroup =  new Group(_groupStorage, groupFriendlyName, ml, _handle, this);
 			cacheGroup(newGroup);
 			if (amCurrentGroupMember(newGroup)) {
 				_myGroupMemberships.add(groupFriendlyName);
@@ -365,7 +365,7 @@ public class GroupManager {
 			// Assume one is there...
 			ContentName versionedPublicKeyName = 
 				VersioningProfile.addVersion(
-						GroupAccessControlProfile.groupPublicKeyName(_groupStorage.prefix(), groupFriendlyName),
+						GroupAccessControlProfile.groupPublicKeyName(_groupStorage, groupFriendlyName),
 						privateKeyVersion);
 			privateKeyDirectory =
 				new KeyDirectory(_accessManager, 
