@@ -49,6 +49,7 @@ import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
@@ -71,7 +72,7 @@ public class Group {
 	
 	private static final long PARENT_GROUP_ENUMERATION_TIMEOUT = 3000;
 	
-	private ContentName _groupNamespace;
+	private ParameterizedName _groupNamespace;
 	private PublicKeyObject _groupPublicKey;
 	private MembershipListObject _groupMembers; 
 	private String _groupFriendlyName;
@@ -93,10 +94,10 @@ public class Group {
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
 	 */
-	public Group(ContentName namespace, String groupFriendlyName, CCNHandle handle,GroupManager manager) 
+	public Group(ParameterizedName groupNamespace, String groupFriendlyName, CCNHandle handle,GroupManager manager) 
 			throws ContentDecodingException, IOException {
 		_handle = handle;
-		_groupNamespace = namespace;
+		_groupNamespace = groupNamespace;
 		_groupFriendlyName = groupFriendlyName;
 		_groupPublicKey = new PublicKeyObject(GroupAccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _handle);
 		_groupPublicKey.updateInBackground(true);
@@ -112,7 +113,7 @@ public class Group {
 	 * @throws ContentDecodingException 
 	 */
 	public Group(ContentName groupName, CCNHandle handle, GroupManager manager) throws ContentDecodingException, IOException {
-		this(groupName.parent(), GroupAccessControlProfile.groupNameToFriendlyName(groupName), handle,manager);
+		this(manager.getGroupStorage(), GroupAccessControlProfile.groupNameToFriendlyName(groupName), handle,manager);
 	}
 		
 	/**
@@ -127,11 +128,11 @@ public class Group {
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
-	Group(ContentName namespace, String groupFriendlyName, MembershipListObject members, 
+	Group(ParameterizedName groupNamespace, String groupFriendlyName, MembershipListObject members, 
 					CCNHandle handle, GroupManager manager) 
 			throws ContentEncodingException, IOException, InvalidKeyException {	
 		_handle = handle;
-		_groupNamespace = namespace;
+		_groupNamespace = groupNamespace;
 		_groupFriendlyName = groupFriendlyName;
 		_groupManager = manager;
 		
@@ -236,7 +237,7 @@ public class Group {
 	 * Get the name of the namespace for the group
 	 * @return the group namespace
 	 */
-	public ContentName groupName() {return ContentName.fromNative(_groupNamespace, _groupFriendlyName);}
+	public ContentName groupName() {return ContentName.fromNative(_groupNamespace.prefix(), _groupFriendlyName);}
 
 	/**
 	 * Returns a list containing all the members of a Group.
@@ -424,7 +425,7 @@ public class Group {
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have access rights to private key for group " + friendlyName());
-		}else{
+		} else {
 			stopPrivateKeyDirectoryEnumeration();
 		}
 		
@@ -537,15 +538,20 @@ public class Group {
 			try {
 				// DKS TODO verify target public key against publisher, etc in link
 				
-				ContentName pkName = lr.targetName();
-				if (_groupManager.getAccessManager().isGroupName(pkName)){
-					pkName = GroupAccessControlProfile.groupPublicKeyName(pkName);
+				ContentName mlName = lr.targetName();
+				ContentName pkName = null;
+				if (_groupManager.getAccessManager().isGroupName(mlName)){
+					// MLAC mods to make sure we fully parameterize key names
+					pkName = _groupManager.getAccessManager().groupPublicKeyName(mlName);
 					// write a back pointer from child group to parent group
 					// PG TODO check for existence of back pointer to avoid writing multiple copies of the same pointer
 					Link backPointer = new Link(groupName(), friendlyName(), null);
 					ContentName bpNamespace = GroupAccessControlProfile.groupPointerToParentGroupName(lr.targetName());
 					LinkObject bplo = new LinkObject(ContentName.fromNative(bpNamespace, friendlyName()), backPointer, SaveType.REPOSITORY, _handle);
 					bplo.save();
+				} else {
+					// MLAC mods to make sure we fully parameterize key names
+					pkName = _groupManager.getAccessManager().userPublicKeyName(mlName);
 				}
 
 				latestPublicKey = new PublicKeyObject(pkName, _handle);

@@ -27,6 +27,7 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
@@ -76,7 +77,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	public static class PrincipalInfo {
 		
 		// Number of parts expected in a PI component representation
-		private static final int PI_COMPONENT_COUNT = 4;
+		// private static final int PI_COMPONENT_COUNT = 4;
 		
 		// However long our distinguishing hashes should be
 		public static final int DISTINGUISHING_HASH_LENGTH = 8;
@@ -189,29 +190,6 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 			return component;
 		}
 		
-		/**
-		 * Parses the principal name from a group public key.
-		 * For groups, the last component of the public key is GROUP_PUBLIC_KEY_NAME = "Key".
-		 * The principal name is the one-before-last component.
-		 * @param publicKeyName the name of the group public key
-		 * @return the corresponding principal name
-		 */
-		public static String parsePrincipalNameFromGroupPublicKeyName(ContentName publicKeyName) {
-			ContentName cn = VersioningProfile.cutTerminalVersion(publicKeyName).first();
-			return ContentName.componentPrintNative(cn.component(cn.count() - 2));
-		}
-		
-		/**
-		 * Parses the principal name from a public key name.
-		 * Do not use this method for group public keys.
-		 * For groups, use instead parsePrincipalNameFromGroupPublicKeyName
-		 * @param publicKeyName the public key name
-		 * @return the corresponding principal name
-		 */
-		public static String parsePrincipalNameFromPublicKeyName(ContentName publicKeyName) {
-			return ContentName.componentPrintNative(VersioningProfile.cutTerminalVersion(publicKeyName).first().lastComponent());
-		}
-
 		public boolean isGroup() { return Arrays.areEqual(GROUP_PRINCIPAL_PREFIX, _typeMarker); }
 		public String friendlyName() { return _friendlyName; }
 		public byte[] distinguishingHash() { return _distinguishingHash; }
@@ -343,8 +321,9 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @param groupFriendlyName the name of the group
 	 * @return the name of the group public key
 	 */
-	public static ContentName groupPublicKeyName(ContentName groupNamespaceName, String groupFriendlyName) {
-		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName, groupFriendlyName),  AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+	public static ContentName groupPublicKeyName(ParameterizedName groupStorage, String groupFriendlyName) {
+		ContentName groupFullName = ContentName.fromNative(groupStorage.prefix(), groupFriendlyName);
+		return groupPublicKeyName(groupStorage, groupFullName);
 	}
 	
 	/**
@@ -352,8 +331,18 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @param groupFullName the full name of the group
 	 * @return the name of the group public key
 	 */
-	public static ContentName groupPublicKeyName(ContentName groupFullName) {
-		return ContentName.fromNative(groupFullName,  AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+	public static ContentName groupPublicKeyName(ParameterizedName groupStorage, ContentName groupFullName) {
+		if (null != groupStorage.suffix()) {
+			return ContentName.fromNative(groupFullName.append(groupStorage.suffix()), AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+		}
+		return ContentName.fromNative(groupFullName, AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+	}
+	
+	public static ContentName userPublicKeyName(ParameterizedName userStorage, ContentName userName) {
+		if (null != userStorage.suffix()) {
+			return userName.append(userStorage.suffix());
+		}
+		return userName;
 	}
 	
 	/**
@@ -362,8 +351,8 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @param groupFriendlyName the name of the group
 	 * @return the name of the group membership list
 	 */
-	public static ContentName groupMembershipListName(ContentName groupNamespaceName, String groupFriendlyName) {
-		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName, groupFriendlyName),  GROUP_MEMBERSHIP_LIST_NAME);
+	public static ContentName groupMembershipListName(ParameterizedName groupNamespaceName, String groupFriendlyName) {
+		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName.prefix(), groupFriendlyName),  GROUP_MEMBERSHIP_LIST_NAME);
 	}
 
 	/**
