@@ -223,7 +223,8 @@ public class BasicKeyManager extends KeyManager {
 				this.publishKey(getDefaultKeyName(getDefaultKeyID()), 
 						getDefaultPublicKey(),
 						null,
-						null);
+						null,
+						true);
 			} catch (InvalidKeyException e) {
 				// in java 1.6 move to handing exception to constructor
 				throw new IOException("Default key is invalid! " + e);
@@ -970,7 +971,8 @@ public class BasicKeyManager extends KeyManager {
 	public PublicKeyObject publishKey(ContentName keyName, 
 						   PublicKey keyToPublish,
 						   PublisherPublicKeyDigest signingKeyID,
-						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException {
+						   KeyLocator signingKeyLocator,
+						   boolean learnKeyLocator) throws InvalidKeyException, IOException {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultPublicKey();
 		} 
@@ -987,7 +989,7 @@ public class BasicKeyManager extends KeyManager {
 			Log.info(Log.FAC_KEYS, "publishKey: published key {0}\n under specified key name {1}\n key locator: {2}", 
 					keyDigest, keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
 
-		if (!haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
+		if (learnKeyLocator && !haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
 			// So once we publish self-signed key object, we store a pointer to that
 			// to use. Don't override any manually specified values.
 			KeyLocator newKeyLocator = new KeyLocator(keyObject.getVersionedName(), keyObject.getContentPublisher());
