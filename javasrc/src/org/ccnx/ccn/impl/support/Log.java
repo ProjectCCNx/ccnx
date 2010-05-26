@@ -404,7 +404,7 @@ public class Log {
 		Level logLevel;
 
 		// First get the FAC_ALL value, and if set use it to set the default log level for all facilities
-		logLevelName = SystemConfiguration.getGradedValue(
+		logLevelName = SystemConfiguration.retrievePropertyOrEnvironmentVariable(
 				FAC_LOG_LEVEL_PROPERTY[FAC_ALL], 
 				FAC_LOG_LEVEL_ENV[FAC_ALL], 
 				null);
@@ -423,7 +423,7 @@ public class Log {
 		
 		// Then get the individual facility's log level from property/environment, or the default
 		for (int i = FAC_DEFAULT; i < FAC_LOG_LEVEL_PROPERTY.length; i++ ) {
-			logLevelName = SystemConfiguration.getGradedValue(
+			logLevelName = SystemConfiguration.retrievePropertyOrEnvironmentVariable(
 					FAC_LOG_LEVEL_PROPERTY[i], 
 					FAC_LOG_LEVEL_ENV[i], 
 					FAC_LOG_LEVEL_DEFAULT[i].getName());

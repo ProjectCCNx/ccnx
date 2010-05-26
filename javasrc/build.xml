@@ -46,7 +46,6 @@
 	<property name="REPO_LOCAL_ROOT" value="repotest"/>
 	<property name="REPO_LOCAL" value="TestRepository"/>
 	<property name="REPO_GLOBAL" value="parc.com/csl/ccn/repositories"/>
-	<property name="IGNORE_CONFIG_KEY" value="org.ccnx.ignoreconfig"/>
 	<!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
 	<property name="DEBUG_OPTIONS" value=""/>
@@ -157,7 +156,6 @@
 						<path refid="classpath-run" />
 					</classpath>
 					<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
-					<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 					<sysproperty key="ccn.daemon.output" value="${testout}/TEST-ccnd-baselib.txt" />
 					<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 					<sysproperty key="ccnd.debug" value="${CCND_DEBUG}" />
@@ -217,7 +215,6 @@
 						<path refid="classpath-run" />
 					</classpath>
 					<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
-					<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 					<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 					<sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 
@@ -247,7 +244,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<batchtest todir="${testout}" >
@@ -267,7 +263,6 @@
 				<path refid="classpath-run" />
 			</classpath>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" />
 			<arg value="-interactive" />
@@ -303,9 +298,7 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
-			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			
+			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>	
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/protocol/*Test.class"/>
@@ -322,7 +315,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINEST"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<batchtest todir="${testout}">
@@ -344,7 +336,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 
 			<batchtest todir="${testout}">
@@ -367,7 +358,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 
 			<batchtest todir="${testout}">
@@ -393,7 +383,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 
 			<batchtest todir="${testout}">
@@ -413,7 +402,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 
 			<batchtest todir="${testout}">
@@ -434,7 +422,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 
 			<batchtest todir="${testout}">
@@ -455,7 +442,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 
 			<batchtest todir="${testout}">
@@ -529,7 +515,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<batchtest todir="${testout}">
@@ -560,7 +545,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
@@ -581,7 +565,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
@@ -602,7 +585,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
@@ -625,7 +607,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<batchtest todir="${testout}">
@@ -644,7 +625,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<batchtest todir="${testout}">
@@ -663,7 +643,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
@@ -694,7 +673,6 @@
 			<arg file="src/org/ccnx/ccn/utils/puttap.java"/>
 			<arg file="-s"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="ALL"/>
 			<jvmarg line="${DEBUG_OPTIONS}"/>
@@ -707,7 +685,6 @@
 			<arg file="src/org/ccnx/ccn/utils/puttap.java"/>
 			<arg file="-s"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="ALL"/>
 			<jvmarg line="${DEBUG_OPTIONS}"/>
@@ -724,7 +701,6 @@
 				</classpath>
 				<formatter type="xml" usefile="true"/>
 				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-				<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 				<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 				<test todir="${testout}"  name="org.ccnx.ccn.test.endtoend.EndToEndTestSource"/>
 			</junit>
@@ -734,7 +710,6 @@
 				</classpath>
 				<formatter type="xml" usefile="true"/>
 				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-				<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 				<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 				<test todir="${testout}"  name="org.ccnx.ccn.test.endtoend.EndToEndTestSink"/>
 			</junit>
@@ -753,7 +728,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
@@ -776,7 +750,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
@@ -802,7 +775,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
@@ -824,7 +796,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
@@ -846,7 +817,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<batchtest todir="${testout}" >
@@ -861,7 +831,6 @@
 			</classpath>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="${IGNORE_CONFIG_KEY}" value="true"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<batchtest todir="${testout}" >

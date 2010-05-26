@@ -18,14 +18,10 @@
 package org.ccnx.ccn.config;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.util.HashMap;
-import java.util.Properties;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
@@ -87,14 +83,9 @@ public class SystemConfiguration {
 	 */
 	public static final int SHORT_TIMEOUT = 300;
 	
-	
 	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES, DUMP_DAEMONCMD, REPO_EXITDUMP};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
 	protected static String FILE_SEP = System.getProperty("file.separator");
-	
-	public static final String CCN_CONFIG_FILE = "ccnx.config";
-	public static final String CCN_IGNORE_CONFIG_FILE_PROPERTY = "org.ccnx.ignoreconfig";
-	public static final String CCN_IGNORE_CONFIG_FILE_ENVIRONMENT_VARIABLE = "CCN_IGNORE_CONFIG_FILE";
 	
 	protected static final String CCN_PROTOCOL_PROPERTY = "org.ccnx.protocol";
 	
@@ -331,7 +322,7 @@ public class SystemConfiguration {
 
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
-			PIPELINE_SIZE = Integer.parseInt(getGradedValue(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
+			PIPELINE_SIZE = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_SIZE_PROPERTY, PIPELINE_SIZE_ENV_VAR, "4"));
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineSize must be an integer.");
@@ -340,7 +331,7 @@ public class SystemConfiguration {
 	
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
-			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(getGradedValue(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
+			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
 			//PIPELINE_SIZE = Integer.parseInt(System.getProperty(PIPELINE_SIZE_PROPERTY, "4"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineAttempts must be an integer.");
@@ -349,7 +340,7 @@ public class SystemConfiguration {
 		
 		// Allow override of default pipeline rtt multiplication factor for CCNAbstractInputStream
 		try {
-			PIPELINE_RTTFACTOR = Integer.parseInt(getGradedValue(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
+			PIPELINE_RTTFACTOR = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
 		} catch (NumberFormatException e) {
 			System.err.println("The PipelineRTTFactor must be an integer.");
 
@@ -387,7 +378,7 @@ public class SystemConfiguration {
 		
 		// Handle old-style header names
 		OLD_HEADER_NAMES = Boolean.parseBoolean(
-				getGradedValue(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
+				retrievePropertyOrEnvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
 
 	}
 
@@ -661,28 +652,6 @@ public class SystemConfiguration {
 		if ((null == value) && (null != environmentVariableName)) {
 			// Try for an environment variable.
 			value = System.getenv(environmentVariableName);
-		}
-		return value;
-	}
-	
-	/**
-	 * Retrieve a value for a variable, in this order - set as a java property on the command line, set as
-	 * an environment variable, set in the properties file. Return default if not set in any of these ways
-	 * @param javaPropertyName Name of java property for command line or properties file
-	 * @param environmentVariableName Name of environment variable
-	 * @param defaultValue default value for the variable.
-	 * @return some value for this variable
-	 */
-	public static String getGradedValue(String javaPropertyName, String environmentVariableName, String defaultValue) {
-		String value = retrievePropertyOrEnvironmentVariable(javaPropertyName, environmentVariableName);
-		if (null == value && null != javaPropertyName) {
-			// Try for variable from properties file
-			Properties props = getConfigProperties();
-			if (null != props)
-				value = props.getProperty(javaPropertyName);
-		}
-		if (null == value) {
-			return defaultValue;
 		}
 		return value;
 	}

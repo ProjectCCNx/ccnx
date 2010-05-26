@@ -687,24 +687,7 @@ public class CCNNetworkManager implements Runnable {
 			Log.warning("Non-standard CCN agent host " + _host + " per property " + PROP_AGENT_HOST);
 		}
 		
-		String proto = SystemConfiguration.getGradedValue(PROP_AGENT_PROTOCOL_KEY);
-		if (null != proto) {
-			boolean found = false;
-			for (NetworkProtocol p : NetworkProtocol.values()) {
-				String pAsString = p.toString();
-				if (proto.equalsIgnoreCase(pAsString)) {
-					Log.warning("CCN agent protocol changed to " + pAsString + " per property");
-					_protocol = p;
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				throw new IOException("Invalid protocol '" + proto + "' specified in " + PROP_AGENT_PROTOCOL_KEY);
-			}
-		} else {
-			_protocol = SystemConfiguration.AGENT_PROTOCOL;
-		}
+		_protocol = SystemConfiguration.AGENT_PROTOCOL;
 
 		if( Log.isLoggable(Level.INFO) )
 			Log.info("Contacting CCN agent at " + _host + ":" + _port);
