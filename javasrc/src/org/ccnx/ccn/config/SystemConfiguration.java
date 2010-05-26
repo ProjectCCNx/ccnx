@@ -653,6 +653,8 @@ public class SystemConfiguration {
 			// Try for an environment variable.
 			value = System.getenv(environmentVariableName);
 		}
+		if (null == value)
+			value = defaultValue;
 		return value;
 	}
 }
