@@ -235,13 +235,8 @@ public class SecureKeyCache implements Serializable {
 	public PrivateKey [] getPrivateKeys() {
 		ArrayList<PrivateKey> allKeys = new ArrayList<PrivateKey>();
 		
-		for (PrivateKey k : _myKeyMap.values()) {
-			allKeys.add(k);
-		}
-		
-		for (PrivateKey k : _privateKeyMap.values()) {
-			allKeys.add(k);
-		}
+		allKeys.addAll(_myKeyMap.values());
+		allKeys.addAll(_privateKeyMap.values());
 		
 		PrivateKey [] pkarray = new PrivateKey[allKeys.size()];
 		return allKeys.toArray(pkarray);
