@@ -244,7 +244,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		return getSegmenter().getBlockSize();
 	}
 	
-	public void setFreshnessSeconds(int freshnessSeconds) {
+	public void setFreshnessSeconds(Integer freshnessSeconds) {
 		_freshnessSeconds = freshnessSeconds;
 	}
 
