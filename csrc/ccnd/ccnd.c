@@ -643,8 +643,9 @@ find_first_match_candidate(struct ccnd_handle *h,
                                        interest_msg + ex1start,
                                        ex1end - ex1start);
                     ccn_charbuf_append_closer(namebuf);
-                    ccnd_debug_ccnb(h, __LINE__, "fastex", NULL,
-                                    namebuf->buf, namebuf->length);
+                    if (h->debug & 8)
+                        ccnd_debug_ccnb(h, __LINE__, "fastex", NULL,
+                                        namebuf->buf, namebuf->length);
                 }
             }
         }
