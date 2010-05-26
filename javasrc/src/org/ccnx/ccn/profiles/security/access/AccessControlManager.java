@@ -73,6 +73,7 @@ public abstract class AccessControlManager {
 	protected ContentName _namespace;
 	protected CCNHandle _handle;
 	protected SecureRandom _random = new SecureRandom();
+	protected AccessControlPolicyMarkerObject _policy;
 
 
 	/**
@@ -89,7 +90,9 @@ public abstract class AccessControlManager {
 	 * @throws IOException
 	 */
 	public static AccessControlManager 
-			createAccessControlManager(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ContentNotReadyException, ContentGoneException, ErrorStateException, InstantiationException, IllegalAccessException, ConfigurationException, IOException {
+			createAccessControlManager(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) 
+				throws ContentNotReadyException, ContentGoneException, ErrorStateException, 
+							InstantiationException, IllegalAccessException, IOException {
 		
 		Class<? extends AccessControlManager> acmClazz = null;
 		synchronized(NamespaceManager.class) {
@@ -121,7 +124,8 @@ public abstract class AccessControlManager {
 	 */
 	public AccessControlManager() {}
 	
-	public abstract boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException;
+	public abstract boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) 
+				throws IOException;
 
 	/**
 	 * Labels for deriving various types of keys.
@@ -132,6 +136,8 @@ public abstract class AccessControlManager {
 	}
 
 	public CCNHandle handle() { return _handle; }
+	
+	public AccessControlPolicyMarkerObject policy() { return _policy; } // if subclass set it in initialize()
 	
 	public boolean inProtectedNamespace(ContentName content) {
 		return NamespaceManager.inProtectedNamespace(_namespace, content);
@@ -373,10 +379,6 @@ public abstract class AccessControlManager {
 				}
 				return acm.getContentKeys(name, publisher);
 			}
-		} catch (ConfigurationException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			Log.logException("ConfigurationException in keysForInput", e);
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidKeyException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
 			Log.logException("InvalidKeyException in keysForInput", e);
@@ -435,10 +437,6 @@ public abstract class AccessControlManager {
 				
 				return getDefaultAlgorithmContentKeys(dataKey);
 			}
-		} catch (ConfigurationException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			Log.logException("ConfigurationException in keysForInput", e);
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidKeyException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
 			Log.logException("InvalidKeyException in keysForInput", e);
@@ -463,9 +461,9 @@ public abstract class AccessControlManager {
 	 * @return null if namespace is not under access control, or an ACM to perform 
 	 * 	operations on the name if it is.
 	 * @throws IOException
-	 * @throws ConfigurationException 
 	 */
-	public static AccessControlManager findACM(ContentName name, CCNHandle handle)  throws IOException, ConfigurationException {
+	public static AccessControlManager findACM(ContentName name, CCNHandle handle)  
+					throws IOException {
 		// See if we already have an AccessControlManager covering this namespace
 		AccessControlManager acm = handle.keyManager().getAccessControlManagerForName(name);
 		
@@ -483,15 +481,23 @@ public abstract class AccessControlManager {
 	 * TODO check to make sure we haven't already loaded the ACM
 	 * @param namespace
 	 * @param handle
-	 * @return
+	 * @return The ACM we find if one already existed, or the new one we created, if configured;
+	 * if no AC configured for this namespace, return null;
 	 * @throws ConfigurationException
 	 * @throws ContentNotReadyException
 	 * @throws ContentGoneException
 	 * @throws ErrorStateException
 	 * @throws IOException
 	 */
-	public static boolean loadAccessControlManagerForNamespace(ContentName namespace, CCNHandle handle) throws ConfigurationException, ContentNotReadyException, ContentGoneException, ErrorStateException, IOException {
+	public static AccessControlManager loadAccessControlManagerForNamespace(ContentName namespace, CCNHandle handle) 
+			throws ContentNotReadyException, ContentGoneException, ErrorStateException, IOException {
 
+		// Make sure we haven't already loaded it.
+		AccessControlManager acm = findACM(namespace, handle);
+		
+		if (null != acm) {
+			return acm;
+		}
 		// See if we have an access control policy, and if so make an access control manager for it.
 
 		ContentName policyNamespace = NamespaceManager.findPolicyControlledNamespace(namespace, handle);
@@ -499,7 +505,7 @@ public abstract class AccessControlManager {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 				Log.finer(Log.FAC_ACCESSCONTROL, "No policy controlling name: {0}", namespace);
 			}
-			return false;
+			return null;
 		}
 
 		// TODO cache nonexistence of access control policy in policy namespace. Here or in NSM?
@@ -510,22 +516,22 @@ public abstract class AccessControlManager {
 				Log.finer(Log.FAC_ACCESSCONTROL, "No access control policy in policy namespace: {0}", policyNamespace);
 			}
 			// TODO add to negative cache
-			return false;
+			return null;
 		}
 
 		try {
-			AccessControlManager acm = AccessControlManager.createAccessControlManager(ro, handle);
+			acm = AccessControlManager.createAccessControlManager(ro, handle);
 			handle.keyManager().rememberAccessControlManager(acm);
-			return true;
+			return acm;
 			
 		} catch (InstantiationException e) {
 			Log.severe("InstantiationException attempting to create access control manager: " + e.getMessage());
 			Log.warningStackTrace(e);
-			throw new ConfigurationException("InstantiationException attempting to create access control manager: " + e.getMessage(), e);
+			throw new ErrorStateException("InstantiationException attempting to create access control manager: " + e.getMessage(), e);
 		} catch (IllegalAccessException e) {
 			Log.severe("IllegalAccessException attempting to create access control manager: " + e.getMessage());
 			Log.warningStackTrace(e);
-			throw new ConfigurationException("IllegalAccessException attempting to create access control manager: " + e.getMessage(), e);
+			throw new ErrorStateException("IllegalAccessException attempting to create access control manager: " + e.getMessage(), e);
 		}
 	}
 
@@ -558,5 +564,12 @@ public abstract class AccessControlManager {
 		
 		return true;
 	}
+	
+	/**
+	 * Each access control manager subclass should shut down any ongoing network operations.
+	 * We don't own our handle, so can't close that. But any outstanding interests should be
+	 * canceled; filters should be unregistered, and so on.
+	 */
+	public void shutdown() {}
 
 }

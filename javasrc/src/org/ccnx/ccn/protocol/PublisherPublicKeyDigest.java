@@ -22,6 +22,7 @@ import java.math.BigInteger;
 import java.net.URISyntaxException;
 import java.security.PublicKey;
 import java.util.Arrays;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
@@ -30,6 +31,7 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.security.KeyProfile;
@@ -150,6 +152,14 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 		_publisherPublicKeyDigest = decoder.readBinaryElement(getElementLabel());
 		if (null == _publisherPublicKeyDigest) {
 			throw new ContentDecodingException("Cannot parse publisher key digest.");
+		}
+		if (_publisherPublicKeyDigest.length > PublisherID.PUBLISHER_ID_LEN) {
+			if (Log.isLoggable(Level.WARNING)) {
+				Log.warning("Truncating too-long PublisherPublicKeyDigest: {0}", CCNDigestHelper.printBytes(_publisherPublicKeyDigest, 32));
+			}
+			byte [] digest = new byte[PublisherID.PUBLISHER_ID_LEN];
+			System.arraycopy(_publisherPublicKeyDigest, 0, digest, 0, PublisherID.PUBLISHER_ID_LEN);
+			_publisherPublicKeyDigest = digest;
 		}
 	}
 

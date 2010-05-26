@@ -605,19 +605,61 @@ content_skiplist_remove(struct ccnd_handle *h, struct content_entry *content)
     ccn_indexbuf_destroy(&content->skiplinks);
 }
 
-
 static struct content_entry *
 find_first_match_candidate(struct ccnd_handle *h,
-    const unsigned char *interest_msg,
-    const struct ccn_parsed_interest *pi)
+                           const unsigned char *interest_msg,
+                           const struct ccn_parsed_interest *pi)
 {
-    int d;
+    int res;
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     size_t start = pi->offset[CCN_PI_B_Name];
     size_t end = pi->offset[CCN_PI_E_Name];
-    d = content_skiplist_findbefore(h, interest_msg + start, end - start,
-                                    NULL, pred);
-    if (d == 0)
+    struct ccn_charbuf *namebuf = NULL;
+    if (pi->offset[CCN_PI_B_Exclude] < pi->offset[CCN_PI_E_Exclude]) {
+        /* Check for <Exclude><Any/><Component>... fast case */
+        struct ccn_buf_decoder decoder;
+        struct ccn_buf_decoder *d;
+        size_t ex1start;
+        size_t ex1end;
+        d = ccn_buf_decoder_start(&decoder,
+                                  interest_msg + pi->offset[CCN_PI_B_Exclude],
+                                  pi->offset[CCN_PI_E_Exclude] -
+                                  pi->offset[CCN_PI_B_Exclude]);
+        ccn_buf_advance(d);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+            ccn_buf_advance(d);
+            ccn_buf_check_close(d);
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+                ex1start = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
+                ccn_buf_advance_past_element(d);
+                ex1end = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
+                if (d->decoder.state >= 0) {
+                    namebuf = ccn_charbuf_create();
+                    ccn_charbuf_append(namebuf,
+                                       interest_msg + start,
+                                       end - start);
+                    namebuf->length--;
+                    ccn_charbuf_append(namebuf,
+                                       interest_msg + ex1start,
+                                       ex1end - ex1start);
+                    ccn_charbuf_append_closer(namebuf);
+                    if (h->debug & 8)
+                        ccnd_debug_ccnb(h, __LINE__, "fastex", NULL,
+                                        namebuf->buf, namebuf->length);
+                }
+            }
+        }
+    }
+    if (namebuf == NULL) {
+        res = content_skiplist_findbefore(h, interest_msg + start, end - start,
+                                          NULL, pred);
+    }
+    else {
+        res = content_skiplist_findbefore(h, namebuf->buf, namebuf->length,
+                                          NULL, pred);
+        ccn_charbuf_destroy(&namebuf);
+    }
+    if (res == 0)
         return(NULL);
     return(content_from_accession(h, pred[0]->buf[0]));
 }

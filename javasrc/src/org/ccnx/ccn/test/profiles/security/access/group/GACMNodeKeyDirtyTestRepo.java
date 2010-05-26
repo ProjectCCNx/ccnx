@@ -127,20 +127,20 @@ public class GACMNodeKeyDirtyTestRepo {
 		G0Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[0])));
 		G0Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[1])));
 		groupName[0] = "usergroup0-" + rand.nextInt(10000);
-		group[0] = acm.groupManager().createGroup(groupName[0], G0Members);
+		group[0] = acm.groupManager().createGroup(groupName[0], G0Members, 0);
 		
 		// create group1 containing group0
 		ArrayList<Link> G1Members = new ArrayList<Link>();
 		G1Members.add(new Link(ContentName.fromNative(groupNamespace, groupName[0])));
 		groupName[1] = "usergroup1-" + rand.nextInt(10000);
-		group[1] = acm.groupManager().createGroup(groupName[1], G1Members);
+		group[1] = acm.groupManager().createGroup(groupName[1], G1Members, 0);
 		
 		// create group2 containing user0 and user2
 		ArrayList<Link> G2Members = new ArrayList<Link>();
 		G2Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[0])));
 		G2Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[2])));
 		groupName[2] = "usergroup2-" + rand.nextInt(10000);
-		group[2] = acm.groupManager().createGroup(groupName[2], G2Members);
+		group[2] = acm.groupManager().createGroup(groupName[2], G2Members, 0);
 
 		// check the size of the groups
 		Assert.assertEquals(2, group[0].membershipList().membershipList().size());

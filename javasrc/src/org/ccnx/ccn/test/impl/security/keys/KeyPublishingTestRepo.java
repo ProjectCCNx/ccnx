@@ -29,6 +29,7 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.BeforeClass;
@@ -63,7 +64,7 @@ public class KeyPublishingTestRepo {
 		for (int i=0; i < NUM_USERS; ++i) {
 			userHandles[i] = testUsers.getHandleForUser(userNames[i]);
 		}
-		userKeyObjects = testUsers.publishUserKeysToRepository(testHelper.getClassChildName(USER_NAMESPACE));
+		userKeyObjects = testUsers.publishUserKeysToRepositorySetLocators(testHelper.getClassChildName(USER_NAMESPACE));
 	}
 	
 	@Test
@@ -71,8 +72,7 @@ public class KeyPublishingTestRepo {
 		Log.info("User {0} has a key {1} published with key locator {2}", userNames[0], userKeyObjects[0].getVersionedName(), userKeyObjects[0].getPublisherKeyLocator());
 		// Set a key locator to be the user location we just published to, and see if we use that when we publish
 		// Given what TUD does, the current locator should be unversioned, no publisher.
-		KeyLocator newKeyLocator = new KeyLocator(userKeyObjects[0].getVersionedName(), userKeyObjects[0].getContentPublisher());
-		userHandles[0].keyManager().setKeyLocator(null, newKeyLocator);
+		
 		// Write and see what KL we get.
 		CCNStringObject testString = new 
 				CCNStringObject(testHelper.getTestChildName("testSetLocator", "testString"), "A test!", 
@@ -80,11 +80,10 @@ public class KeyPublishingTestRepo {
 		testString.save();
 		Log.info("Wrote data {0} publisher {1} KL {2}", testString.getVersionedName(), testString.getContentPublisher(), testString.getPublisherKeyLocator());
 		
-		Assert.assertFalse(testString.getPublisherKeyLocator().equals(userKeyObjects[0].getPublisherKeyLocator()));
-		Assert.assertEquals(newKeyLocator, testString.getPublisherKeyLocator());
+		Assert.assertEquals(testString.getPublisherKeyLocator(), userHandles[0].keyManager().getKeyLocator((PublisherPublicKeyDigest)null));
 		// now read it back in and see what we get
 		CCNStringObject readString = new CCNStringObject(testString.getBaseName(), userHandles[1]);
-		Assert.assertEquals(newKeyLocator, readString.getPublisherKeyLocator());
+		Assert.assertEquals(testString.getPublisherKeyLocator(), readString.getPublisherKeyLocator());
 		
 		// Publish a key somewhere other than the regular place, and see if we can use it as a key locator.
 		// First, hand-build self-signed key object. Need to improve built-in API for this.

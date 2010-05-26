@@ -22,6 +22,13 @@ package org.ccnx.ccn.io.content;
  */
 public interface UpdateListener {
 	
-	public void newVersionAvailable(CCNNetworkObject<?> newVersion);
+	/**
+	 * Notification when a new version is available of a given object (the object's data and
+	 * version information will already have been updated to reflect the new version).
+	 * @param newVersion The newly updated object.
+	 * @param wasSave If true, someone called save() on this particular object, if false,
+	 *   the object received new data from the network.
+	 */
+	public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave);
 
 }

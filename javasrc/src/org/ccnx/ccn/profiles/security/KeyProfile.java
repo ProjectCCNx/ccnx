@@ -118,7 +118,7 @@ public class KeyProfile implements CCNProfile {
 	}
 
 	/**
-	 * Returns whether a specified name component is the name of a wrapped key
+	 * Returns whether a specified name component is a key id name component.
 	 * @param wnkNameComponent the name component
 	 * @return
 	 */

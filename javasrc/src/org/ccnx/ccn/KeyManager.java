@@ -378,6 +378,8 @@ public abstract class KeyManager {
 
 	public abstract KeyLocator getStoredKeyLocator(PublisherPublicKeyDigest keyID);
 
+	public abstract void clearStoredKeyLocator(PublisherPublicKeyDigest keyID);
+		
 	/**
 	 * Remember the key locator to use for a given key. Use
 	 * this to publish this key in the future if not overridden by method
@@ -794,28 +796,6 @@ public abstract class KeyManager {
 			signingKeyID = keyManager.getDefaultKeyID();
 		}
 
-		// Reallly do want == here
-		if ((null == signingKeyLocator) || (SELF_SIGNED_KEY_LOCATOR == signingKeyLocator)) {
-			
-			KeyLocator existingLocator = keyManager.getKeyLocator(signingKeyID);
-			
-			// If we've asked for this to be self-signed, or we have made the default KEY
-			// type key locator, make this a self-signed key.
-			if ((SELF_SIGNED_KEY_LOCATOR == signingKeyLocator) || 
-					(existingLocator.type() == KeyLocatorType.KEY)) {
-				PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(keyToPublish);
-				if (signingKeyID.equals(keyDigest)) {
-					// Make a self-referential key locator. For now do not include the
-					// version.
-					existingLocator = new KeyLocator(new KeyName(keyName, signingKeyID));
-					if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
-						Log.finer(Log.FAC_KEYS, "Overriding constructed key locator of type KEY, making self-referential locator {0}", existingLocator);
-					}
-				}
-			}
-			signingKeyLocator = existingLocator;
-		}	
-		
 		// Here is where we get tricky. We might really want the key to be of a particular
 		// version. In general, as we use the network objects to write versioned versioned stuff,
 		// we might not be able to take the last component of a name, if versioned, as the version
@@ -830,6 +810,38 @@ public abstract class KeyManager {
 		CCNTime keyVersion = null; // do we force a version?
 		Tuple<ContentName, byte []> nameAndVersion = VersioningProfile.cutTerminalVersion(keyName);
 
+		if (null != nameAndVersion.second()) {
+			keyVersion = VersioningProfile.getVersionComponentAsTimestamp(nameAndVersion.second());
+		} else {
+			keyVersion = new CCNTime(); // so we can use it in locator
+		}
+		
+		// Set key locator if not specified, include version for self-signed.
+		// Really do want == here
+		if ((null == signingKeyLocator) || (SELF_SIGNED_KEY_LOCATOR == signingKeyLocator)) {
+			
+			KeyLocator existingLocator = keyManager.getKeyLocator(signingKeyID);
+			
+			// If we've asked for this to be self-signed, or we have made the default KEY
+			// type key locator, make this a self-signed key.
+			if ((SELF_SIGNED_KEY_LOCATOR == signingKeyLocator) || 
+					(existingLocator.type() == KeyLocatorType.KEY)) {
+				
+				PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(keyToPublish);
+				if (signingKeyID.equals(keyDigest)) {
+					// Make a self-referential key locator. For now do not include the
+					// version.
+					existingLocator = new KeyLocator(
+							new KeyName(VersioningProfile.addVersion(keyName, keyVersion), signingKeyID));
+					
+					if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
+						Log.finer(Log.FAC_KEYS, "Overriding constructed key locator of type KEY, making self-referential locator {0}", existingLocator);
+					}
+				}
+			}
+			signingKeyLocator = existingLocator;
+		}			
+
 		PublicKeyObject keyObject = null;
 		if (null != flowController) {
 			// If a flow controller was specified, use that
@@ -841,15 +853,13 @@ public abstract class KeyManager {
 											signingKeyID, signingKeyLocator, handle);
 		}
 		
-		if (null != nameAndVersion.second()) {
-			keyVersion = VersioningProfile.getVersionComponentAsTimestamp(nameAndVersion.second());
-		}
+
 		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
 			Log.info(Log.FAC_KEYS, "publishKey: key not previously published, making new key object {0} with version {1} displayed as {2}", 
 				keyObject.getVersionedName(), keyVersion, 
 				((null != nameAndVersion.second()) ? ContentName.componentPrintURI(nameAndVersion.second()) : "<no version>"));
 		}
-		
+
 		// Eventually may want to find something already published and link to it, but be simple here.
 
 		if (!keyObject.save(keyVersion)) {

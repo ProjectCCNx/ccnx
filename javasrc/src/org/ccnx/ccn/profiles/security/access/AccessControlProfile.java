@@ -3,6 +3,7 @@ package org.ccnx.ccn.profiles.security.access;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.namespace.NamespaceProfile;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class AccessControlProfile implements CCNProfile {
@@ -112,6 +113,15 @@ public class AccessControlProfile implements CCNProfile {
 	 */
 	public static boolean isAccessControlPolicyName(ContentName name) {
 		return name.contains(ACCESS_CONTROL_POLICY_NAME_BYTES);
+	}
+	
+	/**
+	 * Get the policy marker name for a given namespace to access control.
+	 */
+	public static ContentName getAccessControlPolicyMarkerName(ContentName accessControlNamespace) {
+		ContentName policyPrefix = NamespaceProfile.policyNamespace(accessControlNamespace);
+		ContentName policyMarkerName = AccessControlProfile.getAccessControlPolicyName(policyPrefix);
+		return policyMarkerName;
 	}
 	
 }

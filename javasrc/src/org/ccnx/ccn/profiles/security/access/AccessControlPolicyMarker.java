@@ -37,10 +37,6 @@ import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.profiles.namespace.NamespaceProfile;
 import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.namespace.PolicyMarker;
-import org.ccnx.ccn.profiles.security.access.group.ACL;
-import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
-import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
@@ -95,31 +91,31 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 
 	/**
 	 * Set up a part of the namespace to be under access control.
-	 * This method writes the root block and root ACL to a repository.
+	 * This method writes the root block to a repository. Type-specific
+	 * initialization (e.g. writing ACLs) needs to be handled by the appropriate
+	 * subclass.
 	 * @param name The top of the namespace to be under access control
-	 * @param acl The access control list to be used for the root of the
-	 * namespace under access control.
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 */
-	public static void create(ContentName name, ACL acl, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException {
+	public static void create(ContentName name, SaveType saveType, CCNHandle handle) throws IOException {
 		AccessControlPolicyMarker r = new AccessControlPolicyMarker();
 
 		ContentName policyPrefix = NamespaceProfile.policyNamespace(name);
 		ContentName policyMarkerName = AccessControlProfile.getAccessControlPolicyName(policyPrefix);
 		AccessControlPolicyMarkerObject ro = new AccessControlPolicyMarkerObject(policyMarkerName, r, saveType, handle);
 		ro.save();
-		
-		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
-		aclo.save();
 	}
 	
 	/**
 	 * Set up a part of the namespace to be under access control.
-	 * This method writes the root block and root ACL to a repository.
+	 * This method writes the root block to a repository.
+	 * This needs to be generic, and can't
+	 * know about particular access control types. It will make and initialize
+	 * an access control manager of the appropriate type for this namespace,
+	 * load it into the search path, and hand it back. Type-specific initialization
+	 * must be done by the caller.
 	 * @param name The top of the namespace to be under access control
-	 * @param acl The access control list to be used for the root of the
-	 * namespace under access control.
 	 * @param parameterizedNames
 	 * @param parameters
 	 * @param saveType
@@ -127,8 +123,9 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 	 * @throws IOException
 	 * @throws ConfigurationException
 	 */
-	public static void create(ContentName name, ContentName profileName, ACL acl, ArrayList<ParameterizedName> parameterizedNames,
-			KeyValueSet parameters, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException, InvalidKeyException {
+	public static AccessControlManager create(ContentName name, ContentName profileName, ArrayList<ParameterizedName> parameterizedNames,
+			KeyValueSet parameters, SaveType saveType, CCNHandle handle) throws IOException, InvalidKeyException {
+		
 		AccessControlPolicyMarker r = new AccessControlPolicyMarker(profileName, parameterizedNames, parameters);
 		
 		ContentName policyPrefix = NamespaceProfile.policyNamespace(name);
@@ -136,10 +133,17 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 		AccessControlPolicyMarkerObject ro = new AccessControlPolicyMarkerObject(policyMarkerName, r, saveType, handle);
 		ro.save();
 
-		GroupAccessControlManager gacm = new GroupAccessControlManager();
-		gacm.initialize(ro, handle);
-		// create ACL and NK at the root of the namespace under access control
-		gacm.initializeNamespace(acl);
+		AccessControlManager acm;
+		try {
+			acm = AccessControlManager.createAccessControlManager(ro, handle);
+		} catch (InstantiationException e) {
+			throw new IOException("Cannot create access control manager of type " + profileName + ": " + e);
+		} catch (IllegalAccessException e) {
+			throw new IOException("Cannot create access control manager of type " + profileName + ": " + e);
+		}
+		handle.keyManager().rememberAccessControlManager(acm);
+		
+		return acm;
 	}	
 	
 	public AccessControlPolicyMarker(ContentName profileName) {

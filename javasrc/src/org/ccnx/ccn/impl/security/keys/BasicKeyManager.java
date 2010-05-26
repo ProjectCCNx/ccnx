@@ -416,8 +416,13 @@ public class BasicKeyManager extends KeyManager {
 			}
 		}
 
-		// TODO fill in the rest
 		// Load values from our configuration file, which should be read in UserConfiguration.
+		if (!UserConfiguration.useKeyConfiguration()) {
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "Not loading key manager configuration data in response to user configuration variable.");
+			}
+			return true;
+		}
 		
 		// Currently have saved data override command line, which might be bad...
 		// also use that to preconfigure things like keystores and such
@@ -470,6 +475,17 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public void saveConfigurationState() throws FileNotFoundException, IOException {
+
+		// This prevents us from writing the data out to a file, where it could interact badly with 
+		// user state (e.g. if we're a unit test). It will still be changed in the runtime data,
+		// allowing unit tests to use it within a single execution.
+		if (!UserConfiguration.useKeyConfiguration()) {
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "Not saving key manager configuration data in response to user configuration variable.");
+			}
+			return;
+		}
+		
 		File configurationFile = new File(_keyStoreDirectory, _configurationFileName); 
 		
 		// Update configuration data:
@@ -501,6 +517,7 @@ public class BasicKeyManager extends KeyManager {
 				Log.warning("Unable to delete configuration state file {0}.", configurationFile.getAbsolutePath());
 			}
 		}
+		clearStoredKeyLocator(null);
 	}
 			
 	/**
@@ -794,6 +811,14 @@ public class BasicKeyManager extends KeyManager {
 		}
 		return _currentKeyLocators.containsKey(keyID);
 	}
+	
+	@Override 
+	public void clearStoredKeyLocator(PublisherPublicKeyDigest keyID) {
+		if (null == keyID) {
+			keyID = getDefaultKeyID();
+		}
+		_currentKeyLocators.remove(keyID);
+	}
 
 	/**
 	 * Helper method to get the key locator for one of our signing keys.
@@ -955,12 +980,13 @@ public class BasicKeyManager extends KeyManager {
 			keyName = getDefaultKeyName(keyDigest);
 		}
 
-		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
-			Log.info(Log.FAC_KEYS, "publishKey: publishing key {0} under specified key name {1}", keyDigest, keyName);
-
 		PublicKeyObject keyObject =  
 			serveKey(keyName, keyToPublish, signingKeyID, signingKeyLocator);
 		
+		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO))
+			Log.info(Log.FAC_KEYS, "publishKey: published key {0}\n under specified key name {1}\n key locator: {2}", 
+					keyDigest, keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
+
 		if (!haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
 			// So once we publish self-signed key object, we store a pointer to that
 			// to use. Don't override any manually specified values.

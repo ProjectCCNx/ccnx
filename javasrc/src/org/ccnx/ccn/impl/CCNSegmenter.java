@@ -338,10 +338,9 @@ public class CCNSegmenter {
 		if (null == publisher) {
 			publisher = _handle.keyManager().getDefaultKeyID();
 		}
-		PrivateKey signingKey = _handle.keyManager().getSigningKey(publisher);
 
 		if (null == locator)
-			locator = _handle.keyManager().getKeyLocator(signingKey);
+			locator = _handle.keyManager().getKeyLocator(publisher);
 
 		if (null == type) {
 			type = ContentType.DATA;
@@ -482,7 +481,7 @@ public class CCNSegmenter {
 		PrivateKey signingKey = getFlowControl().getHandle().keyManager().getSigningKey(publisher);
 
 		if (null == locator)
-			locator = getFlowControl().getHandle().keyManager().getKeyLocator(signingKey);
+			locator = getFlowControl().getHandle().keyManager().getKeyLocator(publisher);
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
 		// DKS -- someone should have done this for us already, can we remove it?
@@ -584,7 +583,7 @@ public class CCNSegmenter {
 		PrivateKey signingKey = getFlowControl().getHandle().keyManager().getSigningKey(publisher);
 
 		if (null == locator)
-			locator = getFlowControl().getHandle().keyManager().getKeyLocator(signingKey);
+			locator = getFlowControl().getHandle().keyManager().getKeyLocator(publisher);
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
 		getFlowControl().addNameSpace(rootName);
@@ -676,7 +675,7 @@ public class CCNSegmenter {
 		PrivateKey signingKey = _handle.keyManager().getSigningKey(publisher);
 
 		if (null == locator)
-			locator = _handle.keyManager().getKeyLocator(signingKey);
+			locator = _handle.keyManager().getKeyLocator(publisher);
 
 		if (null == type) {
 			type = ContentType.DATA;
