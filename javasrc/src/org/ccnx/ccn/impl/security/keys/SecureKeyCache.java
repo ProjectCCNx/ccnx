@@ -24,10 +24,11 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.X509Certificate;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.TreeMap;
+import java.io.Serializable;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
@@ -44,8 +45,15 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * TODO: provide mechanism to save and reload at least the non-keystore keys
  * as encrypted CCNx content.
  */
-public class SecureKeyCache {
+public class SecureKeyCache implements Serializable {
 	
+	
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 2652940059623137734L;
+
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 	
 	/** Map the digest of a key to the key. */
@@ -225,10 +233,13 @@ public class SecureKeyCache {
 	}
 	
 	public PrivateKey [] getPrivateKeys() {
-		Collection<PrivateKey> myKeys = _myKeyMap.values();
-		myKeys.addAll(_privateKeyMap.values());
-		PrivateKey [] pkarray = new PrivateKey[myKeys.size()];
-		return myKeys.toArray(pkarray);
+		ArrayList<PrivateKey> allKeys = new ArrayList<PrivateKey>();
+		
+		allKeys.addAll(_myKeyMap.values());
+		allKeys.addAll(_privateKeyMap.values());
+		
+		PrivateKey [] pkarray = new PrivateKey[allKeys.size()];
+		return allKeys.toArray(pkarray);
 	}
 	
 	/**

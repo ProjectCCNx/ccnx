@@ -271,7 +271,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 		// Register a filter for the interest we are likely to actually get. 
 		keyManager.respondToKeyRequests(serviceKeyPrefix);
 
-		// Need a way to override any stored key locator.
-		keyManager.publishSelfSignedKey(serviceKeyName, serviceKey);
+		// Need a way to override any stored key locator. Don't remember this key locator.
+		keyManager.publishSelfSignedKey(serviceKeyName, serviceKey, false);
 	}
 }

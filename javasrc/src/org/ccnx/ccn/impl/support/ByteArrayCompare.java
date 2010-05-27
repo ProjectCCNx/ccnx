@@ -18,11 +18,21 @@
 package org.ccnx.ccn.impl.support;
 
 import java.util.Comparator;
+import java.io.Serializable;
 
 /**
  * Needed to sort byte arrays to build exclude filters
  */
-public class ByteArrayCompare implements Comparator<byte[] >{
+public class ByteArrayCompare implements Serializable, Comparator<byte[] >{
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -5953709076351116596L;
+
+	/**
+	 * 
+	 */
 
 	public int compare(byte[] o1, byte[] o2) {
 		return DataUtils.compare(o1, o2);

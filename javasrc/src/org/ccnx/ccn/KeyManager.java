@@ -528,7 +528,7 @@ public abstract class KeyManager {
 			Log.warning("Cannot publish key {0} to name {1}, do not have public key in cache.", keyToPublish, keyName);
 			return null;
 		}
-		return publishKey(keyName, theKey, signingKeyID, signingKeyLocator);
+		return publishKey(keyName, theKey, signingKeyID, signingKeyLocator, true);
 	}
 	
 	/**
@@ -544,7 +544,8 @@ public abstract class KeyManager {
 	 * @throws InvalidKeyException
 	 */
 	public PublicKeyObject publishSelfSignedKey(ContentName keyName, 
-						   PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException {
+						   PublisherPublicKeyDigest keyToPublish,
+						   boolean learnKeyLocator) throws InvalidKeyException, IOException {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
 		} 
@@ -553,7 +554,7 @@ public abstract class KeyManager {
 			Log.warning("Cannot publish key {0} to name {1}, do not have public key in cache.", keyToPublish, keyName);
 			return null;
 		}
-		return publishKey(keyName, theKey, keyToPublish, SELF_SIGNED_KEY_LOCATOR);
+		return publishKey(keyName, theKey, keyToPublish, SELF_SIGNED_KEY_LOCATOR, learnKeyLocator);
 	}
 
 
@@ -572,6 +573,10 @@ public abstract class KeyManager {
 	 * @param keyName the name under which the key should be published. For the moment, keys are
 	 * 		  unversioned.
 	 * @param keyToPublish can be null, in which case we publish our own default public key
+	 * @param signingKeyID key to sign with, if we wish to override default
+	 * @param signingKeyLocator locator to use, if we wish to override default; if null, one will
+	 * 	be computed
+	 * @param learnKeyLocator do we remember the key locator used as the default for this signing key
 	 * @throws InvalidKeyException 
 	 * @throws IOException
 	 * @throws ConfigurationException 
@@ -579,7 +584,8 @@ public abstract class KeyManager {
 	public abstract PublicKeyObject publishKey(ContentName keyName, 
 			   PublicKey keyToPublish,
 			   PublisherPublicKeyDigest signingKeyID,
-			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException;
+			   KeyLocator signingKeyLocator,
+			   boolean learnKeyLocator) throws InvalidKeyException, IOException;
 
 	/**
 	 * Publish a key at a certain name, ensuring that it is stored in a repository. Will throw an
