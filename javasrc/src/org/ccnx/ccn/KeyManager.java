@@ -297,6 +297,8 @@ public abstract class KeyManager {
 	 */
 	public abstract SecureKeyCache getSecureKeyCache();
 
+	public abstract void saveSecureKeyCache() throws FileNotFoundException, IOException;
+
 	public abstract void saveConfigurationState() throws FileNotFoundException,
 			IOException;
 	
