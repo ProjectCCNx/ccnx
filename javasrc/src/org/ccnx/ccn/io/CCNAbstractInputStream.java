@@ -1267,13 +1267,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	 * Together with firstSegmentNumber() and getBaseName() this method may be used to
 	 * identify the stream content unambiguously.
 	 * 
-<<<<<<< HEAD
-	 * @return The digest of the first segment of this stream
-=======
 	 * @return The digest of the first segment of this stream
 	 * @throws NoMatchingContentException if no content available
 	 * @throws IOException on communication error
->>>>>>> master
 	 */
 	public byte[] getFirstDigest() throws NoMatchingContentFoundException, IOException {
 		if (null == _firstSegment) {

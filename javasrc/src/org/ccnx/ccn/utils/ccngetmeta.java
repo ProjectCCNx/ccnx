@@ -137,14 +137,14 @@ public class ccngetmeta {
 				output.flush();
 			}
 			System.out.println("ccngetfile took: "+(System.currentTimeMillis() - starttime)+"ms");
-			System.out.println("Retrieved content " + args[startArg + 1] + " got " + readtotal + " bytes.");
+			System.out.println("Retrieved content " + args[1] + " got " + readtotal + " bytes.");
 			System.exit(0);
 
 		} catch (ConfigurationException e) {
 			System.out.println("Configuration exception in ccngetfile: " + e.getMessage());
 			e.printStackTrace();
 		} catch (MalformedContentNameStringException e) {
-			System.out.println("Malformed name: " + args[startArg] + " " + e.getMessage());
+			System.out.println("Malformed name: " + args[0] + " " + e.getMessage());
 			e.printStackTrace();
 		} catch (IOException e) {
 			System.out.println("Cannot write file or read content. " + e.getMessage());

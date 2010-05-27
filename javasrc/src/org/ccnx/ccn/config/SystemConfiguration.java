@@ -242,11 +242,6 @@ public class SystemConfiguration {
 	public static final int DEBUG_RADIX = 34;
 	
 	/**
-	 * Property to allow/disallow logging for individual modules
-	 */
-	protected static TreeMap<String, Boolean> loggingInfo = new TreeMap<String, Boolean>();
-
-	/**
 	 * Obtain the management bean for this runtime if it is available.
 	 * The class of the management bean is discovered at runtime and there
 	 * should be no static dependency on any particular bean class.

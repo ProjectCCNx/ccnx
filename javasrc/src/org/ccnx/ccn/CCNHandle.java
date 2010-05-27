@@ -253,7 +253,7 @@ public class CCNHandle implements CCNBase {
 	 * and typically should only be called by a flow controller, in response to
 	 * a received Interest. Attempting to write to ccnd without having first
 	 * received a corresponding Interest violates flow balance, and the content
-	 * may be dropped.
+	 * will be dropped.
 	 * @param co the content object to write. This should be complete and well-formed -- signed and
 	 * 	so on.
 	 * @return the object that was put if successful, otherwise null.

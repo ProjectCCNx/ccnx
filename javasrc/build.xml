@@ -284,10 +284,6 @@
 	     requires that a repo *not* be running when it starts -->
 	<target name="test" depends="test-repo, test-protocol, test-impl, test-io, test-endtoend">
 	</target>
-	
-	<target name="ignore-config">
-		<sysproperty key="org.ccnx.ignoreconfig" value="${true}"/>
-	</target>
 
 	<target name="test-protocol" depends="test-protocol-without-repo, test-protocol-with-repo">
 	</target>
