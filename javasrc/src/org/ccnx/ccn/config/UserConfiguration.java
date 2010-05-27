@@ -35,6 +35,7 @@ public class UserConfiguration {
 
 	
 	protected static final String DEFAULT_KEYSTORE_FILE_NAME = ".ccnx_keystore";
+	protected static final String DEFAULT_KEY_CACHE_FILE_NAME = "secure_key_cache.bin";
 	protected static final String KEY_DIRECTORY = "keyCache";
 	protected static final String ADDRESSBOOK_FILE_NAME = "ccnx_addressbook.xml";
 
@@ -331,6 +332,10 @@ public class UserConfiguration {
 															DEFAULT_CONFIGURATION_FILE_NAME);
 		}
 		return _configurationFileName; 
+	}
+	
+	public static String keyCacheFileName() {
+		return DEFAULT_KEY_CACHE_FILE_NAME;
 	}
 	
 	public static void setKeystorePassword(String password) {
