@@ -292,4 +292,15 @@ public class SecureKeyCache implements Serializable {
 		// Works on symmetric and public.
 		return CCNDigestHelper.digest(key.getEncoded());
 	}
+	
+	/**
+	 * Return a total count of keys in this cache.
+	 * @return
+	 */
+	public int size() {
+		int count = _keyMap.size();
+		count += _myKeyMap.size();
+		count += _privateKeyMap.size();
+		return count;
+	}
 }
