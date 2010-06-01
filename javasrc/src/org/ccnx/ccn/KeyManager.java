@@ -837,10 +837,10 @@ public abstract class KeyManager {
 				
 				PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(keyToPublish);
 				if (signingKeyID.equals(keyDigest)) {
-					// Make a self-referential key locator. For now do not include the
-					// version.
+					// Make a self-referential key locator. Include the version, in case we are not using the key ID in the name.
+					// People wanting versionless key locators need to construct their own.
 					existingLocator = new KeyLocator(
-							new KeyName(VersioningProfile.addVersion(keyName, keyVersion), signingKeyID));
+							new KeyName(VersioningProfile.addVersion(nameAndVersion.first(), keyVersion), signingKeyID));
 					
 					if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
 						Log.finer(Log.FAC_KEYS, "Overriding constructed key locator of type KEY, making self-referential locator {0}", existingLocator);
@@ -876,7 +876,9 @@ public abstract class KeyManager {
 			}
 		} else {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
-				Log.info(Log.FAC_KEYS, "Published key {0} to name {1} with key locator {2}.", keyToPublish, keyObject.getVersionedName(), signingKeyLocator);
+				Log.info(Log.FAC_KEYS, "Published key {0} to name {1} with key locator {2}; ephemeral digest {3}.", 
+						keyToPublish, keyObject.getVersionedName(), signingKeyLocator,
+						ContentName.componentPrintURI(keyObject.getContentDigest()));
 			}
 		}
 		keyManager.getPublicKeyCache().remember(keyObject);
