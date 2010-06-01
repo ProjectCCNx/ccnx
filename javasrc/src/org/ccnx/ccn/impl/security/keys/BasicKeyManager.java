@@ -409,7 +409,9 @@ public class BasicKeyManager extends KeyManager {
 	
 	/**
 	 * Load values of relevance to a key manager. Most importantly, loads default
-	 * key locator information
+	 * key locator information. If the system parameter UserConfiguration.useKeyConfiguration()
+	 * (settable from an environment variable, a Java property, or programmatically) is false,
+	 * we do not load our saved key locators/identities, or our saved secret key cache.
 	 * @return true if successful, false on error
 	 * @throws ConfigurationException
 	 */
@@ -431,6 +433,7 @@ public class BasicKeyManager extends KeyManager {
 		}
 
 		// Load values from our configuration file, which should be read in UserConfiguration.
+		// If useKeyConfiguration() is false, we do not read configured identities or cached secret/private keys.
 		if (!UserConfiguration.useKeyConfiguration()) {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
 				Log.info(Log.FAC_KEYS, "Not loading key manager configuration data in response to user configuration variable.");
@@ -596,7 +599,8 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	/**
-	 * Need a way to clear this programmatically. Call this before initialize().
+	 * Need a way to clear this programmatically. Call this before initialize(). This
+	 * deletes our saved configuration state, key files and stored key cache.
 	 */
 	@Override 
 	public void clearSavedConfigurationState() throws FileNotFoundException, IOException {
@@ -610,6 +614,16 @@ public class BasicKeyManager extends KeyManager {
 			}
 		}
 		clearStoredKeyLocator(null);
+		
+		File keyCacheFile = new File(_keyStoreDirectory, _keyCacheFileName); 
+		if (keyCacheFile.exists()) {
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "Deleting secret/private key cache file {0}.", keyCacheFile.getAbsolutePath());
+			}
+			if (!keyCacheFile.delete()) {
+				Log.warning("Unable to delete secret/private key cache file {0}.", keyCacheFile.getAbsolutePath());
+			}
+		}
 	}
 			
 	/**
