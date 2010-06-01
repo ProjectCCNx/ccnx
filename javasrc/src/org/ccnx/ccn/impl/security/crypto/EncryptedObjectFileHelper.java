@@ -35,19 +35,21 @@ public class EncryptedObjectFileHelper {
 						Serializable objectToWrite, PublicKey keyToEncryptFor)
 				throws FileNotFoundException, IOException {
 		
-		// TODO -- actually encrypt
+		// TODO -- actually encrypt -- put the data through a CipherOutputStream after the OOS
+		// write the key block to the real output stream before attaching the COS
 		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(outputFile));
 		oos.writeObject(objectToWrite);
 		oos.close();
 		return true;
 	}
 
-	public static <T> T readEncryptedObject(File inputFile, PrivateKey decryptionKey) throws FileNotFoundException, IOException, ClassNotFoundException {
+	@SuppressWarnings("unchecked")
+	public static <T extends Serializable> T readEncryptedObject(File inputFile, PrivateKey decryptionKey) throws FileNotFoundException, IOException, ClassNotFoundException {
 		
-		// TODO actually decrypt
+		// TODO actually decrypt -- put the data through a CipherInputStream before the OIS
+		// read the key block from the file before attaching the CIS
 		ObjectInputStream input = new ObjectInputStream(new FileInputStream(inputFile));
 		
-		return readObject(input);
-
+		return (T)readObject(input);
 	}
 }
