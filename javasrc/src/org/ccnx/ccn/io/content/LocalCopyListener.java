@@ -48,6 +48,7 @@ public class LocalCopyListener implements UpdateListener {
 		} catch (IOException e) {
 			if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
 				Log.info(Log.FAC_IO, "Local repo sync failed for network object: " + e.getMessage());
+				Log.logException("Local repo sync failed for network object: ", e);
 			}
 		}
 	}
