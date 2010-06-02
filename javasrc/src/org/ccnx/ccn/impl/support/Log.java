@@ -160,6 +160,8 @@ public class Log {
 
 	protected static Level [] _fac_level = new Level[FAC_LOG_LEVEL_PROPERTY.length];
 	protected static int [] _fac_value = new int[FAC_LOG_LEVEL_PROPERTY.length];
+	
+	protected static boolean _timestamp = false;
 
 	// ==========================================================
 
@@ -499,6 +501,16 @@ public class Log {
 	}
 
 	/**
+	 * Set flag for enabling/disabling timestamps on all messages
+	 */
+	
+	public static boolean setTimestamp(boolean enableTimestamp) {
+		boolean previous = _timestamp;
+		_timestamp = enableTimestamp;
+		return previous;
+	}
+	
+	/**
 	 * The main logging wrapper. Allows for variable parameters to the message.
 	 * Using the variable parameters here rather then constructing the message
 	 * yourself helps reduce CPU load when logging is disabled. (Since the
@@ -529,7 +541,7 @@ public class Log {
 		// Do this at the top of doLog to get timestamp closest to event
 		// Use %.6f to get format same as ccnd, even though we only have
 		// msec precision.
-		if( facility == FAC_TIMING ) {
+		if( (facility == FAC_TIMING)  || _timestamp) {
 			long now = System.currentTimeMillis();
 			double d = (double) now / 1000.0;
 			msg = String.format("%.6f %s", d, msg);

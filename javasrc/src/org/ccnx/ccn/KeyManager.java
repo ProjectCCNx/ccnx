@@ -297,6 +297,8 @@ public abstract class KeyManager {
 	 */
 	public abstract SecureKeyCache getSecureKeyCache();
 
+	public abstract void saveSecureKeyCache() throws FileNotFoundException, IOException;
+
 	public abstract void saveConfigurationState() throws FileNotFoundException,
 			IOException;
 	
@@ -528,7 +530,7 @@ public abstract class KeyManager {
 			Log.warning("Cannot publish key {0} to name {1}, do not have public key in cache.", keyToPublish, keyName);
 			return null;
 		}
-		return publishKey(keyName, theKey, signingKeyID, signingKeyLocator);
+		return publishKey(keyName, theKey, signingKeyID, signingKeyLocator, true);
 	}
 	
 	/**
@@ -544,7 +546,8 @@ public abstract class KeyManager {
 	 * @throws InvalidKeyException
 	 */
 	public PublicKeyObject publishSelfSignedKey(ContentName keyName, 
-						   PublisherPublicKeyDigest keyToPublish) throws InvalidKeyException, IOException {
+						   PublisherPublicKeyDigest keyToPublish,
+						   boolean learnKeyLocator) throws InvalidKeyException, IOException {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultKeyID();
 		} 
@@ -553,7 +556,7 @@ public abstract class KeyManager {
 			Log.warning("Cannot publish key {0} to name {1}, do not have public key in cache.", keyToPublish, keyName);
 			return null;
 		}
-		return publishKey(keyName, theKey, keyToPublish, SELF_SIGNED_KEY_LOCATOR);
+		return publishKey(keyName, theKey, keyToPublish, SELF_SIGNED_KEY_LOCATOR, learnKeyLocator);
 	}
 
 
@@ -572,6 +575,10 @@ public abstract class KeyManager {
 	 * @param keyName the name under which the key should be published. For the moment, keys are
 	 * 		  unversioned.
 	 * @param keyToPublish can be null, in which case we publish our own default public key
+	 * @param signingKeyID key to sign with, if we wish to override default
+	 * @param signingKeyLocator locator to use, if we wish to override default; if null, one will
+	 * 	be computed
+	 * @param learnKeyLocator do we remember the key locator used as the default for this signing key
 	 * @throws InvalidKeyException 
 	 * @throws IOException
 	 * @throws ConfigurationException 
@@ -579,7 +586,8 @@ public abstract class KeyManager {
 	public abstract PublicKeyObject publishKey(ContentName keyName, 
 			   PublicKey keyToPublish,
 			   PublisherPublicKeyDigest signingKeyID,
-			   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException;
+			   KeyLocator signingKeyLocator,
+			   boolean learnKeyLocator) throws InvalidKeyException, IOException;
 
 	/**
 	 * Publish a key at a certain name, ensuring that it is stored in a repository. Will throw an
@@ -706,7 +714,8 @@ public abstract class KeyManager {
 			// See if some repository has this key already
 			if (null != CCNReader.isContentInRepository(availableContent, timeToWaitForPreexisting, handle)) {
 				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
-					Log.info(Log.FAC_KEYS, "publishKeyToRepository: key {0} is already in a repository; not re-publishing.", keyName);
+					Log.info(Log.FAC_KEYS, "publishKeyToRepository: key {0} is already in a repository; not re-publishing. Content digest {1}.",
+							keyName, ContentName.componentPrintURI(availableContent.digest()));
 				}
 			} else {
 
@@ -717,7 +726,8 @@ public abstract class KeyManager {
 				rfc.startWrite(streamName, Shape.STREAM);
 				// OK, once we've emitted the interest, we don't actually need that flow controller anymore.
 				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
-					Log.info(Log.FAC_KEYS, "Key {0} published to repository.", keyName);
+					Log.info(Log.FAC_KEYS, "Key {0} published to repository as content {1}.", keyName, 
+							ContentName.componentPrintURI(availableContent.digest()));
 				}
 				rfc.close();
 			}
@@ -726,8 +736,15 @@ public abstract class KeyManager {
 		} else {		
 			// We need to write this content ourselves, nobody else has it. We know we really want to 
 			// write it, no point in checking again to see if it's there.
-			return publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator, 
+			PublicKeyObject publishedKey =
+				publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator, 
 							  null, SaveType.REPOSITORY, handle, handle.keyManager());
+			
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "Published key {0} from scratch as content {1}.", publishedKey.getVersionedName(), 
+						ContentName.componentPrintURI(publishedKey.getContentDigest()));
+			}
+			return publishedKey;
 		}
 	}
 
@@ -829,10 +846,10 @@ public abstract class KeyManager {
 				
 				PublisherPublicKeyDigest keyDigest = new PublisherPublicKeyDigest(keyToPublish);
 				if (signingKeyID.equals(keyDigest)) {
-					// Make a self-referential key locator. For now do not include the
-					// version.
+					// Make a self-referential key locator. Include the version, in case we are not using the key ID in the name.
+					// People wanting versionless key locators need to construct their own.
 					existingLocator = new KeyLocator(
-							new KeyName(VersioningProfile.addVersion(keyName, keyVersion), signingKeyID));
+							new KeyName(VersioningProfile.addVersion(nameAndVersion.first(), keyVersion), signingKeyID));
 					
 					if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
 						Log.finer(Log.FAC_KEYS, "Overriding constructed key locator of type KEY, making self-referential locator {0}", existingLocator);
@@ -869,7 +886,9 @@ public abstract class KeyManager {
 			}
 		} else {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
-				Log.info(Log.FAC_KEYS, "Published key {0} to name {1} with key locator {2}.", keyToPublish, keyObject.getVersionedName(), signingKeyLocator);
+				Log.info(Log.FAC_KEYS, "Published key {0} to name {1} with key locator {2}; ephemeral digest {3}.", 
+						keyToPublish, keyObject.getVersionedName(), signingKeyLocator,
+						ContentName.componentPrintURI(keyObject.getFirstDigest()));
 			}
 		}
 		keyManager.getPublicKeyCache().remember(keyObject);

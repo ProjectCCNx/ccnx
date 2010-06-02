@@ -80,6 +80,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 */
 	protected CCNTime _timestamp; 
 	
+	protected Integer _freshnessSeconds; // if null, use default
+	
 	protected CCNDigestHelper _dh;
 
 	/**
@@ -240,6 +242,10 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 */
 	public int getBlockSize() {
 		return getSegmenter().getBlockSize();
+	}
+	
+	public void setFreshnessSeconds(Integer freshnessSeconds) {
+		_freshnessSeconds = freshnessSeconds;
 	}
 
 	@Override
@@ -451,7 +457,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			_baseNameIndex = 
 				_segmenter.putFragment(_baseName, _baseNameIndex, 
 					_buffer, 0, (_blockOffset-saveBytes), 
-					_type, _timestamp, null, (flushLastBlock ? _baseNameIndex : null), 
+					_type, _timestamp, _freshnessSeconds, (flushLastBlock ? _baseNameIndex : null), 
 					_locator, _publisher, _keys);
 		} else {
 			if( Log.isLoggable(Level.INFO ))
@@ -464,7 +470,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// DKS TODO fix last block marking
 			_baseNameIndex = 
 				_segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffer, 0, _blockOffset-saveBytes, getBlockSize(),
-									     _type, _timestamp, null, 
+									     _type, _timestamp, _freshnessSeconds, 
 									     (flushLastBlock ? CCNSegmenter.LAST_SEGMENT : null), 
 									     _locator, _publisher, _keys);
 		}

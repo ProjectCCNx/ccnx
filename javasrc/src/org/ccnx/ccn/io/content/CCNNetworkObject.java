@@ -156,6 +156,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use handle defaults
 	protected KeyLocator _keyLocator; // locator to find publisher key
 	protected SaveType _saveType = null; // what kind of flow controller to make if we don't have one
+	protected Integer _freshnessSeconds = null; // if we want to set short freshness
 	protected ContentKeys _keys;
 	
 	/**
@@ -507,6 +508,16 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		} else if (saveType != _saveType){
 			throw new IOException("Cannot change save type, flow controller already set!");
 		}
+	}
+	
+	/**
+	 * If you want to set the lifetime of objects saved with this instance.
+	 * @param freshnessSeconds If null, will unset any freshness seconds (will
+	 * write objects that stay in cache till forced out); if a value will constrain
+	 * how long objects will stay in cache.
+	 */
+	public void setFreshnessSeconds(Integer freshnessSeconds) {
+		_freshnessSeconds = freshnessSeconds;
 	}
 	
 	/**
@@ -914,6 +925,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// If it gets a versioned name, will respect it. 
 			// This will call startWrite on the flow controller.
 			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _keys, _flowControl);
+			cos.setFreshnessSeconds(_freshnessSeconds);
 			if (null != outstandingInterest) {
 				cos.addOutstandingInterest(outstandingInterest);
 			}

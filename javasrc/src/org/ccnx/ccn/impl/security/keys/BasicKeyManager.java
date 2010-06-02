@@ -48,6 +48,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.impl.security.crypto.EncryptedObjectFileHelper;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
@@ -85,7 +86,8 @@ public class BasicKeyManager extends KeyManager {
 	protected String _keyStoreFileName;
 	protected String _keyStoreType;
 	protected String _configurationFileName;
-	
+	protected String _keyCacheFileName;
+
 	protected KeyStoreInfo _keyStoreInfo;
 	protected PublisherPublicKeyDigest _defaultKeyID;
 	
@@ -170,6 +172,9 @@ public class BasicKeyManager extends KeyManager {
 				keyStoreFileName : UserConfiguration.keystoreFileName();
 		_configurationFileName = (null != configurationFileName) ? 
 				configurationFileName : UserConfiguration.configurationFileName();
+		// Don't let people override this. Also make "confguration file" a configuration file,
+		// move cached identity data to an identity file name TODO.
+		_keyCacheFileName = UserConfiguration.keyCacheFileName();
 	    _keyStoreDirectory = (null != keyStoreDirectory) ? keyStoreDirectory : UserConfiguration.userConfigurationDirectory();
 		// must call initialize
 	}
@@ -203,6 +208,7 @@ public class BasicKeyManager extends KeyManager {
 		if (!loadValuesFromKeystore(_keyStoreInfo)) {
 			Log.warning("Cannot process keystore!");
 		}
+		// This also loads our cached keys.
 		if (!loadValuesFromConfiguration(_keyStoreInfo)) {
 			Log.warning("Cannot process configuration data!");
 		}
@@ -223,7 +229,8 @@ public class BasicKeyManager extends KeyManager {
 				this.publishKey(getDefaultKeyName(getDefaultKeyID()), 
 						getDefaultPublicKey(),
 						null,
-						null);
+						null,
+						true);
 			} catch (InvalidKeyException e) {
 				// in java 1.6 move to handing exception to constructor
 				throw new IOException("Default key is invalid! " + e);
@@ -255,6 +262,13 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	public synchronized void close() {
 		_handle.close();
+		try {
+			saveSecureKeyCache();
+		} catch (IOException e) {
+			if (Log.isLoggable(Log.FAC_KEYS, Level.WARNING)) {
+				Log.warning("Exception saving secure key cache: {0}", e);
+			}
+		}
 	}
 	
 	public CCNHandle handle() { return _handle; }
@@ -395,7 +409,9 @@ public class BasicKeyManager extends KeyManager {
 	
 	/**
 	 * Load values of relevance to a key manager. Most importantly, loads default
-	 * key locator information
+	 * key locator information. If the system parameter UserConfiguration.useKeyConfiguration()
+	 * (settable from an environment variable, a Java property, or programmatically) is false,
+	 * we do not load our saved key locators/identities, or our saved secret key cache.
 	 * @return true if successful, false on error
 	 * @throws ConfigurationException
 	 */
@@ -417,6 +433,7 @@ public class BasicKeyManager extends KeyManager {
 		}
 
 		// Load values from our configuration file, which should be read in UserConfiguration.
+		// If useKeyConfiguration() is false, we do not read configured identities or cached secret/private keys.
 		if (!UserConfiguration.useKeyConfiguration()) {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
 				Log.info(Log.FAC_KEYS, "Not loading key manager configuration data in response to user configuration variable.");
@@ -464,9 +481,87 @@ public class BasicKeyManager extends KeyManager {
 			}
 		}
 		
+		return loadSavedSecureKeyCache();
+	}
+	
+	public boolean loadSavedSecureKeyCache() throws ConfigurationException {
+		// Load values from our configuration file, which should be read in UserConfiguration.
+		if (!UserConfiguration.useKeyConfiguration()) {
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "Not loading key manager configuration data in response to user configuration variable.");
+			}
+			return true;
+		}
+		
+		// Currently have saved data override command line, which might be bad...
+		// also use that to preconfigure things like keystores and such
+		// for right now, just as a super-fast trick, use java serialization to get out minmal data necessary
+		if ((null == _keyStoreDirectory) || (null == _configurationFileName))  {
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "loadValuesFromConfiguration: No configuration directory/file set, not loading.");
+			}
+			return true;
+		}
+
+		File keyCacheFile = new File(_keyStoreDirectory, _keyCacheFileName);
+		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+			Log.info(Log.FAC_KEYS, "loadSecureKeyCache: attempting to load saved key cache from {0}", keyCacheFile.getAbsolutePath());
+		}
+		if (keyCacheFile.exists()) {
+			try {
+				
+				// Try to load the key cache.
+				SecureKeyCache keyCache = EncryptedObjectFileHelper.readEncryptedObject(keyCacheFile, getDefaultSigningKey());
+				
+				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+					Log.info(Log.FAC_KEYS, "Loaded saved key cached data from file {0}, got {1} key locator values.", 
+							keyCacheFile.getAbsolutePath(), keyCache.size());
+				}
+				
+				// TODO CACHE
+
+			} catch (FileNotFoundException e) {
+				throw new ConfigurationException("Cannot read key cache file even though it claims to exist: " + keyCacheFile.getAbsolutePath(), e);
+			} catch (IOException e) {
+				throw new ConfigurationException("I/O error reading key cache file: " + keyCacheFile.getAbsolutePath(), e);
+			} catch (ClassNotFoundException e) {
+				throw new ConfigurationException("ClassNotFoundException deserializing encrypted key cache file: " + keyCacheFile.getAbsolutePath(), e);
+			}
+		} else {
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "loadSavedSecureKeyCache: key cache file {0} does not exist.", keyCacheFile.getAbsolutePath());
+			}
+		}
+		
 		return true;
 	}
 	
+	/**
+	 * As a very initial pass, save key cache as encrypted Java serialization. Later
+	 * we'll clean this up... (And encryption still needs to be hooked up.)
+	 * @throws IOException 
+	 * @throws FileNotFoundException 
+	 */
+	@Override
+	public void saveSecureKeyCache() throws FileNotFoundException, IOException {
+
+		// This prevents us from writing the data out to a file, where it could interact badly with 
+		// user state (e.g. if we're a unit test). It will still be changed in the runtime data,
+		// allowing unit tests to use it within a single execution.
+		if (!UserConfiguration.useKeyConfiguration()) {
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "Not saving key manager secure key cache data in response to user configuration variable.");
+			}
+			return;
+		}
+		
+		File keyCacheFile = new File(_keyStoreDirectory, _keyCacheFileName); 
+		
+		EncryptedObjectFileHelper.writeEncryptedObject(keyCacheFile, getSecureKeyCache(), getDefaultPublicKey());
+
+	}
+	
+
 	/**
 	 * As a very initial pass, save configuration state as Java serialization. Later
 	 * we'll clean this up...
@@ -504,7 +599,8 @@ public class BasicKeyManager extends KeyManager {
 	}
 	
 	/**
-	 * Need a way to clear this programmatically. Call this before initialize().
+	 * Need a way to clear this programmatically. Call this before initialize(). This
+	 * deletes our saved configuration state, key files and stored key cache.
 	 */
 	@Override 
 	public void clearSavedConfigurationState() throws FileNotFoundException, IOException {
@@ -518,6 +614,16 @@ public class BasicKeyManager extends KeyManager {
 			}
 		}
 		clearStoredKeyLocator(null);
+		
+		File keyCacheFile = new File(_keyStoreDirectory, _keyCacheFileName); 
+		if (keyCacheFile.exists()) {
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "Deleting secret/private key cache file {0}.", keyCacheFile.getAbsolutePath());
+			}
+			if (!keyCacheFile.delete()) {
+				Log.warning("Unable to delete secret/private key cache file {0}.", keyCacheFile.getAbsolutePath());
+			}
+		}
 	}
 			
 	/**
@@ -970,7 +1076,8 @@ public class BasicKeyManager extends KeyManager {
 	public PublicKeyObject publishKey(ContentName keyName, 
 						   PublicKey keyToPublish,
 						   PublisherPublicKeyDigest signingKeyID,
-						   KeyLocator signingKeyLocator) throws InvalidKeyException, IOException {
+						   KeyLocator signingKeyLocator,
+						   boolean learnKeyLocator) throws InvalidKeyException, IOException {
 		if (null == keyToPublish) {
 			keyToPublish = getDefaultPublicKey();
 		} 
@@ -987,7 +1094,7 @@ public class BasicKeyManager extends KeyManager {
 			Log.info(Log.FAC_KEYS, "publishKey: published key {0}\n under specified key name {1}\n key locator: {2}", 
 					keyDigest, keyObject.getVersionedName(), keyObject.getPublisherKeyLocator());
 
-		if (!haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
+		if (learnKeyLocator && !haveStoredKeyLocator(keyDigest) && (null != keyObject)) {
 			// So once we publish self-signed key object, we store a pointer to that
 			// to use. Don't override any manually specified values.
 			KeyLocator newKeyLocator = new KeyLocator(keyObject.getVersionedName(), keyObject.getContentPublisher());

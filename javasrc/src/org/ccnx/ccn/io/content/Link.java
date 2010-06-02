@@ -250,7 +250,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 				(null != targetAuthenticator()) ? targetAuthenticator().publisher() : null);
 
 		result = handle.get(unversionedInterest, timeout);
-		if (!SegmentationProfile.isSegment(result.name())) {
+		if ((null != result) && !SegmentationProfile.isSegment(result.name())) {
 			return null;
 		}
 		return result;
