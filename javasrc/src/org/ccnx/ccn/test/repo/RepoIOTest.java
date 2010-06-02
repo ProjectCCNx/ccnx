@@ -21,6 +21,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.BasicPolicy;
 import org.ccnx.ccn.impl.repo.PolicyXML;
@@ -34,6 +35,7 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.Flosser;
 import org.junit.AfterClass;
@@ -78,6 +80,14 @@ public class RepoIOTest extends RepoTestBase {
 		CCNStringObject so = new CCNStringObject(ContentName.fromNative(_testPrefixObj), "Initial string value", SaveType.REPOSITORY, putHandle);
 		so.save();
 		so.close();
+		
+		 // Need to save key also for first time sync test
+		KeyLocator locator = 
+			putHandle.keyManager().getKeyLocator(putHandle.keyManager().getDefaultKeyID()); 
+		putHandle.keyManager().publishSelfSignedKeyToRepository(
+		               locator.name().name(), 
+		               putHandle.keyManager().getDefaultPublicKey(), null, 
+		               SystemConfiguration.getDefaultTimeout());
 		
 		// Floss content into ccnd for tests involving content not already in repo when we start
 		Flosser floss = new Flosser();
