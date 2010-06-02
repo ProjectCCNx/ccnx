@@ -714,7 +714,8 @@ public abstract class KeyManager {
 			// See if some repository has this key already
 			if (null != CCNReader.isContentInRepository(availableContent, timeToWaitForPreexisting, handle)) {
 				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
-					Log.info(Log.FAC_KEYS, "publishKeyToRepository: key {0} is already in a repository; not re-publishing.", keyName);
+					Log.info(Log.FAC_KEYS, "publishKeyToRepository: key {0} is already in a repository; not re-publishing. Content digest {1}.",
+							keyName, ContentName.componentPrintURI(availableContent.digest()));
 				}
 			} else {
 
@@ -725,7 +726,8 @@ public abstract class KeyManager {
 				rfc.startWrite(streamName, Shape.STREAM);
 				// OK, once we've emitted the interest, we don't actually need that flow controller anymore.
 				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
-					Log.info(Log.FAC_KEYS, "Key {0} published to repository.", keyName);
+					Log.info(Log.FAC_KEYS, "Key {0} published to repository as content {1}.", keyName, 
+							ContentName.componentPrintURI(availableContent.digest()));
 				}
 				rfc.close();
 			}
@@ -734,8 +736,15 @@ public abstract class KeyManager {
 		} else {		
 			// We need to write this content ourselves, nobody else has it. We know we really want to 
 			// write it, no point in checking again to see if it's there.
-			return publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator, 
+			PublicKeyObject publishedKey =
+				publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator, 
 							  null, SaveType.REPOSITORY, handle, handle.keyManager());
+			
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "Published key {0} from scratch as content {1}.", publishedKey.getVersionedName(), 
+						ContentName.componentPrintURI(publishedKey.getContentDigest()));
+			}
+			return publishedKey;
 		}
 	}
 
@@ -878,7 +887,7 @@ public abstract class KeyManager {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
 				Log.info(Log.FAC_KEYS, "Published key {0} to name {1} with key locator {2}; ephemeral digest {3}.", 
 						keyToPublish, keyObject.getVersionedName(), signingKeyLocator,
-						ContentName.componentPrintURI(keyObject.getContentDigest()));
+						ContentName.componentPrintURI(keyObject.getFirstDigest()));
 			}
 		}
 		keyManager.getPublicKeyCache().remember(keyObject);
