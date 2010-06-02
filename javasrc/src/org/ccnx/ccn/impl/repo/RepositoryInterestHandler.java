@@ -220,11 +220,13 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				//      getContent(): need full object in this case, verify that last segment matches segment name => verified = true
 				verified = true;
 				// Send back a RepositoryInfoObject that contains a confirmation that content is already in repo
+				Log.finer(Log.FAC_REPO, "Checked write confirmed");
 				ArrayList<ContentName> target_names = new ArrayList<ContentName>();
 				target_names.add(target);
 				rio = _server.getRepository().getRepoInfo(interest.name(), target_names);
 			} else {
 				// Send back response that does not confirm content
+				Log.finer(Log.FAC_REPO, "Checked write not confirmed");
 				rio = _server.getRepository().getRepoInfo(interest.name(), null);
 			}
 			if (null == rio)
