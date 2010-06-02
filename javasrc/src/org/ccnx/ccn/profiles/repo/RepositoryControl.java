@@ -150,9 +150,11 @@ public class RepositoryControl {
 
 					// This will traverse any links, and the signer credentials for the lot.
 					// If self-signed, don't sync it's signer or we'll loop
-					if (!localRepoSync(handle, signerKey, !signerKey.isSelfSigned())) {
-						result = false;
-					}
+					// We do not change the result if the key was not previously synced; we care
+					// about content. Keys are potentially more often synced, but also more finicky --
+					// if we're syncing the auto-published keys we can have two copies that differ
+					// only in signing time and signature.
+					localRepoSync(handle, signerKey, !signerKey.isSelfSigned());
 				}
 			} else {
 				if (Log.isLoggable(Level.INFO)) {
@@ -225,9 +227,11 @@ public class RepositoryControl {
 
 					// This will traverse any links, and the signer credentials for the lot.
 					// If self-signed, don't sync it's signer or we'll loop
-					if (!localRepoSync(handle, signerKey, !signerKey.isSelfSigned())) {
-						result = false;
-					}
+					// We do not change the result if the key was not previously synced; we care
+					// about content. Keys are potentially more often synced, but also more finicky --
+					// if we're syncing the auto-published keys we can have two copies that differ
+					// only in signing time and signature.
+					localRepoSync(handle, signerKey, !signerKey.isSelfSigned());
 				}
 			} else {
 				if (Log.isLoggable(Level.INFO)) {
