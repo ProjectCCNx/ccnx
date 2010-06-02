@@ -792,6 +792,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @return
 	 */
 	public synchronized boolean hasListener(UpdateListener listener) {
+		if (null == _updateListeners) {
+			return false;
+		}
 		return (_updateListeners.contains(listener));
 	}
 	
