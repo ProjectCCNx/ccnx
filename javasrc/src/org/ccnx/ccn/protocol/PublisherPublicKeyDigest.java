@@ -21,10 +21,9 @@ import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.URISyntaxException;
 import java.security.PublicKey;
+import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.logging.Level;
-
-import javax.security.cert.X509Certificate;
 
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
