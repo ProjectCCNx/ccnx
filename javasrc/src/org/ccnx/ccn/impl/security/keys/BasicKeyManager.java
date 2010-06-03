@@ -484,7 +484,7 @@ public class BasicKeyManager extends KeyManager {
 		return loadSavedSecureKeyCache();
 	}
 	
-	public boolean loadSavedSecureKeyCache() throws ConfigurationException {
+	public synchronized boolean loadSavedSecureKeyCache() throws ConfigurationException {
 		// Load values from our configuration file, which should be read in UserConfiguration.
 		if (!UserConfiguration.useKeyConfiguration()) {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
@@ -518,7 +518,9 @@ public class BasicKeyManager extends KeyManager {
 							keyCacheFile.getAbsolutePath(), keyCache.size());
 				}
 				
-				// TODO CACHE
+				// merge key caches
+				keyCache.merge(_privateKeyCache);
+				_privateKeyCache = keyCache;
 
 			} catch (FileNotFoundException e) {
 				throw new ConfigurationException("Cannot read key cache file even though it claims to exist: " + keyCacheFile.getAbsolutePath(), e);
