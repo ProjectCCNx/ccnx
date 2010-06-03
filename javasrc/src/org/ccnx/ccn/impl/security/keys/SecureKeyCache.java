@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.impl.security.keys;
 
+import java.io.Serializable;
 import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -25,16 +26,14 @@ import java.security.PrivateKey;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.Enumeration;
-import java.util.Iterator;
 import java.util.TreeMap;
-import java.io.Serializable;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -82,7 +81,7 @@ public class SecureKeyCache implements Serializable {
 			addMyPrivateKey(ppkd.digest(), pk);
 		}
 	}
-	
+		
 	/**
 	 * Load the private keys from a KeyStore.
 	 * @param keystore
@@ -381,4 +380,22 @@ public class SecureKeyCache implements Serializable {
 		}
 			
 	}
+	
+	
+	/**
+	 * Debugging utility to print the contents of the secureKeyCache
+	 */
+	public void printContents() {
+		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: {0} keys in _keyMap ", _keyMap.size());
+		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: {0} keys in _myKeyMap ", _myKeyMap.size());
+		for (byte[] b: _myKeyMap.keySet()) {
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: myKeyMap contains key with hash {0}", DataUtils.printHexBytes(b));
+		}
+		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: {0} keys in _privateKeyMap ", _privateKeyMap.size());
+		for (ContentName cn: _nameKeyMap.keySet()) {
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: privateKeyMap contains a key with name {0} and hash {1}", 
+					cn, DataUtils.printHexBytes(_nameKeyMap.get(cn)));
+		}
+	}
+
 }
