@@ -36,14 +36,14 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Enumeration;
 
+import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1InputStream;
-import org.bouncycastle.asn1.ASN1Object;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DEREncodable;
 import org.bouncycastle.asn1.DERObject;
+import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.DEROutputStream;
-import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.DERString;
 import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
@@ -289,25 +289,31 @@ public class CryptoUtil {
 	 * @param certificate
 	 * @return
 	 * @throws IOException 
+	 * @throws CertificateEncodingException 
 	 */
     public static ArrayList<Tuple<Integer, String>> getSubjectAlternativeNames(X509Certificate certificate)
-    		throws IOException {        
+    		throws IOException, CertificateEncodingException {        
 
-    	byte[] extVal = certificate.getExtensionValue(X509Extensions.SubjectAlternativeName.getId());
+    	byte[] encodedExtension = certificate.getExtensionValue(X509Extensions.SubjectAlternativeName.getId());
     	
     	ArrayList<Tuple<Integer, String>> list = new ArrayList<Tuple<Integer, String>>();
     	
-    	if (null == extVal) {
+    	if (null == encodedExtension) {
     		return list;
     	}
     	
-    	ASN1OctetString octs = (ASN1OctetString)ASN1Object.fromByteArray(extVal);
-        
-    	Enumeration<?> it = DERSequence.getInstance(ASN1Object.fromByteArray(octs.getOctets())).getObjects();
+		// content of extension is wrapped in a DEROctetString
+		DEROctetString content = (DEROctetString)CryptoUtil.decode(encodedExtension);
+		byte [] encapsulatedOctetString = content.getOctets();
+		
+		ASN1InputStream aIn = new ASN1InputStream(encapsulatedOctetString);
+		ASN1Encodable decodedObject = (ASN1Encodable)aIn.readObject();
+		ASN1Sequence sequence = (ASN1Sequence)decodedObject.getDERObject();
     	
         Integer tag;
         GeneralName generalName;
-         
+        
+        Enumeration<?> it = sequence.getObjects();
         while (it.hasMoreElements()) {
         	generalName = GeneralName.getInstance(it.nextElement());
         	tag = generalName.getTagNo();
@@ -327,16 +333,18 @@ public class CryptoUtil {
     /**
      * Get the first DNS name in the subject alternative names.
      * @throws IOException 
+     * @throws CertificateEncodingException 
      */
-    public static String getSubjectAlternativeNameDNSName(X509Certificate certificate) throws IOException {
+    public static String getSubjectAlternativeNameDNSName(X509Certificate certificate) throws IOException, CertificateEncodingException {
     	return findSubjectAlternativeName(GeneralName.dNSName, certificate);
     }
     
     /**
      * Get the first email address in the subject alternative names.
      * @throws IOException 
+     * @throws CertificateEncodingException 
      */
-    public static String getSubjectAlternativeNameEmailAddress(X509Certificate certificate) throws IOException {
+    public static String getSubjectAlternativeNameEmailAddress(X509Certificate certificate) throws IOException, CertificateEncodingException {
     	return findSubjectAlternativeName(GeneralName.rfc822Name, certificate);
     }
     
@@ -344,8 +352,9 @@ public class CryptoUtil {
      * Get the first DNS name in the subject alternative names.
      * @throws IOException 
      * @throws URISyntaxException 
+     * @throws CertificateEncodingException 
      */
-    public static URI getSubjectAlternativeNameURI(X509Certificate certificate) throws IOException, URISyntaxException {
+    public static URI getSubjectAlternativeNameURI(X509Certificate certificate) throws IOException, URISyntaxException, CertificateEncodingException {
     	String uriString = findSubjectAlternativeName(GeneralName.uniformResourceIdentifier, certificate);
     	
     	if (null == uriString) {
@@ -354,7 +363,7 @@ public class CryptoUtil {
     	return new URI(uriString);
     }
 
-    public static String findSubjectAlternativeName(int tag, X509Certificate certificate) throws IOException {
+    public static String findSubjectAlternativeName(int tag, X509Certificate certificate) throws IOException, CertificateEncodingException {
     	ArrayList<Tuple<Integer,String>> alternativeNames = getSubjectAlternativeNames(certificate);
     	
     	for (Tuple<Integer,String> name : alternativeNames) {
