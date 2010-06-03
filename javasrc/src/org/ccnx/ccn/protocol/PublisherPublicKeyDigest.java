@@ -21,6 +21,7 @@ import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.URISyntaxException;
 import java.security.PublicKey;
+import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.logging.Level;
 
@@ -99,6 +100,13 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 		}
 		// No marker
 		return new PublisherPublicKeyDigest(encodedBytes);
+	}
+	
+	/**
+	 * Gets a PublisherPublicKeyDigest for the public key in an X509Certificate.
+	 */
+	public static PublisherPublicKeyDigest fromCertificate(X509Certificate certificate) {
+		return new PublisherPublicKeyDigest(certificate.getPublicKey());
 	}
 	
 	/**

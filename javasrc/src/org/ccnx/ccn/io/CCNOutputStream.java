@@ -255,12 +255,15 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			closeNetworkData();
 			_segmenter.getFlowControl().afterClose();
 		} catch (InvalidKeyException e) {
+			Log.logStackTrace(Level.WARNING, e);
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
 		} catch (SignatureException e) {
+			Log.logStackTrace(Level.WARNING, e);
 			throw new IOException("Cannot sign content -- signature failure!: " + e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
 			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
 		} catch (InterruptedException e) {
+			Log.logStackTrace(Level.WARNING, e);
 			throw new IOException("Low-level network failure!: " + e.getMessage());
 		}
 	}

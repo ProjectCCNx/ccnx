@@ -778,8 +778,24 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public synchronized void addListener(UpdateListener listener) {
 		if (null == _updateListeners) {
 			_updateListeners = new HashSet<UpdateListener>();
+		} else if (_updateListeners.contains(listener)) {
+			return; // don't re-add
 		}
 		_updateListeners.add(listener);
+	}
+	
+	/**
+	 * Does this object already have this listener. Uses Object.equals
+	 * for comparison; so will only say yes if it has this *exact* listener
+	 * instance already registered.
+	 * @param listener
+	 * @return
+	 */
+	public synchronized boolean hasListener(UpdateListener listener) {
+		if (null == _updateListeners) {
+			return false;
+		}
+		return (_updateListeners.contains(listener));
 	}
 	
 	public void removeListener(UpdateListener listener) {
