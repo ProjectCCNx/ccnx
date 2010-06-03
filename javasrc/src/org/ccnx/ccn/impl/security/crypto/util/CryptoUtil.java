@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 
 import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1Object;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DEREncodable;
@@ -47,7 +48,6 @@ import org.bouncycastle.asn1.DERString;
 import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.asn1.x509.X509Extensions;
-import org.bouncycastle.x509.extension.X509ExtensionUtil;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
@@ -301,7 +301,10 @@ public class CryptoUtil {
     		return list;
     	}
     	
-        Enumeration<?> it = DERSequence.getInstance(X509ExtensionUtil.fromExtensionValue(extVal)).getObjects();
+    	ASN1OctetString octs = (ASN1OctetString)ASN1Object.fromByteArray(extVal);
+        
+    	Enumeration<?> it = DERSequence.getInstance(ASN1Object.fromByteArray(octs.getOctets())).getObjects();
+    	
         Integer tag;
         GeneralName generalName;
          
@@ -354,7 +357,6 @@ public class CryptoUtil {
     public static String findSubjectAlternativeName(int tag, X509Certificate certificate) throws IOException {
     	ArrayList<Tuple<Integer,String>> alternativeNames = getSubjectAlternativeNames(certificate);
     	
-
     	for (Tuple<Integer,String> name : alternativeNames) {
     		if (name.first() == tag) {
     			return name.second();
