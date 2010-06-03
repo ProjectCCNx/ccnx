@@ -75,6 +75,9 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 		// Alas, Arrays.copyOf doesn't exist in 1.5, and we'd like
 		// to be mostly 1.5 compatible for now...
 		// _publisherPublicKeyDigest = Arrays.copyOf(publisherID, PUBLISHER_ID_LEN);
+		if ((null == publisherPublicKeyDigest) || (publisherPublicKeyDigest.length < PublisherID.PUBLISHER_ID_LEN)) {
+			throw new IllegalArgumentException("This is not a valid publisher public key digest!");
+		}
 		_publisherPublicKeyDigest = new byte[PublisherID.PUBLISHER_ID_LEN];
 		System.arraycopy(publisherPublicKeyDigest, 0, _publisherPublicKeyDigest, 0, PublisherID.PUBLISHER_ID_LEN);
 	}	
