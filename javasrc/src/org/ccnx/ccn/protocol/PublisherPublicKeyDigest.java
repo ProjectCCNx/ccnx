@@ -24,6 +24,8 @@ import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.logging.Level;
 
+import javax.security.cert.X509Certificate;
+
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
@@ -99,6 +101,13 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 		}
 		// No marker
 		return new PublisherPublicKeyDigest(encodedBytes);
+	}
+	
+	/**
+	 * Gets a PublisherPublicKeyDigest for the public key in an X509Certificate.
+	 */
+	public static PublisherPublicKeyDigest fromCertificate(X509Certificate certificate) {
+		return new PublisherPublicKeyDigest(certificate.getPublicKey());
 	}
 	
 	/**
