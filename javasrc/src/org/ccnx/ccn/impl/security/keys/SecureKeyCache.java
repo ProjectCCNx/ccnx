@@ -25,8 +25,10 @@ import java.security.PrivateKey;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.TreeMap;
 import java.io.Serializable;
 
@@ -47,8 +49,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class SecureKeyCache implements Serializable {
 	
-	
-
 	/**
 	 * 
 	 */
@@ -175,7 +175,8 @@ public class SecureKeyCache implements Serializable {
 	}
 
 	/**
-	 * Checks whether we have a record of a key specified by its digest.
+	 * Checks whether we have a record of a key specified by its digest, or in the case
+	 * of a private key, the digest of the corresponding public key.
 	 * @param keyIdentifier the key digest.
 	 * @return
 	 */
@@ -242,6 +243,18 @@ public class SecureKeyCache implements Serializable {
 		return allKeys.toArray(pkarray);
 	}
 	
+	
+	
+	private ContentName getContentName(byte[] ident) {
+		for (ContentName name : _nameKeyMap.keySet()) {
+			if (byteArrayComparator.compare(ident, _nameKeyMap.get(name)) == 0) {
+				return name;
+			}
+		}
+		return null;
+	}
+	
+	
 	/**
 	 * Records a private key and the name and digest of the corresponding public key.
 	 * @param keyName a name under which to look up the private key
@@ -302,5 +315,70 @@ public class SecureKeyCache implements Serializable {
 		count += _myKeyMap.size();
 		count += _privateKeyMap.size();
 		return count;
+	}
+	
+	/**
+	 * Merges the SecureKeyCache with a given SecureKeyCache. The original SecureKeyCache
+	 * dominates, i.e. the merged cache will contain the names in the original cache if there
+	 * are any conflicts 
+	 * 
+	 * @param cache the SecureKeyCache to merge with
+	 */
+	public void merge(SecureKeyCache cache) {
+		
+		/**
+		_keyMap.putAll(cache._keyMap);
+		_myKeyMap.putAll(cache._myKeyMap);
+		_privateKeyMap.putAll(cache._privateKeyMap);
+		_privateKeyIdentifierMap.putAll(cache._privateKeyIdentifierMap);
+		
+		Collection<byte[]> digests = cache._nameKeyMap.values();
+		Iterator<byte[]> it = digests.iterator();
+		while (it.hasNext()) {
+			
+			if (this._nameKeyMap.containsValue(it.next())) {
+				it.remove();
+			}
+		}
+		
+		_nameKeyMap.putAll(cache._nameKeyMap);
+		*/
+		 
+		// check that all my private keys are already in cache
+		for (PrivateKey pkey : cache._myKeyMap.values()) {
+			byte[] identifier = cache.getPublicKeyIdentifier(pkey).digest();
+			if (!this._myKeyMap.containsKey(identifier)) {
+				this.addMyPrivateKey(identifier, pkey);
+			}
+		}
+		
+		// check that all other private keys are already in cache
+		for (PrivateKey pkey : cache._privateKeyMap.values()) {
+			byte[] identifier = cache.getPublicKeyIdentifier(pkey).digest();
+			ContentName name = cache.getContentName(identifier);
+			if (!this._privateKeyMap.containsKey(identifier)) {	
+				this.addPrivateKey(name, identifier, pkey);
+			}
+			else {
+				if (this.getContentName(identifier) == null) {
+					_nameKeyMap.put(name, identifier);
+				}
+			}
+		}
+		
+		// check that all symmetric keys are already in cache
+		for (Key key : cache._keyMap.values()) {
+			byte[] identifier = getKeyIdentifier(key);
+			ContentName name = cache.getContentName(identifier);
+			if (!this.containsKey(identifier)) {	
+				this.addKey(name, key);
+			}
+			else {
+				if (this.getContentName(identifier) == null) {
+					_nameKeyMap.put(name, identifier);
+				}
+			}
+		}
+			
 	}
 }
