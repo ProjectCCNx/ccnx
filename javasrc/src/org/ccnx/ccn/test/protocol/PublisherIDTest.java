@@ -27,6 +27,7 @@ import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.PublisherID.PublisherType;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -74,7 +75,7 @@ public class PublisherIDTest {
 	}
 	
 	@Test
-	public void testPublisherToString() {
+	public void testPublisherToString() throws Exception {
 		
 		String id = "1lplh6o3q52k6jnnr0n7utmegju6cjjg3p7jhgfn8h1siubg20r7";
 		System.out.println("id length " + id.length());
@@ -113,6 +114,19 @@ public class PublisherIDTest {
 	//	byte [] sid3 = CCNDigestHelper.scanBytes(input, 32);
 	//	System.out.println("sid3 hex " + DataUtils.printHexBytes(sid3));
 		
+		byte [] otherBytes = {(byte)0xff, (byte)0xff, (byte)0xd9, (byte)0xde, (byte)0x75, (byte)0xc5, 
+				(byte)0xa56, (byte)0xff, (byte)0x45, (byte)0x78,
+				(byte)0x67, (byte)0xb2, (byte)0xc3, (byte)0x44, (byte)0x2b, 
+				(byte)0xb0, (byte)0xb0, (byte)0xaf, (byte)0x71, (byte)0x94, (byte)0x68, (byte)0x0b,
+				(byte)0x2c, (byte)0x0c, (byte)0x0e, (byte)0xef, 
+				(byte)0x3b, (byte)0xa0, (byte)0x8c, (byte)0xda, (byte)0x02, (byte)0xb02};
+
+		PublisherPublicKeyDigest p2 = new PublisherPublicKeyDigest(otherBytes);
+		
+		Assert.assertArrayEquals(otherBytes, p2.digest());
+		
+		PublisherPublicKeyDigest p3 = new PublisherPublicKeyDigest(p2.toString());
+		Assert.assertEquals(p2, p3);
 	}
 
 }
