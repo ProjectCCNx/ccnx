@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.protocol;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.URISyntaxException;
@@ -75,19 +76,22 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 		// Alas, Arrays.copyOf doesn't exist in 1.5, and we'd like
 		// to be mostly 1.5 compatible for now...
 		// _publisherPublicKeyDigest = Arrays.copyOf(publisherID, PUBLISHER_ID_LEN);
-		if ((null == publisherPublicKeyDigest) || (publisherPublicKeyDigest.length < PublisherID.PUBLISHER_ID_LEN)) {
+		if (null == publisherPublicKeyDigest) {
 			throw new IllegalArgumentException("This is not a valid publisher public key digest!");
 		}
 		_publisherPublicKeyDigest = new byte[PublisherID.PUBLISHER_ID_LEN];
-		System.arraycopy(publisherPublicKeyDigest, 0, _publisherPublicKeyDigest, 0, PublisherID.PUBLISHER_ID_LEN);
+		
+		int len = Math.min(publisherPublicKeyDigest.length, PublisherID.PUBLISHER_ID_LEN); 
+		System.arraycopy(publisherPublicKeyDigest, 0, _publisherPublicKeyDigest, (PublisherID.PUBLISHER_ID_LEN-len), len);
 	}	
 	
 	/**
 	 * Expects the equivalent of publisherKeyID.toString
 	 * @param publisherPublicKeyDigest the string representation of the digest.
+	 * @throws IOException 
 	 */
-	public PublisherPublicKeyDigest(String publisherPublicKeyDigest) {
-		this(CCNDigestHelper.scanBytes(publisherPublicKeyDigest, 32));
+	public PublisherPublicKeyDigest(String publisherPublicKeyDigest) throws IOException {
+		this(DataUtils.base64Decode(publisherPublicKeyDigest.getBytes()));
 	}
 	
 	/**
@@ -204,8 +208,7 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 
 	@Override
 	public String toString() {
-		// 	16 would be the most familiar option, but 32 is shorter
-		return CCNDigestHelper.printBytes(digest(), 32);
+		return DataUtils.base64Encode(digest(), PublisherID.PUBLISHER_ID_LEN*2);
 	}
 	
 	/**
