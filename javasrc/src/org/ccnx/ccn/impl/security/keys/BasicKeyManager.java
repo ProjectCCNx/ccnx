@@ -519,15 +519,17 @@ public class BasicKeyManager extends KeyManager {
 				}
 				
 				// merge key caches
-				keyCache.merge(_privateKeyCache);
-				_privateKeyCache = keyCache;
+				if (null != keyCache) {
+					keyCache.merge(_privateKeyCache);
+					_privateKeyCache = keyCache;
+				}
 
 			} catch (FileNotFoundException e) {
-				throw new ConfigurationException("Cannot read key cache file even though it claims to exist: " + keyCacheFile.getAbsolutePath(), e);
+				Log.warning("Proceeding without cached keys -- cannot read key cache file even though it claims to exist: " + keyCacheFile.getAbsolutePath(), e);
 			} catch (IOException e) {
-				throw new ConfigurationException("I/O error reading key cache file: " + keyCacheFile.getAbsolutePath(), e);
+				Log.warning("Proceeding without cached keys -- I/O error reading key cache file: " + keyCacheFile.getAbsolutePath(), e);
 			} catch (ClassNotFoundException e) {
-				throw new ConfigurationException("ClassNotFoundException deserializing encrypted key cache file: " + keyCacheFile.getAbsolutePath(), e);
+				Log.warning("Proceeding without cached keys -- ClassNotFoundException deserializing encrypted key cache file: " + keyCacheFile.getAbsolutePath(), e);
 			}
 		} else {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
