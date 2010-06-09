@@ -66,7 +66,7 @@ public class Log {
 	public static final String LOG_DIR_PROPERTY = "org.ccnx.ccn.LogDir";
 	public static final String LOG_DIR_ENV = "CCN_LOG_DIR";
 
-	static Logger _systemLogger = null;
+	protected static Logger _systemLogger = null;
 
 	//static int _level;
 	//static boolean useDefaultLevel = true; // reset if an external override of the default level was specified
